@@ -902,6 +902,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const chestBand = mpfb && window.mpfbKitOf && window.EW_MH_CHEST && window.EW_MH_CHEST.band[window.mpfbKitOf(appearance.body)];   // THE CHEST: this body paints a chest band
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
+  const [faceCat, setFaceCat] = React.useState('eyes');   // THE FACE SLIDERS: the FACE tab open (MPFB heads)
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -1099,7 +1100,16 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 h('div', { className: 'pb-creator-colorlabel' }, 'Idle pose'),
                 ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]))) : null,
               h('h3', { 'data-cc-cam': 'face' }, 'FACE'),
-              mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
+              /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of
+                 the eyes and the lips and everything"): an MPFB head takes MakeHuman's own face modifiers (sprites.js
+                 EW_MPFB_FACE_SLIDERS), one tab per feature; a dot marks a tab with a slider moved */
+              mpfb && window.EW_MPFB_FACE_SLIDERS ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },
+                  window.EW_MPFB_FACE_SLIDERS.map(g => h('button', { key: g.id, className: 'ms-tty-btn' + (faceCat === g.id ? ' primary' : ''), 'aria-pressed': faceCat === g.id, onClick: () => setFaceCat(g.id) },
+                    g.label.toUpperCase() + (g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004) ? ' \u2022' : '')))),
+                (() => { const g = window.EW_MPFB_FACE_SLIDERS.find(x => x.id === faceCat) || window.EW_MPFB_FACE_SLIDERS[0];
+                  return h('div', { className: 'pb-creator-grid', 'data-cc-cam-own': 'face' }, g.rows.map(([k, label]) => ccSlider(k, label)),
+                    h('button', { className: 'ms-tty-btn', disabled: !g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004), onClick: () => changeAppearance(Object.fromEntries(g.rows.map(r => [r[0], 0]))) }, 'RESET ' + g.label.toUpperCase())); })())
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
               /* THE LOOKS (2026-11-01, creator step 4): the MakeHuman skins, eye colours, brows and lashes (sprites.js EW_MH_LOOKS);
                  the first tile of each is the body's own */
