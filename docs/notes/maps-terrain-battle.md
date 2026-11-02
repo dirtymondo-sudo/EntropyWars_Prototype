@@ -1107,3 +1107,10 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   The snapped squares now hold water to their edge even where they reach past a channel's drawn banks (the sewer walks).
   Arenas re-read again (all house tiles ok); against pass 2 only Heaven 12 (the healing pool's plateau squares), Cyberpunk 12
   (heights of the street by the canal, and the rock tiles that follow them) and Fairy Forest 10/11 (two brook-side squares) changed.
+- THE SUNK SURFACE (same day, mondo: "honestly i kinda liked when liquids were shown as slightly lower than the ground, it helped
+  contrast bodies of water from terrain. but that was with the voxel maps, can we do something similar in the current maps?"):
+  `HQ_FLUID_GRID_RULES.inset` = 0.3 m (the voxel boards' WATER_TOP_INSET 0.18 × the 1.75 m tile). hqTerrainCompile's `fluidY(f)`
+  sinks every square water's surface by it (the fluid row's `y`, so the sheet, the wet read, the wade and the battle cell's sheet
+  all follow), and the shallow rim and the bed sink with it (depth unchanged: wading reads the same). The ground round the water is
+  untouched, so the shore is a 0.4 m smooth step down over the 1.4 m shore window. Arenas re-read (levels only: Heaven 12,
+  Cyberpunk 12, Antarctica 12/9, Fairy Forest 10/11).
