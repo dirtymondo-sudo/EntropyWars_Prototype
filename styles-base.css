@@ -5493,10 +5493,14 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-creator-custom i { font-style: normal; color: #e6c178; font-size: 16px; line-height: 1; pointer-events: none; }
 .pb-cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 7px; margin: 8px 0 10px; }
 .pb-cc-tile { position: relative; min-height: 52px; border-radius: 10px; border: 1px solid #6f5d3d; background: #1d1a15; color: #eee1be; font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 6px 4px; overflow: hidden; }
-.pb-cc-tile span { position: relative; z-index: 1; text-align: center; line-height: 1.15; }
+.pb-cc-tile span { position: relative; z-index: 1; text-align: center; line-height: 1.15; max-width: 100%; overflow-wrap: break-word; }   /* (THE SHELVES: a long pack name wraps instead of being cut at the tile edge) */
 .pb-cc-tile:hover { border-color: #c9ad6d; }
 .pb-cc-tile[aria-pressed="true"] { border-color: #f0cc83; box-shadow: 0 0 0 2px rgba(240, 204, 131, .55), inset 0 0 18px rgba(240, 204, 131, .18); }
 .pb-hair-tile { min-height: 58px; }
+/* THE SHELVES (2026-11-02): the name tiles (hair, clothes, skins) fit their names: a hair-line smaller, no letter gaps, a long word hyphenated */
+.pb-cc-tiles.pb-cc-hair { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.pb-cc-hair .pb-cc-tile { font-size: 9px; letter-spacing: .02em; padding: 5px 4px; }
+.pb-cc-hair .pb-cc-tile span { hyphens: auto; -webkit-hyphens: auto; }
 .pb-hair-glyph { width: 28px; height: 22px; border-radius: 14px 14px 6px 6px; background: linear-gradient(180deg, #7a5a3a, #3b2a1f); margin-bottom: 4px; opacity: .85; }
 .pb-hair-tile.short .pb-hair-glyph { height: 14px; border-radius: 14px 14px 3px 3px; }
 .pb-hair-tile[aria-pressed="true"] .pb-hair-glyph { background: linear-gradient(180deg, #f0cc83, #b8741a); }
@@ -5554,6 +5558,12 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-looks-empty { margin: 8px 0 0; font-size: 11px; }
 .pb-looks-note { margin-top: 8px; font-size: 11px; color: #f0cc83; letter-spacing: .06em; }
 .pb-layer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* THE SHELVES (2026-11-02): the MEN / WOMEN switch row, the sub-heads inside a tab (Men's / Fits anyone / Costume wings ...) */
+.pb-cc-side { align-items: center; margin-bottom: 4px; }
+.pb-cc-side .pb-creator-colorlabel { margin: 0; min-width: 0; }
+.pb-cc-side .pb-cc-alloff { margin-left: auto; }
+.pb-cc-shelves { margin-top: 4px; }
+.pb-cc-shelf-sub { font-size: 10px; color: #a89a74; border-bottom: 1px solid rgba(216, 201, 160, .22); padding-bottom: 2px; margin-top: 10px; }
 .pb-layer-remove { min-height: 26px; padding: 2px 8px; font-size: 10px; }
 .pb-cc-add { margin: 10px 0 6px; }
 .pb-cc-add-btn { border-style: dashed; letter-spacing: .12em; }
