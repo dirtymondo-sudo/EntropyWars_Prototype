@@ -1211,11 +1211,17 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                  EW_MPFB_BODIES). The rig dresses an MPFB body like the classic ones (clothes, layers, hair, accessories,
                  the body + face shape sliders); its skin and face are the stock MakeHuman bake, so the controls that only
                  PAINT the classic face (eye size, brows, eye + lip colour, facial hair, skin tone) hide while one is on. */
-              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' },
-                [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()])).map(([id, g, label]) => {
+              /* THE SHELVES (2026-11-02): the bases in two rows, the men's bodies and the women's (same buttons, same order within) */
+              (() => {
+                const all = [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()]));
+                const btn = ([id, g, label]) => {
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
-                })),
+                };
+                return [['male', 'Men\u2019s bodies'], ['female', 'Women\u2019s bodies']].map(([g, head]) => h(React.Fragment, { key: g },
+                  h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head),
+                  h('div', { className: 'pb-creator-options', 'aria-label': 'Base model ' + (g === 'female' ? 'women' : 'men') }, all.filter(b => b[1] === g).map(btn))));
+              })(),
               h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), femaleBody ? ccSlider('bust', 'Bust') : null, ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               /* THE BODY DETAILS (2026-11-02, mondo: female thick / thin bodies; plan row 26): MakeHuman's Weight + Muscle and body
                  modifiers on an MPFB body (sprites.js EW_MPFB_BODY_SLIDERS) */

@@ -983,6 +983,6 @@ renderer layers by them; normalizeWearList's one-per-category rule) are untouche
   Top / Bottoms / Belt fabric rows and the wear-tint rows show on the tab the piece is on. One pick per tab (several on Underwear,
   Belts + ties and every accessory tab), on top of the pack's own rule. ACCESSORIES = Wings (Flapping wings = appearance.wings +
   Costume wings = the pack's), Horns + antlers, Tails, Nails, Held items + gear. The LAYERS heading is gone (its rows moved to the
-  tabs). FACE > skins: Women's / Men's / Other skins, the body's own first. Tile names drop the "male" / "female" they are now
+  tabs). BODY: the bases in two rows, Men's bodies / Women's bodies. FACE > skins: Women's / Men's / Other skins, the body's own first. Tile names drop the "male" / "female" they are now
   listed under (title = the full pack name), and a long name wraps instead of being cut.
 - Before / after shots of every tab: /mnt/project-files/creator-shelves/.
