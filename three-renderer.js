@@ -50474,6 +50474,7 @@ const ThreeRenderer = (function () {
     }
 
     // THE IDLE FACE: the MPFB face shapes the idle face plays (module level: the rig setup reads it before its own vars run)
+    var _ccShapeTableCache = {};   // THE BODY / FACE SLIDERS: shapeTables per body mesh (ensureShapes)
     var FACE_IDLE_KEYS = ['eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight',
         'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight',
         'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
@@ -51413,7 +51414,9 @@ const ThreeRenderer = (function () {
            · a classic base: shaped here in the q frame round the limb axes (girth = build; bands for chest / waist / hips;
              the head, the jaw, the nose tip and the cheeks round the face landmarks; the bust = THE CLASSIC BUST below).
            The bones stay where they are (every change is a width / depth), so the animation is untouched. */
-        var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'];
+        /* + THE FACE SLIDERS (2026-11-02): the MakeHuman face modifiers (sprites.js EW_MPFB_FACE_KEYS), MPFB heads only */
+        var FACE_KEYS = (typeof EW_MPFB_FACE_KEYS !== 'undefined' ? EW_MPFB_FACE_KEYS : []).filter(function (k) { return ['head', 'jaw', 'nose', 'cheeks'].indexOf(k) < 0; });
+        var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'].concat(FACE_KEYS);
         var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
         function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
         function shapeBody(part, P, a) {
@@ -55071,7 +55074,10 @@ const ThreeRenderer = (function () {
             part.shapeLoading = true;
             _ccLoadWear(getMpfbShapesUrl(), function (root) {
                 if (!alive || !root) return;
-                try { part.shapeT = shapeTables(part, root); } catch (e) { console.warn('[ThreeRenderer] body sliders failed', e); }
+                /* one table per body mesh, shared by every rig wearing it (2026-11-02: 54 sliders = ~2 MB a body; a board of
+                   MPFB units no longer holds one copy each) */
+                var ck = (part.mpfbBody || '') + ':' + part.count + ':' + (root.uuid || '');
+                try { part.shapeT = _ccShapeTableCache[ck] || (_ccShapeTableCache[ck] = shapeTables(part, root)); } catch (e) { console.warn('[ThreeRenderer] body sliders failed', e); }
                 if (part.shapeT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
             });
         }
@@ -55296,7 +55302,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
