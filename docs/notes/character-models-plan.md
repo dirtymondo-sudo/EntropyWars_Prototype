@@ -87,6 +87,11 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 22 | Credits screen built from CREDITS.json | thread "Build a real game credits screen" | **DONE** (2026-11-01) | Main menu → CREDITS (map.js `_renderCredits`, data.js `EW_CREDITS`); the CREDITS.json authors moved there out of the creator. Any new CC-BY asset: bake-mpfb.py writes it into CREDITS.json and the page shows it. |
 | 23 | Races that keep their own model (no parts): the row's original one-offs (dino, dragon, kaiju, kraken, Nessie, jellyfish, starfish, deep-sea fish, voidweaver, Civic, seraphim x2, Occulus, unicorn, chess) + insects, apes, robots and other non-human bodies (full list section 4e; a recommendation, mondo can overrule) | — | **No rebuild planned** | Can still get sway bones for tails/tentacles/wings. |
 | 24 | **Props in the hands + worn equipment** (section 6): spells hold their weapon (sword, shield, gun) instead of the board-sized prop; finishers stay big; any gear (jetpack...) worn on any model, pinned to a bone | none yet | **NOT STARTED** | 26 Meshy pieces (6b + 6c) on mondo's side; the pinning + hand-hold code and a grip pose on the MPFB fingers on Claude's. Clothes on non-MPFB models = per-model Blender refit, on request (6d). |
+| 25 | **AAA creator, phase 1: face sliders** (mondo 11-02: "a standard AAA video game character creator where you can control the size of the eyes and the lips and everything") — 45 MakeHuman face modifiers in 8 FACE tabs (Eyes, Brows, Nose, Mouth, Jaw + chin, Cheeks, Head, Ears + neck) on every MPFB head | Make the character creator AAA-grade (`cmsg_01XWpxyTn3nnw98znVzKdFjs8DoZvWaZte6K7uACSkjWtg`) | **DONE** (2026-11-02, face sliders PR) | Section 7. Proof: project files `aaa-creator/face_sliders_proof.png`. |
+| 26 | **Phase 2: true MakeHuman body sliders** — Weight + Muscle macros (female thick / athletic / thin without new GLBs) + 12 body details (shoulders, V-shape, pecs, belly, glutes, thighs, calves, arms, hands, feet, bust spacing / height) | same | **NOT STARTED** | After phase 1 is OK'd. Skin-only, same file. |
+| 27 | **Phase 3: proportions that move the skeleton** — Proportions, leg / arm / torso / neck length, real Height (bones follow MakeHuman's joint helpers). This is the real "short female" / "tall thin female" | same | **NOT STARTED** | Riskiest (animation bake per look). Fallback: bake female heavy / thin / short presets. |
+| 28 | **Phase 4: head shapes + community targets** — oval / round / square / heart / diamond / triangle picker; CC0 nose / cheek / ear extras; creature heads + muzzles (jaldmic CC-BY: bear, cat, fox, lion, rabbit, dog, horse, donkey heads; feline / canine / reptile / shark mouths; elf, cat, bunny ears) for row 18 | same | **NOT STARTED** | CC-BY ones go in CREDITS.json + EW_CREDITS. |
+| 29 | **Phase 5: AAA polish** — per-tab RANDOM, face presets to start from, symmetry off (left / right sliders), teeth shapes (6 CC0), high-poly eyes | same | **NOT STARTED** | Optional. |
 
 Weights to keep in mind: an MPFB body is ~2.5-2.9 MB with the face shapes; three builds a ~16 MB GPU morph texture per
 body type the first time a face moves.
@@ -418,6 +423,45 @@ Total with section 4a: **72 Meshy pieces.**
 
 ---
 
+## 7. The AAA creator: what MakeHuman offers and how it reaches the game (2026-11-02, rows 25-29)
+
+mondo asked (11-02): were there other face / head options, is there an established way to use these models in a creator,
+what about female short / thick / tall-thin, can we control eye and lip size like a AAA creator, doesn't the head have
+more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack catalogue:
+
+- **MakeHuman IS a slider creator.** Every slider is a "target" (a morph: per-vertex offsets on the shared hm08 mesh).
+  MPFB2 ships ~1,250 of them; until 11-02 the game used 9 (build, chest, bust, waist, hips, head width, jaw width, nose,
+  cheeks). Face alone: eyes 68, mouth 44, nose 42, ears 44, head 27 (incl. 7 head shapes), neck 20, cheeks 16, chin 15,
+  forehead 8, brows 6. Body: arms 50, legs 58, torso 34, feet 30, hands 22, hips 14, stomach 8, breast 228 (cup/firmness
+  grid). The packs add 160 community targets (131 CC0, 29 CC-BY), incl. animal heads and muzzles (row 28).
+- **The plumbing already existed** (PR #739): `bake-mpfb.py --shapes` writes the targets sparse into
+  `mpfb/mpfb_shapes.glb`; three-renderer.js `shapeBody` adds them to the bind-pose skin once when a look builds, by
+  `_BASE_INDEX`, on every MPFB body and the MPFB classic bodies' MPFB head. Clothes, hair and hats already follow the skin.
+  Phase 1 only adds keys: `SHAPE_TARGETS` (bake), `EW_MPFB_FACE_SLIDERS` (sprites.js: groups + labels, limits -1..1),
+  `FACE_KEYS` (three-renderer.js), the FACE tabs (party-builder.js). No new mechanism. Not online-relevant: the look is
+  the appearance object every client already builds itself.
+- **Range:** MakeHuman's own +-1 is the shipped range. Pushed to 2x (proof image) the eye lids gap, the nose bridge
+  creases and the forehead flattens, so wider ranges need per-slider testing.
+- **Female short / thick / tall-thin:** the five MPFB bodies are five macro presets (bake-mpfb.py BODIES); heavy, thin
+  and short are all male (gender 1.0 / 0.8). MakeHuman's macros (gender, age, muscle, weight, height, proportions) blend
+  "universal" targets. Weight / muscle deltas on the female are skin-only, ~90 KB each (row 26). Height / proportions /
+  limb lengths also move the bones: MPFB places every bone at a "joint-*" helper cube, which the targets also move, so a
+  per-slider joint offset can be baked and the bind skeleton moved at build (row 27). Fallback = bake more presets: ~2.7 MB
+  a body + one more fitted morph in every one of the 476 pack garments.
+- **Bones:** our bodies use MPFB's `game_engine` rig (52 bones, no face bones). MPFB's `default` rig has ~60 face bones
+  (jaw, eyes, tongue, lips = oris / levator / risorius, lids = orbicularis / oculi, temporalis) made for posing
+  MakeHuman's expressions, not for face shape. AAA face SHAPE is mostly blendshapes; morphs baked once into the mesh cost
+  nothing per frame, while 60 more bones per unit would cost skinning every frame on every unit and every library clip
+  would need retargeting onto them. Expressions are already covered by the 52 ARKit + 15 viseme morphs (row 21 / 21b).
+  Recommendation: no face bones.
+- **Weights (phase 1):** mpfb_shapes.glb 637 KB -> 1.75 MB raw (~310 KB gzip, brotli on the CDN), loaded once a session,
+  shared by every MPFB body. CPU: only moved sliders are added, once per look build (a few hundred to a few thousand
+  vertices each); zero per-frame cost on the board. Memory: the per-vertex tables are now cached per body mesh (were one
+  copy per unit). Could be halved later with int16 offsets.
+- **Licences:** MakeHuman's own targets (all of phase 1-3) are CC0. Only the CC-BY community targets (row 28) need credits.
+
+---
+
 ## 5. Log (newest last; one line per change to this file)
 
 - 2026-11-01 — file created from the research thread, PRs #724-#727, the two MPFB threads and mhpacks/. Meshy list
@@ -466,3 +510,4 @@ Total with section 4a: **72 Meshy pieces.**
   walker, and Meshy hands (`_gripFrameMesh`: the handle on the palm read off the skin; fingers stay open). door-gun-skate-vehicles.md.
 - 2026-11-02: row 12g added (open + closed fronts, Blender shirts with collars, Cowboy match) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsJ8iDJrE9ZPNqjdN3q6cGwV.
 - 2026-11-02: row 12h DONE (joined beards: full beard + moustache and three more, bake-beards.py) — thread cmsg_01XWpxyTn3nnw98znVzKdFjs6NH5TVA8g8pfUMKqdHGX4r.
+- 2026-11-02: rows 25-29 + section 7 (AAA creator: face sliders phase 1, body macros, skeleton proportions, head shapes / creature targets, polish) — thread cmsg_01XWpxyTn3nnw98znVzKdFjs8DoZvWaZte6K7uACSkjWtg.

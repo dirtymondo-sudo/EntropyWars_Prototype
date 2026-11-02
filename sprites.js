@@ -3952,6 +3952,23 @@ const EW_APPEARANCE_LIMITS = {
   head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
   eyeSize: [-1, 1, 0], brows: [0, 1, 0.5]
 };
+/* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of the
+   eyes and the lips and everything"): an MPFB body (and an MPFB classic body's MPFB head) takes MakeHuman's OWN face
+   modifiers, baked by bake-mpfb.py --shapes into mpfb/mpfb_shapes.glb and added by three-renderer.js shapeBody like the body
+   sliders. Groups = the creator's FACE tabs; each key is a -1..1 slider (head / jaw / nose / cheeks / eyeSize were already
+   appearance keys; on a classic base they keep their old meaning). */
+const EW_MPFB_FACE_SLIDERS = [
+  { id: 'eyes', label: 'Eyes', rows: [['eyeSize', 'Size'], ['eyeHeight', 'Height'], ['eyeSpacing', 'Spacing'], ['eyeTilt', 'Tilt'], ['eyeOpen', 'Opening'], ['eyeDepth', 'Depth'], ['eyelid', 'Upper lid'], ['eyeBags', 'Bags'], ['epicanthus', 'Inner fold']] },
+  { id: 'brows', label: 'Brows', rows: [['browHeight', 'Height'], ['browAngle', 'Angle'], ['browRidge', 'Brow ridge']] },
+  { id: 'nose', label: 'Nose', rows: [['nose', 'Size'], ['noseWidth', 'Width'], ['noseLength', 'Length'], ['noseDepth', 'Projection'], ['noseHeight', 'Height'], ['noseBridge', 'Bridge hump'], ['noseTip', 'Tip up / down'], ['nostrils', 'Nostril flare'], ['noseCurve', 'Curve']] },
+  { id: 'mouth', label: 'Mouth', rows: [['mouthWidth', 'Width'], ['mouthHeight', 'Height'], ['upperLip', 'Upper lip'], ['lowerLip', 'Lower lip'], ['mouthCorners', 'Corners'], ['cupidsBow', "Cupid's bow"], ['mouthDepth', 'Depth']] },
+  { id: 'jaw', label: 'Jaw + chin', rows: [['jaw', 'Jaw width'], ['jawAngle', 'Jaw angle'], ['chinLength', 'Chin length'], ['chinJut', 'Chin forward'], ['underbite', 'Underbite'], ['chinCleft', 'Chin cleft']] },
+  { id: 'cheeks', label: 'Cheeks', rows: [['cheeks', 'Fullness'], ['cheekbones', 'Cheekbones'], ['cheekHeight', 'Height'], ['faceFat', 'Face fat']] },
+  { id: 'head', label: 'Head', rows: [['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
+  { id: 'ears', label: 'Ears + neck', rows: [['earSize', 'Ear size'], ['earOut', 'Ears out'], ['earPoint', 'Pointed ears'], ['earLobe', 'Lobes'], ['neckThick', 'Neck']] },
+];
+const EW_MPFB_FACE_KEYS = EW_MPFB_FACE_SLIDERS.reduce((a, g) => a.concat(g.rows.map(r => r[0])), []);
+EW_MPFB_FACE_KEYS.forEach(k => { if (!EW_APPEARANCE_LIMITS[k]) EW_APPEARANCE_LIMITS[k] = [-1, 1, 0]; });
 // enum fields: allowed values (first = default)
 /* THE IDLE POSE (2026-11-01, mondo: "can we also add an option to change their idle pose in the character creator?"): the
    standing idles already in the shared animation library (EW_ANIM_LIB_URLS: lib 0 UAL1, 1 UAL2, 2 MAL1), nothing new made.
@@ -4102,6 +4119,7 @@ function randomCharacterAppearance(rng) {
   const eyeTones = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a'];
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) { const [lo, hi] = EW_APPEARANCE_LIMITS[key]; out[key] = Math.round((lo + (hi - lo) * (0.2 + 0.6 * r())) * 100) / 100; }
+  for (const key of EW_MPFB_FACE_KEYS) out[key] = Math.round((r() * 2 - 1) * 35) / 100;   // THE FACE SLIDERS: a random face stays a face
   out.skin = pick(skinTones); out.hairColor = pick(hairTones); out.eyeColor = pick(eyeTones);
   out.lipColor = hex(350 + r() * 20, 0.25 + r() * 0.3, 0.32 + r() * 0.2);
   out.topColor = hex(r() * 360, 0.15 + r() * 0.5, 0.35 + r() * 0.35);
@@ -4288,6 +4306,7 @@ if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
+  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;

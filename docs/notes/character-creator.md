@@ -822,3 +822,16 @@ upper lip; the pack's moustaches are separate pieces and the creator's Facial ha
 - Checked in the real creator stage (Playwright + swiftshader, EWCharViewer.mount with the look, frameCreator('face')) on MPFB
   male / heavy / thin and MPFB classic male, front + three-quarter, the idle running: /mnt/project-files/joined-beards/.
 - Authors are the pack pieces' own (grinsegold CC-BY, RehmanPolanski CC0, WDG CC0), already in CREDITS.json.
+
+## THE FACE SLIDERS (2026-11-02, plan row 25)
+mondo: "a standard AAA video game character creator where you can control the size of the eyes and the lips and everything".
+An MPFB head (the five MPFB bodies + the MPFB classic bodies) takes 45 more MakeHuman face modifiers, the same way as the
+body sliders (PR #739): bake-mpfb.py SHAPE_TARGETS -> `python3 -I bake-mpfb.py --mpfb <mpfb2 checkout> --shapes` (needs no
+Blender: the stub `import bpy` aside, bake_shapes only reads .target.gz files) -> mpfb/mpfb_shapes.glb (54 sliders, 1.75 MB).
+sprites.js EW_MPFB_FACE_SLIDERS = the FACE tabs (Eyes, Brows, Nose, Mouth, Jaw + chin, Cheeks, Head, Ears + neck), keys go
+into EW_APPEARANCE_LIMITS at -1..1 (head / jaw / nose / cheeks / eyeSize were already keys; a classic base keeps their old
+meaning, eyeSize still paints the classic face). three-renderer.js FACE_KEYS joins SHAPE_KEYS + the shape key; shapeTables
+now cached per body mesh (_ccShapeTableCache). party-builder.js: tab row + the open tab's sliders + RESET <TAB>; a dot marks
+a moved tab. RANDOM keeps faces within +-0.35. Range = MakeHuman's own +-1: at 2x the lids gap, the nose bridge creases and
+the forehead flattens (project files aaa-creator/face_sliders_proof.png). Plan for the rest: character-models-plan.md section 7.
+
