@@ -51673,7 +51673,8 @@ const ThreeRenderer = (function () {
             part.shapeD = shD;
             wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
-            try { part.pokeHide = _ccWearBody(part) ? skinPokes(part, P) : null; } catch (e) { part.pokeHide = null; console.warn('[ThreeRenderer] skin pokes failed', e); }
+            try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+            part.pokeHide = null; part.skinCov = null;   // THE SKIN UNDER THE CLOTHES: skinCover, once the normals are smoothed (before THE LAYERS below)
             for (i = 0; i < N; i++) {
                 var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
@@ -52353,8 +52354,19 @@ const ThreeRenderer = (function () {
             function gloveShade(G) { return function (q, s) { var gain = (s || 1) * weave(q), A = armAt(part, q), cuff = armLen - G.len * Hm; gain *= band(A.along - cuff + 0.02 * Hm, 0.02 * Hm, 0.012 * Hm, 0.2); return gain; }; }
             function beltShade() { return function (q, s) { return (s || 1) * 0.92; }; }
             /* ── THE LAYERS: index = buffer / shell (CC_LAYER_NAMES), lo / hi = the t range a cut can be ≥ 0 in ── */
+            /* THE SKIN UNDER THE CLOTHES (2026-11-02): which skin vertices a worn garment covers + the skin's own copy with the covered
+               corners at a garment's edge pulled back under it (only the body layer draws from it; the coded shells keep P) */
+            var PS = P;
+            if (part.wear && part.wear.length && _ccWearBody(part)) {
+                try { part.skinCov = skinCover(part, P, NB); } catch (e) { part.skinCov = null; console.warn('[ThreeRenderer] skin cover failed', e); }
+                if (part.skinCov) {
+                    PS = Float32Array.from(P);
+                    var SCp = part.skinCov.push;
+                    for (i = 0; i < N; i++) if (SCp[i] > 0) { var pl = Math.sqrt(NB[i * 3] * NB[i * 3] + NB[i * 3 + 1] * NB[i * 3 + 1] + NB[i * 3 + 2] * NB[i * 3 + 2]) || 1; PS[i * 3] -= NB[i * 3] / pl * SCp[i]; PS[i * 3 + 1] -= NB[i * 3 + 1] / pl * SCp[i]; PS[i * 3 + 2] -= NB[i * 3 + 2] / pl * SCp[i]; }
+                }
+            }
             var LAYERS = [
-                { name: 'body', S: P, NS: NB, uv: uvA },
+                { name: 'body', S: PS, NS: NB, uv: uvA },
                 { name: 'top', fr: sTop ? clothFrame(sTop.S, clothRegionTop) : null, S: sTop && sTop.S, NS: sTop && sTop.NS, clr: sTop && sTop.clr, cuts: cvTop ? cvTop.cuts : null, vals: cvTop && cvTop.vals, ease: topEase, easeAt: TOP ? layerEaseAtQ(TOP) : null, shade: TOP ? topShade(TOP) : null, lo: TOP ? TOP.hem - 0.001 : 0, hi: 0.86, cloth: true, refine: TOP && TOP.bikini ? 2 : 0, thin: !!(TOP && TOP.bikini) },
                 { name: 'bottom', fr: sBot ? clothFrame(sBot.S, clothRegion) : null, S: sBot && sBot.S, NS: sBot && sBot.NS, clr: sBot && sBot.clr, cuts: cvBot ? cvBot.cuts : null, vals: cvBot && cvBot.vals, ease: botEase, shade: bottomShade(BOT), lo: 0, hi: 0.6, cloth: true, refine: 0 },
                 { name: 'face', S: P, NS: NB, uv: part.faceUv },
@@ -53483,12 +53495,14 @@ const ThreeRenderer = (function () {
                 if (c2n) { part.out2Cov = { cov: c2v, S: garments[g].S, P: P }; g2i = g; }
             }
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }
+            try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
             for (k = 0; k < ids.length; k += 3) {
                 var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false, tk = (k / 3) * G;
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
                 // THE PACK CLOTHES: the skin a worn MakeHuman garment deletes (its delete_verts) is never drawn
-                var wHid = part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]);
-                if (!wHid && part.pokeHide && part.pokeHide[i0] && part.pokeHide[i1] && part.pokeHide[i2]) wHid = true;   // THE SKIN THROUGH THE CLOTHES
+                /* THE SKIN UNDER THE CLOTHES: a skin triangle is left out when all three corners are covered (skinCover); without the
+                   cover (a classic base before its fit has loaded) the delete lists as before */
+                var SC = part.skinCov, wHid = SC ? !!(SC.cov[i0] && SC.cov[i1] && SC.cov[i2]) : !!(part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]));
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (wHid) { /* under a pack garment */ }
                 else if (!anyFull && !anyPart) {
@@ -54902,15 +54916,20 @@ const ThreeRenderer = (function () {
                 grid = part.nbGrid = new Map();
                 for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
             }
-            var n = G.length / 3, s = new Int32Array(n + 1), J = [], W = [], one = nearestBody(part, G), rc = Math.ceil(R / C), R2 = R * R;
+            /* THE SKIN UNDER THE CLOTHES (2026-11-02): the skin within R of the NEAREST skin distance (dmin + R), not within R of
+               the vertex - a garment vertex standing more than R off the skin (a shirt's turned-down collar, a coat's lapel) fell
+               back to its ONE nearest skin vertex, so neighbours took the neck's or the shoulder's reshape by turns and the collar
+               of a Blender shirt came out shredded on the MPFB classic bodies; the weights now fade smoothly with the distance */
+            var n = G.length / 3, s = new Int32Array(n + 1), J = [], W = [], one = nearestBody(part, G);
             for (var v = 0; v < n; v++) {
                 var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), st = J.length, tot = 0;
+                var o1 = one[v] * 3, d0 = Math.sqrt((P[o1] - x) * (P[o1] - x) + (P[o1 + 1] - y) * (P[o1 + 1] - y) + (P[o1 + 2] - z) * (P[o1 + 2] - z)), Rv = d0 + R, rc = Math.min(6, Math.ceil(Rv / C)), R2 = Rv * Rv;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
                     var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
                     for (var k = 0; k < l2.length; k++) {
                         var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
                         if (d2 >= R2) continue;
-                        var f = 1 - Math.sqrt(d2) / R; f *= f; J.push(j); W.push(f); tot += f;
+                        var f = 1 - (Math.sqrt(d2) - d0) / R; if (f <= 0) continue; f = f > 1 ? 1 : f; f *= f; J.push(j); W.push(f); tot += f;
                     }
                 }
                 if (tot > 0) { for (k = st; k < J.length; k++) W[k] /= tot; } else { J.push(one[v]); W.push(1); }
@@ -55032,6 +55051,123 @@ const ThreeRenderer = (function () {
             }
             return any ? m : null;
         }
+        /* THE SKIN UNDER THE CLOTHES (2026-11-02, mondo: "this tucked in shirt makes a hole in my waist. and adding the cowboy hat puts
+           holes in my head near my hair ... Holes around the shoulders, armpits, back"). Two faults, both in the skin, not the garments
+           (a Blender greatcoat drawn with the body hidden has clean fronts, lapels and collar):
+           - HOLES: a garment's delete list (MakeHuman's delete_verts, bake-garment.py hidden_skin) hid every skin triangle with ONE listed
+             vertex, and skinPokes hid skin up to 1.5 cm past a garment's open edge (a hat's rim: the temple under the brim; a tucked
+             shirt's hem: the waist under it). Where no cloth lay over that skin you looked into the hollow body.
+           - JAGGED EDGES: skin a few mm past a garment's edge (a lapel, a collar, a neckline, a shoulder) was not hidden, and the skin
+             triangles whose other corners lay under the cloth came up through it in a saw of skin triangles once posed.
+           skinCover: every skin vertex casts a line along its normal; it is COVERED when a worn garment's surface crosses that line
+           between `dIn` inside the skin (skin poking out through the cloth: 2 cm, the fold at a Blender shirt's shoulder seam;
+           `dInHat` for a hat or mask, whose crown sunk into the scalp is no cloth over the forehead) and `reach` outside it (`reachDel` for a vertex the
+           garment's delete list names, which also counts cloth down to `dInDel` under the skin: a tucked shirt's hem squeezed in
+           under the jeans' waistband). A skin triangle is left out only when its three corners are covered (an uncovered corner
+           keeps it), and a covered corner of a drawn triangle is pulled back under the cloth to `gap` behind it (`push`), so the
+           skin at a garment's edge slopes in under the cloth instead of standing through it. Not counted: facial hair, open shoes
+           (sandals), capes (they swing away from the back); a cut-out garment (an alpha-tested texture: lace, fishnet, a pack top's
+           ragged hem) covers only where its texture is solid (wearAlpha). Per welded
+           vertex, so the seam copies stay together. */
+        var SKIN_COVER = { reach: 0.045, reachDel: 0.15, hatReach: 0.012, dIn: 0.02, dInHat: 0.007, dInDel: 0.03, tilt: 1.0, tiltN: 8, tiltFrom: 0.009, gap: 0.009, pushMax: 0.016, cell: 0.03, under: 0.06, underIn: 0.02, hipT: 0.5, erode: 2 };
+        /* a grid of the drawn triangles of `list` (cell C) + castLine(x, n, lo, hi): the nearest crossing along the line x + d n with
+           lo <= d <= hi (Infinity = none); `reachOf(w)` limits how far a garment counts (a hat only where it hugs the head: its brim
+           and crown stand far off the temples and the scalp, and the skin under them showed as holes) */
+        /* an alpha-cut garment's texture (`_ew_noTwin`: lace, fishnet, frayed hems, a pack top's cut neckline) covers only where its
+           texel is solid: its alpha at 128 px, read once per texture (null = treat it as solid: the image has not decoded yet) */
+        function wearAlpha(w) {
+            if (w._alpha !== undefined) return w._alpha;
+            var im = w.tex && w.tex.image, S = 128, out = null;
+            if (im && (im.width || im.videoWidth)) {
+                try { var cv = _ccCanvas(S, S), cx = cv && cv.getContext('2d', { willReadFrequently: true }); if (cx) { cx.drawImage(im, 0, 0, S, S); var D = cx.getImageData(0, 0, S, S).data; out = new Uint8Array(S * S); for (var i = 0; i < S * S; i++) out[i] = D[i * 4 + 3] >= 128 ? 1 : 0; out.S = S; } } catch (e) { out = null; }
+                w._alpha = out;   // (cached only once the image was there)
+            }
+            return out;
+        }
+        function coverGrid(list, C, reachOf, innerOf) {
+            var grid = new Map(), TA = [], TI = [], TR = [], TN = [], TU = [], TAl = [];
+            list.forEach(function (w) {
+                var g = w.mesh.geometry, A = g.attributes.position.array, I = g.index ? g.index.array : null; if (!I) return;
+                var rr = reachOf ? reachOf(w) : Infinity, rn = innerOf ? innerOf(w) : Infinity, al = w.mesh._ew_noTwin ? wearAlpha(w) : null, UVa = al && g.attributes.uv ? g.attributes.uv.array : null;
+                if (w.mesh._ew_noTwin && !UVa) return;   // (its alpha not readable: it covers nothing - the skin stays drawn rather than a hole behind lace)
+                for (var t = 0; t < I.length; t += 3) {
+                    var a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3, id = TA.length;
+                    var x0 = Math.floor(Math.min(A[a], A[b], A[c]) / C), x1 = Math.floor(Math.max(A[a], A[b], A[c]) / C);
+                    var y0 = Math.floor(Math.min(A[a + 1], A[b + 1], A[c + 1]) / C), y1 = Math.floor(Math.max(A[a + 1], A[b + 1], A[c + 1]) / C);
+                    var z0 = Math.floor(Math.min(A[a + 2], A[b + 2], A[c + 2]) / C), z1 = Math.floor(Math.max(A[a + 2], A[b + 2], A[c + 2]) / C);
+                    if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > 64) continue;   // (a stray long triangle)
+                    TA.push(A); TI.push(a, b, c); TR.push(rr); TN.push(-rn); TU.push(UVa); TAl.push(UVa ? al : null);
+                    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) for (var gz = z0; gz <= z1; gz++) { var key = gx + ',' + gy + ',' + gz, l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]); }
+                }
+            });
+            if (!TA.length) return null;
+            var stamp = new Int32Array(TA.length), st = 0, step = C * 0.5;
+            return function (ox, oy, oz, nx, ny, nz, lo, hi) {
+                var best = Infinity; st++;
+                for (var s0 = lo; s0 <= hi + step; s0 += step) {
+                    var l = grid.get(Math.floor((ox + nx * s0) / C) + ',' + Math.floor((oy + ny * s0) / C) + ',' + Math.floor((oz + nz * s0) / C));
+                    if (!l) continue;
+                    for (var q = 0; q < l.length; q++) {
+                        var tid = l[q], ti = tid * 3; if (stamp[tid] === st) continue; stamp[tid] = st;
+                        var A = TA[tid], a = TI[ti], b = TI[ti + 1], c = TI[ti + 2];
+                        var e1x = A[b] - A[a], e1y = A[b + 1] - A[a + 1], e1z = A[b + 2] - A[a + 2], e2x = A[c] - A[a], e2y = A[c + 1] - A[a + 1], e2z = A[c + 2] - A[a + 2];
+                        var px = ny * e2z - nz * e2y, py = nz * e2x - nx * e2z, pz = nx * e2y - ny * e2x, det = e1x * px + e1y * py + e1z * pz;
+                        if (Math.abs(det) < 1e-12) continue;
+                        var inv = 1 / det, tx = ox - A[a], ty = oy - A[a + 1], tz = oz - A[a + 2], u = (tx * px + ty * py + tz * pz) * inv;
+                        if (u < -0.02 || u > 1.02) continue;
+                        var qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, vv = (nx * qx + ny * qy + nz * qz) * inv;
+                        if (vv < -0.02 || u + vv > 1.04) continue;
+                        var d = (e2x * qx + e2y * qy + e2z * qz) * inv;
+                        if (d >= Math.max(lo, TN[tid]) && d <= Math.min(hi, TR[tid]) && d < best) {
+                            var AL = TAl[tid];
+                            if (AL) {   // (an alpha-cut garment: only a solid texel covers)
+                                var U = TU[tid], ia = a / 3 * 2, ib = b / 3 * 2, ic = c / 3 * 2, w0 = 1 - u - vv;
+                                var tu = U[ia] * w0 + U[ib] * u + U[ic] * vv, tv = U[ia + 1] * w0 + U[ib + 1] * u + U[ic + 1] * vv;
+                                tu -= Math.floor(tu); tv -= Math.floor(tv);
+                                if (!AL[Math.min(AL.S - 1, Math.floor(tv * AL.S)) * AL.S + Math.min(AL.S - 1, Math.floor(tu * AL.S))]) continue;
+                            }
+                            best = d;
+                        }
+                    }
+                }
+                return best;
+            };
+        }
+        function skinCover(part, P, NB) {
+            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && w.layer !== 'cape' && !(w.cat === 'shoes' && !w.del.length) && (w.outer || w.cat === 'hats' || w.cat === 'masks' || WEAR_LAYER.cats[w.cat]); });   // (an alpha-cut one covers only through its solid texels: coverGrid)
+            if (!L.length) return null;
+            var N = part.count, Hm = part.height / 1.7;
+            var hm = function (w) { return w.cat === 'hats' || w.cat === 'masks'; };   // (a hat or mask covers only skin right at it: its crown sunk into the scalp is not cloth over the forehead)
+            var cast = coverGrid(L, SKIN_COVER.cell, function (w) { return w.cat === 'hats' ? SKIN_COVER.hatReach * Hm : Infinity; }, function (w) { return hm(w) ? SKIN_COVER.dInHat * Hm : Infinity; });
+            if (!cast) return null;
+            var weld = part.weld, del = part.wearHide;
+            var cov = new Uint8Array(N), push = new Float32Array(N), done = new Int8Array(part.repCount || N).fill(-1), rs = new Float32Array(part.repCount || N);
+            var dIn = SKIN_COVER.dIn * Hm, gap = SKIN_COVER.gap * Hm, pmax = SKIN_COVER.pushMax * Hm;
+            for (var i = 0; i < N; i++) {
+                var r = weld ? weld[i] : i;
+                if (done[r] >= 0) { cov[i] = done[r]; push[i] = rs[r]; continue; }
+                var nx = NB[i * 3], ny = NB[i * 3 + 1], nz = NB[i * 3 + 2], nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
+                if (nl < 1e-6) { done[r] = 0; continue; }
+                var best = cast(P[i * 3], P[i * 3 + 1], P[i * 3 + 2], nx / nl, ny / nl, nz / nl, -(del && del[i] ? SKIN_COVER.dInDel * Hm : dIn), (del && del[i] ? SKIN_COVER.reachDel : SKIN_COVER.reach) * Hm);   // (skin a garment's delete list names is covered by cloth up to 3 cm UNDER it too: a tucked shirt squeezed under the jeans' waistband)
+                var cv = best < Infinity ? 1 : 0, ps = cv && best < gap ? Math.min(pmax, gap - best) : 0;
+                if (cv && best > SKIN_COVER.tiltFrom * Hm) {
+                    /* cloth standing off the skin (past `tiltFrom`; nearer, the skin is pulled in under it anyway): the skin is covered only when lines tilted `tilt` off its normal hit
+                       cloth too - at an open edge (a tank top's armhole, a strap, a loose hem) one of them gets out and the skin is
+                       seen from that side, so it stays drawn (it was a hole into the body behind a tank top's strap) */
+                    var ux = nx / nl, uy = ny / nl, uz = nz / nl, ax = Math.abs(ux) < 0.9 ? 1 : 0, ay = ax ? 0 : 1;
+                    var t1x = uy * 0 - uz * ay, t1y = uz * ax - ux * 0, t1z = ux * ay - uy * ax, t1l = Math.sqrt(t1x * t1x + t1y * t1y + t1z * t1z) || 1;
+                    t1x /= t1l; t1y /= t1l; t1z /= t1l;
+                    var t2x = uy * t1z - uz * t1y, t2y = uz * t1x - ux * t1z, t2z = ux * t1y - uy * t1x;
+                    var tc = Math.cos(SKIN_COVER.tilt), ts = Math.sin(SKIN_COVER.tilt), tHi = best / tc + gap;
+                    for (var k = 0; k < SKIN_COVER.tiltN && cv; k++) {
+                        var ang = k * 2 * Math.PI / SKIN_COVER.tiltN, sa = Math.cos(ang) * ts, sb = Math.sin(ang) * ts;
+                        if (cast(P[i * 3], P[i * 3 + 1], P[i * 3 + 2], ux * tc + t1x * sa + t2x * sb, uy * tc + t1y * sa + t2y * sb, uz * tc + t1z * sa + t2z * sb, 0, tHi) === Infinity) cv = 0;
+                    }
+                }
+                done[r] = cv; rs[r] = ps; cov[i] = cv; push[i] = ps;
+            }
+            return { cov: cov, push: push };
+        }
         function wearCovers(w) { return !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
         var WEAR_LAYER = { gap: 0.003, capeGap: 0.012, lat: 0.015, latMax: 0.035, reach: 0.04, smooth: 0.02, cats: { tops: 1, bottoms: 1, skirts: 1, dresses: 1, suits: 1, shoes: 1, gloves: 1, underwear: 1, outer: 1 } };
         /* THE SECOND OUTER LAYER (2026-11-01): a Blender coat worn as the SECOND outer covers the garments under it (the first
@@ -55115,6 +55251,62 @@ const ThreeRenderer = (function () {
             var skin = wearMask(part, function (w) { return w === top; });   // (the skin the coat hides: a gi's wide sleeve stood 2 cm out of the leather coat's sleeve, off to its side)
             lows.forEach(function (w) {
                 eachMesh(w, function (A, v3, nb) { var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]); return k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]); });
+            });
+        }
+        /* THE CLOTHES UNDER THE CLOTHES (2026-11-02, mondo: "these clothes are still clipping ... Holes around the shoulders, armpits,
+           back"): THE LAYERS pull a lower garment only 3 mm inside the one over it, and once posed (each on its own weights) the shirt
+           came out through the coat in red specks at the shoulders, armpits and sleeves. Every vertex of a lower garment (THE LAYERS'
+           order) above the hips casts a line along its outward normal; a garment over it crossing that line within `under` (3.5 cm)
+           outside or `underIn` inside covers it, and a triangle with all three corners covered leaves the drawn index (`_ewIx0` keeps
+           the full one), as under the second outer layer. Below the hips nothing is left out: coat tails and skirts swing open. */
+        function wearUnderCover(part) {
+            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && w.layer !== 'cape' && (w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });
+            if (L.length < 2) return;
+            var zOf = function (w) { return w.layer === 'outer2' ? 1000 : w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };
+            var Hm = part.height / 1.7, SP = part.src.attributes.position.array, SD = part.shapeD, minY = Infinity, maxY = -Infinity, k;
+            for (k = 1; k < SP.length; k += 3) { if (SP[k] < minY) minY = SP[k]; if (SP[k] > maxY) maxY = SP[k]; }
+            var yHip = minY + SKIN_COVER.hipT * (maxY - minY), reach = SKIN_COVER.under * Hm, dIn = SKIN_COVER.underIn * Hm;
+            L.forEach(function (lo) {
+                if (lo.cat === 'shoes' || lo.cat === 'gloves') return;
+                var ups = L.filter(function (u) { return u !== lo && zOf(u) > zOf(lo) && u.cat !== 'shoes' && u.cat !== 'gloves'; });
+                if (!ups.length) return;
+                var cast = coverGrid(ups, SKIN_COVER.cell, null); if (!cast) return;
+                var A = lo.mesh.geometry.attributes.position.array, Nn = lo.mesh.geometry.attributes.normal.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
+                for (var v = 0; v < n; v++) {
+                    if (A[v * 3 + 1] < yHip) continue;
+                    var o = lo.nb[v] * 3, nx = Nn[v * 3], ny = Nn[v * 3 + 1], nz = Nn[v * 3 + 2];
+                    var rx = A[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
+                    if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+                    var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) continue;
+                    if (cast(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
+                }
+                /* eroded by SKIN_COVER.erode rings (welded by position): seen at an angle the upper garment's edge (a lapel, the coat's
+                   opening) does not reach as far as its normal line, and the shirt's teeth showed beside the lapels */
+                if (any) {
+                    var W = new Int32Array(n), wk = new Map(), I0 = lo.mesh._ewIx0 || lo.mesh.geometry.index.array, e;
+                    for (v = 0; v < n; v++) { var pk = Math.round(A[v * 3] * 1e4) + ',' + Math.round(A[v * 3 + 1] * 1e4) + ',' + Math.round(A[v * 3 + 2] * 1e4), wi = wk.get(pk); if (wi === undefined) { wi = v; wk.set(pk, v); } W[v] = wi; }
+                    var cw = new Uint8Array(n); for (v = 0; v < n; v++) if (cov[v]) cw[W[v]] = 1;
+                    for (v = 0; v < n; v++) if (!cov[v]) cw[W[v]] = 0;
+                    for (var ring = 0; ring < SKIN_COVER.erode; ring++) {
+                        var nw = cw.slice();
+                        for (var t0 = 0; t0 + 2 < I0.length; t0 += 3) {
+                            var wa = W[I0[t0]], wb = W[I0[t0 + 1]], wc = W[I0[t0 + 2]];
+                            if (!(cw[wa] && cw[wb] && cw[wc])) { nw[wa] = 0; nw[wb] = 0; nw[wc] = 0; }
+                        }
+                        cw = nw;
+                    }
+                    any = false; for (v = 0; v < n; v++) { cov[v] = cw[W[v]]; if (cov[v]) any = true; }
+                }
+                var own = !(lo.outer || WEAR_LAYER.cats[lo.cat]);   // (a belt: wearUnderOuter2 does not put its full index back first)
+                if (own) [lo.mesh].concat(lo.accents || []).forEach(function (mh) { if (mh._ewIx0) mh.geometry.setIndex(new THREE.BufferAttribute(mh._ewIx0.slice(), 1)); });
+                if (!any) return;
+                [lo.mesh].concat(lo.accents || []).forEach(function (mh) {
+                    var g = mh.geometry; if (!g.index) return;
+                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
+                    var I = g.index.array, keep = [];
+                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    if (keep.length !== I.length) g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
+                });
             });
         }
         function wearLayers(part) {
@@ -55315,6 +55507,8 @@ const ThreeRenderer = (function () {
                 paintWear(part, state.last || a);   // THE WEAR TINT
                 try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
                 try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
+                try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+            try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
