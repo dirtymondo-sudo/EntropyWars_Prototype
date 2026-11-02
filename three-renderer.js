@@ -51611,18 +51611,41 @@ const ThreeRenderer = (function () {
         var BODY_KEYS = (typeof EW_MPFB_BODY_SLIDERS !== 'undefined' ? EW_MPFB_BODY_SLIDERS : []).map(function (r) { return r[0]; });
         var BODY_GENDERED = { weight: 1, muscle: 1 }, BODY_FEMALE = { bustSpacing: 1, bustHeight: 1 };
         var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'].concat(FACE_KEYS, BODY_KEYS);
-        var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1, weight: 1.4, muscle: 1.25 };   // (2026-11-02: MakeHuman's weight / muscle step alone is a few cm; the slider's ends go past it)
+        /* THE SLIDER STRENGTH (2026-11-02, mondo: "it seems most of the sliders dont really work for the mpfb body"): measured on
+           all ten MPFB bodies, every slider moved the skin, but MakeHuman's own +-1 step is a few millimetres for most of the
+           face (eye size 2.4 mm, lips 3 mm, nose width 3.4 mm on a 1.86 m body) and 2-4 cm for the body details, so at +-100 the
+           stage showed next to nothing. Each slider's end now goes this many times MakeHuman's step ([+, -] where one end tears
+           sooner; checked on screen for
+           tears: the eyelids stay on the eyeball, the nose keeps its bridge, the forehead keeps its curve). */
+        var SHAPE_GAIN = {
+            width: 0.75, chest: 1.6, bust: 1, waist: 1.8, hips: 1.6, head: 1.3, jaw: 1.2, nose: 1.6, cheeks: 1.6,
+            weight: 2.4, muscle: 1.8, shoulders: 1.8, vshape: 1.8, pecs: 1.6, belly: 1, glutes: 2, thighs: 1.5, calves: 1.8, upperArms: 1.7, bustSpacing: 1.5, bustHeight: 1.5,
+            eyeSize: [2, 1.4], eyeHeight: 1.5, eyeSpacing: 2, eyeTilt: 1.6, eyeOpen: 1.6, eyeDepth: 1.5, eyelid: 1.5, eyeBags: 2, epicanthus: 2,
+            browHeight: 1.5, browAngle: 1.25, browRidge: 1,
+            noseWidth: [2.5, 1.4], noseLength: [1.3, 1.6], noseDepth: 1.2, noseHeight: [2, 1.4], noseBridge: 2, noseTip: [2, 1.2], nostrils: 2, noseCurve: 1.5,
+            mouthWidth: 1.6, mouthHeight: 1.2, upperLip: 2, lowerLip: 1.8, mouthCorners: 1.5, cupidsBow: 1.6, mouthDepth: 1,
+            jawAngle: 1.2, chinLength: 1, chinJut: 1.2, underbite: 1.5, chinCleft: 1.6,
+            cheekbones: 1.2, cheekHeight: 1.5, faceFat: 1.2,
+            headHeight: 1, headDepth: 1.2, foreheadHeight: 1, foreheadSlope: 1, faceAge: 3,
+            earSize: 1.3, earOut: 1.2, earPoint: 1, earLobe: 1.3, neckThick: 1.3
+        };
+        /* + THE SAME CHANGE ON EVERY BODY (2026-11-02): MakeHuman's offsets are millimetres, the same on a 1.34 m body and a
+           2.42 m one, and the stage then shrinks the tall MPFB bodies (heavy, thin, female tall thin) to their board height, so
+           a slider did ~25 % less on them than on the MPFB classic bodies (1.70 m, the ones mondo saw working). The offsets now
+           scale with the body's own height against those 1.70 m: the same slider = the same change in proportion everywhere. */
+        var SHAPE_REF_H = 1.70;
         function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
         function shapeBody(part, P, a) {
             var N = part.count, i, k;
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
+                var hs = part.height > 0.5 ? part.height / SHAPE_REF_H : 1;
                 SHAPE_KEYS.forEach(function (key) {
                     if ((key === 'bust' || BODY_FEMALE[key]) && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
                     var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
                     var tk = BODY_GENDERED[key] ? key + (bustBody(part) ? '_f' : '_m') : key;   // THE BODY DETAILS: the macro of the body's gender
                     var arr = T[tk] && T[tk][v > 0 ? 0 : 1]; if (!arr) return;
-                    var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
+                    var gk = SHAPE_GAIN[key], g = Math.abs(v) * (Array.isArray(gk) ? gk[v > 0 ? 0 : 1] : (gk || 1)) * hs;   // [the + end, the - end] where one side tears first
                     for (i = 0; i < arr.length; i += 4) { var o = arr[i] * 3; P[o] += arr[i + 1] * g; P[o + 1] += arr[i + 2] * g; P[o + 2] += arr[i + 3] * g; }
                 });
                 return;
