@@ -875,3 +875,4 @@ pixel = a look into the hollow body. Before / after sheets: /mnt/project-files/c
 - Known, not fixed here: pack tank tops on the MPFB CLASSIC bodies still show a torn strap at one shoulder (the pack piece's
   classic fit); a tucked shirt worn with no trousers shows dark specks of its tuck below the hem; hair003's hard temple edge is its
   own texture; a little magenta at a coat cuff looking up the sleeve.
+- Then baked mondo's export as the Cowboy (male) race look on his decision-card pick (`node bake-looks.js <export>`); cowgirl unchanged.
