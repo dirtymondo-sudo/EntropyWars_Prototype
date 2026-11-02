@@ -900,3 +900,32 @@ pixel = a look into the hollow body. Before / after sheets: /mnt/project-files/c
   classic fit); a tucked shirt worn with no trousers shows dark specks of its tuck below the hem; hair003's hard temple edge is its
   own texture; a little magenta at a coat cuff looking up the sleeve.
 - Then baked mondo's export as the Cowboy (male) race look on his decision-card pick (`node bake-looks.js <export>`); cowgirl unchanged.
+
+## THE RACE LOOKS, BATCH 1 (2026-11-02, character-models-plan row 20)
+mondo: "make new character models for a batch of about 15, using the character creator. Do the ones where you know all the
+necessary parts of the outfit and sliders will allow you to make it look good and accurate to the original model."
+- **Baked** (bake-looks.js on a hand-written export, the same path as the cowboy): 19 looks over 17 races, each replacing that
+  race + gender's Meshy model. men in black, politician, professor, priest (M), mad scientist (M + F), conspiracy theorist,
+  chef, gangster (MPFB heavy), telepath (M + F), vampire (F), halfdemon (M + F), superhero (M + F), ringmaster, santa clause
+  (MPFB heavy), cult leader. All on the MPFB classic bodies except the two heavy ones; existing pack / Blender / coded pieces
+  only (nothing new made). A gender without a look (priest F = the nun) keeps
+  its Meshy model. The race's own basic-attack kind, held prop and library clip overrides carry over as before.
+- **The export file** used: project files `race-looks-batch1/Entropy_Wars_Race_Looks_batch1.json` (the `entropy-wars-race-looks`
+  shape; mondo can edit any of them in the forge and EXPORT DEFAULT LOOK over it).
+- **Idles**: the long coats and robes (priest's cassock, cult robe, lab coats, conspiracy theorist's overcoat, telepath's
+  leather coat, halfdemon's overcoat) idle on Idle_11 (Upright), like mondo's cowboy: in the wide-stance idles a long coat's
+  front splits between the legs and the lining / trousers show through. The rest keep the Default idle.
+- **Choices that fixed clipping** (checked front / back / sides / armpits in Idle_11, Default, FoldArms, Talking, Spell idle):
+  a tucked Blender shirt over the pack male trousers left a skin gap at the belt in Idle_11, so the open-coat looks wear pack
+  classic jeans tinted dark + the belt instead; the short-sleeve shirt flared out under a blazer (left on the long-sleeve
+  shirt); the closed blazer showed a red line of the politician's tie at its edge (blazer OPEN); the pack tee showed through
+  the lab coat at the armpits (Blender long-sleeve tee); hair under the pack chef hat left dark patches at the nape (chef is
+  bald under the hat); the white tie under the ringmaster's vest broke up (bow tie kept).
+- **Known, not fixed**: small shirt specks at blazer shoulders and a dark speck or two at a lab coat's shoulder with folded
+  arms; long coats still split in the wide-stance battle clips (walk / hit / cast are the race's own animation, only the
+  idle is picked); long hair cut with a jagged edge where it meets bare shoulders (telepath F, superhero F, halfdemon F); the
+  halfdemon's minotaur horns are wider than the Meshy horns (the closest pack horns; the Toriel horns render invisible).
+- **Skipped**: popstar (no clean white top or white heels), luchador (the mask + singlet don't match his prints), the nun
+  (needs the Meshy cross pendant, 4a #28), wizard M + F (no hooded robe; her frock coat + mini skirt), demon princess (corset
+  + slit gown), and every creature race (plan row 18).
+- Side-by-sides (Meshy row on top, the look below) + the 5-pose clipping sheets: project files `race-looks-batch1/`.
