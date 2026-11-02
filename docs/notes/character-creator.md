@@ -871,6 +871,21 @@ the forehead flattens (project files aaa-creator/face_sliders_proof.png). Plan f
   Bones stay put (row 27 = proportions that move the skeleton). mpfb_shapes.glb is now 3 MB raw (~580 KB gzip).
 
 
+## THE SLIDER STRENGTH (2026-11-02, plan row 26b)
+mondo: "It seems most of the sliders dont really work for the mpfb body, only the mpfb classic body?". Measured in the real
+creator (and rig.update straight) on all ten MPFB bodies: every one of the 66 shape sliders moved the skin by the SAME millimetres
+on every body, clothes following; nothing was broken per body. Two real problems: (1) MakeHuman's own +-1 step is tiny for most
+of the face (eye size 2.4 mm, upper lip 3 mm, nose width 3.4 mm on a 1.86 m body) and 2-5 cm for weight / muscle / the body
+details, so at +-100 the stage showed next to nothing; (2) the offsets are absolute millimetres while the stage shrinks the tall
+MPFB bodies (heavy 2.42 m, thin 2.40 m, female tall thin 2.30 m local) to their board height, so they moved ~25 % less than the
+MPFB classic bodies (1.70 m). three-renderer.js shapeBody (stock path): SHAPE_GAIN per slider (a number or [+ end, - end] where
+one end tears first: eye size, nose width / length / height / tip) x the body's height / SHAPE_REF_H (1.70, the classic MPFB
+bodies, unchanged for them). Tuned by eye on MPFB male + female faces and male / heavy bodies: too far = the nose tip into the
+lip, nostrils crossing (width -), eye slits / the red inner lid (eye size), a pinched jaw (jaw width), lumpy cheekbones.
+Bust stays 1 (mondo liked it at 100). The classic MALE / FEMALE bases (their own shaping) are untouched. Before/after sheets:
+project files creator-sliders/. Probe: a copy of playtest_creator.js's routes, EWCharViewer.mount on a fixed div, then
+dev.state().appearanceRig.update(...) per slider; face = frameCreator('face'); TR_FILE swaps three-renderer.js for the old one.
+
 ## THE SKIN UNDER THE CLOTHES + THE CLOTHES UNDER THE CLOTHES + THE CLASSIC RESHAPE (2026-11-02, plan row 12i)
 mondo: "this tucked in shirt makes a hole in my waist. and adding the cowboy hat puts holes in my head near my hair ... Any
 clothes with collars look pretty bad. Holes around the shoulders, armpits, back." Checked on his own cowboy export
