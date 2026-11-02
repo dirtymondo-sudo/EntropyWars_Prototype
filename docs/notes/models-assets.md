@@ -1453,9 +1453,9 @@ mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to th
   anything outside it, so a coat front over a breast rides it fully). It first folds any jiggle weight back onto its parent,
   so it can run again after any rebuild and never stacks. A garment over a spot therefore moves with the skin: no clipping.
 - `jigTick(part, dt, a)` (in tick(), after the hair / cape sway): per spot a world-space damped spring (chest 3.2 Hz, zeta 0.2;
-  glute 4.2 Hz, zeta 0.28) toward where the skin sits this frame; the skin's path is cut into the 1/120 s steps and the
+  glute 3.6 Hz, zeta 0.25) toward where the skin sits this frame; the skin's path is cut into the 1/120 s steps and the
   damping works on the speed RELATIVE to the skin, so a steady walk / run / the turntable leaves no lag; only changes of speed
-  swing it. Shown offset = lag × gain (gain = 2 × the slider; a male body's chest × 0.35; a female chest × (1 + 0.4 × Bust)),
+  swing it. Shown offset = lag × gain (gain = 2 × the slider, 3 × on a glute; a male body's chest × 0.35; a female chest × (1 + 0.4 × Bust)),
   sideways / front-back × 0.7, eased (tanh) to a cap of 4.5 cm chest / 3 cm glute per 1.7 m; written into each jiggle bone
   through its parent's own frame. A frame over 0.25 s resets the spots at rest (no snap after a hidden tab).
 - appearance.jiggleChest / jiggleButt (sprites.js EW_APPEARANCE_LIMITS, 0..1, default 0.5); creator BODY > Jiggle (Chest,

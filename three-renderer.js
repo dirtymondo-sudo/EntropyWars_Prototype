@@ -54762,7 +54762,7 @@ const ThreeRenderer = (function () {
                 if (changed) { siA.needsUpdate = true; swA.needsUpdate = true; }
             });
         }
-        var JIG_SPRING = { chest: { hz: 3.2, zeta: 0.2, max: 0.045 }, butt: { hz: 4.2, zeta: 0.28, max: 0.03 } };
+        var JIG_SPRING = { chest: { hz: 3.2, zeta: 0.2, max: 0.045 }, butt: { hz: 3.6, zeta: 0.25, max: 0.03 } };
         var _jgA = null, _jgB = null, _jgC = null, _jgD = null, _jgP = null, _jgVA = null, _jgM = null, _jgM3 = null, _jgB2M = null;
         function jigTick(part, dt, a) {
             var J = part.jig;
@@ -54776,7 +54776,7 @@ const ThreeRenderer = (function () {
             if (!_jgA) { _jgA = new THREE.Vector3(); _jgB = new THREE.Vector3(); _jgC = new THREE.Vector3(); _jgD = new THREE.Vector3(); _jgP = new THREE.Vector3(); _jgVA = new THREE.Vector3(); _jgM = new THREE.Matrix4(); _jgM3 = new THREE.Matrix3(); _jgB2M = new THREE.Matrix4(); }
             var body = part.body, chestK = a && a.jiggleChest != null ? +a.jiggleChest : 0.5, buttK = a && a.jiggleButt != null ? +a.jiggleButt : 0.5;
             chestK *= (bustBody(part) ? 1 + 0.4 * Math.max(-1, Math.min(1, +(a && a.bust) || 0)) : 0.35) * 2;
-            buttK *= 2;
+            buttK *= 3;   // (the glutes sit on the hips: the walk's bob reaches them weaker than the chest)
             body.updateWorldMatrix(true, false);
             var wsc = null, slow = dt > 0.25;   // (a stalled frame / a hidden tab: the spots start again at rest, no snap)
             dt = Math.min(dt, 0.1);
