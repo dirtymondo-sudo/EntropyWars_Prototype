@@ -1087,3 +1087,10 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   Grove 12 had its grown lake on a spawn tile, so `node bake-arenas.js prebuilt_bohemian_grove` re-cut it: 11,9 → 10,9 (one square
   west). Every other pick identical. Fairy Forest's own 20×20 board fails its house check on main too (not touched).
 - Not changed: the voxel Δ boards (their water is tile boxes, the same as a spell's water there).
+- PASS 2 (same day, from the after shots): with half the bank the small ponds came out as a plus of five squares (Shasta's pool, the
+  Haunted pond) and a dark ring showed round every pond (the carved bank seen through the fading rim). Now a pool's outline is grown
+  by its WHOLE bank (Shasta = 3 × 3, Haunted = 5 × 5 with round corners), and under the fading rim (cover < 0.78, 0.56 × win in) the
+  ground sits a hand (0.15 m) under the surface; the bank starts past that. Arenas re-read again: Heaven 12 (4 squares of the
+  healing pool's plateau one level lower), Hollow Earth 12/10/11 (a lake square or two), Bohemian Grove 12 (one lake square), Fairy
+  Forest 10/11 (one corner square by the brook now rock: the island's slope flips on any change there). Hollow Earth 9 had a lake
+  square on a house tile, so `node bake-arenas.js prebuilt_hollow_earth --size 9` re-cut it: 14,18 → 16,17 (no water on it now).
