@@ -968,8 +968,25 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
 - Proof (Playwright, Cyberpunk City Arena): Goblin (jump 2) offered CLIMB onto C12 roof (rise 4), hung, round 2
   "pulls up onto the ledge at C12", standing on the drawn roof. Shots in /mnt/project-files/roof-climb/.
 
+## THE CRYSTAL SHEET (2026-11-02, mondo: "replace all crystal.png terrain in the game with liquid_blue_1 or liquid_blue_5, but not as liquids with a noise layer, just as solid textures")
+
+crystal.png is out of the game (it stays in the bucket, unreferenced). Every place that wore it now wears one of mondo's blue
+liquid sheets (R2 `Assets/Sprites/terrain/liquids/`) as a PLAIN SOLID texture: `crystal` is not a `_LIQUID_STYLES` row, so
+there is no flow, no wave/noise layer, no caustics, and the Crystal Formation's rules (move 1, vision +1, MP regen, the
+crystal-vein detonation) are untouched.
+
+| place | sheet |
+|---|---|
+| sprites.js TERRAIN_SPRITES.crystal: the Crystal Formation tile (battle boards, voxel maps, HQ rooms with `floor/wall/dado/path/cliff: 'crystal'`, editor + voxel-editor swatches, terrain-column VFX) | Liquid_Blue_05 |
+| everything that reads the `crystal` key through _hzTex / K.mat: _hzCrystalShards (horizon/field shard clusters), the armillary crystal nucleus, the Fairy Forest toadstool + glass fallbacks, the accretion rim's leaning shards | Liquid_Blue_05 (follows the key) |
+| three-renderer.js `_getCrystalTexture`: the 3-5 cone crystal clusters on crystal tiles (still tinted by their own violet colours) | Liquid_Blue_01 |
+| battle.js loading-screen preload list | both sheets in place of crystal.png |
+
+Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untextured phong), the craftShards 'crystal' kind
+(untextured), the per-map `tints.crystal` colours, the Meshy crystal shard/ball GLBs.
+
 ## THE STREET FURNITURE — the city props on their lines (2026-11-02, mondo: "in disaster city and the strip and cyberpunk city etc, there are a lot of street lamps and signs and poles etc that are just placed really wrong or in the middle of a street ... BENCHES (another one that is really misplaced) ... Remember that every map was rebuilt to make sense on the square grid" + "really define the difference between the road and the sidewalks")
-Token 20261102-streetfurn-01-cors. R2: data.js, three-renderer.js. Shots: /mnt/project-files/street-furniture/.
+Token 20261102-streetfurn-02-cors. R2: data.js, three-renderer.js. Shots: /mnt/project-files/street-furniture/.
 - **The cause**: a city room's `scatter` rows (bins, hydrants, signposts, benches, plants, cones, barrels, manholes, machines) fell on a
   RANDOM sidewalk spot with a RANDOM heading (the old kerb rule only kept them in the band by the building line, and a street that runs
   to the shell's edge or a square's open circle let them into the road); `street_drain` (the manhole decal) stood on the sidewalks; the
