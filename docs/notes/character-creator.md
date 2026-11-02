@@ -800,3 +800,24 @@ needs to have an open and closed option ... i deally i want there to be a longsl
   Missing pieces: gun belt + holster (Meshy list #2), worn leather, silver buckle.
 - Known: the shirt collar on the MPFB classic body looks a little crumpled in the bind pose (the reshape round the neck); shirt
   specks at the shoulder tops under a coat (as row 12f).
+
+## THE JOINED BEARDS (2026-11-02, character-models-plan row 12h)
+mondo: "i cant find a full beard that has a mustache too. the one that says full beard doesnt have a mustache connected. Use
+blender to edit some of the existing ones into new ones?" The pack's Full beard (grinsegold) is a jaw + chin beard with a bare
+upper lip; the pack's moustaches are separate pieces and the creator's Facial hair pick wears one piece at a time.
+- **bake-beards.py** (repo tooling, cloud Blender: bpy 5.2.3 + MPFB2 + the bodyparts packs) makes ONE piece of a pack beard + a
+  pack moustache: one .obj / .mhclo (the beard's vertices, then the moustache's), their two textures side by side on one sheet
+  (each in a padded 1024 cell -> 1024 x 512 at WEAR_PX), then baked with bake-mpfb.py `bake_one_wear` on all five MPFB bodies
+  (fitted + weighted by MPFB, the compact layout) -> `charactercreation/wear/ewb_beard_<key>.glb`.
+- **THE JOIN** (on the male fit): each end of the moustache is turned down along the mouth corner (a smoothstep over the last
+  `span` = 16 mm of its width), past the first beard surface below it by `into` (8-12 mm, so it reaches the beard's dense hair, not
+  its wispy top edge), both ends by the same amount; a ray from the front lays each moved vertex 1.5 mm in front of the beard.
+  The move is written back into the moustache's .mhclo offsets (MPFB's own fit: offset = (d0·x_size, -d2·z_size, d1·y_size)), so
+  every body wears the same joined piece.
+- Picks (sprites.js EW_MH_WEAR push before EW_MH_FACIAL_HAIR, cat bodyparts, z 50; the 'beard' in the id puts them in Facial
+  hair): `ewb_beard_full` Full beard with moustache, `ewb_beard_fullbushy` Full beard with bushy moustache (viking moustache),
+  `ewb_beard_viking` Viking beard with moustache, `ewb_beard_faun` Faun beard with moustache (the ends run 37 mm down to the
+  goatee: a circle beard). No renderer change: paintFacial tints the whole sheet; beardTint 'own' shows each half's own colour.
+- Checked in the real creator stage (Playwright + swiftshader, EWCharViewer.mount with the look, frameCreator('face')) on MPFB
+  male / heavy / thin and MPFB classic male, front + three-quarter, the idle running: /mnt/project-files/joined-beards/.
+- Authors are the pack pieces' own (grinsegold CC-BY, RehmanPolanski CC0, culturalibre CC0), already in CREDITS.json.
