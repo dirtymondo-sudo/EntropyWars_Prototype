@@ -4180,7 +4180,8 @@ for (const gender of ['male', 'female']) {
   EW_CHARACTER_BASES[gender] = _mkUAL('', '', {
     model: EW_CHARACTER_ASSET_BASE + '/Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb?ewcors=1',
     creatorBase: true, heightRatio: 1, basicAttackKind: 'punch',
-    wristLimit: 30   // rev 9: cap each hand's rotation off its rest (degrees) — the sniper idle's holster wrist read as a broken hand on a bare human
+    wristLimit: 30,   // rev 9: cap each hand's rotation off its rest (degrees) — the sniper idle's holster wrist read as a broken hand on a bare human
+    palmTwist: true   // 2026-11-02 THE CLASSIC HANDS (three-renderer.js _libPalmTwist): the palms rolled onto the library's
   });
 }
 const EW_MPFB_BASES = {};

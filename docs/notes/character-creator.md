@@ -754,6 +754,19 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
   open when another idle plays (checked: Pistol ready -> Relaxed). Every body + every caller (board, forge, exploration) gets it, it
   is part of the clip's bake. Meshy-hand note: on the CLASSIC bodies the door gun is still seated across the palm in this pose
   (the mesh-palm seat, `_gripFrameMesh`), unchanged here. Shots: /mnt/project-files/pistol-ready/.
+- **Pass 4, THE CLASSIC HANDS (2026-11-02, mondo: "Yes go ahead and fix that", the door gun lying across the palm on the classic
+  bodies)**. Two causes, both on the classic (Meshy base mesh) bodies only:
+  - `_gripHandSkin` read "along the hand" as the skin's longest spread; the classic hands are modelled open with the fingers
+    spread, as wide as they are long, so it took a diagonal 44 deg off and the gun sat across the palm. Now, when that axis is more
+    than 30 deg off the forearm's way into the hand (bind space), the hand runs along the forearm. The cast's hands (13-16 deg off)
+    keep their skin read: Belle / the Player unchanged (checked side by side).
+  - The retarget matches each arm bone's direction, never its roll, and the classic bodies' palms are turned ~68 deg from the
+    library mannequin's, so every UAL clip played them rolled (Pistol ready: palm up under the gun). `def.palmTwist` (sprites.js
+    EW_CHARACTER_BASES only) makes `_libRetargetSetup` call `_libPalmTwist`: the palm read off the skin is rolled onto the
+    library's rest palm (`_libEnsureSrc` src.palm, from UAL's finger bones) by turning the forearm AND the hand about their length
+    (no twist at the wrist). MAL1 (Meshy-named, no finger bones) has no palm data, so the default Wide stance idle is unchanged.
+    MPFB bodies + every race model untouched. Checked Pistol ready, Relaxed, Arms folded, default: shots
+    /mnt/project-files/pistol-ready/classic_body_grip_before_after.jpg.
 
 ## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
 mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
