@@ -6762,11 +6762,12 @@ const ThreeRenderer = (function () {
         return _rockClusterTex;
     }
 
-    /* Crystal texture for 3D crystal cones */
+    /* Crystal texture for 3D crystal cones (2026-11-02, mondo: crystal.png is out of the game; the cones wear the icy
+       Liquid_Blue_01 sheet as a plain solid texture, still tinted by the cluster's own colours) */
     var _crystalClusterTex = null;
     function _getCrystalTexture() {
         if (_crystalClusterTex) return _crystalClusterTex;
-        _crystalClusterTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/crystal.png');
+        _crystalClusterTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/liquids/Liquid_Blue_01-128x128.png');
         if (_crystalClusterTex) {
             _crystalClusterTex.wrapS = THREE.RepeatWrapping;
             _crystalClusterTex.wrapT = THREE.RepeatWrapping;
@@ -8795,7 +8796,7 @@ const ThreeRenderer = (function () {
         }
     }
 
-    /* ── Crystal Cluster: 3-5 tall cones with crystal.png texture + glow ── */
+    /* ── Crystal Cluster: 3-5 tall cones with the Liquid_Blue_01 sheet + glow ── */
     function _buildCrystalCluster3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);

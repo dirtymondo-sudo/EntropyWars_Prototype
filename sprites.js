@@ -5271,7 +5271,12 @@ const TERRAIN_SPRITES = {
     void:           [`${_T}/void.png`],
     road:           [`${_T}/road.png`],
     ruins:          [`${_T}/ruins.png`],
-    crystal:        [`${_T}/crystal.png`],
+    /* 2026-11-02 (mondo): "replace all crystal.png terrain in the game with liquid_blue_1 or liquid_blue_5, but not as
+       liquids with a noise layer, just as solid textures". The Crystal Formation wears Liquid_Blue_05 (the periwinkle
+       glassy sheet) as a plain solid tile: crystal is not in _LIQUID_STYLES, so no flow / waves / caustics. Every prop
+       that reads the `crystal` key (_hzTex / K.mat: the shard clusters, the toadstool, the armillary core, the editor
+       swatches) follows this row. crystal.png stays in the bucket, unreferenced. Rules untouched. */
+    crystal:        [`${_T}/liquids/Liquid_Blue_05-128x128.png`],
     obsidian:       [`${_T}/obsidian.png`],
     stone:          [`${_T}/rocks_5.png`],   // 🪨 water + lava (map.js lavaWaterMixOf): the cliffs' rock sheet
     healing_spring: [`${_T}/healing_spring.png`],
