@@ -3761,18 +3761,24 @@ const ThreeRenderer = (function () {
        sheet offsets are per-object uniforms a static render bundle never refreshes, so lava in a bundled room stood still
        outright. Lava now gets its own surface on the same clock (world space, one sheet across tiles): a slow warped flow
        of glowing channels between darker crust, and a pulse. _ewNodeFluid carries the same maths for the node renderer. */
+    /* THE LAVA FROM ITS OWN SHEET (2026-11-02, mondo: "When did magma get this blobby noise layer on it? It looks more suited
+       for a lava lamp. Try to make it look more realistic or more like it was before"). The 2026-10-05 flow above was a sin
+       pattern (warped glowing channels + crust cells) drawn OVER lava.png; on a big sheet like Hell's lake it was all you saw.
+       The surface is now lava.png itself, in world space (half a sheet per tile, so a lake shows the cracks at board zoom),
+       twice: a second copy turned a quarter and at another scale slides the other way on the same fluid clock, and the
+       molten veins come up where both copies are bright, the crust goes dark where the second one is. The hot veins glow
+       (emissive from the sheet's own brightness); nothing else is drawn on top. Same maths in _ewNodeFluid (D.lava). */
     var _EW_LAVA_GLSL =
         '{\n' +
         '  float ewT = uFluidTime;\n' +
         '  vec2 ewP = (vEwWorldPos.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
-        '  vec2 ewQ = ewP * 1.7 + vec2(sin(ewP.y * 1.3 + ewT * 0.35), cos(ewP.x * 1.1 - ewT * 0.3)) * 0.6 + vec2(ewT * 0.12, ewT * 0.08);\n' +
-        '  float ewN = sin(ewQ.x * 2.3 + sin(ewQ.y * 1.7 + ewT * 0.5)) * sin(ewQ.y * 2.1 + sin(ewQ.x * 1.9 - ewT * 0.4));\n' +
-        '  float ewVein = smoothstep(0.55, 0.95, 1.0 - abs(ewN));\n' +
-        '  float ewCrust = smoothstep(0.2, 0.7, abs(ewN));\n' +
-        '  float ewPulse = 0.5 + 0.5 * sin(ewT * 1.3 + (ewP.x - ewP.y) * 0.8);\n' +
-        '  diffuseColor.rgb *= (0.8 + 0.25 * ewPulse) * (1.0 - 0.3 * ewCrust);\n' +
-        '  diffuseColor.rgb += vec3(1.0, 0.45, 0.08) * (ewVein * 0.35);\n' +
-        '  totalEmissiveRadiance += vec3(1.0, 0.38, 0.05) * (ewVein * (0.55 + 0.35 * ewPulse));\n' +
+        '  vec3 ewLa = texture2D(uWave1, ewP * 0.5 + vec2(ewT * 0.020, ewT * 0.013)).rgb;\n' +
+        '  vec3 ewLb = texture2D(uWave1, vec2(ewP.y, -ewP.x) * 0.37 + vec2(-ewT * 0.015, ewT * 0.022)).rgb;\n' +
+        '  float ewHa = dot(ewLa, vec3(0.299, 0.587, 0.114));\n' +
+        '  float ewHb = dot(ewLb, vec3(0.299, 0.587, 0.114));\n' +
+        '  float ewHeat = clamp(ewHa * (0.35 + 0.9 * ewHb), 0.0, 1.0);\n' +
+        '  diffuseColor.rgb = diffuse * ewLa * (0.22 + 0.85 * ewHb);\n' +
+        '  totalEmissiveRadiance += vec3(1.0, 0.45, 0.1) * (smoothstep(0.45, 0.95, ewHeat) * 0.7);\n' +
         '}\n';
 
     function _buildFluidTopMat(terrainKey) {
@@ -42870,17 +42876,16 @@ const ThreeRenderer = (function () {
                 return T.vec3(caust, T.smoothstep(0.992, 0.999, g), swell);
             })();
         }
-        /* THE MOVING LAVA (see _EW_LAVA_GLSL): the flow, the crust, the pulse on the shared render-group clock */
+        /* THE LAVA FROM ITS OWN SHEET (see _EW_LAVA_GLSL): lava.png twice in world space on the shared clock → colour + heat */
         var LV = null;
-        if (D.lava) {
+        if (D.lava && D.w1) {
             LV = T.Fn(function () {
-                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar();
-                var q = p.mul(1.7).add(T.vec2(T.sin(p.y.mul(1.3).add(t.mul(0.35))), T.cos(p.x.mul(1.1).sub(t.mul(0.3)))).mul(0.6)).add(T.vec2(t.mul(0.12), t.mul(0.08))).toVar();
-                var n = T.sin(q.x.mul(2.3).add(T.sin(q.y.mul(1.7).add(t.mul(0.5))))).mul(T.sin(q.y.mul(2.1).add(T.sin(q.x.mul(1.9).sub(t.mul(0.4)))))).toVar();
-                var vein = T.smoothstep(0.55, 0.95, T.float(1).sub(T.abs(n)));
-                var crust = T.smoothstep(0.2, 0.7, T.abs(n));
-                var pulse = T.sin(t.mul(1.3).add(p.x.sub(p.y).mul(0.8))).mul(0.5).add(0.5);
-                return T.vec3(vein, crust, pulse);
+                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar(), lum = T.vec3(0.299, 0.587, 0.114);
+                var la = T.texture(D.w1, p.mul(0.5).add(T.vec2(t.mul(0.020), t.mul(0.013)))).rgb.toVar();
+                var lb = T.texture(D.w1, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(t.mul(-0.015), t.mul(0.022)))).rgb;
+                var ha = T.dot(la, lum), hb = T.dot(lb, lum).toVar();
+                var heat = T.clamp(ha.mul(hb.mul(0.9).add(0.35)), 0, 1);
+                return T.vec4(la.mul(hb.mul(0.85).add(0.22)), heat);
             })();
         }
         var tint = T.uniform(D.tint), base = Object.getPrototypeOf(nm).setupDiffuseColor;
@@ -42893,17 +42898,14 @@ const ThreeRenderer = (function () {
             var dc = T.diffuseColor;
             if (D.w1) { var a = T.texture(D.w1, T.uv().add(o1)); dc.rgb.assign(T.mix(dc.rgb, a.rgb.mul(tint), a.a.mul(D.op1))); }
             if (D.w2) { var b = T.texture(D.w2, T.uv().add(o2)); dc.rgb.assign(T.mix(dc.rgb, b.rgb.mul(tint), b.a.mul(D.op2))); }
-            if (LV) {
-                dc.rgb.mulAssign(LV.z.mul(0.25).add(0.8).mul(T.float(1).sub(LV.y.mul(0.3))));
-                dc.rgb.addAssign(T.vec3(1.0, 0.45, 0.08).mul(LV.x.mul(0.35)));
-            }
+            if (LV) dc.rgb.assign(T.materialReference('color', 'color').mul(LV.rgb));
             if (!W) return;
             dc.rgb.addAssign(V(D.cd).mul(W.x.mul(D.cs)));
             dc.rgb.mulAssign(W.z.mul(0.09).add(0.95));
             dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(V(D.hue)), T.sin(U.ftime.mul(0.45)).mul(0.2).add(0.25)));
             if (D.deep) dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(T.vec3(0.45, 0.62, 1.25)), 0.5));
         };
-        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.38, 0.05).mul(LV.x.mul(LV.z.mul(0.35).add(0.55))));
+        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
@@ -50793,12 +50795,12 @@ const ThreeRenderer = (function () {
                         return f * wf + b * (1 - wf) - q[1];
                     });
                 }
-                var len = T.sleeve === 'wrist' ? armLength(part) - 0.012 * Hm : T.sleeve * Hm, gate0 = 0.078 * Hm, prof = part.armR;
+                var len = (T.sleeve === 'wrist' ? armLength(part) - 0.012 * Hm : T.sleeve * Hm) - (T.sleeveIn || 0) * Hm, gate0 = 0.078 * Hm, prof = part.armR;
                 /* rev 9 (2026-09-13): the gate round the arm axis follows the arm's MEASURED radius (+ 2.2 cm) instead
                    of a flat 7.8 cm — the thumb tip projects onto the forearm BEFORE the wrist joint (it points sideways),
                    so with a flat gate every 'wrist' sleeve capped the thumb in cloth and hung a rim fragment off the
                    fingers (the "black wedge past the hand" on every jacket / coat / long sleeve) */
-                var wristPlane = -0.012 * Hm;
+                var wristPlane = -0.012 * Hm - (T.sleeveIn || 0) * Hm;
                 cuts.push(function (q) {
                     var A = armAt(part, q), gate = gate0;
                     if (prof) { var pi = Math.min(prof.r.length - 1, Math.max(0, Math.floor(A.along / prof.step))); gate = Math.min(gate0, prof.r[pi] + 0.022 * Hm); }
@@ -50811,8 +50813,37 @@ const ThreeRenderer = (function () {
                 cuts.push(function (q) { return -armMask(part, q); });
                 cuts.push(T.bikini ? bikiniCut(part, T) : sleevelessCut(part, T));
             }
-            if (T.open) { var O = T.open; cuts.push(function (q) { return Math.abs(q[0]) - openWidth(O, hem, q[1]) * frontness(q); }); }
+            if (T.open) { var O = T.open, TM = torsoMid(part); cuts.push(function (q) { return Math.abs(q[0]) - openWidth(O, hem, q[1]) * frontness(q) * frontnessMid(TM, q); }); }
+            /* THE SECOND OUTER LAYER (pass 2): a layer under a coded second outer stays 7 mm under the coat's BACK neckline round the
+               back and over the shoulders (`neckUnder` = the coat's neck): a vest's straps showed red over a blazer's shoulders */
+            if (T.neckUnder) {
+                var N2 = T.neckUnder, TM2 = torsoMid(part), top2 = N2.top || 0.852, wB2 = N2.wBack || N2.w, sh2 = N2.shapeBack || (N2.shape === 'v' ? 'crew' : N2.shape);
+                cuts.push(function (q) {
+                    if (frontness(q) * frontnessMid(TM2, q) >= 0.999) return 1;
+                    var u = Math.min(1, Math.abs(q[0]) / wB2), r = sh2 === 'v' ? u : 1 - Math.sqrt(Math.max(0, 1 - u * u));
+                    return N2.back + (top2 - N2.back) * r - 0.004 - q[1];
+                });
+            }
             return cuts;
+        }
+        /* THE OPENING STAYS ON THE FRONT (2026-11-02, mondo: "still getting some layers clipping through for the second outer
+           layer"): `frontness` counts z > -0.03 q as front, but an MPFB body's back sits only 1-3 cm behind the q origin (the
+           female's at -0.011 between the shoulder blades), so a coat's opening was cut down the spine too: a diamond on the
+           female's back, a slit on the male's, and the layer under it showed through. The opening is also held to the front HALF
+           of the torso at its height: the middle of its front and back (|x| < 0.03 q, per 0.01 of t), once per body */
+        function torsoMid(part) {
+            if (part._torsoMid) return part._torsoMid;
+            var Q = part.Q, n = part.count, lo = new Float32Array(101).fill(Infinity), hi = new Float32Array(101).fill(-Infinity), mid = new Float32Array(101).fill(NaN), i;
+            for (i = 0; i < n; i++) { var x = Q[i * 3], t = Q[i * 3 + 1], z = Q[i * 3 + 2]; if (Math.abs(x) > 0.03 || t < 0 || t > 1 || (part.arm && part.arm[i] > 0.3)) continue; var b = Math.round(t * 100); if (z < lo[b]) lo[b] = z; if (z > hi[b]) hi[b] = z; }
+            for (i = 0; i <= 100; i++) {   // (over ±2 bands: a band of a coarse body can hold only its front or only its back vertices - mpfb_thin)
+                var l0 = Infinity, h0 = -Infinity; for (var j = Math.max(0, i - 2); j <= Math.min(100, i + 2); j++) { if (lo[j] < l0) l0 = lo[j]; if (hi[j] > h0) h0 = hi[j]; }
+                if (h0 - l0 > 0.04) mid[i] = (l0 + h0) / 2;
+            }
+            return (part._torsoMid = mid);
+        }
+        function frontnessMid(TM, q) {
+            var b = Math.max(0, Math.min(100, Math.round(q[1] * 100))), m = TM[b];
+            return m === m ? Math.max(0, Math.min(1, 0.5 + (q[2] - m) / 0.03)) : 1;
         }
         /* the bottoms' cuts: the legs' tube between the hem (or the leg line) and the waist, the arms / hands out */
         function bottomCuts(part, B, zc) {
@@ -51972,13 +52003,17 @@ const ThreeRenderer = (function () {
             var lapelRaise = lapelOf(OUT);   // (THE SECOND OUTER LAYER: its own lapel, lapelOf(OUT2))
             // the cuts first (the coverage orders the layers), then the surfaces in the order clothes are worn
             var beltEase = CC_BELT.ease + (BOT2 && !BOT2.skirt ? 0.008 : 0);   // rev 10: the belt rides over a second pair of bottoms
-            var cvTop = TOP ? cutVals(topCuts(part, TOP), TOP.hem - 0.001, 0.86) : null;
+            /* THE SECOND OUTER LAYER (pass 2): a wrist-length sleeve under a coded second outer stops 3 cm short (`sleeveIn`), inside
+               the coat's sleeve - both ended at the wrist and the jacket's / hoodie's cuff showed under the coat's as a red ring; its
+               neckline stays under the coat's round the back (`neckUnder`, topCuts) */
+            var tuck = function (T) { return (T && OUT2) ? Object.assign({}, T, T.sleeve === 'wrist' ? { sleeveIn: 0.03 } : null, OUT2.neck ? { neckUnder: OUT2.neck } : null) : T; };
+            var cvTop = TOP ? cutVals(topCuts(part, tuck(TOP)), TOP.hem - 0.001, 0.86) : null;
             var cvBot = (skirtBottom || BOT.none) ? null : cutVals(bottomCuts(part, BOT, zcP), 0, 0.6);
-            var cvOut = OUT ? cutVals(topCuts(part, OUT), OUT.hem - 0.001, 0.86) : null;
+            var cvOut = OUT ? cutVals(topCuts(part, tuck(OUT)), OUT.hem - 0.001, 0.86) : null;
             var cvFeet = FEET ? cutVals(feetCuts(part, FEET), 0, FEET.top + 0.001) : null;
             var cvGlv = GLV ? cutVals(gloveCuts(part, GLV), 0.40, 0.78) : null;
             var cvBelt = BELT ? cutVals(beltCuts(), CC_BELT.t0 - 0.001, CC_BELT.t1 + 0.001) : null;
-            var cvTop2 = TOP2 ? cutVals(topCuts(part, TOP2), TOP2.hem - 0.001, 0.86) : null;
+            var cvTop2 = TOP2 ? cutVals(topCuts(part, tuck(TOP2)), TOP2.hem - 0.001, 0.86) : null;
             var cvBot2 = BOT2 && !BOT2.skirt ? cutVals(bottomCuts(part, BOT2, zcP), 0, 0.6) : null;
             var cvOut2 = OUT2 ? cutVals(topCuts(part, OUT2), OUT2.hem - 0.001, 0.86) : null;   // THE SECOND OUTER LAYER
             // the fill per layer (passes of the outward relaxation, ~1.2 cm a vertex): a sleeveless / skin-tight cut hugs, a
@@ -52673,8 +52708,18 @@ const ThreeRenderer = (function () {
                     var nx = dy * rz - dz * ry, ny = dz * rx - dx * rz, nz = dx * ry - dy * rx, nl = Math.hypot(nx, ny, nz) || 1;
                     XN[v0 * 3] = nx / nl; XN[v0 * 3 + 1] = ny / nl; XN[v0 * 3 + 2] = nz / nl;
                 }
+                /* THE SECOND OUTER LAYER (pass 2): a tail hung INSIDE a second coat's tail (`hideBehind`: that tail's open-front angle +
+                   its hem) draws only what shows through that tail's opening and below its hem - held inside it per bin, the coat's
+                   tail still came through the trench's in red patches once the legs pushed the two (they fold apart) */
+                var HB = opts.hideBehind || null;
+                var behind = function (r, c) {
+                    if (!HB || rowT(Math.min(rows - 1, r + 1)) < HB.tHem + 0.01) return false;
+                    var th5 = ((colTheta(c + 0.5) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), fd = Math.min(th5, 2 * Math.PI - th5);
+                    return fd > HB.gap + 0.05;
+                };
                 for (r2 = 0; r2 + 1 < rows; r2++) for (c2 = 0; c2 + 1 < cols; c2++) {
                     if (c2 === half) continue;   // the split at the back
+                    if (behind(r2, c2)) continue;
                     var a0 = base + vIdx(r2, c2), a1 = base + vIdx(r2, c2 + 1), a2 = base + vIdx(r2 + 1, c2), a3 = base + vIdx(r2 + 1, c2 + 1);
                     b.index.push(a0, a2, a1, a1, a2, a3);
                 }
@@ -52688,10 +52733,10 @@ const ThreeRenderer = (function () {
                         b.xSi.push(b.xSi[vo * 4], b.xSi[vo * 4 + 1], b.xSi[vo * 4 + 2], b.xSi[vo * 4 + 3]); b.xSw.push(b.xSw[vo * 4], b.xSw[vo * 4 + 1], b.xSw[vo * 4 + 2], b.xSw[vo * 4 + 3]);
                         b.xCount++;
                     }
-                    for (c2 = 0; c2 + 1 < cols; c2++) { if (c2 === half) continue; var o0 = base + vIdx(last, c2), o1 = base + vIdx(last, c2 + 1), i0h = hb + c2, i1h = hb + c2 + 1; b.index.push(o0, i0h, o1, o1, i0h, i1h); }
+                    for (c2 = 0; c2 + 1 < cols; c2++) { if (c2 === half || behind(last - 1, c2)) continue; var o0 = base + vIdx(last, c2), o1 = base + vIdx(last, c2 + 1), i0h = hb + c2, i1h = hb + c2 + 1; b.index.push(o0, i0h, o1, o1, i0h, i1h); }
                     /* rev 12: an OPEN front (a coat's tail) turns its two edges in like the hem — each edge column again, moved in
                        radially by the same depth, the strip facing out of the opening (rows × 2 vertices after the hem strip) */
-                    if (gap > 0) [0, cols - 1].forEach(function (ce) {
+                    if (gap > 0 && !(HB && gap > HB.gap + 0.05)) [0, cols - 1].forEach(function (ce) {   // (behind a second coat's tail: hidden)
                         var eb = (nBase || 0) + b.xCount, the = colTheta(ce), sgn = ce === 0 ? -1 : 1, enx = sgn * Math.cos(the), enz = -sgn * Math.sin(the);
                         for (var re = 0; re < rows; re++) {
                             var ve = xb + vIdx(re, ce), rade = Math.max(0.01, radAt(re, the) - th3);
@@ -52723,7 +52768,7 @@ const ThreeRenderer = (function () {
                     }
                     part.laths.push(Gc);
                 }
-                return { RAD: RAD, rows: rows, tTop: tTop, tHem: tHem, NTH: NTH };
+                return { RAD: RAD, rows: rows, tTop: tTop, tHem: tHem, NTH: NTH, gap: gap };
             }
             /* THE SOLE (rev 7): a flat slab under each foot — the foot's footprint (t < 3 cm(q), 48 azimuths round
                its centre, the farthest skin per bin + 6 mm) extruded from the floor up to the sole line, a dark
@@ -53044,7 +53089,7 @@ const ThreeRenderer = (function () {
                     /* THE SECOND OUTER LAYER (2026-11-01): a detail of a coded layer worn under a pack / Blender coat (a blazer's welt
                        pockets, its buttons, a trench's belt, a zip under a Blender greatcoat) is left out where the coat hides that
                        layer's cloth (outerHide / coatIn, as the cloth itself is): the blazer's chest welts came through the greatcoat */
-                    var hidAt = function (x, t, mode) { if (L.name === 'outer2') return false; var ih = surfaceAt(x, t, mode); return ih >= 0 && !!((part.outerHide && part.outerHide[ih]) || (coatIn && underCoat(L, ih))); };
+                    var hidAt = function (x, t, mode) { if (L.name === 'outer2') return false; var ih = surfaceAt(x, t, mode); return ih >= 0 && !!((part.outerHide && part.outerHide[ih]) || (coatIn && underCoat(L, ih)) || (part.out2Cov && part.out2Cov.cov[weld[ih]])); };
                     // POCKETS — patch (a raised panel) or welt (a slot's lip) on the front (or the thigh's side for cargo)
                     (covered ? [] : (T.pockets || [])).forEach(function (P) {
                         [1, -1].forEach(function (sg) {
@@ -53261,6 +53306,18 @@ const ThreeRenderer = (function () {
                     CLS[ck + g] = cg;
                 }
             }
+            /* THE SECOND OUTER LAYER, coded, over pack / Blender garments: the skin it fully covers (welded) + its surface, so
+               wearUnderOuter2 can leave out what lies under it - posed, the Blender coat rides its own weights and came through */
+            /* ... and every CODED layer under it is left out of a body triangle it covers whole (`g2i`): both ride the body's
+               weights, but posed (a walk, a cast) the spine and the armpits fold and the jacket under the coat came through its back */
+            part.out2Cov = null;
+            var g2i = -1;
+            for (g = 0; g < G; g++) if (garments[g].name === 'outer2' && garments[g].S && garments[g].S.length) {
+                var c2v = new Uint8Array(RC), c2n = 0;
+                for (k = 0; k < ids.length; k += 3) if (CLS[(k / 3) * G + g] === 1) { c2v[weld[ids[k]]] = c2v[weld[ids[k + 1]]] = c2v[weld[ids[k + 2]]] = 1; c2n++; }
+                if (c2n) { part.out2Cov = { cov: c2v, S: garments[g].S, P: P }; g2i = g; }
+            }
+            try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }
             for (k = 0; k < ids.length; k += 3) {
                 var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false, tk = (k / 3) * G;
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
@@ -53301,11 +53358,11 @@ const ThreeRenderer = (function () {
                    the outer layer"): a Blender coat (an Outer pick with a mesh) hides the skin it covers (its delete_verts); every
                    coded layer under it (the top, a second top, the bottoms, the belt, the gloves' cuffs) is left out over that
                    same skin too - the shirt stood 1-2 cm off the skin and came through the coat's sleeves, shoulders and back */
-                var oHid = part.outerHide && (part.outerHide[i0] || part.outerHide[i1] || part.outerHide[i2]);
+                var oHid = part.outerHide && (part.outerHide[i0] || part.outerHide[i1] || part.outerHide[i2]), o2Full = g2i >= 0 && CLS[tk + g2i] === 1;
                 for (g = 0; g < G; g++) {
                     var Lg = garments[g];
                     // (THE SECOND OUTER LAYER, coded, is worn OVER every pack / Blender garment but a cape: never hidden by one)
-                    if (Lg.name !== 'outer2' && (oHid || (coatIn && (underCoat(Lg, i0) || underCoat(Lg, i1) || underCoat(Lg, i2))))) continue;
+                    if (Lg.name !== 'outer2' && (o2Full || oHid || (coatIn && (underCoat(Lg, i0) || underCoat(Lg, i1) || underCoat(Lg, i2))))) continue;
                     if (cls[g] === 1) emitClothTri(Lg, i0, i1, i2);
                     else if (cls[g] === 0) {
                         var FG = Lg.fr || FR0, ra0 = rec(i0, Lg.S, Lg.NS, FG, Lg.clr), ra1 = rec(i1, Lg.S, Lg.NS, FG, Lg.clr), ra2 = rec(i2, Lg.S, Lg.NS, FG, Lg.clr), lv = Lg.refine || 0;
@@ -53370,7 +53427,7 @@ const ThreeRenderer = (function () {
                 for (var w2v = 1; w2v < W2A.length; w2v += 3) if (W2A[w2v] < w2y) w2y = W2A[w2v];
                 tailHidden = TW.f((w2y - minY) / H) <= OUT.tail.hem + 0.03;
             }
-            var over2 = sOut2 ? { over: sOut2.S, overT: OUT2.hem, overLathe: tail2Field } : {};
+            var over2 = sOut2 ? { over: sOut2.S, overT: OUT2.hem, overLathe: tail2Field, hideBehind: tail2Field ? { gap: tail2Field.gap || 0, tHem: tail2Field.tHem } : null } : {};
             var tailField = (OUT && OUT.tail && sOut && !tailHidden) ? buildLathe(Object.assign({ tTop: OUT.hem + 0.006, tHem: OUT.tail.hem, ease: tailEase, flare: OUT.tail.flare, gapW: OUT.open ? openWidth(OUT.open, OUT.hem, OUT.hem) * H : 0, swing: OUT.tail.swing,
                 surface: sOut.S, flush: true, under: underSkirt, underBuf: underBufs, rigid: 1, hipsTop: true, folds: 0.45, grid: 'outer', pad: legPad }, over2), buffers[outerIdx], skirtShade(OUT.hem, OUT.tail.hem, true), LAYERS[outerIdx].base) : null;
             // rev 11: a skirt / a dress's skirt stays INSIDE the outer layer worn over it (the jacket's own surface down to its
@@ -54817,49 +54874,82 @@ const ThreeRenderer = (function () {
            duster's lapels and collar, 5 cm out) is past their reach and came through the police jacket over it. Every triangle
            of a garment under it whose three vertices all lie under the coat (the nearest of the coat's vertices that is not on an
            open edge - hem, cuff, neck - within 0.75 x its spacing to the side, 1.5 cm at least, 6 cm in or out along its outward normal;
-           or within 6 cm of it anywhere when the vertex sits on skin the coat hides: a gi's wide sleeve stands out of a leather sleeve) is left
+           or within 6 cm of it anywhere when the vertex sits on skin the coat hides: a gi's wide sleeve stands out of a leather sleeve;
+           or within 3 cm of an open edge of it - a hem, a vent, the opening - and less than 4 mm inside it: the duster under a leather
+           coat stood out through its front split and back vent; behind the edge's plane it shows through the opening) is left
+           out; when under 5% of a mesh would be left (scraps at the coat's edges) all of it is
            out of the drawn index (`w.ix0` keeps the full one): the coat hides it anyway, and none of it can show through. A part of
            it past the coat's hems / cuffs / opening stays. */
-        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035 };
+        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035, openReach: 0.03, openOut: 0.004, rest: 0.05 };
         function wearUnderOuter2(part) {
             var top = (part.wear || []).filter(function (w) { return w.layer === 'outer2' && w.mesh; })[0];
             var lows = (part.wear || []).filter(function (w) { return w !== top && w.mesh && !w.facial && w.layer !== 'cape' && (w.outer || WEAR_LAYER.cats[w.cat]); });
             lows.forEach(function (w) {   // (back to the full index first: the body or the coat may have changed since)
                 [w.mesh].concat(w.accents || []).forEach(function (mh) { if (mh._ewIx0) { mh.geometry.setIndex(new THREE.BufferAttribute(mh._ewIx0.slice(), 1)); } });
             });
-            if (!top || !lows.length) return;
-            var Hm = part.height / 1.7, C = 0.03, reach = OUTER2_HIDE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map();
+            if (!lows.length) return;
+            /* each mesh of the garment (its body + its accents: a belt, trims) is tested on its OWN vertices (pass 2: the accents
+               were cut with the body's flags - a Robin Hood tunic's belt came through the cassock as a red ring) */
+            var eachMesh = function (w, test) {
+                [w.mesh].concat(w.accents || []).forEach(function (mh) {
+                    var g = mh.geometry; if (!g.index || !g.attributes.position) return;
+                    var A = g.attributes.position.array, n = A.length / 3, nb = mh === w.mesh ? w.nb : null, cov = new Uint8Array(n), any = false;
+                    if (!nb || nb.length !== n) { try { nb = nearestBody(part, A); } catch (e) { nb = null; } }
+                    for (var v1 = 0; v1 < n; v1++) if (test(A, v1, nb)) { cov[v1] = 1; any = true; }
+                    if (!any) return;
+                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
+                    var I = mh._ewIx0, keep = [];   // every triangle with its 3 vertices covered leaves the drawn index (`_ewIx0` keeps the full one)
+                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    if (keep.length < OUTER2_HIDE.rest * I.length) keep = [];   // (what is left is only scraps at the coat's edges: a duster's hem as red teeth in a leather coat's back vent)
+                    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
+                });
+            };
+            if (!top) {
+                /* a CODED second outer (part.out2Cov, the cut build): a garment vertex sitting on skin the coat fully covers, no
+                   further off it than the coat + 3 cm, is under it (a flared hem past the coat's hem sits on uncovered skin: kept) */
+                var C2 = _ccWearBody(part) && part.out2Cov, W2 = part.weld;
+                if (!C2 || !W2) return;
+                var mrg = 0.03 * part.height / 1.7, CP = C2.P, CS = C2.S;
+                lows.forEach(function (w) {
+                    eachMesh(w, function (A, v2, nb) {
+                        var b = nb && nb[v2]; if (b == null || b < 0 || !C2.cov[W2[b]]) return false;
+                        var o = b * 3, sx = CS[o] - CP[o], sy = CS[o + 1] - CP[o + 1], sz = CS[o + 2] - CP[o + 2], vx = A[v2 * 3] - CP[o], vy = A[v2 * 3 + 1] - CP[o + 1], vz = A[v2 * 3 + 2] - CP[o + 2];
+                        var hs = Math.sqrt(sx * sx + sy * sy + sz * sz) + mrg;
+                        return vx * vx + vy * vy + vz * vz <= hs * hs;
+                    });
+                });
+                return;
+            }
+            var Hm = part.height / 1.7, C = 0.03, reach = OUTER2_HIDE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map(), oGrid = new Map(), oReach = OUTER2_HIDE.openReach * Hm, oOut = OUTER2_HIDE.openOut * Hm;
             var gk = function (x, y, z) { return ((x + 512) * 1024 + (y + 512)) * 1024 + (z + 512); };   // (a number key: ~50k vertices x 125 cells)
             var UA = top.mesh.geometry.attributes.position.array, un = UA.length / 3, USp = wearSpan(top);
             var SP = part.src.attributes.position.array, SD = part.shapeD, UN = Float32Array.from(top.mesh.geometry.attributes.normal.array), v;
             for (v = 0; v < un; v++) {   // the coat's normals, turned away from the skin it sits on
                 var o = top.nb[v] * 3, rx = UA[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = UA[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = UA[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
                 if (rx * UN[v * 3] + ry * UN[v * 3 + 1] + rz * UN[v * 3 + 2] < 0) { UN[v * 3] *= -1; UN[v * 3 + 1] *= -1; UN[v * 3 + 2] *= -1; }
-                if (USp.open[v]) continue;
-                var key = gk(Math.floor(UA[v * 3] / C), Math.floor(UA[v * 3 + 1] / C), Math.floor(UA[v * 3 + 2] / C)), l = grid.get(key); if (l) l.push(v); else grid.set(key, [v]);
+                var key = gk(Math.floor(UA[v * 3] / C), Math.floor(UA[v * 3 + 1] / C), Math.floor(UA[v * 3 + 2] / C)), gg = USp.open[v] ? oGrid : grid, l = gg.get(key); if (l) l.push(v); else gg.set(key, [v]);
             }
+            var pokesAtOpening = function (cx, cy, cz, x, y, z) {   // within 3 cm of an open edge (hem, vent, opening) of the coat AND standing out past it
+                var best = -1, bd = oReach * oReach;
+                for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
+                    var l3 = oGrid.get(gk(cx + a, cy + b, cz + c)); if (!l3) continue;
+                    for (var q = 0; q < l3.length; q++) { var u = l3[q], dx = UA[u * 3] - x, dy = UA[u * 3 + 1] - y, dz = UA[u * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = u; } }
+                }
+                return best >= 0 && (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2] > -oOut;
+            };
             var under = function (x, y, z) {
                 var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
                     var l2 = grid.get(gk(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var q = 0; q < l2.length; q++) { var u = l2[q], dx = UA[u * 3] - x, dy = UA[u * 3 + 1] - y, dz = UA[u * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = u; } }
                 }
-                if (best < 0) return 0;
+                if (best < 0) return pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 0;
                 var s = (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2], lat = Math.max(OUTER2_HIDE.lat * Hm, Math.min(0.75 * USp.sp[best], OUTER2_HIDE.latMax * Hm));
-                return bd - s * s <= lat * lat ? 2 : 1;
+                return bd - s * s <= lat * lat || pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 1;
             };
             var skin = wearMask(part, function (w) { return w === top; });   // (the skin the coat hides: a gi's wide sleeve stood 2 cm out of the leather coat's sleeve, off to its side)
             lows.forEach(function (w) {
-                var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
-                for (v = 0; v < n; v++) { var k = under(A[v * 3], A[v * 3 + 1], A[v * 3 + 2]); if (k === 2 || (k === 1 && skin && w.nb && skin[w.nb[v]])) { cov[v] = 1; any = true; } }
-                if (!any) return;
-                [w.mesh].concat(w.accents || []).forEach(function (mh) {
-                    var g = mh.geometry; if (!g.index) return;
-                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
-                    var I = mh._ewIx0, keep = [];
-                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
-                    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
-                });
+                eachMesh(w, function (A, v3, nb) { var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]); return k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]); });
             });
         }
         function wearLayers(part) {

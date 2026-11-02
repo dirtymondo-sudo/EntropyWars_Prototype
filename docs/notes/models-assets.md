@@ -1425,3 +1425,14 @@ skinned 100 % to one bone) that the creator lists like any pack piece (EW_MH_WEA
   across the crown opening stays (hidden inside the head).
 - Held props of a race look (`RACE_CREATOR_LOOK_DEFS.hold`): `_unitAttachHeld` now also reads catalogue rows with base
   `weapons` (`_R2_WEAPONS`), so the R2 revolver works as a hold.
+
+## THE BLENDER BASICS (2026-11-02, character-models-plan row 12f)
+The retired coded clothes with no pack match, built with bake-clothes.py (`--only longsleeve,henley,sweatpants,jacket,blazer,vest,cardigan,belt,tie,bowtie`):
+- COATS: `longsleeve`, `henley` (front 'seam' = a pullover, closed crew neck `COLLARS['crew']`, the henley's placket = an emblem + 3
+  buttons; hem 0.965 so it never hangs between the legs), `jacket`, `blazer`, `vest` (`sleeveless` + `armholes` (z, x): the sheet's
+  sides above the armpits cut away, chosen on the male like the loincloth's flaps), `cardigan`, `belt` (skirt mode, rise -0.035,
+  `buckle_at` = coat_buckle on the band; `keep_above` 1.0 hides no torso skin).
+- TIGHT: `sweatpants` (legs to the ankle, ease 1.1 cm), `tie` + `bowtie` (new kinds: build_tie ray-casts the front surface across
+  ±8 cm, hangs at most 25 cm/m back toward the body, a closed knot; build_bowtie = two pinched loops + a knot band; both weighted to
+  spine_03 / neck / clavicles, hide no skin, tintable).
+- Files charactercreation/wear/ewb_<key>.glb, in ASSET_MANIFEST.json. charactercreation/mpfb/mpfb_classic_fit_<g>.glb (bake-classic-fit.js) too.
