@@ -3596,6 +3596,92 @@ function normalizeWearList(list) {
   }
   return out.slice(-24);
 }
+/* THE SHELVES (2026-11-02, mondo: "Can we organize the character creator better? Like there are wings at the bottom but then there
+   are wings in equipment or another tab ... There are male and female clothes scattered all throughout, it should be separated by
+   male and female"). How the creator SHOWS the pieces; nothing here changes what a piece is (its category in EW_MH_WEAR stays the
+   one the renderer layers by + normalizeWearList's one-per-category rule), so every saved look and race look loads as before.
+   EW_WEAR_SHELVES = the creator's tabs in order: [id, label, section ('clothes' | 'accessories'), many (several worn at once)].
+   wearShelfOf(id) = the tab a pack / Blender piece shows on (null = shown elsewhere: the facial hair is under FACE).
+   wearMadeFor(id) / outerMadeFor(id) = 'male' | 'female' | 'both': the body a piece was made for, read from its pack name
+   (female / male / ladies / heroine ...) and its kind (dresses, skirts, lingerie are women's). Both lists show 'both'; a worn piece
+   always shows; any piece can be picked on any body (the MEN / WOMEN switch only chooses what the tab lists). */
+const EW_WEAR_SHELVES = [
+  ['tops', 'Tops', 'clothes'], ['bottoms', 'Bottoms', 'clothes'], ['skirts', 'Skirts', 'clothes'], ['dresses', 'Dresses', 'clothes'],
+  ['suits', 'Suits', 'clothes'], ['outer', 'Coats + capes', 'clothes'], ['shoes', 'Shoes', 'clothes'], ['underwear', 'Underwear', 'clothes', true],
+  ['gloves', 'Gloves', 'clothes'], ['belts', 'Belts + ties', 'clothes', true], ['hats', 'Hats', 'clothes'], ['glasses', 'Glasses', 'clothes'],
+  ['masks', 'Masks', 'clothes'],
+  ['wings', 'Wings', 'accessories', true], ['horns', 'Horns + antlers', 'accessories', true], ['tails', 'Tails', 'accessories', true],
+  ['nails', 'Nails', 'accessories', true], ['gear', 'Held items + gear', 'accessories', true],
+];
+// pieces whose pack category is not where a player looks for them (shown on another tab; their category is unchanged)
+const EW_WEAR_SHELF_MOVE = {
+  ewb_raggedskirt: 'skirts', ewb_valkyrie: 'skirts', ewb_kilt: 'skirts', ewb_loincloth: 'skirts',   // Blender skirts (Bottoms colour)
+  mhw_punkduck_winter_coat: 'outer',                                                               // a coat filed under Dresses
+  mhw_rehmanpolanski_viking_boots: 'shoes', mhw_rehmanpolanski_viking_pants: 'bottoms', mhw_rehmanpolanski_viking_tunic: 'tops',   // filed under Suits
+  mhw_elvs_emt_uniform_pants_female: 'bottoms', mhw_elvs_emt_uniform_pants_male: 'bottoms',
+  mhw_elvs_emt_uniform_jacket_female: 'outer', mhw_elvs_emt_uniform_jacket_male: 'outer',
+  ewb_belt: 'belts', ewb_tie: 'belts', ewb_bowtie: 'belts', ewb_suspenders: 'belts', ewb_coinbelt: 'belts',   // worn, not held
+};
+function wearShelfOf(id) {
+  const w = EW_MH_WEAR_BY_ID[id];
+  if (!w) return null;
+  if (EW_MH_FACIAL_HAIR.includes(id)) return null;
+  if (EW_WEAR_SHELF_MOVE[id]) return EW_WEAR_SHELF_MOVE[id];
+  if (w[2] === 'equipment') return 'gear';
+  if (w[2] === 'bodyparts') {
+    const s = (id + ' ' + w[1]).toLowerCase();
+    return /wing/.test(s) ? 'wings' : /horn|antler/.test(s) ? 'horns' : /tail/.test(s) ? 'tails' : /nail/.test(s) ? 'nails' : 'gear';
+  }
+  return w[2];
+}
+// read from the pack names: women's / men's by name, then by kind; the rest fit anyone
+const EW_WEAR_FOR_FEMALE = ['mhw_toigo_bodice-style_top', 'mhw_toigo_camisole_top', 'mhw_elvs_disco_top_1_butterfly', 'mhw_elvs_disco_top2',
+  'mhw_toigo_keyhole_tank_top', 'mhw_elvs_lara_tank1', 'mhw_punkduck_off-shoulder_long-sleeve_top', 'mhw_punkduck_retro_top',
+  'mhw_punkduck_spaghetti_strap_tank_top', 'ewb_bellytop', 'ewb_offshoulder',
+  'mhw_elvs_disco_pants_double_ruffles', 'mhw_elvs_disco_pants_single_ruffles', 'mhw_elvs_disco_pants_skinny', 'ewb_raggedskirt', 'ewb_valkyrie',
+  'mhw_punkduck_string_2', 'mhw_punkduck_string_4', 'mhw_punkduck_string_5', 'mhw_toigo_lace_frill_socks',
+  'mhw_toigo_ballet_flats', 'mhw_toigo_ballet_flats_with_bows', 'mhw_toigo_ballet_flats_with_flowers', 'mhw_dressupdoc_balletflat1', 'mhw_toigo_flats',
+  'mhw_elvs_flatshoe_bow1', 'mhw_elvs_flatshoe_buckle_1', 'mhw_elvs_flatshoe_gemmed1', 'mhw_elvs_flatshoe_plain1', 'mhw_elvs_flatshoe_pointy1',
+  'mhw_cortu_floppy_overknee_shoes', 'mhw_scailman_gogo_platform_boots', 'mhw_punkduck_kill_bill_shoes', 'mhw_elvs_knee_high_heel_boots1',
+  'mhw_dressupdoc_maryjane1', 'mhw_toigo_stiletto_booties', 'mhw_cortu_t-bar', 'mhw_elvs_wedge_tall_boots1', 'mhw_scailman_low-heeled_boots',
+  'mhw_elvs_charity_veil1', 'mhw_elvs_dirty_lil_maid_bonnet', 'mhw_aethelraed_unraed_cloche_hat',
+  'mhw_slayer227_spider-gwen', 'mhw_green_tomato_rei_ayanami', 'mhw_green_tomato_yoko_tsuno', 'mhw_elvs_halter_style_pantsuit1'];
+const EW_WEAR_FOR_MALE = ['mhw_culturalibre_hero_suit_1', 'mhw_culturalibre_hero_suit_2', 'mhw_culturalibre_hero_suit_3',
+  'mhw_culturalibre_hero_boots_1', 'mhw_culturalibre_hero_boots_2', 'mhw_culturalibre_hero_boots_3', 'mhw_culturalibre_hero_boots_4', 'mhw_culturalibre_hero_boots_5',
+  'mhw_culturalibre_hero_mask_1', 'mhw_culturalibre_hero_mask_2', 'mhw_culturalibre_hero_mask_3', 'mhw_culturalibre_hero_mask_4', 'mhw_culturalibre_hero_mask_5',
+  'mhw_rehmanpolanski_viking_boots', 'mhw_rehmanpolanski_viking_pants', 'mhw_rehmanpolanski_viking_tunic',
+  'mhw_toigo_suit_with_dinner_jacket', 'mhw_toigo_suit_with_jacket_and_bowtie'];
+const EW_WEAR_BOTH = ['ewb_kilt', 'ewb_loincloth', 'mhw_punkduck_winter_coat',
+  'mhw_v0rt3x_armsleeves_black_fishnet_large', 'mhw_v0rt3x_armsleeves_black_fishnet_medium', 'mhw_v0rt3x_armsleeves_black_fishnet_small',
+  'mhw_v0rt3x_armsleeves_white_fishnet_large', 'mhw_v0rt3x_armsleeves_white_fishnet_medium', 'mhw_v0rt3x_armsleeves_white_fishnet_small',
+  'mhw_marco_105_armsleeve02', 'mhw_joepal_crude_high_socks', 'mhw_joepal_crude_low_socks', 'mhw_toigo_leg_warmer_socks', 'mhw_punkduck_sport_briefs'];
+const _ewWearFor = {};
+function wearMadeFor(id) {
+  if (_ewWearFor[id]) return _ewWearFor[id];
+  const w = EW_MH_WEAR_BY_ID[id];
+  let g = 'both';
+  if (w) {
+    const s = ' ' + (id + ' ' + w[1]).toLowerCase().replace(/[_-]+/g, ' ').replace(/([a-z])(\d)/g, '$1 $2') + ' ';
+    if (EW_WEAR_BOTH.includes(id) || / hero heroine /.test(s)) g = 'both';
+    else if (EW_WEAR_FOR_FEMALE.includes(id)) g = 'female';
+    else if (EW_WEAR_FOR_MALE.includes(id)) g = 'male';
+    else if (/ (female|ladies|lady|heroine|girly|woman|women|f) /.test(s)) g = 'female';
+    else if (/ (male|men|m) /.test(s)) g = 'male';
+    else if (w[2] === 'dresses' || w[2] === 'skirts' || w[2] === 'underwear') g = 'female';
+    else if (/ (blouse|crop|tube|halter|camisole|bodice|bra|bikini|lingerie|gown|dress|skirt|qipao|swimsuit) /.test(s)) g = 'female';
+  }
+  return (_ewWearFor[id] = g);
+}
+// the Outer layer picks made on a woman (the rest of the coats, robes and uniforms fit anyone)
+const EW_OUTER_FOR_FEMALE = ['bhabit', 'bsuccubus', 'bleafdress'];
+// the Outer layer picks in kinds (a pick in none of them shows under "Other")
+const EW_OUTER_GROUPS = [
+  ['Coats + jackets', ['btrench', 'bduster', 'bpirate', 'bleather', 'blongcoat', 'bgreatcoat', 'bovercoat', 'bfrock', 'btailcoat', 'blabcoat', 'bjacket', 'bblazer', 'bvest', 'bcardigan', 'bfringe']],
+  ['Robes', ['bcassock', 'bhabit', 'bcultrobe', 'banunnaki', 'bsuccubus', 'braggedrobe']],
+  ['Uniforms', ['bpolice', 'bgeneral', 'bturnout', 'briot', 'bchef', 'bgi', 'bjersey']],
+  ['Costumes', ['bsanta', 'brobinhood', 'btabard', 'bkrampus', 'bscarecrow', 'bzombie', 'bclown', 'bleafdress']],
+];
+function outerMadeFor(id) { return EW_OUTER_FOR_FEMALE.includes(id) ? 'female' : 'both'; }
 const EW_HAIR_STYLE_IDS = EW_HAIR_STYLES.map(s => s.id);
 // key → { label, file, repeat (tiles per UV unit), rough (0..1), metal (0..1) }
 const EW_FABRICS = {
@@ -4403,6 +4489,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
+  window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
