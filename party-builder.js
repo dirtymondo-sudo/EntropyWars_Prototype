@@ -1093,6 +1093,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
               h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), femaleBody ? ccSlider('bust', 'Bust') : null, ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              /* THE BODY DETAILS (2026-11-02, mondo: female thick / thin bodies; plan row 26): MakeHuman's Weight + Muscle and body
+                 modifiers on an MPFB body (sprites.js EW_MPFB_BODY_SLIDERS) */
+              mpfb && window.EW_MPFB_BODY_SLIDERS ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'Body shape'),
+                h('div', { className: 'pb-creator-grid' }, window.EW_MPFB_BODY_SLIDERS.filter(r => r[2] !== 'female' || femaleBody).map(([k, label]) => ccSlider(k, label)))) : null,
               /* THE IDLE POSE (2026-11-01, mondo: "can we also add an option to change their idle pose in the character creator?"):
                  the standing idles already in the animation library (sprites.js EW_IDLE_POSES); Default = the body's own idle.
                  Saved in the look (appearance.idle), so EXPORT DEFAULT LOOK / bake-looks.js carry it and the board plays it. */
