@@ -3645,7 +3645,24 @@ const EW_OUTFIT_STYLES = [
 // rev 10: THE EXTRA LAYERS — a second top worn OVER the top (`outfit2`) and a second pair of bottoms worn OVER the
 // bottoms (`bottoms2`: briefs over trousers = the superhero) at a larger stand-off; 'none' = not worn. The builder's
 // ＋ ADD LAYER button sets them; each carries its own fabric / tint / print keys (EW_APPEARANCE_LAYERS top2 / bottom2).
+/* THE BLENDER SHIRTS (2026-11-02, character-models-plan.md row 12e; mondo: "a lot of collars are missing when some of these shirt
+   types should definitely have them ... i deally i want there to be a longsleeve collared shirt that is tucked in but with no tie"):
+   Top picks built as real shirts in cloud Blender (bake-clothes.py SHIRTS -> charactercreation/wear/ewb_top_<name>.glb) on the
+   MPFB bodies: a real turned-down collar, a button placket, cuffs, pockets; painted by the Top layer's fabric / colour / print.
+   A classic Meshy base wears the coded twin (three-renderer.js CC_MESH_TOP). The coded tops stay. Top layer only (not the
+   second top). `tuck` = tucked into the trousers (the trousers + belt stay over its hem). */
+const EW_BLENDER_TOPS = [
+  { id: 'bshirt',      label: 'Collared shirt (Blender)',    file: 'ewb_top_shirt' },        // long sleeves, buttoned to the collar, tucked in, no tie
+  { id: 'bshirtopen',  label: 'Open-collar shirt (Blender)', file: 'ewb_top_shirtopen' },    // the same, the top buttons undone
+  { id: 'bworkshirt',  label: 'Work shirt (Blender)',        file: 'ewb_top_workshirt' },    // open collar, two flap chest pockets, tucked in (the cowboy)
+  { id: 'bshirtloose', label: 'Untucked shirt (Blender)',    file: 'ewb_top_shirtloose' },   // long sleeves, collar, worn out over the trousers
+  { id: 'bshortshirt', label: 'Short-sleeve shirt (Blender)', file: 'ewb_top_shortshirt' },  // collar, short sleeves, untucked
+  { id: 'bpolo',       label: 'Polo (Blender)',              file: 'ewb_top_polo' },         // a knit collar + a three-button placket, short sleeves
+];
+const EW_MESH_TOPS = {};
 const EW_OUTFIT2_IDS = ['none'].concat(EW_OUTFIT_STYLES.map(o => o.id).filter(id => id !== 'none'));
+for (const c of EW_BLENDER_TOPS) { EW_OUTFIT_STYLES.push(c); EW_MESH_TOPS[c.id] = c.file; }   // (after EW_OUTFIT2_IDS: not a second-top pick)
+function getTopMeshUrl(id) { return EW_MESH_TOPS[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_TOPS[id] + '.glb' : null; }
 const EW_BOTTOM_STYLES = [
   { id: 'trousers',    label: 'Trousers' },
   { id: 'shorts',      label: 'Shorts' },
@@ -3678,7 +3695,6 @@ const EW_OUTER_STYLES = [
 ];
 // the Blender-built outer layers: style id -> its GLB in charactercreation/wear/ (an MPFB body only; three-renderer.js CC_MESH_OUTER)
 const EW_MESH_OUTERS = { btrench: 'ewb_trench' };
-function getOuterMeshUrl(id) { return EW_MESH_OUTERS[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_OUTERS[id] + '.glb' : null; }
 /* THE BLENDER CAPES (2026-11-01, docs/notes/character-models-plan.md row 12, list 4d): capes and cloaks built as real meshes
    in cloud Blender (bake-clothes.py -> charactercreation/wear/ewb_cape_<name>.glb) on the five MPFB bodies (the two classic
    MPFB bodies wear them through the reshape), worn on their OWN layer (appearance.cape) OVER everything else, so a cape goes
@@ -3740,6 +3756,27 @@ const EW_BLENDER_COATS = [
   { id: 'bleafdress', label: 'Leaf dress',       look: { color: '#7fa85a', fabric: 'canvas' } },  // fairy
 ];
 for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
+/* THE OPEN + CLOSED FRONTS (2026-11-02, mondo: "any coat or jacket etc option needs to have an open and closed option. there are
+   some great long coats that i want to use for the cowboy but they are closed when his original model his coat is open"):
+   every Outer pick with a front opening wears either front (appearance.outerFront / outer2Front: 'auto' = as the pick was made,
+   'open', 'closed'). EW_OUTER_FRONT = the front a pick was made with; a Blender pick listed in EW_OUTER_FRONT_ALT has its other
+   front baked as ewb_<name>_<front>.glb (bake-clothes.py FRONTS); a coded pick opens / closes its cut (three-renderer.js
+   _ccFront). Pullovers (the habit, the jersey, the tunics, the tabard, the clown suit, the leaf dress) have no front to open. */
+const EW_OUTER_FRONT = { jacket: 'open', blazer: 'open', vest: 'open', coat: 'open', cardigan: 'open', hoodie: 'closed', trench: 'open', parka: 'open',
+  bduster: 'closed', bpirate: 'open', bleather: 'closed', blongcoat: 'closed', bgreatcoat: 'closed', bovercoat: 'closed', bfrock: 'closed', btailcoat: 'closed', blabcoat: 'closed',
+  bcassock: 'closed', bcultrobe: 'closed', banunnaki: 'closed', bsuccubus: 'closed', braggedrobe: 'closed',
+  bpolice: 'closed', bgeneral: 'closed', bturnout: 'closed', briot: 'closed', bchef: 'closed', bgi: 'closed',
+  bsanta: 'closed', bkrampus: 'closed', bfringe: 'open', bscarecrow: 'closed', bzombie: 'open' };
+const EW_OUTER_FRONT_ALT = ['bduster', 'bpirate', 'bleather', 'blongcoat', 'bgreatcoat', 'bovercoat', 'bfrock', 'btailcoat', 'blabcoat', 'bcassock', 'bcultrobe', 'banunnaki',
+  'bsuccubus', 'braggedrobe', 'bpolice', 'bgeneral', 'bturnout', 'briot', 'bchef', 'bgi', 'bsanta', 'bkrampus', 'bfringe', 'bscarecrow', 'bzombie'];
+function outerHasFronts(id) { return !!EW_OUTER_FRONT[id] && (!EW_MESH_OUTERS[id] || EW_OUTER_FRONT_ALT.includes(id)); }
+// the front worn: the pick's own unless the layer's front key asks for the other one (and the pick has it)
+function outerFrontWorn(id, front) { const own = EW_OUTER_FRONT[id] || null; return own && outerHasFronts(id) && (front === 'open' || front === 'closed') ? front : own; }
+function getOuterMeshUrl(id, front) {
+  if (!EW_MESH_OUTERS[id]) return null;
+  const f = outerFrontWorn(id, front), alt = f && f !== EW_OUTER_FRONT[id] ? '_' + f : '';
+  return EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_OUTERS[id] + alt + '.glb';
+}
 const EW_FEET_STYLES = [
   { id: 'none',      label: 'Barefoot' },
   { id: 'sneakers',  label: 'Sneakers' },
@@ -3844,6 +3881,8 @@ const EW_APPEARANCE_ENUMS = {
   bottoms: EW_BOTTOM_STYLES.map(o => o.id),
   outer: EW_OUTER_STYLES.map(o => o.id),
   outer2: EW_OUTER_STYLES.map(o => o.id),   // 2026-11-01 THE SECOND OUTER LAYER: the same catalogue ('none' first = not worn)
+  outerFront: ['auto', 'open', 'closed'],    // 2026-11-02 THE OPEN + CLOSED FRONTS ('auto' = as the pick was made)
+  outer2Front: ['auto', 'open', 'closed'],
   feet: EW_FEET_STYLES.map(o => o.id),
   gloves: EW_GLOVE_STYLES.map(o => o.id),
   belt: EW_BELT_STYLES.map(o => o.id),
@@ -4111,7 +4150,7 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getOuterMeshUrl(a.outer2), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
+  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer, a.outerFront), getOuterMeshUrl(a.outer2, a.outer2Front), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet), getTopMeshUrl(a.outfit)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
@@ -4145,7 +4184,7 @@ if (typeof window !== 'undefined') {
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.getTopMeshUrl = getTopMeshUrl; window.EW_BLENDER_TOPS = EW_BLENDER_TOPS; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
