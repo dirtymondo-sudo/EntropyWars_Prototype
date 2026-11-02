@@ -754,6 +754,19 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
   open when another idle plays (checked: Pistol ready -> Relaxed). Every body + every caller (board, forge, exploration) gets it, it
   is part of the clip's bake. Meshy-hand note: on the CLASSIC bodies the door gun is still seated across the palm in this pose
   (the mesh-palm seat, `_gripFrameMesh`), unchanged here. Shots: /mnt/project-files/pistol-ready/.
+- **Pass 4, THE CLASSIC HANDS (2026-11-02, mondo: "Yes go ahead and fix that", the door gun lying across the palm on the classic
+  bodies)**. Two causes, both on the classic (Meshy base mesh) bodies only:
+  - `_gripHandSkin` read "along the hand" as the skin's longest spread; the classic hands are modelled open with the fingers
+    spread, as wide as they are long, so it took a diagonal 44 deg off and the gun sat across the palm. Now, when that axis is more
+    than 30 deg off the forearm's way into the hand (bind space), the hand runs along the forearm. The cast's hands (13-16 deg off)
+    keep their skin read: Belle / the Player unchanged (checked side by side).
+  - The retarget matches each arm bone's direction, never its roll, and the classic bodies' palms are turned ~68 deg from the
+    library mannequin's, so every UAL clip played them rolled (Pistol ready: palm up under the gun). `def.palmTwist` (sprites.js
+    EW_CHARACTER_BASES only) makes `_libRetargetSetup` call `_libPalmTwist`: the palm read off the skin is rolled onto the
+    library's rest palm (`_libEnsureSrc` src.palm, from UAL's finger bones) by turning the forearm AND the hand about their length
+    (no twist at the wrist). MAL1 (Meshy-named, no finger bones) has no palm data, so the default Wide stance idle is unchanged.
+    MPFB bodies + every race model untouched. Checked Pistol ready, Relaxed, Arms folded, default: shots
+    /mnt/project-files/pistol-ready/classic_body_grip_before_after.jpg.
 
 ## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
 mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
@@ -902,3 +915,64 @@ pixel = a look into the hollow body. Before / after sheets: /mnt/project-files/c
   classic fit); a tucked shirt worn with no trousers shows dark specks of its tuck below the hem; hair003's hard temple edge is its
   own texture; a little magenta at a coat cuff looking up the sleeve.
 - Then baked mondo's export as the Cowboy (male) race look on his decision-card pick (`node bake-looks.js <export>`); cowgirl unchanged.
+
+## THE RACE LOOKS, BATCH 1 (2026-11-02, character-models-plan row 20)
+mondo: "make new character models for a batch of about 15, using the character creator. Do the ones where you know all the
+necessary parts of the outfit and sliders will allow you to make it look good and accurate to the original model."
+- **Baked** (bake-looks.js on a hand-written export, the same path as the cowboy): 19 looks over 17 races, each replacing that
+  race + gender's Meshy model. men in black, politician, professor, priest (M), mad scientist (M + F), conspiracy theorist,
+  chef, gangster (MPFB heavy), telepath (M + F), vampire (F), halfdemon (M + F), superhero (M + F), ringmaster, santa clause
+  (MPFB heavy), cult leader. All on the MPFB classic bodies except the two heavy ones; existing pack / Blender / coded pieces
+  only (nothing new made). A gender without a look (priest F = the nun) keeps
+  its Meshy model. The race's own basic-attack kind, held prop and library clip overrides carry over as before.
+- **The export file** used: project files `race-looks-batch1/Entropy_Wars_Race_Looks_batch1.json` (the `entropy-wars-race-looks`
+  shape; mondo can edit any of them in the forge and EXPORT DEFAULT LOOK over it).
+- **Idles**: the long coats and robes (priest's cassock, cult robe, lab coats, conspiracy theorist's overcoat, telepath's
+  leather coat, halfdemon's overcoat) idle on Idle_11 (Upright), like mondo's cowboy: in the wide-stance idles a long coat's
+  front splits between the legs and the lining / trousers show through. The rest keep the Default idle.
+- **Choices that fixed clipping** (checked front / back / sides / armpits in Idle_11, Default, FoldArms, Talking, Spell idle):
+  a tucked Blender shirt over the pack male trousers left a skin gap at the belt in Idle_11, so the open-coat looks wear pack
+  classic jeans tinted dark + the belt instead; the short-sleeve shirt flared out under a blazer (left on the long-sleeve
+  shirt); the closed blazer showed a red line of the politician's tie at its edge (blazer OPEN); the pack tee showed through
+  the lab coat at the armpits (Blender long-sleeve tee); hair under the pack chef hat left dark patches at the nape (chef is
+  bald under the hat); the white tie under the ringmaster's vest broke up (bow tie kept).
+- **Known, not fixed**: small shirt specks at blazer shoulders and a dark speck or two at a lab coat's shoulder with folded
+  arms; long coats still split in the wide-stance battle clips (walk / hit / cast are the race's own animation, only the
+  idle is picked); long hair cut with a jagged edge where it meets bare shoulders (telepath F, superhero F, halfdemon F); the
+  halfdemon's minotaur horns are wider than the Meshy horns (the closest pack horns; the Toriel horns render invisible).
+- **Skipped**: popstar (no clean white top or white heels), luchador (the mask + singlet don't match his prints), the nun
+  (needs the Meshy cross pendant, 4a #28), wizard M + F (no hooded robe; her frock coat + mini skirt), demon princess (corset
+  + slit gown), and every creature race (plan row 18).
+- Side-by-sides (Meshy row on top, the look below) + the 5-pose clipping sheets: project files `race-looks-batch1/`.
+
+## THE TUCK + THE BELT HEIGHT (2026-11-02, character-models-plan row 12j)
+mondo (on the baked Cowboy, row 12i): "his shirt still doesnt tuck all the way into these jeans and his belt is too low on his
+waist. Anyway we can add a height slider to the belt so it fits with many different pants?" Runtime only (three-renderer.js), no
+GLB rebake, no new art. Before / after sheets (front, side, back; the Cowboy with his coat + close waist views without it):
+/mnt/project-files/cowboy-tuck-belt/.
+- Why the shirt showed: a Blender tucked shirt is baked with a crumpled tuck band that sits just inside the SKIN at the hips, while a
+  pack's jeans stand 1-5 cm off the body with a waistband higher than the shirt's tuck line; the band came out between the jeans'
+  top and the skin (front, sides) and, with the chest bones it was weighted to, out through the back of the jeans when posed.
+- THE TUCK (wearTuckIn, after wearBeltLift, before the layering pass; `TUCK`): a tucked top (`w.tuck` in buildWear: the GLB's
+  `ex.tuck` from bake-clothes.py, or a pack id with `tucked`, not `untucked`) under trousers / a skirt (`TUCK.cats`, higher z) finds the trousers' waistband
+  top yT per angle (`waistband()`, 36 bins) and lays its band inside: the hem is stretched down to yT - `depth` (7 cm); from
+  yT + `lift` down to yT + `flat` it fades onto the smooth skin girth (+ `off`), below the waistband it is clamped inside the
+  trousers' INNER girth (`girthGrid`, minus `inGap`) and the belt's (minus 2 inGap + WEAR_LAYER.gap), never deeper than the skin
+  near the top (the waistband dips between its loops), under the skin (- `onSkin`) only `deep` (3.5 cm) down where the trousers
+  hide it. Its normals turn outward (the crumple's shading is gone), and inside the waistband it takes the skin's own bone
+  weights (nearSet, 2 cm) so an idle that bends the back no longer swings it out through the jeans. `t.tuckW` marks the band:
+  the layering pass folds it only under the OTHER garments (a coat), not along the trousers' / belt's edge normals (that dragged
+  it out in shards), and wearUnderCover no longer lets the trousers / belt eat the shirt just inside the waistband (above yT - `keep` only the
+  other garments, a coat, still hide it: skipping the cover there outright let the sleeves show through the coat). A sleeve is never
+  tucked (a vertex whose nearest skin is arm, part.arm > 0.3: the hanging elbow is within reach of the waistband at the back).
+- THE BELT HEIGHT: appearance.beltHeight (-1..1, sprites.js EW_APPEARANCE_LIMITS; random looks 0), creator CLOTHES > Belt row >
+  "Belt height" slider (party-builder.js, shown when a belt is worn). wearBeltLift (`BELT_LIFT`, first step of wearLayers) lifts
+  every vertex of a worn belt-layer piece by beltHeight x `range` (8 cm, x body height) and moves it in / out by the skin girth
+  difference between its old and new height (skinGirth, 36 bins), smoothed round the belt; then pushes it out so its inside
+  clears the trousers' outermost surface by `clear` (4 mm) at each angle + height; then gives it the skin's bone weights where it
+  now lies (faded in over the first quarter of the slider; restored when back at 0). Over a skirt / no trousers it still follows
+  the body. shapeKey carries it so the slider rebuilds live.
+- The Cowboy (RACE_CREATOR_LOOKS.cowboy.male) wears beltHeight 0.7: the belt sits in the jeans' loops just under the waistband
+  top (0.55 still showed waistband above, at 0.6-0.7 without the trousers push the jeans came out through it at the back).
+- Known: the pack jeans' own waistband shows a small crumple at the right hip at 0.7 (its geometry), the shirt specks at the coat
+  sleeve backs / shoulder tops are the row 12f known issue.

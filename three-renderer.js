@@ -14090,10 +14090,15 @@ const ThreeRenderer = (function () {
     function _gripHandSkin(m, bone) {
         var key = '_ewGripSkin_' + bone.name, ud = m.userData || (m.userData = {});
         if (ud[key] !== undefined) return ud[key];
-        var pts = [];
+        var pts = [], fore = null;
         m.traverse(function (o) {
             if (!o.isSkinnedMesh || !o.skeleton || !o.geometry) return;
             var bi = o.skeleton.bones.indexOf(bone); if (bi < 0) return;
+            var pi = bone.parent ? o.skeleton.bones.indexOf(bone.parent) : -1;
+            if (!fore && pi >= 0) {   // the forearm's way into the hand, in the hand's bind space (THE CLASSIC HANDS)
+                var fp = new THREE.Vector3().applyMatrix4(new THREE.Matrix4().multiplyMatrices(o.skeleton.boneInverses[bi], new THREE.Matrix4().copy(o.skeleton.boneInverses[pi]).invert()));
+                if (fp.lengthSq() > 1e-12) fore = fp.negate().normalize();
+            }
             var g = o.geometry, pa = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
             if (!pa || !si || !sw) return;
             var M = new THREE.Matrix4().multiplyMatrices(o.skeleton.boneInverses[bi], o.bindMatrix), v = new THREE.Vector3();
@@ -14113,6 +14118,12 @@ const ThreeRenderer = (function () {
         var axis = function (seed, not) { var v = seed.clone(); for (var it = 0; it < 60; it++) { if (not) v.addScaledVector(not, -v.dot(not)); v = mul(v); if (not) v.addScaledVector(not, -v.dot(not)); var L = v.length(); if (!(L > 1e-12)) return null; v.multiplyScalar(1 / L); } return v; };
         var f = axis(c.clone().normalize().add(new THREE.Vector3(0.1, 0.2, 0.3)).normalize(), null); if (!f) { ud[key] = null; return null; }
         if (f.dot(c) < 0) f.negate();   // away from the wrist (the bone's origin)
+        /* THE CLASSIC HANDS (2026-11-02, mondo: fix the door gun lying across the palm on the classic bodies): the creator's
+           classic (Meshy base mesh) hands are modelled open with the fingers spread, as wide as they are long, so the longest
+           spread came out as a diagonal 44 deg off the hand and the gun sat across the palm. When the skin's axis is more than
+           30 deg off the forearm's way into the hand, the hand runs along the forearm (the bind pose holds the wrist straight);
+           the cast's hands (13-16 deg off) keep their skin read. */
+        if (fore && f.dot(fore) < Math.cos(30 * Math.PI / 180)) f = fore.clone();
         var t = axis(new THREE.Vector3(f.y, -f.x, f.z * 0.5 + 0.3).normalize(), f); if (!t) { ud[key] = null; return null; }
         var proj = function (p, a) { return p.dot(a); };
         var fMin = Infinity, fMax = -Infinity; pts.forEach(function (p) { var q = proj(p, f); if (q < fMin) fMin = q; if (q > fMax) fMax = q; });
@@ -16094,10 +16105,21 @@ const ThreeRenderer = (function () {
             rest[name] = { wq: [q.x, q.y, q.z, q.w], wp: [p.x, p.y, p.z] };
         }
         if (!bones.pelvis) throw new Error('animation library rig has no pelvis');
+        /* THE CLASSIC HANDS: each hand's palm normal at the library's rest (world), from its finger bones (UAL: index/pinky/
+           middle _01 _l/_r) — _libRetargetSetup turns a fingerless rig's palms to match (def.palmTwist). A library without
+           finger bones (the Meshy-named MAL1) has none. */
+        var palm = {};
+        ['r', 'l'].forEach(function (sd) {
+            var gp = function (nm) { var o = root.getObjectByName(nm); return o ? new THREE.Vector3().setFromMatrixPosition(o.matrixWorld) : null; };
+            var i1 = gp('index_01_' + sd), p1 = gp('pinky_01_' + sd), m1 = gp('middle_01_' + sd), h = bones['hand_' + sd] ? new THREE.Vector3().setFromMatrixPosition(bones['hand_' + sd].matrixWorld) : null;
+            if (!i1 || !p1 || !m1 || !h) return;
+            var fd = m1.sub(h).normalize(), ts = i1.sub(p1).normalize();
+            palm[sd] = (sd === 'r' ? new THREE.Vector3().crossVectors(ts, fd) : new THREE.Vector3().crossVectors(fd, ts)).normalize().toArray();
+        });
         var clipsByName = {};
         (libEntry.clips || []).forEach(function (c) { clipsByName[c.name] = c; });
         libEntry._libSrc = {
-            root: root, bones: bones, rest: rest, clipsByName: clipsByName,
+            root: root, bones: bones, rest: rest, clipsByName: clipsByName, palm: palm,
             mixer: new THREE.AnimationMixer(root)
         };
         return libEntry._libSrc;
@@ -16106,7 +16128,7 @@ const ThreeRenderer = (function () {
     /* Calibration + constant offsets for one target character. In the default
        keep-own-pose mode only weight-1 bones (arms) are pulled onto the
        library's rest directions; standardPose forces every bone. */
-    function _libRetargetSetup(src, modelEntry, standardPose) {
+    function _libRetargetSetup(src, modelEntry, standardPose, palmTwist) {
         var tgt = _libStructTree(modelEntry.root);
         tgt.evalWorld();
         var pairs = [];
@@ -16133,6 +16155,7 @@ const ThreeRenderer = (function () {
             pr.tn.q = _lqNorm(p ? _lqMul(_lqInv(p.wq), newWq) : newWq);
         });
         tgt.evalWorld();
+        if (palmTwist) _libPalmTwist(src, modelEntry, tgt);   // THE CLASSIC HANDS
         // 2. constant world-orientation offsets
         pairs.forEach(function (pr) {
             pr.roff = _lqMul(_lqInv(src.rest[pr.s].wq), pr.tn.wq);
@@ -16216,6 +16239,39 @@ const ThreeRenderer = (function () {
         return out;
     }
 
+    /* THE CLASSIC HANDS (2026-11-02, mondo: fix the door gun lying across the palm on the classic bodies): the calibration
+       above matches each arm bone's DIRECTION to the library's rest, never its roll. The creator's classic bodies (the Meshy
+       base meshes, def.palmTwist) are modelled with the palms turned another way than the library's mannequin, so every clip
+       played their hands rolled (Pistol ready: palm up under the gun instead of thumb up round it). Their hands have no
+       finger bones, so the palm is read off the skin (_gripHandSkin: along the hand, across it to the thumb side, their
+       cross = out of the palm); the forearm and the hand are both rolled about their own length to turn that palm onto the
+       library's (the hand keeps its turn on the forearm: no twist at the wrist). Rigs with finger bones (MPFB) and every
+       other rig are untouched. */
+    function _libPalmTwist(src, modelEntry, tgt) {
+        if (!src.palm) return;
+        ['r', 'l'].forEach(function (sd) {
+            var O = sd === 'r' ? 'Right' : 'Left', hand = tgt.byName[O + 'Hand'], fore = tgt.byName[O + 'ForeArm'], sn = src.palm[sd];
+            var bone = modelEntry.root.getObjectByName(O + 'Hand');
+            if (!hand || !fore || !sn || !bone || fore.parent < 0 || hand.parent !== fore.idx) return;
+            var H = _gripHandSkin(modelEntry.root, bone); if (!H) return;
+            var nb = sd === 'r' ? new THREE.Vector3().crossVectors(H.t, H.f) : new THREE.Vector3().crossVectors(H.f, H.t);
+            var ax = _lvNorm(_lqRotV(hand.wq, H.f.toArray())), nt = _lqRotV(hand.wq, nb.normalize().toArray());
+            var flat = function (v) { var d = v[0] * ax[0] + v[1] * ax[1] + v[2] * ax[2]; return [v[0] - ax[0] * d, v[1] - ax[1] * d, v[2] - ax[2] * d]; };
+            var a = flat(nt), b = flat(sn);
+            if (Math.hypot(a[0], a[1], a[2]) < 1e-3 || Math.hypot(b[0], b[1], b[2]) < 1e-3) return;
+            a = _lvNorm(a); b = _lvNorm(b);
+            var cr = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+            var ang = Math.atan2(cr[0] * ax[0] + cr[1] * ax[1] + cr[2] * ax[2], a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+            if (Math.abs(ang) < 0.05) return;
+            var h = ang / 2, sh = Math.sin(h), rq = [ax[0] * sh, ax[1] * sh, ax[2] * sh, Math.cos(h)];
+            var handWq = _lqMul(rq, hand.wq);
+            fore.q = _lqNorm(_lqMul(_lqInv(tgt.nodes[fore.parent].wq), _lqMul(rq, fore.wq)));
+            tgt.evalWorld();
+            hand.q = _lqNorm(_lqMul(_lqInv(fore.wq), handWq));
+            tgt.evalWorld();
+        });
+    }
+
     /* Bake every clip named by def.libClips onto the target skeleton.
        libEntries is an array of settled _unitGlbCache entries, one per url in
        def.animLib; slot values pick theirs by `lib` index. Returns
@@ -16236,7 +16292,7 @@ const ThreeRenderer = (function () {
             var le = libEntries[idx];
             if (!le || !le.root) return null;
             var src = _libEnsureSrc(le);
-            return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose) });
+            return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose, !!(def && def.palmTwist)) });
         }
         var pv = new THREE.Vector3(), qv = new THREE.Quaternion(), sv = new THREE.Vector3();
         var bakedByClip = {}, out = {}, missing = [];
@@ -51208,6 +51264,8 @@ const ThreeRenderer = (function () {
                 if (headBone < 0) headBone = mesh.skeleton.bones.findIndex(function (b) { return /neck/i.test(b.name); });
                 if (headBone < 0) headBone = 0;
             }
+            var jig = null;   // THE JIGGLE (2026-11-02): an MPFB body's chest + glute spring bones, added to its skeleton BEFORE the shells bind to it
+            if (stockSkin) { try { jig = jigExtend(mesh); } catch (e) { jig = null; console.warn('[ThreeRenderer] jiggle bones failed', e); } }
             /* THE CLOTH FRAME (rev 5): the garments' UVs are cut like cloth, not
                read from the base's atlas — the Meshy unwrap scatters the body over
                hundreds of small islands, each with its own orientation, so a
@@ -51295,7 +51353,7 @@ const ThreeRenderer = (function () {
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 })),
                 outer2: shell('outer2', material({ roughness: 0.9 }))   // THE SECOND OUTER LAYER (2026-11-01)
             };
-            var part = { faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
+            var part = { jig: jig, faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
             // the shoulder's vertices (the strap paths and the skin-depth reads search these)
@@ -51766,6 +51824,7 @@ const ThreeRenderer = (function () {
             var shD = null;
             for (i = 0; i < N * 3; i++) if (P[i] !== pos[i]) { shD = new Float32Array(N * 3); for (j = 0; j < N * 3; j++) shD[j] = P[j] - pos[j]; break; }
             part.shapeD = shD;
+            part.beltH = a.beltHeight || 0;   // THE BELT HEIGHT
             wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
             try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
@@ -54657,6 +54716,187 @@ const ThreeRenderer = (function () {
             part.sway = { bones: newBones, skel: skel };
             if (_swStates) _swStates.delete(root);
         }
+        /* THE JIGGLE (2026-11-02, mondo: "similar to the capes and the hair, can we add jiggle physics to the boobs and butt? In
+           the character creator"). An MPFB body (the five MPFB bodies + the two MPFB classic ones) gets four soft spots: each
+           breast and each glute. A spot is a spring in the world (inertia, a pull back to where the skin sits, damping), so it
+           lags behind the body when the body moves (a step, a stop, a turn, a landing) and settles back at rest. It moves the
+           skin through extra bones `ewjig_<spot>_<bone>`: one child of each body bone that carries the spot's skin (the chest
+           rides Spine / Spine01 / Spine02; a glute rides Hips / Spine02 / that leg's UpLeg, so the walk still bends the skin as
+           before), each at its parent's origin with its parent's bind inverse, so at rest every vertex skins exactly as it did.
+           jigWeights moves part of a vertex's weight on those bones onto their jiggle bones, by WHERE the vertex sits (a soft
+           round fall-off round the spot, full at the front of a breast / the back of a glute, none at the body wall), and does
+           that for EVERY skinned layer on the body (the skin, the coded clothes, the pack + Blender clothes, the hair lying on
+           them), so the clothes over a spot move with the skin and nothing clips. Strength per look: appearance.jiggleChest /
+           jiggleButt (0..1, 0.5 = default, 0 = still), the creator's BODY > Jiggle sliders; a male body's chest at 35 %.
+           Cosmetic and local: each screen runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_JIGGLE = true
+           (before the model loads: no bones, the weights untouched). */
+        function jigExtend(mesh) {
+            if (typeof window !== 'undefined' && window.EW_DISABLE_JIGGLE) return null;
+            var sk = mesh.skeleton;
+            if (!sk || !sk.bones || !sk.boneInverses) return null;
+            var SPOTS = [
+                { id: 'chestL', chest: true, side: 1, src: ['Spine', 'Spine01', 'Spine02'] },
+                { id: 'chestR', chest: true, side: -1, src: ['Spine', 'Spine01', 'Spine02'] },
+                { id: 'buttL', chest: false, side: 1, src: ['Hips', 'Spine02', 'LeftUpLeg'] },
+                { id: 'buttR', chest: false, side: -1, src: ['Hips', 'Spine02', 'RightUpLeg'] }];
+            var base = sk.bones.length, nb = [], ni = [], spots = [];
+            var idx = function (nm) { return sk.bones.findIndex(function (b) { return b.name === nm; }); };
+            SPOTS.forEach(function (S) {
+                var srcs = [];
+                S.src.forEach(function (nm) {
+                    var pi = idx(nm); if (pi < 0 || !sk.boneInverses[pi]) return;
+                    var b = new THREE.Bone(); b.name = 'ewjig_' + S.id + '_' + nm;
+                    sk.bones[pi].add(b);
+                    srcs.push({ p: pi, j: base + nb.length, bone: b, parent: sk.bones[pi] });
+                    nb.push(b); ni.push(sk.boneInverses[pi].clone());
+                });
+                if (srcs.length) spots.push({ S: S, srcs: srcs, ok: false, apex: null, bl: new THREE.Vector3(), x: new THREE.Vector3(), v: new THREE.Vector3(), pa: new THREE.Vector3(), fresh: true });
+            });
+            if (!nb.length) return null;
+            mesh.bind(new THREE.Skeleton(sk.bones.concat(nb), sk.boneInverses.concat(ni)), mesh.bindMatrix);
+            var parentOf = new Int32Array(nb.length);
+            spots.forEach(function (s) { s.srcs.forEach(function (r) { parentOf[r.j - base] = r.p; }); });
+            return { base: base, end: base + nb.length, first: nb[0], parentOf: parentOf, spots: spots, dirty: true };
+        }
+        /* where each spot sits on the body as it is shaped now: the front-most skin of each breast (0.66..0.80 of the height,
+           off the arms) and the back-most of each glute (0.42..0.56) */
+        function jigFit(part) {
+            var J = part.jig, P = part.body.geometry.attributes.position.array, Q = part.Q, N = part.count, BM = part.body.bindMatrix, inv = part.body.skeleton.boneInverses;
+            J.spots.forEach(function (s) {
+                var best = -1, bv = -Infinity, S = s.S;
+                for (var i = 0; i < N; i++) {
+                    var qx = Q[i * 3] * S.side, t = Q[i * 3 + 1];
+                    if (qx < 0.012 || qx > 0.14) continue;
+                    if (S.chest ? (t < 0.66 || t > 0.8) : (t < 0.42 || t > 0.56)) continue;
+                    if (part.arm && part.arm[i] > 0.2) continue;
+                    var sc = S.chest ? P[i * 3 + 2] : -P[i * 3 + 2];
+                    if (sc > bv) { bv = sc; best = i; }
+                }
+                s.ok = best >= 0;
+                if (!s.ok) return;
+                s.apex = [P[best * 3], P[best * 3 + 1], P[best * 3 + 2]];
+                s.bl.set(s.apex[0], s.apex[1], s.apex[2]).applyMatrix4(BM).applyMatrix4(inv[s.srcs[0].p]);   // the spot in its first bone's frame
+                s.fresh = true;
+            });
+        }
+        var _jgI = new Int32Array(24), _jgW = new Float32Array(24), _jgF = new Float32Array(4);
+        function jigWeights(part) {
+            var J = part.jig; J.dirty = false;
+            jigFit(part);
+            var Hm = part.height / 1.7, spots = J.spots, ns = spots.length;
+            var meshes = [], seen = [];
+            root.traverse(function (n) { if (n.isSkinnedMesh && n.skeleton && n.skeleton.bones[J.base] === J.first && n.geometry && n.geometry.attributes.skinIndex) meshes.push(n); });
+            meshes.forEach(function (m) {
+                var g = m.geometry, siA = g.attributes.skinIndex, swA = g.attributes.skinWeight, pA = g.attributes.position;
+                if (!swA || !pA || seen.indexOf(swA) >= 0) return;   // (a garment's accents share its attributes)
+                seen.push(swA);
+                var si = siA.array, sw = swA.array, p = pA.array, n = Math.min(pA.count, siA.count), changed = false, v, k, q;
+                for (v = 0; v < n; v++) {
+                    var o = v * 4, hadJ = false;
+                    // back to the body's own weights first (the pass runs again after every rebuild: it never stacks)
+                    for (k = 0; k < 4; k++) if (si[o + k] >= J.base && si[o + k] < J.end) { si[o + k] = J.parentOf[si[o + k] - J.base]; hadJ = true; }
+                    if (hadJ) {
+                        changed = true;
+                        for (k = 0; k < 4; k++) for (q = k + 1; q < 4; q++) if (sw[o + q] > 0 && si[o + q] === si[o + k]) { sw[o + k] += sw[o + q]; sw[o + q] = 0; si[o + q] = 0; }
+                    }
+                    var x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2], fs = 0;
+                    for (q = 0; q < ns; q++) {
+                        var s = spots[q], f = 0;
+                        if (s.ok) {
+                            var sg = (s.S.chest ? 0.05 : 0.06) * Hm, D = (s.S.chest ? 0.075 : 0.07) * Hm, dx = x - s.apex[0], dy = y - s.apex[1];
+                            var r2 = (dx * dx + dy * dy) / (sg * sg);
+                            if (r2 < 6.8) {
+                                var u = s.S.chest ? (z - (s.apex[2] - D)) / D : ((s.apex[2] + D) - z) / D;
+                                u = u < 0 ? 0 : u > 1 ? 1 : u;
+                                f = Math.exp(-r2 / 2) * u * u * (3 - 2 * u) * (1 - r2 / 6.8);
+                            }
+                        }
+                        _jgF[q] = f; fs += f;
+                    }
+                    if (!(fs > 0.002)) continue;
+                    if (fs > 1) for (q = 0; q < ns; q++) _jgF[q] /= fs;
+                    var c = 0;
+                    for (k = 0; k < 4; k++) { _jgI[c] = si[o + k]; _jgW[c] = sw[o + k]; c++; }
+                    for (q = 0; q < ns; q++) {
+                        if (!(_jgF[q] > 0)) continue;
+                        var R = spots[q].srcs;
+                        for (var r = 0; r < R.length; r++) for (k = 0; k < 4; k++) {
+                            if (si[o + k] !== R[r].p || !(sw[o + k] > 0)) continue;
+                            var amt = sw[o + k] * _jgF[q];
+                            _jgW[k] -= amt; _jgI[c] = R[r].j; _jgW[c] = amt; c++;
+                        }
+                    }
+                    if (c === 4) continue;
+                    // the four heaviest, renormalised
+                    for (k = 0; k < 4; k++) {
+                        var bi = k;
+                        for (q = k + 1; q < c; q++) if (_jgW[q] > _jgW[bi]) bi = q;
+                        if (bi !== k) { var ti = _jgI[k], tw = _jgW[k]; _jgI[k] = _jgI[bi]; _jgW[k] = _jgW[bi]; _jgI[bi] = ti; _jgW[bi] = tw; }
+                    }
+                    var tot = 0;
+                    for (k = 0; k < 4; k++) { if (!(_jgW[k] > 0)) { _jgW[k] = 0; _jgI[k] = 0; } tot += _jgW[k]; }
+                    if (!(tot > 0)) continue;
+                    for (k = 0; k < 4; k++) { si[o + k] = _jgI[k]; sw[o + k] = _jgW[k] / tot; }
+                    changed = true;
+                }
+                if (changed) { siA.needsUpdate = true; swA.needsUpdate = true; }
+            });
+        }
+        var JIG_SPRING = { chest: { hz: 3.2, zeta: 0.2, max: 0.045 }, butt: { hz: 3.6, zeta: 0.25, max: 0.03 } };
+        var _jgA = null, _jgB = null, _jgC = null, _jgD = null, _jgP = null, _jgVA = null, _jgM = null, _jgM3 = null, _jgB2M = null;
+        function jigTick(part, dt, a) {
+            var J = part.jig;
+            if (!J) return;
+            if (typeof window !== 'undefined' && window.EW_DISABLE_JIGGLE) {   // (turned off live: the spots go back to rest)
+                J.spots.forEach(function (s0) { s0.fresh = true; s0.srcs.forEach(function (r0) { if (r0.bone.position.lengthSq()) { r0.bone.position.set(0, 0, 0); r0.bone.updateMatrixWorld(true); } }); });
+                return;
+            }
+            if (!(dt > 0)) return;
+            if (J.dirty) jigWeights(part);
+            if (!_jgA) { _jgA = new THREE.Vector3(); _jgB = new THREE.Vector3(); _jgC = new THREE.Vector3(); _jgD = new THREE.Vector3(); _jgP = new THREE.Vector3(); _jgVA = new THREE.Vector3(); _jgM = new THREE.Matrix4(); _jgM3 = new THREE.Matrix3(); _jgB2M = new THREE.Matrix4(); }
+            var body = part.body, chestK = a && a.jiggleChest != null ? +a.jiggleChest : 0.5, buttK = a && a.jiggleButt != null ? +a.jiggleButt : 0.5;
+            chestK *= (bustBody(part) ? 1 + 0.4 * Math.max(-1, Math.min(1, +(a && a.bust) || 0)) : 0.35) * 2;
+            buttK *= 3;   // (the glutes sit on the hips: the walk's bob reaches them weaker than the chest)
+            body.updateWorldMatrix(true, false);
+            var wsc = null, slow = dt > 0.25;   // (a stalled frame / a hidden tab: the spots start again at rest, no snap)
+            dt = Math.min(dt, 0.1);
+            for (var q = 0; q < J.spots.length; q++) {
+                var s = J.spots[q], gain = s.S.chest ? chestK : buttK, K = s.S.chest ? JIG_SPRING.chest : JIG_SPRING.butt, r;
+                if (!s.ok || !(gain > 0.001)) { for (r = 0; r < s.srcs.length; r++) if (s.srcs[r].bone.position.lengthSq()) { s.srcs[r].bone.position.set(0, 0, 0); s.srcs[r].bone.updateMatrixWorld(true); } s.fresh = true; continue; }
+                var A = s.srcs[0].parent;
+                _jgM.multiplyMatrices(body.matrixWorld, body.bindMatrixInverse).multiply(A.matrixWorld);   // the anchor bone's frame → the world (the skinning's own chain)
+                _jgA.copy(s.bl).applyMatrix4(_jgM);                                                          // where the spot's skin sits this frame
+                if (wsc == null) {   // world units per 1.7 m of this body (the full skinning chain: geometry → bone → world)
+                    _jgM3.setFromMatrix4(_jgB2M.copy(_jgM).multiply(body.skeleton.boneInverses[s.srcs[0].p]).multiply(body.bindMatrix));
+                    _jgB.set(0, 1, 0).applyMatrix3(_jgM3); wsc = _jgB.length() * part.height / 1.7;
+                }
+                if (s.fresh || slow || s.x.distanceTo(_jgA) > 0.3 * wsc) { s.x.copy(_jgA); s.pa.copy(_jgA); s.v.set(0, 0, 0); s.fresh = false; }
+                /* a damped spring towards the skin, in steps of at most 1/120 s; the skin's own path is cut into the same steps and
+                   the damping works on the speed RELATIVE to the skin, so a steady walk / run / turntable leaves no lag: only a
+                   change of speed (a step's bob, a start, a stop, a landing, a turn) swings it */
+                var w = 2 * Math.PI * K.hz, steps = Math.max(1, Math.ceil(dt * 120)), h = dt / steps;
+                _jgVA.subVectors(_jgA, s.pa).multiplyScalar(1 / dt);
+                for (var st = 0; st < steps; st++) {
+                    _jgP.copy(s.pa).lerp(_jgA, (st + 1) / steps);
+                    _jgB.subVectors(_jgP, s.x).multiplyScalar(w * w);
+                    _jgD.subVectors(s.v, _jgVA).multiplyScalar(-2 * K.zeta * w);
+                    s.v.addScaledVector(_jgB.add(_jgD), h); s.x.addScaledVector(s.v, h);
+                }
+                s.pa.copy(_jgA);
+                // what shows: the lag x the strength, mostly up / down (the body wall holds a spot front-to-back), eased to a cap
+                _jgC.subVectors(s.x, _jgA).multiplyScalar(gain);
+                _jgC.x *= 0.7; _jgC.z *= 0.7;
+                var L = _jgC.length(), cap = K.max * wsc * Math.min(1, 0.5 + gain / 2);
+                if (L > 1e-9) _jgC.multiplyScalar(cap * Math.tanh(L / cap) / L);
+                for (r = 0; r < s.srcs.length; r++) {
+                    var R = s.srcs[r];
+                    _jgM.multiplyMatrices(body.matrixWorld, body.bindMatrixInverse).multiply(R.parent.matrixWorld);
+                    _jgM3.setFromMatrix4(_jgM).invert();
+                    R.bone.position.copy(_jgC).applyMatrix3(_jgM3);   // the same world shift through each bone's own frame
+                    R.bone.updateMatrixWorld(true);
+                }
+            }
+        }
         function paintHair(part, a) {
             var tint = color(a.hairColor), tint2 = a.hairAccent === 'tint' ? color(a.hairColor2 || '#c0392b') : null;
             part.hair.forEach(function (h) {
@@ -54684,6 +54924,7 @@ const ThreeRenderer = (function () {
                 if (url) _ccLoadHair(url, function (root) {
                     if (!alive || part.hairUrl !== url || !root) return;
                     buildHair(part, root, state.last);
+                    if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the hair lying on the chest moves with it
                 });
             } else if (shapeChanged) fitHair(part);
             paintHair(part, a);
@@ -54976,6 +55217,7 @@ const ThreeRenderer = (function () {
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
+                      tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
@@ -55367,13 +55609,20 @@ const ThreeRenderer = (function () {
                 if (!ups.length) return;
                 var cast = coverGrid(ups, SKIN_COVER.cell, null); if (!cast) return;
                 var A = lo.mesh.geometry.attributes.position.array, Nn = lo.mesh.geometry.attributes.normal.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
+                /* THE TUCK (2026-11-02): the part of a lower garment just inside a waistband over it stays drawn - the waistband stands
+                   off the body, you look down into it, and the shirt cut away there left its teeth + the waist skin showing. Above that
+                   line only the trousers + belt stop hiding it: under a coat it is still hidden (the sleeves came through the coat) */
+                var wbUps = ups.filter(function (u) { return TUCK.cats[u.cat]; }), WB = wbUps.length ? waistband(part, wbUps) : null, keep = TUCK.keep * Hm;
+                var oUps = WB ? ups.filter(function (u) { return !TUCK.cats[u.cat] && u.layer !== 'belt'; }) : null, castO = oUps && oUps.length ? coverGrid(oUps, SKIN_COVER.cell, null) : null;
                 for (var v = 0; v < n; v++) {
                     if (A[v * 3 + 1] < yHip) continue;
+                    var cv = cast;
+                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) { if (!castO) continue; cv = castO; }
                     var o = lo.nb[v] * 3, nx = Nn[v * 3], ny = Nn[v * 3 + 1], nz = Nn[v * 3 + 2];
                     var rx = A[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
                     if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
                     var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) continue;
-                    if (cast(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
+                    if (cv(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
                 }
                 /* eroded by SKIN_COVER.erode rings (welded by position): seen at an angle the upper garment's edge (a lapel, the coat's
                    opening) does not reach as far as its normal line, and the shirt's teeth showed beside the lapels */
@@ -55404,10 +55653,280 @@ const ThreeRenderer = (function () {
                 });
             });
         }
+        /* THE BELT HEIGHT (2026-11-02, mondo: "his belt is too low on his waist. Anyway we can add a height slider to the belt so it
+           fits with many different pants?"): the Blender belt is baked round the male's belt line, but pack trousers sit at their
+           own rise (the classic jeans' waistband ~5 cm over it). appearance.beltHeight (-1..1, creator CLOTHES > Belt > Height)
+           lifts every vertex of a worn belt-layer piece by beltHeight x BELT_LIFT.range and moves it in / out by the change in
+           the skin's girth between the two heights at its angle round the waist (the skin's outermost radius there, hands left
+           out), so it keeps the same stand-off over the body at any height; smoothed over the belt, the buckle rides along.
+           Kept in w.lay (THE LAYERS then fold the trousers + shirt under it where it now sits). */
+        var BELT_LIFT = { range: 0.08, bins: 36, band: 0.015, smooth: 0.03, clear: 0.004 };
+        /* the skin round the waist (the shaped body), axis (cx, cz), heights lo..hi, nearer the axis than rLim: girth(bin, y) = its
+           outermost radius at that angle (+ the bins either side), within `band` of that height (-1 = no skin there) */
+        function skinGirth(part, cx, cz, lo, hi, rLim, NBn, band) {
+            var SP = part.src.attributes.position.array, SD = part.shapeD, N = part.count, bins = [], i, TAU = Math.PI * 2;
+            for (i = 0; i < NBn; i++) bins.push([]);
+            var binOf = function (dx, dz) { return Math.floor((Math.atan2(dx, dz) + Math.PI) / TAU * NBn) % NBn; };
+            for (i = 0; i < N; i++) {
+                var x = SP[i * 3] + (SD ? SD[i * 3] : 0), y = SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0), z = SP[i * 3 + 2] + (SD ? SD[i * 3 + 2] : 0);
+                if (y < lo || y > hi) continue;
+                var r = Math.hypot(x - cx, z - cz); if (r > rLim) continue;
+                bins[binOf(x - cx, z - cz)].push(y, r);
+            }
+            var girth = function (b, y) {
+                var best = -1;
+                for (var db = -1; db <= 1; db++) { var l = bins[(b + db + NBn) % NBn]; for (var q = 0; q < l.length; q += 2) if (Math.abs(l[q] - y) < band && l[q + 1] > best) best = l[q + 1]; }
+                return best;
+            };
+            girth.binOf = binOf;
+            return girth;
+        }
+        function wearBeltLift(part) {
+            var k = +part.beltH || 0, belts = (part.wear || []).filter(function (w) { return w.mesh && w.layer === 'belt'; });
+            belts.forEach(function (w) { var ga = w.mesh.geometry.attributes; if (w.si0) { ga.skinIndex.array.set(w.si0); ga.skinWeight.array.set(w.sw0); ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true; } });
+            if (Math.abs(k) < 1e-3 || !belts.length) return;
+            var Hm = part.height / 1.7, dy = k * BELT_LIFT.range * Hm, NBn = BELT_LIFT.bins, band = BELT_LIFT.band * Hm;
+            belts.forEach(function (w) {
+                var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, cx = 0, cz = 0, y0 = Infinity, y1 = -Infinity, rM = 0, v;
+                for (v = 0; v < n; v++) { cx += A[v * 3]; cz += A[v * 3 + 2]; if (A[v * 3 + 1] < y0) y0 = A[v * 3 + 1]; if (A[v * 3 + 1] > y1) y1 = A[v * 3 + 1]; }
+                cx /= n; cz /= n;
+                for (v = 0; v < n; v++) rM = Math.max(rM, Math.hypot(A[v * 3] - cx, A[v * 3 + 2] - cz));
+                var girth = skinGirth(part, cx, cz, Math.min(y0, y0 + dy) - 2 * band, Math.max(y1, y1 + dy) + 2 * band, rM + 0.04 * Hm, NBn, band), binOf = girth.binOf;   // (the hanging hands are farther out than the belt)
+                var D = new Float32Array(n * 3);
+                for (v = 0; v < n; v++) {
+                    var ax = A[v * 3] - cx, az = A[v * 3 + 2] - cz, ar = Math.hypot(ax, az), b2 = binOf(ax, az);
+                    var r0 = girth(b2, A[v * 3 + 1]), r1 = girth(b2, A[v * 3 + 1] + dy), dr = (r0 > 0 && r1 > 0 && ar > 1e-4) ? r1 - r0 : 0;
+                    D[v * 3] = ar > 1e-4 ? ax / ar * dr : 0; D[v * 3 + 1] = dy; D[v * 3 + 2] = ar > 1e-4 ? az / ar * dr : 0;
+                }
+                spaceSmooth(A, 2, BELT_LIFT.smooth * Hm).run(D);
+                /* over the trousers: raised onto a waistband, which stands further off the body than the hips it was baked on, the
+                   belt sank into it (the jeans came out through it at the back). Its inside is kept BELT_LIFT.clear outside the
+                   trousers' outermost surface at each angle + height (girthGrid), the push smoothed round the belt and topped up. */
+                var tr = (part.wear || []).filter(function (u) { return u.mesh && TUCK.cats[u.cat] && u.z < w.z; });
+                if (tr.length) {
+                    var Q = new Float32Array(A.length); for (v = 0; v < A.length; v++) Q[v] = A[v] + D[v];
+                    var q0 = Infinity, q1 = -Infinity; for (v = 1; v < Q.length; v += 3) { if (Q[v] < q0) q0 = Q[v]; if (Q[v] > q1) q1 = Q[v]; }
+                    var TG = tr.map(function (u) { var B = u.mesh.geometry.attributes.position.array; return girthGrid(B, null, B.length / 3, part.height, cx, cz, q0 - 0.01 * Hm, q1 + 0.01 * Hm, rM + 0.06 * Hm, 2); });
+                    var BI = girthGrid(Q, null, n, part.height, cx, cz, q0, q1, rM + 0.06 * Hm, true), clr = BELT_LIFT.clear * Hm;
+                    var pushOut = function () {
+                        var Pz = new Float32Array(n * 3), anyP = false;
+                        for (v = 0; v < n; v++) {
+                            var x = Q[v * 3] - cx, y = Q[v * 3 + 1], z = Q[v * 3 + 2] - cz, r = Math.hypot(x, z); if (r < 1e-4) continue;
+                            var bi = BI(x, z, y), need = 0; if (bi < 0) continue;
+                            TG.forEach(function (tg) { var ro = tg(x, z, y); if (ro > 0 && ro + clr - bi > need) need = ro + clr - bi; });
+                            if (need > 0) { Pz[v * 3] = x / r * need; Pz[v * 3 + 2] = z / r * need; anyP = true; }
+                        }
+                        return anyP ? Pz : null;
+                    };
+                    var Pz = pushOut();
+                    if (Pz) {
+                        var Pm = Float32Array.from(Pz); spaceSmooth(Q, 2, BELT_LIFT.smooth * Hm).run(Pz);
+                        for (v = 0; v < Pz.length; v++) { var pv = Math.abs(Pm[v]) > Math.abs(Pz[v]) ? Pm[v] : Pz[v]; D[v] += pv; }   // (topped up: never less than its own need)
+                    }
+                }
+                /* its bones: baked on the hips it rode the hips' weights, while the waistband it now sits on rides the waist's, so an
+                   idle that bends the back swung the jeans out through it; it takes the skin's own weights where it now lies (the
+                   skin within 2 cm of the nearest, averaged), faded in over the first quarter of the slider */
+                var gi = w.mesh.geometry.attributes.skinIndex, gw = w.mesh.geometry.attributes.skinWeight;
+                if (part.siW && gi && gw) {
+                    var SI0 = w.si0 || (w.si0 = Uint16Array.from(gi.array)), SW0 = w.sw0 || (w.sw0 = Float32Array.from(gw.array)), fk = Math.min(1, Math.abs(k) / 0.25);
+                    var PP = new Float32Array(A.length); for (v = 0; v < A.length; v++) PP[v] = A[v] + D[v];
+                    var nsB = nearSet(part, PP, 0.02 * Hm), SIW = part.siW, SWW = part.swW;
+                    for (v = 0; v < n; v++) {
+                        var acc = {}, k4, bi;
+                        for (k4 = 0; k4 < 4; k4++) { bi = SI0[v * 4 + k4]; acc[bi] = (acc[bi] || 0) + SW0[v * 4 + k4] * (1 - fk); }
+                        for (var e = nsB.s[v]; e < nsB.s[v + 1]; e++) { var sv = nsB.j[e], f2 = nsB.w[e] * fk; for (k4 = 0; k4 < 4; k4++) { bi = SIW[sv * 4 + k4]; acc[bi] = (acc[bi] || 0) + SWW[sv * 4 + k4] * f2; } }
+                        var top = Object.keys(acc).map(function (kb) { return [+kb, acc[kb]]; }).sort(function (p1, p2) { return p2[1] - p1[1]; }).slice(0, 4), tot = 0;
+                        top.forEach(function (tb) { tot += tb[1]; });
+                        for (k4 = 0; k4 < 4; k4++) { gi.array[v * 4 + k4] = top[k4] ? top[k4][0] : top[0][0]; gw.array[v * 4 + k4] = top[k4] && tot > 0 ? top[k4][1] / tot : 0; }
+                    }
+                    gi.needsUpdate = true; gw.needsUpdate = true;
+                }
+                w.lay = D;
+                for (v = 0; v < A.length; v++) A[v] += D[v];
+            });
+        }
+        /* THE TUCK (2026-11-02, mondo: "his shirt still doesnt tuck all the way into these jeans"): a tucked top (bake-clothes.py
+           _TUCK: the hem 1.2 cm under the male's belt line; a pack "tucked" shirt) worn under pack / Blender trousers or a skirt
+           whose waistband rides higher (the classic jeans) ended AT the waistband: its hem's teeth and the waist skin showed
+           between them. Round the waist (TUCK.bins angles) the trousers' top and the top's hem are read; where the hem is not
+           TUCK.depth (7 cm) inside the waistband, the top's band under (waistband + TUCK.above) is stretched down so the hem lands
+           there (linear in height, so the cloth above the waistband stays as it was). THE LAYERS then fold it in under the
+           trousers. Sleeves + hands are left out (farther from the waist than the waistband). Kept in w.lay. */
+        var TUCK = { depth: 0.07, keep: 0.06, above: 0.012, lift: 0.07, flat: 0.035, off: 0.006, clear: 0.12, clearOff: 0.004, inGap: 0.004, onSkin: 0.02, inTop: 0.004, deep: 0.035, bins: 36, reach: 0.05, cats: { bottoms: 1, skirts: 1 } };
+        /* the skin's girth round the waist as a smooth field: per 10 degrees x 1 cm cell the skin's outermost radius from (cx, cz)
+           (heights lo..hi, nearer the axis than rLim: the hands stay out), gaps filled, blurred; R(x, z, y) bilinear (-1 = none) */
+        function skinGirthGrid(part, cx, cz, lo, hi, rLim) { return girthGrid(part.src.attributes.position.array, part.shapeD, part.count, part.height, cx, cz, lo, hi, rLim); }
+        function girthGrid(SP, SD, N, height, cx, cz, lo, hi, rLim, inner, reachY) {   // (any point set: the skin, or a garment as it now lies; `inner`: its innermost radius per cell)
+            var NB = 36, C = 0.01 * height / 1.7, NY = Math.max(2, Math.ceil((hi - lo) / C) + 1), i, b, j;
+            var G = new Float32Array(NB * NY).fill(-1), TAU = Math.PI * 2;
+            for (i = 0; i < N; i++) {
+                var x = SP[i * 3] + (SD ? SD[i * 3] : 0), y = SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0), z = SP[i * 3 + 2] + (SD ? SD[i * 3 + 2] : 0);
+                if (y < lo || y > hi) continue;
+                var r = Math.hypot(x - cx, z - cz); if (r > rLim) continue;
+                b = Math.floor((Math.atan2(x - cx, z - cz) + Math.PI) / TAU * NB) % NB; j = Math.round((y - lo) / C);
+                if (G[b * NY + j] < 0 || (inner ? r < G[b * NY + j] : r > G[b * NY + j])) G[b * NY + j] = r;
+            }
+            for (b = 0; b < NB; b++) for (j = 0; j < NY; j++) if (G[b * NY + j] < 0) {   // (gaps: the nearest filled cell up / down this angle, else round the waist)
+                var got = -1;
+                for (var d = 1; d < NY && got < 0; d++) { if (j - d >= 0 && G[b * NY + j - d] >= 0) got = G[b * NY + j - d]; else if (j + d < NY && G[b * NY + j + d] >= 0) got = G[b * NY + j + d]; }
+                if (got >= 0) G[b * NY + j] = -2 - got;   // (marked: filled, not read as a source by the cells after it)
+            }
+            for (i = 0; i < G.length; i++) if (G[i] <= -2) G[i] = -2 - G[i];
+            for (j = 0; j < NY; j++) for (b = 0; b < NB; b++) if (G[b * NY + j] < 0) {
+                for (var e = 1; e < NB; e++) { var gl = G[((b - e + NB) % NB) * NY + j], gr = G[((b + e) % NB) * NY + j]; if (gl >= 0 || gr >= 0) { G[b * NY + j] = Math.max(gl, gr); break; } }
+            }
+            var S = new Float32Array(G.length);
+            for (b = 0; b < NB; b++) for (j = 0; j < NY; j++) {
+                var sum = 0, cnt = 0;
+                for (var db = -1; db <= 1; db++) for (var dj = -1; dj <= 1; dj++) { var jj = j + dj; if (jj < 0 || jj >= NY) continue; var g = G[((b + db + NB) % NB) * NY + jj]; if (g >= 0) { var wgt = (db ? 1 : 2) * (dj ? 1 : 2); sum += g * wgt; cnt += wgt; } }
+                S[b * NY + j] = cnt ? sum / cnt : -1;
+            }
+            return function (x, z, y) {
+                if (inner === 2 && (y < lo - (reachY || 0) || y > hi + (reachY || 0))) return -1;   // (a belt: only over its own height, + reachY)
+                var fb = (Math.atan2(x, z) + Math.PI) / TAU * NB - 0.5, fj = (y - lo) / C;
+                fj = fj < 0 ? 0 : fj > NY - 1 ? NY - 1 : fj;
+                var b0 = Math.floor(fb), tb = fb - b0, j0 = Math.min(NY - 2, Math.floor(fj)), tj = fj - j0;
+                b0 = ((b0 % NB) + NB) % NB; var b1 = (b0 + 1) % NB;
+                var g00 = S[b0 * NY + j0], g10 = S[b1 * NY + j0], g01 = S[b0 * NY + j0 + 1], g11 = S[b1 * NY + j0 + 1];
+                if (g00 < 0 || g10 < 0 || g01 < 0 || g11 < 0) return Math.max(g00, g10, g01, g11);
+                return (g00 * (1 - tb) + g10 * tb) * (1 - tj) + (g01 * (1 - tb) + g11 * tb) * tj;
+            };
+        }
+        var tuckBin = function (dx, dz) { return ((Math.atan2(dx, dz) + Math.PI) / (Math.PI * 2) * TUCK.bins) % TUCK.bins; };
+        var tuckAt = function (a, f) { var NBn = TUCK.bins, b0 = Math.floor(f) % NBn, b1 = (b0 + 1) % NBn, t = f - Math.floor(f); return a[b0] * (1 - t) + a[b1] * t; };
+        var tuckFill = function (a) {   // empty angles take their nearest filled neighbours (circular), then one smoothing pass
+            var NBn = TUCK.bins, any = a.some(function (x) { return x != null; }); if (!any) return null;
+            var o = a.slice();
+            for (var b = 0; b < NBn; b++) if (o[b] == null) {
+                var l = 1, r = 1; while (a[(b - l + NBn) % NBn] == null) l++; while (a[(b + r) % NBn] == null) r++;
+                o[b] = (a[(b - l + NBn) % NBn] * r + a[(b + r) % NBn] * l) / (l + r);
+            }
+            return o.map(function (x, b) { return (o[(b - 1 + NBn) % NBn] + 2 * x + o[(b + 1) % NBn]) / 4; });
+        };
+        /* the waistband of the trousers / skirts `ups` as they now lie: per angle round the waist its top (yT) + girth (rB) */
+        function waistband(part, ups) {
+            var Hm = part.height / 1.7, NBn = TUCK.bins, binF = tuckBin, v, i;
+            var yTop = -Infinity;
+            ups.forEach(function (b) { var B = b.mesh.geometry.attributes.position.array; for (v = 1; v < B.length; v += 3) if (B[v] > yTop) yTop = B[v]; });
+            var cx = 0, cz = 0, cn = 0, band = 0.08 * Hm;
+            ups.forEach(function (b) { var B = b.mesh.geometry.attributes.position.array; for (v = 0; v < B.length; v += 3) if (B[v + 1] > yTop - band) { cx += B[v]; cz += B[v + 2]; cn++; } });
+            if (!cn) return null; cx /= cn; cz /= cn;
+            var yT = [], rB = [];
+            for (i = 0; i < NBn; i++) { yT.push(null); rB.push(null); }
+            ups.forEach(function (b) {   // the waistband: the trousers' highest point + their girth there, per angle
+                var B = b.mesh.geometry.attributes.position.array;
+                for (v = 0; v < B.length; v += 3) {
+                    if (B[v + 1] < yTop - band) continue;
+                    var bb = Math.floor(binF(B[v] - cx, B[v + 2] - cz)), r = Math.hypot(B[v] - cx, B[v + 2] - cz);
+                    if (yT[bb] == null || B[v + 1] > yT[bb]) yT[bb] = B[v + 1];
+                    if (rB[bb] == null || r > rB[bb]) rB[bb] = r;
+                }
+            });
+            yT = tuckFill(yT); rB = tuckFill(rB); if (!yT || !rB) return null;
+            return { cx: cx, cz: cz, yT: yT, rB: rB, band: band };
+        }
+        function wearTuckIn(part) {
+            var W = part.wear || [], tops = W.filter(function (w) { return w.mesh && w.tuck && w.cat === 'tops'; });
+            if (!tops.length) return;
+            tops.forEach(function (t) {   // (the baked normals + weights back: the trousers may be gone)
+                var ga = t.mesh.geometry.attributes;
+                if (t.n0) { ga.normal.array.set(t.n0); ga.normal.needsUpdate = true; }
+                if (t.si0) { ga.skinIndex.array.set(t.si0); ga.skinWeight.array.set(t.sw0); ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true; }
+            });
+            var bots = W.filter(function (w) { return w.mesh && TUCK.cats[w.cat]; }); if (!bots.length) return;
+            var Hm = part.height / 1.7, binF = tuckBin, at = tuckAt, fill = tuckFill, NBn = TUCK.bins, i, v;
+            tops.forEach(function (t) {
+                var ups = bots.filter(function (b) { return b.z > t.z; }); if (!ups.length) return;
+                var WB = waistband(part, ups); if (!WB) return;
+                var cx = WB.cx, cz = WB.cz, yT = WB.yT, rB = WB.rB, band = WB.band;
+                var A = t.mesh.geometry.attributes.position.array, n = A.length / 3, reach = TUCK.reach * Hm, yH = [];
+                for (i = 0; i < NBn; i++) yH.push(null);
+                var ARM = part.arm, NB = t.nb;   // (a sleeve is never tucked: a hanging elbow sits within reach of the waistband at the back, and was laid onto the torso through the coat)
+                var inWaist = function (v) { if (ARM && NB && ARM[NB[v]] > 0.3) return -1; var f = binF(A[v * 3] - cx, A[v * 3 + 2] - cz); return Math.hypot(A[v * 3] - cx, A[v * 3 + 2] - cz) < at(rB, f) + reach && A[v * 3 + 1] < at(yT, f) + 3 * band ? f : -1; };
+                for (v = 0; v < n; v++) { var f0 = inWaist(v); if (f0 < 0) continue; var b0 = Math.floor(f0); if (yH[b0] == null || A[v * 3 + 1] < yH[b0]) yH[b0] = A[v * 3 + 1]; }
+                yH = fill(yH); if (!yH) return;
+                var D = new Float32Array(n * 3), wv = new Float32Array(n), cl = new Uint8Array(n), yLo = Infinity, yHi = -Infinity, rHi = 0, any = false;
+                for (v = 0; v < n; v++) {
+                    var f = inWaist(v); if (f < 0) continue;
+                    var tT = at(yT, f), y = A[v * 3 + 1], wq = (tT + TUCK.lift * Hm - y) / ((TUCK.lift - TUCK.flat) * Hm);
+                    if (y < tT + TUCK.clear * Hm) { cl[v] = 1; yLo = Math.min(yLo, y); yHi = Math.max(yHi, y); rHi = Math.max(rHi, at(rB, f)); }   // (the blousing over it: kept off the skin, see below)
+                    if (wq <= 0) continue;
+                    wv[v] = wq > 1 ? 1 : wq * wq * (3 - 2 * wq); any = true;
+                    var target = tT - TUCK.depth * Hm, h = at(yH, f);
+                    if (h > target) {   // the stretch: the hem down to `depth` inside the waistband
+                        var yS = Math.max(tT + TUCK.above * Hm, h + 0.02 * Hm);
+                        if (y < yS) D[v * 3 + 1] = Math.min(0, yS - (yS - y) * (yS - target) / (yS - h) - y);
+                    }
+                    yLo = Math.min(yLo, y + D[v * 3 + 1]); yHi = Math.max(yHi, y); rHi = Math.max(rHi, at(rB, f));
+                }
+                if (!any) return;
+                /* the band laid round the skin: the tucked band was baked hugging the skin's own outline (3.5 mm off it), a crumple
+                   of folded rows (shards) that on the MPFB classic bodies sank INTO the skin, so the waist skin and the shards showed
+                   between the blousing and the waistband. Every vertex of it now sits TUCK.off outside the skin's smooth girth at its
+                   own angle + height (skinGirthGrid), blended out over the blousing above the waistband; THE LAYERS then fold it in
+                   under the trousers. A crumple laid on one smooth surface shows as cloth. */
+                var RG = skinGirthGrid(part, cx, cz, yLo - 0.03 * Hm, yHi + 0.03 * Hm, rHi + 0.03 * Hm), off = TUCK.off * Hm, inGap = TUCK.inGap * Hm, onSkin = TUCK.onSkin * Hm;
+                /* inside the trousers it also stays TUCK.inGap under them (tight jeans at the small of the back sit nearer the skin than
+                   `off`, and the band stood out through them where their sparse vertices were too far to the side for THE LAYERS) */
+                var JG = ups.map(function (u) { var B = u.mesh.geometry.attributes.position.array; return { g: girthGrid(B, null, B.length / 3, part.height, cx, cz, yLo - 0.03 * Hm, yHi + 0.03 * Hm, rHi + 0.03 * Hm, true), gap: inGap }; });
+                W.forEach(function (bw) {   // (a belt over them: THE LAYERS fold the trousers in under it, so the band goes that much further in there)
+                    if (!bw.mesh || bw.layer !== 'belt') return;
+                    var B = bw.mesh.geometry.attributes.position.array, b0 = Infinity, b1 = -Infinity;
+                    for (var q = 1; q < B.length; q += 3) { if (B[q] < b0) b0 = B[q]; if (B[q] > b1) b1 = B[q]; }
+                    JG.push({ g: girthGrid(B, null, B.length / 3, part.height, cx, cz, b0 - 0.005 * Hm, b1 + 0.005 * Hm, rHi + 0.06 * Hm, 2, (WEAR_LAYER.smooth + 0.005) * Hm), gap: inGap * 2 + WEAR_LAYER.gap * Hm });   // (+ the smoothing THE LAYERS spread that fold over, above + below it)
+                });
+                var NA = t.mesh.geometry.attributes.normal, N0 = t.n0 || (t.n0 = Float32Array.from(NA.array)), NN = NA.array;
+                NN.set(N0);
+                for (v = 0; v < n; v++) {
+                    if (!wv[v]) {   // the blousing just over the waistband: only lifted where the skin came through it (a speck at the small of the back)
+                        if (!cl[v]) continue;
+                        var xc = A[v * 3] - cx, zc = A[v * 3 + 2] - cz, rc = Math.hypot(xc, zc), rsc = rc > 1e-4 ? RG(xc, zc, A[v * 3 + 1]) : -1;
+                        if (rsc > 0 && rc < rsc + TUCK.clearOff * Hm) { var kc = (rsc + TUCK.clearOff * Hm - rc) / rc; D[v * 3] += xc * kc; D[v * 3 + 2] += zc * kc; }
+                        continue;
+                    }
+                    var x = A[v * 3] - cx, y2 = A[v * 3 + 1] + D[v * 3 + 1], z = A[v * 3 + 2] - cz, r = Math.hypot(x, z); if (r < 1e-4) continue;
+                    var rs = RG(x, z, y2); if (rs < 0) continue;
+                    var rt = rs + off;
+                    var below = at(yT, binF(x, z)) - y2, inside = below > TUCK.inTop * Hm, floor = below > TUCK.deep * Hm ? rs - onSkin : rs + TUCK.clearOff * Hm;
+                    if (inside) JG.forEach(function (jg) { var rj = jg.g(x, z, y2); if (rj > 0 && rj - jg.gap < rt) rt = Math.max(floor, rj - jg.gap); });   // (deep in, under the skin if need be: the trousers hide it; near the top never - the waistband dips between its loops)
+                    var rn = r + (rt - r) * wv[v]; if (!inside && rn < rs + TUCK.clearOff * Hm) rn = rs + TUCK.clearOff * Hm;   // (over the waistband never under the skin)
+                    var k = (rn - r) / r; D[v * 3] += x * k; D[v * 3 + 2] += z * k;
+                    /* its shading: the band's own normals were the crumple's; laid on the smooth girth it takes that surface's (outward) */
+                    var nx = NN[v * 3] * (1 - wv[v]) + x / r * wv[v], ny = NN[v * 3 + 1] * (1 - wv[v]), nz = NN[v * 3 + 2] * (1 - wv[v]) + z / r * wv[v], nl = Math.hypot(nx, ny, nz) || 1;
+                    NN[v * 3] = nx / nl; NN[v * 3 + 1] = ny / nl; NN[v * 3 + 2] = nz / nl;
+                }
+                NA.needsUpdate = true;
+                t.tuckW = wv;
+                /* its bones: the band rode the chest's (the shirt's own weights) while the trousers + skin under it ride the hips, so a
+                   hunched idle swung it out through the back of the jeans; inside the waistband it takes the skin's own weights (the
+                   skin within 2 cm, averaged), blended in with wv */
+                var gi = t.mesh.geometry.attributes.skinIndex, gw = t.mesh.geometry.attributes.skinWeight;
+                if (part.siW && gi && gw) {
+                    var SI0 = t.si0 || (t.si0 = Uint16Array.from(gi.array)), SW0 = t.sw0 || (t.sw0 = Float32Array.from(gw.array));
+                    var ids = [], PP = [];
+                    for (v = 0; v < n; v++) if (wv[v] > 0) { ids.push(v); PP.push(A[v * 3] + D[v * 3], A[v * 3 + 1] + D[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2]); }
+                    var nsT = nearSet(part, Float32Array.from(PP), 0.02 * Hm), SIW = part.siW, SWW = part.swW;
+                    ids.forEach(function (vv, q) {
+                        var acc = {}, k4, bi;
+                        for (k4 = 0; k4 < 4; k4++) { bi = SI0[vv * 4 + k4]; acc[bi] = (acc[bi] || 0) + SW0[vv * 4 + k4] * (1 - wv[vv]); }
+                        for (var e = nsT.s[q]; e < nsT.s[q + 1]; e++) { var sv = nsT.j[e], f2 = nsT.w[e] * wv[vv]; for (k4 = 0; k4 < 4; k4++) { bi = SIW[sv * 4 + k4]; acc[bi] = (acc[bi] || 0) + SWW[sv * 4 + k4] * f2; } }
+                        var top = Object.keys(acc).map(function (kb) { return [+kb, acc[kb]]; }).sort(function (p1, p2) { return p2[1] - p1[1]; }).slice(0, 4), tot = 0;
+                        top.forEach(function (tb) { tot += tb[1]; });
+                        for (k4 = 0; k4 < 4; k4++) { gi.array[vv * 4 + k4] = top[k4] ? top[k4][0] : top[0][0]; gw.array[vv * 4 + k4] = top[k4] && tot > 0 ? top[k4][1] / tot : 0; }
+                    });
+                    gi.needsUpdate = true; gw.needsUpdate = true;
+                }
+                if (t.lay) for (v = 0; v < D.length; v++) t.lay[v] += D[v]; else t.lay = D;
+                for (v = 0; v < A.length; v++) A[v] += D[v];
+            });
+        }
         function wearLayers(part) {
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
-            (part.wear || []).forEach(function (w) { w.lay = null; });
+            (part.wear || []).forEach(function (w) { w.lay = null; w.tuckW = null; });
             wearFollow(part);
+            try { wearBeltLift(part); } catch (e) { console.warn('[ThreeRenderer] belt height failed', e); }   // THE BELT HEIGHT
+            try { wearTuckIn(part); } catch (e) { console.warn('[ThreeRenderer] tuck failed', e); }   // THE TUCK
             if (L.length < 2) return;
             var Hm = part.height / 1.7, C = 0.02, gap = WEAR_LAYER.gap * Hm, capeGap = WEAR_LAYER.capeGap * Hm, latW = WEAR_LAYER.lat * Hm, reach = WEAR_LAYER.reach * Hm, rc = Math.ceil(reach / C);
             var SP = part.src.attributes.position.array, SD = part.shapeD;
@@ -55427,7 +55946,9 @@ const ThreeRenderer = (function () {
                 if (lo.layer === 'cape') return;   // (a cape is only ever the one over: its hem swings on its own chains)
                 var ups = L.filter(function (u) { return u !== lo && (u.layer === 'cape' || zOf(u) > zOf(lo)); });   // (a cape is over everything else whatever its z: the police coat stood through the hooded cape)
                 if (!ups.length) return;
-                var A = lo.mesh.geometry.attributes.position.array, n = A.length / 3, grid = new Map(), UV = [];
+                var A = lo.mesh.geometry.attributes.position.array, n = A.length / 3;
+                var mkNeed = function (ups) {
+                var grid = new Map(), UV = [];
                 ups.forEach(function (u) {
                     var UA = u.mesh.geometry.attributes.position.array, un = UA.length / 3;
                     var USp = wearSpan(u);
@@ -55448,12 +55969,19 @@ const ThreeRenderer = (function () {
                     if (s <= -g) return 0;
                     var t = s + g; out[0] = -N2[v * 3] * t; out[1] = -N2[v * 3 + 1] * t; out[2] = -N2[v * 3 + 2] * t; return t;
                 };
+                return need;
+                };
+                /* THE TUCK: the tucked band (lo.tuckW) is already laid inside the trousers + belt by wearTuckIn; pulled again along their
+                   edges' normals (the belt's / waistband's top edge faces up) it was dragged out through them in shards. It folds in under
+                   the other garments only (a coat). */
+                var need = mkNeed(ups), TW = lo.tuckW, needT = TW ? mkNeed(ups.filter(function (u) { return !(TUCK.cats[u.cat] || u.layer === 'belt'); })) : null;
+                var needV = function (v, x, y, z, out) { return (TW && TW[v] > 0.5 ? needT : need)(x, y, z, out); };
                 var D = new Float32Array(n * 3), t3 = [0, 0, 0], any = false, v;
-                for (v = 0; v < n; v++) { if (need(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], t3) > 0) { any = true; D[v * 3] = t3[0]; D[v * 3 + 1] = t3[1]; D[v * 3 + 2] = t3[2]; } }
+                for (v = 0; v < n; v++) { if (needV(v, A[v * 3], A[v * 3 + 1], A[v * 3 + 2], t3) > 0) { any = true; D[v * 3] = t3[0]; D[v * 3 + 1] = t3[1]; D[v * 3 + 2] = t3[2]; } }
                 if (!any) return;
                 spaceSmooth(A, 2, WEAR_LAYER.smooth * Hm).run(D);
-                for (v = 0; v < n; v++) { var x = A[v * 3] + D[v * 3], y = A[v * 3 + 1] + D[v * 3 + 1], z = A[v * 3 + 2] + D[v * 3 + 2]; need(x, y, z, t3); D[v * 3] += t3[0]; D[v * 3 + 1] += t3[1]; D[v * 3 + 2] += t3[2]; }
-                lo.lay = D;
+                for (v = 0; v < n; v++) { var x = A[v * 3] + D[v * 3], y = A[v * 3 + 1] + D[v * 3 + 1], z = A[v * 3 + 2] + D[v * 3 + 2]; needV(v, x, y, z, t3); D[v * 3] += t3[0]; D[v * 3 + 1] += t3[1]; D[v * 3 + 2] += t3[2]; }
+                if (lo.lay) { for (v = 0; v < D.length; v++) lo.lay[v] += D[v]; } else lo.lay = D;   // (+ THE BELT HEIGHT / THE TUCK already in it)
                 for (v = 0; v < A.length; v++) A[v] += D[v];
             });
             wearFollow(part);
@@ -55600,6 +56128,7 @@ const ThreeRenderer = (function () {
                 if (mf && got['@feet']) { var wf = buildWear(part, got['@feet'], 'feet_' + a.feet); if (wf) { part.wear.push(wf); paintMeshOuter(part, state.last || a); } }
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 paintWear(part, state.last || a);   // THE WEAR TINT
+                part.beltH = (state.last || a).beltHeight || 0;   // THE BELT HEIGHT
                 try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
                 try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
                 try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
@@ -55607,6 +56136,7 @@ const ThreeRenderer = (function () {
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
+                if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the new clothes follow the soft spots
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
             if (mo) pending++;
@@ -55714,7 +56244,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
@@ -55728,6 +56258,7 @@ const ThreeRenderer = (function () {
                 paintWear(p, a);   // THE WEAR TINT
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
+                if (p.jig) p.jig.dirty = true;   // THE JIGGLE: the weights again on whatever was rebuilt (jigWeights, next tick)
             });
         }
         update(initial);
@@ -55745,6 +56276,7 @@ const ThreeRenderer = (function () {
                     try { _swayTick(root, sdt, state.capeSway, true); } catch (e) { if (!state.capeWarned) { state.capeWarned = true; console.warn('[ThreeRenderer] cape sway failed', e); } }
                 }
                 if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
+                for (var ji = 0; ji < parts.length; ji++) if (parts[ji].jig) { try { jigTick(parts[ji], sdt, state.last); } catch (e) { if (!state.jigWarned) { state.jigWarned = true; console.warn('[ThreeRenderer] jiggle failed', e); } } }   // THE JIGGLE
                 for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {

@@ -1098,6 +1098,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               mpfb && window.EW_MPFB_BODY_SLIDERS ? h(React.Fragment, null,
                 h('div', { className: 'pb-creator-colorlabel' }, 'Body shape'),
                 h('div', { className: 'pb-creator-grid' }, window.EW_MPFB_BODY_SLIDERS.filter(r => r[2] !== 'female' || femaleBody).map(([k, label]) => ccSlider(k, label)))) : null,
+              /* THE JIGGLE (2026-11-02, mondo: "similar to the capes and the hair, can we add jiggle physics to the boobs and butt?"):
+                 how much the chest and the glutes bounce when the body moves (three-renderer.js THE JIGGLE); 0 = still */
+              mpfb ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'Jiggle'),
+                h('div', { className: 'pb-creator-grid' }, ccSlider('jiggleChest', 'Chest'), ccSlider('jiggleButt', 'Butt'))) : null,
               /* THE IDLE POSE (2026-11-01, mondo: "can we also add an option to change their idle pose in the character creator?"):
                  the standing idles already in the animation library (sprites.js EW_IDLE_POSES); Default = the body's own idle.
                  Saved in the look (appearance.idle), so EXPORT DEFAULT LOOK / bake-looks.js carry it and the board plays it. */
@@ -1216,7 +1221,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccLayer('Feet', 'feet', ccLive('feet', window.EW_FEET_STYLES), 'feetFabric', 'feetColor'),
               // (the coded Gloves / Belt / Neckwear / Glasses picks are retired: gloves, glasses, the belt, the tie and the bow tie
               // are Clothes picks now; the Blender belt still takes the Belt layer's fabric, colour and print)
-              ccLayerWorn('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt')) : null,
+              ccLayerWorn('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt'), ccSlider('beltHeight', 'Belt height')) : null,   // THE BELT HEIGHT (2026-11-02): up / down to sit on any trousers' waistband
               ccExtraLayers(),
               h('h3', { 'data-cc-cam': 'body' }, 'ACCESSORIES'),
               // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back
