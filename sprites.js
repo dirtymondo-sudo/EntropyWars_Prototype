@@ -3406,6 +3406,13 @@ EW_MH_WEAR.push(['ewb_longsleeve', 'Long-sleeve top', 'tops', 52], ['ewb_henley'
 EW_MH_WEAR.push(['ewb_top_shirt', 'Collared shirt (tucked)', 'tops', 46], ['ewb_top_shirtopen', 'Open-collar shirt (tucked)', 'tops', 46],
   ['ewb_top_workshirt', 'Work shirt (tucked)', 'tops', 46], ['ewb_top_shirtloose', 'Collared shirt (untucked)', 'tops', 52],
   ['ewb_top_shortshirt', 'Short-sleeve shirt', 'tops', 52], ['ewb_top_polo', 'Polo shirt', 'tops', 52]);
+/* THE JOINED BEARDS (2026-11-02, character-models-plan.md row 12h; mondo: "i cant find a full beard that has a mustache too. the one
+   that says full beard doesnt have a mustache connected. Use blender to edit some of the existing ones into new ones?"): a pack
+   beard + a pack moustache edited in cloud Blender into ONE piece (bake-beards.py -> ewb_beard_<key>.glb): one mesh, the two
+   textures on one sheet, the moustache's ends turned down along the mouth corners into the beard. Facial hair picks like the
+   rest (EW_MH_FACIAL_HAIR below reads the 'beard' in the id); the Facial hair colour row tints the whole piece. */
+EW_MH_WEAR.push(['ewb_beard_full', 'Full beard with moustache', 'bodyparts', 50], ['ewb_beard_fullbushy', 'Full beard with bushy moustache', 'bodyparts', 50],
+  ['ewb_beard_viking', 'Viking beard with moustache', 'bodyparts', 50], ['ewb_beard_scruffy', 'Scruffy beard with moustache', 'bodyparts', 50]);
 /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color for the cowboy"): an MPFB
    body hides the classic painted beard (it paints the classic face only), so its facial hair is the pack's beards + moustaches
    (Body parts). The creator lists them under FACE as one pick; three-renderer.js paintFacial tints them like the pack hair:
