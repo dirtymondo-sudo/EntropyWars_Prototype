@@ -45,14 +45,15 @@ FULL = ('bodyparts06_cc-by', 'grinsegold_full_beard')
 TACHE = ('bodyparts06_cc-by', 'grinsegold_moustache')
 VIKING = ('bodyparts05_cc0', 'rehmanpolanski_beard_viking')
 VIKING_TACHE = ('bodyparts05_cc0', 'rehmanpolanski_moustache_viking')
-FAUN = ('bodyparts05_cc0', 'culturalibre_faun_beard')
+SCRUFFY = ('bodyparts05_cc0', 'wdg_scruffy_beard')
 # key -> the creator label, the beard, the moustache, the join: `span` = how far in from the moustache's end the turn starts
-# (m, along x), `into` = how far past the beard's first surface below the end the end goes down (m), `max_drop` caps the turn
+# (m, along x), `into` = how far past the beard's first surface below the end the end goes down (m), `max_drop` caps the turn,
+# `pull` = how far the end is drawn in toward the chin as it goes down (m; for a goatee narrower than the mouth)
 COMBOS = {
     'full':      dict(label='Full beard with moustache', beard=FULL, tache=TACHE, span=0.016, into=0.012, max_drop=0.03),
     'fullbushy': dict(label='Full beard with bushy moustache', beard=FULL, tache=VIKING_TACHE, span=0.016, into=0.012, max_drop=0.03),
     'viking':    dict(label='Viking beard with moustache', beard=VIKING, tache=VIKING_TACHE, span=0.016, into=0.010, max_drop=0.03),
-    'faun':      dict(label='Faun beard with moustache', beard=FAUN, tache=TACHE, span=0.016, into=0.008, max_drop=0.04),
+    'scruffy':   dict(label='Scruffy beard with moustache', beard=SCRUFFY, tache=TACHE, span=0.016, into=0.012, max_drop=0.03),
 }
 CELL, PAD = 1024, 24            # the sheet: two 1024 cells (-> 512 each at WEAR_PX 1024), a 24 px margin round each
 LIFT = 0.0015                   # a joined end sits this far in front of the beard
@@ -235,6 +236,7 @@ def join(HS, h, d, name, nb, parts, spec):
                 continue
             p = T[i].copy()
             p[2] -= drop * s
+            p[0] -= np.sign(p[0]) * spec.get('pull', 0.0) * s
             hit = bvh.ray_cast(Vector((p[0], -1.0, p[2])), Vector((0, 1, 0)))
             if hit[0] is not None and p[1] > hit[0][1] - LIFT:
                 p[1] = p[1] + (hit[0][1] - LIFT - p[1]) * min(1.0, 2 * s)

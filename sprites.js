@@ -3412,7 +3412,7 @@ EW_MH_WEAR.push(['ewb_top_shirt', 'Collared shirt (tucked)', 'tops', 46], ['ewb_
    textures on one sheet, the moustache's ends turned down along the mouth corners into the beard. Facial hair picks like the
    rest (EW_MH_FACIAL_HAIR below reads the 'beard' in the id); the Facial hair colour row tints the whole piece. */
 EW_MH_WEAR.push(['ewb_beard_full', 'Full beard with moustache', 'bodyparts', 50], ['ewb_beard_fullbushy', 'Full beard with bushy moustache', 'bodyparts', 50],
-  ['ewb_beard_viking', 'Viking beard with moustache', 'bodyparts', 50], ['ewb_beard_faun', 'Faun beard with moustache', 'bodyparts', 50]);
+  ['ewb_beard_viking', 'Viking beard with moustache', 'bodyparts', 50], ['ewb_beard_scruffy', 'Scruffy beard with moustache', 'bodyparts', 50]);
 /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color for the cowboy"): an MPFB
    body hides the classic painted beard (it paints the classic face only), so its facial hair is the pack's beards + moustaches
    (Body parts). The creator lists them under FACE as one pick; three-renderer.js paintFacial tints them like the pack hair:
