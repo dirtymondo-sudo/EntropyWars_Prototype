@@ -16,7 +16,7 @@ body that the game can load like any Meshy rig:
     pucker, press, wide, brows (EXPRESSIONS).
   * The skin: with --packs, MakeHuman's stock skin + its eyebrow / eyelash / eye-colour proxies drawn INTO the skin
     sheet, plus stock hair as a second alpha-cut skinned mesh (KITS); without, a texture painted procedurally from
-    3D (skin, lips, brows, eyes, teeth, tongue). Plain painted underwear either way. 1024 px default.
+    3D (skin, lips, brows, eyes, teeth, tongue). No painted underwear (2026-11-02). 1024 px default.
 
 Usage:
   pip install bpy==5.2.3                         (Python 3.13)
@@ -57,8 +57,11 @@ BODIES = {
 # a body baked with FIT_FROM wears that body's pack-clothes fit: after export it gets _FIT_D (this body minus that one, per
 # vertex; the two share hm08's vertex order) + mesh extras ewFit {from}, like bake-mpfb-classic.py, so no garment rebake
 FIT_FROM = {'female_heavy': 'female', 'female_thin': 'female', 'female_short': 'female'}
-# underwear per body: 'shorts' (boxer, upper thigh), 'briefs' + 'top' (a plain band over the chest)
-UNDERWEAR = {'male': ('shorts',), 'female': ('briefs', 'top'), 'heavy': ('shorts',), 'thin': ('shorts',), 'short': ('shorts',), 'female_heavy': ('briefs', 'top'), 'female_thin': ('briefs', 'top'), 'female_short': ('briefs', 'top')}
+# underwear per body: 'shorts' (boxer, upper thigh), 'briefs' + 'top' (a plain band over the chest).
+# NO UNDERWEAR (2026-11-02, mondo: "remove the black underwear from the mpfb body and mpfb classic body, it is messing up
+# some of the other clothes"): every body paints none now (the shipped sheets + look_fixed layers were cleaned to match).
+# The old table, kept for reference: male / heavy / thin / short ('shorts',), the four female bodies ('briefs', 'top').
+UNDERWEAR = {'male': (), 'female': (), 'heavy': (), 'thin': (), 'short': (), 'female_heavy': (), 'female_thin': (), 'female_short': ()}
 SKIN = {'male': (196, 148, 118), 'female': (206, 160, 132), 'heavy': (176, 128, 98), 'thin': (200, 170, 150), 'short': (190, 140, 108), 'female_heavy': (206, 160, 132), 'female_thin': (206, 160, 132), 'female_short': (206, 160, 132)}
 
 # glTF morph target name -> MakeHuman expression unit (targets/expression/units/caucasian/<unit>.target.gz)

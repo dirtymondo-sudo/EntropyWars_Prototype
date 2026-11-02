@@ -1133,10 +1133,10 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]])).map(([id, label]) =>
                     h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, onClick: () => changeAppearance({ [lookCat]: id }) },
                       h('span', null, label)))),
-                /* THE CHEST (2026-11-01, mondo): the painted band, or bare with nipples, or bare and smooth */
+                /* THE CHEST (2026-11-01, mondo): bare with nipples, or bare and smooth (the painted band went with the underwear 2026-11-02) */
                 chestBand ? h(React.Fragment, null,
                   h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Chest'),
-                  ccChoice('mhChest', [['band', 'Band'], ['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
+                  ccChoice('mhChest', [['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
               /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color"): an MPFB body
                  wears the pack's beards + moustaches (sprites.js EW_MH_FACIAL_HAIR, one at a time) in the hair colour, a picked
                  colour or their own */
