@@ -835,3 +835,14 @@ now cached per body mesh (_ccShapeTableCache). party-builder.js: tab row + the o
 a moved tab. RANDOM keeps faces within +-0.35. Range = MakeHuman's own +-1: at 2x the lids gap, the nose bridge creases and
 the forehead flattens (project files aaa-creator/face_sliders_proof.png). Plan for the rest: character-models-plan.md section 7.
 
+## THE FEMALE PRESETS + THE BODY DETAILS (2026-11-02, plan row 26; mondo picked "Both")
+- Presets: bake-mpfb.py BODIES female_heavy / female_thin / female_short (macros at the top; KITS = the female's kit), built with
+  `python3 -I bake-mpfb.py --mpfb <mpfb2> --out <dir holding mpfb_female.glb> --bodies female_heavy,female_thin,female_short --packs <mhpacks>`.
+  FIT_FROM: after export add_fit() writes _FIT_D (this body minus mpfb_female.glb, same hm08 vertex order, checked by _BASE_INDEX)
+  + mesh extras ewFit {from:'female'}, so buildWear dresses them in the female's pack-clothes fit (the classic bodies' path):
+  no garment rebake. sprites.js EW_MPFB_BODIES rows with kit 'female' (labels MPFB FEMALE HEAVY / TALL THIN / SHORT).
+- Sliders: sprites.js EW_MPFB_BODY_SLIDERS (BODY > Body shape, MPFB bodies only). Weight / Muscle = MakeHuman's universal
+  macro targets for a young body as deltas off average (bake-mpfb.py MACRO_SHAPES -> weight_f / weight_m / muscle_f / muscle_m in
+  mpfb_shapes.glb; three-renderer.js picks _f on a female body), SHAPE_GAIN 1.4 / 1.25. The rest are plain SHAPE_TARGETS.
+  Bones stay put (row 27 = proportions that move the skeleton). mpfb_shapes.glb is now 3 MB raw (~580 KB gzip).
+

@@ -3934,6 +3934,12 @@ const EW_MPFB_BODIES = [
   { id: 'mpfb_heavy',  label: 'MPFB heavy',  gender: 'male',   ratio: 1.08 },
   { id: 'mpfb_thin',   label: 'MPFB thin',   gender: 'male',   ratio: 1.04 },
   { id: 'mpfb_short',  label: 'MPFB short',  gender: 'male',   ratio: 0.82 },
+  /* THE FEMALE PRESETS (2026-11-02, mondo: "what about the female short body or female thick body or female tall and thin
+     body?"): bake-mpfb.py BODIES female_heavy / female_thin / female_short, each wearing the MPFB female's pack-clothes fit
+     (_FIT_D, like the classic bodies) and her look kit. Ratio = the board height next to the female's 0.94. */
+  { id: 'mpfb_female_heavy', label: 'MPFB female heavy', gender: 'female', ratio: 0.97, kit: 'female' },
+  { id: 'mpfb_female_thin',  label: 'MPFB female tall thin', gender: 'female', ratio: 1.02, kit: 'female' },
+  { id: 'mpfb_female_short', label: 'MPFB female short', gender: 'female', ratio: 0.80, kit: 'female' },
   /* THE CLASSIC MPFB BODIES (2026-11-01, mondo: "i like the old bodies, but i like the skin texture of the new bodies ... i
      also want the head of the new bodies on the old bodies"): bake-mpfb-classic.py reshapes the MPFB male / female below
      the neck onto the classic creator bases (the MPFB head, hands and feet stay). `kit` = the MPFB body whose looks
@@ -3967,6 +3973,13 @@ const EW_MPFB_FACE_SLIDERS = [
   { id: 'head', label: 'Head', rows: [['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
   { id: 'ears', label: 'Ears + neck', rows: [['earSize', 'Ear size'], ['earOut', 'Ears out'], ['earPoint', 'Pointed ears'], ['earLobe', 'Lobes'], ['neckThick', 'Neck']] },
 ];
+/* THE BODY DETAILS (2026-11-02, plan row 26: mondo's female thick / thin / athletic bodies as sliders): MakeHuman's Weight
+   and Muscle macros (gender-matched deltas) + body modifiers, on the MPFB bodies only (skin only, the bones stay). Bust
+   spacing / height show on female bodies only, like Bust. */
+const EW_MPFB_BODY_SLIDERS = [['weight', 'Weight'], ['muscle', 'Muscle'], ['shoulders', 'Shoulders'], ['vshape', 'V-shape'], ['pecs', 'Chest muscle'],
+  ['belly', 'Belly'], ['glutes', 'Glutes'], ['thighs', 'Thighs'], ['calves', 'Calves'], ['upperArms', 'Upper arms'],
+  ['bustSpacing', 'Bust spacing', 'female'], ['bustHeight', 'Bust height', 'female']];
+EW_MPFB_BODY_SLIDERS.forEach(r => { EW_APPEARANCE_LIMITS[r[0]] = [-1, 1, 0]; });
 const EW_MPFB_FACE_KEYS = EW_MPFB_FACE_SLIDERS.reduce((a, g) => a.concat(g.rows.map(r => r[0])), []);
 EW_MPFB_FACE_KEYS.forEach(k => { if (!EW_APPEARANCE_LIMITS[k]) EW_APPEARANCE_LIMITS[k] = [-1, 1, 0]; });
 // enum fields: allowed values (first = default)
@@ -4120,6 +4133,7 @@ function randomCharacterAppearance(rng) {
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) { const [lo, hi] = EW_APPEARANCE_LIMITS[key]; out[key] = Math.round((lo + (hi - lo) * (0.2 + 0.6 * r())) * 100) / 100; }
   for (const key of EW_MPFB_FACE_KEYS) out[key] = Math.round((r() * 2 - 1) * 35) / 100;   // THE FACE SLIDERS: a random face stays a face
+  for (const row of EW_MPFB_BODY_SLIDERS) out[row[0]] = Math.round((r() * 2 - 1) * 30) / 100;   // THE BODY DETAILS
   out.skin = pick(skinTones); out.hairColor = pick(hairTones); out.eyeColor = pick(eyeTones);
   out.lipColor = hex(350 + r() * 20, 0.25 + r() * 0.3, 0.32 + r() * 0.2);
   out.topColor = hex(r() * 360, 0.15 + r() * 0.5, 0.35 + r() * 0.35);
@@ -4306,7 +4320,7 @@ if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
-  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
+  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;

@@ -51416,17 +51416,21 @@ const ThreeRenderer = (function () {
            The bones stay where they are (every change is a width / depth), so the animation is untouched. */
         /* + THE FACE SLIDERS (2026-11-02): the MakeHuman face modifiers (sprites.js EW_MPFB_FACE_KEYS), MPFB heads only */
         var FACE_KEYS = (typeof EW_MPFB_FACE_KEYS !== 'undefined' ? EW_MPFB_FACE_KEYS : []).filter(function (k) { return ['head', 'jaw', 'nose', 'cheeks'].indexOf(k) < 0; });
-        var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'].concat(FACE_KEYS);
-        var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
+        /* + THE BODY DETAILS (2026-11-02): weight / muscle (MakeHuman's macros, '_f' / '_m' by the body) + body modifiers */
+        var BODY_KEYS = (typeof EW_MPFB_BODY_SLIDERS !== 'undefined' ? EW_MPFB_BODY_SLIDERS : []).map(function (r) { return r[0]; });
+        var BODY_GENDERED = { weight: 1, muscle: 1 }, BODY_FEMALE = { bustSpacing: 1, bustHeight: 1 };
+        var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'].concat(FACE_KEYS, BODY_KEYS);
+        var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1, weight: 1.4, muscle: 1.25 };   // (2026-11-02: MakeHuman's weight / muscle step alone is a few cm; the slider's ends go past it)
         function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
         function shapeBody(part, P, a) {
             var N = part.count, i, k;
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
                 SHAPE_KEYS.forEach(function (key) {
-                    if (key === 'bust' && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
+                    if ((key === 'bust' || BODY_FEMALE[key]) && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
                     var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
-                    var arr = T[key] && T[key][v > 0 ? 0 : 1]; if (!arr) return;
+                    var tk = BODY_GENDERED[key] ? key + (bustBody(part) ? '_f' : '_m') : key;   // THE BODY DETAILS: the macro of the body's gender
+                    var arr = T[tk] && T[tk][v > 0 ? 0 : 1]; if (!arr) return;
                     var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
                     for (i = 0; i < arr.length; i += 4) { var o = arr[i] * 3; P[o] += arr[i + 1] * g; P[o + 1] += arr[i + 2] * g; P[o + 2] += arr[i + 3] * g; }
                 });
@@ -55302,7 +55306,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
