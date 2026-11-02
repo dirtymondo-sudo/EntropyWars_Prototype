@@ -1094,3 +1094,16 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   healing pool's plateau one level lower), Hollow Earth 12/10/11 (a lake square or two), Bohemian Grove 12 (one lake square), Fairy
   Forest 10/11 (one corner square by the brook now rock: the island's slope flips on any change there). Hollow Earth 9 had a lake
   square on a house tile, so `node bake-arenas.js prebuilt_hollow_earth --size 9` re-cut it: 14,18 → 16,17 (no water on it now).
+- PASS 3 (same day, mondo on the Shasta pool shot: "again, what is up with these serrated edges? Is it the way the terrain is being
+  deformed?"). Yes, two things: (1) pass 2's 0.15 m drop in a 0.8 m band under the fading rim was sampled by the ≈0.5 m field as
+  a saw, and its slope shaded dark round every pond; (2) the sheet was LEVEL, so wherever the ground's own noise rose a hair over
+  the surface the ground cut it on a jagged line. Now: THE SHALLOW RIM — inside the squares, ground at or over the surface eases
+  down to 0.1 m under it across the whole shore window (1.4 m: a slope the field draws smooth), and the bank proper starts past
+  that window, under full cover (deep water keeps its bank at the edge, so its rim squares stay deep); THE LAID SHORE —
+  three-renderer.js `_hqGridWaterBuild` lays the sheet ON the ground (+0.15 m) wherever the ground stands up to
+  `HQ_FLUID_GRID_RULES.layH` (0.2 m) over the surface and fades it out past that (a deck, a walk, an island, a wall stay dry;
+  0.5 drew the water over the footbridges), so the fade is the only edge; 24 verts a side on a shore square (12 showed steps on an
+  inside corner). `hqTerrainFluidAt` and the field raster's wet read use the same layH rule, so the drawn water = the wet squares.
+  The snapped squares now hold water to their edge even where they reach past a channel's drawn banks (the sewer walks).
+  Arenas re-read again (all house tiles ok); against pass 2 only Heaven 12 (the healing pool's plateau squares), Cyberpunk 12
+  (heights of the street by the canal, and the rock tiles that follow them) and Fairy Forest 10/11 (two brook-side squares) changed.
