@@ -1114,3 +1114,6 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   all follow), and the shallow rim and the bed sink with it (depth unchanged: wading reads the same). The ground round the water is
   untouched, so the shore is a 0.4 m smooth step down over the 1.4 m shore window. Arenas re-read (levels only: Heaven 12,
   Cyberpunk 12, Antarctica 12/9, Fairy Forest 10/11).
+  0.3 → 0.5 m (mondo: "i think it needs to be a little bigger (the drop)"). Hollow Earth's inner-sun floor then read a level over
+  its sunk lakes on the 12 and 9 boards' house tiles, so `bake-arenas.js prebuilt_hollow_earth` (+ `--size 9`) re-cut them:
+  12 17,15 → 18,18; 9 16,17 → 17,17. The other picks re-read in place (levels only).
