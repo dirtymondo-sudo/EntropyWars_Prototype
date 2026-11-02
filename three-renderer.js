@@ -49819,7 +49819,9 @@ const ThreeRenderer = (function () {
     function _ccTopDef(id) { return id === 'none' ? null : (CC_TOPS[id] || CC_TOPS.tee); }   // rev 10: 'none' = topless (no top shell)
     /* rev 10: an EXTRA layer's row = the catalogue's cut at a larger stand-off (over the layer beneath) */
     function _ccOverDef(def, extra) { return def ? Object.assign({}, def, { ease: def.ease + extra, sleeveEase: (def.sleeveEase != null ? def.sleeveEase : def.ease) + extra * 0.7, hemEase: def.hemEase != null ? def.hemEase + extra : undefined, over: true }) : null; }
-    function _ccBottomDef(id) { return CC_BOTTOMS[id] || CC_BOTTOMS.trousers; }
+    // THE RETIRED CLASSIC CLOTHES (2026-11-02): 'none' = no coded bottoms (the pack / Blender ones are worn); its waist still guides the layers over it
+    var CC_BOTTOM_NONE = { hem: 0.36, waist: 0.565, ease: 0.007, none: true };
+    function _ccBottomDef(id) { return id === 'none' ? CC_BOTTOM_NONE : (CC_BOTTOMS[id] || CC_BOTTOMS.trousers); }
     /* THE BLENDER COAT (2026-11-01, docs/notes/character-models-plan.md row 12): an outer layer built as a real mesh in cloud
        Blender (bake-garment.py -> charactercreation/wear/ewb_<name>.glb, sprites.js EW_MESH_OUTERS) is worn on an MPFB body
        (THE PACK CLOTHES' path: setWear / buildWear) and painted by the outer layer's fabric / tint / print (paintMeshOuter);
@@ -49829,10 +49831,14 @@ const ThreeRenderer = (function () {
     Object.assign(CC_MESH_OUTER, { bduster: 'trench', bpirate: 'coat', bleather: 'trench', blongcoat: 'coat', bgreatcoat: 'trench', bovercoat: 'coat', bfrock: 'coat', btailcoat: 'blazer', blabcoat: 'coat',
         bcassock: 'coat', bhabit: 'coat', bcultrobe: 'coat', banunnaki: 'coat', bsuccubus: 'coat', braggedrobe: 'coat',
         bpolice: 'jacket', bgeneral: 'blazer', bturnout: 'parka', briot: 'jacket', bchef: 'jacket', bgi: 'jacket', bjersey: 'hoodie',
-        bsanta: 'coat', brobinhood: 'jacket', btabard: 'coat', bkrampus: 'coat', bfringe: 'jacket', bscarecrow: 'jacket', bzombie: 'jacket', bclown: 'jacket', bleafdress: 'coat' });
+        bsanta: 'coat', brobinhood: 'jacket', btabard: 'coat', bkrampus: 'coat', bfringe: 'jacket', bscarecrow: 'jacket', bzombie: 'jacket', bclown: 'jacket', bleafdress: 'coat',
+        bjacket: 'jacket', bblazer: 'blazer', bvest: 'vest', bcardigan: 'cardigan' });   // (2026-11-02 THE BLENDER BASICS: the retired coded jackets' replacements)
     var CC_MESH_UV = 0.95;   // a Blender garment's UVs are metres; x this = the coded shells' UV units (measured on the MPFB male: ~0.95 per metre)
+    /* THE CLASSIC FIT (2026-11-02, mondo: the classic MALE / FEMALE bodies wear the new clothes too): a body wears the pack +
+       Blender clothes when it is an MPFB body (part.stock) or a classic base whose fit has loaded (part.fit, ensureClassicFit) */
+    function _ccWearBody(part) { return !!(part && (part.stock || part.fit)); }
     function _ccOuterDef(id, part) {
-        if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
+        if (CC_MESH_OUTER[id]) return _ccWearBody(part) ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
         return CC_OUTER[id] || null;
     }
     /* THE BLENDER SHOES (2026-11-01, bake-clothes.py SHOES): a Feet pick built as a real mesh (sprites.js EW_BLENDER_FEET) is
@@ -49841,7 +49847,7 @@ const ThreeRenderer = (function () {
     var CC_MESH_FEET = { bsneakers: 'sneakers', bboots: 'boots', bhighboots: 'highboots', bsandals: 'sandals', bcowboy: 'boots' };
     var CC_MESH_TUCK = { bboots: 0.125, bhighboots: 0.31, bcowboy: 0.21 };   // the coded trousers' hem (t) under a Blender boot's top
     function _ccFeetDef(id, part) {
-        if (CC_MESH_FEET[id]) return part && part.stock ? null : (CC_FEET[CC_MESH_FEET[id]] || null);
+        if (CC_MESH_FEET[id]) return _ccWearBody(part) ? null : (CC_FEET[CC_MESH_FEET[id]] || null);
         return CC_FEET[id] || null;
     }
     function _ccGloveDef(id) { return CC_GLOVES[id] || null; }
@@ -51471,7 +51477,7 @@ const ThreeRenderer = (function () {
             part.shapeD = shD;
             wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
-            try { part.pokeHide = part.stock ? skinPokes(part, P) : null; } catch (e) { part.pokeHide = null; console.warn('[ThreeRenderer] skin pokes failed', e); }
+            try { part.pokeHide = _ccWearBody(part) ? skinPokes(part, P) : null; } catch (e) { part.pokeHide = null; console.warn('[ThreeRenderer] skin pokes failed', e); }
             for (i = 0; i < N; i++) {
                 var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
@@ -51539,11 +51545,11 @@ const ThreeRenderer = (function () {
                worn OVER the first. A coded pick is the catalogue's row at a larger stand-off (+8 mm over a first outer), cut and
                built LAST of the cut layers so the layer order (orderOver) puts it over every one of them; a Blender pick on an MPFB
                body is a mesh (setWear '@outer2') and the coded twin on a classic base. `meshOut1` = the first outer is a Blender coat */
-            var meshOut1 = !!(part.stock && CC_MESH_OUTER[a.outer]);
+            var meshOut1 = !!(_ccWearBody(part) && CC_MESH_OUTER[a.outer]);
             var OUT2 = a.outer2 && a.outer2 !== 'none' ? _ccOverDef(_ccOuterDef(a.outer2, part), (OUT || meshOut1) ? 0.008 : 0.002) : null;
             /* THE BLENDER SHOES: a Blender boot tucks the coded trousers in (their hem cut just under the shaft's top), else the
                trouser leg's hem ring stands out over the boot's instep */
-            var bootTuck = part.stock && CC_MESH_TUCK[a.feet];
+            var bootTuck = _ccWearBody(part) && CC_MESH_TUCK[a.feet];
             if (bootTuck) {
                 if (BOT.hem != null && !BOT.skirt && BOT.hem < bootTuck) BOT = Object.assign({}, BOT, { hem: bootTuck });
                 if (BOT2 && BOT2.hem != null && !BOT2.skirt && BOT2.hem < bootTuck) BOT2 = Object.assign({}, BOT2, { hem: bootTuck });
@@ -51967,7 +51973,7 @@ const ThreeRenderer = (function () {
             // the cuts first (the coverage orders the layers), then the surfaces in the order clothes are worn
             var beltEase = CC_BELT.ease + (BOT2 && !BOT2.skirt ? 0.008 : 0);   // rev 10: the belt rides over a second pair of bottoms
             var cvTop = TOP ? cutVals(topCuts(part, TOP), TOP.hem - 0.001, 0.86) : null;
-            var cvBot = skirtBottom ? null : cutVals(bottomCuts(part, BOT, zcP), 0, 0.6);
+            var cvBot = (skirtBottom || BOT.none) ? null : cutVals(bottomCuts(part, BOT, zcP), 0, 0.6);
             var cvOut = OUT ? cutVals(topCuts(part, OUT), OUT.hem - 0.001, 0.86) : null;
             var cvFeet = FEET ? cutVals(feetCuts(part, FEET), 0, FEET.top + 0.001) : null;
             var cvGlv = GLV ? cutVals(gloveCuts(part, GLV), 0.40, 0.78) : null;
@@ -52001,14 +52007,14 @@ const ThreeRenderer = (function () {
             /* (its tail is a lathe that only the legs push once posed: over a long pack / Blender garment - a cassock, a duster, a
                dress, whose skirt follows the legs on its own weights - the robe came out through it in the idle's wide stance; there
                the second outer stops at the hips and the garment under it hangs below) */
-            var tail2Off = !!(OUT2 && OUT2.tail && part.stock && (part.wear || []).some(function (w0) {
+            var tail2Off = !!(OUT2 && OUT2.tail && _ccWearBody(part) && (part.wear || []).some(function (w0) {
                 if (!w0.mesh || w0.facial || w0.layer === 'cape' || w0.layer === 'outer2' || !(w0.outer || w0.cat === 'dresses' || w0.cat === 'skirts' || w0.cat === 'suits')) return false;
                 var LA = w0.mesh.geometry.attributes.position.array, ly = Infinity;
                 for (var lv0 = 1; lv0 < LA.length; lv0 += 3) if (LA[lv0] < ly) ly = LA[lv0];
                 return TW.f((ly - minY) / H) < OUT2.hem - 0.03;
             }));
             if (tail2Off) OUT2 = Object.assign({}, OUT2, { tail: null });
-            var wearOver = (OUT2 && part.stock) ? wearOverLayer() : null;
+            var wearOver = (OUT2 && _ccWearBody(part)) ? wearOverLayer() : null;
             if (wearOver) ORDERED.push(wearOver);
             var sOut2 = OUT2 ? buildLayer(layerEase(OUT2, lapelOf(OUT2), neckOf(OUT2, cvOut2)), true, false, outFill2, cvOut2, false, OUT2.tail ? OUT2 : null) : null;
             if (sOut2 && sOut2.clr && lathTopT > OUT2.hem - 0.03) for (i = 0; i < N; i++) { var tcl2 = Q[i * 3 + 1]; if (tcl2 < lathTopT + 0.01 && tcl2 > OUT2.hem - 0.05 && sOut2.clr[i] > 0.005 * H) sOut2.clr[i] = 0.005 * H; }
@@ -53211,7 +53217,7 @@ const ThreeRenderer = (function () {
                off the small of the back and hides no skin) */
             /* THE LAYERS (2026-11-01): every pack / Blender garment (wearCovers: not underwear, hats, props) now covers the coded
                layers the same way - the coded trousers' waistband came through a pack tunic, the coded shirt through a pack sweater */
-            var coatIn = null, wOuts = part.stock ? (part.wear || []).filter(function (w0) { return w0.mesh && wearCovers(w0); }) : [];
+            var coatIn = null, wOuts = _ccWearBody(part) ? (part.wear || []).filter(function (w0) { return w0.mesh && wearCovers(w0); }) : [];
             if (wOuts.length && part.collP) {
                 var CP0 = part.collP, CN0 = part.collN, cR = new Float32Array(RC).fill(-1);
                 wOuts.forEach(function (wOut) {
@@ -53338,7 +53344,7 @@ const ThreeRenderer = (function () {
             var outer2Idx = CC_LAYER_NAMES.indexOf('outer2'), hasTail2 = !!(OUT2 && OUT2.tail && sOut2);
             var tail2Ease = hasTail2 ? OUT2.ease + (OUT2.hemEase != null ? (OUT2.hemEase - OUT2.ease) * Math.max(0, Math.min(1, (OUT2.hemEaseFrom - OUT2.hem) / 0.06)) : 0) : 0;
             var tail2Field = hasTail2 ? buildLathe({ tTop: OUT2.hem + 0.006, tHem: OUT2.tail.hem, ease: tail2Ease, flare: OUT2.tail.flare, gapW: OUT2.open ? openWidth(OUT2.open, OUT2.hem, OUT2.hem) * H : 0, swing: OUT2.tail.swing,
-                surface: sOut2.S, flush: true, under: underSkirt.concat([wearOver && wearOver.S]), underBuf: underBufs.concat(part.stock ? wearUnderBufs() : []), rigid: 1, hipsTop: true, folds: 0.45, grid: 'outer2', pad: legPad }, buffers[outer2Idx], skirtShade(OUT2.hem, OUT2.tail.hem, true), LAYERS[outer2Idx].base) : null;
+                surface: sOut2.S, flush: true, under: underSkirt.concat([wearOver && wearOver.S]), underBuf: underBufs.concat(_ccWearBody(part) ? wearUnderBufs() : []), rigid: 1, hipsTop: true, folds: 0.45, grid: 'outer2', pad: legPad }, buffers[outer2Idx], skirtShade(OUT2.hem, OUT2.tail.hem, true), LAYERS[outer2Idx].base) : null;
             /* the pack / Blender garments under the second outer's tail AS DRAWN (a cassock's skirt stands 20 cm off the legs, past
                wearOver's reach): each one's triangles are sampled by the lathe like a skirt under a coat (`underBuf`; the garment's
                vertices pushed 8 mm out from the lathe's axis: the robe rides its own weights, the tail the hips + the legs' push) */
@@ -53358,7 +53364,7 @@ const ThreeRenderer = (function () {
             }
             /* …and a coded first outer's tail under a long BLENDER second outer is left out (the mesh coat covers it; a lathe is not
                cut by the skin the coat hides) */
-            var wOut2 = part.stock ? (part.wear || []).filter(function (w0) { return w0.layer === 'outer2' && w0.mesh; })[0] : null, tailHidden = false;
+            var wOut2 = _ccWearBody(part) ? (part.wear || []).filter(function (w0) { return w0.layer === 'outer2' && w0.mesh; })[0] : null, tailHidden = false;
             if (wOut2 && OUT && OUT.tail) {
                 var W2A = wOut2.mesh.geometry.attributes.position.array, w2y = Infinity;
                 for (var w2v = 1; w2v < W2A.length; w2v += 3) if (W2A[w2v] < w2y) w2y = W2A[w2v];
@@ -54356,6 +54362,7 @@ const ThreeRenderer = (function () {
            the chest bone through its bind matrix (boneInverse × bindMatrix × the placement in the base's own frame),
            so it rides the spine like the skin under it. tick() beats each wing on its own, the right a touch behind. ── */
         var CC_ANGEL_LIFT = 0.35;   // the angel wing hangs low in its file: the hinge raises its tip (radians)
+        var CC_WING_LIFT = { angel: CC_ANGEL_LIFT, bat: 0.15, dragon: -0.75 };   // 2026-11-02: per wing file (the bat / dragon files sit flatter)
         function dropWings(part) {
             if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
             part.wings = null;
@@ -54375,10 +54382,13 @@ const ThreeRenderer = (function () {
             if (!wl || !wr) {
                 /* THE ANGEL WING (2026-10-27, mondo: "use these wings instead for the character creator"): his single
                    angel wing, doubled and mirrored (_ewWingPair, the same frame as the first file's two wings) */
-                var pair = _ewWingPair(root, EW_WING_FILES.angel.root);
+                /* 2026-11-02: + the bat wing (the Occulus's) and the dragon wing (Hoard's): the file the look picked (EW_WING_FILES
+                   by its url: which end its shoulder sits on, how far its tip is raised) */
+                var wk = 'angel'; for (var wkey in EW_WING_FILES) if (EW_WING_FILES[wkey].url === part.wingsUrl) wk = wkey;
+                var pair = _ewWingPair(root, EW_WING_FILES[wk].root), lift = CC_WING_LIFT[wk] != null ? CC_WING_LIFT[wk] : CC_ANGEL_LIFT;
                 if (!pair) return;
-                wl = { geometry: pair.L, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), CC_ANGEL_LIFT) };
-                wr = { geometry: pair.R, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -CC_ANGEL_LIFT) };
+                wl = { geometry: pair.L, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), lift) };
+                wr = { geometry: pair.R, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -lift) };
             }
             if (bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
             var H = part.height, sc = 0.6 * H / 4.4, sh = part.shoulder;   // a wing (~4.4 long in the file) = 0.6 of the body's height
@@ -54499,21 +54509,35 @@ const ThreeRenderer = (function () {
             if (ex.sway) {   // the chains first: the garment's weights name their bones
                 P0 = Float32Array.from(sg.attributes.position.array);
             }
-            var map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig && swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
+            var handOf = function (nm) {   // THE CLASSIC FIT: a classic base has no finger bones - a glove's finger rides the hand
+                var m = /^(thumb|index|middle|ring|pinky)_\d+_([lr])$/.exec(nm || ''); if (!m) return -1;
+                return bones.findIndex(function (b) { return b.name === (m[2] === 'l' ? 'LeftHand' : 'RightHand'); });
+            };
+            var boneOf = function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : handOf(nm); };
+            var map = (ex.bones || []).map(function (nm) { var bi = boneOf(nm); return bi >= 0 ? bi : (swayRig && swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
             /* the compact layout (bake-mpfb.py write_wear_glb): _d_<body> = this body's offset from the male fit (int16 x ex.dq),
                _n = the normal (int8 x127), _j / _w = 4 bone slots (uint8; the weights x255) */
             var P = Float32Array.from(sg.attributes.position.array);
             /* THE CLASSIC MPFB BODIES (bake-mpfb-classic.py): such a body wears the fit of the MPFB body it was reshaped from
                (mesh extras ewFit.from), each garment vertex moved by the reshape offset (_fit_d) of the body vertex nearest it */
-            var fitFrom = part.body.userData && part.body.userData.ewFit && part.body.userData.ewFit.from, FD = fitFrom && part.src.attributes._fit_d;
+            var fitFrom = part.fit ? part.fit.from : part.body.userData && part.body.userData.ewFit && part.body.userData.ewFit.from, FD = part.fit ? part.fit.FD : fitFrom && part.src.attributes._fit_d;   // (THE CLASSIC FIT: a classic base wears the MPFB classic body's fit)
             var own = fitFrom || String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
             if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
             if (FD) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
-                if (ex.outer) {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together
-                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0], dO = new Float32Array(P.length);
+                if (ex.outer || ex.uv === 'm') {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together (2026-11-02: every Blender piece, so a shirt and the coat over it take the same reshape)
+                    var nsF = nearSet(part.fitBase, P, CLASSIC_COAT_R), fof = [0, 0, 0], dO = new Float32Array(P.length);
                     for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); dO[i * 3] = fof[0]; dO[i * 3 + 1] = fof[1]; dO[i * 3 + 2] = fof[2]; }
-                    if (ex.fitSpatial > 0) spaceSmooth(P, ex.fitSpatial, 0.025).run(dO);   // THE BLENDER COATS: a skirt far off the legs
+                    if (ex.fitSpatial > 0) {   // THE BLENDER COATS: a skirt far off the legs
+                        /* (2026-11-02 THE CLASSIC FIT: smoothed below the hips only - smoothed round a forearm, the offsets out of each side
+                           cancelled, the coat sleeve lost the classic arm's girth and the shirt sleeve under it came out through it) */
+                        var dR = Float32Array.from(dO), yA = (part.minY || 0) + 0.44 * part.height, yB = (part.minY || 0) + 0.56 * part.height;
+                        spaceSmooth(P, ex.fitSpatial, 0.025).run(dO);
+                        for (i = 0; i < count; i++) {
+                            var tY = (P[i * 3 + 1] - yA) / (yB - yA); tY = tY < 0 ? 0 : tY > 1 ? 1 : tY; tY = tY * tY * (3 - 2 * tY);
+                            for (var kY = 0; kY < 3; kY++) dO[i * 3 + kY] += (dR[i * 3 + kY] - dO[i * 3 + kY]) * tY;
+                        }
+                    }
                     for (i = 0; i < P.length; i++) P[i] += dO[i];
                 } else {
                     var nbF = nearestBody(part.fitBase, P);
@@ -54540,7 +54564,7 @@ const ThreeRenderer = (function () {
             }
             if (ex.sway && !(typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) {   // THE BLENDER CAPES: the chains, where this body wears the cape
                 try { swayRig = wearChains(part, ex, P); } catch (e) { swayRig = null; console.warn('[ThreeRenderer] cape sway failed', e); }
-                if (swayRig) map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
+                if (swayRig) map = (ex.bones || []).map(function (nm) { var bi = boneOf(nm); return bi >= 0 ? bi : (swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
                 else map = map.map(function (bi, k) {   // (no rig: each chain's joints ride its parent bone)
                     var m = /^sw(\d+)_\d+$/.exec((ex.bones || [])[k] || ''); if (!m) return bi;
                     var pn = (ex.sway.parents && ex.sway.parents[+m[1]]) || ex.sway.parent, pi = bones.findIndex(function (b) { return b.name === pn; });
@@ -54568,6 +54592,22 @@ const ThreeRenderer = (function () {
             g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
             g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
             if (sg.index) g.setIndex(sg.index.clone());
+            /* THE CLASSIC FIT (2026-11-02): on a reshaped body (a classic base, an MPFB classic body) the garment's baked normals
+               are the MPFB body's - the reshape turns the limbs (the arms hang at another angle), so THE LAYERS read a coat sleeve's
+               outside along a tilted normal and left the shirt sleeve out through it. Its normals are rebuilt over every part. */
+            if (FD) {
+                var NI = [];
+                gms.forEach(function (n) { var ix = n.geometry.index && n.geometry.index.array; if (ix) for (var t = 0; t < ix.length; t++) NI.push(ix[t]); });
+                if (NI.length) {
+                    var gn = new THREE.BufferGeometry(); gn.setAttribute("position", g.attributes.position); gn.setIndex(NI); gn.computeVertexNormals();
+                    var NA = gn.attributes.normal.array, NO = g.attributes.normal ? g.attributes.normal.array : null;
+                    for (i = 0; i < count; i++) {   // (a vertex no triangle uses, or one whose new normal is degenerate, keeps the baked one)
+                        if (NO && !(NA[i * 3] * NA[i * 3] + NA[i * 3 + 1] * NA[i * 3 + 1] + NA[i * 3 + 2] * NA[i * 3 + 2] > 0.5)) { NA[i * 3] = NO[i * 3]; NA[i * 3 + 1] = NO[i * 3 + 1]; NA[i * 3 + 2] = NO[i * 3 + 2]; }
+                    }
+                    g.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(NA), 3));
+                    gn.dispose();
+                }
+            }
             g.computeBoundingSphere();
             var texs = [];
             var wearMesh = function (src, geo, nm) {
@@ -54823,7 +54863,7 @@ const ThreeRenderer = (function () {
             });
         }
         function wearLayers(part) {
-            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.outer || WEAR_LAYER.cats[w.cat]); });
+            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
             (part.wear || []).forEach(function (w) { w.lay = null; });
             wearFollow(part);
             if (L.length < 2) return;
@@ -54878,7 +54918,7 @@ const ThreeRenderer = (function () {
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
         function wearMask(part, only) {
-            var ba = part.src.attributes._base_index, wl = (part.wear || []).filter(function (w) { return !only || only(w); });
+            var ba = part.src.attributes._base_index || (part.fit && part.fit.idx), wl = (part.wear || []).filter(function (w) { return !only || only(w); });   // (THE CLASSIC FIT: each classic vertex's nearest MPFB base index)
             if (!ba || !wl.some(function (w) { return w.del.length; })) return null;
             var mx = 0, i, k;
             wl.forEach(function (w) { w.del.forEach(function (r) { if (r[1] > mx) mx = r[1]; }); });
@@ -54938,8 +54978,50 @@ const ThreeRenderer = (function () {
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
             });
         }
+        /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
+           pack + Blender clothes through the MPFB CLASSIC body of its gender, which bake-mpfb-classic.py reshaped onto this very
+           base (same metres, same frame, ~1 mm below the neck): bake-classic-fit.js -> mpfb_classic_fit_<g>.glb carries that body's
+           fit base (the MPFB body it came from) + _FIT_D + _BASE_INDEX. buildWear puts each garment's 'from' fit on it and moves it by
+           the nearest vertex's reshape offset (as on the MPFB classic body); each classic skin vertex takes the base index of the
+           nearest MPFB-classic vertex, so the garments' hide lists cut the classic skin. Loaded the first time a classic base wears
+           a garment; the file is used only on the base it was baked for (vertex count + a probe vertex). */
+        var CLASSIC_FIT_GENDER = { 19548: 'male', 19639: 'female' };
+        var CLASSIC_COAT_R = 0.02;   // a Blender piece's reshape averaged over the skin within this (was 5 cm: round a thin forearm that cancelled the classic arm's extra girth, and the shirt sleeve under a coat came out through it)   // (the classic bases' vertex counts; the probe confirms)
+        function classicFit(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._fit_d) gm = n; });
+            var ex = gm && gm.userData && gm.userData.ewFit, pos = part.src.attributes.position, b = ex && ex.base;
+            if (!b || b.count !== part.count || !b.probe) return null;
+            var pv = b.probe[0];
+            if (Math.abs(pos.getX(pv) - b.probe[1]) > 1e-4 || Math.abs(pos.getY(pv) - b.probe[2]) > 1e-4 || Math.abs(pos.getZ(pv) - b.probe[3]) > 1e-4) return null;
+            var GA = gm.geometry.attributes, F = GA.position.array, FD = GA._fit_d.array, BI = GA._base_index.array, n = F.length / 3, i;
+            var C = new Float32Array(F.length); for (i = 0; i < C.length; i++) C[i] = F[i] + FD[i];
+            var cls = { src: { attributes: { position: { array: C } } }, count: n };
+            var nb = nearestBody(cls, pos.array), idx = new Float32Array(part.count);
+            for (i = 0; i < part.count; i++) idx[i] = BI[nb[i]];
+            return { from: ex.from, FD: GA._fit_d, base: { src: { attributes: { position: { array: F } } }, count: n }, idx: { array: idx } };
+        }
+        function ensureClassicFit(part) {
+            if (part.stock || part.fit || part.fitLoading || part.fit === null) return;
+            var g = CLASSIC_FIT_GENDER[part.count], url = g && typeof getClassicFitUrl === 'function' ? getClassicFitUrl(g) : null;
+            if (!url) { part.fit = null; return; }
+            part.fitLoading = true;
+            _ccLoadWear(url, function (root) {
+                part.fitLoading = false;
+                if (!alive) return;
+                try { part.fit = root ? classicFit(part, root) : null; } catch (e) { part.fit = null; console.warn('[ThreeRenderer] classic fit failed', e); }
+                if (part.fit) part.fitBase = part.fit.base;
+                if (part.fit && state.last) { part.wearKey = null; state.shapeKey = null; if (!state.inUpdate) update(state.last); }
+            });
+        }
         function setWear(part, a) {
-            if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
+            if (!part.stock && !part.fit) {   // (a classic base: through THE CLASSIC FIT, once it has loaded - at once when it is cached)
+                var anyW = (a.wear || []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
+                    var f = k === 'cape' ? (typeof getCapeMeshUrl === 'function' && getCapeMeshUrl) : k === 'feet' ? (typeof getFeetMeshUrl === 'function' && getFeetMeshUrl) : (typeof getOuterMeshUrl === 'function' && getOuterMeshUrl);
+                    return f && a[k] && f(a[k]);
+                });
+                if (anyW) ensureClassicFit(part);
+                if (!part.fit) return;
+            }
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
             var mo = typeof getOuterMeshUrl === 'function' ? getOuterMeshUrl(a.outer) : null;   // THE BLENDER COAT
             var mo2 = typeof getOuterMeshUrl === 'function' && a.outer2 ? getOuterMeshUrl(a.outer2) : null;   // THE SECOND OUTER LAYER (a Blender pick)
