@@ -460,3 +460,5 @@ Total with section 4a: **72 Meshy pieces.**
 - 2026-11-01 — creator FACE CAMERA: face / hair / headwear edits glide the stage camera to a face close-up, body and
   clothes edits glide back (character-creator.md "THE FACE CAMERA").
 - 2026-11-01 — row 17 follow-up: the revolver is seated in the cowboy's closed fist (`_gripFrame`, hold `grip`), not at the wrist.
+- 2026-11-02 — row 24 start: the door gun uses the same grip (`HQ_PORTAL_RULES.gun.grip`, 0.21 m), on creator bodies, the HQ
+  walker, and Meshy hands (`_gripFrameMesh`: the handle on the palm read off the skin; fingers stay open). door-gun-skate-vehicles.md.

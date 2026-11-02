@@ -557,6 +557,8 @@ forge GEAR panel and Occam's mirror) calls `EWCharViewer.frameCreator('face' | '
   guard. `pos` / `rot` stay the fallback for a rig without finger bones. The cowboy's revolver is `h: 0.21` (~25 cm on a
   1.8 m body; the catalogue's 0.3 was too fat for the fist). Tuned on close-up renders of the hand (a probe camera on the
   forge stage's own renderer: EWCharViewer.dev.state()), male and female.
+  2026-11-02: the door gun uses it too (door-gun-skate-vehicles.md "THE DOOR GUN IN THE FIST"); a hold's `turn` is kept and the
+  grip vectors turn with it; a rig with no finger bones seats the handle on the palm read off its skin (`_gripFrameMesh`).
 
 ## THE COAT OVER THE CLOTHES + THE HAIR ON THE SHOULDERS (2026-11-01)
 mondo: "adding an outer layer makes the lower clothes layers clip through the outer layer. and the cowgirl's hair clips through her
