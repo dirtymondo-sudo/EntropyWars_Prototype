@@ -48,10 +48,18 @@ BODIES = {
     'heavy':  dict(gender=1.0, age=0.55, muscle=1.0, weight=1.0, proportions=0.5, height=1.0, cupsize=0.5, firmness=0.5),
     'thin':   dict(gender=0.8, age=0.5, muscle=0.2, weight=0.0, proportions=1.0, height=1.0, cupsize=0.5, firmness=0.5),
     'short':  dict(gender=0.8, age=0.6, muscle=0.6, weight=0.75, proportions=0.0, height=0.0, cupsize=0.5, firmness=0.5),
+    # THE FEMALE PRESETS (2026-11-02, mondo: "what about the female short body or female thick body or female tall and thin
+    # body?"): heavy / thin / short were all male. These wear the MPFB female's pack-clothes fit through _FIT_D (FIT_FROM).
+    'female_heavy': dict(gender=0.0, age=0.5, muscle=0.7, weight=1.0, proportions=0.5, height=0.6, cupsize=0.7, firmness=0.5),
+    'female_thin':  dict(gender=0.0, age=0.5, muscle=0.35, weight=0.0, proportions=1.0, height=1.0, cupsize=0.4, firmness=0.6),
+    'female_short': dict(gender=0.0, age=0.5, muscle=0.5, weight=0.6, proportions=0.0, height=0.0, cupsize=0.5, firmness=0.5),
 }
+# a body baked with FIT_FROM wears that body's pack-clothes fit: after export it gets _FIT_D (this body minus that one, per
+# vertex; the two share hm08's vertex order) + mesh extras ewFit {from}, like bake-mpfb-classic.py, so no garment rebake
+FIT_FROM = {'female_heavy': 'female', 'female_thin': 'female', 'female_short': 'female'}
 # underwear per body: 'shorts' (boxer, upper thigh), 'briefs' + 'top' (a plain band over the chest)
-UNDERWEAR = {'male': ('shorts',), 'female': ('briefs', 'top'), 'heavy': ('shorts',), 'thin': ('shorts',), 'short': ('shorts',)}
-SKIN = {'male': (196, 148, 118), 'female': (206, 160, 132), 'heavy': (176, 128, 98), 'thin': (200, 170, 150), 'short': (190, 140, 108)}
+UNDERWEAR = {'male': ('shorts',), 'female': ('briefs', 'top'), 'heavy': ('shorts',), 'thin': ('shorts',), 'short': ('shorts',), 'female_heavy': ('briefs', 'top'), 'female_thin': ('briefs', 'top'), 'female_short': ('briefs', 'top')}
+SKIN = {'male': (196, 148, 118), 'female': (206, 160, 132), 'heavy': (176, 128, 98), 'thin': (200, 170, 150), 'short': (190, 140, 108), 'female_heavy': (206, 160, 132), 'female_thin': (206, 160, 132), 'female_short': (206, 160, 132)}
 
 # glTF morph target name -> MakeHuman expression unit (targets/expression/units/caucasian/<unit>.target.gz)
 EXPRESSIONS = [
@@ -69,6 +77,10 @@ KITS = {
     'heavy':  dict(skin='young_african_male', brows='eyebrow009', lashes='eyelashes01', eyes='brown', hair='short04'),
     'thin':   dict(skin='young_asian_male', brows='eyebrow004', lashes='eyelashes01', eyes='grey', hair='short03'),
     'short':  dict(skin='middleage_caucasian_male', brows='eyebrow008', lashes='eyelashes01', eyes='brownlight', hair='short01'),
+    # the female presets start from the female's kit (the creator's "Body's own" look = the kit of the body it fits from)
+    'female_heavy': dict(skin='young_caucasian_female', brows='eyebrow006', lashes='eyelashes02', eyes='bluegreen', hair='ponytail01'),
+    'female_thin':  dict(skin='young_caucasian_female', brows='eyebrow006', lashes='eyelashes02', eyes='bluegreen', hair='ponytail01'),
+    'female_short': dict(skin='young_caucasian_female', brows='eyebrow006', lashes='eyelashes02', eyes='bluegreen', hair='ponytail01'),
 }
 HAIR_PX = 512
 TMP = '/tmp/bake-mpfb'
@@ -305,11 +317,51 @@ def build_body(M, body, out_dir, tex_px, data_root, packs, credits, looks=None):
         export_attributes=True)
     if hair:
         fix_hair_material(out, hair.name)
+    if body in FIT_FROM:
+        add_fit(out, os.path.join(out_dir, 'mpfb_%s.glb' % FIT_FROM[body]), FIT_FROM[body])
     tris = sum(len(p.vertices) - 2 for ob in meshes for p in ob.data.polygons)
     zmax = max(v.co.z for v in h.data.vertices)
     print('[bake-mpfb] %s: %d verts, %d tris, %.2f m tall, %d bones, %d face keys%s -> %s (%d KB)' % (
         body, sum(len(ob.data.vertices) for ob in meshes), tris, zmax, len(rig.data.bones), len(keys),
         (' + hair ' + kit['hair']) if hair else '', out, os.path.getsize(out) // 1024))
+
+
+def add_fit(path, ref_path, ref):
+    """THE FEMALE PRESETS: _FIT_D = this body's skin minus the reference body's (same hm08 vertex order, checked by
+    _BASE_INDEX) + mesh extras ewFit {from}, so three-renderer.js buildWear dresses it in the reference body's fit."""
+    import json, struct
+
+    def read(p):
+        b = open(p, 'rb').read()
+        n = struct.unpack('<I', b[12:16])[0]
+        return json.loads(b[20:20 + n]), bytearray(b[20 + n + 8:])
+
+    def arr(J, B, i, dt, k):
+        a = J['accessors'][i]
+        bv = J['bufferViews'][a['bufferView']]
+        return np.frombuffer(bytes(B), dt, count=a['count'] * k, offset=bv.get('byteOffset', 0) + a.get('byteOffset', 0)).reshape(-1, k)
+    J, B = read(path)
+    RJ, RB = read(ref_path)
+    pa, ra = J['meshes'][0]['primitives'][0]['attributes'], RJ['meshes'][0]['primitives'][0]['attributes']
+    P, P0 = arr(J, B, pa['POSITION'], np.float32, 3), arr(RJ, RB, ra['POSITION'], np.float32, 3)
+    I, I0 = arr(J, B, pa['_BASE_INDEX'], np.float32, 1), arr(RJ, RB, ra['_BASE_INDEX'], np.float32, 1)
+    if P.shape != P0.shape or not np.array_equal(I, I0):
+        raise RuntimeError('add_fit: %s and %s do not share the vertex order' % (path, ref_path))
+    D = np.ascontiguousarray(P - P0, np.float32)
+    while len(B) % 4:
+        B.append(0)
+    J['bufferViews'].append({'buffer': 0, 'byteOffset': len(B), 'byteLength': D.nbytes})
+    B += D.tobytes()
+    J['accessors'].append({'bufferView': len(J['bufferViews']) - 1, 'componentType': 5126, 'count': int(D.shape[0]), 'type': 'VEC3'})
+    pa['_FIT_D'] = len(J['accessors']) - 1
+    J['meshes'][0].setdefault('extras', {})['ewFit'] = {'from': ref}
+    J['buffers'][0]['byteLength'] = len(B)
+    js = json.dumps(J, separators=(',', ':')).encode()
+    js += b' ' * ((-len(js)) % 4)
+    with open(path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(B)))
+        f.write(struct.pack('<II', len(js), 0x4E4F534A) + js + struct.pack('<II', len(B), 0x004E4942) + bytes(B))
+    print('[bake-mpfb] %s wears the %s fit: max offset %.3f m' % (os.path.basename(path), ref, float(np.abs(D).max())))
 
 
 def mhmat_texture(path):
@@ -1164,6 +1216,17 @@ SHAPE_TARGETS = {
     'jaw': ['chin/chin-width'],
     'nose': ['nose/nose-volume'],
     'cheeks': ['cheek/l-cheek-volume', 'cheek/r-cheek-volume'],
+    # THE BODY DETAILS (2026-11-02, plan row 26): more of MakeHuman's own body modifiers (skin only, the bones stay)
+    'shoulders': ['torso/measure-shoulder-dist'],
+    'vshape': ['torso/torso-vshape'],
+    'pecs': ['torso/torso-muscle-pectoral'],
+    'belly': ['stomach/stomach-pregnant'],
+    'glutes': ['buttocks/buttocks-volume'],
+    'thighs': ['legs/measure-thigh-circ'],
+    'calves': ['legs/measure-calf-circ'],
+    'upperArms': ['arms/measure-upperarm-circ'],
+    'bustSpacing': ['breast/breast-dist'],
+    'bustHeight': [('breast/breast-trans-up', 'breast/breast-trans-down')],
     # THE FACE (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of the eyes and the
     # lips and everything"): the rest of MakeHuman's face modifiers, the same way (MPFB bodies + the MPFB classic bodies' MPFB head).
     'eyeSize': [('eyes/l-eye-scale-incr', 'eyes/l-eye-scale-decr'), ('eyes/r-eye-scale-incr', 'eyes/r-eye-scale-decr')],
@@ -1214,6 +1277,16 @@ SHAPE_TARGETS = {
 }
 
 
+# THE WEIGHT + MUSCLE MACROS (2026-11-02, plan row 26: mondo's female thick / thin bodies as sliders): MakeHuman's own
+# macro targets for a young body of each gender, as deltas off its average ('+' = max minus average, '-' = min minus
+# average). three-renderer.js picks _f or _m by the body (female MPFB bodies = _f).
+MACRO_SHAPES = {}
+for _g, _gs in (('f', 'female'), ('m', 'male')):
+    _u = 'macrodetails/universal-%s-young-%%s' % _gs
+    MACRO_SHAPES['weight_' + _g] = (_u % 'averagemuscle-averageweight', _u % 'averagemuscle-maxweight', _u % 'averagemuscle-minweight')
+    MACRO_SHAPES['muscle_' + _g] = (_u % 'averagemuscle-averageweight', _u % 'maxmuscle-averageweight', _u % 'minmuscle-averageweight')
+
+
 def read_target(path):
     import gzip
     f = gzip.open(path, 'rt') if path.endswith('.gz') else open(path)
@@ -1242,6 +1315,14 @@ def bake_shapes(mpfb_root, out_path):
                 for i, v in load(rel).items():
                     acc[i] = acc.get(i, 0) + v
             idx = sorted(acc)
+            keys.append([k, '+-'[side], len(I), len(idx)])
+            I += idx; D += [acc[i] for i in idx]
+    for k, (avg, hi, lo) in MACRO_SHAPES.items():
+        A = load(avg)
+        for side, t in ((0, hi), (1, lo)):
+            B = load(t)
+            acc = {i: B.get(i, 0) - A.get(i, 0) for i in set(A) | set(B)}
+            idx = [i for i in sorted(acc) if np.abs(acc[i]).max() > 1e-5]
             keys.append([k, '+-'[side], len(I), len(idx)])
             I += idx; D += [acc[i] for i in idx]
     D = np.array(D, np.float32); I = np.array(I, np.uint16)
