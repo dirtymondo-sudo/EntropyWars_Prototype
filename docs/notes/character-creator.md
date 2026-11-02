@@ -929,3 +929,35 @@ necessary parts of the outfit and sliders will allow you to make it look good an
   (needs the Meshy cross pendant, 4a #28), wizard M + F (no hooded robe; her frock coat + mini skirt), demon princess (corset
   + slit gown), and every creature race (plan row 18).
 - Side-by-sides (Meshy row on top, the look below) + the 5-pose clipping sheets: project files `race-looks-batch1/`.
+
+## THE TUCK + THE BELT HEIGHT (2026-11-02, character-models-plan row 12j)
+mondo (on the baked Cowboy, row 12i): "his shirt still doesnt tuck all the way into these jeans and his belt is too low on his
+waist. Anyway we can add a height slider to the belt so it fits with many different pants?" Runtime only (three-renderer.js), no
+GLB rebake, no new art. Before / after sheets (front, side, back; the Cowboy with his coat + close waist views without it):
+/mnt/project-files/cowboy-tuck-belt/.
+- Why the shirt showed: a Blender tucked shirt is baked with a crumpled tuck band that sits just inside the SKIN at the hips, while a
+  pack's jeans stand 1-5 cm off the body with a waistband higher than the shirt's tuck line; the band came out between the jeans'
+  top and the skin (front, sides) and, with the chest bones it was weighted to, out through the back of the jeans when posed.
+- THE TUCK (wearTuckIn, after wearBeltLift, before the layering pass; `TUCK`): a tucked top (`w.tuck` in buildWear: the GLB's
+  `ex.tuck` from bake-clothes.py, or a pack id with `tucked`, not `untucked`) under trousers / a skirt (`TUCK.cats`, higher z) finds the trousers' waistband
+  top yT per angle (`waistband()`, 36 bins) and lays its band inside: the hem is stretched down to yT - `depth` (7 cm); from
+  yT + `lift` down to yT + `flat` it fades onto the smooth skin girth (+ `off`), below the waistband it is clamped inside the
+  trousers' INNER girth (`girthGrid`, minus `inGap`) and the belt's (minus 2 inGap + WEAR_LAYER.gap), never deeper than the skin
+  near the top (the waistband dips between its loops), under the skin (- `onSkin`) only `deep` (3.5 cm) down where the trousers
+  hide it. Its normals turn outward (the crumple's shading is gone), and inside the waistband it takes the skin's own bone
+  weights (nearSet, 2 cm) so an idle that bends the back no longer swings it out through the jeans. `t.tuckW` marks the band:
+  the layering pass folds it only under the OTHER garments (a coat), not along the trousers' / belt's edge normals (that dragged
+  it out in shards), and wearUnderCover no longer lets the trousers / belt eat the shirt just inside the waistband (above yT - `keep` only the
+  other garments, a coat, still hide it: skipping the cover there outright let the sleeves show through the coat). A sleeve is never
+  tucked (a vertex whose nearest skin is arm, part.arm > 0.3: the hanging elbow is within reach of the waistband at the back).
+- THE BELT HEIGHT: appearance.beltHeight (-1..1, sprites.js EW_APPEARANCE_LIMITS; random looks 0), creator CLOTHES > Belt row >
+  "Belt height" slider (party-builder.js, shown when a belt is worn). wearBeltLift (`BELT_LIFT`, first step of wearLayers) lifts
+  every vertex of a worn belt-layer piece by beltHeight x `range` (8 cm, x body height) and moves it in / out by the skin girth
+  difference between its old and new height (skinGirth, 36 bins), smoothed round the belt; then pushes it out so its inside
+  clears the trousers' outermost surface by `clear` (4 mm) at each angle + height; then gives it the skin's bone weights where it
+  now lies (faded in over the first quarter of the slider; restored when back at 0). Over a skirt / no trousers it still follows
+  the body. shapeKey carries it so the slider rebuilds live.
+- The Cowboy (RACE_CREATOR_LOOKS.cowboy.male) wears beltHeight 0.7: the belt sits in the jeans' loops just under the waistband
+  top (0.55 still showed waistband above, at 0.6-0.7 without the trousers push the jeans came out through it at the back).
+- Known: the pack jeans' own waistband shows a small crumple at the right hip at 0.7 (its geometry), the shirt specks at the coat
+  sleeve backs / shoulder tops are the row 12f known issue.

@@ -1221,7 +1221,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccLayer('Feet', 'feet', ccLive('feet', window.EW_FEET_STYLES), 'feetFabric', 'feetColor'),
               // (the coded Gloves / Belt / Neckwear / Glasses picks are retired: gloves, glasses, the belt, the tie and the bow tie
               // are Clothes picks now; the Blender belt still takes the Belt layer's fabric, colour and print)
-              ccLayerWorn('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt')) : null,
+              ccLayerWorn('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt'), ccSlider('beltHeight', 'Belt height')) : null,   // THE BELT HEIGHT (2026-11-02): up / down to sit on any trousers' waistband
               ccExtraLayers(),
               h('h3', { 'data-cc-cam': 'body' }, 'ACCESSORIES'),
               // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back
