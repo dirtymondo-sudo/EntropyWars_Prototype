@@ -37751,6 +37751,7 @@ const DOOR_HQ = {
             typology: 'loop',
             terrain: {
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
+                floorTint: '#8e8c94',   // 2026-11-02 (mondo: "really define the difference between the road and the sidewalks"): the asphalt a shade darker than the pale slabs
                 noise: { amp: 0.04, scale: 6 },
                 gen: { kind: 'city', seed: 33, walkW: 3.0, kerb: 0.12, wallH: 4.0, lotPitch: 9.5, lotW: [6.6, 9.0], lotD: [8, 11], lowP: 0.3, storeys: [1, 3], fronts: 'store', neon: true, fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.45, ruinP: 0.05,
                        streets: [
@@ -37838,7 +37839,7 @@ const DOOR_HQ = {
                 { key: 'riser_2',         x: 18.375, z: 9.625, face: 90 },                           // a loading dock's riser on the boulevard's south sidewalk
                 { key: 'slot_machine',    x: -13.5, z: -24.6, face: 180 }, { key: 'slot_machine', x: -6.5, z: -24.6, face: 180 },   // the chapel's neighbours' machines spilling onto the forecourt
                 { key: 'wet_floor_sign',  x: 4.0, z: 4.2, face: 200 },                         // by the fountain
-                { key: 'traffic_barrel',  x: 25.5, z: -22.6 }, { key: 'traffic_cone', x: 27.5, z: -23.0 },   // the lane's works (on its sidewalk)
+                { key: 'traffic_barrel',  x: 30.5, z: -25.0 }, { key: 'traffic_cone', x: 32.25, z: -25.0 },   // the lane's works (on its sidewalk — 2026-11-02 STREET FURNITURE: they stood 1.4 m into the lane, at the cross street's crossing)
             ],
             agents: [],
             npcSpots: [
@@ -38849,6 +38850,7 @@ const DOOR_HQ = {
             terrain: {
                 /* THE URBAN PACK (2026-09-17): the asphalt is the floor sheet (the corridors), the pavement slabs the path sheet (the sidewalk band + the door paths), the yards' concrete the cliff sheet (the block interiors + the outer ground); the paint, the kerbs, the manholes and the signs are three-renderer.js _hqBuildRoadMarkings */
                 floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a',
+                floorTint: '#8a8a8e',   // 2026-11-02 (mondo: "really define the difference between the road and the sidewalks"): the asphalt a shade darker than the pale slabs
                 noise: { amp: 0.05, scale: 6 },
                 gen: { kind: 'city', seed: 7, walkW: 2.4, kerb: 0.12, wallH: 3.2, lotPitch: 9.5, lotW: [6.4, 8.2], lowP: 0.16, fronts: 'window', fenceKey: 'urban:MetalCorrugatedPainted1a', fenceH: 1.75, texP: 0.22, ruinP: 0.35,   /* 2026-09-21 (the user): Disaster City is the PRISM city — more of the map-builder buildings than the Grid or the Strip (texP 0.22), fewer flat roofs; THE INFILL fills every block */
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
@@ -38916,7 +38918,7 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -32.2, z0: -50.4, x1: -23.8, z1: -50.4 },                                                        // the roof's rail (1.6 m inside the edge)
                     { k: 'pool', x: -40, z: -64, r: 2.8, y: 0, depth: 0.4 },                                                        // MARKET SQUARE's fountain (waded)
                     { k: 'tree', x: -52, z: -60, kind: 'tree_2', h: 3.4 }, { k: 'tree', x: -28, z: -60, kind: 'tree_2', h: 3.4 }, { k: 'tree', x: -40, z: -75, kind: 'tree_3', h: 3.8 },   // the square's
-                    { k: 'tree', x: 40, z: -60, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 52.5, z: -60, kind: 'tree_3', h: 3.6 },     // the church square's (rev 8: the second tree stood in the step's width)
+                    { k: 'tree', x: 44.25, z: -58.25, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 52.25, z: -58.25, kind: 'tree_3', h: 3.6 },     // the church square's (rev 8: the second tree stood in the step's width; 2026-11-02 STREET FURNITURE: both on the square's paving off the high street's kerb, the first stood in the church lane)
                     /* THE DOCKS (D2): THE CANAL from the east wall to the west, deep and never entered; FOUR BRIDGES (decks authored after it = causeways over it) */
                     { k: 'stream', pts: [[114, 46], [-60, 46]], w: 6, y: 0, depth: 0.55, bank: 0.9, key: 'deep_water' },            // THE CANAL (behind the waterfront's warehouses) (never entered; its bed is a climb under the dark sheet — a deep bed leaves a dry ledge at the bank's foot the walker drops onto and cannot leave)
                     { k: 'deck', x0: 0, z0: 39.5, x1: 0, z1: 52.5, w: 11, y: 0.3 },                                                  // THE AVENUE BRIDGE (both banks)
@@ -38957,7 +38959,7 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'cave_stone', n: 7, x: -20, z: -14, r: 5, seed: 2 },                                       // THE COLLAPSE's rubble
                     { k: 'scatter', key: 'cinder_block', n: 9, x: -20, z: -14, r: 6, seed: 12 },                                     // THE SECOND PASS (2026-09-17): the user's kit on the kerbs and at the collapse
                     { k: 'scatter', key: 'traffic_cone', n: 5, x: -20, z: -14, r: 5.5, seed: 13 },
-                    { k: 'tree', x: 0, z: -10.2, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 0, z: 10.2, kind: 'tree_3', h: 3.6 },   // THE TRAFFIC ISLANDS either side of the plaza (R3: the avenue's far doors are not one sightline)
+                    { k: 'tree', x: 0, z: -10.2, kind: 'tree_3', h: 3.6 }, { k: 'tree', x: 0, z: 10.2, kind: 'tree_3', h: 3.6 },   // THE TRAFFIC ISLANDS either side of the plaza (R3: the avenue's far doors are not one sightline) — each in its planter (the props, 2026-11-02)
                     { k: 'scatter', key: 'city_bin', n: 60, seed: 3 },
                     { k: 'scatter', key: 'fire_hydrant', n: 26, seed: 14 },
                     { k: 'scatter', key: 'hot_dog_stand', n: 3, seed: 66, r0: 0.9 },                                                     // THE 2026-09-22 BATCH: the vendors on the kerbs
@@ -39031,6 +39033,7 @@ const DOOR_HQ = {
                 { key: 'brazier',         x: -17.5, z: -17.0 },                              // THE COLLAPSE's barrel fires (the room's own light — the evacuation camped here)
                 { key: 'brazier',         x: -23.0, z: -11.5 },
                 { key: 'wet_floor_sign',  x: 3.6, z: 3.8, face: 200 },                      // by the fountain
+                { key: 'planter',         x: 0, z: -10.2, face: 90 }, { key: 'planter', x: 0, z: 10.2, face: 90 },   // 2026-11-02 STREET FURNITURE: the traffic islands' trees stand in a raised bed (they stood bare in the avenue's mouth)
                 { key: 'city_bin',        x: -31.3, z: 17.4 },                               // on THE ROOFTOP (the ground read puts it on the roof), off the tape's spot
                 { key: 'signpost',        x: -27.8, z: 16.6, face: 20 },
                 { key: 'railing_1m',      x: 23.625, z: -14.875, face: 0 },                          // THE PARK RULE's rail on the deck (the terrain's rails are the grind; this one is the catalogue's)
@@ -39046,8 +39049,8 @@ const DOOR_HQ = {
                 { key: 'church_building', x: 48, z: -80, face: 180 },                        // THE CHURCH in its yard, its doors to the square
                 { key: 'angel_statue',    x: 48, z: -70, face: 180 },
                 { key: 'brazier',         x: -17, z: -50 },                                  // THE COURT's barrel fire
-                { key: 'car_cadillac',    x: -60, z: -68.8, face: 90 },                      // the high street's parking lanes
-                { key: 'car_suv',         x: 70, z: -59.2, face: 270 },
+                { key: 'car_cadillac',    x: -60, z: -66.5, face: 90 },                      // the high street's parking lanes (2026-11-02 STREET FURNITURE: in the lane by the kerb, they stood on the sidewalk)
+                { key: 'car_suv',         x: 70, z: -61.5, face: 270 },
                 { key: 'planter',         x: -12, z: -59.6, face: 0 }, { key: 'planter', x: 24, z: -59.6, face: 0 },
                 { key: 'railing_1m',      x: -28, z: -47, face: 0 },                         // THE PARK RULE's rail on the warehouse roof
                 { key: 'riser_1',         x: 60, z: -59.4, face: 0 },                        // the church square's step
@@ -39063,14 +39066,14 @@ const DOOR_HQ = {
                 { key: 'brazier',         x: 14, z: 82 },
                 { key: 'railing_1m',      x: 22, z: 86.4, face: 0 },                         // THE PARK RULE's rail on the crane platform
                 { key: 'quarter_pipe',    x: 76, z: 72, face: 0 },                           // the quay's pipe
-                { key: 'car_suv',         x: -60, z: 59.2, face: 270 }, { key: 'car_taxi', x: 60, z: 68.8, face: 90 },   // the waterfront's lanes
+                { key: 'car_suv',         x: -60, z: 61.5, face: 270 }, { key: 'car_taxi', x: 60, z: 66.5, face: 90 },   // the waterfront's lanes (2026-11-02 STREET FURNITURE: in the lanes by the kerbs, they stood half on the sidewalks)
                 { key: 'sea_buoy',        x: 60, z: 78, y: -0.2 },                           // THE BASIN's marker (lit)
                 { key: 'bus_shelter',     x: -18, z: 68.9, face: 0 },
                 /* THE PULLS (R2 — a tall thing inside every 50 m of the reach): trees at the far ends of the high street, the cross street and the waterfront */
                 { key: 'garden_tree',     x: -96, z: -58.6 }, { key: 'garden_tree', x: 96, z: -58.6 }, { key: 'garden_tree', x: -100, z: -6.2 }, { key: 'garden_tree', x: 106, z: 26 },
-                { key: 'garden_tree',     x: -96, z: 58.6 }, { key: 'garden_tree', x: 96, z: 58.6 }, { key: 'garden_tree', x: -70, z: -70.2 }, { key: 'garden_tree', x: 70, z: -70.2 },
+                { key: 'garden_tree',     x: -96, z: 58.6 }, { key: 'garden_tree', x: 93.75, z: 54.25 }, { key: 'garden_tree', x: -70, z: -70.2 }, { key: 'garden_tree', x: 70, z: -70.2 },
                 { key: 'high_striker',    x: -46, z: -78, face: 0 },                          // the market's strength tester (the old town's tall thing)
-                { key: 'garden_tree',     x: -102, z: -78 }, { key: 'garden_tree', x: 102, z: -78 }, { key: 'garden_tree', x: -104, z: 50 }, { key: 'garden_tree', x: 104, z: 50 }, { key: 'garden_tree', x: 8, z: -46 }, { key: 'garden_tree', x: -8, z: 58 },   // 2026-09-20: off THE CANAL (z 46 — it stood in the deep water) onto the quay { key: 'flood_mast', x: 46, z: 36 },   // a mast at the east dock lane's mouth
+                { key: 'garden_tree',     x: -102, z: -78 }, { key: 'garden_tree', x: 102, z: -78 }, { key: 'garden_tree', x: -104, z: 50 }, { key: 'garden_tree', x: 106.25, z: 50 }, { key: 'garden_tree', x: 8, z: -46 }, { key: 'garden_tree', x: -8, z: 58 },   // 2026-09-20: off THE CANAL (z 46 — it stood in the deep water) onto the quay { key: 'flood_mast', x: 46, z: 36 },   // a mast at the east dock lane's mouth
             ],
             agents: [],
             npcSpots: [
@@ -39525,8 +39528,8 @@ const DOOR_HQ = {
                 { key: 'traffic_barrel',  x: -1.5, z: -33 }, { key: 'traffic_cone', x: -6.0, z: -27 },
                 { key: 'bus_shelter',     x: 6.3, z: 14.0, face: 270 },                         // the boulevard's stop (the opening to the road)
                 { key: 'bus_shelter',     x: -6.3, z: -30.0, face: 90 },
-                { key: 'slot_machine',    x: -44.5, z: 8.4, face: 180 }, { key: 'slot_machine', x: -46.5, z: 8.4, face: 180 },   // the pachinko parlour spilling onto the alley (the machines' own light)
-                { key: 'brazier',         x: -40.5, z: 15.6 },                                  // the market's barrel fire (the room's own light)
+                { key: 'slot_machine',    x: -47.5, z: 8.4, face: 180 }, { key: 'slot_machine', x: -49.5, z: 8.4, face: 180 },   // the pachinko parlour spilling onto the alley (the machines' own light; 2026-11-02 STREET FURNITURE: off the siding's road)
+                { key: 'brazier',         x: -47.5, z: 12.0 },                                  // the market's barrel fire (the room's own light; 2026-11-02 STREET FURNITURE: in the market alley's mouth, it burned in the siding's road)
                 { key: 'railing_1m',      x: 21.875, z: -13.125, face: 0 },                             // THE PARK RULE's rail on the skyway (the terrain's rails are the grind; this one is the catalogue's)
                 { key: 'quarter_pipe',    x: 25, z: -10.5, face: 180 },                         // the skyway's quarter pipe (SKATEBOARDING 9.8)
                 { key: 'quarter_pipe',    x: -9, z: 9, face: 0 },                               // and one on the plaza's south edge
@@ -39538,8 +39541,8 @@ const DOOR_HQ = {
                 /* THE STACKS (D2) */
                 { key: 'brazier',         x: -50, z: -58 }, { key: 'brazier', x: 46, z: -58 },   // the alleys' barrel fires
                 { key: 'railing_1m',      x: -69, z: -47, face: 0 },                            // THE PARK RULE's rail on STACK W's roof
-                { key: 'car_taxi',        x: -60, z: -74.8, face: 90 }, { key: 'car_cyber', x: 40, z: -65.2, face: 270 },   // the back street's lanes
-                { key: 'vending_machine', x: -30, z: -66.4, face: 0 }, { key: 'vending_machine', x: 60, z: -66.4, face: 0 },
+                { key: 'car_taxi',        x: -60, z: -72.75, face: 90 }, { key: 'car_cyber', x: 40, z: -67.25, face: 270 },   // the back street's lanes (2026-11-02 STREET FURNITURE: by the kerbs, they stood on the sidewalks)
+                { key: 'vending_machine', x: -30, z: -64.6, face: 0 }, { key: 'vending_machine', x: 60, z: -64.6, face: 0 },   // at the back of the sidewalk, facing the street (2026-11-02: they stood in the back street's road; any nearer the building line re-lays the stacks' lots)
                 { key: 'flood_mast',      x: -96, z: -76 }, { key: 'flood_mast', x: 96, z: -76 },   // the back street's ends (lit — the pulls)
                 { key: 'garden_tree',     x: -96, z: -12 }, { key: 'garden_tree', x: 98, z: 6.2 },   // the cross street's far ends
                 /* THE UNDERCITY (D2) */
@@ -39547,7 +39550,7 @@ const DOOR_HQ = {
                 { key: 'quarter_pipe',    x: 74, z: 33, face: 0 },                              // the overlook's pipe
                 { key: 'brazier',         x: -50, z: 68.2 }, { key: 'brazier', x: 50, z: 55.8 },   // the lower cross's fires
                 { key: 'flood_mast',      x: -94, z: 68.2 }, { key: 'flood_mast', x: 94, z: 68.2 },   // the lower city's floods (the pulls)
-                { key: 'car_truck',       x: -30, z: 67.6, face: 90 }, { key: 'crashed_car_2', x: 30, z: 57.6, face: 200 },
+                { key: 'car_truck',       x: -30, z: 64.75, face: 90 }, { key: 'crashed_car_2', x: 30, z: 57.6, face: 200 },
                 { key: 'concrete_pillar', x: -70, z: 56 }, { key: 'concrete_pillar', x: 70, z: 68 },   // the pillars that hold the city up
                 { key: 'signpost',        x: 10, z: 68.4, face: 20 },
                 { key: 'garden_tree',     x: -100, z: 56 }, { key: 'garden_tree', x: 100, z: 56 }, { key: 'garden_tree', x: -60, z: -40 }, { key: 'garden_tree', x: 60, z: -40 }, { key: 'flood_mast', x: 7.4, z: 80 },   // the pulls at the far ends (R2); a mast at the bay door's kerb in the lower city
@@ -54297,6 +54300,41 @@ function _hqRailPoint(sg, t) {
     if (sg.arc) { const a = (sg.arc.a0 + (sg.arc.a1 - sg.arc.a0) * t) * Math.PI / 180; return [sg.arc.x + Math.sin(a) * sg.arc.r, sg.arc.z - Math.cos(a) * sg.arc.r]; }
     return [sg.x0 + (sg.x1 - sg.x0) * t, sg.z0 + (sg.z1 - sg.z0) * t];
 }
+/* THE STREET FURNITURE (2026-11-02, mondo: "street lamps and signs and poles etc that are just placed really wrong or in the middle of a
+   street or in a place where it doesnt make sense ... BENCHES (another one that is really misplaced) ... every map was rebuilt to make sense
+   on the square grid"): in a CITY plan (gen.kind 'city') the scatter rows and the street lamps no longer fall on random sidewalk spots with a
+   random heading. Each kind stands on a LINE of its street — `band`, measured from the street's centreline:
+     'kerb'   on the sidewalk just inside the kerb stones (w/2 + kerbIn, more for a wide prop): lamps, signs, hydrants, bins, a vendor
+     'back'   at the back of the sidewalk against the building line (w/2 + walkW − the prop − backIn): benches, planters, machines, boxes
+     'gutter' in the road along the kerb (w/2 − gutterIn): cones (in a short row), barrels
+     'lane'   in the middle of a lane (w/4): the manholes
+   at spots `pitch` metres apart that lie on the battle squares' lines (an axis-aligned street's spots at whole multiples of the pitch in room
+   metres — the 3.5 m squares' centres and edges; a slanted leg every pitch from its start), never in another street's road and never where
+   a crossing lands (`cross` m past another street's road edge — the zebra's walk); a `pole` (a lamp, a sign, a hydrant, a bin) may stand on
+   the corner itself, within `corner` m of the other road's edge, as a corner post does. Never on a plaza / square (`gen.open`), never in a
+   road unless the band is a road band.
+   `face` = 'road' turns the prop's front to the road (a bench sits looking at the street), 'along' lays it with the street. `gap` keeps
+   two of one row apart (metres). A row with its own centre (x, z, r — the collapse's rubble, a square's plants) keeps its own area but
+   never lands in a road unless it says `road: true`. Nothing here moves walkability: the field is the plan's, and a prop's blocker
+   moves with the prop. info.lamps = the street lamps' spots (three-renderer.js _hqBuildStreetLamps draws them). */
+const HQ_CITY_FURNITURE = {
+    pitch: 1.75, corner: 0.9, cross: 4.2, kerbIn: 0.55, backIn: 0.35, gutterIn: 0.5,
+    lamp: { every: 14, in: 0.6, rad: 0.25, cap: 44, propClear: 2.0, padClear: 3.2 },
+    kinds: {
+        city_bin:        { band: 'kerb',   face: 'road',  gap: 6,  pole: true },
+        fire_hydrant:    { band: 'kerb',   face: 'road',  gap: 12, pole: true },
+        signpost:        { band: 'kerb',   face: 'road',  gap: 10, pole: true },
+        hot_dog_stand:   { band: 'kerb',   face: 'road',  gap: 20 },
+        park_bench:      { band: 'back',   face: 'road',  gap: 8 },
+        potted_plant:    { band: 'back',   face: 'road',  gap: 4 },
+        cardboard_boxes: { band: 'back',   face: 'road',  gap: 5,  debris: true },
+        vending_machine: { band: 'back',   face: 'road',  gap: 6 },
+        cinder_block:    { band: 'back',   face: 'along', gap: 4,  debris: true },
+        traffic_cone:    { band: 'gutter', face: 'along', gap: 14, row: 3, rowGap: 1.2 },
+        traffic_barrel:  { band: 'gutter', face: 'along', gap: 10 },
+        street_drain:    { band: 'lane',   face: 'along', gap: 12 },
+    },
+};
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
     const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
@@ -54814,21 +54852,157 @@ function hqTerrainCompile(room, roomId) {
         return true;
     };
     trees.forEach(t => { placed.push({ x: t.x, z: t.z, r: t.r }); info.trees.push(Object.assign({ y: hAt(t.x, t.z) }, t)); });
+    /* THE STREET FURNITURE (2026-11-02): a city plan's lines (HQ_CITY_FURNITURE) — the lamps first (everything else keeps clear of them),
+       then every scatter row of a kind the table names stands on its band of a street, on the squares' lines, facing its road */
+    const CP = (info.gen && info.gen.kind === 'city' && info.genPlan && info.genPlan.streets && info.genPlan.streets.length) ? info.genPlan : null;
+    let city = null;
+    if (CP) {
+        const CF = HQ_CITY_FURNITURE, sts = CP.streets, walk = CP.walkW || 0, opens = (room.terrain && room.terrain.gen && room.terrain.gen.open) || [];
+        const props = (room.props || []).filter(p => p && !p.wall && !p.ceil && p.x != null);
+        const inOpen = (px, pz, m) => opens.some(o => (o.r != null) ? Math.hypot(px - o.x, pz - o.z) < o.r + m : _hqTPolyDist(px, pz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 0) / 2 + m);
+        const r2 = v => Math.round(v * 100) / 100;
+        const offOf = (band, st, rad) => band === 'kerb' ? st.w / 2 + Math.max(CF.kerbIn, rad + 0.2)
+            : band === 'back' ? st.w / 2 + walk - rad - CF.backIn
+            : band === 'gutter' ? st.w / 2 - Math.max(CF.gutterIn, rad + 0.2)
+            : st.w / 4;
+        /* every spot of a band: both sides of every leg, `pitch` apart on the squares' lines */
+        const spots = (band, rad, every) => {
+            const out = [], P = every || CF.pitch;
+            sts.forEach((st, si) => {
+                const pts = st.pts;
+                for (let k = 0; k + 1 < pts.length; k++) {
+                    const ax = pts[k][0], az = pts[k][1], dx = pts[k + 1][0] - ax, dz = pts[k + 1][1] - az, L = Math.hypot(dx, dz); if (L < 1) continue;
+                    const ux = dx / L, uz = dz / L, alongX = Math.abs(ux) > 0.999, alongZ = Math.abs(uz) > 0.999;
+                    let s0 = 0;
+                    if (alongX || alongZ) { const a0 = alongX ? ax : az, u = alongX ? ux : uz, first = u > 0 ? Math.ceil(a0 / P - 1e-9) * P : Math.floor(a0 / P + 1e-9) * P; s0 = Math.abs(first - a0); }
+                    for (let s = s0; s <= L + 1e-6; s += P) [-1, 1].forEach(sd => {
+                        const nx = -uz * sd, nz = ux * sd, o = offOf(band, st, rad);
+                        out.push({ x: r2(ax + ux * s + nx * o), z: r2(az + uz * s + nz * o), nx, nz, ux, uz, si, sd, s, leg: k });
+                    });
+                }
+            });
+            return out;
+        };
+        /* a spot is the street's own: on its band, never at a junction / a crossing / a corner, never on a plaza, a real sidewalk behind it */
+        const ok = (q, band, rad, pole) => {
+            const road = band === 'gutter' || band === 'lane';
+            for (let j = 0; j < sts.length; j++) {
+                const d = _hqTPolyDist(q.x, q.z, sts[j].pts).d, e = d - sts[j].w / 2;   // e: past that road's edge
+                if (j === q.si) { if (road ? d > sts[j].w / 2 - rad - 0.1 : e < rad + 0.15) return false; continue; }
+                if (pole && !road) { if (e < rad + 0.3 || (e >= CF.corner && e < CF.cross + rad)) return false; continue; }   // the corner post, never the crossing's landing
+                if (e < Math.max(CF.cross, walk + CF.corner) + rad) return false;
+            }
+            if (inOpen(q.x, q.z, rad + 0.5)) return false;
+            if (!road && info.maskD && hqTerrainMaskAt(info, q.x, q.z) > walk + 0.5) return false;   // the building line stands behind a sidewalk spot (not an open yard / apron)
+            for (const p of props) if (Math.hypot(q.x - p.x, q.z - (p.z || 0)) < rad + (road ? 3.0 : 1.5)) return false;   // the parked cars, the shelters, the stands
+            return true;
+        };
+        const faceOf = (q, how) => how === 'road' ? Math.round((Math.atan2(-q.nx, q.nz) * 180 / Math.PI + 360) % 360) : how === 'along' ? Math.round((Math.atan2(q.ux, -q.uz) * 180 / Math.PI + 360) % 360) : null;
+        /* the nearest street's heading from a point (a row with its own area turns its benches / machines to the road) */
+        const roadFace = (px, pz) => {
+            let best = null;
+            sts.forEach(st => { const r = _hqTPolyDist(px, pz, st.pts); if (!best || r.d < best.d) { const a = st.pts[r.seg], b = st.pts[r.seg + 1]; best = { d: r.d, x: a[0] + (b[0] - a[0]) * r.t, z: a[1] + (b[1] - a[1]) * r.t }; } });
+            return best && best.d > 0.01 ? Math.round((Math.atan2(best.x - px, -(best.z - pz)) * 180 / Math.PI + 360) % 360) : null;
+        };
+        city = { CF, sts, walk, spots, ok, faceOf, roadFace, r2 };
+        /* THE STREET LAMPS: a CORNER POST at each corner of every crossing (`corner` m off both kerbs, the head over the junction), then
+           alternating sides every `every` m on the kerb line, snapped to the squares' lines, clear of crossings / plazas / doors / props;
+           nearest the room's middle first (the cap keeps the lamps where the fights are) */
+        const LP = CF.lamp, lampCand = []; info.lamps = [];
+        const segs = []; sts.forEach((st, si) => { for (let k = 0; k + 1 < st.pts.length; k++) { const a = st.pts[k], b = st.pts[k + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > 1) segs.push({ si, a, b, L, ux: (b[0] - a[0]) / L, uz: (b[1] - a[1]) / L, w: st.w }); } });
+        const junctions = [];
+        for (let i = 0; i < segs.length; i++) for (let j = i + 1; j < segs.length; j++) {
+            const A = segs[i], B = segs[j]; if (A.si === B.si) continue;
+            const cr = A.ux * B.uz - A.uz * B.ux; if (Math.abs(cr) < 0.98) continue;   // square crossings only (a slanted chicane has no corner post)
+            const dx = B.a[0] - A.a[0], dz = B.a[1] - A.a[1], tA = (dx * B.uz - dz * B.ux) / cr, tB = (dx * A.uz - dz * A.ux) / cr;
+            if (tA < -B.w / 2 - 0.5 || tA > A.L + B.w / 2 + 0.5 || tB < -A.w / 2 - 0.5 || tB > B.L + A.w / 2 + 0.5) continue;
+            const P = [A.a[0] + A.ux * tA, A.a[1] + A.uz * tA];
+            if (junctions.some(q => Math.hypot(q.P[0] - P[0], q.P[1] - P[1]) < 2)) continue;
+            junctions.push({ P, A, B });
+        }
+        junctions.forEach(J => [-1, 1].forEach(sa => [-1, 1].forEach(sb => {
+            const oA = J.B.w / 2 + LP.in, oB = J.A.w / 2 + LP.in;   // along A past B's kerb, along B past A's kerb
+            const x = r2(J.P[0] + J.A.ux * sa * oA + J.B.ux * sb * oB), z = r2(J.P[1] + J.A.uz * sa * oA + J.B.uz * sb * oB), L = Math.hypot(x - J.P[0], z - J.P[1]) || 1;
+            lampCand.push({ x, z, nx: (x - J.P[0]) / L, nz: (z - J.P[1]) / L, si: -1, corner: true });
+        })));
+        sts.forEach((st, si) => {
+            const pts = st.pts; let side = si % 2 ? 1 : -1, acc = LP.every * 0.5;
+            for (let k = 0; k + 1 < pts.length; k++) {
+                const ax = pts[k][0], az = pts[k][1], dx = pts[k + 1][0] - ax, dz = pts[k + 1][1] - az, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;
+                const axis = Math.abs(ux) > 0.999 ? 'x' : Math.abs(uz) > 0.999 ? 'z' : null;
+                let s = acc;
+                for (; s < L; s += LP.every) {
+                    side = -side;
+                    if (info.lamps.length >= LP.cap) continue;
+                    const nx = -uz * side, nz = ux * side, o = st.w / 2 + LP.in, step = CF.pitch * 2;
+                    /* the nominal spot on the nearest square line, else the next lines either way (a lamp slides off a crossing / a door, it is not lost) */
+                    let base = s;
+                    if (axis) { const a = (axis === 'x' ? ax + ux * s : az + uz * s), snap = Math.round(a / step) * step; base = s + (snap - a) * (axis === 'x' ? ux : uz); }
+                    const alts = [];
+                    for (const dk of [0, 1, -1, 2, -2]) { const ss = base + dk * step; if (ss >= 0 && ss <= L) alts.push({ x: r2(ax + ux * ss + nx * o), z: r2(az + uz * ss + nz * o), nx, nz, ux, uz, si }); }
+                    if (alts.length) lampCand.push({ alts, x: alts[0].x, z: alts[0].z });
+                }
+                acc = s - L;
+            }
+        });
+        const lampOk = (q) => {
+            if (q.corner) { for (const st of sts) if (_hqTPolyDist(q.x, q.z, st.pts).d < st.w / 2 + LP.rad + 0.3) return false; if (inOpen(q.x, q.z, LP.rad + 0.5)) return false; if (info.maskD && hqTerrainMaskAt(info, q.x, q.z) < LP.rad + 0.3) return false; }
+            else if (!ok(q, 'kerb', LP.rad, true)) return false;
+            if (props.some(p => Math.hypot(q.x - p.x, q.z - (p.z || 0)) < LP.propClear)) return false;
+            if ((info.pads || []).some(p => Math.hypot(p.x - q.x, p.z - q.z) < LP.padClear)) return false;
+            if (!freeFor(q.x, q.z, LP.rad, { slope: 0.5, apart: 0.5 })) return false;
+            return !info.lamps.some(l => Math.hypot(l.x - q.x, l.z - q.z) < (q.corner ? 3.5 : LP.every * 0.5));
+        };
+        lampCand.sort((a, b) => ((b.corner ? 1 : 0) - (a.corner ? 1 : 0)) || (Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z)));
+        for (const c of lampCand) {
+            if (info.lamps.length >= LP.cap) break;
+            const q = (c.alts || [c]).find(lampOk); if (!q) continue;
+            info.lamps.push({ x: q.x, z: q.z, y: hAt(q.x, q.z), nx: r2(q.nx), nz: r2(q.nz) });
+            placed.push({ x: q.x, z: q.z, r: LP.rad + 0.4 });
+        }
+    }
     scatterRows.forEach((f, fi) => {
         const n = f.n || 6, isTree = f.k === 'grove', rad = isTree ? R.treeR : (f.r0 || 0.45);
         const kinds = f.kinds || ['tree', 'tree', 'tree_2', 'tree_3'];
         let s = (typeof hqHash === 'function') ? hqHash((roomId || '') + '|' + f.k + '|' + (f.key || '') + '|' + fi + '|' + (f.seed || 0)) : fi * 7919;
         const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
         let made = 0;
+        /* THE STREET FURNITURE: a city row of a known kind with no area of its own stands on its band (the seeded pick among the band's spots) */
+        const rule = (city && !isTree && !f.road && !(f.x != null && f.r) && f.key) ? city.CF.kinds[f.key] : null;
+        if (rule) {
+            const band = rule.band, road = band === 'gutter' || band === 'lane', cand = city.spots(band, rad);
+            for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)), t = cand[i]; cand[i] = cand[j]; cand[j] = t; }   // the seeded order
+            const mine = [], put = (q) => {
+                placed.push({ x: q.x, z: q.z, r: rad }); mine.push(q); made++;
+                info.scatter.push({ key: f.key, x: q.x, z: q.z, y: hAt(q.x, q.z), face: city.faceOf(q, rule.face), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined });
+            };
+            const fits = (q) => city.ok(q, band, rad, !!rule.pole) && freeFor(q.x, q.z, rad, { slope: f.slope || 0.25, onPath: !!f.onPath, apart: 0.5, kerb: false }) && !mine.some(m => Math.hypot(m.x - q.x, m.z - q.z) < (rule.gap || 0));
+            for (const q of cand) {
+                if (made >= n) break;
+                if (!fits(q)) continue;
+                put(q);
+                /* a row (the cones): the next ones down the street's own band, `rowGap` apart */
+                for (let r = 1; r < (rule.row || 1) && made < n; r++) {
+                    const qq = Object.assign({}, q, { x: city.r2(q.x + q.ux * rule.rowGap * r), z: city.r2(q.z + q.uz * rule.rowGap * r) });
+                    if (!city.ok(qq, band, rad, !!rule.pole) || !freeFor(qq.x, qq.z, rad, { slope: 0.25, apart: 0.1, kerb: false })) break;
+                    placed.push({ x: qq.x, z: qq.z, r: rad }); made++;
+                    info.scatter.push({ key: f.key, x: qq.x, z: qq.z, y: hAt(qq.x, qq.z), face: city.faceOf(qq, rule.face), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined });
+                }
+            }
+            return;
+        }
+        const cityArea = !!(city && !isTree && f.x != null && f.r);   // a city row with its own area (a square's plants, the quay's freight — `road: true` only frees it of the kerb): its machines / benches turned to the nearest road
+        const cityAreaRule = cityArea ? city.CF.kinds[f.key] : null, offRoad = !!(cityAreaRule && !cityAreaRule.debris && (cityAreaRule.band === 'kerb' || cityAreaRule.band === 'back'));   // street furniture never in a street's road; debris (a collapse's rubble / cones / blocks, the quay's freight) stays where it fell
         for (let tries = 0; tries < n * 40 && made < n; tries++) {
             let px, pz;
             if (f.x != null && f.r) { const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * f.r; px = f.x + Math.cos(a) * rr; pz = f.z + Math.sin(a) * rr; }
             else { px = (rnd() - 0.5) * (S.w - 1.6); pz = (rnd() - 0.5) * (S.d - 1.6); }
             px = Math.round(px * 100) / 100; pz = Math.round(pz * 100) / 100;
             if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea, own: !!(f.x != null && f.r) })) continue;
+            if (offRoad && city.sts.some(st => _hqTPolyDist(px, pz, st.pts).d < st.w / 2 + rad + 0.15)) continue;   // THE STREET FURNITURE: a square's plants never stand in the road through it
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
-            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined, sea: f.sea ? true : undefined });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
+            else { const rf = Math.round(rnd() * 360), cr = cityArea ? city.CF.kinds[f.key] : null; info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: (cr && cr.face === 'road' && city.roadFace(px, pz) != null) ? city.roadFace(px, pz) : rf, r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined, sea: f.sea ? true : undefined }); }   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
         }
     });
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
