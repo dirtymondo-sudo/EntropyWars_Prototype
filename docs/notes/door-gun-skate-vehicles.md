@@ -684,3 +684,20 @@ unused). `Shadow (3D)/car_shadow.png` is drawn as a blob plane under each car. `
   makes `_hqTickTraffic` ease the car down to half speed into a bend and back up after (car.vNow).
 - THE LAMPS: `_CAR_PACK[n].hl / .tl` = measured headlamp / tail lamp [|x|, y] in OBJ units; `_carPackModel` exposes
   `g._ew_lamps` (world units) and the traffic hangs its glows there (the wreck has none).
+
+## THE DOOR GUN IN THE FIST (2026-11-02, mondo: "fix the door gun to fit in the hands like the revolver does for the cowboy ... scaled down ... place it in the hand's finger grip properly")
+- data.js `HQ_PORTAL_RULES.gun`: `span` 0.36 -> **0.21 m** (its handle is now the cowboy revolver's size in the fist, both ~6 cm).
+  The board/forge never read `span` (`_unitAttachHeld` fitted `hold.h` else the catalogue's 0.62): it now reads `hold.span`
+  too, so the Door Agent's gun in battle shrank from 0.62 m. `grip` = the handle measured off the GLB (Meshy_AI__0916054803:
+  c [0.36, -0.16, 0], down [0.225, -0.974, 0], barrel -X), the revolver's seat (character-creator.md "THE SEAT").
+- Creator bodies (MPFB, finger bones): `_gripHand` curls the fist, `_gripFrame` seats the handle (`depth` 0.1, `back` 0.22),
+  the index finger at the trigger guard. The HQ walker (`_hqAttachHeld` via `_hqGunAttach`) now seats it too, not only the
+  board + forge. The hold's `turn` (180) stays on the instance and the grip vectors turn with it (`_gripTurnTo`, `_gripCentre`),
+  so `muzzle` keeps its +X barrel frame; `pitch` is skipped when seated (the hand sets the angle).
+- Meshy rigs (the cast Player / Belle: no finger bones): `_gripFrameMesh` reads the hand off its own skin (vertices weighted
+  to RightHand in bind space: longest spread = wrist -> fingertips, next = across the palm, the thumb's bulge = the index
+  side), puts the handle on the palm's face (`meshAt` 0.46, `meshUp` 0.06 hand-lengths), barrel forward. The fingers stay
+  open as modelled (no bones to close them). `pos` / `rot` / `pitch` are now only the fallback if that read fails.
+- `muzzle` = the dish at the new size [0.105, 0.101, 0] (it was [0.5, 0.11, 0], ~30 cm past the old gun's dish).
+  The first-person viewmodel keeps its own size and muzzle (`vmSpan` 0.36, `vmMuzzle`): its glove is built round the gun.
+- Close-ups (forge stage, probe camera on the gun's flanks): /mnt/project-files/door-gun-grip/.
