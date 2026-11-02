@@ -3956,7 +3956,8 @@ const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
   head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
-  eyeSize: [-1, 1, 0], brows: [0, 1, 0.5]
+  eyeSize: [-1, 1, 0], brows: [0, 1, 0.5],
+  jiggleChest: [0, 1, 0.5], jiggleButt: [0, 1, 0.5]   // THE JIGGLE (2026-11-02, mondo): the MPFB bodies' chest + glute spring strength (three-renderer.js jigTick; 0 = still)
 };
 /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of the
    eyes and the lips and everything"): an MPFB body (and an MPFB classic body's MPFB head) takes MakeHuman's OWN face

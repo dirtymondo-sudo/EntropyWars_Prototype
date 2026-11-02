@@ -51208,6 +51208,8 @@ const ThreeRenderer = (function () {
                 if (headBone < 0) headBone = mesh.skeleton.bones.findIndex(function (b) { return /neck/i.test(b.name); });
                 if (headBone < 0) headBone = 0;
             }
+            var jig = null;   // THE JIGGLE (2026-11-02): an MPFB body's chest + glute spring bones, added to its skeleton BEFORE the shells bind to it
+            if (stockSkin) { try { jig = jigExtend(mesh); } catch (e) { jig = null; console.warn('[ThreeRenderer] jiggle bones failed', e); } }
             /* THE CLOTH FRAME (rev 5): the garments' UVs are cut like cloth, not
                read from the base's atlas — the Meshy unwrap scatters the body over
                hundreds of small islands, each with its own orientation, so a
@@ -51295,7 +51297,7 @@ const ThreeRenderer = (function () {
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 })),
                 outer2: shell('outer2', material({ roughness: 0.9 }))   // THE SECOND OUTER LAYER (2026-11-01)
             };
-            var part = { faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
+            var part = { jig: jig, faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
             // the shoulder's vertices (the strap paths and the skin-depth reads search these)
@@ -54634,6 +54636,187 @@ const ThreeRenderer = (function () {
             part.sway = { bones: newBones, skel: skel };
             if (_swStates) _swStates.delete(root);
         }
+        /* THE JIGGLE (2026-11-02, mondo: "similar to the capes and the hair, can we add jiggle physics to the boobs and butt? In
+           the character creator"). An MPFB body (the five MPFB bodies + the two MPFB classic ones) gets four soft spots: each
+           breast and each glute. A spot is a spring in the world (inertia, a pull back to where the skin sits, damping), so it
+           lags behind the body when the body moves (a step, a stop, a turn, a landing) and settles back at rest. It moves the
+           skin through extra bones `ewjig_<spot>_<bone>`: one child of each body bone that carries the spot's skin (the chest
+           rides Spine / Spine01 / Spine02; a glute rides Hips / Spine02 / that leg's UpLeg, so the walk still bends the skin as
+           before), each at its parent's origin with its parent's bind inverse, so at rest every vertex skins exactly as it did.
+           jigWeights moves part of a vertex's weight on those bones onto their jiggle bones, by WHERE the vertex sits (a soft
+           round fall-off round the spot, full at the front of a breast / the back of a glute, none at the body wall), and does
+           that for EVERY skinned layer on the body (the skin, the coded clothes, the pack + Blender clothes, the hair lying on
+           them), so the clothes over a spot move with the skin and nothing clips. Strength per look: appearance.jiggleChest /
+           jiggleButt (0..1, 0.5 = default, 0 = still), the creator's BODY > Jiggle sliders; a male body's chest at 35 %.
+           Cosmetic and local: each screen runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_JIGGLE = true
+           (before the model loads: no bones, the weights untouched). */
+        function jigExtend(mesh) {
+            if (typeof window !== 'undefined' && window.EW_DISABLE_JIGGLE) return null;
+            var sk = mesh.skeleton;
+            if (!sk || !sk.bones || !sk.boneInverses) return null;
+            var SPOTS = [
+                { id: 'chestL', chest: true, side: 1, src: ['Spine', 'Spine01', 'Spine02'] },
+                { id: 'chestR', chest: true, side: -1, src: ['Spine', 'Spine01', 'Spine02'] },
+                { id: 'buttL', chest: false, side: 1, src: ['Hips', 'Spine02', 'LeftUpLeg'] },
+                { id: 'buttR', chest: false, side: -1, src: ['Hips', 'Spine02', 'RightUpLeg'] }];
+            var base = sk.bones.length, nb = [], ni = [], spots = [];
+            var idx = function (nm) { return sk.bones.findIndex(function (b) { return b.name === nm; }); };
+            SPOTS.forEach(function (S) {
+                var srcs = [];
+                S.src.forEach(function (nm) {
+                    var pi = idx(nm); if (pi < 0 || !sk.boneInverses[pi]) return;
+                    var b = new THREE.Bone(); b.name = 'ewjig_' + S.id + '_' + nm;
+                    sk.bones[pi].add(b);
+                    srcs.push({ p: pi, j: base + nb.length, bone: b, parent: sk.bones[pi] });
+                    nb.push(b); ni.push(sk.boneInverses[pi].clone());
+                });
+                if (srcs.length) spots.push({ S: S, srcs: srcs, ok: false, apex: null, bl: new THREE.Vector3(), x: new THREE.Vector3(), v: new THREE.Vector3(), pa: new THREE.Vector3(), fresh: true });
+            });
+            if (!nb.length) return null;
+            mesh.bind(new THREE.Skeleton(sk.bones.concat(nb), sk.boneInverses.concat(ni)), mesh.bindMatrix);
+            var parentOf = new Int32Array(nb.length);
+            spots.forEach(function (s) { s.srcs.forEach(function (r) { parentOf[r.j - base] = r.p; }); });
+            return { base: base, end: base + nb.length, first: nb[0], parentOf: parentOf, spots: spots, dirty: true };
+        }
+        /* where each spot sits on the body as it is shaped now: the front-most skin of each breast (0.66..0.80 of the height,
+           off the arms) and the back-most of each glute (0.42..0.56) */
+        function jigFit(part) {
+            var J = part.jig, P = part.body.geometry.attributes.position.array, Q = part.Q, N = part.count, BM = part.body.bindMatrix, inv = part.body.skeleton.boneInverses;
+            J.spots.forEach(function (s) {
+                var best = -1, bv = -Infinity, S = s.S;
+                for (var i = 0; i < N; i++) {
+                    var qx = Q[i * 3] * S.side, t = Q[i * 3 + 1];
+                    if (qx < 0.012 || qx > 0.14) continue;
+                    if (S.chest ? (t < 0.66 || t > 0.8) : (t < 0.42 || t > 0.56)) continue;
+                    if (part.arm && part.arm[i] > 0.2) continue;
+                    var sc = S.chest ? P[i * 3 + 2] : -P[i * 3 + 2];
+                    if (sc > bv) { bv = sc; best = i; }
+                }
+                s.ok = best >= 0;
+                if (!s.ok) return;
+                s.apex = [P[best * 3], P[best * 3 + 1], P[best * 3 + 2]];
+                s.bl.set(s.apex[0], s.apex[1], s.apex[2]).applyMatrix4(BM).applyMatrix4(inv[s.srcs[0].p]);   // the spot in its first bone's frame
+                s.fresh = true;
+            });
+        }
+        var _jgI = new Int32Array(24), _jgW = new Float32Array(24), _jgF = new Float32Array(4);
+        function jigWeights(part) {
+            var J = part.jig; J.dirty = false;
+            jigFit(part);
+            var Hm = part.height / 1.7, spots = J.spots, ns = spots.length;
+            var meshes = [], seen = [];
+            root.traverse(function (n) { if (n.isSkinnedMesh && n.skeleton && n.skeleton.bones[J.base] === J.first && n.geometry && n.geometry.attributes.skinIndex) meshes.push(n); });
+            meshes.forEach(function (m) {
+                var g = m.geometry, siA = g.attributes.skinIndex, swA = g.attributes.skinWeight, pA = g.attributes.position;
+                if (!swA || !pA || seen.indexOf(swA) >= 0) return;   // (a garment's accents share its attributes)
+                seen.push(swA);
+                var si = siA.array, sw = swA.array, p = pA.array, n = Math.min(pA.count, siA.count), changed = false, v, k, q;
+                for (v = 0; v < n; v++) {
+                    var o = v * 4, hadJ = false;
+                    // back to the body's own weights first (the pass runs again after every rebuild: it never stacks)
+                    for (k = 0; k < 4; k++) if (si[o + k] >= J.base && si[o + k] < J.end) { si[o + k] = J.parentOf[si[o + k] - J.base]; hadJ = true; }
+                    if (hadJ) {
+                        changed = true;
+                        for (k = 0; k < 4; k++) for (q = k + 1; q < 4; q++) if (sw[o + q] > 0 && si[o + q] === si[o + k]) { sw[o + k] += sw[o + q]; sw[o + q] = 0; si[o + q] = 0; }
+                    }
+                    var x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2], fs = 0;
+                    for (q = 0; q < ns; q++) {
+                        var s = spots[q], f = 0;
+                        if (s.ok) {
+                            var sg = (s.S.chest ? 0.05 : 0.06) * Hm, D = (s.S.chest ? 0.075 : 0.07) * Hm, dx = x - s.apex[0], dy = y - s.apex[1];
+                            var r2 = (dx * dx + dy * dy) / (sg * sg);
+                            if (r2 < 6.8) {
+                                var u = s.S.chest ? (z - (s.apex[2] - D)) / D : ((s.apex[2] + D) - z) / D;
+                                u = u < 0 ? 0 : u > 1 ? 1 : u;
+                                f = Math.exp(-r2 / 2) * u * u * (3 - 2 * u) * (1 - r2 / 6.8);
+                            }
+                        }
+                        _jgF[q] = f; fs += f;
+                    }
+                    if (!(fs > 0.002)) continue;
+                    if (fs > 1) for (q = 0; q < ns; q++) _jgF[q] /= fs;
+                    var c = 0;
+                    for (k = 0; k < 4; k++) { _jgI[c] = si[o + k]; _jgW[c] = sw[o + k]; c++; }
+                    for (q = 0; q < ns; q++) {
+                        if (!(_jgF[q] > 0)) continue;
+                        var R = spots[q].srcs;
+                        for (var r = 0; r < R.length; r++) for (k = 0; k < 4; k++) {
+                            if (si[o + k] !== R[r].p || !(sw[o + k] > 0)) continue;
+                            var amt = sw[o + k] * _jgF[q];
+                            _jgW[k] -= amt; _jgI[c] = R[r].j; _jgW[c] = amt; c++;
+                        }
+                    }
+                    if (c === 4) continue;
+                    // the four heaviest, renormalised
+                    for (k = 0; k < 4; k++) {
+                        var bi = k;
+                        for (q = k + 1; q < c; q++) if (_jgW[q] > _jgW[bi]) bi = q;
+                        if (bi !== k) { var ti = _jgI[k], tw = _jgW[k]; _jgI[k] = _jgI[bi]; _jgW[k] = _jgW[bi]; _jgI[bi] = ti; _jgW[bi] = tw; }
+                    }
+                    var tot = 0;
+                    for (k = 0; k < 4; k++) { if (!(_jgW[k] > 0)) { _jgW[k] = 0; _jgI[k] = 0; } tot += _jgW[k]; }
+                    if (!(tot > 0)) continue;
+                    for (k = 0; k < 4; k++) { si[o + k] = _jgI[k]; sw[o + k] = _jgW[k] / tot; }
+                    changed = true;
+                }
+                if (changed) { siA.needsUpdate = true; swA.needsUpdate = true; }
+            });
+        }
+        var JIG_SPRING = { chest: { hz: 3.2, zeta: 0.2, max: 0.045 }, butt: { hz: 4.2, zeta: 0.28, max: 0.03 } };
+        var _jgA = null, _jgB = null, _jgC = null, _jgD = null, _jgP = null, _jgVA = null, _jgM = null, _jgM3 = null, _jgB2M = null;
+        function jigTick(part, dt, a) {
+            var J = part.jig;
+            if (!J) return;
+            if (typeof window !== 'undefined' && window.EW_DISABLE_JIGGLE) {   // (turned off live: the spots go back to rest)
+                J.spots.forEach(function (s0) { s0.fresh = true; s0.srcs.forEach(function (r0) { if (r0.bone.position.lengthSq()) { r0.bone.position.set(0, 0, 0); r0.bone.updateMatrixWorld(true); } }); });
+                return;
+            }
+            if (!(dt > 0)) return;
+            if (J.dirty) jigWeights(part);
+            if (!_jgA) { _jgA = new THREE.Vector3(); _jgB = new THREE.Vector3(); _jgC = new THREE.Vector3(); _jgD = new THREE.Vector3(); _jgP = new THREE.Vector3(); _jgVA = new THREE.Vector3(); _jgM = new THREE.Matrix4(); _jgM3 = new THREE.Matrix3(); _jgB2M = new THREE.Matrix4(); }
+            var body = part.body, chestK = a && a.jiggleChest != null ? +a.jiggleChest : 0.5, buttK = a && a.jiggleButt != null ? +a.jiggleButt : 0.5;
+            chestK *= (bustBody(part) ? 1 + 0.4 * Math.max(-1, Math.min(1, +(a && a.bust) || 0)) : 0.35) * 2;
+            buttK *= 2;
+            body.updateWorldMatrix(true, false);
+            var wsc = null, slow = dt > 0.25;   // (a stalled frame / a hidden tab: the spots start again at rest, no snap)
+            dt = Math.min(dt, 0.1);
+            for (var q = 0; q < J.spots.length; q++) {
+                var s = J.spots[q], gain = s.S.chest ? chestK : buttK, K = s.S.chest ? JIG_SPRING.chest : JIG_SPRING.butt, r;
+                if (!s.ok || !(gain > 0.001)) { for (r = 0; r < s.srcs.length; r++) if (s.srcs[r].bone.position.lengthSq()) { s.srcs[r].bone.position.set(0, 0, 0); s.srcs[r].bone.updateMatrixWorld(true); } s.fresh = true; continue; }
+                var A = s.srcs[0].parent;
+                _jgM.multiplyMatrices(body.matrixWorld, body.bindMatrixInverse).multiply(A.matrixWorld);   // the anchor bone's frame → the world (the skinning's own chain)
+                _jgA.copy(s.bl).applyMatrix4(_jgM);                                                          // where the spot's skin sits this frame
+                if (wsc == null) {   // world units per 1.7 m of this body (the full skinning chain: geometry → bone → world)
+                    _jgM3.setFromMatrix4(_jgB2M.copy(_jgM).multiply(body.skeleton.boneInverses[s.srcs[0].p]).multiply(body.bindMatrix));
+                    _jgB.set(0, 1, 0).applyMatrix3(_jgM3); wsc = _jgB.length() * part.height / 1.7;
+                }
+                if (s.fresh || slow || s.x.distanceTo(_jgA) > 0.3 * wsc) { s.x.copy(_jgA); s.pa.copy(_jgA); s.v.set(0, 0, 0); s.fresh = false; }
+                /* a damped spring towards the skin, in steps of at most 1/120 s; the skin's own path is cut into the same steps and
+                   the damping works on the speed RELATIVE to the skin, so a steady walk / run / turntable leaves no lag: only a
+                   change of speed (a step's bob, a start, a stop, a landing, a turn) swings it */
+                var w = 2 * Math.PI * K.hz, steps = Math.max(1, Math.ceil(dt * 120)), h = dt / steps;
+                _jgVA.subVectors(_jgA, s.pa).multiplyScalar(1 / dt);
+                for (var st = 0; st < steps; st++) {
+                    _jgP.copy(s.pa).lerp(_jgA, (st + 1) / steps);
+                    _jgB.subVectors(_jgP, s.x).multiplyScalar(w * w);
+                    _jgD.subVectors(s.v, _jgVA).multiplyScalar(-2 * K.zeta * w);
+                    s.v.addScaledVector(_jgB.add(_jgD), h); s.x.addScaledVector(s.v, h);
+                }
+                s.pa.copy(_jgA);
+                // what shows: the lag x the strength, mostly up / down (the body wall holds a spot front-to-back), eased to a cap
+                _jgC.subVectors(s.x, _jgA).multiplyScalar(gain);
+                _jgC.x *= 0.7; _jgC.z *= 0.7;
+                var L = _jgC.length(), cap = K.max * wsc * Math.min(1, 0.5 + gain / 2);
+                if (L > 1e-9) _jgC.multiplyScalar(cap * Math.tanh(L / cap) / L);
+                for (r = 0; r < s.srcs.length; r++) {
+                    var R = s.srcs[r];
+                    _jgM.multiplyMatrices(body.matrixWorld, body.bindMatrixInverse).multiply(R.parent.matrixWorld);
+                    _jgM3.setFromMatrix4(_jgM).invert();
+                    R.bone.position.copy(_jgC).applyMatrix3(_jgM3);   // the same world shift through each bone's own frame
+                    R.bone.updateMatrixWorld(true);
+                }
+            }
+        }
         function paintHair(part, a) {
             var tint = color(a.hairColor), tint2 = a.hairAccent === 'tint' ? color(a.hairColor2 || '#c0392b') : null;
             part.hair.forEach(function (h) {
@@ -54661,6 +54844,7 @@ const ThreeRenderer = (function () {
                 if (url) _ccLoadHair(url, function (root) {
                     if (!alive || part.hairUrl !== url || !root) return;
                     buildHair(part, root, state.last);
+                    if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the hair lying on the chest moves with it
                 });
             } else if (shapeChanged) fitHair(part);
             paintHair(part, a);
@@ -55584,6 +55768,7 @@ const ThreeRenderer = (function () {
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
+                if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the new clothes follow the soft spots
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
             if (mo) pending++;
@@ -55705,6 +55890,7 @@ const ThreeRenderer = (function () {
                 paintWear(p, a);   // THE WEAR TINT
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
+                if (p.jig) p.jig.dirty = true;   // THE JIGGLE: the weights again on whatever was rebuilt (jigWeights, next tick)
             });
         }
         update(initial);
@@ -55722,6 +55908,7 @@ const ThreeRenderer = (function () {
                     try { _swayTick(root, sdt, state.capeSway, true); } catch (e) { if (!state.capeWarned) { state.capeWarned = true; console.warn('[ThreeRenderer] cape sway failed', e); } }
                 }
                 if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
+                for (var ji = 0; ji < parts.length; ji++) if (parts[ji].jig) { try { jigTick(parts[ji], sdt, state.last); } catch (e) { if (!state.jigWarned) { state.jigWarned = true; console.warn('[ThreeRenderer] jiggle failed', e); } } }   // THE JIGGLE
                 for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
