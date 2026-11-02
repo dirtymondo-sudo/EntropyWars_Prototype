@@ -55587,16 +55587,19 @@ const ThreeRenderer = (function () {
                 var cast = coverGrid(ups, SKIN_COVER.cell, null); if (!cast) return;
                 var A = lo.mesh.geometry.attributes.position.array, Nn = lo.mesh.geometry.attributes.normal.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
                 /* THE TUCK (2026-11-02): the part of a lower garment just inside a waistband over it stays drawn - the waistband stands
-                   off the body, you look down into it, and the shirt cut away there left its teeth + the waist skin showing */
+                   off the body, you look down into it, and the shirt cut away there left its teeth + the waist skin showing. Above that
+                   line only the trousers + belt stop hiding it: under a coat it is still hidden (the sleeves came through the coat) */
                 var wbUps = ups.filter(function (u) { return TUCK.cats[u.cat]; }), WB = wbUps.length ? waistband(part, wbUps) : null, keep = TUCK.keep * Hm;
+                var oUps = WB ? ups.filter(function (u) { return !TUCK.cats[u.cat] && u.layer !== 'belt'; }) : null, castO = oUps && oUps.length ? coverGrid(oUps, SKIN_COVER.cell, null) : null;
                 for (var v = 0; v < n; v++) {
                     if (A[v * 3 + 1] < yHip) continue;
-                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) continue;
+                    var cv = cast;
+                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) { if (!castO) continue; cv = castO; }
                     var o = lo.nb[v] * 3, nx = Nn[v * 3], ny = Nn[v * 3 + 1], nz = Nn[v * 3 + 2];
                     var rx = A[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
                     if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
                     var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) continue;
-                    if (cast(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
+                    if (cv(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
                 }
                 /* eroded by SKIN_COVER.erode rings (welded by position): seen at an angle the upper garment's edge (a lapel, the coat's
                    opening) does not reach as far as its normal line, and the shirt's teeth showed beside the lapels */
@@ -55816,7 +55819,8 @@ const ThreeRenderer = (function () {
                 var cx = WB.cx, cz = WB.cz, yT = WB.yT, rB = WB.rB, band = WB.band;
                 var A = t.mesh.geometry.attributes.position.array, n = A.length / 3, reach = TUCK.reach * Hm, yH = [];
                 for (i = 0; i < NBn; i++) yH.push(null);
-                var inWaist = function (v) { var f = binF(A[v * 3] - cx, A[v * 3 + 2] - cz); return Math.hypot(A[v * 3] - cx, A[v * 3 + 2] - cz) < at(rB, f) + reach && A[v * 3 + 1] < at(yT, f) + 3 * band ? f : -1; };
+                var ARM = part.arm, NB = t.nb;   // (a sleeve is never tucked: a hanging elbow sits within reach of the waistband at the back, and was laid onto the torso through the coat)
+                var inWaist = function (v) { if (ARM && NB && ARM[NB[v]] > 0.3) return -1; var f = binF(A[v * 3] - cx, A[v * 3 + 2] - cz); return Math.hypot(A[v * 3] - cx, A[v * 3 + 2] - cz) < at(rB, f) + reach && A[v * 3 + 1] < at(yT, f) + 3 * band ? f : -1; };
                 for (v = 0; v < n; v++) { var f0 = inWaist(v); if (f0 < 0) continue; var b0 = Math.floor(f0); if (yH[b0] == null || A[v * 3 + 1] < yH[b0]) yH[b0] = A[v * 3 + 1]; }
                 yH = fill(yH); if (!yH) return;
                 var D = new Float32Array(n * 3), wv = new Float32Array(n), cl = new Uint8Array(n), yLo = Infinity, yHi = -Infinity, rHi = 0, any = false;
