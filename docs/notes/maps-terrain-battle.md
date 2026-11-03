@@ -1270,3 +1270,12 @@ Round 2 (the same day, the rest of his answers):
   `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`; the catalogue `light` went with the proc: file
   rows draw no point light, only the glow). The kitchen range's burner glow went (it is a griddle).
 - KEPT as code: the `castle_wall` spell monument (1 square wide, 2 high: the pack has no piece that shape).
+Round 2b (the same day, the Meshy concepts mondo OK'd: concepts + models in project files meshy/coded-out/, R2 Assets/decor/, in
+_HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
+- `_hzObelisk` = Meshy granite obelisk (ember glow kept on the point). `_hzGateway` (+ the `arch` / `gateway` monuments) = Meshy curved
+  stone arch (the box piers, lintel and broken variant deleted). `_hzGreekRuin` columns = the new Meshy `greek_column` (not greekcol).
+- `_hzEffigy` = Meshy bier + Meshy wrapped figure on it (two models). `_hzWindmill` = Meshy windpump tower + the wheel as its own
+  model on a hub at 0.92 H, 0.13 H out on +x, turning: `_horizonFloaters` entries now take `spinX` (rotation.x per frame).
+- procs: `grow_lamp` = Meshy LED panel (catalogue h 0.17, flush to the ceiling; glow + light kept), `submarine` = Meshy yellow sub
+  (nose turned to +z, 7 m, the headlamp glows kept; the screw no longer turns), `_hqLavaLampBuild` = Meshy chrome base + cap (table
+  and floor sets) with the glass + wax still drawn (the floor lamp's glass is a straight tube now, to match its base).

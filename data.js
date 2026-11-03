@@ -29078,7 +29078,7 @@ const DOOR_HQ = {
         door_xray:       { proc: 'door_xray',       h: 1.0,  foot: 0,    wall: true, mount: 1.1, depth: 0.08, glow: { y: 0.5, size: 1.4, color: 0xbfe6ff } },   // the light box
         planter:         { proc: 'planter',         h: 0.5,  foot: 1.0,  rect: { hw: 1.0, hd: 0.5 }, block: true },         // Room ½: a raised bed
         door_vine:       { proc: 'door_vine',       h: 1.8,  foot: 0,    wall: true, mount: 0, depth: 0.3 },                  // Room ½: a trellis of vines with tiny doors at the stem ends (ticker; also stands in a planter at y 0.5)
-        grow_lamp:       { proc: 'grow_lamp',       h: 0.5,  foot: 0,    ceil: true, glow: { y: 0.1, size: 1.6, color: 0xd070ff }, light: { color: 0xc060ff, intensity: 0.9, dist: 6, y: 0.1 } },   // Room ½: the purple lamp
+        grow_lamp:       { proc: 'grow_lamp',       h: 0.17, foot: 0,    ceil: true, glow: { y: -0.02, size: 1.6, color: 0xd070ff }, light: { color: 0xc060ff, intensity: 0.9, dist: 6, y: -0.05 } },   // Room ½: the purple lamp (the Meshy LED panel, 2026-11-03)
         monitor_stack:   { proc: 'monitor_stack',   h: 2.2,  foot: 0,    wall: true, mount: 0, depth: 0.6, block: true, glow: { y: 1.3, size: 1.8, color: 0x9fc7ff } },   // Room 24/7: nine CRTs in a rack, each on a room (ticker: the feeds swap)
         lost_shelf:      { proc: 'lost_shelf',      h: 2.0,  foot: 0,    wall: true, mount: 0, depth: 0.5, block: true },    // Room ?: shelves of things left in other realities
         stair_step:      { proc: 'stair_step',      h: 0.25, foot: 0.6,  rect: { hw: 0.6, hd: 0.15 }, block: true },        // THE STAIRWELL: one step, wide in x, the run along z; stack them by `y`
