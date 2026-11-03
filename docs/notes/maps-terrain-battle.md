@@ -1188,3 +1188,10 @@ same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.r
   two lesser) each had a DRAWN battle-stone wall row (5.45 m / 3.15 m glyph blocks) and stood on its top. Those rows are `ghost: true`
   now (never drawn; still the walker's and the fight's, so the boards are unchanged) and the props carry `floor: true` — new prop flag
   (three-renderer.js `_hqPlaceProps`, THE FLOOR UNDER IT): stand on the field's own ground (hqTerrainHeight), never a wall row's top.
+- SAME DAY, third pass, THE SIZE (mondo: "the pillars look small, they are supposed to the space of one square and be like 2 or 3
+  squares tall"): every pillar of enclosure E is one 3.5 m square wide and 6.6-8.4 m tall (the two great 8.4, the pit's lesser 7.0, the
+  rim 6.6-7.4). The four pit pillars sit on square centres (3×5, 8×6, 2×8, 9×3, half-turn symmetric) and their ghost stones are one
+  square each (h = the pillar's), so the boards bake those squares at level 3. The Meshy t_pillar.glb is 0.6 as wide as tall, so
+  `fit: 'height'` made an 8.4 m pillar 5 m wide: a t_pillar placement's new `w` (metres, the head's width) stretches it in plan to `w`
+  (its depth kept in the model's own proportion, 0.514·w) and keeps it `h` tall (three-renderer.js t_pillar proc, THE ONE SQUARE).
+  Rows without `w` keep the plain height fit. Proof: a VS CPU battle on the arena, with the model queue drained.
