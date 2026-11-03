@@ -922,7 +922,9 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
   sheet, triplanar `uTriTM`), so a grown room on 3.5 m squares shows a 2 × 2 of sprites in each square (probe: 0.5 squares per sheet on
   Stonehenge / Skinwalker). Board marks (`k: 'board'` chess courts) tile at the same 1.75 m. Holo Sim is the exception (tile 3.5).
   mondo picked "one sprite per square" from side-by-sides (/mnt/project-files/terrain-sheet-size/). three-renderer.js `_hqSheetM(info)`
-  = max(info.tile, room.fieldSquareM || HQ_FIELD_RULES.squareM): the field's TM (floor / cliff / path / paint / liquids, triplanar),
+  = max(info.tile, room.fieldSquareM || HQ_FIELD_RULES.squareM): `_hqBuildTerrain`'s TS (the field's UVs + info._TM, the triplanar
+  floor / cliff / path / paint, and the wall boxes' _nrBoxUV). TM stays info.tile × U: it is ALSO the model scale (_nrKit ts, trees, traffic,
+  hulls) — doubling it doubled every tree (Codex review on PR #840). The water sheets keep TM too.
   the board marks' `tl` (chess courts: one sprite per court cell) and `_fieldPatchRep` (spell skins / strata) all read it, in fights
   AND exploration (the room is one mesh). No lattice read (hqFieldSquareFor takes seconds on a big room; all 82 terrain rooms pass it
   at 3.5 today). A room that someday fights on 1.75 m would still draw 3.5 m sheets: give it `fieldSquareM: 1.75`. Box-room floors,
