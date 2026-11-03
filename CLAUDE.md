@@ -103,8 +103,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   Meshy rig; three-renderer.js THE SWAY swings them. Notes: models-assets.md "THE SWAY".
 - `bake-looks.js` (2026-11-01): `node bake-looks.js <Entropy_Wars_Race_Look_….json> [--dry-run] | --list | --remove race[:gender]` bakes a
   forge EXPORT DEFAULT LOOK into sprites.js RACE_CREATOR_LOOKS (a race's creator look replaces its Meshy model). Notes: character-creator.md "THE RACE LOOKS".
-- `bake-faces.js` (2026-11-03): `node bake-faces.js <file.mhm|mpfb preset.json> [--author --license --source] | --list | --remove id` turns a
-  MakeHuman character's face into a creator FACE preset (sprites.js EW_MPFB_FACE_PRESETS). Notes: character-creator.md "THE FACE PRESETS".
+- `bake-faces.js` (2026-11-03): .mhm face -> creator FACE preset. Notes: character-creator.md "THE FACE PRESETS".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
