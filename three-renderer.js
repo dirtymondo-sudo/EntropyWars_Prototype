@@ -52032,6 +52032,7 @@ const ThreeRenderer = (function () {
             for (i = 0; i < N * 3; i++) if (P[i] !== pos[i]) { shD = new Float32Array(N * 3); for (j = 0; j < N * 3; j++) shD[j] = P[j] - pos[j]; break; }
             part.shapeD = shD;
             part.beltH = a.beltHeight || 0;   // THE BELT HEIGHT
+            part.bootIn = a.pantsTuck === 'in';   // THE PANTS IN THE BOOTS
             wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
             try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
@@ -56405,6 +56406,7 @@ const ThreeRenderer = (function () {
            outside or `underIn` inside covers it, and a triangle with all three corners covered leaves the drawn index (`_ewIx0` keeps
            the full one), as under the second outer layer. Below the hips nothing is left out: coat tails and skirts swing open. */
         function wearUnderCover(part) {
+            try { wearBootHide(part); } catch (e) { console.warn('[ThreeRenderer] pants + boots hide failed', e); }   // THE PANTS IN THE BOOTS (after THE SECOND OUTER LAYER put the full index back)
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && w.layer !== 'cape' && (w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });
             if (L.length < 2) return;
             var zOf = function (w) { return w.layer === 'outer2' ? 1000 : w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };
@@ -56729,12 +56731,308 @@ const ThreeRenderer = (function () {
                 for (v = 0; v < A.length; v++) A[v] += D[v];
             });
         }
+        /* THE PANTS IN THE BOOTS (2026-11-03, mondo: "Can we make pants fit inside boots or have the option for them to be inside or
+           outside?"): appearance.pantsTuck (creator OUTFIT > LEGS > Bottoms / FOOTWEAR > Shoes + boots, shown while a pair of
+           trousers is worn with a boot whose shaft is over their hem: sprites.js EW_BOOT_TOPS / EW_PANT_HEMS / pantsBootsWorn). Each
+           was fitted to the bare leg, so a shaft and a trouser leg crossed: the viking boots' fur wraps (5 cm out) and the knee boots
+           stood out through tight jeans past THE LAYERS' 4 cm reach. Both are read round each leg (legFrame: the leg's own centre per
+           1 cm slice of the skin; legGrid: per 2 cm row x 15 degrees the garment's outermost / innermost / mean radius + per angle its
+           top (opened: a pull tab is not the top) and its bottom):
+           - 'out' (the default): the trouser leg's last `flare` over its hem is let out to clear the boot (at most `maxPush`), and every
+             part of the boot higher up under the trouser leg is drawn in `gap` inside it, whatever its distance (no reach); under there
+             by `deep` the boot's triangles are left out (posed, the trouser leg on its own bones never shows the shaft through it).
+           - 'in': the trouser leg inside the boot is drawn in `gap` inside the shaft (never nearer the skin than `onSkin`, `onSkinIn`
+             deep in the boot), narrowing into the opening over `blend` above it; there it takes the bones of the boot (inside) and of
+             the skin (over the opening, fading out over `wFade`), so the knee bending does not lift it out of the boot; `inDeep` under
+             the lowest top within 2 angles its triangles are left out. THE LAYERS then lay the boot OVER the trousers (bootOver).
+           Low shoes, skirts, shorts: untouched. Runs in THE LAYERS (wearLayers) before the layers fold; the triangles leave the drawn
+           index in wearBootHide (the start of wearUnderCover, after THE SECOND OUTER LAYER put the full index back).
+           window.EW_DISABLE_BOOT_FIT = true: each as it was fitted. */
+        var BOOT_FIT = { bins: 24, row: 2, cell: 0.01, legTop: 0.4, ankle: 0.07, ankleFade: 0.02, gap: 0.004, blend: 0.03, flare: 0.06, maxPush: 0.02, edge: 0.012, deep: 0.03, inDeep: 0.025, hemOver: 0.01, onSkin: 0.01, wFade: 0.05, onSkinIn: 0.007 };
+        function wearIsBoot(w) {
+            if (!w.mesh || typeof EW_BOOT_TOPS === 'undefined' || !(w.cat === 'shoes' || w.layer === 'feet')) return false;
+            var id = String(w.id || ''); return EW_BOOT_TOPS[id] != null || (id.indexOf('feet_') === 0 && EW_BOOT_TOPS[id.slice(5)] != null);
+        }
+        function wearIsPants(w) { return !!(w.mesh && typeof EW_PANT_HEMS !== 'undefined' && EW_PANT_HEMS[w.id] != null); }
+        /* each leg's centre per slice (the skin below `legTop`, split at the body's middle; under the ankle the ankle's centre, so the
+           foot reaching forward does not drag it) + a (leg, slice, angle) reader for a point */
+        function legFrame(part) {
+            var SP = part.src.attributes.position.array, SD = part.shapeD, N = part.count, H = part.height, Hm = H / 1.7, y0 = part.minY || 0;
+            var C = BOOT_FIT.cell * Hm, NY = Math.ceil(BOOT_FIT.legTop * H / C) + 1, yTop = y0 + BOOT_FIT.legTop * H, i, j;
+            var sx = 0, sn = 0;
+            for (i = 0; i < N; i++) { var yy = SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0); if (yy < yTop && yy > y0 + 0.15 * H) { sx += SP[i * 3] + (SD ? SD[i * 3] : 0); sn++; } }
+            if (!sn) return null;
+            var mx = sx / sn, S = new Float64Array(2 * NY * 3);
+            for (i = 0; i < N; i++) {
+                var x = SP[i * 3] + (SD ? SD[i * 3] : 0), y = SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0), z = SP[i * 3 + 2] + (SD ? SD[i * 3 + 2] : 0);
+                if (y < y0 || y > yTop) continue;
+                j = Math.round((y - y0) / C); var o = ((x < mx ? 0 : 1) * NY + j) * 3; S[o] += x; S[o + 1] += z; S[o + 2]++;
+            }
+            var jA = Math.round(BOOT_FIT.ankle * H / C), cen = new Float32Array(2 * NY * 2);
+            for (var L = 0; L < 2; L++) {
+                for (j = 0; j < NY; j++) {   // (an empty slice: the nearest filled one)
+                    var src = -1;
+                    for (var d = 0; d < NY && src < 0; d++) { if (j + d < NY && S[(L * NY + j + d) * 3 + 2] > 0) src = j + d; else if (j - d >= 0 && S[(L * NY + j - d) * 3 + 2] > 0) src = j - d; }
+                    if (src < 0) return null;
+                    var oo = (L * NY + src) * 3; cen[(L * NY + j) * 2] = S[oo] / S[oo + 2]; cen[(L * NY + j) * 2 + 1] = S[oo + 1] / S[oo + 2];
+                }
+                for (j = 0; j < jA && jA < NY; j++) { cen[(L * NY + j) * 2] = cen[(L * NY + jA) * 2]; cen[(L * NY + j) * 2 + 1] = cen[(L * NY + jA) * 2 + 1]; }
+            }
+            var NB = BOOT_FIT.bins, TAU = Math.PI * 2;
+            return { y0: y0, C: C, NY: NY, NB: NB, yTop: yTop, H: H, Hm: Hm,
+                at: function (x, y, z, out) {   // out = [leg, fj, fb, dx, dz, r]; false above the legs
+                    if (y > yTop) return false;
+                    var fj = (y - y0) / C; fj = fj < 0 ? 0 : fj > NY - 1 ? NY - 1 : fj;
+                    var j0 = Math.round(fj), c0 = cen[j0 * 2], c1 = cen[(NY + j0) * 2], L = Math.abs(x - c0) <= Math.abs(x - c1) ? 0 : 1;
+                    var ja = Math.floor(fj), jb = Math.min(NY - 1, ja + 1), t = fj - ja, o1 = (L * NY + ja) * 2, o2 = (L * NY + jb) * 2;
+                    var cx = cen[o1] + (cen[o2] - cen[o1]) * t, cz = cen[o1 + 1] + (cen[o2 + 1] - cen[o1 + 1]) * t, dx = x - cx, dz = z - cz;
+                    out[0] = L; out[1] = fj; out[2] = ((Math.atan2(dx, dz) + Math.PI) / TAU * NB) % NB; out[3] = dx; out[4] = dz; out[5] = Math.sqrt(dx * dx + dz * dz);
+                    return true;
+                } };
+        }
+        /* a garment set round the legs, on a coarse grid (a pack garment's vertices sit 2-4 cm apart): per (leg, 2 cm row, 15 degrees)
+           its outermost / innermost / mean radius (empty angles filled round the ring, empty rows between filled ones), per (leg,
+           angle) its top (opened: see below) + its bottom (the lowest of the angle and its two neighbours: a hem ring's sparse vertices) */
+        function legGrid(LF, ws) {
+            var NB = LF.NB, RY = BOOT_FIT.row, NY = Math.ceil(LF.NY / RY) + 1, M = 2 * NY * NB;
+            var rMax = new Float32Array(M).fill(-1), rMin = new Float32Array(M).fill(-1), rSum = new Float32Array(M), rN = new Float32Array(M);
+            var yHi = new Float32Array(2 * NB).fill(-Infinity), yLo = new Float32Array(2 * NB).fill(Infinity), q = [0, 0, 0, 0, 0, 0], any = false, L, j, b;
+            ws.forEach(function (w) {
+                var A = w.mesh.geometry.attributes.position.array;
+                for (var v = 0; v < A.length; v += 3) {
+                    if (!LF.at(A[v], A[v + 1], A[v + 2], q)) continue;
+                    var l = q[0], jj = Math.round(q[1] / RY), bb = Math.floor(q[2]) % NB, k = (l * NY + jj) * NB + bb, r = q[5];
+                    if (rMax[k] < 0 || r > rMax[k]) rMax[k] = r; if (rMin[k] < 0 || r < rMin[k]) rMin[k] = r; rSum[k] += r; rN[k]++;
+                    if (A[v + 1] > yHi[l * NB + bb]) yHi[l * NB + bb] = A[v + 1]; if (A[v + 1] < yLo[l * NB + bb]) yLo[l * NB + bb] = A[v + 1];
+                    any = true;
+                }
+            });
+            if (!any) return null;
+            var rAvg = new Float32Array(M).fill(-1);
+            for (var k0 = 0; k0 < M; k0++) if (rN[k0]) rAvg[k0] = rSum[k0] / rN[k0];
+            var circ = function (arr, base, empty) {   // empty angles of one ring: linear between the nearest filled ones round it
+                var fill = 0, cp = Array.prototype.slice.call(arr, base, base + NB);
+                for (b = 0; b < NB; b++) if (!empty(cp[b])) fill++;
+                if (fill < minFill) return false;   // (a ring of a few scattered vertices is not read round the leg: the rows above + below fill it)
+                if (fill === NB) return true;
+                for (b = 0; b < NB; b++) if (empty(cp[b])) {
+                    var l = 1, r = 1; while (empty(cp[(b - l + NB) % NB])) l++; while (empty(cp[(b + r) % NB])) r++;
+                    arr[base + b] = (cp[(b - l + NB) % NB] * r + cp[(b + r) % NB] * l) / (l + r);
+                }
+                return true;
+            };
+            var neg = function (x) { return x < 0; }, inf = function (x) { return !isFinite(x); }, minFill = Math.ceil(NB / 3);
+            var rowOn = new Uint8Array(2 * NY), R = [rMax, rMin, rAvg];
+            for (L = 0; L < 2; L++) {
+                for (j = 0; j < NY; j++) if (circ(rAvg, (L * NY + j) * NB, neg)) { rowOn[L * NY + j] = 1; circ(rMax, (L * NY + j) * NB, neg); circ(rMin, (L * NY + j) * NB, neg); }
+                for (j = 0; j < NY; j++) if (!rowOn[L * NY + j]) {   // (an empty row between two filled ones: between them)
+                    var ja = j - 1, jb = j + 1; while (ja >= 0 && !rowOn[L * NY + ja]) ja--; while (jb < NY && !rowOn[L * NY + jb]) jb++;
+                    if (ja < 0 || jb >= NY) continue;
+                    var t = (j - ja) / (jb - ja);
+                    R.forEach(function (arr) { for (b = 0; b < NB; b++) arr[(L * NY + j) * NB + b] = arr[(L * NY + ja) * NB + b] * (1 - t) + arr[(L * NY + jb) * NB + b] * t; });
+                    rowOn[L * NY + j] = 2;
+                }
+                minFill = 1; circ(yHi, L * NB, inf); circ(yLo, L * NB, inf); minFill = Math.ceil(NB / 3);
+                var lo = Array.prototype.slice.call(yLo, L * NB, L * NB + NB), hi = Array.prototype.slice.call(yHi, L * NB, L * NB + NB), er = [], dk;
+                /* the top opened (the lowest within +-2 angles, then the highest of those): a narrow peak - a cowboy boot's pull tab,
+                   2 cm over its rim - is not the top (the trouser leg next to it was hidden as deep in the boot, a hole to the shin);
+                   the dips (valleys) stay */
+                for (b = 0; b < NB; b++) { er[b] = Infinity; for (dk = -2; dk <= 2; dk++) er[b] = Math.min(er[b], hi[(b + dk + NB) % NB]); }
+                for (b = 0; b < NB; b++) { var mx2 = -Infinity; for (dk = -2; dk <= 2; dk++) mx2 = Math.max(mx2, er[(b + dk + NB) % NB]); yHi[L * NB + b] = mx2; }
+                for (b = 0; b < NB; b++) {
+                    yLo[L * NB + b] = Math.min(lo[(b + NB - 1) % NB], lo[b], lo[(b + 1) % NB]);
+                }
+            }
+            var ang = function (arr, base, fb) { var b0 = Math.floor(fb) % NB, b1 = (b0 + 1) % NB, t = fb - Math.floor(fb); return arr[base + b0] * (1 - t) + arr[base + b1] * t; };
+            var rad = function (arr) {   // r at (leg, fj in cells, fb); -1 where the garment has no ring
+                return function (L, fj, fb) {
+                    var fr = fj / RY, ja = Math.max(0, Math.min(NY - 1, Math.floor(fr))), jb = Math.min(NY - 1, ja + 1), t = Math.max(0, Math.min(1, fr - ja));
+                    var ra = rowOn[L * NY + ja] ? ang(arr, (L * NY + ja) * NB, fb) : -1, rb = rowOn[L * NY + jb] ? ang(arr, (L * NY + jb) * NB, fb) : -1;
+                    return ra < 0 ? rb : rb < 0 ? ra : ra + (rb - ra) * t;
+                };
+            };
+            var edgeAt = function (arr) { return function (L, fb) { var v = ang(arr, L * NB, fb); return isFinite(v) ? v : NaN; }; };
+            return { rMax: rad(rMax), rMin: rad(rMin), rAvg: rad(rAvg), top: edgeAt(yHi), bottom: edgeAt(yLo) };
+        }
+        var bootSmooth = function (e0, e1, x) { var u = (x - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+        /* move the vertices of `w` radially (round their leg) to target(q, y) (a radius, or < 0 = leave it): the pull smoothed over the
+           garment (it moves as one), then topped up where the smoothing left it short (`inward`: only ever in / only ever out) */
+        function bootMove(part, LF, w, target, inward, floor) {
+            var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, D = new Float32Array(n * 3), q = [0, 0, 0, 0, 0, 0], v, any = false;
+            var step = function (x, y, z, out, v) {
+                out[0] = out[1] = 0;
+                if (!LF.at(x, y, z, q) || q[5] < 1e-4) return false;
+                var rt = target(q, y, v); if (rt < 0) return false;
+                if (inward ? q[5] <= rt : q[5] >= rt) return false;
+                var k = (rt - q[5]) / q[5]; out[0] = q[3] * k; out[1] = q[4] * k; return true;
+            };
+            var o2 = [0, 0];
+            for (v = 0; v < n; v++) if (step(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], o2, v)) { D[v * 3] = o2[0]; D[v * 3 + 2] = o2[1]; any = true; }
+            if (!any) return false;
+            spaceSmooth(A, 2, WEAR_LAYER.smooth * LF.Hm).run(D);
+            for (v = 0; v < n; v++) if (step(A[v * 3] + D[v * 3], A[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2], o2, v)) { D[v * 3] += o2[0]; D[v * 3 + 2] += o2[1]; }
+            /* (and never past it: a vertex the smoothing dragged further than its own target - the jeans just over a cowboy boot's dip,
+               next to the deep-pulled rows inside it - goes back out to it) */
+            var q0 = [0, 0, 0, 0, 0, 0];
+            for (v = 0; v < n; v++) {
+                if (!D[v * 3] && !D[v * 3 + 2]) continue;
+                if (!LF.at(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], q0)) continue;
+                var rt0 = target(q0, A[v * 3 + 1], v); if (rt0 < 0) continue;
+                if (inward ? q0[5] < rt0 : q0[5] > rt0) continue;   // (it did not need to move this way at all: as smoothed)
+                if (!LF.at(A[v * 3] + D[v * 3], A[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2], q) || q[5] < 1e-4) continue;
+                var rt1 = target(q, A[v * 3 + 1], v); if (rt1 < 0 || (inward ? q[5] >= rt1 : q[5] <= rt1)) continue;
+                var k1 = (rt1 - q[5]) / q[5]; D[v * 3] += q[3] * k1; D[v * 3 + 2] += q[4] * k1;
+            }
+            /* (and, drawn in, never under `floor` (the skin under it): the smoothing dragged the rows just over a boot's top - with no
+               target of their own - in under the shin as well) */
+            if (floor && inward) for (v = 0; v < n; v++) {
+                if (!D[v * 3] && !D[v * 3 + 2]) continue;
+                var fl = floor(v); if (!(fl > 0)) continue;
+                if (!LF.at(A[v * 3] + D[v * 3], A[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2], q) || q[5] < 1e-4 || q[5] >= fl) continue;
+                if (!LF.at(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], q0)) continue;
+                var rk = Math.min(q0[5], fl), k2 = (rk - q[5]) / q[5]; D[v * 3] += q[3] * k2; D[v * 3 + 2] += q[4] * k2;
+            }
+            if (w.lay) { for (v = 0; v < D.length; v++) w.lay[v] += D[v]; } else w.lay = D;
+            for (v = 0; v < A.length; v++) A[v] += D[v];
+            return true;
+        }
+        function wearBootFit(part) {
+            var W = part.wear || [];
+            W.forEach(function (w) {
+                w.bootDeep = null; w.bootOver = false; w.bootIn = false;
+                if (w.bootSi0) {   // (the trouser leg's own bones back first)
+                    var ga = w.mesh.geometry.attributes; ga.skinIndex.array.set(w.bootSi0); ga.skinWeight.array.set(w.bootSw0); ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true;
+                }
+            });
+            var boots = W.filter(wearIsBoot), pants = W.filter(wearIsPants);
+            if (!boots.length || !pants.length) return;
+            if (typeof window !== 'undefined' && window.EW_DISABLE_BOOT_FIT) return;   // (kill-switch: the trousers + boots as each was fitted)
+            var LF = legFrame(part); if (!LF) return;
+            var Hm = LF.Hm, H = LF.H, gap = BOOT_FIT.gap * Hm, BG = legGrid(LF, boots); if (!BG) return;
+            var deepOf = function (w, test) {   // the vertices `test` says lie deep under / inside the other
+                var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, f = new Uint8Array(n), any = false, q = [0, 0, 0, 0, 0, 0];
+                for (var v = 0; v < n; v++) if (LF.at(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], q) && test(q, A[v * 3 + 1])) { f[v] = 1; any = true; }
+                w.bootDeep = any ? f : null;
+            };
+            if (part.bootIn) {
+                var PG0 = legGrid(LF, pants); if (!PG0) return;
+                var blend = BOOT_FIT.blend * Hm;
+                var pz = Math.max.apply(null, pants.map(function (p) { return p.z; }));
+                boots.forEach(function (b) { b.bootOver = pz + 0.5; });   // THE LAYERS: the boot just over the trouser leg (a coat's hem stays over the boot)
+                /* the skin: the trouser leg stays `onSkin` off it (its nearest skin vertex), never under it - laid tighter, the shin's ridge
+                   came out between its 3 cm-apart vertices over a cowboy boot's dip; the boot's opening (the last `rim`) is let out round it */
+                var SPs = part.src.attributes.position.array, SDs = part.shapeD, onSkin = BOOT_FIT.onSkin * Hm, onSkinIn = BOOT_FIT.onSkinIn * Hm, qs = [0, 0, 0, 0, 0, 0];
+                var skinR = function (w, v) {   // the radius round its leg of the skin vertex nearest this garment vertex (buildWear's nb)
+                    var o = w.nb ? w.nb[v] * 3 : -1; if (o < 0) return -1;
+                    return LF.at(SPs[o] + (SDs ? SDs[o] : 0), SPs[o + 1] + (SDs ? SDs[o + 1] : 0), SPs[o + 2] + (SDs ? SDs[o + 2] : 0), qs) ? qs[5] : -1;
+                };
+                var curW = null;   // (the garment bootMove is moving: skinR reads its nb)
+                var inTarget = function (q, y, v) {
+                    var L = q[0], fb = q[2], top = BG.top(L, fb), hem = PG0.bottom(L, fb);
+                    if (!(top > hem + BOOT_FIT.hemOver * Hm) || y > top + blend) return -1;   // (a hem over the boot's top: not in it)
+                    var yq = Math.min(y, top - LF.C), rin = BG.rMin(L, (yq - LF.y0) / LF.C, fb); if (rin < 0) return -1;
+                    var rt = rin - gap;
+                    var oS = onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, y));   // (deep in the boot, where only the boot shows, closer)
+                    var rs = skinR(curW, v); if (rs > 0 && rt < rs + oS) rt = rs + oS;   // (everywhere: a 3 cm triangle from a row deep in the boot to one over a dip's rim went in under the shin)
+                    if (y <= top) return rt;
+                    return rt + (q[5] - rt) * bootSmooth(top, top + blend, y);   // (bloused: narrowing into the opening)
+                };
+                pants.forEach(function (p) {
+                    p.bootIn = true; curW = p;
+                    var PA = p.mesh.geometry.attributes.position.array, qf = [0, 0, 0, 0, 0, 0];
+                    bootMove(part, LF, p, inTarget, true, function (v) {
+                        var rs = skinR(p, v); if (!(rs > 0) || !LF.at(PA[v * 3], PA[v * 3 + 1], PA[v * 3 + 2], qf)) return -1;
+                        var top = BG.top(qf[0], qf[2]); return rs + onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, PA[v * 3 + 1]));
+                    });
+                    /* its bones: inside the boot (and over its opening, fading out over `blend`) the trouser leg takes the bones of the
+                       skin under it, the ones the boot rides: on its own (the thigh in them) the knee bent in the idle lifted it 3 cm out of
+                       the boot's top over the shin */
+                    var gi = p.mesh.geometry.attributes.skinIndex, gw = p.mesh.geometry.attributes.skinWeight;
+                    if (part.siW && gi && gw && p.nb) {
+                        var SI0 = p.bootSi0 || (p.bootSi0 = Uint16Array.from(gi.array)), SW0 = p.bootSw0 || (p.bootSw0 = Float32Array.from(gw.array));
+                        var A2 = p.mesh.geometry.attributes.position.array, q3 = [0, 0, 0, 0, 0, 0], SIW = part.siW, SWW = part.swW, any2 = false;
+                        /* (the boot's own bones where it is near: the boot rides the foot + ankle as well as the shin, and on the shin's
+                           bones alone the trouser leg slid 3 cm up out of a cowboy boot's dips at the front + back, the shin showing) */
+                        var BCs = 0.02, bGrid = new Map(), bReach = 0.05 * Hm, wFade = BOOT_FIT.wFade * Hm;
+                        boots.forEach(function (b) {
+                            var bg = b.mesh.geometry.attributes; if (!bg.skinIndex || !bg.skinWeight || b.mesh.skeleton !== p.mesh.skeleton) return;
+                            var BA = bg.position.array;
+                            for (var bv = 0; bv < BA.length / 3; bv++) { var key = Math.floor(BA[bv * 3] / BCs) + ',' + Math.floor(BA[bv * 3 + 1] / BCs) + ',' + Math.floor(BA[bv * 3 + 2] / BCs), bl = bGrid.get(key); if (bl) bl.push(b, bv); else bGrid.set(key, [b, bv]); }
+                        });
+                        var nearBoot = function (x, y, z) {   // [boot, vertex] nearest within bReach, or null
+                            var cx = Math.floor(x / BCs), cy = Math.floor(y / BCs), cz = Math.floor(z / BCs), rr = Math.ceil(bReach / BCs), bd = bReach * bReach, best = null;
+                            for (var ia = -rr; ia <= rr; ia++) for (var ib = -rr; ib <= rr; ib++) for (var ic = -rr; ic <= rr; ic++) {
+                                var bl = bGrid.get((cx + ia) + ',' + (cy + ib) + ',' + (cz + ic)); if (!bl) continue;
+                                for (var m = 0; m < bl.length; m += 2) { var BA = bl[m].mesh.geometry.attributes.position.array, o = bl[m + 1] * 3, d = (BA[o] - x) * (BA[o] - x) + (BA[o + 1] - y) * (BA[o + 1] - y) + (BA[o + 2] - z) * (BA[o + 2] - z); if (d < bd) { bd = d; best = [bl[m], bl[m + 1]]; } }
+                            }
+                            return best;
+                        };
+                        for (var v2 = 0; v2 < A2.length / 3; v2++) {
+                            if (!LF.at(A2[v2 * 3], A2[v2 * 3 + 1], A2[v2 * 3 + 2], q3)) continue;
+                            var top2 = BG.top(q3[0], q3[2]); if (!(top2 > PG0.bottom(q3[0], q3[2]) + BOOT_FIT.hemOver * Hm)) continue;
+                            var wv = 1 - bootSmooth(top2 + blend, top2 + blend + wFade, A2[v2 * 3 + 1]); if (wv <= 0) continue;
+                            var acc = {}, k4, bi, sv = p.nb[v2], nbt = A2[v2 * 3 + 1] < top2 ? nearBoot(A2[v2 * 3], A2[v2 * 3 + 1], A2[v2 * 3 + 2]) : null, TI = SIW, TW = SWW, tv = sv;
+                            if (nbt) { TI = nbt[0].mesh.geometry.attributes.skinIndex.array; TW = nbt[0].mesh.geometry.attributes.skinWeight.array; tv = nbt[1]; }
+                            for (k4 = 0; k4 < 4; k4++) { bi = SI0[v2 * 4 + k4]; acc[bi] = (acc[bi] || 0) + SW0[v2 * 4 + k4] * (1 - wv); bi = TI[tv * 4 + k4]; acc[bi] = (acc[bi] || 0) + TW[tv * 4 + k4] * wv; }
+                            var tb = Object.keys(acc).map(function (kb) { return [+kb, acc[kb]]; }).sort(function (p1, p2) { return p2[1] - p1[1]; }).slice(0, 4), tot = 0;
+                            tb.forEach(function (x) { tot += x[1]; });
+                            for (k4 = 0; k4 < 4; k4++) { gi.array[v2 * 4 + k4] = tb[k4] ? tb[k4][0] : tb[0][0]; gw.array[v2 * 4 + k4] = tb[k4] && tot > 0 ? tb[k4][1] / tot : 0; }
+                            any2 = true;
+                        }
+                        if (any2) { gi.needsUpdate = true; gw.needsUpdate = true; }
+                    }
+                    /* (deep under the LOWEST top within 2 angles either side: a 3 cm triangle of the trouser leg reaches that far round,
+                       and with its corners deep under a cowboy boot's high sides it was cut out over the dip at its front, the shin showing) */
+                    deepOf(p, function (q, y) { var top = Math.min(BG.top(q[0], q[2]), BG.top(q[0], (q[2] + LF.NB - 1) % LF.NB), BG.top(q[0], (q[2] + 1) % LF.NB), BG.top(q[0], (q[2] + LF.NB - 2) % LF.NB), BG.top(q[0], (q[2] + 2) % LF.NB)); return y < top - BOOT_FIT.inDeep * Hm && PG0.bottom(q[0], q[2]) < top - BOOT_FIT.hemOver * Hm; });
+                });
+                return;
+            }
+            /* outside: the trouser leg's hem let out over the boot, then the boot drawn in under the trouser leg */
+            var PG = legGrid(LF, pants); if (!PG) return;
+            var flare = BOOT_FIT.flare * Hm, maxPush = BOOT_FIT.maxPush * Hm, yAnk = LF.y0 + BOOT_FIT.ankle * H, ankF = BOOT_FIT.ankleFade * H;
+            var outTarget = function (q, y) {
+                var L = q[0], fb = q[2], top = BG.top(L, fb), hem = PG.bottom(L, fb);
+                if (!(top > hem) || y > hem + flare || y > top) return -1;
+                var rb = BG.rMax(L, q[1], fb); if (rb < 0) return -1;
+                var need = Math.min(rb + gap, q[5] + maxPush);
+                return q[5] + (need - q[5]) * (1 - bootSmooth(hem, hem + flare, y));
+            };
+            pants.forEach(function (p) { bootMove(part, LF, p, outTarget, false); });
+            PG = legGrid(LF, pants); if (!PG) return;   // (as they now lie)
+            var edge = BOOT_FIT.edge * Hm;
+            var underTarget = function (q, y) {
+                var L = q[0], fb = q[2], hem = PG.bottom(L, fb);
+                if (!(y > hem) || y < yAnk) return -1;   // (the foot: never - the toe box reaches forward past the trouser leg's ring)
+                var rp = PG.rAvg(L, q[1], fb); if (rp < 0) return -1;
+                var rt = rp - gap, w = bootSmooth(hem, hem + edge, y) * bootSmooth(yAnk, yAnk + ankF, y);
+                return q[5] + (rt - q[5]) * w;
+            };
+            boots.forEach(function (b) {
+                bootMove(part, LF, b, underTarget, true);
+                deepOf(b, function (q, y) { return y > yAnk + ankF && y > PG.bottom(q[0], q[2]) + BOOT_FIT.deep * Hm && y < PG.top(q[0], q[2]); });
+            });
+        }
+        /* the part of a boot / trouser leg wearBootFit found deep under / inside the other leaves the drawn index (all 3 corners) */
+        function wearBootHide(part) {
+            (part.wear || []).forEach(function (w) {
+                if (!w.bootDeep) return;
+                var F = w.bootDeep;
+                [w.mesh].concat(w.accents || []).forEach(function (mh) {
+                    var g = mh.geometry; if (!g.index) return;
+                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
+                    var I = g.index.array, keep = [];
+                    for (var t = 0; t + 2 < I.length; t += 3) if (!(F[I[t]] && F[I[t + 1]] && F[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    if (keep.length !== I.length) g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
+                });
+            });
+        }
         function wearLayers(part) {
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
             (part.wear || []).forEach(function (w) { w.lay = null; w.tuckW = null; });
             wearFollow(part);
             try { wearBeltLift(part); } catch (e) { console.warn('[ThreeRenderer] belt height failed', e); }   // THE BELT HEIGHT
             try { wearTuckIn(part); } catch (e) { console.warn('[ThreeRenderer] tuck failed', e); }   // THE TUCK
+            try { wearBootFit(part); } catch (e) { (part.wear || []).forEach(function (w) { w.bootDeep = null; w.bootOver = false; }); console.warn('[ThreeRenderer] pants + boots fit failed', e); }   // THE PANTS IN THE BOOTS
             if (L.length < 2) return;
             var Hm = part.height / 1.7, C = 0.02, gap = WEAR_LAYER.gap * Hm, capeGap = WEAR_LAYER.capeGap * Hm, hangGap = COAT_HANG.gap * Hm, latW = WEAR_LAYER.lat * Hm, reach = WEAR_LAYER.reach * Hm, rc = Math.ceil(reach / C);
             var SP = part.src.attributes.position.array, SD = part.shapeD;
@@ -56748,11 +57046,11 @@ const ThreeRenderer = (function () {
                 }
                 return (outN[w.id] = N2);
             };
-            var zOf = function (w) { return w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };   // (underwear goes under every other garment whatever its z, then the shoes + gloves: the trousers come down over the boots, a sleeve over a long glove)
+            var zOf = function (w) { return w.bootOver ? w.bootOver : w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };   // (THE PANTS IN THE BOOTS: a boot the trousers tuck into goes over them)   // (underwear goes under every other garment whatever its z, then the shoes + gloves: the trousers come down over the boots, a sleeve over a long glove)
             L.sort(function (x, y) { return zOf(y) - zOf(x); });   // from the top down: each garment folds under the ones over it as they now lie
             L.forEach(function (lo) {
                 if (lo.layer === 'cape') return;   // (a cape is only ever the one over: its hem swings on its own chains)
-                var ups = L.filter(function (u) { return u !== lo && (u.layer === 'cape' || zOf(u) > zOf(lo)); });   // (a cape is over everything else whatever its z: the police coat stood through the hooded cape)
+                var ups = L.filter(function (u) { return u !== lo && (u.layer === 'cape' || zOf(u) > zOf(lo)) && !(u.bootOver && lo.bootIn); });   // (a cape is over everything else whatever its z: the police coat stood through the hooded cape; THE PANTS IN THE BOOTS: the tucked trouser leg is already inside the boot - pulled again along the cowboy boot's pull tabs it went in under the shin)
                 if (!ups.length) return;
                 var A = lo.mesh.geometry.attributes.position.array, n = A.length / 3;
                 var mkNeed = function (ups) {
@@ -57014,6 +57312,7 @@ const ThreeRenderer = (function () {
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 paintWear(part, state.last || a);   // THE WEAR TINT
                 part.beltH = (state.last || a).beltHeight || 0;   // THE BELT HEIGHT
+                part.bootIn = (state.last || a).pantsTuck === 'in';   // THE PANTS IN THE BOOTS
                 try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
                 try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
                 try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
@@ -57234,7 +57533,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight, a.pantsTuck].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');

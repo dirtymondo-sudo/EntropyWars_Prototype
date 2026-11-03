@@ -1415,3 +1415,32 @@ mondo: "im not seeing lashes 1 -4 show up in the character creator/ they are the
   ready / if it fails. getCharacterAppearanceAssets warms the PNG.
 - A re-run of `bake-mpfb.py --looks` writes the helper-drawn lash PNGs + boxes again: run bake-lashes.py after it.
 - Shots (MPFB male + female, every lash pick, close-up): /mnt/project-files/creator-lashes/.
+
+## THE PANTS IN THE BOOTS (2026-11-03, character-models-plan row 12q)
+mondo: "Can we make pants fit inside boots or have the option for them to be inside or outside?" (thread
+cmsg_01XWpxyTn3nnw98znVzKdFjsAX2ogSpgP9tAuNgyFenVtL). MPFB bodies only (pack + Blender clothes; not MPFB classic).
+- THE CHOICE: `appearance.pantsTuck` 'out' (default) / 'in' (sprites.js EW_APPEARANCE_ENUMS). The creator shows a "Pants + boots"
+  OUTSIDE / TUCKED IN row on OUTFIT > LEGS > Bottoms AND FOOTWEAR > Shoes + boots, only while `pantsBootsWorn(a)` finds a worn boot
+  whose shaft top is over the lowest worn trouser hem (+2 cm). party-builder.js ccPantsTuck.
+- THE TABLES (sprites.js): EW_BOOT_TOPS = 29 pack boots + the Blender bboots / bhighboots / bcowboy by the 90th-percentile height
+  of their male fit (m); EW_PANT_HEMS = 20 long trousers by the 1st-percentile hem height. Skirts, shorts, Scale leggings and
+  Football pants are left out (no hem over a boot). A new long trouser / boot = add its row (measure the fitted GLB).
+- THE FIT (three-renderer.js wearBootFit, run in wearLayers after THE TUCK; kill-switch `window.EW_DISABLE_BOOT_FIT = true`):
+  legFrame = each leg's centre per 1 cm slice from the skin; legGrid = a garment's radius per (leg, 2 cm row, 15 degrees) +
+  its top (morphologically opened so a cowboy pull tab is not the top) and its bottom.
+  - OUTSIDE: the trouser leg's last 6 cm flares out to clear the boot (max 2 cm), then the boot under the trouser leg is drawn in
+    4 mm inside it (above the ankle), and 3 cm under the hem its triangles leave the index (the viking fur no longer pokes
+    through jeans when posed).
+  - TUCKED IN: the trouser leg is drawn in 4 mm inside the shaft, never nearer than 1 cm to the skin (0.7 cm deep in the boot),
+    narrowing over 3 cm above the opening. Its bones there: the nearest boot vertex's (inside) / the skin's (over the opening,
+    fading over 5 cm) - on its own bones the idle's knee bend lifted the jeans 3 cm out of a cowboy boot. Triangles 2.5 cm under
+    the LOWEST top within +-2 angles leave the index (a 3 cm jeans triangle spans 2 angles; cut by its own angle's top it left a
+    hole to the shin over the cowboy boot's dips). THE LAYERS lay the boot over the trousers (`bootOver` = trousers' z + 0.5, so a
+    coat still goes over the boot) and never pull a tucked trouser leg along a boot again.
+  - TRIED + DROPPED: letting the boot's opening out round the trousers (per vertex it pushed a biker boot's lining through its
+    collar; per cell it flared every opening into a funnel); a whole-shaft push (sawtooth boots).
+- CHECKED (idle + walk, 4 angles, both modes): jeans x viking / ankle / Blender boots / high boots / cowboy, cargo x biker boots,
+  tight jeans x female knee boots, female trousers x riding boots, viking pants x viking boots, sweatpants x high boots; the real
+  creator clicks (OUTFIT > LEGS > Male classic jeans, FOOTWEAR > Viking boots, TUCKED IN). Shots: /mnt/project-files/pants-boots/.
+- KNOWN: a fleck of jeans can show at the cowboy boot's stitched band when posed; outside mode leaves a speck of viking fur at the
+  jeans' hem on one side; the white spots on the viking boot's foot are in the pack texture (there with the fit off).
