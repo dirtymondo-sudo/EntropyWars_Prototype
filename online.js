@@ -2629,7 +2629,8 @@
                     toX: toX, toY: toY,
                     fromZ: fromZ ?? 0, toZ: toZ ?? 0,
                     durationMs: durationMs || 480,
-                    knock: (opts && opts.knock) || undefined   // THE KNOCK: a hurled body tumbles on the guest too
+                    knock: (opts && opts.knock) || undefined,   // THE KNOCK: a hurled body tumbles on the guest too
+                    delayMs: (opts && opts.delayMs > 0) ? opts.delayMs : undefined   // THE BLINK READS: a self leap jumps on the shot's cut
                 });
             }
             return _origAnimateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts);
@@ -4919,8 +4920,11 @@
 
                                 var _jumpThreeOk = false;
                                 if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                                    var _jOpts = (data.knock || data.delayMs > 0) ? {} : undefined;
+                                    if (data.knock) _jOpts.knock = data.knock;
+                                    if (data.delayMs > 0) _jOpts.delayMs = data.delayMs;
                                     window.ThreeAnim.jumpArc(jumpUnit, data.fromX, data.fromY, data.toX, data.toY,
-                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480, data.knock ? { knock: data.knock } : undefined);
+                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480, _jOpts);
                                     _jumpThreeOk = true;
                                 }
 
@@ -4929,7 +4933,8 @@
                                         data.fromZ || 0, data.toZ || 0, data.durationMs || 480);
                                 }
 
-                                if (typeof focusBoardCameraOnTiles === 'function') {
+                                /* a delayed jump is a spell shot's self leap: the replayed shot owns the camera */
+                                if (typeof focusBoardCameraOnTiles === 'function' && !(data.delayMs > 0)) {
                                     var _jz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _djz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
                                     focusBoardCameraOnTiles([{ x: _jumpCamX, y: _jumpCamY }], {

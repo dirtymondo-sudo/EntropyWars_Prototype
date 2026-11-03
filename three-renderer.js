@@ -28457,12 +28457,15 @@ const ThreeRenderer = (function () {
             toX: toX, toY: toY, toZ: toZ || 0,
             startTime: _animNow(),
             durationMs: durationMs || 480,
+            /* THE BLINK READS (2026-11-03): a self leap (Land on Your Feet, Cathedral Perch) holds on its own tile
+               through the spell shot's first beat and jumps on the cut */
+            delayMs: (opts && opts.delayMs > 0) ? opts.delayMs : 0,
             arcPeak: arcPeak
         });
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
         /* THE KNOCK: a hurled body (opts.knock 'fling' — the kinetic throws) goes over in the air and gets up after */
-        if (opts && opts.knock) _knockBegin(unit, opts.knock, 0, durationMs || 480, toX - fromX, toY - fromY, true);
+        if (opts && opts.knock) _knockBegin(unit, opts.knock, (opts.delayMs > 0) ? opts.delayMs : 0, durationMs || 480, toX - fromX, toY - fromY, true);
         else _knockRecs.delete(unit.id);
     }
 
@@ -28473,7 +28476,7 @@ const ThreeRenderer = (function () {
         var _jpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _jumpTweens) {
             var uid = entry[0], tw = entry[1];
-            var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
+            var t = Math.min(Math.max(0, now - tw.startTime - (tw.delayMs || 0)) / tw.durationMs, 1);
             var ease = _easeInOut(t);
             var fromSY = _tileSurfaceY(tw.fromX, tw.fromY, tw.fromZ);
             var toSY = _tileSurfaceY(tw.toX, tw.toY, tw.toZ);

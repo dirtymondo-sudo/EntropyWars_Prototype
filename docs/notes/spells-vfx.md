@@ -3030,3 +3030,28 @@ any roof on the way (a short top-down pass over a building). Shared by every spe
 Capture rig (videos/tools/unit_show.js): cast() now latches `_actionExecuting` + clears the pick previews like the board's
 confirm click; without it the HUD read the shot's camera as idle and the action menu showed mid-shot (a recording artifact,
 not the game). Proof: videos/units/fixes/CATGIRL_NIMBLE_DODGE_BEFORE_AFTER_1080p30.mp4.
+
+## THE BLINK READS + THE CLEAN RETURN (2026-11-03, mondo: "yes please" to fixing the flagged spells the Nimble Dodge way)
+Follow-up to THE DODGE READS. Looks and timing only, no rules.
+- TELEPORT kind, self casts (battle.js teleport branch): the caster faces the landing, the shot (caster -> landing,
+  `travelMs` = the body's own time) is played BEFORE any look, and the body goes on the shot's cut (`_tpLeave` =
+  sourceHold): the teleport VFX, the leap's jump arc (three-renderer startJumpTween `delayMs`, relayed in jump-anim),
+  Web Swing's swing path and Door Dash's doors + fade all wait for it. A plain blink keeps its body on the tile through
+  beat 1 with a short `escStyle: 'blink'` displace tween (`TP_BLINK_MS` 150) so it vanishes with the blink family's fade
+  and stands on the landing for the family's hard cut. The Door Dash gun shot still fires in beat 1.
+- blink family: a self teleport that TRAVELS (spell.leap: Land on Your Feet, Cathedral Perch; a swing / fly look: Web
+  Swing) rides like a running escape (c.stockHit on the cut); plain blinks (Shadow Step, Phase Walk, Mirror Blink,
+  Rabbit Hole, Ocean Current, Gravity Boots, Icky Surprise, Door Dash) keep vanish + cut.
+- Directors of self-moving shots get `_cineHeldAt(unit)` as ctx.caster (x/y/z frozen at the cast over the real unit), so
+  a beat before the cut (Void Rush's face cam, Instant Transmission's face cam) frames the body where it still stands;
+  c.live() finds the real unit after the cut.
+- Teleport landings refuse field rock cells too (getTeleportLandingReach + the teleport landing gate) — the same hidden
+  column Nimble Dodge landed on.
+- GRAPPLE self reel: faces the rope, the hook flies in beat 1, the reel starts on the cut (`_grReelAt` =
+  max(hook + 60, sourceHold)) and the shot's travel = the reel time, so raceGrapple's rope cam rides with the body.
+- THE CLEAN RETURN (camera._returnCut): the return home after a spell shot (softResetToUnit both branches, the level
+  settle's pull-back with a pending pre-shot view) CUTS when it would turn more than RETURN_CUT_YAW_DEG (60°); smaller
+  turns keep the glide. The 180° swing home went over roofs (sight-line raise) and through walls.
+Capture gotcha: never re-run H.freeze on a frozen capture page (`globalThis.__frozen=false`): it empties the rAF shim's
+queue and the game's render loop dies (the picture freezes, no error).
+Proof: /mnt/project-files/videos/units/fixes/CATGIRL_TELEPORTS_GRAPPLE_RETURN_1080p30.mp4.

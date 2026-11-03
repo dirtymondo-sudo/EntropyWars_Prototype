@@ -8883,6 +8883,7 @@
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (!isInside(tx, ty)) continue;
                     if (typeof isTowerTile === 'function' && isTowerTile(tx, ty)) continue;   // ⬡ the Cube is never a landing
+                    if (typeof fieldCellRock === 'function' && fieldCellRock(tx, ty)) continue;   // THE SOLID WALL: never landed on (2026-11-03)
                     if (spell.needsLoS && d >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
                     out.push({ x: tx, y: ty });
                 }
@@ -24513,6 +24514,7 @@
             return h;
         }
 
+        const RETURN_CUT_YAW_DEG = 60;   // THE CLEAN RETURN (camera._returnCut): a spell shot's return home that turns more than this cuts
         const camera = {
 
             x: 0, y: 0, zoom: 1, tilt: DEFAULT_BOARD_TILT, yaw: DEFAULT_BOARD_YAW, camZ: 900,
@@ -25016,7 +25018,9 @@
                                 _setZoom * TURN_FRAMING_ZOOM_MULT));
                         }
                     }
-                    this.moveTo({
+                    /* THE CLEAN RETURN: the shot's return that has to turn a long way cuts home */
+                    if (!(_pull && _pre && this._returnCut({ tilt: _setTilt, yaw: _setYaw, zoom: _setZoom,
+                        x: _px2 !== undefined ? _px2 : this._tx, y: _py2 !== undefined ? _py2 : this._ty }))) this.moveTo({
                         tilt: _setTilt, yaw: _setYaw,
                         ...(_pull ? {
                             zoom: _setZoom,
@@ -25029,6 +25033,30 @@
                     // release the keep-subject floor response once it lands.
                     this._releaseCineSubject(actionMs(800));
                 }, delayMs);
+            },
+
+            /* THE CLEAN RETURN (2026-11-03, mondo on the Nimble Dodge video: the camera "swinging back over rooftops after
+               a spell shot"): a spell shot that ended on a front ¾ faces up to 180° away from the player's own view, and
+               the 650-800 ms glide home swung the lens round through that arc — over every roof on the way (the sight
+               line lifts it above whatever stands between) and through the odd wall. A return that has to turn more
+               than RETURN_CUT_YAW_DEG CUTS straight to the player's view instead (the shot's letterbox has just gone, so
+               it reads as the end of the shot); a smaller turn keeps its glide. Camera only, viewer-local. */
+            _returnCut(o) {
+                if (!o || !Number.isFinite(o.yaw) || !Number.isFinite(this.yaw)) return false;
+                const d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
+                if (Math.abs(d) <= RETURN_CUT_YAW_DEG) return false;
+                this._stop();
+                if (Number.isFinite(o.x)) this.x = this._tx = o.x;
+                if (Number.isFinite(o.y)) this.y = this._ty = o.y;
+                if (Number.isFinite(o.zoom)) this.zoom = this._tz = Math.max(0.15, Math.min(10.0, o.zoom));
+                if (Number.isFinite(o.tilt)) this.tilt = this._tt = o.tilt;
+                this.yaw = this._tyaw = o.yaw;
+                this._elevOverride = this._tElev = -1;
+                this._elevRelease = false;
+                this._smoothInited = false;
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+                this._apply();
+                return true;
             },
 
             // Natural (un-overridden) focal height at a tile — the same value
@@ -25564,6 +25592,12 @@
                     // angle. Never leave it at the cinematic tilt.
                     const _rTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : saved.tilt);
                     const _rYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : saved.yaw);
+                    /* THE CLEAN RETURN: a long turn home cuts */
+                    if (cineWasActive && this._returnCut({ x: focusUnit.x, y: focusUnit.y, tilt: _rTilt, yaw: _rYaw,
+                        zoom: pre ? (isUserZoomEngaged() ? getUserZoomScale() : pre.zoom) : saved.zoom })) {
+                        this._busy = false;
+                        return;
+                    }
                     this.moveTo({ ...saved,
                         // Re-centre on the unit ITSELF, not the remembered
                         // pre-action position: after a movement action (dash /
@@ -25600,6 +25634,11 @@
                     const retTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : undefined);
                     const retYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : undefined);
                     const zoom = isUserZoomEngaged() ? userZoom : (pre ? pre.zoom : getRestZoom());
+                    /* THE CLEAN RETURN: a long turn home cuts */
+                    if (cineWasActive && this._returnCut({ x: focusUnit.x, y: focusUnit.y, tilt: retTilt, yaw: retYaw, zoom })) {
+                        this._busy = false;
+                        return;
+                    }
                     const dur = actionMs(650);
                     this._busy = true;
                     const seq = ++this._seqId;
@@ -33224,10 +33263,16 @@
                    fly / swing / eject look) is not a teleport — it never vanishes mid-shot and gets no hard cut ahead of the
                    body: the support rig's own beat 2 glides with the run to the mover's front ¾ on the landing (THE LANDING).
                    The escapes that really leave the board (blink, dive) keep the vanish and the cut. */
-                if (c.spell && c.spell.kind === 'escape') {
+                /* THE BLINK READS (2026-11-03): a self TELEPORT that travels (a leap: Land on Your Feet, Cathedral Perch; a
+                   look that carries the body: Web Swing) rides the same way; a plain blink keeps the vanish + cut */
+                if (c.spell && (c.spell.kind === 'escape' || c.spell.kind === 'teleport')) {
                     let _st = null;
                     try { const L = window.ThreeVFXEffects && window.ThreeVFXEffects.escapeLook ? window.ThreeVFXEffects.escapeLook(c.spell.id) : null; _st = L ? L.style : null; } catch (e) {}
-                    if (_st !== 'blink' && _st !== 'dive') {
+                    const _selfMove = !!(c.target && c.target._landUnit && c.caster && c.target._landUnit.id === c.caster.id);
+                    const _travels = (c.spell.kind === 'escape')
+                        ? (_st !== 'blink' && _st !== 'dive')
+                        : (_selfMove && (!!c.spell.leap || (!!_st && _st !== 'blink' && _st !== 'dive')));
+                    if (_travels) {
                         /* the family owns the shot (_cineApplyFamily), so it plays the rig's beat 2 itself, on the cut */
                         c.at(c.cut, () => { if (!c.stockHit()) { const cs = c.live(c.caster); if (cs && c.vis(cs)) cineGlamCam(cs, { tilt: 78 }); } }, 'run');
                         return;
@@ -73751,6 +73796,17 @@
         // offensive shot uses) so a big blessing breathes longer than a
         // cheap utility poke. Heal-flavored casts breathe LONGER — the
         // restore is the payoff, so beat 2 holds while the number lands.
+        /* THE BLINK READS (2026-11-03): a self blink's body (no look of its own) is off the board for the middle of this
+           many ms after the shot's cut — gone from its tile as the blink family's vanish fades it, on the landing before
+           the family's hard cut to its front (cut + 150 ms) */
+        const TP_BLINK_MS = 150;
+        /* the unit as it stands right now: its own x / y / z over the real unit (id, model, statuses read through) */
+        function _cineHeldAt(u) {
+            if (!u) return u;
+            const h = Object.create(u);
+            h.x = u.x; h.y = u.y; h.z = u.z;
+            return h;
+        }
         function _supportShotTimes(unit, target, opts = {}) {
             const len = Math.max(1, Math.hypot(target.x - unit.x, target.y - unit.y));
             const _supHeal = _isHealFlavoredCast(opts);
@@ -73995,7 +74051,11 @@
                unreachable before (the rig never consulted the table). */
             if (!window.EW_DISABLE_SPELL_DIRECTOR && opts.spellId && _cineClaimCast(opts.spellId)) {
                 _cinePlaySpellSequence(opts.spellId, {
-                    caster: unit, target, sequenceId, rig: 'support',
+                    /* THE BLINK READS (2026-11-03): a self-moving cast hands its director the caster AS IT STANDS NOW —
+                       the engine moves the body at once and the body goes on the cut, so a director beat before the cut
+                       (Void Rush's / Instant Transmission's face cam) framed the empty landing. c.live() still finds the
+                       real body by id for the beats after the cut. */
+                    caster: _selfLand ? _cineHeldAt(unit) : unit, target, sequenceId, rig: 'support',
                     timings: { sourceHold, travelMs, targetHold, resetBuffer: actionMs(200), totalMs },
                     cutMs: _supCutMs, impactMs: sourceHold + travelMs, shotOpts: {},
                     spell: _cineSpellById(opts.spellId)
@@ -79108,8 +79168,14 @@
                         /* THE REEL SHOT (spell look fix FX-CAM, 2026-10-26: Grapple toward a tile played at the far overview
                            with no action cam): the caster → landing shot, read before the body moves; the board glide
                            below only runs when no shot played. */
-                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id, landUnit: unit });
+                        /* THE BLINK READS (2026-11-03): the reel used to start 380 ms into beat 1 (the body was on the landing
+                           before the shot's cut). Now the caster faces the rope, the hook flies in beat 1 and the reel pulls
+                           the body in ON the cut, in the shot's own travel time (the rope cam rides with it). */
+                        const _grSlideMs = actionMs(360);
+                        setUnitFacing(unit, cx - unit.x, cy - unit.y);
+                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id, landUnit: unit, travelMs: _grSlideMs });
                         const _grSelfShotLive = !!(_grSelfShot && _grSelfShot.mode !== 'pan' && _grSelfShot.totalMs > 0);
+                        const _grSelfLeave = (_grSelfShotLive && _grSelfShot.mode === 'support') ? Math.max(0, _grSelfShot.sourceHold || 0) : 0;
                         unit.mp -= effectiveSpellCost;
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
 
@@ -79118,7 +79184,7 @@
                         const _grShootMs = actionMs(320);
                         const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs, hook: true });
 
-                        const _grSlideMs = actionMs(360);
+                        const _grReelAt = Math.max(_grShootMs + actionMs(60), _grSelfLeave);
                         window.setTimeout(() => {
                             unit.x = cx;
                             unit.y = cy;
@@ -79144,9 +79210,9 @@
                                 }, _grSlideMs + 30);
                             }
                             scheduleBoardRender();
-                        }, _grShootMs + actionMs(60));
+                        }, _grReelAt);
                         addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grUnitAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
-                        completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
+                        completionDelay = _grReelAt + _grSlideMs + actionMs(280);
                     } else {
                         addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');
                         playErrorSfx();
@@ -79364,7 +79430,8 @@
                         _tpDrop();
                         return 0;
                     }
-                    if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
+                    if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))   // ⬡ never into the Cube
+                        || (typeof fieldCellRock === 'function' && fieldCellRock(x, y))) {   // THE SOLID WALL: a sign's / wall's hidden column is no landing (2026-11-03)
                         addLog('Cannot teleport there.');
                         playErrorSfx();
                         _tpDrop();
@@ -79408,35 +79475,54 @@
                     playSfx('teleport');
                     const _tpFromX = tUnit.x, _tpFromY = tUnit.y, _tpFromZ = tUnit.z ?? 0;
 
+                    /* THE BLINK READS (2026-11-03, mondo: fix the teleports the same way as Nimble Dodge). A self teleport
+                       used to leave its tile on the cast frame under the caster → landing shot: beat 1 framed a tile it
+                       had left and the frame guard dragged the lens after it. Now, like an escape (THE DODGE READS): it
+                       turns to face the landing, beat 1 holds behind it there, and the body goes ON the shot's cut — a
+                       blink vanishes and appears (the blink family's vanish + hard cut to its front), a leap / a swing
+                       travels with the lens riding along (then the cut to its front). Looks and timing only: the tile,
+                       the cost and every arrival rule are the engine's at once, as before. */
+                    const _tpSelf = (tUnit === unit);
+                    const _tpLook = (!spell.leap && !spell.doorGun && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                        ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
+                    const _tpLeapMs = Math.max(actionMs(420), destDist * actionMs(140));
+                    const _tpRunMs = spell.leap ? _tpLeapMs : _tpLook ? _tpLook.ms : TP_BLINK_MS;
+                    if (_tpSelf) setUnitFacing(unit, x - unit.x, y - unit.y);
+                    const _tpShot = _spellFocusCamera(unit, x, y, _tpSelf ? { landUnit: tUnit, travelMs: _tpRunMs } : { landUnit: tUnit });   // THE LANDING: the mover framed where it lands
+                    const _tpLeave = (_tpSelf && _tpShot && _tpShot.mode === 'support' && _tpShot.totalMs > 0) ? Math.max(0, _tpShot.sourceHold || 0) : 0;
+                    const _tpOnCut = (fn) => { if (_tpLeave > 0) window.setTimeout(() => { if (state.phase === 'battle') fn(); }, _tpLeave); else fn(); };
+
                     if (spell.leap && tUnit === unit) {
                         /* THE SPELL AUDIT Batch D: `leap` (Land on Your Feet) — the caster jumps the arc to the landing,
                            any height up or down, and lands on its feet (a teleport never pays fall damage). The arc is
                            relayed (online.js wraps animateJumpArc). */
                         const _lpToZ = (_tpLandZ !== null) ? _tpLandZ : (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
-                        if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, Math.max(actionMs(420), destDist * actionMs(140)));
+                        if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, _tpLeapMs, _tpLeave > 0 ? { delayMs: _tpLeave } : undefined);
                     } else if (spell.doorGun) {
                         /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
                            at the agent's feet facing it, one at the landing facing back — in one, out the other
                            (Breaking and Entering's door; every beat through _doorGeom → relayed, RULE #2) */
                         window._doorGeom('raceDoorGun:shot', x, y, { fromX: tUnit.x, fromY: tUnit.y });
-                        window._doorGeom('raceBreakingEntering:door', tUnit.x, tUnit.y, { fromX: x, fromY: y });
-                        window._doorGeom('raceDoorDash:out', x, y, { fromX: tUnit.x, fromY: tUnit.y, delay: 260 });
-                        /* the agent is inside the doors between the two: hidden until the far one opens */
-                        if (!_skipVisuals() && typeof cineUnitFade === 'function') {
-                            try { cineUnitFade(tUnit, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(tUnit, 0, 1, 160), actionMs(380)); }); } catch (e) {}
-                        }
+                        /* THE BLINK READS: the gun fires in beat 1; the doors open and the agent steps through on the cut */
+                        _tpOnCut(() => {
+                            window._doorGeom('raceBreakingEntering:door', _tpFromX, _tpFromY, { fromX: x, fromY: y });
+                            window._doorGeom('raceDoorDash:out', x, y, { fromX: _tpFromX, fromY: _tpFromY, delay: 260 });
+                            /* the agent is inside the doors between the two: hidden until the far one opens */
+                            if (!_skipVisuals() && typeof cineUnitFade === 'function') {
+                                try { cineUnitFade(tUnit, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(tUnit, 0, 1, 160), actionMs(380)); }); } catch (e) {}
+                            }
+                        });
                     } else if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
                         if (state.phase === 'battle' && !_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('teleport', spell.id, {
-                                fromX: tUnit.x, fromY: tUnit.y,
+                            _tpOnCut(() => window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                fromX: _tpFromX, fromY: _tpFromY,
                                 toX: x, toY: y,
-                            });
+                            }));
                         }
                     } else {
-                        _vfxTeleport(tUnit.x, tUnit.y, x, y);
+                        _tpOnCut(() => _vfxTeleport(_tpFromX, _tpFromY, x, y));
                     }
-                    const _tpShot = _spellFocusCamera(unit, x, y, { landUnit: tUnit });   // THE LANDING: the mover framed where it lands
                     // Third Eye (the `teleportMpDiscount` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
                     const _tpOff = unitPassiveSum(unit, 'teleportMpDiscount') || 0;
                     const mpCost = _tpOff ? Math.max(1, effectiveSpellCost - _tpOff) : effectiveSpellCost;
@@ -79451,9 +79537,11 @@
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     /* THE ESCAPE LOOKS (FX-5): a teleport with its own look (Web Swing) carries the body along its path
                        instead of popping it there (relayed by the displace wrapper) */
-                    const _tpLook = (!spell.leap && !spell.doorGun && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
-                        ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
-                    if (_tpLook && !_skipVisuals()) animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, _tpLook.ms, { escStyle: _tpLook.style });
+                    if (_tpLook && !_skipVisuals()) animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, _tpLook.ms, _tpLeave > 0 ? { escStyle: _tpLook.style, delayMs: _tpLeave } : { escStyle: _tpLook.style });
+                    /* THE BLINK READS: a plain blink (or the doors) keeps the body on its tile through beat 1, then it is
+                       gone from there and stands on the landing (the blink path: off the board between the two) */
+                    else if (!spell.leap && _tpLeave > 0 && !_skipVisuals())
+                        animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, spell.doorGun ? actionMs(480) : TP_BLINK_MS, { escStyle: 'blink', delayMs: _tpLeave });
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
                         : tUnit === unit
