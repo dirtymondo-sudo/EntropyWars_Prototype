@@ -449,7 +449,23 @@ const ThreeVFX = (function () {
     var _FLIPBOOKS = {
         /* 60 frames of 128 px, 8 per row: a fireball that rolls, darkens to embers in smoke and rises. The blast's
            centre sits 0.82 down the frame (the smoke climbs into the rest), so callers lift the sprite by `lift`. */
-        'fb-explosion': { url: _R2 + 'vfx/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32 }
+        'fb-explosion': { url: _R2 + 'vfx/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32 },
+        /* THE SHARED KINDS (2026-11-03, mondo: "give them the same treatment"): a Mantaflow smoke puff (16 frames, lit
+           side baked to white so the kind's own colour tints it) and a Mantaflow flame flicker (16 frames, additive) */
+        'fb-smoke': { url: _R2 + 'vfx/fb_smoke.png', cols: 4, frames: 16, cell: 128, blend: 'nrm' },
+        'fb-ember': { url: _R2 + 'vfx/fb_ember.png', cols: 4, frames: 16, cell: 64, blend: 'add' }
+    };
+    /* THE SHARED KINDS: every spawn of these old painted kinds (smoke ~130 uses, dust-puff ~220, ember ~170, game-wide)
+       plays the Blender sheet instead once it is cut, in a plain sprite-pool particle (not a world decal / quad).
+       The particle keeps its kind for everything else (colour, blend, thinning, tumble): `col` 'kind' = the kind's
+       _spriteMap colour tints the white smoke (the painted textures carried those same colours), 'own' = the flame
+       keeps its baked colours. `op` = under the painted texture's peak alpha (the sim's puff is solid edge to edge, so the same coverage needs less). `grow` widens the
+       sprite so the sim's puff fills what the painted billow filled. `jit` = a random start across the sheet. */
+    var _FB_KINDS = {
+        'smoke':      { fb: 'fb-smoke', col: 'kind', op: 0.65, grow: 1.5, jit: 0.12 },
+        'smoke-soft': { fb: 'fb-smoke', col: 'kind', op: 0.45, grow: 1.5, jit: 0.12 },
+        'dust-puff':  { fb: 'fb-smoke', col: 'kind', op: 0.6,  grow: 1.5, jit: 0.12 },
+        'ember':      { fb: 'fb-ember', col: 'own',  op: 1.0,  grow: 1.3, jit: 0.5, span: 0.5 }
     };
     var _fbState = {};
     function _fbOff() { return typeof window !== 'undefined' && !!window.EW_NO_FLIPBOOKS; }
@@ -2618,6 +2634,9 @@ const ThreeVFX = (function () {
         var isWorld = (sc.blend === 'world' || mode === 'world');
         var isNonSquare = (opts.w0 != null || opts.h0 != null);
         var isGlob = (sprite === 'blood-glob');
+        /* THE SHARED KINDS: smoke / smoke-soft / dust-puff / ember play their Blender sheet when it is cut */
+        var fbKind = (!fbDef && !isWorld && !isNonSquare && _FB_KINDS[sprite] && flipbookReady(_FB_KINDS[sprite].fb)) ? _FB_KINDS[sprite] : null;
+        if (fbKind) fbDef = _FLIPBOOKS[fbKind.fb];
 
         var poolType, slotIdx;
         var craft = !_craftOff();
@@ -2733,12 +2752,21 @@ const ThreeVFX = (function () {
         } else {
             p._animFrames = null;
         }
+        if (fbKind) {
+            /* a shared kind: same kind colour as the painted texture had (it carried it), sized to fill like it */
+            if (fbKind.col === 'own') p._color = { r: 1, g: 1, b: 1, blend: sc.blend };
+            else if (p._tint) p._tint = { r: p._tint.r * sc.r, g: p._tint.g * sc.g, b: p._tint.b * sc.b };
+            p.opacity0 *= fbKind.op; p.opacity1 *= fbKind.op;
+            p.size0 *= fbKind.grow; p.size1 *= fbKind.grow;
+        }
         if (fbDef) {
-            p._fb = sprite;
-            p._fbA = Math.max(0, Math.min(1, opts.fbFrom || 0));
-            p._fbB = Math.max(p._fbA, Math.min(1, opts.fbTo != null ? opts.fbTo : 1));
+            var fbA0 = fbKind ? (opts.fbFrom != null ? opts.fbFrom : Math.random() * fbKind.jit) : (opts.fbFrom || 0);
+            var fbB0 = fbKind ? (opts.fbTo != null ? opts.fbTo : (fbKind.span ? fbA0 + fbKind.span : 1)) : opts.fbTo;
+            p._fb = fbKind ? fbKind.fb : sprite;
+            p._fbA = Math.max(0, Math.min(1, fbA0));
+            p._fbB = Math.max(p._fbA, Math.min(1, fbB0 != null ? fbB0 : 1));
             p._fbIdx = Math.min(fbDef.frames - 1, Math.floor(p._fbA * fbDef.frames));
-            p.sprite = sprite + '#' + p._fbIdx;
+            p.sprite = p._fb + '#' + p._fbIdx;
             p._uvRect = _getUvRect('ember');
         } else {
             p._fb = null;
