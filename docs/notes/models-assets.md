@@ -1433,6 +1433,19 @@ skinned 100 % to one bone) that the creator lists like any pack piece (EW_MH_WEA
 - First piece: Cowboy hat (`ewb_cowboyhat`, Hats, z 56): 2020 tris, 311 KB; scales male 0.931, female 0.859, heavy 1.101,
   thin 1.105, short 0.791; ≥ 1.5 cm clearance on all bodies, front brim 3.4 cm above the eye. The hat's underside floor
   across the crown opening stays (hidden inside the head).
+- THE WORN HATS (2026-11-03, mondo: "make it look more realistic/weathered/worn/textured. Like look at the cowboy meshy model
+  and his hat"): Meshy Retexture API (POST /openapi/v1/retexture, his hat GLB as a data URI, `enable_original_uv: true`, 10 credits)
+  paints a 2K base colour on HIS UVs; Meshy's own re-exported mesh (4 vertices fewer, rescaled) is never used: the texture goes
+  through bake_solid like his own (`SOLIDS` cowboyhat_worn / cowboyhat_worntan: `tex` = R2 wear/cowboyhat/textures/
+  Cowboy-Hat_meshy_worn_dark.png / _worn_tan.png, `occ: None`). Same mesh, same fit, every vertex the same as `ewb_cowboyhat`.
+  All the tries + the sheets: /mnt/project-files/meshy/retexture/cowboyhat/ (mondo picked F + H of round 2; the best match to
+  the Meshy cowboy's hat came from `image_style_url` = a render of that hat).
+- THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): `band_tint: True` writes the
+  `band_mat` faces as accent primitive 1 (write_glb `FA`, a per-face accent; same texture; ewWear.band = 1). three-renderer.js
+  paintWear colours it from `appearance.wearTint['<id>:band']` like the hat from `wearTint[id]` (none = its own texture); sprites.js
+  `EW_WEAR_BANDS` lists the hats with a band (normalizeWearTint keeps their ':band' key); the creator's colour row for the hat
+  gets a second block, "Band". The band no longer follows the hat's colour. The band faces are the thin strip of his band
+  material; the worn textures paint the band a little wider, so a sliver of painted band takes the hat's colour.
 - Held props of a race look (`RACE_CREATOR_LOOK_DEFS.hold`): `_unitAttachHeld` now also reads catalogue rows with base
   `weapons` (`_R2_WEAPONS`), so the R2 revolver works as a hold.
 
@@ -1554,3 +1567,11 @@ the thread's zip adds `Assets/decor/` by hand.
 - Kept Meshy (no pack match): school_bus, cardboard boxes, wooden_bucket, car_cop (the car pack already draws it), fridges, signpost.
 - Licences: Elbolilloduro = CC0 (credits row "PSX prop packs"). Pizza Doggy (Retro Tree Pack, the Mega Packs) is NOT CC0: no AI
   use of the assets, no redistribution as standalone files (credits + MODEL_LIST fixed).
+- **Round 2 (mondo 11-03, after the first look):** server rack back to the proc (the Meshy one is not used, not shipped);
+  space divider ONE screen (no repeat); flood mast pole thinned in Blender (shaft x/y ×0.4, base ×0.6); tanker desk
+  retextured with Meshy Retexture on its own UVs (meshy-6, text prompt) and the red top toned to the old oxblood brown
+  (texture swapped into the same mesh); high striker split in Blender into the striker + `high_striker_hammer` (its own piece,
+  laid flat, lying on the floor in front); armour stand = the suit standing ON a new Meshy square oak plinth with a thin iron
+  rod (`armour_plinth`, concept D15c picked by mondo) in place of the T-post whose crossbar stuck out. The Göbekli battle
+  board's T-pillar monument (`_hzTPillar`) wears the hands T-pillar too, stretched into the old 1.9 × 3.8 tile box (the code
+  pieces stay hidden in the group so the monument fit and the 2-voxel stamp are unchanged).
