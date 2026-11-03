@@ -965,3 +965,25 @@ the bottom and top of the building, and repeat everything else as needed dependi
   when tall: their middle band is a slice of wall.
 - The URBAN PACK side (ground floor vs upper floors, doors, decal overlays) is a proposal awaiting mondo's OK:
   /mnt/project-files/urban-buildings/urban_design_mockup.png.
+
+## THE BUILDING FROM THE PACK + PRISMS EVERYWHERE (2026-11-03, same thread, mondo approved the mockup)
+mondo: "yes, build as mocked up. For the prism buildings, lets make sure any already on a map get the same fix. Vary the stories for
+variety. Dont use the church_2 or building 11 anywhere in the game, there shape doesnt work with this method and you can remove them
+from the editor".
+- texbuilding rows take `keyGround` (the ground floor's lower row), `keyDoor` (a half-wide door sheet, drawn as a DOUBLE door: the sheet
+  + its mirror), `keyOver` (a see-through window decal over each upper storey's upper row); 'none' = no door / no decal; empty = picked
+  to suit the `key` sheet (three-renderer.js _hqTexSheetPlan): GlassWindow* → GlassWindowTall<n>a storefront row under a
+  ConcreteStriped2a band, a DoorStorefrontHalf pair, a concrete parapet; PlasterWallPainted1x → its banded PlasterWallPainted2x foot,
+  DecalWindowsResidential 1a/2a, a colour-matched DoorPaintedHalf; Stucco → residential decals + wooden door; MetalCorrugated /
+  ConcreteStriped → DecalWindowsFactory 1a/2a + painted door; any other sheet → a painted double door only. The fields also override a
+  style-driven building (no key). Editor inspector: ground floor / door / windows over the wall under `key` (TEX_KEYS, picker …).
+- PRISMS EVERYWHERE: _nrSpriteBuilding reads HQ_TEXB_PRISM_BANDS[key] itself when no `bands` opt is passed (city lots, the city
+  backdrop, entrance buildings, _nrSpriteBlocks, the world rim's city): H is UNCHANGED (roofs / climbs / sight lines as before) and the
+  middle repeats as many times as fill H at the sprite's own aspect (w × 0.85 / core width per pixel). Storeys already vary in every
+  caller (lot storeys ranges, backdrop 3-6, rim random); nothing re-rolled. The battle board's prism (_buildBuildingPrism) is one
+  whole sprite, as painted: untouched.
+- RETIRED: building_11 + church_2. sprites.js points their urls at building_1.png / church_1.png (and the `church` game-mode object,
+  which wore church_2.png, at church_1.png), so a placed one anywhere draws as those; data.js HQ_TEXB_PRISMS drops them (editor picker),
+  HQ_TEXB_PRISMS_RETIRED keeps old rows drawing as prisms; map.js palette (Buildings / Churches) + the Urban random objects drop them;
+  Cyberpunk City's building_11 pair is building_1. The append-only id lists (MF_OID, ME_OBJECT_IDS) keep the ids.
+- Shots: /mnt/project-files/urban-buildings/{urban_buildings,glass_buildings,city_prisms}_before_after.jpg.

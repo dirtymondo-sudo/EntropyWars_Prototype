@@ -17449,8 +17449,8 @@
             { label: 'Rocks', keys: ['rock'] },
             { label: 'Barriers', keys: ['barrier_1','barrier_2','barrier_3','barrier_4','barrier_5'] },
             { label: 'Columns', keys: ['column_1','column_2','column_3','column_4'] },
-            { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2'] },
-            { label: 'Churches', keys: ['church_1','church_2'] },
+            { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','ancient_building','abandoned_building_1','abandoned_building_2'] },   // building_11 retired 2026-11-03
+            { label: 'Churches', keys: ['church_1'] },   // church_2 retired 2026-11-03
             { label: 'Paths', keys: ['stairs','stairs_2','pathway_1','pathway_2'] },
             { label: 'Props', keys: ['lamp_post','lamp_post_2','torch','traffic_light'] },
             { label: 'Spell Props', keys: ['gravestone','bone_pile','bone_wall','atlantis_pillar','totem_pole','federation_beacon'] },
@@ -23105,7 +23105,7 @@
                 wall: ['urban_wall','urban_wall','rock_wall_1'],
                 hazard: [],
                 water: [],
-                objects: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2','ruins','column_1','tree_3','tree_5','stairs','pathway_1','pathway_2'],
+                objects: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','ancient_building','abandoned_building_1','abandoned_building_2','ruins','column_1','tree_3','tree_5','stairs','pathway_1','pathway_2'],
                 objChance: 0.14,
             },
             cavern: {

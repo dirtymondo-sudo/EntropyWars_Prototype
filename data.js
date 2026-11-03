@@ -15251,7 +15251,7 @@ _MF_BUILDERS.prebuilt_cyberpunk = function () {
     // city blocks: towers (2×2, roof-walkable)
     M.buildingSym(2, 2, 'building_5');
     M.buildingSym(18, 3, 'building_7');
-    M.buildingSym(3, 10, 'building_11');
+    M.buildingSym(3, 10, 'building_1');   // was building_11 (retired 2026-11-03, mondo)
     M.buildingSym(19, 10, 'abandoned_building_1');
     // holographic billboards + searchlights
     M.monSym('fluorescent', 10, 7, 1, 2, { solid: false });
@@ -43347,12 +43347,15 @@ const DOOR_HQ = {
                     { k: 'wall', x0: 106.75, z0: 15.75, x1: 106.75, z1: 15.75, h: 2.2, t: 3.5, key: 'rock_wall_1' },            // 11 × 10
                     { k: 'wall', x0: 78.75, z0: -8.75, x1: 78.75, z1: -8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },          // a stone bench, one level up (3 × 3)
                     { k: 'wall', x0: 96.25, z0: 8.75, x1: 96.25, z1: 8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },            // its twin (8 × 8)
-                    /* the pillars' own stone for the battle: a wall row inside each shaft (never seen — the pillar is drawn round it) is the
-                       ground THE FIELD reads there, as Stonehenge's sarsens are, so a pillar is a tall square nobody walks through */
-                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the west great pillar (3 × 5..6)
-                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the east great pillar (8 × 5..6)
-                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },            // the lesser pillar at 2 × 8
-                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },          // the lesser pillar at 9 × 3
+                    /* the pillars' own stone for the battle: a wall row inside each shaft is the ground THE FIELD reads there, so a pillar is
+                       a tall square nobody walks through. GHOSTS (2026-11-03, mondo: "the t-pillars are still standing on top of the walls"):
+                       the rows were drawn (a 5.45 m glyph block under each great pillar, 3.15 m under the lesser ones) and the pillar props
+                       stood on their tops — `ghost: true` = never drawn, still the walker's and the fight's; the props stand on the floor
+                       under them (`floor: true`) */
+                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1', ghost: true },             // the west great pillar (3 × 5..6)
+                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1', ghost: true },             // the east great pillar (8 × 5..6)
+                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1', ghost: true },            // the lesser pillar at 2 × 8
+                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1', ghost: true },          // the lesser pillar at 9 × 3
                     { k: 'path', pts: [[121.3, 0], [120.14, 8.74], [116.78, 16.9], [111.4, 23.9], [104.4, 29.28], [96.24, 32.64], [87.5, 33.8], [78.76, 32.64], [70.6, 29.28], [63.6, 23.9], [58.22, 16.9], [54.86, 8.74], [53.7, 0], [54.86, -8.74], [58.22, -16.9], [63.6, -23.9], [70.6, -29.28], [78.76, -32.64], [87.5, -33.8], [96.24, -32.64], [104.4, -29.28], [111.4, -23.9], [116.78, -16.9], [120.14, -8.74], [121.3, 0]], w: 2.8 },   // the walk round the ring wall
                 ],
             },
@@ -43388,12 +43391,12 @@ const DOOR_HQ = {
                 /* ENCLOSURE E (2026-10-20): the two great pillars on their pedestals either side of the nexus (broad faces to each other),
                    the ten lesser ones round the pit's rim on the ledge (narrow face in; the ring wall they stood on is gone, 2026-11-03), two standing in the pit, two stones,
                    a brazier on each bastion (the pit's light) — every one on its square, the layout half-turn symmetric */
-                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5 }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5 },
+                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5, floor: true }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5, floor: true },
                 { key: 't_pillar',       x: 78.75, z: -21.696, face: 90, h: 3.2 }, { key: 't_pillar', x: 96.25, z: -21.696, face: 90, h: 3.4 },
                 { key: 't_pillar',       x: 78.75, z: 21.696, face: 270, h: 3.4 }, { key: 't_pillar', x: 96.25, z: 21.696, face: 270, h: 3.2 },
                 { key: 't_pillar',       x: 65.7, z: -12.25, face: 180, h: 3.0 }, { key: 't_pillar', x: 65.7, z: 1.875, face: 180, h: 3.4 }, { key: 't_pillar', x: 65.7, z: 12.25, face: 180, h: 3.2 },
                 { key: 't_pillar',       x: 109.3, z: 12.25, face: 0, h: 3.0 }, { key: 't_pillar', x: 109.3, z: -1.875, face: 0, h: 3.4 }, { key: 't_pillar', x: 109.3, z: -12.25, face: 0, h: 3.2 },
-                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2 }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2 },
+                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2, floor: true }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2, floor: true },
                 { key: 'brazier',        x: 68.25, z: -19.125, y: 2.2 }, { key: 'brazier', x: 106.75, z: -19.125, y: 2.2 },
                 { key: 'brazier',        x: 68.25, z: 19.25, y: 2.2 }, { key: 'brazier', x: 106.75, z: 19.25, y: 2.2 },
             ],
@@ -51120,9 +51123,12 @@ function hqTexBuildingRows(f) {
 /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): the
    building sprites the battle board's prisms and the city's prism lots wear (sprites.js OBJECT_SPRITES) — a texbuilding whose `key`
    is one of them is drawn as that prism (three-renderer.js _hqBuildTexPrisms), its box and its roof the same as the textured one's */
-const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
-    'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'church_2', 'shop'];
-function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PRISMS.indexOf(f.key) >= 0); }
+const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10',
+    'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'shop'];   // building_11 + church_2 retired 2026-11-03 (mondo)
+/* the two retired prisms (2026-11-03): no longer offered in the editor, but a building already wearing one still draws as a prism
+   (sprites.js points building_11 at building_1's art, church_2 at church_1's) */
+const HQ_TEXB_PRISMS_RETIRED = ['building_11', 'church_2'];
+function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && (HQ_TEXB_PRISMS.indexOf(f.key) >= 0 || HQ_TEXB_PRISMS_RETIRED.indexOf(f.key) >= 0)); }
 /* THE PRISM BANDS (2026-11-03, mondo: "always apply the bottom of the texture and the top of the texture to the bottom and top of the
    building, and repeat everything else as needed depending on how many stories"): each prism sprite cut in three, in rows of the sprite
    file (0 = its top) — [where the TOP band ends, where the BOTTOM band starts, how many storeys the art between them shows]. A building
@@ -51132,8 +51138,8 @@ function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PR
 const HQ_TEXB_PRISM_BANDS = {
     building_1: [22, 186, 6], building_2: [30, 146, 3], building_3: [32, 104, 1], building_4: [16, 124, 3], building_5: [56, 96, 1],
     building_6: [22, 78, 2], building_7: [32, 44, 1], building_8: [32, 124, 2], building_9: [16, 64, 1], building_10: [36, 66, 1],
-    building_11: [290, 380, 2], ancient_building: [250, 290, 1], abandoned_building_1: [100, 404, 6], abandoned_building_2: [150, 400, 5],
-    church_1: [104, 118, 1], church_2: [110, 124, 1], shop: [22, 78, 2],
+    building_11: [22, 186, 6], ancient_building: [250, 290, 1], abandoned_building_1: [100, 404, 6], abandoned_building_2: [150, 400, 5],
+    church_1: [104, 118, 1], church_2: [104, 118, 1], shop: [22, 78, 2],
 };
 /* THE INSIDE (2026-10-30, mondo: "what if i wanted to add an interior to the buildings so i would need an option for them to be more
    like walls but still look like a building"): a `hollow` texbuilding is its four thin walls (the ghost walls above, the walker inside

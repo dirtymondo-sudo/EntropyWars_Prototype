@@ -659,6 +659,8 @@ primitives keep their colours. Works on the board too (same rig). EXPORT DEFAULT
 normalized appearance) and bake-looks.js writes it into RACE_CREATOR_LOOKS (its log line counts the tinted pieces). Checked in the
 forge on the Cowboy (Chromium + swiftshader): hat original / black / red / brown / custom / original again, a pack striped shirt +
 ankle boots tinted green / red.
+2026-11-03 THE BAND TINT: a hat in sprites.js EW_WEAR_BANDS shows a second block under its colour row, "Band" (wearTint['<id>:band']);
+the band is its own primitive now and keeps its own colours unless picked. Notes: models-assets.md "THE SOLID PIECES".
 
 ## THE SECOND OUTER LAYER (2026-11-01)
 mondo: "i want to be able to add another outer layer in the character creator, it will only let me add another top layer but i want

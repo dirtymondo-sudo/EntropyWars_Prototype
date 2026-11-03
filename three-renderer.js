@@ -38750,11 +38750,18 @@ const ThreeRenderer = (function () {
                     /* THE PRISM BANDS (2026-11-03, data.js HQ_TEXB_PRISM_BANDS): `bands` [top band's end row, bottom band's start row,
                        storeys in the art] — the bottom band once at the foot, one storey of the middle stack − 1 times, the top band once
                        at the top, at the sprite's own proportions fitted to H. Without bands every storey wears the whole sprite. */
-                    var BD = o.bands, segs = [];
+                    /* Every prism in the game (2026-11-03, mondo: "lets make sure any already on a map get the same fix"): with no
+                       `bands` opt the sprite's own row in HQ_TEXB_PRISM_BANDS is read, and the middle repeats as many times as fill the
+                       building's height (H unchanged, so every roof, climb and sight line stays where it was) at the sprite's own
+                       aspect; an editor building (`bands` passed, its storeys set) repeats it storeys − 1 times */
+                    var BD = o.bands, segs = [], bandFit = (BD === undefined);
+                    if (bandFit) BD = (typeof HQ_TEXB_PRISM_BANDS !== 'undefined' && HQ_TEXB_PRISM_BANDS[key]) || null;
                     if (BD && BD.length >= 3 && BD[0] > tt && BD[1] < tb + 1 && BD[1] > BD[0]) {
-                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB, sc = H / (tp + bp + (stack - 1) * mp), yy = 0;
+                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB;
+                        var nMid = bandFit ? Math.max(0, Math.round((H / (w * 0.85 / core) - tp - bp) / mp)) : stack - 1;
+                        var sc = H / (tp + bp + nMid * mp), yy = 0;
                         segs.push([yy, yy + bp * sc, 1 - (tb + 1) / sprH, 1 - bB / sprH]); yy += bp * sc;
-                        for (var sm = 0; sm < stack - 1; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
+                        for (var sm = 0; sm < nMid; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
                         segs.push([yy, H, 1 - bT / sprH, vT]);
                     } else for (var st0 = 0; st0 < stack; st0++) segs.push([st0 * h, st0 * h + h, vB, vT]);
                     segs.forEach(function (sg, si) {
@@ -56136,13 +56143,15 @@ const ThreeRenderer = (function () {
                 mh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
                 return { mesh: mh, tex: tex };
             };
-            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [];
+            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
                 ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
-                accents.push(wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai).mesh);
+                var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
+                accents.push(madeA.mesh);
+                if (ex.band === ai) bandMade = madeA;   // THE BAND TINT: a solid's band (bake-clothes.py band_tint), coloured apart from the hat
             }
             if (swayRig) part.wearSway = true;
             /* THE BLENDER TIGHT CLOTHES (bake-clothes.py batch 4b): a skin-tight garment lists the skin it hides per body
@@ -56155,7 +56164,10 @@ const ThreeRenderer = (function () {
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
             if (hangRig) part.hangRun = null;
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+            /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
+               appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
+            var bandTint = (tint && bandMade && bandMade.tex) ? { mesh: bandMade.mesh, src: tint.src, sg: sg, own: bandMade.tex } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, bandTint: bandTint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
                       solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
@@ -56986,9 +56998,8 @@ const ThreeRenderer = (function () {
         function paintWear(part, a) {
             if (!a) return;
             var T = a.wearTint || {};
-            (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                var want = T[w.id], map = P.own;
+            var paint = function (P, m, want) {   // its texture's grey levels x the colour, or its own texture
+                var map = P.own;
                 if (want) {
                     var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
                     if (grey) map = grey;
@@ -56996,6 +57007,12 @@ const ThreeRenderer = (function () {
                 } else if (P.c0) m.color.copy(P.c0);
                 else m.color.setRGB(1, 1, 1);
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+            };
+            (part.wear || []).forEach(function (w) {
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id]);
+                var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
+                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
@@ -64659,11 +64676,49 @@ const ThreeRenderer = (function () {
             },
         };
     }
+    /* THE BUILDING FROM THE PACK (2026-11-03, mondo: "making a building now just paints all of its sides with the window ... the bottom
+       of the buildings are just all half windows which doesnt make sense"): a building wearing one urban sheet (`key`) gets the pieces
+       the pack draws for the rest of a building, picked to suit that sheet unless the row names its own —
+       `keyGround` the ground floor's lower row (a glass sheet: the tall storefront glass under a concrete band; a painted plaster: the
+       banded plaster the pack paints for the foot), `keyDoor` the door (a half-wide door sheet, drawn as a DOUBLE door: the sheet and its
+       mirror), `keyOver` the see-through window decal laid over the wall on each upper storey's upper row (a plaster / stucco: the
+       residential windows; corrugated metal / striped concrete: the factory windows; glass: none). 'none' = no door / no decal. */
+    function _hqTexSheetPlan(lot, rng, neon) {
+        var U = function (n) { return n ? 'urban:' + n : null; }, nm = String(lot.sheet || '').replace(/^urban:/, ''), Q = { sheet: { key: lot.sheet }, g1: null, door: null, over: null };
+        var pick = function (fam, f) { return (typeof urbanTexPick === 'function') ? urbanTexPick(fam, rng, f) : null; };
+        var glowOf = function (n) { var g = neon && n && typeof urbanTexGlow === 'function' ? urbanTexGlow(n) : null; return g ? U(g) : null; };
+        var m, isGlass = /^GlassWindow/.test(nm);
+        if (isGlass) {
+            m = /(\d)/.exec(nm); var n = m ? m[1] : '1', broken = /Broken/.test(nm), tall = broken ? ('GlassWindowTallBroken' + n + 'a') : ('GlassWindowTall' + n + 'a');
+            if (!URBAN_TEXTURES[tall]) tall = 'GlassWindowTall1a';
+            Q.g0 = { key: U(tall), glow: broken ? null : glowOf(tall), glass: true }; Q.g1 = { key: U('ConcreteStriped2a') };
+            Q.door = U(pick('DoorStorefrontHalf')); Q.sheet.glass = true; Q.sheet.glow = glowOf(nm); Q.parapet = U('ConcreteStriped2a');
+        } else if ((m = /^PlasterWallPainted1([a-f])$/.exec(nm))) {
+            var band = 'PlasterWallPainted2' + ({ a: 'a', b: 'a', c: 'b', d: 'c', e: 'd', f: 'e' })[m[1]];
+            Q.g0 = { key: U(band) }; Q.door = U('DoorPaintedHalf' + ({ a: '1', b: '1', c: '2', d: '3', e: '4', f: '1' })[m[1]] + 'a');
+            var dr = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr), glow: glowOf(dr) };
+        } else if (/^PlasterWallPainted2/.test(nm)) {
+            Q.sheet = { key: U('PlasterWallPainted1a') }; Q.g0 = { key: lot.sheet }; Q.door = U('DoorPaintedHalf1a');
+            var dr2 = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr2), glow: glowOf(dr2) };
+        } else if (/^PlasterWallStucco/.test(nm)) {
+            Q.door = U(pick('DoorWoodenHalf')); var dr3 = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr3), glow: glowOf(dr3) };
+        } else if (/^(MetalCorrugatedPainted|ConcreteStriped)/.test(nm)) {
+            Q.door = U('DoorPaintedHalf1a'); var df = pick('DecalWindowsFactory', /[12]a$/); Q.over = { key: U(df), glow: glowOf(df) };
+        } else Q.door = U('DoorPaintedHalf1a');
+        if (!Q.g0) Q.g0 = Q.sheet;
+        return Q;
+    }
+    /* the row's own pieces over the picks: a sheet key (`urban:` added to a bare pack name), 'none' = nothing, empty = the pick */
+    function _hqTexOwn(v) { if (v == null || v === '') return undefined; if (v === 'none') return null; v = String(v); return (v.indexOf(':') < 0 && typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES[v]) ? 'urban:' + v : v; }
     /* one textured building on a lot: the box's four faces as cell grids, the roof, the parapet, the plant */
     function _hqTexBuilding(lot, info, batch, rng, gen, U) {
         var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = (lot.h > 0) ? lot.h : st * HQ_TEXB.storey, CY = H / rows;   // `h` (THE BUILDING TIERS): a set roof height, the cells stretched to it
         /* THE BUILDING'S OWN SHEET (2026-10-30): a row's `key` on every face cell (and the parapet), as a wall wears its key — the style's door stays */
         if (lot.sheet) { var one = { key: lot.sheet }; P.wall = P.win = P.ground = P.base = P.top = one; P.over = null; P.one = true; }
+        var Q = lot.sheet ? _hqTexSheetPlan(lot, rng, P.neon) : null;   // THE BUILDING FROM THE PACK: the ground floor, the door, the decals
+        var ownG = _hqTexOwn(lot.keyGround), ownD = _hqTexOwn(lot.keyDoor), ownO = _hqTexOwn(lot.keyOver);
+        var doorKey = ownD !== undefined ? ownD : (Q ? Q.door : undefined), doorPair = !!Q || ownD !== undefined;   // a pack building's door is a double door
+        var overOwn = ownO !== undefined ? (ownO ? { key: ownO, glow: (P.neon && typeof urbanTexGlow === 'function' && urbanTexGlow(ownO.replace(/^urban:/, ''))) ? 'urban:' + urbanTexGlow(ownO.replace(/^urban:/, '')) : null } : null) : (Q ? Q.over : undefined);
         if (lot.roofOnly && !lot.sheet) P.wall = P.top = { key: 'urban:ConcreteStriped2a' };   // THE PRISM ROOFS: a prism building's parapet in concrete
         /* THE INSIDE (2026-10-30): a hollow building's doorway (data.js hqTexbDoor — the walker's gap in its front wall) */
         var hol = (lot.hollow && !lot.roofOnly && typeof hqTexbDoor === 'function') ? hqTexbDoor(lot) : null;
@@ -64699,16 +64754,26 @@ const ThreeRenderer = (function () {
                     if (upperOfStorey || (ground && !(F.front && ci === doorCol))) { if (!(ground && P.style === 'stucco')) over = P.over; }
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
+                if (Q) { cell = r === 0 ? Q.g0 : (r === 1 && Q.g1 ? Q.g1 : Q.sheet); over = null; door = (ground && F.front && ci === doorCol) ? door : null; }
+                if (ownG !== undefined && r === 0 && ownG) cell = { key: ownG, glass: /GlassWindow/.test(ownG) };
+                if (overOwn !== undefined) over = (r >= 3 && r % 2 === 1) ? overOwn : null;
+                if (door && doorKey !== undefined) door = doorKey ? { key: doorKey, half: true, pair: doorPair } : null;
                 if (!cell || !cell.key) continue;
                 var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY, v0 = 0;
                 if (hol && F.front && ci === hol.col && y0 < hol.doorH - 1e-3) { if (y1 <= hol.doorH + 1e-3) continue; v0 = (hol.doorH - y0) / CY; y0 = hol.doorH; over = null; }   // THE INSIDE: the doorway's square, open to the lintel
-                var uRep = cell.tall ? 2 : 1, kind = (!P.one && (cell === P.win || cell === P.ground)) ? 'glass' : 'wall';
+                var uRep = cell.tall ? 2 : 1, kind = ((!P.one && (cell === P.win || cell === P.ground)) || cell.glass) ? 'glass' : 'wall';
                 batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, v0], [uRep, v0], [uRep, 1], [0, 1]]);
                 if (over && over.key) {
                     var ox = F.n[0] * out, oz = F.n[1] * out;
                     batch.add(over.key, over.glow || null, 'over', [W(x0 + ox, y0, z0 + oz), W(x1 + ox, y0, z1 + oz), W(x1 + ox, y1, z1 + oz), W(x0 + ox, y1, z0 + oz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
                 }
-                if (door && door.key) {
+                if (door && door.key && door.pair) {   // THE DOUBLE DOOR: the half-wide sheet and its mirror, side by side in the middle of the square
+                    var hd2 = Math.min(cw / 2, HQ_TEXB.cell / 2), pc = (cw - 2 * hd2) / 2, ox3 = F.n[0] * out * 1.5, oz3 = F.n[1] * out * 1.5;
+                    [[0, 1], [1, 0]].forEach(function (uu, side) {
+                        var a0 = pc + side * hd2, ax0 = x0 + F.a[0] * a0, az0 = z0 + F.a[1] * a0, ax1 = ax0 + F.a[0] * hd2, az1 = az0 + F.a[1] * hd2;
+                        batch.add(door.key, null, 'over', [W(ax0 + ox3, y0, az0 + oz3), W(ax1 + ox3, y0, az1 + oz3), W(ax1 + ox3, y1, az1 + oz3), W(ax0 + ox3, y1, az0 + oz3)], [[uu[0], 0], [uu[1], 0], [uu[1], 1], [uu[0], 1]]);
+                    });
+                } else if (door && door.key) {
                     var dw = door.wide ? cw : cw / 2, dx0 = x0 + F.a[0] * (cw - dw) / 2, dz0 = z0 + F.a[1] * (cw - dw) / 2, dx1 = dx0 + F.a[0] * dw, dz1 = dz0 + F.a[1] * dw;
                     var ox2 = F.n[0] * out * 1.5, oz2 = F.n[1] * out * 1.5;
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
@@ -64716,7 +64781,7 @@ const ThreeRenderer = (function () {
             }
             if (lot.flat) return;   // THE BUILDING TIERS: a walked roof has no parapet (its rails, bridges and stairs meet the edge)
             /* the parapet's outer face in the wall's sheet (the top row's, if any) */
-            var pk = (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
+            var pk = (Q && Q.parapet) || (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
             var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
             batch.add(pk, null, 'wall', [W(px0, H, pz0), W(px1, H, pz1), W(px1, H + ph, pz1), W(px0, H + ph, pz0)], [[0, 0.7], [F.L / C, 0.7], [F.L / C, 0.7 + ph / C], [0, 0.7 + ph / C]]);
         });
@@ -64771,7 +64836,7 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
@@ -70944,6 +71009,9 @@ const ThreeRenderer = (function () {
             var pY = p.y;   // the prop's own lift over the ground under it (a desk top, a sheet of paper)
             if (isBox && _hqHasGround() && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) {
                 var pcy = _hqCaveTop(p.x || 0, p.z || 0);
+                /* THE FLOOR UNDER IT (2026-11-03, Göbekli Tepe): a prop authored `floor: true` stands on the field's own ground (the plateau,
+                   the pit), never on a wall row's top at its foot (a pillar round its battle stone stood on that stone) */
+                if (p.floor === true && _hq && _hq.terrain && typeof hqTerrainHeight === 'function') pcy = hqTerrainHeight(_hq.terrain, p.x || 0, p.z || 0);
                 /* THE TIER HEIGHT (2026-09-22 — the user: "floating objects on the Looking Glass, Mars, Technoticlan"): a terrain / cave
                    room's prop authored with `y` ≥ 1 (or a sunk cellar's ≤ −0.5) names a HEIGHT FROM THE ROOM'S FLOOR — a tier's top,
                    a slab, the air — like a native's `y` and a door's sill, never a lift over the ground (the sarcophagus at y 3.0 on
