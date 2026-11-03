@@ -41124,7 +41124,7 @@ const ThreeRenderer = (function () {
        house's basement). Every file's front (door / porch) is +Z. */
     var _HZ_TOWN_MODELS = {
         trailers: { m: 15.1, files: ['ebd_trailerscene_trailer_0.glb', 'ebd_trailerscene_trailer_1.glb', 'ebd_trailerscene_trailer_2.glb', 'ebd_trailerscene_trailer_3.glb', 'ebd_trailerscene_trailer_4.glb', 'ebd_trailerscene_trailer_5.glb'] },
-        abandoned: { m: 36.3, sink: 3.5, files: ['ebd_abandonedhouse_house.glb'] }
+        abandoned: { m: 36.3, sink: 1.0, files: ['ebd_abandonedhouse_house.glb'] }
     };
     /* THE RIM — each builder: (K, spec, c) with c = { y: the ground level, shore, R, sea } */
     var _WD_RIM = {
@@ -61036,6 +61036,9 @@ const ThreeRenderer = (function () {
     /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
     function _hqCaveTop(x, z) {
         /* THE TERRAIN ROOM (2026-09-17): the ground under (x, z) — the walker's feet there, else the raw height (a prop in a hazard still stands on its bed) */
+        /* THE TOWN PAST THE HEDGE (2026-11-03): a prop placed past an open field's edge stands on THE OUTER GROUND there (the
+           Abandoned House past the Haunted grounds' pines), never on the field's edge height carried out */
+        if (_hq && _hq.terrain && _hq.outer && (Math.abs(x) > _hq.outer.hx || Math.abs(z) > _hq.outer.hz)) return _hq.outer.yAt(x, z);
         if (_hq && _hq.terrain && typeof hqTerrainFeet === 'function') { var tf = hqTerrainFeet(_hq.terrain, x, z, null); return (tf == null) ? hqTerrainHeight(_hq.terrain, x, z) : tf; }
         var st = _hq && _hq.site; if (!st || !st.cave || typeof hqCaveTopAt !== 'function') return null;
         return hqCaveTopAt(st.info, x, z);

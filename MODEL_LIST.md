@@ -1066,6 +1066,17 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | leaf_window_medium | `Assets/door/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 | leaf_wooden | `Assets/door/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 
+### Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) — Asset pack (6)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| trailer_home_1 | `Assets/misc/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_2 | `Assets/misc/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_3 | `Assets/misc/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_4 | `Assets/misc/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_5 | `Assets/misc/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_6 | `Assets/misc/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+
 ### Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given — Asset pack (5)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1194,6 +1205,12 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | --- | --- | --- | --- |
 | sink | `Assets/misc/ebd_burgerpiz_sink.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
 | urinal | `Assets/misc/ebd_burgerpiz_urinal.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| abandoned_house | `Assets/misc/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
 
 ### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
@@ -1446,7 +1463,7 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| abandoned town rim (house) | `Assets/misc/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender; town rim _HZ_TOWN_MODELS) |
+| abandoned town rim (house) | `Assets/misc/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
 | alien | `Assets/misc/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ambulance | `Assets/misc/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1568,12 +1585,12 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | time_machine | `Assets/misc/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_barrel | `Assets/misc/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| trailers town rim (trailer_0) | `Assets/misc/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
-| trailers town rim (trailer_1) | `Assets/misc/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
-| trailers town rim (trailer_2) | `Assets/misc/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
-| trailers town rim (trailer_3) | `Assets/misc/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
-| trailers town rim (trailer_4) | `Assets/misc/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
-| trailers town rim (trailer_5) | `Assets/misc/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
+| trailers town rim (trailer_0) | `Assets/misc/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailers town rim (trailer_1) | `Assets/misc/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailers town rim (trailer_2) | `Assets/misc/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailers town rim (trailer_3) | `Assets/misc/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailers town rim (trailer_4) | `Assets/misc/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailers town rim (trailer_5) | `Assets/misc/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
 | trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | truck | `Assets/misc/Meshy_AI_a_truck_0917065131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |

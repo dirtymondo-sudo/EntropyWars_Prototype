@@ -1337,6 +1337,15 @@ until he OKs Meshy concepts for it.
 - FOUND: a site battle draws NO world rim at all. Every rim site has an HQ_ARENA_RULES pick, the arena drops env.near, so
   `_nrLastKit` is null and `_worldBuild` returns early; the site's own room stands round the board instead. These rim swaps show only
   where a rim still builds. Asked mondo whether the pack houses should also stand in the site rooms.
+- mondo 13:28: "none of those, i think the rims are just dead code from the voxel boards right? obviouslyy they need to go into the
+  site rooms". True: a VS-CPU / online fight at a site is its arena cut with nothing round it, and no site keeps a Δ board, so the
+  world rim never draws. THE TOWN HOUSES are ROOM PROPS now (data.js DOOR_HQ.catalogue trailer_home_1..6 + abandoned_house, real
+  size, `rect` blockers): Area 51's flight line 4 trailers on the desert past its open edge (north, clear of the gate road; one west),
+  the Skinwalker fields 3 trailers in the corn's clearings, the Haunted grounds 3 Abandoned Houses past the pines (west, east, south),
+  side on. Every spot is clear of all four arena sizes (12/11/10/9), the tracks, the doors, the props and the natives (a scratch plan
+  search over hqFieldLattice cells). three-renderer.js _hqCaveTop: a prop past an open field's edge stands on THE OUTER GROUND
+  (`_hq.outer.yAt`), never the edge height carried out. The house GLB is re-cut (bake-pack-pieces.py job option `cut`: 2.5 m of its
+  3.5 m basement dropped) and sinks its last metre (`hover: -1`), so no stilts show on the outer ground's slope.
 
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
