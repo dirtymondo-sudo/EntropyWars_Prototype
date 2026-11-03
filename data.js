@@ -61147,6 +61147,52 @@ function hqFieldRoofsApply(R) {
     }));
     return R;
 }
+/* ══ THE OPEN SKY (2026-11-03, mondo: "a flyer should absolutely be able to fly over a rock or a street sign. That wall fix was
+   probably intended for rooms that have a ceiling ... i shouldnt be able to just fly over the wall of a hallway, because it is implied
+   that the wall goes up to the ceiling. Where as an outdoor map like cyberpunk does not need that, bc it is outside and there is no
+   ceiling") ══ On a room with no ceiling (shell.open) a square that stays rock is only as tall as what is DRAWN there — a building's
+   edge (its lot's top), a wall's top, a solid piece's top, a rock's top — so its column is that tall (THE TIER RULE, uncapped like a
+   roof) and it is marked SKY: nobody stands, walks, climbs or lands on it (battle.js fieldCellRock, unchanged), an airborne flyer
+   crosses and hovers over it (map.js unitCanTraverse, battle.js fieldCellSky), a shot / a sight line goes over it when it clears that
+   height. A tree (no height known), a gap, the room's edge and every square of a room with a ceiling keep the tall column.
+   window.EW_NO_OPEN_SKY = the tall columns everywhere as before. */
+function hqFieldSkyOn() {
+    const W = (typeof window !== 'undefined') ? window : {};
+    return !W.EW_NO_OPEN_SKY;
+}
+/* the drawn top (room metres) of a rock square on an open room, or null (it keeps the tall column) */
+function hqFieldSkyTopOf(ti, c) {
+    if (!ti || !c || !c.rock || !c.src || c.src.hole) return null;
+    const info = ti.src, room = (DOOR_HQ.rooms || {})[ti.roomId], src = c.src;
+    if (!info || !room || !(room.shell && room.shell.open)) return null;   // a closed room's walls reach its ceiling
+    const gn = info.gen || {}, pts = _hqFieldRoofSamples(ti, src);
+    if (_hqFieldTreeAt(info, src.x, src.z) || pts.some(p => _hqFieldTreeAt(info, p[0], p[1]))) return null;   // a tree: its height is not known
+    const r3 = (v) => Math.round(v * 1000) / 1000;
+    /* the ground as drawn (a slope's crest, a rock lump, a kerb under a parked car), then what stands on it */
+    let top = -Infinity;
+    for (const p of pts) top = Math.max(top, hqTerrainHeight(info, p[0], p[1]));
+    if (c.solidTop != null && isFinite(+c.solidTop)) top = Math.max(top, +c.solidTop);   // a wall / a tall piece in the square (THE CUSTOM BATTLE MAPS)
+    if (gn.kind === 'city' && gn.solidMass) {
+        const L = _hqFieldLotUnder(info, pts);   // a building's edge: the lot's top, whatever share of the square it fills
+        if (L.lot && L.n > 0) { if (gn.prisms === false) return null; top = Math.max(top, hqTerrainSolidTop(info, L.lot.x, L.lot.z)); }
+    } else if (gn.solidMass) {
+        for (const p of pts) if (hqTerrainSolidAt(info, p[0], p[1], 0)) top = Math.max(top, hqTerrainSolidTop(info, p[0], p[1]));   // a wall's top
+    } else if (gn.look === 'trees' && info.maskD && hqTerrainMaskAt(info, src.x, src.z) < 0) return null;   // a tree bank: no height known
+    return isFinite(top) ? r3(top) : null;
+}
+/* after THE ROOFS: every rock square of an open terrain room with a drawn top stands that tall and is marked `sky` */
+function hqFieldSkyApply(R) {
+    if (!R || !R.cells || !R.terrain || R._skyApplied || !hqFieldSkyOn()) return R;
+    R._skyApplied = true;
+    const ref = (R.ref != null) ? R.ref : 0;
+    R.cells.forEach(row => row.forEach(c => {
+        if (!c || !c.rock) return;
+        let top = null; try { top = hqFieldSkyTopOf(R.info, c); } catch (err) { top = null; }
+        if (top == null) return;
+        c.sky = true; c.skyTop = top; c.tile = hqFieldRoofTier(top, ref);
+    }));
+    return R;
+}
 /* the window on the terrain lattice: OUT = rock in the cliff sheet (the room's edge, the plan's mass, a tree, a cliff the feet refuse),
    a HAZARD in its liquid, an IN cell at THE TIER of its top over the window's lowest IN top. `solid` = THE CUSTOM BATTLE MAPS' walls
    (hqFieldSolidCell / hqFieldSolidEdges): a square a wall stands in is OUT, a wall between two squares is an edge wall (R.walls) */
@@ -61164,7 +61210,7 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
             const src = (gx >= 0 && gy >= 0 && gx < ti.w && gy < ti.h) ? ti.cells[gy][gx] : null;
             const sol = (solidAt && src && src.in && !src.span) ? solidAt(src) : null;   // THE CUSTOM BATTLE MAPS: a wall / a tall piece in the square, or a low piece's top
             let cell;
-            if (!src || (!src.in && !src.hazard) || (sol && sol.out)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null };
+            if (!src || (!src.in && !src.hazard) || (sol && sol.out)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null, solidTop: (sol && sol.out && sol.top != null) ? sol.top : null };
             else if (src.hazard) cell = { x, y, gx, gy, in: false, rock: false, hazard: true, tile: null, key: src.key, fluid: src.fluid, under: null, src, seat: false, top: null, sheet: src.sheet };
             else { cell = { x, y, gx, gy, in: true, rock: false, hazard: false, tile: 0, key: src.key, fluid: src.fluid, under: null, src, seat: src.seat !== false, top: src.top, wall: !!src.wall, bridge: src.bridge | 0,
                             deck: src.deck ? { top: src.deck.top, layer: src.deck.layer, tile: 0, rails: src.deck.rails || '' } : null, span: !!src.span, rails: (src.span && src.rails) || '' };
@@ -61234,11 +61280,11 @@ function hqFieldSolidCell(ti) {
     return (src) => {
         const g = hqTerrainHeight(info, src.x, src.z);
         const w = src.wall ? hqTerrainWallAt(info, src.x, src.z, R.bodyR) : null;
-        if (w && !w.block && !w.tier && !w.plan && w.top - g >= G.tierMin) return { out: true };
+        if (w && !w.block && !w.tier && !w.plan && w.top - g >= G.tierMin) return { out: true, top: w.top };   // THE OPEN SKY: the wall's own top
         let top = null, key = null;
         for (const cv of covers) if (Math.abs(src.x - cv.x) <= cv.hw && Math.abs(src.z - cv.z) <= cv.hd && (top == null || g + cv.top > top)) { top = g + cv.top; key = cv.key; }
         if (top == null) return null;
-        if (top - g >= BX.high) return { out: true };
+        if (top - g >= BX.high) return { out: true, top, key };
         return (top > (+src.top || 0) + 0.05) ? { top, key } : null;
     };
 }
@@ -61663,6 +61709,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet, cell: opts.cell, solid: !!opts.solid }); if (!R) return null;
     if (typeof _mfNew !== 'function') return null;
     hqFieldRoofsApply(R);   // THE ROOFS: a building's / a rock's top is a square (the existing Jump and Climb reach it)
+    hqFieldSkyApply(R);     // THE OPEN SKY: an open room's rock square is as tall as what is drawn there
     const room = DOOR_HQ.rooms[roomId], site = hqRoomSite(roomId), RW = R.W, RH = R.H, S = Math.max(RW, RH), B = HQ_FIELD_RULES.base;
     const id = hqFieldId(roomId, R.ox, R.oz);
     const siteD = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[site + '_delta'] : null;
@@ -61714,6 +61761,11 @@ function hqFieldBuild(roomId, ox, oz, opts) {
                        three-renderer.js _hqLotStandY), else null; a square that stays rock: where its tile marks lie (room metres), else null */
                     roofLots: R.cells.map(row => row.map(c => (c.roofed && c.roofLot != null) ? c.roofLot : null)),
                     rockTops: R.cells.map(row => row.map(c => (c.rock && c.rockTop != null && isFinite(+c.rockTop)) ? Math.round(+c.rockTop * 1000) / 1000 : null)),
+                    /* THE OPEN SKY (2026-11-03): '1' = a rock square of an open room an airborne flyer crosses / hovers over (battle.js
+                       fieldCellSky); `skyTops` = what is drawn there (room metres) — the flyer hovers its clearance over it
+                       (three-renderer.js _fieldSurfaceY) */
+                    sky: R.cells.some(row => row.some(c => c.sky)) ? R.cells.map(row => row.map(c => (c.rock && c.sky) ? '1' : '0').join('')) : null,
+                    skyTops: R.cells.some(row => row.some(c => c.sky)) ? R.cells.map(row => row.map(c => (c.rock && c.sky && c.skyTop != null) ? c.skyTop : null)) : null,
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
                     fixed: hqFieldFixedCells(R),   // THE NO-DEFORM FLAG (delivery 9): the cells the engine may not dig / raise (null on a cave)
@@ -62171,6 +62223,7 @@ function hqArenaUpgrade(mapId, opts) {
             && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     hqFieldRoofsApply(R);   // THE ROOFS (2026-11-01): after the fit (the bake's view of the room is untouched), the roofs and rock tops are squares
+    hqFieldSkyApply(R);     // THE OPEN SKY (2026-11-03): an open room's rock square is as tall as what is drawn there
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
     const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : a.custom ? { house: a.custom, walls: R.walls || null } : null);
     if (!next) { e.arena.failed = true; return false; }

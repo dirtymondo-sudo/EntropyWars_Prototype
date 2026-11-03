@@ -54701,6 +54701,19 @@
             return typeof row === 'string' && row[x] === '#';
         }
         window.fieldCellRock = fieldCellRock;
+        /* THE OPEN SKY (2026-11-03, mondo: "a flyer should absolutely be able to fly over a rock or a street sign ... an outdoor map
+           like cyberpunk does not need that, bc it is outside and there is no ceiling"): a rock cell of a room with no ceiling, as
+           tall as what is drawn there (data.js hqFieldSkyApply) — still never stood on, walked, climbed or landed on (fieldCellRock),
+           but an airborne flyer crosses and hovers over it (map.js unitCanTraverse) */
+        function fieldCellSky(x, y) {
+            const m = _encMatch || _encRoomLast;
+            const fid = _encFieldId(m);
+            if (!fid) return false;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
+            const row = e && e.field && e.field.sky ? e.field.sky[y] : null;
+            return typeof row === 'string' && row[x] === '1';
+        }
+        window.fieldCellSky = fieldCellSky;
         /* THE ROOFS (2026-11-01): a field square a building's roof / a rock's top stands in (data.js hqFieldRoofsApply — the no-deform
            flag 'R'): its height is the thing drawn there, so the spawn zones' ripple (map.js _clearSpawnZoneTiles) never lowers it */
         function fieldCellRoof(x, y) {
@@ -70840,6 +70853,10 @@
 
                 if (unitZ <= groundZ) {
                     return { ok: false, reason: 'Already on the ground.' };
+                }
+                /* THE OPEN SKY: over a building's edge / a wall / a rock a flyer may hover, never land (THE SOLID WALL) */
+                if (typeof fieldCellRock === 'function' && fieldCellRock(unit.x, unit.y)) {
+                    return { ok: false, reason: 'Nowhere to land here.' };
                 }
 
             }

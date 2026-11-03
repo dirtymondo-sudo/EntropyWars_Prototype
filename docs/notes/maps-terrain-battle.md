@@ -1426,3 +1426,21 @@ differentiate between beach sand and desert sand in the game through color/tint"
 - GIZA UNTINTED (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the Giza boards' tints.desert
   (#e8cf8f full board, #e6d4a0 the arenas) are gone and the Giza site room's floor/apron colour is white, so Giza's sand is
   the desert-gold sheet as drawn. The Giza horizon pyramids keep their own colour (0xd6c39a).
+
+## THE OPEN SKY (2026-11-03, mondo: flyers fly over outdoor walls)
+mondo: "a flyer should absolutely be able to fly over a rock or a street sign. That wall fix was probably intended for rooms
+that have a ceiling ... i shouldnt be able to just fly over the wall of a hallway, because it is implied that the wall goes up
+to the ceiling. Where as an outdoor map like cyberpunk does not need that, bc it is outside and there is no ceiling".
+- data.js `hqFieldSkyApply(R)` (after `hqFieldRoofsApply`, in `hqFieldBuild` and the arena re-raster): on a TERRAIN field of a
+  room with `shell.open`, every square that stays rock gets the drawn top `hqFieldSkyTopOf` (room metres): the ground's highest
+  sample, a city lot's top under ANY share of the square (a building's edge), a solidMass wall's top, a custom map wall / tall
+  piece's top (`hqFieldSolidCell` now returns `top` with `out`). Its column is that tall (`hqFieldRoofTier`, uncapped) and it is
+  marked `c.sky`. Entry: `field.sky` ('1' rows) + `field.skyTops`.
+- Stays the tall column: a tree anywhere in the square (no height known), a tree-bank mass, a gap (`hole`), a square past the
+  room's edge (no src), every square of a room with a ceiling, every box / cave field. Kill-switch `window.EW_NO_OPEN_SKY`.
+- battle.js `fieldCellSky(x, y)`; map.js `unitCanTraverse`: a rock cell passes only for a flyer at a z over the column (or,
+  with no z, an airborne flyer). `fieldCellRock` is unchanged, so walking, climbing, jumping, teleport / escape landings and
+  `canOccupy*` still refuse it; `canChangeAltitude('descend')` refuses a Land over it ("Nowhere to land here.").
+- three-renderer.js `_fieldSurfaceY`: over a sky square the flyer hovers its clearance over `skyTops` (marks keep `rockTops`).
+- Cyberpunk arena: all 5 rock squares are sky (3.7 m, 10.3 m x2, 6.9 m building edges; 2.7 m the slope crest at 9,5).
+  Proof: videos/units/fixes/FLYER_OVER_BUILDING_EDGE_CYBERPUNK_1080p30.mp4.
