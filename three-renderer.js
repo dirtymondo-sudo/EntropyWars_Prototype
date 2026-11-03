@@ -56129,13 +56129,15 @@ const ThreeRenderer = (function () {
                 mh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
                 return { mesh: mh, tex: tex };
             };
-            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [];
+            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
                 ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
-                accents.push(wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai).mesh);
+                var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
+                accents.push(madeA.mesh);
+                if (ex.band === ai) bandMade = madeA;   // THE BAND TINT: a solid's band (bake-clothes.py band_tint), coloured apart from the hat
             }
             if (swayRig) part.wearSway = true;
             /* THE BLENDER TIGHT CLOTHES (bake-clothes.py batch 4b): a skin-tight garment lists the skin it hides per body
@@ -56148,7 +56150,10 @@ const ThreeRenderer = (function () {
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
             if (hangRig) part.hangRun = null;
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+            /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
+               appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
+            var bandTint = (tint && bandMade && bandMade.tex) ? { mesh: bandMade.mesh, src: tint.src, sg: sg, own: bandMade.tex } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, bandTint: bandTint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
                       solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
@@ -56979,9 +56984,8 @@ const ThreeRenderer = (function () {
         function paintWear(part, a) {
             if (!a) return;
             var T = a.wearTint || {};
-            (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                var want = T[w.id], map = P.own;
+            var paint = function (P, m, want) {   // its texture's grey levels x the colour, or its own texture
+                var map = P.own;
                 if (want) {
                     var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
                     if (grey) map = grey;
@@ -56989,6 +56993,12 @@ const ThreeRenderer = (function () {
                 } else if (P.c0) m.color.copy(P.c0);
                 else m.color.setRGB(1, 1, 1);
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+            };
+            (part.wear || []).forEach(function (w) {
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id]);
+                var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
+                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the

@@ -35,6 +35,7 @@ const HOW = {
     MH:        { label: 'MakeHuman community asset', human: 'yes' },
     MH_BLEND:  { label: 'MakeHuman parts, baked by Claude in Blender', human: 'yes (parts)' },
     MONDO:     { label: "mondo's own model", human: 'yes' },
+    MONDO_TEX: { label: "mondo's own model, texture by Meshy AI (Retexture on his UVs)", human: 'yes (mesh)' },
     MESHY:     { label: 'Meshy AI', human: 'no' },
     MESHY_C:   { label: 'Meshy AI, reworked by Claude', human: 'no' },
     BLENDER:   { label: 'Claude in Blender', human: 'no' },
@@ -46,6 +47,7 @@ const SOURCES = [
     { re: /Assets\/Models\/MAL\d/, how: 'MESHY_C', src: "Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js)" },
     // character creator
     { re: /charactercreation\/wear\/ewb_beard_/, how: 'MH_BLEND', src: 'MakeHuman pack beard + moustache joined in Blender (bake-beards.py)' },
+    { re: /charactercreation\/wear\/ewb_cowboyhat_worn/, how: 'MONDO_TEX', src: "mondo's cowboy hat + a Meshy Retexture base colour on his UVs (worn dark / worn tan; bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_cowboyhat/, how: 'MONDO', src: "mondo's cowboy hat, fitted to the bodies in Blender (bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_/, how: 'BLENDER', src: 'bake-clothes.py / bake-garment.py (cloud Blender)' },
     { re: /charactercreation\/wear\/mhw_/, how: 'MH', src: 'MakeHuman asset packs (author + licence per piece in charactercreation/wear/wear.json)' },

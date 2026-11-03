@@ -18,6 +18,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
 | mondo's own model | yes | 1 |
+| mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 422 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
@@ -361,7 +362,7 @@ Human-made, from the MakeHuman community asset packs. Every piece's author, lice
 - **hair03 · punkduck · CC-BY**: Chinesebob01, Curly01, Alpha7 curly, Alpha7 curly2, Alpha7 long, Alpha7 long2
 - **makehuman_system_assets · makehuman_system · CC0**: Afro01, Bob01, Bob02, Braid01, Long01, Ponytail01, Short01, Short02, Short03, Short04
 
-### 5d. Made by Claude in Blender (110 files, `Assets/Models/charactercreation/wear/ewb_*`)
+### 5d. Made by Claude in Blender (112 files, `Assets/Models/charactercreation/wear/ewb_*`)
 
 Garments modelled in cloud Blender (bake-clothes.py), except the rows marked otherwise (mondo's cowboy hat, the joined
 MakeHuman beards). `_open` / `_closed` files are the same garment with the front the other way.
@@ -396,6 +397,8 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewb_clown | `Assets/Models/charactercreation/wear/ewb_clown.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_coinbelt · Coin belt | `Assets/Models/charactercreation/wear/ewb_coinbelt.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_cowboyhat · Cowboy hat | `Assets/Models/charactercreation/wear/ewb_cowboyhat.glb` | mondo's own model | mondo's cowboy hat, fitted to the bodies in Blender (bake-clothes.py SOLIDS) |
+| ewb_cowboyhat_worn · Cowboy hat (worn dark) | `Assets/Models/charactercreation/wear/ewb_cowboyhat_worn.glb` | mondo's own model, texture by Meshy AI (Retexture on his UVs) | mondo's cowboy hat + a Meshy Retexture base colour on his UVs (worn dark / worn tan; bake-clothes.py SOLIDS) |
+| ewb_cowboyhat_worntan · Cowboy hat (worn tan) | `Assets/Models/charactercreation/wear/ewb_cowboyhat_worntan.glb` | mondo's own model, texture by Meshy AI (Retexture on his UVs) | mondo's cowboy hat + a Meshy Retexture base colour on his UVs (worn dark / worn tan; bake-clothes.py SOLIDS) |
 | ewb_cultrobe | `Assets/Models/charactercreation/wear/ewb_cultrobe.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_cultrobe_open · (front variant) | `Assets/Models/charactercreation/wear/ewb_cultrobe_open.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_dorag · Do-rag | `Assets/Models/charactercreation/wear/ewb_dorag.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
