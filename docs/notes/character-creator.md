@@ -1070,3 +1070,18 @@ and there as an option".
   every_mpfb_body.jpg). Probe = a stage mounted straight on window.EWCharViewer with the bind pose held (skeleton.pose(), mixer
   stopped, EW_DISABLE_FACE_IDLE) so every face is shot in the same head pose.
 
+## THE FACE PRESETS (2026-11-03, plan row 29b)
+- mondo: "can you point me to some resources or websites or asset packs where i can get makehuman face presets? Or download a few
+  yourself?" A MakeHuman face preset = a saved character (.mhm, MakeHuman 1.x / the community asset repository; or an MPFB human
+  preset .json). None ship in the 64 asset packs or in MPFB.
+- `bake-faces.js` (repo root): `node bake-faces.js <file.mhm|preset.json> [more…] [--label ..] [--gender male|female] [--author ..]
+  [--license CC0|CC-BY ..] [--source URL] [--dry-run]`, `--list`, `--remove <id>`. .mhm lines `modifier <group>/<neg>|<pos suffix>
+  <v>` become target weights; each FACE slider = the mean (over the pairs the file sets) of plus - minus weight / its SHAPE_GAIN end
+  (three-renderer.js, read live), clamped -1..1. FACE_TARGETS in the tool = bake-mpfb.py SHAPE_TARGETS face keys (keep in step).
+  Prints the body macros it could not carry and the face modifiers with no slider (dropped).
+- Writes sprites.js `EW_MPFB_FACE_PRESETS` (between the BEGIN / END markers): rows { id: 'mh_<label>', label, gender, author,
+  license, source, face }. party-builder.js FACE: one button per row after DEFAULT FACE / NEUTRAL FACE (♀ / ♂ = the character's
+  gender; a pick sets every face slider, the rest to 0). map.js credits, MakeHuman section: "Creator face presets" lists every row's
+  author · licence · source. EW_MPFB_DEFAULT_FACES is never touched.
+- After a bake: node --check sprites.js, bump ?v=, merge, sync zip.
+

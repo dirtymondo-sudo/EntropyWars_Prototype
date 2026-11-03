@@ -4111,6 +4111,14 @@ const EW_MPFB_DEFAULT_FACES = {
     head: -0.25, headHeight: -0.15, faceAge: -0.5, neckThick: -0.2
   }
 };
+/* THE FACE PRESETS (2026-11-03, mondo: "can you point me to some resources or websites or asset packs where i can get makehuman
+   face presets?"): MakeHuman characters (.mhm from the community asset repository, or MPFB human presets) turned into FACE slider
+   values by `node bake-faces.js <file>` (repo root; it writes the block below). Each row = { id, label, gender, author, license,
+   source, face }; the creator lists them under FACE beside DEFAULT FACE / NEUTRAL FACE, the credits page lists the CC-BY authors.
+   Only the face carries: a .mhm's body macros (gender / age / ethnic mix) stay with our fixed MPFB bodies. */
+// EW_MPFB_FACE_PRESETS:BEGIN (written by bake-faces.js)
+const EW_MPFB_FACE_PRESETS = [];
+// EW_MPFB_FACE_PRESETS:END
 /* the face keys a look should take when it moves onto `body`: the body gender's default face when the look's face is untouched
    (all 0) or still another default face; all 0 when it goes back to a classic base wearing a default face (head / jaw / nose /
    cheeks / eye size shape the classic head too); {} when the player has made the face their own. `force` = FACE > DEFAULT FACE. */
@@ -4543,6 +4551,7 @@ if (typeof window !== 'undefined') {
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
+  window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;

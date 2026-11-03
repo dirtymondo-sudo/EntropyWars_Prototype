@@ -1265,7 +1265,12 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                    (sprites.js EW_MPFB_DEFAULT_FACES) or MakeHuman's own neutral face (every face slider at 0), in one click */
                 window.mpfbFacePatch ? h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face preset', 'data-cc-cam-own': 'face' },
                   h('button', { className: 'ms-tty-btn', title: 'Every face slider at this body\u2019s default face', onClick: () => changeAppearance(window.mpfbFacePatch(appearance, appearance.body, true)) }, 'DEFAULT FACE'),
-                  h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE')) : null,
+                  h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE'),
+                  /* THE FACE PRESETS (2026-11-03): MakeHuman community faces baked by bake-faces.js (sprites.js EW_MPFB_FACE_PRESETS);
+                     a pick sets every face slider (the ones the preset leaves out go to 0) */
+                  (window.EW_MPFB_FACE_PRESETS || []).map(p => h('button', { key: p.id, className: 'ms-tty-btn', title: p.label + ' \u00b7 ' + p.author + (p.license ? ' \u00b7 ' + p.license : ''),
+                    onClick: () => changeAppearance(Object.assign(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0])), p.face || {})) },
+                    p.label.toUpperCase() + (p.gender === 'female' ? ' \u2640' : ' \u2642')))) : null,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },
                   window.EW_MPFB_FACE_SLIDERS.map(g => h('button', { key: g.id, className: 'ms-tty-btn' + (faceCat === g.id ? ' primary' : ''), 'aria-pressed': faceCat === g.id, onClick: () => setFaceCat(g.id) },
                     g.label.toUpperCase() + (g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004) || (faceLooks[g.id] || []).some(k => appearance[k] && appearance[k] !== 'own') ? ' \u2022' : '')))),
