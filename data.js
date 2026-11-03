@@ -15680,7 +15680,6 @@ _MF_BUILDERS.prebuilt_hollow_earth = function () {
     M.mon('gateway', 15, 10, 2, 3, { rot: 180, solid: false });
     M.mon('innersun', 9, 14, 2, 6, { solid: false });    // the sun they keep down here
     M.mon('crystal', 9, 16, 2, 3, { solid: false });
-    M.mon('island', 2, 17, 3, 2, { solid: false });
     M.obj(4, 10, 'cave_entrance'); M.obj(15, 9, 'cave_entrance');
     M.spawnEdges('s', 6);
     M.finishSpawns('cave_floor');
@@ -15724,7 +15723,6 @@ _MF_BUILDERS.prebuilt_fairy_forest = function () {
     M.monSym('mushroom', 6, 13, 1, 2, {});                  // giant fae cap — solid, tree-like cover
     M.monSym('mushroom2', 13, 15, 1, 1, {});                // squat cap — clamber onto it
     M.mon('fairyring', 9, 9, 2, 2, { solid: false });       // dance at your peril
-    M.monSym('island', 1, 16, 2, 2, { solid: false });   // fae islet drifting over the wood
     M.scatter(14, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_2') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_2');
@@ -18367,13 +18365,13 @@ const EW_MAP_META = [
     { id: 'prebuilt_stonehenge', label: 'Stonehenge', w: 16, h: 16, teamSize: 6, tier: 1, base: 'grass_2',
       biomes: ['ancient', 'arthurian'], deltaPad: 'grass_2', near: 'stonehenge',
       desc: '16×16 prebuilt, 6v6 — the sarsen ring on crossing ley-lines: pillar cover, cardinal entrances, an armillary over the altar',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', d: 16, n: 14, r: 4.5, flat: 0.28 }, { kind: 'trees', d: 24, n: 30, p: 0.5, s: 1.8 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'trees', d: 24, n: 30, p: 0.5, s: 1.8 }] },
              tint: 0x241b3e, tintAmt: 0.42, stars: 1.3, nebula: 0.9, fog: { color: 0x35284f, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'ruins',
              motion: { kind: 'wheel', speed: 2.4, ramp: 0.3, max: 5.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the heavens wheel round the henge — the stones are an observatory, and the night is on fast-forward
     { id: 'prebuilt_giza', label: 'Pyramids of Giza', w: 20, h: 20, teamSize: 6, tier: 1, base: 'desert',
       biomes: ['desert', 'ancient'], deltaPad: 'dirt_2', near: 'giza',
       desc: '20×20 prebuilt, 6v6 — three pyramids on the great diagonal, twin obelisks, processional avenues & excavation trenches',
-      env: { world: { kind: 'plain', rim: [{ kind: 'dunes', d: 14, n: 20 }, { kind: 'pyramids', d: 34, n: 6, h: 16 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'pyramids', d: 34, n: 6, h: 16 }] },
              tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'pyramids' } },
     { id: 'prebuilt_heaven', label: 'Heaven', w: 20, h: 20, teamSize: 6, tier: 1, base: 'cloud_2',
       biomes: ['divine'], deltaPad: 'cloud_2', near: 'heaven',
@@ -18395,7 +18393,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_camelot', label: 'Camelot', w: 16, h: 16, teamSize: 6, tier: 1, base: 'bricks_2',
       biomes: ['arthurian', 'gothic'], deltaPad: 'bricks_2', near: 'camelot',
       desc: '16×16 prebuilt, 6v6 — the castle walls: a moat-cut lowland climbing stair terraces into the walled keep, parapet walks & the twin ward braziers',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', d: 17, n: 14, r: 4 }, { kind: 'trees', d: 22, n: 34, p: 0.6, s: 1.8 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'trees', d: 22, n: 34, p: 0.6, s: 1.8 }] },
              tint: 0x1c2030, tintAmt: 0.45, stars: 0.8, nebula: 0.7, fog: { color: 0x39415a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'dark' } },
     { id: 'prebuilt_stadium', label: 'Football Stadium', w: 16, h: 28, teamSize: 8, tier: 1, base: 'grass_2', streetLamps: true,
       biomes: ['stadium', 'urban'], deltaPad: 'grass_2', near: 'stadium',
@@ -18411,7 +18409,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_babel', label: 'Tower of Babel', w: 16, h: 24, teamSize: 6, tier: 2, base: 'bricks_1',
       biomes: ['ancient', 'desert'], deltaPad: 'bricks_1', near: 'babel',
       desc: '16×24 prebuilt, 6v6 — the unfinished tower: a grand climbable ziggurat, brick streets, scaffolds & the rubble of scattered tongues',
-      env: { world: { kind: 'plain', ground: 'desert', groundColor: 0xd8b888, rim: [{ kind: 'dunes', d: 15, n: 18 }, { kind: 'town', d: 24, n: 16, tex: 'bricks_1', color: 0xd8a878, roofTex: 'bricks_1', roofColor: 0xb88858, h: 1.3 }] },
+      env: { world: { kind: 'plain', ground: 'desert', groundColor: 0xd8b888, rim: [{ kind: 'town', d: 24, n: 16, tex: 'bricks_1', color: 0xd8a878, roofTex: 'bricks_1', roofColor: 0xb88858, h: 1.3 }] },
              tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, day: 1, clouds: 0.15, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids',
              motion: { kind: 'rise', dir: 1, speed: 1.8, ramp: 0.35, max: 6.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the tower is still going up — the board climbs, the plain and the clouds sink past
     { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
@@ -18423,12 +18421,12 @@ const EW_MAP_META = [
       biomes: ['space', 'desert'], deltaPad: 'moon_2', near: 'mars',
       desc: '20×20 prebuilt, 6v6 — red regolith: mesa cover, twin dead rovers & crater dust bowls',
       env: { world: { kind: 'planet', ground: 'moon_2', groundColor: 0xc88a5a, curve: 7, swell: 0.12, craters: { n: 18, r: [1.4, 5.5], d0: 12, depth: 0.26, rim: 0.09 },
-                      rim: [{ kind: 'craters', tex: 'moon_2', color: 0xc88a5a, d: 22, n: 8, hills: { r: 5, flat: 0.18 } }, { kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }], rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
+                      rim: [{ kind: 'craters', tex: 'moon_2', color: 0xc88a5a, d: 22, n: 8 }, { kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }], rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
              tint: 0x8a3a1a, tintAmt: 0.45, stars: 0.8, nebula: 0.4, fog: { color: 0xc88a5a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'space' } },
     { id: 'prebuilt_area51', label: 'Area 51', w: 20, h: 20, teamSize: 6, tier: 2, base: 'wasteland',
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4', near: 'area51',
       desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
-      env: { world: { kind: 'plain', rim: [{ kind: 'dunes', tex: 'dirt_4', color: 0xc8b088, d: 16, n: 14, flat: 0.15, ranks: 2 }, { kind: 'town', d: 22, n: 10, p: 0.55, tex: 'wood_planks', color: 0xd8c8a8, roofColor: 0x7a5a48 }, { kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'town', d: 22, n: 10, p: 0.55, tex: 'wood_planks', color: 0xd8c8a8, roofColor: 0x7a5a48 }, { kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
              tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs',
              motion: { kind: 'wheel', speed: 4.0, ramp: 0.35, max: 5.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
     { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
@@ -18439,7 +18437,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
       biomes: ['ranch', 'clandestine'], deltaPad: 'grass_rocky', near: 'skinwalker',
       desc: '20×20 prebuilt, 6v6 — the ranch: barn & corral, twin observation mesas, the mutilation site & a crop-circle anomaly',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', tex: 'grass_rocky', d: 16, n: 14, r: 4, flat: 0.26 }, { kind: 'town', d: 21, n: 6, p: 0.5, tex: 'wood_planks', color: 0xb89878, roofColor: 0x5a4030 }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'town', d: 21, n: 6, p: 0.5, tex: 'wood_planks', color: 0xb89878, roofColor: 0x5a4030 }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
              tint: 0x2a1638, tintAmt: 0.50, stars: 1.2, nebula: 1.1, fog: { color: 0x453058, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'eyes' } },
     { id: 'prebuilt_hollow_earth', label: 'Hollow Earth', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor', near: 'hollow_earth',
@@ -18455,7 +18453,7 @@ const EW_MAP_META = [
       biomes: ['space'], deltaPad: 'moon', near: 'moon',
       desc: '16×16 prebuilt, 6v6 — the sparse low-grav arena: crater bowls, regolith ridges, two landing sites & one black monolith',
       env: { world: { kind: 'planet', ground: 'moon', groundColor: 0xc8ccd8, curve: 10, swell: 0.1, craters: { n: 24, r: [1.2, 6.5], d0: 10, depth: 0.32, rim: 0.1 },
-                      rim: [{ kind: 'craters', tex: 'moon', color: 0xc8ccd8, d: 24, n: 8, hills: { r: 5, flat: 0.16 } }], r: 64, fogTop: 0.06, rootTex: 'moon_3', rootColor: 0x989cb0 },   // THE PLANET (2026-09-16)
+                      rim: [{ kind: 'craters', tex: 'moon', color: 0xc8ccd8, d: 24, n: 8 }], r: 64, fogTop: 0.06, rootTex: 'moon_3', rootColor: 0x989cb0 },   // THE PLANET (2026-09-16)
              tint: 0x05060d, tintAmt: 0.55, stars: 1.8, nebula: 0.25, fog: { color: 0x0a0c14, amount: 0.15, top: 0.02, band: 0.3 }, scenery: 'space', density: 0.5 } },
     // ── Tier 3 — flavor & deep cuts ──
     { id: 'prebuilt_technoticlan', label: 'Technoticlan', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cobblestone',
@@ -18471,7 +18469,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_vatican', label: 'Vatican City', w: 20, h: 20, teamSize: 6, tier: 3, base: 'cobblestone',
       biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble_light', near: 'vatican',
       desc: '20×20 prebuilt, 6v6 — the colonnade piazza: central obelisk, twin basilica steps, fountains & consecrated ground',
-      env: { world: { kind: 'plain', rim: [{ kind: 'city', tex: 'marble_light', color: 0xd8d0c0, d: 16, n: 22, h: 4, lights: [0xffd36a] }, { kind: 'hills', d: 30, n: 14, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'city', tex: 'marble_light', color: 0xd8d0c0, d: 16, n: 22, h: 4, lights: [0xffd36a] }] },
              tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'divine' } },
     { id: 'prebuilt_bohemian_grove', label: 'Bohemian Grove', w: 20, h: 20, teamSize: 6, tier: 3, base: 'grass_2',
       biomes: ['forest', 'clandestine'], deltaPad: 'dirt', near: 'bohemian_grove',
@@ -18481,7 +18479,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_gobekli', label: 'Göbekli Tepe', w: 16, h: 16, teamSize: 6, tier: 3, base: 'dirt_3',
       biomes: ['ancient', 'desert'], deltaPad: 'dirt_3', near: 'gobekli',
       desc: '16×16 prebuilt, 6v6 — the first temple: concentric ring walls, T-pillar sentinels, excavation trenches & the twin great pillars',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', tex: 'dirt_3', color: 0xc8a878, d: 15, n: 16, r: 4.5, flat: 0.24 }, { kind: 'peaks', tex: 'mountain', color: 0xc8b090, d: 30, n: 12, h: 7, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', color: 0xc8b090, d: 30, n: 12, h: 7, ranks: 1 }] },
              tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
     { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'tilefloor',
       biomes: ['underground_base', 'clandestine'], deltaPad: 'tilefloor', near: 'dumb',
@@ -18496,7 +18494,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_northpole', label: 'North Pole', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
       biomes: ['polar'], deltaPad: 'marble_light', near: 'northpole',
       desc: '16×16 prebuilt, 6v6 — the workshop compound: present depots, pine wind-breaks, aurora beacons & a frozen slide-pond objective',
-      env: { world: { kind: 'plain', ground: 'marble_light', groundColor: 0xe8f4ff, rim: [{ kind: 'hills', tex: 'marble_light', color: 0xeef6ff, d: 15, n: 16, r: 4, flat: 0.2 }, { kind: 'bergs', d: 28, n: 10, h: 4, ranks: 1 }] },
+      env: { world: { kind: 'plain', ground: 'marble_light', groundColor: 0xe8f4ff, rim: [{ kind: 'bergs', d: 28, n: 10, h: 4, ranks: 1 }] },
              tint: 0x0d1424, tintAmt: 0.50, stars: 1.4, nebula: 1.6, fog: { color: 0x1c2c48, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'islands', density: 0.6 } },
     // ── MOVING MAPS (2026-09-12) — the setting travels. `env.motion` (three-renderer.js MOTION):
     //    kind sea|space|void|drift · axis (the world streams toward −axis) · speed tiles/s at round 1 ·
@@ -18531,7 +18529,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_haunted', label: 'The Haunted House', w: 16, h: 16, teamSize: 6, tier: 2, base: 'dirt_2',
       biomes: ['gothic', 'clandestine'], deltaPad: 'wood', near: 'haunted',
       desc: '16×16 prebuilt, 6v6 — the ground floor of the mansion cut open across the middle (the parlour, the hall, the library: thin walls, two front doors, windows you can shoot through) and the graveyard out back on both sides — the stones, the crypt, the bog, the coven\'s fire',
-      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'hills', d: 20, n: 12, r: 4 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
+      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
              tint: 0x1a1428, tintAmt: 0.52, stars: 0.9, nebula: 0.6, fog: { color: 0x2a2438, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.7,
              ambience: 'ambNight' } },   // a still map names its bed too (audio.js reads env.ambience since 2026-09-13)
     { id: 'prebuilt_lodge', label: 'The Lodge', w: 16, h: 16, teamSize: 6, tier: 2, base: 'checkerboard',
