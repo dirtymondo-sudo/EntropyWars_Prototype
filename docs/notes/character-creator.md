@@ -1051,3 +1051,22 @@ and there as an option".
   battle.js `_unitAttacksWithClip` + `basicAttackKindOf` pass unit.appearance, so such a unit attacks with clips.
 - Proof shots: /mnt/project-files/meshy-default/ (cowboy Meshy default → saved look → back; werewolf + cyclops CREATE APPEARANCE).
 
+## THE DEFAULT FACES (2026-11-03, plan row 29a)
+- mondo: "Can you make male and female faces on the mpfb bodies that are good looking that we can use as a default?"
+- sprites.js `EW_MPFB_DEFAULT_FACES` = one male + one female face, made only from the FACE sliders (THE FACE SLIDERS keys, -1..1,
+  SHAPE_GAIN applies as usual). Male: jaw 0.35 / jaw angle 0.3, chin forward 0.35, cheekbones 0.45, face fat -0.35, brow ridge 0.3,
+  narrower nose, almond eyes. Female: jaw -0.4, head width -0.25 / height -0.15, chin forward 0.4 + shorter, cheekbones 0.35, nose
+  smaller + slightly up, almond eyes (tilt 0.35, opening -0.3, lid 0.3), cupid's bow 0.3, mouth set back -0.6 (the base pouts in
+  profile otherwise), age -0.5. Tuned over six rounds of front / three-quarter / profile renders on every MPFB body.
+- `mpfbFacePatch(appearance, body, force)` (sprites.js, window): the face keys to merge when a look moves onto `body`. An untouched
+  face (all 0) or a face still equal to either default takes the body gender's default; a classic base wearing a default face goes
+  back to 0 (head / jaw / nose / cheeks / eye size also shape the classic head); a face the player changed is left alone. Used by
+  the team builder's CREATE APPEARANCE + body buttons, the mirror / intake's first look + RESET, and FACE > DEFAULT FACE (force).
+  FACE > NEUTRAL FACE sets every face slider to 0 (MakeHuman's own face).
+- NOT in normalizeCharacterAppearance: saved looks, the officer's look on file and every RACE_CREATOR_LOOKS row keep their faces.
+  RANDOM / RANDOMIZE still roll faces round 0.
+- Known, outside the sliders: the MPFB bases rest with the lips slightly parted (a teeth line shows), and the stock skin / eyes.
+- Shots (before = all face sliders 0): /mnt/project-files/default-faces/ (male_default_face.jpg, female_default_face.jpg,
+  every_mpfb_body.jpg). Probe = a stage mounted straight on window.EWCharViewer with the bind pose held (skeleton.pose(), mixer
+  stopped, EW_DISABLE_FACE_IDLE) so every face is shot in the same head pose.
+

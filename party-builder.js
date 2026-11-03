@@ -1233,7 +1233,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 const all = [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()]));
                 const btn = ([id, g, label]) => {
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
-                  return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
+                  return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance(Object.assign({ body: id }, window.mpfbFacePatch ? window.mpfbFacePatch(appearance, id) : {}), g) }, label);   // THE DEFAULT FACES: an untouched face follows the body's gender
                 };
                 return [['male', 'Men\u2019s bodies'], ['female', 'Women\u2019s bodies']].map(([g, head]) => h(React.Fragment, { key: g },
                   h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head),
@@ -1261,6 +1261,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                  the eyes and the lips and everything"): an MPFB head takes MakeHuman's own face modifiers (sprites.js
                  EW_MPFB_FACE_SLIDERS), one tab per feature; a dot marks a tab with a slider moved */
               mpfb && window.EW_MPFB_FACE_SLIDERS ? h(React.Fragment, null,
+                /* THE DEFAULT FACES (2026-11-03, mondo: good-looking male + female default faces): the body gender's default face
+                   (sprites.js EW_MPFB_DEFAULT_FACES) or MakeHuman's own neutral face (every face slider at 0), in one click */
+                window.mpfbFacePatch ? h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face preset', 'data-cc-cam-own': 'face' },
+                  h('button', { className: 'ms-tty-btn', title: 'Every face slider at this body\u2019s default face', onClick: () => changeAppearance(window.mpfbFacePatch(appearance, appearance.body, true)) }, 'DEFAULT FACE'),
+                  h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE')) : null,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },
                   window.EW_MPFB_FACE_SLIDERS.map(g => h('button', { key: g.id, className: 'ms-tty-btn' + (faceCat === g.id ? ' primary' : ''), 'aria-pressed': faceCat === g.id, onClick: () => setFaceCat(g.id) },
                     g.label.toUpperCase() + (g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004) || (faceLooks[g.id] || []).some(k => appearance[k] && appearance[k] !== 'own') ? ' \u2022' : '')))),
@@ -4366,14 +4371,14 @@ function PartyBuilder(props) {
               h('p', null, 'This slot wears the ' + unitRaceLabel + '\u2019s original ' + (refHasModel ? 'model' : 'sprite') + '. Make a custom look for it here; USE ORIGINAL MODEL in the creator puts the original back.'),
               h('div', { className: 'pb-creator-options' },
                 raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
-                h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance({ body: mpfbDefaultBody, model: 'creator' }) }, 'CREATE APPEARANCE'),
+                h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody, model: 'creator' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')))
         : !appearance
           ? h(React.Fragment, null,
               h('p', null, 'Build a custom appearance for this character. Your techniques and equipment stay attached to this slot.'),
               h('div', { className: 'pb-creator-options' },
                 // creator step 5 (2026-11-01): a new look starts on the MPFB body of the slot's gender (the classic bases stay one click away)
-                h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => changeAppearance({ body: mpfbDefaultBody }) }, 'CREATE APPEARANCE'),
+                h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),   // + THE DEFAULT FACES
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody })) }, '⚄ RANDOM')))
           : h(React.Fragment, null,
             !viewerLoads ? h('p', { className: 'pb-creator-note' }, 'The 3D stage is unavailable here — changes still save with the team.') : null,
@@ -4384,7 +4389,7 @@ function PartyBuilder(props) {
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: (appearance && appearance.body) || mpfbDefaultBody })) }, '⚄ RANDOMIZE'),   // (keeps the body picked)
                 raceSavedLook
                   ? h('button', { className: 'ms-tty-btn', title: 'Back to the saved ' + unitRaceLabel + ' look', onClick: () => setSlotLook(raceSavedLook) }, 'RESET TO SAVED LOOK')
-                  : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({ body: mpfbDefaultBody })) }, 'RESET'),
+                  : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance(Object.assign({ body: mpfbDefaultBody }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {}))) }, 'RESET'),   // + THE DEFAULT FACES
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;
@@ -4652,7 +4657,7 @@ function OfficerCreator() {
   const profile = (idx !== null && idx !== undefined && PS) ? PS.loadProfile(idx) : null;
   const onFile = (profile && typeof window.hqLook === 'function') ? window.hqLook(profile) : null;
   const [gender, setGender] = React.useState(onFile ? onFile.gender : 'male');
-  const [appearance, setAppearance] = React.useState(() => onFile ? onFile.appearance : (window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({ body: 'mpfb_male' }) : null));   // (creator step 5: a new officer starts on the MPFB body)
+  const [appearance, setAppearance] = React.useState(() => onFile ? onFile.appearance : (window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(Object.assign({ body: 'mpfb_male' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, 'mpfb_male') : {})) : null));   // (creator step 5: a new officer starts on the MPFB body; + THE DEFAULT FACES)
   const [photo, setPhoto] = React.useState(onFile ? onFile.portrait : null);
   const [lookName, setLookName] = React.useState(onFile && onFile.name ? onFile.name : (intake && profile && profile.username ? String(profile.username).slice(0, 24) : ''));   // rev 10: the look wears a name (the intake starts it at the callsign)
   const [status, setStatus] = React.useState(intake ? 'Build your agent — the look, the name. ENLIST files them on your card and opens the building.' : (onFile ? 'A look is on file. Change it here; SAVE files it and takes the photo.' : 'No look on file yet. Build one — SAVE files it on your card and takes the photo.'));
@@ -4724,7 +4729,7 @@ function OfficerCreator() {
             name: lookName, onName: (v) => { setLookName(v); setDirty(true); }, onLoad: (e) => { change(e.appearance, e.gender); setLookName(e.name); }, footer:
             h('div', { className: 'pb-creator-options' },
               h('button', { className: 'ms-tty-btn', onClick: () => change(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: (appearance && appearance.body) || 'mpfb_male' })) }, '⚄ RANDOMIZE'),   // (keeps the body picked)
-              h('button', { className: 'ms-tty-btn', onClick: () => change(window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance({ body: gender === 'female' ? 'mpfb_female' : 'mpfb_male' }) : {}) }, 'RESET')) })))),
+              h('button', { className: 'ms-tty-btn', onClick: () => change(window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(Object.assign({ body: gender === 'female' ? 'mpfb_female' : 'mpfb_male' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, gender === 'female' ? 'mpfb_female' : 'mpfb_male') : {})) : {}) }, 'RESET')) })))),
     h('div', { className: 'pb-officer-foot' },
       photo ? h('img', { className: 'pb-officer-photo', src: photo, alt: 'Your card photo', draggable: false }) : h('div', { className: 'pb-officer-photo pending' }, 'PHOTO PENDING'),
       h('div', { className: 'pb-officer-status' }, status),

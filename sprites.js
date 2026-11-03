@@ -4083,6 +4083,45 @@ const EW_MPFB_BODY_SLIDERS = [['weight', 'Weight'], ['muscle', 'Muscle'], ['shou
 EW_MPFB_BODY_SLIDERS.forEach(r => { EW_APPEARANCE_LIMITS[r[0]] = [-1, 1, 0]; });
 const EW_MPFB_FACE_KEYS = EW_MPFB_FACE_SLIDERS.reduce((a, g) => a.concat(g.rows.map(r => r[0])), []);
 EW_MPFB_FACE_KEYS.forEach(k => { if (!EW_APPEARANCE_LIMITS[k]) EW_APPEARANCE_LIMITS[k] = [-1, 1, 0]; });
+/* THE DEFAULT FACES (2026-11-03, mondo: "Can you make male and female faces on the mpfb bodies that are good looking that we can
+   use as a default?"): the face sliders above, set once per gender and tuned on screen (front / three-quarter / profile). The
+   usual attractiveness cues, nothing invented: the male = wider jaw with a sharper angle, chin longer + forward, high cheekbones,
+   less face fat, a firmer brow ridge, a narrower nose, almond eyes; the female = narrower jaw + face, a shorter lower face, chin
+   forward under the lips, high cheekbones, a smaller upturned nose, almond eyes (outer corners up, a little lid), a defined cupid's
+   bow, the lips set back so the profile does not pout, a slimmer neck. Keys left out stay 0. A NEW look on an MPFB body starts on
+   its gender's face (CREATE APPEARANCE, the mirror, a body switch while the face is untouched); FACE > DEFAULT FACE / NEUTRAL FACE
+   swap it any time. Never applied by normalize, so every saved look and every baked race look (RACE_CREATOR_LOOKS) keeps its face. */
+const EW_MPFB_DEFAULT_FACES = {
+  male: {
+    eyeSize: 0.1, eyeTilt: 0.25, eyeOpen: -0.05, eyelid: 0.15, eyeDepth: -0.1, eyeBags: -0.3,
+    browHeight: -0.1, browAngle: 0.15, browRidge: 0.3,
+    nose: -0.15, noseWidth: -0.25, noseBridge: 0.1, noseTip: 0.05, nostrils: -0.2,
+    mouthWidth: -0.05, lowerLip: 0.15, cupidsBow: 0.2, mouthCorners: 0.1, mouthDepth: -0.3,
+    jaw: 0.35, jawAngle: 0.3, chinLength: 0.1, chinJut: 0.35, chinCleft: 0.15,
+    cheeks: -0.15, cheekbones: 0.45, cheekHeight: 0.2, faceFat: -0.35,
+    faceAge: -0.2, neckThick: 0.3
+  },
+  female: {
+    eyeSize: 0.15, eyeTilt: 0.35, eyeOpen: -0.3, eyelid: 0.3, eyeBags: -0.3,
+    browHeight: -0.3, browAngle: 0.15, browRidge: -0.15,
+    nose: -0.25, noseWidth: -0.3, noseLength: -0.15, noseBridge: -0.2, noseTip: 0.1, nostrils: -0.3,
+    mouthHeight: 0.1, upperLip: 0.1, lowerLip: 0.15, cupidsBow: 0.3, mouthCorners: 0.15, mouthDepth: -0.6,
+    jaw: -0.4, jawAngle: -0.1, chinLength: -0.15, chinJut: 0.4,
+    cheekbones: 0.35, cheekHeight: 0.25, faceFat: -0.05,
+    head: -0.25, headHeight: -0.15, faceAge: -0.5, neckThick: -0.2
+  }
+};
+/* the face keys a look should take when it moves onto `body`: the body gender's default face when the look's face is untouched
+   (all 0) or still another default face; all 0 when it goes back to a classic base wearing a default face (head / jaw / nose /
+   cheeks / eye size shape the classic head too); {} when the player has made the face their own. `force` = FACE > DEFAULT FACE. */
+function mpfbFacePatch(a, body, force) {
+  const cur = a || {}, row = EW_MPFB_BODIES.find(b => b.id === body);
+  const same = (d) => EW_MPFB_FACE_KEYS.every(k => Math.abs((+cur[k] || 0) - ((d && d[k]) || 0)) < 0.004);
+  const isDefault = same(EW_MPFB_DEFAULT_FACES.male) || same(EW_MPFB_DEFAULT_FACES.female);
+  const full = (d) => { const o = {}; EW_MPFB_FACE_KEYS.forEach(k => { o[k] = (d && d[k]) || 0; }); return o; };
+  if (!row) return isDefault ? full(null) : {};
+  return (force || same(null) || isDefault) ? full(EW_MPFB_DEFAULT_FACES[row.gender]) : {};
+}
 // enum fields: allowed values (first = default)
 /* THE IDLE POSE (2026-11-01, mondo: "can we also add an option to change their idle pose in the character creator?"): the
    standing idles already in the shared animation library (EW_ANIM_LIB_URLS: lib 0 UAL1, 1 UAL2, 2 MAL1), nothing new made.
@@ -4503,6 +4542,7 @@ if (typeof window !== 'undefined') {
   window.randomCharacterAppearance = randomCharacterAppearance;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
+  window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;
