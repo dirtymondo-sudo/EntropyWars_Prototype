@@ -36185,7 +36185,7 @@ const ThreeRenderer = (function () {
         for (var c = 0; c < cols; c++) {
             var broken = rng() < 0.35;
             if (broken) { allIntact = false; rng(); continue; }
-            var col = _hzMiscKit('greekcol', { tiles: colH / ts, fit: 'height', rng: rng });
+            var col = _hzMiscKit('greek_column', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.greek_column, tiles: colH / ts, fit: 'height', rng: rng });   // the new Meshy column (mondo 11-03: "we need a new meshy greek column")
             col.position.set(startX + c * spacing, baseH, 0);
             g.add(col);
         }
@@ -36275,58 +36275,20 @@ const ThreeRenderer = (function () {
         g.rotation.x = (rng() - 0.5) * 0.06;
         return g;
     }
-
-    // A free-standing gateway to nowhere — two piers and a lintel framing only
-    // sky. Sometimes a pier has crumbled and the lintel hangs broken.
+    /* A free-standing stone arch to nowhere (mondo 2026-11-03: "an arch is curved"): the Meshy stone arch (Assets/decor/stone_arch.glb),
+       5.5-9.5 tiles tall; the box piers, the lintel and the broken-pier variant are gone */
     function _hzGateway(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('bricks_2') || _hzTex('ruins');
-        var base = 0xcabfa2;
-        var h = ts * (5 + rng() * 4.5);
-        var pw = ts * (0.8 + rng() * 0.45);
-        var gap = ts * (2.2 + rng() * 1.6);
-        var leftBroken = rng() < 0.3;
-        var lh = leftBroken ? h * (0.4 + rng() * 0.3) : h;
-        var L = _hzBox(pw, lh, pw, ts, _hzGeoMat(tex, base));
-        L.position.set(-gap * 0.5, lh * 0.5, 0); g.add(L);
-        var R = _hzBox(pw, h, pw, ts, _hzGeoMat(tex, base));
-        R.position.set(gap * 0.5, h * 0.5, 0); g.add(R);
-        if (!leftBroken) {
-            var lint = _hzBox(gap + pw * 2.0, pw * 1.1, pw, ts, _hzGeoMat(tex, base * 1));
-            lint.position.set(0, h + pw * 0.5, 0); g.add(lint);
-            // a faint shimmering veil filling the arch — a dream-portal to nowhere
-            var veilMat = _hzGlowMat(0xb38cff, 0.14);
-            var veil = new THREE.Mesh(new THREE.PlaneGeometry(gap, h * 0.92), veilMat);
-            veil.position.set(0, h * 0.5, 0);   /* NO LIGHT BOX (mondo 2026-10-05): no lit veil in the arch */
-            rng();
-        } else {
-            var stub = _hzBox(gap * 0.55, pw * 1.0, pw, ts, _hzGeoMat(tex, 0xb8ad90));
-            stub.position.set(gap * 0.18, h + pw * 0.45, 0);
-            stub.rotation.z = -0.12; g.add(stub);
-        }
-        return g;
+        var h = 5.5 + rng() * 4; rng(); rng(); rng();
+        return _hzMiscKit('stone_arch', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.stone_arch, tiles: h, rng: rng });
     }
 
-    // A tapered obelisk capped by a pyramidion — fingers of dead empires.
+    /* An obelisk (mondo 2026-11-03: "obelisk - Needs a new meshy model"): the Meshy granite obelisk (Assets/decor/obelisk.glb), 7-13 tiles
+       tall, the ember glow kept on its point; the code shaft and the cone are gone */
     function _hzObelisk(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('scorched') || _hzTex('wasteland');
-        var h = ts * (7 + rng() * 6);
-        var w = ts * (0.6 + rng() * 0.35);
-        var geo = new THREE.CylinderGeometry(w * 0.55, w, h, 4, 1);
-        _hzTileUV(geo, w, h, ts);
-        var shaft = new THREE.Mesh(geo, _hzGeoMat(tex, 0xbcad8e));
-        shaft.rotation.y = Math.PI / 4; shaft.position.y = h * 0.5; g.add(shaft);
-        var capGeo = new THREE.ConeGeometry(w * 0.78, w * 1.15, 4, 1);
-        _hzTileUV(capGeo, w, w, ts);
-        var cap = new THREE.Mesh(capGeo, _hzGeoMat(tex, 0xc8b896));
-        cap.rotation.y = Math.PI / 4; cap.position.y = h + w * 0.55; g.add(cap);
-        // a warm ember light crowning the pyramidion — a lit beacon of dead empires
-        var tip = _hzGlowCore(w * 0.5, 0xffd9a0, 0xffb060);
-        tip.position.y = h + w * 1.0;
-        g.add(tip);
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var h = 7 + rng() * 6; rng();
+        g.add(_hzMiscKit('obelisk', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.obelisk, tiles: h, rng: rng }));
+        var tip = _hzGlowCore(ts * h * 0.04, 0xffd9a0, 0xffb060); tip.position.y = ts * h * 1.0; g.add(tip);
         return g;
     }
 
@@ -36926,27 +36888,17 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Skinwalker Ranch: the windpump that turns with no wind ──
+    /* ── Skinwalker Ranch: the windpump that turns with no wind (THE CODED SHAPES OUT 2026-11-03): the Meshy windpump tower and, on
+       its own, the Meshy wheel (Assets/decor/windpump_*.glb), the wheel turning slowly on the head's axle (a _horizonFloaters spinX
+       entry); the wooden legs, the box head, the eight boxes and the box vane are gone ── */
     function _hzWindmill(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var wood = function () { return _hzGeoMat(_hzTex('wood') || _hzTex('wood_planks'), 0x7d6242); };
-        var steel = function () { return _hzGeoMat(_hzTex('metal'), 0x8f959e); };
-        var H = ts * 4.2;
-        for (var i = 0; i < 4; i++) {
-            var a = i * Math.PI / 2 + Math.PI / 4;
-            _hzAt(g, _hzCyl(ts * 0.07, ts * 0.1, H, 5, ts, wood()),
-                Math.cos(a) * ts * 0.62, H / 2, Math.sin(a) * ts * 0.62, 0, Math.cos(a) * 0.16, Math.sin(a) * 0.16);
-        }
-        _hzAt(g, _hzBox(ts * 0.7, ts * 0.35, ts * 0.7, ts, wood()), 0, H, 0);
-        for (var b = 0; b < 8; b++) {                                   // rotor
-            var blade = _hzBox(ts * 0.16, ts * 0.85, ts * 0.04, ts, steel());
-            var ba = b * Math.PI / 4;
-            blade.position.set(Math.cos(ba) * ts * 0.55, H + ts * 0.25 + Math.sin(ba) * ts * 0.55, -ts * 0.42);
-            blade.rotation.z = ba;
-            g.add(blade);
-        }
-        _hzAt(g, _hzBox(ts * 0.1, ts * 0.4, ts * 0.9, ts, steel()), 0, H + ts * 0.25, ts * 0.7);          // tail vane
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 4.8;
+        g.add(_hzMiscKit('windpump_tower', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.windpump_tower, tiles: H, rng: rng }));
+        var D = H * 0.28, hub = new THREE.Group();   // the head is at 0.92 H, its front 0.13 H out along +x (the vane points -x)
+        hub.position.set(ts * H * 0.13, ts * H * 0.92, 0); g.add(hub);
+        var wheel = _hzMiscKit('windpump_wheel', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.windpump_wheel, tiles: D, rng: rng });
+        wheel.position.y = -ts * D / 2; wheel.rotation.y = Math.PI / 2; hub.add(wheel);
+        _horizonFloaters.push({ obj: hub, baseY: hub.position.y, spd: 0, phase: 0, amp: 0, spin: 0, spinX: 0.004 + rng() * 0.004 });
         return g;
     }
 
@@ -37064,22 +37016,15 @@ const ThreeRenderer = (function () {
     }
 
 
-    // ── Bohemian Grove: the wrapped effigy on its bier ──
+    /* ── Bohemian Grove: the wrapped effigy on its bier (THE CODED SHAPES OUT 2026-11-03): the Meshy bier and, on it, the Meshy
+       wrapped figure (Assets/decor/effigy_*.glb), two models each placed on its own; the box bier, the cylinder body and the ring
+       bindings are gone ── */
     function _hzEffigy(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var wood = _hzGeoMat(_hzTex('wood_planks') || _hzTex('wood'), 0x6e5638);
-        var shroud = function () { return _hzGeoMat(_hzTex('drywall_2') || _hzTex('drywall'), 0xb8b2a4); };
-        _hzAt(g, _hzBox(ts * 1.1, ts * 0.5, ts * 2.6, ts, wood), 0, ts * 0.25, 0);                        // bier
-        var body = _hzCyl(ts * 0.3, ts * 0.38, ts * 2.1, 8, ts, shroud());
-        body.rotation.x = Math.PI / 2;
-        _hzAt(g, body, 0, ts * 0.75, 0);
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 8, 6), shroud()), 0, ts * 0.78, -ts * 1.15);
-        for (var i = 0; i < 3; i++) {                                    // rope bindings
-            var band = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.36, ts * 0.035, 5, 10), wood);
-            band.rotation.x = 0;
-            _hzAt(g, band, 0, ts * 0.75, -ts * 0.6 + i * ts * 0.6);
-        }
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var bier = _hzMiscKit('effigy_bier', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.effigy_bier, tiles: 3.0, fit: 'span', rng: rng });
+        bier.rotation.y = Math.PI / 2; g.add(bier);
+        var fig = _hzMiscKit('effigy_figure', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.effigy_figure, tiles: 2.2, fit: 'span', rng: rng });
+        fig.rotation.y = Math.PI / 2; fig.position.y = ts * 3.0 * 0.128 / 0.952 * 0.9; g.add(fig);   // on the planks (the bier is 0.134 of its length tall)
         return g;
     }
 
@@ -42094,6 +42039,7 @@ const ThreeRenderer = (function () {
             var f = _horizonFloaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
             f.obj.rotation.y += f.spin;
+            if (f.spinX) f.obj.rotation.x += f.spinX;   // a wheel on its axle (the windpump, THE CODED SHAPES OUT 2026-11-03)
         }
         _motionAnimate(t);   // MOVING MAPS: the streams, the motes, the sea, the wake
         // breathe the self-lit glow accents — a slow luminous swell
@@ -59583,7 +59529,11 @@ const ThreeRenderer = (function () {
         slot_machine: 'slot_machine.glb', space_divider: 'space_divider.glb', sputnik_lamp: 'sputnik_lamp.glb', star_projector: 'star_projector.glb',
         stocks: 'stocks.glb', stone_altar: 'stone_altar.glb', t_pillar: 't_pillar.glb', tanker_desk: 'tanker_desk.glb',
         ticket_booth: 'ticket_booth.glb', trophy_case: 'trophy_case.glb', trophy_cup: 'trophy_cup.glb', tulip_chair: 'tulip_chair.glb',
-        tulip_table: 'tulip_table.glb', umbrella_closed: 'umbrella_closed.glb', umbrella_stand: 'umbrella_stand.glb', wall_torch_bracket: 'wall_torch_bracket.glb'
+        tulip_table: 'tulip_table.glb', umbrella_closed: 'umbrella_closed.glb', umbrella_stand: 'umbrella_stand.glb', wall_torch_bracket: 'wall_torch_bracket.glb',
+        /* THE CODED SHAPES OUT (2026-11-03, round 2, concepts approved by mondo): the horizon / monument / proc pieces that replaced code shapes */
+        obelisk: 'obelisk.glb', greek_column: 'greek_column.glb', stone_arch: 'stone_arch.glb', effigy_figure: 'effigy_figure.glb', effigy_bier: 'effigy_bier.glb',
+        windpump_tower: 'windpump_tower.glb', windpump_wheel: 'windpump_wheel.glb', grow_lamp: 'grow_lamp.glb', submarine: 'submarine.glb',
+        lava_lamp_base: 'lava_lamp_base.glb', lava_lamp_cap: 'lava_lamp_cap.glb', lava_lamp_floor_base: 'lava_lamp_floor_base.glb', lava_lamp_floor_cap: 'lava_lamp_floor_cap.glb'
     };
     function _hqDecorBox(into, list) {
         into.updateMatrixWorld(true);
@@ -60671,24 +60621,29 @@ const ThreeRenderer = (function () {
         [a0, a1].forEach(function (a) { var e = _hqBox(w, y1 - y0, 0.02, mat); e.position.set(Math.sin(a) * R * U, (y0 + y1) / 2 * U, Math.cos(a) * R * U); e.rotation.y = a; g.add(e); });
         return g;
     }
+    /* THE LAVA LAMPS (THE CODED SHAPES OUT 2026-11-03): the chrome base and the chrome cap are Meshy models (Assets/decor/lava_lamp_*.glb;
+       the floor lamp K > 2 has its own tall base + cap); the glass and the wax stay drawn (Meshy can't make glass, and the wax moves). The
+       brass lathe base and the cylinder cap are gone. Table: base 0.135, glass to 0.445, cap to 0.485 (× K). Floor: base 0.6 m, a straight
+       glass tube to 1.43 m, the cap to 1.56 m. */
     function _hqLavaLampBuild(U, p, K) {
-        var g = new THREE.Group();
-        var brass = _hqMat(null, 1, 1, { color: 0xc9a24a, shininess: 90, specular: 0xaa8844 });
+        var g = new THREE.Group(), floor = K > 2, pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
         var liquidC = (p && p.color != null) ? p.color : 0xff9a3c, waxC = (p && p.wax != null) ? p.wax : 0xff4a1e;
-        var base = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.001, 0), new THREE.Vector2(0.075 * K, 0), new THREE.Vector2(0.06 * K, 0.06 * K), new THREE.Vector2(0.035 * K, 0.13 * K), new THREE.Vector2(0.05 * K, 0.135 * K)].map(function (v) { return new THREE.Vector2(v.x * U, v.y * U); }), 20), brass); g.add(base);
-        var glassPts = [0.05, 0.062, 0.058, 0.048, 0.036, 0.024].map(function (r, i) { return new THREE.Vector2(r * K * U, (0.135 + i * 0.062) * K * U); });
+        var bH = floor ? 0.6 : 0.135 * K, gTop = floor ? 1.43 : 0.445 * K, cH = floor ? 0.13 : 0.04 * K;
+        g.add(_miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB[floor ? 'lava_lamp_floor_base' : 'lava_lamp_base'], true, bH * U, { fit: 'height', matPick: pick }));
+        var cap = _miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB[floor ? 'lava_lamp_floor_cap' : 'lava_lamp_cap'], true, cH * U, { fit: 'height', matPick: pick });
+        cap.position.y = gTop * U; g.add(cap);
         var liquid = new THREE.MeshPhongMaterial({ color: liquidC, transparent: true, opacity: 0.55, shininess: 120, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false, emissive: liquidC, emissiveIntensity: 0.28 });
-        g.add(new THREE.Mesh(new THREE.LatheGeometry(glassPts, 20), liquid));
-        var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.026 * K * U, 0.03 * K * U, 0.04 * K * U, 14), brass); cap.position.y = (0.135 + 5 * 0.062 + 0.02) * K * U; g.add(cap);
+        if (floor) { var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * U, 0.1 * U, (gTop - bH) * U, 20, 1, true), liquid); tube.position.y = (bH + gTop) / 2 * U; g.add(tube); }
+        else g.add(new THREE.Mesh(new THREE.LatheGeometry([0.05, 0.062, 0.058, 0.048, 0.036, 0.024].map(function (r, i) { return new THREE.Vector2(r * K * U, (0.135 + i * 0.062) * K * U); }), 20), liquid));
         var waxMat = _hqMat(null, 1, 1, { color: waxC, emissive: waxC, emissiveIntensity: 0.65, shininess: 60 });
-        var blobs = [];
-        for (var i = 0; i < 4; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(0.02 * K * U, 10, 8), waxMat); g.add(b); blobs.push({ m: b, ph: i * 1.7, sp: 0.35 + i * 0.09, sz: 0.85 + (i % 2) * 0.4 }); }
-        var y0 = 0.16 * K, y1 = 0.41 * K, seed = (_hqProcSeed++) * 0.9;
+        var blobs = [], bR = floor ? 0.045 : 0.02 * K;
+        for (var i = 0; i < 4; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(bR * U, 10, 8), waxMat); g.add(b); blobs.push({ m: b, ph: i * 1.7, sp: 0.35 + i * 0.09, sz: 0.85 + (i % 2) * 0.4 }); }
+        var y0 = floor ? bH + 0.08 : 0.16 * K, y1 = floor ? gTop - 0.08 : 0.41 * K, seed = (_hqProcSeed++) * 0.9;
         if (_hq && _hq.tickers) _hq.tickers.push(function (dt, now) {
             var t = now * 0.001 + seed;
             for (var k = 0; k < blobs.length; k++) {
                 var bl = blobs[k], u = 0.5 + 0.5 * Math.sin(t * bl.sp + bl.ph), y = y0 + (y1 - y0) * u;
-                var r = 0.04 * K * (1 - u * 0.55);   // the glass narrows toward the top
+                var r = floor ? 0.035 : 0.04 * K * (1 - u * 0.55);   // the table glass narrows toward the top; the floor tube is straight
                 bl.m.position.set(Math.sin(t * 0.7 + bl.ph) * r * U, y * U, Math.cos(t * 0.5 + bl.ph) * r * U);
                 var sq = 1 + 0.35 * Math.sin(t * 1.3 + bl.ph);
                 bl.m.scale.set(bl.sz / Math.sqrt(sq), bl.sz * sq, bl.sz / Math.sqrt(sq));
@@ -68462,12 +68417,12 @@ const ThreeRenderer = (function () {
             });
             return g;
         },
-        /* ROOM ½: the grow lamp — a hood on a chain, purple underneath */
+        /* ROOM ½: the grow lamp (THE CODED SHAPES OUT 2026-11-03): the Meshy LED panel (Assets/decor/grow_lamp.glb) 0.7 m across, its
+           brackets flush with the ceiling (the catalogue `h` is the panel's height), the purple glow + light under it; the code hood,
+           chain and disc are gone */
         grow_lamp: function (U) {
-            var g = new THREE.Group();
-            var chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.3 * U, 6), _hqBasic(0x444444)); chain.position.y = 0.35 * U; g.add(chain);
-            var hood = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * U, 0.34 * U, 0.2 * U, 16, 1, true), _hqMat(null, 1, 1, { color: 0xd8d8d0, shininess: 60 })); hood.material.side = THREE.DoubleSide; hood.position.y = 0.1 * U; g.add(hood);
-            var bulb = new THREE.Mesh(new THREE.CircleGeometry(0.3 * U, 16), _hqBasic(0xd070ff)); bulb.rotation.x = Math.PI / 2; bulb.position.y = 0.005 * U; g.add(bulb);
+            var g = new THREE.Group(), pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            g.add(_miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB.grow_lamp, true, 0.7 * U, { fit: 'span', matPick: pick }));
             return g;
         },
         /* ROOM 24/7: nine CRTs in a rack, each showing a room off the register (a canvas; the ticker swaps the feeds and rolls the static) */
@@ -76558,32 +76513,14 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; sail.rotation.y = Math.PI / 2 + 0.28 * Math.sin(t * 0.7); boom.rotation.y = 0.28 * Math.sin(t * 0.7); });
             return g;
         },
-        /* THE BATHYSCAPHE: a brass hull, a conning tower with a hatch, a screw, two lamps with their cones, portholes lit */
+        /* THE BATHYSCAPHE (THE CODED SHAPES OUT 2026-11-03, mondo: "the coded one looks better, so it needs a meshy replacement"): the
+           Meshy riveted yellow sub (Assets/decor/submarine.glb, its nose turned to +z) 7 m long, its two headlamps kept as glows; the
+           code hull, tower, skids, fins and screw are gone (the screw is the model's own, it no longer turns) */
         submarine: function (U) {
-            var g = new THREE.Group();
-            var brass = _hqMat(null, 1, 1, { color: 0x9a7a3c, shininess: 70, specular: 0x886622 });
-            var dark = _hqMat(null, 1, 1, { color: 0x3a3428, shininess: 30 });
-            var glass = new THREE.MeshPhongMaterial({ color: 0xbfefff, emissive: 0x6fc8e0, emissiveIntensity: 0.8, shininess: 90, transparent: true, opacity: 0.9 });
-            var hull = new THREE.Mesh(new THREE.CylinderGeometry(1.05 * U, 1.05 * U, 3.8 * U, 16), brass); hull.rotation.x = Math.PI / 2; hull.position.y = 1.2 * U; g.add(hull);
-            var nose = new THREE.Mesh(new THREE.SphereGeometry(1.05 * U, 16, 12), brass); nose.position.set(0, 1.2 * U, 1.9 * U); nose.scale.z = 1.3; g.add(nose);
-            var tail = new THREE.Mesh(new THREE.SphereGeometry(1.05 * U, 16, 12), brass); tail.position.set(0, 1.2 * U, -1.9 * U); tail.scale.z = 1.1; g.add(tail);
-            var tower = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, 0.6 * U, 0.9 * U, 12), brass); tower.position.set(0, 2.5 * U, 0.3 * U); g.add(tower);
-            var hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * U, 0.34 * U, 0.08 * U, 12), dark); hatch.position.set(0, 2.98 * U, 0.3 * U); g.add(hatch);
-            var skidL = _hqBox(0.12, 0.25, 3.0, dark); skidL.position.set(-0.7 * U, 0.12 * U, 0); g.add(skidL);
-            var skidR = _hqBox(0.12, 0.25, 3.0, dark); skidR.position.set(0.7 * U, 0.12 * U, 0); g.add(skidR);
-            var fin = _hqBox(2.4, 0.08, 0.7, brass); fin.position.set(0, 1.2 * U, -2.6 * U); g.add(fin);
-            var finV = _hqBox(0.08, 1.6, 0.7, brass); finV.position.set(0, 1.4 * U, -2.6 * U); g.add(finV);
-            var screw = new THREE.Group(); screw.position.set(0, 1.2 * U, -3.15 * U);
-            for (var i = 0; i < 3; i++) { var bl = _hqBox(0.14, 0.7, 0.05, dark); bl.rotation.z = i * Math.PI * 2 / 3; bl.rotation.y = 0.5; screw.add(bl); }
-            g.add(screw);
-            [-0.9, 0, 0.9].forEach(function (z) { var port = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), glass); port.position.set(1.06 * U, 1.35 * U, z * U); port.rotation.y = Math.PI / 2; g.add(port); var port2 = port.clone(); port2.position.x = -1.06 * U; port2.rotation.y = -Math.PI / 2; g.add(port2); });
-            var eye = new THREE.Mesh(new THREE.CircleGeometry(0.42 * U, 16), glass); eye.position.set(0, 1.25 * U, 3.28 * U); g.add(eye);
-            var coneMat = new THREE.MeshBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
-            [-0.62, 0.62].forEach(function (x) {
-                var lamp = _hzGlowSprite(0.5 * U, 0xdfffff, 0.75, 0.1, 0.05, 1.1); lamp.position.set(x * U, 0.95 * U, 2.6 * U); g.add(lamp);
-                /* NO LIGHT BOX (mondo 2026-10-05): no headlamp beam cone */
-            });
-            if (_hq) _hq.tickers.push(function (dt) { var V = _hq && _hq.vehicle; var on = V && V.on && V.rec && V.rec.grp && g.parent && V.rec.grp === g.parent; screw.rotation.z += dt * (on ? (2 + Math.abs(V.v) * 1.5) : 0.4); });
+            var g = new THREE.Group(), pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            var m = _miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB.submarine, true, 7.0 * U, { fit: 'span', matPick: pick });
+            m.rotation.y = Math.PI / 2; g.add(m);
+            [-0.45, 0.45].forEach(function (x) { var lamp = _hzGlowSprite(0.5 * U, 0xdfffff, 0.75, 0.1, 0.05, 1.1); lamp.position.set(x * U, 0.9 * U, 3.3 * U); g.add(lamp); });
             return g;
         },
         /* THE LIGHTHOUSE: a tapered white-and-red tower on a plinth, the gallery, the lantern room and a BEAM that turns */

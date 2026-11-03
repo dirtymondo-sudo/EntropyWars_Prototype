@@ -225,31 +225,31 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | --- | --- | --- | --- |
 | 1 | castle / skycastle landmarks | **DONE 11-03 (round 2)**, code deleted | castle pack pieces placed one by one: Wall_2x4 / Wall_2x2 / Gate_2x4 curtain, Tower_Mid corner towers, a Tower_Doorway keep, Tower_top_1 + Roof_Cone caps (the sky castle keeps its clouds) |
 | 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
-| 3 | `_hzObelisk` | swap, model in game | obelisk3d |
+| 3 | `_hzObelisk` | **DONE 11-03 (round 2)**, code deleted | new Meshy granite obelisk (`Assets/decor/obelisk.glb`, mondo: "needs a new meshy model") |
 | 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
 | 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
-| 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the Meshy greekcol (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
+| 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the NEW Meshy column (`greek_column.glb`) (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
 | 7 | rover | **DONE 11-03**, code deleted | mars_rover |
 | 8 | toadstool / fairy ring | **DONE 11-03**, code deleted | mushroom / a ring of mushroom2 |
 | 9 | censer | **DONE 11-03**, code deleted | Meshy props censer |
 | 10 | whale (Atlantis) | **DONE 11-03**, code deleted | ocean pack Whale.fbx (mondo: not the humpback) |
 | 11 | castle_wall | **KEPT as code** (mondo: only if the shape makes sense) | the spell wall is 1 square wide and 2 high; the pack has no piece that shape (Wall_2x2 is square, Wall_2x4 is 4 long), so the swap would change the wall |
-| 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
+| 12 | gateway / arch | **DONE 11-03 (round 2)**, code deleted | new Meshy curved stone arch (`stone_arch.glb`, mondo: "an arch is curved") |
 | 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
 | 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/misc/molten_cryo_tube.glb` |
 | 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/misc/molten_sleeper_casket.glb` |
-| 17 | lava lamps | pack swap | Molten lamp |
-| 18 | grow_lamp | pack swap | Molten lamp |
-| 19 | submarine | pack swap | BlenderVoyage sub (CC-BY: credit) |
+| 17 | lava lamps | **DONE 11-03 (round 2)**, base + cap code deleted | Meshy chrome base + cap (table and floor, `lava_lamp_*.glb`); the glass + the moving wax stay drawn (Meshy can't make glass; mondo: the Molten lamp looks bad) |
+| 18 | grow_lamp | **DONE 11-03 (round 2)**, code deleted | Meshy LED panel (`grow_lamp.glb`), the purple glow + light kept |
+| 19 | submarine | **DONE 11-03 (round 2)**, code deleted | Meshy riveted yellow sub (`submarine.glb`; mondo: the PSX pack sub looked worse than the code one) |
 | 20 | hand_dryer / range_hood / kitchen_range / sink_row | **DONE 11-03 (round 2)**, code deleted | DINER pack Hand_dryer, cooker_hood, Stove (griddle range), Washbasin (three basins) |
 | 21 | urinal | **DONE 11-03 (round 2)**, code deleted | BurgerPiz pack urinary |
 | 22 | toilet / shower stall | **DONE 11-03 (round 2)**, code deleted | Gas station pack stall (two partitions, the door, the toilet); House pack shower (tiles + glass door) |
 | 23 | `_hzFloatingIsland` (upside-down cone) | **DELETED 11-03** (mondo: "just get rid of it, i hate the cones") | — |
 | 24 | `_hzColossus` | **RENAMED 11-03** to `fallen_column` / `_hzFallenColumn` (mondo: it's a column on the floor, not a colossus) | — |
 | 25 | `_hzFleshMound` | **DONE 11-03 (round 2)**, code deleted | a heap of the Halloween pack body parts (the gore spells' pack), each placed on its own |
-| 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |
-| 27 | windmill monument (Skinwalker Ranch) | new Meshy model | ranch windpump |
+| 26 | effigy monument (Bohemian Grove) | **DONE 11-03 (round 2)**, code deleted | Meshy bier + Meshy wrapped figure, two models (`effigy_bier.glb`, `effigy_figure.glb`) |
+| 27 | windmill monument (Skinwalker Ranch) | **DONE 11-03 (round 2)**, code deleted | Meshy windpump tower + its wheel on its own, turning (`windpump_tower.glb`, `windpump_wheel.glb`) |
 | 28 | `_hzGrinSkull` | new Meshy model | giant stone skull |
 | 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
 | - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |

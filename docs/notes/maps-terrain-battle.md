@@ -1267,9 +1267,18 @@ Round 2 (the same day, the rest of his answers):
 - Catalogue procs swapped to pack pieces and their code deleted (bake-pack-pieces.py jobs, R2 Assets/misc/, zipped by hand):
   `hand_dryer` / `range_hood` / `kitchen_range` / `sink_row` = DINER pack (Hand_dryer, cooker_hood, Stove griddle, Washbasin);
   `urinal` = BurgerPiz urinary; `toilet_stall` = Gas station stall (two partitions + door + toilet); `shower_stall` = House pack shower;
-  `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`; the catalogue `light` went with the proc: file
+  `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`, kept 1.3 m tall like the old pod: Antarctica stands it on 1.3 m ghost blocks; the catalogue `light` went with the proc: file
   rows draw no point light, only the glow). The kitchen range's burner glow went (it is a griddle).
 - KEPT as code: the `castle_wall` spell monument (1 square wide, 2 high: the pack has no piece that shape).
+Round 2b (the same day, the Meshy concepts mondo OK'd: concepts + models in project files meshy/coded-out/, R2 Assets/decor/, in
+_HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
+- `_hzObelisk` = Meshy granite obelisk (ember glow kept on the point). `_hzGateway` (+ the `arch` / `gateway` monuments) = Meshy curved
+  stone arch (the box piers, lintel and broken variant deleted). `_hzGreekRuin` columns = the new Meshy `greek_column` (not greekcol).
+- `_hzEffigy` = Meshy bier + Meshy wrapped figure on it (two models). `_hzWindmill` = Meshy windpump tower + the wheel as its own
+  model on a hub at 0.92 H, 0.13 H out on +x, turning: `_horizonFloaters` entries now take `spinX` (rotation.x per frame).
+- procs: `grow_lamp` = Meshy LED panel (catalogue h 0.17, flush to the ceiling; glow + light kept), `submarine` = Meshy yellow sub
+  (nose turned to +z, 7 m, the headlamp glows kept; the screw no longer turns), `_hqLavaLampBuild` = Meshy chrome base + cap (table
+  and floor sets) with the glass + wax still drawn (the floor lamp's glass is a straight tube now, to match its base).
 ## THE OPEN SUMMIT + THE OPEN ICE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any sense for those maps")
 - Cause: LEVEL_DESIGN_PLAN L6 (2026-09-30) turned both site rooms into `gen: { kind: 'plan', look: 'walls' }` layouts (5.5 m marble /
   5 m ice walls round every court, yard and hall; the sealed mass between them baked to pits by bake-holes.js), and every arena size
