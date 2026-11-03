@@ -9721,7 +9721,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        use (NearestFilter R2 sprite + flat colour tint) so signature objects
        read in the game's hand-pixelled style. Cached per (file, repeat). */
     var _sigTerrainTexCache = {};
+    /* THE GOLD SHEET IS OUT (2026-11-03, mondo: "I previously requested that that gold texture be removed from the game"):
+       the bucket's terrain/gold.png (the pixel treasure-pile sheet) is never loaded. Every spell piece that wore it wears the
+       one gilt the boards use since 2026-09-21: the brushed aluminium sheet tinted _SIG_GILT. Change the gold look here. */
+    var _SIG_GOLD_TEX = 'aluminium.png', _SIG_GILT = 0xe0b048;
     function _sigTerrainTex(file, repX, repY) {
+        if (file === 'gold.png') file = _SIG_GOLD_TEX;
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_sigTerrainTexCache[key]) return _sigTerrainTexCache[key];
         var tex = _loadCachedTex(
@@ -11367,6 +11372,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _WPN_MODELS.piano = { url: _DECOR_BASE + 'piano.glb', axis: 'y', matte: true };
     _WPN_MODELS.sheep = { url: _DECOR_BASE + 'sheep.glb', axis: 'y', matte: true };
     _WPN_MODELS.tripodMachine = { url: _DECOR_BASE + 'tripod_machine.glb', axis: 'y', matte: true };
+    /* THE ORGAN PIPES (2026-11-03, §10B S05): Excessive Machine's nine pipes (were gold-sheet code cylinders) */
+    _WPN_MODELS.organPipe = { url: _DECOR_BASE + 'organ_pipe_white.glb', axis: 'y', matte: true };
     var _HELD_PROPS = {
         raceAcidFlask:       { key: 'potionFlask', m: 0.2,  thrown: true, grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
         raceAntidote:        { key: 'potionFlask', m: 0.2,  grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
@@ -11679,7 +11686,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
                             'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander',   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
                             'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile'];   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
-    var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
+    var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'aluminium.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
     /* THE CHRISTMAS PACK (2026-10-24, mondo: "utilize them for the north pole area and santa spells"): the pieces Santa's spells draw
@@ -13205,8 +13212,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             transparent: true, opacity: 0, depthWrite: true,
         });
         var plateMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex(opts.plateTex || 'gold.png', 1, 1),
-            color: new THREE.Color(opts.plateTint != null ? opts.plateTint : 0xffffff),
+            map: _sigTerrainTex(opts.plateTex || _SIG_GOLD_TEX, 1, 1),
+            color: new THREE.Color(opts.plateTint != null ? opts.plateTint : (opts.plateTex ? 0xffffff : _SIG_GILT)),
             transparent: true, opacity: 0, depthWrite: true,
         });
         var auraMat = _sigMat(color);
@@ -13633,7 +13640,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             transparent: true, opacity: 0, depthWrite: true,
         });
         var trimMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex(opts.trimTex || 'gold.png', 1, 1),
+            map: _sigTerrainTex(opts.trimTex || _SIG_GOLD_TEX, 1, 1),
             color: new THREE.Color(opts.trimColor != null ? opts.trimColor : 0xffe28a),
             transparent: true, opacity: 0, depthWrite: true,
         });
@@ -14662,7 +14669,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shells = [];
         var shellGeo = new THREE.BoxGeometry(ts * 0.018, ts * 0.018, ts * 0.05);
         var shellMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gold.png', 1, 1),
+            map: _sigTerrainTex(_SIG_GOLD_TEX, 1, 1),
             color: new THREE.Color(0xE8C15A), transparent: true, opacity: 1, depthWrite: true,
         });
 
@@ -14865,7 +14872,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             color: new THREE.Color(0x7a5a34), transparent: true, opacity: 0, depthWrite: true,
         });
         var tipMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gold.png', 1, 1),
+            map: _sigTerrainTex(_SIG_GOLD_TEX, 1, 1),
             color: new THREE.Color(0xd9b25e), transparent: true, opacity: 0, depthWrite: true,
         });
         var bowR = ts * 0.60;
@@ -15122,7 +15129,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_wpnReady('sword')) {
             _sigStandSword3D(tx, ty, {
                 glowColor: 0xffd24a, circleColor: 0x88bbff,
-                bladeTex: 'gold.png', bladeColor: 0xffffff,
+                bladeTex: _SIG_GOLD_TEX, bladeColor: _SIG_GILT,
                 guardTex: 'metal.png', guardColor: 0xffd970,
                 len: ts * 2.4, ringTiles: 2.0, flashPeak: 0.3,
                 sparkSprite: 'divine-sparkle',
@@ -15455,7 +15462,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var goldMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('gold.png', 1, 1),
+            map: _sigTerrainTex(_SIG_GOLD_TEX, 1, 1),
             color: new THREE.Color(0xe8c15a), transparent: true, opacity: 0,
             depthWrite: true, side: THREE.DoubleSide,
         });
@@ -20791,7 +20798,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* golden blade of judgment falling out of heaven + light pillar */
         judgment: function(tx, ty) { _sigJudgmentSword3D(tx, ty, 'judgment_descent', {
             glowColor: 0xffcc55, circleColor: 0xffdd88,
-            bladeTex: 'gold.png', bladeColor: 0xffffff,       /* solid gold-bar blade */
+            bladeTex: _SIG_GOLD_TEX, bladeColor: _SIG_GILT,       /* solid gold-bar blade */
             guardTex: 'metal.png', guardColor: 0xffd970,      /* brass fittings */
             len: (_cfg().tileSize || 128) * 3.0,
             hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
@@ -20800,7 +20807,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceDivineJudgment: function(tx, ty) {
             _sigJudgmentSword3D(tx, ty, 'raceDivineJudgment_descent', {
                 glowColor: 0xffcc55, circleColor: 0xffdd88,
-                bladeTex: 'gold.png', bladeColor: 0xffffff,       /* solid gold-bar blade */
+                bladeTex: _SIG_GOLD_TEX, bladeColor: _SIG_GILT,       /* solid gold-bar blade */
                 guardTex: 'metal.png', guardColor: 0xffd970,      /* brass fittings */
                 len: (_cfg().tileSize || 128) * 3.0,
                 hoverH: (_cfg().tileSize || 128) * 3.2, ringTiles: 2.2,
@@ -21462,7 +21469,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
             _sigSpearPrison3D(tx, ty, {
                 count: 6, color: 0xffd24d, runeColor: 0xffe9a8,
-                shaftTex: 'gold.png', shaftTint: 0xffe9a8, tipTint: 0xffffff,
+                shaftTex: _SIG_GOLD_TEX, shaftTint: 0xffe9a8, tipTint: 0xffffff,
                 glowColor: 0xffe083, sparkSprite: 'divine-sparkle',
                 holdMs: 900, finisher: false, lenTiles: 2.2,
             });
@@ -44589,22 +44596,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
-    /* EXCESSIVE MACHINE: the organ's pipes rise round the victim and light key by key */
+    /* EXCESSIVE MACHINE: the organ's pipes rise round the victim and light key by key.
+       THE ORGAN PIPES (2026-11-03, mondo: "those gold rods ... should have shown up in the model list as needing to be
+       replaced"): each pipe is the Meshy organ pipe (MODEL_LIST §10B S05, R2 Assets/decor/), upright and sized by its
+       height; the old code cylinders in the gold sheet are gone. No stand-in while the file loads (the spell warm loads it). */
     function _afOrgan3D(tx, ty) {
         if (_catOff('spells') || !_afOnce('sigExcessiveMachine:' + tx + ',' + ty, 2200)) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, pipes = [];
+        var F = _nrvFrame(tx, ty), ts = F.ts, pipes = [], ready = _wpnReady('organPipe');
         for (var i = 0; i < 9; i++) {
             var a = Math.PI * 0.75 + i * Math.PI * 1.5 / 8, h = ts * (0.6 + 0.6 * Math.sin(i / 8 * Math.PI));
-            /* spell look audit FX-2: brass pipes (the board's gold sheet, tinted), not bare white cylinders */
-            var m = _afSolid(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, h, 10), 0xe8c878, { map: _sigTerrainTex('gold.png', 1, 1) }); m.position.set(Math.cos(a) * ts * 0.6, h / 2, Math.sin(a) * ts * 0.6); F.g.add(m);
-            var g = _finSprite(_AF.vixen, _sigGlowTex(), ts * 0.2, 163); g.position.set(m.position.x, h, m.position.z); F.g.add(g);
-            pipes.push({ m: m, g: g, at: i * 70 });
+            var pi = ready ? _wpnInstance('organPipe', h) : null, m = null;
+            if (pi) {
+                /* the pipe's foot on the ground; the rise scales this group up from the foot */
+                m = new THREE.Group(); pi.group.position.y = h / 2; m.add(pi.group); pi.setFade(0);
+                m.position.set(Math.cos(a) * ts * 0.6, 0, Math.sin(a) * ts * 0.6); m.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); F.g.add(m);   /* the mouth faces the victim */
+            }
+            var g = _finSprite(_AF.vixen, _sigGlowTex(), ts * 0.2, 163); g.position.set(Math.cos(a) * ts * 0.6, h, Math.sin(a) * ts * 0.6); F.g.add(g);
+            pipes.push({ m: m, inst: pi, g: g, at: i * 70 });
         }
         var total = 1800;
         return _sigRunOwned(F.g, total, function (el) {
             for (var i = 0; i < pipes.length; i++) {
-                var P = pipes[i], up = _sigEaseOutBack(_sigClamp01((el - P.at) / 260)); P.m.scale.y = Math.max(0.01, up);
-                P.m.material.opacity = (el > P.at ? 1 : 0) * _afEnv(el, 0, 40, 1350, total);
+                var P = pipes[i], up = _sigEaseOutBack(_sigClamp01((el - P.at) / 260));
+                if (P.m) { P.m.scale.y = Math.max(0.01, up); P.inst.setFade((el > P.at ? 1 : 0) * _afEnv(el, 0, 40, 1350, total)); }
                 P.g.material.opacity = 0.9 * (Math.floor((el - 400) / 90) % pipes.length === i && el > 400 ? 1 : 0.2) * _afEnv(el, 300, 400, 1350, total);
             }
         });
@@ -48990,7 +49004,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var B = _pzBeamTiles(p), F = _nrvFrame(B.fx, B.fy), ts = F.ts, E = _worldPos(B.ex, B.ey), dx = E.x - F.wp.x, dz = E.z - F.wp.z, L = Math.hypot(dx, dz);
         var yaw = Math.atan2(dx, dz), ms = 220 + B.n * 110, R = ts * 0.34;
         var rec = new THREE.Group(), spinG = new THREE.Group(); rec.add(spinG); rec.rotation.y = yaw; F.g.add(rec);
-        var gold = _pzSolid(0xffcf5a, _sigTerrainTex('gold.png', 1, 1)), label = _pzSolid(_PZ.pink), groove = _pzSolid(0x8a6420), shine = _pzGlow(_PZ.gold);
+        var gold = _pzSolid(0xffcf5a, _sigTerrainTex(_SIG_GOLD_TEX, 1, 1)), label = _pzSolid(_PZ.pink), groove = _pzSolid(0x8a6420), shine = _pzGlow(_PZ.gold);
         var disc = _pzMesh(new THREE.CylinderGeometry(R, R, ts * 0.04, 32), gold, spinG); disc.rotation.z = Math.PI / 2;
         var lab = _pzMesh(new THREE.CylinderGeometry(R * 0.36, R * 0.36, ts * 0.045, 20), label, spinG); lab.rotation.z = Math.PI / 2;
         for (var gi = 0; gi < 4; gi++) { var gr = _pzMesh(new THREE.TorusGeometry(R * (0.55 + (gi % 2) * 0.22), ts * 0.006, 4, 32), groove, spinG, (gi < 2 ? 1 : -1) * ts * 0.021, 0, 0); gr.rotation.y = Math.PI / 2; }
@@ -49199,7 +49213,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ms = p.flyMs > 0 ? p.flyMs : 260, F = _nrvFrame(tx, ty), ts = F.ts, from = p.fromX != null ? { x: p.fromX, y: p.fromY } : _pzFrom(tx, ty, p), ln = _nrvLine(F, from, tx, ty);
         var hold = new THREE.Group(); hold.position.set(-ln.ux * ts * 0.6, ts * 1.2, -ln.uz * ts * 0.6); hold.rotation.y = Math.atan2(ln.ux, ln.uz) + Math.PI / 2; F.g.add(hold);
         var arm = new THREE.Group(); hold.add(arm);
-        var wood = _pzSolid(0x7a4a28, _sigTerrainTex('wood.png', 1, 1)), brass = _pzSolid(_PZ.brass, _sigTerrainTex('gold.png', 1, 1));
+        var wood = _pzSolid(0x7a4a28, _sigTerrainTex('wood.png', 1, 1)), brass = _pzSolid(_PZ.brass, _sigTerrainTex(_SIG_GOLD_TEX, 1, 1));
         _pzMesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.03, ts * 0.6, 8), wood, arm, -ts * 0.3, 0, 0).rotation.z = Math.PI / 2;
         var headG = new THREE.Group(); headG.position.set(-ts * 0.6, 0, 0); arm.add(headG);
         _pzMesh(new THREE.CylinderGeometry(ts * 0.1, ts * 0.1, ts * 0.3, 14), wood, headG);
@@ -49634,7 +49648,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* a ring of golden chain whirls round the 3×3 on the wind, then pulls tight */
     _PZ_SIGS.fetter = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, gold = _pzSolid(0xffd27a, _sigTerrainTex('gold.png', 1, 1)), chain = new THREE.Group(); chain.position.y = ts * 0.5; F.g.add(chain);
+        var F = _nrvFrame(tx, ty), ts = F.ts, gold = _pzSolid(0xffd27a, _sigTerrainTex(_SIG_GOLD_TEX, 1, 1)), chain = new THREE.Group(); chain.position.y = ts * 0.5; F.g.add(chain);
         var N = 36, links = [], lastW = 0;
         for (var i = 0; i < N; i++) { var m = _pzMesh(new THREE.TorusGeometry(ts * 0.07, ts * 0.018, 6, 12), gold, chain); links.push({ m: m, a: i / N * Math.PI * 2 }); }
         return _sigRunOwned(F.g, 1400, function (el) {
@@ -51067,7 +51081,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var hw = _sigHandWorld(_sigUnitIdAt(fx, fy));
             var hand = hw ? { x: hw.x - C.wp.x, y: hw.y - C.wp.y, z: hw.z - C.wp.z } : { x: Math.sin(yaw) * tsC * 0.3, y: tsC * 0.65, z: Math.cos(yaw) * tsC * 0.3 };
             var stick = new THREE.Group(); stick.rotation.order = 'YXZ'; stick.rotation.set(Math.PI / 2, yaw, 0); stick.position.set(hand.x, hand.y, hand.z); C.g.add(stick);
-            var goldM = _pzSolid(_BB.gold, _sigTerrainTex('gold.png', 1, 1)), redM = _pzSolid(_BB.lips);
+            var goldM = _pzSolid(_BB.gold, _sigTerrainTex(_SIG_GOLD_TEX, 1, 1)), redM = _pzSolid(_BB.lips);
             _pzMesh(new THREE.CylinderGeometry(tsC * 0.028, tsC * 0.028, tsC * 0.11, 12), goldM, stick, 0, 0, 0);
             var bullet = _pzMesh(new THREE.CylinderGeometry(tsC * 0.022, tsC * 0.022, tsC * 0.06, 12), redM, stick, 0, tsC * 0.06, 0);
             var tip = _pzMesh(new THREE.CylinderGeometry(tsC * 0.004, tsC * 0.022, tsC * 0.04, 12), redM, stick, 0, tsC * 0.1, 0); tip.rotation.z = 0.35;
@@ -55902,7 +55916,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.nvBumperCrop = function (p, id, intent, def) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
         var A = _nvAoeTiles(id, p, def, _nvRadius(id, 'aoeRadius', 2)), F = _nrvFrame(tx, ty), ts = F.ts;
-        var stalk = _pzSolid(0xa8c050), headM = _pzSolid(_NV.wheat, _sigTerrainTex('gold.png', 1, 1)), bark = _nvBarkMat(), lf = _nvLeafMat();
+        var stalk = _pzSolid(0xa8c050), headM = _pzSolid(_NV.wheat, _sigTerrainTex(_SIG_GOLD_TEX, 1, 1)), bark = _nvBarkMat(), lf = _nvLeafMat();
         stalk.vertexColors = true; headM.vertexColors = true;
         var sig = _pzMesh(new THREE.PlaneGeometry(ts * (A.r * 2 + 1.8), ts * (A.r * 2 + 1.8)), _pzGlow(_NV.gold, _nvSigilTex()), F.g, 0, ts * 0.035, 0); sig.rotation.x = -Math.PI / 2;
         var sG = new THREE.CylinderGeometry(ts * 0.008, ts * 0.016, 1, 4, 1, true); sG.translate(0, 0.5, 0); _nvBake(sG, 0.6);
