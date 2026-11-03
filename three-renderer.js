@@ -49583,7 +49583,13 @@ const ThreeRenderer = (function () {
        landing when the board has no setting (custom maps, EW_NO_FACILITY_
        SCENERY, low-perf). Returns the animation record _introUpdateDoors
        drives. */
-    function _introBuildDoor(zi, ts, leaf, mapId) {
+    /* THE DOOR AT BODY SIZE (2026-11-03, mondo: "the door model that the characters walk out of at the start of a match is too
+       big for them now"): the threshold is built in battle tiles (a leaf 1.35 tiles tall), and since THE BIG SQUARES a board of
+       3.5 m squares draws its bodies at half a tile (UNIT_SPRITE_SIZE_RATIO) — the door stood twice their size. `bodyK` (the
+       match intro passes UNIT_SPRITE_SIZE_RATIO; the menu door passes none = 1) scales the door proper about its foot, so the
+       leaf is the same size to the bodies as on a 1.75 m board; where it stands (doorOut, in tiles) and the walk are unchanged. */
+    function _introBuildDoor(zi, ts, leaf, mapId, bodyK) {
+        var bk = (bodyK > 0 && bodyK < 1) ? bodyK : 1;
         var kit = _nrLastKit;
         var elev = ts * ELEV_STEP_RATIO;
         var apronY = kit ? kit.apronTop : zi.topZ * elev;
@@ -49600,7 +49606,7 @@ const ThreeRenderer = (function () {
            top × the level step) is not where the floor is past the board's edge — the door and the walkers' first steps
            read the room's own ground under the door instead (_introDoorFloorY) */
         if (!kit) {
-            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow);
+            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow * bk);
             if (_dfY !== null) { apronY = _dfY; zB = _dfY / elev; }
         }
         var jw = 0.14 * ts, lh = 0.2 * ts, pd = 0.2 * ts;
@@ -49622,6 +49628,7 @@ const ThreeRenderer = (function () {
         rec.group = g;
         var D = new THREE.Group();                        // the door proper, at the door plane
         D.position.set(0, 0, doorOut * ts);
+        if (bk !== 1) D.scale.setScalar(bk);   // THE DOOR AT BODY SIZE
         g.add(D);
         /* NO LANDING (mondo 2026-10-18: "get rid of the circular platform thing underneath the door"): the round dais that
            stood under every crossing door (menu + match intro) is gone — the frame and its sill stand straight on the
@@ -49789,7 +49796,7 @@ const ThreeRenderer = (function () {
             var p = walkTeams[w];
             var zi = _introZoneInfo(p);
             if (!zi) continue;
-            var d = _introBuildDoor(zi, ts, leaf, opts.mapId);
+            var d = _introBuildDoor(zi, ts, leaf, opts.mapId, UNIT_SPRITE_SIZE_RATIO);   // THE DOOR AT BODY SIZE
             _introDoorGroup.add(d.group);
             var team = (state.units || []).filter(function (u) { return u.player === p && !u.dead; });
             var delay = (opts.walkDelayMs && opts.walkDelayMs[p]) || 0;
@@ -61347,6 +61354,20 @@ const ThreeRenderer = (function () {
        128 sprite; 2 = one sheet per 2 × 2 squares; 0.5 = four a square) and `floorTint` / `cliffTint` / `pathTint` ('#rrggbb',
        multiplied over that sheet; white or none = as drawn). A stair row's `sideZoom` / `sideTint` set its own sides. A room or a
        row naming none looks as before (the editor's THE GROUND and a stair's fields write them). */
+    /* ONE SPRITE PER SQUARE (2026-11-03, mondo picked it from side-by-sides: "one sprite per square"): since 2× EVERYWHERE a
+       terrain room fights on 3.5 m squares (HQ_FIELD_RULES.squareM; every terrain room passes hqFieldSquareFor), but its sheets
+       stayed one per 1.75 m (HQ_TERRAIN_RULES.tile), so each battle square showed a 2 × 2 of sprites. The floor / cliff / path /
+       painted sheets, the board marks and the liquids now lay one sheet per the room's fight square (the room's own fieldSquareM,
+       else the rules' squareM), never smaller than the room's own tile (the Holo Sim's 3.5 m plate stays). Read cheaply (no
+       lattice): hqFieldSquareFor's region test costs seconds on a big room. Back to real size: window.EW_SHEET_REAL_SIZE = true. */
+    function _hqSheetM(info) {
+        var t = (info && +info.tile > 0) ? +info.tile : 1.75;
+        if (typeof window !== 'undefined' && window.EW_SHEET_REAL_SIZE) return t;
+        var room = info && info.room, sq = 0;
+        if (room && +room.fieldSquareM > 0) sq = +room.fieldSquareM;
+        else if (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && +HQ_FIELD_RULES.squareM > 0) sq = +HQ_FIELD_RULES.squareM;
+        return Math.max(t, sq);
+    }
     function _hqZoomOf(v) { v = +v; return (isFinite(v) && v > 0) ? Math.max(0.125, Math.min(16, v)) : 1; }
     function _hqTintOf(v) {
         if (v == null || v === '') return null;
@@ -63599,7 +63620,7 @@ const ThreeRenderer = (function () {
         /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
         var bufs = {};
         var strip = function (cx, cz, w, d, yaw, y, ck) {
-            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = info.tile || 1.75;
+            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = _hqSheetM(info);   // ONE SPRITE PER SQUARE
             [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (p) { var wx = cx + p[0] * c + p[1] * sn, wz = cz - p[0] * sn + p[1] * c; B.P.push(wx * U, yy, wz * U); B.T.push(wx / tl, -wz / tl); });
             B.I.push(base, base + 2, base + 1, base, base + 3, base + 2);
         };
@@ -63962,7 +63983,7 @@ const ThreeRenderer = (function () {
         if (!info) { console.warn('[HQ] terrain failed to compile', room.label); return; }
         _hq.terrain = info;
         _hq.rails = _hq.rails || []; _hq.ramps = _hq.ramps || [];
-        var TM = info.tile * U, res = info.res, nx = info.nx, nz = info.nz;
+        var TM = _hqSheetM(info) * U, res = info.res, nx = info.nx, nz = info.nz;
         var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
@@ -80639,7 +80660,7 @@ const ThreeRenderer = (function () {
     /* the sheet's repeat in battle px: the terrain room's own floor tile (info.tile metres), else two cells */
     function _fieldPatchRep(G) {
         var tm = 0;
-        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf && +inf.tile; } catch (e) { tm = 0; } }
+        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf ? _hqSheetM(inf) : 0; } catch (e) { tm = 0; } }   // ONE SPRITE PER SQUARE
         var rep = (tm > 0) ? tm * G.s : 2 * G.ts;
         return Math.max(G.ts, Math.min(6 * G.ts, rep));
     }
