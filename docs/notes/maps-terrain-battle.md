@@ -1300,6 +1300,7 @@ _HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
 - Both boards are half-turn symmetric about their centre and keep the house lanes (spawn / egress / nexus) clear at 12, 11, 10, 9.
   Existing rules only: levels, ghost blocks, deep water. bake-arenas.js reports them as walled cuts (the level-3 / level-2 blocks).
 - Audit of the other boards + the exploration rooms still built as walled plans: /mnt/project-files/battle-map-audit/.
+
 Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
 GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
 city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
@@ -1324,3 +1325,18 @@ mondo: "for the looking glass, the chess board needs to be an 8x8 (the game boar
   as with the 12 × 12 board — checked: same scatter + trees). Picks: the 12 re-rastered by hand (all 117 open squares reach both
   spawn rows); the 9 / 10 / 11 re-baked (`bake-arenas.js --size N prebuilt_lookingglass`): no smaller window fits the house on the
   8 × 8 (the back ranks sit on the egress rows), so they are other lawn windows of the garden (the 11 takes the board's west files).
+
+## THE OPEN VILLAGE (2026-11-03, North Pole, after THE OPEN SUMMIT + THE OPEN ICE)
+mondo's audit ask (Olympus/Antarctica "built like dungeons with walls"): the audit found the North Pole village built the same way
+(L6 `gen: {kind:'plan', look:'walls'}`, 4.5 m wood_planks walls, black pits). Fixed the whole room:
+- the gen line and every `space` / `hall` row removed (the planGen fallback rebuilds the walls plan while any remain);
+- the ramp to the walkway off the sledge yard keeps its own railings now (`rails: false` was for the hall's walls);
+- THE BAY GATE: two 3 m wood_planks posts at x ±3.9, z 28..32 carry the hall's two wreaths;
+- the hearth is the fireplace way's own chimney breast at the deck's west edge (a wall row past the room edge x −64 is clipped by
+  the heightfield, so none was added);
+- THE COTTAGES: the Christmas pack's `xmas_house` (was editor-palette only), h 6.0, `floor: true`, on 3 × 3 ghost blocks
+  (`x0 = x1, z0 = z1, t 10.2` — a wall row's ends are round, t 9 gave a plus shape) at (−43.75, 15.75) and its 180° twin (−12.25, 12.25);
+- two `sleigh`s and two snowmen on one-square ghost blocks (h 1.3, level 1), 180° twins round the board centre (−28, 14);
+- HQ_ARENA_RULES.within.prebuilt_northpole (−28, 14, r 2.6) pins every size between the workshop deck and the plaza; all four re-baked.
+The 2 × 2 gap on the walkway (HQ_ROOM_HOLES, i 15..16, j 1..2) was there before and stays.
+Still walled (battle + exploration), not changed: Giza, Agartha, Technoticlan, Babel.
