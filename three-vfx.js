@@ -452,8 +452,9 @@ const ThreeVFX = (function () {
         'fb-explosion': { url: _R2 + 'vfx/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32 },
         /* THE SHARED KINDS (2026-11-03, mondo: "give them the same treatment"): a Mantaflow smoke puff (16 frames, lit
            side baked to white so the kind's own colour tints it) and a Mantaflow flame flicker (16 frames, additive) */
-        'fb-smoke': { url: _R2 + 'vfx/fb_smoke.png', cols: 4, frames: 16, cell: 128, blend: 'nrm' },
-        'fb-ember': { url: _R2 + 'vfx/fb_ember.png', cols: 4, frames: 16, cell: 64, blend: 'add' }
+        /* ?r=N: these URLs carry no ?v= token, so bump r whenever a sheet is re-baked (players + the edge cache keep the old one) */
+        'fb-smoke': { url: _R2 + 'vfx/fb_smoke.png?r=2', cols: 4, frames: 16, cell: 128, blend: 'nrm' },
+        'fb-ember': { url: _R2 + 'vfx/fb_ember.png?r=2', cols: 4, frames: 16, cell: 64, blend: 'add' }
     };
     /* THE SHARED KINDS: every spawn of these old painted kinds (smoke ~130 uses, dust-puff ~220, ember ~170, game-wide)
        plays the Blender sheet instead once it is cut, in a plain sprite-pool particle (not a world decal / quad).
@@ -2752,6 +2753,7 @@ const ThreeVFX = (function () {
         } else {
             p._animFrames = null;
         }
+        p._fbSoft = !!fbKind;
         if (fbKind) {
             /* a shared kind: same kind colour as the painted texture had (it carried it), sized to fill like it */
             if (fbKind.col === 'own') p._color = { r: 1, g: 1, b: 1, blend: sc.blend };
@@ -2929,6 +2931,8 @@ const ThreeVFX = (function () {
        at the end instead of thinning from the first frame. */
     function _opAt(p, t) {
         var h = p._opHold;
+        /* THE SHARED KINDS: a smooth ease-out fade (no slope at either end) so the sim's own dissolve carries the end */
+        if (p._fbSoft) return _lerp(p.opacity0, p.opacity1, t * t * (3 - 2 * t));
         if (h > 0) return t <= h ? p.opacity0 : _lerp(p.opacity0, p.opacity1, (t - h) / (1 - h));
         return _lerp(p.opacity0, p.opacity1, t);
     }
