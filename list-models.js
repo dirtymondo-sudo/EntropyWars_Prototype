@@ -50,6 +50,7 @@ const SOURCES = [
     { re: /charactercreation\/wear\/ewb_cowboyhat_worn/, how: 'MONDO_TEX', src: "mondo's cowboy hat + a Meshy Retexture base colour on his UVs (worn dark / worn tan; bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_cowboyhat/, how: 'MONDO', src: "mondo's cowboy hat, fitted to the bodies in Blender (bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_/, how: 'BLENDER', src: 'bake-clothes.py / bake-garment.py (cloud Blender)' },
+    { re: /charactercreation\/wear\/ewm_/, how: 'MESHY', src: 'Meshy AI piece made by Claude through the Meshy API (concept -> mondo\'s OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829)' },
     { re: /charactercreation\/wear\/mhw_/, how: 'MH', src: 'MakeHuman asset packs (author + licence per piece in charactercreation/wear/wear.json)' },
     { re: /charactercreation\/hair\/mh\//, how: 'MH', src: 'MakeHuman hair (author + licence per style in charactercreation/hair/mh/hair_styles.json)' },
     { re: /charactercreation\/hair\/hair\d/, how: 'PACK_ANON', src: "Hair pack part 1 (HairPackPT1.glb, mondo's 2026-09-11 upload), split by character-rig.js" },
@@ -83,6 +84,7 @@ const SOURCES = [
     { re: /Assets\/misc\/Castles_and_Forts\.glb/, how: 'PACK', src: 'Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given' },
     { re: /UFO_Low_Poly\.fbx/, how: 'PACK', src: '3D Game Ready UFO Spaceship · FlexUnit · CC0' },
     { re: /_sway\.glb$/, how: 'MESHY_C', src: 'Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py)' },
+    { re: /Assets\/props\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827)' },
     { re: /Assets\/decor\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03)' },
     // Meshy exports (mondo's, made on meshy.ai) — before the folder rows so a Meshy file in a pack folder still reads Meshy
     { re: /Assets\/misc\/wings\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (single wing, mirrored in code)' },
@@ -234,6 +236,12 @@ for (const m of wpn.matchAll(/^\s+(\w+):\s*\{[^}]*?\b(file|url):\s*'([^']+)'/gm)
 const decor = block(R3, 'var _HQ_DECOR_GLB = {');
 for (const m of decor.matchAll(/(\w+):\s*'([^']+\.glb)'/g)) add('decor', m[1], CDN + 'Assets/decor/' + m[2]);
 for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _DECOR_BASE \+ '([^']+)'/g)) add('spell', m[1], CDN + 'Assets/decor/' + m[2]);
+// THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, PR #827): the Meshy pieces #47-72 on R2 Assets/props/
+const heldP = (VFX.match(/var P = \{([\s\S]*?)\};/) || [, ''])[1];
+for (const m of heldP.matchAll(/(\w+):\s*\['([^']+\.glb)'/g)) add('spell', m[1] + ' (held in the hand)', CDN + 'Assets/props/' + m[2]);
+for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _PROPS_BASE \+ '([^']+)'/g)) add('spell', m[1] + ' (held in the hand)', CDN + 'Assets/props/' + m[2]);
+const gearW = block(R3, 'var UNIT_GEAR_WEAR = {');
+for (const m of gearW.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/gm)) add('gear', m[1], CDN + 'Assets/props/' + m[2]);
 const ani = block(R3, 'var _ANIMALS = {');
 for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('animal', m[1], BASES.animals + m[2]);
 // the halloween pieces the spells cut out of the one kit file
@@ -274,6 +282,8 @@ const hairMh = JSON.parse(read('charactercreation/hair/mh/hair_styles.json'));
 const mpfbFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/mpfb')).filter(f => /\.glb$/.test(f));
 const ccRoot = fs.readdirSync(path.join(ROOT, 'charactercreation')).filter(f => /\.glb$/.test(f));
 const wearFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/wear')).filter(f => /^ewb_.*\.glb$/.test(f));
+// the Meshy creator pieces (PR #829): EW_MH_WEAR rows `ewm_*`, one GLB on R2 (not in the repo)
+for (const w of (SP.WEAR || []).filter(w => /^ewm_/.test(w[0]))) add('meshywear', w[0] + ' · ' + w[1] + ' (' + w[2] + ')', CDN + CC + '/wear/' + w[0] + '.glb');
 for (const f of mpfbFiles) add('creator', f.replace(/\.glb$/, ''), CDN + CC + '/mpfb/' + f);
 for (const f of ccRoot) add('creator', f.replace(/\.glb$/, ''), CDN + CC + '/' + f);
 for (const h of SP.HAIR || []) if (/^hair\d/.test(h.id)) add('creator', h.id + ' · ' + h.label, CDN + CC + '/hair/' + h.id + '.glb');
@@ -328,6 +338,8 @@ L.push('');
 L.push('Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator\'s');
 L.push('picks, each a GLB per body; the code count is procedural catalogue rows).');
 L.push('"Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).');
+L.push('Not in the count: the horizon. **%%HZCODE%% of the %%HZTOTAL%% builders drawn past the board** (far rosters, near settings, rims, room weenies, board');
+L.push('monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.');
 L.push('');
 L.push('## 2. Units — the playable races (sprites.js RACE_MODELS_3D)');
 L.push('');
@@ -381,6 +393,13 @@ L.push('MakeHuman beards). `_open` / `_closed` files are the same garment with t
 L.push('');
 L.push(table(sec('blender'), 'piece'));
 L.push('');
+L.push('### 5e. Meshy pieces in the creator (' + sec('meshywear').length + ' files, `' + CC + '/wear/ewm_*`, PR #829)');
+L.push('');
+L.push('Made 2026-11-03 on Meshy through the API (concept image -> mondo\'s OK -> model) and fitted on the MPFB bodies in Blender');
+L.push('(bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator\'s own id · label (tab).');
+L.push('');
+L.push(table(sec('meshywear'), 'piece'));
+L.push('');
 L.push('## 6. Props — every room / editor prop (data.js DOOR_HQ.catalogue)');
 L.push('');
 const props = sec('props');
@@ -407,6 +426,10 @@ L.push('');
 L.push('### 7a. Spell props (three-vfx-effects.js _WPN_MODELS)');
 L.push('');
 L.push(table(sec('spell'), 'key'));
+L.push('');
+L.push('### 7a-2. Gear worn on the body (three-renderer.js UNIT_GEAR_WEAR, PR #827) — the equipment a unit carries, on its bones');
+L.push('');
+L.push(table(sec('gear'), 'equipment key'));
 L.push('');
 L.push('### 7b. Settings, horizons, monuments (three-renderer.js _MISC_GLB)');
 L.push('');
@@ -475,6 +498,7 @@ const HZ = (function () {
     const miscKeys = new Map(all.filter(r => r.section === 'misc').map(r => [r.key, r]));
     const doorKeys = new Map(all.filter(r => r.section === 'props').map(r => [r.key, r]));
     const animalKeys = new Map(all.filter(r => r.section === 'animal').map(r => [r.key, r]));
+    const decorKeys = new Map(all.filter(r => r.section === 'decor').map(r => [r.key, r]));
     // helpers that only make materials / textures / placements / loaders: never followed (the loaders are read from their call)
     const STOP = /^(_miscModelInstance|_loadMiscModel|_animalBuild|_hqModelUrl|_hqTex|_hqMat|_mulberry32|_disposeR|_hzLit|_hzAt|_hzTex|_hzGeoMat|_hzGlowMat|_hzGlowSprite|_hzPulse|_hzKitTile|_hzRockPick|_hzPropLitPick|_hzPropLitLiftPick|_hzMiscUnlitPick|_hzMiscKit|_hzMiscGLB|_hzPropGLB|_hzDoorKitGLB|_hzVehicle|_hzRock|_hzRockProc|_nrRectRing|_wdRing|_nrUV|_nrSquashUV|_nrInjectWorld|_hzTextTex|_hzStripeTex|_hzScorchTex|_nrPicketTex|_hzFacTex\w*)$|Tex$|Mat$|Pick$|Haze|Fog/;
     const SHAPE = /new THREE\.(\w+?)(?:Buffer)?Geometry\b/g;
@@ -483,6 +507,8 @@ const HZ = (function () {
         for (const m of code.matchAll(/_MISC_GLB(?:\.(\w+)|\[\s*'(\w+)'\s*\])/g)) out.models.add('misc:' + (m[1] || m[2]));
         for (const m of code.matchAll(/_hzDoorKitGLB\(\s*'(\w+)'/g)) out.models.add('door:' + m[1]);
         for (const m of code.matchAll(/_hzVehicle\(\s*'(\w+)'/g)) out.models.add('vehicle:' + m[1]);
+        for (const m of code.matchAll(/_hqDecorWear\(\s*'(\w+)'/g)) out.models.add('decor:' + m[1]);   // THE MESHY DECOR: the builder wears a model (its shapes only show when the file fails)
+        if (/_chessFill\(/.test(code)) out.models.add('chess:Low Poly Chess Set');   // THE CHESS SET: mondo's piece (the lathe only when the set fails)
         if (/_hzRock\(/.test(code)) { out.models.add('door:asteroid_a'); out.models.add('door:asteroid_b'); out.models.add('misc:standingstone'); }
         if (/_nrTree\(|_hzTreeModel\(|_FOLIAGE_MODEL_FOR_KEY/.test(code)) out.models.add('trees (foliage models, §7d)');
         if (/_CRYSTAL_MODEL_URLS/.test(code)) out.models.add('crystals (_CRYSTAL_MODEL_URLS)');
@@ -503,8 +529,8 @@ const HZ = (function () {
         const seenKey = new Map();
         for (const k of [...out.models].sort()) {
             const [kind, key] = k.indexOf(':') > 0 ? [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)] : ['', k];
-            const r = (kind === 'misc' || kind === 'vehicle') ? miscKeys.get(key) : kind === 'door' ? doorKeys.get(key) : kind === 'animal' ? animalKeys.get(key) : null;
-            const label = '`' + key + '`' + (r && r.src ? ' (' + HOW[r.src.how].label + ')' : kind === 'vehicle' ? ' (the car pack, _CAR_PACK)' : '');
+            const r = (kind === 'misc' || kind === 'vehicle') ? miscKeys.get(key) : kind === 'door' ? doorKeys.get(key) : kind === 'animal' ? animalKeys.get(key) : kind === 'decor' ? decorKeys.get(key) : null;
+            const label = '`' + key + '`' + (r && r.src ? ' (' + HOW[r.src.how].label + ')' : kind === 'vehicle' ? ' (the car pack, _CAR_PACK)' : kind === 'chess' ? " (mondo's upload, Assets/chess/)" : '');
             if (!seenKey.has(key) || (r && r.src)) seenKey.set(key, label);
         }
         const models = [...seenKey.values()];
@@ -550,6 +576,7 @@ for (const F of HZ) {
     for (const r of F.rows) { hzCounts.total++; if (r.code) hzCounts.code++; L.push('| `' + esc(r.key) + '` | ' + r.made + ' | ' + esc(r.models) + ' | ' + esc(r.shapes) + ' |' + (extraHead ? ' ' + esc(r.extra) + ' |' : '')); }
     L.push('');
 }
+for (let i = 0; i < L.length; i++) if (typeof L[i] === 'string' && L[i].indexOf('%%HZCODE%%') >= 0) L[i] = L[i].replace('%%HZCODE%%', hzCounts.code).replace('%%HZTOTAL%%', hzCounts.total);
 L.push('**' + hzCounts.code + ' of these ' + hzCounts.total + ' rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**');
 L.push('');
 L.push('**The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms\' far weenies `peak` / `mountain`');
