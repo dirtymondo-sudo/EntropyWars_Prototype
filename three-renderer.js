@@ -56159,7 +56159,7 @@ const ThreeRenderer = (function () {
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
-            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') : '';   // (+ THE CHEST + THE LIP COLOUR)
+            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') + (layers.tint ? '|tint' + JSON.stringify(layers.tint) : '') : '';   // (+ THE CHEST + THE LIP COLOUR + THE LOOK COLOURS)
             if (part.lookKey === key) return;
             part.lookKey = key;
             function wear(map) {
@@ -56182,8 +56182,14 @@ const ThreeRenderer = (function () {
                     var x = c.getContext('2d');
                     x.drawImage(imgs[0], 0, 0, px, px);
                     if (layers.smooth) smoothChest(c, x, layers.smooth, px / 1024);
+                    var TT = layers.tint || {};
+                    if (TT.skin) { try { tintSheet(x, px, TT.skin, layers.skinSample, layers.skinKeep); } catch (e) { console.warn('[ThreeRenderer] skin colour failed', e); } }   // THE LOOK COLOURS
                     for (var j = 1; j < layers.length; j++) {
                         var b = layers[j][1], cut = layers[j][2]; if (!imgs[j] || !b) continue;
+                        if (layers[j].kind && TT[layers[j].kind]) {   // THE LOOK COLOURS: the irises / brows / lashes in the picked colour
+                            var tl = null; try { tl = tintLayer(imgs[j], layers[j].kind, TT[layers[j].kind], layers.iris); } catch (e) { console.warn('[ThreeRenderer] look colour failed', e); }
+                            if (tl) { x.drawImage(tl, b[0], b[1], b[2], b[3]); continue; }
+                        }
                         if (cut) {   // THE CHEST: the fixed layer without its painted band (draw round the rect)
                             x.save(); x.beginPath(); x.rect(0, 0, px, px); x.rect(cut[0], cut[1] + cut[3], cut[2], -cut[3]); x.clip('evenodd');
                             x.drawImage(imgs[j], b[0], b[1], b[2], b[3]); x.restore();
@@ -56262,6 +56268,53 @@ const ThreeRenderer = (function () {
                 D[o + 2] = D[o + 2] * (1 - a) + Math.min(255, cb * f) * a;
             }
             x.putImageData(img, bx, by);
+        }
+        /* THE LOOK COLOURS (2026-11-03, mondo: "why can i not just pick a skin color under the skin tab? ... Everything that can
+           possibly have one needs a tint/color picker"). SKIN: every pixel of the skin sheet times (picked / the torso's average), per
+           channel, so the picked colour becomes the skin's average and its pores, freckles, veins and lips keep their contrast. */
+        function tintSheet(x, px, color, sample, keep) {
+            var kept = (keep || []).map(function (q) { var k0 = px / 1024; return [q.map(function (v) { return Math.round(v * k0); }), x.getImageData(Math.round(q[0] * k0), Math.round(q[1] * k0), Math.round(q[2] * k0), Math.round(q[3] * k0))]; });
+            var img = x.getImageData(0, 0, px, px), D = img.data, k = px / 1024, S = sample || [200, 150, 360, 300];
+            var sx = Math.floor(S[0] * k), sy = Math.floor(S[1] * k), sw = Math.floor(S[2] * k), sh = Math.floor(S[3] * k), r = 0, g = 0, bl = 0, n = 0;
+            for (var yy = sy; yy < sy + sh; yy += 2) for (var xx = sx; xx < sx + sw; xx += 2) { var o = (yy * px + xx) * 4; r += D[o]; g += D[o + 1]; bl += D[o + 2]; n++; }
+            if (!n) return;
+            var hex = parseInt(String(color).slice(1), 16);
+            var fr = ((hex >> 16) & 255) / Math.max(1, r / n), fg = ((hex >> 8) & 255) / Math.max(1, g / n), fb = (hex & 255) / Math.max(1, bl / n);
+            for (var i = 0, L = D.length; i < L; i += 4) {
+                var R = D[i] * fr, G = D[i + 1] * fg, B = D[i + 2] * fb;
+                D[i] = R > 255 ? 255 : R; D[i + 1] = G > 255 ? 255 : G; D[i + 2] = B > 255 ? 255 : B;
+            }
+            x.putImageData(img, 0, 0);
+            kept.forEach(function (q) { x.putImageData(q[1], q[0][0], q[0][1]); });
+        }
+        /* THE LOOK COLOURS: a brows / lashes / eyes picture recoloured on its own canvas. Brows + lashes: every hair takes the picked
+           colour at its own brightness against the picture's average (alpha kept). Eyes: only the two irises (sprites.js EW_MH_IRIS,
+           feathered rims), the pupil kept dark, the whites untouched. */
+        function tintLayer(img, kind, color, iris) {
+            var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
+            var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+            var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+            var lum = function (o) { return D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114; };
+            var wOf = function (px, py) {   // 1 inside an iris, 0 outside, a 1 px soft rim
+                if (kind !== 'eyes') return D[(py * w + px) * 4 + 3] > 0 ? 1 : 0;
+                var best = 0, C = (iris && iris.centres) || [], R = (iris && iris.r) || 3.8;
+                for (var q = 0; q < C.length; q++) { var d = Math.hypot(px + 0.5 - C[q][0], py + 0.5 - C[q][1]); best = Math.max(best, Math.max(0, Math.min(1, R + 0.5 - d))); }
+                return best;
+            };
+            var W = new Float32Array(w * hh), m = 0, mw = 0, i, xx, yy;
+            for (yy = 0; yy < hh; yy++) for (xx = 0; xx < w; xx++) { i = yy * w + xx; W[i] = wOf(xx, yy); if (W[i] > 0.5) { var a = kind === 'eyes' ? 1 : D[i * 4 + 3] / 255; m += lum(i * 4) * a; mw += a; } }
+            if (!mw) return null;
+            m = Math.max(6, m / mw);
+            for (i = 0; i < w * hh; i++) {
+                var wt = W[i]; if (!wt) continue;
+                var o = i * 4, f = lum(o) / m;
+                f = kind === 'eyes' ? Math.min(1.6, f) : Math.max(0.7, Math.min(1.3, 1 + 0.5 * (f - 1)));   // (an iris: the pupil stays dark; a hair: half its contrast, so it reads as the picked colour)
+                D[o] = D[o] * (1 - wt) + Math.min(255, cr * f) * wt;
+                D[o + 1] = D[o + 1] * (1 - wt) + Math.min(255, cg * f) * wt;
+                D[o + 2] = D[o + 2] * (1 - wt) + Math.min(255, cb * f) * wt;
+            }
+            x.putImageData(im, 0, 0);
+            return c;
         }
         function paintSkin(part, a, preview) {
             if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face
