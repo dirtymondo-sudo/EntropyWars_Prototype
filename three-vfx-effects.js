@@ -16424,57 +16424,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* ── FLESH MOUND — a mass of living meat erupts from the tile, watches,
-       and sinks back under. Necromancer / zombie / unholy ground spells. ── */
+       and sinks back under. Necromancer / zombie / unholy ground spells.
+       THE REAL MOUND (2026-11-03, mondo: "replace the ones with confirmed stand ins"): a heap of the Halloween pack's
+       severed parts (THE SEVERED PARTS' _bpPiece: meat, guts, hearts, heads, a few limbs down the flank), the same pieces
+       the _hzFleshMound horizon heaps. The textured sphere lobes, sphere eyes and cone fangs are gone; a piece still
+       streaming (or the pack off) is simply not drawn (NO STAND-INS). ── */
     function _sigFleshMound3D(tx, ty, opts) {
         opts = opts || {};
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var scale = opts.scale != null ? opts.scale : 1;
-        var R = ts * 0.5 * scale;
+        var R = ts * 0.5 * scale, H = R * 0.8;
         var g = new THREE.Group();
         g.position.set(wp.x, wp.y, wp.z);
-        var fleshTexes = ['flesh.png', 'skin.png', 'flesh_2.png', 'flesh_3.png'];
-        var lobes = [];
-        for (var i = 0; i < 5; i++) {
-            var lm = new THREE.MeshBasicMaterial({
-                map: _sigTerrainTex(fleshTexes[i % fleshTexes.length], 2, 2),
-                color: new THREE.Color(opts.tint != null ? opts.tint : 0xb98a8a),
-                transparent: true, opacity: 0, depthWrite: true,
-            });
-            var lr = R * (0.45 + (i * 37 % 10) * 0.05);
-            var lobe = new THREE.Mesh(new THREE.SphereGeometry(lr, 9, 7), lm);
-            var a = i * 2.4, d = (i % 3) * R * 0.3;
-            lobe.position.set(Math.cos(a) * d, lr * 0.35, Math.sin(a) * d);
-            lobe.scale.y = 0.6;
-            g.add(lobe);
-            lobes.push({ mesh: lobe, mat: lm, phase: i * 1.7 });
+        var LUMP = ['meat', 'guts', 'meat', 'guts', 'heart', 'head', 'skull', 'meat', 'guts', 'heart'];
+        var n = Math.round(16 * scale * scale), pcs = [];
+        for (var i = 0; i < n; i++) {
+            var limb = (i % 7) === 6, key = limb ? (Math.random() < 0.5 ? 'arm' : 'leg') : LUMP[(Math.random() * LUMP.length) | 0];
+            var P = _bpPiece(key, ts, { size: (_BP_SIZE[key] || 0.25) * (limb ? 0.9 : 1.3 + Math.random() * 0.5) * Math.min(1.4, scale) });
+            if (!P) continue;
+            var r = R * Math.sqrt(Math.random()) * (limb ? 0.75 : 1), a = Math.random() * Math.PI * 2;
+            P.position.set(Math.cos(a) * r, Math.max(0, 1 - (r / R) * (r / R)) * H * (0.7 + Math.random() * 0.3), Math.sin(a) * r);
+            if (limb) { P.rotation.y = a + (Math.random() - 0.5) * 0.8; P.userData.bp.inner.rotation.z = Math.PI / 2 + (Math.random() - 0.5) * 0.4; }
+            else P.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28);
+            _bpFade(P, 0);
+            g.add(P);
+            pcs.push({ P: P, phase: i * 1.7, y0: P.position.y });
         }
-        var eyes = [];
-        for (var e = 0; e < 4; e++) {
-            var em = _sigMat(e % 2 ? 0xffd040 : 0x8fff70);
-            var ea = e * 1.6 + 0.5;
-            var eye = new THREE.Mesh(new THREE.SphereGeometry(R * 0.09, 6, 5), em);
-            eye.position.set(Math.cos(ea) * R * 0.6, R * (0.4 + (e % 2) * 0.2), Math.sin(ea) * R * 0.6);
-            eye.renderOrder = 160;
-            g.add(eye);
-            eyes.push(em);
-        }
-        var toothMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex('enamel.png', 1, 1), color: new THREE.Color(0xe8dfc8),
-            transparent: true, opacity: 0, depthWrite: true,
-        });
-        for (var f = 0; f < 5; f++) {
-            var fa = f * 1.3 + 0.9;
-            var fang = new THREE.Mesh(new THREE.ConeGeometry(R * 0.07, R * 0.3, 5), toothMat);
-            fang.position.set(Math.cos(fa) * R * 0.55, R * 0.35, Math.sin(fa) * R * 0.55);
-            fang.rotation.z = Math.cos(fa) * 0.6;
-            fang.rotation.x = -Math.sin(fa) * 0.6;
-            g.add(fang);
-        }
+        if (!pcs.length) return null;
 
         var riseMs = 380, holdMs = opts.holdMs != null ? opts.holdMs : 1100, sinkMs = 450;
         var totalMs = riseMs + holdMs + sinkMs;
-        _sigRunOwned(g, totalMs, function (el) {
+        return _sigRunOwned(g, totalMs, function (el) {
             var op, sy;
             if (el < riseMs) {
                 var t0 = _sigEaseOutCubic(el / riseMs);
@@ -16486,15 +16467,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 op = 1 - t2; sy = 1 - 0.9 * _sigEaseInCubic(t2);
             }
             g.scale.y = sy;
-            for (var i = 0; i < lobes.length; i++) {
-                var L = lobes[i];
-                var breathe = 1 + 0.07 * Math.sin(el * 0.006 + L.phase);
-                L.mesh.scale.x = breathe; L.mesh.scale.z = breathe;
-                L.mat.opacity = op;
-            }
-            toothMat.opacity = op;
-            for (var e2 = 0; e2 < eyes.length; e2++) {
-                eyes[e2].opacity = op * (0.7 + 0.3 * Math.sin(el * 0.01 + e2 * 2));
+            for (var i = 0; i < pcs.length; i++) {
+                var c = pcs[i];
+                c.P.position.y = c.y0 + ts * 0.03 * Math.sin(el * 0.006 + c.phase);   /* the heap heaves */
+                _bpFade(c.P, op);
             }
         });
     }
@@ -26685,8 +26661,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var B = _sigDoorRig3D(tx, ty, { lay: true, face: 'down', lift: lift, scale: 1.05, noWedge: true });
         var ts = B.ts, wp = _worldPos(tx, ty);
         var g = new THREE.Group(); g.add(B.group);
-        var body = _doorBody(ts, 0x101418); body.visible = false; g.add(body);
-        var visor = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.3, ts * 0.06, ts * 0.12), new THREE.MeshBasicMaterial({ color: _DOOR_FX.teal, transparent: true, opacity: 0.9 })); visor.position.set(0, ts * 0.78, ts * 0.16); body.add(visor);
+        /* THE REAL AGENT (2026-11-03, mondo: "replace the ones with confirmed stand ins"): the body that drops out of the door is
+           a double of the caster's OWN model on its jump clip (the engine has faded the real one out for the fall and fades it
+           back on the landing), not the dark cylinder + teal box visor; no double while its file streams (NO STAND-INS) */
+        var cu = _bpUnitAt(tx, ty);
+        if (!cu) try { for (var ci = 0; ci < state.units.length; ci++) if (state.units[ci] && state.units[ci].id === state._blitzActiveUnitId) { cu = state.units[ci]; break; } } catch (e) { cu = null; }
+        var body = cu ? _finRealBody(cu, ts, { feet: true, copy: true, noHide: true, yaw: 0, slot: 'jump' }) : null;
+        if (!body) body = _finNoBody(ts);
+        body.visible = false; body.position.y = 0; body.rotation.y = o.yaw || 0;
+        g.add(body);
         var dropY0 = lift * ts * 0.95, total = 1400, landed = false;
         B.setRise(0.02); B.setOpen(0); B.setLight(0); B.setFade(0);
         return _sigRunOwned(g, total, function (el) {
@@ -28287,7 +28270,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var door = new THREE.Group(); door.rotation.y = Math.atan2(ln.ux, ln.uz); door.position.set(-ln.ux * ts * 0.3, 0, -ln.uz * ts * 0.3); F.g.add(door);
         var dark = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 1.15), _finBasic(0x05030a, { opacity: 0, side: THREE.DoubleSide })); dark.position.y = ts * 0.575; door.add(dark);
         var rim = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.78, ts * 1.23), _finBasic(_NRV.violet, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); rim.position.set(0, ts * 0.615, -0.5); door.add(rim);
-        var robe = _nrvRobe(ts); robe.position.set(-ln.ux * ts * 0.3, 0, -ln.uz * ts * 0.3); robe.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(robe); _nrvFadeRobe(robe, 0);
+        /* THE REAL MEMBER (2026-11-03, mondo: "replace the ones with confirmed stand ins"): the member who steps out is the
+           game's own cult member rig (sprites.js DOOR_CAST_MODELS.cult1, the summon's own model) walking, not the cone + ball
+           robe; nobody steps out while the file streams (NO STAND-INS) */
+        var cultDef = (typeof getCastModel === 'function') ? getCastModel('cult1') : null;
+        var robe = cultDef ? _finRealBody(null, ts, { def: cultDef, feet: true, yaw: 0, slot: 'walk' }) : null;
+        if (robe) { robe.position.set(-ln.ux * ts * 0.3, 0, -ln.uz * ts * 0.3); robe.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(robe); robe.material.opacity = 0; }
         var candles = [];
         for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3 + 0.5, cn = _nrvCandle(ts); cn.position.set(Math.cos(a) * ts * 0.7, -ts * 0.45, Math.sin(a) * ts * 0.7); F.g.add(cn); candles.push({ g: cn, t0: 40 + i * 60 }); }
         var openMs = 260, stepMs = 640, holdMs = 500, closeMs = 300, total = openMs + stepMs + holdMs + closeMs + 200;
@@ -28295,8 +28283,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var open = el < openMs ? _sigEaseOutCubic(el / openMs) : (el < openMs + stepMs + holdMs ? 1 : 1 - _sigEaseInCubic(_sigClamp01((el - openMs - stepMs - holdMs) / closeMs)));
             door.scale.x = Math.max(0.001, open); dark.material.opacity = 0.95 * Math.min(1, el / 80); rim.material.opacity = 0.7 * open * (0.7 + 0.3 * Math.sin(el * 0.01));
             var st = _sigEaseOutCubic(_sigClamp01((el - openMs) / stepMs));
-            robe.position.set(-ln.ux * ts * 0.3 + ln.ux * ts * 0.62 * st, 0, -ln.uz * ts * 0.3 + ln.uz * ts * 0.62 * st);
-            var rf = st * (1 - _sigClamp01((el - openMs - stepMs - 200) / 300)); _nrvFadeRobe(robe, rf);
+            if (robe) {
+                robe.position.set(-ln.ux * ts * 0.3 + ln.ux * ts * 0.62 * st, 0, -ln.uz * ts * 0.3 + ln.uz * ts * 0.62 * st);
+                robe.material.opacity = Math.min(1, st * 3) * (1 - _sigClamp01((el - openMs - stepMs - 200) / 300));
+            }
             var fade = 1 - _sigClamp01((el - (total - 300)) / 300);
             for (var c = 0; c < candles.length; c++) { var C = candles[c], kk = _sigClamp01((el - C.t0) / 240); C.g.position.y = -ts * 0.45 + ts * 0.45 * _sigEaseOutBack(kk); C.g.userData.flame.material.opacity = kk * fade * (0.7 + 0.3 * Math.sin(el * 0.02 + c)); _nrvCandleFade(C.g, fade); }
         });
@@ -30943,7 +30933,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             set opacity(v) { op = Math.max(0, Math.min(1, +v || 0)); a.fade(op); }
         };
         holder.userData.actor = a; holder.userData.face = face;   // face.rotation.y = 0: the holder's own yaw is the heading
-        _finLive.push({ holder: holder, actor: a, uid: (o.race || o.def || !unit) ? null : unit.id, victim: !o.caster && !o.race && !o.def && !o.copy, born: performance.now() });
+        _finLive.push({ holder: holder, actor: a, uid: (o.race || o.def || o.noHide || !unit) ? null : unit.id, victim: !o.caster && !o.race && !o.def && !o.copy, born: performance.now() });
         if (!_finLiveOn) { _finLiveOn = true; _fxSchedule(_finLiveTick); }
         return holder;
     }

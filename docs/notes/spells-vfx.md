@@ -2963,3 +2963,14 @@ removed from the game, and those rods should have shown up in the model list as 
   spell / trap gold (`_SIG_GOLD_TEX`, `_getTeslaTex`, the deployables) is R2 `Assets/Sprites/terrain/gilt.png` = ambientCG Metal007
   (CC0) regraded to a gold ramp at 128 px (source + candidates in project files gold-texture/). `_SIG_GILT` is white now (the sheet
   is already gold); TERRAIN_BASE_TINT keeps gold_2 / gold_3 a touch deeper. Screenshot: gold-texture/excessive_machine_ingame.jpg.
+- THE ULTIMATE STAND-INS (2026-11-03, mondo: "replace the ones with confirmed stand ins", after the ultimate props audit doc
+  https://claude.ai/artifact/KFwXoLmigSgHjr2sdkE8ZB). Round 1, models already in the game:
+  - The Gathering `_sigGathering3D`: the member stepping out of the door is the cult member rig (getCastModel('cult1'), the
+    summon's own) on its walk clip via `_finRealBody`; the `_nrvRobe` cone + ball is gone from it. Nothing while it streams.
+  - Raise the Dead / Plaguefield `_sigFleshMound3D`: a heap of the Halloween pack severed parts (`_bpPiece` meat, guts, hearts,
+    heads, skull, a few limbs), like the `_hzFleshMound` horizon; the sphere lobes, sphere eyes and cone fangs are gone.
+  - Drop In `_sigDoorDropIn3D`: the body out of the door is a double of the caster's own model on its jump clip
+    (`_finRealBody(unit, ts, { copy, noHide })`; `noHide` = new opt, the engine already fades the real one for the fall);
+    the `_doorBody` cylinder + box visor is gone from it (`_doorBody` still serves the old door recipes).
+  Round 2 (new Meshy pieces, concepts in project files meshy/ultimates/, waiting on his picks): Lockdown barricade, Stadium Show
+  truss tower, Flat Earth disc, Weigh the Heart scales + feather (heart = Halloween pack Body_part_04).
