@@ -51,7 +51,7 @@ const looks = get('EW_MH_LOOKS') || {};
 const CATS = {
   hair: ids(get('EW_HAIR_STYLES')), wear: ids(get('EW_MH_WEAR')), outer: ids(get('EW_OUTER_STYLES')), feet: ids(get('EW_FEET_STYLES')),
   cape: ids(get('EW_CAPE_STYLES')), wings: ids(get('EW_WINGS_STYLES')), idle: ids(get('EW_IDLE_POSES')),
-  mhSkin: ids(looks.skins), mhEyes: ids(looks.eyes), mhBrows: ids(looks.brows), mhLashes: ids(looks.lashes),
+  mhSkin: ids(looks.skins), mhEyes: new Set([...ids(looks.eyes), ...ids(get('EW_MH_EYE_PACK'))]), mhBrows: ids(looks.brows), mhLashes: ids(looks.lashes),
 };
 const files = args.filter(x => !x.startsWith('--'));
 if (files.length !== 1) { console.error('give ONE export (the newest): it holds the whole list'); process.exit(1); }
