@@ -37146,6 +37146,10 @@ const ThreeRenderer = (function () {
         _hzAt(g, _hzBox(ts * 1.9, ts * 0.7, ts * 0.62, ts, stone(0xd6c6a4)), 0, H + ts * 0.35, 0);        // T head
         _hzAt(g, _hzBox(ts * 0.16, H * 0.5, ts * 0.06, ts, stone(0xb8a678)), ts * 0.2, H * 0.55, ts * 0.26); // relief arm
         _hzAt(g, _hzBox(ts * 0.4, ts * 0.14, ts * 0.06, ts, stone(0xb8a678)), ts * 0.12, H * 0.32, ts * 0.26); // relief hand
+        /* THE MESHY DECOR (mondo 11-03: "use the one with hands on it"): the Meshy T-pillar (the carved arms and hands) stands in the
+           same box. The code pieces hide but stay in the group, so the monument fit above measures the same 1.9 x 3.8 tiles and the
+           T-head stays flush with the 2-voxel stamp; the model is stretched into that box exactly. */
+        _hqDecorWear('t_pillar', ts, g, { box: [-0.95, 0, -0.31, 0.95, 3.8, 0.31], fit: 'stretch' });
         return g;
     }
 
@@ -59684,19 +59688,19 @@ const ThreeRenderer = (function () {
        Kill switch: window.EW_NO_DECOR_GLB = true (every proc draws its code shape again). */
     var _HQ_DECOR_BASE = 'https://cdn.entropywars.net/Assets/decor/';
     var _HQ_DECOR_GLB = {
-        anemone: 'anemone.glb', armour_stand: 'armour_stand.glb', armour_stand_post: 'armour_stand_post.glb', autopsy_table: 'autopsy_table.glb',
+        anemone: 'anemone.glb', armour_plinth: 'armour_plinth.glb', armour_stand: 'armour_stand.glb', autopsy_table: 'autopsy_table.glb',
         banner: 'banner.glb', barber_chair: 'barber_chair.glb', barber_pole: 'barber_pole.glb', boiler: 'boiler.glb',
         card_catalogue: 'card_catalogue.glb', carousel: 'carousel.glb', carousel_horse: 'carousel_horse.glb', cave_torch: 'cave_torch.glb',
         conveyor: 'conveyor.glb', departures_board: 'departures_board.glb', directory_board: 'directory_board.glb', disc_cluster: 'disc_cluster.glb',
         door_furnace: 'door_furnace.glb', dream_eye: 'dream_eye.glb', eeg_rack: 'eeg_rack.glb', egg_chair: 'egg_chair.glb',
         exec_desk: 'exec_desk.glb', ferris_gondola: 'ferris_gondola.glb', ferris_wheel: 'ferris_wheel.glb', ferris_wheel_wheel: 'ferris_wheel_wheel.glb',
-        flood_mast: 'flood_mast.glb', fountain: 'fountain.glb', giant_clam: 'giant_clam.glb', high_striker: 'high_striker.glb',
+        flood_mast: 'flood_mast.glb', high_striker_hammer: 'high_striker_hammer.glb', fountain: 'fountain.glb', giant_clam: 'giant_clam.glb', high_striker: 'high_striker.glb',
         laminator: 'laminator.glb', laundry_cart: 'laundry_cart.glb', lifeguard_chair: 'lifeguard_chair.glb', lighthouse: 'lighthouse.glb',
         meat_hook: 'meat_hook.glb', mushroom_lamp: 'mushroom_lamp.glb', music_box: 'music_box.glb', music_box_dancer: 'music_box_dancer.glb',
         nightmare_bloom: 'nightmare_bloom.glb', notice_board: 'notice_board.glb', pool_lounger: 'pool_lounger.glb', popcorn_cart: 'popcorn_cart.glb',
         pot_rack: 'pot_rack.glb', punch_clock: 'punch_clock.glb', robot_arm: 'robot_arm.glb', rocking_chair: 'rocking_chair.glb',
         round_table: 'round_table.glb', saucer_pendant: 'saucer_pendant.glb', school_desk: 'school_desk.glb', scoreboard: 'scoreboard.glb',
-        sea_buoy: 'sea_buoy.glb', sea_vent: 'sea_vent.glb', server_rack: 'server_rack.glb', skiff: 'skiff.glb',
+        sea_buoy: 'sea_buoy.glb', sea_vent: 'sea_vent.glb', skiff: 'skiff.glb',
         slot_machine: 'slot_machine.glb', space_divider: 'space_divider.glb', sputnik_lamp: 'sputnik_lamp.glb', star_projector: 'star_projector.glb',
         stocks: 'stocks.glb', stone_altar: 'stone_altar.glb', t_pillar: 't_pillar.glb', tanker_desk: 'tanker_desk.glb',
         ticket_booth: 'ticket_booth.glb', trophy_case: 'trophy_case.glb', trophy_cup: 'trophy_cup.glb', tulip_chair: 'tulip_chair.glb',
@@ -66532,7 +66536,6 @@ const ThreeRenderer = (function () {
             var base = _hqBox(W + 0.02, 0.06, D, frame); base.position.set(0, 0.03 * U, (D / 2) * U); g.add(base);
             /* the cable loom out the top, into the tray */
             var loom = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.5 * U, 8), bezel); loom.rotation.x = Math.PI / 2; loom.position.set(0.2 * U, (H + 0.02) * U, 0.3 * U); g.add(loom);
-            _hqDecorWear('server_rack', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* the door's keypad: twelve keys, a green LED, and the sticky note with the code on it */
@@ -67809,8 +67812,11 @@ const ThreeRenderer = (function () {
             var plume = new THREE.Mesh(new THREE.ConeGeometry(0.05 * U, 0.3 * U, 6), red); plume.position.set(0, 2.1 * U, -0.02 * U); g.add(plume);
             var shield = _hqBox(0.42, 0.55, 0.05, red); shield.position.set(-0.38 * U, 1.25 * U, 0.12 * U); shield.rotation.y = 0.3; g.add(shield);
             var boss = new THREE.Mesh(new THREE.CircleGeometry(0.12 * U, 16), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); boss.position.set(-0.36 * U, 1.25 * U, 0.16 * U); boss.rotation.y = 0.3; g.add(boss);
-            var arm0 = g.children.slice(), armBox = [-0.34, 0, -0.34, 0.34, 2.25, 0.34];   // THE MESHY DECOR (2026-11-03): the Meshy stand inside the Meshy suit (two pieces, mondo)
-            _hqDecorWear('armour_stand_post', U, g, { hide: arm0, box: armBox, h: 1.5, fit: 'height' }); _hqDecorWear('armour_stand', U, g, { hide: arm0, box: armBox, h: 1.95, fit: 'height' });
+            /* THE MESHY DECOR (2026-11-03): two pieces (mondo). The stand is a square oak plinth with a thin iron rod (redone 11-03: the old
+               T-post's crossbar stuck out through the suit); the suit stands ON the plinth and the rod runs up between its legs into the body. */
+            var arm0 = g.children.slice(), armBox = [-0.34, 0, -0.34, 0.34, 2.25, 0.34];
+            if (_hqDecorWear('armour_plinth', U, g, { hide: arm0, box: [-0.4, 0, -0.4, 0.4, 1.2, 0.4], fit: 'stretch' }))
+                _hqDecorWear('armour_stand', U, g, { hide: arm0, box: armBox, h: 1.95, fit: 'height', at: [0, 0.2, 0] });   // the plinth's slab is 0.2 m
             return g;
         },
         sword_stone: function (U) {
@@ -68898,7 +68904,8 @@ const ThreeRenderer = (function () {
             var tx = _hzTextTex('hq_striker', ['WEAKLING', 'RECRUIT', 'OPERATIVE', 'KEYHOLDER', 'GATEKEEPER', 'THE DIRECTOR'], { w: 128, h: 512, color: '#ffe8a0', pad: 0.05 });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 2.6 * U, 0.065 * U); g.add(m); }
             var puck = _hqBox(0.3, 0.08, 0.06, _hqBasic(0xff3030)); puck.position.set(0, 0.6 * U, 0.08 * U); g.add(puck);
-            _hqDecorWear('high_striker', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
+            if (_hqDecorWear('high_striker', U, g, { hide: g.children.filter(function (c) { return c !== mallet && c !== handle; }), box: [-0.6, 0, -0.4, 0.6, 4.85, 0.4], fit: 'height' }))   // THE MESHY DECOR (2026-11-03)
+                _hqDecorWear('high_striker_hammer', U, g, { hide: [mallet, handle], box: [-0.15, 0, 0.45, 0.85, 0.2, 0.85], fit: 'width', turn: -20 });   // the mallet: its own piece, lying on the floor in front (mondo 11-03: hammer and striker separate)
             return g;
         },
         /* ROOM 1893: the ticket booth — a kiosk with a window and a lit ADMIT ONE */
@@ -77513,7 +77520,7 @@ const ThreeRenderer = (function () {
                 var ring = new THREE.Mesh(new THREE.TorusGeometry(rr * U, 0.02 * U, 8, 24), white);
                 ring.position.set((-Wd / 2 + 0.22 + c * (Wd - 0.44) / (cols - 1)) * U, (0.24 + r * (Hd - 0.48) / (rows - 1)) * U, 0); g.add(ring);
             }
-            _hqDecorWear('space_divider', U, g, { repeat: 2 });   // THE MESHY DECOR (2026-11-03)
+            _hqDecorWear('space_divider', U, g, {});   // THE MESHY DECOR (2026-11-03): ONE folding screen (mondo 11-03: not two side by side)
             return g;
         },
         /* THE POD BED: a white trough, a teal glass dome, a blue strip inside; the head is −Z */
