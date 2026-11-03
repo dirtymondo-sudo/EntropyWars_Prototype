@@ -282,7 +282,7 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
 | - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |
 
-Fine as they are (left alone): craters rim; gate/waterspout landmarks; (city + town rims and the tower weenie: round 3, mondo wants them textured / made of pack houses; hills + dunes rims deleted 11-03; the stairway landmark has one-square treads 11-03); monolith (thicker, no purple rune, 11-03),
+Fine as they are (left alone): gate/waterspout landmarks; (the tower weenie: round 3; hills + dunes rims deleted 11-03; trees / town / city / bergs / ruins / pyramids / craters rims deleted 11-03 (nothing drew them; the town's pack houses stand in the site rooms); the stairway landmark has one-square treads 11-03); monolith (thicker, no purple rune, 11-03),
 ziggurat (top is a cube, 11-03), stairway (one-square treads, 11-03), tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
 void solids, girder knot, gold gate, holo pieces, exit sign, fluorescent tube, sacred rings, orbs, lenticular cloud, inner
 sun; box-room near settings; §10C/§10D procs. Chess pieces and the Göbekli T-pillar already wear models.

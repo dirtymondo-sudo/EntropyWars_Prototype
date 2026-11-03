@@ -41009,8 +41009,8 @@ const ThreeRenderer = (function () {
     //      `fogTop`, band = top) — the ground's far edge and the sky's haze
     //      are then one colour, so there is no rim at any zoom.
     //    • THE RIM — silhouettes on the ground 14–40 tiles out that close the
-    //      horizon (`rim`: peaks / hills / dunes / trees / town / city /
-    //      spires / bergs / ruins / pyramids / craters — _WD_RIM), fogged
+    //      horizon (`rim`: peaks / spires — _WD_RIM; the rest were deleted
+    //      2026-11-03, nothing drew them), fogged
     //      like the ground. Skipped under EW_PERF_LOW.
     //    • THE WALL — `kind: 'cavern'` + `wall` = a rock cylinder round the
     //      whole world rising into the haze (Hollow Earth, Agartha, Hell).
@@ -41151,13 +41151,6 @@ const ThreeRenderer = (function () {
             fn(K.CX + Math.cos(a) * r, K.CZ + Math.sin(a) * r, a, i, r);
         }
     }
-    /* THE TOWN RIM's PACK HOUSES (2026-11-03): whole houses cut from Elbolilloduro packs (CC0) by bake-pack-pieces.py, R2 Assets/misc/ —
-       `m` = the length the house is fitted to (its longest side, metres: its real size), `sink` = metres under the ground (the abandoned
-       house's basement). Every file's front (door / porch) is +Z. */
-    var _HZ_TOWN_MODELS = {
-        trailers: { m: 15.1, files: ['ebd_trailerscene_trailer_0.glb', 'ebd_trailerscene_trailer_1.glb', 'ebd_trailerscene_trailer_2.glb', 'ebd_trailerscene_trailer_3.glb', 'ebd_trailerscene_trailer_4.glb', 'ebd_trailerscene_trailer_5.glb'] },
-        abandoned: { m: 36.3, sink: 1.0, files: ['ebd_abandonedhouse_house.glb'] }
-    };
     /* THE RIM — each builder: (K, spec, c) with c = { y: the ground level, shore, R, sea } */
     var _WD_RIM = {
         /* a mountain range in ranks; `mesa` = flat tops (the desert); `snow` = a cap sheet */
@@ -41179,60 +41172,6 @@ const ThreeRenderer = (function () {
         },
         /* NO SWELLS (mondo 2026-11-03: "no map should be using the dune swells or hill swells, they look bad" — hills and dunes
            are made with the map editor by raising the height): the squashed-sphere `hills` and `dunes` rims are gone */
-        /* a tree line — the board's own foliage models (_nrTree; the procedural
-           stand-in swaps out as each OBJ lands and joins the haze through
-           K._wdFog, 2026-09-14). `h` = tiles tall (else 1.5 × the old `s`). */
-        trees: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, kinds = s.kinds || ['tree', 'tree_2', 'tree_3'], h = s.h || (s.s || 1.6) * 1.5;
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.16), Math.round((s.n || 44) * (1 + k * 0.2)), function (x, z) {
-                if (rng() > (s.p == null ? 0.85 : s.p)) return;
-                var t = _nrTree(K, kinds[(rng() * kinds.length) | 0], { h: h });
-                t.position.set(x, c.y - 0.05 * ts, z); t.rotation.y = rng() * 6; K.add(t);
-            });
-        },
-        /* houses and stores in the far distance. `models` (THE TOWN RIM's PACK HOUSES, 2026-11-03 — mondo: "are there no houses in the
-           asset packs? and again i want things to be individually placed with detail and care, not a cluster"; he OK'd the split) = one
-           whole pack house per stop from _HZ_TOWN_MODELS, at its real size, its front (the door) turned to the board */
-        town: function (K, s, c) {
-            var rng = K.rng, TMd = s.models && _HZ_TOWN_MODELS[s.models];
-            _wdRing(K, s.d || 18, s.n || 14, function (x, z) {
-                if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                if (TMd) {
-                    var file = TMd.files[(rng() * TMd.files.length) | 0];
-                    var hm = _hzMiscKit('town_house', { url: _R2_MISC + file, metres: TMd.m * (0.96 + rng() * 0.08), fit: 'span', rng: rng, low: 'skip', lift: TMd.lift || 0.1,
-                        sink: TMd.sink ? TMd.sink / 1.75 : 0, onDone: function (grp) { _nrInjectWorld(K, grp); } });
-                    hm.position.set(x, c.y - 0.02 * K.ts, z); hm.rotation.y = K.face(x, z) + (rng() - 0.5) * 0.5; K.add(hm);
-                    return;
-                }
-                var sc = 0.9 + rng() * 0.8;
-                var h = _nrHouse(K, x, z, { w: (s.w || 3) * sc, d: (s.dd || 2.4) * sc, h: (s.h || 1.6) * sc, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, window: s.window, ry: rng() < 0.5 ? K.face(x, z) + (rng() - 0.5) * 0.5 : rng() * 6.3, chimney: rng() < 0.5 });
-                if (h) h.position.y = c.y - 0.02 * K.ts;
-            });
-        },
-        /* a skyline: the map-builder's buildings (building_1..8, _nrSpriteBuilding)
-           stacked to `h` tiles, with window lights; `proc: true` = the old plain
-           boxes; `keys` = another building set (2026-09-14) */
-        city: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, pal = s.lights || [0x35e0ff, 0xff2f8a, 0xffd36a], keys = s.keys || _NR_BUILDING_KEYS;
-            var spr = s.proc !== true && typeof OBJECT_SPRITES !== 'undefined' && !!OBJECT_SPRITES[keys[0]];
-            var mat = spr ? null : K.mat(s.tex || 'urban_wall', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 18) * (1 + k * 0.35), Math.round((s.n || 18) * (1 + k * 0.3)), function (x, z) {
-                if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                var w = ts * (2 + rng() * 2.5), d = ts * (2 + rng() * 2.5), h = ts * (s.h || 9) * (0.4 + rng() * 1.1);
-                if (spr) {
-                    var wT = 2 + rng() * 1.6, n = Math.max(1, Math.round(h / (wT * 0.85 * ts)));
-                    var b = _nrSpriteBuilding(K, keys[(rng() * keys.length) | 0], x, z, { w: wT, stack: n, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, lift: 0.3, yAbs: c.y - ts * 0.1, ry: ((rng() * 4) | 0) * Math.PI / 2 + (rng() - 0.5) * 0.35, wall: false, roofKit: s.lights !== false && n >= 3, beacon: pal[0] });
-                    w = d = wT * ts; if (b && b.userData.H) h = b.userData.H;
-                } else { var m = K.box(w, h, d, mat, 0.5); m.position.set(x, c.y + h / 2 - ts * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m)); }
-                var nl = s.lights === false ? 0 : 2 + (rng() * 3 | 0);
-                for (var l = 0; l < nl; l++) {
-                    var sp = _hzGlowSprite(ts * (0.6 + rng() * 0.8), pal[(rng() * pal.length) | 0], 0.45, 0.15, 0.05, 0.4 + rng());
-                    var ang = rng() * 6.3, rr = Math.max(w, d) * 0.55;
-                    sp.position.set(x + Math.cos(ang) * rr, c.y + h * (0.2 + rng() * 0.75), z + Math.sin(ang) * rr);
-                    K.add(sp); _wd.extras.push({ obj: sp, d: Math.hypot(x - K.CX, z - K.CZ) });
-                }
-            });
-        },
         /* stalagmites and rock spires — the floor of a cavern */
         spires: function (K, s, c) {
             var ts = K.ts, rng = K.rng;
@@ -41244,68 +41183,11 @@ const ThreeRenderer = (function () {
                 m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - ts * 0.25, z); K.add(m);
             });
         },
-        /* icebergs and pack ice in the sea: the ocean pack's rocks (mondo's upload, R2 Assets/oceanic/) in ice white, widened a little
-           (mondo 2026-11-03: "Icebergs - use the ocean pack rocks"); the white boxes and cones are gone — the pack off, no bergs */
-        bergs: function (K, s, c) {
-            if (!_oceanPackOn()) return;
-            var ts = K.ts, rng = K.rng, pick = _hzRockPick(s.color != null ? s.color : 0xd8e8f2, 0.22, null), ROCKS = ['Rock', 'Rock1', 'Rock2', 'Rock3', 'Rock6', 'Rock7'];
-            for (var k = 0; k < (s.ranks || 3); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.5), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
-                if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                var h = ts * (s.h || 3) * (0.4 + rng() * 1.2);
-                var m = _hzMiscKit('berg', { url: _oceanUrl(ROCKS[(rng() * ROCKS.length) | 0]), tiles: h / ts, fit: 'height', matPick: pick, rng: rng, low: 'skip',
-                    onDone: function (grp) { _nrInjectWorld(K, grp); } });
-                m.scale.set(1 + rng() * 0.9, 1, 1 + rng() * 0.9);
-                m.position.set(x, c.y - ts * 0.3, z); m.rotation.y = rng() * 6; K.add(m);
-            });
-        },
-        /* a ruined fort round the board: the Castle and Fort pack's ruined pieces (a 4-long wall, a 2-long wall, a hollow tower storey),
-           ONE piece per stop, each its own model on its own spot (mondo 2026-11-03: "ruins rim - ... they need to be individually placed,
-           so yes replace with the castle pack ruins"); the marble cylinders and boxes are gone. `h` = tiles tall (the pack's 2 m grid × k). */
-        ruins: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, url = _R2_MISC + 'Castles_and_Forts.glb#', PIECES = ['Wall_2x4_ruined', 'Wall_2x2_ruined', 'Tower_mid_hollow_ruined', 'Wall_2x4_ruined'];
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.45), Math.round((s.n || 14) * (1 + k * 0.3)), function (x, z) {
-                if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                var h = ts * (s.h || 4) * (0.4 + rng() * 0.8), node = PIECES[(rng() * PIECES.length) | 0];
-                var m = _hzMiscKit('castle_ruin', { url: url + node, tiles: h / ts, fit: 'height', lift: 0.3, rng: rng, low: 'skip', onDone: function (grp) { _nrInjectWorld(K, grp); } });
-                m.position.set(x, c.y - ts * 0.15, z); m.rotation.y = node === 'Tower_mid_hollow_ruined' ? rng() * 6 : K.face(x, z) + Math.PI / 2 + (rng() - 0.5) * 0.4; K.add(m);
-            });
-        },
-        /* the necropolis on the horizon */
-        pyramids: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'desert', s.color != null ? s.color : 0xd6c39a, { lift: 0.3 });
-            _wdRing(K, s.d || 32, s.n || 7, function (x, z) {
-                if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                var h = ts * (s.h || 14) * (0.5 + rng() * 0.9), r = h * 0.95;
-                var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrConeUV(geo, r, h, ts, 0.5);
-                var m = new THREE.Mesh(geo, mat); m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) + h / 2 - ts * 0.3, z); m.rotation.y = Math.PI / 4 + (rng() - 0.5) * 0.4; K.add(K.lit(m));
-            });
-        },
-        /* craters and low hills — a dead world's surface. THE CRATERS
-           (2026-09-16): on a `planet` world the field is CARVED into the
-           ground itself (_wdBuildPlanet reads the row's `craters`) and this
-           builder adds only the low hills between them; elsewhere a lathe
-           BOWL with a raised rim standing on the ground — never the old
-           torus (a ring lying flat is a mound, the "upside-down crater"). */
-        craters: function (K, s, c) {
-            var ts = K.ts, rng = K.rng;
-            if (!c.planet) {
-                var mat = K.mat(s.tex || 'moon', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
-                for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.55), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
-                    if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                    var r = ts * (s.r || 3) * (0.5 + rng() * 1.2);
-                    var m = new THREE.Mesh(_wdCraterLathe(r, r * 0.12, ts), mat); m.position.set(x, c.y, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
-                });
-            }
-        }   // (NO SWELLS, 2026-11-03: the low hills between the craters are gone)
+        /* THE RIMS OUT (2026-11-03, mondo: "Yes please delete the rim code since nothing is using it"): the trees, town, city, bergs,
+           ruins, pyramids and craters rims are gone — every board that wore one is a site arena (nothing round it); the town's pack
+           houses stand in the site rooms (DOOR_HQ.catalogue trailer_home_N / abandoned_house). Peaks + spires stay for the kept voxel
+           boards (Hell Δ · voxel, Göbekli Tepe Δ · voxel). */
     };
-    /* a crater standing on flat ground: the ejecta apron rises to a sharp rim,
-       the inner wall drops back to the floor (the ground itself) — read from
-       the board's camera by the shaded inner wall, not a bump */
-    function _wdCraterLathe(r, h, ts) {
-        var pts = [new THREE.Vector2(0.001, 0.01), new THREE.Vector2(r * 0.6, 0.01), new THREE.Vector2(r * 0.84, h * 0.7), new THREE.Vector2(r * 0.97, h), new THREE.Vector2(r * 1.1, h * 0.78), new THREE.Vector2(r * 1.5, h * 0.18), new THREE.Vector2(r * 1.9, 0)];
-        var geo = new THREE.LatheGeometry(pts, 28); geo.computeVertexNormals(); _nrUV(geo, Math.max(1, Math.round(Math.PI * 2 * r / ts / 1.5)), Math.max(1, r / ts / 1.5));
-        return geo;
-    }
     /* THE WALL — a cavern's rock round the whole world, fading up into the haze */
     function _wdBuildWall(K, w, o) {
         var ts = K.ts, r = (w.r || 32) * ts, h = (w.h || 36) * ts;

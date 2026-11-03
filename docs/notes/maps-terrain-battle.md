@@ -1346,6 +1346,11 @@ until he OKs Meshy concepts for it.
   search over hqFieldLattice cells). three-renderer.js _hqCaveTop: a prop past an open field's edge stands on THE OUTER GROUND
   (`_hq.outer.yAt`), never the edge height carried out. The house GLB is re-cut (bake-pack-pieces.py job option `cut`: 2.5 m of its
   3.5 m basement dropped) and sinks its last metre (`hover: -1`), so no stilts show on the outer ground's slope.
+- THE RIMS OUT (14:05, mondo: "Yes please delete the rim code since nothing is using it"): three-renderer.js _WD_RIM keeps only
+  `peaks` + `spires` (the kept voxel boards draw them: Hell Δ · voxel spires+peaks, Göbekli Tepe Δ · voxel peaks; checked in a VS CPU
+  match: Göbekli's world mats 10); trees / town / city / bergs / ruins / pyramids / craters builders, _HZ_TOWN_MODELS and
+  _wdCraterLathe deleted, and every data.js EW_MAP_META `rim` entry of those kinds (25 entries; an emptied `rim` key goes). The planet
+  world's carved craters (`world.craters`) are not the rim and stay. Asked him whether peaks + spires go too.
 
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these

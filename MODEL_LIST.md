@@ -27,7 +27,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
 "Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).
-Not in the count: the horizon. **65 of the 172 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
+Not in the count: the horizon. **61 of the 165 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
 monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.
 
 ## 2. Units — the playable races (sprites.js RACE_MODELS_3D)
@@ -1468,7 +1468,6 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| abandoned town rim (house) | `Assets/misc/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
 | alien | `Assets/misc/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ambulance | `Assets/misc/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1590,12 +1589,6 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | time_machine | `Assets/misc/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_barrel | `Assets/misc/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| trailers town rim (trailer_0) | `Assets/misc/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailers town rim (trailer_1) | `Assets/misc/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailers town rim (trailer_2) | `Assets/misc/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailers town rim (trailer_3) | `Assets/misc/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailers town rim (trailer_4) | `Assets/misc/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailers town rim (trailer_5) | `Assets/misc/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
 | trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | truck | `Assets/misc/Meshy_AI_a_truck_0917065131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1837,19 +1830,12 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `vatican` | model files + three.js shapes | `greekcol` (Meshy AI), `obelisk3d` (Meshy AI) | Box, Circle, Cone, Cylinder, Plane, glow sprites |
 | `vatican_roof` | three.js shapes (code) | — | Box, Circle, Cylinder, Plane, custom mesh, glow sprites |
 
-### 8b-C. THE WORLD's rim — the rings of land past a planet / plain board (`_WD_RIM`) (9)
+### 8b-C. THE WORLD's rim — the rings of land past a planet / plain board (`_WD_RIM`) (2)
 
 | key | made with | model files | three.js shapes |
 | --- | --- | --- | --- |
-| `bergs` | model files | `Rock` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock1` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock2` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock3` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock6` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock7` (the ocean pack, mondo's upload, Assets/oceanic/) | — |
-| `city` | three.js shapes (code) | — | Box, custom mesh, glow sprites |
-| `craters` | three.js shapes (code) | — | Lathe |
 | `peaks` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
-| `pyramids` | three.js shapes (code) | — | Cone |
-| `ruins` | model files | `Assets/misc/Castles_and_Forts.glb` | — |
 | `spires` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
-| `town` | three.js shapes (code) | — | Box, Plane, Shape |
-| `trees` | model files | `trees (foliage models, §7d)` | — |
 
 ### 8b-D. The room weenies — the fixed landmarks on an open room's horizon (`_hqLandmarkBuilders`, data.js `shell.sky.landmarks`) (9)
 
@@ -1938,7 +1924,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `ziggurat` | three.js shapes (code) | — | Box | _hzZiggurat |
 | `ziggurat_block` | three.js shapes (code) | — | Box | _hzZigguratBlock |
 
-**65 of these 172 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
+**61 of these 165 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
 
 **The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms' far weenies `peak` / `mountain`
 (Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons, the Clash temple's
@@ -2230,7 +2216,7 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
 | - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |
 
-Fine as they are (left alone): craters rim; gate/waterspout landmarks; (city + town rims and the tower weenie: round 3, mondo wants them textured / made of pack houses; hills + dunes rims deleted 11-03; the stairway landmark has one-square treads 11-03); monolith (thicker, no purple rune, 11-03),
+Fine as they are (left alone): gate/waterspout landmarks; (the tower weenie: round 3; hills + dunes rims deleted 11-03; trees / town / city / bergs / ruins / pyramids / craters rims deleted 11-03 (nothing drew them; the town's pack houses stand in the site rooms); the stairway landmark has one-square treads 11-03); monolith (thicker, no purple rune, 11-03),
 ziggurat (top is a cube, 11-03), stairway (one-square treads, 11-03), tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
 void solids, girder knot, gold gate, holo pieces, exit sign, fluorescent tube, sacred rings, orbs, lenticular cloud, inner
 sun; box-room near settings; §10C/§10D procs. Chess pieces and the Göbekli T-pillar already wear models.
