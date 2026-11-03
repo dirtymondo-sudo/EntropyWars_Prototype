@@ -23,6 +23,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/door-gun-skate-vehicles.md` | Door Gun revs, skateboarding revs, vehicles. | Those systems. |
 | `docs/notes/character-creator.md` | Character creator revs 3-11, cloth, wardrobe. | Creator work. |
 | `docs/notes/character-models-plan.md` | THE TRACKER for all new character-model work: MPFB bodies, creator rebuild, pack + Blender clothes, sway, the Meshy list, owner thread + status per piece. | BEFORE any MPFB / creator / clothes / sway / Meshy-part / face work; update its row in the same PR. |
+| `MODEL_LIST.md` (`node list-models.js` writes it) | THE master list: every 3D model in the game + how it was made (pack/author, MakeHuman, Meshy, Blender, code) + §10 decor still missing. | ANY model added/changed: add a SOURCES row in list-models.js if new folder/pack/maker, rerun it, commit MODEL_LIST.md in the same PR (mondo 11-03). |
 | `docs/notes/models-assets.md` | Model batches, kits, model queue, asset store, matte bake. | Adding models/assets. |
 | `docs/notes/maps-terrain-battle.md` | Battle maps, moving maps, horizon, planets, sky. | Battle map work. |
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
