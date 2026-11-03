@@ -5438,6 +5438,13 @@
                     musicVolume: 1,
                     sfxVolume: 1,
                     ambienceVolume: 1,
+                    /* THE SAVED SETTINGS (2026-11-03): the pause menu's own display picks are per-viewer
+                       and saved per device — the host's must never stomp the guest's */
+                    cinematicActionCam: 1,
+                    cinematicMode: 1,
+                    animationsDisabled: 1,
+                    nametagMode: 1,
+                    particleSettings: 1,
 
                     selectedUnitId: 1,
                     focusedUnitId: 1,
@@ -6368,7 +6375,9 @@
                 '_matchAchievementsKey',
                 // per-viewer audio mix — snapshots from older builds (and
                 // replays) still carry these; never let them stomp the sliders
-                'musicVolume', 'sfxVolume', 'ambienceVolume'
+                'musicVolume', 'sfxVolume', 'ambienceVolume',
+                // the saved display settings (see the skip list): each viewer keeps their own
+                'cinematicActionCam', 'cinematicMode', 'animationsDisabled', 'nametagMode', 'particleSettings'
             ];
 
             var _grsRaf = 0, _grsTo = 0;
