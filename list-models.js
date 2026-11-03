@@ -78,6 +78,7 @@ const SOURCES = [
     { re: /Assets\/vehicles\//, how: 'PACK', src: 'Low-poly cars · GGBot' },
     { re: /Assets\/stairs\/stairs_railings/, how: 'PACK', src: 'Stairs & Railings · ATD-London · CC-BY 4.0 (credit required)' },
     { re: /Assets\/stairs\/stairs\.glb/, how: 'PACK', src: 'Stairs · Ansh_Singla · CC-BY 4.0 (credit required)' },
+    { re: /Assets\/misc\/Castles_and_Forts\.glb/, how: 'PACK', src: 'Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given' },
     { re: /UFO_Low_Poly\.fbx/, how: 'PACK', src: '3D Game Ready UFO Spaceship · FlexUnit · CC0' },
     { re: /_sway\.glb$/, how: 'MESHY_C', src: 'Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py)' },
     // Meshy exports (mondo's, made on meshy.ai) — before the folder rows so a Meshy file in a pack folder still reads Meshy

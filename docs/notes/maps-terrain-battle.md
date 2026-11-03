@@ -1146,3 +1146,41 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   (THE ARENA'S PLACE IS GROUND). Only the tell's row was re-baked (now none); other rooms change only when re-baked.
 - `within.prebuilt_gobekli.r` 6 → 2.5: with the wall gone the wider search shifted the 12 × 12 a square west onto the ledge (lost
   the half-turn symmetry); 2.5 keeps every size on its designed window. All four sizes re-baked: same windows, no gap cells.
+## THE NEW HEAVEN + THE FLAT FILL (2026-11-03, mondo: "on the heave map, what is up with those platforms and how they have ugly cutouts underneath them? Use this concept art to make a new heaven map")
+
+**The cutouts (cause).** A `float: true` plateau (a hanging cloud) cut a RING of whole 0.5 m ground quads out of the field round its
+edge (three-renderer.js field build, `underFloat`): its flank, but also the flat ground round its foot and the flat rim of its top.
+The round puff underside never covered the square-stepped hole, so the sky dome's lower half (the mood's fog colour, green on
+"Haunted Green") showed straight through the world under every floating cloud.
+
+**THE FLAT FILL** (three-renderer.js, after the tiles): `underFloat` now answers 0 drawn / 1 a float plateau's ring / 2 cut (the
+void, a float flight's run). Each ring quad with no corner on a void room's open sky is drawn back FLAT at its lowest corner in
+the field's own material (mesh `hq:field:flatfill`): the ground round the foot stays ground, the slope under the hanging cloud is
+laid flat. Every float-plateau room gets it. Left as it was: the cut under a float stair's run (a fill there would step), and the
+void rooms' open sky. Shot: /mnt/project-files/heaven-map/cutouts_before_after.jpg (Heaven Stairway 9×9).
+
+**THE OPEN SKY** (three-renderer.js prop placement): in a void room a prop over open sky, or any prop authored at `y` ≤ −0.5,
+hangs at its own `y` (height from the room floor). Before, it was lifted onto the cut ground's level (the base), so the heaven
+cloud sea at y −4 stood ON the board and buried it. Only the heaven gate room has such props (checked with load-data.js).
+
+**The room** `site_prebuilt_heaven_gate` (THE CLOUD FIELDS) is rebuilt from mondo's concept art (top-down 12×12): the gate
+platform (pearly gate, two angel statues) north, the round SUN in the middle (lavender disc, gold rings + rays as terrain marks),
+two side terraces (angel, column, harp), the big bottom platform with the grand stair, cloud paths between them, a castle on
+each corner island, balustrades on every edge over the sky. New helper `hqSkyPlan(rows, o)` (data.js, after hqDeckPlan) turns a
+character plan (one char per 3.5 m battle square, `.` = open sky) into float plateaus (proud 0.45 m past the square onto sky or
+same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.railings` balusters_d, `block: false`).
+- Board rules unchanged: the void squares are the existing `cloud_gap` (Open Sky); floors are marble_light, paths cloud_2 (both
+  plain passable cost 1). The gate + bottom platforms are 3.7 (0.5 m up, still battle level 0: spawn rows and the nexus must be
+  one level, so the concept's raised end platforms are three broad marble steps, not a full tier).
+- Exactly 48 open-sky squares = HQ_ARENA_RULES.wallMax (the walled cut's cap): the plan's side terraces are 3×4 and the gate /
+  bottom rows 8 wide to get there. `HQ_ARENA_RULES.within.prebuilt_heaven` pins the cut to the sun; `node bake-arenas.js
+  prebuilt_heaven` → @0,0 walled, solid 48. The 9/10/11 boards stay on the Heaven Stairway room (no 9/11 fits the new plan).
+- Every platform has `under: 'cloud'` (a cloud body + puffs, `_hqBuildFloats`), not the void room's default stepped rock.
+- Cloud sea: 40 white_cloud 8-11 m under the board + a bank of 12 round it (THE OPEN SKY hangs them).
+- Castles: McSteeg's Castle and Fort Builder Pack (`Castles_and_Forts.glb` → R2 `Assets/misc/`, catalogue rows castle_tower /
+  castle_tower_top / castle_cone / castle_gate / castle_wall via `#node`; `_hqModelUrl` now keeps a misc row's `node`). Credited
+  in EW_CREDITS + list-models.js. No Meshy.
+- Removed from the old room (the concept has none of them): the rift + plank, stepping clouds, pillar of light, lookout, the two
+  healing pools, the fountain stand-in, park benches, the priest + angel NPCs. The seraphim stays (on the NW castle island, off
+  the board: an NPC spot blocks its square). No banners (only a code stand-in exists).
+- Shots: /mnt/project-files/heaven-map/.

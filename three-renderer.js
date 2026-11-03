@@ -59649,7 +59649,7 @@ const ThreeRenderer = (function () {
         /* 2026-09-12: a catalogue entry with `base: 'misc'` lives in the shared
            Assets/misc/ bucket (the moving-maps batch — the pocket watch in the
            clock room) instead of the D.O.O.R. kit folder */
-        if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
+        if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CASTLE AND FORT PACK (2026-11-03): a piece of the one file
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'halloween') return _R2_HW + 'models/' + encodeURIComponent(entry.file || _HW_FILE) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE HALLOWEEN PACK (2026-10-29): a piece of the one file
@@ -64032,22 +64032,35 @@ const ThreeRenderer = (function () {
            blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
         var floats = (info.floats || []).concat(info.drawH ? [] : (info.builts || []));   // THE JOINED FLIGHTS (2026-10-06): a flight no longer cuts the field away (that cut was the gap along both sides of every stair) — the field is drawn under it at its ground
+        /* → 0 drawn · 1 a float PLATEAU's ring (THE FLAT FILL below draws it back flat) · 2 cut (the void, a flight's run) */
         var underFloat = function (mx, mz) {
-            if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return true;   // THE VOID: no ground drawn between the islands
+            if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return 2;   // THE VOID: no ground drawn between the islands
+            var ring = 0;
             for (var fi = 0; fi < floats.length; fi++) {
                 var f = floats[fi];
                 if (f.k === 'plateau') {
                     var edge = (f.edge != null) ? f.edge : 0.35, din;
                     if (f.r) din = (1 - _hqTEllipse(mx, mz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(mx, mz, f);
-                    if (din > -(edge + res * 1.2) && din < edge + res * 0.75) return true;
+                    if (din > -(edge + res * 1.2) && din < edge + res * 0.75) ring = 1;
                 } else {
                     var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
-                    if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
-                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true;
+                    if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
+                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2;
                 }
             }
-            return false;
+            return ring;
         };
+        /* THE FLAT FILL (2026-11-03, mondo: "what is up with those platforms and how they have ugly cutouts underneath them?"): the ring
+           cut round a float plateau took whole quads of the field — its flank, but also the flat ground round its foot and the flat rim
+           of its top — so every floating cloud stood in a stair-stepped hole straight through the world (the sky's own colour showed
+           through it: the green notches under Heaven's clouds). Now only the flank goes: each quad of the ring is drawn back FLAT at
+           its lowest corner (the ground round the foot stays ground, the rim stays the top, the slope between them is laid flat on
+           the ground under the hanging cloud); a quad with a corner on the open sky of a void room stays cut (the island's cap). */
+        var fillQ = [];
+        var voidCorner = (info.void && typeof hqTerrainVoidAt === 'function') ? function (i, j) {
+            var px = info.x0 + i * res, pz = info.z0 + j * res;
+            return hqTerrainVoidAt(info, px, pz) || hqTerrainVoidAt(info, px + res, pz) || hqTerrainVoidAt(info, px, pz + res) || hqTerrainVoidAt(info, px + res, pz + res);
+        } : null;
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the field runs a metre past the shell; where a staged neighbour lies past that
            edge, the ground there is the NEIGHBOUR's (both would draw the same street a centimetre apart — the flicker) */
         /* THE GAPS (2026-10-28): a quad goes only when it lies wholly on gap squares (its corners, a hair in) — the floor round a gap runs to
@@ -64072,7 +64085,9 @@ const ThreeRenderer = (function () {
             });
             if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
-            if (!underEscalator && !((floats.length || (info.void && !info.void.holesOnly)) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
+            if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            else if (uf === 1 && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) fillQ.push(a, b, c, d);   // THE FLAT FILL
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -64093,6 +64108,23 @@ const ThreeRenderer = (function () {
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
+        /* THE FLAT FILL: the ring's quads, each at its lowest corner, in the field's own material (every attribute copied per corner) */
+        if (fillQ.length) {
+            var fG = new THREE.BufferGeometry(), nQ = fillQ.length / 4, fIdx = [];
+            Object.keys(geo.attributes).forEach(function (an) {
+                var A = geo.attributes[an], isz = A.itemSize, src = A.array, dst = new src.constructor(nQ * 4 * isz);
+                for (var q = 0; q < fillQ.length; q++) for (var e = 0; e < isz; e++) dst[q * isz + e] = src[fillQ[q] * isz + e];
+                if (an === 'position') for (var q2 = 0; q2 < nQ; q2++) {
+                    var lo = Infinity; for (var v = 0; v < 4; v++) lo = Math.min(lo, dst[(q2 * 4 + v) * 3 + 1]);
+                    for (v = 0; v < 4; v++) dst[(q2 * 4 + v) * 3 + 1] = lo;
+                }
+                fG.setAttribute(an, new THREE.BufferAttribute(dst, isz, A.normalized));
+            });
+            for (var q3 = 0; q3 < nQ; q3++) { var o4 = q3 * 4; fIdx.push(o4, o4 + 2, o4 + 1, o4 + 1, o4 + 2, o4 + 3); }   // (a, c, b, b, c, d) as the field
+            fG.setIndex(fIdx); fG.deleteAttribute('normal'); fG.computeVertexNormals();
+            var fMesh = new THREE.Mesh(fG, fieldMat); fMesh.position.y = 0.3; fMesh.receiveShadow = true; fMesh.renderOrder = 1; fMesh._ew_hqPart = 'floor'; fMesh._ew_hqTerrain = true; fMesh.name = 'hq:field:flatfill';
+            G.add(fMesh);
+        }
         if (tiles) geo.dispose();
         if (_hqSliceDue()) yield;
         /* THE OUTER GROUND (2026-09-17): an open field no longer ends at a square edge over a flat apron — the ground
@@ -70758,6 +70790,12 @@ const ThreeRenderer = (function () {
                 /* THE OCEAN PACK (2026-10-27, the on-screen check): a swimmer authored under the water (`y` ≤ −0.5) swims at that height —
                    its circle's centre can stand on an islet, a deck or a statue (the shark round the Bermuda wreck flew at the islet's top) */
                 if (pcy != null && typeof p.y === 'number' && p.y <= -0.5 && (p.swim || cat.swim) && p.swim !== false) y0 += p.y - Math.max(pcy, p.y);
+                /* THE OPEN SKY (2026-11-03, THE NEW HEAVEN): a void room's prop over open sky has no ground to stand on — its `y` is its
+                   height from the room's floor (a cloud of the sea under the board, a castle on its island), never lifted onto the
+                   cut ground's level (the heaven clouds at y −4 stood on the board at the base and buried it); one authored under the
+                   floor (`y` ≤ −0.5) hangs there even under a floating deck */
+                else if (pcy != null && typeof p.y === 'number' && _hq.terrain.void && !_hq.terrain.void.holesOnly && typeof hqTerrainVoidAt === 'function'
+                    && (p.y <= -0.5 || hqTerrainVoidAt(_hq.terrain, p.x || 0, p.z || 0))) { y0 += p.y - ((p.y >= 1 || p.y <= -0.5) ? Math.max(pcy, p.y) : pcy); pY = 0; }
             }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);

@@ -28746,6 +28746,13 @@ const DOOR_HQ = {
         italian_building:   { file: 'Meshy_AI_Italian_building_0917035900_texture.glb',               base: 'misc', span: 12, foot: 4.5, block: true },
         italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
         holy_carpet:        { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', span: 6.0, foot: 0 },
+        /* THE CASTLE AND FORT PACK (McSteeg, itch.io — "use this asset in your animation or game projects, both personally and commercially",
+           2026-11-03 for THE NEW HEAVEN's floating castles): pieces of the one file (Assets/misc/Castles_and_Forts.glb), each `node` a piece */
+        castle_tower:       { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_Mid',   h: 2.0,  foot: 0 },
+        castle_tower_top:   { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_top_1', h: 2.16, foot: 0 },
+        castle_cone:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Roof_Cone',   h: 2.23, foot: 0 },
+        castle_gate:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Gate_2x4',    h: 2.05, foot: 0 },
+        castle_wall:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Wall_2x4',    h: 2.0,  foot: 0 },
         pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
         royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.55 },
         skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
@@ -29716,7 +29723,7 @@ const DOOR_HQ = {
         /* THE DIVINE STAIR */
         { id: 'heaven_olympus', route: 'divine', way: 'cloud',   // THE PASSAGES (2026-10-01): a gate of cloud is a road of cloud you walk into, not a frame
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
-          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 12, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
+          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 0, y: 3.2, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },   // THE NEW HEAVEN (2026-11-03): off the east terrace
           b: { site: 'prebuilt_olympus', part: 'summit', wall: 'w', z: -38, y: 3.0 },   // THE AREAS (2026-09-18): on THE SUMMIT; AREA CONTENT D3 (2026-09-19): ON THE HIGH TERRACE's west end — a door you climb to
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
         /* vatican_heaven — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
@@ -30176,7 +30183,7 @@ const DOOR_HQ = {
                door is its sill (hqApplySiteEntries copies the row whole). */
             prebuilt_vatican:   { room: 'site_prebuilt_vatican_basilica',   door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_hell:      { room: 'site_prebuilt_hell_pit',           door: { id: 'bay', wall: 's', x: 0, y: 5 } },
-            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 1.75 } },
+            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 3.7 } },   // THE NEW HEAVEN (2026-11-03): on the gate platform
             /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
@@ -40746,102 +40753,131 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 45, face: 0 },
         },
-        /* ── THE CLOUD FIELDS — islands of cloud, the rift and its plank, the dais and THE GATE ── */
+        /* ── THE CLOUD FIELDS — THE NEW HEAVEN (2026-11-03): the gate, the sun, the two terraces, the grand stair, the cloud paths over the open sky ── */
         site_prebuilt_heaven_gate: {
             label: 'THE DIVINE STAIR · THE CLOUD FIELDS',
-            sub: 'THE GATE · THE DAIS · THE RIFT · THE STEPPING CLOUDS · THE HEALING POOLS · DOWN TO THE STAIR',
+            sub: 'THE GATE · THE SUN · THE TERRACES · THE CLOUD PATHS · THE GRAND STAIR · DOWN TO THE STAIR',
             kind: 'box', site: 'prebuilt_heaven', part: 'gate',
-            shell: hqDivineShell({ w: 84, d: 70, plate: { x: 0, z: -32, y: 5.0 } }),
-            /* THE FIELD (second pass, 2026-09-18 — the board room is bypassed: Room 777's
-               hotel door is THE BAY DOOR on the north wall, ON THE DAIS, so you arrive at
-               the top of everything and every stair from here goes DOWN to the dome): THE
-               DAIS (1.75 m) along the north with THE PEARLY WALLS either side of the gap
-               the steps come up into; cloud mounds and a hollow; THE RIFT (bottomless —
-               never entered) with THE PLANK over it; THE STEPPING CLOUDS west of the rift
-               (three floating clouds hopped up to THE LOOKOUT, 3.4 m); THE PILLAR OF LIGHT
-               in the east (4.6 m, floating — the tape's); two healing pools; the archive's
-               elevator on the west wall, Olympus's gate of cloud on the east; the top of
-               the stair on the south wall. */
+            shell: hqDivineShell({ w: 42, d: 42, plate: { x: 0, z: -20.6, y: 9.2 } }),
+            /* THE NEW HEAVEN (2026-11-03, mondo, with his concept art — "on the heave map, what is up with those platforms and how they have
+               ugly cutouts underneath them? Use this concept art to make a new heaven map"): the field is no longer the rooms plan's
+               cloud islands (THE RIFT, THE PLANK, THE STEPPING CLOUDS, THE PILLAR OF LIGHT, THE LOOKOUT, the two pools — the old field,
+               2026-09-18): it IS the concept's board, drawn square by square on the arena's own 3.5 m squares (hqSkyPlan, one string per
+               row, north first; the lattice 12 × 12, x = −21 + 3.5 col, z = −21 + 3.5 row) over THE VOID (terrain.void, the Spaceship's
+               rule: no ground, the field reads it as open sky, a fall comes back to the last ground stood on). THE GATE PLATFORM on the
+               north (half a metre up, three broad marble steps — the same battle level: the arena's spawn rows and its nexus are one level by
+               rule — the pearly gate and Room 777's hotel door — the bay door — between the two angels), THE SUN in the
+               middle (a round floor, the sun inlaid in gold on lavender — the nexus), THE TWO TERRACES east and west (an angel, a
+               column, a harp), THE GRAND STAIR's platform on the south (half a metre up the same way, the top of the stair — the stair door — on its
+               south edge), marble flights down off both raised platforms, and the CLOUD PATHS between them all: off the gate's corners
+               round to the terraces, the terraces into the sun, the sun up to the gate and down to the grand stair, the terraces round
+               to the grand stair's corners. Every platform is an island of rock hung in the sky (_hqBuildIslandRock), every cloud path a
+               cloud on its puffs, balustrades (the stair pack's balusters) wherever a platform meets the open sky, four little castles
+               on their own islands in the corners (THE CASTLE AND FORT PACK) and a sea of cloud under it all. The board is the same both
+               ways round (the two teams' halves mirror). Existing rules only: marble and cloud are plain floors, the gaps Open Sky. */
             terrain: { res: 0.5,
-                floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light',
-                noise: { amp: 0.22, scale: 13 },
-                gen: { unit: 2, minIsland: 8.8, edge: 2, pathGrow: 2.2, forceGrow: 1.6, rim: 2.4, kind: 'rooms', seed: 12, loops: 3, thicket: false, wallH: 2.6 }, // THE FLOOR PLAN: cloud islands joined by cloud bridges
+                floor: 'marble_light', cliff: 'cloud_thick', path: 'cloud_2',
+                noise: { amp: 0, scale: 13 },
+                base: 2.5, void: { lip: 0.6, fall: -8, rock: 'rocks_5' },   // the open sky: every sample under 3.1 m (the floors stand at 3.2 and 3.7)
+                marks: [
+                    /* THE SUN (the nexus): the lavender disc, the gold rings, the sun and its sixteen rays */
+                    { k: 'ring', x: 0, z: 0, r: 2.6, w: 5.2, color: 0xb4a2e6, a: 0.55 },
+                    { k: 'ring', x: 0, z: 0, r: 5.45, w: 0.22, color: 0xd8b860, a: 0.9 }, { k: 'ring', x: 0, z: 0, r: 6.25, w: 0.12, color: 0xd8b860, a: 0.85 },
+                    { k: 'ring', x: 0, z: 0, r: 0.75, w: 1.5, color: 0xe8c860, a: 0.95 },
+                    ...Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8, r1 = (i % 2) ? 3.5 : 4.6; return { k: 'line', x0: Math.round(Math.sin(a) * 1.7 * 1000) / 1000, z0: Math.round(-Math.cos(a) * 1.7 * 1000) / 1000, x1: Math.round(Math.sin(a) * r1 * 1000) / 1000, z1: Math.round(-Math.cos(a) * r1 * 1000) / 1000, w: 0.22, color: 0xe8c860, a: 0.95 }; }),
+                    /* the gold stars: the gate's, the terraces', the grand stair's */
+                    ...[[0, -16.6, 1.6], [-17.5, 0, 1.4], [17.5, 0, 1.4], [0, 16.6, 1.6]].flatMap(([x, z, s]) => [
+                        { k: 'line', x0: x - s, z0: z, x1: x + s, z1: z, w: 0.16, color: 0xd8b860, a: 0.9 }, { k: 'line', x0: x, z0: z - s, x1: x, z1: z + s, w: 0.16, color: 0xd8b860, a: 0.9 },
+                        { k: 'ring', x: x, z: z, r: s * 0.45, w: 0.1, color: 0xd8b860, a: 0.85 }]),
+                ],
                 features: [
-                    { k: 'hill', x: -26, z: 12, r: 12, h: 1.4 },                                                        // the mounds
-                    { k: 'hill', x: 28, z: 16, r: 10, h: 1.0 },
-                    { k: 'dip', x: 8, z: 4, r: 8, h: 0.6 },                                                           // the hollow
-                    { k: 'pool', x: -7, z: -8.75, r: 7, rz: 3.5, y: -0.1, depth: 3.0, key: 'deep_water' },    // THE RIFT (never entered) — square to the grid (2026-10-26: was turned 20°), 4 × 2 squares
-                    { k: 'deck', x0: -8.75, z0: -17.5, x1: -8.75, z1: 0, w: 3.5, y: 0.3 },                                // THE PLANK over it, both banks
-                    { k: 'plateau', x: -1.75, z: -28, w: 31.5, d: 14, h: 1.75 },                                             // THE DAIS (the gate — the bay door — on it)
-                    { k: 'ramp', x0: 7, z0: -10.5, x1: 7, z1: -22, w: 8.8, h0: 0, h1: 1.75, stairs: true, float: true },   // the floating steps up to it (ending 0.5 m inside the dais's edge)
-                    { k: 'wall', x0: -17.5, z0: -21.5, x1: -3.5, z1: -21.5, h: 2.0, t: 1, key: 'marble_light' },      // THE PEARLY WALLS (the rider's)
-                    { k: 'wall', x0: 10.5, z0: -21.5, x1: 17.5, z1: -21.5, h: 2.0, t: 1, key: 'marble_light' },
-                    { k: 'plateau', x: 22.75, z: -15.75, r: 1.75, h: 4.6, edge: 0.6, float: true },                           // THE PILLAR OF LIGHT (the tape's) — hung in the air
-                    { k: 'plateau', x: -21, z: -3.5, r: 3.8, h: 1.2, edge: 0.6, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
-                    { k: 'plateau', x: -24.5, z: -14, r: 4.4, h: 2.4, edge: 0.6, float: true },
-                    { k: 'plateau', x: -28, z: -24.5, r: 3.5, h: 3.4, edge: 0.6, float: true },                     // THE LOOKOUT over the dais
-                    /* AREA CONTENT D4 (2026-09-20): two clouds hung in the fields — the dais sees one door, not two (R3) */
-                    { k: 'plateau', x: 15.75, z: -8.75, r: 1.75, h: 3.6, edge: 0.6, float: true },
-                    { k: 'plateau', x: 0, z: 7, r: 3.5, h: 3.5, edge: 0.6, float: true },
-                    { k: 'pool', x: 24.5, z: 7, r: 3.5, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
-                    { k: 'pool', x: -26.25, z: 5.25, r: 1.75, y: -0.05, depth: 0.5 },
-                    { k: 'rail', x0: -17.5, z0: -34.4, x1: -7, z1: -34.4 },                                              // the dais's back rail
-                    { k: 'path', pts: [[0, 32], [0, 16], [-8, 1]], w: 3.6 },                                         // the way from the stair, to the plank
-                    { k: 'path', pts: [[-8, -19.2], [0, -16], [6, -13.2]], w: 3.2 },                                     // off the plank to the steps
-                    { k: 'path', pts: [[0, 16], [16, 12], [24, 4]], w: 2.8 },                                            // to the east pool
-                    { k: 'path', pts: [[0, 16], [-20, 8]], w: 2.8 },                                                   // to the mound
-                    { k: 'path', pts: [[6, -25], [0, -28], [-12, -28]], w: 3.2 },                                    // across the dais
-                    { k: 'scatter', key: 'white_cloud', n: 6, seed: 5, r0: 0.4 },                                     // cloud puffs on the ground (foot 0)
+                    /* THE PLAN: '.' open sky · 'H' a raised platform (3.7) · 'P' a terrace (3.2) · 'S' the sun (3.2) · 's' under a flight (3.2) · 'c' a cloud path (3.2) */
+                    ...hqSkyPlan([
+                    '....HHHH....',
+                    '..HHHHHHHH..',
+                    '.ccHHssHHcc.',
+                    '.c...cc...c.',
+                    'PPP.cSSc.PPP',
+                    'PPPcSSSScPPP',
+                    'PPPcSSSScPPP',
+                    'PPP.cSSc.PPP',
+                    '.c...cc...c.',
+                    '.ccHHssHHcc.',
+                    '..HHHHHHHH..',
+                    '....HHHH....',
+                    ], { C: 3.5, x0: -21, z0: -21, proud: 0.45, rail: { model: 'balusters_d', out: -0.2 },
+                         legend: { H: { h: 3.7, top: 'marble_light', under: 'cloud', rail: true }, P: { h: 3.2, top: 'marble_light', under: 'cloud', rail: true }, S: { h: 3.2, top: 'marble_light', under: 'cloud' },
+                                   s: { h: 3.2, top: 'marble_light', under: 'cloud' }, c: { h: 3.2, under: 'cloud', path: true } } }),
+                    { k: 'plateau', x: 0, z: 0, r: 6.9, h: 3.2, edge: 0.15, float: true, top: 'marble_light', under: 'cloud' },   // THE SUN's round floor (no square's centre past the plus: the corners stay open sky)
+                    /* the sun's balustrade: the four quarter-arcs between the cloud paths */
+                    ...[32, 122, 212, 302].map(a0 => ({ k: 'rail', arc: { x: 0, z: 0, r: 6.65, a0: a0, a1: a0 + 26 }, y: 3.2, model: 'balusters_d', block: false })),
+                    /* THE FLIGHTS: marble, a parapet each side — down off the gate to the cloud path, up from the cloud path to the grand stair's platform */
+                    { k: 'ramp', x0: 0, z0: -10.1, x1: 0, z1: -14.3, w: 7, h0: 3.2, h1: 3.7, stairs: true, model: 'stone', key: 'marble_light', side: 'marble_light' },
+                    { k: 'ramp', x0: 0, z0: 10.1, x1: 0, z1: 14.3, w: 7, h0: 3.2, h1: 3.7, stairs: true, model: 'stone', key: 'marble_light', side: 'marble_light' },
+                    /* THE CASTLES' ISLANDS: in the four corners, under the floors (open sky to the board) */
+                    { k: 'plateau', x: -16.5, z: -17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 }, { k: 'plateau', x: 16.5, z: -17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 },
+                    { k: 'plateau', x: -16.5, z: 17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 }, { k: 'plateau', x: 16.5, z: 17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 },
                 ],
             },
-            /* the north wall at x 0, 1.75 m up on the dais, is THE BAY DOOR (siteRooms.entry, 2026-09-18): Room 777's hotel door — the board room is bypassed, the gate lands you here */
+            /* the north wall at x 0, ON THE GATE PLATFORM (4.95 m), is THE BAY DOOR (siteRooms.entry): Room 777's hotel door behind the pearly gate */
             doors: [
-                { id: 'stair', wall: 's', x: 0, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white
+                { id: 'stair', wall: 's', x: 0, y: 3.7, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white — off the grand stair's platform
                   label: 'THE STAIRWAY', sub: 'DOWN · FOUR FLIGHTS · TO THE DOME',
                   action: { room: 'site_prebuilt_heaven_stair', at: 'gates' },
                   desc: 'The top of the stair, from above. It goes down from here, which the sign does not admit.' },
             ],
             counters: [],
             props: [
-                { key: 'greek_column',   x: -19, z: -27 },                                   // the columns: the dais's two, the way in's two
-                { key: 'greek_column',   x: 19, z: -27 },
-                { key: 'greek_column',   x: -12, z: 31 },
-                { key: 'greek_column',   x: 11.7, z: 31 },
-                { key: 'fountain',       x: 28, z: -2 },
-                { key: 'lectern',        x: 4.4, z: -28.4, face: 180 },                          // THE BOOK, beside the gate
-                { key: 'park_bench',     x: -24, z: 18, face: 120 },                          // the waiting
-                { key: 'park_bench',     x: 17.75, z: 20, face: 240 },
-                { key: 'potted_plant',   x: -32, z: 30 },
-                { key: 'potted_plant',   x: 32, z: 30 },
-                { key: 'paper_sheet',    x: -3.75, z: 27.6, y: 0.01, face: 320 },                 // a form on the cloud: GATE — WHICH
-                /* THE VATICAN BATCH (2026-09-17): THE PEARLY GATE standing open in the gap of the pearly walls (the hotel door stays the leaf), the angels, the clouds */
-                { key: 'pearly_gate',    x: 7, z: -21.25, face: 0 },
-                { key: 'angel_statue',   x: -14, z: -30, face: 180 },
-                { key: 'angel_statue',   x: 14, z: -30, face: 180 },
-                { key: 'brazier',        x: -20, z: 24 },
-                { key: 'brazier',        x: 20, z: 24 },
-                { key: 'white_cloud',    x: -28, z: 16, y: 5.0 },                                 // THE FLOATING CLOUDS
-                { key: 'white_cloud',    x: 16, z: 16, y: 6.5 },
-                { key: 'white_cloud',    x: 32, z: -28, y: 4.5 },
-                { key: 'white_cloud',    x: -12, z: 28, y: 7.0 },
-                { key: 'white_cloud',    x: 11.7, z: -8, y: 8.0 },
-                { key: 'instrument_harp', x: -9.2, z: -29.2, face: 180 }, { key: 'instrument_harp', x: 21.8, z: 20.8, face: 250 }, { key: 'instrument_harp', x: 23.6, z: -24.8, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
+                /* THE GATE PLATFORM (3.7): the pearly gate, the angels, the book, a brazier, the flowers */
+                { key: 'pearly_gate',    x: 0, z: -20.3, y: 3.7, face: 0 },
+                { key: 'angel_statue',   x: -8.75, z: -15.75, y: 3.7, face: 180 }, { key: 'angel_statue', x: 8.75, z: -15.75, y: 3.7, face: 180 },
+                { key: 'lectern',        x: -5.25, z: -12.25, y: 3.7, face: 180 },   // THE BOOK, beside the flight
+                { key: 'brazier',        x: 5.25, z: -12.25, y: 3.7 },
+                { key: 'potted_plant',   x: -8.9, z: -11.9, y: 3.7 }, { key: 'potted_plant', x: 8.9, z: -11.9, y: 3.7 },
+                { key: 'paper_sheet',    x: -10.2, z: -13.2, y: 3.71, face: 320 },   // a form on the marble: GATE — WHICH
+                /* THE GRAND STAIR's PLATFORM (3.7): the columns, the braziers, the flowers */
+                { key: 'greek_column',   x: -8.75, z: 15.75, y: 3.7 }, { key: 'greek_column', x: 8.75, z: 15.75, y: 3.7 },
+                { key: 'brazier',        x: -5.25, z: 12.25, y: 3.7 }, { key: 'brazier', x: 5.25, z: 12.25, y: 3.7 },
+                { key: 'potted_plant',   x: -8.9, z: 11.9, y: 3.7 }, { key: 'potted_plant', x: 8.9, z: 11.9, y: 3.7 },
+                /* THE TERRACES (3.2): an angel and a column on each outer edge, a harp, flowers */
+                { key: 'angel_statue',   x: -19.25, z: -1.75, y: 3.2, face: 90 }, { key: 'angel_statue', x: 19.25, z: 1.75, y: 3.2, face: 270 },
+                { key: 'greek_column',   x: -19.25, z: 1.75, y: 3.2 }, { key: 'greek_column', x: 19.25, z: -1.75, y: 3.2 },
+                { key: 'instrument_harp', x: -15.6, z: -5.0, y: 3.2, face: 120 }, { key: 'instrument_harp', x: 15.6, z: 5.0, y: 3.2, face: 300 },   // THE INSTRUMENTS (2026-10-27): the angels' harps
+                { key: 'potted_plant',   x: -15.6, z: 5.0, y: 3.2 }, { key: 'potted_plant', x: 15.6, z: -5.0, y: 3.2 },
+                /* THE SUN (3.2): flowers at the four cloud paths' mouths, a harp */
+                { key: 'potted_plant',   x: -6.4, z: -3.0, y: 3.2 }, { key: 'potted_plant', x: 6.4, z: 3.0, y: 3.2 }, { key: 'potted_plant', x: -6.4, z: 3.0, y: 3.2 }, { key: 'potted_plant', x: 6.4, z: -3.0, y: 3.2 },
+                { key: 'instrument_harp', x: 2.9, z: -6.3, y: 3.2, face: 200 },
+                /* THE CASTLES (THE CASTLE AND FORT PACK, McSteeg): a keep, two towers and a gate on each corner island, facing the sun */
+                { key: 'castle_tower', x: -17.39, z: -18.45, y: -1.0, face: 136.68 }, { key: 'castle_tower', x: -17.39, z: -18.45, y: 1.0, face: 136.68 }, { key: 'castle_cone', x: -17.39, z: -18.45, y: 3.0, face: 136.68 }, { key: 'castle_tower', x: -17.57, z: -14.84, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -17.57, z: -14.84, y: 1.0, face: 136.68 }, { key: 'castle_tower', x: -13.79, z: -18.41, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -13.79, z: -18.41, y: 1.0, face: 136.68 }, { key: 'castle_gate', x: -15.68, z: -16.63, y: -1.0, face: 46.68 }, { key: 'castle_wall', x: -18.76, z: -19.9, y: -1.0, face: 46.68 },
+                { key: 'castle_tower', x: 17.39, z: -18.45, y: -1.0, face: 223.32 }, { key: 'castle_tower', x: 17.39, z: -18.45, y: 1.0, face: 223.32 }, { key: 'castle_cone', x: 17.39, z: -18.45, y: 3.0, face: 223.32 }, { key: 'castle_tower', x: 13.79, z: -18.41, y: -1.0, face: 223.32 }, { key: 'castle_tower_top', x: 13.79, z: -18.41, y: 1.0, face: 223.32 }, { key: 'castle_tower', x: 17.57, z: -14.84, y: -1.0, face: 223.32 }, { key: 'castle_tower_top', x: 17.57, z: -14.84, y: 1.0, face: 223.32 }, { key: 'castle_gate', x: 15.68, z: -16.63, y: -1.0, face: 133.32 }, { key: 'castle_wall', x: 18.76, z: -19.9, y: -1.0, face: 133.32 },
+                { key: 'castle_tower', x: -17.39, z: 18.45, y: -1.0, face: 43.32 }, { key: 'castle_tower', x: -17.39, z: 18.45, y: 1.0, face: 43.32 }, { key: 'castle_cone', x: -17.39, z: 18.45, y: 3.0, face: 43.32 }, { key: 'castle_tower', x: -13.79, z: 18.41, y: -1.0, face: 43.32 }, { key: 'castle_tower_top', x: -13.79, z: 18.41, y: 1.0, face: 43.32 }, { key: 'castle_tower', x: -17.57, z: 14.84, y: -1.0, face: 43.32 }, { key: 'castle_tower_top', x: -17.57, z: 14.84, y: 1.0, face: 43.32 }, { key: 'castle_gate', x: -15.68, z: 16.63, y: -1.0, face: 313.32 }, { key: 'castle_wall', x: -18.76, z: 19.9, y: -1.0, face: 313.32 },
+                { key: 'castle_tower', x: 17.39, z: 18.45, y: -1.0, face: 316.68 }, { key: 'castle_tower', x: 17.39, z: 18.45, y: 1.0, face: 316.68 }, { key: 'castle_cone', x: 17.39, z: 18.45, y: 3.0, face: 316.68 }, { key: 'castle_tower', x: 17.57, z: 14.84, y: -1.0, face: 316.68 }, { key: 'castle_tower_top', x: 17.57, z: 14.84, y: 1.0, face: 316.68 }, { key: 'castle_tower', x: 13.79, z: 18.41, y: -1.0, face: 316.68 }, { key: 'castle_tower_top', x: 13.79, z: 18.41, y: 1.0, face: 316.68 }, { key: 'castle_gate', x: 15.68, z: 16.63, y: -1.0, face: 226.68 }, { key: 'castle_wall', x: 18.76, z: 19.9, y: -1.0, face: 226.68 },
+                /* THE CLOUD SEA (hung over the open sky, THE OPEN SKY in three-renderer.js): a field of clouds 8-11 m under the board, then the bank round it */
+                { key: 'white_cloud', x: -27.72, z: -19.74, y: -10.01, span: 11.28 }, { key: 'white_cloud', x: -28.08, z: -7.48, y: -10.72, span: 12.09 }, { key: 'white_cloud', x: -28.12, z: -2.36, y: -8.79, span: 11.6 }, { key: 'white_cloud', x: -26.74, z: 10.26, y: -8.37, span: 11.53 },
+                { key: 'white_cloud', x: -27.29, z: 18.55, y: -10.41, span: 13.97 }, { key: 'white_cloud', x: -20.93, z: -27.11, y: -9.84, span: 12.42 }, { key: 'white_cloud', x: -20.05, z: -9.19, y: -10.61, span: 13.17 }, { key: 'white_cloud', x: -16.68, z: 1.25, y: -8.58, span: 12.06 },
+                { key: 'white_cloud', x: -17.11, z: 9.27, y: -10.46, span: 14.0 }, { key: 'white_cloud', x: -9.14, z: -28.44, y: -8.72, span: 11.58 }, { key: 'white_cloud', x: -10.69, z: -19.36, y: -9.94, span: 13.19 }, { key: 'white_cloud', x: -9.71, z: -7.28, y: -10.27, span: 11.93 },
+                { key: 'white_cloud', x: -7.28, z: -1.25, y: -9.14, span: 12.53 }, { key: 'white_cloud', x: -10.43, z: 9.67, y: -10.55, span: 13.12 }, { key: 'white_cloud', x: -8.76, z: 20.8, y: -9.2, span: 11.78 }, { key: 'white_cloud', x: -8.48, z: 29.82, y: -9.45, span: 11.9 },
+                { key: 'white_cloud', x: -1.49, z: -28.88, y: -10.08, span: 13.99 }, { key: 'white_cloud', x: -0.57, z: -21.07, y: -10.21, span: 11.22 }, { key: 'white_cloud', x: 2.13, z: -10.62, y: -9.55, span: 12.65 }, { key: 'white_cloud', x: 0.38, z: 2.08, y: -8.36, span: 13.83 },
+                { key: 'white_cloud', x: 1.27, z: 10.7, y: -8.79, span: 13.9 }, { key: 'white_cloud', x: -0.55, z: 18.79, y: -10.74, span: 13.78 }, { key: 'white_cloud', x: 1.97, z: 30.27, y: -8.55, span: 13.98 }, { key: 'white_cloud', x: 7.08, z: -30.39, y: -8.47, span: 11.87 },
+                { key: 'white_cloud', x: 11.46, z: -20.66, y: -8.68, span: 13.68 }, { key: 'white_cloud', x: 10.34, z: -11.44, y: -8.91, span: 13.94 }, { key: 'white_cloud', x: 11.02, z: 0.88, y: -9.69, span: 11.36 }, { key: 'white_cloud', x: 7.17, z: 7.8, y: -9.97, span: 11.95 },
+                { key: 'white_cloud', x: 10.75, z: 18.54, y: -8.99, span: 12.98 }, { key: 'white_cloud', x: 9.79, z: 28.75, y: -8.33, span: 11.42 }, { key: 'white_cloud', x: 19.93, z: -28.04, y: -8.65, span: 11.83 }, { key: 'white_cloud', x: 19.36, z: -7.66, y: -11.08, span: 13.05 },
+                { key: 'white_cloud', x: 20.61, z: 1.37, y: -9.1, span: 13.45 }, { key: 'white_cloud', x: 20.63, z: 9.22, y: -11.07, span: 12.95 }, { key: 'white_cloud', x: 18.02, z: 27.94, y: -10.76, span: 13.57 }, { key: 'white_cloud', x: 28.46, z: -16.83, y: -10.87, span: 12.23 },
+                { key: 'white_cloud', x: 26.24, z: -10.68, y: -8.44, span: 13.25 }, { key: 'white_cloud', x: 29.34, z: 0.73, y: -10.29, span: 12.59 }, { key: 'white_cloud', x: 27.48, z: 9.1, y: -8.65, span: 11.63 }, { key: 'white_cloud', x: 26.06, z: 20.47, y: -10.0, span: 13.17 },
+                { key: 'white_cloud', x: -2.9, z: -31.92, y: 2.99, span: 9.31 }, { key: 'white_cloud', x: 17.3, z: -25.09, y: 3.08, span: 10.28 }, { key: 'white_cloud', x: 23.37, z: -15.44, y: 2.55, span: 10.15 }, { key: 'white_cloud', x: 29.34, z: 1.67, y: 2.66, span: 9.69 },
+                { key: 'white_cloud', x: 23.84, z: 16.67, y: 2.8, span: 10.55 }, { key: 'white_cloud', x: 14.89, z: 24.49, y: 2.75, span: 8.0 }, { key: 'white_cloud', x: -1.47, z: 29.58, y: 2.69, span: 8.87 }, { key: 'white_cloud', x: -17.04, z: 25.05, y: 3.48, span: 8.49 },
+                { key: 'white_cloud', x: -24.95, z: 15.2, y: 2.87, span: 10.52 }, { key: 'white_cloud', x: -28.99, z: -0.57, y: 1.33, span: 9.02 }, { key: 'white_cloud', x: -25.96, z: -13.72, y: 1.59, span: 9.46 }, { key: 'white_cloud', x: -13.13, z: -26.9, y: 1.77, span: 9.87 },
             ],
             agents: [],
             npcSpots: [
-                { x: -5.2, z: -28, face: 90, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
-                { x: 20, z: 4, face: 250, race: 'priest', gender: 'male', say: '“The pools are for the injured. I am here on a technicality.”' },
-                { x: -18, z: 7, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
+                { x: -19.4, z: -16.2, face: 135, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
             ],
             onlineSpots: [],
             lines: [
                 '“Is this the queue?” “This is the field.” “Where is the queue?” “This is the queue.”',
-                '“The plank is the only way over.” “There is a way round.” “The way round is the plank.”',
                 '“Room 777 has no door on the inside.” “Then how do they leave?” “They are asked to wait.”',
-                '“The pillar of light is structural.” “It has no stair.” “Faith has no stair.”',
                 '“Everything from here goes down.” “To where?” “To a telescope. Do not look back up through it.”',
             ],
-            spawn: { x: 0, z: -29, face: 180 },
+            spawn: { x: 0, z: -17.2, face: 180 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2: "the exterior
@@ -48709,7 +48745,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_area51_hangar: { x: 0, z: 0 },   // HANGAR 18: the floor under the rig
     site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
     site_prebuilt_hell_pit: { x: -0.5, z: 0 },   // THE PIT: the bowl floor
-    site_prebuilt_heaven_gate: { x: -3, z: 2 },   // THE CLOUD FIELDS: under the dais
+    site_prebuilt_heaven_gate: { x: 0, z: 0 },   // THE CLOUD FIELDS: the sun (THE NEW HEAVEN, 2026-11-03)
     site_prebuilt_camelot_ward: { x: 8, z: 54 },   // CAMELOT: inside the portcullis (G6: the ward is the entry)
     site_prebuilt_skinwalker_fields: { x: -8, z: 12 },   // THE CORN FIELDS: by the circle
     site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
@@ -48839,6 +48875,84 @@ function hqDeckPlan(rows, o) {
         let x1 = x; while (at(x1 + 1, y) === 'w') x1++;
         const cz = r3(o.z0 + (y + 0.5) * C);
         out.push({ k: 'wall', x0: r3(o.x0 + (x + 0.5) * C), z0: cz, x1: r3(o.x0 + (x1 + 0.5) * C), z1: cz, h: o.crateH || 1.25, t: C, key: o.crateKey || 'gunmetal', rail: false });
+    }
+    return out;
+}
+/* THE SKY PLAN (2026-11-03, mondo's Heaven concept art: "Use this concept art to make a new heaven map"): a board drawn square by
+   square over THE VOID, hqDeckPlan's rule with a legend — one string per lattice row, north first, '.' open sky; every other char is
+   a class `{ h, under?, top?, path?, rail? }` drawn as FLOAT plateaus (each rect its own island: a stepped rock under it in a void
+   room, `under: 'cloud'` the puffs), `path: true` paints the class in the room's path sheet (a cloud path), `rail: true` stands
+   `o.rail.model` (HQ_STAIR_PACK) along every side that meets the open sky, at the class's height (`o.rail.out` m off the edge,
+   < 0 = inside the square; `block: false`, never a wall to the walker or the board). A rect runs `o.proud` m past a side onto open sky or a floor of its own height (floors of two heights meet edge to edge). */
+function hqSkyPlan(rows, o) {
+    const C = o.C || 3.5, P = (o.proud != null) ? o.proud : 0.45, r3 = v => Math.round(v * 1000) / 1000, L = o.legend || {};
+    const H = rows.length, W = rows.reduce((m, r) => Math.max(m, r.length), 0), at = (x, y) => (rows[y] || '').charAt(x) || '.';
+    const sky = (x, y) => at(x, y) === '.';
+    const rects = (pred) => {
+        const used = rows.map(() => new Array(W).fill(false)), out = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (used[y][x] || !pred(at(x, y))) continue;
+            let x1 = x; while (x1 + 1 < W && !used[y][x1 + 1] && pred(at(x1 + 1, y))) x1++;
+            const same = (yy) => { for (let k = x; k <= x1; k++) if (used[yy][k] || !pred(at(k, yy))) return false; return !(x > 0 && pred(at(x - 1, yy)) && !used[yy][x - 1]) && !(x1 + 1 < W && pred(at(x1 + 1, yy))); };
+            let y1 = y; while (y1 + 1 < H && same(y1 + 1)) y1++;
+            for (let yy = y; yy <= y1; yy++) for (let k = x; k <= x1; k++) used[yy][k] = true;
+            out.push({ x0: x, x1, y0: y, y1 });
+        }
+        return out;
+    };
+    const out = [], cx = i => o.x0 + (i + 0.5) * C, cz = j => o.z0 + (j + 0.5) * C;
+    Object.keys(L).forEach(ch => {
+        const D = L[ch];
+        rects(c => c === ch).forEach(r => {
+            /* a side runs P past the square where every square beyond it is open sky or a floor at the same height (two floors at one
+               height overlap — no seam dips between them); where a floor at another height meets it, it stops on the line */
+            const ok = (x, y) => sky(x, y) || (L[at(x, y)] && L[at(x, y)].h === D.h);
+            let all = true; for (let k = r.x0; k <= r.x1; k++) if (!ok(k, r.y0 - 1)) all = false; const pN = all ? P : 0;
+            all = true; for (let k = r.x0; k <= r.x1; k++) if (!ok(k, r.y1 + 1)) all = false; const pS = all ? P : 0;
+            all = true; for (let k = r.y0; k <= r.y1; k++) if (!ok(r.x0 - 1, k)) all = false; const pW = all ? P : 0;
+            all = true; for (let k = r.y0; k <= r.y1; k++) if (!ok(r.x1 + 1, k)) all = false; const pE = all ? P : 0;
+            const ax = o.x0 + r.x0 * C - pW, bx = o.x0 + (r.x1 + 1) * C + pE, az = o.z0 + r.y0 * C - pN, bz = o.z0 + (r.y1 + 1) * C + pS;
+            const f = { k: 'plateau', x: r3((ax + bx) / 2), z: r3((az + bz) / 2), w: r3(bx - ax), d: r3(bz - az), h: D.h, edge: 0.15, float: true };
+            if (D.under) f.under = D.under; if (D.top) f.top = D.top; if (D.rock) f.rock = D.rock;
+            out.push(f);
+        });
+        /* the path sheet: a run between every two neighbouring squares of the class, a dab on a lone one (round caps of w / 2) */
+        if (D.path) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (at(x, y) !== ch) continue;
+            const w = C + 2 * P * 0.8, lone = at(x + 1, y) !== ch && at(x, y + 1) !== ch && at(x - 1, y) !== ch && at(x, y - 1) !== ch;
+            if (at(x + 1, y) === ch) out.push({ k: 'path', pts: [[r3(cx(x)), r3(cz(y))], [r3(cx(x + 1)), r3(cz(y))]], w: r3(w) });
+            if (at(x, y + 1) === ch) out.push({ k: 'path', pts: [[r3(cx(x)), r3(cz(y))], [r3(cx(x)), r3(cz(y + 1))]], w: r3(w) });
+            if (lone) out.push({ k: 'path', pts: [[r3(cx(x) - 0.01), r3(cz(y))], [r3(cx(x) + 0.01), r3(cz(y))]], w: r3(w) });
+        }
+    });
+    /* the balustrades: every side of a railed square that meets the open sky, run together along each line */
+    if (o.rail) {
+        const out2 = o.rail.out != null ? o.rail.out : -0.2, railed = (x, y) => !sky(x, y) && L[at(x, y)] && L[at(x, y)].rail;
+        [['n', 0, -1], ['s', 0, 1], ['w', -1, 0], ['e', 1, 0]].forEach(([s, dx, dy]) => {
+            const along = dx === 0;   // a north / south side runs along x
+            const open = (x, y) => railed(x, y) && sky(x + dx, y + dy);
+            const lines = along ? H : W, steps = along ? W : H;
+            for (let l = 0; l < lines; l++) {
+                let k = 0;
+                while (k < steps) {
+                    const X = (kk) => along ? kk : l, Y = (kk) => along ? l : kk;
+                    if (!open(X(k), Y(k))) { k++; continue; }
+                    const cls = at(X(k), Y(k)), ry = L[cls].h;
+                    let k1 = k; while (k1 + 1 < steps && open(X(k1 + 1), Y(k1 + 1)) && at(X(k1 + 1), Y(k1 + 1)) === cls) k1++;
+                    /* the corner: run on to meet the perpendicular rail where that side is open sky too */
+                    const pa = along ? sky(X(k) - 1, Y(k)) : sky(X(k), Y(k) - 1), pb = along ? sky(X(k1) + 1, Y(k1)) : sky(X(k1), Y(k1) + 1);
+                    const ea = pa ? out2 : 0, eb = pb ? out2 : 0;
+                    if (along) {
+                        const z = r3(o.z0 + (l + (dy > 0 ? 1 : 0)) * C + dy * out2);
+                        out.push({ k: 'rail', x0: r3(o.x0 + k * C - ea), z0: z, x1: r3(o.x0 + (k1 + 1) * C + eb), z1: z, y: ry, model: o.rail.model, block: false });
+                    } else {
+                        const x = r3(o.x0 + (l + (dx > 0 ? 1 : 0)) * C + dx * out2);
+                        out.push({ k: 'rail', x0: x, z0: r3(o.z0 + k * C - ea), x1: x, z1: r3(o.z0 + (k1 + 1) * C + eb), y: ry, model: o.rail.model, block: false });
+                    }
+                    k = k1 + 1;
+                }
+            }
+        });
     }
     return out;
 }
@@ -56331,7 +56445,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_vatican_library:     { tape: { x: -10.5, z: 6.0 } },
     site_prebuilt_vatican_courtyard:   { tape: { x: 15.0, z: 12.0 } },
     site_prebuilt_vatican_observatory: { tape: { x: 8.5, z: 7.5 } },
-    site_prebuilt_heaven_gate:       { tape: { x: 24, z: -16 } },
+    site_prebuilt_heaven_gate:       { tape: { x: 17.5, z: 3.5 } },   // THE NEW HEAVEN (2026-11-03): the east terrace
     /* D.U.M.B. (9.3 stage 8, 2026-09-17): the signal gantry, the tower, the dream tower, the vat stack, the projection booth, the safe stack, the beam dump — the door gun's seven */
     site_prebuilt_dumb_motorpool: { tape: { x: -16, z: 12 } },
     site_prebuilt_dumb_sublevel7: { tape: { x: 0.0, z: 0.0 } },
@@ -61630,7 +61744,8 @@ const HQ_ARENA_RULES = {
     within: {
         prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 2.5 },   // r 6 → 2.5 (2026-11-03): with the ring wall gone a wider window scored the open ledge over the designed board — the 12 × 12 stays on the pit (66.5..108.5), an odd size half a square off
         prebuilt_derelict: { room: 'site_prebuilt_derelict_deck', x: -7, z: 0, r: 3 },   // THE SHIP (2026-10-28): across the wings and the hull, the nexus on the hull, a team on each wing
-        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
+        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },
+        prebuilt_heaven: { room: 'site_prebuilt_heaven_gate', x: 0, z: 0, r: 2 },   // THE NEW HEAVEN (2026-11-03): the 12×12 cut round the sun (the whole board; the 9/10/11 picks stand on the stair room)   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
     },
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
@@ -61653,7 +61768,7 @@ const HQ_ARENA_RULES = {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010101010101010101010303012121212121212121010303012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121211523","sq":3.5},
-        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":3,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","deep_water","cloud_thick","water"],"cells":"010101010101111101010202010303010101010111110202010303010101012101011101353535010121012121010101353535020101012101350101353502020101010135353535353501010101110101353535354101010101011103353535020202111101011103350101020202020111110111010101020202010101010111111101010201010101010111110101","sq":3.5},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":0,"oz":0,"base":"marble_light","open":1,"keys":["cloud_gap","marble_light","cloud_2"],"cells":"000000001111111100000000000011111111111111110000002121111111111111212100002100000021210000002100111111002111112100111111111111211111111121111111111111211111111121111111111111002111112100111111002100000021210000002100002121111111111111212100000011111111111111110000000000001111111100000000","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","sq":3.5,"pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160404161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":7,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101111101111111111111111111111101010101010101010101111101010101010101010101111101010101010101010101111101020111110101010101111101020202020201010101111101010101011101010101111101010101010101010101111101010101010101010101111101010101010111010101111101010101010101010101111101","sq":3.5},
@@ -65306,6 +65421,7 @@ const EW_CREDITS = {
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },
             { role: 'Low-poly cars', by: 'GGBot', source: 'https://ggbot.net' },
+            { role: 'Castle and Fort Builder Pack (the Heaven castles)', by: 'McSteeg', source: 'https://mcsteeg.itch.io/castle-and-fort-builder-pack' },
         ] },
         { title: 'CHARACTER CREATOR', makehuman: true, rows: [
             { role: 'Bodies, faces, hair, clothes and skins', by: 'MakeHuman / MPFB2', license: 'CC0', source: 'http://www.makehumancommunity.org' },
