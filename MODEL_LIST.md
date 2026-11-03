@@ -18,10 +18,10 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
 | mondo's own model | yes | 1 |
-| Meshy AI | no | 448 |
+| Meshy AI | no | 519 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 162 |
+| Claude in code (three.js, no file) | no | 100 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -1067,6 +1067,82 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | --- | --- | --- | --- |
 | spear | `Assets/weapons/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
 
+### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (68)
+
+Made 2026-11-03 for the code-drawn stand-ins of §10A (D-IDs in project files meshy/decor/decor_prompts.json). A proc builder
+calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) and the model is fitted into their box.
+
+| decor key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| anemone | `Assets/decor/anemone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| armour_stand | `Assets/decor/armour_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| armour_stand_post | `Assets/decor/armour_stand_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| autopsy_table | `Assets/decor/autopsy_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| banner | `Assets/decor/banner.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| barber_chair | `Assets/decor/barber_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| barber_pole | `Assets/decor/barber_pole.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| boiler | `Assets/decor/boiler.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| card_catalogue | `Assets/decor/card_catalogue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| carousel | `Assets/decor/carousel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| carousel_horse | `Assets/decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| cave_torch | `Assets/decor/cave_torch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| conveyor | `Assets/decor/conveyor.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| departures_board | `Assets/decor/departures_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| directory_board | `Assets/decor/directory_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| disc_cluster | `Assets/decor/disc_cluster.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| door_furnace | `Assets/decor/door_furnace.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| dream_eye | `Assets/decor/dream_eye.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| eeg_rack | `Assets/decor/eeg_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| egg_chair | `Assets/decor/egg_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| exec_desk | `Assets/decor/exec_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_gondola | `Assets/decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_wheel | `Assets/decor/ferris_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_wheel_wheel | `Assets/decor/ferris_wheel_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| flood_mast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| fountain | `Assets/decor/fountain.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| giant_clam | `Assets/decor/giant_clam.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| high_striker | `Assets/decor/high_striker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| laminator | `Assets/decor/laminator.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| laundry_cart | `Assets/decor/laundry_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lifeguard_chair | `Assets/decor/lifeguard_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lighthouse | `Assets/decor/lighthouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| meat_hook | `Assets/decor/meat_hook.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| mushroom_lamp | `Assets/decor/mushroom_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| music_box | `Assets/decor/music_box.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| music_box_dancer | `Assets/decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| nightmare_bloom | `Assets/decor/nightmare_bloom.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| notice_board | `Assets/decor/notice_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| pool_lounger | `Assets/decor/pool_lounger.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| popcorn_cart | `Assets/decor/popcorn_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| pot_rack | `Assets/decor/pot_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| punch_clock | `Assets/decor/punch_clock.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| robot_arm | `Assets/decor/robot_arm.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| rocking_chair | `Assets/decor/rocking_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| round_table | `Assets/decor/round_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| saucer_pendant | `Assets/decor/saucer_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| school_desk | `Assets/decor/school_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| scoreboard | `Assets/decor/scoreboard.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sea_buoy | `Assets/decor/sea_buoy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sea_vent | `Assets/decor/sea_vent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| server_rack | `Assets/decor/server_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| skiff | `Assets/decor/skiff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| slot_machine | `Assets/decor/slot_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| space_divider | `Assets/decor/space_divider.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sputnik_lamp | `Assets/decor/sputnik_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| star_projector | `Assets/decor/star_projector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stocks | `Assets/decor/stocks.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stone_altar | `Assets/decor/stone_altar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| t_pillar | `Assets/decor/t_pillar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tanker_desk | `Assets/decor/tanker_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ticket_booth | `Assets/decor/ticket_booth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trophy_case | `Assets/decor/trophy_case.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trophy_cup | `Assets/decor/trophy_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tulip_chair | `Assets/decor/tulip_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tulip_table | `Assets/decor/tulip_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| umbrella_closed | `Assets/decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| umbrella_stand | `Assets/decor/umbrella_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| wall_torch_bracket | `Assets/decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+
 ### Stairs pack (data.js HQ_STAIR_PACK — every stair flight, railing and escalator in the rooms)
 
 | pack file | file (R2 bucket path) | made by | source |
@@ -1106,12 +1182,14 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | landmine | `Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mic | `Assets/misc/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| piano | `Assets/decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pistol | `Assets/weapons/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | plasma | `Assets/weapons/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | rope | `Assets/misc/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sack | `Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sandbags | `Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sheep | `Assets/decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | shield | `Assets/weapons/Meshy_AI_shield_1027232025_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | shotgun | `Assets/weapons/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull | `Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1126,6 +1204,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | teslaCoil | `Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | throwingKnife | `Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tongs | `Assets/misc/Meshy_AI_tongs_1027232138_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tripodMachine | `Assets/decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | trumpet | `Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1370,17 +1449,17 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | Meshy_AI_one_angel_wing_1027074635_texture | `Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 | Meshy_AI_one_dragon_wing_1027074659_texture | `Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (162)
+## 8. Made in code — procedural stand-ins still in the catalogue (100)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`anemone`, `armour_stand`, `autopsy_table`, `banner`, `barber_chair`, `barber_mirror`, `barber_pole`, `bare_bulb`, `bigtop`, `boiler`, `broom`, `car_panel`, `card_catalogue`, `carousel`, `cave_torch`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `conveyor`, `conveyor_z`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `departures_board`, `directory_board`, `disc_cluster`, `door_furnace`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_eye`, `dream_screen`, `dryer`, `eeg_rack`, `egg_chair`, `evac_button`, `exec_desk`, `false_window`, `ferris_wheel`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `flood_mast`, `floor_panel`, `floor_stain`, `form_sheet`, `fountain`, `garage_ramp`, `garbage_chute`, `garden_ring`, `giant_clam`, `graffiti_wall`, `grow_lamp`, `hand_dryer`, `high_striker`, `house_stairs`, `impossible_stair`, `infinity_pool`, `iso_tank`, `keypad`, `kitchen_range`, `laminator`, `lap_pool`, `laundry_cart`, `lava_lamp`, `lava_lamp_floor`, `lesson_plaque`, `lesson_sign`, `lifeguard_chair`, `light_shaft`, `lighthouse`, `lost_shelf`, `meat_hook`, `metal_shelving`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `mushroom_lamp`, `music_box`, `nightmare_bloom`, `notice_board`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_lounger`, `pool_umbrella`, `popcorn_cart`, `porthole`, `pot_rack`, `price_tag`, `punch_clock`, `quarter_pipe`, `radiation_sign`, `range_hood`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `robot_arm`, `rocking_chair`, `roller_shutter`, `round_table`, `sale_banner`, `saucer_pendant`, `school_desk`, `scoreboard`, `sea_buoy`, `sea_vent`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `shower_stall`, `sink_row`, `skiff`, `slot_machine`, `space_divider`, `sputnik_lamp`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `star_projector`, `steel_table`, `stocks`, `stone_altar`, `street_drain`, `submarine`, `sun_viewport`, `t_pillar`, `tanker_desk`, `temple_dome`, `thoughtform`, `ticket_booth`, `toilet_paper`, `toilet_stall`, `track_bed`, `trophy_case`, `tube_map`, `tulip_chair`, `tulip_table`, `turnstile`, `umbrella_stand`, `urinal`, `wall_padding`, `wall_plaques`, `wall_shelf`, `wall_torch`, `warning_tape`, `washer`, `world_clocks`
+`barber_mirror`, `bare_bulb`, `bigtop`, `broom`, `car_panel`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `dryer`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `grow_lamp`, `hand_dryer`, `house_stairs`, `impossible_stair`, `infinity_pool`, `iso_tank`, `keypad`, `kitchen_range`, `lap_pool`, `lava_lamp`, `lava_lamp_floor`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `metal_shelving`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `range_hood`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `roller_shutter`, `sale_banner`, `serving_line`, `shaft_window`, `shag_rug`, `shower_stall`, `sink_row`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `steel_table`, `street_drain`, `submarine`, `sun_viewport`, `temple_dome`, `thoughtform`, `toilet_paper`, `toilet_stall`, `track_bed`, `tube_map`, `turnstile`, `urinal`, `wall_padding`, `wall_plaques`, `wall_shelf`, `warning_tape`, `washer`, `world_clocks`
 
-**Procs that already wear a real model** (14: the builder hangs a model file over its own pieces, which only
+**Procs that already wear a real model** (76: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:
 
-`candle_ring` (candle), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `fortune_tent` (crystalBall, fortune_teller_tent), `garden_tree` (a retro-pack tree), `locker_bench` (city_bench), `lone_gun` (pistol), `park_bench` (city_bench), `parked_car` (honda civic), `retro_console` (retro_control_panel), `saucer_rig` (saucer_lg), `sword_stone` (sword), `tape_shelf` (vhs_player)
+`anemone` (anemone), `armour_stand` (armour_stand_post, armour_stand), `autopsy_table` (autopsy_table), `banner` (banner), `barber_chair` (barber_chair), `barber_pole` (barber_pole), `boiler` (boiler), `candle_ring` (candle), `card_catalogue` (card_catalogue), `carousel` (carousel_horse, carousel), `cave_torch` (cave_torch), `conveyor` (conveyor), `conveyor_z` (conveyor), `departures_board` (departures_board), `directory_board` (directory_board), `disc_cluster` (disc_cluster), `door_furnace` (door_furnace), `dream_eye` (dream_eye), `eeg_rack` (eeg_rack), `egg_chair` (egg_chair), `exec_desk` (exec_desk), `ferris_wheel` (ferris_wheel, ferris_gondola, ferris_wheel_wheel), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `flood_mast` (flood_mast), `fortune_tent` (crystalBall, fortune_teller_tent), `fountain` (fountain), `garden_tree` (a retro-pack tree), `giant_clam` (giant_clam), `high_striker` (high_striker), `laminator` (laminator), `laundry_cart` (laundry_cart), `lifeguard_chair` (lifeguard_chair), `lighthouse` (lighthouse), `locker_bench` (city_bench), `lone_gun` (pistol), `meat_hook` (meat_hook), `mushroom_lamp` (mushroom_lamp), `music_box` (music_box, music_box_dancer), `nightmare_bloom` (nightmare_bloom), `notice_board` (notice_board), `park_bench` (city_bench), `parked_car` (honda civic), `pool_lounger` (pool_lounger), `popcorn_cart` (popcorn_cart), `pot_rack` (pot_rack), `punch_clock` (punch_clock), `retro_console` (retro_control_panel), `robot_arm` (robot_arm), `rocking_chair` (rocking_chair), `round_table` (round_table), `saucer_pendant` (saucer_pendant), `saucer_rig` (saucer_lg), `school_desk` (school_desk), `scoreboard` (scoreboard), `sea_buoy` (sea_buoy), `sea_vent` (sea_vent), `server_rack` (server_rack), `skiff` (skiff), `slot_machine` (slot_machine), `space_divider` (space_divider), `sputnik_lamp` (sputnik_lamp), `star_projector` (star_projector), `stocks` (stocks), `stone_altar` (stone_altar), `sword_stone` (sword), `t_pillar` (t_pillar), `tanker_desk` (tanker_desk), `tape_shelf` (vhs_player), `ticket_booth` (ticket_booth), `trophy_case` (trophy_case, trophy_cup), `tulip_chair` (tulip_chair), `tulip_table` (tulip_table), `umbrella_stand` (umbrella_stand, umbrella_closed), `wall_torch` (wall_torch_bracket)
 
 Besides the catalogue, the battle maps' near settings, horizons and monuments have procedural families too
 (the `_hz*` / `_nr*` builders): MODEL_INDEX.md §8 lists them.
@@ -1401,6 +1480,9 @@ old per-zone wishlists in MODEL_INDEX.md §3f-3p / §6b. Every stand-in falls in
 Meshy process (mondo's): concept image first -> mondo approves -> model in low-poly smart topology -> mondo names redos.
 Target tris are doubled per mondo (MPFB bodies ~30k). Concept rules: one object, plain background, no strings / chains / cords, screens and signs blank. Wiring a model into the
 game (giving the catalogue row a `file` and dropping its `proc`) is a separate step, only on mondo's say.
+**2026-11-03 mondo said wire them:** the 71 models Meshy made are in (rows marked WIRED). Each proc builder now WEARS its model
+(three-renderer.js THE MESHY DECOR, `_hqDecorWear`, files on R2 `Assets/decor/`): the catalogue rows are unchanged, the proc's
+own pieces hide (and keep the collision) and the model is fitted into their box. Rows not marked were not made on Meshy.
 
 ### 10A. Needs a NEW model (89) — stand-ins placed in rooms that no model in the game fits
 
@@ -1410,55 +1492,55 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | # | catalogue key | prop | uses | target tris | concept prompt |
 | --- | --- | --- | --- | --- | --- |
 | D01 | `bare_bulb` | Bare ceiling bulb | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord |
-| D02 | `cave_torch` | Standing torch | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
+| D02 | `cave_torch` | Standing torch — **WIRED 2026-11-03** | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
 | D03 | `steel_table` | Steel work table | 43 | 6000 | A stainless steel work table with a lower shelf and square legs, brushed metal |
-| D04 | `flood_mast` | Floodlight mast | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
+| D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
 | D05 | `metal_shelving` | Steel storage shelving (also lost_shelf) | 38 | 12000 | A grey steel storage shelving unit with four shelves holding cardboard boxes and plastic bins |
-| D06 | `notice_board` | Cork notice board | 37 | 4000 | A wall-mounted cork notice board in a wooden frame with pinned paper notices, memos and a calendar, no readable text |
-| D07 | `t_pillar` | Göbekli T-pillar (Ley Lines) | 34 | 16000 | A Göbekli Tepe style megalithic T-shaped limestone pillar about 4.5 metres tall, weathered pale stone, a fox and a boar carved in low relief on its side and arms carved in relief along the shaft |
-| D08 | `wall_torch` | Wall torch sconce | 32 | 4000 | A medieval iron wall sconce bolted to a small iron plate, holding a wooden torch with a charred unlit head |
+| D06 | `notice_board` | Cork notice board — **WIRED 2026-11-03** | 37 | 4000 | A wall-mounted cork notice board in a wooden frame with pinned paper notices, memos and a calendar, no readable text |
+| D07 | `t_pillar` | Göbekli T-pillar (Ley Lines) — **WIRED 2026-11-03** | 34 | 16000 | A Göbekli Tepe style megalithic T-shaped limestone pillar about 4.5 metres tall, weathered pale stone, a fox and a boar carved in low relief on its side and arms carved in relief along the shaft |
+| D08 | `wall_torch` | Wall torch sconce — **WIRED 2026-11-03** | 32 | 4000 | A medieval iron wall sconce bolted to a small iron plate, holding a wooden torch with a charred unlit head |
 | D09 | `iso_tank` | Cryo / isolation tank | 29 | 16000 | A sci-fi cryogenic isolation tank: a horizontal capsule with a frosted glass lid on a metal base, pipes and valves along its side, a small blank indicator panel |
-| D10 | `tanker_desk` | Steel tanker desk | 27 | 8000 | A grey 1960s steel tanker office desk with a stack of drawers on one side and a pale green top |
+| D10 | `tanker_desk` | Steel tanker desk — **WIRED 2026-11-03** | 27 | 8000 | A grey 1960s steel tanker office desk with a stack of drawers on one side and a pale green top |
 | D11 | `wall_shelf` | Wall shelf | 25 | 4000 | A simple wooden wall shelf on two black iron brackets holding a few jars and old books |
-| D12 | `server_rack` | Server rack | 21 | 12000 | A tall black computer server rack cabinet with a perforated mesh door and rows of rack servers inside, blank status lights |
-| D13 | `saucer_pendant` | Space-age saucer pendant lamp | 21 | 4000 | A 1960s space-age flying-saucer shaped ceiling pendant lamp in white and chrome on a short rigid stem to a round ceiling canopy |
-| D14 | `slot_machine` | Slot machine | 18 | 10000 | A vintage casino slot machine cabinet with a pull lever on the side, three reels, chrome trim and red paint, blank glass |
-| D15 | `armour_stand` | Knight armour on a stand | 17 | 20000 | A full suit of medieval knight plate armour displayed upright on a wooden stand, empty with nobody inside, helmet with the visor down |
+| D12 | `server_rack` | Server rack — **WIRED 2026-11-03** | 21 | 12000 | A tall black computer server rack cabinet with a perforated mesh door and rows of rack servers inside, blank status lights |
+| D13 | `saucer_pendant` | Space-age saucer pendant lamp — **WIRED 2026-11-03** | 21 | 4000 | A 1960s space-age flying-saucer shaped ceiling pendant lamp in white and chrome on a short rigid stem to a round ceiling canopy |
+| D14 | `slot_machine` | Slot machine — **WIRED 2026-11-03** | 18 | 10000 | A vintage casino slot machine cabinet with a pull lever on the side, three reels, chrome trim and red paint, blank glass |
+| D15 | `armour_stand` | Knight armour on a stand — **WIRED 2026-11-03** | 17 | 20000 | A full suit of medieval knight plate armour displayed upright on a wooden stand, empty with nobody inside, helmet with the visor down |
 | D16 | `radiation_sign` | Radiation warning sign | 17 | 1000 | A metal wall sign plate with the yellow and black radiation trefoil hazard symbol, bolted corners, slightly worn, no text |
 | D17 | `planter` | Concrete planter | 17 | 8000 | A long rectangular concrete planter box filled with soil and leafy green shrubs |
-| D18 | `stone_altar` | Stone altar | 15 | 6000 | An ancient carved stone altar block, rectangular, weathered grey stone with worn engraved bands |
-| D19 | `sea_buoy` | Channel buoy | 12 | 8000 | A red navigation channel buoy: a round float with a short lattice tower and a lamp at the top |
-| D20 | `egg_chair` | Egg chair | 12 | 12000 | A 1960s retro egg chair, white fibreglass shell with an orange cushioned interior, on a swivel base |
-| D21 | `pool_lounger` | Pool lounger | 12 | 6000 | A white poolside sun lounger with an adjustable backrest and slatted frame |
-| D22 | `boiler` | Basement boiler | 11 | 12000 | An old cast-iron basement boiler furnace with a round firebox door, a pressure gauge and pipes rising from the top |
-| D23 | `fountain` | Park fountain | 11 | 16000 | A classical stone park fountain with a round basin and a tiered central column with two smaller bowls, no water |
-| D24 | `banner` | Heraldic banner | 11 | 4000 | A medieval heraldic banner of red cloth with a gold lion emblem and a pointed bottom edge, hanging straight from a short wooden crossbar |
+| D18 | `stone_altar` | Stone altar — **WIRED 2026-11-03** | 15 | 6000 | An ancient carved stone altar block, rectangular, weathered grey stone with worn engraved bands |
+| D19 | `sea_buoy` | Channel buoy — **WIRED 2026-11-03** | 12 | 8000 | A red navigation channel buoy: a round float with a short lattice tower and a lamp at the top |
+| D20 | `egg_chair` | Egg chair — **WIRED 2026-11-03** | 12 | 12000 | A 1960s retro egg chair, white fibreglass shell with an orange cushioned interior, on a swivel base |
+| D21 | `pool_lounger` | Pool lounger — **WIRED 2026-11-03** | 12 | 6000 | A white poolside sun lounger with an adjustable backrest and slatted frame |
+| D22 | `boiler` | Basement boiler — **WIRED 2026-11-03** | 11 | 12000 | An old cast-iron basement boiler furnace with a round firebox door, a pressure gauge and pipes rising from the top |
+| D23 | `fountain` | Park fountain — **WIRED 2026-11-03** | 11 | 16000 | A classical stone park fountain with a round basin and a tiered central column with two smaller bowls, no water |
+| D24 | `banner` | Heraldic banner — **WIRED 2026-11-03** | 11 | 4000 | A medieval heraldic banner of red cloth with a gold lion emblem and a pointed bottom edge, hanging straight from a short wooden crossbar |
 | D25 | `lava_lamp` | Lava lamp | 10 | 3000 | A 1970s lava lamp on a chrome cone base with orange wax blobs inside the glass |
 | D26 | `concrete_pillar` | Garage concrete pillar | 9 | 2000 | A square reinforced concrete parking garage pillar with chipped corners and a yellow and black hazard stripe band near the base |
-| D27 | `stocks` | Medieval stocks | 9 | 6000 | Medieval wooden pillory stocks with holes for the head and hands, on two wooden posts |
-| D28 | `school_desk` | School desk | 9 | 6000 | An old school desk with an attached seat, a wooden top and a steel tube frame |
+| D27 | `stocks` | Medieval stocks — **WIRED 2026-11-03** | 9 | 6000 | Medieval wooden pillory stocks with holes for the head and hands, on two wooden posts |
+| D28 | `school_desk` | School desk — **WIRED 2026-11-03** | 9 | 6000 | An old school desk with an attached seat, a wooden top and a steel tube frame |
 | D29 | `toilet_paper` | Toilet paper roll | 8 | 1000 | A single roll of white toilet paper |
-| D30 | `tulip_chair` | Tulip chair | 8 | 6000 | A white tulip chair with a red seat cushion on a single pedestal base |
-| D31 | `tulip_table` | Tulip table | 8 | 4000 | A white round tulip table on a single pedestal base |
-| D32 | `eeg_rack` | EEG machine trolley | 8 | 8000 | A medical trolley holding an EEG monitoring machine with a blank screen and knobs |
+| D30 | `tulip_chair` | Tulip chair — **WIRED 2026-11-03** | 8 | 6000 | A white tulip chair with a red seat cushion on a single pedestal base |
+| D31 | `tulip_table` | Tulip table — **WIRED 2026-11-03** | 8 | 4000 | A white round tulip table on a single pedestal base |
+| D32 | `eeg_rack` | EEG machine trolley — **WIRED 2026-11-03** | 8 | 8000 | A medical trolley holding an EEG monitoring machine with a blank screen and knobs |
 | D33 | `lava_lamp_floor` | Floor lava lamp | 7 | 4000 | A tall floor-standing 1970s lava lamp about 1.5 metres tall, chrome base, orange wax blobs in a tall glass column |
-| D34 | `disc_cluster` | Disc cluster ceiling lamp | 7 | 6000 | A 1970s ceiling lamp made of a cluster of white discs on rigid chrome rods from a chrome canopy |
-| D35 | `sputnik_lamp` | Sputnik chandelier | 6 | 6000 | A brass sputnik chandelier: a central sphere with radiating rods each ending in a small bulb |
-| D36 | `dream_eye` | Eye on a stalk (Astral) | 6 | 12000 | A surreal giant eyeball with eyelids on a thick fleshy stalk growing from the ground |
+| D34 | `disc_cluster` | Disc cluster ceiling lamp — **WIRED 2026-11-03** | 7 | 6000 | A 1970s ceiling lamp made of a cluster of white discs on rigid chrome rods from a chrome canopy |
+| D35 | `sputnik_lamp` | Sputnik chandelier — **WIRED 2026-11-03** | 6 | 6000 | A brass sputnik chandelier: a central sphere with radiating rods each ending in a small bulb |
+| D36 | `dream_eye` | Eye on a stalk (Astral) — **WIRED 2026-11-03** | 6 | 12000 | A surreal giant eyeball with eyelids on a thick fleshy stalk growing from the ground |
 | D37 | `pool_umbrella` | Pool umbrella | 6 | 4000 | An open patio pool umbrella with a white and blue striped canopy on a pole with a weighted base |
-| D38 | `robot_arm` | Industrial robot arm | 6 | 12000 | An industrial yellow six-axis robotic arm on a floor base with a gripper |
-| D39 | `ticket_booth` | Carnival ticket booth | 6 | 12000 | A carnival ticket booth: a small red and white striped wooden kiosk with a window and a little peaked roof |
-| D40 | `anemone` | Sea anemone | 5 | 6000 | A sea anemone with many soft pink tentacles on a small rock |
+| D38 | `robot_arm` | Industrial robot arm — **WIRED 2026-11-03** | 6 | 12000 | An industrial yellow six-axis robotic arm on a floor base with a gripper |
+| D39 | `ticket_booth` | Carnival ticket booth — **WIRED 2026-11-03** | 6 | 12000 | A carnival ticket booth: a small red and white striped wooden kiosk with a window and a little peaked roof |
+| D40 | `anemone` | Sea anemone — **WIRED 2026-11-03** | 5 | 6000 | A sea anemone with many soft pink tentacles on a small rock |
 | D42 | `grow_lamp` | Grow lamp | 5 | 3000 | A hydroponic grow light fixture: a rectangular reflector hood with a purple LED panel on short rigid hanger rods |
-| D43 | `star_projector` | Planetarium star projector | 4 | 12000 | A planetarium star projector, a dumbbell-shaped machine with two studded spheres on a pedestal |
-| D44 | `meat_hook` | Meat hook rail | 4 | 3000 | A short steel butcher's rail with three S-shaped meat hooks hanging from it on rigid hooks, no chains |
-| D45 | `laundry_cart` | Laundry cart | 4 | 4000 | A laundry cart: a canvas bin on a metal frame with casters |
-| D46 | `umbrella_stand` | Umbrella stand | 4 | 4000 | A brass umbrella stand holding two closed umbrellas |
-| D47 | `lifeguard_chair` | Lifeguard chair | 4 | 8000 | A tall white wooden lifeguard chair with a ladder |
-| D48 | `conveyor` | Roller conveyor (also conveyor_z) | 4 | 8000 | An industrial roller conveyor section about 3 metres long on steel legs |
-| D49 | `popcorn_cart` | Popcorn cart | 4 | 10000 | A vintage red popcorn cart with a glass case full of popcorn and spoked wagon wheels |
-| D50 | `sea_vent` | Black smoker vent | 3 | 8000 | A deep sea hydrothermal vent chimney, a tall black smoker of dark rock |
-| D51 | `nightmare_bloom` | Flower of teeth (Astral) | 3 | 10000 | A surreal giant flower whose petals are rows of bone-white teeth on a thick dark stem |
+| D43 | `star_projector` | Planetarium star projector — **WIRED 2026-11-03** | 4 | 12000 | A planetarium star projector, a dumbbell-shaped machine with two studded spheres on a pedestal |
+| D44 | `meat_hook` | Meat hook rail — **WIRED 2026-11-03** | 4 | 3000 | A short steel butcher's rail with three S-shaped meat hooks hanging from it on rigid hooks, no chains |
+| D45 | `laundry_cart` | Laundry cart — **WIRED 2026-11-03** | 4 | 4000 | A laundry cart: a canvas bin on a metal frame with casters |
+| D46 | `umbrella_stand` | Umbrella stand — **WIRED 2026-11-03** | 4 | 4000 | A brass umbrella stand holding two closed umbrellas |
+| D47 | `lifeguard_chair` | Lifeguard chair — **WIRED 2026-11-03** | 4 | 8000 | A tall white wooden lifeguard chair with a ladder |
+| D48 | `conveyor` | Roller conveyor (also conveyor_z) — **WIRED 2026-11-03** | 4 | 8000 | An industrial roller conveyor section about 3 metres long on steel legs |
+| D49 | `popcorn_cart` | Popcorn cart — **WIRED 2026-11-03** | 4 | 10000 | A vintage red popcorn cart with a glass case full of popcorn and spoked wagon wheels |
+| D50 | `sea_vent` | Black smoker vent — **WIRED 2026-11-03** | 3 | 8000 | A deep sea hydrothermal vent chimney, a tall black smoker of dark rock |
+| D51 | `nightmare_bloom` | Flower of teeth (Astral) — **WIRED 2026-11-03** | 3 | 10000 | A surreal giant flower whose petals are rows of bone-white teeth on a thick dark stem |
 | D52 | `broom` | Broom | 3 | 2000 | A traditional straw broom with a wooden handle |
 | D53 | `serving_line` | Cafeteria serving counter | 3 | 10000 | A cafeteria serving counter with a glass sneeze guard shelf and empty steel food trays |
 | D54 | `pod_bed` | Capsule sleep pod | 3 | 12000 | A futuristic capsule sleep pod bed with a curved canopy cover, white and grey |
@@ -1466,47 +1548,47 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | D56 | `washer` | Washing machine | 3 | 6000 | A white front-loading washing machine |
 | D57 | `dryer` | Tumble dryer | 3 | 6000 | A white front-loading tumble dryer |
 | D58 | `toilet_stall` | Toilet stall | 3 | 8000 | A public restroom toilet stall with grey partition walls, an open door and a white toilet inside |
-| D59 | `round_table` | Round table (Camelot) | 3 | 30000 | A huge round oak table for twelve with twelve high-backed carved wooden chairs around it |
-| D60 | `departures_board` | Departures board | 3 | 3000 | A railway station departures board: a black rectangular split-flap board in a metal frame, blank with no letters |
-| D61 | `barber_chair` | Barber chair | 2 | 12000 | A vintage barber chair in red leather and chrome with a footrest and hydraulic base |
-| D62 | `barber_pole` | Barber pole | 2 | 2000 | A wall-mounted barber pole: a red, white and blue spiral glass cylinder between chrome caps |
+| D59 | `round_table` | Round table (Camelot) — **WIRED 2026-11-03** | 3 | 30000 | A huge round oak table for twelve with twelve high-backed carved wooden chairs around it |
+| D60 | `departures_board` | Departures board — **WIRED 2026-11-03** | 3 | 3000 | A railway station departures board: a black rectangular split-flap board in a metal frame, blank with no letters |
+| D61 | `barber_chair` | Barber chair — **WIRED 2026-11-03** | 2 | 12000 | A vintage barber chair in red leather and chrome with a footrest and hydraulic base |
+| D62 | `barber_pole` | Barber pole — **WIRED 2026-11-03** | 2 | 2000 | A wall-mounted barber pole: a red, white and blue spiral glass cylinder between chrome caps |
 | D63 | `urinal` | Urinal | 2 | 3000 | A white wall-hung urinal |
 | D64 | `hand_dryer` | Hand dryer | 2 | 2000 | A wall-mounted stainless steel hand dryer |
 | D65 | `shower_stall` | Shower stall | 2 | 6000 | A white tiled shower stall with a chrome shower head |
-| D66 | `skiff` | Sailing skiff | 2 | 16000 | A small wooden sailing skiff about 5 metres long with one mast and a furled canvas sail |
-| D67 | `lighthouse` | Lighthouse | 2 | 20000 | A white and red striped lighthouse tower with a lantern room and a gallery railing at the top, on a stone base |
-| D68 | `trophy_case` | Trophy case | 2 | 10000 | A wooden glass-front trophy cabinet with gold trophies on its shelves |
-| D69 | `laminator` | Laminator | 2 | 1600 | A grey plastic desktop office laminating machine |
-| D70 | `exec_desk` | Executive desk | 2 | 10000 | A large mahogany executive desk with a leather inlay top and drawers |
-| D71 | `mushroom_lamp` | Mushroom lamp | 2 | 3000 | A 1970s mushroom table lamp with a glossy orange dome shade |
-| D72 | `space_divider` | Space-age room divider | 2 | 6000 | A 1960s room divider screen, a white panel with a pattern of circular cut-outs |
+| D66 | `skiff` | Sailing skiff — **WIRED 2026-11-03** | 2 | 16000 | A small wooden sailing skiff about 5 metres long with one mast and a furled canvas sail |
+| D67 | `lighthouse` | Lighthouse — **WIRED 2026-11-03** | 2 | 20000 | A white and red striped lighthouse tower with a lantern room and a gallery railing at the top, on a stone base |
+| D68 | `trophy_case` | Trophy case — **WIRED 2026-11-03** | 2 | 10000 | A wooden glass-front trophy cabinet with gold trophies on its shelves |
+| D69 | `laminator` | Laminator — **WIRED 2026-11-03** | 2 | 1600 | A grey plastic desktop office laminating machine |
+| D70 | `exec_desk` | Executive desk — **WIRED 2026-11-03** | 2 | 10000 | A large mahogany executive desk with a leather inlay top and drawers |
+| D71 | `mushroom_lamp` | Mushroom lamp — **WIRED 2026-11-03** | 2 | 3000 | A 1970s mushroom table lamp with a glossy orange dome shade |
+| D72 | `space_divider` | Space-age room divider — **WIRED 2026-11-03** | 2 | 6000 | A 1960s room divider screen, a white panel with a pattern of circular cut-outs |
 | D73 | `kitchen_range` | Commercial range | 2 | 10000 | A commercial stainless steel kitchen range with six burners and an oven |
 | D74 | `range_hood` | Range hood | 2 | 4000 | A stainless steel commercial kitchen range hood |
 | D75 | `chalkboard` | Chalkboard | 2 | 2000 | A blank green school chalkboard in a wooden frame with a chalk tray |
-| D76 | `door_furnace` | Incinerator furnace | 2 | 12000 | A large brick industrial incinerator furnace with a heavy iron door |
-| D77 | `carousel` | Carousel | 2 | 40000 | A vintage fairground carousel with painted horses on poles under a striped canopy |
-| D78 | `high_striker` | High striker | 2 | 8000 | A carnival high striker strength tester: a tall red and white tower with a bell at the top and a lever pad at the base |
-| D79 | `giant_clam` | Giant clam | 1 | 6000 | A giant clam with an open wavy-edged shell and a blue interior mantle |
+| D76 | `door_furnace` | Incinerator furnace — **WIRED 2026-11-03** | 2 | 12000 | A large brick industrial incinerator furnace with a heavy iron door |
+| D77 | `carousel` | Carousel — **WIRED 2026-11-03** | 2 | 40000 | A vintage fairground carousel with painted horses on poles under a striped canopy |
+| D78 | `high_striker` | High striker — **WIRED 2026-11-03** | 2 | 8000 | A carnival high striker strength tester: a tall red and white tower with a bell at the top and a lever pad at the base |
+| D79 | `giant_clam` | Giant clam — **WIRED 2026-11-03** | 1 | 6000 | A giant clam with an open wavy-edged shell and a blue interior mantle |
 | D80 | `sink_row` | Row of sinks | 1 | 8000 | A row of three white bathroom sinks set in a countertop with chrome taps |
 | D81 | `submarine` | Bathyscaphe submarine | 1 | 20000 | A small brass and riveted bathyscaphe research submarine with a round viewport and two lamps |
-| D82 | `directory_board` | Mall directory kiosk | 1 | 4000 | A free-standing mall directory kiosk with an illuminated panel showing a blank map |
-| D83 | `rocking_chair` | Rocking chair | 1 | 6000 | A wooden rocking chair |
-| D84 | `music_box` | Music box | 1 | 4000 | A small wooden music box with the lid open and a tiny ballerina inside |
-| D85 | `punch_clock` | Punch clock | 1 | 4000 | A vintage employee punch time clock with a card rack beside it |
-| D86 | `card_catalogue` | Card catalogue | 1 | 10000 | A library card catalogue cabinet: a wall of small wooden drawers with brass handles |
-| D87 | `pot_rack` | Pot rack | 1 | 8000 | A ceiling-hung iron kitchen pot rack on short rigid rods with copper pots and pans hanging from hooks |
-| D90 | `autopsy_table` | Autopsy table | 1 | 6000 | A stainless steel autopsy table with drain channels on a pedestal |
-| D91 | `ferris_wheel` | Ferris wheel | 1 | 40000 | A small fairground ferris wheel with gondola seats on a white steel frame |
-| D92 | `scoreboard` | Stadium scoreboard | 1 | 12000 | A big stadium scoreboard: a tall frame on legs with a large blank screen and a clock panel |
+| D82 | `directory_board` | Mall directory kiosk — **WIRED 2026-11-03** | 1 | 4000 | A free-standing mall directory kiosk with an illuminated panel showing a blank map |
+| D83 | `rocking_chair` | Rocking chair — **WIRED 2026-11-03** | 1 | 6000 | A wooden rocking chair |
+| D84 | `music_box` | Music box — **WIRED 2026-11-03** | 1 | 4000 | A small wooden music box with the lid open and a tiny ballerina inside |
+| D85 | `punch_clock` | Punch clock — **WIRED 2026-11-03** | 1 | 4000 | A vintage employee punch time clock with a card rack beside it |
+| D86 | `card_catalogue` | Card catalogue — **WIRED 2026-11-03** | 1 | 10000 | A library card catalogue cabinet: a wall of small wooden drawers with brass handles |
+| D87 | `pot_rack` | Pot rack — **WIRED 2026-11-03** | 1 | 8000 | A ceiling-hung iron kitchen pot rack on short rigid rods with copper pots and pans hanging from hooks |
+| D90 | `autopsy_table` | Autopsy table — **WIRED 2026-11-03** | 1 | 6000 | A stainless steel autopsy table with drain channels on a pedestal |
+| D91 | `ferris_wheel` | Ferris wheel — **WIRED 2026-11-03** | 1 | 40000 | A small fairground ferris wheel with gondola seats on a white steel frame |
+| D92 | `scoreboard` | Stadium scoreboard — **WIRED 2026-11-03** | 1 | 12000 | A big stadium scoreboard: a tall frame on legs with a large blank screen and a clock panel |
 
 ### 10B. Spell props still missing (from the spell look audit, docs: project files spell-vfx-audit/fix/MISSING_MODELS.md)
 
 | # | prop | spell | concept prompt |
 | --- | --- | --- | --- |
-| S01 | piano | Things That Go Bump (ghost) | A black upright piano with the lid closed |
-| S02 | sheep | Counting Sheep (dreameater) | A fluffy white cartoonish-realistic sheep standing |
+| S01 | piano | Things That Go Bump (ghost) — **WIRED 2026-11-03** | A black upright piano with the lid closed |
+| S02 | sheep | Counting Sheep (dreameater) — **WIRED 2026-11-03** | A fluffy white cartoonish-realistic sheep standing |
 | S03 | polaroid | Cryptid Vanish (loch ness monster) | An instant polaroid photograph showing a blurry photo of a lake, white frame |
-| S04 | tripod_machine | Tripod Sweep (martian) | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
+| S04 | tripod_machine | Tripod Sweep (martian) — **WIRED 2026-11-03** | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
 
 ### 10C. SWAPS TO MODELS ALREADY IN THE GAME — done 2026-11-03 (mondo: "go ahead and do the recommended replacements")
 
