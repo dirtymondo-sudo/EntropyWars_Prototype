@@ -31,6 +31,8 @@ F = {
     'burgerpiz':     'burgerpiz/BurgerPiz/Models/BurgerPiz.fbx',
     'gasstation':    'gas-station/Gas_station/Models/Gas_station_Props.fbx',
     'buildings':     'buildings/Buildings/Models/Buildings.fbx',
+    'trailerscene':  'trailer-park/Trailer_Park/Models/Trailer_Park.fbx',
+    'abandonedhouse': 'abandoned-house/Abandoned_House/Models/Abandoned_House.fbx',
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -52,6 +54,16 @@ JOBS = [
     # THE PACK BUILDINGS (2026-11-03, mondo: "incorporate those into the game like in disaster city and the map editor"): the ten
     # photo-textured shop blocks of the Buildings pack, each its own GLB, the shop front at +Z (data.js HQ_PACK_BUILDINGS)
 ] + [('bld_%02d' % i, 'buildings', ['Building' if i == 0 else 'Building_%02d' % i], 0) for i in range(10)]
+# THE TOWN RIM's TRAILERS (2026-11-03, mondo OK'd: Area 51 + Skinwalker Ranch's far houses = the Trailer Park scene's trailers, each placed
+# on its own): the scene is flat (no groups), so a job's node may be a REGION — {'near': the trailer's shell, 'pad': metres, 'keep': a
+# name regex} keeps every object whose middle stands inside that shell's footprint (+ pad) and whose name matches: the outside only
+# (shell, porch railing, window frames + glass, door, AC unit, antenna, steps, fuse box), never the furniture. The door side (-X) turns to +Z.
+TRAILER_KEEP = r'^(Home|railing|Frame_Windows|Mesh|Frame_Door|Door|Door_Mesh|air-conditioning|Antenna|ladders|Fuse_box)'
+# THE HAUNTED HOUSE's TOWN RIM (2026-11-03, same OK): the Abandoned House pack's house from the OUTSIDE — its shell alone (`Casa!` = the
+# node without its 69 children: the furniture, the cobwebs, the lamps), its windows, the balcony, the porch posts + rails. The basement
+# hangs 3.5 m under the yard's ground (the rim sinks it). Its front (the porch on its short side, +X in the file) turns to +Z.
+JOBS += [('house', 'abandonedhouse', ['Casa!', 'Ventanas', 'm', 'Columnas', 'Barandal', 'Barandal.003'], -90)]
+JOBS += [('trailer_%d' % i, 'trailerscene', [{'near': 'Home' if i == 0 else 'Home_%02d' % i, 'pad': 1.2, 'keep': TRAILER_KEEP}], 90) for i in range(6)]
 jobs = []
 for k, p, nodes, rz in JOBS:
     if ONLY and k not in ONLY: continue
@@ -86,9 +98,22 @@ for f,js in byfile.items():
         bpy.ops.wm.open_mainfile(filepath=tmp)
         keep=set()
         for n in j['nodes']:
-            o=bpy.data.objects.get(n)
+            if isinstance(n,dict):   # a REGION (THE TOWN RIM's TRAILERS): every matching object whose middle is inside the near node's footprint
+                import re
+                ref=bpy.data.objects.get(n['near'])
+                if not ref: print('MISSING NODE',n['near'],'in',f); continue
+                rp=[ref.matrix_world@v.co for v in ref.data.vertices]; pad=n.get('pad',1.0); rx=re.compile(n['keep'])
+                x0=min(p.x for p in rp)-pad; x1=max(p.x for p in rp)+pad; y0=min(p.y for p in rp)-pad; y1=max(p.y for p in rp)+pad
+                for o in bpy.data.objects:
+                    if o.type!='MESH' or not rx.search(o.name): continue
+                    c=sum((o.matrix_world@v.co for v in o.data.vertices),Vector())/max(1,len(o.data.vertices))
+                    if x0<=c.x<=x1 and y0<=c.y<=y1: keep.add(o); keep.update(o.children_recursive)
+                continue
+            alone=n.endswith('!')   # `name!` = that node without its children
+            o=bpy.data.objects.get(n.rstrip('!'))
             if not o: print('MISSING NODE',n,'in',f); continue
-            keep.add(o); keep.update(o.children_recursive)
+            keep.add(o)
+            if not alone: keep.update(o.children_recursive)
         if not keep: continue
         for o in list(bpy.data.objects):
             if o not in keep: bpy.data.objects.remove(o,do_unlink=True)
