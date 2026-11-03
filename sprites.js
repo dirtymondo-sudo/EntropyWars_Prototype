@@ -3581,6 +3581,48 @@ const EW_MH_LOOKS = {
   ],
 };
 // EW_MH_LOOKS:END
+/* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
+   character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
+   there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
+   eyeballs (eye_proxy.json, bake-eyes.py) and it wears the pack PNG itself + its normal map. The Iris colour picker recolours the
+   two irises (EW_MH_EYE_PACK_IRIS: the pupils' centres + the iris radius in the 1024 px texture, measured by bake-eyes.py). */
+const EW_MH_EYE_PACK_DIR = 'mpfb/looks/eyes/eyetextures/';
+const EW_MH_EYE_PACK = [
+  ['mhp_black', 'Black', 'BlackEyes', 'EyesNormals'],
+  ['mhp_black_bs', 'Black bloodshot', 'BlackBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_blackest', 'All black', 'BlackestEyes', 'BlackestEyesNormals'],
+  ['mhp_blue', 'Blue', 'BlueEyes', 'EyesNormals'],
+  ['mhp_blue_bs', 'Blue bloodshot', 'BlueBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_brown', 'Brown', 'BrownEyes', 'EyesNormals'],
+  ['mhp_brown2', 'Brown 2', 'BrownEyes1', 'EyesNormals'],
+  ['mhp_brown_bs', 'Brown bloodshot', 'BrownBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_brown2_bs', 'Brown 2 bloodshot', 'BrownBloodShotEyes1', 'EyesBloodShotNormals'],
+  ['mhp_deepblue', 'Deep blue', 'DeepBlueEyes', 'EyesNormals'],
+  ['mhp_deepblue_bs', 'Deep blue bloodshot', 'DeepBlueBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_green', 'Green', 'GreenEyes', 'EyesNormals'],
+  ['mhp_green_bs', 'Green bloodshot', 'GreenBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_olive', 'Olive', 'OliveEyes', 'EyesNormals'],
+  ['mhp_olive_bs', 'Olive bloodshot', 'OliveBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_purple', 'Purple', 'PurpleEyes', 'EyesNormals'],
+  ['mhp_purple_bs', 'Purple bloodshot', 'PurpleBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_red', 'Red', 'RedEyes', 'EyesNormals'],
+  ['mhp_red_bs', 'Red bloodshot', 'RedBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_cat_blue', 'Cat eyes blue', 'CatEyesBlue', 'CatEyesNormalMap'],
+  ['mhp_cat_blue_bs', 'Cat eyes blue bloodshot', 'CatEyesBlueBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_darkblue', 'Cat eyes dark blue', 'CatEyesDarkBlue', 'CatEyesNormalMap'],
+  ['mhp_cat_darkblue_bs', 'Cat eyes dark blue bloodshot', 'CatEyesDarkBlueBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_green', 'Cat eyes green', 'CatEyesGreen', 'CatEyesNormalMap'],
+  ['mhp_cat_green_bs', 'Cat eyes green bloodshot', 'CatEyesGreenBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_olive', 'Cat eyes olive', 'CatEyesOlive', 'CatEyesNormalMap'],
+  ['mhp_cat_olive_bs', 'Cat eyes olive bloodshot', 'CatEyesOliveBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_purple', 'Cat eyes purple', 'CatEyesPurple', 'CatEyesNormalMap'],
+  ['mhp_cat_purple_bs', 'Cat eyes purple bloodshot', 'CatEyesPurpleBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_red', 'Cat eyes red', 'CatEyesRed', 'CatEyesNormalMap'],
+  ['mhp_cat_red_bs', 'Cat eyes red bloodshot', 'CatEyesRedBloodShot', 'CatEyesBloodShotNormals'],
+];
+const EW_MH_EYE_PACK_IRIS = { centres: [[296.9, 733.0], [722.9, 311.0]], r: 124 };
+const EW_MH_EYE_PACK_BY_ID = {};
+for (const r of EW_MH_EYE_PACK) EW_MH_EYE_PACK_BY_ID[r[0]] = r;
 const EW_MH_WEAR_BY_ID = {};
 for (const w of EW_MH_WEAR) EW_MH_WEAR_BY_ID[w[0]] = w;
 function getWearUrl(id) { return EW_MH_WEAR_BY_ID[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + id + '.glb' : null; }
@@ -4189,7 +4231,7 @@ const EW_APPEARANCE_ENUMS = {
   body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),
   // THE LOOKS (2026-11-01): an MPFB body's skin / eyes / brows / lashes ('own' = the body's own, EW_MH_LOOKS.kits)
   mhSkin: ['own'].concat(EW_MH_LOOKS.skins.map(r => r[0])),
-  mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
+  mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0]), EW_MH_EYE_PACK.map(r => r[0])),   // (+ THE EYE PACK)
   mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
   mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
   lipTint: ['own', 'pick'],   // THE LIP COLOUR (2026-11-03): an MPFB body's lips as the skin paints them / lipColor
@@ -4461,11 +4503,12 @@ function getMhLookLayers(a) {
   const body = a && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
   const kit = body && EW_MH_LOOKS.kits[body];
   if (!kit) return null;
-  const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
+  const pack = !!EW_MH_EYE_PACK_BY_ID[a.mhEyes];   // THE EYE PACK: worn by the eye mesh (getMhEyePack); the sheet keeps the body's own eyes
+  const pick = { skin: a.mhSkin, eyes: pack ? 'own' : a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
   const chest = EW_MH_CHEST.band[body] && a.mhChest === 'smooth' ? 'smooth' : null;   // THE CHEST ('nipples' = the sheet as baked)
   const lips = a.lipTint === 'pick' && typeof a.lipColor === 'string' ? a.lipColor : null;   // THE LIP COLOUR
   const hex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : null;   // THE LOOK COLOURS
-  const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' ? hex(a.eyeColor) : null,
+  const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' && !pack ? hex(a.eyeColor) : null,
     brows: a.browTint === 'hair' ? hex(a.hairColor) : a.browTint === 'pick' ? hex(a.browColor) : null, lashes: a.lashTint === 'pick' ? hex(a.lashColor) : null };
   const tinted = Object.keys(tint).some(k => tint[k]);
   if (!chest && !lips && !tinted && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
@@ -4481,6 +4524,17 @@ function getMhLookLayers(a) {
   if (lips) out.lips = Object.assign({ color: lips }, EW_MH_LIPS);   // THE LIP COLOUR (painted over the skin, three-renderer.js tintLips)
   if (tinted) { out.tint = tint; out.iris = EW_MH_IRIS; out.skinSample = EW_MH_SKIN_SAMPLE; out.skinKeep = EW_MH_SKIN_KEEP; }   // THE LOOK COLOURS (three-renderer.js tintSheet / tintLayer)
   return out;
+}
+/* THE EYE PACK: an MPFB body's pack eye pick -> { id, map, normal (the R2 PNGs), tint (the Iris colour, or null), iris, proxy }; null
+   for the sheet's own eye colours or a body that is not MPFB */
+function getMhEyePack(a) {
+  const row = a && EW_MH_EYE_PACK_BY_ID[a.mhEyes];
+  const body = row && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
+  if (!body || !EW_MH_LOOKS.kits[body]) return null;
+  const dir = EW_CHARACTER_ASSET_BASE + '/' + EW_MH_EYE_PACK_DIR;
+  const tint = a.eyeTint === 'pick' && typeof a.eyeColor === 'string' && /^#[0-9a-f]{6}$/i.test(a.eyeColor) ? a.eyeColor : null;
+  return { id: row[0], map: dir + row[2] + '.png', normal: row[3] ? dir + row[3] + '.png' : null, tint: tint, iris: EW_MH_EYE_PACK_IRIS,
+    proxy: EW_CHARACTER_ASSET_BASE + '/mpfb/looks/eyes/eye_proxy.json' };
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
 function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
@@ -4645,6 +4699,7 @@ function getCharacterAppearanceAssets(appearance) {
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
+  const eyePack = getMhEyePack(a); if (eyePack) { looks.push(eyePack.map); if (eyePack.normal) looks.push(eyePack.normal); }   // THE EYE PACK (its PNGs)
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
 }
 function getWingsStyleUrl(id) { const o = id && id !== 'none' && EW_WINGS_STYLES.find(x => x.id === id); return o ? o.url || EW_WINGS_URL : null; }
@@ -4680,6 +4735,7 @@ if (typeof window !== 'undefined') {
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
   window.mpfbKitOf = mpfbKitOf;
+  window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES

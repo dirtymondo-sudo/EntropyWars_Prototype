@@ -49855,6 +49855,67 @@ const ThreeRenderer = (function () {
         var c = document.createElement('canvas'); c.width = w; c.height = h; return c;
     }
 
+    /* THE EYE PACK (2026-11-03): MakeHuman's high-poly eye mesh (eye_proxy.json, bake-eyes.py), loaded once. cb(data | null).
+       The table names the body's vertices by UV (every MPFB GLB keeps hm08's sheet), so one file fits all the MPFB bodies. */
+    var _ccEyeProxy = null, _ccEyeProxyWait = null;
+    function _ccLoadEyeProxy(url, cb) {
+        if (_ccEyeProxy) { cb(_ccEyeProxy); return; }
+        if (_ccEyeProxy === false || typeof fetch !== 'function') { cb(null); return; }
+        if (_ccEyeProxyWait) { _ccEyeProxyWait.push(cb); return; }
+        _ccEyeProxyWait = [cb];
+        var done = function (d) {
+            _ccEyeProxy = d && d.verts && d.gv && d.tris && d.ref ? d : false;
+            if (!_ccEyeProxy) console.warn('[ThreeRenderer] eye pack mesh failed', url);
+            var w = _ccEyeProxyWait; _ccEyeProxyWait = null;
+            for (var i = 0; i < w.length; i++) { try { w[i](_ccEyeProxy || null); } catch (e) { console.warn('[ThreeRenderer] eye pack', e); } }
+        };
+        fetch(_asNetUrl(url)).then(function (r) { return r.ok ? r.json() : null; }).then(done, function () { done(null); });
+    }
+    /* the pack textures, shared by every unit wearing the same pick (never disposed): the colour PNG (recoloured on a canvas for an
+       Iris colour) and the normal map; flipY off like the GLB maps (the mesh's UVs are glTF's, v down) */
+    var _ccEyeTexCache = {};
+    function _ccEyeTexture(img, key, tint, iris, colorSpace, normal) {
+        var k = key + '|' + (tint || '') + '|' + colorSpace + (normal ? '|n' : '');
+        if (_ccEyeTexCache[k]) return _ccEyeTexCache[k];
+        var srcImg = img;
+        if (tint && !normal) { var c = _ccTintIris(img, tint, iris); if (c) srcImg = c; }
+        var t = srcImg.tagName === 'CANVAS' ? new THREE.CanvasTexture(srcImg) : new THREE.Texture(srcImg);
+        t.flipY = false;
+        if (normal) { if (THREE.NoColorSpace !== undefined) t.colorSpace = THREE.NoColorSpace; }
+        else if (colorSpace !== undefined && colorSpace !== 'undefined') t.colorSpace = colorSpace;
+        t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.anisotropy = 4;
+        t.needsUpdate = true; t._ew_shared = true;
+        _ccEyeTexCache[k] = t;
+        return t;
+    }
+    /* THE LOOK COLOURS on a pack eye: the two irises in the picked colour at each pixel's own brightness (the pupil stays dark,
+       the whites, the veins and a cat eye's slit untouched outside / kept dark inside), feathered over 6 px at the rim */
+    function _ccTintIris(img, color, iris) {
+        var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
+        var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+        var C = (iris && iris.centres) || [], R = ((iris && iris.r) || 124) * w / 1024, F = 6 * w / 1024, m = 0, mw = 0, i, xx, yy, q, W = new Float32Array(w * hh);
+        for (q = 0; q < C.length; q++) {
+            var cx = C[q][0] * w / 1024, cy = C[q][1] * hh / 1024;
+            for (yy = Math.max(0, Math.floor(cy - R - F)); yy < Math.min(hh, Math.ceil(cy + R + F)); yy++) for (xx = Math.max(0, Math.floor(cx - R - F)); xx < Math.min(w, Math.ceil(cx + R + F)); xx++) {
+                var d = Math.hypot(xx + 0.5 - cx, yy + 0.5 - cy), wt = Math.max(0, Math.min(1, (R + F / 2 - d) / F));
+                i = yy * w + xx; if (wt > W[i]) W[i] = wt;
+            }
+        }
+        for (i = 0; i < w * hh; i++) if (W[i] > 0.5) { var o = i * 4, l = D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114; m += l; mw++; }
+        if (!mw) return null;
+        m = Math.max(6, m / mw);
+        for (i = 0; i < w * hh; i++) {
+            var wt2 = W[i]; if (!wt2) continue;
+            var o2 = i * 4, f = Math.min(1.6, (D[o2] * 0.299 + D[o2 + 1] * 0.587 + D[o2 + 2] * 0.114) / m);
+            D[o2] = D[o2] * (1 - wt2) + Math.min(255, cr * f) * wt2;
+            D[o2 + 1] = D[o2 + 1] * (1 - wt2) + Math.min(255, cg * f) * wt2;
+            D[o2 + 2] = D[o2 + 2] * (1 - wt2) + Math.min(255, cb * f) * wt2;
+        }
+        x.putImageData(im, 0, 0);
+        return c;
+    }
+
     /* Shared <img> loads (CORS-clean) with the same-origin retry sprites.js
        allowlists. cb(img | null). */
     function _ccLoadImage(url, cb) {
@@ -51449,6 +51510,14 @@ const ThreeRenderer = (function () {
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 })),
                 outer2: shell('outer2', material({ roughness: 0.9 }))   // THE SECOND OUTER LAYER (2026-11-01)
             };
+            /* THE EYE PACK (2026-11-03): an MPFB body's MakeHuman eye mesh, made with the shells (so the board's material swap
+               covers it) and empty until a pack eye is picked (eyePackWrite); glossy, like an eye */
+            if (stockSkin) {
+                // (alphaTest: the mesh's cornea dome sits over the iris on the PNGs' clear corner - MakeHuman draws it see-through)
+                shells.eyes = shell('eyes', material({ roughness: 0.3, side: THREE.FrontSide, vertexColors: true, alphaTest: 0.5 }));
+                shells.eyes.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+                shells.eyes.visible = false;
+            }
             var part = { jig: jig, faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
@@ -51908,6 +51977,7 @@ const ThreeRenderer = (function () {
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
             var si = part.siW, sw = part.swW, pos = src.attributes.position.array, uvA = src.attributes.uv.array;   // welded skin weights (see the parts setup)
             var P = new Float32Array(N * 3), i, j, k;
+            var eyeOn = !!(part.stock && part.shells.eyes && part.eyePack && _ccEyeProxy && eyePackIndex(part, uvA)), eyeTri = eyeOn ? part.eyeTris : null;   // THE EYE PACK: its mesh replaces the eyeballs
             var skull = { halfW: 0, xMin: Infinity, xMax: -Infinity, zMin: Infinity, zMax: -Infinity, topY: -Infinity, cx: 0, n: 0 };
             /* rev 10: THE BEARD HAS VOLUME — a beard / goatee / full beard pushes the jaw, the chin and the cheeks under the
                sideburn line OUT along the skin's normal (4 / 3 / 6 mm), so it reads as hair standing off the face and
@@ -53753,6 +53823,7 @@ const ThreeRenderer = (function () {
                 /* THE SKIN UNDER THE CLOTHES: a skin triangle is left out when all three corners are covered (skinCover); without the
                    cover (a classic base before its fit has loaded) the delete lists as before */
                 var SC = part.skinCov, wHid = SC ? !!(SC.cov[i0] && SC.cov[i1] && SC.cov[i2]) : !!(part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]));
+                if (eyeTri && eyeTri[k / 3]) wHid = true;   // THE EYE PACK: the body's own eyeball (its mesh is drawn instead)
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (wHid) { /* under a pack garment */ }
                 else if (!anyFull && !anyPart) {
@@ -53895,6 +53966,7 @@ const ThreeRenderer = (function () {
                 if (index === 0 && part.faceMorph) faceMorphWrite(mesh, part.faceMorph, n, b.xCount);   // THE IDLE FACE
                 mesh.visible = b.index.length > 0;
             });
+            try { eyePackWrite(part, P, si, sw, eyeOn); } catch (e) { console.warn('[ThreeRenderer] eye pack mesh failed', e); }   // THE EYE PACK
             /* rev 12: A COAT HANGS FROM THE HIPS — a shell that stops at the hips (a coat, a trench, a parka) rode the skin's own
                weights down to its hem, so in a walk (and the idle stance) its back wrapped each buttock as the thigh swung it and
                its hem stood out over the tail (a lathe hanging from the hips) as a shelf. The shell's weights — and its buttons'
@@ -54539,7 +54611,7 @@ const ThreeRenderer = (function () {
                 if (ix) { used = new Uint8Array(n); var I = ix.array, c = Math.min(I.length, m.geometry.drawRange && isFinite(m.geometry.drawRange.count) ? m.geometry.drawRange.count : I.length); for (var q = 0; q < c; q++) used[I[q]] = 1; }
                 for (var q2 = 0; q2 < n; q2++) { if (used && !used[q2]) continue; var y = A[q2 * 3 + 1]; if (y >= yLo && y <= yHi) G.push(A[q2 * 3], y, A[q2 * 3 + 2]); }
             };
-            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
+            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || nm === 'eyes' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
             (part.wear || []).forEach(function (w) { if (w.facial) return; take(w.mesh); (w.accents || []).forEach(take); });   // (+ its accents: a collar, a fur trim - the hair stood through the cassock's collar)
             var thick = new Float32Array(N);
             if (G.length) {
@@ -54663,6 +54735,129 @@ const ThreeRenderer = (function () {
            the eyes glancing to a new point every 1-4 s (a big glance may blink), the brows drifting and lifting now and then,
            a faint smile coming and going, the jaw breathing a hair open. Small on purpose; no sound. Cosmetic: each screen
            runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_FACE_IDLE = true (before the model loads). */
+        /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack: "please add them to the character creator"): a
+           pack eye on an MPFB body is MakeHuman's own high-poly eye mesh (eye_proxy.json, bake-eyes.py) wearing the pack PNG + its
+           normal map at full size (drawn into the skin sheet an iris was ~6 texels and a cat eye's slit was lost). Each of its
+           vertices is three body vertices x weights + an offset scaled by the head (MakeHuman's .mhclo fit), so the face sliders and
+           the idle face's glances move it with the eyeballs it replaces; the body's eyeball triangles are left out while it shows.
+           eyePackIndex: the table's hm08 vertices -> this body's vertices, by UV (nearest within 2e-5; -1 = the fit is off) */
+        function eyePackIndex(part, uvA) {
+            if (part.eyeIdx !== undefined) return part.eyeIdx;
+            var D = _ccEyeProxy, n = uvA.length / 2, grid = new Map(), i, q;
+            for (i = 0; i < n; i++) { var key = Math.floor(uvA[i * 2] * 2048) + ',' + Math.floor(uvA[i * 2 + 1] * 2048), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            var near = function (u, v) {
+                var best = -1, bd = 2e-5, a = Math.floor(u * 2048), b = Math.floor(v * 2048);
+                for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
+                    var L = grid.get((a + da) + ',' + (b + db)); if (!L) continue;
+                    for (var t = 0; t < L.length; t++) { var j = L[t], d = Math.abs(uvA[j * 2] - u) + Math.abs(uvA[j * 2 + 1] - v); if (d < bd) { best = j; bd = d; } }
+                }
+                return best;
+            };
+            var idx = new Int32Array(D.ref.length), alt = D.refAlt || {};
+            for (q = 0; q < D.ref.length; q++) {
+                var g = near(D.ref[q][0], D.ref[q][1]);
+                for (var k = 0; g < 0 && alt[q] && k < alt[q].length; k++) g = near(alt[q][k][0], alt[q][k][1]);
+                if (g < 0) { console.warn('[ThreeRenderer] eye pack: this body does not fit (vertex ' + q + ')'); part.eyeIdx = null; return null; }
+                idx[q] = g;
+            }
+            // the body's eyeball triangles (all three corners on an eyeball-helper UV): left out while the mesh shows
+            var eyeV = new Uint8Array(n), E = D.eyeUv || [];
+            for (q = 0; q < E.length; q += 2) {
+                var a0 = Math.floor(E[q] * 2048), b0 = Math.floor(E[q + 1] * 2048);
+                for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
+                    var L2 = grid.get((a0 + da) + ',' + (b0 + db)); if (!L2) continue;
+                    for (var t2 = 0; t2 < L2.length; t2++) { var j2 = L2[t2]; if (Math.abs(uvA[j2 * 2] - E[q]) + Math.abs(uvA[j2 * 2 + 1] - E[q + 1]) < 2e-5) eyeV[j2] = 1; }
+                }
+            }
+            var ids = part.ids, tris = new Uint8Array(ids.length / 3);
+            for (i = 0; i < ids.length; i += 3) tris[i / 3] = eyeV[ids[i]] && eyeV[ids[i + 1]] && eyeV[ids[i + 2]] ? 1 : 0;
+            part.eyeTris = tris;
+            part.eyeIdx = idx;
+            return idx;
+        }
+        function eyePackWrite(part, P, si, sw, on) {
+            var mesh = part.shells && part.shells.eyes;
+            if (!mesh) return;
+            if (!on) { mesh.visible = false; return; }
+            var D = _ccEyeProxy, G = part.eyeIdx, V = D.verts, nv = V.length, g = mesh.geometry, i, k;
+            var sc = [0, 1, 2].map(function (ax) { var s = D.scale['xyz'[ax]]; return s ? Math.abs(P[G[s[0]] * 3 + ax] - P[G[s[1]] * 3 + ax]) / s[2] : 0.1; });
+            var pp = new Float32Array(nv * 3), dom = new Int32Array(nv);
+            for (i = 0; i < nv; i++) {
+                var r = V[i], g0 = G[r[0]], g1 = G[r[1]], g2 = G[r[2]];
+                for (k = 0; k < 3; k++) pp[i * 3 + k] = r[3] * P[g0 * 3 + k] + r[4] * P[g1 * 3 + k] + r[5] * P[g2 * 3 + k] + r[6 + k] * sc[k];
+                dom[i] = r[3] >= r[4] && r[3] >= r[5] ? g0 : r[4] >= r[5] ? g1 : g2;   // (the skin weights: the nearest body vertex's)
+            }
+            // smooth normals per proxy vertex (over its faces), then one GPU vertex per (vertex, uv) pair
+            var GV = D.gv, T = D.tris, ng = GV.length, nn = new Float32Array(nv * 3);
+            for (i = 0; i < T.length; i += 3) {
+                var a = GV[T[i]][0] * 3, b = GV[T[i + 1]][0] * 3, c = GV[T[i + 2]][0] * 3;
+                var ux = pp[b] - pp[a], uy = pp[b + 1] - pp[a + 1], uz = pp[b + 2] - pp[a + 2], vx = pp[c] - pp[a], vy = pp[c + 1] - pp[a + 1], vz = pp[c + 2] - pp[a + 2];
+                var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+                [a, b, c].forEach(function (o) { nn[o] += nx; nn[o + 1] += ny; nn[o + 2] += nz; });
+            }
+            var position = new Float32Array(ng * 3), normal = new Float32Array(ng * 3), uv = new Float32Array(ng * 2), col = new Float32Array(ng * 3).fill(1);
+            var skinIndex = new Uint16Array(ng * 4), skinWeight = new Float32Array(ng * 4);
+            for (i = 0; i < ng; i++) {
+                var v = GV[i][0], d0 = dom[v];
+                for (k = 0; k < 3; k++) { position[i * 3 + k] = pp[v * 3 + k]; normal[i * 3 + k] = nn[v * 3 + k]; }
+                uv[i * 2] = GV[i][1]; uv[i * 2 + 1] = GV[i][2];
+                for (k = 0; k < 4; k++) { skinIndex[i * 4 + k] = si[d0 * 4 + k]; skinWeight[i * 4 + k] = sw[d0 * 4 + k]; }
+            }
+            if (g.attributes.position) g.dispose();
+            g.morphAttributes = {};
+            g.setAttribute('position', new THREE.BufferAttribute(position, 3));
+            g.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+            g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(skinIndex, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(skinWeight, 4));
+            g.setIndex(new THREE.BufferAttribute(Uint32Array.from(T), 1));
+            g.normalizeNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+            // THE IDLE FACE: the body's own face shapes, carried over (the glances turn this eye too); the body's influences, shared
+            var fm = part.faceMorph;
+            if (fm) {
+                g.morphAttributes.position = fm.arrays.map(function (A, m) {
+                    var f = new Float32Array(ng * 3);
+                    for (var j = 0; j < ng; j++) {
+                        var r2 = V[GV[j][0]], h0 = G[r2[0]] * 3, h1 = G[r2[1]] * 3, h2 = G[r2[2]] * 3;
+                        for (var c3 = 0; c3 < 3; c3++) f[j * 3 + c3] = r2[3] * A[h0 + c3] + r2[4] * A[h1 + c3] + r2[5] * A[h2 + c3] + (fm.rel ? 0 : r2[6 + c3] * sc[c3]);
+                    }
+                    var at = new THREE.BufferAttribute(f, 3); at.name = fm.names[m]; return at;
+                });
+                g.morphTargetsRelative = fm.rel;
+                mesh.updateMorphTargets();
+                if (part.body.morphTargetInfluences && part.body.morphTargetInfluences.length === fm.names.length) mesh.morphTargetInfluences = part.body.morphTargetInfluences;
+            } else { mesh.morphTargetInfluences = undefined; mesh.morphTargetDictionary = undefined; }
+            mesh.visible = true;
+        }
+        /* the pick: part.eyePack (read by the shape key and rebuildGeometry, so the mesh comes and goes with it); the mesh JSON on
+           first use (then the geometry pass again); the PNGs onto the eye mesh's CURRENT material (the board may have swapped ours
+           for its Lambert copy: that one glows with the body's emissive, so the eyes do too) */
+        function setEyePack(part, a) {
+            var ep = part.stock && part.shells.eyes && typeof getMhEyePack === 'function' ? getMhEyePack(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody })) : null;
+            part.eyePack = ep;
+            if (ep && !_ccEyeProxy && _ccEyeProxy !== false) {
+                _ccLoadEyeProxy(ep.proxy, function (d) { if (d && alive && part.eyePack && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } });
+            }
+            var key = ep ? ep.map + '|' + (ep.normal || '') + '|' + (ep.tint || '') : '';
+            if (part.eyeTexKey === key) return;
+            part.eyeTexKey = key;
+            if (!ep) return;
+            var imgs = {}, pending = ep.normal ? 2 : 1;
+            var apply = function () {
+                if (--pending || !alive || part.eyeTexKey !== key || !imgs.map) { if (!pending && !imgs.map) console.warn('[ThreeRenderer] eye pack texture failed', ep.map); return; }
+                var S = part.stockMap, cs = S && S.colorSpace !== undefined ? S.colorSpace : undefined;
+                var map = _ccEyeTexture(imgs.map, ep.map, ep.tint, ep.iris, cs, false), nmap = imgs.normal ? _ccEyeTexture(imgs.normal, ep.normal, null, null, cs, true) : null;
+                var m = part.shells.eyes.material, bm = part.body.material;
+                if (!m) return;
+                m.map = map;
+                if ('normalMap' in m) { m.normalMap = nmap; if (m.normalScale) m.normalScale.set(1, -1); }   // (an OpenGL-style map on glTF's v-down UVs, as GLTFLoader does)
+                if (bm && bm.emissiveMap && m.emissive) { m.emissiveMap = map; m.emissive.copy(bm.emissive); m.emissiveIntensity = bm.emissiveIntensity; }
+                m.needsUpdate = true;
+            };
+            _ccLoadImage(_asNetUrl(ep.map), function (img) { imgs.map = img; apply(); });
+            if (ep.normal) _ccLoadImage(_asNetUrl(ep.normal), function (img) { imgs.normal = img; apply(); });
+        }
         function faceMorphWrite(mesh, fm, N, extra) {
             var g = mesh.geometry, total = N + (extra || 0);
             g.morphAttributes.position = fm.arrays.map(function (a, k) {
@@ -56254,6 +56449,7 @@ const ThreeRenderer = (function () {
            stock sheet. The canvas keeps the stock map's settings (flipY, colour space). */
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
+            try { setEyePack(part, a); } catch (e) { console.warn('[ThreeRenderer] eye pack failed', e); }   // THE EYE PACK
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
             var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') + (layers.tint ? '|tint' + JSON.stringify(layers.tint) : '') : '';   // (+ THE CHEST + THE LIP COLOUR + THE LOOK COLOURS)
             if (part.lookKey === key) return;
@@ -56434,7 +56630,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');

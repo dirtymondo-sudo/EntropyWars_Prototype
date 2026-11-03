@@ -1141,3 +1141,28 @@ tell you which ones they are".
 - **Online**: nothing relayed; the creator lists are local UI and every look still travels whole in the unit's appearance.
 - Shots: /mnt/project-files/creator-hider/.
 
+
+## THE EYE PACK (2026-11-03, PR "eye pack")
+mondo uploaded the MakeHuman Eye Texture Pack (36 PNGs: 19 plain/bloodshot colours, 12 cat eyes, All black, 5 normal maps) to R2
+`Assets/Models/charactercreation/mpfb/looks/eyes/eyetextures/` + `MakeHumanEyeTexturePack.unitypackage` (not needed: the PNGs use
+MakeHuman's own eye layout, the two eyeball discs of the stock `*_eye.png`). "please add them to the character creator".
+- **Why not the sheet:** drawn into the hm08 skin sheet like the stock eye colours (bake-mpfb.py bake_looks) an iris is ~6 texels
+  across (the eyeball islands are 0.08 of the sheet and the iris is a small cap of them) and a cat eye's slit is gone. First tried
+  that (bake path reproduced in numpy, matched the shipped eyes_brown.png to <1/255) and dropped it.
+- **What ships:** FACE > EYES > "Eye textures" (31 tiles, same key `mhEyes`, ids `mhp_*`, sprites.js EW_MH_EYE_PACK =
+  [id, label, colour PNG, normal PNG]). On an MPFB body (classic MPFB too) three-renderer.js THE EYE PACK draws MakeHuman's
+  HIGH-POLY eye proxy (makehuman_system_assets eyes/high-poly, CC0, 1064 verts) as its own shell `EWCreator_eyes`, wearing the
+  pack PNG itself (1024 px) + its normal map (normalScale (1,-1): an OpenGL map on glTF's v-down UVs), roughness 0.3, alphaTest 0.5
+  (its cornea dome sits on the PNG's clear corner; opaque it hid the iris). The body's own eyeball triangles are left out while it
+  shows (rebuildGeometry `eyeTri`, shape key `+e`). Stock "Eye colour" picks are unchanged (still the sheet).
+- **The fit:** `charactercreation/mpfb/looks/eyes/eye_proxy.json` (bake-eyes.py, numpy only): per proxy vertex 3 hm08 vertices x
+  weights + an offset x the head scale (its .mhclo), the proxy UVs/triangles, the iris centres, every eyeball-helper UV. The hm08
+  vertices are named by UV (each MPFB GLB keeps hm08's sheet with build_body's eye-island blow-up), so ONE file fits all 10 MPFB
+  GLBs (`--check` matched 102/102 on each). Fitted from the rebuilt bind positions every geometry pass, so the face sliders move it;
+  the idle face's morphs are carried over (weighted ref deltas) and share the body's influences array (glances turn it).
+- **Iris colour** works on these: three-renderer.js _ccTintIris recolours the two irises of the PNG (EW_MH_EYE_PACK_IRIS: pupils at
+  (297,733) / (723,311), r 124 px, measured by bake-eyes.py), pupil + slit stay dark. Textures are cached per pick+tint, shared.
+- **Board:** the shell exists from the start so the board's Lambert swap covers it; setEyePack copies the body's emissive glow to it.
+  The Lambert copy drops the normal map if the swap happens after the pick loaded (cosmetic, battle distance).
+- **Online:** nothing new to relay; the pick travels in the unit's appearance like every look key.
+- New R2 file: `mpfb/looks/eyes/eye_proxy.json` (in the sync zip by hand). Shots: /mnt/project-files/creator-eye-pack/.

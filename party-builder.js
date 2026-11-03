@@ -1350,7 +1350,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                     /* THE LOOK COLOURS (2026-11-03, mondo: "there is no color picker ... Everything that can possibly have one needs a
                        tint/color picker"): each pick row is followed by its colour: its own, or any colour (three-renderer.js tintLayer) */
                     g.id === 'eyes' ? h(React.Fragment, null,
-                      mhTiles('mhEyes', 'Eye colour'), lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
+                      mhTiles('mhEyes', 'Eye colour'),
+                      /* THE EYE PACK (2026-11-03): the MakeHuman Eye Texture Pack mondo uploaded (plain, bloodshot, cat eyes), worn by
+                         MakeHuman's own eye mesh at full size; same saved key (mhEyes), the Iris colour below recolours these too */
+                      mhTiles('mhEyes', 'Eye textures', (window.EW_MH_EYE_PACK || []).map(r => [r[0], r[1]]), 'mhEyesPack'),
+                      lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
                       mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches)) : null,
                     g.id === 'brows' ? h(React.Fragment, null,
                       mhTiles('mhBrows', 'Brows'), lookTint('browTint', 'Brow colour', 'browColor', hairSwatches, true)) : null,
