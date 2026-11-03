@@ -64,7 +64,7 @@ if (ri >= 0) {
 for (const f of args.filter((x, i) => !x.startsWith('--') && !(ri >= 0 && i === ri + 1))) {
   let doc;
   try { doc = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { console.error('cannot read ' + f + ': ' + e.message); process.exit(1); }
-  if (!doc || doc.kind !== 'entropy-wars-race-looks' || !doc.looks) { console.error(f + ' is not a race-look export (EXPORT RACE LOOK in the creator)'); process.exit(1); }
+  if (!doc || doc.kind !== 'entropy-wars-race-looks' || !doc.looks) { console.error(f + ' is not a race-look export (EXPORT RACE LOOK or EXPORT ALL ASSIGNED in the creator)'); process.exit(1); }
   for (const race of Object.keys(doc.looks)) {
     if (!models[race] && !sprites[race]) { console.error(f + ': "' + race + '" is not a race'); process.exit(1); }
     if (race === 'door agent' || race === 'homosapien') { console.error(f + ': the ' + race + ' look comes from the officer card, not a saved race look'); process.exit(1); }

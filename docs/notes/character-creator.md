@@ -1245,3 +1245,19 @@ clothes+accessories organized by body part like a typical rpg; head, torso, left
   8 px (CHAINMAIL, PINSTRIPE broke mid-word before). Checked in the forge at 1600x900 + 1600x2000: no button overflows, no sideways scroll.
 - **Online**: nothing relayed; the creator is local UI and the look travels whole in the unit's appearance.
 - Shots: /mnt/project-files/creator-tabs/.
+
+## THE ASSIGNED LOOKS (2026-11-03)
+mondo: "if i go in and make created characters for a bunch of units, do i have to export them individually ... one button should be to
+assign the created character to the character (not the same as saving the character) and one button should be to export all newly
+assigned created characters so i can give to you to bake in". Before this, EXPORT RACE LOOK wrote ONE race + gender per file.
+- party-builder.js `AssignedLooks` box under the forge creator (every race but the DOOR Agent / human base; also on a slot with no look):
+  **⇨ ASSIGN TO <RACE> ♂/♀** files the look on the stage as that race + gender's look in localStorage `ew_assigned_looks`
+  (`{ v: 1, looks: { race: { gender: { appearance, at, exportedAt } } } }`, one per race + gender; a re-assign reads UPDATE and
+  replaces it; ✓ ASSIGNED when the stage equals it). **⇩ EXPORT ALL ASSIGNED (n)** writes every assigned look that is not already
+  the baked RACE_CREATOR_LOOKS row as ONE file `Entropy_Wars_Race_Looks_<n>_assigned_<stamp>.json`, the same
+  `entropy-wars-race-looks` shape (+ an `assigned` list), so `node bake-looks.js <file>` bakes them all at once.
+- Chips: NEW / EXPORTED / IN THE GAME (equal to the baked row, model key ignored; skipped by the export, nothing deleted); ✕ unassigns.
+- SAVE CHARACTER (the locker) and EXPORT RACE LOOK are unchanged. window._ewAssignedLooks = { list, assign, unassign, exportAll }.
+- A baked look is still a SAVED look (THE MESHY DEFAULT): the Meshy model stays the unit default until mondo says.
+- Proof: /mnt/project-files/assigned-looks/ (3 units assigned, exported file, bake-looks.js --dry-run read all 3).
+

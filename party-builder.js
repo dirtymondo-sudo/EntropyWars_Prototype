@@ -863,6 +863,120 @@ function pbExportRaceLook(race, gender, appearance, note) {
     return true;
   } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
 }
+/* THE ASSIGNED LOOKS (2026-11-03, mondo: "one button should be to assign the created character to the character (not the same as
+   saving the character) and one button should be to export all newly assigned created characters so i can give to you to bake in").
+   ASSIGN TO <RACE> files the look on the stage as THAT race + gender's look in localStorage `ew_assigned_looks`
+   ({ v: 1, looks: { <race>: { <gender>: { appearance, at, exportedAt } } } }; one per race + gender, a new assign replaces it).
+   EXPORT ALL ASSIGNED writes every assigned look that is not already the game's baked look as ONE file in the same
+   'entropy-wars-race-looks' shape as EXPORT RACE LOOK, so `node bake-looks.js <file>` bakes them all. A look whose row in
+   sprites.js RACE_CREATOR_LOOKS already equals it shows as IN THE GAME and stays out of the file (nothing is deleted).
+   The SAVE CHARACTER locker is separate and untouched. */
+const PB_ASSIGN_KEY = 'ew_assigned_looks';
+function pbAssignLoad() {
+  try {
+    const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(PB_ASSIGN_KEY) : null, doc = raw ? JSON.parse(raw) : null;
+    const looks = (doc && doc.looks && typeof doc.looks === 'object') ? doc.looks : {}, out = {};
+    for (const race of Object.keys(looks)) for (const g of ['male', 'female']) {
+      const e = looks[race] && looks[race][g];
+      if (!e || !e.appearance || typeof e.appearance !== 'object') continue;
+      (out[race] = out[race] || {})[g] = { appearance: e.appearance, at: +e.at || 0, exportedAt: +e.exportedAt || 0 };
+    }
+    return out;
+  } catch (e) { return {}; }
+}
+function pbAssignStore(looks) { try { localStorage.setItem(PB_ASSIGN_KEY, JSON.stringify({ v: 1, looks })); return true; } catch (e) { return false; } }
+function _pbLookSig(a) {   // (the look without the slot-only `model` switch, for "is this the same look")
+  const n = window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(a || {}) : a;
+  if (!n) return '';
+  const c = Object.assign({}, n); delete c.model;
+  return JSON.stringify(c);
+}
+function pbAssignBaked(race, g, appearance) {   // the game already ships this exact look for race + gender
+  const set = (typeof RACE_CREATOR_LOOKS !== 'undefined') ? RACE_CREATOR_LOOKS[race] : null;
+  return !!(set && set[g] && _pbLookSig(set[g]) === _pbLookSig(appearance));
+}
+function pbAssignList() {   // [{ race, gender, appearance, at, exportedAt, baked }] newest first
+  const looks = pbAssignLoad(), list = [];
+  for (const race of Object.keys(looks)) for (const g of Object.keys(looks[race])) {
+    const e = looks[race][g];
+    list.push({ race, gender: g, appearance: e.appearance, at: e.at, exportedAt: e.exportedAt, baked: pbAssignBaked(race, g, e.appearance) });
+  }
+  return list.sort((x, y) => y.at - x.at);
+}
+function pbAssignLook(race, gender, appearance) {
+  const a = window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(appearance || {}) : appearance;
+  if (!a || a.model === 'original' || !race || race === 'door agent' || race === 'homosapien') return false;
+  const g = gender === 'female' ? 'female' : 'male', looks = pbAssignLoad();
+  (looks[race] = looks[race] || {})[g] = { appearance: Object.assign({}, a, { model: 'creator' }), at: Date.now(), exportedAt: 0 };
+  return pbAssignStore(looks);
+}
+function pbUnassignLook(race, gender) {
+  const looks = pbAssignLoad();
+  if (looks[race]) { delete looks[race][gender]; if (!Object.keys(looks[race]).length) delete looks[race]; }
+  return pbAssignStore(looks);
+}
+function pbExportAssigned(note) {
+  try {
+    const list = pbAssignList().filter(e => !e.baked);
+    if (!list.length) { if (typeof note === 'function') note('Nothing to export: every assigned look is already in the game.'); return false; }
+    const d = new Date(), p2 = n => String(n).padStart(2, '0');
+    const stamp = d.getUTCFullYear() + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + '-' + p2(d.getUTCHours()) + p2(d.getUTCMinutes());
+    const looks = {};
+    for (const e of list) (looks[e.race] = looks[e.race] || {})[e.gender] = window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(e.appearance) : e.appearance;
+    const doc = { kind: 'entropy-wars-race-looks', v: 1, made: d.toISOString(), assigned: list.map(e => e.race + ' ' + e.gender), looks };
+    const name = 'Entropy_Wars_Race_Looks_' + list.length + '_assigned_' + stamp + '.json';
+    const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }));
+    const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    const all = pbAssignLoad(), now = Date.now();
+    for (const e of list) if (all[e.race] && all[e.race][e.gender]) all[e.race][e.gender].exportedAt = now;
+    pbAssignStore(all);
+    if (typeof note === 'function') note('Exported ' + list.length + ' look' + (list.length === 1 ? '' : 's') + ' in one file: ' + name + '. Send that file to Claude to bake.');
+    window._ewLastAssignedExport = { name, doc };   // (the browser check reads it back)
+    return true;
+  } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
+}
+if (typeof window !== 'undefined') window._ewAssignedLooks = { list: pbAssignList, assign: pbAssignLook, unassign: pbUnassignLook, exportAll: pbExportAssigned, key: PB_ASSIGN_KEY };
+/* the ASSIGNED LOOKS box under the creator (forge): ASSIGN TO <RACE> (when a look is on the stage) + EXPORT ALL ASSIGNED + the list */
+function AssignedLooks({ race, raceLabel, gender, appearance, disabled, onNote }) {
+  const [, setTick] = React.useState(0);
+  const [msg, setMsg] = React.useState('');
+  const say = (t) => { setMsg(t); if (typeof onNote === 'function') onNote(t); setTick(n => n + 1); };
+  const g = gender === 'female' ? 'female' : 'male', sym = (x) => x === 'female' ? '♀' : '♂';
+  const label = (r) => String(typeof window.getRaceLabel === 'function' ? window.getRaceLabel(r) : r);
+  const list = pbAssignList(), pending = list.filter(e => !e.baked).length;
+  const canAssign = !!appearance && !!race && race !== 'door agent' && race !== 'homosapien';
+  const mine = list.find(e => e.race === race && e.gender === g);
+  const same = !!(mine && appearance && _pbLookSig(mine.appearance) === _pbLookSig(appearance));
+  const assign = () => {
+    if (disabled || !canAssign) return;
+    if (!pbAssignLook(race, g, appearance)) { say('Could not assign (storage is full or blocked).'); return; }
+    say((mine ? 'Updated' : 'Assigned') + ' the ' + raceLabel + ' ' + sym(g) + ' look. EXPORT ALL ASSIGNED puts it in the file.');
+    try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.35 }); } catch (e) {}
+  };
+  return h('div', { className: 'pb-looks pb-assigned' },
+    h('div', { className: 'pb-assigned-head' }, h('b', null, 'Assigned looks'),
+      h('span', { className: 'pb-creator-note' }, 'Assign = this look becomes the unit’s look to bake in (not the same as SAVE CHARACTER).')),
+    h('div', { className: 'pb-creator-options' },
+      canAssign ? h('button', { className: 'ms-tty-btn' + (same ? '' : ' primary'), disabled: disabled || same, 'data-assign': race + ':' + g, onClick: assign,
+        title: 'Mark this look as the ' + raceLabel + ' (' + g + ') look for the next EXPORT ALL ASSIGNED file' },
+        same ? '✓ ASSIGNED TO ' + String(raceLabel).toUpperCase() + ' ' + sym(g)
+             : (mine ? '⇨ UPDATE ' : '⇨ ASSIGN TO ') + String(raceLabel).toUpperCase() + ' ' + sym(g)) : null,
+      h('button', { className: 'ms-tty-btn gold', disabled: !pending, 'data-export-assigned': pending,
+        title: 'Save every assigned look that is not in the game yet as one file for bake-looks.js', onClick: () => { pbExportAssigned(say); } },
+        '⇩ EXPORT ALL ASSIGNED (' + pending + ')')),
+    list.length ? h('div', { className: 'pb-look-rack', role: 'list', 'aria-label': 'Assigned looks' }, list.map(e =>
+      h('div', { key: e.race + ':' + e.gender, className: 'pb-look-chip pb-assigned-chip' + (e.baked ? ' baked' : ''), role: 'listitem',
+          title: e.baked ? 'This exact look is already baked into the game' : (e.exportedAt ? 'In an exported file; not baked yet' : 'Waiting for EXPORT ALL ASSIGNED') },
+        h('span', { className: 'pb-look-load' },
+          h('i', { className: 'pb-look-swatch', style: { background: 'linear-gradient(135deg, ' + (e.appearance.topColor || '#888') + ' 50%, ' + (e.appearance.bottomColor || '#555') + ' 50%)' } }),
+          h('span', null, label(e.race)), h('small', null, sym(e.gender)),
+          h('small', { className: 'pb-assigned-tag' }, e.baked ? 'IN THE GAME' : e.exportedAt ? 'EXPORTED' : 'NEW')),
+        h('button', { className: 'pb-look-del', disabled, 'aria-label': 'Unassign ' + label(e.race) + ' ' + e.gender, title: 'Unassign (the look stays on its slots)',
+          onClick: () => { pbUnassignLook(e.race, e.gender); say('Unassigned the ' + label(e.race) + ' ' + sym(e.gender) + ' look.'); } }, '✕'))))
+      : h('p', { className: 'pb-creator-note pb-looks-empty' }, 'Nothing assigned yet. Make a look for a unit, press ASSIGN, do the next unit, then EXPORT ALL ASSIGNED once.'),
+    msg ? h('div', { className: 'pb-looks-note', role: 'status' }, msg) : null);
+}
 /* THE HIDDEN PICKS (2026-11-03): EXPORT HIDDEN LIST — the creator's whole hidden list as this browser shows it, for bake-hidden.js
    ({ kind: 'entropy-wars-creator-hidden', v: 1, made, hidden: { '<kind>:<id>': label } }); the bake replaces the shipped list with it */
 function pbExportHidden(note) {
@@ -4494,7 +4608,8 @@ function PartyBuilder(props) {
               h('div', { className: 'pb-creator-options' },
                 raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
                 h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody, model: 'creator' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),
-                h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')))
+                h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')),
+              (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance: null, disabled: isWaitingOnline, onNote: pbNote }) : null)
         : !appearance
           ? h(React.Fragment, null,
               h('p', null, 'Build a custom appearance for this character. Your techniques and equipment stay attached to this slot.'),
@@ -4506,7 +4621,7 @@ function PartyBuilder(props) {
             !viewerLoads ? h('p', { className: 'pb-creator-note' }, 'The 3D stage is unavailable here — changes still save with the team.') : null,
             h(CreatorControls, { appearance, gender: identity.gender || 'male', disabled: isWaitingOnline, onChange: changeAppearance,
               name: unitCustomName, onName: (v) => { handleNameChange(v); refresh(); },
-              onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }, footer:
+              onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }, footer: h(React.Fragment, null,
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: (appearance && appearance.body) || mpfbDefaultBody })) }, '⚄ RANDOMIZE'),   // (keeps the body picked)
                 raceSavedLook
@@ -4521,7 +4636,8 @@ function PartyBuilder(props) {
                   refresh();
                 } }, 'USE ORIGINAL MODEL'),
                 (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h('button', { className: 'ms-tty-btn gold', title: 'Save this look as a file; bake-looks.js saves it in the game as the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ') look, offered here on every ' + unitRaceLabel + ' slot (the original model stays the default)', onClick: () => pbExportRaceLook(unitRace, identity.gender || 'male', appearance, pbNote) }, '\u21e9 EXPORT RACE LOOK') : null,
-                officerLook ? h('button', { className: 'ms-tty-btn', title: 'The look on your card (Occam\u2019s mirror) on this slot', onClick: () => changeAppearance(officerLook.appearance, officerLook.gender) }, 'USE YOUR OWN LOOK') : null) }),
+                officerLook ? h('button', { className: 'ms-tty-btn', title: 'The look on your card (Occam\u2019s mirror) on this slot', onClick: () => changeAppearance(officerLook.appearance, officerLook.gender) }, 'USE YOUR OWN LOOK') : null),
+                (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance, disabled: isWaitingOnline, onNote: pbNote }) : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
