@@ -2592,7 +2592,7 @@
         try { var PK = W.HQ_TEXB_PRISMS || (typeof HQ_TEXB_PRISMS !== 'undefined' ? HQ_TEXB_PRISMS : []); PK.forEach(function (k) { var o = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[k] : null; if (o && o.url) out.push({ key: k, url: o.url, fam: 'PRISM BUILDINGS (the whole building drawn as the prism)' }); }); } catch (e) {}
         return out;
     }
-    var BLD_LABELS = { hollow: 'inside (walk in)', keyIn: 'inside walls', floorIn: 'inside floor', door: 'doorway (square, 0 = middle)' };
+    var BLD_LABELS = { keyGround: 'ground floor', keyDoor: 'door', keyOver: 'windows over the wall', hollow: 'inside (walk in)', keyIn: 'inside walls', floorIn: 'inside floor', door: 'doorway (square, 0 = middle)' };
     var BLD_STYLES = [['', 'any (its seed picks)'], ['office', 'office'], ['tower', 'tower'], ['residential', 'residential'], ['stucco', 'stucco'], ['factory', 'factory']];
     function texUrl(key) { var s = texSources().concat(prismSources()); for (var i = 0; i < s.length; i++) if (s[i].key === key) return s[i].url; return null; }
     function texPick(cur, onPick, po) {
@@ -3726,7 +3726,7 @@
        step on the release; everything else rebuilds the room. The CLOCK previews an hour in a room on the world clock (the view only:
        the player's saved hour is not touched). ══════════════════════════════════════════════════════════════════════════════ */
     var SKY_SCENERY = ['none', 'cosmic', 'divine', 'infernal', 'ruins', 'pyramids', 'crystals', 'orbs', 'eyes', 'islands', 'city', 'space', 'dark', 'sea', 'wreckage', 'wonder', 'holosim'];
-    var SKY_MARKS = ['mountain', 'tower', 'gate', 'dome', 'peak', 'castle', 'skycastle', 'stairway', 'waterspout', 'whale', 'eye'];
+    var SKY_MARKS = ['tower', 'gate', 'dome', 'castle', 'skycastle', 'stairway', 'waterspout', 'whale', 'eye'];   // 'mountain' + 'peak' (the cone mountains) removed 2026-11-03
     var SKY_ATMOS = ['dust', 'embers', 'fireflies', 'snow', 'rain', 'spores', 'ash', 'motes'];
     var SKY_LIVE = { 'sky.day': 1, 'sky.clouds': 1, 'sky.stars': 1, 'sky.nebula': 1, 'sky.tintAmt': 1, 'sky.fog.amount': 1, 'sky.fog.top': 1, 'sky.fog.band': 1, 'sky.fog.density': 1 };
     var SKY_DEFAULT = { night: 0, day: 1, clouds: 0.3, stars: 0.3, nebula: 0.2, tint: 0x9fc4e8, tintAmt: 0.3, fog: { color: 0xb4c6d8, amount: 0.45, top: 0.04, band: 0.5, density: 0.004 }, scenery: 'none', density: 0 };
@@ -3872,7 +3872,7 @@
                 else if (a === 'nightsky') shellPut('sky', { night: 1, day: 0, clouds: 0.1, stars: 1, nebula: 0.6, tint: 0x0a1428, tintAmt: 0.4, fog: { color: 0x060a14, amount: 0.5, top: 0.04, band: 0.5, density: 0.006 }, scenery: 'none', density: 0 }, 'a night sky');
                 else if (a === 'outdoor') commit([{ path: basePath().concat(['shell', 'open']), before: S.open, after: true }].concat(S.sky ? [] : [{ path: basePath().concat(['shell', 'sky']), before: undefined, after: Core.clone(SKY_DEFAULT) }]), 'outdoor');
                 else if (a === 'indoor') commit([{ path: basePath().concat(['shell', 'open']), before: S.open, after: false }], 'indoor');
-                else if (a === 'addmark') { var lm = (S.sky.landmarks || []).slice(); lm.push({ kind: 'mountain', deg: Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360), dist: 0.9, y: -0.03, s: 1 }); skyCommit('sky.landmarks', lm); }
+                else if (a === 'addmark') { var lm = (S.sky.landmarks || []).slice(); lm.push({ kind: 'tower', deg: Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360), dist: 0.9, y: -0.03, s: 1 }); skyCommit('sky.landmarks', lm); }
                 else if (a === 'clocklive') { clockPreview(null); panels(); }
             };
         });
@@ -4420,7 +4420,7 @@
     function saveCam() { var r = room(); if (r && editable() && r.edit) r.edit.cam = { x: ED.cam.x, y: ED.cam.y, z: ED.cam.z, yaw: ED.cam.yaw, pitch: ED.cam.pitch, speed: ED.cam.speed }; }
     /* ── THE INSPECTOR: every field of the selected row (numbers, text, texture / catalogue / leaf keys, switches, JSON for the rest);
        nothing selected = the room itself ── */
-    var TEX_KEYS = ['key', 'floor', 'cliff', 'path', 'wall', 'dado', 'trim', 'ceiling', 'apron', 'skirt', 'keyIn', 'floorIn'];
+    var TEX_KEYS = ['key', 'floor', 'cliff', 'path', 'wall', 'dado', 'trim', 'ceiling', 'apron', 'skirt', 'keyIn', 'floorIn', 'keyGround', 'keyDoor', 'keyOver'];
     function texList() {
         if (texList._c) return texList._c;
         var o = [];
@@ -4664,6 +4664,7 @@
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             var wallT = x.list === 'terrain.features' && row.k === 'wall' && !row.block;   // A WALL'S OWN TINT: its own box, always shown
             if (row.k === 'texbuilding') ['style', 'key'].forEach(function (k) { if (keys.indexOf(k) < 0) keys.splice(1, 0, k); });   // THE BUILDING'S LOOK: its sheet and its style, shown even when it has none
+            if (row.k === 'texbuilding') { keys = keys.filter(function (k) { return ['keyGround', 'keyDoor', 'keyOver'].indexOf(k) < 0; }); var ki = keys.indexOf('key') + 1; keys.splice(ki, 0, 'keyGround', 'keyDoor', 'keyOver'); }   // THE BUILDING FROM THE PACK (2026-11-03): its ground floor, door and window decals, under its sheet
             if (row.k === 'texbuilding') { keys = keys.filter(function (k) { return ['hollow', 'keyIn', 'floorIn', 'door'].indexOf(k) < 0; }); keys.push('hollow'); if (row.hollow) keys.push('keyIn', 'floorIn', 'door'); }   // THE INSIDE: its switch, then (on) the inside's sheets and the doorway's square
             keys.forEach(function (k) { if (!(wallT && k === 'tint')) h += fieldHtml(k, row.k === 'texbuilding' && row[k] === undefined ? (k === 'hollow' ? false : k === 'door' ? 0 : row[k]) : row[k], x.list, row, row.k === 'texbuilding' ? BLD_LABELS[k] : null); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
@@ -4684,6 +4685,7 @@
                 if (x.list === 'terrain.features' || x.list === 'props') h += '<div class="ed-acts"><button class="ed-btn" data-a="array">ARRAY…</button><button class="ed-btn" data-a="mirx">MIRROR E–W</button><button class="ed-btn" data-a="mirz">MIRROR N–S</button>' + (ED.mode !== 'prefab' ? '<button class="ed-btn" data-a="topf">SAVE AS PREFAB</button>' : '') + '</div>';
                 if (row.k === 'wall') h += '<div class="ed-note">key = the outside sheet, keyIn = the inside (the right-hand face walking start → end). BUILD → DOOR GAP / WINDOW cuts an opening.</div>';
                 if (row.k === 'texbuilding') h += '<div class="ed-note">inside (walk in) = its faces become thin walls with a doorway in the front (the side it was dragged toward), its inside walls, ceiling and floor drawn (inside walls / inside floor sheets; empty = plaster and concrete); doorway = which square of the front, counted from its left as you face it (0 = the middle). Add floors and stairs inside with BUILD; HIDE ROOFS (C) takes its roof off to look in. A prism building stays solid.</div>';
+                if (row.k === 'texbuilding') h += '<div class="ed-note">ground floor / door / windows over the wall: empty = picked to suit its look (a glass sheet gets a storefront ground floor under a concrete band and a storefront double door; a painted plaster gets the pack\'s banded plaster at its foot, its windows laid over the upper floors and a painted double door; corrugated metal or striped concrete gets the factory windows). Pick your own with …; type none for no door or no windows. Doors are drawn as a double door.</div>';
                 if (row.k === 'texbuilding') h += '<div class="ed-note">key = the building\'s look: pick with … — a sheet goes on every face (as a wall wears its key; the door stays), a PRISM BUILDING (the top of the list) draws the whole building as that prism. Empty = the city\'s textured faces, in its style (empty = its seed picks one).</div>';
                 if (row.k === 'opening') h += '<div class="ed-note">An opening in wall ' + esc(row.wall) + ', at = battle squares from the wall\'s start (MOVE slides it). sill 0 = a door gap; glaze = glass.</div>';
                 if (row.k === 'tree' || row.k === 'grove') h += '<div class="ed-note">h is in battle squares (1.75 m each), like SIZE above. r = the trunk the walker bumps into. face = which way it turns (R).</div>';

@@ -1740,6 +1740,16 @@ const ThreePost = (function () {
        run and the AO keeps the building's reach — the cut from the walk to the board changes no light. setFieldLight(null)
        hands every dial back. The user: "I don't want the lighting to change, it makes the transition really abrupt". */
     var _fieldLight = null;
+    /* THE WHITE DAYLIGHT (2026-11-03): a tile board whose ground is mostly a white sheet runs the day / night rig's sun, hemisphere and
+       ambient × this (three-renderer.js _boardWhiteDay, from the board's own tiles — never from the screen). A room fight's field light
+       carries the room's own rule already (_hqOpenLR), so this scales only the battle rig. 1 = untouched. */
+    var _whiteDay = 1;
+    function setWhiteDay(k) {
+        var v = (+k > 0 && +k <= 1) ? +k : 1;
+        if (v === _whiteDay) return;
+        _whiteDay = v; _applyCurrent();
+    }
+    function getWhiteDay() { return _whiteDay; }
     function setFieldLight(o) {
         _fieldLight = (o && typeof o === 'object') ? o : null;
         if (_sunLight) _sunLight.castShadow = (_shadowQuality !== 'off') && !(_fieldLight && _fieldLight.shadow === false);
@@ -1750,7 +1760,7 @@ const ThreePost = (function () {
         var F = _fieldLight;
         if (_sunLight) {
             if (F && F.sun) { _sunLight.color.setHex(F.sun.color != null ? F.sun.color : 0xffffff); _sunLight.intensity = +F.sun.intensity || 0; }
-            else { _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB); _sunLight.intensity = _cur.sunInt; }
+            else { _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB); _sunLight.intensity = _cur.sunInt * _whiteDay; }
             var _sdx = (F && F.sun && F.sun.dir) ? F.sun.dir[0] : _cur.sunDirX, _sdy = (F && F.sun && F.sun.dir) ? F.sun.dir[1] : _cur.sunDirY, _sdz = (F && F.sun && F.sun.dir) ? F.sun.dir[2] : _cur.sunDirZ;
             // Direction only (no shadow frame yet): a unit vector aimed at the
             // origin behaves exactly like the old rig. Once setShadowFrame has
@@ -1775,14 +1785,14 @@ const ThreePost = (function () {
             else {
                 _hemiLight.color.setRGB(_cur.skyR, _cur.skyG, _cur.skyB);
                 _hemiLight.groundColor.setRGB(_cur.gndR, _cur.gndG, _cur.gndB);
-                _hemiLight.intensity = _cur.hemiInt;
+                _hemiLight.intensity = _cur.hemiInt * _whiteDay;
             }
         }
         if (_ambientLight) {
             if (F) { _ambientLight.intensity = (F.ambient && F.ambient.intensity) ? +F.ambient.intensity : 0; if (F.ambient && F.ambient.color != null) _ambientLight.color.setHex(F.ambient.color); }
             else {
                 _ambientLight.color.setRGB(_cur.ambR, _cur.ambG, _cur.ambB);
-                _ambientLight.intensity = _cur.ambInt;
+                _ambientLight.intensity = _cur.ambInt * _whiteDay;
             }
         }
         if (_renderer) {
@@ -4674,7 +4684,7 @@ const ThreePost = (function () {
         setSsaoScale: setSsaoScale, getSsao: getSsao, setMotion: setMotion, getMotion: getMotion, polishApply: polishApply,   // THE THIRD PASS (3.4 · 6.4 · the settings)
         getSceneLookOwned: getSceneLookOwned,
         setExposureContext: setExposureContext,
-        setFieldLight: setFieldLight, getFieldLight: getFieldLight,   // THE SEAMLESS FIELD: the room's rig over the battle's
+        setFieldLight: setFieldLight, getFieldLight: getFieldLight, setWhiteDay: setWhiteDay, getWhiteDay: getWhiteDay,   // THE SEAMLESS FIELD: the room's rig over the battle's
         getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
         getPlayerFogHex: _playerFogHex,
