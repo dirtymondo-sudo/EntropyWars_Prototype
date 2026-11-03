@@ -61477,6 +61477,14 @@ const ThreeRenderer = (function () {
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var slx = (yAt(px + cs, pz) - yAt(px - cs, pz)) / (2 * cs), slz = (yAt(px, pz + cs) - yAt(px, pz - cs)) / (2 * cs), sl = Math.hypot(slx, slz);
             var rk = (sl - 0.55) / 0.75; rk = rk < 0 ? 0 : rk > 1 ? 1 : rk;
+            /* THE MASS RUNS ON (2026-11-03, mondo on Göbekli Tepe: "there is a harsh boundary at the edge of the map that makes the whole
+               thing look bad"): a room asking `outer: { sheet: 'solid' }` whose plan's mass wears the cliff sheet to its top (a LAYOUT in
+               the rock look) carries that sheet on past its edge wherever the edge is mass — the field's last metre and the land
+               past it are one ground, never the mass's sheet cut off in a straight line against the floor sheet */
+            if (OO.sheet === 'solid' && info.gen && info.gen.solidSheet === 'cliff' && info.maskD && typeof hqTerrainMaskAt === 'function') {
+                var ecx = Math.max(-hx, Math.min(hx, px)), ecz = Math.max(-hz, Math.min(hz, pz)), emd = hqTerrainMaskAt(info, ecx, ecz);
+                if (emd < 0.1) { var emr = (0.1 - emd) / 0.6; rk = Math.max(rk, emr > 1 ? 1 : emr); }
+            }
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
         } if ((j & 7) === 7 && _hqSliceDue()) yield; }
