@@ -2959,3 +2959,7 @@ removed from the game, and those rods should have shown up in the model list as 
   A brass version was made too (project files gold-texture/models/).
 - The other 16 pieces are listed in MODEL_LIST.md §10G as needing a model. Gold texture candidates (ambientCG CC0, regraded to gold
   for flat lighting): project files gold-texture/.
+- THE GILT (2026-11-03, mondo: "Option D, metal007"): every gold key (sprites.js TERRAIN_SPRITES gold / gold_2 / gold_3) and the
+  spell / trap gold (`_SIG_GOLD_TEX`, `_getTeslaTex`, the deployables) is R2 `Assets/Sprites/terrain/gilt.png` = ambientCG Metal007
+  (CC0) regraded to a gold ramp at 128 px (source + candidates in project files gold-texture/). `_SIG_GILT` is white now (the sheet
+  is already gold); TERRAIN_BASE_TINT keeps gold_2 / gold_3 a touch deeper. Screenshot: gold-texture/excessive_machine_ingame.jpg.

@@ -9723,8 +9723,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _sigTerrainTexCache = {};
     /* THE GOLD SHEET IS OUT (2026-11-03, mondo: "I previously requested that that gold texture be removed from the game"):
        the bucket's terrain/gold.png (the pixel treasure-pile sheet) is never loaded. Every spell piece that wore it wears the
-       one gilt the boards use since 2026-09-21: the brushed aluminium sheet tinted _SIG_GILT. Change the gold look here. */
-    var _SIG_GOLD_TEX = 'aluminium.png', _SIG_GILT = 0xe0b048;
+       gilt the boards use: terrain/gilt.png (mondo's pick, "Option D, metal007": ambientCG Metal007, CC0, regraded to gold).
+       _SIG_GILT = the tint for pieces that drew the sheet untinted. Change the gold look here. */
+    var _SIG_GOLD_TEX = 'gilt.png', _SIG_GILT = 0xffffff;
     function _sigTerrainTex(file, repX, repY) {
         if (file === 'gold.png') file = _SIG_GOLD_TEX;
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
@@ -11686,7 +11687,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
                             'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander',   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
                             'church_building', 'catholic_pew', 'church_pew', 'church_podium', 'field_goal_post', 'skull_pile'];   /* THE FINISHER LOOK (2026-10-28): the P-Z finishers' props */
-    var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'aluminium.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
+    var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gilt.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
     /* THE CHRISTMAS PACK (2026-10-24, mondo: "utilize them for the north pole area and santa spells"): the pieces Santa's spells draw
