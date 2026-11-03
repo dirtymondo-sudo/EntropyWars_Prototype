@@ -1575,3 +1575,6 @@ the thread's zip adds `Assets/decor/` by hand.
   rod (`armour_plinth`, concept D15c picked by mondo) in place of the T-post whose crossbar stuck out. The Göbekli battle
   board's T-pillar monument (`_hzTPillar`) wears the hands T-pillar too, stretched into the old 1.9 × 3.8 tile box (the code
   pieces stay hidden in the group so the monument fit and the 2-voxel stamp are unchanged).
+- **Round 3 (mondo 11-03: the thinned mast "still looks dumb", regenerate it):** new Meshy stadium floodlight `flood_mast.glb`
+  (concept D04c picked by mondo: slim dark pole on a concrete footing, a crossbar of 8 floodlights facing +Z), same name, same
+  `_hqDecorWear('flood_mast', U, g, { fit: 'height' })`. Concepts A/B/C in project files meshy/decor/concepts/D04_flood_mast_redo_A_B_C.jpg.
