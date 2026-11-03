@@ -6199,8 +6199,10 @@ const TERRAIN_SPRITES = {
     /* THE GOLD (2026-09-21 — the user: "I don't like any of the three gold textures in the bucket; make your own or
        tint one of the other textures"): every gold key is the brushed aluminium sheet tinted gold by
        TERRAIN_BASE_TINT (below) — one brushed gilt for boards, monuments, trims and spell props alike. The three
-       gold_*.png files stay in the bucket, unreferenced. */
-    gold:             [`${_T}/aluminium.png`],
+       gold_*.png files stay in the bucket, unreferenced.
+       THE GILT (2026-11-03, mondo picked "Option D, metal007"): every gold key is now terrain/gilt.png = ambientCG Metal007
+       (CC0) regraded to gold at 128 px; TERRAIN_BASE_TINT keeps the three keys' warmths, lighter. */
+    gold:             [`${_T}/gilt.png`],
     metal:            [`${_T}/metal.png`],
     leaves:           [`${_T}/leaves.png`],
     wallpaper:        [`${_T}/wallpaper.png`],
@@ -6212,8 +6214,8 @@ const TERRAIN_SPRITES = {
     carpet_2:         [`${_T}/carpet_2.png`],
     carpet_3:         [`${_T}/carpet_3.png`],
     carpet_4:         [`${_T}/carpet_4.png`],
-    gold_2:           [`${_T}/aluminium.png`],
-    gold_3:           [`${_T}/aluminium.png`],
+    gold_2:           [`${_T}/gilt.png`],
+    gold_3:           [`${_T}/gilt.png`],
     /* THE METALS (2026-09-21 — the user: "don't use metal_3, metal_2 or gunmetal_2 anywhere, including the delta
        maps"): the three keys stay (boards, rooms and the editor's palette name them) but wear the plain sheets —
        metal_2 / gunmetal_2 the gunmetal plate, metal_3 the brushed aluminium darkened to steel by TERRAIN_BASE_TINT. */
@@ -6309,10 +6311,9 @@ const TERRAIN_SPRITES = {
    asphalt. Add a key here + point its TERRAIN_SPRITES row at the sheet. */
 const TERRAIN_BASE_TINT = {
     urban_street: '#4e4e56',
-    /* THE GOLD (2026-09-21): the brushed aluminium sheet as gilt — three warmths for the three keys */
-    gold: '#e0b048',
-    gold_2: '#d4a238',
-    gold_3: '#c89230',
+    /* THE GOLD (2026-09-21; the gilt sheet since 2026-11-03): three warmths for the three keys (gold = the sheet as drawn) */
+    gold_2: '#ecd8b0',
+    gold_3: '#dcc090',
     /* THE METALS (2026-09-21): metal_3 = the aluminium sheet as blued steel */
     metal_3: '#8a949e',
     /* 🧪 THE LIQUIDS (2026-10-26): Black Ooze = the dark slate liquid sheet, the oil slick = the brown swirl sheet, both
