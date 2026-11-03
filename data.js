@@ -14470,7 +14470,7 @@ let MAP_HAS_FLOORS = true;
 const PREBUILT_MAPS = {
     prebuilt_custommap: {
         name: 'Custom Map', w: 20, h: 20,
-        monuments: [{"kind":"colossus","x":17,"y":18,"rot":0,"foot":2,"maxH":4,"seed":14340},{"kind":"arch","x":18,"y":17,"rot":0,"foot":3,"maxH":3,"seed":8454},{"kind":"arch","x":5,"y":0,"rot":0,"foot":3,"maxH":3,"seed":80466},{"kind":"colossus","x":7,"y":1,"rot":0,"foot":2,"maxH":4,"seed":42037},{"kind":"greek","x":17,"y":1,"rot":1,"foot":3,"maxH":2,"seed":16787},{"kind":"colossus","x":18,"y":4,"rot":90,"foot":2,"maxH":4,"seed":88471},{"kind":"exitsign","x":6,"y":12,"rot":0,"foot":1,"maxH":1,"seed":76283},{"kind":"exitsign","x":13,"y":12,"rot":0,"foot":1,"maxH":1,"seed":75886},{"kind":"exitsign","x":13,"y":7,"rot":0,"foot":1,"maxH":1,"seed":49281},{"kind":"exitsign","x":6,"y":7,"rot":0,"foot":1,"maxH":1,"seed":83192},{"kind":"exitsign","x":3,"y":11,"rot":0,"foot":1,"maxH":1,"seed":42403},{"kind":"fluorescent","x":3,"y":6,"rot":0,"foot":1,"maxH":2,"seed":88142},{"kind":"fluorescent","x":3,"y":3,"rot":0,"foot":1,"maxH":2,"seed":48235},{"kind":"fluorescent","x":3,"y":16,"rot":0,"foot":1,"maxH":2,"seed":42504},{"kind":"fluorescent","x":8,"y":6,"rot":0,"foot":1,"maxH":2,"seed":83443}],
+        monuments: [{"kind":"fallen_column","x":17,"y":18,"rot":0,"foot":2,"maxH":4,"seed":14340},{"kind":"arch","x":18,"y":17,"rot":0,"foot":3,"maxH":3,"seed":8454},{"kind":"arch","x":5,"y":0,"rot":0,"foot":3,"maxH":3,"seed":80466},{"kind":"fallen_column","x":7,"y":1,"rot":0,"foot":2,"maxH":4,"seed":42037},{"kind":"greek","x":17,"y":1,"rot":1,"foot":3,"maxH":2,"seed":16787},{"kind":"fallen_column","x":18,"y":4,"rot":90,"foot":2,"maxH":4,"seed":88471},{"kind":"exitsign","x":6,"y":12,"rot":0,"foot":1,"maxH":1,"seed":76283},{"kind":"exitsign","x":13,"y":12,"rot":0,"foot":1,"maxH":1,"seed":75886},{"kind":"exitsign","x":13,"y":7,"rot":0,"foot":1,"maxH":1,"seed":49281},{"kind":"exitsign","x":6,"y":7,"rot":0,"foot":1,"maxH":1,"seed":83192},{"kind":"exitsign","x":3,"y":11,"rot":0,"foot":1,"maxH":1,"seed":42403},{"kind":"fluorescent","x":3,"y":6,"rot":0,"foot":1,"maxH":2,"seed":88142},{"kind":"fluorescent","x":3,"y":3,"rot":0,"foot":1,"maxH":2,"seed":48235},{"kind":"fluorescent","x":3,"y":16,"rot":0,"foot":1,"maxH":2,"seed":42504},{"kind":"fluorescent","x":8,"y":6,"rot":0,"foot":1,"maxH":2,"seed":83443}],
         grid: [
             [3,3,6,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48],
             [3,3,6,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48],
@@ -15111,8 +15111,8 @@ _MF_BUILDERS.prebuilt_hell = function () {
     M.monSym('crystal', 14, 5, 2, 2, { solid: false });
     M.mon('rings', 9, 9, 3, 3, { solid: false });
     M.monSym('brazier', 8, 8, 1, 2, { solid: false });
-    M.mon('colossus', 3, 16, 2, 3, { rot: 45 });
-    M.mon('colossus', 16, 3, 2, 3, { rot: 225 });
+    M.mon('fallen_column', 3, 16, 2, 3, { rot: 45 });
+    M.mon('fallen_column', 16, 3, 2, 3, { rot: 225 });
     M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'scorched') M.rock(x, y, 'rocks_3'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('scorched');
@@ -15146,8 +15146,8 @@ _MF_BUILDERS.prebuilt_stonehenge = function () {
     M.sym180();
     M.mon('rings', 7, 7, 2, 3, { solid: false });
     M.monSym('monolith', 2, 7, 1, 3, { solid: false });
-    M.mon('colossus', 12, 12, 2, 1, { rot: 300 });
-    M.mon('colossus', 3, 3, 2, 1, { rot: 120 });
+    M.mon('fallen_column', 12, 12, 2, 1, { rot: 300 });
+    M.mon('fallen_column', 3, 3, 2, 1, { rot: 120 });
     M.monSym('trilithon', 2, 6, 2, 3, { rot: 90, solid: false });
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_2');
@@ -15419,7 +15419,7 @@ _MF_BUILDERS.prebuilt_atlantis = function () {
     M.monSym('greek', 4, 4, 3, 2, {});
     M.monSym('greek', 20, 8, 3, 2, { rot: 90 });
     M.objSym(3, 8, 'column_2', {}); M.objSym(9, 4, 'column_1', {});
-    M.monSym('colossus', 3, 15, 2, 2, { rot: 315 });
+    M.monSym('fallen_column', 3, 15, 2, 2, { rot: 315 });
     M.spawnEdges('s', 8);
     M.finishSpawns('dirt_3');
     return M;
@@ -15451,7 +15451,7 @@ _MF_BUILDERS.prebuilt_babel = function () {
     M.monSym('tablet', 1, 3, 1, 2, { rot: 20, solid: false });
     M.monSym('arch', 7, 5, 3, 3, { solid: false });
     M.monSym('obelisk', 2, 3, 1, 4, {});
-    M.monSym('colossus', 13, 8, 2, 2, { rot: 270 });
+    M.monSym('fallen_column', 13, 8, 2, 2, { rot: 270 });
     M.spawnEdges('s', 6);
     M.finishSpawns('bricks_1');
     return M;
@@ -15484,8 +15484,8 @@ _MF_BUILDERS.prebuilt_olympus = function () {
     M.monSym('greek', 8, 8, 3, 2, {});
     M.monSym('greek', 15, 8, 3, 2, { rot: 180 });
     M.monSym('stairway', 11, 3, 2, 2, {});
-    M.mon('colossus', 8, 15, 2, 4, { rot: 45 });
-    M.mon('colossus', 15, 8, 2, 4, { rot: 225 });
+    M.mon('fallen_column', 8, 15, 2, 4, { rot: 45 });
+    M.mon('fallen_column', 15, 8, 2, 4, { rot: 225 });
     M.mon('lightpillar', 11, 11, 1, 4, { solid: false });
     M.objSym(9, 9, 'torch', {}); M.objSym(14, 9, 'torch', {});
     M.objSym(9, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
@@ -15569,7 +15569,7 @@ _MF_BUILDERS.prebuilt_area51 = function () {
 };
 
 /* ANTARCTICA — 24×24 8v8. The ice wall and what's behind it: seawater
-   channels with iceberg hops, slide-gap chokepoints, frozen colossus. */
+   channels with iceberg hops, slide-gap chokepoints, frozen fallen column. */
 _MF_BUILDERS.prebuilt_antarctica = function () {
     const M = _mfNew({
         name: 'Antarctica', w: 24, h: 24, base: 'marble_light', baseH: 3, seed: 1501,
@@ -15593,9 +15593,9 @@ _MF_BUILDERS.prebuilt_antarctica = function () {
     // research huts? no — the Old Ones' relics
     M.rect(2, 8, 3, 9, 'ruins');
     M.sym180();
-    // the frozen colossus half-buried at the wall's central gap
-    M.mon('colossus', 11, 10, 3, 2, { rot: 0 });
-    M.mon('colossus', 12, 13, 3, 2, { rot: 180 });
+    // the frozen fallen column half-buried at the wall's central gap
+    M.mon('fallen_column', 11, 10, 3, 2, { rot: 0 });
+    M.mon('fallen_column', 12, 13, 3, 2, { rot: 180 });
     M.monSym('crystal', 4, 6, 2, 3, { solid: false });
     M.monSym('whalebones', 6, 4, 3, 2, { rot: 40, solid: false });
     M.monSym('monolith', 8, 3, 1, 3, {});
@@ -15866,7 +15866,7 @@ _MF_BUILDERS.prebuilt_vatican = function () {
     M.monSym('basilicadome', 5, 1, 3, 4, { solid: false });
     M.monSym('censer', 7, 8, 1, 3, { solid: false });
     M.monSym('greek', 3, 6, 3, 2, { rot: 45 });
-    M.monSym('colossus', 15, 6, 1, 2, { rot: 90 });
+    M.monSym('fallen_column', 15, 6, 1, 2, { rot: 90 });
     M.objSym(5, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
     M.objSym(7, 12, 'torch', {});
     M.spawnEdges('s', 6);
@@ -15935,7 +15935,7 @@ _MF_BUILDERS.prebuilt_gobekli = function () {
     M.mon('tpillar', 7, 7, 1, 3, {});
     M.mon('tpillar', 8, 8, 1, 3, { rot: 180 });
     M.monSym('arch', 12, 2, 2, 2, { solid: false });
-    M.monSym('colossus', 2, 12, 2, 1, { rot: 45 });
+    M.monSym('fallen_column', 2, 12, 2, 1, { rot: 45 });
     M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'dirt_3') M.rock(x, y, 'rocks_1'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('dirt_3');
@@ -16509,7 +16509,7 @@ const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
    The entry records it as `bed`; delta-maps.test.js checks each board
    against its own bed (the shared lava bed stays the default). */
 /* monument kinds with a real collision stamp (map.js _MON_COLLISION / _MON_GRID) */
-const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'cargo', 'dumpster', 'obelisk', 'colossus', 'greek',
+const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'cargo', 'dumpster', 'obelisk', 'fallen_column', 'greek',
     'menhir', 'castle_wall', 'gothic_wall', 'ziggurat_block',   // THE SPELL-MADE MONUMENTS (2026-09-18): the wall spells' pieces, placeable by the forge / editor too
     'chess_pawn', 'chess_rook', 'chess_knight', 'chess_bishop', 'chess_queen', 'chess_king']);   // the Looking-Glass's pieces (2026-09-12)
 
@@ -18381,7 +18381,7 @@ const EW_MAP_META = [
              motion: { kind: 'drift', axis: 'x', speed: 0.25, ramp: 0.04, max: 1.5, sky: 0.35 } } },   // the cloud islands drift past (MOVING MAPS, a gentle one)
     { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
-      desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the chained colossi',
+      desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the fallen columns',
       env: { look: HQ_ROOM_LOOKS.hell, world: { kind: 'cavern', sea: true, rim: [{ kind: 'spires', tex: 'obsidian', color: 0x5a4058, d: 14, n: 22, h: 9 }, { kind: 'peaks', tex: 'obsidian', color: 0x4a3048, d: 28, n: 12, h: 8, ranks: 1 }], wall: { tex: 'obsidian', color: 0x3a2838, r: 40, h: 40 }, fogTop: 0.45, rootTex: 'obsidian', rootColor: 0x584058 },
              tint: 0x3a0505, tintAmt: 0.50, stars: 0.25, nebula: 0.55, fog: { color: 0x5a0f08, amount: 0.65, top: 0.08, band: 0.6 }, scenery: 'infernal',
              motion: { kind: 'rise', dir: -1, speed: 1.6, ramp: 0.4, max: 6.0, sky: 0.8 } } },   // MOVING MAPS rev 2: the board SINKS — a circle deeper every round, the infernal roster rising past
@@ -18431,7 +18431,7 @@ const EW_MAP_META = [
              motion: { kind: 'wheel', speed: 4.0, ramp: 0.35, max: 5.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
     { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
       biomes: ['polar', 'deep_sea'], deltaPad: 'marble_light', near: 'antarctica', deltaY: 7,
-      desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen colossus',
+      desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen fallen column',
       env: { world: { kind: 'plain', sea: true, rim: [{ kind: 'bergs', d: 16, n: 10, h: 3 }] },
              tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, day: 1, clouds: 0.75, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
@@ -28998,8 +28998,8 @@ const DOOR_HQ = {
         garage_ramp:     { proc: 'garage_ramp',     h: 2.6,  foot: 2.6, rect: { hw: 2.6, hd: 4.2 }, block: true, glow: { y: 2.0, size: 5.0, color: 0xfff1c0 } },   // THE RAMP: the way out you can see and not take (a barrier arm, daylight at the top)
         roller_shutter:  { proc: 'roller_shutter',  h: 2.6,  foot: 0, wall: true, mount: 0,    depth: 0.12 },
         /* B · services */
-        kitchen_range:   { proc: 'kitchen_range',   h: 0.92, foot: 0.7, wall: true, mount: 0, depth: 0.7, block: true, glow: { y: 0.92, size: 0.9, color: 0xff7a30 } },
-        range_hood:      { proc: 'range_hood',      h: 0.5,  foot: 0, wall: true, mount: 1.75, depth: 0.7 },
+        kitchen_range:   { file: 'ebd_diner_kitchen_range.glb', base: 'misc', span: 1.5, foot: 0.7, wall: true, mount: 0, block: true },   // THE CODED SHAPES OUT (2026-11-03): the Diner pack griddle range
+        range_hood:      { file: 'ebd_diner_range_hood.glb', base: 'misc', span: 1.5, foot: 0, wall: true, mount: 1.75 },   // the Diner pack hood
         pot_rack:        { proc: 'pot_rack',        h: 0.5,  foot: 0, ceil: true, sway: { amp: 0.03, period: 3.8 } },
         meat_hook:       { proc: 'meat_hook',       h: 1.7,  foot: 0.3, ceil: true, block: true, sway: { amp: 0.05, period: 2.9 } },                          // the cold room: a carcass on a chain; blocks
         washer:          { proc: 'washer',          h: 0.95, foot: 0.5, wall: true, mount: 0, depth: 0.7, block: true },
@@ -29045,12 +29045,12 @@ const DOOR_HQ = {
         find_stash:      { proc: 'find_stash',      h: 0.24, foot: 0, glow: { y: 0.14, size: 1.0, color: 0xff8a5a } },   // D5 THE STASH (2026-09-21): a first-aid tin with a bottle in it — a facility room's cache of THE BAG's goods   // SKATEBOARDING (9.8): the board in the locker room (only while HQ_SKATE_RULES.free is off)
         tape_shelf:      { proc: 'tape_shelf',      h: 1.9,  foot: 0.35, wall: true, mount: 0, depth: 0.36, block: true },
         school_desk:     { proc: 'school_desk',     h: 0.75, foot: 0.45, block: true },
-        toilet_stall:    { proc: 'toilet_stall',    h: 2.0,  foot: 0.6, wall: true, mount: 0, depth: 1.5, rect: { hw: 0.5, hd: 0.75 }, block: true },   // on a n / s wall (the rect is room-axis)
-        urinal:          { proc: 'urinal',          h: 0.7,  foot: 0, wall: true, mount: 0.55, depth: 0.35 },
-        sink_row:        { proc: 'sink_row',        h: 1.8,  foot: 1.0, wall: true, mount: 0, depth: 0.55, rect: { hw: 1.2, hd: 0.28 }, block: true },  // three basins under a mirror strip; on a n / s wall
-        hand_dryer:      { proc: 'hand_dryer',      h: 0.3,  foot: 0, wall: true, mount: 1.2, depth: 0.2 },
+        toilet_stall:    { file: 'ebd_gasstation_toilet_stall.glb', base: 'misc', h: 2.0, foot: 0.6, wall: true, mount: 0, rect: { hw: 0.58, hd: 0.73 }, block: true },   // the Gas station pack stall (two partitions, the door, the toilet); on a n / s wall (the rect is room-axis)
+        urinal:          { file: 'ebd_burgerpiz_urinal.glb', base: 'misc', h: 0.85, foot: 0, wall: true, mount: 0.5 },   // the BurgerPiz pack urinal
+        sink_row:        { file: 'ebd_diner_sink_row.glb', base: 'misc', span: 2.4, foot: 1.0, wall: true, mount: 0, rect: { hw: 1.2, hd: 0.38 }, block: true },  // the Diner pack counter of three basins; on a n / s wall
+        hand_dryer:      { file: 'ebd_diner_hand_dryer.glb', base: 'misc', h: 0.3, foot: 0, wall: true, mount: 1.2 },   // the Diner pack dryer
         locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.42 },
-        shower_stall:    { proc: 'shower_stall',    h: 2.1,  foot: 0.6, wall: true, mount: 0, depth: 1.0, rect: { hw: 0.5, hd: 0.5 }, block: true },
+        shower_stall:    { file: 'ebd_house_shower_stall.glb', base: 'misc', h: 2.1, foot: 0.6, wall: true, mount: 0, rect: { hw: 0.58, hd: 0.48 }, block: true },   // the House pack shower (tiles + the glass door)
         lap_pool:        { proc: 'lap_pool',        h: 0.35, foot: 5.0, rect: { hw: 6.2, hd: 2.9 }, block: true },           // Room 50M: six lanes, starting blocks, a rect the walker never enters
         lifeguard_chair: { proc: 'lifeguard_chair', h: 2.2,  foot: 0.4, block: true },
         garden_ring:     { proc: 'garden_ring',     h: 0.7,  foot: 0 },                                                       // Room 1618: the gravel ring + the hedge (the proc registers its own blockers)
@@ -29102,7 +29102,7 @@ const DOOR_HQ = {
         turnstile:       { proc: 'turnstile',       h: 1.0,  foot: 0.4,  block: true },                                        // THE PLATFORM: a tripod gate that turns as you come up (ticker)
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
-        iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
+        iso_tank:        { file: 'molten_sleeper_casket.glb', base: 'misc', h: 2.2, foot: 0.9, rect: { hw: 0.6, hd: 0.9 }, block: true, glow: { y: 1.3, size: 2.0, color: 0x60a0ff } },   // Room 0dB: the pod (THE CODED SHAPES OUT 2026-11-03: the Molten Maps sci-fi pack sleeper casket, CC0)
         evac_button:     { proc: 'evac_button',     h: 0.3,  foot: 0,    wall: true, mount: 1.2, depth: 0.1, glow: { y: 0.15, size: 0.8, color: 0xff3020 }, light: { color: 0xff3020, intensity: 0.5, dist: 3, y: 0.15 } },   // Room 4B: the red button under its cover
         scoreboard:      { proc: 'scoreboard',      h: 8.8,  foot: 0.5,  rect: { hw: 5.5, hd: 0.35 }, block: true, glow: { y: 6.3, size: 9.0, color: 0x86e8ff } },   // THE BOWL (2026-09-26): over the north concourse
         flood_mast:      { proc: 'flood_mast',      h: 7.0,  foot: 0.35, block: true, glow: { y: 6.6, size: 5.0, color: 0xeaf4ff }, light: { color: 0xeaf4ff, intensity: 1.2, dist: 26, y: 6.6, night: true } },   // (`night`: on at dusk, THE WORLD CLOCK) THE FLIGHT LINE (2026-09-18): a floodlight mast — the outdoor room's own light
@@ -65431,12 +65431,13 @@ const EW_CREDITS = {
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
-            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
+            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, Gas station, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
             { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },
             { role: 'Low-poly cars', by: 'GGBot', source: 'https://ggbot.net' },
-            { role: 'Castle and Fort Builder Pack (the Heaven castles)', by: 'McSteeg', source: 'https://mcsteeg.itch.io/castle-and-fort-builder-pack' },
+            { role: 'Castle and Fort Builder Pack (the castles, the ruins)', by: 'McSteeg', source: 'https://mcsteeg.itch.io/castle-and-fort-builder-pack' },
+            { role: 'Molten Maps SciFi Asset Pack (the cryo tube, the sleeper casket)', by: 'Moltenbolt', license: 'CC0', source: 'https://www.moltenbolt.com' },
         ] },
         { title: 'CHARACTER CREATOR', makehuman: true, rows: [
             { role: 'Bodies, faces, hair, clothes and skins', by: 'MakeHuman / MPFB2', license: 'CC0', source: 'http://www.makehumancommunity.org' },

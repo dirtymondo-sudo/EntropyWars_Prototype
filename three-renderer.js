@@ -9176,7 +9176,7 @@ const ThreeRenderer = (function () {
             ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
             obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
             greek: _hzGreekRuin, crystal: _hzCrystalShards,
-            rings: _hzSacredRings, colossus: _hzColossus,
+            rings: _hzSacredRings, fallen_column: _hzFallenColumn,
             flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
             lightpillar: _hzLightPillar, fluorescent: _hzFluorescent,
             exitsign: _hzExitSign,
@@ -35774,6 +35774,27 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* THE FLESH MOUND (mondo 2026-11-03: "we have a bunch of body parts from an asset pack that are used in gory spells, use those to make
+       a flesh mound"): a heap of the Halloween pack's severed parts (Body_part … Body_part_09, the gory spells' pieces), each its own
+       model, piled highest in the middle and tumbled every way. The sphere lobes, eyes and fangs are gone; the pack off, no mound. */
+    function _hzFleshMound(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        if (!_hwPackOn()) return g;
+        /* mostly the meat, the guts, the hearts and the heads (05-09, 04, 01, the skull); a few limbs laid along the heap's flank */
+        var LUMP = ['Body_part_05', 'Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09', 'Body_part_04', 'Body_part_01', 'Body_part', 'Body_part_06', 'Body_part_08'];
+        var R = ts * (1.2 + rng() * 1.0), H = R * 0.85, n = 60 + (rng() * 16 | 0);
+        for (var i = 0; i < n; i++) {
+            var limb = (i % 8) === 7, node = limb ? (rng() < 0.5 ? 'Body_part_02' : 'Body_part_03') : LUMP[(rng() * LUMP.length) | 0];
+            var r = R * Math.sqrt(rng()) * (limb ? 0.7 : 1), a = rng() * Math.PI * 2, span = limb ? ts * (0.35 + rng() * 0.15) : ts * (0.4 + rng() * 0.3);
+            var part = _miscModelInstance(_hwUrl(node), true, span, { fit: 'span' }), pv = new THREE.Group();
+            pv.position.set(Math.cos(a) * r, Math.max(0, 1 - (r / R) * (r / R)) * H * (0.75 + rng() * 0.25), Math.sin(a) * r);
+            if (limb) { pv.rotation.y = a + (rng() - 0.5) * 0.8; part.rotation.z = Math.PI / 2 + (rng() - 0.5) * 0.4; }   // a limb lies down the flank (the files stand them up)
+            else part.rotation.set(rng() * 6.28, rng() * 6.28, rng() * 6.28);
+            pv.add(part); g.add(pv);
+        }
+        return g;
+    }
+
     // ── Camelot: the sword in the stone (real Meshy master-sword GLB) ─────
     function _hzExcalibur(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -36111,9 +36132,9 @@ const ThreeRenderer = (function () {
         var topTex = _hzTex('bricks_3');
         var sideTex = _hzTex('ruins') || topTex;
         var steps = 16 + (rng() * 12 | 0);
-        var stepW = ts * (2.4 + rng() * 1.8);
+        var stepW = ts; rng();                            // ONE TILE WIDE (mondo 2026-11-03: "make sure the stair steps are one tile wide"; the draw keeps the seed)
         var rise = ts * (0.55 + rng() * 0.25);
-        var depth = ts * (0.85 + rng() * 0.35);
+        var depth = ts; rng();                            // and a tile deep: a step is one board square
         var th = rise * 0.4;
         var lean = (rng() - 0.5) * 0.18;                 // slight sideways drift
         var topMat = _hzGeoMat(topTex, 0xe6ddca);
@@ -36148,28 +36169,24 @@ const ThreeRenderer = (function () {
         stylobate.position.y = baseH * 0.5;
         g.add(stylobate);
 
+        /* the columns are the Meshy greek column (mondo 2026-11-03: "greek ruins - i like the coded one, but we need a new meshy greek
+           column or asset pack greek column"), each its own model at the colonnade's height; a fallen one leaves its gap (the stub
+           cylinders and box capitals are gone) */
         var startX = -spacing * (cols - 1) / 2;
         var allIntact = true;
         for (var c = 0; c < cols; c++) {
             var broken = rng() < 0.35;
-            var h = broken ? colH * (0.3 + rng() * 0.45) : colH;
-            if (broken) allIntact = false;
-            var col = _hzCyl(colR * 0.9, colR, h, 12, ts, _hzGeoMat(stoneTex, 0xe6dcc4));
-            col.position.set(startX + c * spacing, baseH + h * 0.5, 0);
+            if (broken) { allIntact = false; rng(); continue; }
+            var col = _hzMiscKit('greekcol', { tiles: colH / ts, fit: 'height', rng: rng });
+            col.position.set(startX + c * spacing, baseH, 0);
             g.add(col);
-            if (!broken) {
-                var cw = colR * 2.5, capH = ts * 0.4;
-                var cap = _hzBox(cw, capH, cw, ts, _hzGeoMat(stoneTex, 0xe6dcc4));
-                cap.position.set(startX + c * spacing, baseH + h + ts * 0.18, 0);
-                g.add(cap);
-            }
         }
         // entablature beam spanning the colonnade when enough columns survive
         if (allIntact || rng() < 0.5) {
             var span = allIntact ? baseW * 0.96 : baseW * (0.4 + rng() * 0.4);
             var bh = ts * 0.7, bd = colR * 2.6;
             var beam = _hzBox(span, bh, bd, ts, _hzGeoMat(beamTex, 0xd8cdb0));
-            beam.position.set(allIntact ? 0 : startX + ts, baseH + colH + ts * 0.5, 0);
+            beam.position.set(allIntact ? 0 : startX + ts, baseH + colH + bh * 0.5, 0);
             g.add(beam);
         }
         return g;
@@ -36226,8 +36243,9 @@ const ThreeRenderer = (function () {
             g.add(box);
             y += th;
         }
-        var shrine = _hzBox(w * 0.16, th * 1.5, w * 0.16, ts, _hzGeoMat(tex, 0xb29070));
-        shrine.position.y = y + th * 0.75;
+        var sw = w * 0.16;   // the shrine on top is a CUBE (mondo 2026-11-03: "that top part does not look like a cube, it looks taller than it is wide")
+        var shrine = _hzBox(sw, sw, sw, ts, _hzGeoMat(tex, 0xb29070));
+        shrine.position.y = y + sw * 0.5;
         g.add(shrine);
         return g;
     }
@@ -36238,17 +36256,13 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         var tex = _hzTex('rocks_1');
         var h = ts * (8 + rng() * 9);
-        var w = ts * (1.5 + rng() * 1.1), d = w * (0.28 + rng() * 0.12);
+        /* THICKER, NO RUNE (mondo 2026-11-03: "it is too thin and i dont like the nether portal looking purple thing"): the slab
+           is half as deep as it is wide (it was a quarter), the glowing seam is gone (the draws keep the seed) */
+        var w = ts * (1.8 + rng() * 1.1), d = w * (0.5 + rng() * 0.12);
         var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x8f8a82));
         slab.position.y = h * 0.5;
         g.add(slab);
-        // a glowing rune-seam down the obsidian face — a cold, eerie sigil light
-        var runeCol = (rng() < 0.5) ? 0x66ffd0 : 0x8a7bff;   // sickly green or arcane violet
-        var runeMat = _hzGlowMat(runeCol, 0.6);
-        var rune = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.14, h * 0.66), runeMat);
-        rune.position.set(0, h * 0.5, d * 0.5 + 1.5);
-        g.add(rune);
-        _hzPulse(runeMat, null, 0.30, 0, 0.30 + rng() * 0.45);
+        rng(); rng();
         g.rotation.z = (rng() - 0.5) * 0.22;              // ominous lean
         g.rotation.x = (rng() - 0.5) * 0.06;
         return g;
@@ -36308,9 +36322,10 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // A toppled colossus: a felled giant column lying in the dust with its
+    // A FALLEN COLUMN (named `colossus` until 2026-11-03 — mondo: "a collosus is like a big creature, this is literally just a column
+    // on the floor"): a felled giant column lying in the dust with its
     // drums scattered around it — the Ozymandias beat of the skyline.
-    function _hzColossus(rng) {
+    function _hzFallenColumn(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('bricks_2') || _hzTex('ruins');
@@ -37082,25 +37097,12 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── D.U.M.B.: specimen tank (occupied) ──
+    // ── D.U.M.B.: specimen tank ──
+    /* THE CODED SHAPES OUT (mondo 2026-11-03: "grey tube - yes replace"): the Molten Maps sci-fi pack cryo tube (CC0, R2
+       Assets/misc/molten_cryo_tube.glb), lit; the steel caps, the see-through fluid and the code grey inside are gone. The
+       monument fit stretches it toward its 3-tile stamp as it did the code tank. */
     function _hzGreyTube(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var steel = function () { return _hzGeoMat(_hzTex('metal'), 0x6a707a); };
-        var H = ts * 2.4;
-        _hzAt(g, _hzCyl(ts * 0.7, ts * 0.8, ts * 0.35, 10, ts, steel()), 0, ts * 0.17, 0);
-        var fluidMat = new THREE.MeshBasicMaterial({
-            color: 0x59e8c8, transparent: true, opacity: 0.22,
-            side: THREE.DoubleSide, depthWrite: false, fog: false
-        });
-        _hzAt(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.58, ts * 0.58, H, 12, 1, true), fluidMat), 0, ts * 0.35 + H / 2, 0);
-        var grey = function () { return _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x39424a); };
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 8, 6), grey()), 0, ts * 2.0, 0);      // the big head
-        _hzAt(g, _hzCyl(ts * 0.12, ts * 0.16, ts * 0.9, 6, ts, grey()), 0, ts * 1.35, 0);                 // the small body
-        _hzAt(g, _hzCyl(ts * 0.7, ts * 0.8, ts * 0.35, 10, ts, steel()), 0, ts * 0.35 + H + ts * 0.17, 0);
-        var glowMat = _hzGlowMat(0x59e8c8, 0.30);
-        /* NO LIGHT BOX (mondo 2026-10-05): no glow shell round the tube */
-        return g;
+        return _hzMiscKit('molten_cryo_tube', { url: _R2_MISC + 'molten_cryo_tube.glb', tiles: 2.4, rng: rng });
     }
 
     /* ── THE CARGO STACK (2026-09-13) — the Spaceship's cover, in place of the
@@ -37291,48 +37293,6 @@ const ThreeRenderer = (function () {
         return new THREE.Group();   // NO STAND-INS (2026-10-05): no procedural skull — the GLB or nothing
     }
 
-    // ── Unholy wastes: a heap of living flesh, all eyes and teeth ──
-    function _hzFleshMound(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var fleshKeys = ['flesh', 'flesh_2', 'flesh_3'];
-        var R = ts * (1.2 + rng() * 1.0);
-        // overlapping squashed lobes make the mass read as grown, not built
-        var lobes = 4 + (rng() * 3 | 0);
-        for (var i = 0; i < lobes; i++) {
-            var lr = R * (0.45 + rng() * 0.5);
-            var lobeGeo = new THREE.SphereGeometry(lr, 10, 8);
-            _hzScaleUV(lobeGeo, lr / ts * 4, lr / ts * 3);
-            var lobe = new THREE.Mesh(lobeGeo,
-                _hzGeoMat(_hzTex(fleshKeys[(rng() * fleshKeys.length) | 0]), 0xb98a8a));
-            lobe.scale.y = 0.55 + rng() * 0.25;
-            var a = rng() * Math.PI * 2, d = rng() * R * 0.7;
-            _hzAt(g, lobe, Math.cos(a) * d, lr * lobe.scale.y * 0.55, Math.sin(a) * d, rng() * Math.PI);
-        }
-        // unblinking eyes stud the mass — the mound is watching
-        var eyes = 3 + (rng() * 3 | 0);
-        for (var e = 0; e < eyes; e++) {
-            var er = ts * (0.08 + rng() * 0.08);
-            var ea = rng() * Math.PI * 2, ed = R * (0.35 + rng() * 0.55);
-            var eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(er, 7, 6),
-                _hzGeoMat(_hzTex('enamel') || null, 0xf0e8d8));
-            _hzAt(g, eyeWhite, Math.cos(ea) * ed, R * (0.35 + rng() * 0.45), Math.sin(ea) * ed);
-            var pupilMat = _hzGlowMat(rng() < 0.5 ? 0xffd040 : 0x8fff70, 0.8);
-            var pupil = new THREE.Mesh(new THREE.SphereGeometry(er * 0.45, 5, 4), pupilMat);
-            _hzAt(g, pupil, Math.cos(ea) * (ed + er * 0.7), R * (0.35 + rng() * 0.45), Math.sin(ea) * (ed + er * 0.7));
-            _hzPulse(pupilMat, pupil, 0.3, 0.08, 0.3 + rng() * 0.6);
-        }
-        // stray fangs erupting where no mouth should be
-        var fangs = 4 + (rng() * 4 | 0);
-        for (var f = 0; f < fangs; f++) {
-            var fa = rng() * Math.PI * 2, fd = R * (0.4 + rng() * 0.5);
-            var fang = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.06, ts * (0.2 + rng() * 0.25), 5),
-                _hzGeoMat(_hzTex('enamel') || null, 0xe8dfc8));
-            _hzAt(g, fang, Math.cos(fa) * fd, R * (0.2 + rng() * 0.4), Math.sin(fa) * fd,
-                0, (rng() - 0.5) * 1.2, (rng() - 0.5) * 1.2);
-        }
-        return g;
-    }
 
     // ── Arcane library / Heaven: a colossal tome hanging open in the air ──
     function _hzTome(rng) {
@@ -40658,19 +40618,19 @@ const ThreeRenderer = (function () {
                 [0.81, _hzRoseWindow, false, -0.35, 0.50], [0.88, _hzModelClock, false, -0.25, 0.55],
                 [0.94, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
-                [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
+                [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzFallenColumn, false, -0.50, 0.30],
                 [0.66, _hzCrystalShards, true, -0.55, 0.45],
                 [0.76, _hzObelisk, false, -0.50, 0.40], [0.86, _hzGrinSkull, false, -0.45, 0.35],
                 [1.00, _hzFleshMound, false, -0.50, 0.30]],
             ruins: [
                 [0.22, _hzGreekRuin, false, -0.40, 0.50], [0.36, _hzStairway, false, -0.45, 0.55],
-                [0.50, _hzColossus, false, -0.45, 0.45], [0.62, _hzObelisk, false, -0.45, 0.55],
+                [0.50, _hzFallenColumn, false, -0.45, 0.45], [0.62, _hzObelisk, false, -0.45, 0.55],
                 [0.72, _hzGateway, false, -0.40, 0.55], [0.82, _hzWoodCross, false, -0.45, 0.45],
                 [1.00, _hzRoseWindow, false, -0.42, 0.50]],
             pyramids: [
                 [0.30, _hzModelPyramid, false, -0.40, 0.45], [0.50, _hzZiggurat, false, -0.40, 0.50],
                 [0.66, _hzObelisk, false, -0.45, 0.55], [0.80, _hzMonolith, false, -0.50, 0.55],
-                [1.00, _hzColossus, false, -0.45, 0.40]],
+                [1.00, _hzFallenColumn, false, -0.45, 0.40]],
             crystals: [
                 [0.30, _hzCrystalShards, true, -0.55, 0.65], [0.48, _hzSacredRings, true, -0.50, 0.70],
                 [0.64, _hzAstralOrbs, true, -0.55, 0.75], [0.78, _hzModelPlanet, false, -0.55, 0.72],
@@ -40698,7 +40658,7 @@ const ThreeRenderer = (function () {
                 [0.82, _hzModelEyeball, true, -0.50, 0.70], [0.88, _hzSaucer, false, -0.45, 0.68],
                 [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
-                [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzColossus, false, -0.45, 0.45],
+                [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzFallenColumn, false, -0.45, 0.45],
                 [0.70, _hzGateway, false, -0.45, 0.55],
                 [0.79, _hzObelisk, false, -0.45, 0.58], [0.87, _hzGrinSkull, false, -0.45, 0.40],
                 [0.94, _hzModelClock, false, -0.42, 0.55], [1.00, _hzWoodCross, false, -0.42, 0.45]],
@@ -40747,7 +40707,7 @@ const ThreeRenderer = (function () {
             [0.468, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
             [0.521, _hzObelisk,        false, -0.45,  0.58],   // obelisks
             [0.583, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
-            [0.629, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
+            [0.629, _hzFallenColumn,       false, -0.45,  0.48],   // fallen columns
             [0.725, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
             [0.748, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
             [0.768, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
@@ -41283,18 +41243,16 @@ const ThreeRenderer = (function () {
                 m.position.set(x, c.y - ts * 0.3, z); m.rotation.y = rng() * 6; K.add(m);
             });
         },
-        /* broken columns and blocks — a drowned or buried city */
+        /* a ruined fort round the board: the Castle and Fort pack's ruined pieces (a 4-long wall, a 2-long wall, a hollow tower storey),
+           ONE piece per stop, each its own model on its own spot (mondo 2026-11-03: "ruins rim - ... they need to be individually placed,
+           so yes replace with the castle pack ruins"); the marble cylinders and boxes are gone. `h` = tiles tall (the pack's 2 m grid × k). */
         ruins: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'marble_light', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
+            var ts = K.ts, rng = K.rng, url = _R2_MISC + 'Castles_and_Forts.glb#', PIECES = ['Wall_2x4_ruined', 'Wall_2x2_ruined', 'Tower_mid_hollow_ruined', 'Wall_2x4_ruined'];
             for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.45), Math.round((s.n || 14) * (1 + k * 0.3)), function (x, z) {
                 if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                if (rng() < 0.55) {
-                    var h = ts * (s.h || 4) * (0.4 + rng() * 1.0), r = ts * (0.25 + rng() * 0.3);
-                    var col = K.cyl(r, r * 1.1, h, 9, mat); col.position.set(x, c.y + h / 2 - ts * 0.1, z); col.rotation.z = (rng() - 0.5) * 0.2; K.add(K.lit(col));
-                } else {
-                    var w = ts * (1.5 + rng() * 3), hh = ts * (0.8 + rng() * 2.2), d = ts * (1 + rng() * 2);
-                    var b = K.box(w, hh, d, mat); b.position.set(x, c.y + hh / 2 - ts * 0.2, z); b.rotation.y = rng() * 6; b.rotation.z = (rng() - 0.5) * 0.15; K.add(K.lit(b));
-                }
+                var h = ts * (s.h || 4) * (0.4 + rng() * 0.8), node = PIECES[(rng() * PIECES.length) | 0];
+                var m = _hzMiscKit('castle_ruin', { url: url + node, tiles: h / ts, fit: 'height', lift: 0.3, rng: rng, low: 'skip', onDone: function (grp) { _nrInjectWorld(K, grp); } });
+                m.position.set(x, c.y - ts * 0.15, z); m.rotation.y = node === 'Tower_mid_hollow_ruined' ? rng() * 6 : K.face(x, z) + Math.PI / 2 + (rng() - 0.5) * 0.4; K.add(m);
             });
         },
         /* the necropolis on the horizon */
@@ -41896,7 +41854,7 @@ const ThreeRenderer = (function () {
         // esoteric misc models (textured pyramid, watcher eyeball). The old
         // procedural _hzPyramid (wasteland-textured) is intentionally omitted.
         var BUILDERS = [
-            _hzGreekRuin, _hzColossus, _hzObelisk, _hzMonolith,
+            _hzGreekRuin, _hzFallenColumn, _hzObelisk, _hzMonolith,
             _hzGateway, _hzZiggurat, _hzCrystalShards,
             _hzModelPyramid, _hzModelEyeball
         ];
@@ -65786,28 +65744,35 @@ const ThreeRenderer = (function () {
             g.children[0].position.y = 26 * s * U;
             return g;
         },
+        /* THE CASTLE (mondo 2026-11-03: "castle - im assuming you would make the entire castle using assets from the castle pack?"):
+           built piece by piece from the Castle and Fort pack (McSteeg, R2 Assets/misc/Castles_and_Forts.glb — one node per piece,
+           a 2 m grid: walls 4 or 2 long × 2 tall, tower storeys 2 × 2 × 2), every piece its own model. The curtain wall at ×6 (a
+           12 m wall, the old height): two 4-long walls a side, the front a gate between two 2-long walls; a round tower (a storey,
+           the crenellated top, the pack's cone roof) on each corner; the keep a taller round tower at ×7 in the ward. The boxes,
+           cylinders, the banner and the window glows are gone. The pieces stream in (nothing stands in while they load). */
         castle: function (U, o, rng) {
             var g = new THREE.Group(), s = o.s || 1;
-            var wall = _hqMat('castle_wall', 8, 2, { color: 0x9aa0ac, shininess: 3 });
-            var keepM = _hqMat('bricks_2', 6, 6, { color: 0x8c909c, shininess: 3 });
-            var roof = _hqMat(null, 1, 1, { color: 0x2c3c58, shininess: 8 });
-            var W = 44 * s, Hw = 12 * s, T = 2.4 * s;
-            [[0, -W / 2], [0, W / 2]].forEach(function (p) { var b = _hqBox(W, Hw, T, wall); b.position.set(p[0] * U, Hw / 2 * U, p[1] * U); g.add(b); });
-            [[-W / 2, 0], [W / 2, 0]].forEach(function (p) { var b = _hqBox(T, Hw, W, wall); b.position.set(p[0] * U, Hw / 2 * U, p[1] * U); g.add(b); });
-            var tower = function (x, z, rr, hh) {
-                var t = new THREE.Mesh(new THREE.CylinderGeometry(rr * U, rr * 1.08 * U, hh * U, 12), wall); t.position.set(x * U, hh / 2 * U, z * U); g.add(t);
-                var c = new THREE.Mesh(new THREE.ConeGeometry(rr * 1.18 * U, rr * 1.6 * U, 12), roof); c.position.set(x * U, (hh + rr * 0.8) * U, z * U); g.add(c);
+            var url = _R2_MISC + 'Castles_and_Forts.glb#', pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            var H = { Wall_2x4: 2, Wall_2x2: 2, Gate_2x4: 2.05, Tower_Mid: 2, Tower_Doorway: 2, Tower_top_1: 2.16, Roof_Cone: 2.23 };
+            var piece = function (node, k, x, y, z, ry) {
+                var m = _miscModelInstance(url + node, true, H[node] * k * U, { fit: 'height', matPick: pick });
+                m.position.set(x * U, y * U, z * U); m.rotation.y = ry || 0; g.add(m); return m;
             };
-            [[-W / 2, -W / 2], [W / 2, -W / 2], [-W / 2, W / 2], [W / 2, W / 2]].forEach(function (p) { tower(p[0], p[1], 5 * s, 20 * s); });
-            var keep = _hqBox(20 * s, 24 * s, 20 * s, keepM); keep.position.y = 12 * s * U; g.add(keep);
-            tower(0, 0, 5.5 * s, 36 * s);
-            /* the banner on the great tower, and the lit windows */
-            var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * s * U, 0.15 * s * U, 8 * s * U, 6), roof); pole.position.y = (36 + 5.5 * 0.8 + 4) * s * U; g.add(pole);
-            var flag = _hqBox(4 * s, 2.2 * s, 0.1 * s, _hqMat(null, 1, 1, { color: 0xb8322e, shininess: 4 })); flag.position.set(2 * s * U, (36 + 5.5 * 0.8 + 6.5) * s * U, 0); g.add(flag);
-            for (var i = 0; i < 6; i++) {
-                var wx = (-6 + (i % 3) * 6) * s, wy = (8 + Math.floor(i / 3) * 8) * s;
-                var gl = _hzGlowSprite(2.2 * s * U, 0xffb060, 0.55, 0.1, 0.05, 0.8 + i * 0.13); gl.position.set(wx * U, wy * U, (10 * s + 0.6) * U); g.add(gl);
-            }
+            var tower = function (k, x, z, storeys) {
+                var y = 0;
+                storeys.forEach(function (n) { piece(n, k, x, y, z, 0); y += 2 * k; });
+                piece('Tower_top_1', k, x, y, z, 0);
+                piece('Roof_Cone', k, x, y + 2.0 * k, z, 0);
+            };
+            var k = 6 * s, hw = 24 * s, Q = Math.PI / 2;
+            /* the curtain wall: the sides along z stand as authored (long along z), the sides along x turned a quarter */
+            [-1, 1].forEach(function (sd) {
+                piece('Wall_2x4', k, sd * hw, 0, -12 * s, 0); piece('Wall_2x4', k, sd * hw, 0, 12 * s, 0);   // west / east
+                piece('Wall_2x4', k, -12 * s, 0, -hw, Q); piece('Wall_2x4', k, 12 * s, 0, -hw, Q);           // the back
+            });
+            piece('Wall_2x2', k, -18 * s, 0, hw, Q); piece('Gate_2x4', k, 0, 0, hw, Q); piece('Wall_2x2', k, 18 * s, 0, hw, Q);   // the front: the gate
+            [[-hw, -hw], [hw, -hw], [-hw, hw], [hw, hw]].forEach(function (p) { tower(k, p[0], p[1], ['Tower_Mid']); });
+            tower(7 * s, 0, -4 * s, ['Tower_Doorway', 'Tower_Mid']);   // the keep
             return g;
         },
         /* THE CASTLE IN THE SKY (2026-09-18, CAMELOT CASTLE — the user's "possibly a castle in the sky"):
@@ -65844,12 +65809,12 @@ const ThreeRenderer = (function () {
                 var isle = new THREE.Mesh(new THREE.SphereGeometry(r * U, 14, 9), cloud);
                 isle.scale.set(1, 0.34, 0.8); isle.position.set(p[0] * s * U, p[1] * s * U, p[2] * s * U); g.add(isle);
                 if (last) {
-                    /* the flight between: nine treads climbing from the last isle's rim to this one's */
-                    var n = 9;
+                    /* the flight between: one-tile treads (mondo 2026-11-03), as many as the climb needs to read as a stair */
+                    var n = Math.max(9, Math.ceil(Math.hypot(p[0] - last[0], p[1] - last[1], p[2] - last[2]) * s / HQ_TILE_M));
                     for (var k = 0; k < n; k++) {
                         var t = (k + 0.5) / n;
                         var tx = (last[0] + (p[0] - last[0]) * t) * s, ty = (last[1] + (p[1] - last[1]) * t) * s + 2 * s, tz = (last[2] + (p[2] - last[2]) * t) * s;
-                        var tread = _hqBox(6 * s, 1.1 * s, 4 * s, step); tread.position.set(tx * U, ty * U, tz * U); tread.rotation.y = Math.atan2(p[0] - last[0], -(p[2] - last[2])); g.add(tread);
+                        var tread = _hqBox(HQ_TILE_M, 1.1 * s, HQ_TILE_M, step);   /* ONE TILE a tread (mondo 2026-11-03) */ tread.position.set(tx * U, ty * U, tz * U); tread.rotation.y = Math.atan2(p[0] - last[0], -(p[2] - last[2])); g.add(tread);
                     }
                 }
                 last = p;
@@ -67488,24 +67453,6 @@ const ThreeRenderer = (function () {
             var box = _hqBox(2.6, 0.3, 0.3, slat); box.position.set(0, 2.55 * U, 0.15 * U); g.add(box);
             return g;
         },
-        kitchen_range: function (U) {
-            var g = new THREE.Group();
-            var steel = _hqMat(null, 1, 1, { color: 0xb4b9bd, shininess: 90, specular: 0x999999 });
-            var body = _hqBox(1.2, 0.9, 0.7, steel); body.position.set(0, 0.45 * U, 0.35 * U); g.add(body);
-            var top = _hqBox(1.2, 0.03, 0.7, _hqMat(null, 1, 1, { color: 0x2a2d31, shininess: 60 })); top.position.set(0, 0.915 * U, 0.35 * U); g.add(top);
-            var ring = _hqBasic(0xff6a20);
-            [[-0.35, 0.18], [0.35, 0.18], [-0.35, 0.52], [0.35, 0.52]].forEach(function (p) { var r = new THREE.Mesh(new THREE.RingGeometry(0.06 * U, 0.1 * U, 16), ring); r.rotation.x = -Math.PI / 2; r.position.set(p[0] * U, 0.935 * U, p[1] * U); g.add(r); });
-            var door = _hqBox(1.0, 0.5, 0.02, _hqMat(null, 1, 1, { color: 0x1c1e22, shininess: 80 })); door.position.set(0, 0.35 * U, 0.71 * U); g.add(door);
-            var hd = _hqBox(0.9, 0.03, 0.04, steel); hd.position.set(0, 0.62 * U, 0.73 * U); g.add(hd);
-            return g;
-        },
-        range_hood: function (U) {
-            var g = new THREE.Group();
-            var steel = _hqMat(null, 1, 1, { color: 0xb4b9bd, shininess: 70, specular: 0x888888 });
-            var hood = _hqBox(1.3, 0.4, 0.7, steel); hood.position.set(0, 0.2 * U, 0.35 * U); g.add(hood);
-            var duct = _hqBox(0.4, 0.5, 0.4, steel); duct.position.set(0, 0.55 * U, 0.3 * U); g.add(duct);
-            return g;
-        },
         pot_rack: function (U) {
             var g = new THREE.Group();
             var steel = _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 });
@@ -67890,45 +67837,6 @@ const ThreeRenderer = (function () {
             _hqDecorWear('school_desk', U, g, { hide: g.children.slice(0, 5) });   // THE MESHY DECOR (2026-11-03): the desk only (the chair is a separate piece)
             return g;
         },
-        toilet_stall: function (U) {
-            var g = new THREE.Group();
-            var part = _hqMat(null, 1, 1, { color: 0xb8c8c0, shininess: 40 });
-            [-0.5, 0.5].forEach(function (x) { var p = _hqBox(0.03, 1.8, 1.5, part); p.position.set(x * U, 1.05 * U, 0); g.add(p); });
-            var door = _hqBox(0.9, 1.8, 0.03, part); door.position.set(0, 1.05 * U, 0.74 * U); door.rotation.y = 0.35; door.position.x = -0.1 * U; g.add(door);   // ajar
-            var bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.15 * U, 0.4 * U, 14), _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 })); bowl.position.set(0, 0.2 * U, -0.3 * U); g.add(bowl);
-            var tank = _hqBox(0.45, 0.4, 0.18, _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 })); tank.position.set(0, 0.62 * U, -0.62 * U); g.add(tank);
-            var seat = new THREE.Mesh(new THREE.TorusGeometry(0.19 * U, 0.03 * U, 6, 18), _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 })); seat.rotation.x = Math.PI / 2; seat.position.set(0, 0.41 * U, -0.3 * U); g.add(seat);
-            var roll = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.06 * U, 0.1 * U, 10), _hqMat(null, 1, 1, { color: 0xffffff, shininess: 2 })); roll.rotation.z = Math.PI / 2; roll.position.set(0.44 * U, 0.75 * U, -0.1 * U); g.add(roll);
-            return g;
-        },
-        urinal: function (U) {
-            var g = new THREE.Group();
-            var por = _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 });
-            var body = _hqBox(0.35, 0.6, 0.3, por); body.position.set(0, 0.3 * U, 0.15 * U); g.add(body);
-            var bowl = new THREE.Mesh(new THREE.SphereGeometry(0.17 * U, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), por); bowl.rotation.x = Math.PI; bowl.position.set(0, 0.2 * U, 0.2 * U); g.add(bowl);
-            var pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.3 * U, 8), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); pipe.position.set(0, 0.75 * U, 0.05 * U); g.add(pipe);
-            var div = _hqBox(0.03, 0.9, 0.4, _hqMat(null, 1, 1, { color: 0xb8c8c0, shininess: 40 })); div.position.set(0.3 * U, 0.45 * U, 0.2 * U); g.add(div);
-            return g;
-        },
-        sink_row: function (U) {
-            var g = new THREE.Group();
-            var por = _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 });
-            var counter = _hqBox(2.4, 0.08, 0.55, _hqMat('marble_light', 3, 1, { color: 0xdedcd4, shininess: 50 })); counter.position.set(0, 0.86 * U, 0.275 * U); g.add(counter);
-            var front = _hqBox(2.4, 0.82, 0.03, _hqMat(null, 1, 1, { color: 0xb8c8c0, shininess: 30 })); front.position.set(0, 0.41 * U, 0.535 * U); g.add(front);
-            [-0.8, 0, 0.8].forEach(function (x) {
-                var basin = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * U, 0.12 * U, 0.12 * U, 14), por); basin.position.set(x * U, 0.86 * U, 0.28 * U); g.add(basin);
-                var tap = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.16 * U, 8), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 120, specular: 0xffffff })); tap.position.set(x * U, 0.98 * U, 0.1 * U); g.add(tap);
-            });
-            var mirror = new THREE.Mesh(new THREE.PlaneGeometry(2.3 * U, 0.6 * U), new THREE.MeshPhongMaterial({ color: 0xc8d8e0, shininess: 200, specular: 0xffffff })); mirror.position.set(0, 1.45 * U, 0.02 * U); g.add(mirror);
-            var strip = _hqBox(2.3, 0.05, 0.05, _hqBasic(0xf0f6ff)); strip.position.set(0, 1.78 * U, 0.05 * U); g.add(strip);
-            return g;
-        },
-        hand_dryer: function (U) {
-            var g = new THREE.Group();
-            var body = _hqBox(0.3, 0.3, 0.2, _hqMat(null, 1, 1, { color: 0xe8e8e4, shininess: 60 })); body.position.set(0, 0.15 * U, 0.1 * U); g.add(body);
-            var nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 0.08 * U, 10), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); nozzle.position.set(0, 0.0, 0.14 * U); g.add(nozzle);
-            return g;
-        },
         locker_bench: function (U) {
             var g = new THREE.Group(), stand = new THREE.Group(); g.add(stand);   // THE 2026-09-22 BATCH: the proc is the STAND-IN; the user's city bench lands over it (_hqCatGlb)
             var slat = _hqMat('wood', 3, 1, { color: 0xb08a5a, shininess: 16 });
@@ -67936,16 +67844,6 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 });
             [-0.8, 0.8].forEach(function (x) { var leg = _hqBox(0.06, 0.41, 0.34, steel); leg.position.set(x * U, 0.205 * U, 0); stand.add(leg); });
             var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('city_bench', U, { fit: 'span', h: 2.0, hide: [stand] }); if (glb) g.add(glb);
-            return g;
-        },
-        shower_stall: function (U) {
-            var g = new THREE.Group();
-            var tile = _hqMat('tilefloor_2', 2, 4, { color: 0xdfe6e6, shininess: 50 });
-            [-0.5, 0.5].forEach(function (x) { var p = _hqBox(0.04, 2.1, 1.0, tile); p.position.set(x * U, 1.05 * U, 0); g.add(p); });
-            var curtain = _hqBox(0.96, 1.7, 0.02, _hqMat(null, 1, 1, { color: 0xa8c8d0, shininess: 10, transparent: true, opacity: 0.85 })); curtain.position.set(0.15 * U, 1.05 * U, 0.49 * U); g.add(curtain);
-            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 1.0 * U, 8), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); rail.rotation.z = Math.PI / 2; rail.position.set(0, 1.95 * U, 0.49 * U); g.add(rail);
-            var head = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.03 * U, 0.06 * U, 10), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 120 })); head.position.set(0, 1.85 * U, -0.3 * U); head.rotation.x = 0.6; g.add(head);
-            var drain = new THREE.Mesh(new THREE.CircleGeometry(0.08 * U, 12), _hqMat(null, 1, 1, { color: 0x3a3e46, shininess: 40 })); drain.rotation.x = -Math.PI / 2; drain.position.set(0, 0.006 * U, -0.1 * U); g.add(drain);
             return g;
         },
         /* ROOM 50M: six lanes in a raised basin (the coping is knee high — a sunk pool would open the floor) */
@@ -68857,21 +68755,6 @@ const ThreeRenderer = (function () {
             }
             draw(seed);
             if (_hq) _hq.tickers.push(function (dt, now) { acc += dt; if (acc < 0.15) return; acc = 0; draw(now * 0.001 + seed); });
-            return g;
-        },
-        /* ROOM 0dB: the tank — a pod with its lid ajar and a blue light inside; the lid breathes (ticker) */
-        iso_tank: function (U) {
-            var g = new THREE.Group();
-            var shell = _hqMat(null, 1, 1, { color: 0xe8e8f0, shininess: 90, specular: 0xffffff });
-            var body = _hqBox(2.4, 0.9, 1.6, shell); body.position.y = 0.45 * U; g.add(body);
-            var inner = _hqBox(2.1, 0.02, 1.3, new THREE.MeshBasicMaterial({ color: 0x60a0ff })); inner.position.y = 0.905 * U; g.add(inner);
-            var water = _hqBox(2.1, 0.01, 1.3, new THREE.MeshPhongMaterial({ color: 0x3060c0, transparent: true, opacity: 0.6, shininess: 160 })); water.position.y = 0.92 * U; g.add(water);
-            var hinge = new THREE.Group(); hinge.position.set(0, 0.9 * U, -0.8 * U); g.add(hinge);
-            var lid = _hqBox(2.4, 0.1, 1.6, shell); lid.position.set(0, 0.05 * U, 0.8 * U); hinge.add(lid);
-            hinge.rotation.x = -0.35;
-            var glow = _hzGlowSprite(2.0 * U, 0x60a0ff, 0.35, 0.1, 0.04, 0.5); glow.position.y = 1.0 * U; g.add(glow);
-            var seed = (_hqProcSeed++) * 0.5;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; hinge.rotation.x = -0.35 - 0.05 * Math.sin(t * 0.4); glow.material.opacity = 0.25 + 0.12 * Math.sin(t * 0.4); });
             return g;
         },
         /* ROOM 4B: the red button under a hinged cover, a label, a lamp */
