@@ -5088,5 +5088,14 @@
    "license": "CC0",
    "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
   }
+ ],
+ "creator_animal": [
+  {
+   "part": "animal head",
+   "asset": "jaldmic_wolf_headv3",
+   "author": "JALdMIC",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/3009"
+  }
  ]
 }

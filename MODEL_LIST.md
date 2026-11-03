@@ -16,7 +16,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Asset pack | yes | 139 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
-| MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
+| MakeHuman parts, baked by Claude in Blender | yes (parts) | 19 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
 | Meshy AI | no | 589 |
@@ -177,7 +177,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | valkraye (female) | `Assets/Sprites/Races/valkraye/Meshy_AI_hot_girl_valkraye__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | vampire (female) — creator look also baked | `Assets/Sprites/Races/vampire/female/Meshy_AI_beautiful_attractive__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | voidweaver | `Assets/Sprites/Races/voidweaver/male/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| werewolf | `Assets/Sprites/Races/Werewolf/male/Meshy_AI_werewolf_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| werewolf — creator look also baked | `Assets/Sprites/Races/Werewolf/male/Meshy_AI_werewolf_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | wizard | `Assets/Sprites/Races/Homosapien/Male/blackmage/Meshy_AI_wizard_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | wizard (female) | `Assets/Sprites/Races/Homosapien/Female/blackmage/Meshy_AI_young_female_witch_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | yeti | `Assets/Sprites/Races/yeti/male/Meshy_AI_yeti_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -364,7 +364,7 @@ Human-made, from the MakeHuman community asset packs. Every piece's author, lice
 - **hair03 · punkduck · CC-BY**: Chinesebob01, Curly01, Alpha7 curly, Alpha7 curly2, Alpha7 long, Alpha7 long2
 - **makehuman_system_assets · makehuman_system · CC0**: Afro01, Bob01, Bob02, Braid01, Long01, Ponytail01, Short01, Short02, Short03, Short04
 
-### 5d. Made by Claude in Blender (112 files, `Assets/Models/charactercreation/wear/ewb_*`)
+### 5d. Made by Claude in Blender (113 files, `Assets/Models/charactercreation/wear/ewb_*`)
 
 Garments modelled in cloud Blender (bake-clothes.py), except the rows marked otherwise (mondo's cowboy hat, the joined
 MakeHuman beards). `_open` / `_closed` files are the same garment with the front the other way.
@@ -483,6 +483,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewb_vest_open · (front variant) | `Assets/Models/charactercreation/wear/ewb_vest_open.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_zombie | `Assets/Models/charactercreation/wear/ewb_zombie.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_zombie_closed · (front variant) | `Assets/Models/charactercreation/wear/ewb_zombie_closed.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
+| ewf_fur · Fur (whole body) | `Assets/Models/charactercreation/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
 ### 5e. Meshy pieces in the creator (71 files, `Assets/Models/charactercreation/wear/ewm_*`, PR #829)
 

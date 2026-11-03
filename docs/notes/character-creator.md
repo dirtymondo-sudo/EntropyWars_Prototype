@@ -1291,3 +1291,18 @@ assigned created characters so i can give to you to bake in". Before this, EXPOR
 - A baked look is still a SAVED look (THE MESHY DEFAULT): the Meshy model stays the unit default until mondo says.
 - Proof: /mnt/project-files/assigned-looks/ (3 units assigned, exported file, bake-looks.js --dry-run read all 3).
 
+## THE FUR + THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28)
+mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make a new created character for the werewolf to put fur on it".
+- THE TOOL: `bake-fur.py` (repo root, offline Blender: `pip install bpy==5.2.3`, MPFB 2.0.18 clone). `python3 -I bake-fur.py --mpfb <mpfb2> [--haireditor <zip|dir>] [--only ewf_fur]`.
+  It installs the hair editor templates (files.makehumancommunity.org/functional/haireditor.zip, copy in project files mhpacks/haireditor.zip) into MPFB's data/hair/haireditor,
+  grows the editor's fur grooms on a FRESH unbaked male (grooms land wrong on a human whose targets were baked), then "Bake hair cards" BODY_SHELL = a copy of the skin faces
+  with the fur baked into a 1024 texture. The shell is anchored to the nearest SKIN vertex (helpers are masked) and written in the bake-mpfb.py wear layout
+  (5 bodies' offsets, top-4 bone weights) as `charactercreation/wear/ewf_fur.glb`, cat 'underwear' (under every garment), pack 'haireditor', extras fur:true. FUR_ALPHA 1.5.
+- Tried and DROPPED: the editor's CLUSTER_RIBBON tufts (cards) looked like flat dark flakes/squares on the body. Only the shell ships.
+- THE CREATOR: wear pick "Fur (whole body)" on the new shelf Fur (torso group), both genders (EW_WEAR_BOTH). Tint works like any wear.
+- THE ANIMAL HEAD: bake-mpfb.py ANIMAL_SHAPES fetches jaldmic's wolf head target (makehumancommunity.org/node/3009, CC-BY, CREDITS.json creator_animal) into mpfb_shapes.glb
+  as `wolfHead`; face slider group "Animal head" (0..1). More heads = one ANIMAL_SHAPES row + `--shapes --packs` rerun.
+- THE WEREWOLF LOOK: RACE_CREATOR_LOOKS werewolf male (heavy body, wolf head 1, pointed ears, bald, dark skin, fur + wolf tail + beast feet + hand claws), bake input
+  /mnt/project-files/werewolf-fur/Entropy_Wars_Race_Looks_werewolf_fur.json. A SAVED look: the Meshy werewolf stays the unit default (THE MESHY DEFAULT).
+- Honest state: a short-fur suit with a smooth outline, not the Meshy model's shaggy volume; shell flakes stand off the ears when the wolf head reshapes them;
+  the wolf head reads a bit feline. Next ideas: runtime stacked shell layers for volume, a better head target. Pictures: /mnt/project-files/werewolf-fur/.

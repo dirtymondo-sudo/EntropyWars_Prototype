@@ -3462,6 +3462,11 @@ EW_MH_WEAR.push(['ewb_top_shirt', 'Collared shirt (tucked)', 'tops', 46], ['ewb_
    rest (EW_MH_FACIAL_HAIR below reads the 'beard' in the id); the Facial hair colour row tints the whole piece. */
 EW_MH_WEAR.push(['ewb_beard_full', 'Full beard with moustache', 'bodyparts', 50], ['ewb_beard_fullbushy', 'Full beard with bushy moustache', 'bodyparts', 50],
   ['ewb_beard_viking', 'Viking beard with moustache', 'bodyparts', 50], ['ewb_beard_scruffy', 'Scruffy beard with moustache', 'bodyparts', 50]);
+/* THE FUR (2026-11-03, plan row 18, the werewolf pilot; mondo: "go ahead and get it [the MakeHuman hair editor] and try on the
+   werewolf"): the hair editor's full-body fur groom, grown + baked in cloud Blender (bake-fur.py) into one piece that fits every MPFB
+   body: the editor's body shell (the strands baked onto a copy of the skin just over it, alpha-cut). Category 'underwear', so every
+   garment worn over it folds it under it; it hides no skin; the wear tint recolours it. Shown on its own FUR tab (Torso). */
+EW_MH_WEAR.push(['ewf_fur', 'Fur (whole body)', 'underwear', 1]);
 /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color for the cowboy"): an MPFB
    body hides the classic painted beard (it paints the classic face only), so its facial hair is the pack's beards + moustaches
    (Body parts). The creator lists them under FACE as one pick; three-renderer.js paintFacial tints them like the pack hair:
@@ -3707,7 +3712,8 @@ const EW_WEAR_SHELVES = [
   ['wings', 'Wings', 'accessories', true], ['horns', 'Horns + antlers', 'accessories', true], ['tails', 'Tails', 'accessories', true],
   ['nails', 'Nails', 'accessories', true], ['gear', 'Held items + gear', 'accessories', true],
   ['held', 'In the hand', 'accessories'], ['jewellery', 'Badges + jewellery', 'accessories', true], ['back', 'Back gear', 'accessories', true],
-  ['creature', 'Ears, feet + fins', 'accessories', true],   // (THE MESHY PIECES; In the hand = one prop at a time, the right hand closed round it)
+  ['creature', 'Ears, feet + fins', 'accessories', true],
+  ['fur', 'Fur', 'accessories', true],   // THE FUR (bake-fur.py)   // (THE MESHY PIECES; In the hand = one prop at a time, the right hand closed round it)
 ];
 // pieces whose pack category is not where a player looks for them (shown on another tab; their category is unchanged)
 const EW_WEAR_SHELF_MOVE = {
@@ -3727,6 +3733,7 @@ const EW_WEAR_SHELF_MOVE = {
   ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
   ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
   ewm_milkcookies: 'held', ewm_cup: 'held', ewm_magicwand: 'held', ewm_wizardstaff: 'held',
+  ewf_fur: 'fur',   // THE FUR (category 'underwear' for the layering, its own tab)
 };
 function wearShelfOf(id) {
   const w = EW_MH_WEAR_BY_ID[id];
@@ -3761,7 +3768,7 @@ const EW_WEAR_GROUPS = [
   ['neck', 'neckwear', 'Ties + neckwear'], ['neck', 'pendants', 'Pendants'],
   ['torso', 'tops', 'Tops', true], ['torso', 'dresses', 'Dresses', true], ['torso', 'suits', 'Suits + bodysuits', true],
   ['torso', 'coats', 'Coats + jackets', true, 'outer'], ['torso', 'underwear', 'Underwear + swimwear', true],
-  ['torso', 'chestarmour', 'Armour + vests'], ['torso', 'badges', 'Badges + straps'],
+  ['torso', 'chestarmour', 'Armour + vests'], ['torso', 'badges', 'Badges + straps'], ['torso', 'fur', 'Fur'],
   ['back', 'capes', 'Capes', false, 'cape'], ['back', 'wings', 'Wings', false, 'wings'], ['back', 'backgear', 'Back gear'], ['back', 'tails', 'Tails + fins'],
   ['rarm', 'held', 'In the hand'], ['rarm', 'rgear', 'Weapons + tools'], ['rarm', 'rbags', 'Bags'], ['rarm', 'rarmgear', 'On the arm'],
   ['larm', 'lgear', 'Weapons + tools'], ['larm', 'lbags', 'Bags'], ['larm', 'larmgear', 'On the arm'],
@@ -3774,7 +3781,7 @@ const EW_WEAR_GROUPS = [
 const EW_WEAR_GROUP_OF_SHELF = { tops: 'tops', dresses: 'dresses', suits: 'suits', outer: 'coats', underwear: 'underwear', bottoms: 'bottoms',
   skirts: 'skirts', shoes: 'shoes', hats: 'hats', heads: 'heads', horns: 'horns', glasses: 'glasses', masks: 'masks', gloves: 'gloves',
   nails: 'nails', wings: 'wings', tails: 'tails', back: 'backgear', held: 'held', gear: 'rgear', armour: 'chestarmour', jewellery: 'pendants',
-  belts: 'belts', creature: 'hooves' };
+  belts: 'belts', creature: 'hooves', fur: 'fur' };
 const EW_WEAR_GROUP_MOVE = {
   // gear (the pack's equipment): left hand, both hands, the head, the neck, the chest, the back, the hip
   mhw_culturalibre_cl_gun_left_hand: 'lgear', mhw_culturalibre_hero_kalistick_lefthanded: 'lgear', mhw_culturalibre_wooden_bow: 'lgear',
@@ -3832,7 +3839,7 @@ const EW_WEAR_FOR_MALE = ['mhw_culturalibre_hero_suit_1', 'mhw_culturalibre_hero
   'mhw_culturalibre_hero_mask_1', 'mhw_culturalibre_hero_mask_2', 'mhw_culturalibre_hero_mask_3', 'mhw_culturalibre_hero_mask_4', 'mhw_culturalibre_hero_mask_5',
   'mhw_rehmanpolanski_viking_boots', 'mhw_rehmanpolanski_viking_pants', 'mhw_rehmanpolanski_viking_tunic',
   'mhw_toigo_suit_with_dinner_jacket', 'mhw_toigo_suit_with_jacket_and_bowtie'];
-const EW_WEAR_BOTH = ['ewb_kilt', 'ewb_loincloth', 'mhw_punkduck_winter_coat',
+const EW_WEAR_BOTH = ['ewf_fur', 'ewb_kilt', 'ewb_loincloth', 'mhw_punkduck_winter_coat',
   'mhw_v0rt3x_armsleeves_black_fishnet_large', 'mhw_v0rt3x_armsleeves_black_fishnet_medium', 'mhw_v0rt3x_armsleeves_black_fishnet_small',
   'mhw_v0rt3x_armsleeves_white_fishnet_large', 'mhw_v0rt3x_armsleeves_white_fishnet_medium', 'mhw_v0rt3x_armsleeves_white_fishnet_small',
   'mhw_marco_105_armsleeve02', 'mhw_joepal_crude_high_socks', 'mhw_joepal_crude_low_socks', 'mhw_toigo_leg_warmer_socks', 'mhw_punkduck_sport_briefs'];
@@ -4254,7 +4261,11 @@ const EW_MPFB_FACE_SLIDERS = [
   { id: 'cheeks', label: 'Cheeks', rows: [['cheeks', 'Fullness'], ['cheekbones', 'Cheekbones'], ['cheekHeight', 'Height'], ['faceFat', 'Face fat']] },
   { id: 'head', label: 'Head', rows: [['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
   { id: 'ears', label: 'Ears + neck', rows: [['earSize', 'Ear size'], ['earOut', 'Ears out'], ['earPoint', 'Pointed ears'], ['earLobe', 'Lobes'], ['neckThick', 'Neck']] },
+  /* THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28, the werewolf pilot): MakeHuman community animal-pack targets in the same
+     mpfb_shapes.glb (bake-mpfb.py ANIMAL_SHAPES; CC-BY, in the credits), 0..100: the head + face reshape into the animal's */
+  { id: 'animal', label: 'Animal head', rows: [['wolfHead', 'Wolf head']] },
 ];
+EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
 /* THE BODY DETAILS (2026-11-02, plan row 26: mondo's female thick / thin / athletic bodies as sliders): MakeHuman's Weight
    and Muscle macros (gender-matched deltas) + body modifiers, on the MPFB bodies only (skin only, the bones stay). Bust
    spacing / height show on female bodies only, like Bust. */
@@ -4837,6 +4848,9 @@ const RACE_CREATOR_LOOKS = {
   },
   "vampire": {
     female: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"jiggleChest":0.5,"jiggleButt":0.5,"weight":0,"muscle":0,"shoulders":0,"vshape":0,"pecs":0,"belly":0,"glutes":0,"thighs":0,"calves":0,"upperArms":0,"bustSpacing":0,"bustHeight":0,"eyeHeight":0,"eyeSpacing":0,"eyeTilt":0,"eyeOpen":0,"eyeDepth":0,"eyelid":0,"eyeBags":0,"epicanthus":0,"browHeight":0,"browAngle":0,"browRidge":0,"noseWidth":0,"noseLength":0,"noseDepth":0,"noseHeight":0,"noseBridge":0,"noseTip":0,"nostrils":0,"noseCurve":0,"mouthWidth":0,"mouthHeight":0,"upperLip":0,"lowerLip":0,"mouthCorners":0,"cupidsBow":0,"mouthDepth":0,"jawAngle":0,"chinLength":0,"chinJut":0,"underbite":0,"chinCleft":0,"cheekbones":0,"cheekHeight":0,"faceFat":0,"headHeight":0,"headDepth":0,"foreheadHeight":0,"foreheadSlope":0,"faceAge":0,"earSize":0,"earOut":0,"earPoint":0,"earLobe":0,"neckThick":0,"skin":"#b98362","hairColor":"#0e0c0e","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#8fa3a8","bottomColor":"#5e6f80","outerColor":"#2a2f38","feetColor":"#2b241f","glovesColor":"#3a2a22","beltColor":"#4a3220","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#f0cf7e","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","outer2Color":"#5a4636","outer2Color2":"#c9a227","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","hairColor2":"#c0392b","idle":"default","body":"mpfb_classic_female","mhSkin":"toigo_light_skin_female_with_violet_makeup","mhEyes":"own","mhBrows":"own","mhLashes":"own","hairAccent":"own","mhChest":"nipples","hair":"mh_punkduck_alpha7_curly","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"none","outer2":"none","outerFront":"auto","outer2Front":"auto","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","outer2Fabric":"wool","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","outer2Pattern":"solid","model":"creator","wear":["mhw_punkduck_evening_gown"],"wearTint":{"mhw_punkduck_evening_gown":"#121214"}},
+  },
+  "werewolf": {
+    male: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"jiggleChest":0.5,"jiggleButt":0.5,"beltHeight":0,"wolfHead":1,"weight":0,"muscle":0,"shoulders":0,"vshape":0,"pecs":0,"belly":0,"glutes":0,"thighs":0,"calves":0,"upperArms":0,"bustSpacing":0,"bustHeight":0,"eyeHeight":0,"eyeSpacing":0,"eyeTilt":0,"eyeOpen":0,"eyeDepth":0,"eyelid":0,"eyeBags":0,"epicanthus":0,"browHeight":0,"browAngle":0,"browRidge":0,"noseWidth":0,"noseLength":0,"noseDepth":0,"noseHeight":0,"noseBridge":0,"noseTip":0,"nostrils":0,"noseCurve":0,"mouthWidth":0,"mouthHeight":0,"upperLip":0,"lowerLip":0,"mouthCorners":0,"cupidsBow":0,"mouthDepth":0,"jawAngle":0,"chinLength":0,"chinJut":0,"underbite":0,"chinCleft":0,"cheekbones":0,"cheekHeight":0,"faceFat":0,"headHeight":0,"headDepth":0,"foreheadHeight":0,"foreheadSlope":0,"faceAge":0,"earSize":0,"earOut":0,"earPoint":0.6,"earLobe":0,"neckThick":0,"skin":"#1e1d19","hairColor":"#27201c","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#8fa3a8","bottomColor":"#5e6f80","outerColor":"#2a2f38","feetColor":"#2b241f","glovesColor":"#3a2a22","beltColor":"#4a3220","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#f0cf7e","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","outer2Color":"#5a4636","outer2Color2":"#c9a227","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","browColor":"#2a1d14","lashColor":"#141010","hairColor2":"#c0392b","idle":"default","body":"mpfb_heavy","mhSkin":"own","mhEyes":"own","mhBrows":"own","mhLashes":"own","lipTint":"own","skinTint":"pick","eyeTint":"own","browTint":"own","lashTint":"own","hairAccent":"own","mhChest":"nipples","hair":"bald","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"none","outer2":"none","outerFront":"auto","outer2Front":"auto","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","outer2Fabric":"wool","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","outer2Pattern":"solid","model":"creator","wear":["ewf_fur","ewm_wolftail","ewm_beastfeet","mhw_culturalibre_hand_claws"],"wearTint":{"ewm_wolftail":"#34352d"}},
   },
 };
 // RACE_CREATOR_LOOKS:END
