@@ -79923,7 +79923,7 @@ const ThreeRenderer = (function () {
                 return row.map(function (t, x) { var li = lr[x]; if (li === null || li === undefined || t === null || t === undefined) return t; var d = _hqLotStandY(R.roomId, li); return (d !== null) ? d : t; });
             });
         }
-        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, skyTops: Array.isArray(R.field.skyTops) ? R.field.skyTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -80063,6 +80063,9 @@ const ThreeRenderer = (function () {
         var cx = Math.round(tx), cy = Math.round(ty);
         if (cx < 0 || cy < 0 || cx >= G.W || cy >= G.H) return null;
         var top = G.yAt(cx, cy);
+        /* THE OPEN SKY (2026-11-03): over a rock square of a room with no ceiling a flyer hovers its clearance over what is DRAWN
+           there (data.js hqFieldSkyApply: a building's edge, a wall's top, a rock) */
+        if ((top === null || top === undefined) && G.skyTops) { var _sr = G.skyTops[cy], _st = _sr ? _sr[cx] : null; if (_st !== null && _st !== undefined && isFinite(+_st)) top = G.floorY + (+_st) * G.s; }
         if (top === null || top === undefined) return null;
         var eh = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(cx, cy)
                : (state.boardHeights && state.boardHeights[cy]) ? (state.boardHeights[cy][cx] || 0) : 0;

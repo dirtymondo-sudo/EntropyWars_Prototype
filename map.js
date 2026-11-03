@@ -14192,8 +14192,13 @@
                refuses the whole column). Same rule as a unit-occupied tile. */
             if (isTowerTile(x, y)) return false;
 
-            /* a field's solid wall / rock cell: no floor on top to stand on (battle.js fieldCellRock, THE SOLID WALL) */
-            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
+            /* a field's solid wall / rock cell: no floor on top to stand on (battle.js fieldCellRock, THE SOLID WALL) — THE OPEN SKY
+               (2026-11-03): on a room with no ceiling an airborne flyer crosses / hovers over it, above what is drawn there */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) {
+                const _skyOk = typeof fieldCellSky === 'function' && fieldCellSky(x, y) && canFly(unit)
+                    && ((_has3D && z !== undefined && z !== null) ? z > getHeightAt(x, y) : isUnitAirborne(unit));
+                if (!_skyOk) return false;
+            }
 
             if (terrain === 'tower_base') {
                 return false;
