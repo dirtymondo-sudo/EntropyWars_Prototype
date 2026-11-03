@@ -1577,7 +1577,8 @@ def bake_looks(M, packs, data_root, out_dir, px):
         box = save_layer(lay, os.path.join(out_dir, 'eyes_%s.png' % name))
         if box:
             rows['eyes'].append(dict(id=name, label=look_label(name), box=box, **who('makehuman_system_assets', name)))
-    # brows + lashes
+    # brows + lashes (THE LID LASHES, 2026-11-03: the stock eyelashes01-04 are fitted to the eyelash helper this bake cuts, so
+    # their layers land on a dead patch of the sheet; run bake-lashes.py after this to redraw them on the lids)
     for kind, alpha in (('eyebrows', 0.95), ('eyelashes', 0.8)):
         for name, d, pack in sources(kind):
             clo = [f for f in os.listdir(d) if f.endswith('.mhclo')]

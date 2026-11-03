@@ -49881,6 +49881,36 @@ const ThreeRenderer = (function () {
         };
         fetch(_asNetUrl(url)).then(function (r) { return r.ok ? r.json() : null; }).then(done, function () { done(null); });
     }
+    /* THE LID LASHES (2026-11-03): an MPFB body's stock sheet with its own lashes drawn on the eyelids (sprites.js
+       getMhOwnLashLayer: [url, box in the 1024 sheet]), made once per stock map + lash and shared by every unit wearing it (never
+       disposed). cb(texture | null): null = the stock sheet stays (no image to draw from, the PNG failed). */
+    var _ccOwnLashCache = {};
+    function _ccOwnLashMap(S, lash, cb) {
+        var k = S.uuid + '|' + lash[0], e = _ccOwnLashCache[k];
+        if (e) { if (e.cbs) e.cbs.push(cb); else cb(e.tex); return; }
+        e = _ccOwnLashCache[k] = { tex: null, cbs: [cb] };
+        _ccLoadImage(_asNetUrl(lash[0]), function (img) {
+            var t = null;
+            try {
+                var src = S.image, w = src && (src.naturalWidth || src.width), h = src && (src.naturalHeight || src.height);
+                var c = img && w && h ? _ccCanvas(w, h) : null;
+                if (c) {
+                    var x = c.getContext('2d'), px = (typeof EW_MH_LOOKS !== 'undefined' && EW_MH_LOOKS.px) || 1024, b = lash[1];
+                    x.drawImage(src, 0, 0, w, h);
+                    x.drawImage(img, b[0] * w / px, b[1] * h / px, b[2] * w / px, b[3] * h / px);
+                    t = new THREE.CanvasTexture(c);
+                    t.flipY = S.flipY;
+                    if (S.encoding !== undefined) t.encoding = S.encoding;
+                    if (S.colorSpace !== undefined) t.colorSpace = S.colorSpace;
+                    t.wrapS = S.wrapS; t.wrapT = S.wrapT; t.anisotropy = S.anisotropy || 1;
+                    t.needsUpdate = true; t._ew_shared = true;
+                }
+            } catch (ex) { console.warn('[ThreeRenderer] own lashes failed', ex); t = null; }
+            e.tex = t;
+            var cbs = e.cbs; e.cbs = null;
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](t); } catch (_ex) {} }
+        });
+    }
     /* the pack textures, shared by every unit wearing the same pick (never disposed): the colour PNG (recoloured on a canvas for an
        Iris colour) and the normal map; flipY off like the GLB maps (the mesh's UVs are glTF's, v down) */
     var _ccEyeTexCache = {};
@@ -56993,7 +57023,14 @@ const ThreeRenderer = (function () {
                     part.lookTex.dispose(); part.lookTex = null;
                 }
             }
-            if (!layers) { wear(part.stockMap); return; }
+            if (!layers) {
+                /* THE LID LASHES (2026-11-03): every pick 'own' = the stock sheet + the body's own lashes (the sheet baked in the GLB
+                   drew them on the cut eyelash helper), one shared texture per body; the stock sheet until it is ready or if it fails */
+                var own = typeof getMhOwnLashLayer === 'function' ? getMhOwnLashLayer('mpfb_' + part.mpfbBody) : null;
+                if (!own) { wear(part.stockMap); return; }
+                _ccOwnLashMap(part.stockMap, own, function (t) { if (alive && part.lookKey === key) wear(t || part.stockMap); });
+                return;
+            }
             var imgs = new Array(layers.length), pending = layers.length;
             layers.forEach(function (l, i) {
                 _ccLoadImage(_asNetUrl(l[0]), function (img) {
