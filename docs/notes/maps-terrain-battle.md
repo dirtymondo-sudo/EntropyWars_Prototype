@@ -1184,3 +1184,7 @@ same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.r
   healing pools, the fountain stand-in, park benches, the priest + angel NPCs. The seraphim stays (on the NW castle island, off
   the board: an NPC spot blocks its square). No banners (only a code stand-in exists).
 - Shots: /mnt/project-files/heaven-map/.
+- SAME DAY, second pass (mondo: "the t-pillars are still standing on top of the walls"): the four pit pillars (the two great ones, the
+  two lesser) each had a DRAWN battle-stone wall row (5.45 m / 3.15 m glyph blocks) and stood on its top. Those rows are `ghost: true`
+  now (never drawn; still the walker's and the fight's, so the boards are unchanged) and the props carry `floor: true` — new prop flag
+  (three-renderer.js `_hqPlaceProps`, THE FLOOR UNDER IT): stand on the field's own ground (hqTerrainHeight), never a wall row's top.

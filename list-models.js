@@ -83,6 +83,7 @@ const SOURCES = [
     { re: /Assets\/misc\/Castles_and_Forts\.glb/, how: 'PACK', src: 'Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given' },
     { re: /UFO_Low_Poly\.fbx/, how: 'PACK', src: '3D Game Ready UFO Spaceship · FlexUnit · CC0' },
     { re: /_sway\.glb$/, how: 'MESHY_C', src: 'Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py)' },
+    { re: /Assets\/decor\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03)' },
     // Meshy exports (mondo's, made on meshy.ai) — before the folder rows so a Meshy file in a pack folder still reads Meshy
     { re: /Assets\/misc\/wings\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (single wing, mirrored in code)' },
     { re: /_Character_output\.glb|_withSkin\.glb|Meshy_AI_\w+_Running\.glb/, how: 'MESHY', src: 'Meshy AI rigged character (mondo)' },
@@ -177,7 +178,7 @@ function procWears(proc) {
     const nx = /^\s+[a-z_0-9]+:\s*function/m.exec(rest);
     const body = nx ? rest.slice(0, nx.index) : rest.slice(0, 4000);
     const hits = new Set();
-    for (const h of body.matchAll(/\('([a-z_]+)', U|_hqSpellUrl\('(\w+)'\)|_hqMiscUrl\('(\w+)'\)|getRace3DModel\('([^']+)'|(_nrTree)\(/g)) hits.add(h[1] || h[2] || h[3] || h[4] || 'a retro-pack tree');
+    for (const h of body.matchAll(/\('([a-z_]+)', U|_hqSpellUrl\('(\w+)'\)|_hqMiscUrl\('(\w+)'\)|getRace3DModel\('([^']+)'|(_nrTree)\(|_hqProcBuilders\._(conveyor)\(/g)) hits.add(h[1] || h[2] || h[3] || h[4] || (h[5] && 'a retro-pack tree') || (h[6] && 'conveyor'));
     return hits.size ? [...hits].join(', ') : null;
 }
 for (const k of Object.keys(H.catalogue)) {
@@ -229,6 +230,10 @@ for (const m of misc.matchAll(/^\s+(\w+):\s*'([^']+\.(?:glb|obj|fbx))'/gm)) add(
 const VFX = read('three-vfx-effects.js');
 const wpn = block(VFX, 'var _WPN_MODELS = {');
 for (const m of wpn.matchAll(/^\s+(\w+):\s*\{[^}]*?\b(file|url):\s*'([^']+)'/gm)) add('spell', m[1], m[2] === 'url' ? m[3] : BASES.weapons + m[3]);
+// THE MESHY DECOR (2026-11-03): the models the procs wear (three-renderer.js _HQ_DECOR_GLB) + its three spell props
+const decor = block(R3, 'var _HQ_DECOR_GLB = {');
+for (const m of decor.matchAll(/(\w+):\s*'([^']+\.glb)'/g)) add('decor', m[1], CDN + 'Assets/decor/' + m[2]);
+for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _DECOR_BASE \+ '([^']+)'/g)) add('spell', m[1], CDN + 'Assets/decor/' + m[2]);
 const ani = block(R3, 'var _ANIMALS = {');
 for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('animal', m[1], BASES.animals + m[2]);
 // the halloween pieces the spells cut out of the one kit file
@@ -386,6 +391,13 @@ for (const g of Object.keys(pg).sort((a, b) => pg[b].length - pg[a].length)) {
     L.push(table(pg[g], 'catalogue key'));
     L.push('');
 }
+L.push('### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (' + sec('decor').length + ')');
+L.push('');
+L.push('Made 2026-11-03 for the code-drawn stand-ins of §10A (D-IDs in project files meshy/decor/decor_prompts.json). A proc builder');
+L.push('calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) and the model is fitted into their box.');
+L.push('');
+L.push(table(sec('decor'), 'decor key'));
+L.push('');
 L.push('### Stairs pack (data.js HQ_STAIR_PACK — every stair flight, railing and escalator in the rooms)');
 L.push('');
 L.push(table(sec('stairs'), 'pack file'));
