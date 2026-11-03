@@ -4649,7 +4649,7 @@ const ThreeRenderer = (function () {
 
     /* THE WHITE DAYLIGHT on a tile board (2026-11-03, mondo: "can we just make light not 130% too?" / "i dont want the game to change
        lighting based on the white on the screen"): when half or more of the board's top tiles wear a white sheet (sprites.js
-       TERRAIN_WHITE_SHEETS), the battle's day / night rig (ThreePost.setWhiteDay) runs at HQ_LIGHT_RULES.whiteDay (0.75) — read off
+       TERRAIN_WHITE_SHEETS), the battle's DAY rig (ThreePost.setWhiteDay; it eases back to 1 by night) runs at HQ_LIGHT_RULES.whiteDay (0.75) — read off
        the board's own tiles, never off the screen. A room fight takes the room's rule instead (_hqOpenLR). */
     function _whiteSheetKey(key) {
         var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null;
@@ -32424,8 +32424,8 @@ const ThreeRenderer = (function () {
     function _polishLevel(key) { var v = _polishPref(key); return (typeof v === 'number' && isFinite(v)) ? v : (v === false ? 0 : 1); }
     /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too? that seems so excessive" + "i dont want the game to
        change lighting based on the white on the screen"): an open room whose FLOOR is a white sheet (sprites.js TERRAIN_WHITE_SHEETS —
-       the terrain room's floor key, else the shell's floor) wears its sky light × HQ_LIGHT_RULES.whiteDay (0.75): the hemisphere and the
-       sun / moon key, by day and by night. Fixed per room from what it is built of; nothing reads the screen. A grass or dirt room keeps 1. */
+       the terrain room's floor key, else the shell's floor) wears its DAY sky light × HQ_LIGHT_RULES.whiteDay (0.75): the hemisphere and the
+       sun key (the night's moon rig already leaves a white floor under 100%, and a night map must not get darker). Fixed per room from what it is built of; nothing reads the screen. A grass or dirt room keeps 1. */
     function _hqWhiteDay(room) {
         try {
             var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null, LR = _hqLightRules();
@@ -32440,8 +32440,16 @@ const ThreeRenderer = (function () {
     /* the open-room light row (HQ_LIGHT_RULES.open) for `room`, its sky light × _hqWhiteDay */
     function _hqOpenLR(room) {
         var LRo = Object.assign({}, _hqLightRules().open || {}), k = _hqWhiteDay(room);
-        if (k < 1) ['dayHemi', 'daySun', 'nightHemi', 'nightSun'].forEach(function (f) { if (LRo[f] != null) LRo[f] = +LRo[f] * k; });
+        if (k < 1) ['dayHemi', 'daySun'].forEach(function (f) { if (LRo[f] != null) LRo[f] = +LRo[f] * k; });
         return LRo;
+    }
+    /* THE WHITE ROOMS (2026-11-03, the marble maps check: the Vatican basilica's nave went flat white round the spot the camera looks
+       at): a CLOSED box room whose floor is a white sheet wears the same whiteDay on its hemisphere, its key and the Key Light that
+       rides with the camera (the fill and the room's own lamps keep theirs). Fixed per room, like the open rooms above */
+    function _hqWhiteIn(room) {
+        if (!room || room.kind !== 'box') return 1;
+        var S = room.shell || {}; if (S.open && S.sky) return 1;
+        return _hqWhiteDay(room);
     }
     function _hqLightRules() {
         var R = (typeof HQ_LIGHT_RULES !== 'undefined') ? HQ_LIGHT_RULES : ((typeof window !== 'undefined' && window.HQ_LIGHT_RULES) || null);
@@ -62059,9 +62067,10 @@ const ThreeRenderer = (function () {
                     var fit = _spFlightFit(soup, spec, f.w, R, L), fr = _spFrameFns(x0, z0, ux, uz, lo, fit);
                     var tread = f.key || kd.tread || info.path, sdl = _hqSideLook(f, kd.side, info), side = sdl.key, tint = (S.floorColor != null && !f.key) ? S.floorColor : null;
                     var pathT = (!f.key && !kd.tread) ? _hqSheetLook(info).path : null;   // THE SHEET LOOKS: a tread in the room's path sheet wears its tint
-                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '');
+                    var sTint = (S.floorColor != null && !(f.side || kd.side)) ? S.floorColor : null;   // THE GROUND TINT (2026-11-03): the flanks in the room's cliff sheet wear its floorColor, like the field's own cliffs
+                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '') + '|' + sTint;
                     if (!mats[tk]) { mats[tk] = _spSheet(tread, spec.look, tint); if (pathT) mats[tk].color.multiply(pathT); }
-                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
+                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look, sTint); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
                     _spEmit(fit.A, fr.P, fr.N, function (A, t) {
                         var mi = A.M[t], mat = A.mats[mi];
                         if (_spIsGlass(mat)) return 'glass';
@@ -62203,6 +62212,9 @@ const ThreeRenderer = (function () {
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(sdl.key) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (sdl.tint) sideMat.color.multiply(sdl.tint);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
+            /* THE GROUND TINT (2026-11-03, the white maps check): the flanks + a packed flight's mass in the room's cliff sheet wear the room's
+               floorColor like the field's own cliffs and the editor boxes (Atlantis's dais flight stood untinted white marble beside its tinted floor) */
+            if (S.floorColor != null && !f.side) sideMat.color.multiply(new THREE.Color(S.floorColor));
             if (pathT) treadMat.color.multiply(pathT);
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
             var lo0 = Math.min(f.h0, f.h1), gLo = (info.flightLo && info.flightLo.has(f)) ? Math.max(lo0 - 4, info.flightLo.get(f)) : Infinity;   // THE JOINED FLIGHTS (2026-10-06): down to the lowest ground under it (≤ 4 m)
@@ -78476,7 +78488,7 @@ const ThreeRenderer = (function () {
             H.keyDir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
         } else H.keyDir = L.position.clone().normalize();
         if (rig.color != null) L.color.setHex(rig.color);
-        if (rig.intensity != null) L.intensity = +rig.intensity;
+        if (rig.intensity != null) L.intensity = +rig.intensity * (kind === 'box' ? _hqWhiteIn(room) : 1);   // THE WHITE ROOMS
         L.position.copy(H.keyDir).multiplyScalar(1000);
     }
     /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really
@@ -78519,7 +78531,7 @@ const ThreeRenderer = (function () {
         var K = _keyLampRules(), U = _hqUnits(), pl = H.player;
         var NFl = _hqLightRules().nightFill || {};
         var nOut = (!_hqEnclosed(H.room) && H.sky && H.room && H.room.kind === 'box') ? Math.max(0, Math.min(1, +H.sky.night || 0)) * (NFl.keyLight || 0) : 0;   // THE NIGHT FILL: outdoors, a share of it by night
-        var want = (_hqEnclosed(H.room) ? 1 : nOut) * (K.intensity || 0) * _keyLampGain();
+        var want = (_hqEnclosed(H.room) ? _hqWhiteIn(H.room) : nOut) * (K.intensity || 0) * _keyLampGain();   // THE WHITE ROOMS: × whiteDay on a white floor
         L.intensity += (want - L.intensity) * Math.min(1, (dt || 0) * 3);
         if (Math.abs(L.intensity - want) < 0.002) L.intensity = want;
         var C = cam.position;
@@ -80120,12 +80132,12 @@ const ThreeRenderer = (function () {
                     if (FCy) { ml.intensity = LRo.nightLamp + (LRo.dayLamp - LRo.nightLamp) * _fieldCycleEase(FCy.k); FCy.lamps.push({ l: ml, d: LRo.dayLamp, n: LRo.nightLamp }); }
                 });
             } else {
-                var amb = _hqMoodAmb(S, LR);   // THE LIFT (2026-10-24): the walk's own numbers
-                field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb };
+                var amb = _hqMoodAmb(S, LR), kwF = _hqWhiteIn(room);   // THE LIFT (2026-10-24): the walk's own numbers; THE WHITE ROOMS
+                field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb * kwF };
                 /* THE KEY LIGHT (2026-10-24): the walk's key strength (HQ_LIGHT_RULES.key.box / shell.rig, _hqLightArm) — the fight used to
                    keep the pre-rig 0.22 × mood, so the same room read darker in a fight than on the walk */
                 var rigB = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
-                field.sun = { color: 0xe8ecf5, intensity: (rigB.intensity != null) ? +rigB.intensity : 0.22 * amb, dir: [0.3, 1, 0.2] };
+                field.sun = { color: 0xe8ecf5, intensity: ((rigB.intensity != null) ? +rigB.intensity : 0.22 * amb) * kwF, dir: [0.3, 1, 0.2] };
                 var bxf = new THREE.DirectionalLight(LR.fillColor, (LR.fill || 0) * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(bxf);
                 var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
                 var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
@@ -80145,7 +80157,7 @@ const ThreeRenderer = (function () {
         /* THE KEY LIGHT (2026-10-24): a fight in an enclosed room hangs the walk's key light over what the camera looks at */
         try {
             if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
-            st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0;
+            st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0; st.keyWhite = _hqWhiteIn(room);
             if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
                 var KL = _keyLampRules();
                 var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);
@@ -80409,6 +80421,7 @@ const ThreeRenderer = (function () {
         t = Math.max(0, Math.min(40 * s, t));
         L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
         var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
+        if (!st.keyOpen && st.keyWhite > 0) want *= st.keyWhite;   // THE WHITE ROOMS: a white-floored closed room's Key Light × whiteDay
         if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL
         if (L.intensity !== want) L.intensity = want;
         L.distance = (K.battleReach || 30) * s;
@@ -82357,8 +82370,8 @@ const ThreeRenderer = (function () {
     }
     function _hqBoxLightVals(room) {
         var S = room.shell || {}, LRb = _hqLightRules();
-        var amb = _hqMoodAmb(S, LRb);
-        return { hemiI: 0.5 * amb, keyI: 0.22 * amb, fillI: LRb.fill * amb };
+        var amb = _hqMoodAmb(S, LRb), kw = _hqWhiteIn(room);   // THE WHITE ROOMS
+        return { hemiI: 0.5 * amb * kw, keyI: 0.22 * amb * kw, fillI: LRb.fill * amb };
     }
     /* a closed box room's own lamps (the fluorescents at shell.light / shell.lights, a warm pool at each desk lamp) — _hqEnter
        hangs them on the scene; a stage neighbour hangs them in its part (Phase 2: the ward is lit through its open door) */
@@ -83229,7 +83242,7 @@ const ThreeRenderer = (function () {
             return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
         }
         var bx = _hqBoxLightVals(room), S = room.shell || {}, kb = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
-        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: new THREE.Color(0x1c1a1e), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
+        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: new THREE.Color(0x1c1a1e), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity * _hqWhiteIn(room) : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
     }
     function _hqStageBlendStart(H, fromRoom, toRoom, fromId, toId) {
         var st = H.stage;
