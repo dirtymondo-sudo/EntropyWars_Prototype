@@ -4549,10 +4549,76 @@ function setCreatorHiderOn(on) {
   try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
 }
 // the export for bake-hidden.js: the WHOLE list as this browser shows it (the bake replaces the shipped list with it)
+// (v 2, THE RENAMED PICKS 2026-11-03: the same file carries the creator's names too, { '<kind>:<id>': name }, also whole)
 function creatorHiddenExport() {
-  const hidden = {};
+  const hidden = {}, names = {};
   for (const r of creatorHiddenList()) hidden[r.key] = r.label;
-  return { kind: 'entropy-wars-creator-hidden', v: 1, made: new Date().toISOString(), hidden };
+  for (const r of creatorNamesList()) names[r.key] = r.name;
+  return { kind: 'entropy-wars-creator-hidden', v: 2, made: new Date().toISOString(), hidden, names };
+}
+/* THE RENAMED PICKS (2026-11-03, mondo: "can i change the names of the models of the character creator? Or maybe in the same place
+   where i can hide models in the creator?"): a creator pick shown under a name of his. DISPLAY ONLY: the creator's tiles show it; the
+   pick's id, its catalogue row (whose pack name some rules read: a skin's "female", a beard's "beard") and every look stay as they are.
+   Same kinds + keys as THE HIDDEN PICKS ('<kind>:<id>'); the "nothing" picks keep their names.
+   EW_CREATOR_NAMES = the shipped names ({ key: name }), written ONLY by bake-hidden.js. This browser's own renames ride on top in
+   localStorage ew_creator_names_v1 = { key: name } ('' = the pick's own name again, over a shipped one). */
+// EW_CREATOR_NAMES:BEGIN
+const EW_CREATOR_NAMES = {};
+// EW_CREATOR_NAMES:END
+const EW_CREATOR_NAMES_KEY = 'ew_creator_names_v1', EW_CREATOR_NAME_MAX = 40;
+let _ewNameLocalCache = null;
+function _ewNameLocal() {
+  if (_ewNameLocalCache) return _ewNameLocalCache;
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(EW_CREATOR_NAMES_KEY) || 'null'); } catch (e) {}
+  return (_ewNameLocalCache = d && typeof d === 'object' && !Array.isArray(d) ? d : {});
+}
+// the pick's own (pack / catalogue) name, from the catalogue its kind lists
+function creatorPickLabel(kind, id) {
+  const row = (list) => { const r = (list || []).find(o => (Array.isArray(o) ? o[0] : o && o.id) === id); return r ? String(Array.isArray(r) ? r[1] : r.label) : null; };
+  const L = typeof EW_MH_LOOKS !== 'undefined' ? EW_MH_LOOKS : {};
+  const lists = { hair: () => EW_HAIR_STYLES, wear: () => EW_MH_WEAR, outer: () => EW_OUTER_STYLES, feet: () => EW_FEET_STYLES, cape: () => EW_CAPE_STYLES,
+    wings: () => EW_WINGS_STYLES, idle: () => EW_IDLE_POSES, mhSkin: () => L.skins, mhEyes: () => (L.eyes || []).concat(typeof EW_MH_EYE_PACK !== 'undefined' ? EW_MH_EYE_PACK : []),
+    mhBrows: () => L.brows, mhLashes: () => L.lashes };
+  try { return lists[kind] ? row(lists[kind]()) : null; } catch (e) { return null; }
+}
+// his name for the pick, or null (the pick shows its own name)
+function creatorRenamed(kind, id) {
+  if (!kind || _ewHidNever(id)) return null;
+  const k = kind + ':' + id, L = _ewNameLocal();
+  const v = Object.prototype.hasOwnProperty.call(L, k) ? L[k] : EW_CREATOR_NAMES[k];
+  return typeof v === 'string' && v.trim() ? v : null;
+}
+// the name a creator tile shows: his, or the one it came with
+function creatorName(kind, id, label) { const n = creatorRenamed(kind, id); return n != null ? n : label; }
+// rename a pick ('' / null / its own name = back to its own name)
+function setCreatorName(kind, id, name) {
+  if (!kind || _ewHidNever(id)) return false;
+  const k = kind + ':' + id, L = _ewNameLocal(), shipped = Object.prototype.hasOwnProperty.call(EW_CREATOR_NAMES, k);
+  let v = String(name == null ? '' : name).replace(/\s+/g, ' ').trim().slice(0, EW_CREATOR_NAME_MAX);
+  if (v && v === creatorPickLabel(kind, id)) v = '';
+  if (shipped ? v === EW_CREATOR_NAMES[k] : !v) delete L[k]; else L[k] = v;
+  try { localStorage.setItem(EW_CREATOR_NAMES_KEY, JSON.stringify(L)); } catch (e) {}
+  try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
+  return true;
+}
+// every renamed pick now: [{ key, kind, id, name, label (its own name), shipped }], by kind then its own name
+function creatorNamesList() {
+  const keys = new Set(Object.keys(EW_CREATOR_NAMES).concat(Object.keys(_ewNameLocal()))), out = [];
+  for (const key of keys) {
+    const i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1), name = creatorRenamed(kind, id);
+    if (name == null) continue;
+    out.push({ key, kind, id, name, label: creatorPickLabel(kind, id) || id, shipped: EW_CREATOR_NAMES[key] === name });
+  }
+  return out.sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
+}
+// ALL ORIGINAL NAMES: every pick back to its own name in this browser (the shipped names too, until a bake changes them)
+function creatorNamesReset() {
+  const L = _ewNameLocal();
+  for (const k of Object.keys(L)) delete L[k];
+  for (const k of Object.keys(EW_CREATOR_NAMES)) L[k] = '';
+  try { localStorage.setItem(EW_CREATOR_NAMES_KEY, JSON.stringify(L)); } catch (e) {}
+  try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
 }
 // RANDOMIZE never rolls a hidden pick (the outer2 layer shares the outer list)
 function _ewHidPickable(key, list) {
@@ -4847,6 +4913,8 @@ if (typeof window !== 'undefined') {
   window.randomCharacterAppearance = randomCharacterAppearance;
   window.EW_CREATOR_HIDDEN = EW_CREATOR_HIDDEN; window.creatorHidden = creatorHidden; window.setCreatorHidden = setCreatorHidden; window.creatorHiddenList = creatorHiddenList;   // THE HIDDEN PICKS
   window.creatorHiddenShowAll = creatorHiddenShowAll; window.creatorHiddenExport = creatorHiddenExport; window.creatorHiderOn = creatorHiderOn; window.setCreatorHiderOn = setCreatorHiderOn;
+  window.EW_CREATOR_NAMES = EW_CREATOR_NAMES; window.creatorName = creatorName; window.creatorRenamed = creatorRenamed; window.setCreatorName = setCreatorName;   // THE RENAMED PICKS
+  window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES

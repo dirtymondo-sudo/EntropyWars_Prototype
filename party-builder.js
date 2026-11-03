@@ -864,17 +864,19 @@ function pbExportRaceLook(race, gender, appearance, note) {
   } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
 }
 /* THE HIDDEN PICKS (2026-11-03): EXPORT HIDDEN LIST — the creator's whole hidden list as this browser shows it, for bake-hidden.js
-   ({ kind: 'entropy-wars-creator-hidden', v: 1, made, hidden: { '<kind>:<id>': label } }); the bake replaces the shipped list with it */
+   ({ kind: 'entropy-wars-creator-hidden', v: 1, made, hidden: { '<kind>:<id>': label } }); the bake replaces the shipped list with it.
+   THE RENAMED PICKS (2026-11-03): v 2 carries his names too (names: { '<kind>:<id>': name }, also whole): EXPORT HIDDEN + NAMES,
+   Entropy_Wars_Creator_Picks_<stamp>.json */
 function pbExportHidden(note) {
   try {
     if (typeof window.creatorHiddenExport !== 'function') return false;
     const doc = window.creatorHiddenExport(), d = new Date(), p2 = n => String(n).padStart(2, '0');
     const stamp = d.getUTCFullYear() + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + '-' + p2(d.getUTCHours()) + p2(d.getUTCMinutes());
-    const name = 'Entropy_Wars_Creator_Hidden_' + stamp + '.json';
+    const name = 'Entropy_Wars_Creator_Picks_' + stamp + '.json';
     const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }));
     const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    if (typeof note === 'function') note('Exported ' + name + ' (' + Object.keys(doc.hidden).length + ' hidden) \u2014 send it to Claude to bake (node bake-hidden.js ' + name + ').');
+    if (typeof note === 'function') note('Exported ' + name + ' (' + Object.keys(doc.hidden).length + ' hidden, ' + Object.keys(doc.names || {}).length + ' renamed) \u2014 send it to Claude to bake (node bake-hidden.js ' + name + ').');
     window._ewLastHiddenExport = { name, doc };   // (the browser check reads it back)
     return true;
   } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
@@ -933,10 +935,22 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const [hideMarks, setHideMarks] = React.useState(true);   // the ✕ / SHOW marks on every tile (off = the lists as players see them)
   const [hidListOpen, setHidListOpen] = React.useState(false);
   const [hidNote, setHidNote] = React.useState('');
+  const [namesOpen, setNamesOpen] = React.useState(false);   // THE RENAMED PICKS: the bar's RENAMED list open
+  const [renKey, setRenKey] = React.useState(null);   // THE RENAMED PICKS: the pick being renamed ('tile|<kind>:<id>' or 'list|<kind>:<id>')
+  const renRef = React.useRef(null);
   React.useEffect(() => {
     const f = () => setHidTick(n => n + 1);
     window.addEventListener('ew-creator-hidden', f);
-    return () => window.removeEventListener('ew-creator-hidden', f);
+    /* THE RENAMED PICKS (2026-11-03, mondo: "there is no settings button in the character creator, i need to access it from the
+       character creator obviously"): F2 while the creator is up opens / closes the hider (like F4 opens the UI Maker); no button
+       for players. (One creator answers one press: the first one marks it handled.) */
+    const k = (e) => {
+      if (e.key !== 'F2' || e.repeat || e.ctrlKey || e.altKey || e.metaKey || e.defaultPrevented || !window.setCreatorHiderOn) return;
+      e.preventDefault();
+      window.setCreatorHiderOn(!(window.creatorHiderOn && window.creatorHiderOn()));
+    };
+    window.addEventListener('keydown', k);
+    return () => { window.removeEventListener('ew-creator-hidden', f); window.removeEventListener('keydown', k); };
   }, []);
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
@@ -978,12 +992,35 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const hidNever = id => id == null || id === 'none' || id === 'own' || id === 'bald' || id === 'default';
   const isHid = (kind, id) => !!(kind && window.creatorHidden && window.creatorHidden(kind, id));
   const keepPick = (kind, id, on) => !kind || devMarks || on || !isHid(kind, id);
+  /* THE RENAMED PICKS (2026-11-03, mondo: "can i change the names of the models of the character creator? Or maybe in the same place
+     where i can hide models"): a pick's name on its tile = his (sprites.js creatorName) or its own. Display only: the rules that read a
+     pack name (a skin's side, a beard's camera, the men's / women's trim) still get the pick's own label. */
+  const renamedOf = (kind, id) => (kind && window.creatorRenamed ? window.creatorRenamed(kind, id) : null);
+  const shownName = (kind, id, label) => { const n = renamedOf(kind, id); return n != null ? n : label; };
+  // the rename box: right under the tile (the whole row), or under its row in the RENAMED list
+  const renEditor = (where, kind, id, label) => {
+    const cur = renamedOf(kind, id), own = String(label || id);
+    const save = (v) => { if (window.setCreatorName) window.setCreatorName(kind, id, v); setRenKey(null); };
+    return h('div', { key: 'ren:' + kind + ':' + id, className: 'pb-cc-rename', role: 'group', 'aria-label': 'Rename ' + own },
+      h('div', { className: 'pb-cc-rename-head' }, h('b', null, 'RENAME'), h('span', null, 'Its own name: ', h('i', null, own))),
+      h('input', { ref: renRef, className: 'pb-gear-input', defaultValue: cur || own, maxLength: 40, autoFocus: true, 'aria-label': 'New name for ' + own,
+        onFocus: e => { try { e.target.select(); } catch (er) {} },
+        onKeyDown: e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); save(e.target.value); } else if (e.key === 'Escape') { e.preventDefault(); setRenKey(null); } } }),
+      h('div', { className: 'pb-creator-options' },
+        h('button', { type: 'button', className: 'ms-tty-btn primary', onClick: () => save(renRef.current ? renRef.current.value : '') }, 'SAVE NAME'),
+        cur ? h('button', { type: 'button', className: 'ms-tty-btn', title: 'Back to “' + own + '”', onClick: () => save('') }, 'ORIGINAL NAME') : null,
+        h('button', { type: 'button', className: 'ms-tty-btn', onClick: () => setRenKey(null) }, 'CANCEL')));
+  };
+  // (label = the pick's OWN name: the hidden list keeps it; the marks' tips say the name shown)
   const devTile = (kind, id, label, el) => {
     if (!kind || !devMarks || hidNever(id) || !window.setCreatorHidden) return el;
-    const hid = isHid(kind, id), nm = String(label || id);
-    return h('div', { key: el.key, className: 'pb-cc-devwrap' + (hid ? ' hidden' : '') }, el,
+    const hid = isHid(kind, id), own = String(label || id), nm = shownName(kind, id, own), rk = 'tile|' + kind + ':' + id, open = renKey === rk;
+    const wrap = h('div', { key: el.key, className: 'pb-cc-devwrap' + (hid ? ' hidden' : '') + (open ? ' renaming' : '') }, el,
+      window.setCreatorName ? h('button', { type: 'button', className: 'pb-cc-devren', title: 'Rename ' + nm + ' (only the name on its tile changes)',
+        'aria-label': 'Rename ' + nm, 'aria-expanded': open, onClick: e => { e.stopPropagation(); setRenKey(open ? null : rk); } }, '\u270e') : null,
       h('button', { type: 'button', className: 'pb-cc-devx', title: hid ? 'Show ' + nm + ' in the creator again' : 'Hide ' + nm + ' from the creator (nothing is deleted)',
-        'aria-label': (hid ? 'Show ' : 'Hide ') + nm, onClick: e => { e.stopPropagation(); window.setCreatorHidden(kind, id, !hid, nm); } }, hid ? 'SHOW' : '\u2715'));
+        'aria-label': (hid ? 'Show ' : 'Hide ') + nm, onClick: e => { e.stopPropagation(); window.setCreatorHidden(kind, id, !hid, own); } }, hid ? 'SHOW' : '\u2715'));
+    return open ? h(React.Fragment, { key: el.key }, wrap, renEditor('tile', kind, id, own)) : wrap;
   };
   const ccLimits = window.EW_APPEARANCE_LIMITS || {}, ccEnums = window.EW_APPEARANCE_ENUMS || {};
   const ccHair = window.EW_HAIR_STYLES || [], ccFabrics = window.EW_FABRICS || {};
@@ -1002,7 +1039,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
       h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => queueChange({ [key]: e.target.value }) }), h('i', null, '+'))));
   const ccChoice = (key, options, lookOf, hideKind) => h('div', { className: 'pb-creator-options', role: 'group' }, options.filter(([id]) => keepPick(hideKind, id, appearance[key] === id)).map(([id, label]) =>
-    devTile(hideKind, id, label, h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance(Object.assign({ [key]: id }, lookOf && appearance[key] !== id ? lookOf(id) : {})) }, label))));   // (THE HIDDEN PICKS: hideKind = the pick's kind)
+    devTile(hideKind, id, label, h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance(Object.assign({ [key]: id }, lookOf && appearance[key] !== id ? lookOf(id) : {})) }, shownName(hideKind, id, label)))));   // (THE HIDDEN PICKS: hideKind = the pick's kind; THE RENAMED PICKS: his name)
   // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
   /* THE RETIRED CLASSIC CLOTHES (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a
      replacement"): a catalogue without the retired coded picks (sprites.js EW_RETIRED_CLOTHES; a look wearing one is moved to
@@ -1142,7 +1179,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
         };
         const band = (window.EW_WEAR_BANDS || []).includes(id);
         return h('div', { key: id, className: 'pb-cc-weartint', 'data-cc-cam-own': ccWearFace(cat, label) ? 'face' : 'body' },
-          block(id, label, '#5a3b25'),
+          block(id, shownName('wear', id, label), '#5a3b25'),   // (THE RENAMED PICKS)
           band ? block(id + ':band', 'Band', '#0f0d0c') : null);
       }));
   };
@@ -1177,9 +1214,9 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     changeAppearance({ wear: on ? worn.filter(x => x !== id) : (shelfMany(t) ? worn : worn.filter(x => shelfOf(x) !== t)).concat([id]) });
   };
   const wearTile = (cam) => ([id, label]) => {
-    const on = worn.includes(id);
-    return devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: label, 'data-cc-cam-own': cam, onClick: () => toggleWear(shelfOf(id), id) },
-      h('span', null, tileLabel(label))));
+    const on = worn.includes(id), rn = renamedOf('wear', id);   // THE RENAMED PICKS: his name as he typed it (no men's / women's trim)
+    return devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: rn || label, 'data-cc-cam-own': cam, onClick: () => toggleWear(shelfOf(id), id) },
+      h('span', null, rn != null ? _pbSoftWrap(rn) : tileLabel(label))));
   };
   const wearGrid = (key, head, name, cam, list) => list.length ? h(React.Fragment, { key },
     head ? h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head) : null,
@@ -1208,7 +1245,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Cape'),
     h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Cape' }, window.EW_CAPE_STYLES.filter(c => keepPick('cape', c.id, appearance.cape === c.id)).map(c =>
       devTile('cape', c.id, c.label, h('button', { key: c.id, className: 'ms-tty-btn' + (appearance.cape === c.id ? ' primary' : ''), 'aria-pressed': appearance.cape === c.id,
-        onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, c.label)))),
+        onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, shownName('cape', c.id, c.label))))),
     // (a fur / leaf cloak keeps its own tile: only its tint is a choice)
     capeOn && !capeDef.own ? ccFabricTiles('capeFabric', 'Cape', true) : null,
     capeOn && !capeDef.own ? ccPrint('capeFabric', 'capeColor', 'Cape') : null,
@@ -1292,8 +1329,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       head ? h('div', { className: 'pb-creator-colorlabel' + (cat === 'mhSkin' ? ' pb-cc-shelf-sub' : ''), 'data-cc-cam-own': cam }, head) : null,
       h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + (head || cat.slice(2)).toLowerCase(), 'data-cc-cam-own': cam },
         rows.map(([id, label]) =>
-          devTile(cat, id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[cat] || 'own') === id, title: label, onClick: () => changeAppearance({ [cat]: id }) },
-            h('span', null, cat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label))))));
+          devTile(cat, id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[cat] || 'own') === id, title: shownName(cat, id, label), onClick: () => changeAppearance({ [cat]: id }) },
+            h('span', null, renamedOf(cat, id) != null ? _pbSoftWrap(renamedOf(cat, id)) : cat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label))))));   // (THE RENAMED PICKS)
   };
   /* THE LOOK COLOURS: "<thing> colour": Original colours / (Same as hair) / Pick a colour, then the swatches + the custom picker */
   const lookTint = (key, label, colorKey, swatches, hairToo, cam) => h(React.Fragment, { key },
@@ -1302,25 +1339,41 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     appearance[key] === 'pick' ? ccColorRow(colorKey, label, swatches) : null);
   const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'] };
   /* THE HIDDEN PICKS: the hider's bar (top of the creator): the marks on / off (off = the lists as players see them), the hidden list
-     (each with SHOW, + SHOW ALL), and EXPORT HIDDEN LIST (the file bake-hidden.js bakes into sprites.js EW_CREATOR_HIDDEN) */
+     (each with SHOW, + SHOW ALL), and EXPORT HIDDEN LIST (the file bake-hidden.js bakes into sprites.js EW_CREATOR_HIDDEN).
+     THE RENAMED PICKS (2026-11-03): + the RENAMED list (each with RENAME / ORIGINAL NAME, + ALL ORIGINAL NAMES), the export carries
+     the names too (EXPORT HIDDEN + NAMES -> EW_CREATOR_NAMES), and CLOSE (F2) */
   const hidKindLabel = (r) => r.kind === 'wear' ? ((window.EW_MH_FACIAL_HAIR || []).includes(r.id) ? 'Facial hair' : ((shelves.find(x => x[0] === shelfOf(r.id)) || [])[1] || 'Clothes'))
     : ({ hair: 'Hair', outer: 'Outer layer', feet: 'Feet layer', cape: 'Cape', wings: 'Flapping wings', idle: 'Idle pose', mhSkin: 'Skin', mhEyes: 'Eye colour', mhBrows: 'Brows', mhLashes: 'Lashes' })[r.kind] || r.kind;
   const ccDevBar = () => {
     const list = window.creatorHiddenList ? window.creatorHiddenList() : [];
+    const names = window.creatorNamesList ? window.creatorNamesList() : [];   // THE RENAMED PICKS
     return h('div', { className: 'pb-cc-devbar', role: 'group', 'aria-label': 'Creator item hider (developer)' },
-      h('div', { className: 'pb-cc-devbar-head' }, h('b', null, 'DEV \u00b7 ITEM HIDER'), h('span', null, list.length + ' hidden')),
-      h('p', { className: 'pb-creator-note' }, devMarks ? '\u2715 on a tile hides it from the creator; SHOW puts it back. Nothing is deleted, and a look wearing a hidden piece still loads (a worn piece keeps its tile).'
-        : 'The lists as players see them: hidden picks are left off (a worn one still shows).'),
+      h('div', { className: 'pb-cc-devbar-head' }, h('b', null, 'DEV · ITEM HIDER + NAMES'), h('span', null, list.length + ' hidden · ' + names.length + ' renamed')),
+      h('p', { className: 'pb-creator-note' }, devMarks ? '✕ on a tile hides it from the creator; SHOW puts it back. ✎ renames it (only the name on its tile). Nothing is deleted, and a look wearing a hidden piece still loads (a worn piece keeps its tile). F2 closes this bar.'
+        : 'The lists as players see them: hidden picks are left off (a worn one still shows), renamed ones wear your names.'),
       h('div', { className: 'pb-creator-options' },
-        h('button', { className: 'ms-tty-btn' + (hideMarks ? ' primary' : ''), 'aria-pressed': hideMarks, title: 'Show the \u2715 / SHOW marks on every pick (off = see the lists as players will)', onClick: () => setHideMarks(m => !m) }, hideMarks ? 'MARKS: ON' : 'MARKS: OFF (PLAYER VIEW)'),
-        h('button', { className: 'ms-tty-btn', 'aria-expanded': hidListOpen, onClick: () => setHidListOpen(o => !o) }, (hidListOpen ? '\u25be' : '\u25b8') + ' HIDDEN LIST (' + list.length + ')'),
-        h('button', { className: 'ms-tty-btn gold', title: 'Save the hidden list as a file; bake-hidden.js bakes it into the game for every player', onClick: () => pbExportHidden(setHidNote) }, '\u21e9 EXPORT HIDDEN LIST')),
+        h('button', { className: 'ms-tty-btn' + (hideMarks ? ' primary' : ''), 'aria-pressed': hideMarks, title: 'Show the ✕ / SHOW and ✎ marks on every pick (off = see the lists as players will)', onClick: () => setHideMarks(m => !m) }, hideMarks ? 'MARKS: ON' : 'MARKS: OFF (PLAYER VIEW)'),
+        h('button', { className: 'ms-tty-btn', 'aria-expanded': hidListOpen, onClick: () => setHidListOpen(o => !o) }, (hidListOpen ? '▾' : '▸') + ' HIDDEN LIST (' + list.length + ')'),
+        h('button', { className: 'ms-tty-btn', 'aria-expanded': namesOpen, onClick: () => setNamesOpen(o => !o) }, (namesOpen ? '▾' : '▸') + ' RENAMED (' + names.length + ')'),
+        h('button', { className: 'ms-tty-btn gold', title: 'Save the hidden list and your names as one file; bake-hidden.js bakes both into the game for every player', onClick: () => pbExportHidden(setHidNote) }, '⇩ EXPORT HIDDEN + NAMES'),
+        h('button', { className: 'ms-tty-btn', title: 'Close the hider (F2 opens it again in the creator; Settings > Developer has it too)', onClick: () => { if (window.setCreatorHiderOn) window.setCreatorHiderOn(false); } }, 'CLOSE (F2)')),
       hidListOpen ? h('div', { className: 'pb-cc-devlist', role: 'list', 'aria-label': 'Hidden picks' },
         list.length ? list.map(r => h('div', { key: r.key, className: 'pb-cc-devrow', role: 'listitem' },
-          h('span', null, h('small', null, hidKindLabel(r) + ' \u00b7 '), r.label, r.shipped ? h('small', null, ' (baked)') : null),
+          h('span', null, h('small', null, hidKindLabel(r) + ' · '), shownName(r.kind, r.id, r.label), r.shipped ? h('small', null, ' (baked)') : null),
           h('button', { className: 'ms-tty-btn sm', onClick: () => window.setCreatorHidden(r.kind, r.id, false, r.label) }, 'SHOW')))
           : h('p', { className: 'pb-creator-note' }, 'Nothing hidden.'),
         list.length ? h('button', { className: 'ms-tty-btn', onClick: () => { if (window.confirm('Show all ' + list.length + ' hidden picks in the creator again?')) window.creatorHiddenShowAll(); } }, 'SHOW ALL') : null) : null,
+      // THE RENAMED PICKS: every pick shown under a name of his: kind · its own name -> his name, with RENAME (the box under the row) and ORIGINAL NAME
+      namesOpen ? h('div', { className: 'pb-cc-devlist', role: 'list', 'aria-label': 'Renamed picks' },
+        names.length ? names.map(r => h(React.Fragment, { key: r.key },
+          h('div', { className: 'pb-cc-devrow', role: 'listitem' },
+            h('span', null, h('small', null, hidKindLabel(r) + ' · ' + r.label + ' → '), r.name, r.shipped ? h('small', null, ' (baked)') : null),
+            h('span', { className: 'pb-cc-devrow-btns' },
+              h('button', { className: 'ms-tty-btn sm', 'aria-expanded': renKey === 'list|' + r.key, onClick: () => setRenKey(k => k === 'list|' + r.key ? null : 'list|' + r.key) }, '✎ RENAME'),
+              h('button', { className: 'ms-tty-btn sm', title: 'Back to “' + r.label + '”', onClick: () => window.setCreatorName(r.kind, r.id, '') }, 'ORIGINAL NAME'))),
+          renKey === 'list|' + r.key ? renEditor('list', r.kind, r.id, r.label) : null))
+          : h('p', { className: 'pb-creator-note' }, 'Nothing renamed: ✎ on a tile gives it a name of yours.'),
+        names.length ? h('button', { className: 'ms-tty-btn', onClick: () => { if (window.confirm('Put all ' + names.length + ' renamed picks back to their own names?')) window.creatorNamesReset(); } }, 'ALL ORIGINAL NAMES') : null) : null,
       hidNote ? h('div', { className: 'pb-looks-note', role: 'status' }, hidNote) : null);
   };   // THE ONE EYES TAB: the picks shown in each FACE tab (its dot)
   /* THE TABS (2026-11-03, mondo: "can we have tabs instead of one long list where i have to scroll through everything"): the creator
@@ -1414,7 +1467,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                     [['none', 'Clean']].concat(rows.map(r => [r[0], r[1]])).map(([id, label]) =>
                       devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': cur === id,
                         onClick: () => changeAppearance({ wear: (appearance.wear || []).filter(x => !ids.includes(x)).concat(id === 'none' ? [] : [id]) }) },
-                        h('span', null, label))))),
+                        h('span', null, id === 'none' ? label : shownName('wear', id, label)))))),   // (THE RENAMED PICKS)
                   cur !== 'none' ? h(React.Fragment, null,
                     h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair colour'),
                     ccChoice('beardTint', [['hair', 'Same as hair'], ['pick', 'Pick a colour'], ['own', 'Original colours']]),
@@ -1454,13 +1507,13 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
                 [{ id: 'bald', label: 'Bald' }].concat(ccHair.filter(st => !st.mh && keepPick('hair', st.id, appearance.hair === st.id))).map(style =>
                   devTile('hair', style.id, style.label, h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
-                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label))))),
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, shownName('hair', style.id, style.label)))))),   // (THE RENAMED PICKS)
               // THE PACK HAIR (2026-11-01): the MakeHuman community styles (sprites.js EW_MH_HAIR_STYLES), same tiles, own row
               h('div', { className: 'pb-creator-colorlabel' }, 'More hair styles'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman hair style' },
                 ccHair.filter(st => st.mh && keepPick('hair', st.id, appearance.hair === st.id)).map(style =>
                   devTile('hair', style.id, style.label, h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
-                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label))))),
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, shownName('hair', style.id, style.label)))))),   // (THE RENAMED PICKS)
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
               /* THE SECOND HAIR COLOUR (2026-11-01, mondo: "add a secondary hair color picker"): a pack style with its own band /
                  tie / beads / flower (sprites.js `accent: true`): those keep their colours or take the second colour */

@@ -5530,6 +5530,22 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-cc-devwrap.hidden > :first-child { opacity: .38; filter: grayscale(1); }
 .pb-cc-devwrap.hidden > :first-child span, .pb-creator-options > .pb-cc-devwrap.hidden > :first-child { text-decoration: line-through; }
 .pb-cc-devwrap.hidden .pb-cc-devx { background: #1f5f3a; border-color: #5fd08a; color: #d8ffe6; }
+/* THE RENAMED PICKS (2026-11-03): the ✎ on each pick's other corner, the rename box under it (the whole row of the grid / the flex
+   row, so the input + its three buttons wrap and never cut), and the RENAMED list's two buttons per row */
+.pb-cc-devren, .pb-creator-options .pb-cc-devren { position: absolute; top: 2px; left: 2px; z-index: 3; min-width: 18px; min-height: 0; height: 18px; padding: 0 3px; border-radius: 9px; border: 1px solid #c9ad6d; background: #2a2210; color: #f0cc83; font: 11px/16px 'DotGothic16', monospace; cursor: pointer; }
+.pb-cc-devren:hover, .pb-cc-devwrap.renaming .pb-cc-devren { background: #6a5320; color: #fff3d0; }
+.pb-cc-devwrap.renaming > :first-child { outline: 2px solid #f0cc83; outline-offset: 1px; }
+.pb-cc-rename { grid-column: 1 / -1; flex: 1 0 100%; box-sizing: border-box; min-width: 0; border: 1px dashed #c9ad6d; border-radius: 10px; padding: 8px 10px; background: rgba(42, 34, 16, .85); display: flex; flex-direction: column; gap: 6px; }
+.pb-cc-rename-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 11px; letter-spacing: .1em; color: #c6b995; }
+.pb-cc-rename-head b { color: #f0cc83; font-weight: 400; }
+.pb-cc-rename-head i { font-style: normal; color: #eee1be; overflow-wrap: anywhere; }
+.pb-cc-rename .pb-gear-input { width: 100%; box-sizing: border-box; min-width: 0; }
+.pb-cc-rename .pb-creator-options { margin: 0; }
+.pb-cc-devrow > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.pb-cc-devrow-btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; flex: 0 0 auto; }
+/* (a row button - an Outer / Cape / Wings / Idle pick - wears both marks on its ends: its words keep clear of them, never covered) */
+.pb-creator-options > .pb-cc-devwrap > .ms-tty-btn { padding-left: 26px; padding-right: 26px; }
+.pb-cc-devbar-head { flex-wrap: wrap; }
 /* ── THE MIRROR (rev 8, 2026-09-13): Occam's Barbershop's character creator — a full-screen sheet over the building:
    the stage on the left (the shared EWCharViewer), the creator controls on the right, the card's photo in the foot ── */
 #creatorOverlay { position: relative; }
