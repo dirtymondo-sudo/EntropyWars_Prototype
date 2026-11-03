@@ -13,7 +13,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 99 |
+| Asset pack | yes | 104 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
@@ -1001,6 +1001,16 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | leaf_window_large | `Assets/door/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 | leaf_window_medium | `Assets/door/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 | leaf_wooden | `Assets/door/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+
+### Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given — Asset pack (5)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| castle_cone | `Assets/misc/Castles_and_Forts.glb#Roof_Cone` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_gate | `Assets/misc/Castles_and_Forts.glb#Gate_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_tower | `Assets/misc/Castles_and_Forts.glb#Tower_Mid` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_tower_top | `Assets/misc/Castles_and_Forts.glb#Tower_top_1` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_wall | `Assets/misc/Castles_and_Forts.glb#Wall_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
 
 ### D.O.O.R. kit upload (mondo, author not recorded) — Asset pack (author not recorded yet) (4)
 
