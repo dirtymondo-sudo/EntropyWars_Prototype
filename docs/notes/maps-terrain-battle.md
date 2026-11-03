@@ -1303,3 +1303,24 @@ _HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
 Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
 GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
 city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
+
+## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
+mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
+3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the map" (his picture: 01 Forward Cover,
+02 Central Screen, 03 Open Junction; each team on four edge squares).
+- data.js `HQ_LG_CHESS` (above HQ_AREA_SPECS): the three positions as FEN-style rows (north = black = P2), `cur` = the one standing.
+  The garden's `board` feature is 8 × 8 (x −14..14, z 3.5..31.5) in the middle of the unchanged 12 × 12 window (ox 11, oz 14,
+  3.5 m squares): the window's squares 2..9; the two lawn rings round it hold the spawns (rows 0 / 11, x 4..7) as before.
+- The pieces are `...hqLgChessFeatures()` chess trees (existing rule: solid on their square). A piece not in every position has
+  `chessPos`; only the current position's stand: hqFieldTerrainInfo (`trees` filtered, its cache keyed `chess`), _hqFieldTreeAt,
+  and three-renderer.js treeOne (`_hqChessVar`, hidden + off the walker's blockers; `ThreeRenderer.chessPosSync`). The three differ
+  only by one white bishop (c4 / d3 / e2).
+- The roll: hqLgChessRoll(mapId) at the launch (map.js _msArenaGate once per confirm, the labs' launch). A new position calls
+  hqArenaRoomChanged (the field is re-rastered, ~0.1 s, no survey). The field's `build` stamp keys the renderer's room read
+  (_hqBattleRoom / _fieldGround) so a re-raster of the same window is read again.
+- Online: the HOST rolls once per match in _onlineArenaGo (NET._chessRolledFor, cleared per match / rematch); `arena-check` carries
+  `chess`, the room signature ends `|chess<k>`, so a guest on another position is asked again and stands the host's (hqLgChessSet).
+- The garden around it is unchanged (a plateau + the board's `clear: 7` apron keep the plan's forced area and the scatter exactly
+  as with the 12 × 12 board — checked: same scatter + trees). Picks: the 12 re-rastered by hand (all 117 open squares reach both
+  spawn rows); the 9 / 10 / 11 re-baked (`bake-arenas.js --size N prebuilt_lookingglass`): no smaller window fits the house on the
+  8 × 8 (the back ranks sit on the egress rows), so they are other lawn windows of the garden (the 11 takes the board's west files).
