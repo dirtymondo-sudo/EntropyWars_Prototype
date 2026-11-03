@@ -1334,7 +1334,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE'),
                   /* THE FACE PRESETS (2026-11-03): MakeHuman community faces baked by bake-faces.js (sprites.js EW_MPFB_FACE_PRESETS);
                      a pick sets every face slider (the ones the preset leaves out go to 0) */
-                  (window.EW_MPFB_FACE_PRESETS || []).map(p => h('button', { key: p.id, className: 'ms-tty-btn', title: p.label + ' \u00b7 ' + p.author + (p.license ? ' \u00b7 ' + p.license : ''),
+                  (window.EW_MPFB_FACE_PRESETS || []).map(p => h('button', { key: p.id, className: 'ms-tty-btn', title: [p.label, p.author, p.license].filter(Boolean).join(' \u00b7 '),
                     onClick: () => changeAppearance(Object.assign(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0])), p.face || {})) },
                     p.label.toUpperCase() + (p.gender === 'female' ? ' \u2640' : ' \u2642')))) : null,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },

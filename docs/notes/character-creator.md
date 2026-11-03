@@ -1093,8 +1093,10 @@ and there as an option".
     "female-dwarf-0", CC0): MakeHuman 1.0 file (`face head-age-less-more` lines, no `modifier` lines), bake-faces.js reads 1.1+.
   - FaReT (github.com/fsotoc/FaReT, model-database/identities: 12 male + 12 female + 3 averages) is GPL-3, not CC0/CC-BY. mondo
     was told the GPL question (copied slider values may count as their work; he wants a paid game) and said "i'll take the risk"
-    (11-03): BAKED as FaReT F01-F12 ♀, M01-M12 ♂, Avg F ♀, Avg M ♂, Avg ♂ (19-48 sliders each), author "FaReT (Hays, Wong & Soto)",
-    license GPL-3.0. About 70 modifiers per file, the finer nose / eyelid / lip shapes + the macros drop, so each is a near copy.
+    (11-03): BAKED as FaReT F01-F12 ♀, M01-M12 ♂, Avg F ♀, Avg M ♂, Avg ♂ (19-48 sliders each), first with author "FaReT",
+    license GPL-3.0. Then (11-03, mondo: "take out the gpl3 credit, this game is NOT open source. i will take the risk of not
+    crediting"): renamed Face F01-F12 / M01-M12 / Avg F / Avg M / Avg (ids mh_face_*), author/license/source blank, so the
+    credits page does not list them. Don't re-add a FaReT credit. About 70 modifiers per file, the finer nose / eyelid / lip shapes + the macros drop, so each is a near copy.
   - Most free .mhm files carry their look in the body macros (gender / age / ethnic mix), which our fixed MPFB bodies drop, so
     a file with few `modifier <face group>` lines makes a near-default preset. Check with --dry-run before baking.
   - Files + LICENSES.txt: project files mhm-faces/.
