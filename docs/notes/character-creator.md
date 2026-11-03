@@ -767,6 +767,17 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
     (no twist at the wrist). MAL1 (Meshy-named, no finger bones) has no palm data, so the default Wide stance idle is unchanged.
     MPFB bodies + every race model untouched. Checked Pistol ready, Relaxed, Arms folded, default: shots
     /mnt/project-files/pistol-ready/classic_body_grip_before_after.jpg.
+- **Pass 5, THE WRAP (2026-11-03, mondo: "the pistol ready idle is still not quite right. Their left hand goes under their other
+  wrist and is holding nothing, it looks weird")**. Pass 3 kept the SOURCE clip's off-hand spot (a cup under the gun hand), which on
+  our bodies read as a hand under the gun wrist gripping nothing. three-renderer.js `_libSupportHand` now lays the off hand on the
+  gun hand in the GUN HAND'S OWN FRAME (`_libHandFrame`: along the hand, to the thumb, out of the palm, read from the hand's finger
+  bones on MPFB, else off its skin like THE GRIP ON A MESHY HAND, else the library mannequin's through the retarget offset):
+  off palm on the grip's open side over the gun hand's fingertips, off fingers tilted 38 deg down round the front of the gun
+  hand's fingers, the off forearm taking half the hand's roll. `SUPPORT_WRAP` holds the numbers in hand lengths. `SUPPORT_CURL`
+  closes the MPFB off fingers further (they wrap the gun hand now). Classic bodies (fingerless, modelled open): the off palm is
+  pressed flat on the handle's open side where `_gripFrameMesh` seats it (`SUPPORT_WRAP.flat`), fingers laid along the gun hand's;
+  their fingers cannot close. Skin read for the bake uses a throwaway userData (caching on the shared GLB root broke the gun seat:
+  clones copy userData as JSON). Shots: /mnt/project-files/pistol-ready/pistol_ready_wrap_before_after.jpg.
 
 ## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
 mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
