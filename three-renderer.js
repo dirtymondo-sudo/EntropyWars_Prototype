@@ -6898,10 +6898,11 @@ const ThreeRenderer = (function () {
        plinth, copper primary winding, wound secondary column, aluminium
        toroid with a spark-gap electrode, and an owner-colored corona so you
        can read whose trap it is at a glance. Same pixel-sprite recipe as
-       the trees/turrets (gold.png tinted copper stands in until a dedicated
-       copper sprite lands on the R2). */
+       the trees/turrets (copper.png is on the R2 now; the gold sheet is out, 2026-11-03). */
     var _teslaTexCache = {};
     function _getTeslaTex(file, repX, repY) {
+        /* THE GOLD SHEET IS OUT (2026-11-03): terrain/gold.png is never loaded; the gold is terrain/gilt.png (Metal007) */
+        if (file === 'gold.png') file = 'gilt.png';
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_teslaTexCache[key]) return _teslaTexCache[key];
         var t = textureLoader.load('https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
@@ -10140,7 +10141,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var marbleMat = _deployMat('marble_light.png', 0xeaf2ee);
-        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var goldMat = _deployMat('gilt.png', 0xd8b458);
         var plinth = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.26, ts * 0.08, 10), marbleMat);
         plinth.position.y = ts * 0.04; g.add(plinth);
         var col = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.13, ts * 0.15, ts * 0.62, 12), marbleMat);
@@ -10294,7 +10295,7 @@ const ThreeRenderer = (function () {
     function _buildFlashbangMine3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var brassMat = _deployMat('gold.png', 0xc8a850);
+        var brassMat = _deployMat('gilt.png', 0xc8a850);
         var ironMat = _deployMat('gunmetal.png', 0xb8bec8);
         var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.17, ts * 0.19, ts * 0.09, 12), brassMat);
         body.position.y = ts * 0.045; g.add(body);
@@ -10402,7 +10403,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var stoneMat = _deployMat('desert.png', 0xd9bd82);
-        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var goldMat = _deployMat('gilt.png', 0xd8b458);
         for (var j = -1; j <= 1; j += 2) {
             var jamb = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.12, ts * 0.72, ts * 0.14), stoneMat);
             jamb.position.set(j * ts * 0.2, ts * 0.36, 0); g.add(jamb);
@@ -40469,6 +40470,19 @@ const ThreeRenderer = (function () {
             put(p, w);
         });
     }
+    /* THE CHESS POSITIONS (2026-11-03, mondo: the Looking-Glass loads one of his three chess positions at random): the garden's pieces that
+       only some positions have (data.js HQ_LG_CHESS, `chessPos`) — shown, and a blocker for the walker, only while their position stands.
+       data.js hqLgChessSet calls chessPosSync when a launch rolls another position. */
+    var _hqChessVar = [];
+    function _hqChessVarApply(v) {
+        var on = (typeof hqLgChessOn === 'function') ? hqLgChessOn(v.t) : true;
+        if (v.obj) v.obj.visible = on;
+        var L = v.H && v.H.blockers; if (!L) return;
+        var i = L.indexOf(v.blk);
+        if (on && i < 0) L.push(v.blk); else if (!on && i >= 0) L.splice(i, 1);
+        v.H.dirty = true;
+    }
+    function _hqChessPosSync() { for (var i = 0; i < _hqChessVar.length; i++) { try { _hqChessVarApply(_hqChessVar[i]); } catch (e) {} } _objectsDirty = true; }
     function _hqChessStatue(kind, dark, hM, U, cell, done) {
         var piece = _CHESS_PROFILES[kind] ? kind : 'pawn';
         var mat = function (k, col, shine) {
@@ -64344,6 +64358,8 @@ const ThreeRenderer = (function () {
                 });
                 cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; cg._ew_occNoTree = true; G.add(cg);
                 cblk.obj = cg; _hq.blockers.push(cblk);
+                /* THE CHESS POSITIONS (2026-11-03): a piece only some of the garden's positions have stands only in the current one (data.js hqLgChessOn) */
+                if (Array.isArray(t.chessPos)) { var cvr = { obj: cg, blk: cblk, H: Hrec, t: t }; _hqChessVar.push(cvr); if (_hqChessVar.length > 24) _hqChessVar.splice(0, _hqChessVar.length - 24); _hqChessVarApply(cvr); }
                 return;
             }
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
@@ -79702,7 +79718,9 @@ const ThreeRenderer = (function () {
         /* read once per run (the scenery key asks every frame; the marker is a fresh object per call) */
         var bd = run.field && run.field.board;
         var rev = (typeof hqRoomRev === 'function') ? hqRoomRev(run.room) : 0;   // THE GAME ROOM EDITS (2026-10-18): an edited room is read again
-        var ck = run.room + '|' + rev + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
+        /* the field's build stamp (data.js hqArenaUpgrade): THE CHESS POSITIONS re-raster the same window with other pieces — a new read */
+        var fb = 0; try { var fe = (run.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[run.fieldId] : null; fb = (fe && fe.field && fe.field.build) | 0; } catch (e) { fb = 0; }
+        var ck = run.room + '|' + rev + '|' + (run.fieldId || '') + '|' + fb + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
         if (_hqBattleRoomCache.key === ck) return _hqBattleRoomCache.R;
         var R = null;
         try {
@@ -79723,7 +79741,7 @@ const ThreeRenderer = (function () {
                        void room stand 4–9 m over room metre 0: drawn at base + 0 they rose 3 tiles over the levels the camera, the fog
                        and every elevation read use, and the action shots sat inside / under the island. */
                     var refM = (fld && isFinite(+fld.ref)) ? +fld.ref : 0;
-                    R = { room: room, roomId: run.room, rev: rev, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld,
+                    R = { room: room, roomId: run.room, rev: rev, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld, build: fb,
                           grid: (entry && Array.isArray(entry.grid)) ? entry.grid : null };   // THE SKINS: the surface each cell was built with (tids)   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
                 }
             }
@@ -79799,7 +79817,7 @@ const ThreeRenderer = (function () {
         if (!R || (R.cave && !(R.field && R.field.caveGround)) || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         if (typeof hqFieldGroundOn === 'function' ? !hqFieldGroundOn() : !!(typeof window !== 'undefined' && window.EW_HQ_NO_TRUE_GROUND)) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         var ts = CONFIG.tileSize || BASE_TILE;
-        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer;   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read
+        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer + '|' + (R.build | 0);   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read (THE CHESS POSITIONS: a re-rastered field too)
         if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
         var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
         /* THE BIG SQUARES (2026-10-28): on a board of bigger squares a level is still the room's 1.75 m (data.js THE TIER RULE), so a
@@ -85852,6 +85870,7 @@ const ThreeRenderer = (function () {
         chessNodes: function () { var e = _miscModelCache[_chessUrl(null)]; return e && e.root ? e.root.children.map(function (c) { return c.name; }) : null; },
         chessSetOn: _chessSetOn,
         warmChessSet: _warmChessSet,
+        chessPosSync: _hqChessPosSync,   // THE CHESS POSITIONS (2026-11-03): data.js hqLgChessSet
         halloweenClone: _hwClone,            // THE HALLOWEEN PACK (2026-10-29): a spell's piece of the kit (g.userData.mats to fade), or null while it streams
         warmHalloweenModels: _warmHwModels,  // THE HALLOWEEN PACK: the spells' pieces warmed on the loading card
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle

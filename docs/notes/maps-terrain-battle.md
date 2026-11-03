@@ -1300,6 +1300,7 @@ _HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
 - Both boards are half-turn symmetric about their centre and keep the house lanes (spawn / egress / nexus) clear at 12, 11, 10, 9.
   Existing rules only: levels, ghost blocks, deep water. bake-arenas.js reports them as walled cuts (the level-3 / level-2 blocks).
 - Audit of the other boards + the exploration rooms still built as walled plans: /mnt/project-files/battle-map-audit/.
+
 Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
 GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
 city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
@@ -1322,3 +1323,57 @@ inside the parapet, measured in Blender). Where they go:
 - Probe gotcha: in the headless city probe the model queue never started these files (the queue holds on some sheet in swiftshader);
   `--flags=EW_NO_MODEL_QUEUE` loads them. Shots: Old Town street fronts + two editor rows in Skinwalker fields, all upright, fronts
   to the street.
+
+## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
+mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
+3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the map" (his picture: 01 Forward Cover,
+02 Central Screen, 03 Open Junction; each team on four edge squares).
+- data.js `HQ_LG_CHESS` (above HQ_AREA_SPECS): the three positions as FEN-style rows (north = black = P2), `cur` = the one standing.
+  The garden's `board` feature is 8 × 8 (x −14..14, z 3.5..31.5) in the middle of the unchanged 12 × 12 window (ox 11, oz 14,
+  3.5 m squares): the window's squares 2..9; the two lawn rings round it hold the spawns (rows 0 / 11, x 4..7) as before.
+- The pieces are `...hqLgChessFeatures()` chess trees (existing rule: solid on their square). A piece not in every position has
+  `chessPos`; only the current position's stand: hqFieldTerrainInfo (`trees` filtered, its cache keyed `chess`), _hqFieldTreeAt,
+  and three-renderer.js treeOne (`_hqChessVar`, hidden + off the walker's blockers; `ThreeRenderer.chessPosSync`). The three differ
+  only by one white bishop (c4 / d3 / e2).
+- The roll: hqLgChessRoll(mapId) at the launch (map.js _msArenaGate once per confirm, the labs' launch). A new position calls
+  hqArenaRoomChanged (the field is re-rastered, ~0.1 s, no survey). The field's `build` stamp keys the renderer's room read
+  (_hqBattleRoom / _fieldGround) so a re-raster of the same window is read again.
+- Online: the HOST rolls once per match in _onlineArenaGo (NET._chessRolledFor, cleared per match / rematch); `arena-check` carries
+  `chess`, the room signature ends `|chess<k>`, so a guest on another position is asked again and stands the host's (hqLgChessSet).
+- The garden around it is unchanged (a plateau + the board's `clear: 7` apron keep the plan's forced area and the scatter exactly
+  as with the 12 × 12 board — checked: same scatter + trees). Picks: the 12 re-rastered by hand (all 117 open squares reach both
+  spawn rows); the 9 / 10 / 11 re-baked (`bake-arenas.js --size N prebuilt_lookingglass`): no smaller window fits the house on the
+  8 × 8 (the back ranks sit on the egress rows), so they are other lawn windows of the garden (the 11 takes the board's west files).
+
+## THE OPEN VILLAGE (2026-11-03, North Pole, after THE OPEN SUMMIT + THE OPEN ICE)
+mondo's audit ask (Olympus/Antarctica "built like dungeons with walls"): the audit found the North Pole village built the same way
+(L6 `gen: {kind:'plan', look:'walls'}`, 4.5 m wood_planks walls, black pits). Fixed the whole room:
+- the gen line and every `space` / `hall` row removed (the planGen fallback rebuilds the walls plan while any remain);
+- the ramp to the walkway off the sledge yard keeps its own railings now (`rails: false` was for the hall's walls);
+- THE BAY GATE: two 3 m wood_planks posts at x ±3.9, z 28..32 carry the hall's two wreaths;
+- the hearth is the fireplace way's own chimney breast at the deck's west edge (a wall row past the room edge x −64 is clipped by
+  the heightfield, so none was added);
+- THE COTTAGES: the Christmas pack's `xmas_house` (was editor-palette only), h 6.0, `floor: true`, on 3 × 3 ghost blocks
+  (`x0 = x1, z0 = z1, t 10.2` — a wall row's ends are round, t 9 gave a plus shape) at (−43.75, 15.75) and its 180° twin (−12.25, 12.25);
+- two `sleigh`s and two snowmen on one-square ghost blocks (h 1.3, level 1), 180° twins round the board centre (−28, 14);
+- HQ_ARENA_RULES.within.prebuilt_northpole (−28, 14, r 2.6) pins every size between the workshop deck and the plaza; all four re-baked.
+The 2 × 2 gap on the walkway (HQ_ROOM_HOLES, i 15..16, j 1..2) was there before and stays.
+Still walled (battle + exploration), not changed: Giza, Agartha, Technoticlan, Babel.
+
+## THE OPEN PLATEAU / TOWN / TEMPLE CITY / CRYSTAL CITY (2026-11-03, after THE OPEN VILLAGE)
+mondo: "go ahead and get rid of Giza, Agartha, Technoticlan, and Babel's walled courts". Same fix as Olympus / Antarctica / North
+Pole, whole rooms (exploration + every board): the L6 `gen: {kind:'plan', look:'walls'}` line and every `space` / `hall` row gone
+(the planGen fallback rebuilds the walls while any remain), their L6 layout comments dropped, HQ_ROOM_HOLES rows gone (bake-holes).
+Each site is pinned with HQ_ARENA_RULES.within and all four sizes re-baked; the cover is existing rules only (levels, ghost blocks):
+- GIZA (site_prebuilt_giza_plateau): the sand in front of the sphinx, the raised causeway down its west side, the sphinx's rump in
+  a corner; within (17.5, 77, r 2.6). Four fallen casing blocks (bricks_1 wall rows, 1.4 m) and two obelisks on ghost blocks, 180°
+  twins about (17.5, 77). The 2-row causeway crossing (14, 59.5) was tried first: a 9×9's house/nexus rows always land on it.
+  Anubis moved (34, 60) → (37, 64) off an obelisk. A wall row's round end reaching the causeway lifts it a level: keep 1.4 m off.
+- BABEL (site_prebuilt_babel_tower): the square between the tower's foot and the barn door; within (0, 70, r 2.6). Four brick
+  houses (point wall rows `x0 = x1, z0 = z1, t 7`, 3 m: crisp brick boxes, level 2; plateaus drew as rounded loaves) and two brick stacks (1.4 m), 180° twins about (0, 70).
+- TECHNOTICLAN (prebuilt_technoticlan): THE BALL COURT and the plaza east of it; within (−38.5, 38.5, r 10) — r 10 because the
+  ball court's walls fill a 9×9's house rows, so the 9×9 sits east of the court. Two altar platforms (3.5 × 7, 1.4 m). The causeway
+  stair keeps its own railings (`rails: false` was for the hall's walls). A `block: true` prop (a brazier) on a platform corner
+  made four squares rock (`tree`): no props on the platforms.
+- AGARTHA (prebuilt_agartha): THE PLAZA (the fountain, the two garden rings); within (0, 14, r 2.6). Two marble low walls
+  (1.4 m), four crystal clusters and four greek columns on ghost blocks, 180° twins about (0, 14), placed for the 9×9 too.

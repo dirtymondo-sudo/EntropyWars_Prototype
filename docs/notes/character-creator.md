@@ -1313,3 +1313,36 @@ mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_ma
   page groups them with the other MakeHuman authors (checked: Elvaerwyn's eye 03 assets, Hatshj, MargaretToigo show).
 - Hider kind 'hairMat' ("Hair texture"), bake-hidden.js knows it.
 - Proof: /mnt/project-files/creator-mh-materials/ (12 + 4 eyes, 19 hair textures, back to Style's own + colour, the panel).
+
+## THE FUR + THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28)
+mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make a new created character for the werewolf to put fur on it".
+- THE TOOL: `bake-fur.py` (repo root, offline Blender: `pip install bpy==5.2.3`, MPFB 2.0.18 clone). `python3 -I bake-fur.py --mpfb <mpfb2> [--haireditor <zip|dir>] [--only ewf_fur]`.
+  It installs the hair editor templates (files.makehumancommunity.org/functional/haireditor.zip, copy in project files mhpacks/haireditor.zip) into MPFB's data/hair/haireditor,
+  grows the editor's fur grooms on a FRESH unbaked male (grooms land wrong on a human whose targets were baked), then "Bake hair cards" BODY_SHELL = a copy of the skin faces
+  with the fur baked into a 1024 texture. The shell is anchored to the nearest SKIN vertex (helpers are masked) and written in the bake-mpfb.py wear layout
+  (5 bodies' offsets, top-4 bone weights) as `charactercreation/wear/ewf_fur.glb`, cat 'underwear' (under every garment), pack 'haireditor', extras fur:true. FUR_ALPHA 1.5.
+- Tried and DROPPED: the editor's CLUSTER_RIBBON tufts (cards) looked like flat dark flakes/squares on the body. Only the shell ships.
+- THE CREATOR: wear pick "Fur (whole body)" on the new shelf Fur (torso group), both genders (EW_WEAR_BOTH). Tint works like any wear.
+- THE ANIMAL HEAD: bake-mpfb.py ANIMAL_SHAPES fetches jaldmic's wolf head target (makehumancommunity.org/node/3009, CC-BY, CREDITS.json creator_animal) into mpfb_shapes.glb
+  as `wolfHead`; face slider group "Animal head" (0..1). More heads = one ANIMAL_SHAPES row + `--shapes --packs` rerun.
+- THE WEREWOLF LOOK: RACE_CREATOR_LOOKS werewolf male (heavy body, wolf head 1, pointed ears, bald, dark skin, fur + wolf tail + beast feet + hand claws), bake input
+  /mnt/project-files/werewolf-fur/Entropy_Wars_Race_Looks_werewolf_fur.json. A SAVED look: the Meshy werewolf stays the unit default (THE MESHY DEFAULT).
+- Honest state: a short-fur suit with a smooth outline, not the Meshy model's shaggy volume; shell flakes stand off the ears when the wolf head reshapes them;
+  the wolf head reads a bit feline. Next ideas: runtime stacked shell layers for volume, a better head target. Pictures: /mnt/project-files/werewolf-fur/.
+- ROUND 2 (2026-11-03, mondo: "add the werewolf head to the creature heads ... retexture all three in meshy so they all have a consistent
+  fur texture ... the tail is visibly disconnected"):
+  - THE SHAPED HEADS: the Animal head group is `inHeads` (sprites.js EW_SHAPE_HEADS): OUTFIT > Head > Creature heads shows "Wolf head" as a
+    pick (+ a strength slider while on); it is gone from the FACE tabs. One head at a time with the model heads (party-builder.js ccShapeHeads,
+    toggleWear). Same saved key wolfHead.
+  - THE WEREWOLF FUR SKINS: Meshy Retexture (meshy-6, enable_original_uv, remove_lighting) of the MPFB heavy body + Wolf head 1 (positions
+    from mpfb_heavy.glb + the wolfHead offsets, its own hm08 UVs) -> base colour 2048 -> mpfb/looks/skin_ew_werewolf_fur.jpg (A, text prompt)
+    + skin_ew_werewolf_fur_dark.jpg (B, image style = a render of the Meshy werewolf); EW_MH_LOOKS.skins.push after the generated block.
+    Sources + prompts' inputs: project files meshy/retexture/werewolf/. The hm08 sheet has the same orientation as the body GLB's own texture.
+  - Tail + feet to match: bake-meshy.py `tex=` (a Retexture base colour on the piece's own UVs in place of its Meshy one): ewm_wolftail_fura/b,
+    ewm_beastfeet_fura/b (Tails / Creature shelves).
+  - Fur shell in those colours: `bake-fur.py --from-skin <skin.jpg> --name ewf_fur_werewolf` (no Blender): each shell texel takes the skin
+    colour under its nearest body vertex, strand shading + alpha kept. Pick "Fur (whole body), werewolf colours".
+  - THE TAIL ROOT: bake-meshy.py taper=(frac, k0) narrows a tail's flat cut end toward its centre line, sink= sinks it deeper; the wolf tail
+    taper (0.25, 0.22), sink 0.05 (was a disc standing off the lower back). --views on a tail = root close-ups on every body.
+  - The saved werewolf look (bake-looks.js, input werewolf-fur/Entropy_Wars_Race_Looks_werewolf_meshy_fur.json): heavy, Wolf head, fur skin A,
+    tail + feet A, hand claws, no shell. Still a SAVED look; the Meshy werewolf stays the unit default.
