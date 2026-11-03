@@ -41119,6 +41119,13 @@ const ThreeRenderer = (function () {
             fn(K.CX + Math.cos(a) * r, K.CZ + Math.sin(a) * r, a, i, r);
         }
     }
+    /* THE TOWN RIM's PACK HOUSES (2026-11-03): whole houses cut from Elbolilloduro packs (CC0) by bake-pack-pieces.py, R2 Assets/misc/ —
+       `m` = the length the house is fitted to (its longest side, metres: its real size), `sink` = metres under the ground (the abandoned
+       house's basement). Every file's front (door / porch) is +Z. */
+    var _HZ_TOWN_MODELS = {
+        trailers: { m: 15.1, files: ['ebd_trailerscene_trailer_0.glb', 'ebd_trailerscene_trailer_1.glb', 'ebd_trailerscene_trailer_2.glb', 'ebd_trailerscene_trailer_3.glb', 'ebd_trailerscene_trailer_4.glb', 'ebd_trailerscene_trailer_5.glb'] },
+        abandoned: { m: 36.3, sink: 3.5, files: ['ebd_abandonedhouse_house.glb'] }
+    };
     /* THE RIM — each builder: (K, spec, c) with c = { y: the ground level, shore, R, sea } */
     var _WD_RIM = {
         /* a mountain range in ranks; `mesa` = flat tops (the desert); `snow` = a cap sheet */
@@ -41151,11 +41158,20 @@ const ThreeRenderer = (function () {
                 t.position.set(x, c.y - 0.05 * ts, z); t.rotation.y = rng() * 6; K.add(t);
             });
         },
-        /* houses and stores in the far distance */
+        /* houses and stores in the far distance. `models` (THE TOWN RIM's PACK HOUSES, 2026-11-03 — mondo: "are there no houses in the
+           asset packs? and again i want things to be individually placed with detail and care, not a cluster"; he OK'd the split) = one
+           whole pack house per stop from _HZ_TOWN_MODELS, at its real size, its front (the door) turned to the board */
         town: function (K, s, c) {
-            var rng = K.rng;
+            var rng = K.rng, TMd = s.models && _HZ_TOWN_MODELS[s.models];
             _wdRing(K, s.d || 18, s.n || 14, function (x, z) {
                 if (rng() > (s.p == null ? 0.7 : s.p)) return;
+                if (TMd) {
+                    var file = TMd.files[(rng() * TMd.files.length) | 0];
+                    var hm = _hzMiscKit('town_house', { url: _R2_MISC + file, metres: TMd.m * (0.96 + rng() * 0.08), fit: 'span', rng: rng, low: 'skip', lift: TMd.lift || 0.1,
+                        sink: TMd.sink ? TMd.sink / 1.75 : 0, onDone: function (grp) { _nrInjectWorld(K, grp); } });
+                    hm.position.set(x, c.y - 0.02 * K.ts, z); hm.rotation.y = K.face(x, z) + (rng() - 0.5) * 0.5; K.add(hm);
+                    return;
+                }
                 var sc = 0.9 + rng() * 0.8;
                 var h = _nrHouse(K, x, z, { w: (s.w || 3) * sc, d: (s.dd || 2.4) * sc, h: (s.h || 1.6) * sc, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, window: s.window, ry: rng() < 0.5 ? K.face(x, z) + (rng() - 0.5) * 0.5 : rng() * 6.3, chimney: rng() < 0.5 });
                 if (h) h.position.y = c.y - 0.02 * K.ts;

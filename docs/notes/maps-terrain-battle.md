@@ -1324,6 +1324,20 @@ inside the parapet, measured in Blender). Where they go:
   `--flags=EW_NO_MODEL_QUEUE` loads them. Shots: Old Town street fronts + two editor rows in Skinwalker fields, all upright, fronts
   to the street.
 
+Round 5, THE TOWN RIM HOUSES (the same day; mondo OK'd the split: "yeah that sounds good"): Area 51 and Skinwalker's town rims stand
+one whole Trailer Park trailer per stop, Haunted's one Abandoned House pack exterior per stop. Babel keeps the code mud-brick houses
+until he OKs Meshy concepts for it.
+- three-renderer.js `_HZ_TOWN_MODELS` { trailers: 6 files, 15.1 m long; abandoned: 1 file, 36.3 m wide, sunk 3.5 m (its stilts) }; a
+  data.js town rim spec with `models: '<key>'` places one model per stop (fit 'span' at m x 0.96-1.04, front turned to the board +-0.25
+  rad, low 'skip'); without `models` the old _nrHouse code draws (Babel only now). Delete that code branch once Babel has models.
+- bake-pack-pieces.py: F 'trailerscene' (Trailer_Park.fbx) + 'abandonedhouse' (Abandoned_House.fbx). A node `{near, pad, keep}` cuts a
+  REGION: every mesh whose centre lies in the named node's box (+pad m) and whose name matches keep (the trailers stand in one scene
+  with no parent per trailer). A trailing `!` on a node name takes that node without its children. Files: R2 Assets/misc/
+  ebd_trailerscene_trailer_0..5.glb, ebd_abandonedhouse_house.glb (zipped by hand).
+- FOUND: a site battle draws NO world rim at all. Every rim site has an HQ_ARENA_RULES pick, the arena drops env.near, so
+  `_nrLastKit` is null and `_worldBuild` returns early; the site's own room stands round the board instead. These rim swaps show only
+  where a rim still builds. Asked mondo whether the pack houses should also stand in the site rooms.
+
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
 3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the map" (his picture: 01 Forward Cover,

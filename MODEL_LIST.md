@@ -13,7 +13,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 149 |
+| Asset pack | yes | 156 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -1446,6 +1446,7 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
+| abandoned town rim (house) | `Assets/misc/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender; town rim _HZ_TOWN_MODELS) |
 | alien | `Assets/misc/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ambulance | `Assets/misc/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1567,6 +1568,12 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | time_machine | `Assets/misc/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_barrel | `Assets/misc/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| trailers town rim (trailer_0) | `Assets/misc/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
+| trailers town rim (trailer_1) | `Assets/misc/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
+| trailers town rim (trailer_2) | `Assets/misc/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
+| trailers town rim (trailer_3) | `Assets/misc/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
+| trailers town rim (trailer_4) | `Assets/misc/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
+| trailers town rim (trailer_5) | `Assets/misc/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS) |
 | trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | truck | `Assets/misc/Meshy_AI_a_truck_0917065131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
