@@ -28,7 +28,8 @@ Usage:
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --wear all [--wear-out charactercreation/wear]
   (the creator's pack clothes: every MakeHuman community garment fitted to all five bodies -> mhw_<name>.glb + wear.json;
   see bake_wear / write_wear_glb; pip install meshoptimizer simplifies the dense ones)
-  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes   (the body sliders: MakeHuman's targets -> mpfb/mpfb_shapes.glb)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes --packs /tmp/mhpacks   (the body sliders: MakeHuman's targets -> mpfb/mpfb_shapes.glb;
+  with --packs also THE ANIMAL HEADS, ANIMAL_SHAPES, + their CC-BY credits)
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --looks charactercreation/mpfb/looks
   (the creator's skin / eye / brow / lash picks as layers of the shared hm08 sheet + looks.json; see bake_looks)
 
@@ -1290,6 +1291,31 @@ for _g, _gs in (('f', 'female'), ('m', 'male')):
     MACRO_SHAPES['muscle_' + _g] = (_u % 'averagemuscle-averageweight', _u % 'maxmuscle-averageweight', _u % 'minmuscle-averageweight')
 
 
+# THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28, the werewolf pilot; mondo: "try on the werewolf"): community targets from the
+# MakeHuman animal packs, one-sided sliders (0..1, '-' is empty) in the same mpfb_shapes.glb, so the head reshapes on any MPFB body
+# like the face sliders and the pack clothes / fur follow it. slider -> (pack zip stem, target name). CC-BY: credited in
+# CREDITS.json 'creator_animal' (the game's credits screen).
+ANIMAL_SHAPES = {
+    'wolfHead': ('animal03_ccby', 'jaldmic_wolf_headv3'),
+}
+
+
+def animal_target(packs, pack, name):
+    """<packs>/<pack>/targets/animal/<name>.target, the pack downloaded + unzipped there when missing."""
+    import urllib.request, zipfile
+    d = os.path.join(packs, pack)
+    f = os.path.join(d, 'targets', 'animal', name + '.target')
+    if not os.path.exists(f):
+        os.makedirs(packs, exist_ok=True)
+        z = os.path.join(packs, pack + '.zip')
+        if not os.path.exists(z):
+            url = 'https://files.makehumancommunity.org/asset_packs/%s/%s.zip' % (pack.rsplit('_', 1)[0], pack)
+            print('[bake-mpfb] downloading', url)
+            urllib.request.urlretrieve(url, z)
+        zipfile.ZipFile(z).extractall(d)
+    return f
+
+
 def read_target(path):
     import gzip
     f = gzip.open(path, 'rt') if path.endswith('.gz') else open(path)
@@ -1301,7 +1327,7 @@ def read_target(path):
     return out
 
 
-def bake_shapes(mpfb_root, out_path):
+def bake_shapes(mpfb_root, out_path, packs=''):
     import json, struct
     T = os.path.join(mpfb_root, 'src', 'mpfb', 'data', 'targets')
     def load(rel):
@@ -1328,6 +1354,13 @@ def bake_shapes(mpfb_root, out_path):
             idx = [i for i in sorted(acc) if np.abs(acc[i]).max() > 1e-5]
             keys.append([k, '+-'[side], len(I), len(idx)])
             I += idx; D += [acc[i] for i in idx]
+    if packs:   # THE ANIMAL HEADS: '+' = the target, '-' = nothing (the slider runs 0..1)
+        for k, (pack, name) in ANIMAL_SHAPES.items():
+            acc = read_target(animal_target(packs, pack, name))
+            idx = sorted(acc)
+            keys.append([k, '+', len(I), len(idx)])
+            I += idx; D += [acc[i] for i in idx]
+            keys.append([k, '-', len(I), 0])
     D = np.array(D, np.float32); I = np.array(I, np.uint16)
     chunks, views = [], []
     def add(b):
@@ -1369,7 +1402,16 @@ def main():
     a = ap.parse_args()
     if a.shapes:
         os.makedirs(a.out, exist_ok=True)
-        bake_shapes(a.mpfb, os.path.join(a.out, 'mpfb_shapes.glb'))
+        bake_shapes(a.mpfb, os.path.join(a.out, 'mpfb_shapes.glb'), os.path.abspath(a.packs) if a.packs else '')
+        if a.packs:   # THE ANIMAL HEADS are CC-BY: their authors go in the credits
+            import json
+            cat = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charactercreation', 'mpfb', 'ASSET_PACKS_CATALOGUE.json')))
+            cf = os.path.join(a.out, 'CREDITS.json')
+            old = json.load(open(cf)) if os.path.exists(cf) else {}
+            old['creator_animal'] = [{'part': 'animal head', 'asset': name, 'author': cat[pack.rsplit('_', 1)[0]][name]['author'],
+                                      'license': cat[pack.rsplit('_', 1)[0]][name]['license'], 'source': cat[pack.rsplit('_', 1)[0]][name]['source']}
+                                     for pack, name in ANIMAL_SHAPES.values()]
+            json.dump(old, open(cf, 'w'), indent=1)
         return
     if a.looks:
         packs = os.path.abspath(a.packs)

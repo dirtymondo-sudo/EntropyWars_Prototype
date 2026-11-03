@@ -1066,10 +1066,20 @@
            `arena-check`, the guest lays it over its room before it surveys, and `arena-ready` carries the signature of the room
            the guest surveyed — the host counts only a ready on its own room. Viewer-local, nothing on `state`. */
         function _arenaRoomOf(mapId) { try { var a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null; return a ? a.room : null; } catch (e) { return null; } }
-        function _arenaRoomSig(mapId) { var r = _arenaRoomOf(mapId); try { return (r && typeof window.hqRoomEditSig === 'function') ? window.hqRoomEditSig(r) : ''; } catch (e) { return ''; } }
+        /* THE CHESS POSITIONS (2026-11-03, mondo: the Looking-Glass "load one of these 3 actual chess positions at random"): the HOST rolls
+           the position once per match (_onlineArenaGo); it rides `arena-check` (`chess`) and the room's signature, so a guest that
+           surveyed another position is asked again and stands the host's (data.js hqLgChessSet). Viewer-local, nothing on `state`. */
+        function _arenaChessOf(mapId) { var r = _arenaRoomOf(mapId); try { return (r && typeof window.hqLgChessRoom === 'function' && window.hqLgChessRoom(r)) ? window.hqLgChessCur() : null; } catch (e) { return null; } }
+        function _arenaRoomSig(mapId) {
+            var r = _arenaRoomOf(mapId), sig = '';
+            try { sig = (r && typeof window.hqRoomEditSig === 'function') ? window.hqRoomEditSig(r) : ''; } catch (e) { sig = ''; }
+            var ch = _arenaChessOf(mapId); if (ch !== null) sig = (sig || '') + '|chess' + ch;
+            return sig;
+        }
         function _arenaCheckMsg(mapId) {
             var m = { type: 'arena-check', mapId: mapId }, r = _arenaRoomOf(mapId);
             if (r && typeof window.hqRoomEditOf === 'function') { try { m.room = r; m.edit = window.hqRoomEditOf(r) || null; m.sig = _arenaRoomSig(mapId); } catch (e) {} }
+            var ch = _arenaChessOf(mapId); if (ch !== null) m.chess = ch;
             return m;
         }
         function _onlineMatchMapId() {
@@ -1116,6 +1126,12 @@
         function _onlineArenaGo(NET) {
             var id = _onlineMatchMapId();
             if (!id || typeof window.hqArenaOf !== 'function' || !window.hqArenaOf(id)) return true;   // not an arena: nothing to survey
+            /* THE CHESS POSITIONS: the host rolls the Looking-Glass's position once per match; a new one is surveyed again on both seats */
+            if (NET._chessRolledFor !== id) {
+                NET._chessRolledFor = id;
+                var _chNew = false; try { _chNew = (typeof window.hqLgChessRoll === 'function') && window.hqLgChessRoll(id); } catch (e) { _chNew = false; }
+                if (_chNew) { _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen }; NET._guestArenaReady = null; NET._arenaWaitOver = null; }
+            }
             if (NET._arenaWaitOver === id) return true;
             if (_arenaPrep.id !== id) _onlineArenaPrep(id);
             var guestOk = NET._guestArenaReady === id;
@@ -1879,6 +1895,7 @@
                 }
                 window._NET._waitingForOpponent = false;
                 window._NET._autoStartFired = false;
+                window._NET._chessRolledFor = null;   // THE CHESS POSITIONS: the next match rolls its own position
                 state.showPlayer2Builder = true;
                 state.matchNumber = (state.matchNumber || 1) + 1;
                 render();
@@ -3163,6 +3180,7 @@
                 NET._guestArenaReady = null;
                 NET._arenaWaitFor = null;
                 NET._arenaWaitOver = null;
+                NET._chessRolledFor = null;   // THE CHESS POSITIONS: every match rolls its own
                 NET._rematchState = null;
                 NET._rankedResultEmitted = false;
                 NET.lastSyncJson = '';
@@ -4429,6 +4447,12 @@
                             var _reChanged = false;
                             try { _reChanged = window.hqRoomEditUse(String(data.room), data.edit || null); } catch (e) { console.warn('[ARENA] the host\'s room edit did not apply', data.room, e); }
                             if (_reChanged && _arenaPrep.id === String(data.mapId)) _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen };
+                        }
+                        /* THE CHESS POSITIONS: the host's position before the survey */
+                        if (data.chess !== undefined && data.chess !== null && typeof window.hqLgChessSet === 'function') {
+                            var _chChanged = false;
+                            try { _chChanged = window.hqLgChessSet(data.chess); } catch (e) { console.warn('[ARENA] the host\'s chess position did not apply', data.chess, e); }
+                            if (_chChanged && _arenaPrep.id === String(data.mapId)) _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen };
                         }
                         _onlineArenaPrep(data.mapId);
                         if (window._ewOnlineArenaBusy && window._ewOnlineArenaBusy(data.mapId)) _emit('relay', { type: 'arena-busy', mapId: data.mapId });   // THE SLOW SEAT: still surveying

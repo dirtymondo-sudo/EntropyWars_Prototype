@@ -46,6 +46,7 @@ const SOURCES = [
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
     { re: /Assets\/Models\/MAL\d/, how: 'MESHY_C', src: "Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js)" },
     // character creator
+    { re: /charactercreation\/wear\/ewf_/, how: 'MH_BLEND', src: 'MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py)' },
     { re: /charactercreation\/wear\/ewb_beard_/, how: 'MH_BLEND', src: 'MakeHuman pack beard + moustache joined in Blender (bake-beards.py)' },
     { re: /charactercreation\/wear\/ewb_cowboyhat_worn/, how: 'MONDO_TEX', src: "mondo's cowboy hat + a Meshy Retexture base colour on his UVs (worn dark / worn tan; bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_cowboyhat/, how: 'MONDO', src: "mondo's cowboy hat, fitted to the bodies in Blender (bake-clothes.py SOLIDS)" },
@@ -279,11 +280,11 @@ const CC = SP.BASE.replace(CDN, '');
 const wearJson = JSON.parse(read('charactercreation/wear/wear.json'));
 const wearPacks = {};
 for (const w of wearJson) { const k = w.pack + '|' + w.license + '|' + w.cat; (wearPacks[k] = wearPacks[k] || []).push(w); }
-const ewb = (SP.WEAR || []).filter(w => /^ewb_/.test(w[0]));
+const ewb = (SP.WEAR || []).filter(w => /^ew[bf]_/.test(w[0]));
 const hairMh = JSON.parse(read('charactercreation/hair/mh/hair_styles.json'));
 const mpfbFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/mpfb')).filter(f => /\.glb$/.test(f));
 const ccRoot = fs.readdirSync(path.join(ROOT, 'charactercreation')).filter(f => /\.glb$/.test(f));
-const wearFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/wear')).filter(f => /^ewb_.*\.glb$/.test(f));
+const wearFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/wear')).filter(f => /^ew[bf]_.*\.glb$/.test(f));
 // the Meshy creator pieces (PR #829): EW_MH_WEAR rows `ewm_*`, one GLB on R2 (not in the repo)
 for (const w of (SP.WEAR || []).filter(w => /^ewm_/.test(w[0]))) add('meshywear', w[0] + ' · ' + w[1] + ' (' + w[2] + ')', CDN + CC + '/wear/' + w[0] + '.glb');
 for (const f of mpfbFiles) add('creator', f.replace(/\.glb$/, ''), CDN + CC + '/mpfb/' + f);
