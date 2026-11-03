@@ -419,6 +419,12 @@ L.push('');
 L.push('Besides the catalogue, the battle maps\' near settings, horizons and monuments have procedural families too');
 L.push('(the `_hz*` / `_nr*` builders): MODEL_INDEX.md §8 lists them.');
 L.push('');
+L.push('**The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms\' far weenies `peak` / `mountain`');
+L.push('(`_hqLandmarkBuilders`: Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons,');
+L.push('the Clash temple\'s three) were stacked three.js cones with a white cone for snow. Builders and rows removed, nothing replaces');
+L.push('them: no downloaded pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif read as giant blobs.');
+L.push('**Wanted:** a real far mountain range model (one file, low poly) if mondo wants the weenies back.');
+L.push('');
 if (fs.existsSync(EXTRA)) { L.push(fs.readFileSync(EXTRA, 'utf8').trim()); L.push(''); }
 const uns = all.filter(r => !r.src);
 if (uns.length) {

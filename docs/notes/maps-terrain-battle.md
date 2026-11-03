@@ -1128,3 +1128,13 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   forks) is no longer used: the key wears `terrain/cloud_2.png` (the painted puffy cloud). Map tints still colour it.
   HQ room wall paths (_hzTex direct) skip the base tint: there it is the plain grey cloud under the room's tints.
 - Before/after: /mnt/project-files/storm-zone/saturn_storm_walls_before_after.jpg. No rule changed.
+
+## THE CONE MOUNTAINS GONE (2026-11-03)
+mondo (Antarctica Arena screenshot): "can we please get rid of these mountains in the game, they look terrible". They were the
+room landmark kinds `peak` / `mountain` (three-renderer.js `_hqLandmarkBuilders`): a 12-sided ConeGeometry rock cone, shoulder
+cones and a white cone for snow, hung on the battle's 82 m disc, so in a wide room (Antarctica 140 × 112 m, Mars, the Clash temple
+192 × 192) they stood right behind the arena walls. Placements removed from data.js: Shasta (HQ_WOODS_LANDMARKS, 5 woods rooms;
+HQ_RANCH_LANDMARKS), the Range (hqAirbaseShell, 2 rooms), THE TRANSANTARCTICS (prebuilt_antarctica), OLYMPUS MONS (prebuilt_mars),
+clash_temple's three. Both builders deleted; the editor's sky-mark list lost both kinds (its "add mark" adds a `tower`). THE ROCKS'
+asteroid GLBs stretched into a massif were tried first and looked like giant blobs, so nothing replaces them. MODEL_LIST.md §8
+records it and asks for a real far-range model. The battle rims' `_nrPeaks` / `_WD_RIM.peaks` are rocks since 2026-09-16 (untouched).

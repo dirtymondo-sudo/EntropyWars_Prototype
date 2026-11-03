@@ -27835,7 +27835,7 @@ const DOOR_HQ_ASSETS = 'https://cdn.entropywars.net/Assets/door/';
    rule; dist = the share of the sky's disc; s = a size multiplier). One
    function so the seven rooms cannot drift apart; `o` overrides a field. */
 const HQ_WOODS_LANDMARKS = [
-    { kind: 'peak', id: 'prebuilt_shasta', deg: 340, dist: 0.92, s: 1.0, label: 'MOUNT SHASTA' },
+    /* Shasta's cone peak (deg 340) removed 2026-11-03 (mondo: the cone mountains "look terrible") */
     { kind: 'castle', id: 'prebuilt_camelot', deg: 150, dist: 0.88, s: 1.0, label: 'CAMELOT' },
 ];
 function hqWoodsShell(o) {
@@ -27873,7 +27873,7 @@ function hqWoodsShell(o) {
    that way, through the grove), the mesa inside. One function so a second
    ranch room cannot drift from the first; `o` overrides a field. */
 const HQ_RANCH_LANDMARKS = [
-    { kind: 'peak', id: 'prebuilt_shasta', deg: 318, dist: 0.9, s: 0.9, label: 'MOUNT SHASTA' },
+    /* Shasta's cone peak (deg 318) removed 2026-11-03 (mondo: the cone mountains "look terrible") */
 ];
 function hqRanchShell(o) {
     o = o || {};
@@ -28248,7 +28248,7 @@ function hqBunkerShell(o) {
 function hqAirbaseShell(o) {
     o = Object.assign({}, o || {});
     const sky = { night: 1, tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'orbs', density: 0.6,
-                  landmarks: [{ kind: 'peak', id: 'prebuilt_area51', deg: 300, dist: 0.9, s: 0.75, label: 'THE RANGE' }] };
+                  landmarks: [] };   // the Groom range's cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible")
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
         open: true, edge: 'open',
@@ -49152,7 +49152,7 @@ const HQ_AREA_SPECS = {
         floor: 'marble_light', cliff: 'ice_1', path: 'ice_1', floorColor: 0xe4f2fc, cliffColor: 0xbfe0ff,
         gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'walls', wallKey: 'ice_1', wallH: 5, rim: 0, forceGrow: -0.6 }, noise: { amp: 0, scale: 16 },
         plaza: { x: 0, z: 16 },
-        landmarks: [{ kind: 'peak', id: 'prebuilt_antarctica', deg: 250, dist: 0.85, s: 1.1, label: 'THE TRANSANTARCTICS' }],
+        /* THE TRANSANTARCTICS' cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible") */
         features: [
             /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built ice walls (5 m) where the rooms gen raised banks. The bay door's
                hall to THE PLAZA; THE DECK the huts stand on west of it (its stair from the plaza) with the radio mast's yard beyond
@@ -49381,7 +49381,7 @@ const HQ_AREA_SPECS = {
         floor: 'moon_2', cliff: 'mars_2', path: 'moon_2', floorColor: 0xc88a5a, cliffColor: 0xa86048,
         gen: { kind: 'plan', look: 'rock', keep: true, wallH: 2.6, rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, open: [{ x: -44, z: -30, r: 16 }, { x: -62, z: -28, r: 10 }, { x: -48, z: -3, r: 9 }] }, noise: { amp: 0.2, scale: 14 },   // the third open circle: the strip between the west mesa's north cliff and a rock bank was a pocket (a rescue ramp) — forced open
         plaza: { x: 0, z: 16 }, plazaR: 11,
-        landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, tex: 'mars_2', color: 0xa86048, snow: false, label: 'OLYMPUS MONS' }],
+        /* OLYMPUS MONS' cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible") */
         features: [
             /* THE WEST MESA (3.2): the long ramp up its south side, a rope on its east face, the hand-holds on its north — THE BASE CAMP stands on it */
             /* THE FROZEN PLAN (2× squares, 2026-10-28): the generated clearings and winding paths (gen.kind rooms, seed 4) as hand rows, then ×2 */
@@ -62168,9 +62168,7 @@ DOOR_HQ.rooms.clash_temple = {
     shell: hqAncientShell({ w: 192, d: 192, floor: 'grass_2', apron: 'grass_2', skirt: 'rocks_5', apronColor: 0xb8c0a4, floorColor: 0xb8c0a4, plate: { x: 0, z: -92, y: 4.4 },
                             mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0dc, ambient: 0.5 },
                             sky: { night: 0, tint: 0x8fb4dc, tintAmt: 0.34, stars: 0.9, nebula: 0.5, day: 1, clouds: 0.35,
-                                   fog: { color: 0xc6cfd8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none',
-                                   landmarks: [{ kind: 'peak', deg: 330, dist: 1.0, s: 1.2 }, { kind: 'peak', deg: 95, dist: 1.0, s: 0.9 },
-                                               { kind: 'peak', deg: 215, dist: 1.0, s: 1.05 }] },
+                                   fog: { color: 0xc6cfd8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none' },   // the three cone peaks removed 2026-11-03 (mondo: the cone mountains "look terrible")
                             look: HQ_ROOM_LOOKS.mountain }),
     /* THE GROUND: the valley floor is the room's 0; the summit a mesa 10 m up (rocks_5 cliffs); everything built stands on it. The board's
        squares sit on the battle lattice (edges at k · 3.5 from the room's centre): the court is x / z −17.5 .. 17.5.

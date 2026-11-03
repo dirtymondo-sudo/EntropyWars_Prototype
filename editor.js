@@ -3726,7 +3726,7 @@
        step on the release; everything else rebuilds the room. The CLOCK previews an hour in a room on the world clock (the view only:
        the player's saved hour is not touched). ══════════════════════════════════════════════════════════════════════════════ */
     var SKY_SCENERY = ['none', 'cosmic', 'divine', 'infernal', 'ruins', 'pyramids', 'crystals', 'orbs', 'eyes', 'islands', 'city', 'space', 'dark', 'sea', 'wreckage', 'wonder', 'holosim'];
-    var SKY_MARKS = ['mountain', 'tower', 'gate', 'dome', 'peak', 'castle', 'skycastle', 'stairway', 'waterspout', 'whale', 'eye'];
+    var SKY_MARKS = ['tower', 'gate', 'dome', 'castle', 'skycastle', 'stairway', 'waterspout', 'whale', 'eye'];   // 'mountain' + 'peak' (the cone mountains) removed 2026-11-03
     var SKY_ATMOS = ['dust', 'embers', 'fireflies', 'snow', 'rain', 'spores', 'ash', 'motes'];
     var SKY_LIVE = { 'sky.day': 1, 'sky.clouds': 1, 'sky.stars': 1, 'sky.nebula': 1, 'sky.tintAmt': 1, 'sky.fog.amount': 1, 'sky.fog.top': 1, 'sky.fog.band': 1, 'sky.fog.density': 1 };
     var SKY_DEFAULT = { night: 0, day: 1, clouds: 0.3, stars: 0.3, nebula: 0.2, tint: 0x9fc4e8, tintAmt: 0.3, fog: { color: 0xb4c6d8, amount: 0.45, top: 0.04, band: 0.5, density: 0.004 }, scenery: 'none', density: 0 };
@@ -3872,7 +3872,7 @@
                 else if (a === 'nightsky') shellPut('sky', { night: 1, day: 0, clouds: 0.1, stars: 1, nebula: 0.6, tint: 0x0a1428, tintAmt: 0.4, fog: { color: 0x060a14, amount: 0.5, top: 0.04, band: 0.5, density: 0.006 }, scenery: 'none', density: 0 }, 'a night sky');
                 else if (a === 'outdoor') commit([{ path: basePath().concat(['shell', 'open']), before: S.open, after: true }].concat(S.sky ? [] : [{ path: basePath().concat(['shell', 'sky']), before: undefined, after: Core.clone(SKY_DEFAULT) }]), 'outdoor');
                 else if (a === 'indoor') commit([{ path: basePath().concat(['shell', 'open']), before: S.open, after: false }], 'indoor');
-                else if (a === 'addmark') { var lm = (S.sky.landmarks || []).slice(); lm.push({ kind: 'mountain', deg: Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360), dist: 0.9, y: -0.03, s: 1 }); skyCommit('sky.landmarks', lm); }
+                else if (a === 'addmark') { var lm = (S.sky.landmarks || []).slice(); lm.push({ kind: 'tower', deg: Math.round(((ED.cam.yaw * 180 / Math.PI) % 360 + 360) % 360), dist: 0.9, y: -0.03, s: 1 }); skyCommit('sky.landmarks', lm); }
                 else if (a === 'clocklive') { clockPreview(null); panels(); }
             };
         });
