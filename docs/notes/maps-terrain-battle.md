@@ -1300,6 +1300,9 @@ _HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
 - Both boards are half-turn symmetric about their centre and keep the house lanes (spawn / egress / nexus) clear at 12, 11, 10, 9.
   Existing rules only: levels, ghost blocks, deep water. bake-arenas.js reports them as walled cuts (the level-3 / level-2 blocks).
 - Audit of the other boards + the exploration rooms still built as walled plans: /mnt/project-files/battle-map-audit/.
+Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
+GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
+city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
 
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
