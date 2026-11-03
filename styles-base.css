@@ -5512,6 +5512,24 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-cc-tiles.pb-cc-compact { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
 /* THE PRINT (rev 8): pattern swatches drawn live in the layer's two colours; the solid tile is colour 1 itself */
 .pb-cc-tiles.pb-cc-prints { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; margin: 6px 0 8px; }
+/* THE HIDDEN PICKS (2026-11-03): the creator's dev item hider (Settings > Developer > Creator Item Hider) - its bar, and the
+   ✕ / SHOW mark on each pick's corner (a hidden pick dimmed + struck through while the marks are on) */
+.pb-cc-devbar { border: 1px dashed #b06ad0; border-radius: 10px; padding: 8px 10px; margin: 10px 0 4px; background: rgba(60, 20, 70, .35); }
+.pb-cc-devbar .pb-creator-note { font-size: 11px; margin: 6px 0 0; }
+.pb-cc-devbar-head { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; letter-spacing: .12em; color: #e0c8ff; }
+.pb-cc-devbar-head b { color: #f0cc83; font-weight: 400; }
+.pb-cc-devlist { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin: 6px 0; padding-right: 4px; }
+.pb-cc-devrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
+.pb-cc-devrow small { color: #a89a78; }
+.pb-cc-devrow .ms-tty-btn { min-height: 26px; padding: 2px 10px; }
+.pb-cc-devwrap { position: relative; display: grid; }
+.pb-creator-options > .pb-cc-devwrap { display: inline-grid; }
+.pb-cc-devwrap > :first-child { width: 100%; }
+.pb-cc-devx, .pb-creator-options .pb-cc-devx { position: absolute; top: 2px; right: 2px; z-index: 3; min-width: 18px; min-height: 0; height: 18px; padding: 0 4px; border-radius: 9px; border: 1px solid #b06ad0; background: #2a1033; color: #f2d8ff; font: 10px/16px 'DotGothic16', monospace; letter-spacing: .04em; cursor: pointer; }
+.pb-cc-devx:hover { background: #7a2e95; }
+.pb-cc-devwrap.hidden > :first-child { opacity: .38; filter: grayscale(1); }
+.pb-cc-devwrap.hidden > :first-child span, .pb-creator-options > .pb-cc-devwrap.hidden > :first-child { text-decoration: line-through; }
+.pb-cc-devwrap.hidden .pb-cc-devx { background: #1f5f3a; border-color: #5fd08a; color: #d8ffe6; }
 /* ── THE MIRROR (rev 8, 2026-09-13): Occam's Barbershop's character creator — a full-screen sheet over the building:
    the stage on the left (the shared EWCharViewer), the creator controls on the right, the card's photo in the foot ── */
 #creatorOverlay { position: relative; }

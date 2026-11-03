@@ -4278,6 +4278,79 @@ function normalizeCharacterAppearance(value) {
   out.wearTint = normalizeWearTint(value.wearTint, out.wear);   // THE WEAR TINT (a worn pack piece's colour; left out = its own)
   return out;
 }
+/* THE HIDDEN PICKS (2026-11-03, mondo: "a devtool that let's me remove models like certain clothes and hairstyles from the character
+   creator ... some hairstyles that are not as high quality as the others, and it would be easier for me to manually exclude them").
+   Creator picks kept OFF the creator's lists (party-builder.js CreatorControls) and off RANDOMIZE. NOTHING IS DELETED: the piece, its
+   file and every look wearing it stay, normalizeCharacterAppearance never reads this list (a saved / baked / locker look with a hidden
+   piece loads as it did), and a hidden piece that is worn keeps its tile so it shows + can be taken off.
+   Keys are '<kind>:<id>' (kind = the appearance key the pick sets): hair, wear (the pack + Blender pieces, facial hair, accessories),
+   outer (both outer layers), feet, cape, wings, idle, mhSkin, mhEyes, mhBrows, mhLashes.
+   EW_CREATOR_HIDDEN = the shipped list ({ key: label }), written ONLY by bake-hidden.js. This browser's own edits ride on top in
+   localStorage ew_creator_hidden_v1 = { hide: { key: label }, show: { key: label } } (show = a shipped one shown again here).
+   The tool itself shows only while Settings > Developer > Creator Item Hider is ON (ew_creator_hider = '1'). */
+// EW_CREATOR_HIDDEN:BEGIN
+const EW_CREATOR_HIDDEN = {};
+// EW_CREATOR_HIDDEN:END
+const EW_CREATOR_HIDDEN_KEY = 'ew_creator_hidden_v1', EW_CREATOR_HIDER_KEY = 'ew_creator_hider';
+let _ewHidLocalCache = null;
+function _ewHidLocal() {
+  if (_ewHidLocalCache) return _ewHidLocalCache;
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(EW_CREATOR_HIDDEN_KEY) || 'null'); } catch (e) {}
+  const obj = o => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+  return (_ewHidLocalCache = { hide: obj(d && d.hide), show: obj(d && d.show) });
+}
+function _ewHidSave() {
+  try { localStorage.setItem(EW_CREATOR_HIDDEN_KEY, JSON.stringify(_ewHidLocal())); } catch (e) {}
+  try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
+}
+// a pick that is never hidden: the "nothing" / "own" / "default" choices every list starts with
+const _ewHidNever = id => id == null || id === '' || id === 'none' || id === 'own' || id === 'bald' || id === 'default';
+function creatorHidden(kind, id) {
+  if (_ewHidNever(id)) return false;
+  const k = kind + ':' + id, L = _ewHidLocal();
+  return Object.prototype.hasOwnProperty.call(L.hide, k) || (Object.prototype.hasOwnProperty.call(EW_CREATOR_HIDDEN, k) && !Object.prototype.hasOwnProperty.call(L.show, k));
+}
+function setCreatorHidden(kind, id, hide, label) {
+  if (_ewHidNever(id)) return false;
+  const k = kind + ':' + id, L = _ewHidLocal(), shipped = Object.prototype.hasOwnProperty.call(EW_CREATOR_HIDDEN, k);
+  const lb = String(label || L.hide[k] || L.show[k] || EW_CREATOR_HIDDEN[k] || id);
+  if (hide) { delete L.show[k]; if (!shipped) L.hide[k] = lb; }
+  else { delete L.hide[k]; if (shipped) L.show[k] = lb; }
+  _ewHidSave();
+  return true;
+}
+// every hidden pick now: [{ key, kind, id, label, shipped }] (shipped = in the baked list), by kind then name
+function creatorHiddenList() {
+  const L = _ewHidLocal(), out = [];
+  for (const k of Object.keys(EW_CREATOR_HIDDEN)) if (!Object.prototype.hasOwnProperty.call(L.show, k) && !Object.prototype.hasOwnProperty.call(L.hide, k)) out.push([k, EW_CREATOR_HIDDEN[k], true]);
+  for (const k of Object.keys(L.hide)) out.push([k, L.hide[k], Object.prototype.hasOwnProperty.call(EW_CREATOR_HIDDEN, k)]);
+  return out.map(([key, label, shipped]) => { const i = key.indexOf(':'); return { key, kind: key.slice(0, i), id: key.slice(i + 1), label: String(label || key.slice(i + 1)), shipped }; })
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
+}
+// SHOW ALL: every pick back on the lists in this browser (the shipped ones too, until a bake changes the list)
+function creatorHiddenShowAll() {
+  const L = _ewHidLocal();
+  L.hide = {}; L.show = {};
+  for (const k of Object.keys(EW_CREATOR_HIDDEN)) L.show[k] = EW_CREATOR_HIDDEN[k];
+  _ewHidSave();
+}
+function creatorHiderOn() { try { return localStorage.getItem(EW_CREATOR_HIDER_KEY) === '1'; } catch (e) { return false; } }
+function setCreatorHiderOn(on) {
+  try { if (on) localStorage.setItem(EW_CREATOR_HIDER_KEY, '1'); else localStorage.removeItem(EW_CREATOR_HIDER_KEY); } catch (e) {}
+  try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
+}
+// the export for bake-hidden.js: the WHOLE list as this browser shows it (the bake replaces the shipped list with it)
+function creatorHiddenExport() {
+  const hidden = {};
+  for (const r of creatorHiddenList()) hidden[r.key] = r.label;
+  return { kind: 'entropy-wars-creator-hidden', v: 1, made: new Date().toISOString(), hidden };
+}
+// RANDOMIZE never rolls a hidden pick (the outer2 layer shares the outer list)
+function _ewHidPickable(key, list) {
+  const kind = key === 'outer2' ? 'outer' : key, ok = list.filter(v => !creatorHidden(kind, v));
+  return ok.length ? ok : list;
+}
 // A fresh random look (the builder's RANDOMIZE). Plain Math.random — cosmetic only.
 function randomCharacterAppearance(rng) {
   const r = typeof rng === 'function' ? rng : Math.random;
@@ -4303,7 +4376,7 @@ function randomCharacterAppearance(rng) {
   out.feetColor = hex(r() * 360, 0.05 + r() * 0.4, 0.12 + r() * 0.4);
   out.glovesColor = hex(r() * 360, 0.1 + r() * 0.4, 0.15 + r() * 0.4);
   out.beltColor = hex(20 + r() * 30, 0.3 + r() * 0.4, 0.15 + r() * 0.25);
-  for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(EW_APPEARANCE_ENUMS[key]);
+  for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(_ewHidPickable(key, EW_APPEARANCE_ENUMS[key]));   // THE HIDDEN PICKS
   // rev 8: a print on a layer now and then, in a second colour that reads against the first
   for (const L of EW_APPEARANCE_LAYERS) {
     out[L.pattern] = r() < 0.3 ? pick(EW_PATTERN_IDS.filter(p => p !== 'solid')) : 'solid';
@@ -4551,6 +4624,8 @@ function getWingsStyleUrl(id) { const o = id && id !== 'none' && EW_WINGS_STYLES
 if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
+  window.EW_CREATOR_HIDDEN = EW_CREATOR_HIDDEN; window.creatorHidden = creatorHidden; window.setCreatorHidden = setCreatorHidden; window.creatorHiddenList = creatorHiddenList;   // THE HIDDEN PICKS
+  window.creatorHiddenShowAll = creatorHiddenShowAll; window.creatorHiddenExport = creatorHiddenExport; window.creatorHiderOn = creatorHiderOn; window.setCreatorHiderOn = setCreatorHiderOn;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES

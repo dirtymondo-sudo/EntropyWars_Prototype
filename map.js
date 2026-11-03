@@ -9163,6 +9163,10 @@
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('items')">Open Item Editor</button>
                             <button class="pm-set-btn" onclick="window.openAreaUnits && window.openAreaUnits()">Open Area Units</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Creator Item Hider — in the character creator, a ✕ on every hair style, clothing piece, accessory, skin, eye colour and idle pose hides it from the creator's lists (and from RANDOM). Nothing is deleted: SHOW puts it back, and a look wearing a hidden piece still loads. EXPORT HIDDEN LIST (top of the creator) hands the list to a thread to bake in for every player.${typeof window.creatorHiddenList === 'function' && window.creatorHiddenList().length ? ` <span style="color:#ffd86a">●</span> ${window.creatorHiddenList().length} hidden` : ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>
@@ -9352,6 +9356,16 @@
         // battle.js (restartDevSimFromBuilder) calls this between Balance Lab
         // matches so mode/map rotation keeps advancing through a long run.
         window._simApplyModeAndMap = _simApplyModeAndMap;
+
+        // Settings → Developer: THE HIDDEN PICKS (2026-11-03) — the character creator's dev item hider on / off (sprites.js
+        // creatorHiderOn; localStorage ew_creator_hider). The creator re-renders through the 'ew-creator-hidden' event.
+        window._toggleCreatorHider = function() {
+            if (typeof window.setCreatorHiderOn !== 'function') return;
+            const on = !window.creatorHiderOn();
+            window.setCreatorHiderOn(on);
+            const btn = document.getElementById('mmCreatorHiderBtn');
+            if (btn) { btn.textContent = 'Creator Item Hider: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
 
         // Settings → Developer: flip the view-layer unlock-all flag. Never
         // writes to the profile/server — isUnitUnlocked() just reads true while

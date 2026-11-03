@@ -1097,3 +1097,32 @@ and there as an option".
     a file with few `modifier <face group>` lines makes a near-default preset. Check with --dry-run before baking.
   - Files + LICENSES.txt: project files mhm-faces/.
 
+## THE HIDDEN PICKS (2026-11-03, the creator's dev item hider; character-models-plan row 12m)
+mondo: "Can we also add a devtool that let's me remove models like certain clothes and hairstyles from the character creator? Like
+there are some hairstyles that are not as high quality as the others, and it would be easier for me to manually exclude them then
+tell you which ones they are".
+- **Turn on**: Settings > Developer > **Creator Item Hider: ON** (map.js `_toggleCreatorHider`; localStorage `ew_creator_hider` = '1').
+  Off by default, so players never see it. While on, the creator (forge GEAR > CHARACTER CREATOR and the mirror / intake, all one
+  CreatorControls) shows the purple **DEV · ITEM HIDER** bar under the name / locker.
+- **Hide**: every pick tile / button gets a corner mark: ✕ hides it, SHOW (green) brings it back; a hidden pick stays on its list dimmed
+  + struck through while the marks are on. Covered: Hair (classic + pack), Facial hair, every wear tile on every CLOTHES / ACCESSORIES
+  tab, the Outer layer + second outer picks (kind `outer`), Feet layer, Cape, Flapping wings, Idle pose, MPFB skins, eye colours,
+  brows, lashes. Not hideable: None / Clean / Bald / Body's own / Default (the "nothing" picks), bodies, fabrics, prints, colours.
+- **The bar**: MARKS: ON / OFF (PLAYER VIEW) = the lists as players see them; HIDDEN LIST (n) = every hidden pick (kind · name, "(baked)"
+  for a shipped one) with SHOW each + SHOW ALL (confirm); **⇩ EXPORT HIDDEN LIST** -> `Entropy_Wars_Creator_Hidden_<yyyymmdd-hhmm>.json`
+  = `{ kind: 'entropy-wars-creator-hidden', v: 1, made, hidden: { '<kind>:<id>': label } }` (the WHOLE list as his browser shows it).
+- **Never deletes**: the lists only leave a hidden pick out; normalizeCharacterAppearance never reads the list, so a saved / locker /
+  race / baked look wearing one loads + renders as before, and a WORN hidden pick keeps its tile (shown, pressed) so it can be seen +
+  taken off. RANDOM (randomCharacterAppearance) never rolls a hidden pick (`_ewHidPickable`).
+- **Data**: sprites.js THE HIDDEN PICKS: `EW_CREATOR_HIDDEN` (shipped, `{ key: label }`, between `// EW_CREATOR_HIDDEN:BEGIN` / `:END`,
+  written ONLY by bake-hidden.js) + this browser's `ew_creator_hidden_v1` = `{ hide: { key: label }, show: { key: label } }` (show =
+  a shipped one shown again here). `creatorHidden(kind, id)`, `setCreatorHidden(kind, id, hide, label)`, `creatorHiddenList()`,
+  `creatorHiddenShowAll()`, `creatorHiddenExport()`, `creatorHiderOn()` / `setCreatorHiderOn(on)`; a change fires window
+  'ew-creator-hidden' (the creator re-renders). party-builder.js CreatorControls: `keepPick` (the filter), `devTile` (the corner mark
+  wrapper `.pb-cc-devwrap`), `ccChoice(key, options, lookOf, hideKind)`, `ccDevBar`, `pbExportHidden`. CSS styles-base.css THE HIDDEN PICKS.
+- **Bake**: `node bake-hidden.js <Entropy_Wars_Creator_Hidden_….json> [--dry-run]` (or his SAVE EVERYTHING file: it reads that file's
+  `ew_creator_hidden_v1` on top of the shipped list), `--list`. Replaces the block with the export (later exports supersede: give the
+  newest one); unknown kind = refused, an id no catalogue has any more = dropped with a warning. Then node --check, bump ?v=, PR + zip.
+- **Online**: nothing relayed; the creator lists are local UI and every look still travels whole in the unit's appearance.
+- Shots: /mnt/project-files/creator-hider/.
+
