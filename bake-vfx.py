@@ -11,7 +11,7 @@ Assets/Sprites/vfx/fb_explosion.png (R2: Assets/Sprites/vfx/). Notes: docs/notes
      (~3 min sim + ~2 min render on 4 cores; writes /tmp/boom/frames/f001..f064.png and boom.blend)
      PRESET=smoke (a grey puff) / PRESET=fire (a steady flame) bake the shared smoke/dust and ember sheets the same way.
   2. sheet (plain python3 + Pillow): python3 bake-vfx.py sheet /tmp/boom/frames Assets/Sprites/vfx/fb_explosion.png
-     [first n cols cell step]: smoke = 2 16 4 128 2 -> fb_smoke.png (SHEET=whiten), fire = 40 16 4 64 1 -> fb_ember.png (SHEET=glow)
+     [first n cols cell step]: smoke = 2 16 4 128 3 -> fb_smoke.png (SHEET=whiten; to frame 47 so the sheet ends on the sim's own dissolve), fire = 40 16 4 64 1 -> fb_ember.png (SHEET=glow)
      (drops the first 4 near-identical frames, keeps 60; the blast centre lands 0.82 down each cell = `lift` 0.32)
 """
 import os, sys
@@ -149,14 +149,16 @@ def _whiten(im, pct=0.97):
             r, g, b, a = px[x, y]; po[x, y] = (min(255, int(r * k)), min(255, int(g * k)), min(255, int(b * k)), a)
     return o
 
-def _edge_fade(im, m=0.14):
-    """soft-fade the outer m of the cell so a puff that reached the sim box never shows a square edge on the sprite"""
-    w, h = im.size; px = im.load()
+def _edge_fade(im, r0=0.6):
+    """a round vignette (full alpha inside r0 of the half-width, gone at the rim): a puff that reached the sim box
+    dissolves into a soft round edge on the sprite instead of showing the box"""
+    w, h = im.size; px = im.load(); c = (w - 1) / 2.0
     for y in range(h):
         for x in range(w):
-            d = min(x + 0.5, y + 0.5, w - x - 0.5, h - y - 0.5) / (m * w)
-            if d < 1:
-                r, g, b, a = px[x, y]; k = d * d * (3 - 2 * d); px[x, y] = (r, g, b, int(a * k))
+            d = (((x - c) ** 2 + (y - c) ** 2) ** 0.5) / (w / 2.0)
+            if d > r0:
+                k = max(0.0, 1 - (d - r0) / (1 - r0)); k = k * k * (3 - 2 * k)
+                r, g, b, a = px[x, y]; px[x, y] = (r, g, b, int(a * k))
     return im
 
 def sheet(src, out, first=4, n=60, cols=8, cell=128, step=1):
