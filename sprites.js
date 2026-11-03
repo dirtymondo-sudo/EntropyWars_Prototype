@@ -2892,7 +2892,8 @@ EW_HAIR_STYLES.push(...EW_MH_HAIR_STYLES);
    An MPFB body only (appearance.wear = a list of ids); one pick per category except underwear / equipment / body parts.
    Credits: CREDITS.json "creator_wear". [id, label, category, z (MakeHuman's layer order)] */
 const EW_MH_WEAR_CATS = [['tops', 'Tops'], ['bottoms', 'Bottoms'], ['skirts', 'Skirts'], ['dresses', 'Dresses'], ['suits', 'Suits'], ['shoes', 'Shoes'],
-  ['hats', 'Hats'], ['glasses', 'Glasses'], ['masks', 'Masks'], ['gloves', 'Gloves'], ['underwear', 'Underwear'], ['equipment', 'Equipment'], ['bodyparts', 'Body parts']];
+  ['hats', 'Hats'], ['glasses', 'Glasses'], ['masks', 'Masks'], ['gloves', 'Gloves'], ['underwear', 'Underwear'], ['equipment', 'Equipment'], ['bodyparts', 'Body parts'],
+  ['heads', 'Creature heads']];   // (THE MESHY PIECES: one head at a time)
 const EW_MH_WEAR_MULTI = ['underwear', 'equipment', 'bodyparts'];
 // EW_MH_WEAR:BEGIN (generated from charactercreation/wear/wear.json)
 const EW_MH_WEAR = [
@@ -3392,6 +3393,48 @@ EW_MH_WEAR.push(['ewb_mummy', 'Mummy wraps', 'suits', 50], ['ewb_ghost', 'Ghost 
 /* THE SOLID PIECES (2026-11-01, mondo's own cowboy hat, R2 wear/cowboyhat/): his mesh, UVs and textures as he made them,
    fitted rigidly to each body's head and riding the Head bone (bake-clothes.py SOLIDS). Keeps its own colours. */
 EW_MH_WEAR.push(['ewb_cowboyhat', 'Cowboy hat', 'hats', 56]);
+/* THE MESHY PIECES (2026-11-03, docs/notes/character-models-plan.md row 16; the pieces of sections 4a + 6b/6c, made on Meshy):
+   each fitted on the five MPFB bodies by bake-meshy.py (cloud Blender) and worn like the cowboy hat - solid, on its own colours
+   (the wear tint over them), riding one bone: hats + helmets + crowns on the Head; the creature heads (grey alien ... moth) on the
+   Head with the head under them hidden (skin, hair, eyes: three-renderer.js headOff); badges, pendants, the collar on the chest;
+   belts + hip pieces on the hips; armour + bands on the limb bones (pairs mirrored); back gear on the spine; tails on THE SWAY's
+   chains; hooves / beast feet over hidden feet; the mermaid tail over hidden legs; the props in the right hand, the hand closed round
+   them (wearGrip). Meshy models stay the units' defaults: these are creator picks only. */
+EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap', 'Officer cap', 'hats', 56],
+  ['ewm_firehelmet', 'Firefighter helmet', 'hats', 56], ['ewm_footballhelmet', 'Football helmet', 'hats', 56],
+  ['ewm_astrohelmet', 'Astronaut helmet', 'hats', 56], ['ewm_royalcrown', 'Royal crown', 'hats', 56],
+  ['ewm_icecrown', 'Ice crown', 'hats', 56], ['ewm_anunnakihat', 'Anunnaki headdress', 'hats', 56],
+  ['ewm_overlordhelm', 'Overlord helmet', 'hats', 56], ['ewm_mushroomcap', 'Mushroom cap', 'hats', 56], ['ewm_beret', 'Beret', 'hats', 56],
+  ['ewm_strawhat', 'Floppy straw hat', 'hats', 56], ['ewm_brokenhalo', 'Broken halo', 'equipment', 60],
+  ['ewm_greyalien', 'Grey alien head', 'heads', 58], ['ewm_jackalhead', 'Jackal head', 'heads', 58],
+  ['ewm_goathead', 'Goat head', 'heads', 58], ['ewm_eaglehead', 'Eagle head', 'heads', 58], ['ewm_sharkhead', 'Shark head', 'heads', 58],
+  ['ewm_lizardhead', 'Lizard head', 'heads', 58], ['ewm_mothhead', 'Moth head', 'heads', 58],
+  ['ewm_sheriffstar', 'Sheriff star', 'equipment', 61], ['ewm_policebadge', 'Police badge', 'equipment', 61],
+  ['ewm_crosspendant', 'Cross pendant', 'equipment', 61], ['ewm_talisman', 'Talisman pendant', 'equipment', 61],
+  ['ewm_hagstone', 'Hagstone', 'equipment', 61], ['ewm_binoculars', 'Binoculars', 'equipment', 61],
+  ['ewm_walkietalkie', 'Walkie-talkie', 'equipment', 61], ['ewm_egyptcollar', 'Egyptian collar', 'equipment', 61],
+  ['ewm_airtank', 'Firefighter air tank', 'equipment', 62], ['ewm_astropack', 'Astronaut backpack', 'equipment', 62],
+  ['ewm_backpack', 'Small backpack', 'equipment', 62], ['ewm_jetpack', 'Jetpack', 'equipment', 62],
+  ['ewm_quiver', 'Quiver', 'equipment', 62], ['ewm_katana', 'Katana in a back sheath', 'equipment', 62],
+  ['ewm_dowsingrod', 'Dowsing rod', 'equipment', 62], ['ewm_dorsalfin', 'Shark dorsal fin', 'bodyparts', 62],
+  ['ewm_mothwings', 'Moth wings', 'bodyparts', 63], ['ewm_gunbelt', 'Gun belt', 'equipment', 59],
+  ['ewm_toolbelt', 'Tool belt', 'equipment', 59], ['ewm_thighholster', 'Thigh holster', 'equipment', 59],
+  ['ewm_flaregun', 'Flare gun (hip)', 'equipment', 60], ['ewm_spyglass', 'Spyglass (hip)', 'equipment', 60],
+  ['ewm_wardtotem', 'Ward totem (belt)', 'equipment', 60], ['ewm_censer', 'Censer (hip)', 'equipment', 60],
+  ['ewm_breastplate', 'Armour breastplate', 'equipment', 64], ['ewm_shoulderpads', 'Football shoulder pads', 'equipment', 65],
+  ['ewm_pauldrons', 'Armour pauldrons', 'equipment', 65], ['ewm_gauntlets', 'Armour gauntlets', 'equipment', 63],
+  ['ewm_greaves', 'Armour greaves', 'equipment', 63], ['ewm_armband', 'Arm band', 'equipment', 63],
+  ['ewm_grapplegauntlet', 'Grapple gauntlet', 'equipment', 63], ['ewm_elfears', 'Elf ears', 'bodyparts', 57],
+  ['ewm_neckbolts', 'Neck bolts', 'bodyparts', 57], ['ewm_hooves', 'Hooves', 'bodyparts', 47],
+  ['ewm_beastfeet', 'Clawed beast feet', 'bodyparts', 47], ['ewm_lizardtail', 'Lizard tail', 'bodyparts', 62],
+  ['ewm_sharktail', 'Shark tail', 'bodyparts', 62], ['ewm_wolftail', 'Wolf tail', 'bodyparts', 62],
+  ['ewm_mermaidtail', 'Mermaid tail', 'bodyparts', 48], ['ewm_trident', 'Trident', 'equipment', 60],
+  ['ewm_potionflask', 'Potion flask', 'equipment', 60], ['ewm_scalpel', 'Scalpel', 'equipment', 60],
+  ['ewm_wrench', 'Wrench', 'equipment', 60], ['ewm_blowpipe', 'Blowpipe', 'equipment', 60],
+  ['ewm_smartphone', 'Smartphone', 'equipment', 60], ['ewm_handmirror', 'Hand mirror', 'equipment', 60],
+  ['ewm_camera', 'Old camera with flash', 'equipment', 60], ['ewm_milkcookies', 'Milk and cookies', 'equipment', 60],
+  ['ewm_cup', 'Drinking cup', 'equipment', 60], ['ewm_magicwand', 'Magic wand', 'equipment', 60],
+  ['ewm_wizardstaff', 'Wizard staff', 'equipment', 60]);
 /* THE BLENDER BASICS (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a replacement"): the
    classic coded pieces no pack has, built in cloud Blender like the rest of row 12 (bake-clothes.py COATS / TIGHT / NECKWEAR):
    Long-sleeve top + Henley (Top colour / fabric / print), Sweatpants (Bottoms'), Belt (Belt's), Tie + Bow tie (their own colour,
@@ -3581,6 +3624,48 @@ const EW_MH_LOOKS = {
   ],
 };
 // EW_MH_LOOKS:END
+/* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
+   character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
+   there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
+   eyeballs (eye_proxy.json, bake-eyes.py) and it wears the pack PNG itself + its normal map. The Iris colour picker recolours the
+   two irises (EW_MH_EYE_PACK_IRIS: the pupils' centres + the iris radius in the 1024 px texture, measured by bake-eyes.py). */
+const EW_MH_EYE_PACK_DIR = 'mpfb/looks/eyes/eyetextures/';
+const EW_MH_EYE_PACK = [
+  ['mhp_black', 'Black', 'BlackEyes', 'EyesNormals'],
+  ['mhp_black_bs', 'Black bloodshot', 'BlackBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_blackest', 'All black', 'BlackestEyes', 'BlackestEyesNormals'],
+  ['mhp_blue', 'Blue', 'BlueEyes', 'EyesNormals'],
+  ['mhp_blue_bs', 'Blue bloodshot', 'BlueBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_brown', 'Brown', 'BrownEyes', 'EyesNormals'],
+  ['mhp_brown2', 'Brown 2', 'BrownEyes1', 'EyesNormals'],
+  ['mhp_brown_bs', 'Brown bloodshot', 'BrownBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_brown2_bs', 'Brown 2 bloodshot', 'BrownBloodShotEyes1', 'EyesBloodShotNormals'],
+  ['mhp_deepblue', 'Deep blue', 'DeepBlueEyes', 'EyesNormals'],
+  ['mhp_deepblue_bs', 'Deep blue bloodshot', 'DeepBlueBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_green', 'Green', 'GreenEyes', 'EyesNormals'],
+  ['mhp_green_bs', 'Green bloodshot', 'GreenBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_olive', 'Olive', 'OliveEyes', 'EyesNormals'],
+  ['mhp_olive_bs', 'Olive bloodshot', 'OliveBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_purple', 'Purple', 'PurpleEyes', 'EyesNormals'],
+  ['mhp_purple_bs', 'Purple bloodshot', 'PurpleBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_red', 'Red', 'RedEyes', 'EyesNormals'],
+  ['mhp_red_bs', 'Red bloodshot', 'RedBloodShotEyes', 'EyesBloodShotNormals'],
+  ['mhp_cat_blue', 'Cat eyes blue', 'CatEyesBlue', 'CatEyesNormalMap'],
+  ['mhp_cat_blue_bs', 'Cat eyes blue bloodshot', 'CatEyesBlueBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_darkblue', 'Cat eyes dark blue', 'CatEyesDarkBlue', 'CatEyesNormalMap'],
+  ['mhp_cat_darkblue_bs', 'Cat eyes dark blue bloodshot', 'CatEyesDarkBlueBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_green', 'Cat eyes green', 'CatEyesGreen', 'CatEyesNormalMap'],
+  ['mhp_cat_green_bs', 'Cat eyes green bloodshot', 'CatEyesGreenBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_olive', 'Cat eyes olive', 'CatEyesOlive', 'CatEyesNormalMap'],
+  ['mhp_cat_olive_bs', 'Cat eyes olive bloodshot', 'CatEyesOliveBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_purple', 'Cat eyes purple', 'CatEyesPurple', 'CatEyesNormalMap'],
+  ['mhp_cat_purple_bs', 'Cat eyes purple bloodshot', 'CatEyesPurpleBloodShot', 'CatEyesBloodShotNormals'],
+  ['mhp_cat_red', 'Cat eyes red', 'CatEyesRed', 'CatEyesNormalMap'],
+  ['mhp_cat_red_bs', 'Cat eyes red bloodshot', 'CatEyesRedBloodShot', 'CatEyesBloodShotNormals'],
+];
+const EW_MH_EYE_PACK_IRIS = { centres: [[296.9, 733.0], [722.9, 311.0]], r: 124 };
+const EW_MH_EYE_PACK_BY_ID = {};
+for (const r of EW_MH_EYE_PACK) EW_MH_EYE_PACK_BY_ID[r[0]] = r;
 const EW_MH_WEAR_BY_ID = {};
 for (const w of EW_MH_WEAR) EW_MH_WEAR_BY_ID[w[0]] = w;
 function getWearUrl(id) { return EW_MH_WEAR_BY_ID[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + id + '.glb' : null; }
@@ -3609,9 +3694,12 @@ const EW_WEAR_SHELVES = [
   ['tops', 'Tops', 'clothes'], ['bottoms', 'Bottoms', 'clothes'], ['skirts', 'Skirts', 'clothes'], ['dresses', 'Dresses', 'clothes'],
   ['suits', 'Suits', 'clothes'], ['outer', 'Coats + capes', 'clothes'], ['shoes', 'Shoes', 'clothes'], ['underwear', 'Underwear', 'clothes', true],
   ['gloves', 'Gloves', 'clothes'], ['belts', 'Belts + ties', 'clothes', true], ['hats', 'Hats', 'clothes'], ['glasses', 'Glasses', 'clothes'],
-  ['masks', 'Masks', 'clothes'],
+  ['masks', 'Masks', 'clothes'], ['armour', 'Armour', 'clothes', true],
+  ['heads', 'Creature heads', 'accessories'],
   ['wings', 'Wings', 'accessories', true], ['horns', 'Horns + antlers', 'accessories', true], ['tails', 'Tails', 'accessories', true],
   ['nails', 'Nails', 'accessories', true], ['gear', 'Held items + gear', 'accessories', true],
+  ['held', 'In the hand', 'accessories'], ['jewellery', 'Badges + jewellery', 'accessories', true], ['back', 'Back gear', 'accessories', true],
+  ['creature', 'Ears, feet + fins', 'accessories', true],   // (THE MESHY PIECES; In the hand = one prop at a time, the right hand closed round it)
 ];
 // pieces whose pack category is not where a player looks for them (shown on another tab; their category is unchanged)
 const EW_WEAR_SHELF_MOVE = {
@@ -3621,6 +3709,16 @@ const EW_WEAR_SHELF_MOVE = {
   mhw_elvs_emt_uniform_pants_female: 'bottoms', mhw_elvs_emt_uniform_pants_male: 'bottoms',
   mhw_elvs_emt_uniform_jacket_female: 'outer', mhw_elvs_emt_uniform_jacket_male: 'outer',
   ewb_belt: 'belts', ewb_tie: 'belts', ewb_bowtie: 'belts', ewb_suspenders: 'belts', ewb_coinbelt: 'belts',   // worn, not held
+  // THE MESHY PIECES (the halo with the hats; the hip pieces with the belts; the tails + moth wings find their tabs by name)
+  ewm_brokenhalo: 'hats', ewm_sheriffstar: 'jewellery', ewm_policebadge: 'jewellery', ewm_crosspendant: 'jewellery',
+  ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
+  ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
+  ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
+  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour',
+  ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
+  ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
+  ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
+  ewm_milkcookies: 'held', ewm_cup: 'held', ewm_magicwand: 'held', ewm_wizardstaff: 'held',
 };
 function wearShelfOf(id) {
   const w = EW_MH_WEAR_BY_ID[id];
@@ -4111,6 +4209,44 @@ const EW_MPFB_DEFAULT_FACES = {
     head: -0.25, headHeight: -0.15, faceAge: -0.5, neckThick: -0.2
   }
 };
+/* THE FACE PRESETS (2026-11-03, mondo: "can you point me to some resources or websites or asset packs where i can get makehuman
+   face presets?"): MakeHuman characters (.mhm from the community asset repository, or MPFB human presets) turned into FACE slider
+   values by `node bake-faces.js <file>` (repo root; it writes the block below). Each row = { id, label, gender, author, license,
+   source, face }; the creator lists them under FACE beside DEFAULT FACE / NEUTRAL FACE, the credits page lists the CC-BY authors.
+   Only the face carries: a .mhm's body macros (gender / age / ethnic mix) stay with our fixed MPFB bodies. */
+// EW_MPFB_FACE_PRESETS:BEGIN (written by bake-faces.js)
+const EW_MPFB_FACE_PRESETS = [
+  {"id":"mh_warrior","label":"Warrior","gender":"female","author":"DREAM_SEARCH_REPEAT","license":"CC0","source":"https://opengameart.org/content/warrior-female-3d-model","face":{"jaw":0.05,"cheeks":0.01,"eyeOpen":0.03,"eyeDepth":0.09,"eyeBags":0.06,"browHeight":-0.2,"noseWidth":-0.4,"noseLength":0.2,"mouthWidth":0.1,"faceAge":0.1,"neckThick":-0.21}},
+  {"id":"mh_gnome","label":"Gnome","gender":"male","author":"Cheb Gonaz","license":"CC0","source":"https://opengameart.org/content/gnome-0","face":{"faceFat":-0.83,"faceAge":0.33}},
+  {"id":"mh_face_f01","label":"Face F01","gender":"female","author":"","license":"","source":"","face":{"head":-0.11,"jaw":-0.16,"nose":0.17,"cheeks":-0.35,"eyeSize":0.12,"eyeSpacing":-0.13,"eyeOpen":0.1,"eyelid":0.28,"eyeBags":0.13,"epicanthus":0.16,"browRidge":-0.25,"noseLength":-0.15,"noseDepth":0.29,"noseBridge":0.14,"mouthWidth":0.27,"lowerLip":-0.19,"cupidsBow":0.09,"chinJut":0.25,"cheekbones":0.18,"faceFat":-0.36,"faceAge":-0.13,"foreheadHeight":-0.12,"neckThick":0.26}},
+  {"id":"mh_face_f02","label":"Face F02","gender":"female","author":"","license":"","source":"","face":{"head":0.04,"jaw":0.08,"nose":0.02,"cheeks":-0.1,"eyeSize":0.08,"eyeSpacing":0.07,"eyeTilt":-0.09,"eyeDepth":-0.05,"eyelid":0.31,"eyeBags":0.05,"epicanthus":0.01,"browRidge":-0.29,"noseWidth":-0.19,"noseLength":0.74,"noseDepth":-0.39,"noseHeight":-0.23,"noseBridge":0.04,"noseTip":-0.02,"nostrils":-0.26,"noseCurve":-0.39,"mouthHeight":-0.23,"upperLip":-0.32,"lowerLip":-0.43,"mouthCorners":0.08,"cupidsBow":0.09,"mouthDepth":0.14,"chinLength":-0.02,"chinJut":0.3,"underbite":0.01,"chinCleft":-0.11,"jawAngle":-0.21,"headHeight":0.23,"faceFat":-0.21,"faceAge":-0.09,"foreheadHeight":-0.34,"foreheadSlope":-0.13,"earSize":-0.19,"earPoint":0.07,"earLobe":0.16}},
+  {"id":"mh_face_f03","label":"Face F03","gender":"female","author":"","license":"","source":"","face":{"head":-0.09,"jaw":-0.19,"nose":0.06,"cheeks":0.11,"eyeSize":-0.09,"eyeSpacing":-0.13,"eyeTilt":0.16,"eyeDepth":-0.39,"browHeight":0.63,"browAngle":0.03,"noseWidth":-0.31,"noseLength":0.11,"mouthWidth":-0.1,"mouthHeight":-0.12,"mouthCorners":0.09,"mouthDepth":0.19,"chinLength":-0.03,"chinJut":0.12,"underbite":0.16,"jawAngle":-0.06,"cheekbones":-0.47,"cheekHeight":0.46,"headHeight":-0.07,"faceFat":-0.22,"faceAge":-0.03,"foreheadHeight":-0.26}},
+  {"id":"mh_face_f04","label":"Face F04","gender":"female","author":"","license":"","source":"","face":{"cheeks":-0.05,"eyeTilt":0.06,"eyeOpen":-0.04,"eyeDepth":-0.24,"eyelid":0.41,"eyeBags":-0.5,"epicanthus":0.13,"browHeight":0.67,"browAngle":0.12,"nostrils":-0.05,"mouthHeight":-0.08,"upperLip":-0.26,"lowerLip":-0.36,"mouthCorners":-0.05,"cupidsBow":0.04,"mouthDepth":-0.24,"chinJut":0.16,"jawAngle":0.12,"cheekbones":0.19,"cheekHeight":0.59}},
+  {"id":"mh_face_f05","label":"Face F05","gender":"female","author":"","license":"","source":"","face":{"head":-0.1,"jaw":-0.24,"cheeks":0.06,"eyeSize":-0.06,"eyeHeight":0.06,"eyeSpacing":-0.15,"eyeTilt":0.03,"eyeDepth":-0.43,"eyelid":0.38,"eyeBags":-0.03,"epicanthus":0.07,"browHeight":0.47,"noseDepth":-0.05,"noseHeight":-0.57,"noseTip":0.01,"nostrils":-0.11,"noseCurve":-0.21,"mouthWidth":-0.01,"mouthHeight":-0.12,"upperLip":-0.09,"lowerLip":-0.18,"mouthCorners":0.07,"cupidsBow":0.06,"mouthDepth":-0.17,"chinLength":0.18,"underbite":-0.01,"jawAngle":-0.15,"cheekbones":0.3,"cheekHeight":0.22,"headHeight":-0.07,"faceFat":-0.47}},
+  {"id":"mh_face_f06","label":"Face F06","gender":"female","author":"","license":"","source":"","face":{"nose":-0.14,"cheeks":-0.49,"eyeTilt":-0.14,"eyeOpen":0.28,"eyeDepth":-0.25,"eyelid":0.25,"eyeBags":-0.5,"epicanthus":0.02,"browHeight":0.12,"browAngle":0.05,"noseWidth":-0.14,"noseDepth":-0.05,"noseHeight":-0.57,"nostrils":-0.09,"mouthWidth":-0.09,"lowerLip":0.04,"cupidsBow":0.09,"mouthDepth":0.17,"chinLength":0.02,"chinJut":0.19,"underbite":-0.04,"chinCleft":-0.62,"jawAngle":-0.83,"cheekbones":-0.07,"cheekHeight":0.21,"faceFat":-0.02}},
+  {"id":"mh_face_f07","label":"Face F07","gender":"female","author":"","license":"","source":"","face":{"nose":0.08,"cheeks":-0.1,"eyeHeight":0.01,"eyeSpacing":0.08,"eyeOpen":0.07,"eyeDepth":0.1,"eyelid":0.25,"eyeBags":0.12,"epicanthus":0.02,"browHeight":0.15,"browAngle":-0.06,"noseDepth":-0.09,"noseHeight":-0.13,"noseTip":-0.1,"noseCurve":-0.14,"mouthHeight":0.16,"upperLip":0.07,"lowerLip":0.08,"chinLength":-0.11,"chinJut":0.13,"underbite":0.3,"jawAngle":-0.34,"cheekbones":0.18,"cheekHeight":-0.16,"earSize":-0.15,"earOut":-0.07,"earLobe":0.21}},
+  {"id":"mh_face_f08","label":"Face F08","gender":"female","author":"","license":"","source":"","face":{"jaw":-0.17,"cheeks":-0.54,"eyeSize":-0.07,"eyeHeight":0.17,"eyeSpacing":-0.14,"eyeTilt":0.33,"eyeOpen":-0.04,"eyeDepth":-0.48,"eyelid":0.14,"eyeBags":-0.5,"browHeight":0.18,"browAngle":0.35,"noseWidth":-0.14,"noseDepth":-0.2,"noseHeight":-0.23,"noseTip":-0.16,"nostrils":0.03,"mouthWidth":-0.14,"upperLip":-0.17,"lowerLip":-0.17,"mouthCorners":0.06,"chinLength":-0.17,"chinJut":0.32,"underbite":-0.01,"jawAngle":-0.83,"cheekbones":-0.52,"cheekHeight":0.21,"headHeight":0.19,"faceFat":-0.45,"faceAge":-0.02,"foreheadHeight":-0.4,"foreheadSlope":0.45}},
+  {"id":"mh_face_f09","label":"Face F09","gender":"female","author":"","license":"","source":"","face":{"head":-0.1,"jaw":-0.5,"nose":-0.03,"cheeks":-0.16,"eyeSize":-0.15,"eyeHeight":0.18,"eyeSpacing":-0.1,"eyeTilt":-0.04,"eyeOpen":0.25,"eyeDepth":-0.18,"eyelid":0.37,"eyeBags":0.14,"epicanthus":0.02,"browHeight":-0.04,"browAngle":0.25,"browRidge":-1,"noseWidth":-0.08,"noseDepth":-0.38,"noseHeight":-0.29,"noseBridge":-0.12,"noseTip":-0.17,"nostrils":-0.37,"noseCurve":-0.4,"mouthWidth":0.16,"mouthHeight":-0.24,"upperLip":0.18,"lowerLip":0.09,"mouthCorners":0.13,"cupidsBow":0.13,"mouthDepth":-0.09,"chinLength":-0.09,"chinJut":0.2,"underbite":0.12,"chinCleft":-0.03,"jawAngle":-0.06,"cheekbones":-0.05,"cheekHeight":-0.21,"headDepth":-0.25,"faceFat":-0.15,"faceAge":-0.07,"foreheadSlope":0.52}},
+  {"id":"mh_face_f10","label":"Face F10","gender":"female","author":"","license":"","source":"","face":{"jaw":-0.18,"cheeks":-0.16,"eyeSize":-0.42,"eyeSpacing":-0.13,"eyeTilt":0.12,"eyeOpen":0.06,"eyeDepth":-0.33,"eyelid":0.67,"eyeBags":0.13,"epicanthus":0.01,"browHeight":0.67,"browAngle":0.17,"browRidge":0.01,"noseDepth":-0.23,"noseHeight":-0.21,"noseBridge":0.18,"noseTip":-0.16,"nostrils":-0.06,"mouthWidth":-0.23,"mouthHeight":-0.14,"upperLip":-0.1,"mouthCorners":0.16,"cupidsBow":0.03,"chinLength":0.06,"chinJut":0.01,"underbite":-0.15,"chinCleft":0.16,"jawAngle":-0.23,"cheekbones":0.09,"cheekHeight":0.24,"headHeight":0.09,"faceFat":-0.45}},
+  {"id":"mh_face_f11","label":"Face F11","gender":"female","author":"","license":"","source":"","face":{"jaw":-0.53,"nose":-0.1,"cheeks":-0.04,"eyeHeight":0.23,"eyeTilt":0.21,"eyeOpen":0.05,"epicanthus":-0.16,"browHeight":0.67,"browAngle":-0.06,"noseWidth":-0.06,"noseLength":-0.03,"noseDepth":-0.34,"noseHeight":-0.31,"noseBridge":-0.02,"noseTip":-0.11,"nostrils":-0.11,"noseCurve":0.2,"mouthWidth":-0.13,"mouthHeight":0.03,"upperLip":-0.25,"lowerLip":0.11,"mouthCorners":-0.02,"mouthDepth":0.28,"chinLength":-0.06,"chinJut":0.09,"jawAngle":-0.83,"cheekbones":-0.35,"cheekHeight":0.09,"faceFat":-0.21}},
+  {"id":"mh_face_f12","label":"Face F12","gender":"female","author":"","license":"","source":"","face":{"jaw":-0.1,"nose":-0.04,"cheeks":-0.19,"eyeSize":-0.24,"eyeOpen":0.2,"eyelid":0.17,"browHeight":0.09,"browAngle":0.26,"browRidge":0.15,"noseWidth":-0.11,"noseLength":0.16,"noseDepth":-0.43,"noseHeight":-0.71,"noseBridge":0.08,"noseTip":-0.13,"nostrils":-0.18,"noseCurve":0.02,"mouthWidth":0.19,"lowerLip":0.09,"cupidsBow":0.14,"chinJut":-0.12,"chinCleft":-0.05,"jawAngle":-0.5,"cheekbones":0.09,"cheekHeight":-0.11,"faceFat":-0.06,"foreheadHeight":-0.14,"earSize":-0.11,"earOut":-0.27}},
+  {"id":"mh_face_m01","label":"Face M01","gender":"male","author":"","license":"","source":"","face":{"nose":0.2,"cheeks":0.15,"eyelid":-0.04,"eyeBags":0.1,"browAngle":-0.21,"browRidge":0.22,"noseWidth":-0.19,"noseLength":0.51,"noseDepth":0.12,"nostrils":-0.1,"noseCurve":-0.14,"mouthWidth":0.18,"cupidsBow":0.15,"chinJut":-0.11,"chinCleft":0.48,"cheekbones":0.24,"cheekHeight":-0.2,"faceFat":-0.08,"faceAge":-0.09,"foreheadSlope":-0.01,"earSize":-0.28,"earOut":-0.31,"neckThick":0.26}},
+  {"id":"mh_face_m02","label":"Face M02","gender":"male","author":"","license":"","source":"","face":{"head":0.04,"jaw":0.31,"nose":0.14,"cheeks":-0.06,"eyeSize":0.07,"eyeHeight":-0.56,"eyeSpacing":0.04,"eyeTilt":0.14,"eyeOpen":0.22,"eyeDepth":-0.21,"eyelid":0.64,"eyeBags":-0.36,"epicanthus":0.15,"browHeight":-0.17,"browAngle":-0.12,"noseWidth":-0.17,"noseLength":0.25,"noseDepth":-0.2,"noseHeight":-0.48,"noseBridge":0.07,"noseTip":-0.01,"nostrils":-0.13,"noseCurve":-0.18,"mouthHeight":-0.13,"upperLip":0.11,"lowerLip":0.11,"mouthCorners":0.05,"cupidsBow":0.2,"mouthDepth":0.23,"chinJut":0.15,"underbite":-0.25,"jawAngle":0.1,"cheekbones":-0.26,"cheekHeight":0.26,"headHeight":0.25,"headDepth":0.08,"faceFat":-0.07,"faceAge":-0.03,"foreheadHeight":-0.31,"foreheadSlope":-0.14,"neckThick":0.1}},
+  {"id":"mh_face_m03","label":"Face M03","gender":"male","author":"","license":"","source":"","face":{"nose":0.03,"cheeks":-0.11,"eyeOpen":0.15,"eyeDepth":-0.08,"epicanthus":0.2,"browRidge":0.14,"noseLength":0.1,"noseDepth":0.18,"noseBridge":0.09,"mouthWidth":0.11,"cupidsBow":0.52,"chinJut":0.15,"cheekHeight":-0.22,"faceFat":-0.25,"faceAge":-0.04,"foreheadHeight":-0.11,"foreheadSlope":0.12,"earSize":0.12,"neckThick":0.11}},
+  {"id":"mh_face_m04","label":"Face M04","gender":"male","author":"","license":"","source":"","face":{"jaw":-0.19,"cheeks":-0.23,"eyeSize":-0.08,"eyeOpen":0.2,"eyeDepth":0.03,"epicanthus":0.1,"browHeight":-0.05,"browRidge":0.11,"noseWidth":0.32,"noseDepth":0.12,"noseBridge":0.06,"noseTip":0.12,"mouthWidth":0.07,"lowerLip":-0.1,"mouthCorners":0.07,"cupidsBow":0.33,"cheekbones":0.12,"cheekHeight":0.11,"faceAge":-0.13,"foreheadSlope":-0.23,"earSize":-0.11,"neckThick":-0.08}},
+  {"id":"mh_face_m05","label":"Face M05","gender":"male","author":"","license":"","source":"","face":{"jaw":0.15,"nose":-0.08,"cheeks":-0.62,"eyeSpacing":-0.04,"eyeOpen":0.19,"eyeDepth":-0.11,"eyelid":0.43,"epicanthus":0.04,"browRidge":0.04,"noseLength":0.09,"noseDepth":0.21,"noseCurve":0.17,"mouthWidth":-0.1,"upperLip":0.03,"cupidsBow":0.08,"chinJut":0.12,"chinCleft":-0.02,"jawAngle":0.06,"cheekbones":-0.22,"cheekHeight":-0.18,"headHeight":0.27,"faceAge":0.1,"foreheadHeight":-0.15,"foreheadSlope":0.17,"earOut":-0.54,"neckThick":0.25}},
+  {"id":"mh_face_m06","label":"Face M06","gender":"male","author":"","license":"","source":"","face":{"jaw":0.25,"cheeks":-0.08,"eyeSize":0.08,"eyeSpacing":0.01,"eyeTilt":0.12,"eyeOpen":0.22,"eyeDepth":0.03,"eyelid":0.3,"eyeBags":0.05,"epicanthus":0.36,"browHeight":-0.49,"browAngle":0.31,"browRidge":0.2,"noseWidth":-0.24,"noseLength":-0.05,"noseDepth":0.24,"noseHeight":-0.31,"noseBridge":0.22,"noseTip":-0.07,"mouthWidth":0.15,"mouthHeight":-0.28,"upperLip":0.46,"lowerLip":-0.17,"mouthCorners":-0.37,"cupidsBow":0.63,"mouthDepth":-0.03,"chinLength":0.03,"chinJut":0.02,"underbite":0.47,"chinCleft":0.27,"jawAngle":-0.07,"cheekbones":-0.42,"cheekHeight":0.27,"headHeight":-0.07,"headDepth":0.15,"faceFat":0.27,"earSize":0.15,"earOut":-0.16,"earPoint":-0.2,"earLobe":0.06}},
+  {"id":"mh_face_m07","label":"Face M07","gender":"male","author":"","license":"","source":"","face":{"nose":0.04,"cheeks":-0.25,"eyeSize":0.12,"eyeHeight":-0.67,"eyeTilt":-0.03,"eyeOpen":0.16,"eyelid":0.41,"eyeBags":-0.5,"epicanthus":0.5,"browHeight":-0.27,"browAngle":0.11,"browRidge":0.06,"noseWidth":-0.39,"noseLength":0.61,"noseDepth":0.05,"noseHeight":-0.2,"noseBridge":0.36,"noseTip":0.3,"nostrils":-0.25,"noseCurve":-0.24,"mouthWidth":0.3,"mouthHeight":-0.56,"upperLip":-0.04,"mouthCorners":0.05,"cupidsBow":0.35,"mouthDepth":0.37,"chinLength":0.2,"chinJut":0.19,"underbite":0.18,"jawAngle":0.44,"cheekbones":0.37,"cheekHeight":-0.05,"headHeight":0.2,"headDepth":-0.26,"faceFat":-0.33,"faceAge":-0.1,"foreheadHeight":-0.64,"earOut":-0.36,"earLobe":0.11,"neckThick":0.18}},
+  {"id":"mh_face_m08","label":"Face M08","gender":"male","author":"","license":"","source":"","face":{"jaw":0.29,"cheeks":0.23,"eyeSize":-0.33,"eyeHeight":-0.24,"eyeTilt":0.06,"eyeOpen":0.2,"eyeDepth":0.24,"eyelid":0.42,"epicanthus":-0.16,"browHeight":-0.13,"browAngle":0.17,"browRidge":-0.2,"noseWidth":-0.36,"noseLength":0.34,"noseDepth":0.11,"noseHeight":-0.71,"noseBridge":-0.15,"noseTip":0.01,"nostrils":-0.07,"noseCurve":-0.12,"mouthWidth":0.15,"mouthHeight":0.01,"upperLip":0.05,"lowerLip":-0.31,"mouthCorners":-0.18,"cupidsBow":0.4,"mouthDepth":-0.03,"chinLength":-0.04,"chinJut":0.32,"underbite":0.22,"chinCleft":0.18,"jawAngle":-0.17,"cheekbones":0.06,"cheekHeight":-0.15,"faceFat":-0.06,"faceAge":-0.05,"foreheadSlope":0.56,"earSize":0.33,"earOut":-0.59,"earLobe":-0.16,"neckThick":0.02}},
+  {"id":"mh_face_m09","label":"Face M09","gender":"male","author":"","license":"","source":"","face":{"jaw":0.56,"nose":0.1,"cheeks":-0.08,"eyeSize":0.07,"eyeTilt":0.34,"eyeOpen":0.04,"eyeDepth":-0.26,"eyelid":0.04,"eyeBags":0.21,"epicanthus":-0.08,"browHeight":-0.09,"browAngle":0.06,"browRidge":0.21,"noseWidth":-0.14,"noseLength":-0.08,"noseDepth":0.36,"noseHeight":-0.3,"noseBridge":0.01,"nostrils":0.41,"noseCurve":-0.23,"mouthWidth":0.47,"mouthHeight":-0.28,"upperLip":0.12,"lowerLip":0.15,"cupidsBow":0.45,"mouthDepth":0.27,"chinLength":0.31,"chinJut":0.03,"underbite":0.25,"chinCleft":0.63,"jawAngle":0.01,"cheekbones":-0.42,"cheekHeight":0.27,"faceAge":-0.05,"foreheadHeight":0.14,"foreheadSlope":-0.21,"earSize":0.04,"earOut":-0.48,"earLobe":-0.04,"neckThick":0.4}},
+  {"id":"mh_face_m10","label":"Face M10","gender":"male","author":"","license":"","source":"","face":{"head":0.02,"jaw":0.2,"cheeks":0.25,"eyeSize":-0.28,"eyeHeight":-0.15,"eyeSpacing":0.03,"eyeTilt":0.21,"eyeOpen":0.23,"eyeDepth":-0.01,"eyelid":0.07,"eyeBags":0.25,"epicanthus":-0.06,"browHeight":0.41,"browAngle":0.02,"browRidge":0.02,"noseWidth":-0.19,"noseLength":-0.03,"noseDepth":0.4,"noseHeight":0.23,"noseBridge":-0.09,"noseTip":0.2,"nostrils":0.06,"noseCurve":-0.25,"mouthWidth":0.34,"mouthHeight":-0.1,"upperLip":0.34,"lowerLip":0.28,"mouthCorners":-0.16,"cupidsBow":0.47,"mouthDepth":0.15,"chinLength":0.18,"chinJut":-0.34,"underbite":-0.05,"chinCleft":-0.62,"jawAngle":-0.03,"cheekbones":-0.35,"cheekHeight":0.29,"headHeight":0.18,"headDepth":-0.03,"foreheadHeight":-0.26,"foreheadSlope":-0.05,"earSize":0.16,"earOut":-0.57,"earLobe":-0.55}},
+  {"id":"mh_face_m11","label":"Face M11","gender":"male","author":"","license":"","source":"","face":{"head":-0.16,"jaw":0.19,"nose":0.13,"cheeks":-0.31,"eyeSize":-0.03,"eyeHeight":-0.38,"eyeTilt":0.16,"eyeOpen":0.07,"eyeDepth":-0.16,"eyelid":0.47,"eyeBags":0.11,"epicanthus":-0.15,"browHeight":-0.38,"browAngle":0.04,"browRidge":-1,"noseWidth":0.02,"noseDepth":-0.19,"noseHeight":-0.29,"noseTip":0.14,"nostrils":-0.19,"noseCurve":-0.27,"mouthHeight":0.13,"upperLip":-0.38,"lowerLip":0.2,"mouthCorners":0.05,"cupidsBow":0.25,"mouthDepth":0.29,"chinLength":-0.25,"chinJut":-0.06,"underbite":0.26,"cheekbones":-0.58,"cheekHeight":-0.56,"headHeight":0.07,"headDepth":-0.28,"faceFat":-0.26,"faceAge":-0.08,"foreheadHeight":-0.41,"foreheadSlope":0.77}},
+  {"id":"mh_face_m12","label":"Face M12","gender":"male","author":"","license":"","source":"","face":{"jaw":0.19,"nose":-0.04,"cheeks":0.24,"eyeSize":-0.11,"eyeHeight":-0.33,"eyeSpacing":0.17,"eyeTilt":0.2,"eyeOpen":0.44,"eyeDepth":-0.41,"eyelid":0.36,"eyeBags":0.08,"epicanthus":-0.06,"browHeight":0.06,"browAngle":0.2,"browRidge":0.2,"noseWidth":-0.33,"noseLength":0.47,"noseDepth":-0.18,"noseHeight":-0.5,"noseBridge":-0.07,"noseTip":-0.02,"nostrils":0.05,"noseCurve":-0.18,"mouthWidth":0.34,"mouthHeight":-0.29,"upperLip":-0.14,"lowerLip":0.08,"mouthCorners":0.07,"cupidsBow":0.43,"chinLength":0.1,"chinJut":0.21,"chinCleft":0.63,"jawAngle":-0.83,"cheekHeight":0.04,"faceFat":-0.4,"foreheadHeight":-0.2,"foreheadSlope":0.36,"earPoint":-0.03,"neckThick":0.07}},
+  {"id":"mh_face_avg_f","label":"Face Avg F","gender":"female","author":"","license":"","source":"","face":{"head":-0.03,"jaw":-0.17,"cheeks":-0.17,"eyeSize":-0.06,"eyeHeight":0.05,"eyeSpacing":-0.05,"eyeTilt":0.04,"eyeOpen":0.08,"eyeDepth":-0.19,"eyelid":0.27,"eyeBags":-0.08,"epicanthus":0.03,"browHeight":0.3,"browAngle":0.09,"browRidge":-0.12,"noseWidth":-0.09,"noseLength":0.07,"noseDepth":-0.16,"noseHeight":-0.27,"noseBridge":0.02,"noseTip":-0.07,"nostrils":-0.1,"noseCurve":-0.08,"mouthWidth":-0.01,"mouthHeight":-0.06,"upperLip":-0.08,"lowerLip":-0.08,"mouthCorners":0.04,"cupidsBow":0.06,"mouthDepth":0.02,"chinLength":-0.02,"chinJut":0.14,"underbite":0.03,"chinCleft":-0.06,"jawAngle":-0.33,"cheekbones":-0.03,"cheekHeight":0.13,"headHeight":0.03,"headDepth":-0.02,"faceFat":-0.22,"faceAge":-0.03,"foreheadHeight":-0.11,"foreheadSlope":0.07,"earSize":-0.04,"earOut":-0.03,"earPoint":0.01,"earLobe":0.03,"neckThick":0.02}},
+  {"id":"mh_face_avg_m","label":"Face Avg M","gender":"male","author":"","license":"","source":"","face":{"head":-0.01,"jaw":0.16,"nose":0.04,"cheeks":-0.03,"eyeSize":-0.03,"eyeHeight":-0.19,"eyeSpacing":0.02,"eyeTilt":0.1,"eyeOpen":0.18,"eyeDepth":-0.07,"eyelid":0.26,"eyeBags":-0.01,"epicanthus":0.09,"browHeight":-0.09,"browAngle":0.05,"noseWidth":-0.12,"noseLength":0.18,"noseDepth":0.11,"noseHeight":-0.2,"noseBridge":0.04,"noseTip":0.06,"nostrils":-0.02,"noseCurve":-0.12,"mouthWidth":0.17,"mouthHeight":-0.12,"upperLip":0.09,"lowerLip":0.03,"mouthCorners":-0.04,"cupidsBow":0.37,"mouthDepth":0.1,"chinLength":0.04,"chinJut":0.07,"underbite":0.05,"chinCleft":0.13,"jawAngle":-0.04,"cheekbones":-0.12,"cheekHeight":-0.03,"headHeight":0.07,"headDepth":-0.03,"faceFat":-0.1,"faceAge":-0.04,"foreheadHeight":-0.16,"foreheadSlope":0.11,"earSize":0.03,"earOut":-0.25,"earLobe":-0.05,"neckThick":0.09}},
+  {"id":"mh_face_avg","label":"Face Avg","gender":"male","author":"","license":"","source":"","face":{"head":-0.02,"nose":0.02,"cheeks":-0.1,"eyeSize":-0.05,"eyeHeight":-0.07,"eyeSpacing":-0.02,"eyeTilt":0.07,"eyeOpen":0.13,"eyeDepth":-0.13,"eyelid":0.26,"eyeBags":-0.05,"epicanthus":0.06,"browHeight":0.1,"browAngle":0.07,"browRidge":-0.06,"noseWidth":-0.1,"noseLength":0.12,"noseDepth":-0.02,"noseHeight":-0.24,"noseBridge":0.03,"noseTip":0.01,"nostrils":-0.06,"noseCurve":-0.1,"mouthWidth":0.08,"mouthHeight":-0.09,"lowerLip":-0.02,"cupidsBow":0.21,"mouthDepth":0.06,"chinLength":0.01,"chinJut":0.1,"underbite":0.04,"chinCleft":0.04,"jawAngle":-0.18,"cheekbones":-0.08,"cheekHeight":0.05,"headHeight":0.05,"headDepth":-0.02,"faceFat":-0.16,"faceAge":-0.03,"foreheadHeight":-0.13,"foreheadSlope":0.09,"earOut":-0.14,"earLobe":-0.01,"neckThick":0.05}}
+];
+// EW_MPFB_FACE_PRESETS:END
 /* the face keys a look should take when it moves onto `body`: the body gender's default face when the look's face is untouched
    (all 0) or still another default face; all 0 when it goes back to a classic base wearing a default face (head / jaw / nose /
    cheeks / eye size shape the classic head too); {} when the player has made the face their own. `force` = FACE > DEFAULT FACE. */
@@ -4151,7 +4287,7 @@ const EW_APPEARANCE_ENUMS = {
   body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),
   // THE LOOKS (2026-11-01): an MPFB body's skin / eyes / brows / lashes ('own' = the body's own, EW_MH_LOOKS.kits)
   mhSkin: ['own'].concat(EW_MH_LOOKS.skins.map(r => r[0])),
-  mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
+  mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0]), EW_MH_EYE_PACK.map(r => r[0])),   // (+ THE EYE PACK)
   mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
   mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
   lipTint: ['own', 'pick'],   // THE LIP COLOUR (2026-11-03): an MPFB body's lips as the skin paints them / lipColor
@@ -4267,6 +4403,79 @@ function normalizeCharacterAppearance(value) {
   out.wearTint = normalizeWearTint(value.wearTint, out.wear);   // THE WEAR TINT (a worn pack piece's colour; left out = its own)
   return out;
 }
+/* THE HIDDEN PICKS (2026-11-03, mondo: "a devtool that let's me remove models like certain clothes and hairstyles from the character
+   creator ... some hairstyles that are not as high quality as the others, and it would be easier for me to manually exclude them").
+   Creator picks kept OFF the creator's lists (party-builder.js CreatorControls) and off RANDOMIZE. NOTHING IS DELETED: the piece, its
+   file and every look wearing it stay, normalizeCharacterAppearance never reads this list (a saved / baked / locker look with a hidden
+   piece loads as it did), and a hidden piece that is worn keeps its tile so it shows + can be taken off.
+   Keys are '<kind>:<id>' (kind = the appearance key the pick sets): hair, wear (the pack + Blender pieces, facial hair, accessories),
+   outer (both outer layers), feet, cape, wings, idle, mhSkin, mhEyes, mhBrows, mhLashes.
+   EW_CREATOR_HIDDEN = the shipped list ({ key: label }), written ONLY by bake-hidden.js. This browser's own edits ride on top in
+   localStorage ew_creator_hidden_v1 = { hide: { key: label }, show: { key: label } } (show = a shipped one shown again here).
+   The tool itself shows only while Settings > Developer > Creator Item Hider is ON (ew_creator_hider = '1'). */
+// EW_CREATOR_HIDDEN:BEGIN
+const EW_CREATOR_HIDDEN = {};
+// EW_CREATOR_HIDDEN:END
+const EW_CREATOR_HIDDEN_KEY = 'ew_creator_hidden_v1', EW_CREATOR_HIDER_KEY = 'ew_creator_hider';
+let _ewHidLocalCache = null;
+function _ewHidLocal() {
+  if (_ewHidLocalCache) return _ewHidLocalCache;
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(EW_CREATOR_HIDDEN_KEY) || 'null'); } catch (e) {}
+  const obj = o => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
+  return (_ewHidLocalCache = { hide: obj(d && d.hide), show: obj(d && d.show) });
+}
+function _ewHidSave() {
+  try { localStorage.setItem(EW_CREATOR_HIDDEN_KEY, JSON.stringify(_ewHidLocal())); } catch (e) {}
+  try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
+}
+// a pick that is never hidden: the "nothing" / "own" / "default" choices every list starts with
+const _ewHidNever = id => id == null || id === '' || id === 'none' || id === 'own' || id === 'bald' || id === 'default';
+function creatorHidden(kind, id) {
+  if (_ewHidNever(id)) return false;
+  const k = kind + ':' + id, L = _ewHidLocal();
+  return Object.prototype.hasOwnProperty.call(L.hide, k) || (Object.prototype.hasOwnProperty.call(EW_CREATOR_HIDDEN, k) && !Object.prototype.hasOwnProperty.call(L.show, k));
+}
+function setCreatorHidden(kind, id, hide, label) {
+  if (_ewHidNever(id)) return false;
+  const k = kind + ':' + id, L = _ewHidLocal(), shipped = Object.prototype.hasOwnProperty.call(EW_CREATOR_HIDDEN, k);
+  const lb = String(label || L.hide[k] || L.show[k] || EW_CREATOR_HIDDEN[k] || id);
+  if (hide) { delete L.show[k]; if (!shipped) L.hide[k] = lb; }
+  else { delete L.hide[k]; if (shipped) L.show[k] = lb; }
+  _ewHidSave();
+  return true;
+}
+// every hidden pick now: [{ key, kind, id, label, shipped }] (shipped = in the baked list), by kind then name
+function creatorHiddenList() {
+  const L = _ewHidLocal(), out = [];
+  for (const k of Object.keys(EW_CREATOR_HIDDEN)) if (!Object.prototype.hasOwnProperty.call(L.show, k) && !Object.prototype.hasOwnProperty.call(L.hide, k)) out.push([k, EW_CREATOR_HIDDEN[k], true]);
+  for (const k of Object.keys(L.hide)) out.push([k, L.hide[k], Object.prototype.hasOwnProperty.call(EW_CREATOR_HIDDEN, k)]);
+  return out.map(([key, label, shipped]) => { const i = key.indexOf(':'); return { key, kind: key.slice(0, i), id: key.slice(i + 1), label: String(label || key.slice(i + 1)), shipped }; })
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
+}
+// SHOW ALL: every pick back on the lists in this browser (the shipped ones too, until a bake changes the list)
+function creatorHiddenShowAll() {
+  const L = _ewHidLocal();
+  L.hide = {}; L.show = {};
+  for (const k of Object.keys(EW_CREATOR_HIDDEN)) L.show[k] = EW_CREATOR_HIDDEN[k];
+  _ewHidSave();
+}
+function creatorHiderOn() { try { return localStorage.getItem(EW_CREATOR_HIDER_KEY) === '1'; } catch (e) { return false; } }
+function setCreatorHiderOn(on) {
+  try { if (on) localStorage.setItem(EW_CREATOR_HIDER_KEY, '1'); else localStorage.removeItem(EW_CREATOR_HIDER_KEY); } catch (e) {}
+  try { if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') window.dispatchEvent(new Event('ew-creator-hidden')); } catch (e) {}
+}
+// the export for bake-hidden.js: the WHOLE list as this browser shows it (the bake replaces the shipped list with it)
+function creatorHiddenExport() {
+  const hidden = {};
+  for (const r of creatorHiddenList()) hidden[r.key] = r.label;
+  return { kind: 'entropy-wars-creator-hidden', v: 1, made: new Date().toISOString(), hidden };
+}
+// RANDOMIZE never rolls a hidden pick (the outer2 layer shares the outer list)
+function _ewHidPickable(key, list) {
+  const kind = key === 'outer2' ? 'outer' : key, ok = list.filter(v => !creatorHidden(kind, v));
+  return ok.length ? ok : list;
+}
 // A fresh random look (the builder's RANDOMIZE). Plain Math.random — cosmetic only.
 function randomCharacterAppearance(rng) {
   const r = typeof rng === 'function' ? rng : Math.random;
@@ -4292,7 +4501,7 @@ function randomCharacterAppearance(rng) {
   out.feetColor = hex(r() * 360, 0.05 + r() * 0.4, 0.12 + r() * 0.4);
   out.glovesColor = hex(r() * 360, 0.1 + r() * 0.4, 0.15 + r() * 0.4);
   out.beltColor = hex(20 + r() * 30, 0.3 + r() * 0.4, 0.15 + r() * 0.25);
-  for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(EW_APPEARANCE_ENUMS[key]);
+  for (const key of Object.keys(EW_APPEARANCE_ENUMS)) out[key] = pick(_ewHidPickable(key, EW_APPEARANCE_ENUMS[key]));   // THE HIDDEN PICKS
   // rev 8: a print on a layer now and then, in a second colour that reads against the first
   for (const L of EW_APPEARANCE_LAYERS) {
     out[L.pattern] = r() < 0.3 ? pick(EW_PATTERN_IDS.filter(p => p !== 'solid')) : 'solid';
@@ -4350,11 +4559,12 @@ function getMhLookLayers(a) {
   const body = a && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
   const kit = body && EW_MH_LOOKS.kits[body];
   if (!kit) return null;
-  const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
+  const pack = !!EW_MH_EYE_PACK_BY_ID[a.mhEyes];   // THE EYE PACK: worn by the eye mesh (getMhEyePack); the sheet keeps the body's own eyes
+  const pick = { skin: a.mhSkin, eyes: pack ? 'own' : a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
   const chest = EW_MH_CHEST.band[body] && a.mhChest === 'smooth' ? 'smooth' : null;   // THE CHEST ('nipples' = the sheet as baked)
   const lips = a.lipTint === 'pick' && typeof a.lipColor === 'string' ? a.lipColor : null;   // THE LIP COLOUR
   const hex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : null;   // THE LOOK COLOURS
-  const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' ? hex(a.eyeColor) : null,
+  const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' && !pack ? hex(a.eyeColor) : null,
     brows: a.browTint === 'hair' ? hex(a.hairColor) : a.browTint === 'pick' ? hex(a.browColor) : null, lashes: a.lashTint === 'pick' ? hex(a.lashColor) : null };
   const tinted = Object.keys(tint).some(k => tint[k]);
   if (!chest && !lips && !tinted && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
@@ -4370,6 +4580,17 @@ function getMhLookLayers(a) {
   if (lips) out.lips = Object.assign({ color: lips }, EW_MH_LIPS);   // THE LIP COLOUR (painted over the skin, three-renderer.js tintLips)
   if (tinted) { out.tint = tint; out.iris = EW_MH_IRIS; out.skinSample = EW_MH_SKIN_SAMPLE; out.skinKeep = EW_MH_SKIN_KEEP; }   // THE LOOK COLOURS (three-renderer.js tintSheet / tintLayer)
   return out;
+}
+/* THE EYE PACK: an MPFB body's pack eye pick -> { id, map, normal (the R2 PNGs), tint (the Iris colour, or null), iris, proxy }; null
+   for the sheet's own eye colours or a body that is not MPFB */
+function getMhEyePack(a) {
+  const row = a && EW_MH_EYE_PACK_BY_ID[a.mhEyes];
+  const body = row && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
+  if (!body || !EW_MH_LOOKS.kits[body]) return null;
+  const dir = EW_CHARACTER_ASSET_BASE + '/' + EW_MH_EYE_PACK_DIR;
+  const tint = a.eyeTint === 'pick' && typeof a.eyeColor === 'string' && /^#[0-9a-f]{6}$/i.test(a.eyeColor) ? a.eyeColor : null;
+  return { id: row[0], map: dir + row[2] + '.png', normal: row[3] ? dir + row[3] + '.png' : null, tint: tint, iris: EW_MH_EYE_PACK_IRIS,
+    proxy: EW_CHARACTER_ASSET_BASE + '/mpfb/looks/eyes/eye_proxy.json' };
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
 function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
@@ -4534,15 +4755,19 @@ function getCharacterAppearanceAssets(appearance) {
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
+  const eyePack = getMhEyePack(a); if (eyePack) { looks.push(eyePack.map); if (eyePack.normal) looks.push(eyePack.normal); }   // THE EYE PACK (its PNGs)
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
 }
 function getWingsStyleUrl(id) { const o = id && id !== 'none' && EW_WINGS_STYLES.find(x => x.id === id); return o ? o.url || EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
+  window.EW_CREATOR_HIDDEN = EW_CREATOR_HIDDEN; window.creatorHidden = creatorHidden; window.setCreatorHidden = setCreatorHidden; window.creatorHiddenList = creatorHiddenList;   // THE HIDDEN PICKS
+  window.creatorHiddenShowAll = creatorHiddenShowAll; window.creatorHiddenExport = creatorHiddenExport; window.creatorHiderOn = creatorHiderOn; window.setCreatorHiderOn = setCreatorHiderOn;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
+  window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
   window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;
@@ -4566,6 +4791,7 @@ if (typeof window !== 'undefined') {
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
   window.mpfbKitOf = mpfbKitOf;
+  window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
@@ -5555,8 +5781,17 @@ const TERRAIN_SPRITES = {
     cave_floor:     [`${_T}/cave_floor.png`],
     cave_wall:      [`${_T}/cave_wall.png`],
     cloud:          [`${_T}/cloud.png`],
-    cloud_thick:    [`${_T}/cloud_thick.png`],
+    /* THE THICK CLOUD (2026-11-03, mondo: "yes i want the cloud thick gone too"): its own sheet was a grey storm cloud with
+       white lightning forks painted in. It wears the painted puffy cloud sheet now (cloud_2's), so the cloud seas, the
+       Heaven mounds and Saturn's deck read as cloud, never as bolts; each map's own `tints.cloud_thick` still colours it. */
+    cloud_thick:    [`${_T}/cloud_2.png`],
     cloud_gap:      [`${_T}/cloud_gap.png`],
+    /* THE STORM ZONE (2026-11-03, mondo: "replace this weird looking cloud with a lightning bolt"): 'storm' never had a
+       sheet of its own, so it fell back to the legacy SVG doodle (a dark smudge + one yellow bolt) — on an opaque wall
+       or tile that read as a black blob stamped with bolts (Saturn's storm walls). It wears the grey pixel-painted
+       cloud sheet (fog.png, no bolts), cooled to a thunderhead slate by TERRAIN_BASE_TINT.storm (a map's own
+       `tints.storm` still modulates it). */
+    storm:          [`${_T}/fog.png`],
     sky_ruin:       [`${_T}/sky_ruin.png`],
     barrier_passage:[`${_T}/barrier_passage.png`],
     /* 2026-10-07 (mondo): "rampart has the cliff texture. I want that texture removed from everywhere in the game." The
@@ -5761,6 +5996,8 @@ const TERRAIN_BASE_TINT = {
        darkened toward black (their 3D fluid tops, room floors and drapes alike) */
     swamp: '#3c3c3c',
     oil: '#7a7a7a',
+    /* ⛈ THE STORM ZONE (2026-11-03): the grey cloud sheet as a thunderhead — slate, a touch of blue */
+    storm: '#a4b0cc',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 

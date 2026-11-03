@@ -277,6 +277,10 @@ const ThreeVFXEffects = (function () {
     function _spawn(opts) {
         return window.ThreeVFX.spawn(opts);
     }
+    /* THE FLIPBOOKS (2026-11-03): true once the Blender sheet `key` is cut into frames (three-vfx.js) and not switched off */
+    function _fbReady(key) {
+        return !!(window.ThreeVFX && window.ThreeVFX.flipbookReady && window.ThreeVFX.flipbookReady(key));
+    }
 
     /* glow: the theme's light colour — drives the magic-orb / shock-ring
        signature layers and any additive tinting on the generic bursts. */
@@ -3165,6 +3169,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bats3D = null;
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
+            /* THE FLIPBOOKS: a painted layer a flipbook replaces steps aside once that sheet is ready */
+            if (layer.ifNoFb && _fbReady(layer.ifNoFb)) continue;
             if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
                 layer.anchor !== 'torso') continue;
             /* THE BATS (2026-10-27): the flat bat sprites give way to mondo's 3D bats (_batStage flies them) */
@@ -3812,6 +3818,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (intent === 'windup' || intent === 'burst' || intent === 'finish') {
             _fireStage(intent, spellId, params || {});
             if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
+            if (intent === 'windup') try { _heldStart(spellId, params); } catch (e) { console.warn('[VFX] held prop failed', spellId, e); }   // THE PROPS IN THE HAND (row 24)
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
             if (intent === 'burst') try { _lzBurstMark(spellId, params || {}); } catch (e) {}
             /* THE ANIMALS (2026-10-27): a bolt spell's own impact never rides the impact intent, so its animal comes on the hit */
@@ -3848,6 +3855,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try { _oilBlast3D(params || {}); } catch (e) {}
             return;
         }
+        if (intent === 'bolt') try { _heldThrown(spellId, params || {}); } catch (e) {}   // THE PROPS IN THE HAND: a thrown prop leaves the hand
         if (!hasMapping(spellId, intent)) return;
         var effectId = SPELL_MAP[spellId][intent];
         var effectDef = EFFECTS[effectId];
@@ -11324,6 +11332,241 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         };
         M.set(0, 0, 0);
         return M;
+    }
+
+    /* ═══ THE PROPS IN THE HAND (2026-11-03, docs/notes/character-models-plan.md row 24 + section 6b; mondo: "how do we put these
+       models ... in the game for spells (like whip crack)") ═════════════════════════════════════════════════════════════════
+       The Meshy spell props (#47-60, R2 Assets/props/, optimize-assets.js'd) are _WPN_MODELS rows like every other prop, and a
+       spell that uses one HOLDS it in the caster's hand for the cast instead of conjuring it board-sized beside them (the
+       finishers keep their big looks). _HELD_PROPS names the prop per spell: it appears in the hand on the cast's windup beat
+       (ThreeRenderer.unitHoldProp: the hand bone, THE GRIP's seat — the fist closes round it on a creator body, it sits on the
+       palm of a Meshy hand), stays through the launch and fades a moment after the hit; a thrown one (`thrown`) leaves the
+       hand on the bolt and flies as the same model (Acid Flask, Broken Halo). The windup and the bolt ride fire(), which
+       online.js relays, so the guest sees the same prop in the same hand (RULE #2); a caster in the viewer's fog shows nothing
+       (_pzSeen). A sprite caster (no bones) keeps the spell's own look. Nothing while the file streams (NO STAND-INS: the first
+       ask starts it; the battle's loading card warms every _WPN_MODELS file).
+       Grips are in the GLB's own coordinates (the files are Meshy's unit box, Y up, their front on +Z): `c` the handle's
+       middle, `down` the way down the handle (toward the little finger), `barrel` the way the business end points (along the
+       hand, out past the knuckles) — the same three THE GRIP seats the cowboy's revolver with. `m` = the prop's size in metres
+       (its longest side). Kill switch: window.EW_NO_HELD_PROPS. ══════════════════════════════════════════════════════════ */
+    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/props/';
+    (function () {
+        var P = { potionFlask: ['potion_flask.glb', 'y'], scalpel: ['scalpel.glb', 'z'], wrench: ['wrench.glb', 'z'], blowpipe: ['blowpipe.glb', 'z'],
+                  phone: ['smartphone.glb', 'y'], handMirror: ['hand_mirror.glb', 'y'], camera: ['old_camera_flash.glb', 'y'],
+                  milkCookies: ['milk_and_cookies.glb', 'flat'], cup: ['drinking_cup.glb', 'y'], halo: ['broken_halo.glb', 'flat'],
+                  wand: ['magic_wand.glb', 'y'], staff: ['wizard_staff.glb', 'y'] };
+        Object.keys(P).forEach(function (k) { _WPN_MODELS[k] = { url: _PROPS_BASE + P[k][0], axis: P[k][1], matte: true, prop: true }; });
+        /* THE WHIP (#49): the Meshy handle + a Blender lash on 21 bones (whip_handle + whip_lash_01..20, straight up +Y, real
+           metres: the handle 0.3 m, the lash 1.8 m). `rigged` = cloned with SkeletonUtils (its skin binds to the clone's bones). */
+        _WPN_MODELS.whip = { url: _PROPS_BASE + 'bullwhip_rigged.glb', axis: 'y', matte: true, prop: true, rigged: true };
+    })();
+    var _HELD_PROPS = {
+        raceAcidFlask:       { key: 'potionFlask', m: 0.2,  thrown: true, grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+        raceAntidote:        { key: 'potionFlask', m: 0.2,  grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+        raceChainReaction:   { key: 'potionFlask', m: 0.2,  grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+        raceVivisection:     { key: 'scalpel',     m: 0.17, grip: { c: [-0.24, 0, 0], down: [0, 0, 1], barrel: [1, 0, 0] } },
+        repair:              { key: 'wrench',      m: 0.3,  grip: { c: [-0.24, 0, 0], down: [-1, 0, 0], barrel: [0, 0, 1] } },
+        poisonDart:          { key: 'blowpipe',    m: 0.45, grip: { c: [0.3, 0, 0], down: [0, 0, 1], barrel: [-1, 0, 0] } },
+        raceDoomscroll:      { key: 'phone',       m: 0.15, screen: true, grip: { c: [0, -0.16, 0], down: [0, -1, 0], barrel: [-1, 0, 0] } },
+        raceRatiod:          { key: 'phone',       m: 0.15, screen: true, grip: { c: [0, -0.16, 0], down: [0, -1, 0], barrel: [-1, 0, 0] } },
+        raceMirrorShard:     { key: 'handMirror',  m: 0.26, grip: { c: [0, -0.34, 0], down: [0, -1, 0], barrel: [-1, 0, 0] } },
+        raceSevenYears:      { key: 'handMirror',  m: 0.26, grip: { c: [0, -0.34, 0], down: [0, -1, 0], barrel: [-1, 0, 0] } },
+        raceShatteredMirror: { key: 'handMirror',  m: 0.26, grip: { c: [0, -0.34, 0], down: [0, -1, 0], barrel: [-1, 0, 0] } },
+        raceHallOfMirrors:   { key: 'handMirror',  m: 0.26, grip: { c: [0, -0.34, 0], down: [0, -1, 0], barrel: [-1, 0, 0] } },
+        raceOutOfTheDark:    { key: 'camera',      m: 0.2,  flash: true, grip: { c: [-0.15, -0.3, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+        raceEyewitness:      { key: 'camera',      m: 0.2,  flash: true, grip: { c: [-0.15, -0.3, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+        raceMilkAndCookies:  { key: 'milkCookies', m: 0.28, grip: { c: [0, -0.2, 0], down: [1, 0, 0], barrel: [0, 0, 1], meshUp: 0.15, depth: 0.55 } },
+        raceDosed:           { key: 'cup',         m: 0.13, grip: { c: [0, -0.05, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+        raceBrokenHalo:      { key: 'halo',        m: 0.26, thrown: true, grip: { c: [-0.44, 0, 0], down: [0, 0, 1], barrel: [1, 0, 0] } },
+        raceCrackTheWhip:    { key: 'whip',        real: 1, whip: true, grip: { c: [0, 0.15, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
+    };
+    /* the wizard's casts (bar the ones above and the finishers) point the wand (#59); the staff (#60) is in the library for a
+       look mondo picks */
+    var _HELD_BY_RACE = { wizard: { key: 'wand', m: 0.32, grip: { c: [0, -0.28, 0], down: [0, 0, 1], barrel: [0, 1, 0] } } };
+    function _heldOff() { return (typeof window !== 'undefined' && !!window.EW_NO_HELD_PROPS) || _wpnGlbOff() || _catOff('spells'); }
+    function _heldUnit(uid) {
+        if (uid == null || typeof state === 'undefined' || !state || !Array.isArray(state.units)) return null;
+        for (var i = 0; i < state.units.length; i++) if (state.units[i] && state.units[i].id === uid) return state.units[i];
+        return null;
+    }
+    function _heldSpecFor(spellId, uid) {
+        if (_HELD_PROPS[spellId]) return _HELD_PROPS[spellId];
+        var u = _heldUnit(uid), R = u && _HELD_BY_RACE[u.race];
+        if (!R) return null;
+        var d = _spellDefFor(spellId);
+        if (!d || (d.tier || 0) >= 4 || d.kind === 'summonUnit') return null;
+        return R;
+    }
+    /* a clone of a prop's file at `size` world units along its longest side (`real`: the file is in metres, scaled by
+       `metre`), its middle on the origin, its own materials (faded per cast); at(p) = a GLB point in the clone's frame */
+    function _propClone(key, size, real) {
+        var e = _wpnCache[key], def = _WPN_MODELS[key] || {};
+        if (!e || !e.root) return null;
+        var m = (def.rigged && THREE.SkeletonUtils) ? THREE.SkeletonUtils.clone(e.root) : e.root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            n._ew_pixelate = true; n.frustumCulled = false;
+            n.material = Array.isArray(n.material) ? n.material.map(function (mm) { var c = mm.clone(); mats.push(c); return c; })
+                : (function () { var c = n.material.clone(); mats.push(c); return c; })();
+        });
+        var s = real ? size : size / (Math.max(e.size.x, e.size.y, e.size.z) || 1);
+        m.scale.setScalar(s);
+        if (!real) m.position.set(-e.center.x * s, -e.center.y * s, -e.center.z * s);
+        var g = new THREE.Group(); g.add(m);
+        var C = real ? new THREE.Vector3() : e.center;
+        return { g: g, model: m, s: s, mats: mats,
+            at: function (p) { return [(p[0] - C.x) * s, (p[1] - C.y) * s, (p[2] - C.z) * s]; },
+            fade: function (f) { for (var i = 0; i < mats.length; i++) { mats[i].transparent = f < 1; mats[i].opacity = f; } } };
+    }
+    /* THE PHONE: the blank screen lights up in the hand (a bright cold glow over the glass, no light added to the scene) */
+    function _heldScreen(B) {
+        var e = _wpnCache.phone; if (!e || !e.root) return;
+        var tex = _sigTex('held-phone-screen', 64, function (ctx, S) {
+            var gr = ctx.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, '#f4fbff'); gr.addColorStop(1, '#9fd2ff');
+            ctx.fillStyle = gr; ctx.fillRect(0, 0, S, S);
+            ctx.fillStyle = 'rgba(40,90,160,0.35)'; for (var i = 0; i < 5; i++) ctx.fillRect(S * 0.12, S * (0.16 + i * 0.15), S * (i % 2 ? 0.5 : 0.76), S * 0.05);
+        });
+        var mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+        B.mats.push(mat);
+        var pl = new THREE.Mesh(new THREE.PlaneGeometry(e.size.x * 0.84 * B.s, e.size.y * 0.9 * B.s), mat);
+        pl.position.set(0, 0, (e.size.z * 0.5 + 0.002) * B.s); pl.renderOrder = 3;
+        B.g.add(pl);
+    }
+    var _heldLive = {};   /* caster id -> the prop in its hand */
+    function _heldStop(uid) {
+        var r = _heldLive[uid]; if (!r) return;
+        r.dead = true; delete _heldLive[uid];
+        try { r.h.remove(); } catch (e) {}
+        _sigDisposeGroup(r.B.g);
+    }
+    function _heldStart(spellId, p) {
+        p = p || {};
+        if (_heldOff() || p.mark) return;
+        var uid = p.uid != null ? p.uid : _sigUnitIdAt(p.sx, p.sy);
+        var spec = _heldSpecFor(spellId, uid);
+        if (!spec || uid == null) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.unitHoldProp !== 'function') return;
+        if (p.sx != null && !_pzSeen(p.sx, p.sy)) return;
+        if (!_wpnReady(spec.key)) return;   /* streams now: the next cast has it */
+        _heldStop(uid);
+        var pxm = TR.unitPropMetre(uid);
+        var B = _propClone(spec.key, spec.real ? pxm * spec.real : spec.m * pxm, !!spec.real);
+        if (!B) return;
+        if (spec.screen) _heldScreen(B);
+        var grip = Object.assign({}, spec.grip, { c: B.at(spec.grip.c) });
+        var h = null;
+        try { h = TR.unitHoldProp(uid, B.g, { grip: grip }); } catch (e) { h = null; }
+        if (!h) { _sigDisposeGroup(B.g); return; }
+        var hold = p.holdMs > 0 ? p.holdMs : 900;
+        var r = { uid: uid, h: h, B: B, spec: spec, spellId: spellId, p: p, t0: performance.now(), hideAt: null, fadeMs: 220, pxm: pxm };
+        r.end = hold + (spec.thrown ? 600 : 520);
+        if (spec.whip) _whipSetup(r, hold);
+        _heldLive[uid] = r;
+        _fxSchedule(function () { return _heldTick(r); });
+    }
+    function _heldTick(r) {
+        if (r.dead) return false;
+        var el = performance.now() - r.t0;
+        /* dev: window.EW_HELD_T = ms holds every prop at that moment of its cast (a still of the whip's swing) */
+        if (typeof window !== 'undefined' && typeof window.EW_HELD_T === 'number') { el = window.EW_HELD_T; r.t0 = performance.now() - el; }
+        if (r.hideAt != null && el >= r.hideAt) { _heldStop(r.uid); return false; }
+        if (el >= r.end) { _heldStop(r.uid); return false; }
+        if (!r.h.holder.parent) { _heldStop(r.uid); return false; }   /* the rig went (death, a model swap) */
+        r.B.g.scale.setScalar(0.5 + 0.5 * _sigEaseOutCubic(_sigClamp01(el / 110)));
+        var fs = r.end - r.fadeMs;
+        r.B.fade(el > fs ? Math.max(0, 1 - (el - fs) / r.fadeMs) : 1);
+        if (r.whip) _whipPose(r, el);
+        if (r.spec.flash && !r.flashed && el >= (r.p.holdMs > 0 ? r.p.holdMs : 900) - 380) { r.flashed = true; _heldFlash(r); }
+        return true;
+    }
+    /* THE CAMERA: the flash goes off in the hand as the shot is taken */
+    function _heldFlash(r) {
+        if (!_canSpawn()) return;
+        var v = new THREE.Vector3(); r.B.g.getWorldPosition(v);
+        var sp = _sigWorldToSpawn(v);
+        _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'flash', ml: 160, size0: 70, size1: 18, opacity0: 0.95, opacity1: 0, tint: 0xffffff });
+        _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'flash', ml: 90, size0: 26, size1: 8, opacity0: 1, opacity1: 0, tint: 0xfff6c8 });
+    }
+    /* a thrown prop leaves the hand when its bolt flies (the bolt flies the same model) */
+    function _heldThrown(spellId, p) {
+        var spec = _HELD_PROPS[spellId]; if (!spec || !spec.thrown) return;
+        for (var k in _heldLive) {
+            var r = _heldLive[k];
+            if (r && r.spellId === spellId && (p.fromX == null || (r.p.sx === p.fromX && r.p.sy === p.fromY))) r.hideAt = performance.now() - r.t0;
+        }
+    }
+    /* a flying copy of a prop for a thrown spell: { g, op(f) } at `size` world units, or null while the file streams */
+    function _propFlyBody(key, size) {
+        if (_heldOff() || !_wpnReady(key)) return null;
+        var B = _propClone(key, size, false); if (!B) return null;
+        return { g: B.g, op: B.fade };
+    }
+
+    /* ── THE WHIP CRACK (#49, Crack the Whip): the lash is swung on its own 20 bones, in the world, whatever the caster's arm
+       clip does: it hangs from the hand, is drawn back and up behind the shoulder, then the throw rolls a loop down the lash
+       (each bone turns over the top a moment after the one before it, faster and faster toward the tip) until the tip snaps
+       out straight at the target — the CRACK (a white flash and sparks at the tip, timed to the sound wave leaving) — and the
+       lash drops to the ground in a dying wave. ── */
+    function _whipSetup(r, hold) {
+        var m = r.B.model, lash = [], hb = m.getObjectByName('whip_handle');
+        for (var i = 1; i <= 20; i++) { var b = m.getObjectByName('whip_lash_' + (i < 10 ? '0' : '') + i); if (b) lash.push(b); }
+        if (!hb || lash.length < 4) return;
+        var Tc = Math.max(420, Math.min(1500, hold - 300));
+        r.whip = { hb: hb, lash: lash, seg: lash.length > 1 ? lash[1].position.length() : 0.09, Tc: Tc, Tw: Tc * 0.5, cracked: false,
+                   q: new THREE.Quaternion(), qw: new THREE.Quaternion(), M: new THREE.Matrix4() };
+        r.end = Tc + 900;
+        var a = _worldPos(r.p.sx, r.p.sy), b2 = (r.p.tx != null) ? _worldPos(r.p.tx, r.p.ty) : null;
+        var F = b2 ? new THREE.Vector3(b2.x - a.x, 0, b2.z - a.z) : new THREE.Vector3(0, 0, 1);
+        if (F.lengthSq() < 1e-6) F.set(0, 0, 1);
+        F.normalize();
+        r.whip.F = F; r.whip.U = new THREE.Vector3(0, 1, 0); r.whip.S = new THREE.Vector3().crossVectors(F, r.whip.U).normalize();
+    }
+    function _whipPose(r, el) {
+        var W = r.whip; if (!W) return;
+        var N = W.lash.length, D2R = Math.PI / 180, Tc = W.Tc, Tw = W.Tw;
+        var ease = function (x) { x = _sigClamp01(x); return x * x * (3 - 2 * x); };
+        W.hb.updateWorldMatrix(true, false);
+        W.hb.getWorldQuaternion(W.q);
+        var prev = W.q.clone(), d = new THREE.Vector3(), x = new THREE.Vector3(), z = new THREE.Vector3();
+        for (var j = 0; j < N; j++) {
+            var u = j / (N - 1);
+            var hang = -95 + 8 * u, back = -(240 - 75 * Math.pow(u, 0.8)), fwd = 7 - 12 * u, fall = -62 - 26 * u;
+            var phi, lat = 0;
+            if (el < Tw) {
+                phi = hang + (back - hang) * ease(el / Tw * 1.45 - 0.45 * u);
+            } else if (el < Tc + 30) {
+                var b360 = back + 360;   /* the same way back, counted the other way round so the throw goes OVER the top */
+                var s0 = Tw + (Tc - Tw) * (0.04 + 0.62 * Math.pow(u, 1.5)), s1 = Tw + (Tc - Tw) * (0.38 + 0.62 * Math.pow(u, 1.15));
+                var k = ease((el - s0) / Math.max(1, s1 - s0));
+                phi = b360 + (fwd - b360) * k;
+                lat = 0.22 * Math.sin(Math.PI * k) * (0.4 + u);
+                if (el > Tc - 60 && u > 0.75) phi -= 22 * (u - 0.75) / 0.25 * Math.sin(Math.PI * _sigClamp01((el - Tc + 60) / 90));   /* the snap */
+            } else {
+                var t = el - Tc, k2 = ease((t - 40 * u * 4) / 520);
+                phi = fwd + (fall - fwd) * k2 + 16 * Math.sin(t / 180 * Math.PI * 2 - u * 3.2) * Math.exp(-t / 280) * (0.3 + u);
+            }
+            phi *= D2R;
+            d.copy(W.F).multiplyScalar(Math.cos(phi)).addScaledVector(W.U, Math.sin(phi)).addScaledVector(W.S, lat).normalize();
+            x.copy(W.S).addScaledVector(d, -W.S.dot(d)); if (x.lengthSq() < 1e-6) x.set(1, 0, 0); x.normalize();
+            z.crossVectors(x, d);
+            W.qw.setFromRotationMatrix(W.M.makeBasis(x, d, z));
+            W.lash[j].quaternion.copy(prev).invert().multiply(W.qw);
+            prev.copy(W.qw);
+        }
+        if (!W.cracked && el >= Tc) { W.cracked = true; _whipCrackFx(r); }
+    }
+    function _whipCrackFx(r) {
+        var W = r.whip, tip = W.lash[W.lash.length - 1];
+        tip.updateWorldMatrix(true, false);
+        var v = new THREE.Vector3(0, W.seg, 0).applyMatrix4(tip.matrixWorld);
+        if (!_canSpawn()) return;
+        var sp = _sigWorldToSpawn(v);
+        _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'flash', ml: 120, size0: 58, size1: 10, opacity0: 1, opacity1: 0, tint: 0xffffff });
+        _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'flash', ml: 220, size0: 18, size1: 64, opacity0: 0.5, opacity1: 0, tint: 0xfff0c8 });
+        for (var i = 0; i < 10; i++) _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'spark', ml: rn(180, 340), size0: rn(4, 7), size1: 1,
+            vx: rn(-1, 1) * 260, vy: rn(-1, 1) * 260, vz: rn(-60, 200), gravity: 300, opacity0: 1, opacity1: 0, tint: 0xfff4d0 });
+        _sigShake('soft');
     }
 
     /* THE MATCH WARM (2026-09-20, the loading pass) — there is NO BOOT WARM any more. The library is
@@ -58927,16 +59170,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ════ FIREBALL — a roiling ball of fire (a white-hot heart, a halo, the grass fire streaming back off it)
        flies with a flame-and-smoke tail and bursts on the body ════ */
     EFFECTS['fpFireball_bolt'] = _pzDef('fpFireball', { pzOwn: true });
-    function _fpBurst(tx, ty, pal, big) {
+    function _fpBurst(tx, ty, pal, big, fb) {
         if (!_pzSeen(tx, ty) || !_canSpawn()) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, k = big ? 1.4 : 1, y = ts * 0.5;
         _pzP(F, 0, y, 0, { sprite: 'flash', tint: pal.light, ml: 130, size0: 40 * k, size1: 10, opacity0: 0.75 });
+        /* THE FLIPBOOK PILOT (fb): the Blender fire burst takes the painted fireball blobs' and smoke puffs' place */
+        if (fb) _fbBlast(F, { y: y, size: ts * 2.3 * k, ml: 1200, fbTo: 0.6, back: ts * 0.3, grow: 1.15 });
         for (var i = 0; i < 18 * k; i++) {
+            if (fb && !(i % 3)) continue;
             var a = rn(0, 6.28), e = rn(-0.4, 1), v = rn(120, 230) * k;
             _pzP(F, 0, y, 0, { sprite: i % 3 ? 'flame' : 'explosion-orange', tint: i % 3 ? null : pal.hot, ml: rn(300, 520), size0: rn(14, 22) * k, size1: rn(4, 8),
                 vx: Math.cos(a) * v * Math.cos(e), vy: Math.sin(a) * v * Math.cos(e), vz: Math.sin(e) * v + 40, gravity: -60, drag: 2.2, opacity0: 0.95 });
         }
-        _fxDelay(function () { if (!_suppressed()) _fpSmoke(F, 0, y * 0.8, 0, big ? 5 : 3, pal, { r: 20, s0: 28, s1: 80 }); }, 120);
+        if (!fb) _fxDelay(function () { if (!_suppressed()) _fpSmoke(F, 0, y * 0.8, 0, big ? 5 : 3, pal, { r: 20, s0: 28, s1: 80 }); }, 120);
         _fpEmbers(F, 0, y, 0, 10 * k, pal, { r: 10, v: 160, vz0: 40, vz1: 220, g: 120 });
         _sigShockRing3D(tx, ty, { color: pal.flame, r0: ts * 0.1, r1: ts * 0.95 * k, ms: 320, height: ts * 0.3, torus: false, opacity: 0.55 });
     }
@@ -58944,7 +59190,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY;
         if (tx == null || fx == null) return;
         var pal = _fpPal(id), ts0 = _cfg().tileSize || 128, ms = p.flyMs > 0 ? p.flyMs : 420;
-        _fxDelay(function () { if (!_suppressed() && !_catOff('spells')) _fpBurst(tx, ty, pal, false); }, ms);
+        _fxDelay(function () { if (!_suppressed() && !_catOff('spells')) _fpBurst(tx, ty, pal, false, id === 'fire1' && _fbReady('fb-explosion')); }, ms);
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
         var ball = new THREE.Group();
         var halo = _pzSpr(pal.flame, ts0 * 0.8, ball); halo.material.opacity = 0.85;
@@ -59589,7 +59835,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ms = p.flyMs > 0 ? p.flyMs : 440;
         _pvLand(id, tx, ty, ms);
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
-        var K = _pvFlask(_cfg().tileSize || 128);
+        /* THE PROPS IN THE HAND (row 24): the flask the hand held — the Meshy flask (#47) — flies; the built one while it streams */
+        var K = _propFlyBody('potionFlask', (_cfg().tileSize || 128) * 0.22) || _pvFlask(_cfg().tileSize || 128);
         _pzFly(fx, fy, tx, ty, K.g, { ms: ms, arc: 0.55, face: false, hideOnLand: true, trail: { sprite: 'poison-bubble', every: 40, size: 7 },
             spin: function (el, obj, t) { K.op(t < 1 ? 1 : 0); obj.rotation.x = el * 0.016; obj.rotation.z = el * 0.006; } });
     };
@@ -61069,7 +61316,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.fx3HaloFly = function (p) {
         var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY; if (tx == null || fx == null) return;
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
-        var K = _fx3Halo(_cfg().tileSize || 128);
+        /* THE PROPS IN THE HAND (row 24): the broken halo the hand held — the Meshy halo (#57) — is the discus; the built ring while it streams */
+        var K = _propFlyBody('halo', (_cfg().tileSize || 128) * 0.3) || _fx3Halo(_cfg().tileSize || 128);
         _pzFly(fx, fy, tx, ty, K.g, { ms: p.flyMs > 0 ? p.flyMs : 420, arc: 0.12, face: false, hideOnLand: true, trail: { sprite: 'spark', tint: 0xffd070, every: 30, size: 6 },
             spin: function (el, obj, t) { K.op(t < 1 ? 1 : 0); obj.rotation.y = el * 0.03; obj.rotation.z = 0.25; } });
     };
@@ -62567,6 +62815,56 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     };
     if (EFFECTS['raceTrickRoom_aura']) EFFECTS['raceTrickRoom_aura'] = Object.assign({}, EFFECTS['raceTrickRoom_aura'], { pzSig: 'f4TrickRoom' });
+
+    /* ═══ THE FLIPBOOK PILOT (2026-11-03, mondo: "Pilot on Fireball + Meteor") ═════════════════════════════════════
+       The first spells drawn with a Blender-baked flipbook (three-vfx.js THE FLIPBOOKS): a real fire + smoke sim
+       instead of painted blobs. ONLY Fireball (fire1, its burst in _fpBurst above) and Meteor (meteor) use it; every
+       other spell keeps its look until mondo has judged these two. Sheet not loaded / EW_NO_FLIPBOOKS → the old look.
+       Online: both run inside the relayed fire() intents, so the guest draws the same blasts; _pzSeen keeps fogged
+       tiles empty. The blast stands a little BEHIND the body from the lens, so the victim still draws over it. */
+    /* one blast in a frame F: o.y the blast's centre height, o.size the billboard, o.back how far behind the body */
+    function _fbBlast(F, o) {
+        var info = window.ThreeVFX && window.ThreeVFX.flipbookInfo ? window.ThreeVFX.flipbookInfo('fb-explosion') : null;
+        if (!info || !_fbReady('fb-explosion')) return;
+        var cd = _nbCamDir(F), back = o.back || 0, sz = o.size;
+        _pzP(F, -cd.x * back + (o.dx || 0), o.y + sz * info.lift, -cd.z * back + (o.dz || 0), {
+            sprite: 'fb-explosion', ml: o.ml, size0: sz, size1: sz * (o.grow || 1.08),
+            fbFrom: o.fbFrom || 0, fbTo: o.fbTo != null ? o.fbTo : 1, opacity0: 1, opacity1: o.op1 != null ? o.op1 : 0.85,
+            spriteRot: 0, spriteSpin: 0, keep: true });
+    }
+    /* METEOR: one big blast where it lands, smaller ones on a few tiles of the strike (seen tiles only), and the
+       tiles' painted smoke puffs step aside (ifNoFb) */
+    if (EFFECTS['meteor_impact_tile'] && EFFECTS['meteor_descent'] && SPELL_MAP['meteor']) {
+        EFFECTS['fbMeteor_impact_tile'] = Object.assign({}, EFFECTS['meteor_impact_tile'], {
+            layers: EFFECTS['meteor_impact_tile'].layers.map(function (l) { return l.sprite === 'smoke' ? Object.assign({}, l, { ifNoFb: 'fb-explosion' }) : l; }) });
+        EFFECTS['fbMeteor_descent'] = Object.assign({}, EFFECTS['meteor_descent'], { impactTileEffect: 'fbMeteor_impact_tile' });
+        SPELL_MAP['meteor'] = Object.assign({}, SPELL_MAP['meteor'], { descent: 'fbMeteor_descent' });
+    }
+    if (_spell3DGeometry.meteor) {
+        var _fbMeteorGeom = _spell3DGeometry.meteor;
+        _spell3DGeometry.meteor = function (tx, ty, r, dm, tm) {
+            _fbMeteorGeom.apply(this, arguments);
+            _fxDelay(function () {
+                if (_suppressed() || _catOff('spells') || !_fbReady('fb-explosion') || !_canSpawn()) return;
+                var R = r != null ? r : 1;
+                if (_pzSeen(tx, ty)) {
+                    var F = _nrvFrame(tx, ty), ts = F.ts;
+                    _fbBlast(F, { y: ts * 0.45, size: ts * (2.2 + R * 0.9), ml: 2100, back: ts * 0.3, grow: 1.15, op1: 0.7 });
+                }
+                var tiles = [];
+                for (var dx = -R; dx <= R; dx++) for (var dy = -R; dy <= R; dy++) if ((dx || dy) && _pzSeen(tx + dx, ty + dy)) tiles.push({ x: tx + dx, y: ty + dy });
+                for (var i = tiles.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), tt = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tt; }
+                tiles.slice(0, 4).forEach(function (t, n) {
+                    _fxDelay(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        var Ft = _nrvFrame(t.x, t.y);
+                        _fbBlast(Ft, { y: Ft.ts * 0.3, size: Ft.ts * rn(1.1, 1.4), ml: rn(1200, 1500), fbTo: 0.8, back: Ft.ts * 0.15 });
+                    }, 70 + n * rn(50, 90));
+                });
+            }, dm || 700);
+        };
+    }
+    /* ═════════ END THE FLIPBOOK PILOT ═════════ */
 
 
     return {

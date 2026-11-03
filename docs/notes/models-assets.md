@@ -1475,3 +1475,41 @@ mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to th
 - Proof: before / after sheets in /mnt/project-files/jiggle/ (the same instant rendered with the jiggle and with every jiggle
   bone at rest, idle and walking). Probe = a scratch Playwright page through playtest_creator.js's routes, DOOR Agent slot >
   GEAR > CHARACTER CREATOR > MPFB FEMALE, EWCharViewer.dev.model() for the bones, EWCharViewer.snapshot({yaw}) per frame.
+
+## THE MESHY PIECES (2026-11-03, character-models-plan.md row 16)
+mondo: "now how do we put these models both in the character creator and in the game for spells". This is the creator half.
+- `bake-meshy.py` (repo root, imports bake-clothes.py): `python3 -I bake-meshy.py --mpfb /tmp/mpfb2 [--only key1,key2] [--views dir]`
+  (cloud Blender 4.2.3 bpy + MPFB; ~2.5 min for all). Reads `/mnt/project-files/meshy/models/<num>_<name>.glb`, writes
+  `charactercreation/wear/ewm_<key>.glb` in the compact wear layout (male fit + `_d_<body>` offsets for female/heavy/thin/short),
+  `extras.ewWear.solid = true`, texture downsized to a 1024 JPEG (512 for small pieces) in place of optimize-assets.js (the compact
+  layout is not a plain glTF scene). `--views` draws a 3x3 check sheet per piece (male front/side/back, zooms, the other bodies).
+- One spec line per piece (`piece(key, src, label, cat, z, mode=...)`). Modes: `hat` (dropped onto the crown), `helm` (sized to the
+  head width, `sink`/`top` from the crown), `head` (creature heads: the piece's eye point on the face, the head skin hidden), `float`
+  (halo), `front`/`back` (rayed to the chest/back skin), `side` (hip pieces, `anchor` ear/neck), `drop` (collar: hole wider than the
+  neck oval, `cone` drape, then lowered), `pads` (shoulder pads: front/back halves deepened apart until clear), `cap` (pauldron over
+  the shoulder joint, tilted half down the arm), `ring`/`limb`/`foot`/`mermaid` (wraps: length set, widened all round until the
+  outer surface clears, then each way across taken in + the centre slid while clear: belts take the waist oval, greaves sit on the
+  shin), `tail` (sway chains, `chains` joints), `hand` (THE GRIP's seat, the same formula as three-renderer.js `_gripFrame`).
+- Hidden skin (`delBy` per body): creature heads = every head-dominated vertex + the neck inside the piece; hooves/beast feet = the
+  feet; mermaid = the legs + the hips under the waist; breastplate = the skin inside it (`hide='cover'`). Gotcha: the signed
+  distance test is wrong next to a cut-away part's rim (BVH of the body with the arms removed) - keep the arms in for shoulder pieces.
+- Renderer (three-renderer.js): `w.solid` pieces ride the body sliders as one (mean offset), on the classic bodies too; their del
+  list ALWAYS hides (`part.solidHide`, the skin cover pass would otherwise draw the head under a creature head); `ex.hideHead` ->
+  `headOff` hides the hair, the facial hair and the eye pack; `ex.hideLegs` (mermaid) hides worn bottoms/skirts/shoes; `ex.grip`
+  (the 12 props) -> `wearGrip` curls the right hand (`_gripHand`) and restores the fingers when the prop comes off (skipped when the
+  unit's own `hold` already curled it, e.g. the DOOR Agent's gun).
+- sprites.js: EW_MH_WEAR rows `ewm_*`, category `heads` (new, one at a time), tabs Armour / Creature heads / In the hand (one prop) /
+  Badges + jewellery / Back gear / Ears, feet + fins (EW_WEAR_SHELVES + EW_WEAR_SHELF_MOVE). The whip (#49) is the spell side's.
+- Not on R2 by sync-zip.js: the `ewm_*.glb` files go in the sync zip by hand (Assets/Models/charactercreation/wear/) and are listed
+  in ASSET_MANIFEST.json.
+
+## THE MASTER MODEL LIST (2026-11-03, mondo: "Any model from spell animations, characters, props, etc. needs to be documented and kept up to date with new additions ... include how the model was made")
+- `MODEL_LIST.md` is written by `node list-models.js` (repo-only tooling): it loads data.js (load-data.js) + sprites.js in one vm sandbox
+  and reads DOOR_HQ.catalogue, HQ_TREE_KINDS, HQ_STAIR_PACK, RACE_MODELS_3D / RACE_MODEL_SKINS / DOOR_CAST_MODELS, EW_ANIM_LIB_URLS,
+  EW_MH_WEAR, EW_HAIR_STYLES, the renderer's `_MISC_GLB` / `_ANIMALS` / `_FOLIAGE_MODEL_FOR_KEY` and the VFX `_WPN_MODELS` by text,
+  every literal cdn model URL in the game scripts (catch-all), and charactercreation/{wear/wear.json, hair/mh/hair_styles.json}.
+- "How made" = the `SOURCES` regex table (first match on the bucket path). A file no row matches lands in UNSORTED at the bottom.
+- Hand-kept parts (§9 Meshy API pieces not wired, §10 decor still missing) live in `MODEL_LIST_EXTRA.md`, pasted in verbatim.
+- §10 sorts all 184 procedural catalogue stand-ins: 92 need a new model (concept prompts + doubled tri targets, also in project files
+  meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
+  old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
