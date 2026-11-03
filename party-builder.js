@@ -1119,17 +1119,24 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     return h(React.Fragment, null,
       h('div', { className: 'pb-creator-colorlabel' }, 'Colours of the pieces you wear'),
       rows.map(([id, label, cat]) => {
-        const cur = T[id];
+        /* one colour block: key = the wear id, or '<id>:band' for THE BAND TINT (2026-11-03: a hat's band coloured apart, sprites.js EW_WEAR_BANDS) */
+        const block = (key, name, pick) => {
+          const cur = T[key];
+          return h(React.Fragment, { key },
+            h('div', { className: 'pb-creator-colorlabel' }, name),
+            h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': name + ' colour' },
+              h('button', { className: 'ms-tty-btn' + (cur ? '' : ' primary'), 'aria-pressed': !cur, onClick: () => { if (cur) setT(key, null); } }, 'Original colours'),
+              h('button', { className: 'ms-tty-btn' + (cur ? ' primary' : ''), 'aria-pressed': !!cur, onClick: () => { if (!cur) setT(key, pick); } }, 'Pick a colour')),
+            cur ? h('div', { className: 'pb-creator-colorrow' },
+              h('span', { className: 'pb-creator-colorlabel' }, 'Colour'),
+              h('div', { className: 'pb-creator-swatches' }, wearSwatches.map(c =>
+                h('button', { key: c, className: 'pb-creator-swatch', style: { background: c }, 'aria-label': name + ' ' + c, 'aria-pressed': cur === c, onClick: () => setT(key, c) })),
+                h('label', { className: 'pb-creator-custom', title: 'Custom ' + name.toLowerCase() + ' colour' }, h('input', { type: 'color', value: cur, 'aria-label': 'Custom ' + name + ' colour', onChange: e => setT(key, e.target.value, true) }), h('i', null, '+')))) : null);
+        };
+        const band = (window.EW_WEAR_BANDS || []).includes(id);
         return h('div', { key: id, className: 'pb-cc-weartint', 'data-cc-cam-own': ccWearFace(cat, label) ? 'face' : 'body' },
-          h('div', { className: 'pb-creator-colorlabel' }, label),
-          h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': label + ' colour' },
-            h('button', { className: 'ms-tty-btn' + (cur ? '' : ' primary'), 'aria-pressed': !cur, onClick: () => { if (cur) setT(id, null); } }, 'Original colours'),
-            h('button', { className: 'ms-tty-btn' + (cur ? ' primary' : ''), 'aria-pressed': !!cur, onClick: () => { if (!cur) setT(id, '#5a3b25'); } }, 'Pick a colour')),
-          cur ? h('div', { className: 'pb-creator-colorrow' },
-            h('span', { className: 'pb-creator-colorlabel' }, 'Colour'),
-            h('div', { className: 'pb-creator-swatches' }, wearSwatches.map(c =>
-              h('button', { key: c, className: 'pb-creator-swatch', style: { background: c }, 'aria-label': label + ' ' + c, 'aria-pressed': cur === c, onClick: () => setT(id, c) })),
-              h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() + ' colour' }, h('input', { type: 'color', value: cur, 'aria-label': 'Custom ' + label + ' colour', onChange: e => setT(id, e.target.value, true) }), h('i', null, '+')))) : null);
+          block(id, label, '#5a3b25'),
+          band ? block(id + ':band', 'Band', '#0f0d0c') : null);
       }));
   };
   /* THE SHELVES (2026-11-02, mondo: "Can we organize the character creator better? Like there are wings at the bottom but then there
