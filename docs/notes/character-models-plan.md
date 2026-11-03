@@ -98,6 +98,7 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 27 | ~~Phase 3: leg / arm / torso length sliders that move the skeleton~~ | same | **DROPPED** (mondo 11-02: "works for me") | Most of the roster is regular people (Height + the shape sliders cover them). The creatures that need other proportions (long-thin: grey, martian, mothman, eagleman; short-squat: goblin, machine elves; long-armed heavy: werewolf, minotaur, krampus, goatman, giant, Frankenstein) get their own BAKED preset body in row 18, like the female presets (bake-mpfb.py BODIES + FIT_FROM). |
 | 28 | **Phase 4: head shapes + community targets** — oval / round / square / heart / diamond / triangle picker; CC0 nose / cheek / ear extras; creature heads + muzzles (jaldmic CC-BY: bear, cat, fox, lion, rabbit, dog, horse, donkey heads; feline / canine / reptile / shark mouths; elf, cat, bunny ears) for row 18 | same | **NOT STARTED** | CC-BY ones go in CREDITS.json + EW_CREDITS. |
 | 29 | **Phase 5: AAA polish** — per-tab RANDOM, face presets to start from, symmetry off (left / right sliders), teeth shapes (6 CC0), high-poly eyes | same | **NOT STARTED** | Optional. |
+| 29a | **Good-looking default faces** (mondo 11-03: "are there any references for people making attractive and good looking faces with these make human models? ... Can you make male and female faces on the mpfb bodies that are good looking that we can use as a default?") | Make attractive default MPFB faces (`cmsg_01XWpxyTn3nnw98znVzKdFjsTK693FhAsFAaLac9qQ24at`) | **DONE** 2026-11-03 | sprites.js EW_MPFB_DEFAULT_FACES (male / female, existing face sliders only, tuned on screen front / three-quarter / profile). A new MPFB look starts on its gender's face (CREATE APPEARANCE, the mirror's new look + RESET, a body switch while the face is untouched or still a default face); FACE > DEFAULT FACE / NEUTRAL FACE swap it. Never applied by normalize, so saved looks and every baked race look keep their faces. Shots: project files default-faces/. Notes: character-creator.md "THE DEFAULT FACES". Left as is: the MPFB bases rest with the lips slightly parted (teeth line shows) and the stock skin / eyes; both are outside the sliders. |
 
 Weights to keep in mind: an MPFB body is ~2.5-2.9 MB with the face shapes; three builds a ~16 MB GPU morph texture per
 body type the first time a face moves.
@@ -465,6 +466,13 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
   vertices each); zero per-frame cost on the board. Memory: the per-vertex tables are now cached per body mesh (were one
   copy per unit). Could be halved later with int16 offsets.
 - **Licences:** MakeHuman's own targets (all of phase 1-3) are CC0. Only the CC-BY community targets (row 28) need credits.
+- **Community references for good-looking faces (asked 11-03):** none that plug in. MakeHuman's community shares characters as
+  .mhm files (slider values for MakeHuman's own modifiers, CC0 output), but there is no curated "attractive face" preset library,
+  none of the 64 asset packs carries a .mhm, and MakeHuman's forum / docs only describe what each slider does. Because our FACE
+  sliders ARE MakeHuman's own modifiers (with SHAPE_GAIN on top), any .mhm's face lines would map across key by key (divide by the
+  gain), so a CC0 .mhm he likes can be dropped in later. The defaults (row 29a) follow the usual attractiveness cues instead
+  (averageness, clear dimorphism: jaw / chin / brow for the male; smaller jaw, high cheekbones, almond eyes, small nose for the
+  female). The CC0 nose01 / cheek01 pack targets (row 28) would add finer shapes; not needed for the defaults.
 
 ---
 
@@ -522,3 +530,4 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
 - 2026-11-02: row 26 DONE (three female presets + Weight / Muscle / body detail sliders) — same thread.
 - 2026-11-02: row 27 DROPPED at mondo's OK; creature proportions = baked preset bodies in row 18.
 - 2026-11-02: row 20 BATCH 1 BAKED (19 creator looks over 17 races replace their Meshy models; 4c rows marked) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsM1PMCb4Vp2NHAibpUZUW2t.
+- 2026-11-03: row 29a DONE (male + female default faces on the MPFB bodies; community references answer in section 7) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsTK693FhAsFAaLac9qQ24at.
