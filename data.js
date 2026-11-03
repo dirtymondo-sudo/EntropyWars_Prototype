@@ -40828,24 +40828,20 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* THE GATE PLATFORM (3.7): the pearly gate, the angels, the book, a brazier, the flowers */
+                /* THE GATE PLATFORM (3.7): the pearly gate, the angels, the book, a brazier */
                 { key: 'pearly_gate',    x: 0, z: -20.3, y: 3.7, face: 0 },
                 { key: 'angel_statue',   x: -8.75, z: -15.75, y: 3.7, face: 180 }, { key: 'angel_statue', x: 8.75, z: -15.75, y: 3.7, face: 180 },
                 { key: 'lectern',        x: -5.25, z: -12.25, y: 3.7, face: 180 },   // THE BOOK, beside the flight
                 { key: 'brazier',        x: 5.25, z: -12.25, y: 3.7 },
-                { key: 'potted_plant',   x: -8.9, z: -11.9, y: 3.7 }, { key: 'potted_plant', x: 8.9, z: -11.9, y: 3.7 },
                 { key: 'paper_sheet',    x: -10.2, z: -13.2, y: 3.71, face: 320 },   // a form on the marble: GATE — WHICH
-                /* THE GRAND STAIR's PLATFORM (3.7): the columns, the braziers, the flowers */
+                /* THE GRAND STAIR's PLATFORM (3.7): the columns, the braziers */
                 { key: 'greek_column',   x: -8.75, z: 15.75, y: 3.7 }, { key: 'greek_column', x: 8.75, z: 15.75, y: 3.7 },
                 { key: 'brazier',        x: -5.25, z: 12.25, y: 3.7 }, { key: 'brazier', x: 5.25, z: 12.25, y: 3.7 },
-                { key: 'potted_plant',   x: -8.9, z: 11.9, y: 3.7 }, { key: 'potted_plant', x: 8.9, z: 11.9, y: 3.7 },
-                /* THE TERRACES (3.2): an angel and a column on each outer edge, a harp, flowers */
+                /* THE TERRACES (3.2): an angel and a column on each outer edge, a harp */
                 { key: 'angel_statue',   x: -19.25, z: -1.75, y: 3.2, face: 90 }, { key: 'angel_statue', x: 19.25, z: 1.75, y: 3.2, face: 270 },
                 { key: 'greek_column',   x: -19.25, z: 1.75, y: 3.2 }, { key: 'greek_column', x: 19.25, z: -1.75, y: 3.2 },
                 { key: 'instrument_harp', x: -15.6, z: -5.0, y: 3.2, face: 120 }, { key: 'instrument_harp', x: 15.6, z: 5.0, y: 3.2, face: 300 },   // THE INSTRUMENTS (2026-10-27): the angels' harps
-                { key: 'potted_plant',   x: -15.6, z: 5.0, y: 3.2 }, { key: 'potted_plant', x: 15.6, z: -5.0, y: 3.2 },
-                /* THE SUN (3.2): flowers at the four cloud paths' mouths, a harp */
-                { key: 'potted_plant',   x: -6.4, z: -3.0, y: 3.2 }, { key: 'potted_plant', x: 6.4, z: 3.0, y: 3.2 }, { key: 'potted_plant', x: -6.4, z: 3.0, y: 3.2 }, { key: 'potted_plant', x: 6.4, z: -3.0, y: 3.2 },
+                /* THE SUN (3.2): a harp (no potted plants: mondo 11-03 "potted plants in heaven?") */
                 { key: 'instrument_harp', x: 2.9, z: -6.3, y: 3.2, face: 200 },
                 /* THE CASTLES (THE CASTLE AND FORT PACK, McSteeg): a keep, two towers and a gate on each corner island, facing the sun */
                 { key: 'castle_tower', x: -17.39, z: -18.45, y: -1.0, face: 136.68 }, { key: 'castle_tower', x: -17.39, z: -18.45, y: 1.0, face: 136.68 }, { key: 'castle_cone', x: -17.39, z: -18.45, y: 3.0, face: 136.68 }, { key: 'castle_tower', x: -17.57, z: -14.84, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -17.57, z: -14.84, y: 1.0, face: 136.68 }, { key: 'castle_tower', x: -13.79, z: -18.41, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -13.79, z: -18.41, y: 1.0, face: 136.68 }, { key: 'castle_gate', x: -15.68, z: -16.63, y: -1.0, face: 46.68 }, { key: 'castle_wall', x: -18.76, z: -19.9, y: -1.0, face: 46.68 },
@@ -54673,10 +54669,12 @@ function hqTerrainCompile(room, roomId) {
     const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|spiral|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
     const hmap = T.hmap ? hqGridDecode(T.hmap) : null;   // THE GROUND GRIDS (E3): the brushes' height delta, added after the rows
     let skipFlights = false;   // THE JOINED FLIGHTS (below): the ground a flight stands on — the field without the flights
+    let skipFloats = false;    // THE GROUND UNDER (2026-11-03): the ground under the floating pieces — the field without them (info.GH)
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
         for (const f of ordered) {
             if (skipFlights && f.k === 'ramp' && (f.escalator || (f.stairs && !f.float))) continue;
+            if (skipFloats && f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))) continue;
             if (f.k === 'ridge') { const r = _hqTPolyDist(px, pz, f.pts); h += f.h * _hqTSmooth(1 - r.d / (f.w / 2)); }
             else if (f.k === 'hill' || f.k === 'dip') { const e = _hqTEllipse(px, pz, f); const sm = _hqTSmooth(1 - e); h += (f.k === 'dip' ? -f.h : f.h) * (f.dome ? sm * sm : sm); }
             else if (f.k === 'plateau') {
@@ -54825,6 +54823,15 @@ function hqTerrainCompile(room, roomId) {
     /* ── sample the grid ── */
     const H = new Float32Array(nx * nz);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
+    /* THE GROUND UNDER (2026-11-03, mondo on the flat fill's shot: "what are these jagged edges" / "what is this gap"): the field
+       sampled WITHOUT its floating plateaus and floating flights — the ground that runs on under a hanging cloud or a hanging stair.
+       three-renderer.js draws the cut ring round a float plateau and the cut under a float flight's run on H − GD (seamless with the
+       ground round it: no hole, no step, no crack). Only a non-void room with floats needs it (a void room's sky stays open). */
+    let GD = null;   // kept as the LIFT the floats add (H − the ground under): the passes after this one (the plan's walls, the cuts) move H, the lift stays
+    if (!(T.void && typeof T.void === 'object') && F.some(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs)))) {
+        GD = new Float32Array(nx * nz); skipFloats = true;
+        try { for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = j * nx + i; GD[k] = Math.max(0, H[k] - hFinal(x0 + i * res, z0 + j * res)); } } finally { skipFloats = false; }
+    }
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, cut: cut != null ? { hw: S.w / 2 + cut, hd: S.d / 2 + cut } : null, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
                    pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, boards, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
                    slope: slopeB,   // G7: the base's profile (room metres → m over `base`), null on a flat room
@@ -54832,7 +54839,7 @@ function hqTerrainCompile(room, roomId) {
                       PLATFORM / a flight of FLOATING STEPS — the height rule is untouched (the field carries it like any tier: the walker climbs its
                       low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs
                       the piece in the air — a puffy underside under a platform, a slab tread + a puff under every step of a flight */
-                   floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))),
+                   floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))), GD,
                    /* THE BUILT STAIR (LEVEL_DESIGN_PLAN §4, 2026-09-30): a stair `ramp` wearing `built: true` is drawn as a solid flight of
                       masonry (a tread and a riser per compiled step, the sides down to the floor, an optional carpet `runner: { w, color }`) —
                       the field keeps the steps for the walker, the renderer cuts the field away under the flight (three-renderer.js
