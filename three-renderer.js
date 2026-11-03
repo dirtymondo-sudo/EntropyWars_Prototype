@@ -56159,7 +56159,7 @@ const ThreeRenderer = (function () {
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
-            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') : '';   // (+ THE CHEST)
+            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') : '';   // (+ THE CHEST + THE LIP COLOUR)
             if (part.lookKey === key) return;
             part.lookKey = key;
             function wear(map) {
@@ -56189,6 +56189,7 @@ const ThreeRenderer = (function () {
                             x.drawImage(imgs[j], b[0], b[1], b[2], b[3]); x.restore();
                         } else x.drawImage(imgs[j], b[0], b[1], b[2], b[3]);
                     }
+                    if (layers.lips) { try { tintLips(x, layers.lips, px / 1024); } catch (e) { console.warn('[ThreeRenderer] lip colour failed', e); } }   // THE LIP COLOUR
                     var S = part.stockMap, t = new THREE.CanvasTexture(c);
                     t.flipY = S.flipY;
                     if (S.encoding !== undefined) t.encoding = S.encoding;
@@ -56221,6 +56222,46 @@ const ThreeRenderer = (function () {
                 tx.fillStyle = gr; tx.fillRect(0, 0, D, D);
                 x.drawImage(t, cx - R, cy - R);
             });
+        }
+        /* THE LIP COLOUR (2026-11-03, mondo: "what if i just want to change the lips specifically?"): the picked colour inside the
+           lips' outline on the hm08 sheet (sprites.js EW_MH_LIPS), feathered at the edge. Each pixel keeps the skin's own shading
+           (its brightness against the lips' average), so the lip lines, the shine and the corners stay, on any skin, and a skin's
+           painted lipstick is replaced, not mixed with the pick. */
+        function tintLips(x, L, k) {
+            var bx = Math.floor(L.box[0] * k), by = Math.floor(L.box[1] * k), bw = Math.ceil(L.box[2] * k), bh = Math.ceil(L.box[3] * k);
+            var mc = _ccCanvas(bw, bh); if (!mc) return;
+            var mx = mc.getContext('2d'), P = L.poly;
+            mx.fillStyle = '#fff'; mx.beginPath();
+            for (var i = 0; i < P.length; i += 2) { var qx = P[i] * k - bx, qy = P[i + 1] * k - by; if (i) mx.lineTo(qx, qy); else mx.moveTo(qx, qy); }
+            mx.closePath(); mx.fill();
+            var md = mx.getImageData(0, 0, bw, bh).data, n = bw * bh, A = new Float32Array(n), B = new Float32Array(n), r = Math.max(1, Math.round((L.feather || 1.5) * k));
+            for (i = 0; i < n; i++) A[i] = md[i * 4 + 3] / 255;
+            for (var pass = 0; pass < 2; pass++) {   // a box blur, twice (rows then columns) = the soft edge
+                for (var yy = 0; yy < bh; yy++) for (var xx = 0; xx < bw; xx++) {
+                    var s = 0, c = 0;
+                    for (var d = -r; d <= r; d++) {
+                        var X = pass ? xx : xx + d, Y = pass ? yy + d : yy;
+                        if (X < 0 || Y < 0 || X >= bw || Y >= bh) continue;
+                        s += A[Y * bw + X]; c++;
+                    }
+                    B[yy * bw + xx] = s / c;
+                }
+                var sw = A; A = B; B = sw;
+            }
+            var img = x.getImageData(bx, by, bw, bh), D = img.data, lum = 0, wsum = 0;
+            for (i = 0; i < n; i++) { if (A[i] < 0.5) continue; lum += (D[i * 4] * 0.299 + D[i * 4 + 1] * 0.587 + D[i * 4 + 2] * 0.114) * A[i]; wsum += A[i]; }
+            if (!wsum) return;
+            lum = Math.max(8, lum / wsum);
+            var hex = parseInt(String(L.color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+            for (i = 0; i < n; i++) {
+                var a = A[i]; if (a <= 0.003) continue;
+                var o = i * 4, l = D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114;
+                var f = Math.max(0.55, Math.min(1.5, l / lum));
+                D[o] = D[o] * (1 - a) + Math.min(255, cr * f) * a;
+                D[o + 1] = D[o + 1] * (1 - a) + Math.min(255, cg * f) * a;
+                D[o + 2] = D[o + 2] * (1 - a) + Math.min(255, cb * f) * a;
+            }
+            x.putImageData(img, bx, by);
         }
         function paintSkin(part, a, preview) {
             if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face

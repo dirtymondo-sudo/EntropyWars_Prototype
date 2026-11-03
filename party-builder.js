@@ -901,7 +901,6 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const femaleBody = mpfb ? ((window.EW_MPFB_BODIES || []).find(b => b.id === appearance.body) || {}).gender === 'female' : gender === 'female';
   const chestBand = mpfb && window.mpfbKitOf && window.EW_MH_CHEST && window.EW_MH_CHEST.band[window.mpfbKitOf(appearance.body)];   // THE CHEST: this body paints a chest band
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
-  const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
   const [faceCat, setFaceCat] = React.useState('eyes');   // THE FACE SLIDERS: the FACE tab open (MPFB heads)
   const [accCat, setAccCat] = React.useState('wings');   // THE SHELVES: the ACCESSORIES tab open
   const [wearFor, setWearFor] = React.useState(null);   // THE SHELVES: MEN / WOMEN (null = the body's own)
@@ -1043,7 +1042,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const skinSwatches = ['#f4d7bf', '#e8c4a2', '#dfb18c', '#c9946b', '#b98362', '#a06a48', '#916044', '#7a4e36', '#66422e', '#4d3226', '#3c291f'];
   const hairSwatches = ['#0f0d0c', '#27201c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#c98a4a', '#e2c184', '#f1e2b3', '#8b1e1e', '#b5b5b5', '#f2f2f2', '#3b5bdb', '#b03aa0', '#2e8b57'];
   const eyeSwatches = ['#2d2a26', '#4a3222', '#6b4b2a', '#3d5a3a', '#4a6b8a', '#6a8fb5', '#7a8c6a', '#9a9a9a', '#b8860b', '#8b1e1e'];
-  const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a'];
+  const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a', '#d9776b', '#c8102e', '#6b2d5c', '#5b3a8a', '#1a1214'];   // 2026-11-03 THE LIP COLOUR: + coral, red, plum, violet, black
   const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
   const frameSwatches = ['#1b1b1f', '#4a3222', '#8a6a3a', '#c9a227', '#b5b5b5', '#f2f2f2', '#7a1f1f', '#1f5f8b', '#2e7d32', '#ad4c86'];
   /* THE FACE CAMERA (2026-11-01, mondo: "when editing facial features or hair or headwear in the character creator, please
@@ -1203,6 +1202,19 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   };
   /* THE SKINS by body: the MakeHuman skins named for a woman / a man, the body's own first, then the rest */
   const lookSide = (label) => / (female|woman|women)/i.test(' ' + label) ? 'female' : /\bmale/i.test(label) ? 'male' : 'both';
+  /* THE LOOKS tiles: one MakeHuman pick row (skin / eye colour / brows / lashes), "Body's own" first */
+  const mhLookList = (cat) => [['own', "Body's own"]].concat(((window.EW_MH_LOOKS || {})[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[cat]] || []).map(r => [r[0], r[1]]));
+  const mhTiles = (cat, head, list, key) => {
+    const rows = list || mhLookList(cat), cam = cat === 'mhSkin' ? 'body' : 'face';
+    if (!window.EW_MH_LOOKS || !rows.length) return null;
+    return h(React.Fragment, { key: key || cat },
+      head ? h('div', { className: 'pb-creator-colorlabel' + (cat === 'mhSkin' ? ' pb-cc-shelf-sub' : ''), 'data-cc-cam-own': cam }, head) : null,
+      h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + (head || cat.slice(2)).toLowerCase(), 'data-cc-cam-own': cam },
+        rows.map(([id, label]) =>
+          h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[cat] || 'own') === id, title: label, onClick: () => changeAppearance({ [cat]: id }) },
+            h('span', null, cat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label)))));
+  };
+  const faceLooks = { eyes: ['mhEyes', 'mhLashes'], brows: ['mhBrows'], mouth: ['lipTint'] };   // THE ONE EYES TAB: the picks shown in each FACE tab (its dot)
   return h('fieldset', { className: 'pb-creator-controls', disabled, onPointerDownCapture: ccCamFrom, onFocusCapture: ccCamFrom },
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
@@ -1246,39 +1258,23 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               mpfb && window.EW_MPFB_FACE_SLIDERS ? h(React.Fragment, null,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },
                   window.EW_MPFB_FACE_SLIDERS.map(g => h('button', { key: g.id, className: 'ms-tty-btn' + (faceCat === g.id ? ' primary' : ''), 'aria-pressed': faceCat === g.id, onClick: () => setFaceCat(g.id) },
-                    g.label.toUpperCase() + (g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004) ? ' \u2022' : '')))),
+                    g.label.toUpperCase() + (g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004) || (faceLooks[g.id] || []).some(k => k === 'lipTint' ? appearance.lipTint === 'pick' : appearance[k] && appearance[k] !== 'own') ? ' \u2022' : '')))),
                 (() => { const g = window.EW_MPFB_FACE_SLIDERS.find(x => x.id === faceCat) || window.EW_MPFB_FACE_SLIDERS[0];
-                  return h('div', { className: 'pb-creator-grid', 'data-cc-cam-own': 'face' }, g.rows.map(([k, label]) => ccSlider(k, label)),
-                    h('button', { className: 'ms-tty-btn', disabled: !g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004), onClick: () => changeAppearance(Object.fromEntries(g.rows.map(r => [r[0], 0]))) }, 'RESET ' + g.label.toUpperCase())); })())
-                : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
-              /* THE LOOKS (2026-11-01, creator step 4): the MakeHuman skins, eye colours, brows and lashes (sprites.js EW_MH_LOOKS);
-                 the first tile of each is the body's own */
-              mpfb && window.EW_MH_LOOKS ? h(React.Fragment, null,
-                h('div', { className: 'pb-creator-colorlabel' }, 'MakeHuman skin and face'),
-                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'MakeHuman look category' },
-                  [['mhSkin', 'Skin'], ['mhEyes', 'Eyes'], ['mhBrows', 'Brows'], ['mhLashes', 'Lashes']].map(([k, label]) =>
-                    h('button', { key: k, className: 'ms-tty-btn' + (lookCat === k ? ' primary' : ''), 'aria-pressed': lookCat === k, 'data-cc-cam-own': k === 'mhSkin' ? 'body' : 'face', onClick: () => setLookCat(k) },
-                      label.toUpperCase() + (appearance[k] && appearance[k] !== 'own' ? ' \u2022' : '')))),
-                (() => {
-                  const all = [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]]));
-                  const tiles = (key, head, list) => list.length ? h(React.Fragment, { key },
-                    head ? h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head) : null,
-                    h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase() + (head ? ' ' + head : ''), 'data-cc-cam-own': lookCat === 'mhSkin' ? 'body' : 'face' },
-                      list.map(([id, label]) =>
-                        h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, title: label, onClick: () => changeAppearance({ [lookCat]: id }) },
-                          h('span', null, lookCat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label))))) : null;
-                  if (lookCat !== 'mhSkin') return tiles('all', null, all);
-                  // THE SHELVES: the skins named for a woman / a man, this body's first, then the other's, then the rest
-                  const mine = femaleBody ? 'female' : 'male', theirs = femaleBody ? 'male' : 'female', nm = g => g === 'female' ? 'Women\u2019s skins' : 'Men\u2019s skins';
                   return h(React.Fragment, null,
-                    tiles('mine', nm(mine), all.filter(([id, l]) => id === 'own' || lookSide(l) === mine)),
-                    tiles('theirs', nm(theirs), all.filter(([id, l]) => id !== 'own' && lookSide(l) === theirs)),
-                    tiles('both', 'Other skins', all.filter(([id, l]) => id !== 'own' && lookSide(l) === 'both')));
-                })(),
-                /* THE CHEST (2026-11-01, mondo): bare with nipples, or bare and smooth (the painted band went with the underwear 2026-11-02) */
-                chestBand ? h(React.Fragment, null,
-                  h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Chest'),
-                  ccChoice('mhChest', [['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
+                    h('div', { className: 'pb-creator-grid', 'data-cc-cam-own': 'face' }, g.rows.map(([k, label]) => ccSlider(k, label)),
+                      h('button', { className: 'ms-tty-btn', disabled: !g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004), onClick: () => changeAppearance(Object.fromEntries(g.rows.map(r => [r[0], 0]))) }, 'RESET ' + g.label.toUpperCase() + ' SLIDERS')),
+                    /* THE ONE EYES TAB (2026-11-03, mondo: "there is an eyes tab, but then there is another make human skin and face eyes
+                       tab, all of those settings need to appear together"): the MakeHuman eye colours + lashes sit under the eye sliders,
+                       the brows under the brow sliders, and the lip colour under the mouth sliders (same picks, same saved keys) */
+                    g.id === 'eyes' ? h(React.Fragment, null, mhTiles('mhEyes', 'Eye colour'), mhTiles('mhLashes', 'Lashes')) : null,
+                    g.id === 'brows' ? mhTiles('mhBrows', 'Brows') : null,
+                    g.id === 'mouth' ? h(React.Fragment, null,
+                      /* THE LIP COLOUR (2026-11-03, mondo: "There are different makeups in the skin tab, but what if i just want to change
+                         the lips specifically?"): the skin's own lips, or a picked colour painted on the lips only (three-renderer.js tintLips) */
+                      h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam-own': 'face' }, 'Lip colour'),
+                      ccChoice('lipTint', [['own', 'Skin\u2019s own'], ['pick', 'Pick a colour']]),
+                      appearance.lipTint === 'pick' ? ccColorRow('lipColor', 'Lips', lipSwatches) : null) : null); })())
+                : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
               /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color"): an MPFB body
                  wears the pack's beards + moustaches (sprites.js EW_MH_FACIAL_HAIR, one at a time) in the hair colour, a picked
                  colour or their own */
@@ -1297,6 +1293,23 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                     ccChoice('beardTint', [['hair', 'Same as hair'], ['pick', 'Pick a colour'], ['own', 'Original colours']]),
                     appearance.beardTint === 'pick' ? ccColorRow('beardColor', 'Colour', hairSwatches) : null) : null);
               })() : null,
+              /* THE LOOKS (2026-11-01, creator step 4): the MakeHuman skins (sprites.js EW_MH_LOOKS); the first tile is the body's
+                 own. The eye colours, lashes and brows moved into the FACE tabs 2026-11-03 (mhTiles above). */
+              mpfb && window.EW_MH_LOOKS ? h(React.Fragment, null,
+                h('h3', { 'data-cc-cam': 'body' }, 'SKIN'),
+                (() => {
+                  // THE SHELVES: the skins named for a woman / a man, this body's first, then the other's, then the rest
+                  const all = mhLookList('mhSkin');
+                  const mine = femaleBody ? 'female' : 'male', theirs = femaleBody ? 'male' : 'female', nm = g => g === 'female' ? 'Women\u2019s skins' : 'Men\u2019s skins';
+                  return h(React.Fragment, null,
+                    mhTiles('mhSkin', nm(mine), all.filter(([id, l]) => id === 'own' || lookSide(l) === mine), 'mine'),
+                    mhTiles('mhSkin', nm(theirs), all.filter(([id, l]) => id !== 'own' && lookSide(l) === theirs), 'theirs'),
+                    mhTiles('mhSkin', 'Other skins', all.filter(([id, l]) => id !== 'own' && lookSide(l) === 'both'), 'both'));
+                })(),
+                /* THE CHEST (2026-11-01, mondo): bare with nipples, or bare and smooth (the painted band went with the underwear 2026-11-02) */
+                chestBand ? h(React.Fragment, null,
+                  h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Chest'),
+                  ccChoice('mhChest', [['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
               mpfb ? null : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),

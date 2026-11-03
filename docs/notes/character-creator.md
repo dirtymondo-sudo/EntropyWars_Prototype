@@ -1002,3 +1002,19 @@ renderer layers by them; normalizeWearList's one-per-category rule) are untouche
   listed under (title = the full pack name); name tiles (.pb-cc-hair: hair, clothes, skins) are 96 px wide columns at 9 px so a
   pack name fits instead of being cut.
 - Before / after shots of every tab: /mnt/project-files/creator-shelves/.
+
+
+## THE LIP COLOUR + THE ONE EYES TAB (2026-11-03, plan row 26c)
+mondo: "what if i just want to change the lips specifically?" + "there is an eyes tab, but then there is another make human
+skin and face eyes tab, all of those settings need to appear together".
+- LIP COLOUR (MPFB bodies): FACE > MOUTH > Lip colour: Skin's own (default, `lipTint: 'own'`) or Pick a colour (`lipTint:
+  'pick'`, colour = the existing `lipColor`, swatches + custom picker; 5 lipstick swatches added). sprites.js `EW_MH_LIPS` = the
+  lips' outline on the hm08 1024 sheet (the same UV on every MPFB body + skin), traced off the pack's lipstick skins (toigo ...
+  with makeup / goth makeup). getMhLookLayers adds `out.lips`; three-renderer.js setLook -> `tintLips` paints the colour inside
+  the outline (feathered 1.6 px), each pixel scaled by its brightness against the lips' average, so the lines / shine / corners
+  stay and a makeup skin's lipstick is replaced, not mixed. The classic face keeps its own Lips row (unchanged).
+- ONE EYES TAB: party-builder.js `mhTiles` renders a MakeHuman pick row; FACE > EYES = eye sliders + Eye colour (mhEyes) +
+  Lashes (mhLashes); FACE > BROWS = brow sliders + Brows (mhBrows); a FACE tab's dot also lights for those picks. The old
+  "MakeHuman skin and face" block (Skin / Eyes / Brows / Lashes tabs) is now SKIN (skins + Chest) after the facial hair.
+  Each FACE tab's reset button says "RESET <TAB> SLIDERS" (it only ever reset the sliders).
+- Shots: /mnt/project-files/creator-lips-eyes/ (before_after.jpg, lip_colours_closeup.jpg).

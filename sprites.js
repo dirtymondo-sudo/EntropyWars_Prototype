@@ -4041,6 +4041,11 @@ const EW_MPFB_BODIES = [
    layer, so the old 'band' choice is gone too (a saved 'band' reads as 'nipples'). `band` only marks the bodies with the
    chest choice now; its rect is no longer cut out of anything. */
 const EW_MH_CHEST = { band: { female: [118, 226, 546, 164] }, spots: [[332, 308], [447, 308]], r: 24 };
+/* THE LIP COLOUR (2026-11-03, mondo: "what if i just want to change the lips specifically?"): the lips' outline on MakeHuman's
+   hm08 sheet (1024 px, the same on every MPFB body and skin), read off the pack's lipstick skins (toigo ... with makeup / goth
+   makeup). three-renderer.js tintLips paints appearance.lipColor inside it, keeping the skin's own shading; lipTint 'own' = the
+   skin's lips as painted. */
+const EW_MH_LIPS = { poly: [931,503,928,504.5,924,507.5,921,510.5,917,513.5,916,516.5,915,519.5,914,522.5,914,525.5,915,528.5,915,531.5,914,534.5,915,537.5,916,540.5,917,543.5,919,546.5,922,549.5,925,552.5,929,554.5,931,555,933,554.5,936,552.5,941,549.5,942,546.5,945,543.5,946,540.5,947,537.5,948,534.5,948,531.5,948,528.5,948,525.5,948,522.5,948,519.5,946,516.5,944,513.5,941,510.5,939,507.5,934,504.5], box: [906, 495, 52, 68], feather: 1.6 };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
@@ -4105,6 +4110,7 @@ const EW_APPEARANCE_ENUMS = {
   mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
   mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
   mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
+  lipTint: ['own', 'pick'],   // THE LIP COLOUR (2026-11-03): an MPFB body's lips as the skin paints them / lipColor
   hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
   mhChest: ['nipples', 'smooth'],   // THE CHEST (2026-11-01; 'band' gone with the underwear 2026-11-02)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
@@ -4242,6 +4248,7 @@ function randomCharacterAppearance(rng) {
   }
   out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
   out.mhSkin = out.mhEyes = out.mhBrows = out.mhLashes = 'own';
+  out.lipTint = 'own';   // THE LIP COLOUR (an MPFB body's; the classic face paints lipColor)
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -4293,7 +4300,8 @@ function getMhLookLayers(a) {
   if (!kit) return null;
   const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
   const chest = EW_MH_CHEST.band[body] && a.mhChest === 'smooth' ? 'smooth' : null;   // THE CHEST ('nipples' = the sheet as baked)
-  if (!chest && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  const lips = a.lipTint === 'pick' && typeof a.lipColor === 'string' ? a.lipColor : null;   // THE LIP COLOUR
+  if (!chest && !lips && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
   const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
   const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
   const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
@@ -4303,6 +4311,7 @@ function getMhLookLayers(a) {
   }
   if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body], null]);   // [url, box, the rect left out (none since the underwear went)]
   if (chest === 'smooth') out.smooth = EW_MH_CHEST;
+  if (lips) out.lips = Object.assign({ color: lips }, EW_MH_LIPS);   // THE LIP COLOUR (painted over the skin, three-renderer.js tintLips)
   return out;
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
@@ -4487,7 +4496,7 @@ if (typeof window !== 'undefined') {
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
-  window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
+  window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
