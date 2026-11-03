@@ -1457,7 +1457,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
      THE RENAMED PICKS (2026-11-03): + the RENAMED list (each with RENAME / ORIGINAL NAME, + ALL ORIGINAL NAMES), the export carries
      the names too (EXPORT HIDDEN + NAMES -> EW_CREATOR_NAMES), and CLOSE (F2) */
   const hidKindLabel = (r) => r.kind === 'wear' ? ((window.EW_MH_FACIAL_HAIR || []).includes(r.id) ? 'Facial hair' : ((shelves.find(x => x[0] === shelfOf(r.id)) || [])[1] || 'Clothes'))
-    : ({ hair: 'Hair', outer: 'Outer layer', feet: 'Feet layer', cape: 'Cape', wings: 'Flapping wings', idle: 'Idle pose', mhSkin: 'Skin', mhEyes: 'Eye colour', mhBrows: 'Brows', mhLashes: 'Lashes' })[r.kind] || r.kind;
+    : ({ hair: 'Hair', outer: 'Outer layer', feet: 'Feet layer', cape: 'Cape', wings: 'Flapping wings', idle: 'Idle pose', mhSkin: 'Skin', mhEyes: 'Eye colour', mhBrows: 'Brows', mhLashes: 'Lashes', hairMat: 'Hair texture' })[r.kind] || r.kind;
   const ccDevBar = () => {
     const list = window.creatorHiddenList ? window.creatorHiddenList() : [];
     const names = window.creatorNamesList ? window.creatorNamesList() : [];   // THE RENAMED PICKS
@@ -1559,7 +1559,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                       mhTiles('mhEyes', 'Eye colour'),
                       /* THE EYE PACK (2026-11-03): the MakeHuman Eye Texture Pack mondo uploaded (plain, bloodshot, cat eyes), worn by
                          MakeHuman's own eye mesh at full size; same saved key (mhEyes), the Iris colour below recolours these too */
-                      mhTiles('mhEyes', 'Eye textures', (window.EW_MH_EYE_PACK || []).map(r => [r[0], r[1]]), 'mhEyesPack'),
+                      mhTiles('mhEyes', 'Eye textures', (window.EW_MH_EYE_PACK || []).filter(r => !r[5]).map(r => [r[0], r[1]]), 'mhEyesPack'),
+                      /* THE EYE MATERIALS (2026-11-03): MakeHuman's system eye material packs 01-03 (sprites.js EW_MH_EYE_MATS, in the same
+                         list as the pack: same eye mesh, same saved key, the Iris colour recolours them too), one row per pack */
+                      [['human', 'Eye materials: human'], ['creature', 'Eye materials: non-human'], ['more', 'Eye materials: various']].map(([g, head]) =>
+                        mhTiles('mhEyes', head, (window.EW_MH_EYE_PACK || []).filter(r => r[5] === g).map(r => [r[0], r[1]]), 'mhEyesMat_' + g)),
                       lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
                       mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches)) : null,
                     g.id === 'brows' ? h(React.Fragment, null,
@@ -1628,7 +1632,24 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 ccHair.filter(st => st.mh && keepPick('hair', st.id, appearance.hair === st.id)).map(style =>
                   devTile('hair', style.id, style.label, h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
                     h('i', { className: 'pb-hair-glyph' }), h('span', null, shownName('hair', style.id, style.label)))))),   // (THE RENAMED PICKS)
-              ccColorRow('hairColor', 'Hair colour', hairSwatches),
+              /* THE HAIR MATERIALS (2026-11-03, mondo: "can we download ... system_hair_materials 1 and 2 ... and implement them in the
+                 character creator?"): a MakeHuman system style (Bob 01 / 02, Braid 01, Long 01, Ponytail 01, Short 01 / 02 / 04) can wear one
+                 of MakeHuman's recolours of it (sprites.js EW_MH_HAIR_MATS) in the texture's own colours; "Style's own" = its own texture,
+                 coloured by the Hair colour (so the Hair colour row shows only then) */
+              (() => {
+                const mats = (window.EW_MH_HAIR_MATS || []).filter(r => r[2] === appearance.hair);
+                if (!mats.length) return null;
+                const cur = mats.some(r => r[0] === appearance.hairMat) ? appearance.hairMat : 'own';
+                return h(React.Fragment, null,
+                  h('div', { className: 'pb-creator-colorlabel' }, 'Hair texture'),
+                  h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair texture' },
+                    [['own', "Style's own"]].concat(mats.filter(r => keepPick('hairMat', r[0], cur === r[0])).map(r => [r[0], r[1]])).map(([id, label]) =>
+                      devTile(id === 'own' ? null : 'hairMat', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': cur === id, title: shownName('hairMat', id, label), onClick: () => changeAppearance({ hairMat: id }) },
+                        h('span', null, id === 'own' ? label : shownName('hairMat', id, label)))))));
+              })(),
+              (window.EW_MH_HAIR_MATS || []).some(r => r[0] === appearance.hairMat && r[2] === appearance.hair)
+                ? h('p', { className: 'pb-creator-note' }, "Hair colour: this hair texture wears its own colours. Pick Style's own to colour the hair.")
+                : ccColorRow('hairColor', 'Hair colour', hairSwatches),
               /* THE SECOND HAIR COLOUR (2026-11-01, mondo: "add a secondary hair color picker"): a pack style with its own band /
                  tie / beads / flower (sprites.js `accent: true`): those keep their colours or take the second colour */
               (ccHair.find(st => st.id === appearance.hair) || {}).accent ? h(React.Fragment, null,
