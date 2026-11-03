@@ -16163,7 +16163,7 @@ const ThreeRenderer = (function () {
         });
         var hipsParent = tgtHips.parent >= 0 ? tgt.nodes[tgtHips.parent] : null;
         return {
-            pairs: pairs, tgt: tgt,
+            pairs: pairs, tgt: tgt, modelEntry: modelEntry,
             scaleRatio: tgtHips.wp[1] / (src.rest.pelvis.wp[1] || 1),
             srcHipsRestWp: src.rest.pelvis.wp,
             tgtHipsRestWp: tgtHips.wp.slice(),
@@ -16181,21 +16181,108 @@ const ThreeRenderer = (function () {
        so the off wrist sits where the source clip holds it RELATIVE TO THE GUN HAND (the source offset x the hips-height
        scale), and the off hand keeps the clip's own world turn. Bake-time only; the clip is the same for every body. */
     var _LIB_SUPPORT_HAND = { Pistol_Idle_Loop: 'l' };
-    function _libSupportHand(setup, src, side) {
-        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left';
-        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
-        var sh = src.bones['hand_' + side], sr = src.bones['hand_' + (side === 'l' ? 'r' : 'l')];
-        if (!A || !B || !C || !R || !sh || !sr || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+    /* THE WRAP (2026-11-03, mondo: "Their left hand goes under their other wrist and is holding nothing, it looks weird"):
+       the source clip's own off-hand spot is a cup UNDER the gun hand, and on our bodies that read as a hand under the wrist
+       holding nothing. The off hand is now laid on the gun hand itself, in the GUN HAND'S OWN FRAME (along the hand to the
+       knuckles, across it to the thumb, out of the palm), the way a real two-handed pistol hold sits: the off palm on the
+       grip's open side over the gun hand's fingertips, its fingers wrapping down round the front of the gun hand's fingers,
+       its thumb along the frame. Numbers are in hand lengths (wrist to middle knuckle), so every body size gets the same
+       hold. _libHandFrame reads each hand's frame in its bone's local space: from its own finger bones (MPFB), else from the
+       library mannequin's through the retarget offset (the classic bodies, any Meshy rig: their palms already match the
+       library's, THE CLASSIC HANDS). */
+    var SUPPORT_WRAP = {
+        out: 0.50,     // off palm from the gun palm, out of the gun palm (through the grip + the gun hand's fingertips)
+        down: 0.06,    // ... down the gun hand (away from its thumb)
+        fwd: 0.02,     // ... along the gun hand
+        tilt: 38,      // off fingers point this far (deg) down from the gun hand's line: they wrap the front of its fingers
+        palm: 0.45,    // wrist -> palm centre along the hand
+        thick: 0.11,   // the bone -> the palm's skin, out of the palm
+        flat: { out: 0.50, tilt: 18, grip: 0.25 }   // a fingerless hand (modelled open, nothing curls): the palm flat on the grip, the fingers laid over the gun hand's;
+                                                     // grip = the handle's half thickness (its seat's centre back to the gun hand's side)
+    };
+    function _libHandFrame(setup, src, side) {
+        var T = setup.tgt, O = side === 'l' ? 'Left' : 'Right', H = T.byName[O + 'Hand'];
+        if (!H) return null;
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
+        var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
+        var add3 = function (p, v, k) { return [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]; };
+        var frame = function (h, m1, i1, p1, hq) {   // world points + the hand's world turn -> the frame in the hand's local space
+            var fw = _lvSub(m1, h), L = len(fw), f = _lvNorm(fw), ts = _lvNorm(_lvSub(i1, p1));
+            var n = _lvNorm(side === 'r' ? cross(ts, f) : cross(f, ts));   // out of the palm
+            var t = side === 'r' ? cross(f, n) : cross(n, f);              // to the thumb side, square to both
+            var iq = _lqInv(hq);
+            return { f: _lvNorm(_lqRotV(iq, f)), t: _lvNorm(_lqRotV(iq, t)), n: _lvNorm(_lqRotV(iq, n)), L: L };
+        };
         T.evalWorld();
-        var ep = new THREE.Vector3(), eq = new THREE.Quaternion(), es = new THREE.Vector3();
-        sh.matrixWorld.decompose(ep, eq, es); var hl = [ep.x, ep.y, ep.z];
-        sr.matrixWorld.decompose(ep, eq, es); var hr = [ep.x, ep.y, ep.z];
-        var k = setup.scaleRatio || 1;
-        var t = [R.wp[0] + (hl[0] - hr[0]) * k, R.wp[1] + (hl[1] - hr[1]) * k, R.wp[2] + (hl[2] - hr[2]) * k];
+        var tb = function (nm) { return T.byName[nm + '_' + side]; };
+        if (tb('middle_01') && tb('index_01') && tb('pinky_01')) { var FB = frame(H.wp, tb('middle_01').wp, tb('index_01').wp, tb('pinky_01').wp, H.wq); FB.fingers = true; return FB; }
+        var root = src.root, gp = function (nm) { var o = root.getObjectByName(nm); return o ? new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).toArray() : null; };
+        var pr = null; setup.pairs.forEach(function (x) { if (x.t === O + 'Hand') pr = x; });
+        var sh = src.bones['hand_' + side];
+        var m1 = gp('middle_01_' + side), i1 = gp('index_01_' + side), p1 = gp('pinky_01_' + side);
+        if (!sh || !m1 || !i1 || !p1) return null;
+        // the library's frame in ITS hand's space (its length scaled to this body)
+        var mq = new THREE.Quaternion(), mp = new THREE.Vector3(), ms = new THREE.Vector3();
+        root.updateMatrixWorld(true); sh.matrixWorld.decompose(mp, mq, ms);
+        var F = frame(mp.toArray(), m1, i1, p1, [mq.x, mq.y, mq.z, mq.w]), Lb = F.L * (setup.scaleRatio || 1);
+        // a fingerless hand (the classic bodies, a Meshy rig): its frame off its own skin, in the bone's space (THE GRIP ON A MESHY HAND)
+        var me = setup.modelEntry, bone = me && me.root ? me.root.getObjectByName(O + 'Hand') : null, S = null;
+        try { S = bone ? _gripHandSkin({ traverse: function (fn) { me.root.traverse(fn); }, userData: {} }, bone) : null; } catch (_e) { S = null; }   // (no cache on the shared GLB: its clones copy userData as JSON)
+        if (S && S.f && S.t) {
+            var sf = S.f.toArray(), stt = S.t.toArray();
+            var sn = _lvNorm(side === 'r' ? cross(stt, sf) : cross(sf, stt));
+            /* the palm's face where THE GRIP ON A MESHY HAND seats a handle (_gripFrameMesh, its default meshAt / meshUp): the
+               gun's handle centre on the gun hand, the palm's face point on the off hand (bone space) */
+            var at = 0.36 * S.L, nv = new THREE.Vector3().fromArray(sn), face = -Infinity;
+            S.pts.forEach(function (q) { if (Math.abs(q.dot(S.f) - at) < S.L * 0.12) { var o = q.dot(nv); if (o > face) face = o; } });
+            if (!isFinite(face)) face = S.c.dot(nv);
+            var base = add3(add3([0, 0, 0], sf, at), stt, S.c.dot(S.t));
+            return { f: _lvNorm(sf), t: _lvNorm(side === 'r' ? cross(sf, sn) : cross(sn, sf)), n: sn, L: Lb,
+                     palmPt: add3(base, sn, face), seat: add3(base, sn, face + 0.08 * S.L), skinL: S.L };
+        }
+        // else the library's frame through the retarget offset into the target hand's space
+        if (!pr || !pr.roff) return null;
+        var ir = _lqInv(pr.roff);
+        return { f: _lvNorm(_lqRotV(ir, F.f)), t: _lvNorm(_lqRotV(ir, F.t)), n: _lvNorm(_lqRotV(ir, F.n)), L: Lb };
+    }
+    /* the turn taking the basis (a1, a2, a3) onto (b1, b2, b3) (both orthonormal) */
+    function _lqFromBases(a1, a2, a3, b1, b2, b3) {
+        var m = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], A = [a1, a2, a3], B = [b1, b2, b3];
+        for (var k = 0; k < 3; k++) for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) m[r][c] += B[k][r] * A[k][c];
+        var mat = new THREE.Matrix4().set(m[0][0], m[0][1], m[0][2], 0, m[1][0], m[1][1], m[1][2], 0, m[2][0], m[2][1], m[2][2], 0, 0, 0, 0, 1);
+        var q = new THREE.Quaternion().setFromRotationMatrix(mat);
+        return _lqNorm([q.x, q.y, q.z, q.w]);
+    }
+    function _libSupportHand(setup, src, side) {
+        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left', gs = side === 'l' ? 'r' : 'l';
+        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
+        if (!A || !B || !C || !R || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+        if (!setup.handFrames) setup.handFrames = {};
+        if (setup.handFrames[side] === undefined) setup.handFrames[side] = _libHandFrame(setup, src, side);
+        if (setup.handFrames[gs] === undefined) setup.handFrames[gs] = _libHandFrame(setup, src, gs);
+        var FS = setup.handFrames[side], FG = setup.handFrames[gs];
+        if (!FS || !FG) return null;
+        T.evalWorld();
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
         var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
         var dot = function (u, v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; };
+        var add = function (p, v, k) { return [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]; };
+        var W = SUPPORT_WRAP, L = FG.L, Ls = FS.L;
+        // the gun hand as drawn (after the wrist limit): its frame in the world
+        var gf = _lqRotV(R.wq, FG.f), gt = _lqRotV(R.wq, FG.t), gn = _lqRotV(R.wq, FG.n);
+        var gPalm = add(add(R.wp, gf, W.palm * L), gn, W.thick * L);
+        var sc = function (v, n) { return [v[0] * n.ws[0], v[1] * n.ws[1], v[2] * n.ws[2]]; };
+        if (FG.seat) gPalm = add(add(R.wp, _lqRotV(R.wq, sc(FG.seat, R)), 1), gn, -W.flat.grip * L);   // a fingerless gun hand: from the handle's seat
+        // the off hand's frame: palm onto the grip's open side, fingers down round the front of the gun hand
+        var flat = !FS.fingers, tl = (flat ? W.flat.tilt : W.tilt) * Math.PI / 180, sn = [-gn[0], -gn[1], -gn[2]];
+        var sf = _lvNorm(add(add([0, 0, 0], gf, Math.cos(tl)), gt, -Math.sin(tl)));
+        sf = _lvNorm(add(sf, sn, -dot(sf, sn)));
+        var st = side === 'l' ? cross(sn, sf) : cross(sf, sn);
+        var handWq = _lqFromBases(FS.f, FS.t, FS.n, sf, st, sn);
+        var sPalm = add(add(add(gPalm, gn, (flat ? W.flat.out : W.out) * L), gt, -W.down * L), gf, W.fwd * L);
+        var t = add(add(sPalm, sf, -W.palm * Ls), sn, -W.thick * Ls);   // the off wrist
+        if (FS.palmPt) t = add(sPalm, _lqRotV(handWq, sc(FS.palmPt, C)), -1);   // a fingerless off hand: its own palm's face on the spot
         var setWorld = function (n, wq) { n.q = _lqNorm(_lqMul(_lqInv(T.nodes[n.parent].wq), wq)); };
-        var handWq = C.wq.slice();
         var a = A.wp.slice(), ab = _lvSub(B.wp, a), l1 = len(ab), l2 = len(_lvSub(C.wp, B.wp));
         var at = _lvSub(t, a), d = len(at);
         if (!(l1 > 1e-6 && l2 > 1e-6 && d > 1e-6)) return null;
@@ -16210,6 +16297,15 @@ const ThreeRenderer = (function () {
         T.evalWorld();
         setWorld(B, _lqMul(_lqFromUnitVectors(_lvNorm(_lvSub(C.wp, B.wp)), _lvNorm(_lvSub(t, B.wp))), B.wq));
         T.evalWorld();
+        /* the forearm takes half the hand's roll about its length (no candy-wrapper wrist) */
+        var ax = _lvNorm(_lvSub(C.wp, B.wp)), rel = _lqNorm(_lqMul(handWq, _lqInv(C.wq)));
+        if (rel[3] < 0) rel = [-rel[0], -rel[1], -rel[2], -rel[3]];
+        var ang = 2 * Math.atan2(dot([rel[0], rel[1], rel[2]], ax), rel[3]);   // the hand's roll about the forearm, -pi..pi
+        if (Math.abs(ang) > 0.05) {
+            var hh = ang / 4, s2 = Math.sin(hh);
+            setWorld(B, _lqMul([ax[0] * s2, ax[1] * s2, ax[2] * s2, Math.cos(hh)], B.wq));
+            T.evalWorld();
+        }
         setWorld(C, handWq);
         return [A, B, C];
     }
@@ -16217,7 +16313,7 @@ const ThreeRenderer = (function () {
        as constant tracks on THIS clip only — the mixer hands them back to the rest pose when another clip plays. The hinge
        per finger joint is THE GRIP's (_gripHand: the finger's direction x the palm's normal), lighter angles. A Meshy rig has
        no finger bones: nothing. */
-    var SUPPORT_CURL = { index: [26, 36, 22], middle: [34, 46, 28], ring: [40, 50, 28], pinky: [46, 52, 28], thumb: [10, 16, 10] };
+    var SUPPORT_CURL = { index: [48, 58, 32], middle: [54, 62, 36], ring: [58, 62, 36], pinky: [62, 62, 36], thumb: [6, 10, 6] };
     function _libSupportCurl(setup, side) {
         var T = setup.tgt, get = function (f, k) { return T.byName[f + '_0' + k + '_' + side]; }, out = [];
         if (!get('middle', 1) || !get('middle', 3) || !get('index', 1) || !get('pinky', 1)) return out;
