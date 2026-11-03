@@ -65845,39 +65845,15 @@ const ThreeRenderer = (function () {
        clockwise — the star chart's rule), `dist` = the share of the sky disc (0.6–1.0), `s` = a
        size multiplier, `y` = the base in shares of the disc (default just under the horizon so the
        foot hides in the haze). Every kind builds in metres (U px per metre) and faces the room.
-       `peak` = a snow-capped cone with a shoulder and a lenticular cloud over it (Shasta);
+       THE CONE MOUNTAINS ARE GONE (2026-11-03, mondo: "can we please get rid of these mountains in the game, they look
+       terrible"): `peak` (Shasta, the Range, the Transantarctics, Olympus Mons, the Clash temple's three) and `mountain`
+       (the editor's default mark) were stacked ConeGeometry with a white cone for snow, standing INSIDE the wide rooms'
+       own extent (the 82 m disc). Both builders and every data.js row are removed; THE ROCKS' tinted asteroid rocks were
+       tried as a stand-in (stretched to a massif) and read as giant blobs, and no pack holds a real mountain. A real far
+       range model would come back as a new kind here. An old editor row naming either kind is skipped (no builder).
        `castle` = a curtain wall, four corner towers and the keep with its lit windows (Camelot).
        Adding a kind = one builder here; the woods' rooms name theirs in data.js HQ_WOODS_LANDMARKS. */
     var _hqLandmarkBuilders = {
-        /* THE WEENIES ON THE GROUND (OPEN_WORLD_PLAN Phase 3, fork 14's default kinds; a room's `shell.sky.landmarks` names
-           them). MOUNTAIN: a broad massif — a tall snow-capped summit over two shoulders
-           and a ridge of lower peaks, the lenticular over the top; `temple` = a marble colonnade glinting on the summit
-           (Olympus). `s` scales the whole. */
-        mountain: function (U, o, rng) {
-            var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
-            var rock = _hqMat('mountain', 6, 4, { color: 0x7f8798, shininess: 2, specular: 0x080808 });
-            var rockD = _hqMat('mountain', 5, 3, { color: 0x69707f, shininess: 2, specular: 0x060606 });
-            var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
-            var H0 = 64 * s, R0 = 46 * s;
-            var cone = function (r, h, x, z, mat, seg) { var c = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, seg || 10), mat); c.position.set(x * U, h * U / 2, z * U); c.rotation.y = R() * Math.PI; g.add(c); return c; };
-            cone(R0, H0, 0, 0, rock, 12);
-            cone(R0 * 0.9, H0 * 0.66, R0 * 0.75, R0 * 0.15, rockD, 10);
-            cone(R0 * 0.85, H0 * 0.6, -R0 * 0.8, R0 * 0.1, rockD, 10);
-            [[1.55, 0.42, 0.62], [-1.6, 0.36, 0.58], [2.2, 0.28, 0.5], [-2.25, 0.25, 0.46]].forEach(function (q) { cone(R0 * q[2], H0 * q[1], R0 * q[0], R0 * (0.25 + R() * 0.3), rock, 8); });
-            var capH = H0 * 0.34; var cap = new THREE.Mesh(new THREE.ConeGeometry(R0 * 0.36 * U + 0.4 * U, capH * U, 12), snow); cap.position.y = (H0 - capH / 2) * U + 0.3 * U; g.add(cap);
-            var cap2 = new THREE.Mesh(new THREE.ConeGeometry(R0 * 0.3 * U, H0 * 0.2 * U, 10), snow); cap2.position.set(R0 * 0.75 * U, (H0 * 0.66 - H0 * 0.1) * U + 0.2 * U, R0 * 0.15 * U); g.add(cap2);
-            if (o.temple) {
-                /* the gods' house: a stylobate, eight columns, a pediment — small at this distance, it reads as a white glint on the top */
-                var marble = _hqMat('marble_light', 2, 1, { color: 0xfff8ea, shininess: 10 });
-                var ty = H0 * U - 0.4 * U, tw = 7 * s, td = 4.5 * s;
-                var base = _hqBox(tw, 0.8 * s, td, marble); base.position.set(0, ty + 0.4 * s * U, 0); g.add(base);
-                for (var i = 0; i < 8; i++) { var cx = (-tw / 2 + 0.5 * s + (i % 4) * (tw - 1 * s) / 3), cz = (i < 4 ? -1 : 1) * (td / 2 - 0.5 * s); var col = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * s * U, 0.3 * s * U, 3.4 * s * U, 8), marble); col.position.set(cx * U, ty + (0.8 + 1.7) * s * U, cz * U); g.add(col); }
-                var roof = _hqBox(tw + 0.4 * s, 0.7 * s, td + 0.4 * s, marble); roof.position.set(0, ty + 4.55 * s * U, 0); g.add(roof);
-                var glint = _hzGlowSprite(9 * s * U, 0xfff2d0, 0.45, 0.08, 0.04, 0.5); glint.position.set(0, ty + 3 * s * U, 0); g.add(glint);
-            }
-            try { var len = _hzLenticular(R); if (len) { len.position.set(0, (H0 + 10 * s) * U, 0); g.add(len); } } catch (e) {}
-            return g;
-        },
         /* TOWER: a far city's skyline — a cluster of towers of mixed height round one tall spire, their windows a grid of
            warm glows that are NIGHT LAMPS (`_ew_night`: the clock lights them at dusk), a red beacon blinking on the spire */
         tower: function (U, o, rng) {
@@ -65934,21 +65910,6 @@ const ThreeRenderer = (function () {
             /* the basilica's front under it: a marble block the dome sits on */
             var front = _hqBox(70 * s, 26 * s, 40 * s, _hqMat('marble_light', 8, 3, { color: 0xe8e0d0, shininess: 4 })); front.position.set(0, 13 * s * U, 0); g.add(front);
             g.children[0].position.y = 26 * s * U;
-            return g;
-        },
-        peak: function (U, o, rng) {
-            var g = new THREE.Group(), s = o.s || 1;
-            var h = 46 * s, r = 40 * s;
-            /* `tex` / `color` dress it in the land's own rock (Olympus Mons wears Mars's red rock), `snow: false` drops the cap and the cloud (2026-10-06) */
-            var rock = _hqMat(o.tex || 'mountain', 6, 4, { color: (o.color != null) ? o.color : 0x8892a6, shininess: 2, specular: 0x080808 });
-            var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
-            var cone = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, 11), rock); cone.position.y = h * U / 2; g.add(cone);
-            var sh = new THREE.Mesh(new THREE.ConeGeometry(r * 0.72 * U, h * 0.58 * U, 9), rock); sh.position.set(r * 0.55 * U, h * 0.29 * U, r * 0.2 * U); g.add(sh);
-            var sh2 = new THREE.Mesh(new THREE.ConeGeometry(r * 0.5 * U, h * 0.42 * U, 8), rock); sh2.position.set(-r * 0.62 * U, h * 0.21 * U, -r * 0.1 * U); g.add(sh2);
-            if (o.snow === false) return g;
-            var cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.43 * U + 0.4 * U, h * 0.43 * U, 11), snow); cap.position.y = (h - h * 0.43 / 2) * U + 0.3 * U; g.add(cap);
-            /* the lenticular over the summit — the mountain's own cloud (the far roster's builder, hung still) */
-            try { var len = _hzLenticular(rng || Math.random); if (len) { len.position.set(0, (h + 9 * s) * U, 0); len.scale.multiplyScalar(0.9); g.add(len); } } catch (e) {}
             return g;
         },
         castle: function (U, o, rng) {
