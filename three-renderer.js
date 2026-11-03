@@ -6898,10 +6898,11 @@ const ThreeRenderer = (function () {
        plinth, copper primary winding, wound secondary column, aluminium
        toroid with a spark-gap electrode, and an owner-colored corona so you
        can read whose trap it is at a glance. Same pixel-sprite recipe as
-       the trees/turrets (gold.png tinted copper stands in until a dedicated
-       copper sprite lands on the R2). */
+       the trees/turrets (copper.png is on the R2 now; the gold sheet is out, 2026-11-03). */
     var _teslaTexCache = {};
     function _getTeslaTex(file, repX, repY) {
+        /* THE GOLD SHEET IS OUT (2026-11-03): terrain/gold.png is never loaded; the gold is terrain/gilt.png (Metal007) */
+        if (file === 'gold.png') file = 'gilt.png';
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_teslaTexCache[key]) return _teslaTexCache[key];
         var t = textureLoader.load('https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
@@ -10140,7 +10141,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var marbleMat = _deployMat('marble_light.png', 0xeaf2ee);
-        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var goldMat = _deployMat('gilt.png', 0xd8b458);
         var plinth = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.26, ts * 0.08, 10), marbleMat);
         plinth.position.y = ts * 0.04; g.add(plinth);
         var col = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.13, ts * 0.15, ts * 0.62, 12), marbleMat);
@@ -10294,7 +10295,7 @@ const ThreeRenderer = (function () {
     function _buildFlashbangMine3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var brassMat = _deployMat('gold.png', 0xc8a850);
+        var brassMat = _deployMat('gilt.png', 0xc8a850);
         var ironMat = _deployMat('gunmetal.png', 0xb8bec8);
         var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.17, ts * 0.19, ts * 0.09, 12), brassMat);
         body.position.y = ts * 0.045; g.add(body);
@@ -10402,7 +10403,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var stoneMat = _deployMat('desert.png', 0xd9bd82);
-        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var goldMat = _deployMat('gilt.png', 0xd8b458);
         for (var j = -1; j <= 1; j += 2) {
             var jamb = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.12, ts * 0.72, ts * 0.14), stoneMat);
             jamb.position.set(j * ts * 0.2, ts * 0.36, 0); g.add(jamb);

@@ -3467,6 +3467,11 @@ EW_MH_WEAR.push(['ewb_beard_full', 'Full beard with moustache', 'bodyparts', 50]
    body: the editor's body shell (the strands baked onto a copy of the skin just over it, alpha-cut). Category 'underwear', so every
    garment worn over it folds it under it; it hides no skin; the wear tint recolours it. Shown on its own FUR tab (Torso). */
 EW_MH_WEAR.push(['ewf_fur', 'Fur (whole body)', 'underwear', 1]);
+/* THE WEREWOLF FUR (2026-11-03, mondo: "retexture all three in meshy so they all have a consistent fur texture"): the wolf tail and the
+   clawed feet again, wearing a Meshy Retexture made with the same fur as the "Werewolf fur" skins (bake-meshy.py tex=) */
+EW_MH_WEAR.push(['ewf_fur_werewolf', 'Fur (whole body), werewolf colours', 'underwear', 1]);   // (bake-fur.py --from-skin: the shell in the Werewolf fur skin's colours)
+EW_MH_WEAR.push(['ewm_wolftail_fura', 'Wolf tail, werewolf fur', 'bodyparts', 62], ['ewm_wolftail_furb', 'Wolf tail, werewolf fur, dark', 'bodyparts', 62],
+  ['ewm_beastfeet_fura', 'Clawed beast feet, werewolf fur', 'bodyparts', 47], ['ewm_beastfeet_furb', 'Clawed beast feet, werewolf fur, dark', 'bodyparts', 47]);
 /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color for the cowboy"): an MPFB
    body hides the classic painted beard (it paints the classic face only), so its facial hair is the pack's beards + moustaches
    (Body parts). The creator lists them under FACE as one pick; three-renderer.js paintFacial tints them like the pack hair:
@@ -3637,6 +3642,10 @@ const EW_MH_LOOKS = {
   ],
 };
 // EW_MH_LOOKS:END
+/* THE WEREWOLF FUR SKINS (2026-11-03, mondo: "texture the heavy body with werewolf head on meshy to look more like a werewolf"): Meshy
+   Retexture on the MPFB heavy body with the Wolf head (its own hm08 UVs, so any MPFB body wears it): A = the text prompt, B = matched to
+   the Meshy werewolf's own look. mpfb/looks/skin_<id>.jpg like the pack skins; sources in project files meshy/retexture/werewolf/. */
+EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewolf_fur_dark', 'Werewolf fur, dark (Meshy)']);
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -3869,10 +3878,10 @@ const EW_WEAR_SHELF_MOVE = {
   ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
   ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour',
   ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
-  ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
+  ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_beastfeet_fura: 'creature', ewm_beastfeet_furb: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
   ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
   ewm_milkcookies: 'held', ewm_cup: 'held', ewm_magicwand: 'held', ewm_wizardstaff: 'held',
-  ewf_fur: 'fur',   // THE FUR (category 'underwear' for the layering, its own tab)
+  ewf_fur: 'fur', ewf_fur_werewolf: 'fur',   // THE FUR (category 'underwear' for the layering, its own tab)
 };
 function wearShelfOf(id) {
   const w = EW_MH_WEAR_BY_ID[id];
@@ -3978,7 +3987,7 @@ const EW_WEAR_FOR_MALE = ['mhw_culturalibre_hero_suit_1', 'mhw_culturalibre_hero
   'mhw_culturalibre_hero_mask_1', 'mhw_culturalibre_hero_mask_2', 'mhw_culturalibre_hero_mask_3', 'mhw_culturalibre_hero_mask_4', 'mhw_culturalibre_hero_mask_5',
   'mhw_rehmanpolanski_viking_boots', 'mhw_rehmanpolanski_viking_pants', 'mhw_rehmanpolanski_viking_tunic',
   'mhw_toigo_suit_with_dinner_jacket', 'mhw_toigo_suit_with_jacket_and_bowtie'];
-const EW_WEAR_BOTH = ['ewf_fur', 'ewb_kilt', 'ewb_loincloth', 'mhw_punkduck_winter_coat',
+const EW_WEAR_BOTH = ['ewf_fur', 'ewf_fur_werewolf', 'ewb_kilt', 'ewb_loincloth', 'mhw_punkduck_winter_coat',
   'mhw_v0rt3x_armsleeves_black_fishnet_large', 'mhw_v0rt3x_armsleeves_black_fishnet_medium', 'mhw_v0rt3x_armsleeves_black_fishnet_small',
   'mhw_v0rt3x_armsleeves_white_fishnet_large', 'mhw_v0rt3x_armsleeves_white_fishnet_medium', 'mhw_v0rt3x_armsleeves_white_fishnet_small',
   'mhw_marco_105_armsleeve02', 'mhw_joepal_crude_high_socks', 'mhw_joepal_crude_low_socks', 'mhw_toigo_leg_warmer_socks', 'mhw_punkduck_sport_briefs'];
@@ -4402,9 +4411,14 @@ const EW_MPFB_FACE_SLIDERS = [
   { id: 'ears', label: 'Ears + neck', rows: [['earSize', 'Ear size'], ['earOut', 'Ears out'], ['earPoint', 'Pointed ears'], ['earLobe', 'Lobes'], ['neckThick', 'Neck']] },
   /* THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28, the werewolf pilot): MakeHuman community animal-pack targets in the same
      mpfb_shapes.glb (bake-mpfb.py ANIMAL_SHAPES; CC-BY, in the credits), 0..100: the head + face reshape into the animal's */
-  { id: 'animal', label: 'Animal head', rows: [['wolfHead', 'Wolf head']] },
+  /* (2026-11-03, mondo: "add the werewolf head to the creature heads"): shown on OUTFIT > Head > Creature heads as a pick
+     (+ its strength slider), not on the FACE tabs (inHeads) */
+  { id: 'animal', label: 'Animal head', inHeads: true, rows: [['wolfHead', 'Wolf head']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
+/* THE SHAPED HEADS: the Creature heads that are a reshape of the body's own head (a MakeHuman target, 0..1), not a model worn over it.
+   One head at a time with the model heads: a shaped head picked takes the model head off, and the other way round. [key, label] */
+const EW_SHAPE_HEADS = EW_MPFB_FACE_SLIDERS.filter(g => g.inHeads).reduce((a, g) => a.concat(g.rows), []);
 /* THE BODY DETAILS (2026-11-02, plan row 26: mondo's female thick / thin / athletic bodies as sliders): MakeHuman's Weight
    and Muscle macros (gender-matched deltas) + body modifiers, on the MPFB bodies only (skin only, the bones stay). Bust
    spacing / height show on female bodies only, like Bust. */
@@ -4991,7 +5005,7 @@ const RACE_CREATOR_LOOKS = {
     female: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"jiggleChest":0.5,"jiggleButt":0.5,"weight":0,"muscle":0,"shoulders":0,"vshape":0,"pecs":0,"belly":0,"glutes":0,"thighs":0,"calves":0,"upperArms":0,"bustSpacing":0,"bustHeight":0,"eyeHeight":0,"eyeSpacing":0,"eyeTilt":0,"eyeOpen":0,"eyeDepth":0,"eyelid":0,"eyeBags":0,"epicanthus":0,"browHeight":0,"browAngle":0,"browRidge":0,"noseWidth":0,"noseLength":0,"noseDepth":0,"noseHeight":0,"noseBridge":0,"noseTip":0,"nostrils":0,"noseCurve":0,"mouthWidth":0,"mouthHeight":0,"upperLip":0,"lowerLip":0,"mouthCorners":0,"cupidsBow":0,"mouthDepth":0,"jawAngle":0,"chinLength":0,"chinJut":0,"underbite":0,"chinCleft":0,"cheekbones":0,"cheekHeight":0,"faceFat":0,"headHeight":0,"headDepth":0,"foreheadHeight":0,"foreheadSlope":0,"faceAge":0,"earSize":0,"earOut":0,"earPoint":0,"earLobe":0,"neckThick":0,"skin":"#b98362","hairColor":"#0e0c0e","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#8fa3a8","bottomColor":"#5e6f80","outerColor":"#2a2f38","feetColor":"#2b241f","glovesColor":"#3a2a22","beltColor":"#4a3220","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#f0cf7e","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","outer2Color":"#5a4636","outer2Color2":"#c9a227","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","hairColor2":"#c0392b","idle":"default","body":"mpfb_classic_female","mhSkin":"toigo_light_skin_female_with_violet_makeup","mhEyes":"own","mhBrows":"own","mhLashes":"own","hairAccent":"own","mhChest":"nipples","hair":"mh_punkduck_alpha7_curly","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"none","outer2":"none","outerFront":"auto","outer2Front":"auto","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","outer2Fabric":"wool","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","outer2Pattern":"solid","model":"creator","wear":["mhw_punkduck_evening_gown"],"wearTint":{"mhw_punkduck_evening_gown":"#121214"}},
   },
   "werewolf": {
-    male: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"jiggleChest":0.5,"jiggleButt":0.5,"beltHeight":0,"wolfHead":1,"weight":0,"muscle":0,"shoulders":0,"vshape":0,"pecs":0,"belly":0,"glutes":0,"thighs":0,"calves":0,"upperArms":0,"bustSpacing":0,"bustHeight":0,"eyeHeight":0,"eyeSpacing":0,"eyeTilt":0,"eyeOpen":0,"eyeDepth":0,"eyelid":0,"eyeBags":0,"epicanthus":0,"browHeight":0,"browAngle":0,"browRidge":0,"noseWidth":0,"noseLength":0,"noseDepth":0,"noseHeight":0,"noseBridge":0,"noseTip":0,"nostrils":0,"noseCurve":0,"mouthWidth":0,"mouthHeight":0,"upperLip":0,"lowerLip":0,"mouthCorners":0,"cupidsBow":0,"mouthDepth":0,"jawAngle":0,"chinLength":0,"chinJut":0,"underbite":0,"chinCleft":0,"cheekbones":0,"cheekHeight":0,"faceFat":0,"headHeight":0,"headDepth":0,"foreheadHeight":0,"foreheadSlope":0,"faceAge":0,"earSize":0,"earOut":0,"earPoint":0.6,"earLobe":0,"neckThick":0,"skin":"#1e1d19","hairColor":"#27201c","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#8fa3a8","bottomColor":"#5e6f80","outerColor":"#2a2f38","feetColor":"#2b241f","glovesColor":"#3a2a22","beltColor":"#4a3220","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#f0cf7e","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","outer2Color":"#5a4636","outer2Color2":"#c9a227","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","browColor":"#2a1d14","lashColor":"#141010","hairColor2":"#c0392b","idle":"default","body":"mpfb_heavy","mhSkin":"own","mhEyes":"own","mhBrows":"own","mhLashes":"own","lipTint":"own","skinTint":"pick","eyeTint":"own","browTint":"own","lashTint":"own","hairAccent":"own","mhChest":"nipples","hair":"bald","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"none","outer2":"none","outerFront":"auto","outer2Front":"auto","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","outer2Fabric":"wool","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","outer2Pattern":"solid","model":"creator","wear":["ewf_fur","ewm_wolftail","ewm_beastfeet","mhw_culturalibre_hand_claws"],"wearTint":{"ewm_wolftail":"#34352d"}},
+    male: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"jiggleChest":0.5,"jiggleButt":0.5,"beltHeight":0,"wolfHead":1,"weight":0,"muscle":0,"shoulders":0,"vshape":0,"pecs":0,"belly":0,"glutes":0,"thighs":0,"calves":0,"upperArms":0,"bustSpacing":0,"bustHeight":0,"eyeHeight":0,"eyeSpacing":0,"eyeTilt":0,"eyeOpen":0,"eyeDepth":0,"eyelid":0,"eyeBags":0,"epicanthus":0,"browHeight":0,"browAngle":0,"browRidge":0,"noseWidth":0,"noseLength":0,"noseDepth":0,"noseHeight":0,"noseBridge":0,"noseTip":0,"nostrils":0,"noseCurve":0,"mouthWidth":0,"mouthHeight":0,"upperLip":0,"lowerLip":0,"mouthCorners":0,"cupidsBow":0,"mouthDepth":0,"jawAngle":0,"chinLength":0,"chinJut":0,"underbite":0,"chinCleft":0,"cheekbones":0,"cheekHeight":0,"faceFat":0,"headHeight":0,"headDepth":0,"foreheadHeight":0,"foreheadSlope":0,"faceAge":0,"earSize":0,"earOut":0,"earPoint":0.6,"earLobe":0,"neckThick":0,"skin":"#b98362","hairColor":"#27201c","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#8fa3a8","bottomColor":"#5e6f80","outerColor":"#2a2f38","feetColor":"#2b241f","glovesColor":"#3a2a22","beltColor":"#4a3220","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#f0cf7e","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","outer2Color":"#5a4636","outer2Color2":"#c9a227","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","browColor":"#2a1d14","lashColor":"#141010","hairColor2":"#c0392b","idle":"default","body":"mpfb_heavy","mhSkin":"ew_werewolf_fur","mhEyes":"own","mhBrows":"own","mhLashes":"own","lipTint":"own","skinTint":"own","eyeTint":"own","browTint":"own","lashTint":"own","hairMat":"own","hairAccent":"own","mhChest":"nipples","hair":"bald","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"none","outer2":"none","outerFront":"auto","outer2Front":"auto","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","outer2Fabric":"wool","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","outer2Pattern":"solid","model":"creator","wear":["ewm_wolftail_fura","ewm_beastfeet_fura","mhw_culturalibre_hand_claws"],"wearTint":{}},
   },
 };
 // RACE_CREATOR_LOOKS:END
@@ -5072,7 +5086,7 @@ if (typeof window !== 'undefined') {
   window.EW_CREATOR_NAMES = EW_CREATOR_NAMES; window.creatorName = creatorName; window.creatorRenamed = creatorRenamed; window.setCreatorName = setCreatorName;   // THE RENAMED PICKS
   window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
-  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
+  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
   window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
@@ -6185,8 +6199,10 @@ const TERRAIN_SPRITES = {
     /* THE GOLD (2026-09-21 — the user: "I don't like any of the three gold textures in the bucket; make your own or
        tint one of the other textures"): every gold key is the brushed aluminium sheet tinted gold by
        TERRAIN_BASE_TINT (below) — one brushed gilt for boards, monuments, trims and spell props alike. The three
-       gold_*.png files stay in the bucket, unreferenced. */
-    gold:             [`${_T}/aluminium.png`],
+       gold_*.png files stay in the bucket, unreferenced.
+       THE GILT (2026-11-03, mondo picked "Option D, metal007"): every gold key is now terrain/gilt.png = ambientCG Metal007
+       (CC0) regraded to gold at 128 px; TERRAIN_BASE_TINT keeps the three keys' warmths, lighter. */
+    gold:             [`${_T}/gilt.png`],
     metal:            [`${_T}/metal.png`],
     leaves:           [`${_T}/leaves.png`],
     wallpaper:        [`${_T}/wallpaper.png`],
@@ -6198,8 +6214,8 @@ const TERRAIN_SPRITES = {
     carpet_2:         [`${_T}/carpet_2.png`],
     carpet_3:         [`${_T}/carpet_3.png`],
     carpet_4:         [`${_T}/carpet_4.png`],
-    gold_2:           [`${_T}/aluminium.png`],
-    gold_3:           [`${_T}/aluminium.png`],
+    gold_2:           [`${_T}/gilt.png`],
+    gold_3:           [`${_T}/gilt.png`],
     /* THE METALS (2026-09-21 — the user: "don't use metal_3, metal_2 or gunmetal_2 anywhere, including the delta
        maps"): the three keys stay (boards, rooms and the editor's palette name them) but wear the plain sheets —
        metal_2 / gunmetal_2 the gunmetal plate, metal_3 the brushed aluminium darkened to steel by TERRAIN_BASE_TINT. */
@@ -6295,10 +6311,9 @@ const TERRAIN_SPRITES = {
    asphalt. Add a key here + point its TERRAIN_SPRITES row at the sheet. */
 const TERRAIN_BASE_TINT = {
     urban_street: '#4e4e56',
-    /* THE GOLD (2026-09-21): the brushed aluminium sheet as gilt — three warmths for the three keys */
-    gold: '#e0b048',
-    gold_2: '#d4a238',
-    gold_3: '#c89230',
+    /* THE GOLD (2026-09-21; the gilt sheet since 2026-11-03): three warmths for the three keys (gold = the sheet as drawn) */
+    gold_2: '#ecd8b0',
+    gold_3: '#dcc090',
     /* THE METALS (2026-09-21): metal_3 = the aluminium sheet as blued steel */
     metal_3: '#8a949e',
     /* 🧪 THE LIQUIDS (2026-10-26): Black Ooze = the dark slate liquid sheet, the oil slick = the brown swirl sheet, both

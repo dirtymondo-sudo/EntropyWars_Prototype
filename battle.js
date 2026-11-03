@@ -53272,7 +53272,7 @@
                 'wood.png', 'leaves.png', 'rock.png', 'liquids/Liquid_Blue_05-128x128.png', 'enamel.png',   // crystal: the blue sheet (2026-11-02; the cones are the Meshy shards now)
                 'objects/flower.png', 'objects/flower_2.png', 'objects/flower_3.png', 'objects/flower_4.png',
                 // tesla coil + signature-object cladding
-                'gunmetal.png', 'copper.png', 'aluminium.png', 'gold.png', 'metal.png',
+                'gunmetal.png', 'copper.png', 'aluminium.png', 'gilt.png', 'metal.png',   // gold.png is out (2026-11-03): the gold is gilt.png (Metal007)
                 'wood_planks.png', 'obsidian.png', 'leather.png', 'parchment.png', 'marble_light.png',
                 // boulder / ice / forest VFX projectiles + fluid wave overlay
                 'rocks_4.png', 'ice.png', 'forest.png', 'waves_1.png',

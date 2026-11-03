@@ -21,6 +21,7 @@ geometry-nodes CURVES, which a browser cannot draw, so this tool uses the editor
 Usage:
   pip install bpy==5.2.3 ; git clone --depth 1 https://github.com/makehumancommunity/mpfb2 /tmp/mpfb2   (MPFB >= 2.0.18)
   python3 -I bake-fur.py --mpfb /tmp/mpfb2 [--haireditor <dir with fur.blend | haireditor.zip>] [--only ewf_fur] [--out charactercreation/wear]
+  python3 -I bake-fur.py --from-skin charactercreation/mpfb/looks/skin_ew_werewolf_fur.jpg --name ewf_fur_werewolf   (the shell in a skin's colours)
   (--haireditor: default = downloaded from files.makehumancommunity.org into /tmp/bake-fur)
 Output: <out>/ewf_<name>.glb (R2 Assets/Models/charactercreation/wear/). Notes: docs/notes/character-creator.md "THE FUR".
 """
@@ -291,14 +292,100 @@ def bake_piece(M, wid, piece, pos, male, out):
             bpy.data.objects.remove(o)
 
 
+# ── THE FUR IN THE SKIN'S COLOURS (2026-11-03): a baked shell recoloured from a body skin sheet (no Blender) ──
+# mondo: "retexture all three in meshy so they all have a consistent fur texture". Each shell texel takes the colour of the skin
+# sheet under it (the shell vertex's nearest male-body vertex -> its hm08 UV), its own strand shading on top, its alpha kept.
+def _glb_read(path):
+    import struct
+    b = open(path, 'rb').read(); off = 12; J = B = None
+    while off < len(b):
+        ln, ty = struct.unpack('<II', b[off:off + 8]); c = b[off + 8:off + 8 + ln]
+        if ty == 0x4E4F534A:
+            J = json.loads(c)
+        else:
+            B = c
+        off += 8 + ln
+    return J, B
+
+
+def _glb_acc(J, B, i):
+    a = J['accessors'][i]; bv = J['bufferViews'][a['bufferView']]
+    n = {'SCALAR': 1, 'VEC2': 2, 'VEC3': 3, 'VEC4': 4}[a['type']]
+    dt = {5126: np.float32, 5125: np.uint32, 5123: np.uint16, 5121: np.uint8}[a['componentType']]
+    arr = np.frombuffer(B, dt, count=a['count'] * n, offset=bv.get('byteOffset', 0) + a.get('byteOffset', 0))
+    return arr.reshape(a['count'], n) if n > 1 else arr
+
+
+def recolour_from_skin(base_glb, skin_path, body_glb, out_path, name):
+    import struct
+    from PIL import Image
+    from scipy.spatial import cKDTree
+    J, B = _glb_read(base_glb); p = J['meshes'][0]['primitives'][0]
+    P = _glb_acc(J, B, p['attributes']['POSITION']); UV = _glb_acc(J, B, p['attributes']['TEXCOORD_0'])
+    F = _glb_acc(J, B, p['indices']).reshape(-1, 3)
+    H, HB = _glb_read(body_glb); q = H['meshes'][0]['primitives'][0]
+    BP = _glb_acc(H, HB, q['attributes']['POSITION']); BUV = _glb_acc(H, HB, q['attributes']['TEXCOORD_0'])
+    SU = BUV[cKDTree(BP).query(P)[1]]
+    im = J['images'][0]; bv = J['bufferViews'][im['bufferView']]
+    S = np.asarray(Image.open(io.BytesIO(B[bv.get('byteOffset', 0):bv.get('byteOffset', 0) + bv['byteLength']])).convert('RGBA')).astype(np.float32)
+    Hh, W = S.shape[:2]; K = 1024
+    skin = np.asarray(Image.open(skin_path).convert('RGB').resize((K, K))).astype(np.float32)
+    col = np.zeros((Hh, W, 3), np.float32); got = np.zeros((Hh, W), bool)
+    for t in F:
+        a, b, c = UV[t] * [W, Hh]; s0, s1, s2 = SU[t]
+        flat = np.ptp(SU[t], axis=0).max() > 0.08          # (a triangle across a seam of the skin sheet: one colour)
+        x0, x1 = int(max(0, np.floor(min(a[0], b[0], c[0])))), int(min(W - 1, np.ceil(max(a[0], b[0], c[0]))))
+        y0, y1 = int(max(0, np.floor(min(a[1], b[1], c[1])))), int(min(Hh - 1, np.ceil(max(a[1], b[1], c[1]))))
+        d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+        if x1 < x0 or y1 < y0 or abs(d) < 1e-9:
+            continue
+        xs, ys = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+        l0 = ((b[1] - c[1]) * (xs - c[0]) + (c[0] - b[0]) * (ys - c[1])) / d
+        l1 = ((c[1] - a[1]) * (xs - c[0]) + (a[0] - c[0]) * (ys - c[1])) / d; l2 = 1 - l0 - l1
+        m = (l0 >= -0.02) & (l1 >= -0.02) & (l2 >= -0.02)
+        if not m.any():
+            continue
+        su = np.broadcast_to(s0, (m.sum(), 2)) if flat else np.outer(l0[m], s0) + np.outer(l1[m], s1) + np.outer(l2[m], s2)
+        px = np.clip((su[:, 0] * K).astype(int), 0, K - 1); py = np.clip((su[:, 1] * K).astype(int), 0, K - 1)
+        yy, xx = ys[m].astype(int), xs[m].astype(int)
+        col[yy, xx] = skin[py, px]; got[yy, xx] = True
+    L = S[:, :, :3].mean(2); lit = S[:, :, 3] > 40
+    var = np.clip(0.55 + 0.7 * L / (L[lit].mean() if lit.any() else 1), 0.4, 1.6)[:, :, None]
+    rgb = np.where(got[:, :, None], np.clip(col * var, 0, 255), S[:, :, :3])
+    buf = io.BytesIO(); Image.fromarray(np.dstack([rgb, S[:, :, 3]]).astype(np.uint8), 'RGBA').save(buf, 'PNG', optimize=True)
+    # the GLB again with that picture and its own name
+    tgt = im['bufferView']; blob = b''
+    for i, v in enumerate(J['bufferViews']):
+        data = buf.getvalue() if i == tgt else B[v.get('byteOffset', 0):v.get('byteOffset', 0) + v['byteLength']]
+        blob += b'\0' * ((-len(blob)) % 4); v['byteOffset'] = len(blob); v['byteLength'] = len(data); blob += data
+    blob += b'\0' * ((-len(blob)) % 4); J['buffers'][0]['byteLength'] = len(blob); im['mimeType'] = 'image/png'
+    for nd in J['nodes']:
+        if (nd.get('extras') or {}).get('ewWear'):
+            nd['extras']['ewWear']['name'] = name
+    js = json.dumps(J, separators=(',', ':')).encode(); js += b' ' * ((-len(js)) % 4)
+    open(out_path, 'wb').write(struct.pack('<III', 0x46546C67, 2, 28 + len(js) + len(blob)) + struct.pack('<II', len(js), 0x4E4F534A) + js
+                               + struct.pack('<II', len(blob), 0x004E4942) + blob)
+    print('[bake-fur] %s: %s recoloured from %s (%.0f%% of the sheet painted)' % (name, os.path.basename(base_glb), os.path.basename(skin_path), 100 * got.mean()))
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--mpfb', required=True, help='MPFB2 git checkout (>= 2.0.18, the hair editor)')
+    ap.add_argument('--mpfb', default='', help='MPFB2 git checkout (>= 2.0.18, the hair editor)')
     ap.add_argument('--haireditor', default='', help='folder holding fur.blend, or haireditor.zip (default: download)')
     ap.add_argument('--only', default='', help='comma list of piece ids (default: all of PIECES)')
     ap.add_argument('--out', default='charactercreation/wear')
+    ap.add_argument('--from-skin', default='', help='recolour a baked shell from this skin sheet (no Blender): --from-skin S.jpg --name ID')
+    ap.add_argument('--name', default='')
+    ap.add_argument('--base', default='ewf_fur', help='with --from-skin: the baked shell to recolour')
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
+    if a.from_skin:
+        here = os.path.dirname(os.path.abspath(__file__))
+        recolour_from_skin(os.path.join(a.out, a.base + '.glb'), a.from_skin, os.path.join(here, 'charactercreation', 'mpfb', 'mpfb_male.glb'),
+                           os.path.join(a.out, a.name + '.glb'), a.name)
+        return
+    if not a.mpfb:
+        ap.error('--mpfb is needed to grow fur')
     M = bm.install_mpfb(a.mpfb)
     install_haireditor(M, haireditor_dir(a.haireditor))
     for o in list(bpy.data.objects):
