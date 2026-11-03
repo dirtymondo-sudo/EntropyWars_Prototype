@@ -6090,7 +6090,11 @@ const TERRAIN_SPRITES = {
     deep_water:     [`${_T}/deep_water.png`],
     bridge:         [`${_T}/bridge.png`],
     mountain:       [`${_T}/mountain.png`],
-    desert:         [`${_T}/desert.png`],
+    /* THE TWO SANDS (2026-11-03, mondo picked "A" off the sand options sheet, then: "you need to differentiate between beach
+       sand and desert sand in the game through color/tint"): `desert` = terrain/sand.png = ambientCG Ground097 (CC0, dune
+       ripples) baked at 128 px in the desert's warm gold. The beach wears the SAME ripples in pale cream (SAND_BEACH below):
+       one terrain key, one set of rules, two colours by place. desert.png stays in the bucket, unreferenced. */
+    desert:         [`${_T}/sand.png`],
     tree:           [`${_T}/forest.png`],
     dirt:           [`${_T}/dirt.png`],
     lava:           [`${_T}/lava.png`],
@@ -6309,6 +6313,14 @@ const TERRAIN_SPRITES = {
    tiles, the near kit's K.mat, the HQ's _hqMat) BEFORE any map tint, so a Δ's
    own `tints` row still modulates it. urban_street = the concrete sheet as
    asphalt. Add a key here + point its TERRAIN_SPRITES row at the sheet. */
+/* THE BEACH SAND (2026-11-03): where the `desert` key is a BEACH, the renderer (three-renderer.js _ewSandBeach) draws it with
+   `sheet` (the desert's own Ground097 ripples in pale cream) in place of the desert-gold terrain/sand.png. A beach is:
+   a battle board whose id starts with one of `maps`, or a room built on a sea / sea-floor shell (data.js hqSeaShell /
+   hqAbyssShell carry `sand: 'beach'`). Look only: the tile is still `desert` for every rule. Add a board here to make it a beach. */
+const SAND_BEACH = {
+    sheet: `${_T}/sand_beach.png`,
+    maps: ['prebuilt_bermuda', 'site_prebuilt_bermuda', 'site_prebuilt_atlantis_abyss', 'site_prebuilt_downtown_harbour'],
+};
 const TERRAIN_BASE_TINT = {
     urban_street: '#4e4e56',
     /* THE GOLD (2026-09-21; the gilt sheet since 2026-11-03): three warmths for the three keys (gold = the sheet as drawn) */
@@ -6324,6 +6336,7 @@ const TERRAIN_BASE_TINT = {
     storm: '#a4b0cc',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
+if (typeof window !== 'undefined') window.SAND_BEACH = SAND_BEACH;
 /* THE WHITE SHEETS (2026-11-03, mondo on the Heaven Arena: "something about these clouds is just really hard on the eyes, i cant
    see what im looking at ... any map or area that has a lot of white still looks super bright", bloom off). The cause: a lit
    surface is texture × light, and daylight puts about 1.35× (a room's open sky) to 1.5× (a battle's day) on a floor, drawn into

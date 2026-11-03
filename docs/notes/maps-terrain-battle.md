@@ -1391,3 +1391,21 @@ Each site is pinned with HQ_ARENA_RULES.within and all four sizes re-baked; the 
   made four squares rock (`tree`): no props on the platforms.
 - AGARTHA (prebuilt_agartha): THE PLAZA (the fountain, the two garden rings); within (0, 14, r 2.6). Two marble low walls
   (1.4 m), four crystal clusters and four greek columns on ghost blocks, 180° twins about (0, 14), placed for the 9×9 too.
+
+## THE TWO SANDS (2026-11-03)
+mondo asked for a new sand "the same way you found another gold texture", picked option A off
+`/mnt/project-files/sand-texture/sand_texture_options.png` (ambientCG Ground097, CC0, dune ripples), then: "you need to
+differentiate between beach sand and desert sand in the game through color/tint".
+- `desert` stays ONE terrain key (every rule unchanged). sprites.js TERRAIN_SPRITES.desert = R2 `Assets/Sprites/terrain/sand.png`
+  (Ground097 baked at 128 px in the desert's warm gold, mean ~0.57). The beach sheet `terrain/sand_beach.png` = the same ripples in
+  pale cream (mean ~0.73, under the white-sheet line so daylight keeps the ripples). Both baked by
+  `/mnt/project-files/sand-texture/grade.py` (contrast ×3-4 + normal-map relief + AO: raw ambientCG sand is flat at 128 px).
+  Repo copies in `Assets/Sprites/terrain/` (zipped by hand). desert.png stays in the bucket, unreferenced.
+- A BEACH (sprites.js SAND_BEACH): a battle board whose id starts with one of `SAND_BEACH.maps` (Bermuda family, Atlantis abyss,
+  Downtown harbour), or a room on a sea shell (data.js hqSeaShell / hqAbyssShell carry `sand: 'beach'`; a room's
+  `terrain.sand` / `shell.sand` works too). three-renderer.js `_ewSandBeach` / `_ewSandUrl` / `_ewSandPart` swap the sheet in
+  getTerrainTexture, _hzTex, _hqTex and fold '@beach' into their cache keys + _tintKeyPart (board materials). Online: reads
+  activeGameMode / the room, which host and guest share.
+- The beach colours: Bermuda boards' tints.desert, the sea shell's floor/apron colour and the Bermuda horizon kit went
+  #e8d8a8 → #f2ead6 (paler) so the beach reads cream, not yellow. Giza / Babel / the desert boards keep their tints.
+- The sand spells' (`_sigTerrainTex`) and the deployable stone's 'desert.png' loads read sand.png.
