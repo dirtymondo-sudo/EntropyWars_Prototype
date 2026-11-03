@@ -550,3 +550,4 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
 - 2026-11-03: row 12n DONE: the creator in tabs, clothes + accessories by body part (Head ... Footwear, left / right arm) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsKX6czX9LTgLV7CBZhLZTrW.
 - 2026-11-03: row 12o DONE (tool): rename creator picks in the item hider (✎), F2 opens the hider in the creator, one export for hides + names — thread cmsg_01XWpxyTn3nnw98znVzKdFjsDaYTWX2fFsP2h2VstJfUGi.
 - 2026-11-03: row 18 STARTED (werewolf fur pilot: bake-fur.py, MPFB hair editor fur shell ewf_fur, werewolf saved look) + row 28 STARTED (wolf head target) — thread cmsg_01XWpxyTn3nnw98znVzKdFjs3hjMkk9659Nd5NvLKbiEMb.
+- 2026-11-03: rows 18/28: Wolf head moved to Creature heads; Meshy-retextured werewolf fur skin + matching tail/feet + recoloured fur shell; wolf tail root tapered + sunk — thread cmsg_01XWpxyTn3nnw98znVzKdFjs3hjMkk9659Nd5NvLKbiEMb.
