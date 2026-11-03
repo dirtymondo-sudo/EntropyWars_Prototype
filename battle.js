@@ -12706,7 +12706,7 @@
         function _unitAttacksWithClip(unit) {
             if (!unit) return false;
             if (!(window.ThreeAnim && window.ThreeAnim.isActive())) return false;
-            return !!(typeof getRace3DModel === 'function' && getRace3DModel(unit.race, unit.gender));
+            return !!(typeof getRace3DModel === 'function' && getRace3DModel(unit.race, unit.gender, unit.appearance));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -12774,7 +12774,7 @@
             const _first = BASIC_ATTACK_RACE_FIRST[unit.race];
             if (_first) return _first;
             if (typeof getRace3DModel === 'function') {
-                const _def = getRace3DModel(unit.race, unit.gender);
+                const _def = getRace3DModel(unit.race, unit.gender, unit.appearance);   // (THE MESHY DEFAULT: the slot's creator look)
                 if (_def && _def.basicAttackKind) return _def.basicAttackKind;
             }
             const _mage = BASIC_ATTACK_RACE_CASTERS[unit.race];

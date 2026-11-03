@@ -4366,7 +4366,14 @@ function getCharacterModelFallback(url) {
    EXPORT: the creator's EXPORT DEFAULT LOOK button saves Entropy_Wars_Race_Look_<race>_<gender>_<time>.json.
    BAKE: `node bake-looks.js <export.json> [more…]` rewrites the block below (repo tooling; docs/notes/character-creator.md
    "THE RACE LOOKS"). One row per race, one look per gender; a gender without a look keeps the race's own model.
-   RACE_CREATOR_LOOK_DEFS = what the race's own model brought that a creator body lacks (the gun in the hand, the shot). */
+   RACE_CREATOR_LOOK_DEFS = what the race's own model brought that a creator body lacks (the gun in the hand, the shot).
+   THE MESHY DEFAULT (2026-11-03, mondo: "Let the character creator be available to all units so i can make custom models for
+   them. Don't get rid of the old models, the old models should stay the default until i say so ... even the cowboy, its
+   default model should still be the meshy model" + "make sure that custom cowboy is still saved and there as an option"):
+   the rows below are SAVED LOOKS now, not defaults. Every race wears its own Meshy model unless a slot picks a creator look
+   in the forge (the creator opens on every race; a race with a saved look offers it as USE THE SAVED <RACE> LOOK).
+   EW_RACE_LOOKS_ARE_DEFAULT = true puts the old rule back (a saved look dresses every slot / CPU of its race). */
+const EW_RACE_LOOKS_ARE_DEFAULT = false;
 // RACE_CREATOR_LOOKS:BEGIN (written by bake-looks.js)
 const RACE_CREATOR_LOOKS = {
   "chef": {
@@ -4437,11 +4444,17 @@ function getRaceCreatorLook(race, gender) {
   return c ? Object.assign({}, c, { wear: c.wear.slice() }) : null;
 }
 function hasRaceCreatorLook(race) { return !!RACE_CREATOR_LOOKS[race]; }
-const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'].concat(Object.keys(RACE_CREATOR_LOOKS));
+function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof window !== 'undefined' && window.EW_RACE_LOOKS_ARE_DEFAULT === true); }
+/* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
+   EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
+   wear one without the slot picking it. */
+const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'].concat(EW_RACE_LOOKS_ARE_DEFAULT ? Object.keys(RACE_CREATOR_LOOKS) : []);
+function ewCreatorLookRace(race) { return typeof race === 'string' && !!race; }   // THE MESHY DEFAULT: the creator dresses every unit
 function getCharacterAppearanceModel(race, gender, appearance) {
-  const own0 = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
+  const own0 = ewCreatorLookRace(race) && normalizeCharacterAppearance(appearance);
   if (own0 && own0.model === 'original') return null;   // THE RACE LOOKS: this slot wears the race's own model
-  const a = own0 || (EW_CREATOR_LOOK_RACES.includes(race) && getRaceCreatorLook(race, gender));
+  /* THE MESHY DEFAULT: no look on the slot = the race's own (Meshy) model, unless the race's look is its default */
+  const a = own0 || ((EW_CREATOR_LOOK_RACES.includes(race) || raceLooksAreDefault()) && getRaceCreatorLook(race, gender));
   if (!a) return null;
   const mp = a.body && EW_MPFB_BASES[a.body];
   const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
@@ -4517,7 +4530,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
-  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
+  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }

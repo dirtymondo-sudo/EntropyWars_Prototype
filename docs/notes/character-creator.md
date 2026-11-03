@@ -1031,3 +1031,23 @@ tab? ... there is no color picker?? Everything that can possibly have one needs 
 - "MakeHuman hair" row renamed "More hair styles". Every other colourable piece already had a picker (hair, second hair colour,
   facial hair, clothes layers + "Colours of the pieces you wear", wings, accessories once worn).
 - Every tab shot: /mnt/project-files/creator-usability/.
+
+## THE MESHY DEFAULT + THE CREATOR ON EVERY UNIT (2026-11-03, character-models-plan row 20b)
+mondo 11-03: "Let the character creator be available to all units so i can make custom models for them. Don't get rid of the
+old models, the old models should stay the default until i say so or we have all new characters models through the character
+creator. So even the cowboy, its default model should still be the meshy model" + "make sure that custom cowboy is still saved
+and there as an option".
+- sprites.js `EW_RACE_LOOKS_ARE_DEFAULT = false` (above the RACE_CREATOR_LOOKS block): the baked rows are SAVED looks now. Only
+  'homosapien' + 'door agent' stay in EW_CREATOR_LOOK_RACES (their look is the default); with the flag on (or
+  `window.EW_RACE_LOOKS_ARE_DEFAULT = true` before boot) the old rule comes back. Flipping it is mondo's call only.
+- `ewCreatorLookRace(race)` = every race may WEAR a slot's look (state.js team build + repair, three-renderer.js preload warm).
+  getCharacterAppearanceModel: a slot look (model 'creator') dresses any race; no look = the race's own model.
+- Forge creator panel (party-builder.js): a slot without a look shows "wears the <race>'s original model/sprite" +
+  USE THE SAVED <RACE> LOOK (races with a saved look; copies the row onto the slot) + CREATE APPEARANCE + RANDOM. In the
+  controls: RESET TO SAVED LOOK (saved races) or RESET, USE ORIGINAL MODEL (deletes the slot look), EXPORT RACE LOOK (every race
+  but the DOOR Agent / human base). bake-looks.js accepts any race in RACE_MODELS_3D or RACE_SPRITES.
+- Sprite-only races (android, skinwalker, siren, cyclops, demon prince, super sentai, watcher, droid, chosen one) stand on the
+  forge stage in a creator look: EWCharViewer.supports / mount take the appearance (three-renderer.js _cvSupports).
+  battle.js `_unitAttacksWithClip` + `basicAttackKindOf` pass unit.appearance, so such a unit attacks with clips.
+- Proof shots: /mnt/project-files/meshy-default/ (cowboy Meshy default → saved look → back; werewolf + cyclops CREATE APPEARANCE).
+

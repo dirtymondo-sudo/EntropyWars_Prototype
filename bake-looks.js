@@ -3,14 +3,17 @@
 //
 //     node bake-looks.js <Entropy_Wars_Race_Look_….json> [more exports…] [--dry-run]
 //     node bake-looks.js --list                       # print what sprites.js bakes now
-//     node bake-looks.js --remove <race>[:<gender>]   # take a race (or one gender) back to its own Meshy model
+//     node bake-looks.js --remove <race>[:<gender>]   # drop a race's (or one gender's) saved look
 //
-// mondo edits a race's look in the forge (a slot of that race > GEAR > CHARACTER CREATOR) and presses EXPORT DEFAULT LOOK; the
+// THE MESHY DEFAULT (2026-11-03, mondo): a baked look is a SAVED LOOK, offered in the creator (USE THE SAVED <RACE> LOOK); every race
+// still wears its own Meshy model by default until sprites.js EW_RACE_LOOKS_ARE_DEFAULT is set true (his call, not a thread's).
+//
+// mondo edits a race's look in the forge (a slot of that race > GEAR > CHARACTER CREATOR) and presses EXPORT RACE LOOK; the
 // file holds { kind: 'entropy-wars-race-looks', v: 1, looks: { <race>: { <gender>: appearance } } }. This tool runs every look
 // through the game's own normalizeCharacterAppearance (sprites.js loaded in a vm sandbox, like load-data.js does data.js), so a
 // stale id or a bad colour is fixed the way the game would read it, and rewrites the block between
 // `// RACE_CREATOR_LOOKS:BEGIN` and `// RACE_CREATOR_LOOKS:END` in sprites.js: one line per race + gender, later files win.
-// The race must be a real race (RACE_MODELS_3D) and the look a creator look (not USE ORIGINAL MODEL). Then node --check,
+// The race must be a real race (RACE_MODELS_3D or RACE_SPRITES; not the DOOR Agent / human base) and the look a creator look (not USE ORIGINAL MODEL). Then node --check,
 // bump the ?v= token, deploy as usual (RULE #1 / #1b). Repo-only tooling, no dependencies.
 'use strict';
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -48,7 +51,7 @@ if (args.includes('--list') || !args.length) {
   if (!args.length) console.log('\nusage: node bake-looks.js <Entropy_Wars_Race_Look_….json> [more…] [--dry-run] | --list | --remove <race>[:<gender>]');
   process.exit(0);
 }
-const norm = ctx.normalizeCharacterAppearance, models = vm.runInContext('RACE_MODELS_3D', ctx);
+const norm = ctx.normalizeCharacterAppearance, models = vm.runInContext('RACE_MODELS_3D', ctx), sprites = vm.runInContext('RACE_SPRITES', ctx);   // (THE MESHY DEFAULT 2026-11-03: a 2D-only race may have a saved look too)
 const looks = current, changed = [];
 const ri = args.indexOf('--remove');
 if (ri >= 0) {
@@ -61,9 +64,10 @@ if (ri >= 0) {
 for (const f of args.filter((x, i) => !x.startsWith('--') && !(ri >= 0 && i === ri + 1))) {
   let doc;
   try { doc = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { console.error('cannot read ' + f + ': ' + e.message); process.exit(1); }
-  if (!doc || doc.kind !== 'entropy-wars-race-looks' || !doc.looks) { console.error(f + ' is not a race-look export (EXPORT DEFAULT LOOK in the creator)'); process.exit(1); }
+  if (!doc || doc.kind !== 'entropy-wars-race-looks' || !doc.looks) { console.error(f + ' is not a race-look export (EXPORT RACE LOOK in the creator)'); process.exit(1); }
   for (const race of Object.keys(doc.looks)) {
-    if (!models[race]) { console.error(f + ': "' + race + '" is not a race with a 3D model'); process.exit(1); }
+    if (!models[race] && !sprites[race]) { console.error(f + ': "' + race + '" is not a race'); process.exit(1); }
+    if (race === 'door agent' || race === 'homosapien') { console.error(f + ': the ' + race + ' look comes from the officer card, not a saved race look'); process.exit(1); }
     for (const g of Object.keys(doc.looks[race])) {
       if (g !== 'male' && g !== 'female') { console.error(f + ': gender "' + g + '"'); process.exit(1); }
       const a = norm(doc.looks[race][g]);

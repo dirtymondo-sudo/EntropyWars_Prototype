@@ -845,7 +845,7 @@ function pbLooksSave(name, gender, appearance) {
 }
 function pbLooksDelete(id) { const list = pbLooksLoad().filter(e => e.id !== id); pbLooksStore(list); return list; }
 if (typeof window !== 'undefined') window._ewSavedLooks = { load: pbLooksLoad, save: pbLooksSave, remove: pbLooksDelete, key: PB_LOOKS_KEY, max: PB_LOOKS_MAX };
-/* THE RACE LOOKS (2026-11-01): EXPORT DEFAULT LOOK — the look on the stage as a file for bake-looks.js
+/* THE RACE LOOKS (2026-11-01): EXPORT RACE LOOK (was EXPORT DEFAULT LOOK; THE MESHY DEFAULT 2026-11-03: a baked look is a saved look) — the look on the stage as a file for bake-looks.js
    ({ kind: 'entropy-wars-race-looks', v: 1, made, looks: { <race>: { <gender>: appearance } } }); several files bake together */
 function pbExportRaceLook(race, gender, appearance, note) {
   try {
@@ -1367,7 +1367,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
 function HeroViewer3D({ race, gender, cls, focus, appearance }) {
   const hostRef = React.useRef(null);
   const accent = PB_ACCENT;
-  const supported = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports(race, gender));
+  const supported = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports(race, gender, appearance));   // (THE MESHY DEFAULT: a 2D-only race in a creator look)
   React.useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -4315,12 +4315,27 @@ function PartyBuilder(props) {
      here too. The slot starts on the race's look; an edit keeps the slot's own copy; RESET TO DEFAULT LOOK drops it; USE ORIGINAL
      MODEL puts the race's own Meshy model back on this slot (appearance.model 'original'); EXPORT DEFAULT LOOK saves the look
      as a file that bake-looks.js bakes into RACE_CREATOR_LOOKS (the default every slot / every CPU of that race wears). */
+  /* THE MESHY DEFAULT (2026-11-03, mondo: "Let the character creator be available to all units so i can make custom models for
+     them ... the old models should stay the default until i say so ... even the cowboy" + "make sure that custom cowboy is still
+     saved and there as an option"): the creator opens on EVERY race. No look on the slot = the race's own Meshy model (the DOOR
+     Agent excepted); a race with a baked look (now a SAVED look) offers it as USE THE SAVED <RACE> LOOK; EXPORT RACE LOOK on any race. */
   const raceLookRace = !!(window.hasRaceCreatorLook && window.hasRaceCreatorLook(unitRace));
-  const lookEditable = unitRace === 'door agent' || raceLookRace;
+  const lookEditable = !!unitRace && (typeof window.ewCreatorLookRace === 'function' ? window.ewCreatorLookRace(unitRace) : unitRace === 'door agent');
+  const lookIsDefault = unitRace === 'door agent' || unitRace === 'homosapien' || (raceLookRace && !!(window.raceLooksAreDefault && window.raceLooksAreDefault()));
   const slotOwnLook = window.normalizeCharacterAppearance?.(meta.appearance) || null;
-  const slotOriginal = !!(raceLookRace && slotOwnLook && slotOwnLook.model === 'original');
-  const raceDefaultLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
-  const appearance = slotOriginal ? null : (slotOwnLook || raceDefaultLook);
+  const slotOriginal = !!(slotOwnLook && slotOwnLook.model === 'original');
+  const raceSavedLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
+  const appearance = slotOriginal ? null : (slotOwnLook || (lookIsDefault ? raceSavedLook : null));
+  const unitRaceLabel = typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace;
+  const wearsOriginal = slotOriginal || (!appearance && unitRace !== 'door agent');   // the slot stands in the race's own model
+  const setSlotLook = (a) => {   // (THE MESHY DEFAULT: USE THE SAVED LOOK / RESET TO SAVED LOOK put a copy on this slot)
+    if (isWaitingOnline || !a) return;
+    setCreatorRef(null);
+    st.teamLockedIn = false;
+    st.partyMeta[player][slot].appearance = window.normalizeCharacterAppearance(Object.assign({}, a, { model: 'creator' }));
+    if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
+    refresh();
+  };
   /* THE REFERENCE: only the stage changes (HeroViewer3D below); the slot's look, its edits and the export stay as they are.
      An edit turns it off, so the change shows at once. */
   const refKey = player + ':' + slot + ':' + unitRace + ':' + (identity.gender || 'male');
@@ -4345,12 +4360,14 @@ function PartyBuilder(props) {
       h('button', { className: 'ms-tty-btn ew-back', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
     h('div', { className: 'pb-zone-body pb-creator' },
       !lookEditable
-        ? h('p', null, 'Select the DOOR Agent (or a race with a creator look: ' + Object.keys(window.RACE_CREATOR_LOOKS || {}).map(r => (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(r) : r)).join(', ') + ') on the Roster tab to customize its look.')
-        : slotOriginal
+        ? h('p', null, 'Select a unit on the Roster tab to customize its look.')
+        : wearsOriginal
           ? h(React.Fragment, null,
-              h('p', null, 'This slot wears the ' + (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace) + '\u2019s original model.'),
+              h('p', null, 'This slot wears the ' + unitRaceLabel + '\u2019s original ' + (refHasModel ? 'model' : 'sprite') + '. Make a custom look for it here; USE ORIGINAL MODEL in the creator puts the original back.'),
               h('div', { className: 'pb-creator-options' },
-                h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => { if (isWaitingOnline) return; st.teamLockedIn = false; delete st.partyMeta[player][slot].appearance; if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false; refresh(); } }, 'USE THE CREATOR LOOK')))
+                raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
+                h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance({ body: mpfbDefaultBody, model: 'creator' }) }, 'CREATE APPEARANCE'),
+                h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')))
         : !appearance
           ? h(React.Fragment, null,
               h('p', null, 'Build a custom appearance for this character. Your techniques and equipment stay attached to this slot.'),
@@ -4365,18 +4382,18 @@ function PartyBuilder(props) {
               onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }, footer:
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: (appearance && appearance.body) || mpfbDefaultBody })) }, '⚄ RANDOMIZE'),   // (keeps the body picked)
-                raceLookRace
-                  ? h('button', { className: 'ms-tty-btn', disabled: !slotOwnLook, title: 'Back to the look this race wears by default', onClick: () => { if (isWaitingOnline) return; st.teamLockedIn = false; delete st.partyMeta[player][slot].appearance; if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false; refresh(); } }, 'RESET TO DEFAULT LOOK')
+                raceSavedLook
+                  ? h('button', { className: 'ms-tty-btn', title: 'Back to the saved ' + unitRaceLabel + ' look', onClick: () => setSlotLook(raceSavedLook) }, 'RESET TO SAVED LOOK')
                   : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({ body: mpfbDefaultBody })) }, 'RESET'),
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;
-                  if (raceLookRace) st.partyMeta[player][slot].appearance = window.normalizeCharacterAppearance({ model: 'original' });   // THE RACE LOOKS: the race's own model on this slot
-                  else delete st.partyMeta[player][slot].appearance;
+                  if (lookIsDefault && raceLookRace) st.partyMeta[player][slot].appearance = window.normalizeCharacterAppearance({ model: 'original' });   // THE RACE LOOKS: the race's own model on this slot
+                  else delete st.partyMeta[player][slot].appearance;   // THE MESHY DEFAULT: no look = the race's own model
                   if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
                   refresh();
                 } }, 'USE ORIGINAL MODEL'),
-                raceLookRace ? h('button', { className: 'ms-tty-btn gold', title: 'Save this look as a file; bake-looks.js bakes it in as the ' + unitRace + ' (' + (identity.gender || 'male') + ') default', onClick: () => pbExportRaceLook(unitRace, identity.gender || 'male', appearance, pbNote) }, '\u21e9 EXPORT DEFAULT LOOK') : null,
+                (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h('button', { className: 'ms-tty-btn gold', title: 'Save this look as a file; bake-looks.js saves it in the game as the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ') look, offered here on every ' + unitRaceLabel + ' slot (the original model stays the default)', onClick: () => pbExportRaceLook(unitRace, identity.gender || 'male', appearance, pbNote) }, '\u21e9 EXPORT RACE LOOK') : null,
                 officerLook ? h('button', { className: 'ms-tty-btn', title: 'The look on your card (Occam\u2019s mirror) on this slot', onClick: () => changeAppearance(officerLook.appearance, officerLook.gender) }, 'USE YOUR OWN LOOK') : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
@@ -4398,7 +4415,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-stage-view' },
         h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
         h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: (!stageEntry && refShown) ? (raceLookRace ? { model: 'original' } : null) : (!stageEntry && lookEditable ? meta.appearance : null) }),   // (THE RACE LOOKS: none = the race's baked look; THE REFERENCE: the race's own model, for a look)
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: (!stageEntry && refShown) ? { model: 'original' } : (!stageEntry && lookEditable ? meta.appearance : null) }),   // (THE MESHY DEFAULT: none = the race's own model; THE REFERENCE: the race's own model, for a look)
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.
