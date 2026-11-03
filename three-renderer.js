@@ -67438,6 +67438,10 @@ const ThreeRenderer = (function () {
             var tubeMat = new THREE.MeshBasicMaterial({ color: 0xeef3ff });
             var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 1.2 * U, 8), tubeMat); tube.rotation.z = Math.PI / 2; tube.position.y = -0.1 * U; g.add(tube);
             var glow = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0, 0, 0); glow.position.y = -0.3 * U; g.add(glow);
+            /* THE ONE MODEL (2026-11-03, mondo: swap the stand-ins to the models we have): the catalogue's `fluorescent` fixture
+               hangs in place of the box + tube (1.3 m long, its top at the ceiling); the glow keeps the flicker */
+            var fixGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('fluorescent', U, { fit: 'span', h: 1.3, hide: [fix, tube] });
+            if (fixGlb) { fixGlb.position.y = -0.17 * U; g.add(fixGlb); }
             var seed = (_hqProcSeed++) * 1.7;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed;

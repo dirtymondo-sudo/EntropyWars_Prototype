@@ -150,6 +150,18 @@ const R3 = read('three-renderer.js');
 const XMAS_FILE = (R3.match(/var _XMAS_FILE = '([^']+)'/) || [, 'Christmas.dae'])[1];
 const METRO_URL = (R3.match(/_R2_METRO \+ '([^']+\.glb)'/) || [, 'Models/Metro.glb'])[1];
 const procRows = [];
+/* a proc builder that hangs a real model over its own pieces (THE ONE MODEL: _hqCatGlb / _hqOneModel, a race model, a retro
+   tree) is not a stand-in — `procWears` names what it wears, read off the builder's body in three-renderer.js */
+function procWears(proc) {
+    const m = new RegExp('^\\s+' + proc + ':\\s*function', 'm').exec(R3);
+    if (!m) return null;
+    const rest = R3.slice(m.index + m[0].length);
+    const nx = /^\s+[a-z_0-9]+:\s*function/m.exec(rest);
+    const body = nx ? rest.slice(0, nx.index) : rest.slice(0, 4000);
+    const hits = new Set();
+    for (const h of body.matchAll(/\('([a-z_]+)', U|_hqSpellUrl\('(\w+)'\)|_hqMiscUrl\('(\w+)'\)|getRace3DModel\('([^']+)'|(_nrTree)\(/g)) hits.add(h[1] || h[2] || h[3] || h[4] || 'a retro-pack tree');
+    return hits.size ? [...hits].join(', ') : null;
+}
 for (const k of Object.keys(H.catalogue)) {
     const r = H.catalogue[k];
     let url = null;
@@ -163,7 +175,7 @@ for (const k of Object.keys(H.catalogue)) {
     if (url) {
         if (r.pack && !r.file) { const n = +r.pack.replace(/\D/g, ''); add('props', k, CDN + 'Assets/vehicles/Car 0' + n + '/' + (n === 1 ? 'Car' : 'Car' + n) + '.obj'); }
         else add('props', k, url);
-    } else if (r.proc && !/^(bat_|trap_)/.test(k)) procRows.push([k, r.proc, r.h || r.span || '']);
+    } else if (r.proc && !/^(bat_|trap_)/.test(k)) procRows.push([k, r.proc, r.h || r.span || '', procWears(r.proc)]);
 }
 ['Car5_Taxi', 'Car5_Police'].forEach(f => add('props', f.toLowerCase().replace('car5', 'car_pack_5'), CDN + 'Assets/vehicles/Car 05/' + f + '.obj', 'paint'));
 // the stairs pack (data.js HQ_STAIR_PACK.files): every stair flight + railing of the rooms
@@ -255,7 +267,7 @@ function count(how, n) { tally[how] = (tally[how] || 0) + n; }
 const seenPath = new Set();
 for (const r of all) { const p = r.path.replace(/#.*$/, '') + (/#/.test(r.path) ? '#' + r.path.split('#')[1] : ''); if (seenPath.has(p)) continue; seenPath.add(p); count(r.src ? r.src.how : 'UNSORTED', 1); }
 count('MH', wearJson.length + hairMh.length);
-count('CODE', procRows.length);
+count('CODE', procRows.filter(r => !r[3]).length);
 
 function esc(s) { return String(s).replace(/\|/g, '\\|'); }
 function table(list, keyHead) {
@@ -391,12 +403,18 @@ L.push('| name | file (R2 bucket path) | made by | source | script |');
 L.push('| --- | --- | --- | --- | --- |');
 for (const r of lit.sort((a, b) => a.path.localeCompare(b.path))) L.push('| ' + esc(r.key) + ' | `' + esc(r.path) + '` | ' + HOW[r.src.how].label + ' | ' + esc(r.src.src) + ' | ' + r.note + ' |');
 L.push('');
-L.push('## 8. Made in code — procedural stand-ins still in the catalogue (' + procRows.length + ')');
+const standIns = procRows.filter(r => !r[3]), wearing = procRows.filter(r => r[3]);
+L.push('## 8. Made in code — procedural stand-ins still in the catalogue (' + standIns.length + ')');
 L.push('');
 L.push('Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still');
 L.push('want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)');
 L.push('');
-L.push(procRows.sort((a, b) => a[0].localeCompare(b[0])).map(r => '`' + r[0] + '`').join(', '));
+L.push(standIns.sort((a, b) => a[0].localeCompare(b[0])).map(r => '`' + r[0] + '`').join(', '));
+L.push('');
+L.push('**Procs that already wear a real model** (' + wearing.length + ': the builder hangs a model file over its own pieces, which only');
+L.push('show if the file fails) — counted under that model\'s maker, not as code:');
+L.push('');
+L.push(wearing.sort((a, b) => a[0].localeCompare(b[0])).map(r => '`' + r[0] + '` (' + r[3] + ')').join(', '));
 L.push('');
 L.push('Besides the catalogue, the battle maps\' near settings, horizons and monuments have procedural families too');
 L.push('(the `_hz*` / `_nr*` builders): MODEL_INDEX.md §8 lists them.');

@@ -9,13 +9,16 @@ Meshy handle + a lash Claude built in Blender.
 
 ## 10. DECOR STILL MISSING — the props the rooms need that have no real model (2026-11-03)
 
-Built from the 184 code-drawn stand-ins in §8 (each already placed in a room: "uses" = placements in data.js) and the
+Built from the 184 code-drawn catalogue procs of 2026-11-03 (§8 now lists what is left (each already placed in a room: "uses" = placements in data.js) and the
 old per-zone wishlists in MODEL_INDEX.md §3f-3p / §6b. Every stand-in falls in exactly one tier below.
 Meshy process (mondo's): concept image first -> mondo approves -> model in low-poly smart topology -> mondo names redos.
 Target tris are doubled per mondo (MPFB bodies ~30k). Concept rules: one object, plain background, no strings / chains / cords, screens and signs blank. Wiring a model into the
 game (giving the catalogue row a `file` and dropping its `proc`) is a separate step, only on mondo's say.
 
-### 10A. Needs a NEW model (92) — stand-ins placed in rooms that no model in the game fits
+### 10A. Needs a NEW model (89) — stand-ins placed in rooms that no model in the game fits
+
+IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 tape_shelf and D89 sword_stone were dropped
+2026-11-03: their builders already hang a real model (city_bench, vhs_player, the master sword) — see §8.
 
 | # | catalogue key | prop | uses | target tris | concept prompt |
 | --- | --- | --- | --- | --- | --- |
@@ -59,7 +62,6 @@ game (giving the catalogue row a `file` and dropping its `proc`) is a separate s
 | D38 | `robot_arm` | Industrial robot arm | 6 | 12000 | An industrial yellow six-axis robotic arm on a floor base with a gripper |
 | D39 | `ticket_booth` | Carnival ticket booth | 6 | 12000 | A carnival ticket booth: a small red and white striped wooden kiosk with a window and a little peaked roof |
 | D40 | `anemone` | Sea anemone | 5 | 6000 | A sea anemone with many soft pink tentacles on a small rock |
-| D41 | `locker_bench` | Locker-room bench | 5 | 3000 | A gym locker room bench with a wooden slat top on steel legs |
 | D42 | `grow_lamp` | Grow lamp | 5 | 3000 | A hydroponic grow light fixture: a rectangular reflector hood with a purple LED panel on short rigid hanger rods |
 | D43 | `star_projector` | Planetarium star projector | 4 | 12000 | A planetarium star projector, a dumbbell-shaped machine with two studded spheres on a pedestal |
 | D44 | `meat_hook` | Meat hook rail | 4 | 3000 | A short steel butcher's rail with three S-shaped meat hooks hanging from it on rigid hooks, no chains |
@@ -106,8 +108,6 @@ game (giving the catalogue row a `file` and dropping its `proc`) is a separate s
 | D85 | `punch_clock` | Punch clock | 1 | 4000 | A vintage employee punch time clock with a card rack beside it |
 | D86 | `card_catalogue` | Card catalogue | 1 | 10000 | A library card catalogue cabinet: a wall of small wooden drawers with brass handles |
 | D87 | `pot_rack` | Pot rack | 1 | 8000 | A ceiling-hung iron kitchen pot rack on short rigid rods with copper pots and pans hanging from hooks |
-| D88 | `tape_shelf` | VHS tape shelf | 1 | 8000 | A tall wooden shelf full of VHS tapes |
-| D89 | `sword_stone` | Sword in the stone | 1 | 12000 | The sword in the stone: a grey boulder with an iron anvil on top and a sword plunged into it |
 | D90 | `autopsy_table` | Autopsy table | 1 | 6000 | A stainless steel autopsy table with drain channels on a pedestal |
 | D91 | `ferris_wheel` | Ferris wheel | 1 | 40000 | A small fairground ferris wheel with gondola seats on a white steel frame |
 | D92 | `scoreboard` | Stadium scoreboard | 1 | 12000 | A big stadium scoreboard: a tall frame on legs with a large blank screen and a clock panel |
@@ -121,42 +121,42 @@ game (giving the catalogue row a `file` and dropping its `proc`) is a separate s
 | S03 | polaroid | Cryptid Vanish (loch ness monster) | An instant polaroid photograph showing a blurry photo of a lake, white frame |
 | S04 | tripod_machine | Tripod Sweep (martian) | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
 
-### 10C. SWAP ONLY (32) — a model already in the game fits; no Meshy needed, just a code change on mondo's say
+### 10C. SWAPS TO MODELS ALREADY IN THE GAME — done 2026-11-03 (mondo: "go ahead and do the recommended replacements")
 
-| stand-in | uses | the existing model that fits |
+| stand-in | uses | result |
 | --- | --- | --- |
-| `park_bench` | 56 | city_bench / metro_bench |
-| `candle_ring` | 47 | candleRing (spell candles) |
-| `crystal_cluster` | 44 | Meshy crystal shards |
-| `garden_tree` | 35 | a Retro Tree Pack tree (mondo: no Meshy trees) |
-| `clipboard` | 26 | clipboard_flat |
-| `flicker_tube` | 25 | fluorescent |
-| `lectern` | 22 | church_podium |
-| `wall_chains` | 19 | trap_chain_draped (traps pack) |
-| `curved_sofa` | 13 | curved_couch |
-| `floating_orb` | 13 | crystalBall |
-| `monitor_stack` | 13 | crt_terminal stacked |
-| `fish_school` | 13 | ocean pack fish |
-| `cell_bars` | 11 | leaf_cell |
-| `door_stack` | 11 | the door leaves |
-| `shag_rug` | 8 | rug_round |
-| `telescope` | 7 | brass_telescope |
-| `retro_console` | 7 | retro_control_panel |
-| `square_cubicle` | 6 | round_cubicle |
-| `lone_gun` | 5 | revolver / pistol |
-| `coral_brain` | 4 | ocean_coral (ocean pack) |
-| `coral_fan` | 4 | ocean_coral (ocean pack) |
-| `lost_shelf` | 4 | metal_shelving (once modelled) |
-| `kelp` | 3 | ocean_seaweed (ocean pack) |
-| `fortune_tent` | 3 | fortune_teller_tent |
-| `turnstile` | 3 | metro_gate (metro pack) |
-| `tube_map` | 3 | metro_map (metro pack) |
-| `world_clocks` | 2 | wall_clock ×3 |
-| `coral_tube` | 1 | ocean_coral (ocean pack) |
-| `exec_chair` | 1 | office_chair |
-| `parked_car` | 1 | the car pack |
-| `saucer_rig` | 1 | saucer_lg (the rig stays) |
-| `conveyor_z` | 1 | conveyor (once modelled, turned) |
+| `lectern` | 22 | SWAPPED to church_podium's file (Meshy) |
+| `wall_chains` | 19 | SWAPPED to the traps pack's draped chain |
+| `telescope` | 7 | SWAPPED to brass_telescope's file (Meshy) |
+| `exec_chair` | 1 | SWAPPED to office_chair's file (Meshy) |
+| `kelp` | 3 | SWAPPED to the ocean pack's seaweed (it sways on its own clip) |
+| `coral_brain` | 4 | SWAPPED to the ocean pack's Coral |
+| `coral_fan` | 4 | SWAPPED to the ocean pack's Coral1 |
+| `coral_tube` | 1 | SWAPPED to the ocean pack's Coral2 |
+| `flicker_tube` | 25 | SWAPPED: the fluorescent fixture hangs in place of the box (the glow still flickers) |
+| `park_bench` | 56 | already wore city_bench (no change) |
+| `candle_ring` | 47 | already wore the spell candle (no change) |
+| `garden_tree` | 35 | already a Retro Tree Pack tree (no change) |
+| `retro_console` | 7 | already wore retro_control_panel (no change) |
+| `lone_gun` | 5 | already wore the pistol (no change) |
+| `fortune_tent` | 3 | already wore fortune_teller_tent (no change) |
+| `saucer_rig` | 1 | already wore saucer_lg (no change) |
+| `parked_car` | 1 | already the Honda Civic sedan model (no change) |
+| `crystal_cluster` | 44 | KEPT: mondo's 11-02 gem clusters replaced the crystal cones on purpose |
+| `curved_sofa` | 13 | KEPT: five arcs form the sunken lounge ring in each room's colour; the curved couch model can't make the ring |
+| `shag_rug` | 8 | KEPT: the round rug of that lounge, in the room's two colours |
+| `floating_orb` | 13 | KEPT: a 1.9 m lit plinth + orb; the 0.3 m crystal ball is a different thing |
+| `fish_school` | 13 | KEPT: an instanced school of ~40 fish; a pack fish per school member is renderer work |
+| `cell_bars` | 11 | KEPT: open bars; leaf_cell is a solid door |
+| `square_cubicle` | 6 | KEPT: square cubicles in grids; the model is round |
+| `door_stack` | 11 | KEPT: a pallet of the works' own door leaves (code-drawn like every works leaf) |
+| `monitor_stack` | 13 | KEPT: nine live CCTV screens of the building's rooms |
+| `world_clocks` | 2 | KEPT: five labelled clocks that disagree (SHASTA, GIZA ...) |
+| `tube_map` | 3 | KEPT: draws DOOR_HQ.routes as the subway map |
+| `turnstile` | 3 | KEPT: the gate turns as you come up; the metro gate is a different, still gate |
+| `clipboard` | 26 | KEPT: wall-hung; the clipboard model lies flat on a desk |
+| `lost_shelf` | 4 | WAITS for the new steel shelving model (D05) |
+| `conveyor_z` | 1 | WAITS for the new conveyor model (D48) |
 
 ### 10D. NOT A MODEL JOB (60) — decals, lit windows/screens, text, walkable steps/ramps, water, effects
 

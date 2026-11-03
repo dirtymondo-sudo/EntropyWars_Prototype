@@ -28804,10 +28804,10 @@ const DOOR_HQ = {
         lighthouse:     { proc: 'lighthouse',     h: 11, foot: 1.6, block: true, glow: { y: 10.2, size: 5.0, color: 0xfff1c8 }, light: { color: 0xfff1c8, intensity: 1.2, dist: 30, y: 10.2, night: true } },   // the beam turns (a ticker); `night`: THE WORLD CLOCK lights it at dusk (Phase 3)
         sea_buoy:       { proc: 'sea_buoy',       h: 2.2, foot: 0, float: true, glow: { y: 2.0, size: 1.6, color: 0xff5a4a }, light: { color: 0xff6a5a, intensity: 0.55, dist: 9, y: 2.0 } },   // the maelstrom's ring of red lamps
         ship_wreck:     { file: 'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',                 base: 'misc', span: 16, foot: 0 },   // the misc `wreck` file standing on the floor (the same-thing rule — MODEL_INDEX §9)
-        kelp:           { proc: 'kelp',           h: 4.5, foot: 0 },                                                                        // a sway in the vertex shader (_hqKelpMat)
-        coral_brain:    { proc: 'coral_brain',    h: 0.9, foot: 0.5, block: true },
-        coral_fan:      { proc: 'coral_fan',      h: 1.6, foot: 0.2 },
-        coral_tube:     { proc: 'coral_tube',     h: 1.1, foot: 0.35, block: true },
+        kelp:           { file: 'SeaWeed.fbx', base: 'ocean', h: 4.5, foot: 0, anim: '*', mesh: false },   // THE ONE MODEL (2026-11-03, mondo: swap the stand-ins to models we have): the ocean pack's seaweed (its own sway clip); was proc 'kelp' (a sway in the vertex shader)
+        coral_brain:    { file: 'Coral.fbx',  base: 'ocean', h: 0.9, foot: 0.5, block: true },   // 2026-11-03: the ocean pack's coral (was proc 'coral_brain')
+        coral_fan:      { file: 'Coral1.fbx', base: 'ocean', h: 1.6, foot: 0.2 },                 // 2026-11-03: the ocean pack's coral (was proc 'coral_fan')
+        coral_tube:     { file: 'Coral2.fbx', base: 'ocean', h: 1.1, foot: 0.35, block: true },   // 2026-11-03: the ocean pack's coral (was proc 'coral_tube')
         anemone:        { proc: 'anemone',        h: 0.5, foot: 0, glow: { y: 0.3, size: 0.9, color: 0xff7fb0 } },
         giant_clam:     { proc: 'giant_clam',     h: 0.7, foot: 0.6, block: true, glow: { y: 0.4, size: 1.2, color: 0xdff8ff } },
         sea_vent:       { proc: 'sea_vent',       h: 2.4, foot: 0.7, block: true, glow: { y: 2.2, size: 2.4, color: 0xff9a40 }, light: { color: 0xff8a30, intensity: 0.9, dist: 10, y: 2.0 } },   // a black smoker: the trench's light
@@ -28930,7 +28930,7 @@ const DOOR_HQ = {
         /* ROOM 111 · THE TROPHY CASE + ROOM 1984 · THE INTERROGATION ROOM (2026-09-13, plan 7.4) */
         trophy_case:       { proc: 'trophy_case',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.42, block: true, glow: { y: 1.7, size: 1.6, color: 0xfff3d9 } },   // a lit glass cabinet: plaques in threes, the cups
         steel_table:       { proc: 'steel_table',    h: 0.76,    foot: 0.75, block: true },   // the interrogation table: a steel top, a ring bolt
-        telescope:         { proc: 'telescope',      h: 1.6,     foot: 0.45, block: true },
+        telescope:         { file: 'Meshy_AI_telescope_0917035520_texture.glb', base: 'misc', h: 1.6, foot: 0.45, block: true },   // 2026-11-03: brass_telescope's file (one model per thing; was proc 'telescope')
         /* ROOM 42 · RECORDS + ROOM 1337 · IT (2026-09-13, plan 7.4) */
         card_catalogue:    { proc: 'card_catalogue', h: 1.9,     foot: 0, wall: true, mount: 0,    depth: 0.5,  block: true },   // the wall of little drawers: UNFILED SITES
         server_rack:       { proc: 'server_rack',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.8,  block: true, glow: { y: 1.2, size: 1.1, color: 0x8fe0c8 } },   // a 42U rack, the LEDs on
@@ -28942,7 +28942,7 @@ const DOOR_HQ = {
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
-        exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true, seat: 0.48 },   // 4C: the high-backed leather chair
+        exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.48 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
         motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },
         /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): the door gun's
@@ -29005,7 +29005,7 @@ const DOOR_HQ = {
         boiler:          { proc: 'boiler',          h: 2.3,  foot: 1.0, block: true, glow: { y: 0.55, size: 1.8, color: 0xff6a20 }, light: { color: 0xff7a30, intensity: 0.9, dist: 8, y: 0.6 } },
         /* B2 · the undercroft */
         cell_bars:       { proc: 'cell_bars',       h: 2.4,  foot: 0, wall: true, mount: 0, depth: 0.12 },                   // a barred cell front on the wall; the cell behind it is painted dark
-        wall_chains:     { proc: 'wall_chains',     h: 1.4,  foot: 0, wall: true, mount: 1.2, depth: 0.08, sway: { amp: 0.04, period: 3.1 } },
+        wall_chains:     { file: 'Chain_Draped.glb', base: 'traps', span: 1.0, foot: 0, wall: true, mount: 1.5 },   // 2026-11-03: the traps pack's draped chain (trap_chain_draped's file; was proc 'wall_chains')
         stocks:          { proc: 'stocks',          h: 1.1,  foot: 0.5, block: true },
         wall_torch:      { proc: 'wall_torch',      h: 1.1,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.7, size: 1.0, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.66 } },   /* the game's own torch (ward / editor) on a bracket, leaning into the room — 2026-09-15 */
         candle_ring:     { proc: 'candle_ring',     h: 0.3,  foot: 0, glow: { y: 0.3, size: 1.2, color: 0xffb060 }, light: { color: 0xffb060, intensity: 0.7, dist: 6, y: 0.45 } },
@@ -29022,7 +29022,7 @@ const DOOR_HQ = {
         floating_orb:    { proc: 'floating_orb',    h: 1.9,  foot: 0.7, block: true, glow: { y: 1.35, size: 3.0, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 1.3, dist: 12, y: 1.35 } },   // Room X: the object (ticker: it bobs and turns)
         /* 3 · the annex */
         chalkboard:      { proc: 'chalkboard',      h: 1.3,  foot: 0, wall: true, mount: 0.95, depth: 0.05 },
-        lectern:         { proc: 'lectern',         h: 1.15, foot: 0.35, block: true },
+        lectern:         { file: 'Meshy_AI_church_podium_0917035658_texture.glb', base: 'misc', h: 1.15, foot: 0.35, block: true },   // 2026-11-03: church_podium's file (was proc 'lectern')
         riser_1:         { proc: 'riser_1',         h: 0.3,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.3 } },   // SKATEBOARDING (9.8): `ramp` = a rise the rider hops off at speed           // the lecture hall's tiers: three steps the walker climbs (≤ HQ_STEP_TOL each)
         riser_2:         { proc: 'riser_2',         h: 0.6,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.6 } },
         riser_3:         { proc: 'riser_3',         h: 0.9,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.9 } },
