@@ -29,6 +29,7 @@ F = {
     'housesonwater': 'houses-on-the-water/Houses_on_the_water/Models/houses_on_the_water.fbx',
     'mine':          'mine/Minas/Models/Mines.fbx',
     'burgerpiz':     'burgerpiz/BurgerPiz/Models/BurgerPiz.fbx',
+    'gasstation':    'gas-station/Gas_station/Models/Gas_station_Props.fbx',
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -42,6 +43,11 @@ JOBS = [
     ('fallen_log', 'vegetation', ['Trunk'], 90), ('stump', 'vegetation', ['Trunk.001'], 0), ('rowboat', 'housesonwater', ['Boat_01'], 0),
     ('locker', 'mine', ['Locker'], 180), ('vending_machine', 'laundry', ['Vending_machine'], -90), ('sink', 'burgerpiz', ['Washbasin.003'], -90),
     ('table_lamp', 'trailerpark', ['Lamp'], 0), ('desk_lamp', 'house', ['Lamp_01'], 0),
+    # THE CODED SHAPES OUT (2026-11-03, round 2): the washroom + kitchen procs (their code is deleted)
+    ('hand_dryer', 'diner', ['Hand_dryer'], 0), ('range_hood', 'diner', ['cooker_hood'], 0), ('kitchen_range', 'diner', ['Stove'], 0),
+    ('sink_row', 'diner', ['Washbasin'], 180), ('urinal', 'burgerpiz', ['urinary.001'], 90),
+    ('toilet_stall', 'gasstation', ['Toilet_cubicles_002', 'Toilet_cubicles', 'Toilet_cubicles_Door_001', 'Sanitary_014', 'Sanitary_015'], 0),
+    ('shower_stall', 'house', ['Shower', 'Shower_Door', 'Glass_Shower', 'Glass_Shower_02'], -90),
 ]
 jobs = []
 for k, p, nodes, rz in JOBS:
