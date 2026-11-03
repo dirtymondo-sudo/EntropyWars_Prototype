@@ -50350,6 +50350,7 @@ const ThreeRenderer = (function () {
        hair colour (_ccHairAccent); they keep their ORIGINAL colours by default and take appearance.hairColor2 when
        appearance.hairAccent = 'tint' (sprites.js EW_HAIR_STYLES `accent: true` lists the styles; the builder's "Second hair
        colour" row). Same files, no new art. */
+    var _ccWearFabricCache = {};   // THE PACK FABRICS: grey mask uuid|fabric|tiles per UV → THREE.Texture (shared)
     var _ccPackHairCache = {};   // srcTex.uuid|enc|accent geometry uuid|mode → THREE.Texture
     function _ccHairPixels(src) {
         if (!src || !src.image || src.isCompressedTexture) return null;
@@ -55950,7 +55951,7 @@ const ThreeRenderer = (function () {
                appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
             var bandTint = (tint && bandMade && bandMade.tex) ? { mesh: bandMade.mesh, src: tint.src, sg: sg, own: bandMade.tex } : null;
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, bandTint: bandTint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
-                      cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
+                      cat: ((typeof EW_WEAR_KIND !== 'undefined' && EW_WEAR_KIND[id]) || ex.cat) || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z; sprites.js EW_WEAR_KIND: a pack piece mis-filed under Suits reads what it is)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
                       solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
@@ -56777,22 +56778,94 @@ const ThreeRenderer = (function () {
         /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
            the asset packs"): appearance.wearTint[id] = a colour -> the piece wears its texture's grey mask (_ccPackHairTexture,
            the levels the pack hair + beards use: folds, seams, stitching kept) x the colour; no entry = its own texture + colour */
+        /* THE PACK FABRICS (2026-11-03, mondo: "can we add the option to change the pants textures like cotton and leather and all that?
+           Im not seeing that option anywhere in the pants section"): appearance.wearFabric[id] = a creator fabric (sprites.js
+           EW_FABRICS, the same tiles the Top / Bottoms / Outer layers wear) -> the pack piece wears that fabric's tile under its own
+           texture's grey levels (the folds, seams, pockets and stitching stay), in its picked colour (wearTint) or, with none, its
+           texture's own average colour, with the fabric's roughness / metalness. The tile repeats at the fabric's tiles per METRE:
+           a pack garment's UVs are an atlas, so its metres per UV unit is measured from its own triangles (wearUvMetres). The
+           composite is a canvas (fabric pattern x grey mask, the piece's alpha kept), cached per grey mask + fabric. */
+        function wearUvMetres(sg) {
+            sg.userData = sg.userData || {};
+            if (sg.userData._ewUvMetres) return sg.userData._ewUvMetres;
+            var pa = sg.attributes.position && sg.attributes.position.array, ua = sg.attributes.uv && sg.attributes.uv.array, ix = sg.index ? sg.index.array : null;
+            var tc = ix ? ix.length : (pa ? pa.length / 3 : 0), a3 = 0, a2 = 0;
+            for (var k = 0; pa && ua && k + 2 < tc; k += 3) {
+                var i0 = ix ? ix[k] : k, i1 = ix ? ix[k + 1] : k + 1, i2 = ix ? ix[k + 2] : k + 2;
+                var ax = pa[i1 * 3] - pa[i0 * 3], ay = pa[i1 * 3 + 1] - pa[i0 * 3 + 1], az = pa[i1 * 3 + 2] - pa[i0 * 3 + 2];
+                var bx = pa[i2 * 3] - pa[i0 * 3], by = pa[i2 * 3 + 1] - pa[i0 * 3 + 1], bz = pa[i2 * 3 + 2] - pa[i0 * 3 + 2];
+                var cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+                a3 += Math.sqrt(cx * cx + cy * cy + cz * cz);
+                a2 += Math.abs((ua[i1 * 2] - ua[i0 * 2]) * (ua[i2 * 2 + 1] - ua[i0 * 2 + 1]) - (ua[i2 * 2] - ua[i0 * 2]) * (ua[i1 * 2 + 1] - ua[i0 * 2 + 1]));
+            }
+            return (sg.userData._ewUvMetres = (a2 > 1e-9 && a3 > 1e-9) ? Math.sqrt(a3 / a2) : 1);
+        }
+        // the piece's own colour (its texture read at its vertices' UVs, sRGB average) as '#rrggbb'
+        function wearOwnColour(P) {
+            if (P.mean !== undefined) return P.mean;
+            var px = _ccHairPixels(P.src), ua = P.sg && P.sg.attributes.uv && P.sg.attributes.uv.array, r = 0, g = 0, b = 0, n = 0;
+            if (px && ua) {
+                var d = px.id.data, fy = !!P.src.flipY;
+                for (var v = 0; v < ua.length; v += 2) {
+                    var x = Math.min(px.w - 1, Math.max(0, Math.floor((ua[v] - Math.floor(ua[v])) * px.w)));
+                    var uy = ua[v + 1] - Math.floor(ua[v + 1]), y = Math.min(px.h - 1, Math.max(0, Math.floor((fy ? 1 - uy : uy) * px.h))), o = (y * px.w + x) * 4;
+                    if (d[o + 3] < 128) continue;
+                    r += d[o]; g += d[o + 1]; b += d[o + 2]; n++;
+                }
+            }
+            var hx = function (c) { return ('0' + Math.round(c / n).toString(16)).slice(-2); };
+            return (P.mean = n ? '#' + hx(r) + hx(g) + hx(b) : '#808080');
+        }
+        function wearFabricMap(P, key, tile) {
+            var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, def = _ccFabricDef(key);
+            if (!grey || !grey.image || !tile || !tile.image) return null;
+            var tpu = Math.max(1, (def.repeat || 12) * wearUvMetres(P.sg));   // fabric tiles per UV unit
+            var ck = grey.uuid + '|' + key + '|' + tpu.toFixed(2);
+            if (_ccWearFabricCache[ck]) return _ccWearFabricCache[ck];
+            var S = Math.min(2048, Math.max(1024, Math.pow(2, Math.ceil(Math.log2(tpu * 96))))), cell = Math.max(8, Math.round(S / tpu));
+            var cnv = _ccCanvas(S, S), tc = _ccCanvas(cell, cell);
+            if (!cnv || !tc) return null;
+            try {
+                tc.getContext('2d').drawImage(tile.image, 0, 0, cell, cell);
+                var g = cnv.getContext('2d');
+                g.fillStyle = g.createPattern(tc, 'repeat'); g.fillRect(0, 0, S, S);
+                g.globalCompositeOperation = 'multiply'; g.drawImage(grey.image, 0, 0, S, S);
+                g.globalCompositeOperation = 'destination-in'; g.drawImage(grey.image, 0, 0, S, S);   // the piece's own alpha (lace, see-through)
+            } catch (ex) { return null; }
+            var tex = new THREE.CanvasTexture(cnv);
+            tex.flipY = grey.flipY; tex.wrapS = grey.wrapS; tex.wrapT = grey.wrapT;
+            _ewTexSetSRGB(tex, !unmanagedColor);
+            tex.anisotropy = 4;
+            tex._ew_shared = true;
+            return (_ccWearFabricCache[ck] = tex);
+        }
         function paintWear(part, a) {
             if (!a) return;
-            var T = a.wearTint || {};
-            var paint = function (P, m, want) {   // its texture's grey levels x the colour, or its own texture
-                var map = P.own;
+            var T = a.wearTint || {}, FB = a.wearFabric || {};
+            var paint = function (P, m, want, fab) {   // its texture's grey levels x the colour (x a fabric), or its own texture
+                var map = P.own, tile = null, def = null;
+                if (fab && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fab)) {
+                    var sync = true;
+                    _ccLoadFabric(getFabricTextureUrl(fab), unmanagedColor, function (t) { if (sync) tile = t; else if (alive && state.last) paintWear(part, state.last); });
+                    sync = false;
+                    var fm = tile ? wearFabricMap(P, fab, tile) : null;
+                    if (fm) { map = fm; def = _ccFabricDef(fab); want = want || wearOwnColour(P); }
+                }
                 if (want) {
-                    var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
+                    var grey = def ? null : (P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null), t = color(want), k = def ? 1.22 * 1.18 : grey ? 1.22 : 1;
                     if (grey) map = grey;
                     m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
                 } else if (P.c0) m.color.copy(P.c0);
                 else m.color.setRGB(1, 1, 1);
+                if (m.isMeshStandardMaterial) {
+                    if (P.r0 === undefined) { P.r0 = m.roughness; P.m0 = m.metalness; }
+                    m.roughness = def ? (def.rough != null ? def.rough : 0.9) : P.r0; m.metalness = def ? (def.metal || 0) : P.m0;
+                }
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
             };
             (part.wear || []).forEach(function (w) {
                 var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                paint(P, m, T[w.id]);
+                paint(P, m, T[w.id], FB[w.id]);
                 var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
                 if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
             });
