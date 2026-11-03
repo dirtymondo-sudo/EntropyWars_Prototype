@@ -28603,7 +28603,7 @@ const DOOR_HQ = {
     catalogue: {
         /* ── desk / terminals ── */
         crt_terminal:      { file: 'Meshy_AI_crt_terminal_0903101952_texture.glb',                    h: 0.42, foot: 0 },
-        tube_tv:           { file: 'Meshy_AI_a_tube_tv_0903102007_texture.glb',                       h: 0.46, foot: 0 },
+        tube_tv:           { file: 'ebd_trailerpark_tube_tv.glb', base: 'misc',                       h: 0.46, foot: 0 },
         papers_a:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110113_texture.glb',        h: 0.08, foot: 0 },
         papers_b:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb',        h: 0.10, foot: 0 },
         notebook_paper:    { file: 'Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb',       h: 0.06, foot: 0 },
@@ -28611,8 +28611,8 @@ const DOOR_HQ = {
         pencil:            { file: 'Meshy_AI_a_no_2_pencil_0903110156_texture.glb',                   span: 0.19, foot: 0 },
         pen:               { file: 'Meshy_AI_an_office_pen_0903110146_texture.glb',                   span: 0.15, foot: 0 },
         desk_fan:          { file: 'Meshy_AI_a_circular_desk_fan_0903105635_texture.glb',             h: 0.38, foot: 0 },
-        desk_lamp:         { file: 'Meshy_AI_an_office_desk_lamp_0903110208_texture.glb',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
-        table_lamp:        { file: 'Meshy_AI_a_lamp_0903110007_texture.glb',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
+        desk_lamp:         { file: 'ebd_house_desk_lamp.glb', base: 'misc',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
+        table_lamp:        { file: 'ebd_trailerpark_table_lamp.glb', base: 'misc',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
         house_key:         { file: 'Meshy_AI_a_house_key_0903110053_texture.glb',                     span: 0.07, foot: 0 },
         key:               { file: 'Meshy_AI_a_key_0903110102_texture.glb',                           span: 0.08, foot: 0 },
         car_key:           { file: 'Meshy_AI_car_key_0903110043_texture.glb',                         span: 0.08, foot: 0 },
@@ -28647,22 +28647,22 @@ const DOOR_HQ = {
         folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.44 },
         curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
         curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
-        filing_cabinet:    { file: 'Meshy_AI_a_filing_cabinet_0903105233_texture.glb',                h: 1.32, foot: 0.40, wall: true },
+        filing_cabinet:    { file: 'ebd_laundry_filing_cabinet.glb', base: 'misc',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
-        locker:            { file: 'Meshy_AI_a_locker_0903105424_texture.glb',                        h: 1.85, foot: 0.40, wall: true },
+        locker:            { file: 'ebd_mine_locker.glb', base: 'misc',                        h: 1.85, foot: 0.40, wall: true },
         cardboard_box:     { file: 'Meshy_AI_a_cardboard_box_0903105957_texture.glb',                 h: 0.42, foot: 0.30 },
         cardboard_boxes:   { file: 'Meshy_AI_cardboard_boxes_0903105142_texture.glb',                 h: 0.95, foot: 0.55 },
         /* ── fixtures ── */
         globe_lamp:        { file: 'Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb',           h: 1.95, foot: 0.40, glow: { y: 1.70, size: 1.6, color: 0xfff1d6 } },
-        water_cooler:      { file: 'Meshy_AI_a_water_cooler_0903105259_texture.glb',                  h: 1.28, foot: 0.32, wall: true },
-        vending_machine:   { file: 'Meshy_AI_a_round_vending_machine_0903105625_texture.glb',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
+        water_cooler:      { file: 'ebd_laundry_water_cooler.glb', base: 'misc',                  h: 1.28, foot: 0.32, wall: true },
+        vending_machine:   { file: 'ebd_laundry_vending_machine.glb', base: 'misc',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
         potted_plant:      { file: 'Meshy_AI_a_potted_plant_0903105322_texture.glb',                  h: 1.25, foot: 0.32 },
         office_plant:      { file: 'Meshy_AI_an_office_plant_0903110228_texture.glb',                 h: 1.10, foot: 0.30 },
-        fire_extinguisher: { file: 'Meshy_AI_a_fire_extinguisher_0903105310_texture.glb',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
+        fire_extinguisher: { file: 'ebd_6twelve_fire_extinguisher.glb', base: 'misc',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
         wet_floor_sign:    { file: 'Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb',         h: 0.72, foot: 0.22 },
         mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
-        mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
+        mop:               { file: 'ebd_house_mop.glb', base: 'misc',                           h: 1.45, foot: 0 },
         /* THE DOOR GUN (HQ plan 9.5 rev 3, 2026-09-16; rev 5 2026-09-18 — the user's NEW model): the ray gun
            that shoots doors — the walker holds it drawn (F), the Door Agent carries it in every battle
            (sprites.js `hold`). rev 5: the user's Meshy_AI__0916054803 from the SHARED misc bucket (`base:
@@ -28673,7 +28673,7 @@ const DOOR_HQ = {
            backward). `span` = its real length. The first gun (Meshy_AI_a_retro_gun_that_shoo_0916054449,
            Assets/door/models/) stays in the bucket unreferenced. MODEL_INDEX §3b. */
         door_gun:          { file: 'Meshy_AI__0916054803_texture.glb',                                  base: 'misc', span: 0.62, foot: 0, gun: true },
-        wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
+        wall_clock:        { file: 'ebd_trailerpark_wall_clock.glb', base: 'misc',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
         /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
            three-renderer.js _hqModelUrl): the moving-maps batch's pieces that
            also belong in the building — the pocket watches in the clock room
@@ -28688,7 +28688,7 @@ const DOOR_HQ = {
         ship_cannon:       { file: 'Meshy_AI_iron_canon_0912231022_texture.glb',                     base: 'misc', span: 2.2, foot: 0.9, block: true },          // muzzle −X at face 0: face 0 = run out to port (the west wall), 180 = to starboard
         sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
         ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
-        ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
+        ship_lantern:      { file: 'ebd_survival_lantern.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
         /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3e): the forest
            floor and the cave's furniture, and THE TWO TREES WITH HOLES IN THEM whose holes are the seams (DOOR_HQ.ways
            hollowtree / deadtree read hollow_tree / hollow_dead_tree). Sizes are TARGETS (the files are unmeasured — a wrong
@@ -28698,13 +28698,13 @@ const DOOR_HQ = {
         signpost:          { file: 'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',      base: 'misc', h: 2.2, foot: 0.2, block: true },
         brick_arch:        { file: 'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',         base: 'misc', h: 3.2, foot: 0 },
         greek_column:      { file: 'Meshy_AI_greek_column_0727195651_texture.glb',                 base: 'misc', h: 3.6, foot: 0.45, block: true },   // THE DIVINE STAIR (2026-09-17): the board's greekcol monument standing in heaven (the same file)
-        campfire:          { file: 'Meshy_AI_a_campfire_ring_0916235856_texture.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
+        campfire:          { file: 'ebd_survival_campfire.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
         culvert_mouth:     { file: 'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',              base: 'misc', h: 2.6, foot: 0, mount: 0 },
         /* NO MESHY TREES (2026-10-04, mondo): the four Meshy trees are the retro pack's (base 'rt' = Assets/foilage/retrotreepack/GLB/);
            the hollow / dead tree WAYS keep their own trunk with the hole (three-renderer.js _hqTreeWay) */
         dead_snag:         { file: 'dead_tree_rt_2.glb', base: 'rt', h: 4.6, foot: 0.4, block: true },
         hollow_dead_tree:  { file: 'dead_tree_rt_1.glb', base: 'rt', h: 5.0, foot: 0.6, block: true, rot: 0 },
-        fallen_log:        { file: 'Meshy_AI_a_fallen_log_0916235700_texture.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
+        fallen_log:        { file: 'ebd_vegetation_fallen_log.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
         fern:              { file: 'Meshy_AI_a_fern_0916235806_texture.glb',                       base: 'misc', h: 0.75, foot: 0 },
         pine:              { file: 'tree_rt_1.glb', base: 'rt', h: 6.5, foot: 0.45, block: true },
         footbridge:        { file: 'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',           base: 'misc', span: 4.4, foot: 0 },
@@ -28719,7 +28719,7 @@ const DOOR_HQ = {
         t_pillar:          { proc: 't_pillar',      h: 4.6,  foot: 0.6, block: true },
         cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
-        stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
+        stump:             { file: 'ebd_vegetation_stump.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
         hollow_tree:       { file: 'tree_rt_2_1.glb', base: 'rt', h: 6.0, foot: 0.7, block: true, rot: 0 },
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3g): the
            basilica's furniture (pews of two kinds, the podium, the cathedra, the cross, the windows, the carpet, the
@@ -28746,6 +28746,13 @@ const DOOR_HQ = {
         italian_building:   { file: 'Meshy_AI_Italian_building_0917035900_texture.glb',               base: 'misc', span: 12, foot: 4.5, block: true },
         italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
         holy_carpet:        { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', span: 6.0, foot: 0 },
+        /* THE CASTLE AND FORT PACK (McSteeg, itch.io — "use this asset in your animation or game projects, both personally and commercially",
+           2026-11-03 for THE NEW HEAVEN's floating castles): pieces of the one file (Assets/misc/Castles_and_Forts.glb), each `node` a piece */
+        castle_tower:       { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_Mid',   h: 2.0,  foot: 0 },
+        castle_tower_top:   { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_top_1', h: 2.16, foot: 0 },
+        castle_cone:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Roof_Cone',   h: 2.23, foot: 0 },
+        castle_gate:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Gate_2x4',    h: 2.05, foot: 0 },
+        castle_wall:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Wall_2x4',    h: 2.0,  foot: 0 },
         pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
         royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.55 },
         skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
@@ -28769,7 +28776,7 @@ const DOOR_HQ = {
         dorm_bed:           { file: 'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  base: 'misc', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5 },                  // the keep's guardroom
         couples_bed:        { file: 'Meshy_AI_a_couples_bed_0922010443_texture.glb',               base: 'misc', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5 },                // the bunker's loft
         royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
-        camping_tent:       { file: 'Meshy_AI_a_camping_tent_0922010306_texture.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
+        camping_tent:       { file: 'ebd_survival_camping_tent.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
         carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
         fortune_teller_tent:{ file: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',       base: 'misc', span: 3.2, foot: 1.6, block: true },                                                         // the `fortune_tent` proc's model (GLB-first; the proc keeps its key, its glow and its sign)
         retro_control_panel:{ file: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',       base: 'misc', span: 1.6, foot: 0.7, rect: { hw: 0.8, hd: 0.38 }, block: true },                            // the `retro_console` proc's model (GLB-first; the catalogue's glow / light stay)
@@ -28780,7 +28787,7 @@ const DOOR_HQ = {
            files three-renderer.js _MISC_GLB names (the same-thing rule). MEASURED: the crashed car (1.0 × 0.36 × 0.45, nose
            −X → `turn: 90` like the cars), the escalator (0.53 × 0.72 × 1.0, rising toward −Z — face 270 puts its top at +x);
            the rest are TARGETS. `city_bin` is the OUTDOOR bin (the kerbs), `mall_bin` the indoor one (the mall, the casino). */
-        city_bin:          { file: 'Meshy_AI_a_city_bin_0917065144_texture.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
+        city_bin:          { file: 'ebd_6twelve_city_bin.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
         mall_bin:          { file: 'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',            base: 'misc', h: 0.9, foot: 0.3, block: true },
         crashed_car:       { file: 'Meshy_AI_a_crashed_car_0917065033_texture.glb',               base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
         crashed_car_2:     { file: 'Meshy_AI_a_crashed_car_2_0917065052_texture.glb',             base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
@@ -28789,7 +28796,7 @@ const DOOR_HQ = {
         time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
         street_drain:      { proc: 'manhole', h: 0.01, foot: 0 },                                                                                         // a manhole on the road: the urban pack's DecalManholeCover laid flat (2026-10-05, mondo: no Meshy drain GLB)
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
-        bus_shelter:       { file: 'Meshy_AI_bus_shelter_0917064913_texture.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        bus_shelter:       { file: 'ebd_busstop_bus_shelter.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -28873,7 +28880,7 @@ const DOOR_HQ = {
            to bathtub size) and hang it at waist height (`mount` = the
            underside; the rim lands ~0.85 m). `block` keeps its floor
            blocker even though it is mounted — you still can't walk into it. */
-        sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
+        sink:              { file: 'ebd_burgerpiz_sink.glb', base: 'misc',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
         /* rugs: the GLBs are authored standing on edge; `lay` turns the
            thinnest axis upright at load so they lie flat on the floor. */
         rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.5, foot: 0, lay: true },
@@ -29121,27 +29128,27 @@ const DOOR_HQ = {
         hook_rail_long:    { file: 'Meshy_AI_hook_rail_0910054853_texture.glb',                     span: 1.10, foot: 0, wall: true, mount: 1.80 },
         vent_grille:       { file: 'Meshy_AI_vent_0910054228_texture.glb',                          span: 0.45, foot: 0, wall: true, mount: 2.35 },
         floor_drain:       { file: 'Meshy_AI_water_drain_0910054212_texture.glb',                   span: 0.36, foot: 0 },
-        rotary_phone:      { file: 'Meshy_AI_analog_phone_0910054719_texture.glb',                  span: 0.24, foot: 0 },
+        rotary_phone:      { file: 'ebd_vhsshop_rotary_phone.glb', base: 'misc',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
         cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44 },
         molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.44 },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
-        microwave:         { file: 'Meshy_AI_beige_1980s_microwave_0910054901_texture.glb',         span: 0.50, foot: 0 },
-        coffee_maker:      { file: 'Meshy_AI_coffee_maker_0910054513_texture.glb',                  h: 0.38, foot: 0 },
-        cash_register:     { file: 'Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb',         h: 0.34, foot: 0 },
+        microwave:         { file: 'ebd_psx3_microwave.glb', base: 'misc',         span: 0.50, foot: 0 },
+        coffee_maker:      { file: 'ebd_psx3_coffee_maker.glb', base: 'misc',                  h: 0.38, foot: 0 },
+        cash_register:     { file: 'ebd_pizzeria_cash_register.glb', base: 'misc',         h: 0.34, foot: 0 },
         mini_fridge:       { file: 'Meshy_AI_mini_fridge_0910054504_texture.glb',                   h: 0.85, foot: 0.30 },
         round_fridge:      { file: 'Meshy_AI_round_fridge_0910054551_texture.glb',                  h: 1.05, foot: 0.45 },
         coffee_mug:        { file: 'Meshy_AI_cup_0910054308_texture.glb',                           span: 0.12, foot: 0 },
         solo_cup:          { file: 'Meshy_AI_red_solo_cup_0910054318_texture.glb',                  h: 0.12, foot: 0 },
-        trash_bin:         { file: 'Meshy_AI_trash_bin_0910054450_texture.glb',                     h: 0.75, foot: 0.28 },
+        trash_bin:         { file: 'ebd_trailerpark_trash_bin.glb', base: 'misc',                     h: 0.75, foot: 0.28 },
         /* ── the desk / office kit ── */
         clipboard_flat:    { file: 'Meshy_AI_office_clipboard_0910054838_texture.glb',              span: 0.32, foot: 0 },
         manila_folders:    { file: 'Meshy_AI_office_manila_folders_0910054352_texture.glb',         span: 0.33, foot: 0 },
         manila_folder:     { file: 'Meshy_AI_tapered_manila_folder_0910054403_texture.glb',         span: 0.34, foot: 0 },
         stapler:           { file: 'Meshy_AI_stapler_0910054326_texture.glb',                       span: 0.17, foot: 0 },
-        retro_radio:       { file: 'Meshy_AI_retro_radio_0910054335_texture.glb',                   h: 0.30, foot: 0 },
+        retro_radio:       { file: 'ebd_trailerpark_retro_radio.glb', base: 'misc',                   h: 0.30, foot: 0 },
         retro_speakers:    { file: 'Meshy_AI_retro_speakers_0910054343_texture.glb',                span: 0.50, foot: 0 },
         /* the round cubicle: 2.2 m across, 1.8 m high — a whole workstation.
            It needs a 1 m collision disc, so it never goes on the mezzanine
@@ -29716,7 +29723,7 @@ const DOOR_HQ = {
         /* THE DIVINE STAIR */
         { id: 'heaven_olympus', route: 'divine', way: 'cloud',   // THE PASSAGES (2026-10-01): a gate of cloud is a road of cloud you walk into, not a frame
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
-          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 12, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
+          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 0, y: 3.2, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },   // THE NEW HEAVEN (2026-11-03): off the east terrace
           b: { site: 'prebuilt_olympus', part: 'summit', wall: 'w', z: -38, y: 3.0 },   // THE AREAS (2026-09-18): on THE SUMMIT; AREA CONTENT D3 (2026-09-19): ON THE HIGH TERRACE's west end — a door you climb to
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
         /* vatican_heaven — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
@@ -30176,7 +30183,7 @@ const DOOR_HQ = {
                door is its sill (hqApplySiteEntries copies the row whole). */
             prebuilt_vatican:   { room: 'site_prebuilt_vatican_basilica',   door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_hell:      { room: 'site_prebuilt_hell_pit',           door: { id: 'bay', wall: 's', x: 0, y: 5 } },
-            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 1.75 } },
+            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 3.7 } },   // THE NEW HEAVEN (2026-11-03): on the gate platform
             /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
@@ -40746,102 +40753,131 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 45, face: 0 },
         },
-        /* ── THE CLOUD FIELDS — islands of cloud, the rift and its plank, the dais and THE GATE ── */
+        /* ── THE CLOUD FIELDS — THE NEW HEAVEN (2026-11-03): the gate, the sun, the two terraces, the grand stair, the cloud paths over the open sky ── */
         site_prebuilt_heaven_gate: {
             label: 'THE DIVINE STAIR · THE CLOUD FIELDS',
-            sub: 'THE GATE · THE DAIS · THE RIFT · THE STEPPING CLOUDS · THE HEALING POOLS · DOWN TO THE STAIR',
+            sub: 'THE GATE · THE SUN · THE TERRACES · THE CLOUD PATHS · THE GRAND STAIR · DOWN TO THE STAIR',
             kind: 'box', site: 'prebuilt_heaven', part: 'gate',
-            shell: hqDivineShell({ w: 84, d: 70, plate: { x: 0, z: -32, y: 5.0 } }),
-            /* THE FIELD (second pass, 2026-09-18 — the board room is bypassed: Room 777's
-               hotel door is THE BAY DOOR on the north wall, ON THE DAIS, so you arrive at
-               the top of everything and every stair from here goes DOWN to the dome): THE
-               DAIS (1.75 m) along the north with THE PEARLY WALLS either side of the gap
-               the steps come up into; cloud mounds and a hollow; THE RIFT (bottomless —
-               never entered) with THE PLANK over it; THE STEPPING CLOUDS west of the rift
-               (three floating clouds hopped up to THE LOOKOUT, 3.4 m); THE PILLAR OF LIGHT
-               in the east (4.6 m, floating — the tape's); two healing pools; the archive's
-               elevator on the west wall, Olympus's gate of cloud on the east; the top of
-               the stair on the south wall. */
+            shell: hqDivineShell({ w: 42, d: 42, plate: { x: 0, z: -20.6, y: 9.2 } }),
+            /* THE NEW HEAVEN (2026-11-03, mondo, with his concept art — "on the heave map, what is up with those platforms and how they have
+               ugly cutouts underneath them? Use this concept art to make a new heaven map"): the field is no longer the rooms plan's
+               cloud islands (THE RIFT, THE PLANK, THE STEPPING CLOUDS, THE PILLAR OF LIGHT, THE LOOKOUT, the two pools — the old field,
+               2026-09-18): it IS the concept's board, drawn square by square on the arena's own 3.5 m squares (hqSkyPlan, one string per
+               row, north first; the lattice 12 × 12, x = −21 + 3.5 col, z = −21 + 3.5 row) over THE VOID (terrain.void, the Spaceship's
+               rule: no ground, the field reads it as open sky, a fall comes back to the last ground stood on). THE GATE PLATFORM on the
+               north (half a metre up, three broad marble steps — the same battle level: the arena's spawn rows and its nexus are one level by
+               rule — the pearly gate and Room 777's hotel door — the bay door — between the two angels), THE SUN in the
+               middle (a round floor, the sun inlaid in gold on lavender — the nexus), THE TWO TERRACES east and west (an angel, a
+               column, a harp), THE GRAND STAIR's platform on the south (half a metre up the same way, the top of the stair — the stair door — on its
+               south edge), marble flights down off both raised platforms, and the CLOUD PATHS between them all: off the gate's corners
+               round to the terraces, the terraces into the sun, the sun up to the gate and down to the grand stair, the terraces round
+               to the grand stair's corners. Every platform is an island of rock hung in the sky (_hqBuildIslandRock), every cloud path a
+               cloud on its puffs, balustrades (the stair pack's balusters) wherever a platform meets the open sky, four little castles
+               on their own islands in the corners (THE CASTLE AND FORT PACK) and a sea of cloud under it all. The board is the same both
+               ways round (the two teams' halves mirror). Existing rules only: marble and cloud are plain floors, the gaps Open Sky. */
             terrain: { res: 0.5,
-                floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light',
-                noise: { amp: 0.22, scale: 13 },
-                gen: { unit: 2, minIsland: 8.8, edge: 2, pathGrow: 2.2, forceGrow: 1.6, rim: 2.4, kind: 'rooms', seed: 12, loops: 3, thicket: false, wallH: 2.6 }, // THE FLOOR PLAN: cloud islands joined by cloud bridges
+                floor: 'marble_light', cliff: 'cloud_thick', path: 'cloud_2',
+                noise: { amp: 0, scale: 13 },
+                base: 2.5, void: { lip: 0.6, fall: -8, rock: 'rocks_5' },   // the open sky: every sample under 3.1 m (the floors stand at 3.2 and 3.7)
+                marks: [
+                    /* THE SUN (the nexus): the lavender disc, the gold rings, the sun and its sixteen rays */
+                    { k: 'ring', x: 0, z: 0, r: 2.6, w: 5.2, color: 0xb4a2e6, a: 0.55 },
+                    { k: 'ring', x: 0, z: 0, r: 5.45, w: 0.22, color: 0xd8b860, a: 0.9 }, { k: 'ring', x: 0, z: 0, r: 6.25, w: 0.12, color: 0xd8b860, a: 0.85 },
+                    { k: 'ring', x: 0, z: 0, r: 0.75, w: 1.5, color: 0xe8c860, a: 0.95 },
+                    ...Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8, r1 = (i % 2) ? 3.5 : 4.6; return { k: 'line', x0: Math.round(Math.sin(a) * 1.7 * 1000) / 1000, z0: Math.round(-Math.cos(a) * 1.7 * 1000) / 1000, x1: Math.round(Math.sin(a) * r1 * 1000) / 1000, z1: Math.round(-Math.cos(a) * r1 * 1000) / 1000, w: 0.22, color: 0xe8c860, a: 0.95 }; }),
+                    /* the gold stars: the gate's, the terraces', the grand stair's */
+                    ...[[0, -16.6, 1.6], [-17.5, 0, 1.4], [17.5, 0, 1.4], [0, 16.6, 1.6]].flatMap(([x, z, s]) => [
+                        { k: 'line', x0: x - s, z0: z, x1: x + s, z1: z, w: 0.16, color: 0xd8b860, a: 0.9 }, { k: 'line', x0: x, z0: z - s, x1: x, z1: z + s, w: 0.16, color: 0xd8b860, a: 0.9 },
+                        { k: 'ring', x: x, z: z, r: s * 0.45, w: 0.1, color: 0xd8b860, a: 0.85 }]),
+                ],
                 features: [
-                    { k: 'hill', x: -26, z: 12, r: 12, h: 1.4 },                                                        // the mounds
-                    { k: 'hill', x: 28, z: 16, r: 10, h: 1.0 },
-                    { k: 'dip', x: 8, z: 4, r: 8, h: 0.6 },                                                           // the hollow
-                    { k: 'pool', x: -7, z: -8.75, r: 7, rz: 3.5, y: -0.1, depth: 3.0, key: 'deep_water' },    // THE RIFT (never entered) — square to the grid (2026-10-26: was turned 20°), 4 × 2 squares
-                    { k: 'deck', x0: -8.75, z0: -17.5, x1: -8.75, z1: 0, w: 3.5, y: 0.3 },                                // THE PLANK over it, both banks
-                    { k: 'plateau', x: -1.75, z: -28, w: 31.5, d: 14, h: 1.75 },                                             // THE DAIS (the gate — the bay door — on it)
-                    { k: 'ramp', x0: 7, z0: -10.5, x1: 7, z1: -22, w: 8.8, h0: 0, h1: 1.75, stairs: true, float: true },   // the floating steps up to it (ending 0.5 m inside the dais's edge)
-                    { k: 'wall', x0: -17.5, z0: -21.5, x1: -3.5, z1: -21.5, h: 2.0, t: 1, key: 'marble_light' },      // THE PEARLY WALLS (the rider's)
-                    { k: 'wall', x0: 10.5, z0: -21.5, x1: 17.5, z1: -21.5, h: 2.0, t: 1, key: 'marble_light' },
-                    { k: 'plateau', x: 22.75, z: -15.75, r: 1.75, h: 4.6, edge: 0.6, float: true },                           // THE PILLAR OF LIGHT (the tape's) — hung in the air
-                    { k: 'plateau', x: -21, z: -3.5, r: 3.8, h: 1.2, edge: 0.6, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
-                    { k: 'plateau', x: -24.5, z: -14, r: 4.4, h: 2.4, edge: 0.6, float: true },
-                    { k: 'plateau', x: -28, z: -24.5, r: 3.5, h: 3.4, edge: 0.6, float: true },                     // THE LOOKOUT over the dais
-                    /* AREA CONTENT D4 (2026-09-20): two clouds hung in the fields — the dais sees one door, not two (R3) */
-                    { k: 'plateau', x: 15.75, z: -8.75, r: 1.75, h: 3.6, edge: 0.6, float: true },
-                    { k: 'plateau', x: 0, z: 7, r: 3.5, h: 3.5, edge: 0.6, float: true },
-                    { k: 'pool', x: 24.5, z: 7, r: 3.5, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
-                    { k: 'pool', x: -26.25, z: 5.25, r: 1.75, y: -0.05, depth: 0.5 },
-                    { k: 'rail', x0: -17.5, z0: -34.4, x1: -7, z1: -34.4 },                                              // the dais's back rail
-                    { k: 'path', pts: [[0, 32], [0, 16], [-8, 1]], w: 3.6 },                                         // the way from the stair, to the plank
-                    { k: 'path', pts: [[-8, -19.2], [0, -16], [6, -13.2]], w: 3.2 },                                     // off the plank to the steps
-                    { k: 'path', pts: [[0, 16], [16, 12], [24, 4]], w: 2.8 },                                            // to the east pool
-                    { k: 'path', pts: [[0, 16], [-20, 8]], w: 2.8 },                                                   // to the mound
-                    { k: 'path', pts: [[6, -25], [0, -28], [-12, -28]], w: 3.2 },                                    // across the dais
-                    { k: 'scatter', key: 'white_cloud', n: 6, seed: 5, r0: 0.4 },                                     // cloud puffs on the ground (foot 0)
+                    /* THE PLAN: '.' open sky · 'H' a raised platform (3.7) · 'P' a terrace (3.2) · 'S' the sun (3.2) · 's' under a flight (3.2) · 'c' a cloud path (3.2) */
+                    ...hqSkyPlan([
+                    '....HHHH....',
+                    '..HHHHHHHH..',
+                    '.ccHHssHHcc.',
+                    '.c...cc...c.',
+                    'PPP.cSSc.PPP',
+                    'PPPcSSSScPPP',
+                    'PPPcSSSScPPP',
+                    'PPP.cSSc.PPP',
+                    '.c...cc...c.',
+                    '.ccHHssHHcc.',
+                    '..HHHHHHHH..',
+                    '....HHHH....',
+                    ], { C: 3.5, x0: -21, z0: -21, proud: 0.45, rail: { model: 'balusters_d', out: -0.2 },
+                         legend: { H: { h: 3.7, top: 'marble_light', under: 'cloud', rail: true }, P: { h: 3.2, top: 'marble_light', under: 'cloud', rail: true }, S: { h: 3.2, top: 'marble_light', under: 'cloud' },
+                                   s: { h: 3.2, top: 'marble_light', under: 'cloud' }, c: { h: 3.2, under: 'cloud', path: true } } }),
+                    { k: 'plateau', x: 0, z: 0, r: 6.9, h: 3.2, edge: 0.15, float: true, top: 'marble_light', under: 'cloud' },   // THE SUN's round floor (no square's centre past the plus: the corners stay open sky)
+                    /* the sun's balustrade: the four quarter-arcs between the cloud paths */
+                    ...[32, 122, 212, 302].map(a0 => ({ k: 'rail', arc: { x: 0, z: 0, r: 6.65, a0: a0, a1: a0 + 26 }, y: 3.2, model: 'balusters_d', block: false })),
+                    /* THE FLIGHTS: marble, a parapet each side — down off the gate to the cloud path, up from the cloud path to the grand stair's platform */
+                    { k: 'ramp', x0: 0, z0: -10.1, x1: 0, z1: -14.3, w: 7, h0: 3.2, h1: 3.7, stairs: true, model: 'stone', key: 'marble_light', side: 'marble_light' },
+                    { k: 'ramp', x0: 0, z0: 10.1, x1: 0, z1: 14.3, w: 7, h0: 3.2, h1: 3.7, stairs: true, model: 'stone', key: 'marble_light', side: 'marble_light' },
+                    /* THE CASTLES' ISLANDS: in the four corners, under the floors (open sky to the board) */
+                    { k: 'plateau', x: -16.5, z: -17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 }, { k: 'plateau', x: 16.5, z: -17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 },
+                    { k: 'plateau', x: -16.5, z: 17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 }, { k: 'plateau', x: 16.5, z: 17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 },
                 ],
             },
-            /* the north wall at x 0, 1.75 m up on the dais, is THE BAY DOOR (siteRooms.entry, 2026-09-18): Room 777's hotel door — the board room is bypassed, the gate lands you here */
+            /* the north wall at x 0, ON THE GATE PLATFORM (4.95 m), is THE BAY DOOR (siteRooms.entry): Room 777's hotel door behind the pearly gate */
             doors: [
-                { id: 'stair', wall: 's', x: 0, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white
+                { id: 'stair', wall: 's', x: 0, y: 3.7, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white — off the grand stair's platform
                   label: 'THE STAIRWAY', sub: 'DOWN · FOUR FLIGHTS · TO THE DOME',
                   action: { room: 'site_prebuilt_heaven_stair', at: 'gates' },
                   desc: 'The top of the stair, from above. It goes down from here, which the sign does not admit.' },
             ],
             counters: [],
             props: [
-                { key: 'greek_column',   x: -19, z: -27 },                                   // the columns: the dais's two, the way in's two
-                { key: 'greek_column',   x: 19, z: -27 },
-                { key: 'greek_column',   x: -12, z: 31 },
-                { key: 'greek_column',   x: 11.7, z: 31 },
-                { key: 'fountain',       x: 28, z: -2 },
-                { key: 'lectern',        x: 4.4, z: -28.4, face: 180 },                          // THE BOOK, beside the gate
-                { key: 'park_bench',     x: -24, z: 18, face: 120 },                          // the waiting
-                { key: 'park_bench',     x: 17.75, z: 20, face: 240 },
-                { key: 'potted_plant',   x: -32, z: 30 },
-                { key: 'potted_plant',   x: 32, z: 30 },
-                { key: 'paper_sheet',    x: -3.75, z: 27.6, y: 0.01, face: 320 },                 // a form on the cloud: GATE — WHICH
-                /* THE VATICAN BATCH (2026-09-17): THE PEARLY GATE standing open in the gap of the pearly walls (the hotel door stays the leaf), the angels, the clouds */
-                { key: 'pearly_gate',    x: 7, z: -21.25, face: 0 },
-                { key: 'angel_statue',   x: -14, z: -30, face: 180 },
-                { key: 'angel_statue',   x: 14, z: -30, face: 180 },
-                { key: 'brazier',        x: -20, z: 24 },
-                { key: 'brazier',        x: 20, z: 24 },
-                { key: 'white_cloud',    x: -28, z: 16, y: 5.0 },                                 // THE FLOATING CLOUDS
-                { key: 'white_cloud',    x: 16, z: 16, y: 6.5 },
-                { key: 'white_cloud',    x: 32, z: -28, y: 4.5 },
-                { key: 'white_cloud',    x: -12, z: 28, y: 7.0 },
-                { key: 'white_cloud',    x: 11.7, z: -8, y: 8.0 },
-                { key: 'instrument_harp', x: -9.2, z: -29.2, face: 180 }, { key: 'instrument_harp', x: 21.8, z: 20.8, face: 250 }, { key: 'instrument_harp', x: 23.6, z: -24.8, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
+                /* THE GATE PLATFORM (3.7): the pearly gate, the angels, the book, a brazier, the flowers */
+                { key: 'pearly_gate',    x: 0, z: -20.3, y: 3.7, face: 0 },
+                { key: 'angel_statue',   x: -8.75, z: -15.75, y: 3.7, face: 180 }, { key: 'angel_statue', x: 8.75, z: -15.75, y: 3.7, face: 180 },
+                { key: 'lectern',        x: -5.25, z: -12.25, y: 3.7, face: 180 },   // THE BOOK, beside the flight
+                { key: 'brazier',        x: 5.25, z: -12.25, y: 3.7 },
+                { key: 'potted_plant',   x: -8.9, z: -11.9, y: 3.7 }, { key: 'potted_plant', x: 8.9, z: -11.9, y: 3.7 },
+                { key: 'paper_sheet',    x: -10.2, z: -13.2, y: 3.71, face: 320 },   // a form on the marble: GATE — WHICH
+                /* THE GRAND STAIR's PLATFORM (3.7): the columns, the braziers, the flowers */
+                { key: 'greek_column',   x: -8.75, z: 15.75, y: 3.7 }, { key: 'greek_column', x: 8.75, z: 15.75, y: 3.7 },
+                { key: 'brazier',        x: -5.25, z: 12.25, y: 3.7 }, { key: 'brazier', x: 5.25, z: 12.25, y: 3.7 },
+                { key: 'potted_plant',   x: -8.9, z: 11.9, y: 3.7 }, { key: 'potted_plant', x: 8.9, z: 11.9, y: 3.7 },
+                /* THE TERRACES (3.2): an angel and a column on each outer edge, a harp, flowers */
+                { key: 'angel_statue',   x: -19.25, z: -1.75, y: 3.2, face: 90 }, { key: 'angel_statue', x: 19.25, z: 1.75, y: 3.2, face: 270 },
+                { key: 'greek_column',   x: -19.25, z: 1.75, y: 3.2 }, { key: 'greek_column', x: 19.25, z: -1.75, y: 3.2 },
+                { key: 'instrument_harp', x: -15.6, z: -5.0, y: 3.2, face: 120 }, { key: 'instrument_harp', x: 15.6, z: 5.0, y: 3.2, face: 300 },   // THE INSTRUMENTS (2026-10-27): the angels' harps
+                { key: 'potted_plant',   x: -15.6, z: 5.0, y: 3.2 }, { key: 'potted_plant', x: 15.6, z: -5.0, y: 3.2 },
+                /* THE SUN (3.2): flowers at the four cloud paths' mouths, a harp */
+                { key: 'potted_plant',   x: -6.4, z: -3.0, y: 3.2 }, { key: 'potted_plant', x: 6.4, z: 3.0, y: 3.2 }, { key: 'potted_plant', x: -6.4, z: 3.0, y: 3.2 }, { key: 'potted_plant', x: 6.4, z: -3.0, y: 3.2 },
+                { key: 'instrument_harp', x: 2.9, z: -6.3, y: 3.2, face: 200 },
+                /* THE CASTLES (THE CASTLE AND FORT PACK, McSteeg): a keep, two towers and a gate on each corner island, facing the sun */
+                { key: 'castle_tower', x: -17.39, z: -18.45, y: -1.0, face: 136.68 }, { key: 'castle_tower', x: -17.39, z: -18.45, y: 1.0, face: 136.68 }, { key: 'castle_cone', x: -17.39, z: -18.45, y: 3.0, face: 136.68 }, { key: 'castle_tower', x: -17.57, z: -14.84, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -17.57, z: -14.84, y: 1.0, face: 136.68 }, { key: 'castle_tower', x: -13.79, z: -18.41, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -13.79, z: -18.41, y: 1.0, face: 136.68 }, { key: 'castle_gate', x: -15.68, z: -16.63, y: -1.0, face: 46.68 }, { key: 'castle_wall', x: -18.76, z: -19.9, y: -1.0, face: 46.68 },
+                { key: 'castle_tower', x: 17.39, z: -18.45, y: -1.0, face: 223.32 }, { key: 'castle_tower', x: 17.39, z: -18.45, y: 1.0, face: 223.32 }, { key: 'castle_cone', x: 17.39, z: -18.45, y: 3.0, face: 223.32 }, { key: 'castle_tower', x: 13.79, z: -18.41, y: -1.0, face: 223.32 }, { key: 'castle_tower_top', x: 13.79, z: -18.41, y: 1.0, face: 223.32 }, { key: 'castle_tower', x: 17.57, z: -14.84, y: -1.0, face: 223.32 }, { key: 'castle_tower_top', x: 17.57, z: -14.84, y: 1.0, face: 223.32 }, { key: 'castle_gate', x: 15.68, z: -16.63, y: -1.0, face: 133.32 }, { key: 'castle_wall', x: 18.76, z: -19.9, y: -1.0, face: 133.32 },
+                { key: 'castle_tower', x: -17.39, z: 18.45, y: -1.0, face: 43.32 }, { key: 'castle_tower', x: -17.39, z: 18.45, y: 1.0, face: 43.32 }, { key: 'castle_cone', x: -17.39, z: 18.45, y: 3.0, face: 43.32 }, { key: 'castle_tower', x: -13.79, z: 18.41, y: -1.0, face: 43.32 }, { key: 'castle_tower_top', x: -13.79, z: 18.41, y: 1.0, face: 43.32 }, { key: 'castle_tower', x: -17.57, z: 14.84, y: -1.0, face: 43.32 }, { key: 'castle_tower_top', x: -17.57, z: 14.84, y: 1.0, face: 43.32 }, { key: 'castle_gate', x: -15.68, z: 16.63, y: -1.0, face: 313.32 }, { key: 'castle_wall', x: -18.76, z: 19.9, y: -1.0, face: 313.32 },
+                { key: 'castle_tower', x: 17.39, z: 18.45, y: -1.0, face: 316.68 }, { key: 'castle_tower', x: 17.39, z: 18.45, y: 1.0, face: 316.68 }, { key: 'castle_cone', x: 17.39, z: 18.45, y: 3.0, face: 316.68 }, { key: 'castle_tower', x: 17.57, z: 14.84, y: -1.0, face: 316.68 }, { key: 'castle_tower_top', x: 17.57, z: 14.84, y: 1.0, face: 316.68 }, { key: 'castle_tower', x: 13.79, z: 18.41, y: -1.0, face: 316.68 }, { key: 'castle_tower_top', x: 13.79, z: 18.41, y: 1.0, face: 316.68 }, { key: 'castle_gate', x: 15.68, z: 16.63, y: -1.0, face: 226.68 }, { key: 'castle_wall', x: 18.76, z: 19.9, y: -1.0, face: 226.68 },
+                /* THE CLOUD SEA (hung over the open sky, THE OPEN SKY in three-renderer.js): a field of clouds 8-11 m under the board, then the bank round it */
+                { key: 'white_cloud', x: -27.72, z: -19.74, y: -10.01, span: 11.28 }, { key: 'white_cloud', x: -28.08, z: -7.48, y: -10.72, span: 12.09 }, { key: 'white_cloud', x: -28.12, z: -2.36, y: -8.79, span: 11.6 }, { key: 'white_cloud', x: -26.74, z: 10.26, y: -8.37, span: 11.53 },
+                { key: 'white_cloud', x: -27.29, z: 18.55, y: -10.41, span: 13.97 }, { key: 'white_cloud', x: -20.93, z: -27.11, y: -9.84, span: 12.42 }, { key: 'white_cloud', x: -20.05, z: -9.19, y: -10.61, span: 13.17 }, { key: 'white_cloud', x: -16.68, z: 1.25, y: -8.58, span: 12.06 },
+                { key: 'white_cloud', x: -17.11, z: 9.27, y: -10.46, span: 14.0 }, { key: 'white_cloud', x: -9.14, z: -28.44, y: -8.72, span: 11.58 }, { key: 'white_cloud', x: -10.69, z: -19.36, y: -9.94, span: 13.19 }, { key: 'white_cloud', x: -9.71, z: -7.28, y: -10.27, span: 11.93 },
+                { key: 'white_cloud', x: -7.28, z: -1.25, y: -9.14, span: 12.53 }, { key: 'white_cloud', x: -10.43, z: 9.67, y: -10.55, span: 13.12 }, { key: 'white_cloud', x: -8.76, z: 20.8, y: -9.2, span: 11.78 }, { key: 'white_cloud', x: -8.48, z: 29.82, y: -9.45, span: 11.9 },
+                { key: 'white_cloud', x: -1.49, z: -28.88, y: -10.08, span: 13.99 }, { key: 'white_cloud', x: -0.57, z: -21.07, y: -10.21, span: 11.22 }, { key: 'white_cloud', x: 2.13, z: -10.62, y: -9.55, span: 12.65 }, { key: 'white_cloud', x: 0.38, z: 2.08, y: -8.36, span: 13.83 },
+                { key: 'white_cloud', x: 1.27, z: 10.7, y: -8.79, span: 13.9 }, { key: 'white_cloud', x: -0.55, z: 18.79, y: -10.74, span: 13.78 }, { key: 'white_cloud', x: 1.97, z: 30.27, y: -8.55, span: 13.98 }, { key: 'white_cloud', x: 7.08, z: -30.39, y: -8.47, span: 11.87 },
+                { key: 'white_cloud', x: 11.46, z: -20.66, y: -8.68, span: 13.68 }, { key: 'white_cloud', x: 10.34, z: -11.44, y: -8.91, span: 13.94 }, { key: 'white_cloud', x: 11.02, z: 0.88, y: -9.69, span: 11.36 }, { key: 'white_cloud', x: 7.17, z: 7.8, y: -9.97, span: 11.95 },
+                { key: 'white_cloud', x: 10.75, z: 18.54, y: -8.99, span: 12.98 }, { key: 'white_cloud', x: 9.79, z: 28.75, y: -8.33, span: 11.42 }, { key: 'white_cloud', x: 19.93, z: -28.04, y: -8.65, span: 11.83 }, { key: 'white_cloud', x: 19.36, z: -7.66, y: -11.08, span: 13.05 },
+                { key: 'white_cloud', x: 20.61, z: 1.37, y: -9.1, span: 13.45 }, { key: 'white_cloud', x: 20.63, z: 9.22, y: -11.07, span: 12.95 }, { key: 'white_cloud', x: 18.02, z: 27.94, y: -10.76, span: 13.57 }, { key: 'white_cloud', x: 28.46, z: -16.83, y: -10.87, span: 12.23 },
+                { key: 'white_cloud', x: 26.24, z: -10.68, y: -8.44, span: 13.25 }, { key: 'white_cloud', x: 29.34, z: 0.73, y: -10.29, span: 12.59 }, { key: 'white_cloud', x: 27.48, z: 9.1, y: -8.65, span: 11.63 }, { key: 'white_cloud', x: 26.06, z: 20.47, y: -10.0, span: 13.17 },
+                { key: 'white_cloud', x: -2.9, z: -31.92, y: 2.99, span: 9.31 }, { key: 'white_cloud', x: 17.3, z: -25.09, y: 3.08, span: 10.28 }, { key: 'white_cloud', x: 23.37, z: -15.44, y: 2.55, span: 10.15 }, { key: 'white_cloud', x: 29.34, z: 1.67, y: 2.66, span: 9.69 },
+                { key: 'white_cloud', x: 23.84, z: 16.67, y: 2.8, span: 10.55 }, { key: 'white_cloud', x: 14.89, z: 24.49, y: 2.75, span: 8.0 }, { key: 'white_cloud', x: -1.47, z: 29.58, y: 2.69, span: 8.87 }, { key: 'white_cloud', x: -17.04, z: 25.05, y: 3.48, span: 8.49 },
+                { key: 'white_cloud', x: -24.95, z: 15.2, y: 2.87, span: 10.52 }, { key: 'white_cloud', x: -28.99, z: -0.57, y: 1.33, span: 9.02 }, { key: 'white_cloud', x: -25.96, z: -13.72, y: 1.59, span: 9.46 }, { key: 'white_cloud', x: -13.13, z: -26.9, y: 1.77, span: 9.87 },
             ],
             agents: [],
             npcSpots: [
-                { x: -5.2, z: -28, face: 90, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
-                { x: 20, z: 4, face: 250, race: 'priest', gender: 'male', say: '“The pools are for the injured. I am here on a technicality.”' },
-                { x: -18, z: 7, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
+                { x: -19.4, z: -16.2, face: 135, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
             ],
             onlineSpots: [],
             lines: [
                 '“Is this the queue?” “This is the field.” “Where is the queue?” “This is the queue.”',
-                '“The plank is the only way over.” “There is a way round.” “The way round is the plank.”',
                 '“Room 777 has no door on the inside.” “Then how do they leave?” “They are asked to wait.”',
-                '“The pillar of light is structural.” “It has no stair.” “Faith has no stair.”',
                 '“Everything from here goes down.” “To where?” “To a telescope. Do not look back up through it.”',
             ],
-            spawn: { x: 0, z: -29, face: 180 },
+            spawn: { x: 0, z: -17.2, face: 180 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2: "the exterior
@@ -43161,8 +43197,12 @@ const DOOR_HQ = {
                D (hall H), hall I back to the doorway's space (loop 3). TRENCH I (off A) and TRENCH II (off B) are dead-end cuts sunk a
                metre; the ley's mouth on the north wall is its own space off hall D (hall J) — a door pair into the tunnels, the same site
                (never a link). The doors never see each other. */
+            /* THE TELL'S EARTH (2026-11-03, mondo: "I like the terrain texture that has the glyphs on it but this is way too much on the map,
+               like that should only be for ancient structures, not for the ground"): the unexcavated mound and the dig's cut faces wear
+               plain earth (dirt_4); the glyph stone (rock_wall_1) stays on what was BUILT — the ring walls, the bastions, the benches, the
+               built stairs. `outer.sheet: 'solid'`: the mound's earth runs on past the room's edge (no straight line where it stopped) */
             terrain: { res: 1,
-                floor: 'dirt_3', cliff: 'rock_wall_1', path: 'dirt_2',
+                floor: 'dirt_3', cliff: 'dirt_4', path: 'dirt_2', outer: { sheet: 'solid' },
                 noise: { amp: 0, scale: 14 }, crag: false,
                 gen: { minIsland: 8.8, edge: 1.8, pathGrow: 2.2, kind: 'plan', look: 'rock', wallH: 3.4, jitter: 0.1, topNoise: 0.3, rim: 0, forceGrow: -0.8 },   // THE LAYOUT: the unexcavated tell a bank drawn by hand
                 features: [
@@ -43273,8 +43313,8 @@ const DOOR_HQ = {
                        the bedrock left standing is a TERRACE on each flank (squares 0..1 × 1..6 west, 10..11 × 5..10 east, one level up)
                        with a built stair down to the floor at its end, the TWO GREAT PILLARS stand on their pedestals either side of the
                        nexus (squares 3 and 8 × 5..6), two lesser pillars (2 × 8, 9 × 3) and two stone benches (3 × 3, 8 × 8, one level
-                       up) are the cover — the middle four columns stay open ground, so the 9 / 10 / 11 cuts all fit, and ten lesser pillars stand in the ring wall round the pit facing in. Outside the ring a ledge runs round
-                       the pit at the old ground (the walk round it, the ring wall's two gaps on the terraces), the unexcavated tell
+                       up) are the cover — the middle four columns stay open ground, so the 9 / 10 / 11 cuts all fit, and ten lesser pillars stand on the ledge round the pit facing in (no ring wall since 2026-11-03). A ledge runs round
+                       the pit at the old ground (the walk round it), the unexcavated tell
                        stands round that, a hall west to hall C and one south to the east flank. bake-arenas.js cuts every arena size
                        here (HQ_ARENA_RULES.within). */
                     { k: 'space', x: 87.5, z: 0, w: 74, d: 74, round: true },                                                    // ENCLOSURE E (the pit, the ring wall, the ledge round it)
@@ -43287,14 +43327,10 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 105, z0: -10.5, x1: 105, z1: -3.5, w: 7, h0: -1.75, h1: 0, stairs: true, built: true, edge: 0.3, key: 'rock_wall_1' },   // the east stair up to the east terrace (10..11 × 3..4)
                     { k: 'plateau', x: 78.75, z: 0, w: 3.5, d: 7, h: -1.45, blend: 'ground', edge: 0.2 },                     // the west great pillar's pedestal (3 × 5..6)
                     { k: 'plateau', x: 96.25, z: 0, w: 3.5, d: 7, h: -1.45, blend: 'ground', edge: 0.2 },                     // the east great pillar's pedestal (8 × 5..6)
-                    /* the ring wall (1.8 m on the ledge, its inner face on the board's edge; a wall row draws its box half its thickness past
-                       each end, so the runs below meet square at the corners) and its two gaps: the west terrace (squares 3..4), the east (7..8) */
-                    { k: 'wall', x0: 65.6, z0: -21.9, x1: 109.4, z1: -21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },                // north
-                    { k: 'wall', x0: 65.6, z0: 21.9, x1: 109.4, z1: 21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },                  // south
-                    { k: 'wall', x0: 65.6, z0: -21.9, x1: 65.6, z1: -11.4, h: 1.8, t: 1.8, key: 'rock_wall_1' },                  // west
-                    { k: 'wall', x0: 65.6, z0: -2.6, x1: 65.6, z1: 21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },
-                    { k: 'wall', x0: 109.4, z0: -21.9, x1: 109.4, z1: 2.6, h: 1.8, t: 1.8, key: 'rock_wall_1' },                   // east
-                    { k: 'wall', x0: 109.4, z0: 11.4, x1: 109.4, z1: 21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },
+                    /* NO RING WALL (2026-11-03, mondo: "why are there t-pillars on top of these walls? get rid of the walls"): the six runs of
+                       the 1.8 m ring wall round the board's edge are gone. The ten lesser pillars had been set INTO it (the real enclosures'
+                       pillars are built into their stone walls), but a prop stands on the ground under its foot and a wall row IS that ground,
+                       so every one of them stood on the wall's top. They stand free on the ledge round the pit now, facing in. */
                     /* the four BASTIONS: one stone block per square (a zero-length row t 1.75 is a box exactly its square, and THE FIELD
                        reads its top on that square only), 2.2 m on the old ground — two levels over the pit floor */
                     { k: 'wall', x0: 68.25, z0: -19.25, x1: 68.25, z1: -19.25, h: 2.2, t: 3.5, key: 'rock_wall_1' },          // NW: 0 × 0
@@ -43311,12 +43347,15 @@ const DOOR_HQ = {
                     { k: 'wall', x0: 106.75, z0: 15.75, x1: 106.75, z1: 15.75, h: 2.2, t: 3.5, key: 'rock_wall_1' },            // 11 × 10
                     { k: 'wall', x0: 78.75, z0: -8.75, x1: 78.75, z1: -8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },          // a stone bench, one level up (3 × 3)
                     { k: 'wall', x0: 96.25, z0: 8.75, x1: 96.25, z1: 8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },            // its twin (8 × 8)
-                    /* the pillars' own stone for the battle: a wall row inside each shaft (never seen — the pillar is drawn round it) is the
-                       ground THE FIELD reads there, as Stonehenge's sarsens are, so a pillar is a tall square nobody walks through */
-                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the west great pillar (3 × 5..6)
-                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the east great pillar (8 × 5..6)
-                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },            // the lesser pillar at 2 × 8
-                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },          // the lesser pillar at 9 × 3
+                    /* the pillars' own stone for the battle: a wall row inside each shaft is the ground THE FIELD reads there, so a pillar is
+                       a tall square nobody walks through. GHOSTS (2026-11-03, mondo: "the t-pillars are still standing on top of the walls"):
+                       the rows were drawn (a 5.45 m glyph block under each great pillar, 3.15 m under the lesser ones) and the pillar props
+                       stood on their tops — `ghost: true` = never drawn, still the walker's and the fight's; the props stand on the floor
+                       under them (`floor: true`) */
+                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1', ghost: true },             // the west great pillar (3 × 5..6)
+                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1', ghost: true },             // the east great pillar (8 × 5..6)
+                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1', ghost: true },            // the lesser pillar at 2 × 8
+                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1', ghost: true },          // the lesser pillar at 9 × 3
                     { k: 'path', pts: [[121.3, 0], [120.14, 8.74], [116.78, 16.9], [111.4, 23.9], [104.4, 29.28], [96.24, 32.64], [87.5, 33.8], [78.76, 32.64], [70.6, 29.28], [63.6, 23.9], [58.22, 16.9], [54.86, 8.74], [53.7, 0], [54.86, -8.74], [58.22, -16.9], [63.6, -23.9], [70.6, -29.28], [78.76, -32.64], [87.5, -33.8], [96.24, -32.64], [104.4, -29.28], [111.4, -23.9], [116.78, -16.9], [120.14, -8.74], [121.3, 0]], w: 2.8 },   // the walk round the ring wall
                 ],
             },
@@ -43328,15 +43367,18 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* THE ENCLOSURES: the T-pillars (two great ones in the middle of each, the ring round them) */
+                /* THE ENCLOSURES: the T-pillars (two great ones in the middle of each, the ring round them). OFF THE WALLS (2026-11-03, mondo:
+                   "why are there t-pillars on top of these walls?"): four of the ring's pillars (B's, C's two, D's) had their foot inside a
+                   ring wall row and stood on its top, two more (A's, B's) leaned on one. They stand clear of the stone now: on the rim inside
+                   the wall where it is wide enough, else on the sunk floor 8.2 m out (where the wall's chord comes close to the floor's edge) */
                 { key: 't_pillar',       x: -36.75, z: -15.875, face: 90, h: 4.6 }, { key: 't_pillar', x: -29.875, z: -15.875, face: 90, h: 4.6 },
-                { key: 't_pillar',       x: -33.25, z: -24.933, face: 0, h: 3.0 }, { key: 't_pillar', x: -41.299, z: -10.412, face: 60, h: 3.0 }, { key: 't_pillar', x: -25.654, z: -8.302, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: -33.25, z: -24.933, face: 0, h: 3.0 }, { key: 't_pillar', x: -41.007, z: -10.605, face: 60, h: 3.0 }, { key: 't_pillar', x: -25.654, z: -8.302, face: 300, h: 3.0 },
                 { key: 't_pillar',       x: 19.25, z: -26.25, face: 90, h: 4.6 }, { key: 't_pillar', x: 26.325, z: -26.25, face: 90, h: 4.6 },
-                { key: 't_pillar',       x: 22.75, z: -35.366, face: 0, h: 3.0 }, { key: 't_pillar', x: 14.751, z: -20.912, face: 60, h: 3.0 }, { key: 't_pillar', x: 30.346, z: -18.827, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: 22.75, z: -35.366, face: 0, h: 3.0 }, { key: 't_pillar', x: 15.001, z: -21.079, face: 60, h: 3.0 }, { key: 't_pillar', x: 28.615, z: -20.519, face: 300, h: 3.0 },
                 { key: 't_pillar',       x: -12.125, z: 26.25, face: 90, h: 4.6 }, { key: 't_pillar', x: -5.125, z: 26.25, face: 90, h: 4.6 },
-                { key: 't_pillar',       x: -8.875, z: 17.067, face: 0, h: 3.0 }, { key: 't_pillar', x: -16.999, z: 31.838, face: 60, h: 3.0 }, { key: 't_pillar', x: -1.202, z: 33.846, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: -8.875, z: 17.067, face: 0, h: 3.0 }, { key: 't_pillar', x: -16.325, z: 31.382, face: 60, h: 3.0 }, { key: 't_pillar', x: -2.97, z: 32.067, face: 300, h: 3.0 },
                 { key: 't_pillar',       x: 33.175, z: 15.75, face: 90, h: 4.6 },                                                          // D's other great pillar (THE SENTINEL is the tier beside it)
-                { key: 't_pillar',       x: 36.75, z: 6.817, face: 0, h: 3.0 }, { key: 't_pillar', x: 28.701, z: 21.088, face: 60, h: 3.0 }, { key: 't_pillar', x: 44.173, z: 23.298, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: 36.75, z: 6.817, face: 0, h: 3.0 }, { key: 't_pillar', x: 28.701, z: 21.088, face: 60, h: 3.0 }, { key: 't_pillar', x: 42.5, z: 21.596, face: 300, h: 3.0 },
                 /* THE DIG: the crates, the fire, the rail, the signs, the forms */
                 { key: 'cardboard_boxes', x: -78.75, z: 61.125, face: 20 }, { key: 'cardboard_boxes', x: -47.125, z: 61.125, face: 340 },
                 { key: 'campfire',       x: -43.675, z: 50.75 },
@@ -43347,14 +43389,14 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -26.25, z: -78.75 }, { key: 'brazier', x: -12.125, z: -78.75 },
                 { key: 'brazier',        x: 36.75, z: 25.041 },
                 /* ENCLOSURE E (2026-10-20): the two great pillars on their pedestals either side of the nexus (broad faces to each other),
-                   the ten lesser ones set in the ring wall (narrow face in, as the dig found them), two standing in the pit, two stones,
+                   the ten lesser ones round the pit's rim on the ledge (narrow face in; the ring wall they stood on is gone, 2026-11-03), two standing in the pit, two stones,
                    a brazier on each bastion (the pit's light) — every one on its square, the layout half-turn symmetric */
-                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5 }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5 },
+                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5, floor: true }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5, floor: true },
                 { key: 't_pillar',       x: 78.75, z: -21.696, face: 90, h: 3.2 }, { key: 't_pillar', x: 96.25, z: -21.696, face: 90, h: 3.4 },
                 { key: 't_pillar',       x: 78.75, z: 21.696, face: 270, h: 3.4 }, { key: 't_pillar', x: 96.25, z: 21.696, face: 270, h: 3.2 },
                 { key: 't_pillar',       x: 65.7, z: -12.25, face: 180, h: 3.0 }, { key: 't_pillar', x: 65.7, z: 1.875, face: 180, h: 3.4 }, { key: 't_pillar', x: 65.7, z: 12.25, face: 180, h: 3.2 },
                 { key: 't_pillar',       x: 109.3, z: 12.25, face: 0, h: 3.0 }, { key: 't_pillar', x: 109.3, z: -1.875, face: 0, h: 3.4 }, { key: 't_pillar', x: 109.3, z: -12.25, face: 0, h: 3.2 },
-                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2 }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2 },
+                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2, floor: true }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2, floor: true },
                 { key: 'brazier',        x: 68.25, z: -19.125, y: 2.2 }, { key: 'brazier', x: 106.75, z: -19.125, y: 2.2 },
                 { key: 'brazier',        x: 68.25, z: 19.25, y: 2.2 }, { key: 'brazier', x: 106.75, z: 19.25, y: 2.2 },
             ],
@@ -48706,7 +48748,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_area51_hangar: { x: 0, z: 0 },   // HANGAR 18: the floor under the rig
     site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
     site_prebuilt_hell_pit: { x: -0.5, z: 0 },   // THE PIT: the bowl floor
-    site_prebuilt_heaven_gate: { x: -3, z: 2 },   // THE CLOUD FIELDS: under the dais
+    site_prebuilt_heaven_gate: { x: 0, z: 0 },   // THE CLOUD FIELDS: the sun (THE NEW HEAVEN, 2026-11-03)
     site_prebuilt_camelot_ward: { x: 8, z: 54 },   // CAMELOT: inside the portcullis (G6: the ward is the entry)
     site_prebuilt_skinwalker_fields: { x: -8, z: 12 },   // THE CORN FIELDS: by the circle
     site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
@@ -48836,6 +48878,84 @@ function hqDeckPlan(rows, o) {
         let x1 = x; while (at(x1 + 1, y) === 'w') x1++;
         const cz = r3(o.z0 + (y + 0.5) * C);
         out.push({ k: 'wall', x0: r3(o.x0 + (x + 0.5) * C), z0: cz, x1: r3(o.x0 + (x1 + 0.5) * C), z1: cz, h: o.crateH || 1.25, t: C, key: o.crateKey || 'gunmetal', rail: false });
+    }
+    return out;
+}
+/* THE SKY PLAN (2026-11-03, mondo's Heaven concept art: "Use this concept art to make a new heaven map"): a board drawn square by
+   square over THE VOID, hqDeckPlan's rule with a legend — one string per lattice row, north first, '.' open sky; every other char is
+   a class `{ h, under?, top?, path?, rail? }` drawn as FLOAT plateaus (each rect its own island: a stepped rock under it in a void
+   room, `under: 'cloud'` the puffs), `path: true` paints the class in the room's path sheet (a cloud path), `rail: true` stands
+   `o.rail.model` (HQ_STAIR_PACK) along every side that meets the open sky, at the class's height (`o.rail.out` m off the edge,
+   < 0 = inside the square; `block: false`, never a wall to the walker or the board). A rect runs `o.proud` m past a side onto open sky or a floor of its own height (floors of two heights meet edge to edge). */
+function hqSkyPlan(rows, o) {
+    const C = o.C || 3.5, P = (o.proud != null) ? o.proud : 0.45, r3 = v => Math.round(v * 1000) / 1000, L = o.legend || {};
+    const H = rows.length, W = rows.reduce((m, r) => Math.max(m, r.length), 0), at = (x, y) => (rows[y] || '').charAt(x) || '.';
+    const sky = (x, y) => at(x, y) === '.';
+    const rects = (pred) => {
+        const used = rows.map(() => new Array(W).fill(false)), out = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (used[y][x] || !pred(at(x, y))) continue;
+            let x1 = x; while (x1 + 1 < W && !used[y][x1 + 1] && pred(at(x1 + 1, y))) x1++;
+            const same = (yy) => { for (let k = x; k <= x1; k++) if (used[yy][k] || !pred(at(k, yy))) return false; return !(x > 0 && pred(at(x - 1, yy)) && !used[yy][x - 1]) && !(x1 + 1 < W && pred(at(x1 + 1, yy))); };
+            let y1 = y; while (y1 + 1 < H && same(y1 + 1)) y1++;
+            for (let yy = y; yy <= y1; yy++) for (let k = x; k <= x1; k++) used[yy][k] = true;
+            out.push({ x0: x, x1, y0: y, y1 });
+        }
+        return out;
+    };
+    const out = [], cx = i => o.x0 + (i + 0.5) * C, cz = j => o.z0 + (j + 0.5) * C;
+    Object.keys(L).forEach(ch => {
+        const D = L[ch];
+        rects(c => c === ch).forEach(r => {
+            /* a side runs P past the square where every square beyond it is open sky or a floor at the same height (two floors at one
+               height overlap — no seam dips between them); where a floor at another height meets it, it stops on the line */
+            const ok = (x, y) => sky(x, y) || (L[at(x, y)] && L[at(x, y)].h === D.h);
+            let all = true; for (let k = r.x0; k <= r.x1; k++) if (!ok(k, r.y0 - 1)) all = false; const pN = all ? P : 0;
+            all = true; for (let k = r.x0; k <= r.x1; k++) if (!ok(k, r.y1 + 1)) all = false; const pS = all ? P : 0;
+            all = true; for (let k = r.y0; k <= r.y1; k++) if (!ok(r.x0 - 1, k)) all = false; const pW = all ? P : 0;
+            all = true; for (let k = r.y0; k <= r.y1; k++) if (!ok(r.x1 + 1, k)) all = false; const pE = all ? P : 0;
+            const ax = o.x0 + r.x0 * C - pW, bx = o.x0 + (r.x1 + 1) * C + pE, az = o.z0 + r.y0 * C - pN, bz = o.z0 + (r.y1 + 1) * C + pS;
+            const f = { k: 'plateau', x: r3((ax + bx) / 2), z: r3((az + bz) / 2), w: r3(bx - ax), d: r3(bz - az), h: D.h, edge: 0.15, float: true };
+            if (D.under) f.under = D.under; if (D.top) f.top = D.top; if (D.rock) f.rock = D.rock;
+            out.push(f);
+        });
+        /* the path sheet: a run between every two neighbouring squares of the class, a dab on a lone one (round caps of w / 2) */
+        if (D.path) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (at(x, y) !== ch) continue;
+            const w = C + 2 * P * 0.8, lone = at(x + 1, y) !== ch && at(x, y + 1) !== ch && at(x - 1, y) !== ch && at(x, y - 1) !== ch;
+            if (at(x + 1, y) === ch) out.push({ k: 'path', pts: [[r3(cx(x)), r3(cz(y))], [r3(cx(x + 1)), r3(cz(y))]], w: r3(w) });
+            if (at(x, y + 1) === ch) out.push({ k: 'path', pts: [[r3(cx(x)), r3(cz(y))], [r3(cx(x)), r3(cz(y + 1))]], w: r3(w) });
+            if (lone) out.push({ k: 'path', pts: [[r3(cx(x) - 0.01), r3(cz(y))], [r3(cx(x) + 0.01), r3(cz(y))]], w: r3(w) });
+        }
+    });
+    /* the balustrades: every side of a railed square that meets the open sky, run together along each line */
+    if (o.rail) {
+        const out2 = o.rail.out != null ? o.rail.out : -0.2, railed = (x, y) => !sky(x, y) && L[at(x, y)] && L[at(x, y)].rail;
+        [['n', 0, -1], ['s', 0, 1], ['w', -1, 0], ['e', 1, 0]].forEach(([s, dx, dy]) => {
+            const along = dx === 0;   // a north / south side runs along x
+            const open = (x, y) => railed(x, y) && sky(x + dx, y + dy);
+            const lines = along ? H : W, steps = along ? W : H;
+            for (let l = 0; l < lines; l++) {
+                let k = 0;
+                while (k < steps) {
+                    const X = (kk) => along ? kk : l, Y = (kk) => along ? l : kk;
+                    if (!open(X(k), Y(k))) { k++; continue; }
+                    const cls = at(X(k), Y(k)), ry = L[cls].h;
+                    let k1 = k; while (k1 + 1 < steps && open(X(k1 + 1), Y(k1 + 1)) && at(X(k1 + 1), Y(k1 + 1)) === cls) k1++;
+                    /* the corner: run on to meet the perpendicular rail where that side is open sky too */
+                    const pa = along ? sky(X(k) - 1, Y(k)) : sky(X(k), Y(k) - 1), pb = along ? sky(X(k1) + 1, Y(k1)) : sky(X(k1), Y(k1) + 1);
+                    const ea = pa ? out2 : 0, eb = pb ? out2 : 0;
+                    if (along) {
+                        const z = r3(o.z0 + (l + (dy > 0 ? 1 : 0)) * C + dy * out2);
+                        out.push({ k: 'rail', x0: r3(o.x0 + k * C - ea), z0: z, x1: r3(o.x0 + (k1 + 1) * C + eb), z1: z, y: ry, model: o.rail.model, block: false });
+                    } else {
+                        const x = r3(o.x0 + (l + (dx > 0 ? 1 : 0)) * C + dx * out2);
+                        out.push({ k: 'rail', x0: x, z0: r3(o.z0 + k * C - ea), x1: x, z1: r3(o.z0 + (k1 + 1) * C + eb), y: ry, model: o.rail.model, block: false });
+                    }
+                    k = k1 + 1;
+                }
+            }
+        });
     }
     return out;
 }
@@ -51006,6 +51126,18 @@ function hqTexBuildingRows(f) {
 const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
     'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'church_2', 'shop'];
 function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PRISMS.indexOf(f.key) >= 0); }
+/* THE PRISM BANDS (2026-11-03, mondo: "always apply the bottom of the texture and the top of the texture to the bottom and top of the
+   building, and repeat everything else as needed depending on how many stories"): each prism sprite cut in three, in rows of the sprite
+   file (0 = its top) — [where the TOP band ends, where the BOTTOM band starts, how many storeys the art between them shows]. A building
+   of n storeys wears the bottom band (its door) once at the foot, the top band (its cornice / roof / spire) once at the top, and one
+   storey of the middle (the middle's rows ÷ that count) n − 1 times between them, all at the sprite's own proportions fitted to the
+   building's height (three-renderer.js _nrSpriteBuilding `bands`). n − 1 = that count draws the sprite exactly as painted. */
+const HQ_TEXB_PRISM_BANDS = {
+    building_1: [22, 186, 6], building_2: [30, 146, 3], building_3: [32, 104, 1], building_4: [16, 124, 3], building_5: [56, 96, 1],
+    building_6: [22, 78, 2], building_7: [32, 44, 1], building_8: [32, 124, 2], building_9: [16, 64, 1], building_10: [36, 66, 1],
+    building_11: [290, 380, 2], ancient_building: [250, 290, 1], abandoned_building_1: [100, 404, 6], abandoned_building_2: [150, 400, 5],
+    church_1: [104, 118, 1], church_2: [110, 124, 1], shop: [22, 78, 2],
+};
 /* THE INSIDE (2026-10-30, mondo: "what if i wanted to add an interior to the buildings so i would need an option for them to be more
    like walls but still look like a building"): a `hollow` texbuilding is its four thin walls (the ghost walls above, the walker inside
    them), a doorway in its front and its roof slab over the inside — drawn the same from outside, its inside walls, ceiling and floor
@@ -51085,7 +51217,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
@@ -51152,14 +51284,14 @@ const HQ_CATALOGUE_MISC = {
     clock:           { file: 'Meshy_AI_analog_clock_realist_0727195259_texture.glb',  base: 'misc', h: 0.5,  foot: 0 },
     gclock:          { file: 'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',  base: 'misc', h: 2.1,  foot: 0.35, block: true },
     skateboard:      { file: 'Meshy_AI_a_skateboard_0915212313_texture.glb',          base: 'misc', span: 0.8, foot: 0 },
-    dumpster:        { file: 'Meshy_AI_dumpster_0727195512_texture.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
+    dumpster:        { file: 'ebd_diner_dumpster.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
     mushroom:        { file: 'Meshy_AI_mushroom_0727200342_texture.glb',        base: 'misc', h: 3.5,  foot: 0.5, block: true },
     mushroom2:       { file: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',    base: 'misc', h: 1.75, foot: 0.3 },
     vault:           { file: 'Meshy_AI_a_bank_vault_0912231605_texture.glb',            base: 'misc', h: 5.25, foot: 1.4, block: true },
     flamingo:        { file: 'Meshy_AI_a_flamingo_0912231434_texture.glb',            base: 'misc', h: 1.2,  foot: 0.2 },
     tentacle:        { file: 'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
     tentacle2:       { file: 'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
-    rowboat:         { file: 'Meshy_AI_a_rowboat_0912231059_texture.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
+    rowboat:         { file: 'ebd_housesonwater_rowboat.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
     dish:            { file: 'Meshy_AI_a_satellite_dish_0912231301_texture.glb',        base: 'misc', h: 2.45, foot: 0.6, block: true },
     wheel:           { file: 'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',            base: 'misc', h: 1.66, foot: 0.3, block: true },
     dockring:        { file: 'Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb',          base: 'misc', h: 4.5,  foot: 0 },
@@ -55465,7 +55597,6 @@ const HQ_ROOM_HOLES = {
     "site_prebuilt_gobekli_leylines": [[-42,-57,-38],[-42,-32,-3],[-42,0,8],[-42,12,25],[-42,31,56],[-41,-57,-38],[-41,-31,-3],[-41,0,7],[-41,12,25],[-41,33,56],[-40,-57,-38],[-40,-31,-3],[-40,0,6],[-40,11,25],[-40,33,56],[-39,-57,-36],[-39,-31,-3],[-39,0,5],[-39,10,24],[-39,31,56],[-38,-57,-36],[-38,-32,-3],[-38,0,4],[-38,9,24],[-38,28,56],[-37,-57,-35],[-37,-32,-17],[-37,-13,-2],[-37,1,2],[-37,7,23],[-37,27,56],[-36,-57,-35],[-36,-32,-17],[-36,-13,-2],[-36,1,1],[-36,6,23],[-36,33,56],[-35,-57,-35],[-35,-32,-16],[-35,-12,-2],[-35,5,22],[-35,34,56],[-34,-57,-35],[-34,-31,-16],[-34,-11,-2],[-34,4,21],[-34,35,56],[-33,-57,-35],[-33,-31,-14],[-33,-10,-2],[-33,3,20],[-33,35,56],[-32,-57,-34],[-32,-31,-14],[-32,-9,-3],[-32,2,20],[-32,36,56],[-31,-57,-34],[-31,-31,-12],[-31,-8,-4],[-31,7,20],[-31,36,56],[-30,-57,-34],[-30,-31,-12],[-30,-7,-5],[-30,36,56],[-29,-57,-34],[-29,-30,-11],[-29,-7,-7],[-29,-2,5],[-29,36,56],[-28,-57,-34],[-28,-30,-10],[-28,-3,16],[-28,36,56],[-27,-57,-34],[-27,-29,-9],[-27,-4,18],[-27,36,56],[-26,-57,-56],[-26,-53,-39],[-26,-28,-10],[-26,-5,17],[-26,36,56],[-25,-52,-45],[-25,-27,-11],[-25,-6,16],[-25,35,56],[-24,-53,-49],[-24,-35,-33],[-24,-27,-12],[-24,-7,16],[-24,35,56],[-23,-41,-32],[-23,-26,-14],[-23,-9,15],[-23,20,20],[-23,34,56],[-22,-46,-32],[-22,-29,-29],[-22,-25,-14],[-22,-10,15],[-22,19,20],[-22,24,24],[-22,33,56],[-21,-57,-57],[-21,-43,-34],[-21,-29,-28],[-21,-24,-16],[-21,-11,14],[-21,19,21],[-21,25,56],[-20,-57,-51],[-20,-40,-35],[-20,-28,-27],[-20,-23,-17],[-20,-12,14],[-20,18,22],[-20,25,56],[-19,-57,-48],[-19,-36,-36],[-19,-22,-18],[-19,-13,13],[-19,19,22],[-19,26,56],[-18,-57,-45],[-18,-21,-19],[-18,-11,13],[-18,21,23],[-18,27,56],[-17,-57,-47],[-17,-24,-24],[-17,-20,-20],[-17,-16,-15],[-17,-8,12],[-17,17,17],[-17,23,24],[-17,27,56],[-16,-57,-50],[-16,-41,-39],[-16,-23,-23],[-16,-17,-12],[-16,-5,12],[-16,16,19],[-16,28,56],[-15,-57,-54],[-15,-41,-35],[-15,-18,-9],[-15,-2,11],[-15,15,21],[-15,28,56],[-14,-57,-57],[-14,-46,-44],[-14,-41,-35],[-14,-19,-6],[-14,1,11],[-14,15,22],[-14,29,56],[-13,-57,-57],[-13,-51,-44],[-13,-41,-35],[-13,-17,-3],[-13,4,10],[-13,14,24],[-13,29,56],[-12,-57,-44],[-12,-41,-34],[-12,-14,-1],[-12,8,10],[-12,13,26],[-12,29,56],[-11,-57,-44],[-11,-41,-34],[-11,-10,3],[-11,9,9],[-11,13,56],[-10,-57,-44],[-10,-41,-33],[-10,-24,-24],[-10,-20,-19],[-10,-7,5],[-10,12,56],[-9,-57,-45],[-9,-41,-33],[-9,-24,-15],[-9,-4,6],[-9,12,56],[-8,-57,-45],[-8,-41,-34],[-8,-24,-12],[-8,-1,4],[-8,11,56],[-7,-57,-45],[-7,-42,-34],[-7,-24,-8],[-7,3,3],[-7,11,56],[-6,-57,-45],[-6,-42,-34],[-6,-25,-6],[-6,11,56],[-5,-57,-45],[-5,-42,-34],[-5,-25,-2],[-5,12,56],[-4,-57,-45],[-4,-42,-35],[-4,-25,0],[-4,13,56],[-3,-57,-45],[-3,-42,-36],[-3,-29,-28],[-3,-25,2],[-3,17,56],[-2,-57,-45],[-2,-42,-37],[-2,-33,-28],[-2,-25,2],[-2,19,56],[-1,-57,-45],[-1,-42,-39],[-1,-34,-28],[-1,-25,3],[-1,11,11],[-1,23,56],[0,-57,-45],[0,-42,-40],[0,-35,-28],[0,-24,3],[0,10,14],[0,26,56],[1,-57,-45],[1,-42,-41],[1,-36,-28],[1,-24,2],[1,6,17],[1,29,56],[2,-57,-45],[2,-42,-42],[2,-37,-28],[2,-24,2],[2,6,20],[2,32,56],[3,-57,-45],[3,-38,-27],[3,-24,1],[3,5,24],[3,35,56],[4,-57,-46],[4,-39,-28],[4,-24,1],[4,5,26],[4,39,56],[5,-57,-46],[5,-41,-29],[5,-23,0],[5,4,30],[5,43,56],[6,-57,-46],[6,-42,-30],[6,-23,0],[6,4,33],[6,45,56],[7,-57,-48],[7,-43,-31],[7,-27,-26],[7,-18,-1],[7,3,36],[7,49,56],[8,-57,-49],[8,-44,-32],[8,-28,-26],[8,-18,-1],[8,3,40],[8,51,52],[8,55,56],[9,-57,-50],[9,-45,-34],[9,-29,-29],[9,-17,-2],[9,2,43],[10,-57,-51],[10,-47,-35],[10,-17,-3],[10,2,46],[11,-57,-52],[11,-48,-35],[11,-17,-3],[11,1,50],[12,-57,-53],[12,-49,-35],[12,-29,-25],[12,-18,-4],[12,1,52],[13,-57,-55],[13,-50,-25],[13,-19,-4],[13,0,52],[14,-57,-56],[14,-51,-25],[14,-21,-5],[14,-1,52],[14,56,56],[15,-57,-57],[15,-52,-25],[15,-21,-5],[15,-1,56],[16,-53,-24],[16,-21,-6],[16,-2,56],[17,-55,-24],[17,-21,-7],[17,-3,56],[18,-57,-24],[18,-21,-7],[18,-3,56],[19,-57,-24],[19,-21,-8],[19,-3,56],[20,-57,-24],[20,-20,-8],[20,-4,56],[21,-57,-24],[21,-20,-9],[21,-5,56],[22,-57,-23],[22,-20,-9],[22,-5,56],[23,-57,-23],[23,-20,-10],[23,-6,56],[24,-57,-23],[24,-19,-10],[24,-6,56],[25,-57,-23],[25,-19,-11],[25,-7,56],[26,-57,-22],[26,-19,-11],[26,-7,56],[27,-57,-22],[27,-15,-12],[27,-8,56],[28,-57,-22],[28,-13,-12],[28,-8,56],[29,-57,-23],[29,-9,56],[30,-57,-24],[30,-9,56],[31,-57,-25],[31,-10,56],[32,-57,-25],[32,-11,56],[33,-57,-25],[33,-10,56],[34,-57,-25],[34,-10,56],[35,-57,-25],[35,-10,56],[36,-57,-25],[36,-10,56],[37,-57,-24],[37,-11,56],[38,-57,-24],[38,-11,56],[39,-57,-23],[39,-12,56],[40,-57,-22],[40,-14,56],[41,-57,-20],[41,-15,56]],
     "site_prebuilt_lodge_halls": [[-26,-33,-27],[-26,31,32],[-25,-33,-27],[-25,31,32],[-24,-33,-27],[-24,31,32],[-23,-33,-27],[-23,31,32],[-22,-33,-27],[-22,-23,-14],[-22,13,27],[-22,31,32],[-21,-33,-27],[-21,-23,-14],[-21,13,14],[-21,27,27],[-21,31,32],[-20,-33,-32],[-20,-18,-14],[-20,13,14],[-20,27,27],[-20,31,32],[-19,-33,-32],[-19,-18,-14],[-19,13,14],[-19,27,27],[-19,31,32],[-18,-33,-32],[-18,-18,-14],[-18,13,14],[-18,27,27],[-18,31,32],[-17,-33,-32],[-17,-18,-14],[-17,13,14],[-17,27,27],[-17,31,32],[-16,-33,-32],[-16,-18,-14],[-16,13,14],[-16,27,27],[-16,31,32],[-15,-33,-32],[-15,-18,-14],[-15,13,14],[-15,31,32],[-14,-33,-32],[-14,-18,-14],[-14,13,14],[-14,31,32],[-13,-33,-32],[-13,-18,-14],[-13,13,14],[-13,31,32],[-12,-33,-32],[-12,-18,-14],[-12,13,27],[-12,31,32],[-11,-33,-32],[-11,-18,-14],[-11,13,27],[-11,31,32],[-10,-33,-32],[-10,-18,-14],[-10,13,27],[-10,31,32],[-9,-33,-28],[-9,-23,-14],[-9,13,13],[-8,-33,-28],[-8,-23,-14],[-8,13,13],[-7,-33,-28],[-7,-23,-14],[-7,13,13],[-6,-33,-28],[-6,-23,-14],[-6,13,13],[-5,-33,-28],[-5,-23,-14],[-5,13,13],[-4,-33,-28],[-4,-23,-14],[-4,13,13],[-3,-33,-28],[-3,-23,-14],[-3,13,13],[-2,-33,-28],[-2,-23,-14],[-2,13,13],[-1,-33,-32],[-1,-14,-3],[-1,2,8],[-1,13,13],[0,-33,-32],[0,-14,-3],[0,2,8],[0,12,13],[1,-33,-32],[1,-14,-14],[1,13,13],[2,-33,-32],[2,-14,-14],[2,13,13],[3,-33,-32],[3,-14,-14],[3,13,13],[4,-33,-32],[4,-14,-14],[4,13,13],[5,-33,-32],[5,-14,-14],[5,13,13],[6,-33,-32],[6,-14,-14],[6,13,13],[7,-33,-32],[7,-14,-14],[8,-33,-32],[9,-33,-32],[10,-33,-32],[11,-33,-32],[11,13,23],[11,28,32],[12,-33,-32],[12,-14,-14],[12,13,20],[13,-33,-32],[13,-14,-14],[13,13,20],[14,-33,-32],[14,-14,-14],[14,13,20],[15,-33,-32],[15,-14,-14],[15,13,20],[16,-33,-32],[16,-14,-14],[16,13,20],[17,-33,-14],[17,13,20],[18,-33,-14],[18,13,20],[19,-33,-14],[19,13,20],[20,-33,-14],[20,13,20],[21,-33,-14],[21,13,20],[22,-33,-14],[22,13,20],[23,-33,-14],[23,13,20],[24,-33,-14],[24,13,20],[25,-33,-14],[25,13,32]],
     "site_prebuilt_lookingglass_garden": [[-30,-8,-5],[-30,-2,-2],[-29,-9,-2],[-28,-9,-4],[-27,-9,-4],[-26,-8,-7],[-26,-4,-4],[-25,-7,-7],[-25,-4,-4],[-24,-6,-4]],
-    "site_prebuilt_gobekli_tell": [[-13,38,40],[-13,59,61],[-12,40,40],[-12,59,59],[-11,59,59],[-10,38,38],[-10,59,61],[9,61,61],[11,59,59],[12,59,61]],
     "site_prebuilt_lookingglass_library": [[-28,-40,-25],[-28,-22,-20],[-28,-17,-14],[-28,-10,39],[-27,-40,-25],[-27,-21,-20],[-27,-17,-14],[-27,-9,39],[-26,-40,-25],[-26,-21,-20],[-26,-17,-13],[-26,-9,39],[-25,-40,-24],[-25,-21,-20],[-25,-17,-12],[-25,-8,39],[-24,-40,-36],[-24,-33,-24],[-24,-20,-20],[-24,-17,-12],[-24,-8,39],[-23,-40,-36],[-23,-31,-23],[-23,-20,-20],[-23,-17,-11],[-23,-7,39],[-22,-40,-36],[-22,-30,-23],[-22,-17,-11],[-22,-7,39],[-21,-40,-34],[-21,-28,-22],[-21,-17,-10],[-21,-6,39],[-20,-40,-33],[-20,-27,-22],[-20,-17,-10],[-20,-6,31],[-20,35,39],[-19,-40,-31],[-19,-25,-21],[-19,-17,-10],[-19,-5,31],[-19,35,39],[-18,-40,-30],[-18,-24,-21],[-18,-17,-9],[-18,-5,31],[-18,35,39],[-17,-40,-28],[-17,-22,-21],[-17,-17,-11],[-17,-4,30],[-17,34,39],[-16,-40,-27],[-16,-18,-14],[-16,-4,30],[-16,34,39],[-15,-40,-28],[-15,-7,-7],[-15,-3,30],[-15,33,39],[-14,-40,-28],[-14,-11,-7],[-14,-3,29],[-14,33,39],[-13,-40,-28],[-13,-16,-16],[-13,-12,-6],[-13,-2,29],[-13,33,39],[-12,-40,-28],[-12,-12,-6],[-12,-2,29],[-12,33,39],[-11,-40,-28],[-11,-13,-5],[-11,-1,28],[-11,32,39],[-10,-40,-28],[-10,-18,-18],[-10,-12,-5],[-10,-1,28],[-10,32,39],[-9,-40,-28],[-9,-19,-16],[-9,-10,-5],[-9,0,28],[-9,31,39],[-8,-40,-27],[-8,-20,-16],[-8,-9,-5],[-8,1,27],[-8,31,39],[-7,-40,-16],[-7,-7,-5],[-7,1,27],[-7,30,39],[-6,-40,-16],[-6,-6,-5],[-6,1,26],[-6,30,39],[-5,-40,-16],[-5,-2,-2],[-5,3,26],[-5,29,39],[-4,-40,-16],[-4,-9,-9],[-4,-2,-2],[-4,5,26],[-4,29,39],[-3,-40,-16],[-3,-9,-7],[-3,7,20],[-3,29,39],[-2,-40,-17],[-2,-10,-7],[-2,8,10],[-2,14,14],[-2,28,31],[-1,-40,-18],[-1,-10,-9],[-1,24,24],[-1,28,30],[0,-40,-19],[0,18,24],[1,-40,-21],[1,-13,-13],[1,14,17],[2,-40,-22],[2,-14,-13],[2,33,35],[3,-40,-23],[3,-15,-13],[3,-10,-9],[3,27,39],[4,-40,-24],[4,-15,-13],[4,-10,-10],[4,27,39],[5,-40,-25],[5,-20,-20],[5,-16,-13],[5,20,22],[5,26,39],[6,-40,-26],[6,-21,-21],[6,-17,-16],[6,16,16],[6,19,21],[6,25,39],[7,-40,-27],[7,16,16],[7,19,20],[7,25,39],[8,-40,-39],[8,-35,-30],[8,16,16],[8,19,20],[8,24,39],[9,-15,-14],[9,19,19],[9,23,39],[10,-21,-14],[10,10,12],[10,19,19],[10,23,39],[11,-29,-25],[11,-22,-14],[11,-9,-8],[11,11,14],[11,22,39],[12,-34,-25],[12,-22,-14],[12,-9,-8],[12,11,15],[12,21,39],[13,-40,-40],[13,-34,-25],[13,-21,-14],[13,-9,-8],[13,7,7],[13,11,17],[13,23,39],[14,-40,-38],[14,-34,-29],[14,-21,-14],[14,-8,-7],[14,-4,-4],[14,5,8],[14,12,18],[14,24,39],[15,-40,-37],[15,-21,-13],[15,-8,-3],[15,3,8],[15,13,20],[15,26,39],[16,-40,-40],[16,-26,-25],[16,-21,-13],[16,-8,-2],[16,2,9],[16,13,21],[16,27,39],[17,-40,-40],[17,-33,-24],[17,-21,-13],[17,-8,9],[17,14,23],[17,29,39],[18,-40,-24],[18,-21,-13],[18,-8,9],[18,14,24],[18,30,39],[19,-40,-24],[19,-21,-13],[19,-8,9],[19,15,26],[19,32,39],[20,-40,-24],[20,-21,-13],[20,-7,9],[20,15,27],[20,33,39],[21,-40,-24],[21,-20,-12],[21,-7,9],[21,12,12],[21,16,28],[21,35,39],[22,-40,-24],[22,-20,-12],[22,-7,9],[22,12,12],[22,16,30],[22,35,39],[23,-40,-24],[23,-20,-12],[23,-7,9],[23,12,12],[23,17,32],[23,35,39],[24,-40,-24],[24,-20,-12],[24,-9,9],[24,12,13],[24,17,39],[25,-40,-23],[25,-20,-12],[25,-9,9],[25,12,14],[25,18,39],[26,-40,-23],[26,-20,-12],[26,-9,9],[26,12,14],[26,18,39],[27,-40,-23],[27,-20,-12],[27,-9,14],[27,18,39]],
     "site_prebuilt_northpole_village": [[-29,-36,-36],[-29,-13,-7],[-29,29,30],[-28,-36,-36],[-28,-13,-7],[-28,29,30],[-27,-36,-36],[-27,-13,-7],[-27,29,30],[-26,-36,-36],[-26,-13,-7],[-26,29,30],[-25,-36,-36],[-25,29,30],[-24,-36,-36],[-24,29,30],[-23,-36,-36],[-23,29,30],[-22,-36,-36],[-22,29,30],[-21,-36,-36],[-21,29,30],[-20,-36,-36],[-20,29,30],[-19,-36,-36],[-19,-13,-6],[-19,29,30],[-18,-36,-36],[-18,-13,-6],[-18,29,30],[-17,-36,-36],[-17,-13,-6],[-16,-36,-36],[-16,-13,-6],[-15,-36,-36],[-15,-13,-6],[-14,-36,-36],[-14,-13,-6],[-13,-36,-36],[-13,-13,-6],[-13,31,35],[-12,-36,-36],[-12,-13,-6],[-12,31,35],[-11,-11,-6],[-11,31,35],[-10,-11,-6],[-10,31,35],[-9,-11,-6],[-9,31,35],[-8,-11,-6],[-8,31,35],[-7,-11,-6],[-7,1,10],[-7,33,35],[-6,-11,-6],[-6,1,10],[-6,33,35],[-5,-11,-6],[-5,1,10],[-5,33,35],[-4,-11,-6],[-4,1,10],[-4,33,35],[-3,9,10],[-3,33,35],[-2,9,10],[-2,33,35],[-1,9,10],[-1,33,35],[0,9,10],[0,33,35],[1,15,16],[1,33,35],[2,15,16],[2,33,35],[3,33,35],[4,33,35],[5,33,35],[6,33,35],[7,9,10],[7,33,35],[8,9,10],[8,33,35],[9,9,10],[9,33,35],[10,9,10],[10,33,35],[11,-36,-30],[11,-23,-16],[11,33,35],[12,-36,-30],[12,-23,-16],[12,33,35],[13,-36,-30],[13,-23,-16],[13,33,35],[14,-36,-30],[14,-23,-16],[14,33,35],[15,-36,-30],[15,-5,-4],[15,3,4],[15,33,35],[16,-36,-30],[16,-5,-4],[16,3,4],[16,33,35],[17,-36,-30],[17,-5,-4],[17,3,12],[17,33,35],[18,-36,-30],[18,-5,-4],[18,3,12],[18,33,35],[19,-36,-30],[19,-5,-4],[19,3,12],[19,33,35],[20,-36,-30],[20,-5,-4],[20,3,12],[20,33,35],[21,-36,-30],[21,-5,-4],[21,3,12],[21,33,35],[22,-36,-30],[22,-5,-4],[22,3,12],[22,33,35],[23,-36,-24],[23,-5,-4],[23,3,12],[23,33,35],[24,-36,-24],[24,-5,-4],[24,3,12],[24,33,35],[25,-36,-24],[25,-5,-4],[25,3,35],[26,-36,-24],[26,-5,-4],[26,3,35],[27,-36,-4],[27,3,35],[28,-36,-4],[28,3,35]],
     "site_prebuilt_olympus_summit": [[-29,-13,4],[-29,33,34],[-28,-13,4],[-28,33,34],[-27,-13,4],[-27,33,34],[-26,-13,4],[-26,33,34],[-25,33,34],[-24,33,34],[-23,33,34],[-22,33,34],[-21,11,12],[-21,33,34],[-20,11,12],[-20,33,34],[-19,11,12],[-19,33,34],[-18,11,12],[-18,33,34],[-17,-14,-14],[-17,33,34],[-16,-35,-24],[-16,-17,-14],[-16,33,34],[-15,-15,-14],[-15,33,34],[-14,-15,-15],[-14,33,34],[-13,33,34],[-12,33,34],[-11,33,34],[-10,33,34],[-9,33,34],[-8,33,34],[-7,33,34],[-6,33,34],[-5,33,34],[-4,33,34],[-3,33,34],[-2,33,34],[-1,33,34],[0,33,34],[1,33,34],[2,33,34],[3,33,34],[4,33,34],[5,-35,-28],[5,33,34],[6,-35,-28],[6,33,34],[7,-35,-28],[7,33,34],[8,-35,-28],[8,33,34],[9,-35,-28],[9,33,34],[10,-35,-28],[10,33,34],[11,-35,-28],[11,33,34],[12,-35,-28],[12,33,34],[13,33,34],[14,33,34],[15,-11,-4],[15,3,24],[15,31,34],[16,-11,-4],[16,3,24],[16,31,34],[17,-11,-4],[17,3,24],[17,31,34],[18,-11,-4],[18,3,24],[18,31,34],[19,-27,-24],[19,-17,-4],[19,3,24],[19,31,34],[20,-27,-24],[20,-17,-4],[20,3,24],[20,31,34],[21,-35,-34],[21,31,34],[22,-35,-35],[22,31,34],[23,-35,-35],[23,31,34],[24,-35,-35],[24,31,34],[25,-35,-35],[25,31,34],[26,-35,-35],[26,31,34],[27,-35,-35],[27,31,34],[28,-35,-34],[28,31,34]],
@@ -55570,6 +55701,17 @@ function hqTerrainSealedSquares(room, roomId, o) {
     (info.texb || []).forEach(b => { const r = Math.hypot(b.w || 0, b.d || 0) / 2 + 0.3; disc(b.x, b.z, r); });
     (info.marksX || []).forEach(m => { if (m && m.x != null) disc(m.x, m.z, Math.max(0.6, ((+m.w || +m.r || 1) / 2) + 0.2)); });
     (info.boards || []).forEach(b => blockers.push({ x0: b.x0 - 0.3, x1: b.x0 + b.n * b.C + 0.3, z0: b.z0 - 0.3, z1: b.z0 + b.n * b.C + 0.3 }));
+    /* THE ARENA'S PLACE IS GROUND (2026-11-03, Göbekli Tepe): a room an arena is cut from at a set place (HQ_ARENA_RULES.within) keeps
+       every square of that place — the biggest board on its squares, plus the window's slack — however the walker reaches it: a nook
+       the walker never climbs into is a square the fight stands on (the terrace corners inside the bastions were baked as pits) */
+    try {
+        const AR = (typeof HQ_ARENA_RULES !== 'undefined') ? HQ_ARENA_RULES : null, WI = AR && AR.within;
+        Object.keys(WI || {}).forEach(site => {
+            const w = WI[site]; if (!w || w.room !== roomId || !(w.r < 50)) return;
+            const sqM = (AR.squareM && AR.squareM[site]) || AR.squareDefault || C, half = (HQ_FIELD_RULES.size || 12) * sqM / 2 + (+w.r || 0);
+            blockers.push({ x0: w.x - half, x1: w.x + half, z0: w.z - half, z1: w.z + half });
+        });
+    } catch (e) { /* no arena rules loaded */ }
     /* a wall the walker never meets (a pillar, a wall standing inside the sealed ground) keeps the floor it stands on */
     const inZone = (x, z) => { const i = Math.round((x - info.x0) / res), j = Math.round((z - info.z0) / res); return i >= 0 && j >= 0 && i < nx && j < nz && zone[j * nx + i] === 1; };
     (info.walls || []).forEach(w => {
@@ -55578,6 +55720,10 @@ function hqTerrainSealedSquares(room, roomId, o) {
         let meets = false;
         for (let k = 0; k <= n && !meets; k++) { const x = w.x0 + (w.x1 - w.x0) * k / n, z = w.z0 + (w.z1 - w.z0) * k / n; meets = inZone(x, z) || inZone(x + reach, z) || inZone(x - reach, z) || inZone(x, z + reach) || inZone(x, z - reach); }
         if (!meets) blockers.push({ x0: Math.min(w.x0, w.x1) - (w.t || 0.25) / 2 - 0.1, x1: Math.max(w.x0, w.x1) + (w.t || 0.25) / 2 + 0.1, z0: Math.min(w.z0, w.z1) - (w.t || 0.25) / 2 - 0.1, z1: Math.max(w.z0, w.z1) + (w.t || 0.25) / 2 + 0.1 });
+        /* A BLOCK IS GROUND (2026-11-03, Göbekli Tepe's arena): a wall row a whole square thick (a bastion, a bench, a pillar's stone)
+           is a top the fight stands on (a level), even where the walker cannot climb it — the squares under it are never a gap (the
+           bastions' corners were baked as pits in the 12 × 12) */
+        else if ((w.t || 0) >= C * 0.9) { const ht = w.t / 2 - 0.05; blockers.push({ x0: Math.min(w.x0, w.x1) - ht, x1: Math.max(w.x0, w.x1) + ht, z0: Math.min(w.z0, w.z1) - ht, z1: Math.max(w.z0, w.z1) + ht }); }
     });
     const out = o.keep ? hqHoleSet(hqRoomHoles(room, roomId)) : new Set();
     const iA = Math.ceil((-hw - GO.x) / C - 1e-6), iB = Math.floor((hw - GO.x) / C + 1e-6) - 1, jA = Math.ceil((-hd - GO.z) / C - 1e-6), jB = Math.floor((hd - GO.z) / C + 1e-6) - 1;
@@ -56302,7 +56448,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_vatican_library:     { tape: { x: -10.5, z: 6.0 } },
     site_prebuilt_vatican_courtyard:   { tape: { x: 15.0, z: 12.0 } },
     site_prebuilt_vatican_observatory: { tape: { x: 8.5, z: 7.5 } },
-    site_prebuilt_heaven_gate:       { tape: { x: 24, z: -16 } },
+    site_prebuilt_heaven_gate:       { tape: { x: 17.5, z: 3.5 } },   // THE NEW HEAVEN (2026-11-03): the east terrace
     /* D.U.M.B. (9.3 stage 8, 2026-09-17): the signal gantry, the tower, the dream tower, the vat stack, the projection booth, the safe stack, the beam dump — the door gun's seven */
     site_prebuilt_dumb_motorpool: { tape: { x: -16, z: 12 } },
     site_prebuilt_dumb_sublevel7: { tape: { x: 0.0, z: 0.0 } },
@@ -61599,9 +61745,10 @@ const HQ_ARENA_RULES = {
        board — every size of its arena is cut from that room, from windows centred within r m of (x, z) (bake-arenas.js). Göbekli Tepe:
        ENCLOSURE E in THE TELL (mondo 2026-10-05: its own board, never the ley lines) */
     within: {
-        prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 6 },
+        prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 2.5 },   // r 6 → 2.5 (2026-11-03): with the ring wall gone a wider window scored the open ledge over the designed board — the 12 × 12 stays on the pit (66.5..108.5), an odd size half a square off
         prebuilt_derelict: { room: 'site_prebuilt_derelict_deck', x: -7, z: 0, r: 3 },   // THE SHIP (2026-10-28): across the wings and the hull, the nexus on the hull, a team on each wing
-        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
+        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },
+        prebuilt_heaven: { room: 'site_prebuilt_heaven_gate', x: 0, z: 0, r: 2 },   // THE NEW HEAVEN (2026-11-03): the 12×12 cut round the sun (the whole board; the 9/10/11 picks stand on the stair room)   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
     },
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
@@ -61624,7 +61771,7 @@ const HQ_ARENA_RULES = {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010101010101010101010303012121212121212121010303012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121211523","sq":3.5},
-        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":3,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","deep_water","cloud_thick","water"],"cells":"010101010101111101010202010303010101010111110202010303010101012101011101353535010121012121010101353535020101012101350101353502020101010135353535353501010101110101353535354101010101011103353535020202111101011103350101020202020111110111010101020202010101010111111101010201010101010111110101","sq":3.5},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":0,"oz":0,"base":"marble_light","open":1,"keys":["cloud_gap","marble_light","cloud_2"],"cells":"000000001111111100000000000011111111111111110000002121111111111111212100002100000021210000002100111111002111112100111111111111211111111121111111111111211111111121111111111111002111112100111111002100000021210000002100002121111111111111212100000011111111111111110000000000001111111100000000","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","sq":3.5,"pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160404161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":7,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101111101111111111111111111111101010101010101010101111101010101010101010101111101010101010101010101111101020111110101010101111101020202020201010101111101010101011101010101111101010101010101010101111101010101010101010101111101010101010111010101111101010101010101010101111101","sq":3.5},
@@ -61643,7 +61790,7 @@ const HQ_ARENA_RULES = {
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010101141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010101010102010101010101010101010102141414010114141414141414141414010114141414141414140101010101010101010101140101010101010101010101","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101","sq":3.5},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":10,"oz":9,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"030313010111111121212121030314010111111121212121130311010111111121212121140101010101010121212121010101010101010112121212010101011111010101012121111111011111010101010101111111010111111111110101010111111101011111111101010101010111010111111111110101010101010101111101111111110101010101010101","sq":3.5},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3","cloud_gap"],"cells":"030301010101010101011003030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010210030301010101010101011003","sq":3.5},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":41,"oz":23,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"051111111111111111051305051111111111111111131313051111111111111111051305051111111111111111111211051111111111111111111211051111111111111111111211051111111111111111111111051112111111111111111111050512111111050511111111050512111111050511111111051313111111111111111111051313111111111111111111","sq":3.5},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515010101010101010101010101030101010101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101010115010101010115151515151515010101010115151515150101010101010115151515150101010115010115010101010101010115010101010101010101010115","sq":3.5},
@@ -61759,7 +61906,7 @@ const HQ_ARENA_RULES = {
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140114010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101","sq":3.5},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":10,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03140101111111212121210311010111111121212121010101010101012121212101010101010101121212120101011111010101012121111101111101010101010111110101111111111101010111111101011111111101010101011101011111111101010101010101011111011111110101010101010101","sq":3.5},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3","cloud_gap"],"cells":"03010101010101010110030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020101010101010101020202010101010101010102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010210","sq":3.5},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020101010101010101020202010101010101010102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010203","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"06111111111111111111110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111111111111111111414111111111111111111141411110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":20,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05050505111111110505051111111111111111111111111111111111111111111111111111111111051305111111111111111113131311111111111111110513051111111111111111111211111111111111111111121111111111111111111112111111111111111111111111111211111111111111111111","sq":3.5},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"03030202010101151515150101020101010115151515010101010101011515151515151515010115151515150101010101010101151515010101010101010115151501010101010101011515150101010101010101151515010101010101010101010103010101010101010101010303020201010101150101","sq":3.5},
@@ -65266,14 +65413,16 @@ const EW_CREDITS = {
         { title: '3D MODELS & ANIMATION', rows: [
             { role: 'Universal Animation Library (UAL1, UAL2)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
-            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'CC0', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
+            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
+            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
             { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },
             { role: 'Low-poly cars', by: 'GGBot', source: 'https://ggbot.net' },
+            { role: 'Castle and Fort Builder Pack (the Heaven castles)', by: 'McSteeg', source: 'https://mcsteeg.itch.io/castle-and-fort-builder-pack' },
         ] },
         { title: 'CHARACTER CREATOR', makehuman: true, rows: [
             { role: 'Bodies, faces, hair, clothes and skins', by: 'MakeHuman / MPFB2', license: 'CC0', source: 'http://www.makehumancommunity.org' },
