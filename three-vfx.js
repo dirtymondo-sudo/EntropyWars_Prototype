@@ -437,6 +437,56 @@ const ThreeVFX = (function () {
         'inkblot':         _R2 + 'inkblot.png',
     };
 
+    /* ── THE FLIPBOOKS (2026-11-03, the Blender pilot; mondo picked "Pilot on Fireball + Meteor") ──────────────────────
+       A flipbook is a real fire + smoke SIMULATION baked offline in cloud Blender (Mantaflow, Cycles) to a sheet of
+       frames: the particle plays the movie over its life instead of growing one painted still. The sheet loads once
+       from R2 (Assets/Sprites/vfx/, repo copy in Assets/Sprites/vfx/) and is cut into one texture per frame at load,
+       so a flipbook particle is an ordinary pool particle whose sprite key steps 'fb-x#0' → 'fb-x#59' (no shader:
+       both renderers draw it, the instanced batch groups it by frame). Not loaded yet / failed / switched off →
+       spawn() returns null and the caller keeps its old look. opts.fbFrom / opts.fbTo (0..1) play part of the sheet.
+       Users (pilot only): Fireball's burst + Meteor's impact in three-vfx-effects.js "THE FLIPBOOK PILOT".
+       Kill-switch: window.EW_NO_FLIPBOOKS = true. Notes: docs/notes/spells-vfx.md "THE FLIPBOOKS". */
+    var _FLIPBOOKS = {
+        /* 60 frames of 128 px, 8 per row: a fireball that rolls, darkens to embers in smoke and rises. The blast's
+           centre sits 0.82 down the frame (the smoke climbs into the rest), so callers lift the sprite by `lift`. */
+        'fb-explosion': { url: _R2 + 'vfx/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32 }
+    };
+    var _fbState = {};
+    function _fbOff() { return typeof window !== 'undefined' && !!window.EW_NO_FLIPBOOKS; }
+    function flipbookReady(key) { return !_fbOff() && !!_fbState[key] && _fbState[key] === 'ready'; }
+    function flipbookInfo(key) { return _FLIPBOOKS[key] || null; }
+    function _fbLoadAll() {
+        if (_fbOff()) return;
+        Object.keys(_FLIPBOOKS).forEach(function (key) {
+            if (_fbState[key]) return;
+            var def = _FLIPBOOKS[key];
+            _fbState[key] = 'loading';
+            _spriteMap[key] = { r: 1, g: 1, b: 1, blend: def.blend };
+            var img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function () {
+                try {
+                    var C = def.cell, sc = img.naturalWidth / (def.cols * C);
+                    for (var i = 0; i < def.frames; i++) {
+                        var cv = document.createElement('canvas');
+                        cv.width = cv.height = C;
+                        cv.getContext('2d').drawImage(img, (i % def.cols) * C * sc, Math.floor(i / def.cols) * C * sc, C * sc, C * sc, 0, 0, C, C);
+                        var tex = new THREE.CanvasTexture(cv);
+                        tex.premultiplyAlpha = false;
+                        tex.magFilter = THREE.LinearFilter;
+                        tex.minFilter = THREE.LinearFilter;
+                        tex.needsUpdate = true;
+                        _hiResTextures[key + '#' + i] = tex;
+                        _spriteMap[key + '#' + i] = _spriteMap[key];
+                    }
+                    _fbState[key] = 'ready';
+                } catch (e) { _fbState[key] = 'failed'; console.warn('[ThreeVFX] flipbook cut failed: ' + key, e); }
+            };
+            img.onerror = function () { _fbState[key] = 'failed'; console.warn('[ThreeVFX] flipbook failed to load: ' + key); };
+            img.src = window._ewCorsBust ? window._ewCorsBust(def.url) : def.url;
+        });
+    }
+
     /* ── Procedural wave sprites ─────────────────────────────────────────
        The old wave_1..6.png art no longer fits the game, so the six frames
        are drawn on a canvas instead of loaded from R2: concentric soft
@@ -1422,6 +1472,7 @@ const ThreeVFX = (function () {
         _buildProceduralHiRes();
 
         _loadImageSprites(ctx, cvs);
+        _fbLoadAll();   // THE FLIPBOOKS: the Blender sheets, cut into frame textures once they land
 
         console.log('[ThreeVFX] atlas built: ' + allKeys.length + ' sprites in ' +
                     ATLAS_SIZE + '×' + ATLAS_SIZE + ' atlas');
@@ -2559,6 +2610,9 @@ const ThreeVFX = (function () {
         if (!_initialized) return null;
 
         var sprite = opts.sprite || 'ember';
+        /* THE FLIPBOOKS: a sheet that is not cut yet (or is switched off) spawns nothing, so the caller's old look stays */
+        var fbDef = _FLIPBOOKS[sprite] || null;
+        if (fbDef && !flipbookReady(sprite)) return null;
         var mode   = opts.mode   || 'billboard';
         var sc     = _spriteColor(sprite);
         var isWorld = (sc.blend === 'world' || mode === 'world');
@@ -2678,6 +2732,16 @@ const ThreeVFX = (function () {
             p._uvRect = _getUvRect(p.sprite);
         } else {
             p._animFrames = null;
+        }
+        if (fbDef) {
+            p._fb = sprite;
+            p._fbA = Math.max(0, Math.min(1, opts.fbFrom || 0));
+            p._fbB = Math.max(p._fbA, Math.min(1, opts.fbTo != null ? opts.fbTo : 1));
+            p._fbIdx = Math.min(fbDef.frames - 1, Math.floor(p._fbA * fbDef.frames));
+            p.sprite = sprite + '#' + p._fbIdx;
+            p._uvRect = _getUvRect('ember');
+        } else {
+            p._fb = null;
         }
 
         if (opts.descent) {
@@ -3158,6 +3222,21 @@ const ThreeVFX = (function () {
                 var hPitch = Math.atan2(p.vz, Math.sqrt(p.vx * p.vx + p.vy * p.vy));
                 p._beamYawDeg = -(hYaw * 180 / Math.PI) + p._headingOffset;
                 p._beamPitchDeg = hPitch * 180 / Math.PI;
+            }
+
+            if (p._fb) {
+                /* THE FLIPBOOKS: the frame follows the particle's life across its slice of the sheet */
+                var fbd = _FLIPBOOKS[p._fb];
+                var fbi = Math.min(fbd.frames - 1, Math.floor((p._fbA + (p._fbB - p._fbA) * Math.min(1, t)) * fbd.frames));
+                if (fbi !== p._fbIdx) {
+                    p._fbIdx = fbi;
+                    p.sprite = p._fb + '#' + fbi;
+                    if (!_batched) {
+                        var fbTex = _hiResTextures[p.sprite];
+                        var fbEnt = p.poolType === 'sprite' ? _spritePool[p.slotIdx] : p.poolType === 'world' ? _worldMeshPool[p.slotIdx] : p.poolType === 'quad' ? _quadMeshPool[p.slotIdx] : null;
+                        if (fbTex && fbEnt) { fbEnt.material.map = fbTex; fbEnt.material.needsUpdate = true; }
+                    }
+                }
             }
 
             if (p._animFrames) {
@@ -4050,7 +4129,7 @@ const ThreeVFX = (function () {
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, flashLight: flashLight,
              fxStats: fxStats, quarksBurst: quarksBurst, _diag: _diag, _getScene: _getScene,
-             worldToVfx: worldToVfx };
+             worldToVfx: worldToVfx, flipbookReady: flipbookReady, flipbookInfo: flipbookInfo };
 })();
 
 window.ThreeVFX = ThreeVFX;
