@@ -64125,6 +64125,9 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
             return Math.max(0, Math.min(1, w));
         };
+        /* THE GROUND UNDER (2026-11-03): the ground under the floating pieces = the field less the lift they add (data.js info.GD) */
+        var GHa = null;
+        if (info.GD && info.GD.length === info.H.length) { GHa = new Float32Array(info.H.length); for (var gk = 0; gk < GHa.length; gk++) GHa[gk] = info.H[gk] - info.GD[gk]; }
         for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
             /* THE JOINED FLIGHTS (2026-10-06): under a flight the field is drawn at the ground it stands on, its side nodes on its sides (data.js hqTerrainCompile) */
@@ -64135,6 +64138,11 @@ const ThreeRenderer = (function () {
             pos[k * 3] = vx * U; pos[k * 3 + 1] = vh * U; pos[k * 3 + 2] = vz * U;
             uv[k * 2] = vx * U / TS; uv[k * 2 + 1] = vz * U / TS;
             var sl = hqTerrainSlope(info, px, pz);
+            /* THE GROUND UNDER (2026-11-03): a node of the ground round / under a floating piece reads its slope on the ground (GHa,
+               from data.js info.GD) — the flank it no longer joins painted it the cliff sheet and darkened it: a stepped dark band round every cloud */
+            var ghN = (GHa && Math.abs(GHa[k] - h) < 0.05) ? GHa : null;
+            if (ghN) { var gi0 = Math.max(0, i - 1), gi1 = Math.min(nx - 1, i + 1), gj0 = Math.max(0, j - 1), gj1 = Math.min(nz - 1, j + 1);
+                sl = Math.hypot((ghN[j * nx + gi1] - ghN[j * nx + gi0]) / ((gi1 - gi0) * res || 1), (ghN[gj1 * nx + i] - ghN[gj0 * nx + i]) / ((gj1 - gj0) * res || 1)); }
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
             var rockSl = rock;
             /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
@@ -64153,6 +64161,11 @@ const ThreeRenderer = (function () {
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
+            if (ghN && Math.abs(info.H[k] - h) < 0.05 && ao[k] < 1) {   // THE GROUND UNDER: the hollow is read on the ground, not against a flank it no longer meets
+                var aoR = _hqLightRules().ao || {}, aoT2 = (aoR.terrain != null) ? aoR.terrain : 0.32;
+                var lapG = (ghN[j * nx + Math.max(0, i - 1)] + ghN[j * nx + Math.min(nx - 1, i + 1)] + ghN[Math.max(0, j - 1) * nx + i] + ghN[Math.min(nz - 1, j + 1) * nx + i] - 4 * ghN[k]) / res;
+                ao[k] = Math.max(ao[k], Math.max(0.5, 1 - aoT2 * Math.max(0, Math.min(1, lapG * 0.9))));
+            }
         } if (_hqSliceDue()) yield; }
         var idx = [], escalators = info.drawH ? [] : (room.terrain.features || []).filter(function (f) { return f.escalator; });   // THE JOINED FLIGHTS: the field runs on under an escalator, drawn at its ground
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
@@ -64160,7 +64173,8 @@ const ThreeRenderer = (function () {
            blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
         var floats = (info.floats || []).concat(info.drawH ? [] : (info.builts || []));   // THE JOINED FLIGHTS (2026-10-06): a flight no longer cuts the field away (that cut was the gap along both sides of every stair) — the field is drawn under it at its ground
-        /* → 0 drawn · 1 a float PLATEAU's ring (THE FLAT FILL below draws it back flat) · 2 cut (the void, a flight's run) */
+        /* → 0 drawn · 1 a float PLATEAU's ring (THE FLAT FILL below draws it back) · 2 cut (the void, a flight's run in a void room)
+           · 3 a float flight's run over THE GROUND UNDER (GHa, from data.js info.GD: drawn on the ground under it, no hole under the stair) */
         var underFloat = function (mx, mz) {
             if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return 2;   // THE VOID: no ground drawn between the islands
             var ring = 0;
@@ -64173,7 +64187,7 @@ const ThreeRenderer = (function () {
                 } else {
                     var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
                     if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
-                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2;
+                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return GHa ? 3 : 2;
                 }
             }
             return ring;
@@ -64184,7 +64198,7 @@ const ThreeRenderer = (function () {
            through it: the green notches under Heaven's clouds). Now only the flank goes: each quad of the ring is drawn back FLAT at
            its lowest corner (the ground round the foot stays ground, the rim stays the top, the slope between them is laid flat on
            the ground under the hanging cloud); a quad with a corner on the open sky of a void room stays cut (the island's cap). */
-        var fillQ = [];
+        var fillQ = [], fillK = [];
         var voidCorner = (info.void && typeof hqTerrainVoidAt === 'function') ? function (i, j) {
             var px = info.x0 + i * res, pz = info.z0 + j * res;
             return hqTerrainVoidAt(info, px, pz) || hqTerrainVoidAt(info, px + res, pz) || hqTerrainVoidAt(info, px, pz + res) || hqTerrainVoidAt(info, px + res, pz + res);
@@ -64215,7 +64229,7 @@ const ThreeRenderer = (function () {
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
             var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
             if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
-            else if (uf === 1 && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) fillQ.push(a, b, c, d);   // THE FLAT FILL
+            else if ((uf === 1 || uf === 3) && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) { fillQ.push(a, b, c, d); fillK.push(uf); }   // THE FLAT FILL
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -64236,20 +64250,41 @@ const ThreeRenderer = (function () {
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
-        /* THE FLAT FILL: the ring's quads, each at its lowest corner, in the field's own material (every attribute copied per corner) */
+        /* THE FLAT FILL: the cut quads drawn back in the field's own material (every attribute copied per corner). THE GROUND UNDER
+           (2026-11-03, mondo on the first fill: "what are these jagged edges" / "what is this gap"): with GHa (the field
+           without its floating pieces) a ring quad that is flat (the ground round the foot, the rim of the top) stays where it is,
+           a quad across the flank and every quad under a float flight's run lie ON THE GROUND UNDER — the same heights as the ground
+           round them, so no step, no crack, no hole; the rock blend of the flank is dropped there (it is ground, not a cliff).
+           Without GH (a void room) a quad lies flat at its lowest corner, as before. */
         if (fillQ.length) {
-            var fG = new THREE.BufferGeometry(), nQ = fillQ.length / 4, fIdx = [];
+            var fG = new THREE.BufferGeometry(), nQ = fillQ.length / 4, fIdx = [], GHf = GHa, onGround = new Uint8Array(nQ);
+            if (GHf) for (var qg = 0; qg < nQ; qg++) {
+                var hlo = Infinity, hhi = -Infinity; for (var vg = 0; vg < 4; vg++) { var hv = info.H[fillQ[qg * 4 + vg]]; if (hv < hlo) hlo = hv; if (hv > hhi) hhi = hv; }
+                onGround[qg] = (fillK[qg] === 3 || hhi - hlo > 0.05) ? 1 : 0;
+            }
             Object.keys(geo.attributes).forEach(function (an) {
                 var A = geo.attributes[an], isz = A.itemSize, src = A.array, dst = new src.constructor(nQ * 4 * isz);
                 for (var q = 0; q < fillQ.length; q++) for (var e = 0; e < isz; e++) dst[q * isz + e] = src[fillQ[q] * isz + e];
                 if (an === 'position') for (var q2 = 0; q2 < nQ; q2++) {
+                    if (GHf) { if (onGround[q2]) for (var vq = 0; vq < 4; vq++) dst[(q2 * 4 + vq) * 3 + 1] = GHf[fillQ[q2 * 4 + vq]] * U; continue; }
                     var lo = Infinity; for (var v = 0; v < 4; v++) lo = Math.min(lo, dst[(q2 * 4 + v) * 3 + 1]);
                     for (v = 0; v < 4; v++) dst[(q2 * 4 + v) * 3 + 1] = lo;
+                }
+                if (an === 'aBlend' && GHf) for (var q4 = 0; q4 < nQ; q4++) if (onGround[q4]) for (var vb = 0; vb < 4; vb++) {
+                    var nk = fillQ[q4 * 4 + vb]; if (Math.abs(GHf[nk] - info.H[nk]) > 0.05) { dst[(q4 * 4 + vb) * 2] = 0; dst[(q4 * 4 + vb) * 2 + 1] = 0; }
+                }
+                if (an === 'aAO' && GHf) for (var q6 = 0; q6 < nQ; q6++) if (onGround[q6]) for (var va = 0; va < 4; va++) {   // (the hollow under the flank is no hollow on the ground)
+                    var nk3 = fillQ[q6 * 4 + va]; if (Math.abs(GHf[nk3] - info.H[nk3]) > 0.05) dst[q6 * 4 + va] = 1;
                 }
                 fG.setAttribute(an, new THREE.BufferAttribute(dst, isz, A.normalized));
             });
             for (var q3 = 0; q3 < nQ; q3++) { var o4 = q3 * 4; fIdx.push(o4, o4 + 2, o4 + 1, o4 + 1, o4 + 2, o4 + 3); }   // (a, c, b, b, c, d) as the field
             fG.setIndex(fIdx); fG.deleteAttribute('normal'); fG.computeVertexNormals();
+            /* a corner the ground shares with the field takes the field's own normal (no facet in the light at the seam) */
+            if (geo.attributes.normal) { var fn = fG.attributes.normal.array, gn = geo.attributes.normal.array;
+                for (var q5 = 0; q5 < nQ; q5++) for (var vn = 0; vn < 4; vn++) { var nk2 = fillQ[q5 * 4 + vn], at = (q5 * 4 + vn) * 3;
+                    if (!GHf || !onGround[q5] || Math.abs(GHf[nk2] - info.H[nk2]) <= 0.05) { if (gn[nk2 * 3] || gn[nk2 * 3 + 1] || gn[nk2 * 3 + 2]) { fn[at] = gn[nk2 * 3]; fn[at + 1] = gn[nk2 * 3 + 1]; fn[at + 2] = gn[nk2 * 3 + 2]; } } }
+                fG.attributes.normal.needsUpdate = true; }
             var fMesh = new THREE.Mesh(fG, fieldMat); fMesh.position.y = 0.3; fMesh.receiveShadow = true; fMesh.renderOrder = 1; fMesh._ew_hqPart = 'floor'; fMesh._ew_hqTerrain = true; fMesh.name = 'hq:field:flatfill';
             G.add(fMesh);
         }

@@ -1173,8 +1173,19 @@ The round puff underside never covered the square-stepped hole, so the sky dome'
 **THE FLAT FILL** (three-renderer.js, after the tiles): `underFloat` now answers 0 drawn / 1 a float plateau's ring / 2 cut (the
 void, a float flight's run). Each ring quad with no corner on a void room's open sky is drawn back FLAT at its lowest corner in
 the field's own material (mesh `hq:field:flatfill`): the ground round the foot stays ground, the slope under the hanging cloud is
-laid flat. Every float-plateau room gets it. Left as it was: the cut under a float stair's run (a fill there would step), and the
+laid flat. Every float-plateau room gets it. Left as it was: the
 void rooms' open sky. Shot: /mnt/project-files/heaven-map/cutouts_before_after.jpg (Heaven Stairway 9×9).
+
+**THE GROUND UNDER** (2026-11-03, second pass; mondo pinned the first fill's shot: "what are these jagged edges", "wtf is this",
+"what is this gap"). Three leftovers of the first fill: the whole run under a FLOAT STAIR was still a hole (the jagged edge), the
+fill sat at each quad's lowest corner so it cracked against ground that had been raised after sampling (Heaven Stairway's
+generated mass: H is moved by the plan pass after `hFinal`), and the ground nodes round a flank still read the flank's slope and
+hollow (the cliff sheet + dark AO: a stepped dark band round every cloud). Now data.js compiles `info.GD`, the LIFT the floating
+plateaus and floating flights add at each node (`hFinal` with vs without them, `skipFloats`; non-void rooms with floats only).
+three-renderer.js takes the ground under = H − GD (`GHa`): a flat ring quad stays where it is, a quad across the flank and every
+quad under a float flight's run (underFloat → 3) lie on that ground with the cliff blend and AO dropped, and a ground node next
+to a float reads its slope + AO on the ground. Shots: /mnt/project-files/heaven-map/cutouts_fixed_v2.jpg.
+Left as the room has it: Heaven Stairway's generated mass pokes through the round cloud at (17.5, 10.5) (its own nodes at 4.4 m).
 
 **THE OPEN SKY** (three-renderer.js prop placement): in a void room a prop over open sky, or any prop authored at `y` ≤ −0.5,
 hangs at its own `y` (height from the room floor). Before, it was lifted onto the cut ground's level (the base), so the heaven
@@ -1182,7 +1193,7 @@ cloud sea at y −4 stood ON the board and buried it. Only the heaven gate room 
 
 **The room** `site_prebuilt_heaven_gate` (THE CLOUD FIELDS) is rebuilt from mondo's concept art (top-down 12×12): the gate
 platform (pearly gate, two angel statues) north, the round SUN in the middle (lavender disc, gold rings + rays as terrain marks),
-two side terraces (angel, column, harp), the big bottom platform with the grand stair, cloud paths between them, a castle on
+two side terraces (angel, column, harp; no potted plants, mondo 11-03: "potted plants in heaven?"), the big bottom platform with the grand stair, cloud paths between them, a castle on
 each corner island, balustrades on every edge over the sky. New helper `hqSkyPlan(rows, o)` (data.js, after hqDeckPlan) turns a
 character plan (one char per 3.5 m battle square, `.` = open sky) into float plateaus (proud 0.45 m past the square onto sky or
 same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.railings` balusters_d, `block: false`).
