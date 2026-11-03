@@ -16163,7 +16163,7 @@ const ThreeRenderer = (function () {
         });
         var hipsParent = tgtHips.parent >= 0 ? tgt.nodes[tgtHips.parent] : null;
         return {
-            pairs: pairs, tgt: tgt,
+            pairs: pairs, tgt: tgt, modelEntry: modelEntry,
             scaleRatio: tgtHips.wp[1] / (src.rest.pelvis.wp[1] || 1),
             srcHipsRestWp: src.rest.pelvis.wp,
             tgtHipsRestWp: tgtHips.wp.slice(),
@@ -16181,21 +16181,108 @@ const ThreeRenderer = (function () {
        so the off wrist sits where the source clip holds it RELATIVE TO THE GUN HAND (the source offset x the hips-height
        scale), and the off hand keeps the clip's own world turn. Bake-time only; the clip is the same for every body. */
     var _LIB_SUPPORT_HAND = { Pistol_Idle_Loop: 'l' };
-    function _libSupportHand(setup, src, side) {
-        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left';
-        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
-        var sh = src.bones['hand_' + side], sr = src.bones['hand_' + (side === 'l' ? 'r' : 'l')];
-        if (!A || !B || !C || !R || !sh || !sr || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+    /* THE WRAP (2026-11-03, mondo: "Their left hand goes under their other wrist and is holding nothing, it looks weird"):
+       the source clip's own off-hand spot is a cup UNDER the gun hand, and on our bodies that read as a hand under the wrist
+       holding nothing. The off hand is now laid on the gun hand itself, in the GUN HAND'S OWN FRAME (along the hand to the
+       knuckles, across it to the thumb, out of the palm), the way a real two-handed pistol hold sits: the off palm on the
+       grip's open side over the gun hand's fingertips, its fingers wrapping down round the front of the gun hand's fingers,
+       its thumb along the frame. Numbers are in hand lengths (wrist to middle knuckle), so every body size gets the same
+       hold. _libHandFrame reads each hand's frame in its bone's local space: from its own finger bones (MPFB), else from the
+       library mannequin's through the retarget offset (the classic bodies, any Meshy rig: their palms already match the
+       library's, THE CLASSIC HANDS). */
+    var SUPPORT_WRAP = {
+        out: 0.50,     // off palm from the gun palm, out of the gun palm (through the grip + the gun hand's fingertips)
+        down: 0.06,    // ... down the gun hand (away from its thumb)
+        fwd: 0.02,     // ... along the gun hand
+        tilt: 38,      // off fingers point this far (deg) down from the gun hand's line: they wrap the front of its fingers
+        palm: 0.45,    // wrist -> palm centre along the hand
+        thick: 0.11,   // the bone -> the palm's skin, out of the palm
+        flat: { out: 0.50, tilt: 18, grip: 0.25 }   // a fingerless hand (modelled open, nothing curls): the palm flat on the grip, the fingers laid over the gun hand's;
+                                                     // grip = the handle's half thickness (its seat's centre back to the gun hand's side)
+    };
+    function _libHandFrame(setup, src, side) {
+        var T = setup.tgt, O = side === 'l' ? 'Left' : 'Right', H = T.byName[O + 'Hand'];
+        if (!H) return null;
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
+        var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
+        var add3 = function (p, v, k) { return [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]; };
+        var frame = function (h, m1, i1, p1, hq) {   // world points + the hand's world turn -> the frame in the hand's local space
+            var fw = _lvSub(m1, h), L = len(fw), f = _lvNorm(fw), ts = _lvNorm(_lvSub(i1, p1));
+            var n = _lvNorm(side === 'r' ? cross(ts, f) : cross(f, ts));   // out of the palm
+            var t = side === 'r' ? cross(f, n) : cross(n, f);              // to the thumb side, square to both
+            var iq = _lqInv(hq);
+            return { f: _lvNorm(_lqRotV(iq, f)), t: _lvNorm(_lqRotV(iq, t)), n: _lvNorm(_lqRotV(iq, n)), L: L };
+        };
         T.evalWorld();
-        var ep = new THREE.Vector3(), eq = new THREE.Quaternion(), es = new THREE.Vector3();
-        sh.matrixWorld.decompose(ep, eq, es); var hl = [ep.x, ep.y, ep.z];
-        sr.matrixWorld.decompose(ep, eq, es); var hr = [ep.x, ep.y, ep.z];
-        var k = setup.scaleRatio || 1;
-        var t = [R.wp[0] + (hl[0] - hr[0]) * k, R.wp[1] + (hl[1] - hr[1]) * k, R.wp[2] + (hl[2] - hr[2]) * k];
+        var tb = function (nm) { return T.byName[nm + '_' + side]; };
+        if (tb('middle_01') && tb('index_01') && tb('pinky_01')) { var FB = frame(H.wp, tb('middle_01').wp, tb('index_01').wp, tb('pinky_01').wp, H.wq); FB.fingers = true; return FB; }
+        var root = src.root, gp = function (nm) { var o = root.getObjectByName(nm); return o ? new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).toArray() : null; };
+        var pr = null; setup.pairs.forEach(function (x) { if (x.t === O + 'Hand') pr = x; });
+        var sh = src.bones['hand_' + side];
+        var m1 = gp('middle_01_' + side), i1 = gp('index_01_' + side), p1 = gp('pinky_01_' + side);
+        if (!sh || !m1 || !i1 || !p1) return null;
+        // the library's frame in ITS hand's space (its length scaled to this body)
+        var mq = new THREE.Quaternion(), mp = new THREE.Vector3(), ms = new THREE.Vector3();
+        root.updateMatrixWorld(true); sh.matrixWorld.decompose(mp, mq, ms);
+        var F = frame(mp.toArray(), m1, i1, p1, [mq.x, mq.y, mq.z, mq.w]), Lb = F.L * (setup.scaleRatio || 1);
+        // a fingerless hand (the classic bodies, a Meshy rig): its frame off its own skin, in the bone's space (THE GRIP ON A MESHY HAND)
+        var me = setup.modelEntry, bone = me && me.root ? me.root.getObjectByName(O + 'Hand') : null, S = null;
+        try { S = bone ? _gripHandSkin({ traverse: function (fn) { me.root.traverse(fn); }, userData: {} }, bone) : null; } catch (_e) { S = null; }   // (no cache on the shared GLB: its clones copy userData as JSON)
+        if (S && S.f && S.t) {
+            var sf = S.f.toArray(), stt = S.t.toArray();
+            var sn = _lvNorm(side === 'r' ? cross(stt, sf) : cross(sf, stt));
+            /* the palm's face where THE GRIP ON A MESHY HAND seats a handle (_gripFrameMesh, its default meshAt / meshUp): the
+               gun's handle centre on the gun hand, the palm's face point on the off hand (bone space) */
+            var at = 0.36 * S.L, nv = new THREE.Vector3().fromArray(sn), face = -Infinity;
+            S.pts.forEach(function (q) { if (Math.abs(q.dot(S.f) - at) < S.L * 0.12) { var o = q.dot(nv); if (o > face) face = o; } });
+            if (!isFinite(face)) face = S.c.dot(nv);
+            var base = add3(add3([0, 0, 0], sf, at), stt, S.c.dot(S.t));
+            return { f: _lvNorm(sf), t: _lvNorm(side === 'r' ? cross(sf, sn) : cross(sn, sf)), n: sn, L: Lb,
+                     palmPt: add3(base, sn, face), seat: add3(base, sn, face + 0.08 * S.L), skinL: S.L };
+        }
+        // else the library's frame through the retarget offset into the target hand's space
+        if (!pr || !pr.roff) return null;
+        var ir = _lqInv(pr.roff);
+        return { f: _lvNorm(_lqRotV(ir, F.f)), t: _lvNorm(_lqRotV(ir, F.t)), n: _lvNorm(_lqRotV(ir, F.n)), L: Lb };
+    }
+    /* the turn taking the basis (a1, a2, a3) onto (b1, b2, b3) (both orthonormal) */
+    function _lqFromBases(a1, a2, a3, b1, b2, b3) {
+        var m = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], A = [a1, a2, a3], B = [b1, b2, b3];
+        for (var k = 0; k < 3; k++) for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) m[r][c] += B[k][r] * A[k][c];
+        var mat = new THREE.Matrix4().set(m[0][0], m[0][1], m[0][2], 0, m[1][0], m[1][1], m[1][2], 0, m[2][0], m[2][1], m[2][2], 0, 0, 0, 0, 1);
+        var q = new THREE.Quaternion().setFromRotationMatrix(mat);
+        return _lqNorm([q.x, q.y, q.z, q.w]);
+    }
+    function _libSupportHand(setup, src, side) {
+        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left', gs = side === 'l' ? 'r' : 'l';
+        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
+        if (!A || !B || !C || !R || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+        if (!setup.handFrames) setup.handFrames = {};
+        if (setup.handFrames[side] === undefined) setup.handFrames[side] = _libHandFrame(setup, src, side);
+        if (setup.handFrames[gs] === undefined) setup.handFrames[gs] = _libHandFrame(setup, src, gs);
+        var FS = setup.handFrames[side], FG = setup.handFrames[gs];
+        if (!FS || !FG) return null;
+        T.evalWorld();
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
         var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
         var dot = function (u, v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; };
+        var add = function (p, v, k) { return [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]; };
+        var W = SUPPORT_WRAP, L = FG.L, Ls = FS.L;
+        // the gun hand as drawn (after the wrist limit): its frame in the world
+        var gf = _lqRotV(R.wq, FG.f), gt = _lqRotV(R.wq, FG.t), gn = _lqRotV(R.wq, FG.n);
+        var gPalm = add(add(R.wp, gf, W.palm * L), gn, W.thick * L);
+        var sc = function (v, n) { return [v[0] * n.ws[0], v[1] * n.ws[1], v[2] * n.ws[2]]; };
+        if (FG.seat) gPalm = add(add(R.wp, _lqRotV(R.wq, sc(FG.seat, R)), 1), gn, -W.flat.grip * L);   // a fingerless gun hand: from the handle's seat
+        // the off hand's frame: palm onto the grip's open side, fingers down round the front of the gun hand
+        var flat = !FS.fingers, tl = (flat ? W.flat.tilt : W.tilt) * Math.PI / 180, sn = [-gn[0], -gn[1], -gn[2]];
+        var sf = _lvNorm(add(add([0, 0, 0], gf, Math.cos(tl)), gt, -Math.sin(tl)));
+        sf = _lvNorm(add(sf, sn, -dot(sf, sn)));
+        var st = side === 'l' ? cross(sn, sf) : cross(sf, sn);
+        var handWq = _lqFromBases(FS.f, FS.t, FS.n, sf, st, sn);
+        var sPalm = add(add(add(gPalm, gn, (flat ? W.flat.out : W.out) * L), gt, -W.down * L), gf, W.fwd * L);
+        var t = add(add(sPalm, sf, -W.palm * Ls), sn, -W.thick * Ls);   // the off wrist
+        if (FS.palmPt) t = add(sPalm, _lqRotV(handWq, sc(FS.palmPt, C)), -1);   // a fingerless off hand: its own palm's face on the spot
         var setWorld = function (n, wq) { n.q = _lqNorm(_lqMul(_lqInv(T.nodes[n.parent].wq), wq)); };
-        var handWq = C.wq.slice();
         var a = A.wp.slice(), ab = _lvSub(B.wp, a), l1 = len(ab), l2 = len(_lvSub(C.wp, B.wp));
         var at = _lvSub(t, a), d = len(at);
         if (!(l1 > 1e-6 && l2 > 1e-6 && d > 1e-6)) return null;
@@ -16210,6 +16297,15 @@ const ThreeRenderer = (function () {
         T.evalWorld();
         setWorld(B, _lqMul(_lqFromUnitVectors(_lvNorm(_lvSub(C.wp, B.wp)), _lvNorm(_lvSub(t, B.wp))), B.wq));
         T.evalWorld();
+        /* the forearm takes half the hand's roll about its length (no candy-wrapper wrist) */
+        var ax = _lvNorm(_lvSub(C.wp, B.wp)), rel = _lqNorm(_lqMul(handWq, _lqInv(C.wq)));
+        if (rel[3] < 0) rel = [-rel[0], -rel[1], -rel[2], -rel[3]];
+        var ang = 2 * Math.atan2(dot([rel[0], rel[1], rel[2]], ax), rel[3]);   // the hand's roll about the forearm, -pi..pi
+        if (Math.abs(ang) > 0.05) {
+            var hh = ang / 4, s2 = Math.sin(hh);
+            setWorld(B, _lqMul([ax[0] * s2, ax[1] * s2, ax[2] * s2, Math.cos(hh)], B.wq));
+            T.evalWorld();
+        }
         setWorld(C, handWq);
         return [A, B, C];
     }
@@ -16217,7 +16313,7 @@ const ThreeRenderer = (function () {
        as constant tracks on THIS clip only — the mixer hands them back to the rest pose when another clip plays. The hinge
        per finger joint is THE GRIP's (_gripHand: the finger's direction x the palm's normal), lighter angles. A Meshy rig has
        no finger bones: nothing. */
-    var SUPPORT_CURL = { index: [26, 36, 22], middle: [34, 46, 28], ring: [40, 50, 28], pinky: [46, 52, 28], thumb: [10, 16, 10] };
+    var SUPPORT_CURL = { index: [48, 58, 32], middle: [54, 62, 36], ring: [58, 62, 36], pinky: [62, 62, 36], thumb: [6, 10, 6] };
     function _libSupportCurl(setup, side) {
         var T = setup.tgt, get = function (f, k) { return T.byName[f + '_0' + k + '_' + side]; }, out = [];
         if (!get('middle', 1) || !get('middle', 3) || !get('index', 1) || !get('pinky', 1)) return out;
@@ -49759,6 +49855,67 @@ const ThreeRenderer = (function () {
         var c = document.createElement('canvas'); c.width = w; c.height = h; return c;
     }
 
+    /* THE EYE PACK (2026-11-03): MakeHuman's high-poly eye mesh (eye_proxy.json, bake-eyes.py), loaded once. cb(data | null).
+       The table names the body's vertices by UV (every MPFB GLB keeps hm08's sheet), so one file fits all the MPFB bodies. */
+    var _ccEyeProxy = null, _ccEyeProxyWait = null;
+    function _ccLoadEyeProxy(url, cb) {
+        if (_ccEyeProxy) { cb(_ccEyeProxy); return; }
+        if (_ccEyeProxy === false || typeof fetch !== 'function') { cb(null); return; }
+        if (_ccEyeProxyWait) { _ccEyeProxyWait.push(cb); return; }
+        _ccEyeProxyWait = [cb];
+        var done = function (d) {
+            _ccEyeProxy = d && d.verts && d.gv && d.tris && d.ref ? d : false;
+            if (!_ccEyeProxy) console.warn('[ThreeRenderer] eye pack mesh failed', url);
+            var w = _ccEyeProxyWait; _ccEyeProxyWait = null;
+            for (var i = 0; i < w.length; i++) { try { w[i](_ccEyeProxy || null); } catch (e) { console.warn('[ThreeRenderer] eye pack', e); } }
+        };
+        fetch(_asNetUrl(url)).then(function (r) { return r.ok ? r.json() : null; }).then(done, function () { done(null); });
+    }
+    /* the pack textures, shared by every unit wearing the same pick (never disposed): the colour PNG (recoloured on a canvas for an
+       Iris colour) and the normal map; flipY off like the GLB maps (the mesh's UVs are glTF's, v down) */
+    var _ccEyeTexCache = {};
+    function _ccEyeTexture(img, key, tint, iris, colorSpace, normal) {
+        var k = key + '|' + (tint || '') + '|' + colorSpace + (normal ? '|n' : '');
+        if (_ccEyeTexCache[k]) return _ccEyeTexCache[k];
+        var srcImg = img;
+        if (tint && !normal) { var c = _ccTintIris(img, tint, iris); if (c) srcImg = c; }
+        var t = srcImg.tagName === 'CANVAS' ? new THREE.CanvasTexture(srcImg) : new THREE.Texture(srcImg);
+        t.flipY = false;
+        if (normal) { if (THREE.NoColorSpace !== undefined) t.colorSpace = THREE.NoColorSpace; }
+        else if (colorSpace !== undefined && colorSpace !== 'undefined') t.colorSpace = colorSpace;
+        t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.anisotropy = 4;
+        t.needsUpdate = true; t._ew_shared = true;
+        _ccEyeTexCache[k] = t;
+        return t;
+    }
+    /* THE LOOK COLOURS on a pack eye: the two irises in the picked colour at each pixel's own brightness (the pupil stays dark,
+       the whites, the veins and a cat eye's slit untouched outside / kept dark inside), feathered over 6 px at the rim */
+    function _ccTintIris(img, color, iris) {
+        var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
+        var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+        var C = (iris && iris.centres) || [], R = ((iris && iris.r) || 124) * w / 1024, F = 6 * w / 1024, m = 0, mw = 0, i, xx, yy, q, W = new Float32Array(w * hh);
+        for (q = 0; q < C.length; q++) {
+            var cx = C[q][0] * w / 1024, cy = C[q][1] * hh / 1024;
+            for (yy = Math.max(0, Math.floor(cy - R - F)); yy < Math.min(hh, Math.ceil(cy + R + F)); yy++) for (xx = Math.max(0, Math.floor(cx - R - F)); xx < Math.min(w, Math.ceil(cx + R + F)); xx++) {
+                var d = Math.hypot(xx + 0.5 - cx, yy + 0.5 - cy), wt = Math.max(0, Math.min(1, (R + F / 2 - d) / F));
+                i = yy * w + xx; if (wt > W[i]) W[i] = wt;
+            }
+        }
+        for (i = 0; i < w * hh; i++) if (W[i] > 0.5) { var o = i * 4, l = D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114; m += l; mw++; }
+        if (!mw) return null;
+        m = Math.max(6, m / mw);
+        for (i = 0; i < w * hh; i++) {
+            var wt2 = W[i]; if (!wt2) continue;
+            var o2 = i * 4, f = Math.min(1.6, (D[o2] * 0.299 + D[o2 + 1] * 0.587 + D[o2 + 2] * 0.114) / m);
+            D[o2] = D[o2] * (1 - wt2) + Math.min(255, cr * f) * wt2;
+            D[o2 + 1] = D[o2 + 1] * (1 - wt2) + Math.min(255, cg * f) * wt2;
+            D[o2 + 2] = D[o2 + 2] * (1 - wt2) + Math.min(255, cb * f) * wt2;
+        }
+        x.putImageData(im, 0, 0);
+        return c;
+    }
+
     /* Shared <img> loads (CORS-clean) with the same-origin retry sprites.js
        allowlists. cb(img | null). */
     function _ccLoadImage(url, cb) {
@@ -51353,6 +51510,14 @@ const ThreeRenderer = (function () {
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 })),
                 outer2: shell('outer2', material({ roughness: 0.9 }))   // THE SECOND OUTER LAYER (2026-11-01)
             };
+            /* THE EYE PACK (2026-11-03): an MPFB body's MakeHuman eye mesh, made with the shells (so the board's material swap
+               covers it) and empty until a pack eye is picked (eyePackWrite); glossy, like an eye */
+            if (stockSkin) {
+                // (alphaTest: the mesh's cornea dome sits over the iris on the PNGs' clear corner - MakeHuman draws it see-through)
+                shells.eyes = shell('eyes', material({ roughness: 0.3, side: THREE.FrontSide, vertexColors: true, alphaTest: 0.5 }));
+                shells.eyes.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+                shells.eyes.visible = false;
+            }
             var part = { jig: jig, faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
@@ -51812,6 +51977,7 @@ const ThreeRenderer = (function () {
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
             var si = part.siW, sw = part.swW, pos = src.attributes.position.array, uvA = src.attributes.uv.array;   // welded skin weights (see the parts setup)
             var P = new Float32Array(N * 3), i, j, k;
+            var eyeOn = !!(part.stock && part.shells.eyes && part.eyePack && _ccEyeProxy && eyePackIndex(part, uvA)), eyeTri = eyeOn ? part.eyeTris : null;   // THE EYE PACK: its mesh replaces the eyeballs
             var skull = { halfW: 0, xMin: Infinity, xMax: -Infinity, zMin: Infinity, zMax: -Infinity, topY: -Infinity, cx: 0, n: 0 };
             /* rev 10: THE BEARD HAS VOLUME — a beard / goatee / full beard pushes the jaw, the chin and the cheeks under the
                sideburn line OUT along the skin's normal (4 / 3 / 6 mm), so it reads as hair standing off the face and
@@ -53658,6 +53824,7 @@ const ThreeRenderer = (function () {
                 /* THE SKIN UNDER THE CLOTHES: a skin triangle is left out when all three corners are covered (skinCover); without the
                    cover (a classic base before its fit has loaded) the delete lists as before */
                 var SC = part.skinCov, wHid = SC ? !!(SC.cov[i0] && SC.cov[i1] && SC.cov[i2]) : !!(part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]));
+                if (eyeTri && eyeTri[k / 3]) wHid = true;   // THE EYE PACK: the body's own eyeball (its mesh is drawn instead)
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (wHid) { /* under a pack garment */ }
                 else if (!anyFull && !anyPart) {
@@ -53800,6 +53967,7 @@ const ThreeRenderer = (function () {
                 if (index === 0 && part.faceMorph) faceMorphWrite(mesh, part.faceMorph, n, b.xCount);   // THE IDLE FACE
                 mesh.visible = b.index.length > 0;
             });
+            try { eyePackWrite(part, P, si, sw, eyeOn); } catch (e) { console.warn('[ThreeRenderer] eye pack mesh failed', e); }   // THE EYE PACK
             /* rev 12: A COAT HANGS FROM THE HIPS — a shell that stops at the hips (a coat, a trench, a parka) rode the skin's own
                weights down to its hem, so in a walk (and the idle stance) its back wrapped each buttock as the thigh swung it and
                its hem stood out over the tail (a lathe hanging from the hips) as a shelf. The shell's weights — and its buttons'
@@ -54483,7 +54651,7 @@ const ThreeRenderer = (function () {
                 if (ix) { used = new Uint8Array(n); var I = ix.array, c = Math.min(I.length, m.geometry.drawRange && isFinite(m.geometry.drawRange.count) ? m.geometry.drawRange.count : I.length); for (var q = 0; q < c; q++) used[I[q]] = 1; }
                 for (var q2 = 0; q2 < n; q2++) { if (used && !used[q2]) continue; var y = A[q2 * 3 + 1]; if (y >= yLo && y <= yHi) G.push(A[q2 * 3], y, A[q2 * 3 + 2]); }
             };
-            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
+            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || nm === 'eyes' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
             (part.wear || []).forEach(function (w) { if (w.facial) return; take(w.mesh); (w.accents || []).forEach(take); });   // (+ its accents: a collar, a fur trim - the hair stood through the cassock's collar)
             var thick = new Float32Array(N);
             if (G.length) {
@@ -54646,6 +54814,129 @@ const ThreeRenderer = (function () {
            the eyes glancing to a new point every 1-4 s (a big glance may blink), the brows drifting and lifting now and then,
            a faint smile coming and going, the jaw breathing a hair open. Small on purpose; no sound. Cosmetic: each screen
            runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_FACE_IDLE = true (before the model loads). */
+        /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack: "please add them to the character creator"): a
+           pack eye on an MPFB body is MakeHuman's own high-poly eye mesh (eye_proxy.json, bake-eyes.py) wearing the pack PNG + its
+           normal map at full size (drawn into the skin sheet an iris was ~6 texels and a cat eye's slit was lost). Each of its
+           vertices is three body vertices x weights + an offset scaled by the head (MakeHuman's .mhclo fit), so the face sliders and
+           the idle face's glances move it with the eyeballs it replaces; the body's eyeball triangles are left out while it shows.
+           eyePackIndex: the table's hm08 vertices -> this body's vertices, by UV (nearest within 2e-5; -1 = the fit is off) */
+        function eyePackIndex(part, uvA) {
+            if (part.eyeIdx !== undefined) return part.eyeIdx;
+            var D = _ccEyeProxy, n = uvA.length / 2, grid = new Map(), i, q;
+            for (i = 0; i < n; i++) { var key = Math.floor(uvA[i * 2] * 2048) + ',' + Math.floor(uvA[i * 2 + 1] * 2048), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            var near = function (u, v) {
+                var best = -1, bd = 2e-5, a = Math.floor(u * 2048), b = Math.floor(v * 2048);
+                for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
+                    var L = grid.get((a + da) + ',' + (b + db)); if (!L) continue;
+                    for (var t = 0; t < L.length; t++) { var j = L[t], d = Math.abs(uvA[j * 2] - u) + Math.abs(uvA[j * 2 + 1] - v); if (d < bd) { best = j; bd = d; } }
+                }
+                return best;
+            };
+            var idx = new Int32Array(D.ref.length), alt = D.refAlt || {};
+            for (q = 0; q < D.ref.length; q++) {
+                var g = near(D.ref[q][0], D.ref[q][1]);
+                for (var k = 0; g < 0 && alt[q] && k < alt[q].length; k++) g = near(alt[q][k][0], alt[q][k][1]);
+                if (g < 0) { console.warn('[ThreeRenderer] eye pack: this body does not fit (vertex ' + q + ')'); part.eyeIdx = null; return null; }
+                idx[q] = g;
+            }
+            // the body's eyeball triangles (all three corners on an eyeball-helper UV): left out while the mesh shows
+            var eyeV = new Uint8Array(n), E = D.eyeUv || [];
+            for (q = 0; q < E.length; q += 2) {
+                var a0 = Math.floor(E[q] * 2048), b0 = Math.floor(E[q + 1] * 2048);
+                for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
+                    var L2 = grid.get((a0 + da) + ',' + (b0 + db)); if (!L2) continue;
+                    for (var t2 = 0; t2 < L2.length; t2++) { var j2 = L2[t2]; if (Math.abs(uvA[j2 * 2] - E[q]) + Math.abs(uvA[j2 * 2 + 1] - E[q + 1]) < 2e-5) eyeV[j2] = 1; }
+                }
+            }
+            var ids = part.ids, tris = new Uint8Array(ids.length / 3);
+            for (i = 0; i < ids.length; i += 3) tris[i / 3] = eyeV[ids[i]] && eyeV[ids[i + 1]] && eyeV[ids[i + 2]] ? 1 : 0;
+            part.eyeTris = tris;
+            part.eyeIdx = idx;
+            return idx;
+        }
+        function eyePackWrite(part, P, si, sw, on) {
+            var mesh = part.shells && part.shells.eyes;
+            if (!mesh) return;
+            if (!on) { mesh.visible = false; return; }
+            var D = _ccEyeProxy, G = part.eyeIdx, V = D.verts, nv = V.length, g = mesh.geometry, i, k;
+            var sc = [0, 1, 2].map(function (ax) { var s = D.scale['xyz'[ax]]; return s ? Math.abs(P[G[s[0]] * 3 + ax] - P[G[s[1]] * 3 + ax]) / s[2] : 0.1; });
+            var pp = new Float32Array(nv * 3), dom = new Int32Array(nv);
+            for (i = 0; i < nv; i++) {
+                var r = V[i], g0 = G[r[0]], g1 = G[r[1]], g2 = G[r[2]];
+                for (k = 0; k < 3; k++) pp[i * 3 + k] = r[3] * P[g0 * 3 + k] + r[4] * P[g1 * 3 + k] + r[5] * P[g2 * 3 + k] + r[6 + k] * sc[k];
+                dom[i] = r[3] >= r[4] && r[3] >= r[5] ? g0 : r[4] >= r[5] ? g1 : g2;   // (the skin weights: the nearest body vertex's)
+            }
+            // smooth normals per proxy vertex (over its faces), then one GPU vertex per (vertex, uv) pair
+            var GV = D.gv, T = D.tris, ng = GV.length, nn = new Float32Array(nv * 3);
+            for (i = 0; i < T.length; i += 3) {
+                var a = GV[T[i]][0] * 3, b = GV[T[i + 1]][0] * 3, c = GV[T[i + 2]][0] * 3;
+                var ux = pp[b] - pp[a], uy = pp[b + 1] - pp[a + 1], uz = pp[b + 2] - pp[a + 2], vx = pp[c] - pp[a], vy = pp[c + 1] - pp[a + 1], vz = pp[c + 2] - pp[a + 2];
+                var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+                [a, b, c].forEach(function (o) { nn[o] += nx; nn[o + 1] += ny; nn[o + 2] += nz; });
+            }
+            var position = new Float32Array(ng * 3), normal = new Float32Array(ng * 3), uv = new Float32Array(ng * 2), col = new Float32Array(ng * 3).fill(1);
+            var skinIndex = new Uint16Array(ng * 4), skinWeight = new Float32Array(ng * 4);
+            for (i = 0; i < ng; i++) {
+                var v = GV[i][0], d0 = dom[v];
+                for (k = 0; k < 3; k++) { position[i * 3 + k] = pp[v * 3 + k]; normal[i * 3 + k] = nn[v * 3 + k]; }
+                uv[i * 2] = GV[i][1]; uv[i * 2 + 1] = GV[i][2];
+                for (k = 0; k < 4; k++) { skinIndex[i * 4 + k] = si[d0 * 4 + k]; skinWeight[i * 4 + k] = sw[d0 * 4 + k]; }
+            }
+            if (g.attributes.position) g.dispose();
+            g.morphAttributes = {};
+            g.setAttribute('position', new THREE.BufferAttribute(position, 3));
+            g.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+            g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(skinIndex, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(skinWeight, 4));
+            g.setIndex(new THREE.BufferAttribute(Uint32Array.from(T), 1));
+            g.normalizeNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+            // THE IDLE FACE: the body's own face shapes, carried over (the glances turn this eye too); the body's influences, shared
+            var fm = part.faceMorph;
+            if (fm) {
+                g.morphAttributes.position = fm.arrays.map(function (A, m) {
+                    var f = new Float32Array(ng * 3);
+                    for (var j = 0; j < ng; j++) {
+                        var r2 = V[GV[j][0]], h0 = G[r2[0]] * 3, h1 = G[r2[1]] * 3, h2 = G[r2[2]] * 3;
+                        for (var c3 = 0; c3 < 3; c3++) f[j * 3 + c3] = r2[3] * A[h0 + c3] + r2[4] * A[h1 + c3] + r2[5] * A[h2 + c3] + (fm.rel ? 0 : r2[6 + c3] * sc[c3]);
+                    }
+                    var at = new THREE.BufferAttribute(f, 3); at.name = fm.names[m]; return at;
+                });
+                g.morphTargetsRelative = fm.rel;
+                mesh.updateMorphTargets();
+                if (part.body.morphTargetInfluences && part.body.morphTargetInfluences.length === fm.names.length) mesh.morphTargetInfluences = part.body.morphTargetInfluences;
+            } else { mesh.morphTargetInfluences = undefined; mesh.morphTargetDictionary = undefined; }
+            mesh.visible = true;
+        }
+        /* the pick: part.eyePack (read by the shape key and rebuildGeometry, so the mesh comes and goes with it); the mesh JSON on
+           first use (then the geometry pass again); the PNGs onto the eye mesh's CURRENT material (the board may have swapped ours
+           for its Lambert copy: that one glows with the body's emissive, so the eyes do too) */
+        function setEyePack(part, a) {
+            var ep = part.stock && part.shells.eyes && typeof getMhEyePack === 'function' ? getMhEyePack(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody })) : null;
+            part.eyePack = ep;
+            if (ep && !_ccEyeProxy && _ccEyeProxy !== false) {
+                _ccLoadEyeProxy(ep.proxy, function (d) { if (d && alive && part.eyePack && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } });
+            }
+            var key = ep ? ep.map + '|' + (ep.normal || '') + '|' + (ep.tint || '') : '';
+            if (part.eyeTexKey === key) return;
+            part.eyeTexKey = key;
+            if (!ep) return;
+            var imgs = {}, pending = ep.normal ? 2 : 1;
+            var apply = function () {
+                if (--pending || !alive || part.eyeTexKey !== key || !imgs.map) { if (!pending && !imgs.map) console.warn('[ThreeRenderer] eye pack texture failed', ep.map); return; }
+                var S = part.stockMap, cs = S && S.colorSpace !== undefined ? S.colorSpace : undefined;
+                var map = _ccEyeTexture(imgs.map, ep.map, ep.tint, ep.iris, cs, false), nmap = imgs.normal ? _ccEyeTexture(imgs.normal, ep.normal, null, null, cs, true) : null;
+                var m = part.shells.eyes.material, bm = part.body.material;
+                if (!m) return;
+                m.map = map;
+                if ('normalMap' in m) { m.normalMap = nmap; if (m.normalScale) m.normalScale.set(1, -1); }   // (an OpenGL-style map on glTF's v-down UVs, as GLTFLoader does)
+                if (bm && bm.emissiveMap && m.emissive) { m.emissiveMap = map; m.emissive.copy(bm.emissive); m.emissiveIntensity = bm.emissiveIntensity; }
+                m.needsUpdate = true;
+            };
+            _ccLoadImage(_asNetUrl(ep.map), function (img) { imgs.map = img; apply(); });
+            if (ep.normal) _ccLoadImage(_asNetUrl(ep.normal), function (img) { imgs.normal = img; apply(); });
+        }
         function faceMorphWrite(mesh, fm, N, extra) {
             var g = mesh.geometry, total = N + (extra || 0);
             g.morphAttributes.position = fm.arrays.map(function (a, k) {
@@ -56512,6 +56803,7 @@ const ThreeRenderer = (function () {
            stock sheet. The canvas keeps the stock map's settings (flipY, colour space). */
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
+            try { setEyePack(part, a); } catch (e) { console.warn('[ThreeRenderer] eye pack failed', e); }   // THE EYE PACK
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
             var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') + (layers.tint ? '|tint' + JSON.stringify(layers.tint) : '') : '';   // (+ THE CHEST + THE LIP COLOUR + THE LOOK COLOURS)
             if (part.lookKey === key) return;
@@ -56692,7 +56984,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');

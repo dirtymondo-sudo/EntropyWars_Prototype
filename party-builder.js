@@ -1334,7 +1334,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE'),
                   /* THE FACE PRESETS (2026-11-03): MakeHuman community faces baked by bake-faces.js (sprites.js EW_MPFB_FACE_PRESETS);
                      a pick sets every face slider (the ones the preset leaves out go to 0) */
-                  (window.EW_MPFB_FACE_PRESETS || []).map(p => h('button', { key: p.id, className: 'ms-tty-btn', title: p.label + ' \u00b7 ' + p.author + (p.license ? ' \u00b7 ' + p.license : ''),
+                  (window.EW_MPFB_FACE_PRESETS || []).map(p => h('button', { key: p.id, className: 'ms-tty-btn', title: [p.label, p.author, p.license].filter(Boolean).join(' \u00b7 '),
                     onClick: () => changeAppearance(Object.assign(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0])), p.face || {})) },
                     p.label.toUpperCase() + (p.gender === 'female' ? ' \u2640' : ' \u2642')))) : null,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },
@@ -1350,7 +1350,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                     /* THE LOOK COLOURS (2026-11-03, mondo: "there is no color picker ... Everything that can possibly have one needs a
                        tint/color picker"): each pick row is followed by its colour: its own, or any colour (three-renderer.js tintLayer) */
                     g.id === 'eyes' ? h(React.Fragment, null,
-                      mhTiles('mhEyes', 'Eye colour'), lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
+                      mhTiles('mhEyes', 'Eye colour'),
+                      /* THE EYE PACK (2026-11-03): the MakeHuman Eye Texture Pack mondo uploaded (plain, bloodshot, cat eyes), worn by
+                         MakeHuman's own eye mesh at full size; same saved key (mhEyes), the Iris colour below recolours these too */
+                      mhTiles('mhEyes', 'Eye textures', (window.EW_MH_EYE_PACK || []).map(r => [r[0], r[1]]), 'mhEyesPack'),
+                      lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
                       mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches)) : null,
                     g.id === 'brows' ? h(React.Fragment, null,
                       mhTiles('mhBrows', 'Brows'), lookTint('browTint', 'Brow colour', 'browColor', hairSwatches, true)) : null,
