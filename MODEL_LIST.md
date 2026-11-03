@@ -16,10 +16,10 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Asset pack | yes | 139 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
-| MakeHuman parts, baked by Claude in Blender | yes (parts) | 19 |
+| MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 603 |
+| Meshy AI | no | 607 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -364,7 +364,7 @@ Human-made, from the MakeHuman community asset packs. Every piece's author, lice
 - **hair03 · punkduck · CC-BY**: Chinesebob01, Curly01, Alpha7 curly, Alpha7 curly2, Alpha7 long, Alpha7 long2
 - **makehuman_system_assets · makehuman_system · CC0**: Afro01, Bob01, Bob02, Braid01, Long01, Ponytail01, Short01, Short02, Short03, Short04
 
-### 5d. Made by Claude in Blender (113 files, `Assets/Models/charactercreation/wear/ewb_*`)
+### 5d. Made by Claude in Blender (114 files, `Assets/Models/charactercreation/wear/ewb_*`)
 
 Garments modelled in cloud Blender (bake-clothes.py), except the rows marked otherwise (mondo's cowboy hat, the joined
 MakeHuman beards). `_open` / `_closed` files are the same garment with the front the other way.
@@ -484,8 +484,9 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewb_zombie | `Assets/Models/charactercreation/wear/ewb_zombie.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_zombie_closed · (front variant) | `Assets/Models/charactercreation/wear/ewb_zombie_closed.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewf_fur · Fur (whole body) | `Assets/Models/charactercreation/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
+| ewf_fur_werewolf · Fur (whole body), werewolf colours | `Assets/Models/charactercreation/wear/ewf_fur_werewolf.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
-### 5e. Meshy pieces in the creator (71 files, `Assets/Models/charactercreation/wear/ewm_*`, PR #829)
+### 5e. Meshy pieces in the creator (75 files, `Assets/Models/charactercreation/wear/ewm_*`, PR #829)
 
 Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
 (bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
@@ -499,6 +500,8 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | ewm_astropack · Astronaut backpack (equipment) | `Assets/Models/charactercreation/wear/ewm_astropack.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_backpack · Small backpack (equipment) | `Assets/Models/charactercreation/wear/ewm_backpack.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_beastfeet · Clawed beast feet (bodyparts) | `Assets/Models/charactercreation/wear/ewm_beastfeet.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_beastfeet_fura · Clawed beast feet, werewolf fur (bodyparts) | `Assets/Models/charactercreation/wear/ewm_beastfeet_fura.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_beastfeet_furb · Clawed beast feet, werewolf fur, dark (bodyparts) | `Assets/Models/charactercreation/wear/ewm_beastfeet_furb.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_beret · Beret (hats) | `Assets/Models/charactercreation/wear/ewm_beret.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_binoculars · Binoculars (equipment) | `Assets/Models/charactercreation/wear/ewm_binoculars.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_blowpipe · Blowpipe (equipment) | `Assets/Models/charactercreation/wear/ewm_blowpipe.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
@@ -562,6 +565,8 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | ewm_wardtotem · Ward totem (belt) (equipment) | `Assets/Models/charactercreation/wear/ewm_wardtotem.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wizardstaff · Wizard staff (equipment) | `Assets/Models/charactercreation/wear/ewm_wizardstaff.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wolftail · Wolf tail (bodyparts) | `Assets/Models/charactercreation/wear/ewm_wolftail.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_wolftail_fura · Wolf tail, werewolf fur (bodyparts) | `Assets/Models/charactercreation/wear/ewm_wolftail_fura.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_wolftail_furb · Wolf tail, werewolf fur, dark (bodyparts) | `Assets/Models/charactercreation/wear/ewm_wolftail_furb.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_wrench · Wrench (equipment) | `Assets/Models/charactercreation/wear/ewm_wrench.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 
 ## 6. Props — every room / editor prop (data.js DOOR_HQ.catalogue)

@@ -139,7 +139,15 @@ piece('hooves', '45_hoof', 'Hooves', 'bodyparts', 47, mode='foot', size=0.24, pa
 piece('beastfeet', '46_clawed-beast-foot', 'Clawed beast feet', 'bodyparts', 47, mode='foot', size=0.20, pair=True, shelf='creature')
 piece('lizardtail', '41_lizard-tail', 'Lizard tail', 'bodyparts', 62, mode='tail', size=1.0, droop=38, chains=7)
 piece('sharktail', '42a_shark-tail', 'Shark tail', 'bodyparts', 62, mode='tail', size=0.62, droop=20, rot=[['x', -90], ['y', 90]], chains=5)
-piece('wolftail', '44_wolf-tail', 'Wolf tail', 'bodyparts', 62, mode='tail', size=0.55, droop=12, rot=[['z', 90]], chains=5)
+# (2026-11-03, mondo: "the tail is visibly disconnected from his body ... the tail has a flat cut off"): the root narrowed + sunk deeper
+piece('wolftail', '44_wolf-tail', 'Wolf tail', 'bodyparts', 62, mode='tail', size=0.55, droop=12, rot=[['z', 90]], chains=5, taper=(0.25, 0.22), sink=0.05)
+# THE WEREWOLF FUR (2026-11-03, mondo: "retexture all three in meshy so they all have a consistent fur texture"): the same Meshy pieces
+# wearing a Meshy Retexture base colour (meshy/retexture/werewolf/, the body's fur skin made with the same prompt), as their own picks
+for _k, _v in (('A', 'werewolf fur'), ('B', 'werewolf fur, dark')):
+    piece('wolftail_fur' + _k.lower(), '44_wolf-tail', 'Wolf tail, ' + _v, 'bodyparts', 62, mode='tail', size=0.55, droop=12, rot=[['z', 90]], chains=5,
+          taper=(0.25, 0.22), sink=0.05, tex='../retexture/werewolf/tail%s_base.jpg' % _k)
+    piece('beastfeet_fur' + _k.lower(), '46_clawed-beast-foot', 'Clawed beast feet, ' + _v, 'bodyparts', 47, mode='foot', size=0.20, pair=True,
+          shelf='creature', tex='../retexture/werewolf/feet%s_base.jpg' % _k)
 piece('mermaidtail', '43_mermaid-tail', 'Mermaid tail', 'bodyparts', 48, mode='mermaid')
 
 # ── held in the right hand ──
@@ -638,7 +646,7 @@ def _fit(spec, body, R0, N0):
         start = np.array([-rc[0], y0 - rc[1] + 0.10 * sc, z - rc[2]])
         place = lambda d: Q0 + start - np.array([0, d, 0])
         d, hit = first_contact(body, place, sub(np.arange(len(Q0))), ease, 0.4 * sc)
-        Q = place(d) - np.array([0, 0.012 * sc, 0])   # (the root sunk a little into the skin: no gap at the base)
+        Q = place(d) - np.array([0, spec.get('sink', 0.012) * sc, 0])   # (the root sunk into the skin: no gap at the base)
         return Q, None, 'scale %.3f touch %s' % (s, hit)
     if mode == 'hand':      # THE GRIP's seat (three-renderer.js _gripFrame): the handle down the knuckle line, in the closed palm
         W_, I_, P_ = body.pts['hand_r'], body.pts['index_01_r'], body.pts['pinky_01_r']
@@ -764,13 +772,35 @@ def orient(spec, mesh):
     if spec.get('droop'):          # a tail (its tip toward +Y, the back): the tip lowered
         R = rot_m('x', -spec['droop']) @ R
     Pp = Pp @ R.T; Nn = Nn @ R.T
+    if spec.get('taper'):          # THE TAIL ROOT (2026-11-03): the flat cut end narrowed into the body
+        Pp = taper_root(Pp, *spec['taper'])
     Pp -= 0.5 * (Pp.min(0) + Pp.max(0))
     return Pp, Nn, F, mesh['UV']
+
+
+def taper_root(Pp, frac, k0):
+    """a tail's root (its -Y end) narrowed toward its centre line: k0 x its width at the cut, full width `frac` of the length
+    in (smoothstep), so a flat cut end grows out of the body instead of standing off it as a disc (mondo 11-03, the wolf tail)"""
+    y = Pp[:, 1]; y0 = y.min(); L = y.max() - y0; Lz = frac * L
+    edges = np.linspace(y0, y0 + 1.6 * Lz, 17); mids, cs = [], []
+    for a, b in zip(edges[:-1], edges[1:]):
+        m = (y >= a) & (y < b)
+        if m.sum() >= 3:
+            mids.append(0.5 * (a + b)); cs.append(Pp[m][:, [0, 2]].mean(0))
+    mids = np.array(mids); cs = np.array(cs)
+    cx = np.interp(y, mids, cs[:, 0]); cz = np.interp(y, mids, cs[:, 1])
+    t = np.clip((y - y0) / Lz, 0, 1); f = k0 + (1 - k0) * t * t * (3 - 2 * t)
+    Q = Pp.copy()
+    Q[:, 0] = cx + (Pp[:, 0] - cx) * f
+    Q[:, 2] = cz + (Pp[:, 2] - cz) * f
+    return Q
 
 
 def bake(key, spec, bodies, src, out, views=None):
     from PIL import Image
     mesh = load_meshy(os.path.join(src, spec['src'] + '.glb'))
+    if spec.get('tex'):            # THE RETEXTURES (2026-11-03): a Meshy Retexture base colour (on the piece's own UVs) in place of its own
+        mesh['img'] = Image.open(os.path.join(src, spec['tex'])).convert('RGB')
     R0, N0, F, UV = orient(spec, mesh)
     Ps, notes, W, dels, chains = {}, {}, None, {}, None
     for bname, body in bodies.items():
@@ -819,12 +849,13 @@ def bake(key, spec, bodies, src, out, views=None):
     print('[bake-meshy] %-26s %6d tris %5d KB  %s  bones %s  hide %s' % (name, ntri, kb, '; '.join('%s %s' % kv for kv in notes.items()), ','.join(bones),
           ' '.join('%s:%d' % (b, sum(r[1] - r[0] + 1 for r in d)) for b, d in dels.items()) or '-'), flush=True)
     if views:
-        draw_views(views, key, bodies, Ps, Fm, UVf, mesh['img'], dels)
+        draw_views(views, key, bodies, Ps, Fm, UVf, mesh['img'], dels,
+                   root=(np.argsort(R0[:, 1])[:max(20, len(R0) // 50)] if spec['mode'] == 'tail' else None))
     return {'id': name, 'label': spec['label'], 'cat': spec['cat'], 'z': spec['z'], 'shelf': spec.get('shelf'), 'tris': ntri, 'kb': kb}
 
 
 # ═══════════════════════════════ VIEWS (a quick look: painter's triangles) ═══════════════════════════════
-def draw_views(views, key, bodies, Ps, F, UV, img, dels=None):
+def draw_views(views, key, bodies, Ps, F, UV, img, dels=None, root=None):
     from PIL import Image, ImageDraw
     os.makedirs(views, exist_ok=True)
     T = np.asarray(img.resize((256, 256))).astype(np.float32)
@@ -833,12 +864,16 @@ def draw_views(views, key, bodies, Ps, F, UV, img, dels=None):
     S = 300
     shots = [('male', 'front', 'full'), ('male', 'side', 'full'), ('male', 'back', 'full'), ('male', 'front', 'zoom'), ('male', 'side', 'zoom'),
              ('female', 'front', 'zoom'), ('heavy', 'front', 'zoom'), ('short', 'side', 'zoom'), ('thin', 'front', 'zoom')]
+    if root is not None:   # a tail: where it meets the body, from the side + three-quarter behind, on every body
+        shots = [('male', 'side', 'full'), ('male', 'side', 'root'), ('male', 'back3q', 'root'), ('heavy', 'side', 'root'), ('heavy', 'back3q', 'root'),
+                 ('female', 'side', 'root'), ('female', 'back3q', 'root'), ('thin', 'back3q', 'root'), ('short', 'side', 'root')]
     sheet = Image.new('RGB', (S * 3, (S + 16) * 3), (16, 16, 16))
     dr0 = ImageDraw.Draw(sheet)
     for j, (bn, view, zm) in enumerate(shots):
         body = bodies[bn]; Q = Ps[bn]
         R = {'front': np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]), 'back': np.array([[-1, 0, 0], [0, 0, 1], [0, -1, 0]]),
-             'side': np.array([[0, 1, 0], [0, 0, 1], [-1, 0, 0]])}[view]   # -> (screen x, screen up, depth toward the viewer = -)
+             'side': np.array([[0, 1, 0], [0, 0, 1], [-1, 0, 0]]),
+             'back3q': np.array([[-0.7071, 0.7071, 0], [0, 0, 1], [-0.7071, -0.7071, 0]])}[view]   # -> (screen x, screen up, depth toward the viewer = -)
         bt = []
         for p in body.polys:
             for k in range(1, len(p) - 1):
@@ -853,7 +888,9 @@ def draw_views(views, key, bodies, Ps, F, UV, img, dels=None):
         tris = np.concatenate([bt, F + nb])
         cols = np.concatenate([np.tile([175, 160, 150], (len(bt), 1)), pcol])
         X = V @ R.T
-        if zm == 'zoom':
+        if zm == 'root':
+            c = Q[root].mean(0) @ R.T; half = 0.13 * body.scale
+        elif zm == 'zoom':
             c = Q.mean(0) @ R.T; half = max(0.22 * body.scale, 0.6 * np.abs(Q @ R.T - c)[:, :2].max())
         else:
             c = np.array([0, 0.5 * (body.floor + body.crown + 0.15), 0]) @ R.T * 0 + np.array([0, 0.5 * (body.floor + body.crown), 0])
