@@ -951,3 +951,17 @@ mondo: "werent there some textures that were used to make door hq? why arent tho
 - `hq:<name>`: stone, drywall and carpet are also battle-sheet names, and a terrain room's ground / walls (_hzTex) read the battle
   sheet first, so the plain name there never drew the painted one. The picker writes `hq:stone` / `hq:drywall` / `hq:carpet`
   (editor.js hqTexKey); three-renderer.js _hzTex and _hqTex read `hq:` as DOOR_HQ.textures. Existing rooms' plain keys unchanged.
+
+## THE PRISM BANDS (2026-11-03, thread "Build buildings properly from the urban pack")
+mondo: "for the prism building textures, i would like to somehow always apply the bottom of the texture and the top of the texture to
+the bottom and top of the building, and repeat everything else as needed depending on how many stories".
+- data.js `HQ_TEXB_PRISM_BANDS` (beside HQ_TEXB_PRISMS): per prism sprite `[top band's end row, bottom band's start row, storeys in the
+  art]`, rows of the sprite FILE (0 = top). Hand-read from the 17 sprites (building_1..11, ancient, abandoned 1/2, church 1/2, shop).
+- three-renderer.js `_nrSpriteBuilding` opt `bands`: the bottom band (the door) once at the foot, one storey of the middle
+  ((bottom − top) ÷ count rows, starting at the top band's end) stack − 1 times, the top band once at the top, all at the sprite's own
+  proportions scaled to fit H. stack − 1 = count draws the sprite exactly as painted. Without `bands` (the city's prism lots, the
+  world rim) every storey still wears the whole sprite — only the editor's prism buildings (_hqBuildTexPrisms) pass bands.
+- Shot: /mnt/project-files/urban-buildings/prism_bands_before_after.jpg. Spire sprites (building_11, churches) on a box still read odd
+  when tall: their middle band is a slice of wall.
+- The URBAN PACK side (ground floor vs upper floors, doors, decal overlays) is a proposal awaiting mondo's OK:
+  /mnt/project-files/urban-buildings/urban_design_mockup.png.

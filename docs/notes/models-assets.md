@@ -1539,3 +1539,18 @@ the thread's zip adds `Assets/decor/` by hand.
   first; Counting Sheep jumps three Meshy sheep; Tripod Sweep stands the Meshy tripod behind the beam (the ray starts at
   its head). Ack Ack Ack still uses its old saucer + code legs.
 - **Kill switch:** `window.EW_NO_DECOR_GLB = true` before a room builds = the old procs.
+
+## THE MESHY SWAP (2026-11-03, mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
+- 26 Meshy props now draw an Elbolilloduro PSX pack piece (all 14 packs CC0; list + the Meshy file each replaced: MODEL_LIST.md 10F).
+  Side-by-side sheets: project files `asset-packs/meshy-swap/`. The original pack archives: project files `asset-packs/elbolilloduro/`.
+- Files: R2 `Assets/misc/ebd_<pack>_<item>.glb` (20-600 KB each; the Meshy files were 3-9 MB). NOT in the repo: they go in the
+  sync zip by hand. `bake-pack-pieces.py` (repo-only, Blender) rebuilds them from the unzipped packs (`--packs <dir>` with one folder
+  per itch slug): keeps the named scene nodes, bakes transforms, recentres (base y = 0), turns `rotz` so the front faces where the
+  Meshy model's front faced, packs the textures (the FBXs point at the author's C:/ paths), unlinks the fake alpha (an opaque texture
+  wired to Alpha exports as BLEND), Glass/Vidrio 35 % see-through.
+- Wiring: the catalogue rows only changed `file` (+ `base: 'misc'` on the D.O.O.R. kit rows), so every row keeps its h / span / wall
+  / mount / glow. The renderer's `_MISC_GLB` keys that named the same Meshy files (dumpster, city_bin, bus_shelter, campfire,
+  camping_tent, fallen_log, stump, rowboat, lantern) name the pack files too.
+- Kept Meshy (no pack match): school_bus, cardboard boxes, wooden_bucket, car_cop (the car pack already draws it), fridges, signpost.
+- Licences: Elbolilloduro = CC0 (credits row "PSX prop packs"). Pizza Doggy (Retro Tree Pack, the Mega Packs) is NOT CC0: no AI
+  use of the assets, no redistribution as standalone files (credits + MODEL_LIST fixed).
