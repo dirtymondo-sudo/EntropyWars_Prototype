@@ -52024,7 +52024,7 @@ const ThreeRenderer = (function () {
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
             var si = part.siW, sw = part.swW, pos = src.attributes.position.array, uvA = src.attributes.uv.array;   // welded skin weights (see the parts setup)
             var P = new Float32Array(N * 3), i, j, k;
-            var eyeOn = !!(part.stock && part.shells.eyes && part.eyePack && _ccEyeProxy && eyePackIndex(part, uvA)), eyeTri = eyeOn ? part.eyeTris : null;   // THE EYE PACK: its mesh replaces the eyeballs
+            var eyeOn = !!(part.stock && part.shells.eyes && part.eyePack && !part.headOff && _ccEyeProxy && eyePackIndex(part, uvA)), eyeTri = eyeOn ? part.eyeTris : null;   // THE EYE PACK: its mesh replaces the eyeballs
             var skull = { halfW: 0, xMin: Infinity, xMax: -Infinity, zMin: Infinity, zMax: -Infinity, topY: -Infinity, cx: 0, n: 0 };
             /* rev 10: THE BEARD HAS VOLUME — a beard / goatee / full beard pushes the jaw, the chin and the cheeks under the
                sideburn line OUT along the skin's normal (4 / 3 / 6 mm), so it reads as hair standing off the face and
@@ -53872,6 +53872,7 @@ const ThreeRenderer = (function () {
                    cover (a classic base before its fit has loaded) the delete lists as before */
                 var SC = part.skinCov, wHid = SC ? !!(SC.cov[i0] && SC.cov[i1] && SC.cov[i2]) : !!(part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]));
                 if (eyeTri && eyeTri[k / 3]) wHid = true;   // THE EYE PACK: the body's own eyeball (its mesh is drawn instead)
+                if (part.solidHide && (part.solidHide[i0] || part.solidHide[i1] || part.solidHide[i2])) wHid = true;   // THE MESHY PIECES: the head / feet / legs a solid piece takes the place of
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (wHid) { /* under a pack garment */ }
                 else if (!anyFull && !anyPart) {
@@ -54442,6 +54443,7 @@ const ThreeRenderer = (function () {
             });
             fitHair(part);
             paintHair(part, a);
+            if (part.headOff) headOff(part);   // THE MESHY PIECES: under a creature head
         }
         function fitHair(part) {
             TW = part.tw || TW_ID;   // THE BODY MAP
@@ -54588,7 +54590,7 @@ const ThreeRenderer = (function () {
             /* + a garment's part that sits ON the scalp (a hood worn up, a nun's habit, a full bodysuit): its vertices whose nearest
                skin is the head above ear level, `onHead` at most off it; a mask over the crown, the luchador's, the same) */
             var sm = part.skullMap, Q = part.Q, SP = part.src.attributes.position.array, SD = part.shapeD, earT = TW.i(0.912);
-            var hats = (part.wear || []).filter(function (w) { return w.mesh && w.mesh.visible && !w.facial && w.cat !== 'glasses' && w.cat !== 'bodyparts' && w.cat !== 'equipment'; });
+            var hats = (part.wear || []).filter(function (w) { return w.mesh && w.mesh.visible && !w.facial && w.cat !== 'glasses' && w.cat !== 'bodyparts' && w.cat !== 'equipment' && w.cat !== 'heads'; });
             if (!hats.length || !part.hair.length || !sm) return;
             var Hm = part.height / 1.7, C = 0.02, grid = new Map(), HV = [], gap = HAIR_HAT.gap * Hm, lat2 = Math.pow(HAIR_HAT.lat * Hm, 2), reach = HAIR_HAT.reach * Hm, rc = Math.ceil(reach / C), onHead2 = Math.pow(HAIR_HAT.onHead * Hm, 2), i, k;
             hats.forEach(function (w) {
@@ -55434,6 +55436,36 @@ const ThreeRenderer = (function () {
            slots into extras.ewWear.bones, bound here by name to the body's skeleton) - it rides the body's bones like the
            body's own skin. The skin under it (its delete_verts, matched on the body's _base_index) is cut from the body once
            it has loaded (`wearHide`, read by rebuildGeometry). Layered by MakeHuman's z_depth (renderOrder). */
+        /* THE MESHY PIECES (2026-11-03, plan row 16, bake-meshy.py): a creature head (ex.hideHead: the grey alien, the jackal ...)
+           takes the head's place - the skin under it is its del list; the hair, the facial hair and the eye pack go with it (the
+           eye pack through part.headOff in the geometry pass). A piece held in the right hand (ex.grip) closes the hand round it
+           with THE GRIP's curl (_gripHand), undone when it comes off (unless the unit's own `hold` curled it first). */
+        function headOff(part) {
+            var off = (part.wear || []).some(function (w) { return w.hideHead; });
+            if (!!part.headOff !== off) { part.headOff = off; state.shapeKey = null; }
+            (part.hair || []).forEach(function (h) { h.mesh.visible = !off; });
+            (part.wear || []).forEach(function (w) { if (w.facial) [w.mesh].concat(w.accents || []).forEach(function (mh) { mh.visible = !off; }); });
+            // the mermaid tail (ex.hideLegs): the trousers, skirts, shoes and socks under it are not drawn (the coded feet layer neither)
+            var legs = (part.wear || []).some(function (w) { return w.hideLegs; });
+            (part.wear || []).forEach(function (w) {
+                if (!w.hideLegs && (w.cat === 'bottoms' || w.cat === 'skirts' || w.cat === 'shoes' || w.layer === 'feet')) [w.mesh].concat(w.accents || []).forEach(function (mh) { mh.visible = !legs; });
+            });
+            ['feet', 'bottom', 'skirt'].forEach(function (nm) { var sh = part.shells && part.shells[nm]; if (sh && legs) sh.visible = false; });
+        }
+        function wearGrip(part) {
+            var want = (part.wear || []).some(function (w) { return w.grip; });
+            if (want && !part.gripSave) {
+                var hand = root.getObjectByName('RightHand');
+                if (!hand || hand.userData._ewGrip) return;
+                var save = [];
+                ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach(function (f) { for (var k = 1; k <= 3; k++) { var b = root.getObjectByName(f + '_0' + k + '_r'); if (b) save.push([b, b.quaternion.clone()]); } });
+                if (_gripHand(root, 'RightHand')) part.gripSave = { hand: hand, bones: save };
+            } else if (!want && part.gripSave) {
+                part.gripSave.bones.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+                part.gripSave.hand.userData._ewGrip = false;
+                part.gripSave = null;
+            }
+        }
         function dropWear(part) {
             (part.wear || []).forEach(function (w) {
                 [w.mesh].concat(w.accents || []).forEach(function (mh) {
@@ -55816,6 +55848,10 @@ const ThreeRenderer = (function () {
                             dF.set(tmp);
                         }
                     }
+                    if (ex.solid) {   // THE MESHY PIECES: a solid piece (a helmet, a staff) takes the mean reshape, as one
+                        var mF = [0, 0, 0]; for (i = 0; i < count; i++) { mF[0] += dF[i * 3]; mF[1] += dF[i * 3 + 1]; mF[2] += dF[i * 3 + 2]; }
+                        for (i = 0; i < P.length; i++) dF[i] = mF[i % 3] / Math.max(1, count);
+                    }
                     for (i = 0; i < P.length; i++) P[i] += dF[i];
                 }
             }
@@ -55909,6 +55945,7 @@ const ThreeRenderer = (function () {
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
+                      solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
@@ -56010,6 +56047,12 @@ const ThreeRenderer = (function () {
                     for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); dW[u * 3] = off[0]; dW[u * 3 + 1] = off[1]; dW[u * 3 + 2] = off[2]; }
                     if (w.ss) w.ss.run(dW);   // THE BLENDER COATS: the layers of a long skirt move as one (spaceSmooth)
                     for (u = 0; u < A.length; u++) A[u] = B[u] + dW[u];
+                }
+                else if (w.solid) {   // THE MESHY PIECES: a solid piece rides the sliders as one (the mean offset of the skin under it)
+                    var mo = [0, 0, 0];
+                    if (D) for (var vs = 0; vs < nb.length; vs++) { var os = nb[vs] * 3; mo[0] += D[os]; mo[1] += D[os + 1]; mo[2] += D[os + 2]; }
+                    var nS = Math.max(1, nb.length);
+                    for (var us = 0; us < A.length; us++) A[us] = B[us] + mo[us % 3] / nS;
                 }
                 else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
                 if (w.lay) for (u = 0; u < A.length; u++) A[u] += w.lay[u];   // THE LAYERS: tucked under the garment over it
@@ -56825,8 +56868,10 @@ const ThreeRenderer = (function () {
                 try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
                 try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
             try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+                try { headOff(part); wearGrip(part); } catch (e) { console.warn("[ThreeRenderer] creature head / grip failed", e); }   // THE MESHY PIECES
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
+                part.solidHide = wearMask(part, function (w) { return w.solid; });   // THE MESHY PIECES: always hidden, whatever covers the rest
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
                 if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the new clothes follow the soft spots
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }

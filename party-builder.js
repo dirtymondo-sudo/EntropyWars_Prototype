@@ -1104,7 +1104,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     const z = ccCamZone(e.target, e.currentTarget), cv = window.EWCharViewer;
     if ((z === 'face' || z === 'body') && cv && typeof cv.frameCreator === 'function') cv.frameCreator(z);
   };
-  const ccWearFace = (cat, label) => ['hats', 'glasses', 'masks', 'horns'].includes(cat) || /beard|moustache|horn|antler|head mirror|headset/i.test(label || '');
+  const ccWearFace = (cat, label) => ['hats', 'glasses', 'masks', 'horns', 'heads'].includes(cat) || /beard|moustache|horn|antler|head mirror|headset/i.test(label || '');
   /* THE WEAR TINT (2026-11-01, mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were
      from the asset packs since they have their own textures"): one row per worn pack piece (sprites.js wearTintable: not the
      facial hair, which has its own colour row, nor the Blender pieces that take the Top / Bottoms colour): its original colours,

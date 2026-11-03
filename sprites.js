@@ -2892,7 +2892,8 @@ EW_HAIR_STYLES.push(...EW_MH_HAIR_STYLES);
    An MPFB body only (appearance.wear = a list of ids); one pick per category except underwear / equipment / body parts.
    Credits: CREDITS.json "creator_wear". [id, label, category, z (MakeHuman's layer order)] */
 const EW_MH_WEAR_CATS = [['tops', 'Tops'], ['bottoms', 'Bottoms'], ['skirts', 'Skirts'], ['dresses', 'Dresses'], ['suits', 'Suits'], ['shoes', 'Shoes'],
-  ['hats', 'Hats'], ['glasses', 'Glasses'], ['masks', 'Masks'], ['gloves', 'Gloves'], ['underwear', 'Underwear'], ['equipment', 'Equipment'], ['bodyparts', 'Body parts']];
+  ['hats', 'Hats'], ['glasses', 'Glasses'], ['masks', 'Masks'], ['gloves', 'Gloves'], ['underwear', 'Underwear'], ['equipment', 'Equipment'], ['bodyparts', 'Body parts'],
+  ['heads', 'Creature heads']];   // (THE MESHY PIECES: one head at a time)
 const EW_MH_WEAR_MULTI = ['underwear', 'equipment', 'bodyparts'];
 // EW_MH_WEAR:BEGIN (generated from charactercreation/wear/wear.json)
 const EW_MH_WEAR = [
@@ -3392,6 +3393,48 @@ EW_MH_WEAR.push(['ewb_mummy', 'Mummy wraps', 'suits', 50], ['ewb_ghost', 'Ghost 
 /* THE SOLID PIECES (2026-11-01, mondo's own cowboy hat, R2 wear/cowboyhat/): his mesh, UVs and textures as he made them,
    fitted rigidly to each body's head and riding the Head bone (bake-clothes.py SOLIDS). Keeps its own colours. */
 EW_MH_WEAR.push(['ewb_cowboyhat', 'Cowboy hat', 'hats', 56]);
+/* THE MESHY PIECES (2026-11-03, docs/notes/character-models-plan.md row 16; the pieces of sections 4a + 6b/6c, made on Meshy):
+   each fitted on the five MPFB bodies by bake-meshy.py (cloud Blender) and worn like the cowboy hat - solid, on its own colours
+   (the wear tint over them), riding one bone: hats + helmets + crowns on the Head; the creature heads (grey alien ... moth) on the
+   Head with the head under them hidden (skin, hair, eyes: three-renderer.js headOff); badges, pendants, the collar on the chest;
+   belts + hip pieces on the hips; armour + bands on the limb bones (pairs mirrored); back gear on the spine; tails on THE SWAY's
+   chains; hooves / beast feet over hidden feet; the mermaid tail over hidden legs; the props in the right hand, the hand closed round
+   them (wearGrip). Meshy models stay the units' defaults: these are creator picks only. */
+EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap', 'Officer cap', 'hats', 56],
+  ['ewm_firehelmet', 'Firefighter helmet', 'hats', 56], ['ewm_footballhelmet', 'Football helmet', 'hats', 56],
+  ['ewm_astrohelmet', 'Astronaut helmet', 'hats', 56], ['ewm_royalcrown', 'Royal crown', 'hats', 56],
+  ['ewm_icecrown', 'Ice crown', 'hats', 56], ['ewm_anunnakihat', 'Anunnaki headdress', 'hats', 56],
+  ['ewm_overlordhelm', 'Overlord helmet', 'hats', 56], ['ewm_mushroomcap', 'Mushroom cap', 'hats', 56], ['ewm_beret', 'Beret', 'hats', 56],
+  ['ewm_strawhat', 'Floppy straw hat', 'hats', 56], ['ewm_brokenhalo', 'Broken halo', 'equipment', 60],
+  ['ewm_greyalien', 'Grey alien head', 'heads', 58], ['ewm_jackalhead', 'Jackal head', 'heads', 58],
+  ['ewm_goathead', 'Goat head', 'heads', 58], ['ewm_eaglehead', 'Eagle head', 'heads', 58], ['ewm_sharkhead', 'Shark head', 'heads', 58],
+  ['ewm_lizardhead', 'Lizard head', 'heads', 58], ['ewm_mothhead', 'Moth head', 'heads', 58],
+  ['ewm_sheriffstar', 'Sheriff star', 'equipment', 61], ['ewm_policebadge', 'Police badge', 'equipment', 61],
+  ['ewm_crosspendant', 'Cross pendant', 'equipment', 61], ['ewm_talisman', 'Talisman pendant', 'equipment', 61],
+  ['ewm_hagstone', 'Hagstone', 'equipment', 61], ['ewm_binoculars', 'Binoculars', 'equipment', 61],
+  ['ewm_walkietalkie', 'Walkie-talkie', 'equipment', 61], ['ewm_egyptcollar', 'Egyptian collar', 'equipment', 61],
+  ['ewm_airtank', 'Firefighter air tank', 'equipment', 62], ['ewm_astropack', 'Astronaut backpack', 'equipment', 62],
+  ['ewm_backpack', 'Small backpack', 'equipment', 62], ['ewm_jetpack', 'Jetpack', 'equipment', 62],
+  ['ewm_quiver', 'Quiver', 'equipment', 62], ['ewm_katana', 'Katana in a back sheath', 'equipment', 62],
+  ['ewm_dowsingrod', 'Dowsing rod', 'equipment', 62], ['ewm_dorsalfin', 'Shark dorsal fin', 'bodyparts', 62],
+  ['ewm_mothwings', 'Moth wings', 'bodyparts', 63], ['ewm_gunbelt', 'Gun belt', 'equipment', 59],
+  ['ewm_toolbelt', 'Tool belt', 'equipment', 59], ['ewm_thighholster', 'Thigh holster', 'equipment', 59],
+  ['ewm_flaregun', 'Flare gun (hip)', 'equipment', 60], ['ewm_spyglass', 'Spyglass (hip)', 'equipment', 60],
+  ['ewm_wardtotem', 'Ward totem (belt)', 'equipment', 60], ['ewm_censer', 'Censer (hip)', 'equipment', 60],
+  ['ewm_breastplate', 'Armour breastplate', 'equipment', 64], ['ewm_shoulderpads', 'Football shoulder pads', 'equipment', 65],
+  ['ewm_pauldrons', 'Armour pauldrons', 'equipment', 65], ['ewm_gauntlets', 'Armour gauntlets', 'equipment', 63],
+  ['ewm_greaves', 'Armour greaves', 'equipment', 63], ['ewm_armband', 'Arm band', 'equipment', 63],
+  ['ewm_grapplegauntlet', 'Grapple gauntlet', 'equipment', 63], ['ewm_elfears', 'Elf ears', 'bodyparts', 57],
+  ['ewm_neckbolts', 'Neck bolts', 'bodyparts', 57], ['ewm_hooves', 'Hooves', 'bodyparts', 47],
+  ['ewm_beastfeet', 'Clawed beast feet', 'bodyparts', 47], ['ewm_lizardtail', 'Lizard tail', 'bodyparts', 62],
+  ['ewm_sharktail', 'Shark tail', 'bodyparts', 62], ['ewm_wolftail', 'Wolf tail', 'bodyparts', 62],
+  ['ewm_mermaidtail', 'Mermaid tail', 'bodyparts', 48], ['ewm_trident', 'Trident', 'equipment', 60],
+  ['ewm_potionflask', 'Potion flask', 'equipment', 60], ['ewm_scalpel', 'Scalpel', 'equipment', 60],
+  ['ewm_wrench', 'Wrench', 'equipment', 60], ['ewm_blowpipe', 'Blowpipe', 'equipment', 60],
+  ['ewm_smartphone', 'Smartphone', 'equipment', 60], ['ewm_handmirror', 'Hand mirror', 'equipment', 60],
+  ['ewm_camera', 'Old camera with flash', 'equipment', 60], ['ewm_milkcookies', 'Milk and cookies', 'equipment', 60],
+  ['ewm_cup', 'Drinking cup', 'equipment', 60], ['ewm_magicwand', 'Magic wand', 'equipment', 60],
+  ['ewm_wizardstaff', 'Wizard staff', 'equipment', 60]);
 /* THE BLENDER BASICS (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a replacement"): the
    classic coded pieces no pack has, built in cloud Blender like the rest of row 12 (bake-clothes.py COATS / TIGHT / NECKWEAR):
    Long-sleeve top + Henley (Top colour / fabric / print), Sweatpants (Bottoms'), Belt (Belt's), Tie + Bow tie (their own colour,
@@ -3651,9 +3694,12 @@ const EW_WEAR_SHELVES = [
   ['tops', 'Tops', 'clothes'], ['bottoms', 'Bottoms', 'clothes'], ['skirts', 'Skirts', 'clothes'], ['dresses', 'Dresses', 'clothes'],
   ['suits', 'Suits', 'clothes'], ['outer', 'Coats + capes', 'clothes'], ['shoes', 'Shoes', 'clothes'], ['underwear', 'Underwear', 'clothes', true],
   ['gloves', 'Gloves', 'clothes'], ['belts', 'Belts + ties', 'clothes', true], ['hats', 'Hats', 'clothes'], ['glasses', 'Glasses', 'clothes'],
-  ['masks', 'Masks', 'clothes'],
+  ['masks', 'Masks', 'clothes'], ['armour', 'Armour', 'clothes', true],
+  ['heads', 'Creature heads', 'accessories'],
   ['wings', 'Wings', 'accessories', true], ['horns', 'Horns + antlers', 'accessories', true], ['tails', 'Tails', 'accessories', true],
   ['nails', 'Nails', 'accessories', true], ['gear', 'Held items + gear', 'accessories', true],
+  ['held', 'In the hand', 'accessories'], ['jewellery', 'Badges + jewellery', 'accessories', true], ['back', 'Back gear', 'accessories', true],
+  ['creature', 'Ears, feet + fins', 'accessories', true],   // (THE MESHY PIECES; In the hand = one prop at a time, the right hand closed round it)
 ];
 // pieces whose pack category is not where a player looks for them (shown on another tab; their category is unchanged)
 const EW_WEAR_SHELF_MOVE = {
@@ -3663,6 +3709,16 @@ const EW_WEAR_SHELF_MOVE = {
   mhw_elvs_emt_uniform_pants_female: 'bottoms', mhw_elvs_emt_uniform_pants_male: 'bottoms',
   mhw_elvs_emt_uniform_jacket_female: 'outer', mhw_elvs_emt_uniform_jacket_male: 'outer',
   ewb_belt: 'belts', ewb_tie: 'belts', ewb_bowtie: 'belts', ewb_suspenders: 'belts', ewb_coinbelt: 'belts',   // worn, not held
+  // THE MESHY PIECES (the halo with the hats; the hip pieces with the belts; the tails + moth wings find their tabs by name)
+  ewm_brokenhalo: 'hats', ewm_sheriffstar: 'jewellery', ewm_policebadge: 'jewellery', ewm_crosspendant: 'jewellery',
+  ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
+  ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
+  ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
+  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour',
+  ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
+  ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
+  ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
+  ewm_milkcookies: 'held', ewm_cup: 'held', ewm_magicwand: 'held', ewm_wizardstaff: 'held',
 };
 function wearShelfOf(id) {
   const w = EW_MH_WEAR_BY_ID[id];
