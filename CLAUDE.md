@@ -29,6 +29,13 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
 | `docs/notes/editor.md` | The in-game editor (EDITOR_PLAN.md): editor.js, world file, E0+. | Editor work. |
 | `docs/notes/rendering-loading-perf.md` | Polish passes, bloom, textures, loading/lanes, freezes, crashes. RENDERER_PLAN.md = the three.js r128→current upgrade + add-ons (R1-R7). WEBGPU_PLAN.md = the WebGL→WebGPU (TSL) port, W0-W13; read it before any shader/renderer work. | Render / load / perf work; before touching three.js versions. |
+| `docs/notes/inbox.md` | THE INBOX: mondo's drop-off folder `/mnt/project-files/inbox/` + the sorting routine (where each kind of file goes). | Whenever he says "sort the inbox" / "I dropped X", or a task needs a file he dropped. |
+
+## RULE #0 — THE INBOX (mondo 11-03)
+Files mondo uploads by hand go in `/mnt/project-files/inbox/` (huge ones: R2 bucket `dirtymondo`, prefix `inbox/`).
+On "sort the inbox", follow docs/notes/inbox.md exactly: identify each file, leave it + ask if unsure, move it home
+(repo / R2 / project files), models -> `node list-models.js` + MODEL_LIST.md, upload with `node sync-zip.js`, verify the
+sha256, THEN remove the inbox copy and log it in `inbox/_sorted-log.md`. Never delete a file that has no verified home.
 
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
 The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
