@@ -3740,6 +3740,81 @@ function wearShelfOf(id) {
   }
   return w[2];
 }
+/* THE BODY SLOTS (2026-11-03, mondo: "can we have tabs instead of one long list where i have to scroll through everything. And I want
+   the clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."). How the
+   creator's OUTFIT tab SHOWS the pieces: one tab per body part (EW_WEAR_SLOTS), and inside it one kind at a time (EW_WEAR_GROUPS).
+   DISPLAY ONLY, like THE SHELVES under it: a piece keeps its shelf (wearShelfOf) for the one-pick-per-shelf rule, its EW_MH_WEAR
+   category for the renderer, and every saved / baked look loads as before. No piece was removed or renamed.
+   EW_WEAR_SLOTS = [id, label, camera ('face' | 'body')]. 'arms' is not a tab: a pair (gloves, nails, sleeves, arm armour) covers both
+   arms, so it shows on LEFT ARM and on RIGHT ARM (one piece, the same tile). Left / right = the side of the body the piece sits on in the
+   MPFB bind pose (+x = the character's left: the pack's "left hand" gun + kalistick, the wooden bow, the shopping bag, the arm band; the
+   In the hand props, the pack's other weapons, the grapple gauntlet sit on the right).
+   EW_WEAR_GROUPS = [slot, id, label, sided (lists by the MEN / WOMEN switch), layer (the coded / Blender layer rows shown with it)]. */
+const EW_WEAR_SLOTS = [
+  ['head', 'Head', 'face'], ['face', 'Face', 'face'], ['neck', 'Neck', 'body'], ['torso', 'Torso', 'body'], ['back', 'Back', 'body'],
+  ['larm', 'Left arm', 'body'], ['rarm', 'Right arm', 'body'], ['waist', 'Waist', 'body'], ['legs', 'Legs', 'body'], ['feet', 'Footwear', 'body'],
+];
+const EW_WEAR_GROUPS = [
+  ['head', 'hats', 'Hats + helmets', true], ['head', 'heads', 'Creature heads'], ['head', 'horns', 'Horns + antlers'], ['head', 'ears', 'Ears'],
+  ['head', 'headgear', 'Headsets'],
+  ['face', 'glasses', 'Glasses + goggles', true], ['face', 'masks', 'Masks + hoods', true],
+  ['neck', 'neckwear', 'Ties + neckwear'], ['neck', 'pendants', 'Pendants'],
+  ['torso', 'tops', 'Tops', true], ['torso', 'dresses', 'Dresses', true], ['torso', 'suits', 'Suits + bodysuits', true],
+  ['torso', 'coats', 'Coats + jackets', true, 'outer'], ['torso', 'underwear', 'Underwear + swimwear', true],
+  ['torso', 'chestarmour', 'Armour + vests'], ['torso', 'badges', 'Badges + straps'],
+  ['back', 'capes', 'Capes', false, 'cape'], ['back', 'wings', 'Wings', false, 'wings'], ['back', 'backgear', 'Back gear'], ['back', 'tails', 'Tails + fins'],
+  ['rarm', 'held', 'In the hand'], ['rarm', 'rgear', 'Weapons + tools'], ['rarm', 'rbags', 'Bags'], ['rarm', 'rarmgear', 'On the arm'],
+  ['larm', 'lgear', 'Weapons + tools'], ['larm', 'lbags', 'Bags'], ['larm', 'larmgear', 'On the arm'],
+  ['arms', 'gloves', 'Gloves + claws', true], ['arms', 'nails', 'Nails'], ['arms', 'sleeves', 'Arm sleeves', true], ['arms', 'armarmour', 'Shoulder + arm armour'],
+  ['waist', 'belts', 'Belts'], ['waist', 'hip', 'On the hip'],
+  ['legs', 'bottoms', 'Bottoms', true], ['legs', 'skirts', 'Skirts', true], ['legs', 'socks', 'Socks + stockings', true], ['legs', 'leggear', 'Holsters + greaves'],
+  ['feet', 'shoes', 'Shoes + boots', true, 'feet'], ['feet', 'hooves', 'Hooves + claws'], ['feet', 'toenails', 'Toenails'],
+];
+// a shelf's pieces go to one group, but where a shelf holds pieces for several body parts (gear, armour, badges, belts ...) each is named
+const EW_WEAR_GROUP_OF_SHELF = { tops: 'tops', dresses: 'dresses', suits: 'suits', outer: 'coats', underwear: 'underwear', bottoms: 'bottoms',
+  skirts: 'skirts', shoes: 'shoes', hats: 'hats', heads: 'heads', horns: 'horns', glasses: 'glasses', masks: 'masks', gloves: 'gloves',
+  nails: 'nails', wings: 'wings', tails: 'tails', back: 'backgear', held: 'held', gear: 'rgear', armour: 'chestarmour', jewellery: 'pendants',
+  belts: 'belts', creature: 'hooves' };
+const EW_WEAR_GROUP_MOVE = {
+  // gear (the pack's equipment): left hand, both hands, the head, the neck, the chest, the back, the hip
+  mhw_culturalibre_cl_gun_left_hand: 'lgear', mhw_culturalibre_hero_kalistick_lefthanded: 'lgear', mhw_culturalibre_wooden_bow: 'lgear',
+  mhw_punkduck_shopping_bag01: 'lbags', mhw_punkduck_handbag01: 'rbags', mhw_elvs_sling_purse1: 'rbags', mhw_culturalibre_suitcase: 'rbags',
+  ewm_grapplegauntlet: 'rarmgear', mhw_culturalibre_hand_claws: 'gloves',
+  mhw_punkduck_head_mirror: 'headgear', mhw_punkduck_wireless_headset: 'headgear',
+  mhw_punkduck_stethoscope: 'neckwear', ewm_binoculars: 'neckwear',
+  mhw_mindfront_tactical_vest_female: 'chestarmour', mhw_mindfront_tactical_vest_male: 'chestarmour', ewm_walkietalkie: 'badges',
+  mhw_punkduck_diver_scuba_rig: 'backgear', mhw_punkduck_electric_guitar: 'backgear', mhw_o4saken_dagger: 'hip',
+  // armour by the part it covers
+  ewm_shoulderpads: 'armarmour', ewm_pauldrons: 'armarmour', ewm_gauntlets: 'armarmour', ewm_greaves: 'leggear',
+  // badges + jewellery
+  ewm_sheriffstar: 'badges', ewm_policebadge: 'badges', ewm_egyptcollar: 'neckwear', ewm_armband: 'larmgear',
+  // belts + ties
+  ewb_tie: 'neckwear', ewb_bowtie: 'neckwear', ewb_suspenders: 'badges', ewm_thighholster: 'leggear',
+  ewm_flaregun: 'hip', ewm_spyglass: 'hip', ewm_wardtotem: 'hip', ewm_censer: 'hip',
+  // creature parts
+  ewm_elfears: 'ears', ewm_neckbolts: 'neckwear', ewm_dorsalfin: 'tails',
+  // toenails go on the feet
+  mhw_mindfront_nails_toes_01: 'toenails',
+};
+const _ewWearGroup = {};
+function wearGroupOf(id) {
+  if (id in _ewWearGroup) return _ewWearGroup[id];
+  const shelf = wearShelfOf(id);
+  let g = null;
+  if (shelf) {
+    g = EW_WEAR_GROUP_MOVE[id] || null;
+    if (!g && shelf === 'underwear') {
+      const s = (id + ' ' + ((EW_MH_WEAR_BY_ID[id] || [])[1] || '')).toLowerCase();
+      g = /arm ?sleeve/.test(s) ? 'sleeves' : /stocking|sock|pantyhose|leg warmer/.test(s) && !/suspender/.test(s) ? 'socks' : 'underwear';
+    }
+    if (!g && shelf === 'nails' && /toe/i.test(id)) g = 'toenails';
+    if (!g) g = EW_WEAR_GROUP_OF_SHELF[shelf] || 'rgear';
+  }
+  return (_ewWearGroup[id] = g);
+}
+// the body part (EW_WEAR_SLOTS id, or 'arms' for a pair) a group / a piece is on
+function wearSlotOfGroup(g) { const r = EW_WEAR_GROUPS.find(x => x[1] === g); return r ? r[0] : null; }
+function wearSlotOf(id) { return wearSlotOfGroup(wearGroupOf(id)); }
 // read from the pack names: women's / men's by name, then by kind; the rest fit anyone
 const EW_WEAR_FOR_FEMALE = ['mhw_toigo_bodice-style_top', 'mhw_toigo_camisole_top', 'mhw_elvs_disco_top_1_butterfly', 'mhw_elvs_disco_top2',
   'mhw_toigo_keyhole_tank_top', 'mhw_elvs_lara_tank1', 'mhw_punkduck_off-shoulder_long-sleeve_top', 'mhw_punkduck_retro_top',
@@ -4804,6 +4879,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
+  window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
