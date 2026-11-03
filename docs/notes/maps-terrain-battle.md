@@ -1128,3 +1128,21 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   forks) is no longer used: the key wears `terrain/cloud_2.png` (the painted puffy cloud). Map tints still colour it.
   HQ room wall paths (_hzTex direct) skip the base tint: there it is the plain grey cloud under the room's tints.
 - Before/after: /mnt/project-files/storm-zone/saturn_storm_walls_before_after.jpg. No rule changed.
+
+## GÖBEKLI TEPE ARENA REMADE (2026-11-03, mondo: "why are there t-pillars on top of these walls? get rid of the walls. Also there is a harsh boundary at the edge of the map ... the terrain texture that has the glyphs ... should only be for ancient structures, not for the ground")
+- WHY THE PILLARS WERE ON THE WALLS: ENCLOSURE E (the arena's place in `site_prebuilt_gobekli_tell`) had ten lesser T-pillars "set
+  in the ring wall" like the real dig's pillars, which are built into their enclosure walls. A prop stands on the ground under its
+  foot (three-renderer.js `_hqCaveTop` → `hqTerrainFeet`), and a wall row IS that ground, so every one stood on the 1.8 m wall's top.
+- The six ring-wall rows round E are gone; the ten pillars stand on the ledge round the pit. In enclosures A-D, six ring pillars
+  whose foot was inside or touching a wall row moved clear (rim inside the wall, or the sunk floor 8.2 m out where the chord is tight).
+- THE GLYPHS: the tell's `cliff` (the plan's mass + cut faces) was `rock_wall_1` (the glyph sheet), so the whole unexcavated mound
+  wore it. Now `dirt_4`; the glyph stone stays on built pieces (wall rows, bastions, benches, built stairs keyed `rock_wall_1`).
+- THE HARD EDGE: the room ends 28 m east of the board; the outer ground past it wears the floor sheet, the mound the cliff sheet —
+  a straight line. New opt-in `terrain.outer: { sheet: 'solid' }` (three-renderer.js `_hqBuildOuterGround`, THE MASS RUNS ON):
+  where the edge is the plan's mass in the cliff sheet, the outer ground carries that sheet on. Only the tell asks for it.
+- THE GAPS: bake-holes had punched pits into the bastions' corners (squares under a block the walker cannot climb) and into the
+  terrace nook inside each bastion's L — black squares and `cloud_gap` cells in the 12 × 12 and 11 × 11. `hqTerrainSealedSquares`:
+  a wall row a whole square thick keeps its floor (A BLOCK IS GROUND), and an `HQ_ARENA_RULES.within` place keeps every square
+  (THE ARENA'S PLACE IS GROUND). Only the tell's row was re-baked (now none); other rooms change only when re-baked.
+- `within.prebuilt_gobekli.r` 6 → 2.5: with the wall gone the wider search shifted the 12 × 12 a square west onto the ledge (lost
+  the half-turn symmetry); 2.5 keeps every size on its designed window. All four sizes re-baked: same windows, no gap cells.
