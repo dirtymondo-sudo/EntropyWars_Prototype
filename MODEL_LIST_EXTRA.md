@@ -218,23 +218,24 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 mondo 11-03: "focus on the things that were purely coded like the cones ... a box for a building is perfectly fine, but other
 stuff just looks really bad". Each code-only builder in §8b was drawn alone in a browser and judged. Full proposal with
 before/after thumbnails: Claude Doc "Coded shapes worth replacing" (https://claude.ai/artifact/WFS1U2pejBAp4cqXQr6wyF).
-NOTHING is replaced yet; mondo picks rows by number. Existing rules only; replacing = the builder wears the model.
+mondo answered 11-03 (thread "Coded shapes"); rows marked DONE / DELETED are in. Also deleted 11-03: the `hills` + `dunes` rims and the ground
+swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay) — mondo: "no map should be using the dune swells or hill swells". Existing rules only; replacing = the builder wears the model.
 
 | # | coded piece (three-renderer.js) | verdict | replacement |
 | --- | --- | --- | --- |
 | 1 | castle / skycastle landmarks | swap, model in game | castle pack pieces (`Castles_and_Forts.glb`) |
-| 2 | iceberg ring `bergs` (cones) | swap, model in game | ocean pack rocks tinted ice white |
+| 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
 | 3 | `_hzObelisk` | swap, model in game | obelisk3d |
-| 4 | `_hzLighthouse` | swap, model in game | Meshy decor lighthouse |
-| 5 | sea stack / island | swap, model in game | ocean pack rocks / palm isle |
+| 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
+| 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
 | 6 | greek ruin + ruins rim | swap, model in game | greek columns + castle ruined pieces |
-| 7 | rover | swap, model in game | mars_rover |
-| 8 | toadstool / fairy ring | swap, model in game | mushroom2 / mushroom |
-| 9 | censer | swap, model in game | Meshy props censer |
-| 10 | whale (Atlantis) | swap, model in game | ocean_whale / humpback |
+| 7 | rover | **DONE 11-03**, code deleted | mars_rover |
+| 8 | toadstool / fairy ring | **DONE 11-03**, code deleted | mushroom / a ring of mushroom2 |
+| 9 | censer | **DONE 11-03**, code deleted | Meshy props censer |
+| 10 | whale (Atlantis) | **DONE 11-03**, code deleted | ocean pack Whale.fbx (mondo: not the humpback) |
 | 11 | castle_wall | swap, model in game | castle pack Wall_2x4 |
 | 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
-| 13 | brazier | swap, model in game (partial) | cave_torch basket |
+| 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
 | 15 | greytube | pack swap | Molten cryo tube |
 | 16 | iso_tank | pack swap | Molten casket / cryo |
@@ -244,7 +245,7 @@ NOTHING is replaced yet; mondo picks rows by number. Existing rules only; replac
 | 20 | hand_dryer / range_hood / kitchen_range | pack swap | DINER pack |
 | 21 | urinal / sink_row | pack swap | BurgerPiz pack |
 | 22 | toilet / shower stall | pack swap | Gas station / House packs |
-| 23 | `_hzFloatingIsland` (upside-down cone) | new Meshy model | floating rock island |
+| 23 | `_hzFloatingIsland` (upside-down cone) | **DELETED 11-03** (mondo: "just get rid of it, i hate the cones") | — |
 | 24 | `_hzColossus` | new Meshy model | felled giant column, drums scattered |
 | 25 | `_hzFleshMound` | new Meshy model | heap of living flesh, eyes and teeth |
 | 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |

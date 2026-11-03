@@ -17573,7 +17573,6 @@
             { kind: 'greek',       label: 'Greek Ruin',      emoji: '🏛️', foot: 3, maxH: 2 },
             { kind: 'crystal',     label: 'Crystal Shards',  emoji: '💎', foot: 2, maxH: 3 },
             { kind: 'rings',       label: 'Sacred Rings',    emoji: '🌀', foot: 2, maxH: 3 },
-            { kind: 'island',      label: 'Floating Island', emoji: '🏝️', foot: 3, maxH: 3 },
             { kind: 'flag',        label: 'Flag',            emoji: '🚩', foot: 1, maxH: 2 },
             { kind: 'rover',       label: 'Rover',           emoji: '🛻', foot: 1, maxH: 1 },
             { kind: 'goldgate',    label: 'Golden Gate',     emoji: '🌁', foot: 3, maxH: 3 },

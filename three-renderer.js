@@ -9176,7 +9176,7 @@ const ThreeRenderer = (function () {
             ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
             obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
             greek: _hzGreekRuin, crystal: _hzCrystalShards,
-            rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland,
+            rings: _hzSacredRings, colossus: _hzColossus,
             flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
             lightpillar: _hzLightPillar, fluorescent: _hzFluorescent,
             exitsign: _hzExitSign,
@@ -35436,13 +35436,14 @@ const ThreeRenderer = (function () {
     function _hzMiscKit(key, o) {
         o = o || {};
         var ts = _hzKitTile(), rng = o.rng || Math.random;
-        var off = !_MISC_GLB[key] || typeof THREE.GLTFLoader !== 'function' ||
+        var url = o.url || (_MISC_GLB[key] ? _R2_MISC + _MISC_GLB[key] : null);   // `url` = a model outside Assets/misc (the decor, the props, the packs: THE CODED SHAPES OUT, 2026-11-03)
+        var off = !url || typeof THREE.GLTFLoader !== 'function' ||
                   (typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip');
         if (off) return o.fallback ? (o.fallback(rng) || new THREE.Group()) : new THREE.Group();
         var target = o.tiles != null ? o.tiles * ts : (o.metres != null ? o.metres / 1.75 * ts : ts);
         var lit = o.lit !== false;
         var pick = o.matPick || (lit ? (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick) : _hzMiscUnlitPick);   // `matPick` = the caller's own material (THE ROCKS)
-        var g = _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, {
+        var g = _miscModelInstance(url, true, target, {
             fit: o.fit || 'height', matPick: pick, repeat: o.repeat,
             onDone: function (grp, s, bb) {
                 var kids = grp.children.slice();
@@ -35715,6 +35716,63 @@ const ThreeRenderer = (function () {
     function _hzPropMushroom(rng)     { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('mushroom',  ts * 2.0); }
     function _hzPropMushroomReal(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('mushroom2', ts * 1.0); }
     function _hzPropObelisk(rng)      { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('obelisk3d', ts * 3.0); }
+
+    /* THE CODED SHAPES OUT (mondo 2026-11-03: "isnt this already replaced everywhere in the game? if not it needs to be"): the rover
+       is the Meshy mars_rover everywhere (the Mars and Moon settings, the `rover` monument); the boxes-on-wheels builder is gone */
+    function _hzRover(rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng }); }
+
+    /* THE CODED SHAPES OUT (mondo 2026-11-03: "toadstool/fairy ring ... yes replace with the mushrooms"): the giant toadstool is the
+       Meshy fae cap (`mushroom`), the fairy ring is a ring of the small Meshy toadstools (`mushroom2`), each its own model, with the
+       will-o-wisps over it kept; the sphere-cap builders are gone */
+    function _hzToadstool(rng) { return _hzMiscKit('mushroom', { tiles: 2.9, rng: rng }); }
+    function _hzFairyRing(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var n = 7 + (rng() * 4 | 0);
+        for (var i = 0; i < n; i++) {
+            var a = i * Math.PI * 2 / n;
+            var col = [0x9affd0, 0xffd0f2, 0xcfe0ff][i % 3];
+            var wispM = _hzGlowMat(col, 0.75);
+            var wisp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.12, 6, 5), wispM);
+            _hzAt(g, wisp, Math.cos(a) * ts * 1.6, ts * (1.2 + Math.sin(a * 3) * 0.4), Math.sin(a) * ts * 1.6);
+            _hzPulse(wispM, wisp, 0.3, 0.15, 0.5 + rng() * 0.8);
+        }
+        var caps = 8 + (rng() * 3 | 0);
+        for (var j = 0; j < caps; j++) {
+            var b = (j + rng() * 0.5) * Math.PI * 2 / caps, rr = ts * (1.35 + rng() * 0.3);
+            var cap = _hzMiscKit('mushroom2', { tiles: 0.32 + rng() * 0.2, rng: rng });
+            cap.position.set(Math.cos(b) * rr, 0, Math.sin(b) * rr); cap.rotation.y = rng() * 6.28; g.add(cap);
+        }
+        return g;
+    }
+
+    /* the Vatican censer (mondo 2026-11-03: "censer - replace"): the Meshy censer (R2 Assets/props/, Purity's held one) stood on the
+       ground at a tile and a bit, its ember glowing inside; the gold tripod and the smoke ball are gone */
+    function _hzCenser(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 1.25;
+        g.add(_hzMiscKit('censer', { url: 'https://cdn.entropywars.net/Assets/props/censer.glb', tiles: H, rng: rng }));
+        var gc = _hzGlowCore(ts * 0.18, 0xffb060, 0xff7020); gc.position.y = ts * H * 0.55; g.add(gc);
+        return g;
+    }
+
+    /* the brazier (mondo 2026-11-03: "brazier - yes replace ... id prefer the cave torch"): the Meshy standing torch (the cave_torch
+       decor, R2 Assets/decor/) two tiles tall, its fire a glow over the iron basket; the obsidian legs and the cone flame are gone */
+    function _hzBrazier(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 2.0;
+        g.add(_hzMiscKit('cave_torch', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.cave_torch, tiles: H, rng: rng }));
+        var fire = _hzGlowSprite(ts * 1.1, 0xff8a30, 0.8, 0.2, 0.12, 1.4 + rng() * 0.8); fire.position.y = ts * (H + 0.1); g.add(fire);
+        var gc = _hzGlowCore(ts * 0.35, 0xffa050, 0xff5010); gc.position.y = ts * (H - 0.05); g.add(gc);
+        return g;
+    }
+
+    /* the lighthouse (mondo 2026-11-03: "lighthouse - replace"): the Meshy lighthouse (the decor's, R2 Assets/decor/) with its lamp lit;
+       the banded cylinders are gone. The cone island it sometimes stood on is gone too ("sea island - replace with the palm isle"):
+       the sea's islands are the Meshy palm isle (_hzPalmIsleFar) */
+    function _hzLighthouse(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 5.2 + rng() * 1.2;
+        g.add(_hzMiscKit('lighthouse', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.lighthouse, tiles: H, lift: 0.25, rng: rng }));
+        var lamp = _hzGlowCore(ts * 0.3, 0xfff1c8, 0xffd080); lamp.position.y = ts * H * 0.86; g.add(lamp);
+        return g;
+    }
 
     // ── Camelot: the sword in the stone (real Meshy master-sword GLB) ─────
     function _hzExcalibur(rng) {
@@ -36293,37 +36351,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // A broken-off island of land hovering in the air: a slab top (with a small
-    // ruin or crystals) over a tapered rocky underside, debris trailing below.
-    function _hzFloatingIsland(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var topTex = _hzTex(rng() < 0.5 ? 'wasteland' : 'scorched') || _hzTex('dirt');
-        var rockTex = _hzTex('cliff') || _hzTex('rock');
-        var r = ts * (3 + rng() * 3.5), topH = ts * 0.8;
-        var top = _hzCyl(r, r * 0.95, topH, 9, ts, _hzGeoMat(topTex, 0xb6a886));
-        g.add(top);
-        var uh = r * (1.4 + rng() * 0.9);
-        var ug = new THREE.ConeGeometry(r * 0.95, uh, 9, 1);
-        _hzTileUV(ug, r, uh, ts);
-        var under = new THREE.Mesh(ug, _hzGeoMat(rockTex, 0x6e665a));
-        under.rotation.x = Math.PI; under.position.y = -topH * 0.5 - uh * 0.5; g.add(under);
-        if (rng() < 0.65) {                               // crown it
-            var crown = rng() < 0.5 ? _hzGreekRuin(rng) : _hzCrystalShards(rng);
-            crown.scale.setScalar(0.5); crown.position.y = topH * 0.5; g.add(crown);
-        }
-        // a few chunks of falling debris
-        var deb = 2 + (rng() * 3 | 0);
-        for (var i = 0; i < deb; i++) {
-            var s = ts * (0.4 + rng() * 0.5);
-            var chunk = _hzBox(s, s, s, ts, _hzGeoMat(rockTex, 0x6a6256));
-            var a = rng() * Math.PI * 2;
-            chunk.position.set(Math.cos(a) * r * (0.3 + rng() * 0.5), -uh * (0.4 + rng() * 0.8), Math.sin(a) * r * (0.3 + rng() * 0.5));
-            chunk.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
-            g.add(chunk);
-        }
-        return g;
-    }
 
     // Sacred-geometry orbital halo — tilted obsidian rings spinning around a
     // glowing crystal core, like a derelict armillary sphere adrift in the sky.
@@ -36445,90 +36472,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // Apollo Lunar Roving Vehicle — an open tubular chassis that is LONGER than
-    // it is wide (≈3.1 m × 1.8 m in life), four wire-mesh wheels under flared
-    // fenders, twin mesh bucket seats, a central control console, a gold-foil
-    // equipment/battery bay at the back and the big umbrella high-gain antenna
-    // on a forward mast. Forward is +Z (where the dish + console live).
-    function _hzRover(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var foil  = function () { return _hzGeoMat(_hzTex('gold'), 0xcaa23f); };                          // kapton gold foil
-        var alum  = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc6cad1); };  // bare aluminium
-        var frame = function () { return _hzGeoMat(_hzTex('metal'), 0x44474e); };                         // dark structural tube
-        var seatM = function () { return _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x2b2d33); };    // dark mesh seat
-
-        // length runs along Z, width along X — longer than wide, the right way round
-        var L = ts * 2.3, W = ts * 1.25, deckH = ts * 0.14, wheelR = ts * 0.30;
-        var deckY = wheelR + ts * 0.16;                 // open deck sits just above the axles
-        var deckTop = deckY + deckH * 0.5;
-
-        // ── open chassis: thin aluminium floor pan + tubular frame rails ────
-        var deck = _hzBox(W, deckH, L, ts, alum());
-        deck.position.y = deckY; g.add(deck);
-        [-1, 1].forEach(function (sx) {
-            var rail = _hzBox(ts * 0.10, ts * 0.10, L * 0.98, ts, frame());
-            rail.position.set(sx * W * 0.5, deckTop, 0); g.add(rail);
-        });
-        [-1, 1].forEach(function (sz) {
-            var xm = _hzBox(W * 1.02, ts * 0.10, ts * 0.10, ts, frame());
-            xm.position.set(0, deckTop, sz * L * 0.46); g.add(xm);
-        });
-
-        // ── twin bucket seats, side by side across the width, mid-deck ──────
-        for (var s = 0; s < 2; s++) {
-            var sx2 = (s === 0 ? -1 : 1) * W * 0.24;
-            var seatZ = L * 0.04;
-            var pan = _hzBox(W * 0.42, ts * 0.10, ts * 0.52, ts, seatM());
-            pan.position.set(sx2, deckTop + ts * 0.17, seatZ); g.add(pan);
-            var back = _hzBox(W * 0.42, ts * 0.52, ts * 0.10, ts, seatM());
-            back.position.set(sx2, deckTop + ts * 0.42, seatZ - ts * 0.27); g.add(back);
-            var rest = _hzBox(W * 0.40, ts * 0.13, ts * 0.11, ts, foil());     // gold head-rest pad
-            rest.position.set(sx2, deckTop + ts * 0.67, seatZ - ts * 0.27); g.add(rest);
-        }
-
-        // ── central control console + hand-controller stalk, toward the front ─
-        var con = _hzBox(ts * 0.30, ts * 0.24, ts * 0.20, ts, frame());
-        con.position.set(0, deckTop + ts * 0.18, L * 0.30); g.add(con);
-        var tstem = _hzCyl(ts * 0.025, ts * 0.025, ts * 0.26, 6, ts, frame());
-        tstem.position.set(0, deckTop + ts * 0.34, L * 0.30); g.add(tstem);
-
-        // ── rear equipment / battery bay clad in gold foil + aluminium lid ──
-        var bay = _hzBox(W * 0.86, ts * 0.32, ts * 0.5, ts, foil());
-        bay.position.set(0, deckTop + ts * 0.19, -L * 0.34); g.add(bay);
-        var bayTop = _hzBox(W * 0.88, ts * 0.05, ts * 0.52, ts, alum());
-        bayTop.position.set(0, deckTop + ts * 0.37, -L * 0.34); g.add(bayTop);
-
-        // ── four wire-mesh wheels, bright hubs, flared fenders ──────────────
-        var wx = W * 0.56, wz = L * 0.34;
-        [[-wx, wz], [wx, wz], [-wx, -wz], [wx, -wz]].forEach(function (p) {
-            var side = p[0] < 0 ? -1 : 1;
-            var wheel = _hzCyl(wheelR, wheelR, ts * 0.26, 16, ts, frame());
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(p[0], wheelR, p[1]); g.add(wheel);
-            var hub = _hzCyl(wheelR * 0.36, wheelR * 0.36, ts * 0.30, 10, ts, alum());
-            hub.rotation.z = Math.PI / 2;
-            hub.position.set(p[0] + side * ts * 0.01, wheelR, p[1]); g.add(hub);
-            var fender = _hzBox(ts * 0.34, ts * 0.05, wheelR * 2.4, ts, alum());
-            fender.position.set(p[0], wheelR * 1.95, p[1]); g.add(fender);
-        });
-
-        // ── umbrella high-gain antenna on a forward mast ────────────────────
-        var mast = _hzCyl(ts * 0.03, ts * 0.035, ts * 1.15, 6, ts, alum());
-        mast.position.set(W * 0.30, deckTop + ts * 0.58, L * 0.40); g.add(mast);
-        var dishGeo = new THREE.SphereGeometry(ts * 0.5, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        var dish = new THREE.Mesh(dishGeo, _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xe6e8ee));
-        dish.scale.set(1, 0.3, 1);
-        dish.position.set(W * 0.30, deckTop + ts * 1.16, L * 0.40);
-        dish.rotation.x = -0.6; g.add(dish);
-
-        // ── low-gain whip antenna at the rear ───────────────────────────────
-        var whip = _hzCyl(ts * 0.012, ts * 0.012, ts * 0.9, 5, ts, frame());
-        whip.position.set(-W * 0.34, deckTop + ts * 0.5, -L * 0.28);
-        whip.rotation.z = 0.18; g.add(whip);
-
-        return g;
-    }
 
     // The Golden Gates — two fluted gold pillars under an ornate lintel, a
     // luminous veil filling the threshold and a crowning glow.
@@ -36746,24 +36689,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Hell: obsidian brazier, always burning ──
-    function _hzBrazier(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var obsidian = function () { return _hzGeoMat(_hzTex('obsidian'), 0x4a3f58); };
-        for (var i = 0; i < 3; i++) {
-            var a = i * Math.PI * 2 / 3;
-            _hzAt(g, _hzCyl(ts * 0.08, ts * 0.11, ts * 1.4, 6, ts, obsidian()),
-                Math.cos(a) * ts * 0.55, ts * 0.7, Math.sin(a) * ts * 0.55, 0, Math.cos(a) * 0.25, Math.sin(a) * 0.25);
-        }
-        _hzAt(g, _hzCyl(ts * 0.85, ts * 0.5, ts * 0.6, 10, ts, obsidian()), 0, ts * 1.55, 0);
-        var fireMat = _hzGlowMat(0xff8a30, 0.9);
-        var fire = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.55, ts * 1.1, 8), fireMat);
-        _hzAt(g, fire, 0, ts * 2.35, 0);
-        _hzPulse(fireMat, fire, 0.28, 0.14, 1.4 + rng() * 0.8);
-        (function () { var _gc = _hzGlowCore(ts * 0.6, 0xffa050, 0xff5010); _gc.position.y = ts * 2.2; g.add(_gc); })();
-        return g;
-    }
 
     // ── Cyberpunk: flickering holo-billboard ──
     function _hzHoloboard(rng) {
@@ -37027,52 +36952,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Fairy Forest: giant crystal toadstool ──
-    function _hzToadstool(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var stemMat = _hzGeoMat(_hzTex('drywall') || _hzTex('marble_2'), 0xe8ded2);
-        var capMat = _hzGeoMat(_hzTex('mushroom') || _hzTex('crystal'), 0xe06a9a);
-        var stemH = ts * 1.9;
-        _hzAt(g, _hzCyl(ts * 0.4, ts * 0.6, stemH, 9, ts, stemMat), 0, stemH / 2, 0, 0, 0.06);
-        var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.5, 14, 9, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
-        cap.scale.y = 0.72;
-        _hzAt(g, cap, 0, stemH - ts * 0.1, 0);
-        for (var i = 0; i < 6; i++) {                                    // glow spots
-            var a = rng() * Math.PI * 2, rr = ts * (0.4 + rng() * 0.85);
-            var spotM = _hzGlowMat(0xfff0c8, 0.7);
-            var spot = new THREE.Mesh(new THREE.SphereGeometry(ts * (0.08 + rng() * 0.08), 6, 5), spotM);
-            _hzAt(g, spot, Math.cos(a) * rr, stemH + ts * 0.65 - rr * 0.42, Math.sin(a) * rr);
-            if (i < 2) _hzPulse(spotM, spot, 0.3, 0.1, 0.5 + rng());
-        }
-        var gillMat = _hzGlowMat(0x9affd0, 0.35);                        // bioluminescent gills
-        var gills = new THREE.Mesh(new THREE.CylinderGeometry(ts * 1.2, ts * 0.55, ts * 0.16, 12, 1, true), gillMat);
-        _hzAt(g, gills, 0, stemH - ts * 0.05, 0);
-        _hzPulse(gillMat, null, 0.15, 0, 0.4);
-        return g;
-    }
 
-    // ── Fairy Forest: a ring of will-o-wisps over the fairy circle ──
-    function _hzFairyRing(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var n = 7 + (rng() * 4 | 0);
-        for (var i = 0; i < n; i++) {
-            var a = i * Math.PI * 2 / n;
-            var col = [0x9affd0, 0xffd0f2, 0xcfe0ff][i % 3];
-            var wispM = _hzGlowMat(col, 0.75);
-            var wisp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.12, 6, 5), wispM);
-            _hzAt(g, wisp, Math.cos(a) * ts * 1.6, ts * (1.2 + Math.sin(a * 3) * 0.4), Math.sin(a) * ts * 1.6);
-            _hzPulse(wispM, wisp, 0.3, 0.15, 0.5 + rng() * 0.8);
-        }
-        // one tiny real mushroom grounds the ring
-        var stem = _hzCyl(ts * 0.06, ts * 0.09, ts * 0.3, 6, ts, _hzGeoMat(_hzTex('drywall'), 0xe8ded2));
-        _hzAt(g, stem, 0, ts * 0.15, 0);
-        var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.16, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
-            _hzGeoMat(_hzTex('mushroom'), 0xe06a9a));
-        _hzAt(g, cap, 0, ts * 0.3, 0);
-        return g;
-    }
 
     // ── Technoticlan: hologram pyramid over the tech-altar ──
     function _hzHoloPyramid(rng) {
@@ -37160,28 +37040,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Vatican: censer tripod, incense burning ──
-    function _hzCenser(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xd8b458); };
-        for (var i = 0; i < 3; i++) {
-            var a = i * Math.PI * 2 / 3;
-            _hzAt(g, _hzCyl(ts * 0.05, ts * 0.07, ts * 2.6, 5, ts, gold()),
-                Math.cos(a) * ts * 0.62, ts * 1.3, Math.sin(a) * ts * 0.62, 0, Math.cos(a) * 0.42, Math.sin(a) * 0.42);
-        }
-        _hzAt(g, _hzCyl(ts * 0.02, ts * 0.02, ts * 0.9, 4, ts, gold()), 0, ts * 2.05, 0);                 // chain
-        var bowl = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.34, 9, 7), gold());
-        bowl.scale.y = 0.75;
-        _hzAt(g, bowl, 0, ts * 1.5, 0);
-        var smokeMat = _hzGlowMat(0xd8cfc0, 0.22);
-        var smoke = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 8, 6), smokeMat);
-        smoke.scale.set(0.7, 1.8, 0.7);
-        _hzAt(g, smoke, ts * 0.05, ts * 2.4, 0);
-        _hzPulse(smokeMat, smoke, 0.12, 0.2, 0.25);
-        (function () { var _gc = _hzGlowCore(ts * 0.22, 0xffb060, 0xff7020); _gc.position.y = ts * 1.5; g.add(_gc); })();
-        return g;
-    }
 
     // ── Bohemian Grove: the wrapped effigy on its bier ──
     function _hzEffigy(rng) {
@@ -39076,14 +38934,12 @@ const ThreeRenderer = (function () {
             if (K.inLane(xb, zb, 2.2 * ts) || rng() < 0.2) continue;
             _nrProp(K, function (r) { return _hzMiscKit('standingstone', { tiles: 1.5 + r() * 1.2, rng: r, cast: true, foot: 0.5, low: 'skip' }); }, xb, zb, { ry: rng() * 6.3, y: -0.12 });
         }
-        _nrMounds(K, { tex: 'grass_2', d: 7.5, spacing: 3.5, r: 2.0, flat: 0.18, p: 0.5 });
         var ditch = K.mat('dirt', 0x8a7a60); var ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.28, R * 1.42, 40), ditch); ring.rotation.x = -Math.PI / 2; ring.position.set(K.CX, K.fy + 0.4, K.CZ); K.add(ring);
     };
     /* GIZA — the necropolis: dunes, two pyramids on the diagonal, obelisks. */
     _NR_BUILDERS.giza = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 4.5 }), ts = K.ts;
         _nrApron(K, { tex: 'desert', deep: true, skirt: 'dirt_2', skirtColor: 0xe0c48c });
-        _nrMounds(K, { tex: 'desert', d: 3.4, spacing: 2.4, r: 1.8, flat: 0.3, p: 0.75 });
         var pyr = K.mat('desert', 0xd6c39a);
         [[K.BX1 + 9 * ts, K.BZ0 - 8 * ts, 11], [K.BX0 - 10 * ts, K.BZ1 + 9 * ts, 13], [K.BX1 + 12 * ts, K.BZ1 + 11 * ts, 7]].forEach(function (p) {
             var h = p[2] * ts, r = h * 0.95; var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrConeUV(geo, r, h, ts, 0.5);
@@ -39242,7 +39098,7 @@ const ThreeRenderer = (function () {
         mesas.forEach(function (m) { var b = K.box(m[2] * ts, m[4] * ts, m[3] * ts, mesa, 0.5); b.position.set(m[0], K.fy + m[4] * ts / 2 - 0.3 * ts, m[1]); b.rotation.y = 0.3; K.add(K.lit(b, true)); var cap = K.box(m[2] * ts * 1.04, 0.2 * ts, m[3] * ts * 1.04, K.mat('mars', 0xc88a5a)); cap.position.set(m[0], K.fy + m[4] * ts - 0.2 * ts, m[1]); cap.rotation.y = 0.3; K.add(cap); });
         /* the rover is the user's real model (2026-09-11: DOOR_HQ.catalogue
            `mars_rover`, 2.6 m long here); the procedural buggy is its fallback */
-        _nrProp(K, function (rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng, fallback: _hzRover }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
+        _nrProp(K, _hzRover, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
         _nrProp(K, _hzBiodome, K.BX0 - 2.8 * ts, K.BZ1 + 2.6 * ts, { s: 0.8 });
         _nrRocks(K, { tex: 'mars_2', color: 0x9a5a44, d: 1.0, p: 0.4, r: 0.3 });
         /* THE PYRAMID (2026-09-16, the user: "Mars needs the glb pyramid"): the Cydonia
@@ -39279,7 +39135,6 @@ const ThreeRenderer = (function () {
         _nrMoat(K, { key: 'deep_water', depth: 1, pad: 10 });
         var ice = K.mat('igloo', 0xdcecf8);
         for (var i = 0; i < 9; i++) { var a = rng() * Math.PI * 2, r = ts * (6.5 + rng() * 4); var w = ts * (1 + rng() * 2), h = ts * (0.4 + rng() * 1.4); var b = K.box(w, h, w * (0.6 + rng() * 0.8), ice, 0.5); b.position.set(K.CX + Math.cos(a) * r, K.fy - 1.2 * ts + h / 2, K.CZ + Math.sin(a) * r); b.rotation.y = rng() * 6; K.add(K.lit(b, true)); }
-        _nrMounds(K, { tex: 'marble_light', color: 0xf4faff, d: 2.6, spacing: 2.0, r: 1.3, flat: 0.3, p: 0.7 });
         _nrProp(K, _hzIgloo, K.BX0 - 2.8 * ts, K.BZ1 + 2.4 * ts, { s: 0.8 });
         _nrProp(K, _hzWhalebones, K.BX1 + 2.8 * ts, K.BZ0 - 2.4 * ts, { s: 0.8 });
         _nrRibbons(K, { n: 4, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff] });
@@ -39296,7 +39151,6 @@ const ThreeRenderer = (function () {
         _nrHouse(K, K.BX1 + 3.2 * ts, K.CZ - 0.5 * ts, { w: 3.0, d: 3.6, h: 2.2, tex: 'wood_planks', color: 0xa83a30, roofTex: 'metal', roofColor: 0x6a6e74, ry: -Math.PI / 2, window: 0xffc060, chimney: false });
         _nrProp(K, _hzWindmill, K.BX0 - 3.0 * ts, K.BZ0 - 2.4 * ts, { s: 0.9 });
         _nrTrees(K, { d: 3.4, spacing: 2.6, kinds: ['tree_5', 'tree_6'], p: 0.6, h: 2.2 });
-        _nrMounds(K, { tex: 'rocks_1', color: 0xb09878, d: 8.5, spacing: 5, r: 4, flat: 0.5, p: 0.8 });
         var bale = K.mat('wood', 0xc8a860); [[K.BX0 - 1.1 * ts, K.BZ1 + 2.0 * ts], [K.BX0 - 2.0 * ts, K.BZ1 + 2.2 * ts]].forEach(function (p) { var b = K.cyl(0.4 * ts, 0.4 * ts, 0.7 * ts, 10, bale); b.rotation.z = Math.PI / 2; b.position.set(p[0], K.fy + 0.4 * ts, p[1]); K.add(K.lit(b, true)); });
         var tank = K.cyl(0.9 * ts, 0.9 * ts, 0.5 * ts, 12, K.mat('metal_2', 0x9a9088)); tank.position.set(K.BX1 + 1.6 * ts, K.fy + 0.25 * ts, K.BZ1 + 2.6 * ts); K.add(K.lit(tank, true));
         var eye = K.lamp(K.CX + 4 * ts, K.fy + 9 * ts, K.CZ - 7 * ts, 0xff4060, 1.2 * ts, 0.35); K.add(eye); _hzPulse(eye.material, eye, 0.3, 0.2, 0.25);
@@ -39357,7 +39211,7 @@ const ThreeRenderer = (function () {
         };
         _nrProp(K, function (rng) { return _hzDoorKitGLB('lunar_lander', { metres: 3.2, foot: 1.5, rng: rng, fallback: landerProc }); }, lx, lz, { ry: 0.55 });
         _nrProp(K, _hzFlag, lx - 1.6 * ts, lz + 0.4 * ts, { s: 0.5, ry: 0.4 });
-        _nrProp(K, _hzRover, K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, { s: 0.7, ry: 2.4 });
+        _nrProp(K, _hzRover, K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, { ry: 2.4 });
         var trk = new THREE.MeshBasicMaterial({ color: 0x7a7e90, transparent: true, opacity: 0.5, depthWrite: false });
         for (var t = 0; t < 2; t++) { var tr = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * ts, 6 * ts), trk); tr.rotation.x = -Math.PI / 2; tr.rotation.z = 0.9; tr.position.set(K.BX0 - 1.6 * ts + t * 0.5 * ts, K.fy + 0.7, K.BZ1 + 1.4 * ts); tr.renderOrder = 1; K.add(tr); }
         _nrProp(K, _hzMonolith, K.BX1 + 4.6 * ts, K.BZ1 + 4.2 * ts, { s: 0.28 });
@@ -39452,8 +39306,6 @@ const ThreeRenderer = (function () {
         [1.6, 3.2].forEach(function (d, ri) { _nrRectRing(K, d * ts, 0.7 * ts, function (x, z) { if (rng() < 0.12) return; var h = ts * (0.5 + rng() * 0.35); var b = K.box(0.72 * ts, h, 0.5 * ts, wall); b.position.set(x, K.fy + h / 2 - 0.1 * ts, z); b.rotation.y = K.face(x, z) + (rng() - 0.5) * 0.2; K.add(K.lit(b, true)); }, { skipLanes: true, corners: true }); });
         _nrRectRing(K, 2.4 * ts, 2.6 * ts, function (x, z) { _nrProp(K, _hzTPillar, x, z, { s: 0.55 }); }, { skipLanes: true, corners: true });
         var dig = K.mat('dirt_3', 0xb89868); [[K.BX0 - 4.0 * ts, K.BZ0 - 1.5 * ts], [K.BX1 + 4.0 * ts, K.BZ1 + 1.5 * ts]].forEach(function (p) { var t = K.box(1.6 * ts, 0.6 * ts, 2.6 * ts, dig); t.position.set(p[0], K.fy - 0.3 * ts - 0.7, p[1]); K.add(t); var tent = new THREE.Mesh(new THREE.ConeGeometry(0.9 * ts, 0.9 * ts, 4), K.mat('drywall', 0xe8dcc0)); tent.position.set(p[0] + 1.6 * ts, K.fy + 0.45 * ts, p[1]); tent.rotation.y = Math.PI / 4; K.add(K.lit(tent, true)); });
-        _nrMounds(K, { tex: 'grass_2', color: 0xa8b070, d: 5.5, spacing: 3.2, r: 2.8, flat: 0.28, p: 0.85, skipLanes: false });
-        _nrMounds(K, { tex: 'dirt_3', color: 0xc8a878, d: 9, spacing: 5, r: 5, flat: 0.35, p: 0.8, skipLanes: false });
     };
     /* D.U.M.B. — a bay of the base: concrete walls, blast doors at both ends,
        server banks, pipes, red emergency light, the cameras. */
@@ -39497,7 +39349,6 @@ const ThreeRenderer = (function () {
         _nrProp(K, _hzSleigh, K.BX1 + 2.4 * ts, K.BZ1 + 2.0 * ts, { s: 1.0, ry: 2.2 });
         var wrap = [0xd84040, 0x40a860, 0xf0d040, 0x5080e0];
         for (var i = 0; i < 8; i++) { var s = ts * (0.35 + rng() * 0.4); var b = K.box(s, s, s, K.mat('wood_planks', wrap[i % 4])); b.position.set(K.BX1 + (1.4 + rng() * 2.2) * ts, K.fy + s / 2, K.BZ0 - (1.2 + rng() * 2.0) * ts); b.rotation.y = rng(); K.add(K.lit(b, true)); var rib = K.box(s * 1.04, 0.08 * ts, s * 1.04, _hzLit(null, 0xfff0a0)); rib.position.copy(b.position); rib.rotation.y = b.rotation.y; K.add(rib); }
-        _nrMounds(K, { tex: 'marble_light', color: 0xf8fcff, d: 3.6, spacing: 2.2, r: 1.4, flat: 0.35, p: 0.7 });
         _nrRibbons(K, { n: 5, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff, 0xff9ad0] });
         var pole = K.cyl(0.06 * ts, 0.06 * ts, 2.4 * ts, 8, K.mat('marble_light', 0xffffff)); pole.position.set(K.BX1 + 1.4 * ts, K.fy + 1.2 * ts, K.CZ); K.add(pole); var stripe = K.cyl(0.07 * ts, 0.07 * ts, 2.4 * ts, 8, _hzLit(null, 0xd03030)); stripe.scale.set(1, 1, 1); stripe.position.copy(pole.position); stripe.scale.y = 0.5; K.add(stripe); K.add(K.lamp(K.BX1 + 1.4 * ts, K.fy + 2.5 * ts, K.CZ, 0xfff2c0, 0.8 * ts, 0.7));
         _nrPool(K, K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.1 * ts, 'water', { rimTex: 'marble_light', rimColor: 0xffffff });
@@ -39685,7 +39536,6 @@ const ThreeRenderer = (function () {
         _nrApron(K, { tex: 'concrete_floor', color: 0xb0aeaa, deep: true, skirt: 'urban_wall', skirtColor: 0x9a9aa0 });
         _nrRoadLines(K, { color: 0xf0f0e8 });
         _nrSpriteBlocks(K, { d: 2.6, minW: 2.4, maxW: 3.4, stack: [2, 5], tex: 'concrete_floor', color: 0x9a9894, roofTex: 'concrete_floor', roofColor: 0x8a8d92, gates: true, beacon: 0xff3030 });   // the map-builder's buildings (2026-09-14)
-        _nrMounds(K, { tex: 'rubble_3', color: 0xa09a94, d: 1.2, spacing: 2.6, r: 0.9, flat: 0.3, p: 0.4, only: ['w', 'e'] });
         [[K.BX0 - 1.2 * ts, K.CZ - 2.4 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.6 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], fy, p[1]); d.rotation.y = p[2]; K.add(d); });
         _nrProp(K, _hzSecurityCam, K.BX1 + 2.0 * ts, K.BZ0 - 2.0 * ts, { s: 0.8 });
         /* the utility boxes (the user's GLB, 2026-09-13): the block's power, on the curbs beside the dumpsters */
@@ -40518,26 +40368,6 @@ const ThreeRenderer = (function () {
         t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
         _hzFacTexCache[key] = t; return t;
     }
-    // ── the sea ──
-    /* an island on the water: a low rock cone (its base under the sea) with
-       a grassy crown, palms / pines, sometimes a lighthouse */
-    function _hzSeaIsland(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
-        var r = ts * (2.5 + rng() * 4.5), h = ts * (0.8 + rng() * 1.6);
-        var rock = _hzTex('rocks_1') || _hzTex('cliff'), top = _hzTex('grass_2') || _hzTex('dirt');
-        var geo = new THREE.ConeGeometry(r, h * 2.2, 9, 1); _hzTileUV(geo, r, h * 2.2, ts);
-        var m = new THREE.Mesh(geo, _hzGeoMat(rock, 0x6e7a6a)); m.position.y = h * 2.2 * 0.5 - h * 1.1; m.rotation.y = rng() * 6; g.add(m);
-        var cg = new THREE.ConeGeometry(r * 0.58, h * 0.95, 9, 1); _hzTileUV(cg, r, h, ts);
-        var cap = new THREE.Mesh(cg, _hzGeoMat(top, 0x7fa060)); cap.position.y = h * 0.62; cap.rotation.y = m.rotation.y; g.add(cap);
-        var n = 2 + (rng() * 4 | 0), trunkMat = _hzGeoMat(_hzTex('wood') || null, 0x6a4a30), leafMat = _hzGeoMat(_hzTex('leaves') || null, 0x3f8a4a);
-        for (var i = 0; i < n; i++) {
-            var a = rng() * Math.PI * 2, rad = r * (0.15 + rng() * 0.35), th = ts * (0.9 + rng() * 1.3);
-            var tr = _hzCyl(ts * 0.05, ts * 0.09, th, 5, ts, trunkMat); tr.position.set(Math.cos(a) * rad, h * 0.9 + th / 2, Math.sin(a) * rad); tr.rotation.z = (rng() - 0.5) * 0.4; g.add(tr);
-            var can = new THREE.Mesh(new THREE.SphereGeometry(ts * (0.35 + rng() * 0.3), 7, 6), leafMat); can.position.set(tr.position.x + Math.sin(tr.rotation.z) * th * 0.5, h * 0.9 + th, tr.position.z); can.scale.y = 0.6; g.add(can);
-        }
-        if (rng() < 0.3) { var lh = _hzLighthouse(rng); lh.scale.setScalar(0.75); lh.position.y = h * 1.05; g.add(lh); }
-        return g;
-    }
     /* sea stacks: two or three rock pillars standing out of the water */
     function _hzSeaStack(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
@@ -40547,21 +40377,6 @@ const ThreeRenderer = (function () {
             var h = ts * (2 + rng() * 5), r = ts * (0.5 + rng() * 1.1);
             var m = _hzCyl(r * (0.5 + rng() * 0.4), r, h, 7, ts, mat); m.position.set((rng() - 0.5) * ts * 5, h / 2 - ts * 0.6, (rng() - 0.5) * ts * 5); m.rotation.z = (rng() - 0.5) * 0.12; g.add(m);
         }
-        return g;
-    }
-    /* a lighthouse on a rock: red and white bands, a lamp, a beam that turns */
-    function _hzLighthouse(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
-        var rock = _hzGeoMat(_hzTex('cliff') || _hzTex('rocks_1'), 0x6a7270);
-        var base = _hzCyl(ts * 1.4, ts * 1.9, ts * 1.2, 9, ts, rock); base.position.y = ts * 0.6 - ts * 0.5; g.add(base);
-        var h = ts * (3.2 + rng() * 1.6), bands = 4, white = _hzGeoMat(null, 0xf2efe6), red = _hzGeoMat(null, 0xc83a3a);
-        for (var i = 0; i < bands; i++) { var seg = _hzCyl(ts * (0.42 - i * 0.05), ts * (0.46 - i * 0.05), h / bands, 12, ts, i % 2 ? red : white); seg.position.y = ts * 0.7 + h / bands * (i + 0.5); g.add(seg); }
-        var lamp = _hzGlowCore(ts * 0.3, 0xfff1c8, 0xffd080); lamp.position.y = ts * 0.7 + h + ts * 0.25; g.add(lamp);
-        var beamMat = _hzGlowMat(0xfff1c8, 0.16);
-        var beam = new THREE.Group(); beam.position.y = ts * 0.7 + h + ts * 0.25;
-        var bm = new THREE.Mesh(new THREE.PlaneGeometry(ts * 9, ts * 0.5), beamMat); bm.position.x = ts * 4.5; beam.add(bm);
-        var bm2 = bm.clone(); bm2.rotation.x = Math.PI / 2; beam.add(bm2);
-        rng();   /* NO LIGHT BOX (mondo 2026-10-05): the turning searchlight planes are not added (the rng draw keeps the horizon seed) */
         return g;
     }
     /* a ghost ship on the horizon — 2026-09-12: the user's ghost-ship-wreck GLB
@@ -40606,7 +40421,7 @@ const ThreeRenderer = (function () {
     }
     function _hzPalmIsleFar(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        return _hzMiscKit('palmisle', { tiles: 5 + rng() * 4, fit: 'span', sink: 0.45, lit: false, rng: rng, low: 'skip', fallback: _hzSeaIsland });
+        return _hzMiscKit('palmisle', { tiles: 5 + rng() * 4, fit: 'span', sink: 0.45, lit: false, rng: rng, low: 'skip' });
     }
     // ── the wreckage field ──
     /* an asteroid: a rock solid with its vertices jostled */
@@ -40839,49 +40654,47 @@ const ThreeRenderer = (function () {
             divine: [
                 [0.14, _hzGoldGate, false, 0.00, 0.45], [0.29, _hzLightPillar, false, -0.15, 0.50],
                 [0.42, _hzStairway, false, -0.30, 0.55], [0.56, _hzGreekRuin, false, -0.35, 0.50],
-                [0.64, _hzFloatingIsland, false, -0.30, 0.60], [0.73, _hzTome, false, -0.20, 0.60],
+                [0.73, _hzTome, false, -0.20, 0.60],
                 [0.81, _hzRoseWindow, false, -0.35, 0.50], [0.88, _hzModelClock, false, -0.25, 0.55],
                 [0.94, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
                 [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
                 [0.66, _hzCrystalShards, true, -0.55, 0.45],
                 [0.76, _hzObelisk, false, -0.50, 0.40], [0.86, _hzGrinSkull, false, -0.45, 0.35],
-                [0.94, _hzFleshMound, false, -0.50, 0.30], [1.00, _hzFloatingIsland, false, -0.60, 0.35]],
+                [1.00, _hzFleshMound, false, -0.50, 0.30]],
             ruins: [
                 [0.22, _hzGreekRuin, false, -0.40, 0.50], [0.36, _hzStairway, false, -0.45, 0.55],
                 [0.50, _hzColossus, false, -0.45, 0.45], [0.62, _hzObelisk, false, -0.45, 0.55],
                 [0.72, _hzGateway, false, -0.40, 0.55], [0.82, _hzWoodCross, false, -0.45, 0.45],
-                [0.91, _hzRoseWindow, false, -0.42, 0.50],
-                [1.00, _hzFloatingIsland, false, -0.50, 0.60]],
+                [1.00, _hzRoseWindow, false, -0.42, 0.50]],
             pyramids: [
                 [0.30, _hzModelPyramid, false, -0.40, 0.45], [0.50, _hzZiggurat, false, -0.40, 0.50],
                 [0.66, _hzObelisk, false, -0.45, 0.55], [0.80, _hzMonolith, false, -0.50, 0.55],
-                [0.90, _hzColossus, false, -0.45, 0.40], [1.00, _hzFloatingIsland, false, -0.50, 0.55]],
+                [1.00, _hzColossus, false, -0.45, 0.40]],
             crystals: [
                 [0.30, _hzCrystalShards, true, -0.55, 0.65], [0.48, _hzSacredRings, true, -0.50, 0.70],
                 [0.64, _hzAstralOrbs, true, -0.55, 0.75], [0.78, _hzModelPlanet, false, -0.55, 0.72],
-                [0.90, _hzFloatingIsland, false, -0.55, 0.60], [1.00, _hzMonolith, false, -0.50, 0.55]],
+                [1.00, _hzMonolith, false, -0.50, 0.55]],
             orbs: [
                 [0.28, _hzAstralOrbs, true, -0.55, 0.75], [0.44, _hzSacredRings, true, -0.55, 0.70],
                 [0.58, _hzModelEyeball, true, -0.45, 0.65], [0.70, _hzModelPlanet, false, -0.55, 0.75],
                 [0.80, _hzSaucer, false, -0.35, 0.62], [0.88, _hzModelCraft, false, -0.35, 0.65],
-                [0.95, _hzMonolith, false, -0.50, 0.55], [1.00, _hzFloatingIsland, false, -0.55, 0.60]],
+                [1.00, _hzMonolith, false, -0.50, 0.55]],
             eyes: [
                 [0.34, _hzModelEyeball, true, -0.45, 0.65], [0.60, _hzAstralOrbs, true, -0.55, 0.75],
                 [0.76, _hzSacredRings, true, -0.55, 0.70], [1.00, _hzMonolith, false, -0.55, 0.55]],
             islands: [
-                [0.50, _hzFloatingIsland, false, -0.55, 0.65],
                 [0.64, _hzStairway, false, -0.45, 0.55], [0.78, _hzGreekRuin, false, -0.40, 0.50],
                 [0.90, _hzLenticular, false, -0.10, 0.45], [1.00, _hzAstralOrbs, true, -0.50, 0.70]],
             city: [
                 [0.30, _hzMonolith, false, -0.50, 0.55], [0.50, _hzGateway, false, -0.40, 0.55],
-                [0.68, _hzFloatingIsland, false, -0.55, 0.60], [0.84, _hzAstralOrbs, true, -0.50, 0.72],
+                [0.84, _hzAstralOrbs, true, -0.50, 0.72],
                 [1.00, _hzSacredRings, true, -0.50, 0.70]],
             space: [   // 2026-09-13: the asteroids are the user's GLBs (_hzAsteroidFar)
                 [0.17, _hzModelPlanet, false, -0.60, 0.78], [0.31, _hzAsteroidFar, true, -0.60, 0.75],
                 [0.42, _hzAstralOrbs, true, -0.60, 0.76],
                 [0.52, _hzCrystalShards, true, -0.60, 0.70], [0.60, _hzModelStar, false, -0.55, 0.80],
-                [0.66, _hzModelSolarSystem, false, -0.40, 0.70], [0.74, _hzFloatingIsland, false, -0.58, 0.66],
+                [0.66, _hzModelSolarSystem, false, -0.40, 0.70],
                 [0.82, _hzModelEyeball, true, -0.50, 0.70], [0.88, _hzSaucer, false, -0.45, 0.68],
                 [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
@@ -40893,7 +40706,7 @@ const ThreeRenderer = (function () {
             // board. A sixth field 'sea' = on the water (the sea's level from the
             // motion config, + row[3] tiles); the sky rows use the disc factors.
             sea: [   // 2026-09-12: the wreck, the kraken, the shark and the palm island are the user's GLBs
-                [0.20, _hzSeaIsland, false, 0, 0, 'sea'], [0.32, _hzPalmIsleFar, false, 0, 0, 'sea'],
+                [0.32, _hzPalmIsleFar, false, 0, 0, 'sea'],
                 [0.42, _hzSeaStack, false, 0, 0, 'sea'], [0.52, _hzGhostShip, false, 0, 0, 'sea'],
                 [0.56, _hzLighthouse, false, 0, 0, 'sea'], [0.66, _hzKrakenFar, false, 0, 0, 'sea'],
                 [0.76, _hzSharkFar, false, 0, 0, 'sea'],
@@ -40935,7 +40748,6 @@ const ThreeRenderer = (function () {
             [0.521, _hzObelisk,        false, -0.45,  0.58],   // obelisks
             [0.583, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
             [0.629, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
-            [0.691, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
             [0.725, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
             [0.748, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
             [0.768, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
@@ -41399,19 +41211,8 @@ const ThreeRenderer = (function () {
                 });
             }
         },
-        /* soft downs: squashed spheres */
-        hills: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'grass_2', s.color != null ? s.color : 0xffffff, { lift: 0.26 });
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 16) * (1 + k * 0.4), Math.round((s.n || 16) * (1 + k * 0.3)), function (x, z, a, i, rr) {
-                if (rng() > (s.p == null ? 0.8 : s.p)) return;
-                var r = ts * (s.r || 4) * (0.6 + rng() * 0.9);
-                r = Math.min(r, (rr - ((K._wdMinD || 0) + 1) * ts) / 1.9); if (r < ts * 0.6) return;   // a hill never rolls back over the shore
-                var geo = new THREE.SphereGeometry(r, 14, 9); _nrUV(geo, r / ts * 3, r / ts * 1.5);
-                var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.9, (s.flat || 0.3) * (0.7 + rng() * 0.6), 1 + rng() * 0.9); _nrSquashUV(geo, m.scale);
-                m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - r * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
-            });
-        },
-        dunes: function (K, s, c) { _WD_RIM.hills(K, Object.assign({ tex: 'desert', flat: 0.2, r: 4.5, n: 20, ranks: 3 }, s), c); },
+        /* NO SWELLS (mondo 2026-11-03: "no map should be using the dune swells or hill swells, they look bad" — hills and dunes
+           are made with the map editor by raising the height): the squashed-sphere `hills` and `dunes` rims are gone */
         /* a tree line — the board's own foliage models (_nrTree; the procedural
            stand-in swaps out as each OBJ lands and joins the haze through
            K._wdFog, 2026-09-14). `h` = tiles tall (else 1.5 × the old `s`). */
@@ -41468,15 +41269,18 @@ const ThreeRenderer = (function () {
                 m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - ts * 0.25, z); K.add(m);
             });
         },
-        /* icebergs and pack ice in the sea */
+        /* icebergs and pack ice in the sea: the ocean pack's rocks (mondo's upload, R2 Assets/oceanic/) in ice white, widened a little
+           (mondo 2026-11-03: "Icebergs - use the ocean pack rocks"); the white boxes and cones are gone — the pack off, no bergs */
         bergs: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, ice = K.mat(s.tex || 'ice_1', s.color != null ? s.color : 0xe8f6ff, { lift: 0.34 });
+            if (!_oceanPackOn()) return;
+            var ts = K.ts, rng = K.rng, pick = _hzRockPick(s.color != null ? s.color : 0xd8e8f2, 0.22, null), ROCKS = ['Rock', 'Rock1', 'Rock2', 'Rock3', 'Rock6', 'Rock7'];
             for (var k = 0; k < (s.ranks || 3); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.5), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
                 if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                var h = ts * (s.h || 3) * (0.4 + rng() * 1.2), r = h * (0.8 + rng() * 1.2);
-                var geo = rng() < 0.5 ? new THREE.ConeGeometry(r, h, 5, 1) : new THREE.BoxGeometry(r * 1.6, h * 0.6, r * 1.1);
-                _nrUV(geo, r / ts, h / ts);
-                var m = new THREE.Mesh(geo, ice); m.position.set(x, c.y + (geo.type === 'ConeGeometry' ? h / 2 : h * 0.3) - ts * 0.15, z); m.rotation.set((rng() - 0.5) * 0.2, rng() * 6, (rng() - 0.5) * 0.2); K.add(K.lit(m));
+                var h = ts * (s.h || 3) * (0.4 + rng() * 1.2);
+                var m = _hzMiscKit('berg', { url: _oceanUrl(ROCKS[(rng() * ROCKS.length) | 0]), tiles: h / ts, fit: 'height', matPick: pick, rng: rng, low: 'skip',
+                    onDone: function (grp) { _nrInjectWorld(K, grp); } });
+                m.scale.set(1 + rng() * 0.9, 1, 1 + rng() * 0.9);
+                m.position.set(x, c.y - ts * 0.3, z); m.rotation.y = rng() * 6; K.add(m);
             });
         },
         /* broken columns and blocks — a drowned or buried city */
@@ -41519,8 +41323,7 @@ const ThreeRenderer = (function () {
                     var m = new THREE.Mesh(_wdCraterLathe(r, r * 0.12, ts), mat); m.position.set(x, c.y, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
                 });
             }
-            _WD_RIM.hills(K, Object.assign({ tex: s.tex || 'moon', color: s.color, flat: 0.22, r: 3.5, d: (s.d || 15) * 1.7, n: 10, p: 0.6 }, s.hills || {}), c);
-        }
+        }   // (NO SWELLS, 2026-11-03: the low hills between the craters are gone)
     };
     /* a crater standing on flat ground: the ejecta apron rises to a sharp rim,
        the inner wall drops back to the floor (the ground itself) — read from
@@ -77037,29 +76840,18 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt) { funnel.rotation.y += dt * 0.9; funnel.rotation.z = 0.06 * Math.sin(performance.now() * 0.0003); });
             return g;
         },
-        /* THE WHALE: a great dark body with flukes and a fin, drifting a slow circle round its post on the horizon */
+        /* THE WHALE: the ocean pack's whale (Whale.fbx, swimming on its own clip — mondo 2026-11-03: "use the ocean pack whale not the
+           humpback"), drifting a slow circle round its post on the horizon. The coded body is gone: the pack off, no whale. */
         whale: function (U, o, rng) {
-            var g = new THREE.Group(), s = o.s || 1;
-            var skin = new THREE.MeshPhongMaterial({ color: 0x1c2a34, emissive: 0x0a1418, emissiveIntensity: 0.5, shininess: 20 });
-            var body = new THREE.Group();
-            var trunk = new THREE.Mesh(new THREE.SphereGeometry(30 * s * U, 20, 12), skin); trunk.scale.set(1, 0.7, 3.2); body.add(trunk);
-            var head = new THREE.Mesh(new THREE.SphereGeometry(26 * s * U, 16, 10), skin); head.scale.set(1, 0.72, 1.4); head.position.z = 70 * s * U; body.add(head);
-            var tail = new THREE.Mesh(new THREE.CylinderGeometry(6 * s * U, 20 * s * U, 90 * s * U, 10), skin); tail.rotation.x = Math.PI / 2; tail.position.z = -120 * s * U; body.add(tail);
-            var fluke = new THREE.Mesh(new THREE.BoxGeometry(80 * s * U, 3 * s * U, 30 * s * U), skin); fluke.position.z = -168 * s * U; body.add(fluke);
-            var fin = new THREE.Mesh(new THREE.BoxGeometry(4 * s * U, 24 * s * U, 22 * s * U), skin); fin.position.set(0, 24 * s * U, -20 * s * U); fin.rotation.x = 0.4; body.add(fin);
-            [-1, 1].forEach(function (side) { var flip = new THREE.Mesh(new THREE.BoxGeometry(44 * s * U, 3 * s * U, 16 * s * U), skin); flip.position.set(side * 40 * s * U, -8 * s * U, 40 * s * U); flip.rotation.z = side * 0.3; body.add(flip); });
-            var eye = _hzGlowSprite(6 * s * U, 0x9ff0ff, 0.6, 0.1, 0.05, 0.5); eye.position.set(22 * s * U, 6 * s * U, 84 * s * U); body.add(eye);
-            /* THE OCEAN PACK (2026-10-27): the whale IS the pack's humpback (Whale2.fbx, swimming on its own clip) on the same slow circle;
-               NO STAND-INS — the built body is not drawn while it streams. The pack off → the built body as before. */
+            var g = new THREE.Group(), s = o.s || 1, body = new THREE.Group();
             if (_oceanPackOn()) {
-                body.children.slice().forEach(function (k) { body.remove(k); });
-                fluke = new THREE.Object3D();
-                body.add(_miscModelInstance(_oceanUrl('Whale2'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
-                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } }));   // lit from within a little, like the built one: the abyss is dark
+                var wm = _miscModelInstance(_oceanUrl('Whale'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
+                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } });   // lit from within a little: the abyss is dark
+                wm.rotation.y = Math.PI; body.add(wm);   // Whale.fbx swims the other way round from the humpback (the catalogue's ocean_whale row: turn 180)
             }
             g.add(body);
             var t0 = Math.random() * 6.28;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; fluke.rotation.x = 0.35 * Math.sin(now * 0.0009); });
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; });
             return g;
         },
     });
