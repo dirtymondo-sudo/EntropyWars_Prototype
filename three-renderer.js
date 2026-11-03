@@ -70780,6 +70780,9 @@ const ThreeRenderer = (function () {
             var pY = p.y;   // the prop's own lift over the ground under it (a desk top, a sheet of paper)
             if (isBox && _hqHasGround() && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) {
                 var pcy = _hqCaveTop(p.x || 0, p.z || 0);
+                /* THE FLOOR UNDER IT (2026-11-03, Göbekli Tepe): a prop authored `floor: true` stands on the field's own ground (the plateau,
+                   the pit), never on a wall row's top at its foot (a pillar round its battle stone stood on that stone) */
+                if (p.floor === true && _hq && _hq.terrain && typeof hqTerrainHeight === 'function') pcy = hqTerrainHeight(_hq.terrain, p.x || 0, p.z || 0);
                 /* THE TIER HEIGHT (2026-09-22 — the user: "floating objects on the Looking Glass, Mars, Technoticlan"): a terrain / cave
                    room's prop authored with `y` ≥ 1 (or a sunk cellar's ≤ −0.5) names a HEIGHT FROM THE ROOM'S FLOOR — a tier's top,
                    a slab, the air — like a native's `y` and a door's sill, never a lift over the ground (the sarcophagus at y 3.0 on
