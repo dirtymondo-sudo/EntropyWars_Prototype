@@ -124,6 +124,7 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | S02 | sheep | Counting Sheep (dreameater) — **WIRED 2026-11-03** | A fluffy white cartoonish-realistic sheep standing |
 | S03 | polaroid | Cryptid Vanish (loch ness monster) | An instant polaroid photograph showing a blurry photo of a lake, white frame |
 | S04 | tripod_machine | Tripod Sweep (martian) — **WIRED 2026-11-03** | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
+| S05 | organ_pipe | Excessive Machine (Barbarella) — **WIRED 2026-11-03** (`Assets/decor/organ_pipe_white.glb`; the 9 pipes that rise round the victim were code cylinders in the gold sheet; brass concept also made, project files gold-texture/) | A single tall pipe-organ pipe: a long cylinder with the flat lip mouth cut-out near the bottom and a short cone foot |
 
 ### 10C. SWAPS TO MODELS ALREADY IN THE GAME — done 2026-11-03 (mondo: "go ahead and do the recommended replacements")
 
@@ -196,6 +197,33 @@ Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recen
 | `desk_lamp` | `Meshy_AI_an_office_desk_lamp_0903110208_texture.glb` | `ebd_house_desk_lamp.glb` | House |
 
 Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a blue city bus), `cardboard_box` / `cardboard_boxes` (the packs have produce crates and plastic totes), `wooden_bucket` (metal pail only), `car_cop` (already drawn by the low-poly car pack; the Meshy file is only its fallback), fridges, `signpost`, roads, urban buildings (mondo: later).
+
+### 10G. THE GOLD-SHEET PIECES — code shapes that wore terrain/gold.png (2026-11-03, mondo: "I previously requested that that gold texture be removed from the game, and those rods should have shown up in the model list as needing to be replaced")
+
+The 2026-09-21 swap (TERRAIN_SPRITES `gold` = the aluminium sheet tinted gold) missed every spell / deployable piece that loaded
+`Assets/Sprites/terrain/gold.png` by file name. Since 2026-11-03 nothing loads that file (three-vfx-effects.js `_SIG_GOLD_TEX` +
+`_sigTerrainTex`, three-renderer.js `_getTeslaTex`): these pieces wear the tinted aluminium gilt until each gets a model. All are
+code shapes (cylinders / boxes / tori) and need a real model (pack or Meshy).
+
+| # | piece | spell / object | code (file · function) | needs |
+| --- | --- | --- | --- | --- |
+| G01 | organ pipes ×9 (the "gold rods") | Excessive Machine (Barbarella) | three-vfx-effects.js `_afOrgan3D` | **DONE 2026-11-03**: the Meshy organ pipe (10B S05), code cylinders deleted |
+| G02 | knuckle plates on the giant fist | the unholy finisher's fist (`_sigStandFist3D`) | three-vfx-effects.js `_sigStandFist3D` | gauntlet / fist model |
+| G03 | shield trim | every spell that raises the heater shield | three-vfx-effects.js `_sigBuildShield` | shield model |
+| G04 | ejected shell casings | gun rig shots (`_sigGunRig3D`) | three-vfx-effects.js `_sigGunRig3D` | brass shell casing model |
+| G05 | arrow-tip / bow nocks | bow shots (`_sigBowShot3D`) | three-vfx-effects.js `_sigBowShot3D` | bow model |
+| G06 | stand-in blade (only while the sword GLB loads) | Excalibur Strike | three-vfx-effects.js `_sigExcalibur3D` | none — the master-sword GLB is the real one |
+| G07 | crown | Royal Decree + the finishers that crown the caster | three-vfx-effects.js `_sigCrown3D` | crown model (Meshy props `11_royal-crown` exists) |
+| G08 | judgment blade ×2 | judgment / Divine Judgment | three-vfx-effects.js `judgment` (sword builder) | golden sword model |
+| G09 | spear shafts ×6 | Knights of Round | three-vfx-effects.js `raceKnightsOfRound` (`_sigSpearPrison3D`) | spear model (Spear pack exists) |
+| G10 | gold record | Chart Topper | three-vfx-effects.js `_PZ_SIGS.chartTopper` | gold record model |
+| G11 | gavel head bands | Frontier Justice (`pzJustice`) | three-vfx-effects.js `_PZ_SIGS.justice` | gavel model |
+| G12 | golden chain (36 tori) | Fetter (Valkyrie) | three-vfx-effects.js `_PZ_SIGS.fetter` | chain model (traps pack Chain_Draped exists) |
+| G13 | lipstick case | Lipstick Pistol (spy) | three-vfx-effects.js `_PZ_SIGS.spyLipstickPistol` | lipstick model |
+| G14 | wheat heads | Bumper Crop | three-vfx-effects.js `_PZ_SIGS.nvBumperCrop` | wheat sheaf model |
+| G15 | orichalcum bands | Pillar of Atlantis (atlantean deployable) | three-renderer.js `_buildAtlantisPillar3D` | column model (Meshy greek column exists) |
+| G16 | brass disc body | Flashbang Mine (gnome deployable) | three-renderer.js `_buildFlashbangMine3D` | mine model |
+| G17 | gate trim | Grave Gate (deployable) | three-renderer.js `_buildGraveGate3D` | gate model |
 
 ### 10D. NOT A MODEL JOB (60) — decals, lit windows/screens, text, walkable steps/ramps, water, effects
 

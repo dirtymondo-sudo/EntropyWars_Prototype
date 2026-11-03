@@ -2945,3 +2945,17 @@ mondo: "how do we put these models both in the character creator and in the game
   arm's 80th-percentile radius x 2.25 — the Echo Band). `map` turns the GLB onto the body. The censer swings (onBeforeRender). Off:
   `window.EW_NO_GEAR_WEAR`. Online: equipment is on the synced unit, so the guest builds the same gear.
 - Not in this pass: the 6a weapons that still float beside the caster (the guns already ride the hand, FX-2); the staff has no spell.
+
+## THE GOLD SHEET IS OUT (2026-11-03)
+mondo: "Barbarella uses a spell called excessive machine that has these gold rods. I previously requested that that gold texture be
+removed from the game, and those rods should have shown up in the model list as needing to be replaced."
+- The 2026-09-21 swap (sprites.js TERRAIN_SPRITES `gold` = aluminium tinted by TERRAIN_BASE_TINT) never reached the 17 spell / trap
+  pieces that loaded `Assets/Sprites/terrain/gold.png` by file name. Now nothing loads it: three-vfx-effects.js `_SIG_GOLD_TEX`
+  ('aluminium.png') + `_SIG_GILT` (0xe0b048, the boards' gilt) next to `_sigTerrainTex` (which also redirects a stray 'gold.png'),
+  three-renderer.js `_getTeslaTex` redirects it, battle.js's loading warm dropped it. White-tinted gold pieces (the fist plates'
+  default, Excalibur's stand-in blade, the judgment blades) take `_SIG_GILT`. To change the gold look, change `_SIG_GOLD_TEX`.
+- Excessive Machine's nine pipes are the Meshy organ pipe (`_WPN_MODELS.organPipe`, R2 `Assets/decor/organ_pipe_white.glb`,
+  meshopt + WebP via optimize-assets.js, 178 KB). Each rises from its foot, mouth toward the victim; no stand-in while it loads.
+  A brass version was made too (project files gold-texture/models/).
+- The other 16 pieces are listed in MODEL_LIST.md §10G as needing a model. Gold texture candidates (ambientCG CC0, regraded to gold
+  for flat lighting): project files gold-texture/.
