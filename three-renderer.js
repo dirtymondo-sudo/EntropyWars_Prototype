@@ -65696,9 +65696,13 @@ const ThreeRenderer = (function () {
            warm glows that are NIGHT LAMPS (`_ew_night`: the clock lights them at dusk), a red beacon blinking on the spire */
         tower: function (U, o, rng) {
             var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
-            var glassA = _hqMat(null, 1, 1, { color: 0x5a6878, shininess: 60, specular: 0x445566 });
-            var glassB = _hqMat(null, 1, 1, { color: 0x6c7482, shininess: 40, specular: 0x333b44 });
-            var stone = _hqMat(null, 1, 1, { color: 0x8a8580, shininess: 6 });
+            /* THE TEXTURED TOWERS (mondo 2026-11-03: "tower weenie - they still need to be textured"): every block wears an urban pack
+               facade sheet (green curtain glass, square office glass, bronze-framed glass), sized by the landmark world UVs (one sheet per
+               6 m: a storey every 3 m), never a flat colour; the mast is plain steel */
+            var glassA = _hqMat('urban:GlassWindowTall1a', 1, 1, { shininess: 60, specular: 0x445566 });
+            var glassB = _hqMat('urban:GlassWindowSquare1a', 1, 1, { shininess: 40, specular: 0x333b44 });
+            var stone = _hqMat('urban:GlassWindowTall4a', 1, 1, { shininess: 20 });
+            var steel = _hqMat(null, 1, 1, { color: 0x6a6e74, shininess: 50 });
             var n = 9, spire = null;
             for (var i = 0; i < n; i++) {
                 var tall = (i === 0), h = (tall ? 78 : 26 + R() * 40) * s, w = (tall ? 12 : 8 + R() * 8) * s, d = (tall ? 12 : 8 + R() * 7) * s;
@@ -65713,7 +65717,7 @@ const ThreeRenderer = (function () {
                 if (tall) spire = { x: x, z: z, h: h };
             }
             if (spire) {
-                var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s * U, 0.6 * s * U, 18 * s * U, 6), stone); mast.position.set(spire.x * U, (spire.h + 9 * s) * U, spire.z * U); g.add(mast);
+                var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s * U, 0.6 * s * U, 18 * s * U, 6), steel); mast.position.set(spire.x * U, (spire.h + 9 * s) * U, spire.z * U); g.add(mast);
                 var beacon = _hzGlowSprite(4.5 * s * U, 0xff3a2a, 0.7, 0.55, 0.0, 1.4); beacon.position.set(spire.x * U, (spire.h + 18.5 * s) * U, spire.z * U); g.add(beacon);
             }
             return g;
