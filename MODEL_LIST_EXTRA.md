@@ -36,10 +36,10 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | D09 | `iso_tank` | Cryo / isolation tank | 29 | 16000 | A sci-fi cryogenic isolation tank: a horizontal capsule with a frosted glass lid on a metal base, pipes and valves along its side, a small blank indicator panel |
 | D10 | `tanker_desk` | Steel tanker desk — **WIRED 2026-11-03** | 27 | 8000 | A grey 1960s steel tanker office desk with a stack of drawers on one side and a pale green top |
 | D11 | `wall_shelf` | Wall shelf | 25 | 4000 | A simple wooden wall shelf on two black iron brackets holding a few jars and old books |
-| D12 | `server_rack` | Server rack — **WIRED 2026-11-03** | 21 | 12000 | A tall black computer server rack cabinet with a perforated mesh door and rows of rack servers inside, blank status lights |
+| D12 | `server_rack` | Server rack — made, NOT used (mondo 11-03: the old one looks better) | 21 | 12000 | A tall black computer server rack cabinet with a perforated mesh door and rows of rack servers inside, blank status lights |
 | D13 | `saucer_pendant` | Space-age saucer pendant lamp — **WIRED 2026-11-03** | 21 | 4000 | A 1960s space-age flying-saucer shaped ceiling pendant lamp in white and chrome on a short rigid stem to a round ceiling canopy |
 | D14 | `slot_machine` | Slot machine — **WIRED 2026-11-03** | 18 | 10000 | A vintage casino slot machine cabinet with a pull lever on the side, three reels, chrome trim and red paint, blank glass |
-| D15 | `armour_stand` | Knight armour on a stand — **WIRED 2026-11-03** | 17 | 20000 | A full suit of medieval knight plate armour displayed upright on a wooden stand, empty with nobody inside, helmet with the visor down |
+| D15 | `armour_stand` | Knight armour on a stand — **WIRED 2026-11-03** (stand redone: square oak plinth D15c) | 17 | 20000 | A full suit of medieval knight plate armour displayed upright on a wooden stand, empty with nobody inside, helmet with the visor down |
 | D16 | `radiation_sign` | Radiation warning sign | 17 | 1000 | A metal wall sign plate with the yellow and black radiation trefoil hazard symbol, bolted corners, slightly worn, no text |
 | D17 | `planter` | Concrete planter | 17 | 8000 | A long rectangular concrete planter box filled with soil and leafy green shrubs |
 | D18 | `stone_altar` | Stone altar — **WIRED 2026-11-03** | 15 | 6000 | An ancient carved stone altar block, rectangular, weathered grey stone with worn engraved bands |
