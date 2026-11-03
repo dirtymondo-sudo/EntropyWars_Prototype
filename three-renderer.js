@@ -56732,18 +56732,23 @@ const ThreeRenderer = (function () {
             });
         }
         /* THE PANTS IN THE BOOTS (2026-11-03, mondo: "Can we make pants fit inside boots or have the option for them to be inside or
-           outside?"): appearance.pantsTuck (creator OUTFIT > LEGS / FOOTWEAR, while a pair of trousers is worn with a boot whose shaft
-           is over their hem: sprites.js EW_BOOT_TOPS / EW_PANT_HEMS / pantsBootsWorn). Each was fitted to the bare leg, so a shaft and a
-           trouser leg crossed: the viking boots' fur wraps (5 cm out) and the knee boots stood out through tight jeans past THE LAYERS'
-           4 cm reach. Both are read round each leg (legFrame: the leg's own centre per 1 cm slice from the skin, 36 angles):
+           outside?"): appearance.pantsTuck (creator OUTFIT > LEGS > Bottoms / FOOTWEAR > Shoes + boots, shown while a pair of
+           trousers is worn with a boot whose shaft is over their hem: sprites.js EW_BOOT_TOPS / EW_PANT_HEMS / pantsBootsWorn). Each
+           was fitted to the bare leg, so a shaft and a trouser leg crossed: the viking boots' fur wraps (5 cm out) and the knee boots
+           stood out through tight jeans past THE LAYERS' 4 cm reach. Both are read round each leg (legFrame: the leg's own centre per
+           1 cm slice of the skin; legGrid: per 2 cm row x 15 degrees the garment's outermost / innermost / mean radius + per angle its
+           top (opened: a pull tab is not the top) and its bottom):
            - 'out' (the default): the trouser leg's last `flare` over its hem is let out to clear the boot (at most `maxPush`), and every
              part of the boot higher up under the trouser leg is drawn in `gap` inside it, whatever its distance (no reach); under there
              by `deep` the boot's triangles are left out (posed, the trouser leg on its own bones never shows the shaft through it).
-           - 'in': the trouser leg inside the boot is drawn in `gap` inside the shaft, narrowing into the opening over `blend` above it
-             (bloused); `deep` inside the shaft its triangles are left out. THE LAYERS then lay the boot OVER the trousers (bootOver).
+           - 'in': the trouser leg inside the boot is drawn in `gap` inside the shaft (never nearer the skin than `onSkin`, `onSkinIn`
+             deep in the boot), narrowing into the opening over `blend` above it; there it takes the bones of the boot (inside) and of
+             the skin (over the opening, fading out over `wFade`), so the knee bending does not lift it out of the boot; `inDeep` under
+             the lowest top within 2 angles its triangles are left out. THE LAYERS then lay the boot OVER the trousers (bootOver).
            Low shoes, skirts, shorts: untouched. Runs in THE LAYERS (wearLayers) before the layers fold; the triangles leave the drawn
-           index in wearBootHide (the start of wearUnderCover, after THE SECOND OUTER LAYER put the full index back). */
-        var BOOT_FIT = { bins: 24, row: 2, cell: 0.01, legTop: 0.4, ankle: 0.07, ankleFade: 0.02, gap: 0.004, blend: 0.03, flare: 0.06, maxPush: 0.02, edge: 0.012, deep: 0.03, inDeep: 0.025, hemOver: 0.01, onSkin: 0.01, rim: 0.05, wFade: 0.05, onSkinIn: 0.007 };
+           index in wearBootHide (the start of wearUnderCover, after THE SECOND OUTER LAYER put the full index back).
+           window.EW_DISABLE_BOOT_FIT = true: each as it was fitted. */
+        var BOOT_FIT = { bins: 24, row: 2, cell: 0.01, legTop: 0.4, ankle: 0.07, ankleFade: 0.02, gap: 0.004, blend: 0.03, flare: 0.06, maxPush: 0.02, edge: 0.012, deep: 0.03, inDeep: 0.025, hemOver: 0.01, onSkin: 0.01, wFade: 0.05, onSkinIn: 0.007 };
         function wearIsBoot(w) {
             if (!w.mesh || typeof EW_BOOT_TOPS === 'undefined' || !(w.cat === 'shoes' || w.layer === 'feet')) return false;
             var id = String(w.id || ''); return EW_BOOT_TOPS[id] != null || (id.indexOf('feet_') === 0 && EW_BOOT_TOPS[id.slice(5)] != null);
