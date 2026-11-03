@@ -1144,6 +1144,36 @@ tell you which ones they are".
 - Shots: /mnt/project-files/creator-hider/.
 
 
+## THE RENAMED PICKS (2026-11-03; character-models-plan row 12o)
+mondo: "maybe somewhere in the ui maker, can i change the names of the models of the character creator? Or maybe in the same place
+where i can hide models in the creator? How do i get to that again?" then "there is no settings button in the character creator, i need
+to access it from the character creator obviously".
+- **Open it from the creator**: **F2** while the creator's controls are up (forge GEAR > CHARACTER CREATOR, the Mirror, the intake; on a
+  race slot after CREATE APPEARANCE) opens / closes the item hider (party-builder.js CreatorControls keydown; first creator answers,
+  `defaultPrevented` stops a second). No button for players. Settings > Developer > Creator Item Hider still flips the same setting.
+  The UI Maker (F4) only themes / lays out the creator (surface `forge`); it never edits its picks.
+- **Rename**: with the marks on, every pick the hider covers (same kinds + keys as THE HIDDEN PICKS) gets a ✎ on its top-left corner
+  (the ✕ stays top-right). ✎ opens a rename box under it, the whole row of the grid / flex row: its own name, the input (40 chars, Enter
+  = SAVE NAME, Esc = CANCEL, the key never reaches the creator), SAVE NAME / ORIGINAL NAME / CANCEL. A row button (Outer, Cape, Wings,
+  Idle) pads 26 px each side while marked so the marks never cover its words.
+- **The bar**: DEV · ITEM HIDER + NAMES, `n hidden · n renamed`; + ▸ RENAMED (n) = each `kind · own name → his name` with ✎ RENAME (the
+  box under the row) + ORIGINAL NAME, then ALL ORIGINAL NAMES (confirm); CLOSE (F2); ⇩ EXPORT HIDDEN + NAMES ->
+  `Entropy_Wars_Creator_Picks_<yyyymmdd-hhmm>.json` = `{ kind: 'entropy-wars-creator-hidden', v: 2, made, hidden, names: { key: name } }`
+  (both WHOLE lists as his browser shows them).
+- **Display only**: a tile shows `creatorName(kind, id, label)`; the catalogues keep their pack names, because rules read them (a skin's
+  men's / women's side, a beard's face camera, the "male" / "female" trim of a tile). A rename shows as typed (soft-wrapped, no trim).
+  Also the "Colours of the pieces you wear" heads and the HIDDEN LIST rows. Players see baked names; his browser shows his.
+- **Data**: sprites.js THE RENAMED PICKS: `EW_CREATOR_NAMES` (shipped `{ key: name }`, between `// EW_CREATOR_NAMES:BEGIN` / `:END`,
+  written ONLY by bake-hidden.js, each line commented with the pick's own name) + this browser's `ew_creator_names_v1` = `{ key: name }`
+  ('' = its own name again over a shipped one). `creatorName`, `creatorRenamed`, `setCreatorName(kind, id, name)` ('' / its own name =
+  original), `creatorNamesList()`, `creatorNamesReset()`, `creatorPickLabel(kind, id)` (the catalogue name); a change fires
+  'ew-creator-hidden'. SAVE EVERYTHING carries `ew_creator_names_v1` (any ew_* key).
+- **Bake**: `node bake-hidden.js <Entropy_Wars_Creator_Picks_….json>` bakes both blocks; a v 1 file (no `names`) leaves the shipped names;
+  a SAVE EVERYTHING file bakes its ew_creator_names_v1 on top of the shipped names. Same checks: unknown kind refused, a gone id dropped
+  with a warning, a name equal to the pick's own left out. `--list` prints both lists.
+- **Online**: nothing relayed; names never travel (a look stores ids).
+- Shots: /mnt/project-files/creator-rename/.
+
 ## THE EYE PACK (2026-11-03, PR "eye pack")
 mondo uploaded the MakeHuman Eye Texture Pack (36 PNGs: 19 plain/bloodshot colours, 12 cat eyes, All black, 5 normal maps) to R2
 `Assets/Models/charactercreation/mpfb/looks/eyes/eyetextures/` + `MakeHumanEyeTexturePack.unitypackage` (not needed: the PNGs use
