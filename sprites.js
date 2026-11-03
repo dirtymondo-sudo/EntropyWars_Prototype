@@ -4478,11 +4478,18 @@ const EW_MPFB_FACE_SLIDERS = [
   /* (2026-11-03, mondo: "add the werewolf head to the creature heads"): shown on OUTFIT > Head > Creature heads as a pick
      (+ its strength slider), not on the FACE tabs (inHeads) */
   { id: 'animal', label: 'Animal head', inHeads: true, rows: [['wolfHead', 'Wolf head']] },
+  /* THE SHAPED EARS (2026-11-03, mondo: "Where are the cat ears in the editor? DO we not have any?"): two MakeHuman community cat-ear
+     targets in the same mpfb_shapes.glb (bake-mpfb.py ANIMAL_SHAPES): titleknown's catgirl ears (CC0, tall + pointed) and JALdMIC's
+     feline ears (CC-BY, rounder, credited). The body's own ears grow up the sides of the head, so they take the skin, the skin colour
+     and every slider. Shown on OUTFIT > Head > Ears as picks beside the Elf ears (+ a strength slider), not on the FACE tabs (inEars) */
+  { id: 'animalEars', label: 'Animal ears', inEars: true, rows: [['catEars', 'Cat ears'], ['felineEars', 'Cat ears, round']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
+EW_APPEARANCE_LIMITS.catEars = [0, 1, 0]; EW_APPEARANCE_LIMITS.felineEars = [0, 1, 0];
 /* THE SHAPED HEADS: the Creature heads that are a reshape of the body's own head (a MakeHuman target, 0..1), not a model worn over it.
    One head at a time with the model heads: a shaped head picked takes the model head off, and the other way round. [key, label] */
 const EW_SHAPE_HEADS = EW_MPFB_FACE_SLIDERS.filter(g => g.inHeads).reduce((a, g) => a.concat(g.rows), []);
+const EW_SHAPE_EARS = EW_MPFB_FACE_SLIDERS.filter(g => g.inEars).reduce((a, g) => a.concat(g.rows), []);   // THE SHAPED EARS [key, label]
 /* THE BODY DETAILS (2026-11-02, plan row 26: mondo's female thick / thin / athletic bodies as sliders): MakeHuman's Weight
    and Muscle macros (gender-matched deltas) + body modifiers, on the MPFB bodies only (skin only, the bones stay). Bust
    spacing / height show on female bodies only, like Bust. */
@@ -4492,6 +4499,10 @@ const EW_MPFB_BODY_SLIDERS = [['weight', 'Weight'], ['muscle', 'Muscle'], ['shou
 EW_MPFB_BODY_SLIDERS.forEach(r => { EW_APPEARANCE_LIMITS[r[0]] = [-1, 1, 0]; });
 const EW_MPFB_FACE_KEYS = EW_MPFB_FACE_SLIDERS.reduce((a, g) => a.concat(g.rows.map(r => r[0])), []);
 EW_MPFB_FACE_KEYS.forEach(k => { if (!EW_APPEARANCE_LIMITS[k]) EW_APPEARANCE_LIMITS[k] = [-1, 1, 0]; });
+/* the face keys a face reset sets (DEFAULT / NEUTRAL FACE, a face preset, a body swap, RANDOM): every face slider but the shaped
+   heads + ears, which are OUTFIT picks and stay on (2026-11-03, THE SHAPED EARS) */
+const EW_SHAPE_PICK_KEYS = EW_SHAPE_HEADS.concat(EW_SHAPE_EARS).map(r => r[0]);
+const EW_FACE_RESET_KEYS = EW_MPFB_FACE_KEYS.filter(k => EW_SHAPE_PICK_KEYS.indexOf(k) < 0);
 /* THE DEFAULT FACES (2026-11-03, mondo: "Can you make male and female faces on the mpfb bodies that are good looking that we can
    use as a default?"): the face sliders above, set once per gender and tuned on screen (front / three-quarter / profile). The
    usual attractiveness cues, nothing invented: the male = wider jaw with a sharper angle, chin longer + forward, high cheekbones,
@@ -4563,9 +4574,9 @@ const EW_MPFB_FACE_PRESETS = [
    cheeks / eye size shape the classic head too); {} when the player has made the face their own. `force` = FACE > DEFAULT FACE. */
 function mpfbFacePatch(a, body, force) {
   const cur = a || {}, row = EW_MPFB_BODIES.find(b => b.id === body);
-  const same = (d) => EW_MPFB_FACE_KEYS.every(k => Math.abs((+cur[k] || 0) - ((d && d[k]) || 0)) < 0.004);
+  const same = (d) => EW_FACE_RESET_KEYS.every(k => Math.abs((+cur[k] || 0) - ((d && d[k]) || 0)) < 0.004);
   const isDefault = same(EW_MPFB_DEFAULT_FACES.male) || same(EW_MPFB_DEFAULT_FACES.female);
-  const full = (d) => { const o = {}; EW_MPFB_FACE_KEYS.forEach(k => { o[k] = (d && d[k]) || 0; }); return o; };
+  const full = (d) => { const o = {}; EW_FACE_RESET_KEYS.forEach(k => { o[k] = (d && d[k]) || 0; }); return o; };
   if (!row) return isDefault ? full(null) : {};
   return (force || same(null) || isDefault) ? full(EW_MPFB_DEFAULT_FACES[row.gender]) : {};
 }
@@ -4872,6 +4883,7 @@ function randomCharacterAppearance(rng) {
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) { const [lo, hi] = EW_APPEARANCE_LIMITS[key]; out[key] = Math.round((lo + (hi - lo) * (0.2 + 0.6 * r())) * 100) / 100; }
   for (const key of EW_MPFB_FACE_KEYS) out[key] = Math.round((r() * 2 - 1) * 35) / 100;   // THE FACE SLIDERS: a random face stays a face
+  for (const key of EW_SHAPE_PICK_KEYS) out[key] = 0;   // (no random wolf head / cat ears: those are OUTFIT picks)
   for (const row of EW_MPFB_BODY_SLIDERS) out[row[0]] = Math.round((r() * 2 - 1) * 30) / 100;   // THE BODY DETAILS
   out.beltHeight = 0;   // THE BELT HEIGHT: a random look keeps the belt where it was baked
   out.skin = pick(skinTones); out.hairColor = pick(hairTones); out.eyeColor = pick(eyeTones);
@@ -5162,7 +5174,7 @@ if (typeof window !== 'undefined') {
   window.EW_CREATOR_NAMES = EW_CREATOR_NAMES; window.creatorName = creatorName; window.creatorRenamed = creatorRenamed; window.setCreatorName = setCreatorName;   // THE RENAMED PICKS
   window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
-  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
+  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
   window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;

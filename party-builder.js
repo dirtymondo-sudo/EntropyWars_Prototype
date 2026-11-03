@@ -1341,26 +1341,33 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   };
   // one pick per tab (a tab of several, like underwear or horns, toggles each); the pack's own one-per-category rule still applies
   const shapeHeads = window.EW_SHAPE_HEADS || [];
+  const shapeEars = window.EW_SHAPE_EARS || [];   // THE SHAPED EARS (2026-11-03): cat ears, a reshape of the body's own ears
   const shapeHeadOn = (k) => (+appearance[k] || 0) > 0.004;
   const toggleWear = (t, id) => {
     const on = worn.includes(id);
     const patch = { wear: on ? worn.filter(x => x !== id) : (shelfMany(t) ? worn : worn.filter(x => shelfOf(x) !== t)).concat([id]) };
     if (!on && t === 'heads') shapeHeads.forEach(([k]) => { if (shapeHeadOn(k)) patch[k] = 0; });   // (THE SHAPED HEADS: one head at a time)
+    if (!on && window.wearGroupOf && window.wearGroupOf(id) === 'ears') shapeEars.forEach(([k]) => { if (shapeHeadOn(k)) patch[k] = 0; });   // (THE SHAPED EARS: one pair of ears)
     changeAppearance(patch);
   };
   /* THE SHAPED HEADS (2026-11-03, mondo: "add the werewolf head to the creature heads"): a head that reshapes the body's own head
      (sprites.js EW_SHAPE_HEADS, a MakeHuman target) is a pick here like the model heads; picked = full strength + its slider below */
-  const ccShapeHeads = (cam) => shapeHeads.length ? h(React.Fragment, null,
-    h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Shaped creature heads', 'data-cc-cam-own': cam },
-      shapeHeads.map(([k, label]) => h('button', { key: k, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': shapeHeadOn(k), title: label + ' (reshapes the body\u2019s own head)',
+  const ccShapePicks = (list, g, cam, name, tip) => list.length ? h(React.Fragment, null,
+    h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': name, 'data-cc-cam-own': cam },
+      list.map(([k, label]) => h('button', { key: k, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': shapeHeadOn(k), title: label + tip,
         onClick: () => {
           if (shapeHeadOn(k)) { changeAppearance({ [k]: 0 }); return; }
-          const patch = { [k]: 1, wear: worn.filter(x => shelfOf(x) !== 'heads') };
-          shapeHeads.forEach(([o]) => { if (o !== k && shapeHeadOn(o)) patch[o] = 0; });
+          const patch = { [k]: 1, wear: worn.filter(x => (g === 'heads' ? shelfOf(x) : groupOf(x)) !== g) };
+          list.forEach(([o]) => { if (o !== k && shapeHeadOn(o)) patch[o] = 0; });
           changeAppearance(patch);
         } }, h('span', null, label)))),
-    shapeHeads.filter(([k]) => shapeHeadOn(k)).length ? h('div', { className: 'pb-creator-grid', 'data-cc-cam-own': cam },
-      shapeHeads.filter(([k]) => shapeHeadOn(k)).map(([k, label]) => ccSlider(k, label + ' strength'))) : null) : null;
+    list.filter(([k]) => shapeHeadOn(k)).length ? h('div', { className: 'pb-creator-grid', 'data-cc-cam-own': cam },
+      list.filter(([k]) => shapeHeadOn(k)).map(([k, label]) => ccSlider(k, label + ' strength'))) : null) : null;
+  const ccShapeHeads = (cam) => ccShapePicks(shapeHeads, 'heads', cam, 'Shaped creature heads', ' (reshapes the body\u2019s own head)');
+  /* THE SHAPED EARS (2026-11-03, mondo: "Where are the cat ears in the editor? DO we not have any?"): MakeHuman community cat-ear
+     targets (sprites.js EW_SHAPE_EARS) on OUTFIT > Head > Ears beside the Elf ears: picked = full strength + its slider; one pair of
+     ears at a time (a cat-ear pick takes a worn ear piece off, and the other way round) */
+  const ccShapeEars = (cam) => ccShapePicks(shapeEars, 'ears', cam, 'Shaped ears', ' (reshapes the body\u2019s own ears)');
   const wearTile = (cam) => ([id, label]) => {
     const on = worn.includes(id), rn = renamedOf('wear', id);   // THE RENAMED PICKS: his name as he typed it (no men's / women's trim)
     return devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: rn || label, 'data-cc-cam-own': cam, onClick: () => toggleWear(shelfOf(id), id) },
@@ -1425,10 +1432,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const onSlot = (g, slot) => { const s = slotOfGroup(g); return s === slot || (s === 'arms' && (slot === 'larm' || slot === 'rarm')); };
   const groupRows = (g) => (window.EW_MH_WEAR || []).filter(w => shelfOf(w[0]) && groupOf(w[0]) === g && keepPick('wear', w[0], worn.includes(w[0])));   // (THE HIDDEN PICKS)
   const layerShown = (layer) => layer === 'outer' || layer === 'feet' || (layer === 'cape' && (window.EW_CAPE_STYLES || []).length > 1) || (layer === 'wings' && (window.EW_WINGS_STYLES || []).length > 1);
-  const slotGroups = (slot) => wearGroups.filter(gr => onSlot(gr[1], slot) && (groupRows(gr[1]).length || layerShown(gr[4])));
+  const slotGroups = (slot) => wearGroups.filter(gr => onSlot(gr[1], slot) && (groupRows(gr[1]).length || layerShown(gr[4]) || (gr[1] === 'heads' && shapeHeads.length) || (gr[1] === 'ears' && shapeEars.length)));
   // a tab's / a kind's dot: something worn there (the layer picks count with their group)
   const groupWorn = (gr) => worn.filter(id => shelfOf(id) && groupOf(id) === gr[1]).length
     + (gr[1] === 'heads' ? shapeHeads.filter(([k]) => shapeHeadOn(k)).length : 0)
+    + (gr[1] === 'ears' ? shapeEars.filter(([k]) => shapeHeadOn(k)).length : 0)
     + (gr[4] === 'outer' ? ['outer', 'outer2'].filter(k => appearance[k] && appearance[k] !== 'none').length : 0)
     + (gr[4] === 'cape' && capeOn ? 1 : 0) + (gr[4] === 'wings' && appearance.wings && appearance.wings !== 'none' ? 1 : 0)
     + (gr[4] === 'feet' && appearance.feet && appearance.feet !== 'none' ? 1 : 0);
@@ -1447,6 +1455,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
         appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null) : null,
       layer === 'feet' ? ccLayer('Feet', 'feet', ccLive('feet', window.EW_FEET_STYLES), 'feetFabric', 'feetColor') : null,
       g === 'heads' ? ccShapeHeads(cam) : null,
+      g === 'ears' ? ccShapeEars(cam) : null,
       wearTiles(rows, sided, layer === 'outer' ? 'More coats' : layer === 'feet' ? 'More shoes' : layer === 'wings' ? 'Costume wings' : null, label, cam),
       g === 'held' ? h('p', { className: 'pb-creator-note' }, 'One at a time: the right hand closes round it.') : null,
       groupLayerRows(g),
@@ -1585,16 +1594,16 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                    (sprites.js EW_MPFB_DEFAULT_FACES) or MakeHuman's own neutral face (every face slider at 0), in one click */
                 window.mpfbFacePatch ? h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face preset', 'data-cc-cam-own': 'face' },
                   h('button', { className: 'ms-tty-btn', title: 'Every face slider at this body\u2019s default face', onClick: () => changeAppearance(window.mpfbFacePatch(appearance, appearance.body, true)) }, 'DEFAULT FACE'),
-                  h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE'),
+                  h('button', { className: 'ms-tty-btn', title: 'Every face slider at 0 (MakeHuman\u2019s own face)', onClick: () => changeAppearance(Object.fromEntries((window.EW_FACE_RESET_KEYS || window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0]))) }, 'NEUTRAL FACE'),
                   /* THE FACE PRESETS (2026-11-03): MakeHuman community faces baked by bake-faces.js (sprites.js EW_MPFB_FACE_PRESETS);
                      a pick sets every face slider (the ones the preset leaves out go to 0) */
                   (window.EW_MPFB_FACE_PRESETS || []).map(p => h('button', { key: p.id, className: 'ms-tty-btn', title: [p.label, p.author, p.license].filter(Boolean).join(' \u00b7 '),
-                    onClick: () => changeAppearance(Object.assign(Object.fromEntries((window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0])), p.face || {})) },
+                    onClick: () => changeAppearance(Object.assign(Object.fromEntries((window.EW_FACE_RESET_KEYS || window.EW_MPFB_FACE_KEYS || []).map(k => [k, 0])), p.face || {})) },
                     p.label.toUpperCase() + (p.gender === 'female' ? ' \u2640' : ' \u2642')))) : null,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Face feature', 'data-cc-cam-own': 'face' },
-                  window.EW_MPFB_FACE_SLIDERS.filter(g => !g.inHeads).map(g => h('button', { key: g.id, className: 'ms-tty-btn' + (faceCat === g.id ? ' primary' : ''), 'aria-pressed': faceCat === g.id, onClick: () => setFaceCat(g.id) },
+                  window.EW_MPFB_FACE_SLIDERS.filter(g => !g.inHeads && !g.inEars).map(g => h('button', { key: g.id, className: 'ms-tty-btn' + (faceCat === g.id ? ' primary' : ''), 'aria-pressed': faceCat === g.id, onClick: () => setFaceCat(g.id) },
                     g.label.toUpperCase() + (g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004) || (faceLooks[g.id] || []).some(k => appearance[k] && appearance[k] !== 'own') ? ' \u2022' : '')))),
-                (() => { const g = window.EW_MPFB_FACE_SLIDERS.find(x => x.id === faceCat && !x.inHeads) || window.EW_MPFB_FACE_SLIDERS[0];
+                (() => { const g = window.EW_MPFB_FACE_SLIDERS.find(x => x.id === faceCat && !x.inHeads && !x.inEars) || window.EW_MPFB_FACE_SLIDERS[0];
                   return h(React.Fragment, null,
                     h('div', { className: 'pb-creator-grid', 'data-cc-cam-own': 'face' }, g.rows.map(([k, label]) => ccSlider(k, label)),
                       h('button', { className: 'ms-tty-btn', disabled: !g.rows.some(r => Math.abs(+appearance[r[0]] || 0) > 0.004), onClick: () => changeAppearance(Object.fromEntries(g.rows.map(r => [r[0], 0]))) }, 'RESET ' + g.label.toUpperCase() + ' SLIDERS')),

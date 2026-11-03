@@ -1295,8 +1295,12 @@ for _g, _gs in (('f', 'female'), ('m', 'male')):
 # MakeHuman animal packs, one-sided sliders (0..1, '-' is empty) in the same mpfb_shapes.glb, so the head reshapes on any MPFB body
 # like the face sliders and the pack clothes / fur follow it. slider -> (pack zip stem, target name). CC-BY: credited in
 # CREDITS.json 'creator_animal' (the game's credits screen).
+# THE SHAPED EARS (2026-11-03, mondo: "Where are the cat ears in the editor?"): catEars = titleknown's catgirl ears (animal01, CC0),
+# felineEars = JALdMIC's feline ears (animal02, CC-BY); the creator shows them on OUTFIT > Head > Ears (sprites.js EW_SHAPE_EARS).
 ANIMAL_SHAPES = {
     'wolfHead': ('animal03_ccby', 'jaldmic_wolf_headv3'),
+    'catEars': ('animal01_cc0', 'titleknown_catgirl_ears'),
+    'felineEars': ('animal02_ccby', 'jaldmic_feline_ears_v2'),
 }
 
 
@@ -1408,9 +1412,9 @@ def main():
             cat = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charactercreation', 'mpfb', 'ASSET_PACKS_CATALOGUE.json')))
             cf = os.path.join(a.out, 'CREDITS.json')
             old = json.load(open(cf)) if os.path.exists(cf) else {}
-            old['creator_animal'] = [{'part': 'animal head', 'asset': name, 'author': cat[pack.rsplit('_', 1)[0]][name]['author'],
+            old['creator_animal'] = [{'part': 'animal ears' if k.endswith('Ears') else 'animal head', 'asset': name, 'author': cat[pack.rsplit('_', 1)[0]][name]['author'],
                                       'license': cat[pack.rsplit('_', 1)[0]][name]['license'], 'source': cat[pack.rsplit('_', 1)[0]][name]['source']}
-                                     for pack, name in ANIMAL_SHAPES.values()]
+                                     for k, (pack, name) in ANIMAL_SHAPES.items()]
             json.dump(old, open(cf, 'w'), indent=1)
         return
     if a.looks:

@@ -1444,3 +1444,22 @@ cmsg_01XWpxyTn3nnw98znVzKdFjsAX2ogSpgP9tAuNgyFenVtL). MPFB bodies only (pack + B
   creator clicks (OUTFIT > LEGS > Male classic jeans, FOOTWEAR > Viking boots, TUCKED IN). Shots: /mnt/project-files/pants-boots/.
 - KNOWN: a fleck of jeans can show at the cowboy boot's stitched band when posed; outside mode leaves a speck of viking fur at the
   jeans' hem on one side; the white spots on the viking boot's foot are in the pack texture (there with the fit off).
+
+## THE SHAPED EARS (2026-11-03, plan row 28: cat ears)
+mondo: "Where are the cat ears in the editor? DO we not have any?" Before this the creator had NO cat ears: Ears (OUTFIT > Head) held
+only the Meshy Elf ears; the Catgirl's ears exist only inside her own Meshy model (one mesh, can't be lifted off). The MakeHuman packs
+already in project files mhpacks/ carried two cat-ear TARGETS nobody had baked:
+- `catEars` = titleknown_catgirl_ears (animal01, CC0): tall pointed ears. `felineEars` = jaldmic_feline_ears_v2 (animal02, CC-BY,
+  credited in CREDITS.json creator_animal, part "animal ears"): rounder ears. Both grow the body's OWN ears up the sides of the head
+  (~12 cm), so they wear the skin + skin colour and follow every slider (the plan's 4b guess that they would not reach the top was wrong).
+- Baked like the wolf head: two ANIMAL_SHAPES rows, `bake-mpfb.py --shapes --packs` (the shapes step needs no Blender: a stub `bpy`
+  module is enough). The new keys are appended, so the old 222109 offsets are byte-identical (the old file re-baked byte for byte
+  from MPFB 2.0.18 first). mpfb_shapes.glb 3114088 -> 3141064 bytes.
+- THE CREATOR: OUTFIT > Head > Ears shows "Cat ears" + "Cat ears, round" as picks (party-builder.js ccShapeEars, sprites.js
+  EW_SHAPE_EARS = the `inEars` face-slider group; not on the FACE tabs) + a strength slider while on. One pair of ears at a time: a cat-ear
+  pick takes the Elf ears off and the Elf ears take the cat ears off. MPFB bodies (and an MPFB classic body's MPFB head) only, like every
+  face slider.
+- Face resets keep the shaped picks: DEFAULT FACE / NEUTRAL FACE / a face preset / a body swap / RANDOM use sprites.js
+  EW_FACE_RESET_KEYS (every face key but the shaped heads + ears), so they no longer wipe the cat ears or the wolf head; RANDOM sets them 0.
+- Known: pack hair is its own mesh, so a long / big style can cover the ears or the ears can poke through it.
+  Proof (mesh render, front / 3/4 / side): /mnt/project-files/cat-ears/. More ears (bunny, canine, dropped) = one ANIMAL_SHAPES row each.
