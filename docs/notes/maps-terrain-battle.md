@@ -913,6 +913,23 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
   Sim's old gaps landed on the new board's corners until it was rerun).
 - **Not changed**: the voxel boards (the full-site voxel maps, the area Δ 8 × 8s, every "· voxel" board) — reported to mondo, waiting on his call.
 
+## THE DOOR AT BODY SIZE + THE SHEET SIZE QUESTION (2026-11-03, mondo: "did that stretch the terrain textures to cover a 2x2 instead of 1x1? ... the door model that the characters walk out of at the start of a match is too big for them now")
+- The match intro's crossing door (three-renderer.js `_introBuildDoor`) is built in battle tiles (leaf 1.35 tiles tall). On 3.5 m squares the
+  bodies are half a tile (UNIT_SPRITE_SIZE_RATIO 0.5), so the door stood twice their size. `_introBuildDoor(…, bodyK)`: the match intro
+  passes UNIT_SPRITE_SIZE_RATIO and the door proper (frame, leaf, seal, case line) is scaled by it about its foot; where it stands
+  (doorOut, tiles) and the walk path are unchanged. The main-menu door passes nothing (1). Online: both clients build it locally.
+- The terrain sheets did NOT stretch: a terrain room's floor / cliff / path sheets are laid in metres (HQ_TERRAIN_RULES.tile 1.75 m per
+  sheet, triplanar `uTriTM`), so a grown room on 3.5 m squares shows a 2 × 2 of sprites in each square (probe: 0.5 squares per sheet on
+  Stonehenge / Skinwalker). Board marks (`k: 'board'` chess courts) tile at the same 1.75 m. Holo Sim is the exception (tile 3.5).
+  mondo picked "one sprite per square" from side-by-sides (/mnt/project-files/terrain-sheet-size/). three-renderer.js `_hqSheetM(info)`
+  = max(info.tile, room.fieldSquareM || HQ_FIELD_RULES.squareM): `_hqBuildTerrain`'s TS (the field's UVs + info._TM, the triplanar
+  floor / cliff / path / paint, and the wall boxes' _nrBoxUV). TM stays info.tile × U: it is ALSO the model scale (_nrKit ts, trees, traffic,
+  hulls) — doubling it doubled every tree (Codex review on PR #840). The water sheets keep TM too.
+  the board marks' `tl` (chess courts: one sprite per court cell) and `_fieldPatchRep` (spell skins / strata) all read it, in fights
+  AND exploration (the room is one mesh). No lattice read (hqFieldSquareFor takes seconds on a big room; all 82 terrain rooms pass it
+  at 3.5 today). A room that someday fights on 1.75 m would still draw 3.5 m sheets: give it `fieldSquareM: 1.75`. Box-room floors,
+  walls and the city sprite buildings are unchanged. Kill-switch `window.EW_SHEET_REAL_SIZE = true` (back to 1.75 m sheets).
+
 ## THE OPEN SKY SHOT (2026-10-29, mondo: "maybe temporarily fade the celing out for sky and celestial events")
 - 10-28 playtest: the Pisces zodiac crane on Hell Arena (site_prebuilt_hell_walkways, a true-ground room) went black. Checked in a
   browser: the kept ceiling was ALREADY faded there (the sky-gaze lift puts the eye over it, `_fieldGroundTick` op 0.03); the room's
@@ -1166,8 +1183,19 @@ The round puff underside never covered the square-stepped hole, so the sky dome'
 **THE FLAT FILL** (three-renderer.js, after the tiles): `underFloat` now answers 0 drawn / 1 a float plateau's ring / 2 cut (the
 void, a float flight's run). Each ring quad with no corner on a void room's open sky is drawn back FLAT at its lowest corner in
 the field's own material (mesh `hq:field:flatfill`): the ground round the foot stays ground, the slope under the hanging cloud is
-laid flat. Every float-plateau room gets it. Left as it was: the cut under a float stair's run (a fill there would step), and the
+laid flat. Every float-plateau room gets it. Left as it was: the
 void rooms' open sky. Shot: /mnt/project-files/heaven-map/cutouts_before_after.jpg (Heaven Stairway 9×9).
+
+**THE GROUND UNDER** (2026-11-03, second pass; mondo pinned the first fill's shot: "what are these jagged edges", "wtf is this",
+"what is this gap"). Three leftovers of the first fill: the whole run under a FLOAT STAIR was still a hole (the jagged edge), the
+fill sat at each quad's lowest corner so it cracked against ground that had been raised after sampling (Heaven Stairway's
+generated mass: H is moved by the plan pass after `hFinal`), and the ground nodes round a flank still read the flank's slope and
+hollow (the cliff sheet + dark AO: a stepped dark band round every cloud). Now data.js compiles `info.GD`, the LIFT the floating
+plateaus and floating flights add at each node (`hFinal` with vs without them, `skipFloats`; non-void rooms with floats only).
+three-renderer.js takes the ground under = H − GD (`GHa`): a flat ring quad stays where it is, a quad across the flank and every
+quad under a float flight's run (underFloat → 3) lie on that ground with the cliff blend and AO dropped, and a ground node next
+to a float reads its slope + AO on the ground. Shots: /mnt/project-files/heaven-map/cutouts_fixed_v2.jpg.
+Left as the room has it: Heaven Stairway's generated mass pokes through the round cloud at (17.5, 10.5) (its own nodes at 4.4 m).
 
 **THE OPEN SKY** (three-renderer.js prop placement): in a void room a prop over open sky, or any prop authored at `y` ≤ −0.5,
 hangs at its own `y` (height from the room floor). Before, it was lifted onto the cut ground's level (the base), so the heaven
@@ -1175,7 +1203,7 @@ cloud sea at y −4 stood ON the board and buried it. Only the heaven gate room 
 
 **The room** `site_prebuilt_heaven_gate` (THE CLOUD FIELDS) is rebuilt from mondo's concept art (top-down 12×12): the gate
 platform (pearly gate, two angel statues) north, the round SUN in the middle (lavender disc, gold rings + rays as terrain marks),
-two side terraces (angel, column, harp), the big bottom platform with the grand stair, cloud paths between them, a castle on
+two side terraces (angel, column, harp; no potted plants, mondo 11-03: "potted plants in heaven?"), the big bottom platform with the grand stair, cloud paths between them, a castle on
 each corner island, balustrades on every edge over the sky. New helper `hqSkyPlan(rows, o)` (data.js, after hqDeckPlan) turns a
 character plan (one char per 3.5 m battle square, `.` = open sky) into float plateaus (proud 0.45 m past the square onto sky or
 same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.railings` balusters_d, `block: false`).

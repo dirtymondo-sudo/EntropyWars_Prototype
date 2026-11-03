@@ -38750,11 +38750,18 @@ const ThreeRenderer = (function () {
                     /* THE PRISM BANDS (2026-11-03, data.js HQ_TEXB_PRISM_BANDS): `bands` [top band's end row, bottom band's start row,
                        storeys in the art] — the bottom band once at the foot, one storey of the middle stack − 1 times, the top band once
                        at the top, at the sprite's own proportions fitted to H. Without bands every storey wears the whole sprite. */
-                    var BD = o.bands, segs = [];
+                    /* Every prism in the game (2026-11-03, mondo: "lets make sure any already on a map get the same fix"): with no
+                       `bands` opt the sprite's own row in HQ_TEXB_PRISM_BANDS is read, and the middle repeats as many times as fill the
+                       building's height (H unchanged, so every roof, climb and sight line stays where it was) at the sprite's own
+                       aspect; an editor building (`bands` passed, its storeys set) repeats it storeys − 1 times */
+                    var BD = o.bands, segs = [], bandFit = (BD === undefined);
+                    if (bandFit) BD = (typeof HQ_TEXB_PRISM_BANDS !== 'undefined' && HQ_TEXB_PRISM_BANDS[key]) || null;
                     if (BD && BD.length >= 3 && BD[0] > tt && BD[1] < tb + 1 && BD[1] > BD[0]) {
-                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB, sc = H / (tp + bp + (stack - 1) * mp), yy = 0;
+                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB;
+                        var nMid = bandFit ? Math.max(0, Math.round((H / (w * 0.85 / core) - tp - bp) / mp)) : stack - 1;
+                        var sc = H / (tp + bp + nMid * mp), yy = 0;
                         segs.push([yy, yy + bp * sc, 1 - (tb + 1) / sprH, 1 - bB / sprH]); yy += bp * sc;
-                        for (var sm = 0; sm < stack - 1; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
+                        for (var sm = 0; sm < nMid; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
                         segs.push([yy, H, 1 - bT / sprH, vT]);
                     } else for (var st0 = 0; st0 < stack; st0++) segs.push([st0 * h, st0 * h + h, vB, vT]);
                     segs.forEach(function (sg, si) {
@@ -49593,7 +49600,13 @@ const ThreeRenderer = (function () {
        landing when the board has no setting (custom maps, EW_NO_FACILITY_
        SCENERY, low-perf). Returns the animation record _introUpdateDoors
        drives. */
-    function _introBuildDoor(zi, ts, leaf, mapId) {
+    /* THE DOOR AT BODY SIZE (2026-11-03, mondo: "the door model that the characters walk out of at the start of a match is too
+       big for them now"): the threshold is built in battle tiles (a leaf 1.35 tiles tall), and since THE BIG SQUARES a board of
+       3.5 m squares draws its bodies at half a tile (UNIT_SPRITE_SIZE_RATIO) — the door stood twice their size. `bodyK` (the
+       match intro passes UNIT_SPRITE_SIZE_RATIO; the menu door passes none = 1) scales the door proper about its foot, so the
+       leaf is the same size to the bodies as on a 1.75 m board; where it stands (doorOut, in tiles) and the walk are unchanged. */
+    function _introBuildDoor(zi, ts, leaf, mapId, bodyK) {
+        var bk = (bodyK > 0 && bodyK < 1) ? bodyK : 1;
         var kit = _nrLastKit;
         var elev = ts * ELEV_STEP_RATIO;
         var apronY = kit ? kit.apronTop : zi.topZ * elev;
@@ -49610,7 +49623,7 @@ const ThreeRenderer = (function () {
            top × the level step) is not where the floor is past the board's edge — the door and the walkers' first steps
            read the room's own ground under the door instead (_introDoorFloorY) */
         if (!kit) {
-            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow);
+            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow * bk);
             if (_dfY !== null) { apronY = _dfY; zB = _dfY / elev; }
         }
         var jw = 0.14 * ts, lh = 0.2 * ts, pd = 0.2 * ts;
@@ -49632,6 +49645,7 @@ const ThreeRenderer = (function () {
         rec.group = g;
         var D = new THREE.Group();                        // the door proper, at the door plane
         D.position.set(0, 0, doorOut * ts);
+        if (bk !== 1) D.scale.setScalar(bk);   // THE DOOR AT BODY SIZE
         g.add(D);
         /* NO LANDING (mondo 2026-10-18: "get rid of the circular platform thing underneath the door"): the round dais that
            stood under every crossing door (menu + match intro) is gone — the frame and its sill stand straight on the
@@ -49799,7 +49813,7 @@ const ThreeRenderer = (function () {
             var p = walkTeams[w];
             var zi = _introZoneInfo(p);
             if (!zi) continue;
-            var d = _introBuildDoor(zi, ts, leaf, opts.mapId);
+            var d = _introBuildDoor(zi, ts, leaf, opts.mapId, UNIT_SPRITE_SIZE_RATIO);   // THE DOOR AT BODY SIZE
             _introDoorGroup.add(d.group);
             var team = (state.units || []).filter(function (u) { return u.player === p && !u.dead; });
             var delay = (opts.walkDelayMs && opts.walkDelayMs[p]) || 0;
@@ -56129,13 +56143,15 @@ const ThreeRenderer = (function () {
                 mh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
                 return { mesh: mh, tex: tex };
             };
-            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [];
+            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
                 ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
-                accents.push(wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai).mesh);
+                var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
+                accents.push(madeA.mesh);
+                if (ex.band === ai) bandMade = madeA;   // THE BAND TINT: a solid's band (bake-clothes.py band_tint), coloured apart from the hat
             }
             if (swayRig) part.wearSway = true;
             /* THE BLENDER TIGHT CLOTHES (bake-clothes.py batch 4b): a skin-tight garment lists the skin it hides per body
@@ -56148,7 +56164,10 @@ const ThreeRenderer = (function () {
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
             if (hangRig) part.hangRun = null;
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+            /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
+               appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
+            var bandTint = (tint && bandMade && bandMade.tex) ? { mesh: bandMade.mesh, src: tint.src, sg: sg, own: bandMade.tex } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, bandTint: bandTint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
                       solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
@@ -56979,9 +56998,8 @@ const ThreeRenderer = (function () {
         function paintWear(part, a) {
             if (!a) return;
             var T = a.wearTint || {};
-            (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                var want = T[w.id], map = P.own;
+            var paint = function (P, m, want) {   // its texture's grey levels x the colour, or its own texture
+                var map = P.own;
                 if (want) {
                     var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
                     if (grey) map = grey;
@@ -56989,6 +57007,12 @@ const ThreeRenderer = (function () {
                 } else if (P.c0) m.color.copy(P.c0);
                 else m.color.setRGB(1, 1, 1);
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+            };
+            (part.wear || []).forEach(function (w) {
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id]);
+                var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
+                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
@@ -61445,6 +61469,21 @@ const ThreeRenderer = (function () {
        128 sprite; 2 = one sheet per 2 × 2 squares; 0.5 = four a square) and `floorTint` / `cliffTint` / `pathTint` ('#rrggbb',
        multiplied over that sheet; white or none = as drawn). A stair row's `sideZoom` / `sideTint` set its own sides. A room or a
        row naming none looks as before (the editor's THE GROUND and a stair's fields write them). */
+    /* ONE SPRITE PER SQUARE (2026-11-03, mondo picked it from side-by-sides: "one sprite per square"): since 2× EVERYWHERE a
+       terrain room fights on 3.5 m squares (HQ_FIELD_RULES.squareM; every terrain room passes hqFieldSquareFor), but its sheets
+       stayed one per 1.75 m (HQ_TERRAIN_RULES.tile), so each battle square showed a 2 × 2 of sprites. The floor / cliff / path /
+       painted sheets, the room's wall boxes, the board marks and the spell skins now lay one sheet per the room's fight square (the room's own fieldSquareM,
+       else the rules' squareM), never smaller than the room's own tile (the Holo Sim's 3.5 m plate stays). ONLY the repeat: _hqBuildTerrain's TM (the tile every
+       kit, tree, car and prop is sized against) and the water sheets keep info.tile. Read cheaply (no
+       lattice): hqFieldSquareFor's region test costs seconds on a big room. Back to real size: window.EW_SHEET_REAL_SIZE = true. */
+    function _hqSheetM(info) {
+        var t = (info && +info.tile > 0) ? +info.tile : 1.75;
+        if (typeof window !== 'undefined' && window.EW_SHEET_REAL_SIZE) return t;
+        var room = info && info.room, sq = 0;
+        if (room && +room.fieldSquareM > 0) sq = +room.fieldSquareM;
+        else if (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && +HQ_FIELD_RULES.squareM > 0) sq = +HQ_FIELD_RULES.squareM;
+        return Math.max(t, sq);
+    }
     function _hqZoomOf(v) { v = +v; return (isFinite(v) && v > 0) ? Math.max(0.125, Math.min(16, v)) : 1; }
     function _hqTintOf(v) {
         if (v == null || v === '') return null;
@@ -63705,7 +63744,7 @@ const ThreeRenderer = (function () {
         /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
         var bufs = {};
         var strip = function (cx, cz, w, d, yaw, y, ck) {
-            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = info.tile || 1.75;
+            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = _hqSheetM(info);   // ONE SPRITE PER SQUARE
             [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (p) { var wx = cx + p[0] * c + p[1] * sn, wz = cz - p[0] * sn + p[1] * c; B.P.push(wx * U, yy, wz * U); B.T.push(wx / tl, -wz / tl); });
             B.I.push(base, base + 2, base + 1, base, base + 3, base + 2);
         };
@@ -64069,6 +64108,7 @@ const ThreeRenderer = (function () {
         _hq.terrain = info;
         _hq.rails = _hq.rails || []; _hq.ramps = _hq.ramps || [];
         var TM = info.tile * U, res = info.res, nx = info.nx, nz = info.nz;
+        var TS = _hqSheetM(info) * U;   // ONE SPRITE PER SQUARE: the sheets' repeat only — TM stays the tile every kit / tree / car / prop is built against
         var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
@@ -64085,6 +64125,9 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
             return Math.max(0, Math.min(1, w));
         };
+        /* THE GROUND UNDER (2026-11-03): the ground under the floating pieces = the field less the lift they add (data.js info.GD) */
+        var GHa = null;
+        if (info.GD && info.GD.length === info.H.length) { GHa = new Float32Array(info.H.length); for (var gk = 0; gk < GHa.length; gk++) GHa[gk] = info.H[gk] - info.GD[gk]; }
         for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
             /* THE JOINED FLIGHTS (2026-10-06): under a flight the field is drawn at the ground it stands on, its side nodes on its sides (data.js hqTerrainCompile) */
@@ -64093,8 +64136,13 @@ const ThreeRenderer = (function () {
             /* PAST THE EDGE (2026-10-28): JUST THE ROOM's ground ends at the room's edge + edgeOut (data.js info.cut) — a node past it is drawn ON that edge, at the ground there */
             if (info.cut) { var cxv = Math.max(-info.cut.hw, Math.min(info.cut.hw, vx)), czv = Math.max(-info.cut.hd, Math.min(info.cut.hd, vz)); if (cxv !== vx || czv !== vz) { vx = cxv; vz = czv; vh = hqTerrainHeight(info, vx, vz); } }
             pos[k * 3] = vx * U; pos[k * 3 + 1] = vh * U; pos[k * 3 + 2] = vz * U;
-            uv[k * 2] = vx * U / TM; uv[k * 2 + 1] = vz * U / TM;
+            uv[k * 2] = vx * U / TS; uv[k * 2 + 1] = vz * U / TS;
             var sl = hqTerrainSlope(info, px, pz);
+            /* THE GROUND UNDER (2026-11-03): a node of the ground round / under a floating piece reads its slope on the ground (GHa,
+               from data.js info.GD) — the flank it no longer joins painted it the cliff sheet and darkened it: a stepped dark band round every cloud */
+            var ghN = (GHa && Math.abs(GHa[k] - h) < 0.05) ? GHa : null;
+            if (ghN) { var gi0 = Math.max(0, i - 1), gi1 = Math.min(nx - 1, i + 1), gj0 = Math.max(0, j - 1), gj1 = Math.min(nz - 1, j + 1);
+                sl = Math.hypot((ghN[j * nx + gi1] - ghN[j * nx + gi0]) / ((gi1 - gi0) * res || 1), (ghN[gj1 * nx + i] - ghN[gj0 * nx + i]) / ((gj1 - gj0) * res || 1)); }
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
             var rockSl = rock;
             /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
@@ -64113,6 +64161,11 @@ const ThreeRenderer = (function () {
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
+            if (ghN && Math.abs(info.H[k] - h) < 0.05 && ao[k] < 1) {   // THE GROUND UNDER: the hollow is read on the ground, not against a flank it no longer meets
+                var aoR = _hqLightRules().ao || {}, aoT2 = (aoR.terrain != null) ? aoR.terrain : 0.32;
+                var lapG = (ghN[j * nx + Math.max(0, i - 1)] + ghN[j * nx + Math.min(nx - 1, i + 1)] + ghN[Math.max(0, j - 1) * nx + i] + ghN[Math.min(nz - 1, j + 1) * nx + i] - 4 * ghN[k]) / res;
+                ao[k] = Math.max(ao[k], Math.max(0.5, 1 - aoT2 * Math.max(0, Math.min(1, lapG * 0.9))));
+            }
         } if (_hqSliceDue()) yield; }
         var idx = [], escalators = info.drawH ? [] : (room.terrain.features || []).filter(function (f) { return f.escalator; });   // THE JOINED FLIGHTS: the field runs on under an escalator, drawn at its ground
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
@@ -64120,7 +64173,8 @@ const ThreeRenderer = (function () {
            blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
         var floats = (info.floats || []).concat(info.drawH ? [] : (info.builts || []));   // THE JOINED FLIGHTS (2026-10-06): a flight no longer cuts the field away (that cut was the gap along both sides of every stair) — the field is drawn under it at its ground
-        /* → 0 drawn · 1 a float PLATEAU's ring (THE FLAT FILL below draws it back flat) · 2 cut (the void, a flight's run) */
+        /* → 0 drawn · 1 a float PLATEAU's ring (THE FLAT FILL below draws it back) · 2 cut (the void, a flight's run in a void room)
+           · 3 a float flight's run over THE GROUND UNDER (GHa, from data.js info.GD: drawn on the ground under it, no hole under the stair) */
         var underFloat = function (mx, mz) {
             if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return 2;   // THE VOID: no ground drawn between the islands
             var ring = 0;
@@ -64133,7 +64187,7 @@ const ThreeRenderer = (function () {
                 } else {
                     var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
                     if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
-                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2;
+                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return GHa ? 3 : 2;
                 }
             }
             return ring;
@@ -64144,7 +64198,7 @@ const ThreeRenderer = (function () {
            through it: the green notches under Heaven's clouds). Now only the flank goes: each quad of the ring is drawn back FLAT at
            its lowest corner (the ground round the foot stays ground, the rim stays the top, the slope between them is laid flat on
            the ground under the hanging cloud); a quad with a corner on the open sky of a void room stays cut (the island's cap). */
-        var fillQ = [];
+        var fillQ = [], fillK = [];
         var voidCorner = (info.void && typeof hqTerrainVoidAt === 'function') ? function (i, j) {
             var px = info.x0 + i * res, pz = info.z0 + j * res;
             return hqTerrainVoidAt(info, px, pz) || hqTerrainVoidAt(info, px + res, pz) || hqTerrainVoidAt(info, px, pz + res) || hqTerrainVoidAt(info, px + res, pz + res);
@@ -64175,7 +64229,7 @@ const ThreeRenderer = (function () {
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
             var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
             if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
-            else if (uf === 1 && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) fillQ.push(a, b, c, d);   // THE FLAT FILL
+            else if ((uf === 1 || uf === 3) && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) { fillQ.push(a, b, c, d); fillK.push(uf); }   // THE FLAT FILL
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -64185,7 +64239,7 @@ const ThreeRenderer = (function () {
         if (info.paint && info.paint.pal && info.paint.pal.length) _hqPaintAttrs(geo, info.paint.P, nx * nz);   // THE GROUND GRIDS (E3): the painted sheets, one-hot per vertex
         geo.setIndex(idx); geo.computeVertexNormals();
         if (_hqSliceDue()) yield;
-        info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
+        info._TM = TS;   // ONE SPRITE PER SQUARE (the sheet, not the model scale) — THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
         var fieldMat = _hqTerrainMat(info, S), field = null;
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_ENGINE_RULES.tileM squares — one mesh each, the
            same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
@@ -64196,20 +64250,41 @@ const ThreeRenderer = (function () {
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
-        /* THE FLAT FILL: the ring's quads, each at its lowest corner, in the field's own material (every attribute copied per corner) */
+        /* THE FLAT FILL: the cut quads drawn back in the field's own material (every attribute copied per corner). THE GROUND UNDER
+           (2026-11-03, mondo on the first fill: "what are these jagged edges" / "what is this gap"): with GHa (the field
+           without its floating pieces) a ring quad that is flat (the ground round the foot, the rim of the top) stays where it is,
+           a quad across the flank and every quad under a float flight's run lie ON THE GROUND UNDER — the same heights as the ground
+           round them, so no step, no crack, no hole; the rock blend of the flank is dropped there (it is ground, not a cliff).
+           Without GH (a void room) a quad lies flat at its lowest corner, as before. */
         if (fillQ.length) {
-            var fG = new THREE.BufferGeometry(), nQ = fillQ.length / 4, fIdx = [];
+            var fG = new THREE.BufferGeometry(), nQ = fillQ.length / 4, fIdx = [], GHf = GHa, onGround = new Uint8Array(nQ);
+            if (GHf) for (var qg = 0; qg < nQ; qg++) {
+                var hlo = Infinity, hhi = -Infinity; for (var vg = 0; vg < 4; vg++) { var hv = info.H[fillQ[qg * 4 + vg]]; if (hv < hlo) hlo = hv; if (hv > hhi) hhi = hv; }
+                onGround[qg] = (fillK[qg] === 3 || hhi - hlo > 0.05) ? 1 : 0;
+            }
             Object.keys(geo.attributes).forEach(function (an) {
                 var A = geo.attributes[an], isz = A.itemSize, src = A.array, dst = new src.constructor(nQ * 4 * isz);
                 for (var q = 0; q < fillQ.length; q++) for (var e = 0; e < isz; e++) dst[q * isz + e] = src[fillQ[q] * isz + e];
                 if (an === 'position') for (var q2 = 0; q2 < nQ; q2++) {
+                    if (GHf) { if (onGround[q2]) for (var vq = 0; vq < 4; vq++) dst[(q2 * 4 + vq) * 3 + 1] = GHf[fillQ[q2 * 4 + vq]] * U; continue; }
                     var lo = Infinity; for (var v = 0; v < 4; v++) lo = Math.min(lo, dst[(q2 * 4 + v) * 3 + 1]);
                     for (v = 0; v < 4; v++) dst[(q2 * 4 + v) * 3 + 1] = lo;
+                }
+                if (an === 'aBlend' && GHf) for (var q4 = 0; q4 < nQ; q4++) if (onGround[q4]) for (var vb = 0; vb < 4; vb++) {
+                    var nk = fillQ[q4 * 4 + vb]; if (Math.abs(GHf[nk] - info.H[nk]) > 0.05) { dst[(q4 * 4 + vb) * 2] = 0; dst[(q4 * 4 + vb) * 2 + 1] = 0; }
+                }
+                if (an === 'aAO' && GHf) for (var q6 = 0; q6 < nQ; q6++) if (onGround[q6]) for (var va = 0; va < 4; va++) {   // (the hollow under the flank is no hollow on the ground)
+                    var nk3 = fillQ[q6 * 4 + va]; if (Math.abs(GHf[nk3] - info.H[nk3]) > 0.05) dst[q6 * 4 + va] = 1;
                 }
                 fG.setAttribute(an, new THREE.BufferAttribute(dst, isz, A.normalized));
             });
             for (var q3 = 0; q3 < nQ; q3++) { var o4 = q3 * 4; fIdx.push(o4, o4 + 2, o4 + 1, o4 + 1, o4 + 2, o4 + 3); }   // (a, c, b, b, c, d) as the field
             fG.setIndex(fIdx); fG.deleteAttribute('normal'); fG.computeVertexNormals();
+            /* a corner the ground shares with the field takes the field's own normal (no facet in the light at the seam) */
+            if (geo.attributes.normal) { var fn = fG.attributes.normal.array, gn = geo.attributes.normal.array;
+                for (var q5 = 0; q5 < nQ; q5++) for (var vn = 0; vn < 4; vn++) { var nk2 = fillQ[q5 * 4 + vn], at = (q5 * 4 + vn) * 3;
+                    if (!GHf || !onGround[q5] || Math.abs(GHf[nk2] - info.H[nk2]) <= 0.05) { if (gn[nk2 * 3] || gn[nk2 * 3 + 1] || gn[nk2 * 3 + 2]) { fn[at] = gn[nk2 * 3]; fn[at + 1] = gn[nk2 * 3 + 1]; fn[at + 2] = gn[nk2 * 3 + 2]; } } }
+                fG.attributes.normal.needsUpdate = true; }
             var fMesh = new THREE.Mesh(fG, fieldMat); fMesh.position.y = 0.3; fMesh.receiveShadow = true; fMesh.renderOrder = 1; fMesh._ew_hqPart = 'floor'; fMesh._ew_hqTerrain = true; fMesh.name = 'hq:field:flatfill';
             G.add(fMesh);
         }
@@ -64353,7 +64428,7 @@ const ThreeRenderer = (function () {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
             if (w.block) {
                 var bm = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), boxMatOf(w));
-                _nrBoxUV(bm.geometry, w.t * U, hM * U, (L + w.t) * U, TM * (w.key ? 1 : sheetLook.cliffZoom));
+                _nrBoxUV(bm.geometry, w.t * U, hM * U, (L + w.t) * U, TS * (w.key ? 1 : sheetLook.cliffZoom));
                 bm.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); bm.rotation.y = yaw;
                 bm.renderOrder = 1; bm.castShadow = true; bm.receiveShadow = true; bm._ew_hqPart = 'floor'; bm._ew_hqBox = true; G.add(bm);
                 return;
@@ -64367,7 +64442,7 @@ const ThreeRenderer = (function () {
             if (w.glass) { m.renderOrder = 3; m.castShadow = false; }
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat
                (2026-10-24: every wall row now, the yard's rule was the only one at the board's density) */
-            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
+            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TS * sheetLook.cliffZoom : TS);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
@@ -64376,7 +64451,7 @@ const ThreeRenderer = (function () {
         var tierWalls = info.walls.filter(function (w) { return w.tier && !w.ghost; });
         for (var wi = 0; wi < info.walls.length; wi++) { var w0 = info.walls[wi]; if (!w0.tier && !w0.ghost) drawWall(w0); if ((wi & 15) === 15 && _hqSliceDue()) yield; }   // a `ghost` wall is the walker's only (the stands' tunnel lining)
         if (_hqSliceDue()) yield;
-        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k, w) { return matOf(k, w); }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
+        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TS, function (k, w) { return matOf(k, w); }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
         try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
@@ -64636,11 +64711,49 @@ const ThreeRenderer = (function () {
             },
         };
     }
+    /* THE BUILDING FROM THE PACK (2026-11-03, mondo: "making a building now just paints all of its sides with the window ... the bottom
+       of the buildings are just all half windows which doesnt make sense"): a building wearing one urban sheet (`key`) gets the pieces
+       the pack draws for the rest of a building, picked to suit that sheet unless the row names its own —
+       `keyGround` the ground floor's lower row (a glass sheet: the tall storefront glass under a concrete band; a painted plaster: the
+       banded plaster the pack paints for the foot), `keyDoor` the door (a half-wide door sheet, drawn as a DOUBLE door: the sheet and its
+       mirror), `keyOver` the see-through window decal laid over the wall on each upper storey's upper row (a plaster / stucco: the
+       residential windows; corrugated metal / striped concrete: the factory windows; glass: none). 'none' = no door / no decal. */
+    function _hqTexSheetPlan(lot, rng, neon) {
+        var U = function (n) { return n ? 'urban:' + n : null; }, nm = String(lot.sheet || '').replace(/^urban:/, ''), Q = { sheet: { key: lot.sheet }, g1: null, door: null, over: null };
+        var pick = function (fam, f) { return (typeof urbanTexPick === 'function') ? urbanTexPick(fam, rng, f) : null; };
+        var glowOf = function (n) { var g = neon && n && typeof urbanTexGlow === 'function' ? urbanTexGlow(n) : null; return g ? U(g) : null; };
+        var m, isGlass = /^GlassWindow/.test(nm);
+        if (isGlass) {
+            m = /(\d)/.exec(nm); var n = m ? m[1] : '1', broken = /Broken/.test(nm), tall = broken ? ('GlassWindowTallBroken' + n + 'a') : ('GlassWindowTall' + n + 'a');
+            if (!URBAN_TEXTURES[tall]) tall = 'GlassWindowTall1a';
+            Q.g0 = { key: U(tall), glow: broken ? null : glowOf(tall), glass: true }; Q.g1 = { key: U('ConcreteStriped2a') };
+            Q.door = U(pick('DoorStorefrontHalf')); Q.sheet.glass = true; Q.sheet.glow = glowOf(nm); Q.parapet = U('ConcreteStriped2a');
+        } else if ((m = /^PlasterWallPainted1([a-f])$/.exec(nm))) {
+            var band = 'PlasterWallPainted2' + ({ a: 'a', b: 'a', c: 'b', d: 'c', e: 'd', f: 'e' })[m[1]];
+            Q.g0 = { key: U(band) }; Q.door = U('DoorPaintedHalf' + ({ a: '1', b: '1', c: '2', d: '3', e: '4', f: '1' })[m[1]] + 'a');
+            var dr = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr), glow: glowOf(dr) };
+        } else if (/^PlasterWallPainted2/.test(nm)) {
+            Q.sheet = { key: U('PlasterWallPainted1a') }; Q.g0 = { key: lot.sheet }; Q.door = U('DoorPaintedHalf1a');
+            var dr2 = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr2), glow: glowOf(dr2) };
+        } else if (/^PlasterWallStucco/.test(nm)) {
+            Q.door = U(pick('DoorWoodenHalf')); var dr3 = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr3), glow: glowOf(dr3) };
+        } else if (/^(MetalCorrugatedPainted|ConcreteStriped)/.test(nm)) {
+            Q.door = U('DoorPaintedHalf1a'); var df = pick('DecalWindowsFactory', /[12]a$/); Q.over = { key: U(df), glow: glowOf(df) };
+        } else Q.door = U('DoorPaintedHalf1a');
+        if (!Q.g0) Q.g0 = Q.sheet;
+        return Q;
+    }
+    /* the row's own pieces over the picks: a sheet key (`urban:` added to a bare pack name), 'none' = nothing, empty = the pick */
+    function _hqTexOwn(v) { if (v == null || v === '') return undefined; if (v === 'none') return null; v = String(v); return (v.indexOf(':') < 0 && typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES[v]) ? 'urban:' + v : v; }
     /* one textured building on a lot: the box's four faces as cell grids, the roof, the parapet, the plant */
     function _hqTexBuilding(lot, info, batch, rng, gen, U) {
         var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = (lot.h > 0) ? lot.h : st * HQ_TEXB.storey, CY = H / rows;   // `h` (THE BUILDING TIERS): a set roof height, the cells stretched to it
         /* THE BUILDING'S OWN SHEET (2026-10-30): a row's `key` on every face cell (and the parapet), as a wall wears its key — the style's door stays */
         if (lot.sheet) { var one = { key: lot.sheet }; P.wall = P.win = P.ground = P.base = P.top = one; P.over = null; P.one = true; }
+        var Q = lot.sheet ? _hqTexSheetPlan(lot, rng, P.neon) : null;   // THE BUILDING FROM THE PACK: the ground floor, the door, the decals
+        var ownG = _hqTexOwn(lot.keyGround), ownD = _hqTexOwn(lot.keyDoor), ownO = _hqTexOwn(lot.keyOver);
+        var doorKey = ownD !== undefined ? ownD : (Q ? Q.door : undefined), doorPair = !!Q || ownD !== undefined;   // a pack building's door is a double door
+        var overOwn = ownO !== undefined ? (ownO ? { key: ownO, glow: (P.neon && typeof urbanTexGlow === 'function' && urbanTexGlow(ownO.replace(/^urban:/, ''))) ? 'urban:' + urbanTexGlow(ownO.replace(/^urban:/, '')) : null } : null) : (Q ? Q.over : undefined);
         if (lot.roofOnly && !lot.sheet) P.wall = P.top = { key: 'urban:ConcreteStriped2a' };   // THE PRISM ROOFS: a prism building's parapet in concrete
         /* THE INSIDE (2026-10-30): a hollow building's doorway (data.js hqTexbDoor — the walker's gap in its front wall) */
         var hol = (lot.hollow && !lot.roofOnly && typeof hqTexbDoor === 'function') ? hqTexbDoor(lot) : null;
@@ -64676,16 +64789,26 @@ const ThreeRenderer = (function () {
                     if (upperOfStorey || (ground && !(F.front && ci === doorCol))) { if (!(ground && P.style === 'stucco')) over = P.over; }
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
+                if (Q) { cell = r === 0 ? Q.g0 : (r === 1 && Q.g1 ? Q.g1 : Q.sheet); over = null; door = (ground && F.front && ci === doorCol) ? door : null; }
+                if (ownG !== undefined && r === 0 && ownG) cell = { key: ownG, glass: /GlassWindow/.test(ownG) };
+                if (overOwn !== undefined) over = (r >= 3 && r % 2 === 1) ? overOwn : null;
+                if (door && doorKey !== undefined) door = doorKey ? { key: doorKey, half: true, pair: doorPair } : null;
                 if (!cell || !cell.key) continue;
                 var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY, v0 = 0;
                 if (hol && F.front && ci === hol.col && y0 < hol.doorH - 1e-3) { if (y1 <= hol.doorH + 1e-3) continue; v0 = (hol.doorH - y0) / CY; y0 = hol.doorH; over = null; }   // THE INSIDE: the doorway's square, open to the lintel
-                var uRep = cell.tall ? 2 : 1, kind = (!P.one && (cell === P.win || cell === P.ground)) ? 'glass' : 'wall';
+                var uRep = cell.tall ? 2 : 1, kind = ((!P.one && (cell === P.win || cell === P.ground)) || cell.glass) ? 'glass' : 'wall';
                 batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, v0], [uRep, v0], [uRep, 1], [0, 1]]);
                 if (over && over.key) {
                     var ox = F.n[0] * out, oz = F.n[1] * out;
                     batch.add(over.key, over.glow || null, 'over', [W(x0 + ox, y0, z0 + oz), W(x1 + ox, y0, z1 + oz), W(x1 + ox, y1, z1 + oz), W(x0 + ox, y1, z0 + oz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
                 }
-                if (door && door.key) {
+                if (door && door.key && door.pair) {   // THE DOUBLE DOOR: the half-wide sheet and its mirror, side by side in the middle of the square
+                    var hd2 = Math.min(cw / 2, HQ_TEXB.cell / 2), pc = (cw - 2 * hd2) / 2, ox3 = F.n[0] * out * 1.5, oz3 = F.n[1] * out * 1.5;
+                    [[0, 1], [1, 0]].forEach(function (uu, side) {
+                        var a0 = pc + side * hd2, ax0 = x0 + F.a[0] * a0, az0 = z0 + F.a[1] * a0, ax1 = ax0 + F.a[0] * hd2, az1 = az0 + F.a[1] * hd2;
+                        batch.add(door.key, null, 'over', [W(ax0 + ox3, y0, az0 + oz3), W(ax1 + ox3, y0, az1 + oz3), W(ax1 + ox3, y1, az1 + oz3), W(ax0 + ox3, y1, az0 + oz3)], [[uu[0], 0], [uu[1], 0], [uu[1], 1], [uu[0], 1]]);
+                    });
+                } else if (door && door.key) {
                     var dw = door.wide ? cw : cw / 2, dx0 = x0 + F.a[0] * (cw - dw) / 2, dz0 = z0 + F.a[1] * (cw - dw) / 2, dx1 = dx0 + F.a[0] * dw, dz1 = dz0 + F.a[1] * dw;
                     var ox2 = F.n[0] * out * 1.5, oz2 = F.n[1] * out * 1.5;
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
@@ -64693,7 +64816,7 @@ const ThreeRenderer = (function () {
             }
             if (lot.flat) return;   // THE BUILDING TIERS: a walked roof has no parapet (its rails, bridges and stairs meet the edge)
             /* the parapet's outer face in the wall's sheet (the top row's, if any) */
-            var pk = (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
+            var pk = (Q && Q.parapet) || (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
             var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
             batch.add(pk, null, 'wall', [W(px0, H, pz0), W(px1, H, pz1), W(px1, H + ph, pz1), W(px0, H + ph, pz0)], [[0, 0.7], [F.L / C, 0.7], [F.L / C, 0.7 + ph / C], [0, 0.7 + ph / C]]);
         });
@@ -64748,7 +64871,7 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
@@ -80822,7 +80945,7 @@ const ThreeRenderer = (function () {
     /* the sheet's repeat in battle px: the terrain room's own floor tile (info.tile metres), else two cells */
     function _fieldPatchRep(G) {
         var tm = 0;
-        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf && +inf.tile; } catch (e) { tm = 0; } }
+        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf ? _hqSheetM(inf) : 0; } catch (e) { tm = 0; } }   // ONE SPRITE PER SQUARE
         var rep = (tm > 0) ? tm * G.s : 2 * G.ts;
         return Math.max(G.ts, Math.min(6 * G.ts, rep));
     }
