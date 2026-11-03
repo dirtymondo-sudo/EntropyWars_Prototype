@@ -7926,6 +7926,17 @@
                         });
                         html += '</div>';
                     }
+                    /* THE FACE PRESETS (2026-11-03): the creator's MakeHuman community faces (sprites.js EW_MPFB_FACE_PRESETS) */
+                    const fp = (window.EW_MPFB_FACE_PRESETS || []).filter(p => p && p.author);
+                    if (fp.length) {
+                        html += '<p class="credits-note">Creator face presets (MakeHuman community characters):</p><div class="credits-mh" role="list" aria-label="Face preset credits">';
+                        fp.forEach(p => {
+                            html += '<p role="listitem"><b>' + _creditsEsc(p.author) + '</b> \u00b7 ' + _creditsEsc(p.license || '')
+                                + (/^https?:\/\//.test(p.source || '') ? ' \u00b7 <a href="' + _creditsEsc(p.source) + '" target="_blank" rel="noopener noreferrer">source</a>' : '')
+                                + ' \u2014 ' + _creditsEsc(p.label) + '</p>';
+                        });
+                        html += '</div>';
+                    }
                 }
                 html += '</section>';
             });
