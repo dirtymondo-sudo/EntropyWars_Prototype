@@ -5498,7 +5498,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-cc-tile[aria-pressed="true"] { border-color: #f0cc83; box-shadow: 0 0 0 2px rgba(240, 204, 131, .55), inset 0 0 18px rgba(240, 204, 131, .18); }
 .pb-hair-tile { min-height: 58px; }
 /* THE SHELVES (2026-11-02): the name tiles (hair, clothes, skins) fit their names: a hair-line smaller, no letter gaps, a long word hyphenated */
-.pb-cc-tiles.pb-cc-hair { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.pb-cc-tiles.pb-cc-hair { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }   /* (THE BODY SLOTS 2026-11-03: 96 -> 112 px, so a long word like FIREFIGHTER / MOTORCYCLE fits whole on one line) */
 .pb-cc-hair .pb-cc-tile { font-size: 9px; letter-spacing: .02em; padding: 5px 4px; }
 .pb-cc-hair .pb-cc-tile span { hyphens: auto; -webkit-hyphens: auto; }
 .pb-hair-glyph { width: 28px; height: 22px; border-radius: 14px 14px 6px 6px; background: linear-gradient(180deg, #7a5a3a, #3b2a1f); margin-bottom: 4px; opacity: .85; }
@@ -5557,6 +5557,10 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-pattern-tile.has-thumb span, .pb-pattern-tile.plain span { background: rgba(14, 12, 9, .72); border-radius: 6px; padding: 2px 4px; }
 .pb-pattern-tile.plain { color: #eee1be; }
 .pb-cc-compact .pb-cc-tile { min-height: 38px; font-size: 9px; padding: 4px 3px; }
+/* (THE BODY SLOTS 2026-11-03: the fabric + print tiles were 56 / 50 px, narrower than CHAINMAIL / PINSTRIPE / COTTON, so the names broke
+   mid-word; wider tiles + no letter gaps keep every name whole) */
+.pb-cc-tiles.pb-cc-compact, .pb-cc-tiles.pb-cc-prints, .pb-cc-tiles.pb-cc-fabrics { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+.pb-cc-compact .pb-cc-tile, .pb-cc-prints .pb-cc-tile, .pb-cc-fabrics .pb-cc-tile { font-size: 8px; letter-spacing: 0; }
 @media (max-width: 1180px) { .pb-creator-grid { grid-template-columns: 1fr; } }
 /* THE LOCKER + THE NAME + ＋ ADD LAYER (character creator rev 10, 2026-09-13) */
 .pb-looks { margin: 4px 0 14px; padding: 10px 12px; border: 1px solid #4b3f2a; border-radius: 12px; background: rgba(20, 17, 12, .55); }
@@ -5582,6 +5586,22 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-cc-side .pb-cc-alloff { margin-left: auto; }
 .pb-cc-shelves { margin-top: 4px; }
 .pb-cc-shelf-sub { font-size: 10px; color: #a89a74; border-bottom: 1px solid rgba(216, 201, 160, .22); padding-bottom: 2px; margin-top: 10px; }
+/* THE TABS + THE BODY SLOTS (2026-11-03, mondo: "tabs instead of one long list" + "clothes+accessories organized by body part like a typical
+   rpg"): the creator's five tabs (a PS1 window tab bar that stays at the top while the tab scrolls), OUTFIT's body-part tabs (Head ...
+   Footwear) and the kinds inside one body part. Every label wraps onto another line instead of being cut; nothing scrolls sideways. */
+.pb-cc-maintabs { position: sticky; top: -12px; z-index: 6; display: flex; flex-wrap: wrap; gap: 4px; margin: 6px -4px 10px; padding: 8px 4px 0; background: #14110c; border-bottom: 2px solid #8e7951; box-shadow: 0 6px 10px -6px rgba(0, 0, 0, .8); }
+.pb-officer-controls .pb-cc-maintabs { top: -10px; }
+.pb-cc-maintabs .ms-tty-btn, .pb-cc-maintabs .ms-tty-btn.primary { flex: 1 1 0; min-width: 0; justify-content: center; padding: 9px 6px 8px; margin-bottom: -2px; font-size: 11px; letter-spacing: .14em; white-space: normal; text-align: center; border-bottom: 0; border-radius: 6px 6px 0 0; box-shadow: none; transform: none; }
+.pb-cc-maintabs .ms-tty-btn.primary { color: #f0cc83; border-color: #8e7951; background: #2a2418; border-bottom: 2px solid #2a2418; }
+.pb-cc-tabpanel { min-width: 0; }
+.pb-cc-slots { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 6px; padding: 8px; border: 1px solid #4b3f2a; border-radius: 8px; background: rgba(20, 17, 12, .6); }
+.pb-cc-slots .ms-tty-btn, .pb-cc-slots .ms-tty-btn.primary { flex: 1 1 auto; min-height: 32px; justify-content: center; padding: 6px 8px; font-size: 10px; letter-spacing: .1em; white-space: nowrap; text-align: center; box-shadow: none; transform: none; }
+.pb-cc-slots .ms-tty-btn.primary { color: #f0cc83; border-color: #f0cc83; background: rgba(240, 204, 131, .14); }
+.pb-cc-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 6px 0 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(216, 201, 160, .22); }
+.pb-cc-kinds .ms-tty-btn, .pb-cc-kinds .ms-tty-btn.primary { min-width: 0; min-height: 28px; padding: 5px 9px; font-size: 9px; letter-spacing: .1em; white-space: normal; text-align: center; box-shadow: none; transform: none; }
+.pb-cc-kinds .ms-tty-btn.primary { display: inline-flex; color: #14110c; border-color: #f0cc83; background: #f0cc83; }
+.pb-cc-kinds-head { flex: 0 0 100%; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #a89a74; margin: 4px 0 0; }
+.pb-cc-slotpanel { min-width: 0; }
 .pb-layer-remove { min-height: 26px; padding: 2px 8px; font-size: 10px; }
 .pb-cc-add { margin: 10px 0 6px; }
 .pb-cc-add-btn { border-style: dashed; letter-spacing: .12em; }
