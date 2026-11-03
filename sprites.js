@@ -3393,6 +3393,12 @@ EW_MH_WEAR.push(['ewb_mummy', 'Mummy wraps', 'suits', 50], ['ewb_ghost', 'Ghost 
 /* THE SOLID PIECES (2026-11-01, mondo's own cowboy hat, R2 wear/cowboyhat/): his mesh, UVs and textures as he made them,
    fitted rigidly to each body's head and riding the Head bone (bake-clothes.py SOLIDS). Keeps its own colours. */
 EW_MH_WEAR.push(['ewb_cowboyhat', 'Cowboy hat', 'hats', 56]);
+/* THE WORN HATS (2026-11-03, mondo: "make it look more realistic/weathered/worn/textured"): his same hat + fit wearing a Meshy
+   Retexture painted on his own UVs (bake-clothes.py SOLIDS cowboyhat_worn / cowboyhat_worntan); his original stays above. */
+EW_MH_WEAR.push(['ewb_cowboyhat_worn', 'Cowboy hat (worn dark)', 'hats', 56], ['ewb_cowboyhat_worntan', 'Cowboy hat (worn tan)', 'hats', 56]);
+/* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): these hats carry the band as its own
+   primitive (bake-clothes.py band_tint); its colour is appearance.wearTint['<id>:band'] (none = its own colours) */
+const EW_WEAR_BANDS = ['ewb_cowboyhat', 'ewb_cowboyhat_worn', 'ewb_cowboyhat_worntan'];
 /* THE MESHY PIECES (2026-11-03, docs/notes/character-models-plan.md row 16; the pieces of sections 4a + 6b/6c, made on Meshy):
    each fitted on the five MPFB bodies by bake-meshy.py (cloud Blender) and worn like the cowboy hat - solid, on its own colours
    (the wear tint over them), riding one bone: hats + helmets + crowns on the Head; the creature heads (grey alien ... moth) on the
@@ -3481,6 +3487,8 @@ function normalizeWearTint(map, wear) {
   for (const id of wear || []) {
     const c = map[id];
     if (wearTintable(id) && typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)) out[id] = c.toLowerCase();
+    const cb = map[id + ':band'];   // THE BAND TINT
+    if (EW_WEAR_BANDS.includes(id) && typeof cb === 'string' && /^#[0-9a-f]{6}$/i.test(cb)) out[id + ':band'] = cb.toLowerCase();
   }
   return out;
 }
@@ -4794,7 +4802,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
