@@ -218,42 +218,43 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 mondo 11-03: "focus on the things that were purely coded like the cones ... a box for a building is perfectly fine, but other
 stuff just looks really bad". Each code-only builder in §8b was drawn alone in a browser and judged. Full proposal with
 before/after thumbnails: Claude Doc "Coded shapes worth replacing" (https://claude.ai/artifact/WFS1U2pejBAp4cqXQr6wyF).
-NOTHING is replaced yet; mondo picks rows by number. Existing rules only; replacing = the builder wears the model.
+mondo answered 11-03 (thread "Coded shapes"); rows marked DONE / DELETED are in. Also deleted 11-03: the `hills` + `dunes` rims and the ground
+swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay) — mondo: "no map should be using the dune swells or hill swells". Existing rules only; replacing = the builder wears the model.
 
 | # | coded piece (three-renderer.js) | verdict | replacement |
 | --- | --- | --- | --- |
-| 1 | castle / skycastle landmarks | swap, model in game | castle pack pieces (`Castles_and_Forts.glb`) |
-| 2 | iceberg ring `bergs` (cones) | swap, model in game | ocean pack rocks tinted ice white |
+| 1 | castle / skycastle landmarks | **DONE 11-03 (round 2)**, code deleted | castle pack pieces placed one by one: Wall_2x4 / Wall_2x2 / Gate_2x4 curtain, Tower_Mid corner towers, a Tower_Doorway keep, Tower_top_1 + Roof_Cone caps (the sky castle keeps its clouds) |
+| 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
 | 3 | `_hzObelisk` | swap, model in game | obelisk3d |
-| 4 | `_hzLighthouse` | swap, model in game | Meshy decor lighthouse |
-| 5 | sea stack / island | swap, model in game | ocean pack rocks / palm isle |
-| 6 | greek ruin + ruins rim | swap, model in game | greek columns + castle ruined pieces |
-| 7 | rover | swap, model in game | mars_rover |
-| 8 | toadstool / fairy ring | swap, model in game | mushroom2 / mushroom |
-| 9 | censer | swap, model in game | Meshy props censer |
-| 10 | whale (Atlantis) | swap, model in game | ocean_whale / humpback |
-| 11 | castle_wall | swap, model in game | castle pack Wall_2x4 |
+| 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
+| 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
+| 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the Meshy greekcol (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
+| 7 | rover | **DONE 11-03**, code deleted | mars_rover |
+| 8 | toadstool / fairy ring | **DONE 11-03**, code deleted | mushroom / a ring of mushroom2 |
+| 9 | censer | **DONE 11-03**, code deleted | Meshy props censer |
+| 10 | whale (Atlantis) | **DONE 11-03**, code deleted | ocean pack Whale.fbx (mondo: not the humpback) |
+| 11 | castle_wall | **KEPT as code** (mondo: only if the shape makes sense) | the spell wall is 1 square wide and 2 high; the pack has no piece that shape (Wall_2x2 is square, Wall_2x4 is 4 long), so the swap would change the wall |
 | 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
-| 13 | brazier | swap, model in game (partial) | cave_torch basket |
+| 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
-| 15 | greytube | pack swap | Molten cryo tube |
-| 16 | iso_tank | pack swap | Molten casket / cryo |
+| 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/misc/molten_cryo_tube.glb` |
+| 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/misc/molten_sleeper_casket.glb` |
 | 17 | lava lamps | pack swap | Molten lamp |
 | 18 | grow_lamp | pack swap | Molten lamp |
 | 19 | submarine | pack swap | BlenderVoyage sub (CC-BY: credit) |
-| 20 | hand_dryer / range_hood / kitchen_range | pack swap | DINER pack |
-| 21 | urinal / sink_row | pack swap | BurgerPiz pack |
-| 22 | toilet / shower stall | pack swap | Gas station / House packs |
-| 23 | `_hzFloatingIsland` (upside-down cone) | new Meshy model | floating rock island |
-| 24 | `_hzColossus` | new Meshy model | felled giant column, drums scattered |
-| 25 | `_hzFleshMound` | new Meshy model | heap of living flesh, eyes and teeth |
+| 20 | hand_dryer / range_hood / kitchen_range / sink_row | **DONE 11-03 (round 2)**, code deleted | DINER pack Hand_dryer, cooker_hood, Stove (griddle range), Washbasin (three basins) |
+| 21 | urinal | **DONE 11-03 (round 2)**, code deleted | BurgerPiz pack urinary |
+| 22 | toilet / shower stall | **DONE 11-03 (round 2)**, code deleted | Gas station pack stall (two partitions, the door, the toilet); House pack shower (tiles + glass door) |
+| 23 | `_hzFloatingIsland` (upside-down cone) | **DELETED 11-03** (mondo: "just get rid of it, i hate the cones") | — |
+| 24 | `_hzColossus` | **RENAMED 11-03** to `fallen_column` / `_hzFallenColumn` (mondo: it's a column on the floor, not a colossus) | — |
+| 25 | `_hzFleshMound` | **DONE 11-03 (round 2)**, code deleted | a heap of the Halloween pack body parts (the gore spells' pack), each placed on its own |
 | 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |
 | 27 | windmill monument (Skinwalker Ranch) | new Meshy model | ranch windpump |
 | 28 | `_hzGrinSkull` | new Meshy model | giant stone skull |
 | 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
 | - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |
 
-Fine as they are (left alone): city/town/hills/dunes/craters rims; tower/gate/stairway/waterspout landmarks; monolith,
-ziggurat, stairway, tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
+Fine as they are (left alone): craters rim; gate/waterspout landmarks; (city + town rims and the tower weenie: round 3, mondo wants them textured / made of pack houses; hills + dunes rims deleted 11-03; the stairway landmark has one-square treads 11-03); monolith (thicker, no purple rune, 11-03),
+ziggurat (top is a cube, 11-03), stairway (one-square treads, 11-03), tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
 void solids, girder knot, gold gate, holo pieces, exit sign, fluorescent tube, sacred rings, orbs, lenticular cloud, inner
 sun; box-room near settings; §10C/§10D procs. Chess pieces and the Göbekli T-pillar already wear models.

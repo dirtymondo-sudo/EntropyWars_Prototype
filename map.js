@@ -9195,7 +9195,7 @@
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('items')">Open Item Editor</button>
                             <button class="pm-set-btn" onclick="window.openAreaUnits && window.openAreaUnits()">Open Area Units</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Creator Item Hider — in the character creator, a ✕ on every hair style, clothing piece, accessory, skin, eye colour and idle pose hides it from the creator's lists (and from RANDOM). Nothing is deleted: SHOW puts it back, and a look wearing a hidden piece still loads. EXPORT HIDDEN LIST (top of the creator) hands the list to a thread to bake in for every player.${typeof window.creatorHiddenList === 'function' && window.creatorHiddenList().length ? ` <span style="color:#ffd86a">●</span> ${window.creatorHiddenList().length} hidden` : ''}</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Creator Item Hider — in the character creator, a ✕ on every hair style, clothing piece, accessory, skin, eye colour and idle pose hides it from the creator's lists (and from RANDOM), and a ✎ renames it (only the name on its tile). Nothing is deleted: SHOW puts it back, and a look wearing a hidden piece still loads. F2 in the creator opens and closes it too. EXPORT HIDDEN + NAMES (top of the creator) hands both lists to a thread to bake in for every player.${typeof window.creatorHiddenList === 'function' && window.creatorHiddenList().length ? ` <span style="color:#ffd86a">●</span> ${window.creatorHiddenList().length} hidden` : ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
                         </div>
@@ -10696,7 +10696,7 @@
              pyramid/ziggurat → stepped rings (climbable, "scale" it)
              stairway         → a rising flight of steps (climbable)
              obelisk          → a tall thin solid (impassable, blocks sight)
-             colossus         → a low platform you can clamber onto
+             fallen_column    → a low platform you can clamber onto (was `colossus`, renamed 2026-11-03)
              tpillar          → EXACTLY 2 voxels of hard cover: blocks sight at
                                 ground level; only jump-stat-2+ units can JUMP
                                 onto the T-head (never stand inside it) — for
@@ -10715,7 +10715,7 @@
             ziggurat: (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
             stairway: (dx, dy, rr) => dy + rr,
             obelisk:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
-            colossus: (dx, dy, rr) => 1,
+            fallen_column: (dx, dy, rr) => 1,
             greek:    (dx, dy, rr) => 1,
             // 2026-07-15 hard-cover pass: solid landmarks you can no longer
             // stand inside / see through (see the profile notes above)
@@ -17544,7 +17544,7 @@
         const ME_ENV_SCENERY = [
             ['cosmic',   '🌌 Cosmic (default mix)'],
             ['divine',   '😇 Divine — gates & light pillars'],
-            ['infernal', '😈 Infernal — colossi & skulls'],
+            ['infernal', '😈 Infernal — fallen columns & skulls'],
             ['ruins',    '🏛 Ruins — temples & obelisks'],
             ['pyramids', '🔺 Pyramids & ziggurats'],
             ['crystals', '💎 Crystals & sacred rings'],
@@ -17566,14 +17566,13 @@
             { kind: 'pyramid',     label: 'Great Pyramid',   emoji: '🔺', foot: 5, maxH: 3 },
             { kind: 'pyramid_cone',label: 'Cone Pyramid',    emoji: '⛰️', foot: 3, maxH: 3 },
             { kind: 'ziggurat',    label: 'Ziggurat',        emoji: '🏛️', foot: 5, maxH: 3 },
-            { kind: 'colossus',    label: 'Colossus',        emoji: '🗽', foot: 2, maxH: 4 },
+            { kind: 'fallen_column', label: 'Fallen column', emoji: '🏛️', foot: 2, maxH: 4 },
             { kind: 'stairway',    label: 'Stairway',        emoji: '🪜', foot: 2, maxH: 3 },
             { kind: 'arch',        label: 'Arch',            emoji: '🌉', foot: 3, maxH: 3 },
             { kind: 'gateway',     label: 'Gateway',         emoji: '⛩️', foot: 3, maxH: 3 },
             { kind: 'greek',       label: 'Greek Ruin',      emoji: '🏛️', foot: 3, maxH: 2 },
             { kind: 'crystal',     label: 'Crystal Shards',  emoji: '💎', foot: 2, maxH: 3 },
             { kind: 'rings',       label: 'Sacred Rings',    emoji: '🌀', foot: 2, maxH: 3 },
-            { kind: 'island',      label: 'Floating Island', emoji: '🏝️', foot: 3, maxH: 3 },
             { kind: 'flag',        label: 'Flag',            emoji: '🚩', foot: 1, maxH: 2 },
             { kind: 'rover',       label: 'Rover',           emoji: '🛻', foot: 1, maxH: 1 },
             { kind: 'goldgate',    label: 'Golden Gate',     emoji: '🌁', foot: 3, maxH: 3 },
@@ -20056,7 +20055,7 @@
                 html += `<span class="me-plbl">Max H</span><div class="me-pbtn-row">`;
                 for (const hh of [1,2,3,4,5,6]) html += `<div class="me-pbtn${curMaxH===hh?' active':''}" onclick="window._meSetMonMaxH(${hh})">${hh}</div>`;
                 html += `</div></div>`;
-                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place. Click a placed monument (or use the 🎯 Select tool) to pick it — a big rotation dial appears so you can spin it any direction; Delete is in that panel. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, colossus) stamp climb voxels.</div>`;
+                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place. Click a placed monument (or use the 🎯 Select tool) to pick it — a big rotation dial appears so you can spin it any direction; Delete is in that panel. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, fallen column) stamp climb voxels.</div>`;
                 pal.innerHTML = html || `<div class="me-inspector-empty">No results for "${searchVal}"</div>`;
                 return;
             }

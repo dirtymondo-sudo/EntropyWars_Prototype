@@ -13,7 +13,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 130 |
+| Asset pack | yes | 139 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
@@ -22,12 +22,12 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI | no | 589 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 101 |
+| Claude in code (three.js, no file) | no | 93 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
 "Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).
-Not in the count: the horizon. **91 of the 177 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
+Not in the count: the horizon. **72 of the 172 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
 monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.
 
 ## 2. Units — the playable races (sprites.js RACE_MODELS_3D)
@@ -1070,6 +1070,16 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | castle_tower_top | `Assets/misc/Castles_and_Forts.glb#Tower_top_1` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
 | castle_wall | `Assets/misc/Castles_and_Forts.glb#Wall_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
 
+### DINER · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| dumpster | `Assets/misc/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| hand_dryer | `Assets/misc/ebd_diner_hand_dryer.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| kitchen_range | `Assets/misc/ebd_diner_kitchen_range.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| range_hood | `Assets/misc/ebd_diner_range_hood.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| sink_row | `Assets/misc/ebd_diner_sink_row.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1105,6 +1115,14 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | campfire | `Assets/misc/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | camping_tent | `Assets/misc/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | ship_lantern | `Assets/misc/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| desk_lamp | `Assets/misc/ebd_house_desk_lamp.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| mop | `Assets/misc/ebd_house_mop.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| shower_stall | `Assets/misc/ebd_house_shower_stall.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Laundry · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
@@ -1150,13 +1168,6 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | crow | `Assets/animals/crow_and_rabbit/crow.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
 | rabbit | `Assets/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
 
-### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| desk_lamp | `Assets/misc/ebd_house_desk_lamp.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| mop | `Assets/misc/ebd_house_mop.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-
 ### Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1171,6 +1182,13 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | security_camera | `Assets/door/models/camera_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
 | utility_box | `Assets/door/models/utility_box_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
 
+### BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| sink | `Assets/misc/ebd_burgerpiz_sink.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
+| urinal | `Assets/misc/ebd_burgerpiz_urinal.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1183,12 +1201,6 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | --- | --- | --- | --- |
 | cash_register | `Assets/misc/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
-### DINER · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| dumpster | `Assets/misc/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-
 ### Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) — Meshy AI, reworked by Claude (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1200,6 +1212,12 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | elephant | `Assets/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
+
+### Molten Maps SciFi Asset Pack · Moltenbolt · CC0 — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| iso_tank | `Assets/misc/molten_sleeper_casket.glb` | Asset pack | Molten Maps SciFi Asset Pack · Moltenbolt · CC0 |
 
 ### Mine · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
@@ -1219,17 +1237,17 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | --- | --- | --- | --- |
 | rowboat | `Assets/misc/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
 
-### BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| sink | `Assets/misc/ebd_burgerpiz_sink.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
-
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | spear | `Assets/weapons/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
+
+### Gas station · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| toilet_stall | `Assets/misc/ebd_gasstation_toilet_stall.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (68)
 
@@ -1637,18 +1655,19 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | --- | --- | --- | --- | --- |
 | Meshy_AI_unicorn_horn_1027075634_texture | `Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb` | Meshy AI | Meshy AI (mondo) | three-renderer.js |
 | eyeball | `Assets/misc/eyeball/eyeball.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
+| molten_cryo_tube | `Assets/misc/molten_cryo_tube.glb` | Asset pack | Molten Maps SciFi Asset Pack · Moltenbolt · CC0 | three-renderer.js |
 | Pyramid | `Assets/misc/Pyramid/Pyramid.glb` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | Street Lamp | `Assets/misc/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | UFO_Low_Poly | `Assets/misc/UFO_Low_Poly.fbx` | Asset pack | 3D Game Ready UFO Spaceship · FlexUnit · CC0 | sprites.js |
 | Meshy_AI_one_angel_wing_1027074635_texture | `Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 | Meshy_AI_one_dragon_wing_1027074659_texture | `Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (101)
+## 8. Made in code — procedural stand-ins still in the catalogue (93)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`barber_mirror`, `bare_bulb`, `bigtop`, `broom`, `car_panel`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `dryer`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `grow_lamp`, `hand_dryer`, `house_stairs`, `impossible_stair`, `infinity_pool`, `iso_tank`, `keypad`, `kitchen_range`, `lap_pool`, `lava_lamp`, `lava_lamp_floor`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `metal_shelving`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `range_hood`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `roller_shutter`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `shower_stall`, `sink_row`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `steel_table`, `street_drain`, `submarine`, `sun_viewport`, `temple_dome`, `thoughtform`, `toilet_paper`, `toilet_stall`, `track_bed`, `tube_map`, `turnstile`, `urinal`, `wall_padding`, `wall_plaques`, `wall_shelf`, `warning_tape`, `washer`, `world_clocks`
+`barber_mirror`, `bare_bulb`, `bigtop`, `broom`, `car_panel`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `dryer`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `grow_lamp`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lava_lamp`, `lava_lamp_floor`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `metal_shelving`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `roller_shutter`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `steel_table`, `street_drain`, `submarine`, `sun_viewport`, `temple_dome`, `thoughtform`, `toilet_paper`, `track_bed`, `tube_map`, `turnstile`, `wall_padding`, `wall_plaques`, `wall_shelf`, `warning_tape`, `washer`, `world_clocks`
 
 **Procs that already wear a real model** (75: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:
@@ -1663,7 +1682,7 @@ maker in brackets, from the tables above) and/or three.js shapes. "three.js shap
 model: those are the candidates for a real model. Also painted, not modelled: the battle's ring-wall skyline (distant
 snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticular (`_hzLenticular`, a cloud sprite stack).
 
-### 8b-A. The far rosters — what floats / stands in the void round a battle board and in an open room's sky (`_hzThemeRoster`; column = the themes that use it) (51)
+### 8b-A. The far rosters — what floats / stands in the void round a battle board and in an open room's sky (`_hzThemeRoster`; column = the themes that use it) (49)
 
 | key | made with | model files | three.js shapes | themes |
 | --- | --- | --- | --- | --- |
@@ -1672,18 +1691,17 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `_hzAstronautFar` | model files | `astronaut` (Meshy AI) | — | wreckage |
 | `_hzCaterpillarFar` | model files | `caterpillar` (Meshy AI), `mushroom` (Meshy AI) | — | wonder |
 | `_hzChessPieceFar` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Lathe, glow sprites | wonder |
-| `_hzColossus` | three.js shapes (code) | — | Box, Cylinder | dark, infernal, pyramids, ruins |
 | `_hzCrystalShards` | model files | `crystals (_CRYSTAL_MODEL_URLS)` | — | crystals, infernal, space, wreckage |
 | `_hzDockRingFar` | model files | `dockring` (Meshy AI) | glow sprites | wreckage |
 | `_hzEscapePodFar` | model files | `escapepod` (Meshy AI) | — | wreckage |
+| `_hzFallenColumn` | three.js shapes (code) | — | Box, Cylinder | dark, infernal, pyramids, ruins |
 | `_hzFlamingoFar` | model files | `flamingo` (Meshy AI) | — | wonder |
-| `_hzFleshMound` | three.js shapes (code) | — | Cone, Sphere | infernal |
-| `_hzFloatingIsland` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Box, Cone, Cylinder | city, crystals, divine, infernal, islands, orbs, pyramids, ruins, space |
+| `_hzFleshMound` | model files | `Assets/halloween/models/halloween.fbx` | — | infernal |
 | `_hzGateway` | three.js shapes (code) | — | Box, Plane | city, dark, ruins |
 | `_hzGhostShip` | model files | `wreck` (Meshy AI) | glow sprites | sea |
 | `_hzGirderKnot` | three.js shapes (code) | — | Box, glow sprites | wreckage |
 | `_hzGoldGate` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites | divine |
-| `_hzGreekRuin` | three.js shapes (code) | — | Box, Cylinder | divine, islands, ruins |
+| `_hzGreekRuin` | model files + three.js shapes | `greekcol` (Meshy AI) | Box | divine, islands, ruins |
 | `_hzGrinSkull` | three.js shapes (code) | — | Circle | dark, infernal |
 | `_hzHoloMonolith` | three.js shapes (code) | — | Box, Plane, Torus | holosim |
 | `_hzHoloRing` | three.js shapes (code) | — | Torus, glow sprites | holosim |
@@ -1691,7 +1709,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `_hzKrakenFar` | model files | `tentacle` (Meshy AI), `tentacle2` (Meshy AI) | — | sea |
 | `_hzLenticular` | three.js shapes (code) | — | Circle, Sphere, glow sprites | islands, sea |
 | `_hzLightPillar` | draws nothing (an empty group) | — | — | divine |
-| `_hzLighthouse` | three.js shapes (code) | — | Cylinder, Plane, glow sprites | sea |
+| `_hzLighthouse` | model files | `lighthouse` (Meshy AI) | glow sprites | sea |
 | `_hzModelClock` | model files | `clock` (Meshy AI), `gclock` (Meshy AI) | glow sprites | dark, divine, wonder |
 | `_hzModelCraft` | model files | `spaceship` (Meshy AI), `ufo` (Meshy AI) | glow sprites | orbs, space, wreckage |
 | `_hzModelEyeball` | model files | `eyeball/eyeball.obj` | glow sprites | eyes, orbs, space |
@@ -1699,7 +1717,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `_hzModelPyramid` | model files | `Pyramid/Pyramid.glb` | glow sprites | pyramids |
 | `_hzModelSolarSystem` | model files | `solar` (Meshy AI) | glow sprites | space |
 | `_hzModelStar` | model files | `star` (Meshy AI) | glow sprites | space, wreckage |
-| `_hzMonolith` | three.js shapes (code) | — | Box, Plane | city, crystals, dark, eyes, infernal, orbs, pyramids |
+| `_hzMonolith` | three.js shapes (code) | — | Box | city, crystals, dark, eyes, infernal, orbs, pyramids |
 | `_hzMushroomFar` | model files | `mushroom` (Meshy AI) | — | wonder |
 | `_hzObelisk` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | dark, infernal, pyramids, ruins |
 | `_hzPalmIsleFar` | model files | `palmisle` (Meshy AI) | — | sea |
@@ -1708,7 +1726,6 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `_hzRoseWindow` | three.js shapes (code) | — | Box, Circle, Torus | divine, ruins |
 | `_hzSacredRings` | three.js shapes (code) | — | Octahedron, Torus, glow sprites | city, crystals, divine, eyes, orbs, sea, space, wonder |
 | `_hzSaucer` | model files + three.js shapes | `saucer_lg` (Meshy AI) | Cylinder, Lathe, Sphere, Torus | orbs, space |
-| `_hzSeaIsland` | three.js shapes (code) | — | Cone, Cylinder, Plane, Sphere, glow sprites | sea |
 | `_hzSeaStack` | three.js shapes (code) | — | Cylinder | sea |
 | `_hzSharkFar` | model files | `shark` (Meshy AI) | — | sea |
 | `_hzStairway` | three.js shapes (code) | — | Box | divine, islands, ruins, wonder |
@@ -1724,7 +1741,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | key | made with | model files | three.js shapes |
 | --- | --- | --- | --- |
 | `agartha` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)`, `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `mushroom` (Meshy AI), `mushroom2` (Meshy AI), `standingstone` (Meshy AI) | Box, Cylinder, Plane, glow sprites |
-| `antarctica` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites |
+| `antarctica` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
 | `area51` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
 | `atlantis` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)`, `palm_tree` (Meshy AI), `greekcol` (Meshy AI) | Box, Cylinder, Plane, glow sprites |
 | `babel` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
@@ -1737,42 +1754,40 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `downtown` | model files + three.js shapes | `dumpster` (Asset pack), `utility_box` (Asset pack (author not recorded yet)), `ambulance` (Meshy AI), `copcar` (Meshy AI), `firetruck` (Meshy AI), `suv` (Meshy AI) | Box, Cylinder, Plane, Sphere, custom mesh, glow sprites |
 | `dumb` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
 | `fairy_forest` | model files + three.js shapes | `fallen_log` (Asset pack), `fern` (Meshy AI), `mushroom2` (Meshy AI), `stump` (Asset pack), `trees (foliage models, §7d)` | Box, Circle, Cone, Cylinder, Plane, glow sprites |
-| `giza` | model files + three.js shapes | `obelisk3d` (Meshy AI) | Box, Cone, Cylinder, Dodecahedron, Plane, Sphere, glow sprites |
-| `gobekli` | three.js shapes (code) | — | Box, Cone, Cylinder, Plane, Sphere, glow sprites |
+| `giza` | model files + three.js shapes | `obelisk3d` (Meshy AI) | Box, Cone, Cylinder, Dodecahedron, Plane, glow sprites |
+| `gobekli` | three.js shapes (code) | — | Box, Cone, Cylinder, Plane, glow sprites |
 | `haunted` | model files + three.js shapes | `stump` (Asset pack), `trees (foliage models, §7d)` | Box, Cone, Cylinder, Plane, Shape, Sphere, glow sprites |
 | `heaven` | model files + three.js shapes | `greekcol` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites |
 | `hell` | model files + three.js shapes | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | Box, Cylinder, Dodecahedron, Plane, glow sprites |
 | `hollow_earth` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)`, `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `mushroom` (Meshy AI), `mushroom2` (Meshy AI), `standingstone` (Meshy AI) | Box, Circle, Cone, Cylinder, Plane, glow sprites |
 | `lodge` | model files + three.js shapes | `eyeball/eyeball.obj`, `greekcol` (Meshy AI) | Box, Cylinder, Plane, Torus, glow sprites |
 | `lookingglass` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/), `caterpillar` (Meshy AI), `flamingo` (Meshy AI), `teacups` (Meshy AI), `teapot` (Meshy AI), `watch` (Meshy AI) | Box, Circle, Cone, Cylinder, Lathe, Octahedron, Plane, Torus, glow sprites |
-| `mars` | model files + three.js shapes | `mars_rover` (Meshy AI), `Pyramid/Pyramid.glb` | Box, Cylinder, Dodecahedron, Plane, glow sprites |
+| `mars` | model files + three.js shapes | `Pyramid/Pyramid.glb` | Box, Cylinder, Dodecahedron, Plane, glow sprites |
 | `moon` | model files + three.js shapes | `lunar_lander` (Meshy AI), `moon` (Meshy AI) | Box, Cylinder, Dodecahedron, Plane, glow sprites |
-| `northpole` | model files + three.js shapes | `trees (foliage models, §7d)` | Box, Circle, Cone, Cylinder, Plane, Shape, Sphere, glow sprites |
+| `northpole` | model files + three.js shapes | `trees (foliage models, §7d)` | Box, Circle, Cone, Cylinder, Plane, Shape, glow sprites |
 | `olympus` | model files + three.js shapes | `greekcol` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites |
 | `revenge` | model files + three.js shapes | `anchor` (Meshy AI), `cannon` (Meshy AI), `chest` (Meshy AI), `lantern` (Asset pack), `rowboat` (Asset pack), `tentacle` (Meshy AI), `tentacle2` (Meshy AI), `wheel` (Meshy AI) | Box, Cylinder, Plane, Shape, Torus, Tube, custom mesh, glow sprites |
 | `saturn` | three.js shapes (code) | — | Box, Cylinder, Plane, Ring, Sphere, glow sprites |
 | `shasta` | model files + three.js shapes | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI), `trees (foliage models, §7d)` | Box, Cylinder, Dodecahedron, Plane, glow sprites |
 | `singularity` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Box, Cylinder, Dodecahedron, Plane, Torus, glow sprites |
-| `skinwalker` | model files + three.js shapes | `fallen_log` (Asset pack), `signpost` (Meshy AI), `trees (foliage models, §7d)` | Box, Cylinder, Plane, Shape, Sphere, glow sprites |
+| `skinwalker` | model files + three.js shapes | `fallen_log` (Asset pack), `signpost` (Meshy AI), `trees (foliage models, §7d)` | Box, Cylinder, Plane, Shape, glow sprites |
 | `stadium` | model files + three.js shapes | `utility_box` (Asset pack (author not recorded yet)), `ambulance` (Meshy AI), `schoolbus` (Meshy AI) | Box, Cylinder, Plane, glow sprites |
-| `stonehenge` | model files + three.js shapes | `standingstone` (Meshy AI) | Box, Cylinder, Plane, Ring, Sphere, glow sprites |
+| `stonehenge` | model files + three.js shapes | `standingstone` (Meshy AI) | Box, Cylinder, Plane, Ring, glow sprites |
 | `strip` | model files + three.js shapes | `utility_box` (Asset pack (author not recorded yet)), `streetlamp/Street%20Lamp.obj`, `trees (foliage models, §7d)`, `copcar` (Meshy AI), `oldcar` (the car pack, _CAR_PACK) | Box, Circle, Cone, Cylinder, Plane, Shape, custom mesh, glow sprites |
 | `technoticlan` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
 | `vatican` | model files + three.js shapes | `greekcol` (Meshy AI), `obelisk3d` (Meshy AI) | Box, Circle, Cone, Cylinder, Plane, glow sprites |
 | `vatican_roof` | three.js shapes (code) | — | Box, Circle, Cylinder, Plane, custom mesh, glow sprites |
 
-### 8b-C. THE WORLD's rim — the rings of land past a planet / plain board (`_WD_RIM`) (11)
+### 8b-C. THE WORLD's rim — the rings of land past a planet / plain board (`_WD_RIM`) (9)
 
 | key | made with | model files | three.js shapes |
 | --- | --- | --- | --- |
-| `bergs` | three.js shapes (code) | — | Box, Cone |
+| `bergs` | model files | `Rock` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock1` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock2` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock3` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock6` (the ocean pack, mondo's upload, Assets/oceanic/), `Rock7` (the ocean pack, mondo's upload, Assets/oceanic/) | — |
 | `city` | three.js shapes (code) | — | Box, custom mesh, glow sprites |
-| `craters` | three.js shapes (code) | — | Lathe, Sphere |
-| `dunes` | three.js shapes (code) | — | Sphere |
-| `hills` | three.js shapes (code) | — | Sphere |
+| `craters` | three.js shapes (code) | — | Lathe |
 | `peaks` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
 | `pyramids` | three.js shapes (code) | — | Cone |
-| `ruins` | three.js shapes (code) | — | Box |
+| `ruins` | model files | `Assets/misc/Castles_and_Forts.glb` | — |
 | `spires` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
 | `town` | three.js shapes (code) | — | Box, Plane, Shape |
 | `trees` | model files | `trees (foliage models, §7d)` | — |
@@ -1781,17 +1796,17 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 
 | key | made with | model files | three.js shapes |
 | --- | --- | --- | --- |
-| `castle` | three.js shapes (code) | — | Box, Cone, Cylinder, glow sprites |
+| `castle` | model files | `Assets/misc/Castles_and_Forts.glb` | — |
 | `dome` | model files + three.js shapes | `vatican_dome` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites |
 | `eye` | model files + three.js shapes | `eyeball/eyeball.obj` | Circle, Sphere, glow sprites |
 | `gate` | three.js shapes (code) | — | Box, glow sprites |
-| `skycastle` | three.js shapes (code) | — | Box, Cone, Cylinder, Sphere, glow sprites |
+| `skycastle` | model files + three.js shapes | `Assets/misc/Castles_and_Forts.glb` | Sphere |
 | `stairway` | three.js shapes (code) | — | Box, Sphere, glow sprites |
 | `tower` | three.js shapes (code) | — | Box, Cylinder, glow sprites |
 | `waterspout` | three.js shapes (code) | — | Lathe, Sphere, Torus |
-| `whale` | three.js shapes (code) | — | Box, Cylinder, Sphere, glow sprites |
+| `whale` | model files | `Whale` (the ocean pack, mondo's upload, Assets/oceanic/) | — |
 
-### 8b-E. The board monuments — landmarks a map stands ON or beside its board (`_monBuilders`; column = the builder) (69)
+### 8b-E. The board monuments — landmarks a map stands ON or beside its board (`_monBuilders`; column = the builder) (68)
 
 | key | made with | model files | three.js shapes | builder |
 | --- | --- | --- | --- | --- |
@@ -1801,45 +1816,44 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `beamring` | three.js shapes (code) | — | Box, Cylinder, Torus | _hzBeamRing |
 | `biodome` | three.js shapes (code) | — | Box, Sphere, Torus | _hzBiodome |
 | `blastdoor` | model files | `vault` (Meshy AI) | — | _hzBlastDoor |
-| `brazier` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | _hzBrazier |
+| `brazier` | model files | `cave_torch` (Meshy AI) | glow sprites | _hzBrazier |
 | `candycane` | three.js shapes (code) | — | Cylinder, Torus, glow sprites | _hzCandyCane |
 | `cargo` | three.js shapes (code) | — | Box, Sphere | _hzCargo |
 | `castle_wall` | three.js shapes (code) | — | Box | _hzCastleWallSeg |
-| `censer` | three.js shapes (code) | — | Cylinder, Sphere, glow sprites | _hzCenser |
+| `censer` | model files | `Assets/props/censer.glb` (Meshy AI) | glow sprites | _hzCenser |
 | `chess_bishop` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_king` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_knight` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_pawn` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_queen` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_rook` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
-| `colossus` | three.js shapes (code) | — | Box, Cylinder | _hzColossus |
 | `crystal` | model files | `crystals (_CRYSTAL_MODEL_URLS)` | — | _hzCrystalShards |
 | `door` | three.js shapes (code) | — | Box, Plane, Sphere | _hzLoneDoor |
 | `dumpster` | model files | `dumpster` (Asset pack) | — | _hzPropDumpster |
 | `effigy` | three.js shapes (code) | — | Box, Cylinder, Sphere, Torus | _hzEffigy |
 | `excalibur` | model files + three.js shapes | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Dodecahedron, Sphere | _hzExcalibur |
 | `exitsign` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzExitSign |
-| `fairyring` | three.js shapes (code) | — | Cylinder, Sphere | _hzFairyRing |
+| `fairyring` | model files + three.js shapes | `mushroom2` (Meshy AI) | Sphere | _hzFairyRing |
+| `fallen_column` | three.js shapes (code) | — | Box, Cylinder | _hzFallenColumn |
 | `flag` | three.js shapes (code) | — | Cylinder, Plane, Sphere | _hzFlag |
-| `fleshmound` | three.js shapes (code) | — | Cone, Sphere | _hzFleshMound |
+| `fleshmound` | model files | `Assets/halloween/models/halloween.fbx` | — | _hzFleshMound |
 | `fluorescent` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzFluorescent |
 | `gateway` | three.js shapes (code) | — | Box, Plane | _hzGateway |
 | `geode` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Sphere, glow sprites | _hzGeode |
 | `goldgate` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites | _hzGoldGate |
 | `gothic_wall` | model files | `church_wall` (Meshy AI) | — | _hzGothicWallSeg |
-| `greek` | three.js shapes (code) | — | Box, Cylinder | _hzGreekRuin |
+| `greek` | model files + three.js shapes | `greekcol` (Meshy AI) | Box | _hzGreekRuin |
 | `greekcol` | model files | `greekcol` (Meshy AI) | — | _hzPropGreekColumn |
-| `greytube` | three.js shapes (code) | — | Cylinder, Sphere | _hzGreyTube |
+| `greytube` | model files | `molten_cryo_tube.glb` | — | _hzGreyTube |
 | `holoboard` | three.js shapes (code) | — | Box, Cylinder, Plane | _hzHoloboard |
 | `holopyramid` | three.js shapes (code) | — | Box, Cone | _hzHoloPyramid |
 | `igloo` | three.js shapes (code) | — | Cylinder, Sphere, glow sprites | _hzIgloo |
 | `innersun` | three.js shapes (code) | — | Cone, Sphere, glow sprites | _hzInnerSun |
-| `island` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Box, Cone, Cylinder | _hzFloatingIsland |
 | `jumbotron` | three.js shapes (code) | — | Box, Plane | _hzJumbotron |
 | `lenticular` | three.js shapes (code) | — | Circle, Sphere, glow sprites | _hzLenticular |
 | `lightpillar` | draws nothing (an empty group) | — | — | _hzLightPillar |
 | `menhir` | model files | `menhir` (Meshy AI) | — | _hzPropMenhir |
-| `monolith` | three.js shapes (code) | — | Box, Plane | _hzMonolith |
+| `monolith` | three.js shapes (code) | — | Box | _hzMonolith |
 | `mushroom` | model files | `mushroom` (Meshy AI) | — | _hzPropMushroom |
 | `mushroom2` | model files | `mushroom2` (Meshy AI) | — | _hzPropMushroomReal |
 | `obelisk` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | _hzObelisk |
@@ -1848,14 +1862,14 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `pyramid_cone` | three.js shapes (code) | — | Cone, glow sprites | _hzPyramid |
 | `rings` | three.js shapes (code) | — | Octahedron, Torus, glow sprites | _hzSacredRings |
 | `rosewindow` | three.js shapes (code) | — | Box, Circle, Torus | _hzRoseWindow |
-| `rover` | three.js shapes (code) | — | Box, Cylinder, Sphere | _hzRover |
+| `rover` | model files | `mars_rover` (Meshy AI) | — | _hzRover |
 | `saucer` | model files + three.js shapes | `saucer_lg` (Meshy AI) | Cylinder, Lathe, Sphere, Torus | _hzSaucer |
 | `securitycam` | model files + three.js shapes | `security_camera` (Asset pack (author not recorded yet)) | Box, Cylinder, Sphere | _hzSecurityCam |
 | `skull` | three.js shapes (code) | — | Circle | _hzGrinSkull |
 | `sleigh` | model files | `Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | — | _hzSleigh |
 | `stairway` | three.js shapes (code) | — | Box | _hzStairway |
 | `tablet` | three.js shapes (code) | — | Box, Plane | _hzTablet |
-| `toadstool` | three.js shapes (code) | — | Cylinder, Sphere | _hzToadstool |
+| `toadstool` | model files | `mushroom` (Meshy AI) | — | _hzToadstool |
 | `tome` | three.js shapes (code) | — | Box, Octahedron, glow sprites | _hzTome |
 | `tpillar` | model files + three.js shapes | `t_pillar` (Meshy AI) | Box | _hzTPillar |
 | `trilithon` | model files | `trilithon` (Meshy AI) | — | _hzTrilithon |
@@ -1865,7 +1879,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `ziggurat` | three.js shapes (code) | — | Box | _hzZiggurat |
 | `ziggurat_block` | three.js shapes (code) | — | Box | _hzZigguratBlock |
 
-**91 of these 177 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
+**72 of these 172 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
 
 **The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms' far weenies `peak` / `mountain`
 (Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons, the Clash temple's
@@ -2093,43 +2107,44 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 mondo 11-03: "focus on the things that were purely coded like the cones ... a box for a building is perfectly fine, but other
 stuff just looks really bad". Each code-only builder in §8b was drawn alone in a browser and judged. Full proposal with
 before/after thumbnails: Claude Doc "Coded shapes worth replacing" (https://claude.ai/artifact/WFS1U2pejBAp4cqXQr6wyF).
-NOTHING is replaced yet; mondo picks rows by number. Existing rules only; replacing = the builder wears the model.
+mondo answered 11-03 (thread "Coded shapes"); rows marked DONE / DELETED are in. Also deleted 11-03: the `hills` + `dunes` rims and the ground
+swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay) — mondo: "no map should be using the dune swells or hill swells". Existing rules only; replacing = the builder wears the model.
 
 | # | coded piece (three-renderer.js) | verdict | replacement |
 | --- | --- | --- | --- |
-| 1 | castle / skycastle landmarks | swap, model in game | castle pack pieces (`Castles_and_Forts.glb`) |
-| 2 | iceberg ring `bergs` (cones) | swap, model in game | ocean pack rocks tinted ice white |
+| 1 | castle / skycastle landmarks | **DONE 11-03 (round 2)**, code deleted | castle pack pieces placed one by one: Wall_2x4 / Wall_2x2 / Gate_2x4 curtain, Tower_Mid corner towers, a Tower_Doorway keep, Tower_top_1 + Roof_Cone caps (the sky castle keeps its clouds) |
+| 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
 | 3 | `_hzObelisk` | swap, model in game | obelisk3d |
-| 4 | `_hzLighthouse` | swap, model in game | Meshy decor lighthouse |
-| 5 | sea stack / island | swap, model in game | ocean pack rocks / palm isle |
-| 6 | greek ruin + ruins rim | swap, model in game | greek columns + castle ruined pieces |
-| 7 | rover | swap, model in game | mars_rover |
-| 8 | toadstool / fairy ring | swap, model in game | mushroom2 / mushroom |
-| 9 | censer | swap, model in game | Meshy props censer |
-| 10 | whale (Atlantis) | swap, model in game | ocean_whale / humpback |
-| 11 | castle_wall | swap, model in game | castle pack Wall_2x4 |
+| 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
+| 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
+| 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the Meshy greekcol (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
+| 7 | rover | **DONE 11-03**, code deleted | mars_rover |
+| 8 | toadstool / fairy ring | **DONE 11-03**, code deleted | mushroom / a ring of mushroom2 |
+| 9 | censer | **DONE 11-03**, code deleted | Meshy props censer |
+| 10 | whale (Atlantis) | **DONE 11-03**, code deleted | ocean pack Whale.fbx (mondo: not the humpback) |
+| 11 | castle_wall | **KEPT as code** (mondo: only if the shape makes sense) | the spell wall is 1 square wide and 2 high; the pack has no piece that shape (Wall_2x2 is square, Wall_2x4 is 4 long), so the swap would change the wall |
 | 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
-| 13 | brazier | swap, model in game (partial) | cave_torch basket |
+| 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
-| 15 | greytube | pack swap | Molten cryo tube |
-| 16 | iso_tank | pack swap | Molten casket / cryo |
+| 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/misc/molten_cryo_tube.glb` |
+| 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/misc/molten_sleeper_casket.glb` |
 | 17 | lava lamps | pack swap | Molten lamp |
 | 18 | grow_lamp | pack swap | Molten lamp |
 | 19 | submarine | pack swap | BlenderVoyage sub (CC-BY: credit) |
-| 20 | hand_dryer / range_hood / kitchen_range | pack swap | DINER pack |
-| 21 | urinal / sink_row | pack swap | BurgerPiz pack |
-| 22 | toilet / shower stall | pack swap | Gas station / House packs |
-| 23 | `_hzFloatingIsland` (upside-down cone) | new Meshy model | floating rock island |
-| 24 | `_hzColossus` | new Meshy model | felled giant column, drums scattered |
-| 25 | `_hzFleshMound` | new Meshy model | heap of living flesh, eyes and teeth |
+| 20 | hand_dryer / range_hood / kitchen_range / sink_row | **DONE 11-03 (round 2)**, code deleted | DINER pack Hand_dryer, cooker_hood, Stove (griddle range), Washbasin (three basins) |
+| 21 | urinal | **DONE 11-03 (round 2)**, code deleted | BurgerPiz pack urinary |
+| 22 | toilet / shower stall | **DONE 11-03 (round 2)**, code deleted | Gas station pack stall (two partitions, the door, the toilet); House pack shower (tiles + glass door) |
+| 23 | `_hzFloatingIsland` (upside-down cone) | **DELETED 11-03** (mondo: "just get rid of it, i hate the cones") | — |
+| 24 | `_hzColossus` | **RENAMED 11-03** to `fallen_column` / `_hzFallenColumn` (mondo: it's a column on the floor, not a colossus) | — |
+| 25 | `_hzFleshMound` | **DONE 11-03 (round 2)**, code deleted | a heap of the Halloween pack body parts (the gore spells' pack), each placed on its own |
 | 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |
 | 27 | windmill monument (Skinwalker Ranch) | new Meshy model | ranch windpump |
 | 28 | `_hzGrinSkull` | new Meshy model | giant stone skull |
 | 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
 | - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |
 
-Fine as they are (left alone): city/town/hills/dunes/craters rims; tower/gate/stairway/waterspout landmarks; monolith,
-ziggurat, stairway, tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
+Fine as they are (left alone): craters rim; gate/waterspout landmarks; (city + town rims and the tower weenie: round 3, mondo wants them textured / made of pack houses; hills + dunes rims deleted 11-03; the stairway landmark has one-square treads 11-03); monolith (thicker, no purple rune, 11-03),
+ziggurat (top is a cube, 11-03), stairway (one-square treads, 11-03), tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
 void solids, girder knot, gold gate, holo pieces, exit sign, fluorescent tube, sacred rings, orbs, lenticular cloud, inner
 sun; box-room near settings; §10C/§10D procs. Chess pieces and the Göbekli T-pillar already wear models.
 

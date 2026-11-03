@@ -1741,7 +1741,7 @@ const ThreePost = (function () {
        hands every dial back. The user: "I don't want the lighting to change, it makes the transition really abrupt". */
     var _fieldLight = null;
     /* THE WHITE DAYLIGHT (2026-11-03): a tile board whose ground is mostly a white sheet runs the day / night rig's sun, hemisphere and
-       ambient × this (three-renderer.js _boardWhiteDay, from the board's own tiles — never from the screen). A room fight's field light
+       ambient × this BY DAY (eased out with the night factor; three-renderer.js _boardWhiteDay, from the board's own tiles — never from the screen). A room fight's field light
        carries the room's own rule already (_hqOpenLR), so this scales only the battle rig. 1 = untouched. */
     var _whiteDay = 1;
     function setWhiteDay(k) {
@@ -1750,6 +1750,7 @@ const ThreePost = (function () {
         _whiteDay = v; _applyCurrent();
     }
     function getWhiteDay() { return _whiteDay; }
+    function _whiteDayK() { return 1 - (1 - _whiteDay) * Math.max(0, Math.min(1, 1 - _nightF)); }   // by DAY only: the night rig keeps its moon
     function setFieldLight(o) {
         _fieldLight = (o && typeof o === 'object') ? o : null;
         if (_sunLight) _sunLight.castShadow = (_shadowQuality !== 'off') && !(_fieldLight && _fieldLight.shadow === false);
@@ -1760,7 +1761,7 @@ const ThreePost = (function () {
         var F = _fieldLight;
         if (_sunLight) {
             if (F && F.sun) { _sunLight.color.setHex(F.sun.color != null ? F.sun.color : 0xffffff); _sunLight.intensity = +F.sun.intensity || 0; }
-            else { _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB); _sunLight.intensity = _cur.sunInt * _whiteDay; }
+            else { _sunLight.color.setRGB(_cur.sunR, _cur.sunG, _cur.sunB); _sunLight.intensity = _cur.sunInt * _whiteDayK(); }
             var _sdx = (F && F.sun && F.sun.dir) ? F.sun.dir[0] : _cur.sunDirX, _sdy = (F && F.sun && F.sun.dir) ? F.sun.dir[1] : _cur.sunDirY, _sdz = (F && F.sun && F.sun.dir) ? F.sun.dir[2] : _cur.sunDirZ;
             // Direction only (no shadow frame yet): a unit vector aimed at the
             // origin behaves exactly like the old rig. Once setShadowFrame has
@@ -1785,14 +1786,14 @@ const ThreePost = (function () {
             else {
                 _hemiLight.color.setRGB(_cur.skyR, _cur.skyG, _cur.skyB);
                 _hemiLight.groundColor.setRGB(_cur.gndR, _cur.gndG, _cur.gndB);
-                _hemiLight.intensity = _cur.hemiInt * _whiteDay;
+                _hemiLight.intensity = _cur.hemiInt * _whiteDayK();
             }
         }
         if (_ambientLight) {
             if (F) { _ambientLight.intensity = (F.ambient && F.ambient.intensity) ? +F.ambient.intensity : 0; if (F.ambient && F.ambient.color != null) _ambientLight.color.setHex(F.ambient.color); }
             else {
                 _ambientLight.color.setRGB(_cur.ambR, _cur.ambG, _cur.ambB);
-                _ambientLight.intensity = _cur.ambInt * _whiteDay;
+                _ambientLight.intensity = _cur.ambInt * _whiteDayK();
             }
         }
         if (_renderer) {

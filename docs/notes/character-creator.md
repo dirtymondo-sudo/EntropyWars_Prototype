@@ -1144,6 +1144,36 @@ tell you which ones they are".
 - Shots: /mnt/project-files/creator-hider/.
 
 
+## THE RENAMED PICKS (2026-11-03; character-models-plan row 12o)
+mondo: "maybe somewhere in the ui maker, can i change the names of the models of the character creator? Or maybe in the same place
+where i can hide models in the creator? How do i get to that again?" then "there is no settings button in the character creator, i need
+to access it from the character creator obviously".
+- **Open it from the creator**: **F2** while the creator's controls are up (forge GEAR > CHARACTER CREATOR, the Mirror, the intake; on a
+  race slot after CREATE APPEARANCE) opens / closes the item hider (party-builder.js CreatorControls keydown; first creator answers,
+  `defaultPrevented` stops a second). No button for players. Settings > Developer > Creator Item Hider still flips the same setting.
+  The UI Maker (F4) only themes / lays out the creator (surface `forge`); it never edits its picks.
+- **Rename**: with the marks on, every pick the hider covers (same kinds + keys as THE HIDDEN PICKS) gets a ✎ on its top-left corner
+  (the ✕ stays top-right). ✎ opens a rename box under it, the whole row of the grid / flex row: its own name, the input (40 chars, Enter
+  = SAVE NAME, Esc = CANCEL, the key never reaches the creator), SAVE NAME / ORIGINAL NAME / CANCEL. A row button (Outer, Cape, Wings,
+  Idle) pads 26 px each side while marked so the marks never cover its words.
+- **The bar**: DEV · ITEM HIDER + NAMES, `n hidden · n renamed`; + ▸ RENAMED (n) = each `kind · own name → his name` with ✎ RENAME (the
+  box under the row) + ORIGINAL NAME, then ALL ORIGINAL NAMES (confirm); CLOSE (F2); ⇩ EXPORT HIDDEN + NAMES ->
+  `Entropy_Wars_Creator_Picks_<yyyymmdd-hhmm>.json` = `{ kind: 'entropy-wars-creator-hidden', v: 2, made, hidden, names: { key: name } }`
+  (both WHOLE lists as his browser shows them).
+- **Display only**: a tile shows `creatorName(kind, id, label)`; the catalogues keep their pack names, because rules read them (a skin's
+  men's / women's side, a beard's face camera, the "male" / "female" trim of a tile). A rename shows as typed (soft-wrapped, no trim).
+  Also the "Colours of the pieces you wear" heads and the HIDDEN LIST rows. Players see baked names; his browser shows his.
+- **Data**: sprites.js THE RENAMED PICKS: `EW_CREATOR_NAMES` (shipped `{ key: name }`, between `// EW_CREATOR_NAMES:BEGIN` / `:END`,
+  written ONLY by bake-hidden.js, each line commented with the pick's own name) + this browser's `ew_creator_names_v1` = `{ key: name }`
+  ('' = its own name again over a shipped one). `creatorName`, `creatorRenamed`, `setCreatorName(kind, id, name)` ('' / its own name =
+  original), `creatorNamesList()`, `creatorNamesReset()`, `creatorPickLabel(kind, id)` (the catalogue name); a change fires
+  'ew-creator-hidden'. SAVE EVERYTHING carries `ew_creator_names_v1` (any ew_* key).
+- **Bake**: `node bake-hidden.js <Entropy_Wars_Creator_Picks_….json>` bakes both blocks; a v 1 file (no `names`) leaves the shipped names;
+  a SAVE EVERYTHING file bakes its ew_creator_names_v1 on top of the shipped names. Same checks: unknown kind refused, a gone id dropped
+  with a warning, a name equal to the pick's own left out. `--list` prints both lists.
+- **Online**: nothing relayed; names never travel (a look stores ids).
+- Shots: /mnt/project-files/creator-rename/.
+
 ## THE EYE PACK (2026-11-03, PR "eye pack")
 mondo uploaded the MakeHuman Eye Texture Pack (36 PNGs: 19 plain/bloodshot colours, 12 cat eyes, All black, 5 normal maps) to R2
 `Assets/Models/charactercreation/mpfb/looks/eyes/eyetextures/` + `MakeHumanEyeTexturePack.unitypackage` (not needed: the PNGs use
@@ -1245,3 +1275,41 @@ clothes+accessories organized by body part like a typical rpg; head, torso, left
   8 px (CHAINMAIL, PINSTRIPE broke mid-word before). Checked in the forge at 1600x900 + 1600x2000: no button overflows, no sideways scroll.
 - **Online**: nothing relayed; the creator is local UI and the look travels whole in the unit's appearance.
 - Shots: /mnt/project-files/creator-tabs/.
+
+## THE ASSIGNED LOOKS (2026-11-03)
+mondo: "if i go in and make created characters for a bunch of units, do i have to export them individually ... one button should be to
+assign the created character to the character (not the same as saving the character) and one button should be to export all newly
+assigned created characters so i can give to you to bake in". Before this, EXPORT RACE LOOK wrote ONE race + gender per file.
+- party-builder.js `AssignedLooks` box under the forge creator (every race but the DOOR Agent / human base; also on a slot with no look):
+  **⇨ ASSIGN TO <RACE> ♂/♀** files the look on the stage as that race + gender's look in localStorage `ew_assigned_looks`
+  (`{ v: 1, looks: { race: { gender: { appearance, at, exportedAt } } } }`, one per race + gender; a re-assign reads UPDATE and
+  replaces it; ✓ ASSIGNED when the stage equals it). **⇩ EXPORT ALL ASSIGNED (n)** writes every assigned look that is not already
+  the baked RACE_CREATOR_LOOKS row as ONE file `Entropy_Wars_Race_Looks_<n>_assigned_<stamp>.json`, the same
+  `entropy-wars-race-looks` shape (+ an `assigned` list), so `node bake-looks.js <file>` bakes them all at once.
+- Chips: NEW / EXPORTED / IN THE GAME (equal to the baked row, model key ignored; skipped by the export, nothing deleted); ✕ unassigns.
+- SAVE CHARACTER (the locker) and EXPORT RACE LOOK are unchanged. window._ewAssignedLooks = { list, assign, unassign, exportAll }.
+- A baked look is still a SAVED look (THE MESHY DEFAULT): the Meshy model stays the unit default until mondo says.
+- Proof: /mnt/project-files/assigned-looks/ (3 units assigned, exported file, bake-looks.js --dry-run read all 3).
+
+## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
+mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
+(static.makehumancommunity.org/assets/assetpacks), if we havent already, and implement them in the character creator?"
+- Packs: system_eye_materials01 (13, CC0), 02 (19, CC0), 03 (20, CC-BY), system_hair_materials01 (38, CC0, was already in
+  mhpacks but never wired) + 02 (29, CC0). All five zips in project files mhpacks/; ASSET_PACKS_CATALOGUE.json lists them.
+- EYES: sprites.js EW_MH_EYE_MATS rows [id mhm_<asset>, label, PNG, null, folder, group] are PUSHED onto EW_MH_EYE_PACK, so
+  they are THE EYE PACK in every way (same key mhEyes, same eye mesh, Iris colour, hider, renames, preload). row[4] = their
+  folder (mpfb/looks/eyes/materials/<asset>.png, 1024 px as shipped; the two maid-san ones 512). party-builder FACE > EYES:
+  "Eye textures" shows only the pack (rows without a group), then "Eye materials: human / non-human / various".
+  5 PNGs (anime navy, maid-san blue/red, snake, target) were opaque where the cornea dome samples, so the dome painted over
+  the iris (white / yellow eyes): their alpha there was copied from a stock eye PNG (alpha < 128 = the cornea).
+- HAIR: sprites.js EW_MH_HAIR_MATS [id mhh_<asset>, label, style id, PNG] (hair/mh/materials/<asset>.png, 2048 -> 1024).
+  appearance.hairMat ('own' | id, EW_APPEARANCE_ENUMS); getHairMaterial(a) = the material only while its style is worn.
+  three-renderer.js setHairMat (THE HAIR MATERIALS): the cards wear the PNG as painted (flipY etc. from the style's own
+  texture, white vertex colours: its OWN colours, no grey mask); 'own' puts h.ownMap back and paintHair tints again.
+  Called from setHair + buildHair (dropHair clears hairMatKey). The builder's HAIR tab: "Hair texture" row (Style's own +
+  the style's recolours) only on Bob 01/02, Braid 01, Long 01, Ponytail 01, Short 01/02/04; while one is worn the Hair
+  colour row is replaced by a note (it would do nothing to the hair).
+- CREDITS: mpfb/CREDITS.json creator_eye_materials + creator_hair_materials (author, licence, source per asset); the CREDITS
+  page groups them with the other MakeHuman authors (checked: Elvaerwyn's eye 03 assets, Hatshj, MargaretToigo show).
+- Hider kind 'hairMat' ("Hair texture"), bake-hidden.js knows it.
+- Proof: /mnt/project-files/creator-mh-materials/ (12 + 4 eyes, 19 hair textures, back to Style's own + colour, the panel).

@@ -1234,6 +1234,42 @@ same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.r
   (its depth kept in the model's own proportion, 0.514·w) and keeps it `h` tall (three-renderer.js t_pillar proc, THE ONE SQUARE).
   Rows without `w` keep the plain height fit. Proof: a VS CPU battle on the arena, with the model queue drained.
 
+## THE CODED SHAPES OUT (2026-11-03, mondo, answering the "Coded shapes worth replacing" proposal: "All of the ones i said to replace and already have replacements ready, i want you to completely delete from the game and the code")
+Round 1 (three-renderer.js; the procedural builders deleted, the same names now place a model, so every map / roster / near setting / monument that named them gets the model):
+- `_hzRover` = the Meshy mars_rover (`_hzDoorKitGLB`), the Mars + Moon settings and the `rover` monument. The Mars setting's `fallback: _hzRover` went (it would recurse).
+- `_hzToadstool` = the Meshy fae cap (`mushroom`); `_hzFairyRing` = 8-10 small Meshy toadstools (`mushroom2`), each its own model, in a ring under the kept will-o-wisps.
+- `_hzCenser` = the Meshy censer (R2 Assets/props/censer.glb) stood on the ground, ember glow inside (the smoke ball went).
+- `_hzBrazier` = the Meshy standing torch (decor `cave_torch`) 2 tiles tall + a glow over the basket (mondo preferred it to the Meshy brazier).
+- `_hzLighthouse` = the Meshy decor lighthouse + its lamp glow. `_hzSeaIsland` (the cone island) deleted: the sea roster's islands are the palm isle; `_hzPalmIsleFar` lost its fallback.
+- the `whale` weenie = the ocean pack's Whale.fbx (turned 180°, like the catalogue's ocean_whale), not the humpback; the coded body deleted (pack off = no whale).
+- the `bergs` rim = the ocean pack's rocks (Rock, Rock1-3, Rock6-7) tinted ice, widened at random (pack off = no bergs).
+- `_hzFloatingIsland` deleted outright (rosters: the band goes to the next row, a last row's threshold moved to 1.00), the `island` monument + its 2 map placements + the editor entry gone.
+- NO SWELLS: `_WD_RIM.hills` + `.dunes` deleted (10 data.js rim rows dropped, the craters rim no longer adds hills), and the 8 ground `_nrMounds` calls (stonehenge, giza, antarctica, skinwalker, gobekli ×2, northpole, downtown); the 3 cloud-bank calls (heaven, olympus, saturn) stay.
+- `_hzMiscKit(key, { url })` places any model URL (decor, props, ocean pack) the misc way. list-models.js reads `_HQ_DECOR_GLB.x`, `_oceanUrl('X')` and url-placed props in §8b.
+- Headless check recipe that works: scratch patched copy exporting the builders + `window.EW_NO_OPT_ASSETS = true` + a 30 s wait (decor/props are meshopt, FBX streams slowly).
+Round 2 (the same day, the rest of his answers):
+- THE CASTLE (`_hqLandmarkBuilders.castle`, the sky castle reuses it and keeps its cloud bank): built from the castle pack
+  (`Castles_and_Forts.glb#<node>`), every piece placed on its own, height-fit at k = 6 × s: Wall_2x4 east/west/back curtain, Wall_2x2 +
+  Gate_2x4 + Wall_2x2 front, four Tower_Mid corner towers, a Tower_Doorway + Tower_Mid keep, each tower capped with Tower_top_1 +
+  Roof_Cone. The code walls / drums / cones are deleted.
+- THE RUINS RIM (`_WD_RIM.ruins`): ONE castle pack ruined piece per stop (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined),
+  facing the board ± a little, `low: 'skip'`. No clusters called one thing (mondo).
+- `_hzGreekRuin`: the standing columns are the Meshy `greekcol` (height-fit to the code column), the base + the beam stay code (mondo
+  likes the shape); the broken stubs are gone (an rng() call keeps the seed).
+- `_hzZiggurat`: the shrine on top is a cube. `_hzStairway` + the sky `stairway` landmark: one-square treads.
+- `_hzMonolith`: 1.8-2.9 tiles wide, half as deep (it was a thin slab), the purple rune deleted.
+- `colossus` renamed `fallen_column` / `_hzFallenColumn` everywhere (data.js maps + MF_DELTA_SOLID_MONS, map.js _MON_COLLISION + the
+  editor + the infernal theme label): it is a column lying on the floor, not a colossus. Same shape, same collision.
+- `_hzFleshMound`: a heap of the Halloween pack body parts (`_hwUrl('Body_part_0N')`, the gore spells' pack), 60-76 parts, each placed
+  on its own on a dome; every 8th is a limb laid flat. Pack off = nothing drawn. The code blobs, eyes and teeth are deleted.
+- `_hzGreyTube` (the specimen tank monument) = the Molten Maps sci-fi pack Cryo_Tube_ON (CC0), R2 `Assets/misc/molten_cryo_tube.glb`
+  (the monument fit stretches it toward its 3-square stamp as it did the code tank).
+- Catalogue procs swapped to pack pieces and their code deleted (bake-pack-pieces.py jobs, R2 Assets/misc/, zipped by hand):
+  `hand_dryer` / `range_hood` / `kitchen_range` / `sink_row` = DINER pack (Hand_dryer, cooker_hood, Stove griddle, Washbasin);
+  `urinal` = BurgerPiz urinary; `toilet_stall` = Gas station stall (two partitions + door + toilet); `shower_stall` = House pack shower;
+  `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`; the catalogue `light` went with the proc: file
+  rows draw no point light, only the glow). The kitchen range's burner glow went (it is a griddle).
+- KEPT as code: the `castle_wall` spell monument (1 square wide, 2 high: the pack has no piece that shape).
 ## THE OPEN SUMMIT + THE OPEN ICE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any sense for those maps")
 - Cause: LEVEL_DESIGN_PLAN L6 (2026-09-30) turned both site rooms into `gen: { kind: 'plan', look: 'walls' }` layouts (5.5 m marble /
   5 m ice walls round every court, yard and hall; the sealed mass between them baked to pits by bake-holes.js), and every arena size
