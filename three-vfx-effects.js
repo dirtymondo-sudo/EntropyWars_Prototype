@@ -118,7 +118,7 @@ const ThreeVFXEffects = (function () {
     /* The bespoke 3D geometry (the _spell3DGeometry registry) builds into
        ThreeVFX._getScene() through _worldPos, so it follows the pools onto
        the stage; EW_PB_VFX_NO_GEOM keeps it board-only. */
-    var _GEOM_ON_BURST = { raceCrackTheWhip: 1, raceJellySting: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
+    var _GEOM_ON_BURST = { raceCrackTheWhip: 1, raceJellySting: 1, raceWeighTheHeart: 1 };   // Weigh the Heart: a bolt spell, no 'impact' intent (its scales rise on the hit)   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
     /* raceJellySting (2026-10-27, the jellyfish models' on-screen check): a staged bolt never fires 'impact', so the Sting's tentacle
        lash (and now its box jelly) never drew on a cast — it rides the burst like the lion's whip */
     /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
@@ -11375,6 +11375,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _WPN_MODELS.tripodMachine = { url: _DECOR_BASE + 'tripod_machine.glb', axis: 'y', matte: true };
     /* THE ORGAN PIPES (2026-11-03, §10B S05): Excessive Machine's nine pipes (were gold-sheet code cylinders) */
     _WPN_MODELS.organPipe = { url: _DECOR_BASE + 'organ_pipe_white.glb', axis: 'y', matte: true };
+    /* THE STADIUM LIGHTS (2026-11-03, mondo: "replace the ones with confirmed stand ins"): Stadium Show's four masts are the
+       decor's Meshy floodlight mast (D04c flood_mast), were black code cylinders + a box truss */
+    _WPN_MODELS.floodMast = { url: _DECOR_BASE + 'flood_mast.glb', axis: 'y', matte: true };
+    /* THE ULTIMATE PROPS (2026-11-03, mondo's picks A A B A + the feather): Meshy pieces made by Claude through the Meshy API from
+       concepts he approved (project files meshy/ultimates/), R2 Assets/props/ (optimize-assets.js'd): Lockdown's sawhorse
+       barricade (U01a, was code boxes), Flat Earth's disc (U03b, was a painted cylinder), Weigh the Heart's scales (U04a) and
+       Ma'at's feather (U06a); the heart on the other pan is the Halloween pack's (THE SEVERED PARTS). */
+    _WPN_MODELS.policeBarricade = { url: _PROPS_BASE + 'police_barricade.glb', axis: 'y', matte: true };
+    _WPN_MODELS.flatEarth = { url: _PROPS_BASE + 'flat_earth.glb', axis: 'flat', matte: true };
+    _WPN_MODELS.heartScales = { url: _PROPS_BASE + 'heart_scales.glb', axis: 'y', matte: true };
+    _WPN_MODELS.maatFeather = { url: _PROPS_BASE + 'maat_feather.glb', axis: 'y', matte: true };
     var _HELD_PROPS = {
         raceAcidFlask:       { key: 'potionFlask', m: 0.2,  thrown: true, grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
         raceAntidote:        { key: 'potionFlask', m: 0.2,  grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
@@ -28015,13 +28026,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigLockdown3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), rim = ts * (R + 0.62);
-        var NB = 8, bars = [], stripe = new THREE.MeshBasicMaterial({ map: _nrvStripeTex(), transparent: true, opacity: 0 }), leg = _finBasic(0xd8d8e0, { opacity: 0 });
+        /* THE REAL BARRICADES (2026-11-03): the eight sawhorses are the Meshy police barricade (policeBarricade), were code boxes
+           with a painted stripe; none while the file streams (NO STAND-INS) — the tape, the lights and the cruisers still come */
+        var NB = 8, bars = [], barReady = _wpnReady('policeBarricade'), barH = ts * 0.5;
         for (var i = 0; i < NB; i++) {
             var a = i * Math.PI * 2 / NB + Math.PI / 8, bg = new THREE.Group();
             bg.position.set(Math.cos(a) * rim, -ts * 0.7, Math.sin(a) * rim); bg.rotation.y = -a; F.g.add(bg);
-            var board = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.16, ts * 0.04), stripe); board.position.y = ts * 0.5; bg.add(board);
-            for (var q = -1; q <= 1; q += 2) { var lg = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.04, ts * 0.62, ts * 0.04), leg); lg.position.set(q * ts * 0.38, ts * 0.31, 0); lg.rotation.x = 0.35; bg.add(lg); var lg2 = lg.clone(); lg2.rotation.x = -0.35; bg.add(lg2); }
-            bars.push({ g: bg, t0: 80 + i * 55 });
+            var bar = barReady ? _wpnInstance('policeBarricade', barH) : null;
+            if (bar) { bar.group.position.y = barH / 2; bar.setFade(1);   /* the board along x, like the boxes were */ bg.add(bar.group); }
+            bars.push({ g: bg, t0: 80 + i * 55, m: bar });
         }
         var tapeMat = new THREE.MeshBasicMaterial({ map: _nrvTapeTex(), transparent: true, opacity: 0, side: THREE.DoubleSide }), tapes = [];
         for (var j = 0; j < NB; j++) {
@@ -28037,7 +28050,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = 2400;
         return _sigRunOwned(F.g, total, function (el) {
             var fade = 1 - _sigClamp01((el - 2000) / 400);
-            stripe.opacity = leg.opacity = fade;
+            for (var b = 0; b < bars.length; b++) if (bars[b].m) bars[b].m.setFade(fade);
             for (var b = 0; b < bars.length; b++) { var k = _sigClamp01((el - bars[b].t0) / 260); bars[b].g.position.y = -ts * 0.7 + ts * 0.7 * _sigEaseOutBack(k); }
             for (var t = 0; t < tapes.length; t++) { var tk = _sigClamp01((el - tapes[t].t0) / 200); tapes[t].m.scale.x = Math.max(0.001, tk); }
             tapeMat.opacity = 0.95 * fade;
@@ -28368,30 +28381,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigStadiumShow3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 2), rim = ts * (R + 0.7), H = ts * 3.2;
-        var steel = _finBasic(_NRV.truss, { opacity: 0 }), masts = [], beams = [];
+        /* the masts: the Meshy floodlight mast (flood_mast), lamps turned to the stage; no mast while its file streams (NO
+           STAND-INS) — the beams, lamps, pyro and confetti still play. The code truss between them is gone. */
+        /* the masts stand at the sides and the back as the viewer sees it (a 7 m mast on the camera's side stood its lamp bank
+           over the bodies and the numbers): the camera's floor bearing + 90°, 150°, 210°, 270° */
+        var masts = [], beams = [], mastReady = _wpnReady('floodMast'), mastFx = [], cv = _npCamDir(tx, ty), cAng = Math.atan2(cv.z, cv.x);
+        var MA = [Math.PI / 2, Math.PI * 5 / 6, Math.PI * 7 / 6, Math.PI * 3 / 2];
         for (var i = 0; i < 4; i++) {
-            var a = i * Math.PI / 2 + Math.PI / 4, mg = new THREE.Group(); mg.position.set(Math.cos(a) * rim, -H, Math.sin(a) * rim); F.g.add(mg);
-            var _mast = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.07, H, 6), steel); _mast.position.set(0, H / 2, 0); mg.add(_mast);   /* Object3D.position is read-only: Object.assign threw and killed the whole show (audit 10-26) */
+            var a = cAng + MA[i], mg = new THREE.Group(); mg.position.set(Math.cos(a) * rim, -H, Math.sin(a) * rim); F.g.add(mg);
+            var _mast = mastReady ? _wpnInstance('floodMast', H) : null;
+            if (_mast) { _mast.group.position.y = H / 2; _mast.group.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); _mast.setFade(0); mg.add(_mast.group); mastFx.push(_mast); }
             var beamHold = new THREE.Group(); beamHold.position.y = H * 0.96; beamHold.rotation.y = -a + Math.PI; mg.add(beamHold);
             var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.9, H * 1.15, 16, 1, true), _finBasic(i % 2 ? _NRV.pink : _NRV.stage, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() }));
             cone.rotation.x = Math.PI; cone.position.y = -H * 0.575; var tilt = new THREE.Group(); tilt.rotation.x = 0.75; tilt.add(cone); beamHold.add(tilt);
             var lamp = _finSprite(_NRV.white, _sigGlowTex(), ts * 0.6, 162); lamp.position.y = H * 0.96; mg.add(lamp);
             masts.push({ g: mg, a: a, lamp: lamp }); beams.push({ mat: cone.material, tilt: tilt, ph: i * 1.3 });
         }
-        var trussMat = _finBasic(_NRV.truss, { opacity: 0 }), trusses = [];
-        for (var j = 0; j < 4; j++) {
-            var a0 = j * Math.PI / 2 + Math.PI / 4, a1 = (j + 1) * Math.PI / 2 + Math.PI / 4;
-            var x0 = Math.cos(a0) * rim, z0 = Math.sin(a0) * rim, x1 = Math.cos(a1) * rim, z1 = Math.sin(a1) * rim;
-            var tr = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(x1 - x0, z1 - z0), ts * 0.08, ts * 0.08), trussMat); tr.position.set((x0 + x1) / 2, -H + H * 0.98, (z0 + z1) / 2); tr.rotation.y = -Math.atan2(z1 - z0, x1 - x0); F.g.add(tr); trusses.push(tr);
-        }
         var pieces = _nrvConfetti(F, 70, H * 0.9, rim * 0.9, 1800);
         var riseMs = 420, lightsAt = 500, pyroAt = 700, total = 2600, pyroN = 0, lit = false;
         try { _sigMusicNotes3D(tx, ty, { count: 6, color: _NRV.pink, scale: 1.2, sparkSprite: 'spark-pink' }); } catch (e) {}
         return _sigRunOwned(F.g, total, function (el) {
             var rk = _sigEaseOutBack(_sigClamp01(el / riseMs)), fade = 1 - _sigClamp01((el - 2150) / 450);
-            steel.opacity = trussMat.opacity = fade;
+            for (var mf = 0; mf < mastFx.length; mf++) mastFx[mf].setFade(fade);
             for (var m = 0; m < masts.length; m++) masts[m].g.position.y = -H + H * rk;
-            for (var t2 = 0; t2 < trusses.length; t2++) trusses[t2].position.y = -H + H * rk - H * 0.02;
             if (el >= lightsAt && !lit) { lit = true; _sigScreenFlash('#ffe6f4', 160, 0.55); }
             for (var b = 0; b < beams.length; b++) { var B = beams[b]; B.mat.opacity = (el >= lightsAt ? 0.22 : 0) * fade * (0.8 + 0.2 * Math.sin(el * 0.02 + B.ph)); B.tilt.rotation.x = 0.75 + Math.sin(el * 0.004 + B.ph) * 0.35; B.tilt.rotation.z = Math.sin(el * 0.003 + B.ph * 2) * 0.3; masts[b].lamp.material.opacity = (el >= lightsAt ? 0.9 : 0) * fade; }
             while (pyroN < 12 && el >= pyroAt + pyroN * 110) {
@@ -62605,17 +62617,59 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     ] });
     _PZ_SIGS.f4FlatEarth = function (p) {
         if (_f4Off()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, disc = _pzMesh(new THREE.CylinderGeometry(ts * 1.25, ts * 1.25, ts * 0.06, 48), _pzSolid(0xffffff, _f4FlatEarthTex()), F.g, 0, ts * 4, 0);
-        disc.material.depthWrite = false;
+        /* THE REAL DISC (2026-11-03, mondo's pick B): the Meshy flat earth (flatEarth: the map on top, the ice rim, rock under it),
+           was a painted code cylinder; nothing while the file streams (NO STAND-INS) — the ring still lands */
+        var F = _nrvFrame(tx, ty), ts = F.ts, E = _wpnReady('flatEarth') ? _wpnInstance('flatEarth', ts * 1.8) : null;
+        var disc = new THREE.Group(); disc.position.y = ts * 5; F.g.add(disc);
+        if (E) { E.setFade(0); disc.add(E.group); }
         var landed = false;
         return _sigRunOwned(F.g, 1500, function (el) {
             var d = _sigEaseInCubic(_sigClamp01(el / 300));
-            disc.position.y = ts * (4 - 2.6 * d) + (el > 300 ? -ts * 0.15 * _sigClamp01((el - 300) / 120) : 0);
-            disc.rotation.y = el * 0.002; disc.material.opacity = 0.95 * _pzEnv(el, 0, 120, 900, 1500);
+            disc.position.y = ts * (5 - 2.8 * d) + (el > 300 ? -ts * 0.15 * _sigClamp01((el - 300) / 120) : 0);
+            disc.rotation.y = el * 0.002; if (E) E.setFade(_pzEnv(el, 0, 120, 900, 1500));
             if (!landed && el >= 300) { landed = true; _sigShockRing3D(tx, ty, { color: 0xf2f6ff, r1: ts * 2.2, ms: 480, height: 3 }); }
         });
     };
     SPELL_MAP['raceTruthBomb'] = { impact: 'f4FlatEarth_impact' };
+
+    /* ════ WEIGH THE HEART (2026-11-03, mondo: "replace the ones with confirmed stand ins"; it had no prop at all): the scales of
+       the judgment rise beside the victim — the Meshy Egyptian scales (heartScales, his pick A) — the Halloween pack's heart drops
+       onto one pan and Ma'at's feather (maatFeather) drifts down onto the other, they hold, and all of it sinks away. Looks only:
+       it rides the impact the spell already fires (the guest gets the same), nothing is drawn on a tile the viewer cannot see,
+       and a piece still streaming is simply not drawn. The pink beam and ring stay. ════ */
+    function _sigWeighHeart3D(tx, ty, o) {
+        if (_catOff('spells') || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, o), ln = _nrvLine(F, from, tx, ty);
+        var H = ts * 1.05, S = _wpnReady('heartScales') ? _wpnInstance('heartScales', H) : null;
+        if (!S) return null;
+        /* beside the victim, a little toward the caster, the beam across the line so both pans show */
+        var g = new THREE.Group(), px = -ln.uz, pz = ln.ux;
+        g.position.set(px * ts * 0.95 + ln.ux * ts * 0.25, -H, pz * ts * 0.95 + ln.uz * ts * 0.25);
+        g.rotation.y = Math.atan2(ln.ux, ln.uz); F.g.add(g);
+        S.group.position.y = H / 2; S.setFade(0); g.add(S.group);
+        /* the pans (measured off the file: ±0.39 H from the post, 0.325 H off the floor) */
+        var panY = H * 0.33, panX = H * 0.39;
+        var heart = _bpPiece('heart', ts, { size: 0.24 }), feather = _wpnReady('maatFeather') ? _wpnInstance('maatFeather', ts * 0.34) : null;
+        if (heart) { heart.position.set(-panX, panY + ts * 1.4, 0); _bpFade(heart, 0); g.add(heart); }
+        if (feather) { feather.group.position.set(panX, panY + ts * 1.6, 0); feather.group.rotation.z = 1.2; feather.setFade(0); g.add(feather.group); }
+        var riseMs = 300, dropAt = 320, total = 2000;
+        return _sigRunOwned(F.g, total, function (el) {
+            var rise = _sigEaseOutCubic(_sigClamp01(el / riseMs)), fade = 1 - _sigClamp01((el - 1600) / 400);
+            g.position.y = -H + H * rise - ts * 0.4 * _sigEaseInCubic(_sigClamp01((el - 1600) / 400));
+            S.setFade(Math.min(1, el / 120) * fade);
+            if (heart) {
+                var hk = _sigClamp01((el - dropAt) / 260);
+                heart.position.y = panY + ts * 0.07 + ts * 1.4 * (1 - hk * hk);
+                heart.rotation.y = el * 0.003; _bpFade(heart, _sigClamp01((el - dropAt + 80) / 80) * fade);
+            }
+            if (feather) {
+                var fk = _sigClamp01((el - dropAt - 120) / 700), sway = Math.sin(el * 0.012) * (1 - fk);
+                feather.group.position.set(panX + sway * ts * 0.12, panY + ts * 0.05 + ts * 1.6 * (1 - _sigEaseOutCubic(fk)), 0);
+                feather.group.rotation.z = 1.35 + sway * 0.4; feather.setFade(_sigClamp01((el - dropAt - 40) / 120) * fade);
+            }
+        });
+    }
+    _spell3DGeometry['raceWeighTheHeart'] = function (tx, ty, r, x) { _sigWeighHeart3D(tx, ty, x || {}); };
 
     /* ════ LABYRINTH ROAR / DREAD AURA / HARBINGER — three spells, three looks (they all wore the same pink rings):
        the roar is a jagged shout that rolls out over 2 tiles; the dread aura is dark mist rolling out with red eyes
