@@ -13,15 +13,15 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 99 |
+| Asset pack | yes | 130 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
 | mondo's own model | yes | 1 |
-| Meshy AI | no | 448 |
+| Meshy AI | no | 493 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 162 |
+| Claude in code (three.js, no file) | no | 100 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -481,7 +481,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 
 ## 6. Props — every room / editor prop (data.js DOOR_HQ.catalogue)
 
-### Meshy AI (mondo) — Meshy AI (273)
+### Meshy AI (mondo) — Meshy AI (247)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -497,10 +497,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | breaker_panel | `Assets/door/models/Meshy_AI_a_breaker_panel_0903105436_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brick_arch | `Assets/misc/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | bullet | `Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| bus_shelter | `Assets/misc/Meshy_AI_bus_shelter_0917064913_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cafeteria_chair | `Assets/door/models/Meshy_AI_cafeteria_chair_0910054640_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| campfire | `Assets/misc/Meshy_AI_a_campfire_ring_0916235856_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| camping_tent | `Assets/misc/Meshy_AI_a_camping_tent_0922010306_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candle | `Assets/weapons/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleLine | `Assets/weapons/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleRing | `Assets/weapons/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -515,7 +512,6 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | cardboard_box | `Assets/door/models/Meshy_AI_a_cardboard_box_0903105957_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cardboard_boxes | `Assets/door/models/Meshy_AI_cardboard_boxes_0903105142_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | carnival_tent | `Assets/misc/Meshy_AI_a_carnival_tent_0922010243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cash_register | `Assets/door/models/Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | catacomb_wall | `Assets/misc/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | caterpillar | `Assets/misc/Meshy_AI_caterpillar_0912231445_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | catholic_pew | `Assets/misc/Meshy_AI_catholic_church_pew_0917035928_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -527,10 +523,8 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | church_wall | `Assets/misc/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cinder_block | `Assets/misc/Meshy_AI_cinder_block_0917064959_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | city_bench | `Assets/misc/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| city_bin | `Assets/misc/Meshy_AI_a_city_bin_0917065144_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | clipboard_flat | `Assets/door/models/Meshy_AI_office_clipboard_0910054838_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | clock | `Assets/misc/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| coffee_maker | `Assets/door/models/Meshy_AI_coffee_maker_0910054513_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | coffee_mug | `Assets/door/models/Meshy_AI_cup_0910054308_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | coffee_table | `Assets/door/models/Meshy_AI_a_round_office_coffee_table_0903092838_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | conference_table | `Assets/door/models/Meshy_AI_a_long_black_oval_conference_table_0903092858_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -547,7 +541,6 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | curved_office_couch | `Assets/door/models/Meshy_AI_a_curved_office_couch_0903105539_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | demon_statue | `Assets/misc/Meshy_AI_demon_statue_0917040101_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | desk_fan | `Assets/door/models/Meshy_AI_a_circular_desk_fan_0903105635_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| desk_lamp | `Assets/door/models/Meshy_AI_an_office_desk_lamp_0903110208_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | desk_wedge_a | `Assets/door/models/Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | desk_wedge_b | `Assets/door/models/Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | dish | `Assets/misc/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -555,7 +548,6 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | door_gun | `Assets/misc/Meshy_AI__0916054803_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | dorm_bed | `Assets/misc/Meshy_AI_a_dorm_bed_0922010217_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | drain_grate | `Assets/misc/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dumpster | `Assets/misc/Meshy_AI_dumpster_0727195512_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | earth | `Assets/misc/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | escalator | `Assets/misc/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | escapepod | `Assets/misc/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -563,13 +555,10 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | exit_sign | `Assets/door/models/Meshy_AI_an_exit_sign_0903110032_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_mushroom | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_toadstool | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fallen_log | `Assets/misc/Meshy_AI_a_fallen_log_0916235700_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | femur | `Assets/weapons/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fern | `Assets/misc/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | field_goal_post | `Assets/misc/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fighter_jet | `Assets/weapons/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| filing_cabinet | `Assets/door/models/Meshy_AI_a_filing_cabinet_0903105233_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fire_extinguisher | `Assets/door/models/Meshy_AI_a_fire_extinguisher_0903105310_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fire_hydrant | `Assets/misc/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fire_truck | `Assets/misc/Meshy_AI_a_fire_truck_0915195407_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fist | `Assets/weapons/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -630,7 +619,6 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | lectern | `Assets/misc/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | library_shelf | `Assets/misc/Meshy_AI_a_library_shelf_0917035552_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | library_shelf_full | `Assets/misc/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| locker | `Assets/door/models/Meshy_AI_a_locker_0903105424_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | lunar_lander | `Assets/door/models/Meshy_AI_lunar_lander_realis_0910054105_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mall_bin | `Assets/misc/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | manila_folder | `Assets/door/models/Meshy_AI_tapered_manila_folder_0910054403_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -639,13 +627,11 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | meal_tray | `Assets/door/models/Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | meal_tray_empty | `Assets/door/models/Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | menhir | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| microwave | `Assets/door/models/Meshy_AI_beige_1980s_microwave_0910054901_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | military_tank | `Assets/misc/Meshy_AI_a_military_tank_0922010101_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mini_fridge | `Assets/door/models/Meshy_AI_mini_fridge_0910054504_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | molded_chair | `Assets/door/models/Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | moon | `Assets/misc/Meshy_AI_moon_realistic_0727195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mop | `Assets/door/models/Meshy_AI_a_mop_0903105505_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mop_bucket | `Assets/door/models/Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mushroom | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mushroom2 | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -677,17 +663,14 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | railing_1m | `Assets/door/models/Meshy_AI_one_meter_of_railing_0903105339_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | reception_wedge | `Assets/door/models/Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | retro_control_panel | `Assets/misc/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| retro_radio | `Assets/door/models/Meshy_AI_retro_radio_0910054335_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | retro_speakers | `Assets/door/models/Meshy_AI_retro_speakers_0910054343_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | road_straight | `Assets/misc/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | road_turn | `Assets/misc/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rotary_phone | `Assets/door/models/Meshy_AI_analog_phone_0910054719_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | round_cabinet | `Assets/door/models/Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | round_cubicle | `Assets/door/models/Meshy_AI_round_cubicle_0910054648_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | round_desk | `Assets/door/models/Meshy_AI_A_round_office_desk_0903092905_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | round_fridge | `Assets/door/models/Meshy_AI_round_fridge_0910054551_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rowboat | `Assets/misc/Meshy_AI_a_rowboat_0912231059_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | royal_bed | `Assets/misc/Meshy_AI_a_royal_bed_0922010438_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | royal_throne | `Assets/misc/Meshy_AI_royal_throne_0917035803_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | rug_office | `Assets/door/models/Meshy_AI_a_round_office_rug_0903110253_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -702,11 +685,9 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | shark | `Assets/misc/Meshy_AI_shark_0912231236_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ship_anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ship_cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ship_lantern | `Assets/misc/Meshy_AI_a_hanging_lantern_0912231043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ship_wreck | `Assets/misc/Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | shotgun | `Assets/weapons/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | signpost | `Assets/misc/Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sink | `Assets/door/models/Meshy_AI_a_sink_0903105415_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skateboard | `Assets/misc/Meshy_AI_a_skateboard_0915212313_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull | `Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull_pile | `Assets/misc/Meshy_AI_skull_pile_0917035243_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -722,11 +703,9 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | star | `Assets/misc/Meshy_AI_star_realistic_0727195402_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | storefront | `Assets/misc/Meshy_AI_storefront_0917064551_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | storefront_unit | `Assets/misc/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| stump | `Assets/misc/Meshy_AI_a_stump_0916235717_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | subway_cart | `Assets/misc/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | subway_front | `Assets/misc/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sword | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| table_lamp | `Assets/door/models/Meshy_AI_a_lamp_0903110007_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot2 | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarotDeck | `Assets/weapons/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -739,19 +718,14 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | time_machine | `Assets/misc/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_barrel | `Assets/misc/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| trash_bin | `Assets/door/models/Meshy_AI_trash_bin_0910054450_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tube_tv | `Assets/door/models/Meshy_AI_a_tube_tv_0903102007_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vatican_dome | `Assets/misc/Meshy_AI_the_Vatican_dome_0917061915_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vault | `Assets/misc/Meshy_AI_a_bank_vault_0912231605_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vending_machine | `Assets/door/models/Meshy_AI_a_round_vending_machine_0903105625_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vent_grille | `Assets/door/models/Meshy_AI_vent_0910054228_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vhs_player | `Assets/misc/Meshy_AI_a_vhs_player_0922010233_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vhs_tape | `Assets/misc/Meshy_AI_a_vhs_tape_0922010141_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wall_clock | `Assets/door/models/Meshy_AI_a_clock_0903110243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| water_cooler | `Assets/door/models/Meshy_AI_a_water_cooler_0903105259_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | wet_floor_sign | `Assets/door/models/Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | wheel | `Assets/misc/Meshy_AI_a_ship_s_wheel_0912230950_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | white_cloud | `Assets/misc/Meshy_AI_white_cloud_0917035538_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1002,6 +976,26 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | leaf_window_medium | `Assets/door/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 | leaf_wooden | `Assets/door/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 
+### Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given — Asset pack (5)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| castle_cone | `Assets/misc/Castles_and_Forts.glb#Roof_Cone` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_gate | `Assets/misc/Castles_and_Forts.glb#Gate_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_tower | `Assets/misc/Castles_and_Forts.glb#Tower_Mid` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_tower_top | `Assets/misc/Castles_and_Forts.glb#Tower_top_1` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_wall | `Assets/misc/Castles_and_Forts.glb#Wall_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+
+### Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| retro_radio | `Assets/misc/ebd_trailerpark_retro_radio.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| table_lamp | `Assets/misc/ebd_trailerpark_table_lamp.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| trash_bin | `Assets/misc/ebd_trailerpark_trash_bin.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| tube_tv | `Assets/misc/ebd_trailerpark_tube_tv.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| wall_clock | `Assets/misc/ebd_trailerpark_wall_clock.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### D.O.O.R. kit upload (mondo, author not recorded) — Asset pack (author not recorded yet) (4)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1011,14 +1005,30 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | computer_chair_blue | `Assets/door/models/computer_chair_blue.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | computer_chair_grey | `Assets/door/models/computer_chair_grey.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 
-### Retro Tree Pack · Pizza Doggy · CC0 — Asset pack (4)
+### Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) — Asset pack (4)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| dead_snag | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| hollow_dead_tree | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| hollow_tree | `Assets/foilage/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
+| dead_snag | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| hollow_dead_tree | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| hollow_tree | `Assets/foilage/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+
+### Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| campfire | `Assets/misc/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| camping_tent | `Assets/misc/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| ship_lantern | `Assets/misc/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Laundry · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| filing_cabinet | `Assets/misc/ebd_laundry_filing_cabinet.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
+| vending_machine | `Assets/misc/ebd_laundry_vending_machine.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
+| water_cooler | `Assets/misc/ebd_laundry_water_cooler.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Horse pack (mondo's upload) — Asset pack (author not recorded yet) (3)
 
@@ -1035,6 +1045,20 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | chess_board | `Assets/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_set_game | `Assets/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 
+### 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| city_bin | `Assets/misc/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+| fire_extinguisher | `Assets/misc/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| coffee_maker | `Assets/misc/ebd_psx3_coffee_maker.glb` | Asset pack | Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) |
+| microwave | `Assets/misc/ebd_psx3_microwave.glb` | Asset pack | Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Crow + rabbit (mondo's upload) — Asset pack (author not recorded yet) (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1042,12 +1066,44 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | crow | `Assets/animals/crow_and_rabbit/crow.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
 | rabbit | `Assets/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
 
+### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| desk_lamp | `Assets/misc/ebd_house_desk_lamp.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| mop | `Assets/misc/ebd_house_mop.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fallen_log | `Assets/misc/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stump | `Assets/misc/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### CC0 'clip ready' prop (mondo's upload, author not recorded) — Asset pack (author not recorded yet) (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | security_camera | `Assets/door/models/camera_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
 | utility_box | `Assets/door/models/utility_box_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
+
+### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| bus_shelter | `Assets/misc/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| cash_register | `Assets/misc/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### DINER · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| dumpster | `Assets/misc/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) — Meshy AI, reworked by Claude (1)
 
@@ -1061,11 +1117,111 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | --- | --- | --- | --- |
 | elephant | `Assets/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
 
+### Mine · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| locker | `Assets/misc/ebd_mine_locker.glb` | Asset pack | Mine · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| rotary_phone | `Assets/misc/ebd_vhsshop_rotary_phone.glb` | Asset pack | VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| rowboat | `Assets/misc/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| sink | `Assets/misc/ebd_burgerpiz_sink.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | spear | `Assets/weapons/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
+
+### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (68)
+
+Made 2026-11-03 for the code-drawn stand-ins of §10A (D-IDs in project files meshy/decor/decor_prompts.json). A proc builder
+calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) and the model is fitted into their box.
+
+| decor key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| anemone | `Assets/decor/anemone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| armour_stand | `Assets/decor/armour_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| armour_stand_post | `Assets/decor/armour_stand_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| autopsy_table | `Assets/decor/autopsy_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| banner | `Assets/decor/banner.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| barber_chair | `Assets/decor/barber_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| barber_pole | `Assets/decor/barber_pole.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| boiler | `Assets/decor/boiler.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| card_catalogue | `Assets/decor/card_catalogue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| carousel | `Assets/decor/carousel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| carousel_horse | `Assets/decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| cave_torch | `Assets/decor/cave_torch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| conveyor | `Assets/decor/conveyor.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| departures_board | `Assets/decor/departures_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| directory_board | `Assets/decor/directory_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| disc_cluster | `Assets/decor/disc_cluster.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| door_furnace | `Assets/decor/door_furnace.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| dream_eye | `Assets/decor/dream_eye.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| eeg_rack | `Assets/decor/eeg_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| egg_chair | `Assets/decor/egg_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| exec_desk | `Assets/decor/exec_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_gondola | `Assets/decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_wheel | `Assets/decor/ferris_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_wheel_wheel | `Assets/decor/ferris_wheel_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| flood_mast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| fountain | `Assets/decor/fountain.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| giant_clam | `Assets/decor/giant_clam.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| high_striker | `Assets/decor/high_striker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| laminator | `Assets/decor/laminator.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| laundry_cart | `Assets/decor/laundry_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lifeguard_chair | `Assets/decor/lifeguard_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lighthouse | `Assets/decor/lighthouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| meat_hook | `Assets/decor/meat_hook.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| mushroom_lamp | `Assets/decor/mushroom_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| music_box | `Assets/decor/music_box.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| music_box_dancer | `Assets/decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| nightmare_bloom | `Assets/decor/nightmare_bloom.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| notice_board | `Assets/decor/notice_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| pool_lounger | `Assets/decor/pool_lounger.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| popcorn_cart | `Assets/decor/popcorn_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| pot_rack | `Assets/decor/pot_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| punch_clock | `Assets/decor/punch_clock.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| robot_arm | `Assets/decor/robot_arm.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| rocking_chair | `Assets/decor/rocking_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| round_table | `Assets/decor/round_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| saucer_pendant | `Assets/decor/saucer_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| school_desk | `Assets/decor/school_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| scoreboard | `Assets/decor/scoreboard.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sea_buoy | `Assets/decor/sea_buoy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sea_vent | `Assets/decor/sea_vent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| server_rack | `Assets/decor/server_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| skiff | `Assets/decor/skiff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| slot_machine | `Assets/decor/slot_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| space_divider | `Assets/decor/space_divider.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sputnik_lamp | `Assets/decor/sputnik_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| star_projector | `Assets/decor/star_projector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stocks | `Assets/decor/stocks.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stone_altar | `Assets/decor/stone_altar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| t_pillar | `Assets/decor/t_pillar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tanker_desk | `Assets/decor/tanker_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ticket_booth | `Assets/decor/ticket_booth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trophy_case | `Assets/decor/trophy_case.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trophy_cup | `Assets/decor/trophy_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tulip_chair | `Assets/decor/tulip_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tulip_table | `Assets/decor/tulip_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| umbrella_closed | `Assets/decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| umbrella_stand | `Assets/decor/umbrella_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| wall_torch_bracket | `Assets/decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 
 ### Stairs pack (data.js HQ_STAIR_PACK — every stair flight, railing and escalator in the rooms)
 
@@ -1106,12 +1262,14 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | landmine | `Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mic | `Assets/misc/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| piano | `Assets/decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pistol | `Assets/weapons/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | plasma | `Assets/weapons/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | rope | `Assets/misc/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sack | `Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sandbags | `Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sheep | `Assets/decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | shield | `Assets/weapons/Meshy_AI_shield_1027232025_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | shotgun | `Assets/weapons/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull | `Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1126,6 +1284,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | teslaCoil | `Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | throwingKnife | `Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tongs | `Assets/misc/Meshy_AI_tongs_1027232138_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tripodMachine | `Assets/decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | trumpet | `Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1144,10 +1303,10 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | astronaut | `Assets/misc/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brazier | `Assets/misc/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brick_arch | `Assets/misc/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| bus_shelter | `Assets/misc/Meshy_AI_bus_shelter_0917064913_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| bus_shelter | `Assets/misc/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
 | cadillac | `Assets/misc/Meshy_AI_a_black_cadillac_0915195323_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| campfire | `Assets/misc/Meshy_AI_a_campfire_ring_0916235856_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| camping_tent | `Assets/misc/Meshy_AI_a_camping_tent_0922010306_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| campfire | `Assets/misc/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| camping_tent | `Assets/misc/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | carnival_tent | `Assets/misc/Meshy_AI_a_carnival_tent_0922010243_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | catacomb_wall | `Assets/misc/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1160,7 +1319,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | church_wall | `Assets/misc/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cinder_block | `Assets/misc/Meshy_AI_cinder_block_0917064959_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | city_bench | `Assets/misc/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| city_bin | `Assets/misc/Meshy_AI_a_city_bin_0917065144_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| city_bin | `Assets/misc/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
 | city_trash_bin | `Assets/misc/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | clock | `Assets/misc/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | confessional | `Assets/misc/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1176,11 +1335,11 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | dockring | `Assets/misc/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | dorm_bed | `Assets/misc/Meshy_AI_a_dorm_bed_0922010217_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | drain_grate | `Assets/misc/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dumpster | `Assets/misc/Meshy_AI_dumpster_0727195512_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dumpster | `Assets/misc/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
 | earth | `Assets/misc/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | escalator | `Assets/misc/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | escapepod | `Assets/misc/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fallen_log | `Assets/misc/Meshy_AI_a_fallen_log_0916235700_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fallen_log | `Assets/misc/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
 | fern | `Assets/misc/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | field_goal_post | `Assets/misc/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fire_hydrant | `Assets/misc/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1197,7 +1356,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | italian_building | `Assets/misc/Meshy_AI_Italian_building_0917035900_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | italian_building_2 | `Assets/misc/Meshy_AI_Italian_building_2_0917035828_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | jupiter | `Assets/misc/Meshy_AI_jupiter_realistic_0727195413_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| lantern | `Assets/misc/Meshy_AI_a_hanging_lantern_0912231043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| lantern | `Assets/misc/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | library_shelf | `Assets/misc/Meshy_AI_a_library_shelf_0917035552_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | library_shelf_full | `Assets/misc/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | menhir | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1212,7 +1371,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | retro_control_panel | `Assets/misc/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | road_straight | `Assets/misc/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | road_turn | `Assets/misc/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rowboat | `Assets/misc/Meshy_AI_a_rowboat_0912231059_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| rowboat | `Assets/misc/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
 | royal_bed | `Assets/misc/Meshy_AI_a_royal_bed_0922010438_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | royal_throne | `Assets/misc/Meshy_AI_royal_throne_0917035803_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sarcophagus | `Assets/misc/Meshy_AI_stone_sarcophagus_0917035255_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1233,7 +1392,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | star | `Assets/misc/Meshy_AI_star_realistic_0727195402_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | storefront | `Assets/misc/Meshy_AI_storefront_0917064551_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | storefront_unit | `Assets/misc/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| stump | `Assets/misc/Meshy_AI_a_stump_0916235717_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| stump | `Assets/misc/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
 | subway_cart | `Assets/misc/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | subway_front | `Assets/misc/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | suv | `Assets/misc/Meshy_AI_a_black_SUV_0915195508_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1321,9 +1480,9 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | fae_cap | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_cap_2 | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | palm | `Assets/door/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| pine_2 | `Assets/foilage/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| tree | `Assets/foilage/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
+| pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| pine_2 | `Assets/foilage/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree | `Assets/foilage/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_10 | `Assets/foilage/OBJ/Tree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_11 | `Assets/foilage/OBJ/Tree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_12 | `Assets/foilage/OBJ/Tree_10.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
@@ -1334,17 +1493,17 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | tree_17 | `Assets/foilage/OBJ/DeadTree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_18 | `Assets/foilage/OBJ/DeadTree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_19 | `Assets/foilage/OBJ/DeadTree_9.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_2 | `Assets/foilage/retrotreepack/GLB/tree_rt_3.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
+| tree_2 | `Assets/foilage/retrotreepack/GLB/tree_rt_3.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_20 | `Assets/foilage/OBJ/DeadTree_10.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_3 | `Assets/foilage/retrotreepack/GLB/tree_rt_4.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| tree_4 | `Assets/foilage/retrotreepack/GLB/tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| tree_5 | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| tree_6 | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
+| tree_3 | `Assets/foilage/retrotreepack/GLB/tree_rt_4.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_4 | `Assets/foilage/retrotreepack/GLB/tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_5 | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_6 | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_7 | `Assets/foilage/OBJ/Tree_2.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_8 | `Assets/foilage/OBJ/Tree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_9 | `Assets/foilage/OBJ/Tree_5.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
-| tree_sapling | `Assets/foilage/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · CC0 |
+| tree_pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_sapling | `Assets/foilage/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | xmas_pine | `Assets/christmas/models/Christmas.dae#Tree_N` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_pine_2 | `Assets/christmas/models/Christmas.dae#Tree_N_P` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_pine_3 | `Assets/christmas/models/Christmas.dae#Tree_N_01` | Asset pack | Christmas pack · Elbolilloduro |
@@ -1370,17 +1529,17 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | Meshy_AI_one_angel_wing_1027074635_texture | `Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 | Meshy_AI_one_dragon_wing_1027074659_texture | `Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (162)
+## 8. Made in code — procedural stand-ins still in the catalogue (100)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`anemone`, `armour_stand`, `autopsy_table`, `banner`, `barber_chair`, `barber_mirror`, `barber_pole`, `bare_bulb`, `bigtop`, `boiler`, `broom`, `car_panel`, `card_catalogue`, `carousel`, `cave_torch`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `conveyor`, `conveyor_z`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `departures_board`, `directory_board`, `disc_cluster`, `door_furnace`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_eye`, `dream_screen`, `dryer`, `eeg_rack`, `egg_chair`, `evac_button`, `exec_desk`, `false_window`, `ferris_wheel`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `flood_mast`, `floor_panel`, `floor_stain`, `form_sheet`, `fountain`, `garage_ramp`, `garbage_chute`, `garden_ring`, `giant_clam`, `graffiti_wall`, `grow_lamp`, `hand_dryer`, `high_striker`, `house_stairs`, `impossible_stair`, `infinity_pool`, `iso_tank`, `keypad`, `kitchen_range`, `laminator`, `lap_pool`, `laundry_cart`, `lava_lamp`, `lava_lamp_floor`, `lesson_plaque`, `lesson_sign`, `lifeguard_chair`, `light_shaft`, `lighthouse`, `lost_shelf`, `meat_hook`, `metal_shelving`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `mushroom_lamp`, `music_box`, `nightmare_bloom`, `notice_board`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_lounger`, `pool_umbrella`, `popcorn_cart`, `porthole`, `pot_rack`, `price_tag`, `punch_clock`, `quarter_pipe`, `radiation_sign`, `range_hood`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `robot_arm`, `rocking_chair`, `roller_shutter`, `round_table`, `sale_banner`, `saucer_pendant`, `school_desk`, `scoreboard`, `sea_buoy`, `sea_vent`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `shower_stall`, `sink_row`, `skiff`, `slot_machine`, `space_divider`, `sputnik_lamp`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `star_projector`, `steel_table`, `stocks`, `stone_altar`, `street_drain`, `submarine`, `sun_viewport`, `t_pillar`, `tanker_desk`, `temple_dome`, `thoughtform`, `ticket_booth`, `toilet_paper`, `toilet_stall`, `track_bed`, `trophy_case`, `tube_map`, `tulip_chair`, `tulip_table`, `turnstile`, `umbrella_stand`, `urinal`, `wall_padding`, `wall_plaques`, `wall_shelf`, `wall_torch`, `warning_tape`, `washer`, `world_clocks`
+`barber_mirror`, `bare_bulb`, `bigtop`, `broom`, `car_panel`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `dryer`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `grow_lamp`, `hand_dryer`, `house_stairs`, `impossible_stair`, `infinity_pool`, `iso_tank`, `keypad`, `kitchen_range`, `lap_pool`, `lava_lamp`, `lava_lamp_floor`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `metal_shelving`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `range_hood`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `roller_shutter`, `sale_banner`, `serving_line`, `shaft_window`, `shag_rug`, `shower_stall`, `sink_row`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `steel_table`, `street_drain`, `submarine`, `sun_viewport`, `temple_dome`, `thoughtform`, `toilet_paper`, `toilet_stall`, `track_bed`, `tube_map`, `turnstile`, `urinal`, `wall_padding`, `wall_plaques`, `wall_shelf`, `warning_tape`, `washer`, `world_clocks`
 
-**Procs that already wear a real model** (14: the builder hangs a model file over its own pieces, which only
+**Procs that already wear a real model** (76: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:
 
-`candle_ring` (candle), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `fortune_tent` (crystalBall, fortune_teller_tent), `garden_tree` (a retro-pack tree), `locker_bench` (city_bench), `lone_gun` (pistol), `park_bench` (city_bench), `parked_car` (honda civic), `retro_console` (retro_control_panel), `saucer_rig` (saucer_lg), `sword_stone` (sword), `tape_shelf` (vhs_player)
+`anemone` (anemone), `armour_stand` (armour_stand_post, armour_stand), `autopsy_table` (autopsy_table), `banner` (banner), `barber_chair` (barber_chair), `barber_pole` (barber_pole), `boiler` (boiler), `candle_ring` (candle), `card_catalogue` (card_catalogue), `carousel` (carousel_horse, carousel), `cave_torch` (cave_torch), `conveyor` (conveyor), `conveyor_z` (conveyor), `departures_board` (departures_board), `directory_board` (directory_board), `disc_cluster` (disc_cluster), `door_furnace` (door_furnace), `dream_eye` (dream_eye), `eeg_rack` (eeg_rack), `egg_chair` (egg_chair), `exec_desk` (exec_desk), `ferris_wheel` (ferris_wheel, ferris_gondola, ferris_wheel_wheel), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `flood_mast` (flood_mast), `fortune_tent` (crystalBall, fortune_teller_tent), `fountain` (fountain), `garden_tree` (a retro-pack tree), `giant_clam` (giant_clam), `high_striker` (high_striker), `laminator` (laminator), `laundry_cart` (laundry_cart), `lifeguard_chair` (lifeguard_chair), `lighthouse` (lighthouse), `locker_bench` (city_bench), `lone_gun` (pistol), `meat_hook` (meat_hook), `mushroom_lamp` (mushroom_lamp), `music_box` (music_box, music_box_dancer), `nightmare_bloom` (nightmare_bloom), `notice_board` (notice_board), `park_bench` (city_bench), `parked_car` (honda civic), `pool_lounger` (pool_lounger), `popcorn_cart` (popcorn_cart), `pot_rack` (pot_rack), `punch_clock` (punch_clock), `retro_console` (retro_control_panel), `robot_arm` (robot_arm), `rocking_chair` (rocking_chair), `round_table` (round_table), `saucer_pendant` (saucer_pendant), `saucer_rig` (saucer_lg), `school_desk` (school_desk), `scoreboard` (scoreboard), `sea_buoy` (sea_buoy), `sea_vent` (sea_vent), `server_rack` (server_rack), `skiff` (skiff), `slot_machine` (slot_machine), `space_divider` (space_divider), `sputnik_lamp` (sputnik_lamp), `star_projector` (star_projector), `stocks` (stocks), `stone_altar` (stone_altar), `sword_stone` (sword), `t_pillar` (t_pillar), `tanker_desk` (tanker_desk), `tape_shelf` (vhs_player), `ticket_booth` (ticket_booth), `trophy_case` (trophy_case, trophy_cup), `tulip_chair` (tulip_chair), `tulip_table` (tulip_table), `umbrella_stand` (umbrella_stand, umbrella_closed), `wall_torch` (wall_torch_bracket)
 
 Besides the catalogue, the battle maps' near settings, horizons and monuments have procedural families too
 (the `_hz*` / `_nr*` builders): MODEL_INDEX.md §8 lists them.
@@ -1401,6 +1560,9 @@ old per-zone wishlists in MODEL_INDEX.md §3f-3p / §6b. Every stand-in falls in
 Meshy process (mondo's): concept image first -> mondo approves -> model in low-poly smart topology -> mondo names redos.
 Target tris are doubled per mondo (MPFB bodies ~30k). Concept rules: one object, plain background, no strings / chains / cords, screens and signs blank. Wiring a model into the
 game (giving the catalogue row a `file` and dropping its `proc`) is a separate step, only on mondo's say.
+**2026-11-03 mondo said wire them:** the 71 models Meshy made are in (rows marked WIRED). Each proc builder now WEARS its model
+(three-renderer.js THE MESHY DECOR, `_hqDecorWear`, files on R2 `Assets/decor/`): the catalogue rows are unchanged, the proc's
+own pieces hide (and keep the collision) and the model is fitted into their box. Rows not marked were not made on Meshy.
 
 ### 10A. Needs a NEW model (89) — stand-ins placed in rooms that no model in the game fits
 
@@ -1410,55 +1572,55 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | # | catalogue key | prop | uses | target tris | concept prompt |
 | --- | --- | --- | --- | --- | --- |
 | D01 | `bare_bulb` | Bare ceiling bulb | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord |
-| D02 | `cave_torch` | Standing torch | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
+| D02 | `cave_torch` | Standing torch — **WIRED 2026-11-03** | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
 | D03 | `steel_table` | Steel work table | 43 | 6000 | A stainless steel work table with a lower shelf and square legs, brushed metal |
-| D04 | `flood_mast` | Floodlight mast | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
+| D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
 | D05 | `metal_shelving` | Steel storage shelving (also lost_shelf) | 38 | 12000 | A grey steel storage shelving unit with four shelves holding cardboard boxes and plastic bins |
-| D06 | `notice_board` | Cork notice board | 37 | 4000 | A wall-mounted cork notice board in a wooden frame with pinned paper notices, memos and a calendar, no readable text |
-| D07 | `t_pillar` | Göbekli T-pillar (Ley Lines) | 34 | 16000 | A Göbekli Tepe style megalithic T-shaped limestone pillar about 4.5 metres tall, weathered pale stone, a fox and a boar carved in low relief on its side and arms carved in relief along the shaft |
-| D08 | `wall_torch` | Wall torch sconce | 32 | 4000 | A medieval iron wall sconce bolted to a small iron plate, holding a wooden torch with a charred unlit head |
+| D06 | `notice_board` | Cork notice board — **WIRED 2026-11-03** | 37 | 4000 | A wall-mounted cork notice board in a wooden frame with pinned paper notices, memos and a calendar, no readable text |
+| D07 | `t_pillar` | Göbekli T-pillar (Ley Lines) — **WIRED 2026-11-03** | 34 | 16000 | A Göbekli Tepe style megalithic T-shaped limestone pillar about 4.5 metres tall, weathered pale stone, a fox and a boar carved in low relief on its side and arms carved in relief along the shaft |
+| D08 | `wall_torch` | Wall torch sconce — **WIRED 2026-11-03** | 32 | 4000 | A medieval iron wall sconce bolted to a small iron plate, holding a wooden torch with a charred unlit head |
 | D09 | `iso_tank` | Cryo / isolation tank | 29 | 16000 | A sci-fi cryogenic isolation tank: a horizontal capsule with a frosted glass lid on a metal base, pipes and valves along its side, a small blank indicator panel |
-| D10 | `tanker_desk` | Steel tanker desk | 27 | 8000 | A grey 1960s steel tanker office desk with a stack of drawers on one side and a pale green top |
+| D10 | `tanker_desk` | Steel tanker desk — **WIRED 2026-11-03** | 27 | 8000 | A grey 1960s steel tanker office desk with a stack of drawers on one side and a pale green top |
 | D11 | `wall_shelf` | Wall shelf | 25 | 4000 | A simple wooden wall shelf on two black iron brackets holding a few jars and old books |
-| D12 | `server_rack` | Server rack | 21 | 12000 | A tall black computer server rack cabinet with a perforated mesh door and rows of rack servers inside, blank status lights |
-| D13 | `saucer_pendant` | Space-age saucer pendant lamp | 21 | 4000 | A 1960s space-age flying-saucer shaped ceiling pendant lamp in white and chrome on a short rigid stem to a round ceiling canopy |
-| D14 | `slot_machine` | Slot machine | 18 | 10000 | A vintage casino slot machine cabinet with a pull lever on the side, three reels, chrome trim and red paint, blank glass |
-| D15 | `armour_stand` | Knight armour on a stand | 17 | 20000 | A full suit of medieval knight plate armour displayed upright on a wooden stand, empty with nobody inside, helmet with the visor down |
+| D12 | `server_rack` | Server rack — **WIRED 2026-11-03** | 21 | 12000 | A tall black computer server rack cabinet with a perforated mesh door and rows of rack servers inside, blank status lights |
+| D13 | `saucer_pendant` | Space-age saucer pendant lamp — **WIRED 2026-11-03** | 21 | 4000 | A 1960s space-age flying-saucer shaped ceiling pendant lamp in white and chrome on a short rigid stem to a round ceiling canopy |
+| D14 | `slot_machine` | Slot machine — **WIRED 2026-11-03** | 18 | 10000 | A vintage casino slot machine cabinet with a pull lever on the side, three reels, chrome trim and red paint, blank glass |
+| D15 | `armour_stand` | Knight armour on a stand — **WIRED 2026-11-03** | 17 | 20000 | A full suit of medieval knight plate armour displayed upright on a wooden stand, empty with nobody inside, helmet with the visor down |
 | D16 | `radiation_sign` | Radiation warning sign | 17 | 1000 | A metal wall sign plate with the yellow and black radiation trefoil hazard symbol, bolted corners, slightly worn, no text |
 | D17 | `planter` | Concrete planter | 17 | 8000 | A long rectangular concrete planter box filled with soil and leafy green shrubs |
-| D18 | `stone_altar` | Stone altar | 15 | 6000 | An ancient carved stone altar block, rectangular, weathered grey stone with worn engraved bands |
-| D19 | `sea_buoy` | Channel buoy | 12 | 8000 | A red navigation channel buoy: a round float with a short lattice tower and a lamp at the top |
-| D20 | `egg_chair` | Egg chair | 12 | 12000 | A 1960s retro egg chair, white fibreglass shell with an orange cushioned interior, on a swivel base |
-| D21 | `pool_lounger` | Pool lounger | 12 | 6000 | A white poolside sun lounger with an adjustable backrest and slatted frame |
-| D22 | `boiler` | Basement boiler | 11 | 12000 | An old cast-iron basement boiler furnace with a round firebox door, a pressure gauge and pipes rising from the top |
-| D23 | `fountain` | Park fountain | 11 | 16000 | A classical stone park fountain with a round basin and a tiered central column with two smaller bowls, no water |
-| D24 | `banner` | Heraldic banner | 11 | 4000 | A medieval heraldic banner of red cloth with a gold lion emblem and a pointed bottom edge, hanging straight from a short wooden crossbar |
+| D18 | `stone_altar` | Stone altar — **WIRED 2026-11-03** | 15 | 6000 | An ancient carved stone altar block, rectangular, weathered grey stone with worn engraved bands |
+| D19 | `sea_buoy` | Channel buoy — **WIRED 2026-11-03** | 12 | 8000 | A red navigation channel buoy: a round float with a short lattice tower and a lamp at the top |
+| D20 | `egg_chair` | Egg chair — **WIRED 2026-11-03** | 12 | 12000 | A 1960s retro egg chair, white fibreglass shell with an orange cushioned interior, on a swivel base |
+| D21 | `pool_lounger` | Pool lounger — **WIRED 2026-11-03** | 12 | 6000 | A white poolside sun lounger with an adjustable backrest and slatted frame |
+| D22 | `boiler` | Basement boiler — **WIRED 2026-11-03** | 11 | 12000 | An old cast-iron basement boiler furnace with a round firebox door, a pressure gauge and pipes rising from the top |
+| D23 | `fountain` | Park fountain — **WIRED 2026-11-03** | 11 | 16000 | A classical stone park fountain with a round basin and a tiered central column with two smaller bowls, no water |
+| D24 | `banner` | Heraldic banner — **WIRED 2026-11-03** | 11 | 4000 | A medieval heraldic banner of red cloth with a gold lion emblem and a pointed bottom edge, hanging straight from a short wooden crossbar |
 | D25 | `lava_lamp` | Lava lamp | 10 | 3000 | A 1970s lava lamp on a chrome cone base with orange wax blobs inside the glass |
 | D26 | `concrete_pillar` | Garage concrete pillar | 9 | 2000 | A square reinforced concrete parking garage pillar with chipped corners and a yellow and black hazard stripe band near the base |
-| D27 | `stocks` | Medieval stocks | 9 | 6000 | Medieval wooden pillory stocks with holes for the head and hands, on two wooden posts |
-| D28 | `school_desk` | School desk | 9 | 6000 | An old school desk with an attached seat, a wooden top and a steel tube frame |
+| D27 | `stocks` | Medieval stocks — **WIRED 2026-11-03** | 9 | 6000 | Medieval wooden pillory stocks with holes for the head and hands, on two wooden posts |
+| D28 | `school_desk` | School desk — **WIRED 2026-11-03** | 9 | 6000 | An old school desk with an attached seat, a wooden top and a steel tube frame |
 | D29 | `toilet_paper` | Toilet paper roll | 8 | 1000 | A single roll of white toilet paper |
-| D30 | `tulip_chair` | Tulip chair | 8 | 6000 | A white tulip chair with a red seat cushion on a single pedestal base |
-| D31 | `tulip_table` | Tulip table | 8 | 4000 | A white round tulip table on a single pedestal base |
-| D32 | `eeg_rack` | EEG machine trolley | 8 | 8000 | A medical trolley holding an EEG monitoring machine with a blank screen and knobs |
+| D30 | `tulip_chair` | Tulip chair — **WIRED 2026-11-03** | 8 | 6000 | A white tulip chair with a red seat cushion on a single pedestal base |
+| D31 | `tulip_table` | Tulip table — **WIRED 2026-11-03** | 8 | 4000 | A white round tulip table on a single pedestal base |
+| D32 | `eeg_rack` | EEG machine trolley — **WIRED 2026-11-03** | 8 | 8000 | A medical trolley holding an EEG monitoring machine with a blank screen and knobs |
 | D33 | `lava_lamp_floor` | Floor lava lamp | 7 | 4000 | A tall floor-standing 1970s lava lamp about 1.5 metres tall, chrome base, orange wax blobs in a tall glass column |
-| D34 | `disc_cluster` | Disc cluster ceiling lamp | 7 | 6000 | A 1970s ceiling lamp made of a cluster of white discs on rigid chrome rods from a chrome canopy |
-| D35 | `sputnik_lamp` | Sputnik chandelier | 6 | 6000 | A brass sputnik chandelier: a central sphere with radiating rods each ending in a small bulb |
-| D36 | `dream_eye` | Eye on a stalk (Astral) | 6 | 12000 | A surreal giant eyeball with eyelids on a thick fleshy stalk growing from the ground |
+| D34 | `disc_cluster` | Disc cluster ceiling lamp — **WIRED 2026-11-03** | 7 | 6000 | A 1970s ceiling lamp made of a cluster of white discs on rigid chrome rods from a chrome canopy |
+| D35 | `sputnik_lamp` | Sputnik chandelier — **WIRED 2026-11-03** | 6 | 6000 | A brass sputnik chandelier: a central sphere with radiating rods each ending in a small bulb |
+| D36 | `dream_eye` | Eye on a stalk (Astral) — **WIRED 2026-11-03** | 6 | 12000 | A surreal giant eyeball with eyelids on a thick fleshy stalk growing from the ground |
 | D37 | `pool_umbrella` | Pool umbrella | 6 | 4000 | An open patio pool umbrella with a white and blue striped canopy on a pole with a weighted base |
-| D38 | `robot_arm` | Industrial robot arm | 6 | 12000 | An industrial yellow six-axis robotic arm on a floor base with a gripper |
-| D39 | `ticket_booth` | Carnival ticket booth | 6 | 12000 | A carnival ticket booth: a small red and white striped wooden kiosk with a window and a little peaked roof |
-| D40 | `anemone` | Sea anemone | 5 | 6000 | A sea anemone with many soft pink tentacles on a small rock |
+| D38 | `robot_arm` | Industrial robot arm — **WIRED 2026-11-03** | 6 | 12000 | An industrial yellow six-axis robotic arm on a floor base with a gripper |
+| D39 | `ticket_booth` | Carnival ticket booth — **WIRED 2026-11-03** | 6 | 12000 | A carnival ticket booth: a small red and white striped wooden kiosk with a window and a little peaked roof |
+| D40 | `anemone` | Sea anemone — **WIRED 2026-11-03** | 5 | 6000 | A sea anemone with many soft pink tentacles on a small rock |
 | D42 | `grow_lamp` | Grow lamp | 5 | 3000 | A hydroponic grow light fixture: a rectangular reflector hood with a purple LED panel on short rigid hanger rods |
-| D43 | `star_projector` | Planetarium star projector | 4 | 12000 | A planetarium star projector, a dumbbell-shaped machine with two studded spheres on a pedestal |
-| D44 | `meat_hook` | Meat hook rail | 4 | 3000 | A short steel butcher's rail with three S-shaped meat hooks hanging from it on rigid hooks, no chains |
-| D45 | `laundry_cart` | Laundry cart | 4 | 4000 | A laundry cart: a canvas bin on a metal frame with casters |
-| D46 | `umbrella_stand` | Umbrella stand | 4 | 4000 | A brass umbrella stand holding two closed umbrellas |
-| D47 | `lifeguard_chair` | Lifeguard chair | 4 | 8000 | A tall white wooden lifeguard chair with a ladder |
-| D48 | `conveyor` | Roller conveyor (also conveyor_z) | 4 | 8000 | An industrial roller conveyor section about 3 metres long on steel legs |
-| D49 | `popcorn_cart` | Popcorn cart | 4 | 10000 | A vintage red popcorn cart with a glass case full of popcorn and spoked wagon wheels |
-| D50 | `sea_vent` | Black smoker vent | 3 | 8000 | A deep sea hydrothermal vent chimney, a tall black smoker of dark rock |
-| D51 | `nightmare_bloom` | Flower of teeth (Astral) | 3 | 10000 | A surreal giant flower whose petals are rows of bone-white teeth on a thick dark stem |
+| D43 | `star_projector` | Planetarium star projector — **WIRED 2026-11-03** | 4 | 12000 | A planetarium star projector, a dumbbell-shaped machine with two studded spheres on a pedestal |
+| D44 | `meat_hook` | Meat hook rail — **WIRED 2026-11-03** | 4 | 3000 | A short steel butcher's rail with three S-shaped meat hooks hanging from it on rigid hooks, no chains |
+| D45 | `laundry_cart` | Laundry cart — **WIRED 2026-11-03** | 4 | 4000 | A laundry cart: a canvas bin on a metal frame with casters |
+| D46 | `umbrella_stand` | Umbrella stand — **WIRED 2026-11-03** | 4 | 4000 | A brass umbrella stand holding two closed umbrellas |
+| D47 | `lifeguard_chair` | Lifeguard chair — **WIRED 2026-11-03** | 4 | 8000 | A tall white wooden lifeguard chair with a ladder |
+| D48 | `conveyor` | Roller conveyor (also conveyor_z) — **WIRED 2026-11-03** | 4 | 8000 | An industrial roller conveyor section about 3 metres long on steel legs |
+| D49 | `popcorn_cart` | Popcorn cart — **WIRED 2026-11-03** | 4 | 10000 | A vintage red popcorn cart with a glass case full of popcorn and spoked wagon wheels |
+| D50 | `sea_vent` | Black smoker vent — **WIRED 2026-11-03** | 3 | 8000 | A deep sea hydrothermal vent chimney, a tall black smoker of dark rock |
+| D51 | `nightmare_bloom` | Flower of teeth (Astral) — **WIRED 2026-11-03** | 3 | 10000 | A surreal giant flower whose petals are rows of bone-white teeth on a thick dark stem |
 | D52 | `broom` | Broom | 3 | 2000 | A traditional straw broom with a wooden handle |
 | D53 | `serving_line` | Cafeteria serving counter | 3 | 10000 | A cafeteria serving counter with a glass sneeze guard shelf and empty steel food trays |
 | D54 | `pod_bed` | Capsule sleep pod | 3 | 12000 | A futuristic capsule sleep pod bed with a curved canopy cover, white and grey |
@@ -1466,47 +1628,47 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | D56 | `washer` | Washing machine | 3 | 6000 | A white front-loading washing machine |
 | D57 | `dryer` | Tumble dryer | 3 | 6000 | A white front-loading tumble dryer |
 | D58 | `toilet_stall` | Toilet stall | 3 | 8000 | A public restroom toilet stall with grey partition walls, an open door and a white toilet inside |
-| D59 | `round_table` | Round table (Camelot) | 3 | 30000 | A huge round oak table for twelve with twelve high-backed carved wooden chairs around it |
-| D60 | `departures_board` | Departures board | 3 | 3000 | A railway station departures board: a black rectangular split-flap board in a metal frame, blank with no letters |
-| D61 | `barber_chair` | Barber chair | 2 | 12000 | A vintage barber chair in red leather and chrome with a footrest and hydraulic base |
-| D62 | `barber_pole` | Barber pole | 2 | 2000 | A wall-mounted barber pole: a red, white and blue spiral glass cylinder between chrome caps |
+| D59 | `round_table` | Round table (Camelot) — **WIRED 2026-11-03** | 3 | 30000 | A huge round oak table for twelve with twelve high-backed carved wooden chairs around it |
+| D60 | `departures_board` | Departures board — **WIRED 2026-11-03** | 3 | 3000 | A railway station departures board: a black rectangular split-flap board in a metal frame, blank with no letters |
+| D61 | `barber_chair` | Barber chair — **WIRED 2026-11-03** | 2 | 12000 | A vintage barber chair in red leather and chrome with a footrest and hydraulic base |
+| D62 | `barber_pole` | Barber pole — **WIRED 2026-11-03** | 2 | 2000 | A wall-mounted barber pole: a red, white and blue spiral glass cylinder between chrome caps |
 | D63 | `urinal` | Urinal | 2 | 3000 | A white wall-hung urinal |
 | D64 | `hand_dryer` | Hand dryer | 2 | 2000 | A wall-mounted stainless steel hand dryer |
 | D65 | `shower_stall` | Shower stall | 2 | 6000 | A white tiled shower stall with a chrome shower head |
-| D66 | `skiff` | Sailing skiff | 2 | 16000 | A small wooden sailing skiff about 5 metres long with one mast and a furled canvas sail |
-| D67 | `lighthouse` | Lighthouse | 2 | 20000 | A white and red striped lighthouse tower with a lantern room and a gallery railing at the top, on a stone base |
-| D68 | `trophy_case` | Trophy case | 2 | 10000 | A wooden glass-front trophy cabinet with gold trophies on its shelves |
-| D69 | `laminator` | Laminator | 2 | 1600 | A grey plastic desktop office laminating machine |
-| D70 | `exec_desk` | Executive desk | 2 | 10000 | A large mahogany executive desk with a leather inlay top and drawers |
-| D71 | `mushroom_lamp` | Mushroom lamp | 2 | 3000 | A 1970s mushroom table lamp with a glossy orange dome shade |
-| D72 | `space_divider` | Space-age room divider | 2 | 6000 | A 1960s room divider screen, a white panel with a pattern of circular cut-outs |
+| D66 | `skiff` | Sailing skiff — **WIRED 2026-11-03** | 2 | 16000 | A small wooden sailing skiff about 5 metres long with one mast and a furled canvas sail |
+| D67 | `lighthouse` | Lighthouse — **WIRED 2026-11-03** | 2 | 20000 | A white and red striped lighthouse tower with a lantern room and a gallery railing at the top, on a stone base |
+| D68 | `trophy_case` | Trophy case — **WIRED 2026-11-03** | 2 | 10000 | A wooden glass-front trophy cabinet with gold trophies on its shelves |
+| D69 | `laminator` | Laminator — **WIRED 2026-11-03** | 2 | 1600 | A grey plastic desktop office laminating machine |
+| D70 | `exec_desk` | Executive desk — **WIRED 2026-11-03** | 2 | 10000 | A large mahogany executive desk with a leather inlay top and drawers |
+| D71 | `mushroom_lamp` | Mushroom lamp — **WIRED 2026-11-03** | 2 | 3000 | A 1970s mushroom table lamp with a glossy orange dome shade |
+| D72 | `space_divider` | Space-age room divider — **WIRED 2026-11-03** | 2 | 6000 | A 1960s room divider screen, a white panel with a pattern of circular cut-outs |
 | D73 | `kitchen_range` | Commercial range | 2 | 10000 | A commercial stainless steel kitchen range with six burners and an oven |
 | D74 | `range_hood` | Range hood | 2 | 4000 | A stainless steel commercial kitchen range hood |
 | D75 | `chalkboard` | Chalkboard | 2 | 2000 | A blank green school chalkboard in a wooden frame with a chalk tray |
-| D76 | `door_furnace` | Incinerator furnace | 2 | 12000 | A large brick industrial incinerator furnace with a heavy iron door |
-| D77 | `carousel` | Carousel | 2 | 40000 | A vintage fairground carousel with painted horses on poles under a striped canopy |
-| D78 | `high_striker` | High striker | 2 | 8000 | A carnival high striker strength tester: a tall red and white tower with a bell at the top and a lever pad at the base |
-| D79 | `giant_clam` | Giant clam | 1 | 6000 | A giant clam with an open wavy-edged shell and a blue interior mantle |
+| D76 | `door_furnace` | Incinerator furnace — **WIRED 2026-11-03** | 2 | 12000 | A large brick industrial incinerator furnace with a heavy iron door |
+| D77 | `carousel` | Carousel — **WIRED 2026-11-03** | 2 | 40000 | A vintage fairground carousel with painted horses on poles under a striped canopy |
+| D78 | `high_striker` | High striker — **WIRED 2026-11-03** | 2 | 8000 | A carnival high striker strength tester: a tall red and white tower with a bell at the top and a lever pad at the base |
+| D79 | `giant_clam` | Giant clam — **WIRED 2026-11-03** | 1 | 6000 | A giant clam with an open wavy-edged shell and a blue interior mantle |
 | D80 | `sink_row` | Row of sinks | 1 | 8000 | A row of three white bathroom sinks set in a countertop with chrome taps |
 | D81 | `submarine` | Bathyscaphe submarine | 1 | 20000 | A small brass and riveted bathyscaphe research submarine with a round viewport and two lamps |
-| D82 | `directory_board` | Mall directory kiosk | 1 | 4000 | A free-standing mall directory kiosk with an illuminated panel showing a blank map |
-| D83 | `rocking_chair` | Rocking chair | 1 | 6000 | A wooden rocking chair |
-| D84 | `music_box` | Music box | 1 | 4000 | A small wooden music box with the lid open and a tiny ballerina inside |
-| D85 | `punch_clock` | Punch clock | 1 | 4000 | A vintage employee punch time clock with a card rack beside it |
-| D86 | `card_catalogue` | Card catalogue | 1 | 10000 | A library card catalogue cabinet: a wall of small wooden drawers with brass handles |
-| D87 | `pot_rack` | Pot rack | 1 | 8000 | A ceiling-hung iron kitchen pot rack on short rigid rods with copper pots and pans hanging from hooks |
-| D90 | `autopsy_table` | Autopsy table | 1 | 6000 | A stainless steel autopsy table with drain channels on a pedestal |
-| D91 | `ferris_wheel` | Ferris wheel | 1 | 40000 | A small fairground ferris wheel with gondola seats on a white steel frame |
-| D92 | `scoreboard` | Stadium scoreboard | 1 | 12000 | A big stadium scoreboard: a tall frame on legs with a large blank screen and a clock panel |
+| D82 | `directory_board` | Mall directory kiosk — **WIRED 2026-11-03** | 1 | 4000 | A free-standing mall directory kiosk with an illuminated panel showing a blank map |
+| D83 | `rocking_chair` | Rocking chair — **WIRED 2026-11-03** | 1 | 6000 | A wooden rocking chair |
+| D84 | `music_box` | Music box — **WIRED 2026-11-03** | 1 | 4000 | A small wooden music box with the lid open and a tiny ballerina inside |
+| D85 | `punch_clock` | Punch clock — **WIRED 2026-11-03** | 1 | 4000 | A vintage employee punch time clock with a card rack beside it |
+| D86 | `card_catalogue` | Card catalogue — **WIRED 2026-11-03** | 1 | 10000 | A library card catalogue cabinet: a wall of small wooden drawers with brass handles |
+| D87 | `pot_rack` | Pot rack — **WIRED 2026-11-03** | 1 | 8000 | A ceiling-hung iron kitchen pot rack on short rigid rods with copper pots and pans hanging from hooks |
+| D90 | `autopsy_table` | Autopsy table — **WIRED 2026-11-03** | 1 | 6000 | A stainless steel autopsy table with drain channels on a pedestal |
+| D91 | `ferris_wheel` | Ferris wheel — **WIRED 2026-11-03** | 1 | 40000 | A small fairground ferris wheel with gondola seats on a white steel frame |
+| D92 | `scoreboard` | Stadium scoreboard — **WIRED 2026-11-03** | 1 | 12000 | A big stadium scoreboard: a tall frame on legs with a large blank screen and a clock panel |
 
 ### 10B. Spell props still missing (from the spell look audit, docs: project files spell-vfx-audit/fix/MISSING_MODELS.md)
 
 | # | prop | spell | concept prompt |
 | --- | --- | --- | --- |
-| S01 | piano | Things That Go Bump (ghost) | A black upright piano with the lid closed |
-| S02 | sheep | Counting Sheep (dreameater) | A fluffy white cartoonish-realistic sheep standing |
+| S01 | piano | Things That Go Bump (ghost) — **WIRED 2026-11-03** | A black upright piano with the lid closed |
+| S02 | sheep | Counting Sheep (dreameater) — **WIRED 2026-11-03** | A fluffy white cartoonish-realistic sheep standing |
 | S03 | polaroid | Cryptid Vanish (loch ness monster) | An instant polaroid photograph showing a blurry photo of a lake, white frame |
-| S04 | tripod_machine | Tripod Sweep (martian) | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
+| S04 | tripod_machine | Tripod Sweep (martian) — **WIRED 2026-11-03** | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
 
 ### 10C. SWAPS TO MODELS ALREADY IN THE GAME — done 2026-11-03 (mondo: "go ahead and do the recommended replacements")
 
@@ -1544,6 +1706,41 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | `clipboard` | 26 | KEPT: wall-hung; the clipboard model lies flat on a desk |
 | `lost_shelf` | 4 | WAITS for the new steel shelving model (D05) |
 | `conveyor_z` | 1 | WAITS for the new conveyor model (D48) |
+
+### 10F. MESHY → ELBOLILLODURO PACK SWAPS — done 2026-11-03 (mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
+
+Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recentred, turned to face the way the Meshy model faced, and uploaded as `Assets/misc/ebd_<pack>_<item>.glb`; the catalogue row keeps its size (h / span), so only the look changed. Side-by-side sheets: project files `asset-packs/meshy-swap/`. All 14 packs are CC0.
+
+| key | Meshy file it replaced | new file | pack |
+| --- | --- | --- | --- |
+| `cash_register` | `Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb` | `ebd_pizzeria_cash_register.glb` | Pizzeria PSX |
+| `dumpster` | `Meshy_AI_dumpster_0727195512_texture.glb` | `ebd_diner_dumpster.glb` | DINER |
+| `trash_bin` | `Meshy_AI_trash_bin_0910054450_texture.glb` | `ebd_trailerpark_trash_bin.glb` | Trailer Park |
+| `city_bin` | `Meshy_AI_a_city_bin_0917065144_texture.glb` | `ebd_6twelve_city_bin.glb` | 6TWELVE |
+| `fire_extinguisher` | `Meshy_AI_a_fire_extinguisher_0903105310_texture.glb` | `ebd_6twelve_fire_extinguisher.glb` | 6TWELVE |
+| `coffee_maker` | `Meshy_AI_coffee_maker_0910054513_texture.glb` | `ebd_psx3_coffee_maker.glb` | Paquete de modelos psx 3 |
+| `microwave` | `Meshy_AI_beige_1980s_microwave_0910054901_texture.glb` | `ebd_psx3_microwave.glb` | Paquete de modelos psx 3 |
+| `water_cooler` | `Meshy_AI_a_water_cooler_0903105259_texture.glb` | `ebd_laundry_water_cooler.glb` | Laundry |
+| `mop` | `Meshy_AI_a_mop_0903105505_texture.glb` | `ebd_house_mop.glb` | House |
+| `tube_tv` | `Meshy_AI_a_tube_tv_0903102007_texture.glb` | `ebd_trailerpark_tube_tv.glb` | Trailer Park |
+| `retro_radio` | `Meshy_AI_retro_radio_0910054335_texture.glb` | `ebd_trailerpark_retro_radio.glb` | Trailer Park |
+| `rotary_phone` | `Meshy_AI_analog_phone_0910054719_texture.glb` | `ebd_vhsshop_rotary_phone.glb` | VHS Shop |
+| `wall_clock` | `Meshy_AI_a_clock_0903110243_texture.glb` | `ebd_trailerpark_wall_clock.glb` | Trailer Park |
+| `filing_cabinet` | `Meshy_AI_a_filing_cabinet_0903105233_texture.glb` | `ebd_laundry_filing_cabinet.glb` | Laundry |
+| `bus_shelter` | `Meshy_AI_bus_shelter_0917064913_texture.glb` | `ebd_busstop_bus_shelter.glb` | Bus stop |
+| `campfire` | `Meshy_AI_a_campfire_ring_0916235856_texture.glb` | `ebd_survival_campfire.glb` | Survival PSX |
+| `camping_tent` | `Meshy_AI_a_camping_tent_0922010306_texture.glb` | `ebd_survival_camping_tent.glb` | Survival PSX |
+| `ship_lantern` (+ the ships' `lantern`) | `Meshy_AI_a_hanging_lantern_0912231043_texture.glb` | `ebd_survival_lantern.glb` | Survival PSX |
+| `fallen_log` | `Meshy_AI_a_fallen_log_0916235700_texture.glb` | `ebd_vegetation_fallen_log.glb` | Vegetation |
+| `stump` | `Meshy_AI_a_stump_0916235717_texture.glb` | `ebd_vegetation_stump.glb` | Vegetation |
+| `rowboat` | `Meshy_AI_a_rowboat_0912231059_texture.glb` | `ebd_housesonwater_rowboat.glb` | Houses on the water |
+| `locker` | `Meshy_AI_a_locker_0903105424_texture.glb` | `ebd_mine_locker.glb` | Mine |
+| `vending_machine` | `Meshy_AI_a_round_vending_machine_0903105625_texture.glb` | `ebd_laundry_vending_machine.glb` | Laundry |
+| `sink` | `Meshy_AI_a_sink_0903105415_texture.glb` | `ebd_burgerpiz_sink.glb` | BurgerPiz |
+| `table_lamp` | `Meshy_AI_a_lamp_0903110007_texture.glb` | `ebd_trailerpark_table_lamp.glb` | Trailer Park |
+| `desk_lamp` | `Meshy_AI_an_office_desk_lamp_0903110208_texture.glb` | `ebd_house_desk_lamp.glb` | House |
+
+Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a blue city bus), `cardboard_box` / `cardboard_boxes` (the packs have produce crates and plastic totes), `wooden_bucket` (metal pail only), `car_cop` (already drawn by the low-poly car pack; the Meshy file is only its fallback), fridges, `signpost`, roads, urban buildings (mondo: later).
 
 ### 10D. NOT A MODEL JOB (60) — decals, lit windows/screens, text, walkable steps/ramps, water, effects
 

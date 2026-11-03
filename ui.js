@@ -7939,7 +7939,7 @@
                     <div class="pm-set-group-title">Display</div>
                     ${inBattle ? `<div class="pm-set-toggles">
                         <label class="pm-toggle"><input type="checkbox" ${animChecked} onchange="var cb=document.getElementById('animToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Animation</span></label>
-                        <label class="pm-toggle"><input type="checkbox" ${cinematicChecked} onchange="document.getElementById('cinematicToggle').checked=this.checked;state.cinematicMode=this.checked;"><span class="pm-toggle-label">Cinematic</span></label>
+                        <label class="pm-toggle"><input type="checkbox" ${cinematicChecked} onchange="window._setCinematicMode(this.checked);"><span class="pm-toggle-label">Cinematic</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${cameraChecked} onchange="var cb=document.getElementById('cameraToggleBattle');if(cb){cb.checked=this.checked;cb.dispatchEvent(new Event('change'));}"><span class="pm-toggle-label">Camera Follow</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${actionCamChecked} onchange="window._setCinematicActionCam(this.checked);"><span class="pm-toggle-label">Action Cam</span><span class="pm-toggle-hint">cinematic attack shots</span></label>
                     </div>` : ''}
@@ -8076,9 +8076,9 @@
                     ${inBattle ? `<div class="pm-set-row pm-setting-row" style="margin-top:6px">
                         <span class="pm-setting-label">Nametags</span>
                         <div class="pm-seg-group">
-                            <button class="pm-seg-btn${nametagMode==='name'?' active':''}" onclick="state.nametagMode='name';markDirty('board');renderIfDirty();${RJ}">Name</button>
-                            <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="state.nametagMode='race';markDirty('board');renderIfDirty();${RJ}">Race</button>
-                            <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="state.nametagMode='none';markDirty('board');renderIfDirty();${RJ}">Lv</button>
+                            <button class="pm-seg-btn${nametagMode==='name'?' active':''}" onclick="window._setNametagMode('name');${RJ}">Name</button>
+                            <button class="pm-seg-btn${nametagMode==='race'?' active':''}" onclick="window._setNametagMode('race');${RJ}">Race</button>
+                            <button class="pm-seg-btn${nametagMode==='none'?' active':''}" onclick="window._setNametagMode('none');${RJ}">Lv</button>
                         </div>
                     </div>` : ''}
                     ${opts.extra || ''}
@@ -13607,6 +13607,7 @@
                 try { localStorage.setItem('ew_cinematicActionCam', state.cinematicActionCam ? '1' : '0'); } catch (e) {}
             } else if (which === 'camera') {
                 state.cameraDisabled = !state.cameraDisabled;
+                try { localStorage.setItem('ew_cameraDisabled', state.cameraDisabled ? '1' : '0'); } catch (e) {}
             } else if (which === 'staging') {
                 window.EW_DISABLE_SPELL_STAGING = !window.EW_DISABLE_SPELL_STAGING;
             } else if (which === 'grade') {
@@ -16801,9 +16802,9 @@
         if (devSimSpeed1Btn) devSimSpeed1Btn.onclick = () => setDevSimSpeed(1);
         if (devSimSpeed2Btn) devSimSpeed2Btn.onclick = () => setDevSimSpeed(2);
         if (devSimSpeed4Btn) devSimSpeed4Btn.onclick = () => setDevSimSpeed(4);
-        if (devSimBattleSpeed1Btn) devSimBattleSpeed1Btn.onclick = () => setDevSimSpeed(1);
-        if (devSimBattleSpeed2Btn) devSimBattleSpeed2Btn.onclick = () => setDevSimSpeed(2);
-        if (devSimBattleSpeed4Btn) devSimBattleSpeed4Btn.onclick = () => setDevSimSpeed(4);
+        if (devSimBattleSpeed1Btn) devSimBattleSpeed1Btn.onclick = () => window._setGameSpeed(1);   // the pause menu's Game Speed (saved, below)
+        if (devSimBattleSpeed2Btn) devSimBattleSpeed2Btn.onclick = () => window._setGameSpeed(2);
+        if (devSimBattleSpeed4Btn) devSimBattleSpeed4Btn.onclick = () => window._setGameSpeed(4);
         const devSimBattleSpeed16Btn = document.getElementById('devSimBattleSpeed16Btn');
         if (devSimBattleSpeed16Btn) devSimBattleSpeed16Btn.onclick = () => setDevSimSpeed(16);
 
@@ -16818,8 +16819,71 @@
 
         function onCameraToggle(e) {
             state.cameraDisabled = !e.target.checked;
+            // THE SAVED SETTINGS (2026-11-03): Camera Follow is kept like Animation —
+            // only the player's own toggle writes it (the sims flip cameraDisabled
+            // for a run and put it back, they never save it)
+            try { localStorage.setItem('ew_cameraDisabled', state.cameraDisabled ? '1' : '0'); } catch (err) {}
             syncCameraCheckboxes();
         }
+        try {
+            if (localStorage.getItem('ew_cameraDisabled') === '1') {
+                state.cameraDisabled = true;
+                ['cameraToggleBuilder', 'cameraToggleBuilder2', 'cameraToggleBattle'].forEach(id => {
+                    const cb = document.getElementById(id);
+                    if (cb) cb.checked = false;
+                });
+            }
+        } catch (err) {}
+
+        /* THE SAVED SETTINGS (2026-11-03, mondo: "the game never saves my settings like having the action cam turned
+           off. I have to keep turning it off every time i refresh the browser") — the battle's own toggles kept in
+           localStorage beside the rest of the sheet: Action Cam (ew_cinematicActionCam, no key = ON), Cinematic
+           (ew_cinematicMode), Nametags (ew_nametagMode) and the Game Speed ×1/×2/×4 (ew_gameSpeed). The dev sims'
+           turbo tiers (×8/×16) are never saved. */
+        window._ewActionCamPref = function () {
+            try { return localStorage.getItem('ew_cinematicActionCam') !== '0'; } catch (e) { return true; }
+        };
+        window._setCinematicMode = function (on) {
+            state.cinematicMode = !!on;
+            try { localStorage.setItem('ew_cinematicMode', state.cinematicMode ? '1' : '0'); } catch (e) {}
+            const cb = document.getElementById('cinematicToggle');
+            if (cb && cb.checked !== state.cinematicMode) cb.checked = state.cinematicMode;
+        };
+        const _NAMETAG_MODES = ['name', 'race', 'job', 'none'];
+        const _NAMETAG_ICONS = { name: '👤 Names', race: '🧬 Race', job: '⚔ Jobs', none: '🔢 Level' };
+        window._setNametagMode = function (mode) {
+            if (_NAMETAG_MODES.indexOf(mode) < 0) mode = 'name';
+            state.nametagMode = mode;
+            try { localStorage.setItem('ew_nametagMode', mode); } catch (e) {}
+            const b = document.getElementById('nametagToggleBtn');
+            if (b) b.textContent = _NAMETAG_ICONS[mode];
+            try { markDirty('board'); renderIfDirty(); } catch (e) {}
+        };
+        window._cycleNametagMode = function () {
+            window._setNametagMode(_NAMETAG_MODES[(_NAMETAG_MODES.indexOf(state.nametagMode) + 1) % _NAMETAG_MODES.length]);
+        };
+        window._setGameSpeed = function (n) {
+            n = Number(n);
+            if (n !== 1 && n !== 2 && n !== 4) return;
+            setDevSimSpeed(n);
+            try { localStorage.setItem('ew_gameSpeed', String(n)); } catch (e) {}
+        };
+        try {
+            state.cinematicActionCam = window._ewActionCamPref();
+            if (localStorage.getItem('ew_cinematicMode') === '1') {
+                state.cinematicMode = true;
+                const cb = document.getElementById('cinematicToggle');
+                if (cb) cb.checked = true;
+            }
+            const _ntm = localStorage.getItem('ew_nametagMode');
+            if (_NAMETAG_MODES.indexOf(_ntm) >= 0) {
+                state.nametagMode = _ntm;
+                const b = document.getElementById('nametagToggleBtn');
+                if (b) b.textContent = _NAMETAG_ICONS[_ntm];
+            }
+            const _gs = Number(localStorage.getItem('ew_gameSpeed'));
+            if (_gs === 2 || _gs === 4) state.devSimSpeed = _gs;
+        } catch (e) {}
 
         // Cinematic action camera ("Action Cam" pause toggle / dev-bar "3P"):
         // swoops behind the caster for offensive actions (see
@@ -18484,12 +18548,15 @@
 
             try {
                 // Camera modes are retired — the camera is contextual
-                // (battle.js). Action shots are always on; the stored
-                // ew_cameraMode preference is ignored.
+                // (battle.js); the stored ew_cameraMode preference is ignored.
+                // THE SAVED SETTINGS (2026-11-03, mondo: "the game never saves my
+                // settings like having the action cam turned off"): the Action Cam
+                // toggle is the player's — it used to be forced back ON here and in
+                // battle.js getCameraMode, so OFF lasted until the next refresh.
                 state.cameraMode = 'tactical';
-                state.cinematicActionCam = true;
+                state.cinematicActionCam = window._ewActionCamPref();
                 var _acDevCb = document.getElementById('actionCamToggleBattle');
-                if (_acDevCb) _acDevCb.checked = true;
+                if (_acDevCb) _acDevCb.checked = state.cinematicActionCam;
             } catch(e) {}
         }, {
             once: true
