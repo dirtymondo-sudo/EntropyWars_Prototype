@@ -503,7 +503,10 @@ const HZ = (function () {
     const STOP = /^(_miscModelInstance|_loadMiscModel|_animalBuild|_hqModelUrl|_hqTex|_hqMat|_mulberry32|_disposeR|_hzLit|_hzAt|_hzTex|_hzGeoMat|_hzGlowMat|_hzGlowSprite|_hzPulse|_hzKitTile|_hzRockPick|_hzPropLitPick|_hzPropLitLiftPick|_hzMiscUnlitPick|_hzMiscKit|_hzMiscGLB|_hzPropGLB|_hzDoorKitGLB|_hzVehicle|_hzRock|_hzRockProc|_nrRectRing|_wdRing|_nrUV|_nrSquashUV|_nrInjectWorld|_hzTextTex|_hzStripeTex|_hzScorchTex|_nrPicketTex|_hzFacTex\w*)$|Tex$|Mat$|Pick$|Haze|Fog/;
     const SHAPE = /new THREE\.(\w+?)(?:Buffer)?Geometry\b/g;
     function scan(code, depth, seen, out) {
-        for (const m of code.matchAll(/_hz(?:MiscKit|MiscGLB|PropGLB)\(\s*'(\w+)'/g)) out.models.add('misc:' + m[1]);
+        for (const m of code.matchAll(/_hz(?:MiscKit|MiscGLB|PropGLB)\(\s*'(\w+)'/g)) if (miscKeys.has(m[1]) || !/url:/.test(code)) out.models.add('misc:' + m[1]);
+        for (const m of code.matchAll(/_HQ_DECOR_GLB\.(\w+)/g)) out.models.add('decor:' + m[1]);   // THE CODED SHAPES OUT (2026-11-03): a builder placing a Meshy decor model
+        for (const m of code.matchAll(/_oceanUrl\(\s*'(\w+)'/g)) out.models.add('ocean:' + m[1]);
+        if (/_oceanUrl\(\s*ROCKS/.test(code)) for (const m of code.matchAll(/'(Rock\d*)'/g)) out.models.add('ocean:' + m[1]);
         for (const m of code.matchAll(/_MISC_GLB(?:\.(\w+)|\[\s*'(\w+)'\s*\])/g)) out.models.add('misc:' + (m[1] || m[2]));
         for (const m of code.matchAll(/_hzDoorKitGLB\(\s*'(\w+)'/g)) out.models.add('door:' + m[1]);
         for (const m of code.matchAll(/_hzVehicle\(\s*'(\w+)'/g)) out.models.add('vehicle:' + m[1]);
@@ -530,7 +533,7 @@ const HZ = (function () {
         for (const k of [...out.models].sort()) {
             const [kind, key] = k.indexOf(':') > 0 ? [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)] : ['', k];
             const r = (kind === 'misc' || kind === 'vehicle') ? miscKeys.get(key) : kind === 'door' ? doorKeys.get(key) : kind === 'animal' ? animalKeys.get(key) : kind === 'decor' ? decorKeys.get(key) : null;
-            const label = '`' + key + '`' + (r && r.src ? ' (' + HOW[r.src.how].label + ')' : kind === 'vehicle' ? ' (the car pack, _CAR_PACK)' : kind === 'chess' ? " (mondo's upload, Assets/chess/)" : '');
+            const label = '`' + key + '`' + (r && r.src ? ' (' + HOW[r.src.how].label + ')' : kind === 'vehicle' ? ' (the car pack, _CAR_PACK)' : kind === 'chess' ? " (mondo's upload, Assets/chess/)" : kind === 'ocean' ? " (the ocean pack, mondo's upload, Assets/oceanic/)" : /^Assets\/props\//.test(key) ? ' (Meshy AI)' : '');
             if (!seenKey.has(key) || (r && r.src)) seenKey.set(key, label);
         }
         const models = [...seenKey.values()];

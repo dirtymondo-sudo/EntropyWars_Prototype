@@ -1233,3 +1233,17 @@ same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.r
   `fit: 'height'` made an 8.4 m pillar 5 m wide: a t_pillar placement's new `w` (metres, the head's width) stretches it in plan to `w`
   (its depth kept in the model's own proportion, 0.514·w) and keeps it `h` tall (three-renderer.js t_pillar proc, THE ONE SQUARE).
   Rows without `w` keep the plain height fit. Proof: a VS CPU battle on the arena, with the model queue drained.
+
+## THE CODED SHAPES OUT (2026-11-03, mondo, answering the "Coded shapes worth replacing" proposal: "All of the ones i said to replace and already have replacements ready, i want you to completely delete from the game and the code")
+Round 1 (three-renderer.js; the procedural builders deleted, the same names now place a model, so every map / roster / near setting / monument that named them gets the model):
+- `_hzRover` = the Meshy mars_rover (`_hzDoorKitGLB`), the Mars + Moon settings and the `rover` monument. The Mars setting's `fallback: _hzRover` went (it would recurse).
+- `_hzToadstool` = the Meshy fae cap (`mushroom`); `_hzFairyRing` = 8-10 small Meshy toadstools (`mushroom2`), each its own model, in a ring under the kept will-o-wisps.
+- `_hzCenser` = the Meshy censer (R2 Assets/props/censer.glb) stood on the ground, ember glow inside (the smoke ball went).
+- `_hzBrazier` = the Meshy standing torch (decor `cave_torch`) 2 tiles tall + a glow over the basket (mondo preferred it to the Meshy brazier).
+- `_hzLighthouse` = the Meshy decor lighthouse + its lamp glow. `_hzSeaIsland` (the cone island) deleted: the sea roster's islands are the palm isle; `_hzPalmIsleFar` lost its fallback.
+- the `whale` weenie = the ocean pack's Whale.fbx (turned 180°, like the catalogue's ocean_whale), not the humpback; the coded body deleted (pack off = no whale).
+- the `bergs` rim = the ocean pack's rocks (Rock, Rock1-3, Rock6-7) tinted ice, widened at random (pack off = no bergs).
+- `_hzFloatingIsland` deleted outright (rosters: the band goes to the next row, a last row's threshold moved to 1.00), the `island` monument + its 2 map placements + the editor entry gone.
+- NO SWELLS: `_WD_RIM.hills` + `.dunes` deleted (10 data.js rim rows dropped, the craters rim no longer adds hills), and the 8 ground `_nrMounds` calls (stonehenge, giza, antarctica, skinwalker, gobekli ×2, northpole, downtown); the 3 cloud-bank calls (heaven, olympus, saturn) stay.
+- `_hzMiscKit(key, { url })` places any model URL (decor, props, ocean pack) the misc way. list-models.js reads `_HQ_DECOR_GLB.x`, `_oceanUrl('X')` and url-placed props in §8b.
+- Headless check recipe that works: scratch patched copy exporting the builders + `window.EW_NO_OPT_ASSETS = true` + a 30 s wait (decor/props are meshopt, FBX streams slowly).
