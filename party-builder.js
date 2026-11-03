@@ -1275,7 +1275,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     const T = appearance.wearTint || {};
     const setT = (id, c, queued) => { const next = { ...T }; if (c) next[id] = c; else delete next[id]; (queued ? queueChange : changeAppearance)({ wearTint: next }); };
     return h(React.Fragment, null,
-      h('div', { className: 'pb-creator-colorlabel' }, 'Colours of the pieces you wear'),
+      h('div', { className: 'pb-creator-colorlabel' }, rows.some(r => window.wearFabricable && window.wearFabricable(r[0])) ? 'Colours + fabrics of the pieces you wear' : 'Colours of the pieces you wear'),
       rows.map(([id, label, cat]) => {
         /* one colour block: key = the wear id, or '<id>:band' for THE BAND TINT (2026-11-03: a hat's band coloured apart, sprites.js EW_WEAR_BANDS) */
         const block = (key, name, pick) => {
@@ -1292,8 +1292,25 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 h('label', { className: 'pb-creator-custom', title: 'Custom ' + name.toLowerCase() + ' colour' }, h('input', { type: 'color', value: cur, 'aria-label': 'Custom ' + name + ' colour', onChange: e => setT(key, e.target.value, true) }), h('i', null, '+')))) : null);
         };
         const band = (window.EW_WEAR_BANDS || []).includes(id);
+        /* THE PACK FABRICS (2026-11-03, mondo: "can we add the option to change the pants textures like cotton and leather"): a pack
+           pair of trousers (sprites.js wearFabricable) wears its own texture or any creator fabric (the Bottoms layer's tiles, the
+           same thumbnails) under its own shading, in the colour above (its own average colour while that is Original colours) */
+        const fabricRow = () => {
+          const F = appearance.wearFabric || {}, cur = F[id] || 'own';
+          const setF = (f) => { const next = { ...F }; if (f === 'own') delete next[id]; else next[id] = f; changeAppearance({ wearFabric: next }); };
+          const ids = ['own'].concat((ccEnums.bottomFabric || Object.keys(ccFabrics)).filter(f => f !== 'plain' && (ccFabrics[f] || {}).file));
+          return h(React.Fragment, null,
+            h('div', { className: 'pb-creator-colorlabel' }, shownName('wear', id, label) + ' fabric'),
+            h('div', { className: 'pb-cc-tiles pb-cc-fabrics pb-cc-compact', role: 'group', 'aria-label': shownName('wear', id, label) + ' fabric' },
+              ids.map(f => {
+                const def = f === 'own' ? { label: 'Original texture' } : (ccFabrics[f] || { label: f }), thumb = f === 'own' ? null : pbFabricThumbs[f];
+                return h('button', { key: f, className: 'pb-cc-tile pb-fabric-tile' + (thumb ? ' has-thumb' : '') + (f === 'own' ? ' plain' : ''), 'aria-pressed': cur === f, title: def.label,
+                  style: thumb ? { backgroundImage: 'url(' + thumb + ')' } : undefined, onClick: () => { if (cur !== f) setF(f); } }, h('span', null, _pbSoftWrap(def.label)));
+              })));
+        };
         return h('div', { key: id, className: 'pb-cc-weartint', 'data-cc-cam-own': ccWearFace(cat, label) ? 'face' : 'body' },
           block(id, shownName('wear', id, label), '#5a3b25'),   // (THE RENAMED PICKS)
+          window.wearFabricable && window.wearFabricable(id) ? fabricRow() : null,
           band ? block(id + ':band', 'Band', '#0f0d0c') : null);
       }));
   };

@@ -3502,6 +3502,22 @@ function normalizeWearTint(map, wear) {
   }
   return out;
 }
+/* THE PACK FABRICS (2026-11-03, mondo: "can we add the option to change the pants textures like cotton and leather and all that? Im not
+   seeing that option anywhere in the pants section"): appearance.wearFabric = { <worn wear id>: <EW_FABRICS key> }. A pack pair of
+   trousers (OUTFIT > LEGS > BOTTOMS) can wear any creator fabric (the tiles the Top / Bottoms / Outer layers use) under its own
+   texture's shading (three-renderer.js paintWear, THE PACK FABRICS), in its picked colour (wearTint) or its own average colour;
+   no entry = its own texture. 'plain' is left out (Original texture is the no-weave pick). The Blender bottoms take the Bottoms
+   fabric row as before (EW_WEAR_LAYER_OF), so they are not listed here. */
+function wearFabricable(id) { return wearTintable(id) && wearKindOf(id) === 'bottoms'; }
+function normalizeWearFabric(map, wear) {
+  const out = {};
+  if (!map || typeof map !== 'object' || Array.isArray(map)) return out;
+  for (const id of wear || []) {
+    const f = map[id];
+    if (wearFabricable(id) && typeof f === 'string' && f !== 'plain' && EW_FABRICS[f] && EW_FABRICS[f].file) out[id] = f;
+  }
+  return out;
+}
 // EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
 // THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
 // fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
@@ -3830,15 +3846,29 @@ for (const r of EW_MH_EYE_PACK) EW_MH_EYE_PACK_BY_ID[r[0]] = r;
 const EW_MH_WEAR_BY_ID = {};
 for (const w of EW_MH_WEAR) EW_MH_WEAR_BY_ID[w[0]] = w;
 function getWearUrl(id) { return EW_MH_WEAR_BY_ID[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + id + '.glb' : null; }
-/* a valid wear list: known ids, no repeats, one per single-pick category (the later pick wins), at most 24 */
+/* THE PACK'S MIS-FILED PIECES (2026-11-03, mondo: "putting on the viking boots removed my viking pants, and vice versa"): the
+   MakeHuman packs filed a few separates under Suits / Dresses (the viking boots, pants + tunic and the EMT uniform pants + jackets
+   are all "suits", the winter coat a "dress"), so the one-per-category rule below took one off when the other went on.
+   EW_WEAR_KIND = what such a piece really is: its one-pick kind here AND the category the renderer layers it by (three-renderer.js
+   buildWear: boots under the trouser legs like any shoes). A piece moved to the Coats shelf (EW_WEAR_SHELF_MOVE 'outer') picks as
+   a coat. Every other piece keeps its pack category. */
+const EW_WEAR_KIND = {
+  mhw_rehmanpolanski_viking_boots: 'shoes', mhw_rehmanpolanski_viking_pants: 'bottoms', mhw_rehmanpolanski_viking_tunic: 'tops',
+  mhw_elvs_emt_uniform_pants_female: 'bottoms', mhw_elvs_emt_uniform_pants_male: 'bottoms',
+};
+function wearKindOf(id) { const w = EW_MH_WEAR_BY_ID[id]; return w ? (EW_WEAR_KIND[id] || w[2]) : null; }
+const EW_WEAR_PICK_AS_COAT = ['mhw_elvs_emt_uniform_jacket_female', 'mhw_elvs_emt_uniform_jacket_male', 'mhw_punkduck_winter_coat'];
+function wearPickKindOf(id) { return EW_WEAR_PICK_AS_COAT.includes(id) ? 'outer' : wearKindOf(id); }
+/* a valid wear list: known ids, no repeats, one per single-pick kind (the later pick wins), at most 24 */
 function normalizeWearList(list) {
   if (!Array.isArray(list)) return [];
   const out = [], cat = {};
   for (const id of list) {
     const w = EW_MH_WEAR_BY_ID[id];
     if (!w || out.includes(id)) continue;
-    if (!EW_MH_WEAR_MULTI.includes(w[2]) && cat[w[2]] != null) out.splice(out.indexOf(cat[w[2]]), 1);
-    cat[w[2]] = id; out.push(id);
+    const k = wearPickKindOf(id);
+    if (!EW_MH_WEAR_MULTI.includes(k) && cat[k] != null) out.splice(out.indexOf(cat[k]), 1);
+    cat[k] = id; out.push(id);
   }
   return out.slice(-24);
 }
@@ -4649,6 +4679,7 @@ function normalizeCharacterAppearance(value) {
   }
   out.wear = normalizeWearList(value.wear);   // THE PACK CLOTHES (an MPFB body wears them)
   out.wearTint = normalizeWearTint(value.wearTint, out.wear);   // THE WEAR TINT (a worn pack piece's colour; left out = its own)
+  out.wearFabric = normalizeWearFabric(value.wearFabric, out.wear);   // THE PACK FABRICS (a worn pack pair of trousers' fabric; left out = its own)
   return out;
 }
 /* THE HIDDEN PICKS (2026-11-03, mondo: "a devtool that let's me remove models like certain clothes and hairstyles from the character
@@ -5116,7 +5147,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_HAIR_MATS = EW_MH_HAIR_MATS; window.getHairMaterial = getHairMaterial;   // THE HAIR MATERIALS
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT

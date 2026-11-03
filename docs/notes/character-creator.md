@@ -1346,3 +1346,24 @@ mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make
     taper (0.25, 0.22), sink 0.05 (was a disc standing off the lower back). --views on a tail = root close-ups on every body.
   - The saved werewolf look (bake-looks.js, input werewolf-fur/Entropy_Wars_Race_Looks_werewolf_meshy_fur.json): heavy, Wolf head, fur skin A,
     tail + feet A, hand claws, no shell. Still a SAVED look; the Meshy werewolf stays the unit default.
+
+## THE PACK'S MIS-FILED PIECES + THE PACK FABRICS (2026-11-03, character-models-plan row 12p)
+mondo: "putting on the viking boots removed my viking pants, and vice versa. Also can we add the option to change the pants textures
+like cotton and leather and all that? Im not seeing that option anywhere in the pants section".
+- CAUSE: the MakeHuman pack files the viking boots / pants / tunic and the EMT uniform pants / jackets under `suits` (the winter coat
+  under `dresses`). THE SHELVES only moved their tab; normalizeWearList's one-per-category rule still took one off.
+- FIX (sprites.js): `EW_WEAR_KIND` = what such a piece is (`wearKindOf(id)`); normalizeWearList keys its one-pick rule by
+  `wearPickKindOf` (EW_WEAR_KIND, then 'outer' for EW_WEAR_PICK_AS_COAT, then the pack category). three-renderer.js buildWear reads
+  EW_WEAR_KIND before the GLB's own `ex.cat`, so the viking boots layer as shoes (trouser legs over them, zOf -500) and the pants as
+  bottoms. A new mis-filed separate = one EW_WEAR_KIND line. Every other boot / trouser is in its right category (Domsjeans1 under
+  Shoes is a shoe, 12 cm tall).
+- FABRICS: `appearance.wearFabric = { id: EW_FABRICS key }` (normalizeWearFabric; `wearFabricable` = tintable + kind bottoms, so
+  only pack trousers; Blender bottoms keep the Bottoms fabric row). The creator shows "<piece> fabric" (Original texture + the
+  Bottoms layer's fabric tiles, 'plain' left out) under the piece's colour block in ccWearTints. Renderer paintWear: the fabric
+  tile (as a canvas pattern) x the piece's grey mask (_ccPackHairTexture), the piece's alpha kept, cached in _ccWearFabricCache;
+  tiles per UV unit = the fabric's tiles per metre x the garment's metres per UV (wearUvMetres, from its triangle areas); colour =
+  wearTint or the texture's own average (wearOwnColour); fabric roughness / metalness, restored on Original texture. The tile's own
+  colour multiplies in (as on the coded layers): leather browns, denim blues.
+- Known: the viking boots' fur wraps show through TIGHT jeans at the shin (they are wider than the jeans' leg); fine with the
+  viking / EMT / loose trousers. Shots /mnt/project-files/pack-fabrics/.
+
