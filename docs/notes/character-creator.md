@@ -1242,6 +1242,36 @@ is making the hair stick up in the back."
 - Shots: /mnt/project-files/coat-hang/.
 
 
+## THE FLAPS FIX (2026-11-03, character-models-plan row 9 pass 2)
+mondo on his Cowboy (closed Blender coat, Wide stance idle): "all of the coats have these 2 parts sticking up and out of the
+sides ... when the coats are closed the legs still clip through, and there is a bunch of flickering between the coat and the leg".
+Also his rule from the same message: clothes are fitted to the MPFB bodies only from now on, not the MPFB classic bodies.
+- **Cause** (reproduced in the creator stage, Playwright + swiftshader, MPFB male, the pose frozen with mixer.setTime): THE COAT
+  HANG chains, not the coat. With `EW_DISABLE_SWAY` the baked coat had no flaps (only a jeans spot). Four things in the chains:
+  the first bone was held on the hips' hang while the coat's own weights carry that cloth with the thighs, so in any stance the
+  thighs came out through it and the leg push shoved it out from right under its root (a straight bone swung far = a flap); the
+  chains were rooted at the hip joints, but the bake blends the thigh in from ~10-15 cm higher (0.1 at +10 cm, 0.6 at the joint),
+  so the cloth over the root rode the thighs up while the chain under it hinged (a corner at the waist); the thigh capsule began
+  at the hip ball, which sweeps out where no flesh goes; gravity 0.6 sagged the skirt ~13 deg into the legs at rest so the push
+  always fought it, and the push left the cloth exactly on the jeans (the flicker).
+- **Fix** (three-renderer.js COAT_HANG + coatHang / hangFit / hangTick, runtime only, no GLB rebake): `rootFollow` (bone 0 aims at
+  the coat's own follow target like the rest); `rootUp` 0.25 / `rootW` 0.01 (the chain root `yR` = the top of the band over the hip
+  joints where the cloth's thigh weight is still >= 1 %; the skirt fade starts there); `thighTop` 0.25 + THE SEAT (an extra capsule
+  from the hip ball to a quarter down the thigh, `seat: true`, whose allowance is 0 for every chain sample in front of the hip
+  joints, so it only holds the back panel off the jeans' seat); `maxPush` [30, 40] (after the push, a bone never ends more than
+  that off the coat's own direction); `gravity` 0.2; `rad` 0.03 + `limExtra` 0.008 (clearance; the rest allowance may push 8 mm
+  past where the cloth stood at bind).
+- **Measured** (flat ID colours, jeans px enclosed by coat px, front / side / side / back): his closed greatcoat, Wide stance
+  1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7; walk (frozen at 0.25 s) 12 / 1 / 15 / 49 -> 3 / 0 / 0 / 0 and the big front flap gone;
+  duster 2,199 / 2,243 -> 15 / 0; cult robe 2,922 / 3,223 -> 619 / 3; female lab coat 832 / 2,420 -> 1 / 5; open long coat side
+  bulges gone. Upright (Idle_11): the two saddlebag bulges at the hips are gone (they showed in every idle).
+- **Tried + dropped**: `fade` 0.12 (a peak at the side); chain root at +5 cm (flaps stay); thighTop without the seat part (the
+  jeans' seat through the duster's back); thighTop 0 with rootUp (side-back shelves); maxPush 20 / 35 (a jeans spot at the front
+  pocket in the walk).
+- **Known**: a small jeans spot can still show at the back vent / under the hem in the wide stance (the vent opening itself);
+  the cult robe's wide hem still lets a shin through at the front in the Wide stance.
+- Shots: /mnt/project-files/coat-flaps/ (before / after: wide stance, upright, walk, duster, cult robe, female lab coat, open long coat).
+
 ## THE TABS + THE BODY SLOTS (2026-11-03, character-models-plan row 12n)
 mondo: "In the character creator, can we have tabs instead of one long list where i have to scroll through everything. And I want the
 clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."

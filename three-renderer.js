@@ -55524,8 +55524,22 @@ const ThreeRenderer = (function () {
            in the bind pose). Tried + dropped: hanging straight on from a pushed joint (a bell in a wide idle, a board in a kneel),
            falling toward the ground (`fall`: a barrel on wide hips), aiming back at the cloth's rest hang in the hips' frame (pulled
            it back into the leg); `maxRoot` 40 (a wider swing stood the side out in a ledge at the hip). Cosmetic and local (nothing relayed); window.EW_DISABLE_SWAY
-           keeps the coat on its baked weights. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.6, drag: 0.5, rad: 0.012, maxRoot: 40, maxBend: 45, fall: 0, thighTop: 0, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           keeps the coat on its baked weights.
+           THE FLAPS FIX (2026-11-03, mondo on his Cowboy, closed coat, wide stance: "all of the coats have these 2 parts sticking up and
+           out of the sides ... when the coats are closed the legs still clip through, and there is a bunch of flickering between the coat
+           and the leg"): (1) `rootFollow` - the first bone of each chain follows the coat's own weights like the rest (held on the hips it
+           stayed put while the thighs swung out, the legs shoved it out from right under its root = the two flaps, and where they could
+           not, the jeans came through); (2) `rootUp` / `rootW` - the chains start where the bake stops blending the thigh in (~10-15 cm
+           over the hip joints, at the waist), not at the hip joints: the cloth just above a hip-joint root rode the thighs up while the
+           chain under it hinged, and the side stood up in a corner; (3) `thighTop` 0.25 - the thigh collider starts a quarter down the
+           thigh (a straight capsule from the hip ball sweeps out where no flesh goes and stood the side out in a shelf), with a THE SEAT
+           part from the hip ball for the cloth BEHIND the hip joints only (the jeans' seat through the back otherwise); (4) `maxPush` -
+           the legs never swing a bone more than 30 / 40 degrees off where the coat's own weights carry it; (5) `gravity` 0.6 -> 0.2 (at
+           rest it sagged the skirt 13 degrees into the legs, so the push was always fighting), `rad` 1.2 -> 3 cm + `limExtra` 0.8 cm
+           (the pushed cloth sat ON the jeans: the flicker). Measured (jeans px through the coat, front / side / side / back): his
+           Cowboy closed greatcoat wide stance 1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7, duster 2,199 / 2,243 -> 15 / 0, cult robe
+           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/. */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -55537,19 +55551,34 @@ const ThreeRenderer = (function () {
             var Hm = part.height / 1.7, minY = Infinity, i, c, k;
             for (i = 0; i < count; i++) if (P[i * 3 + 1] < minY) minY = P[i * 3 + 1];
             if (!(minY < yA - COAT_HANG.minDrop * Hm)) return null;   // (a jacket, a short coat: it ends at the hips)
+            /* THE ROOT AT THE WAIST (2026-11-03): the chains start where the coat's own weights stop following the thighs (the
+               bake blends the thigh in from ~10 cm over the hip joints: 0.1 -> 0.6 at the joint), not at the hip joints - rooted
+               there, the cloth above the root rode the thighs up and out in a wide stance while the chain under it hinged on the
+               hips, and the side panels stood up in two flaps at the hips */
+            var yR = yA;
+            if (COAT_HANG.rootUp > 0) {
+                var RB = 40, rbin = [], rb;
+                for (rb = 0; rb < RB; rb++) rbin.push([0, 0]);
+                for (i = 0; i < count; i++) {
+                    var dy = (P[i * 3 + 1] - yA) / Hm; if (!(dy >= 0 && dy < COAT_HANG.rootUp)) continue;
+                    var th = 0; for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0 && bones[si[i * 4 + k]] && /UpLeg$/.test(bones[si[i * 4 + k]].name)) th += sw[i * 4 + k];
+                    rb = Math.min(RB - 1, Math.floor(dy / COAT_HANG.rootUp * RB)); rbin[rb][0] += th; rbin[rb][1]++;
+                }
+                for (rb = 0; rb < RB; rb++) { if (!rbin[rb][1]) continue; if (rbin[rb][0] / rbin[rb][1] < COAT_HANG.rootW) break; yR = yA + (rb + 1) / RB * COAT_HANG.rootUp * Hm; }
+            }
             var NC = COAT_HANG.cols, JN = COAT_HANG.joints, TAU = Math.PI * 2, step = TAU / NC;
             var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };
             var adiff = function (a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };   // signed, -PI..PI
             var sec = []; for (c = 0; c < NC; c++) sec.push([]);
-            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yA + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
+            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
             var chains = [];
             for (c = 0; c < NC; c++) {
                 var L = sec[c]; if (L.length < 24) continue;   // (the opening of an open coat: no cloth there)
                 var lo = Infinity; L.forEach(function (v) { if (P[v * 3 + 1] < lo) lo = P[v * 3 + 1]; });
                 if (!(lo < yA - COAT_HANG.minDrop * Hm)) continue;
-                var J = [], JW = [], band = (yA - lo) / (JN - 1) * 0.6;
+                var J = [], JW = [], band = (yR - lo) / (JN - 1) * 0.6;
                 for (k = 0; k < JN; k++) {
-                    var y0 = yA - (yA - lo) * k / (JN - 1), xs = [], zs = [], wa = {};
+                    var y0 = yR - (yR - lo) * k / (JN - 1), xs = [], zs = [], wa = {};
                     L.forEach(function (v) { if (Math.abs(P[v * 3 + 1] - y0) <= band) { xs.push(P[v * 3]); zs.push(P[v * 3 + 2]); for (var q = 0; q < 4; q++) if (sw[v * 4 + q] > 0) wa[si[v * 4 + q]] = (wa[si[v * 4 + q]] || 0) + sw[v * 4 + q]; } });
                     if (!xs.length) { J.push(J.length ? [J[J.length - 1][0], y0, J[J.length - 1][2]] : null); JW.push(JW.length ? JW[JW.length - 1] : null); if (!J[0]) break; continue; }
                     xs.sort(function (p1, p2) { return p1 - p2; }); zs.sort(function (p1, p2) { return p1 - p2; });
@@ -55575,7 +55604,7 @@ const ThreeRenderer = (function () {
             // the skirt's weights: faded from its own onto the two chains either side of it (one, across an open front) by height
             var fade = COAT_HANG.fade * Hm, acc = {}, b4;
             for (i = 0; i < count; i++) {
-                var y = P[i * 3 + 1], t = (yA - y) / fade; if (!(t > 0)) continue;
+                var y = P[i * 3 + 1], t = (yR - y) / fade; if (!(t > 0)) continue;
                 t = t > 1 ? 1 : t; var f = t * t * (3 - 2 * t), av = ang(P[i * 3], P[i * 3 + 2]);
                 var c0 = -1, c1 = -1, d0 = Infinity, d1 = Infinity;
                 chains.forEach(function (C, ci) { var d = adiff(av, C.a); if (Math.abs(d) < Math.abs(d0)) { d0 = d; c0 = ci; } });
@@ -55657,11 +55686,13 @@ const ThreeRenderer = (function () {
                 var ms = S.M.getMaxScaleOnAxis();   // mesh metres -> the bone's frame
                 var t0 = S.a === bi('LeftUpLeg') || S.a === bi('RightUpLeg') ? O.thighTop : 0;   // (the thigh from a little under the hip joint: its top merges into the seat, and a ball there stood the coat's side out in a shelf)
                 caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M });
+                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
             });
             if (!caps.length) return;
             /* the rest allowance: per chain bone, per sample along it, per capsule, how far (in the capsule's frame) the cloth stood
                from that capsule's axis in the bind pose - the push never reaches past it */
-            var cp = new THREE.Vector3(), seg = new THREE.Vector3(), cl = new THREE.Vector3();
+            var cp = new THREE.Vector3(), seg = new THREE.Vector3(), cl = new THREE.Vector3(), BMi = new THREE.Matrix4().copy(BM).invert();
+            var lu = bi('LeftUpLeg'), ru = bi('RightUpLeg'), zSeat = lu >= 0 && ru >= 0 && sk.boneInverses[lu] && sk.boneInverses[ru] ? (hangBonePos(sk, lu, BMi).z + hangBonePos(sk, ru, BMi).z) / 2 : -Infinity;   // (behind the hip joints)
             hw.forEach(function (w) {
                 w.hang.chains.forEach(function (C) {
                     var NB = C.j.length - 1, NS = O.samples.length;
@@ -55673,7 +55704,7 @@ const ThreeRenderer = (function () {
                             cp.set(px, py, pz).applyMatrix4(K.M);
                             seg.subVectors(K.pb, K.pa); var sl = seg.lengthSq(), u = sl > 0 ? Math.max(0, Math.min(1, cl.subVectors(cp, K.pa).dot(seg) / sl)) : 0;
                             cl.copy(K.pa).addScaledVector(seg, u);
-                            C.lim[(s * NS + q2) * caps.length + ki] = Math.max(0, cp.distanceTo(cl) - 0.002 * Hm);
+                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) + ((O.limExtra || 0) - 0.002) * Hm);
                             cl.subVectors(cp, cl); var o3 = ((s * NS + q2) * caps.length + ki) * 3; C.side[o3] = cl.x; C.side[o3 + 1] = cl.y; C.side[o3 + 2] = cl.z;   // (which side of the leg the cloth lies on, in the leg's own frame)
                         });
                     }
@@ -55740,7 +55771,7 @@ const ThreeRenderer = (function () {
                     var wl = _hgA.distanceTo(B.head); if (!(wl > 0)) continue;
                     var sc = wl / B.len;
                     _hgG.subVectors(_hgA, B.head).multiplyScalar(1 / wl);   // the bone's direction as its parent left it (the turn below starts from it)
-                    var Tn = i && C.t && C.t[i + 1];   // (the first bone keeps the hips' hang: the seat rides the pelvis, as the trousers' seat is held in under it)
+                    var Tn = (i || O.rootFollow) && C.t && C.t[i + 1];   // (THE FLAPS FIX: the first bone follows the coat's own weights too - held on the hips' hang, it stayed put while the thighs under it swung out and the legs had to shove it out in a flap)
                     if (Tn && Tn.length) {   // toward where the cloth's own weights would carry its next joint (the coat as baked, following the thighs)
                         _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
                         _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
@@ -55763,6 +55794,11 @@ const ThreeRenderer = (function () {
                         var px = _hgP.x, py = _hgP.y, pz = _hgP.z;
                         push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3);
                         if (_hgP.x !== px || _hgP.y !== py || _hgP.z !== pz) _hgC.copy(_hgP).sub(B.head).setLength(wl).add(B.head);
+                    }
+                    if (O.maxPush) {   // (the legs push the cloth out, but never stand it out further than maxPush off where the coat's own weights carry it: a straight bone swung far out from near its root stood up in a flap)
+                        _hgE.subVectors(_hgC, B.head).multiplyScalar(1 / wl);
+                        var plim = (i ? O.maxPush[1] : O.maxPush[0]) * Math.PI / 180, pan = Math.acos(Math.max(-1, Math.min(1, _hgE.dot(_hgB))));
+                        if (pan > plim) { _hgQ.setFromUnitVectors(_hgB, _hgE); _hgQ2.identity().slerp(_hgQ, plim / pan); _hgC.copy(_hgB).applyQuaternion(_hgQ2).multiplyScalar(wl).add(B.head); }
                     }
                     B.prev.copy(B.cur); B.cur.copy(_hgC);
                     _hgE.subVectors(B.cur, B.head).multiplyScalar(1 / wl);
