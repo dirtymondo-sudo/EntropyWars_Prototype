@@ -11360,6 +11360,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            metres: the handle 0.3 m, the lash 1.8 m). `rigged` = cloned with SkeletonUtils (its skin binds to the clone's bones). */
         _WPN_MODELS.whip = { url: _PROPS_BASE + 'bullwhip_rigged.glb', axis: 'y', matte: true, prop: true, rigged: true };
     })();
+    /* THE MESHY DECOR'S SPELL PROPS (2026-11-03, MODEL_LIST.md §10B S01/S02/S04; mondo: "put the 71 new meshy models in the
+       game"): the piano Things That Go Bump throws, the sheep Counting Sheep hops over the fence, the tripod that walks the
+       heat-ray of Tripod Sweep. R2 Assets/decor/ (the room decor's folder, optimize-assets.js'd), upright, sized by height. */
+    var _DECOR_BASE = 'https://cdn.entropywars.net/Assets/decor/';
+    _WPN_MODELS.piano = { url: _DECOR_BASE + 'piano.glb', axis: 'y', matte: true };
+    _WPN_MODELS.sheep = { url: _DECOR_BASE + 'sheep.glb', axis: 'y', matte: true };
+    _WPN_MODELS.tripodMachine = { url: _DECOR_BASE + 'tripod_machine.glb', axis: 'y', matte: true };
     var _HELD_PROPS = {
         raceAcidFlask:       { key: 'potionFlask', m: 0.2,  thrown: true, grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
         raceAntidote:        { key: 'potionFlask', m: 0.2,  grip: { c: [0, 0.12, 0], down: [0, -1, 0], barrel: [0, 0, 1] } },
@@ -44288,7 +44295,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fence = new THREE.Group(); F.g.add(fence);
         for (var p = -1; p <= 1; p += 2) { var post = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.4, ts * 0.05), wood); post.position.set(p * ts * 0.3, ts * 0.2, 0); fence.add(post); }
         for (var b = 0; b < 2; b++) { var rail = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.7, ts * 0.04, ts * 0.03), wood); rail.position.y = ts * (0.15 + b * 0.17); fence.add(rail); }
+        /* THE MESHY DECOR (2026-11-03): the sheep are back — three of the Meshy sheep (S02) hop the fence in turn, nose first */
         var sheep = [];
+        for (var sh = 0; sh < 3; sh++) {
+            var si = _wpnReady('sheep') ? _wpnInstance('sheep', ts * 0.42) : null;
+            if (!si) break;
+            var sg = new THREE.Group(); si.group.position.y = ts * 0.21; sg.add(si.group); sg.visible = false; F.g.add(sg);
+            sheep.push({ g: sg, inst: si, at: 250 + sh * 380 });
+        }
         var zs = [];
         for (var z = 0; z < 4; z++) { var zt = _finTextSprite('Z', { ink: '#d8c8ff', fontPx: 120, w: 128, h: 128, spriteW: ts * 0.3, opacity: 0 }); F.g.add(zt); zs.push({ s: zt, at: 600 + z * 220, x: rn(-1, 1) * ts * (r || 1) * 0.6 }); }
         var total = 1900;
@@ -44297,7 +44311,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < sheep.length; i++) {
                 var S = sheep[i], k = _sigClamp01((el - S.at) / 420);
                 S.g.position.set(0, ts * (0.13 + 0.45 * Math.sin(k * Math.PI)), ts * (-0.6 + 1.2 * k)); S.g.rotation.x = -0.4 * Math.cos(k * Math.PI);
-                var o = el > S.at && k < 1 ? 1 : 0; S.mats[0].opacity = S.mats[1].opacity = o;
+                var o = el > S.at && k < 1 ? 1 : 0; S.g.visible = o > 0; S.inst.setFade(o);
             }
             for (var j = 0; j < zs.length; j++) { var Z = zs[j], t = _sigClamp01((el - Z.at) / 900); Z.s.position.set(Z.x + Math.sin(t * 6) * ts * 0.1, ts * (1.0 + t * 0.9), 0); Z.s.material.opacity = el > Z.at ? 0.9 * (1 - t) : 0; }
         });
@@ -52002,10 +52016,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "plates, chairs, the piano, but no object ever flies"): the thrown
        things are the building's own furniture (DOOR_HQ.catalogue rows, _crCatKey) at their real size; the box-built
        chair / plate / book / frame below stays only while those files are still streaming in. */
-    var _GO_HOUSE_CAT = [['folding_chair', 0.62], ['table_lamp', 0.5], ['wall_clock', 0.3], ['coffee_mug', 0.14]];
+    var _GO_HOUSE_CAT = [['piano', 0.75, 'piano'], ['folding_chair', 0.62], ['table_lamp', 0.5], ['wall_clock', 0.3], ['coffee_mug', 0.14]];   // THE MESHY DECOR (2026-11-03): the Meshy piano (S01) leads; [2] = a _WPN_MODELS key, not a catalogue row
     function _goHouseThing(ts, which) {
         var pick = _GO_HOUSE_CAT[which % _GO_HOUSE_CAT.length], ck = null;
-        try { ck = _crCatKey(pick[0], 'y'); } catch (e) { ck = null; }
+        try { ck = pick[2] || _crCatKey(pick[0], 'y'); } catch (e) { ck = null; }
         var ci = (ck && _wpnReady(ck)) ? _wpnInstance(ck, ts * pick[1]) : null;
         if (ci) { var cg = new THREE.Group(); cg.add(ci.group); return cg; }
         var g = new THREE.Group(), wood = 0x6a4428, k = which % 4;
@@ -53656,20 +53670,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(fromX, fromY), ts = F.ts, end = tiles[tiles.length - 1], wpE = _worldPos(end.x, end.y);
         var ex = wpE.x - F.wp.x, ez = wpE.z - F.wp.z, L = Math.max(1, Math.hypot(ex, ez)), ux = ex / L, uz = ez / L;
         var H = ts * 1.05;                                   /* the martian's head */
+        /* THE MESHY DECOR (2026-11-03): the fighting machine itself (the Meshy tripod, S04) stands behind the martian, facing the
+           lane, and the ray leaves ITS head; nothing while the file streams (the ray then leaves the martian's head as before) */
+        var tri = _wpnReady('tripodMachine') ? _wpnInstance('tripodMachine', ts * 3.2) : null, triBack = ts * 1.1;
+        if (tri) { tri.group.position.set(-ux * triBack, ts * 1.6, -uz * triBack); tri.group.rotation.y = Math.atan2(ux, uz); tri.setFade(0); F.g.add(tri.group); tri.group.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; }); }
         function beamCyl(r, c, op) {
             var m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 12, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(c), transparent: true, opacity: 0,
                 side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }));
             m.userData.r = r; m.userData.op = op; m.renderOrder = 162; F.g.add(m); return m;
         }
         var glow = beamCyl(ts * 0.09, _GOC.heat, 0.55), core = beamCyl(ts * 0.035, 0xfff0c8, 0.95);
-        var eye = _goGlow(F.g, _GOC.heat, ts * 0.45, ux * ts * 0.12, H, uz * ts * 0.12, 1);
+        var eyeX = tri ? -ux * (triBack - ts * 0.35) : ux * ts * 0.12, eyeZ = tri ? -uz * (triBack - ts * 0.35) : uz * ts * 0.12, eyeY = tri ? ts * 2.7 : H;   // the tripod's lens (its dome's front) or the martian's head
+        var eye = _goGlow(F.g, _GOC.heat, ts * 0.45, eyeX, eyeY, eyeZ, 1);
         var dot = _goGlow(F.g, _GOC.heat, ts * 0.6, 0, 0, 0, 1);
         var A = new THREE.Vector3(), B = new THREE.Vector3(), D = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
         var total = 1800, sweepA = 350, sweepB = 1100, lastB = 0;
         return _sigRunOwned(F.g, total, function (el) {
             var s = _sigClamp01((el - sweepA) / (sweepB - sweepA)), d = ts * 0.6 + (L + ts * 0.3 - ts * 0.6) * s;
             var on = el > sweepA && el < sweepB + 120 ? 1 : 0, flick = 0.8 + 0.2 * Math.sin(el * 0.09);
-            A.set(ux * ts * 0.12, H, uz * ts * 0.12); B.set(ux * d, ts * 0.12, uz * d); D.subVectors(B, A);
+            A.set(eyeX, eyeY, eyeZ); B.set(ux * d, ts * 0.12, uz * d); D.subVectors(B, A);
+            if (tri) tri.setFade(_sigClamp01(el / 300) * (1 - _sigClamp01((el - total + 350) / 350)));
             var len = D.length() || 1; D.normalize();
             for (var i = 0; i < 2; i++) {
                 var m = i ? core : glow;

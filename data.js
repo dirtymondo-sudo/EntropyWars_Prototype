@@ -43347,12 +43347,15 @@ const DOOR_HQ = {
                     { k: 'wall', x0: 106.75, z0: 15.75, x1: 106.75, z1: 15.75, h: 2.2, t: 3.5, key: 'rock_wall_1' },            // 11 × 10
                     { k: 'wall', x0: 78.75, z0: -8.75, x1: 78.75, z1: -8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },          // a stone bench, one level up (3 × 3)
                     { k: 'wall', x0: 96.25, z0: 8.75, x1: 96.25, z1: 8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },            // its twin (8 × 8)
-                    /* the pillars' own stone for the battle: a wall row inside each shaft (never seen — the pillar is drawn round it) is the
-                       ground THE FIELD reads there, as Stonehenge's sarsens are, so a pillar is a tall square nobody walks through */
-                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the west great pillar (3 × 5..6)
-                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the east great pillar (8 × 5..6)
-                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },            // the lesser pillar at 2 × 8
-                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },          // the lesser pillar at 9 × 3
+                    /* the pillars' own stone for the battle: a wall row inside each shaft is the ground THE FIELD reads there, so a pillar is
+                       a tall square nobody walks through. GHOSTS (2026-11-03, mondo: "the t-pillars are still standing on top of the walls"):
+                       the rows were drawn (a 5.45 m glyph block under each great pillar, 3.15 m under the lesser ones) and the pillar props
+                       stood on their tops — `ghost: true` = never drawn, still the walker's and the fight's; the props stand on the floor
+                       under them (`floor: true`) */
+                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1', ghost: true },             // the west great pillar (3 × 5..6)
+                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1', ghost: true },             // the east great pillar (8 × 5..6)
+                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1', ghost: true },            // the lesser pillar at 2 × 8
+                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1', ghost: true },          // the lesser pillar at 9 × 3
                     { k: 'path', pts: [[121.3, 0], [120.14, 8.74], [116.78, 16.9], [111.4, 23.9], [104.4, 29.28], [96.24, 32.64], [87.5, 33.8], [78.76, 32.64], [70.6, 29.28], [63.6, 23.9], [58.22, 16.9], [54.86, 8.74], [53.7, 0], [54.86, -8.74], [58.22, -16.9], [63.6, -23.9], [70.6, -29.28], [78.76, -32.64], [87.5, -33.8], [96.24, -32.64], [104.4, -29.28], [111.4, -23.9], [116.78, -16.9], [120.14, -8.74], [121.3, 0]], w: 2.8 },   // the walk round the ring wall
                 ],
             },
@@ -43388,12 +43391,12 @@ const DOOR_HQ = {
                 /* ENCLOSURE E (2026-10-20): the two great pillars on their pedestals either side of the nexus (broad faces to each other),
                    the ten lesser ones round the pit's rim on the ledge (narrow face in; the ring wall they stood on is gone, 2026-11-03), two standing in the pit, two stones,
                    a brazier on each bastion (the pit's light) — every one on its square, the layout half-turn symmetric */
-                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5 }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5 },
+                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5, floor: true }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5, floor: true },
                 { key: 't_pillar',       x: 78.75, z: -21.696, face: 90, h: 3.2 }, { key: 't_pillar', x: 96.25, z: -21.696, face: 90, h: 3.4 },
                 { key: 't_pillar',       x: 78.75, z: 21.696, face: 270, h: 3.4 }, { key: 't_pillar', x: 96.25, z: 21.696, face: 270, h: 3.2 },
                 { key: 't_pillar',       x: 65.7, z: -12.25, face: 180, h: 3.0 }, { key: 't_pillar', x: 65.7, z: 1.875, face: 180, h: 3.4 }, { key: 't_pillar', x: 65.7, z: 12.25, face: 180, h: 3.2 },
                 { key: 't_pillar',       x: 109.3, z: 12.25, face: 0, h: 3.0 }, { key: 't_pillar', x: 109.3, z: -1.875, face: 0, h: 3.4 }, { key: 't_pillar', x: 109.3, z: -12.25, face: 0, h: 3.2 },
-                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2 }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2 },
+                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2, floor: true }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2, floor: true },
                 { key: 'brazier',        x: 68.25, z: -19.125, y: 2.2 }, { key: 'brazier', x: 106.75, z: -19.125, y: 2.2 },
                 { key: 'brazier',        x: 68.25, z: 19.25, y: 2.2 }, { key: 'brazier', x: 106.75, z: 19.25, y: 2.2 },
             ],

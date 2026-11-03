@@ -1433,6 +1433,19 @@ skinned 100 % to one bone) that the creator lists like any pack piece (EW_MH_WEA
 - First piece: Cowboy hat (`ewb_cowboyhat`, Hats, z 56): 2020 tris, 311 KB; scales male 0.931, female 0.859, heavy 1.101,
   thin 1.105, short 0.791; ≥ 1.5 cm clearance on all bodies, front brim 3.4 cm above the eye. The hat's underside floor
   across the crown opening stays (hidden inside the head).
+- THE WORN HATS (2026-11-03, mondo: "make it look more realistic/weathered/worn/textured. Like look at the cowboy meshy model
+  and his hat"): Meshy Retexture API (POST /openapi/v1/retexture, his hat GLB as a data URI, `enable_original_uv: true`, 10 credits)
+  paints a 2K base colour on HIS UVs; Meshy's own re-exported mesh (4 vertices fewer, rescaled) is never used: the texture goes
+  through bake_solid like his own (`SOLIDS` cowboyhat_worn / cowboyhat_worntan: `tex` = R2 wear/cowboyhat/textures/
+  Cowboy-Hat_meshy_worn_dark.png / _worn_tan.png, `occ: None`). Same mesh, same fit, every vertex the same as `ewb_cowboyhat`.
+  All the tries + the sheets: /mnt/project-files/meshy/retexture/cowboyhat/ (mondo picked F + H of round 2; the best match to
+  the Meshy cowboy's hat came from `image_style_url` = a render of that hat).
+- THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): `band_tint: True` writes the
+  `band_mat` faces as accent primitive 1 (write_glb `FA`, a per-face accent; same texture; ewWear.band = 1). three-renderer.js
+  paintWear colours it from `appearance.wearTint['<id>:band']` like the hat from `wearTint[id]` (none = its own texture); sprites.js
+  `EW_WEAR_BANDS` lists the hats with a band (normalizeWearTint keeps their ':band' key); the creator's colour row for the hat
+  gets a second block, "Band". The band no longer follows the hat's colour. The band faces are the thin strip of his band
+  material; the worn textures paint the band a little wider, so a sliver of painted band takes the hat's colour.
 - Held props of a race look (`RACE_CREATOR_LOOK_DEFS.hold`): `_unitAttachHeld` now also reads catalogue rows with base
   `weapons` (`_R2_WEAPONS`), so the R2 revolver works as a hold.
 
@@ -1513,6 +1526,32 @@ mondo: "now how do we put these models both in the character creator and in the 
 - §10 sorts all 184 procedural catalogue stand-ins: 92 need a new model (concept prompts + doubled tri targets, also in project files
   meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
   old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
+
+## THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game")
+The 71 decor + spell-prop models Claude made on Meshy (concepts approved by mondo; IDs D02-D92 / S01-S04 in project files
+`meshy/decor/decor_prompts.json`, list MODEL_LIST_EXTRA.md §10A/§10B) are in. Files: R2 `Assets/decor/<name>.glb` (the
+D-prefix dropped), each one `optimize-assets.js`-style meshopt + WebP 1024 (24 MB for all 71; originals 2048 JPEG in
+project files `meshy/decor/models/`). ASSET_MANIFEST.json lists them. sync-zip.js does not see them (no index.html URL):
+the thread's zip adds `Assets/decor/` by hand.
+- **How a proc wears one:** three-renderer.js `_HQ_DECOR_GLB` (name → file) + `_hqDecorWear(name, U, g, opts)`, called at
+  the end of the proc builder. The catalogue rows in data.js are UNCHANGED (still `proc`), so every placement in every room
+  gets the model. The proc's own meshes hide (`_hqDecorHide` sets `_ew_mcKeep`, so `_mcSnap` still builds the collider
+  from them) and the model is fitted into their box: `fit` contain (default) | height | width | stretch, `wall` (back
+  flush on the wall plane), `top` (hangs from the box top), `turn`, `repeat`, `into` (an animated sub-group), `onDone`
+  (re-seat kept pieces from the model's measured size). Glows, screens, text, flames, water, smoke stay proc.
+- **Kept proc pieces (on purpose):** slot machine plinth (the Meshy cabinet stands on it), round table chairs, school desk
+  seat, eeg live screen, lifeguard brolly, popcorn kernels, sea vent smoke, departures/scoreboard screens, punch-clock
+  card rack, autopsy tags, wall torch + cave torch flames, meat hook carcass, music box dancer pin (Meshy dancer on it),
+  directory kiosk text (moved onto the blank panel), carousel brass poles (Meshy horses on them), ferris wheel spin
+  (Meshy wheel + gondolas in the spinning groups), fountain water (re-seated on the Meshy basin), trophy case glass.
+- **Sub-part models:** armour_stand_post, carousel_horse, ferris_gondola, ferris_wheel_wheel, music_box_dancer,
+  trophy_cup (3 on the shelf), umbrella_closed (in the stand), wall_torch_bracket.
+- **Animated:** dream eye turns to the player + bobs, anemone breathes, nightmare bloom turns, robot arm door hangs from
+  the Meshy gripper, rocking chair rocks the model, skiff hides the old rowboat pack model.
+- **Spell props (three-vfx-effects.js `_WPN_MODELS.piano/sheep/tripodMachine`):** Things That Go Bump throws the piano
+  first; Counting Sheep jumps three Meshy sheep; Tripod Sweep stands the Meshy tripod behind the beam (the ray starts at
+  its head). Ack Ack Ack still uses its old saucer + code legs.
+- **Kill switch:** `window.EW_NO_DECOR_GLB = true` before a room builds = the old procs.
 
 ## THE MESHY SWAP (2026-11-03, mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
 - 26 Meshy props now draw an Elbolilloduro PSX pack piece (all 14 packs CC0; list + the Meshy file each replaced: MODEL_LIST.md 10F).
