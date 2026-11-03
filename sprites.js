@@ -4045,6 +4045,11 @@ const EW_MH_CHEST = { band: { female: [118, 226, 546, 164] }, spots: [[332, 308]
    hm08 sheet (1024 px, the same on every MPFB body and skin), read off the pack's lipstick skins (toigo ... with makeup / goth
    makeup). three-renderer.js tintLips paints appearance.lipColor inside it, keeping the skin's own shading; lipTint 'own' = the
    skin's lips as painted. */
+/* THE LOOK COLOURS (2026-11-03): where the irises sit in every MakeHuman eye picture (its own px, = the sheet's px; found where the
+   9 eye pictures differ), and the torso patch of the hm08 sheet whose average a picked skin colour replaces */
+const EW_MH_IRIS = { centres: [[20.6, 20.7], [149.4, 20.7]], r: 3.8 };
+const EW_MH_SKIN_SAMPLE = [200, 150, 360, 300];
+const EW_MH_SKIN_KEEP = [[0, 360, 170, 120], [760, 870, 200, 154]];   // the mouth's inside (tongue, gums) keeps its own red under a picked skin
 const EW_MH_LIPS = { poly: [931,503,928,504.5,924,507.5,921,510.5,917,513.5,916,516.5,915,519.5,914,522.5,914,525.5,915,528.5,915,531.5,914,534.5,915,537.5,916,540.5,917,543.5,919,546.5,922,549.5,925,552.5,929,554.5,931,555,933,554.5,936,552.5,941,549.5,942,546.5,945,543.5,946,540.5,947,537.5,948,534.5,948,531.5,948,528.5,948,525.5,948,522.5,948,519.5,946,516.5,944,513.5,941,510.5,939,507.5,934,504.5], box: [906, 495, 52, 68], feather: 1.6 };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
@@ -4111,6 +4116,13 @@ const EW_APPEARANCE_ENUMS = {
   mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
   mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
   lipTint: ['own', 'pick'],   // THE LIP COLOUR (2026-11-03): an MPFB body's lips as the skin paints them / lipColor
+  /* THE LOOK COLOURS (2026-11-03, mondo: "why can i not just pick a skin color under the skin tab? ... there is no color picker ...
+     Everything that can possibly have one needs a tint/color picker"): an MPFB body's skin / iris / brows / lashes keep the pick's
+     own colour ('own') or take a picked one (three-renderer.js setLook) */
+  skinTint: ['own', 'pick'],   // 'pick' = the skin sheet shifted to appearance.skin (the classic skin tone's key)
+  eyeTint: ['own', 'pick'],    // 'pick' = the irises in appearance.eyeColor (the classic eye colour's key)
+  browTint: ['own', 'hair', 'pick'],   // the brows in their own colour / the hair colour / browColor
+  lashTint: ['own', 'pick'],   // 'pick' = lashColor
   hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
   mhChest: ['nipples', 'smooth'],   // THE CHEST (2026-11-01; 'band' gone with the underwear 2026-11-02)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
@@ -4166,6 +4178,7 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   outer2Color: '#5a4636', outer2Color2: '#c9a227',   // THE SECOND OUTER LAYER
   capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
   beardColor: '#27201c',   // THE FACIAL HAIR (beardTint 'pick')
+  browColor: '#2a1d14', lashColor: '#141010',   // THE LOOK COLOURS (browTint / lashTint 'pick')
   // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
   hairColor2: '#c0392b' };
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'none', bottoms: 'none', outer: 'none', feet: 'bsneakers',   // (2026-11-02 THE RETIRED CLASSIC CLOTHES: a bare look is dressed by retireClassicClothes)
@@ -4248,7 +4261,7 @@ function randomCharacterAppearance(rng) {
   }
   out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
   out.mhSkin = out.mhEyes = out.mhBrows = out.mhLashes = 'own';
-  out.lipTint = 'own';   // THE LIP COLOUR (an MPFB body's; the classic face paints lipColor)
+  out.lipTint = out.skinTint = out.eyeTint = out.browTint = out.lashTint = 'own';   // THE LIP COLOUR + THE LOOK COLOURS (an MPFB body's; the classic face paints its own)
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -4301,17 +4314,22 @@ function getMhLookLayers(a) {
   const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
   const chest = EW_MH_CHEST.band[body] && a.mhChest === 'smooth' ? 'smooth' : null;   // THE CHEST ('nipples' = the sheet as baked)
   const lips = a.lipTint === 'pick' && typeof a.lipColor === 'string' ? a.lipColor : null;   // THE LIP COLOUR
-  if (!chest && !lips && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  const hex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : null;   // THE LOOK COLOURS
+  const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' ? hex(a.eyeColor) : null,
+    brows: a.browTint === 'hair' ? hex(a.hairColor) : a.browTint === 'pick' ? hex(a.browColor) : null, lashes: a.lashTint === 'pick' ? hex(a.lashColor) : null };
+  const tinted = Object.keys(tint).some(k => tint[k]);
+  if (!chest && !lips && !tinted && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
   const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
   const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
   const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
   for (const k of ['eyes', 'brows', 'lashes']) {
     const row = EW_MH_LOOKS[_EW_LOOK_ROWS[k][0]].find(r => r[0] === id(k));
-    if (row) out.push([base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]);
+    if (row) { const l = [base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]; l.kind = k; out.push(l); }   // (kind: THE LOOK COLOURS)
   }
   if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body], null]);   // [url, box, the rect left out (none since the underwear went)]
   if (chest === 'smooth') out.smooth = EW_MH_CHEST;
   if (lips) out.lips = Object.assign({ color: lips }, EW_MH_LIPS);   // THE LIP COLOUR (painted over the skin, three-renderer.js tintLips)
+  if (tinted) { out.tint = tint; out.iris = EW_MH_IRIS; out.skinSample = EW_MH_SKIN_SAMPLE; out.skinKeep = EW_MH_SKIN_KEEP; }   // THE LOOK COLOURS (three-renderer.js tintSheet / tintLayer)
   return out;
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)

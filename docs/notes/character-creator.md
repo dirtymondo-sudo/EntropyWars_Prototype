@@ -1019,6 +1019,19 @@ skin and face eyes tab, all of those settings need to appear together".
   Each FACE tab's reset button says "RESET <TAB> SLIDERS" (it only ever reset the sliders).
 - Shots: /mnt/project-files/creator-lips-eyes/ (before_after.jpg, lip_colours_closeup.jpg).
 
+### Pass 2: THE LOOK COLOURS (2026-11-03)
+mondo: "There are still 2 brows tabs [the live game ran the pre-#810 files]. And why can i not just pick a skin color under the skin
+tab? ... there is no color picker?? Everything that can possibly have one needs a tint/color picker".
+- MPFB bodies, each with Original colours / Pick a colour (+ swatches + custom picker): SKIN > Skin colour (first row; `skinTint`,
+  colour = `skin`), FACE > EYES > Iris colour (`eyeTint`, colour = `eyeColor`), Lash colour (`lashTint` / `lashColor`), FACE > BROWS
+  > Brow colour (`browTint` 'own' | 'hair' | 'pick' / `browColor`). Same keys as the classic face where one existed.
+- three-renderer.js `tintSheet`: the skin sheet x (picked / the torso patch's average, sprites.js EW_MH_SKIN_SAMPLE) per channel;
+  the mouth's inside (EW_MH_SKIN_KEEP) left as is; drawn before the eye / brow / lash layers. `tintLayer`: brows + lashes take the
+  colour at half their own contrast; eyes only inside the irises (EW_MH_IRIS, found where the 9 eye pictures differ, r 3.8 px).
+- "MakeHuman hair" row renamed "More hair styles". Every other colourable piece already had a picker (hair, second hair colour,
+  facial hair, clothes layers + "Colours of the pieces you wear", wings, accessories once worn).
+- Every tab shot: /mnt/project-files/creator-usability/.
+
 ## THE MESHY DEFAULT + THE CREATOR ON EVERY UNIT (2026-11-03, character-models-plan row 20b)
 mondo 11-03: "Let the character creator be available to all units so i can make custom models for them. Don't get rid of the
 old models, the old models should stay the default until i say so or we have all new characters models through the character
