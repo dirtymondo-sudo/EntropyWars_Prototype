@@ -2555,7 +2555,7 @@
            Thunderstorm, Hurricane, Blood Rain) puts out every burning tile its rain falls on the moment it forms (fires lit
            later still burn), and hardens the lava the fight put down under it into stone (map.js lavaWaterMixOf) as it forms
            and at every round end while it rains. The map's own lava stays, as a Drought leaves the map's own lakes. Under a
-           roof no rain lands. Host-side; state.burningTiles and the terrain ride the state-sync to the guest. */
+           roof no rain lands. (2026-11-03: fires lit later go out too, see below.) Host-side; state.burningTiles and the terrain ride the state-sync to the guest. */
         function _rainLandsOn(w, x, y) {
             if (!weatherRainsOnTile(w, x, y)) return false;
             const col = state.boardColumns?.[y]?.[x];
@@ -2565,7 +2565,10 @@
             const def = weather && WEATHER_REGISTRY[weather.type];
             if (!def || !def.soaks) return;
             let doused = 0, hardened = 0;
-            if (onForm && state.burningTiles) {
+            /* mondo 2026-11-03 ("the fire burning in the rain is definitely a bug"): not only the fires up when the rain
+               forms: every round end while it rains puts out the ground fire under it too (and igniteTile no longer lights
+               a tile the rain falls on, _ewRainOnTile) */
+            if (state.burningTiles) {
                 for (const k of Object.keys(state.burningTiles)) {
                     const f = state.burningTiles[k];
                     if (f && _rainLandsOn(weather, f.x, f.y) && typeof extinguishTile === 'function' && extinguishTile(f.x, f.y)) doused++;
@@ -2584,6 +2587,16 @@
             if ((doused || hardened) && typeof scheduleBoardRender === 'function') scheduleBoardRender();
         }
         window.rainOnTheBoard = rainOnTheBoard;
+        /* is a soaking rain falling on this tile right now (no roof over it)? igniteTile asks before it lights the ground */
+        window._ewRainOnTile = function (x, y) {
+            const list = state.activeWeather;
+            if (!Array.isArray(list) || !list.length) return false;
+            for (const w of list) {
+                const def = w && WEATHER_REGISTRY[w.type];
+                if (def && def.soaks && _rainLandsOn(w, x, y)) return true;
+            }
+            return false;
+        };
 
         // A weather just formed (natural or cast): a static one reshapes ~30% of its tiles; a Drought dries the water.
         function weatherTerrainOnForm(weather) {
