@@ -59644,6 +59644,94 @@ const ThreeRenderer = (function () {
         (o.hide || []).forEach(function (m) { if (m) m.visible = false; });   // NO STAND-INS (2026-10-05): hidden from the start
         return inst;
     }
+    /* ═══ THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game") ═══════════════════════════════════
+       The decor models Claude made on Meshy for the code-drawn stand-ins (concept → mondo's OK → smart-topology model; the list
+       is MODEL_LIST.md §10A, the sources project files meshy/decor/) dress the procs they were made for. Files: R2
+       Assets/decor/<name>.glb (optimize-assets.js: meshopt + WebP 1024; Meshy's unit box, Y up, the front on +Z).
+       A builder calls _hqDecorWear(name, U, g, o) where its stand-in pieces are built: those pieces hide at once (NO
+       STAND-INS) but keep the prop's collision (_ew_mcKeep: the walker meets the same shape as before), and the model is
+       fitted into THEIR box, so it stands where the proc stood at the proc's size. What the builder adds after the call (a
+       glow, a light, a screen, the leaves on the belt, the dancer) stays and keeps its ticker.
+       o: into (the group the pieces are in, default g) · hide (the pieces, default every mesh child of `into` so far) ·
+          box ([x0, y0, z0, x1, y1, z1] metres, default the pieces' box) · fit ('contain' default: inside the box; 'height';
+          'width'; 'stretch': each axis to the box) · turn (degrees) · wall (the back flush on the box's back) · top (hung
+          from the box's top) · h (the fitted height, metres) · at ([x, y, z] metres: the base centre) · repeat (n side by
+          side) · onDone(inst, { w, h, d } metres as fitted).
+       Kill switch: window.EW_NO_DECOR_GLB = true (every proc draws its code shape again). */
+    var _HQ_DECOR_BASE = 'https://cdn.entropywars.net/Assets/decor/';
+    var _HQ_DECOR_GLB = {
+        anemone: 'anemone.glb', armour_stand: 'armour_stand.glb', armour_stand_post: 'armour_stand_post.glb', autopsy_table: 'autopsy_table.glb',
+        banner: 'banner.glb', barber_chair: 'barber_chair.glb', barber_pole: 'barber_pole.glb', boiler: 'boiler.glb',
+        card_catalogue: 'card_catalogue.glb', carousel: 'carousel.glb', carousel_horse: 'carousel_horse.glb', cave_torch: 'cave_torch.glb',
+        conveyor: 'conveyor.glb', departures_board: 'departures_board.glb', directory_board: 'directory_board.glb', disc_cluster: 'disc_cluster.glb',
+        door_furnace: 'door_furnace.glb', dream_eye: 'dream_eye.glb', eeg_rack: 'eeg_rack.glb', egg_chair: 'egg_chair.glb',
+        exec_desk: 'exec_desk.glb', ferris_gondola: 'ferris_gondola.glb', ferris_wheel: 'ferris_wheel.glb', ferris_wheel_wheel: 'ferris_wheel_wheel.glb',
+        flood_mast: 'flood_mast.glb', fountain: 'fountain.glb', giant_clam: 'giant_clam.glb', high_striker: 'high_striker.glb',
+        laminator: 'laminator.glb', laundry_cart: 'laundry_cart.glb', lifeguard_chair: 'lifeguard_chair.glb', lighthouse: 'lighthouse.glb',
+        meat_hook: 'meat_hook.glb', mushroom_lamp: 'mushroom_lamp.glb', music_box: 'music_box.glb', music_box_dancer: 'music_box_dancer.glb',
+        nightmare_bloom: 'nightmare_bloom.glb', notice_board: 'notice_board.glb', pool_lounger: 'pool_lounger.glb', popcorn_cart: 'popcorn_cart.glb',
+        pot_rack: 'pot_rack.glb', punch_clock: 'punch_clock.glb', robot_arm: 'robot_arm.glb', rocking_chair: 'rocking_chair.glb',
+        round_table: 'round_table.glb', saucer_pendant: 'saucer_pendant.glb', school_desk: 'school_desk.glb', scoreboard: 'scoreboard.glb',
+        sea_buoy: 'sea_buoy.glb', sea_vent: 'sea_vent.glb', server_rack: 'server_rack.glb', skiff: 'skiff.glb',
+        slot_machine: 'slot_machine.glb', space_divider: 'space_divider.glb', sputnik_lamp: 'sputnik_lamp.glb', star_projector: 'star_projector.glb',
+        stocks: 'stocks.glb', stone_altar: 'stone_altar.glb', t_pillar: 't_pillar.glb', tanker_desk: 'tanker_desk.glb',
+        ticket_booth: 'ticket_booth.glb', trophy_case: 'trophy_case.glb', trophy_cup: 'trophy_cup.glb', tulip_chair: 'tulip_chair.glb',
+        tulip_table: 'tulip_table.glb', umbrella_closed: 'umbrella_closed.glb', umbrella_stand: 'umbrella_stand.glb', wall_torch_bracket: 'wall_torch_bracket.glb'
+    };
+    function _hqDecorBox(into, list) {
+        into.updateMatrixWorld(true);
+        var inv = new THREE.Matrix4().copy(into.matrixWorld).invert(), rel = new THREE.Matrix4(), all = new THREE.Box3(), bx = new THREE.Box3();
+        list.forEach(function (o) {
+            if (!o) return;
+            o.traverse(function (n) {
+                if (!n.isMesh || n.isSprite || !n.geometry) return;
+                if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+                rel.multiplyMatrices(inv, n.matrixWorld); bx.copy(n.geometry.boundingBox).applyMatrix4(rel); all.union(bx);
+            });
+        });
+        return all;
+    }
+    function _hqDecorHide(m) { if (!m) return; if (m.visible !== false) m._ew_mcKeep = true; m.visible = false; }
+    function _hqDecorWear(name, U, g, o) {
+        o = o || {};
+        var file = _HQ_DECOR_GLB[name];
+        if (!file || typeof _miscModelInstance !== 'function' || typeof THREE.GLTFLoader !== 'function') return null;
+        if (typeof window !== 'undefined' && window.EW_NO_DECOR_GLB) return null;
+        var into = o.into || g;
+        var hide = o.hide || into.children.filter(function (n) { return !n.isSprite && !n.isLight && !n.isPoints && !n._ew_decor; });
+        var box = o.box ? new THREE.Box3(new THREE.Vector3(o.box[0] * U, o.box[1] * U, o.box[2] * U), new THREE.Vector3(o.box[3] * U, o.box[4] * U, o.box[5] * U)) : _hqDecorBox(into, hide);
+        if (box.isEmpty()) return null;
+        var bw = box.max.x - box.min.x, bh = box.max.y - box.min.y, bd = box.max.z - box.min.z;
+        var H = (o.h != null) ? o.h * U : bh, turn = _hqRad(o.turn || 0), side = Math.abs(Math.sin(turn)) > 0.7, fit = o.fit || 'contain', rep = Math.max(1, o.repeat || 1);
+        var outer = new THREE.Group(); outer._ew_decor = name;
+        if (o.at) outer.position.set(o.at[0] * U, o.at[1] * U, o.at[2] * U);
+        else outer.position.set((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+        var cz = outer.position.z;
+        var inst = _miscModelInstance(_HQ_DECOR_BASE + file, true, H, {
+            fit: 'height', repeat: rep, matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined,
+            onDone: function (grp, s, bb) {
+                var ex = (bb.max.x - bb.min.x) * s, ez = (bb.max.z - bb.min.z) * s;
+                if (ez >= ex) ez *= rep; else ex *= rep;                       // _miscModelInstance lays the copies along the longer side
+                var wx = side ? ez : ex, wz = side ? ex : ez, big = 0.12 * U, sx = 1, sy = 1, sz = 1;   // the footprint, the scales in the BOX's axes
+                if (fit === 'stretch') { sx = bw > big ? bw / wx : 1; sz = bd > big ? bd / wz : 1; }
+                else if (fit === 'width') sx = sy = sz = bw / wx;
+                else if (fit === 'contain') { var k = 1; if (bw > big) k = Math.min(k, bw / wx); if (bd > big && !o.wall) k = Math.min(k, bd / wz); sx = sy = sz = k; }
+                grp.scale.set(side ? sz : sx, sy, side ? sx : sz);              // the model's own axes
+                var dw = wx * sx, dh = H * sy, dd = wz * sz;
+                if (!o.at && o.wall) grp.position.z = box.min.z + dd / 2 - cz;
+                if (!o.at && o.top) grp.position.y = bh - dh;
+                hide.forEach(_hqDecorHide);
+                if (o.onDone) { try { o.onDone(grp, { w: dw / U, h: dh / U, d: dd / U, y: (outer.position.y + grp.position.y) / U, z: (cz + grp.position.z) / U });   /* y, z: in the builder frame */ } catch (e) { console.warn('[HQ] decor', name, e); } }
+                if (_hq) _hq.dirty = true;
+            }
+        });
+        inst.rotation.y = turn;
+        inst._ew_oneModel = file;
+        outer.add(inst);
+        hide.forEach(_hqDecorHide);   // NO STAND-INS (2026-10-05): hidden from the start; the collision keeps them (_ew_mcKeep)
+        into.add(outer);
+        return outer;
+    }
     function _hqModelUrl(entry) {
         var D = _hqData();
         /* 2026-09-12: a catalogue entry with `base: 'misc'` lives in the shared
@@ -66057,6 +66145,7 @@ const ThreeRenderer = (function () {
             }
             var leg = _hqBox(0.06, h - 0.05, d - 0.1, body); leg.position.set((w / 2 - 0.05) * U, ((h - 0.05) / 2) * U, 0); g.add(leg);
             var mod = _hqBox(w - 0.5, h - 0.3, 0.03, body); mod.position.set(0.2 * U, ((h - 0.3) / 2 + 0.12) * U, -(d / 2 - 0.06) * U); g.add(mod);
+            _hqDecorWear('tanker_desk', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE SERVING LINE (Room 86, 2026-09-16 — "food trays floating in the
@@ -66232,7 +66321,7 @@ const ThreeRenderer = (function () {
            rest. The catalogue's glow is the cabinet's own light. */
         trophy_case: function (U) {
             var g = new THREE.Group();
-            var W = 1.6, H = 2.1, D = 0.42, PL = 0.5;
+            var W = 1.6, H = 2.1, D = 0.42, PL = 0.5, TC_SHELF = 1.37;
             var wood = _hqMat('teal', 2, 2, { shininess: 30 });
             var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
             var back = _hqMat(null, 1, 1, { color: 0x2b2330, shininess: 8 });
@@ -66255,13 +66344,13 @@ const ThreeRenderer = (function () {
                 var tc = (typeof window !== 'undefined' && typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(prof) : null;
                 engraved = tc ? Math.min(9, tc.lines.length) : 0;
             } catch (e) { engraved = 0; }
-            var n = 0;
+            var n = 0, plq = [];
             for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) {
                 var isGold = n < engraved; n++;
                 var pq = _hqBox(0.3, 0.17, 0.025, isGold ? gold : brass);
-                pq.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.045 * U); g.add(pq);
+                pq.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.045 * U); g.add(pq); plq.push(pq);
                 var plate = _hqBox(0.22, 0.09, 0.006, isGold ? _hqBasic(0xfff1c0) : _hqBasic(0x6a5c44));
-                plate.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.06 * U); g.add(plate);
+                plate.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.06 * U); g.add(plate); plq.push(plate);
             }
             /* the cups on the top shelf */
             for (var k = 0; k < 3; k++) {
@@ -66273,6 +66362,12 @@ const ThreeRenderer = (function () {
             /* the bulbs under the top */
             var bulb = _hqBasic(0xfff3d9);
             for (var b = 0; b < 4; b++) { var bl = new THREE.Mesh(new THREE.SphereGeometry(0.022 * U, 8, 6), bulb); bl.position.set((-0.6 + b * 0.4) * U, (H - 0.06) * U, (D - 0.08) * U); g.add(bl); }
+            /* THE MESHY DECOR (2026-11-03): the open wooden case (Meshy can't do glass, so the pane is ours: mondo "add a clear pane in-game"),
+               stretched to the wall's 1.6 m; three Meshy cups on its top shelf; the engraved plaques stay on the back */
+            if (_hqDecorWear('trophy_case', U, g, { hide: g.children.filter(function (c) { return c !== glass && plq.indexOf(c) < 0; }), fit: 'stretch', wall: true })) {
+                plq.forEach(function (pp) { var rr = Math.round((pp.position.y / U - (PL + 1.02)) / 0.27); pp.position.y = (1.5 + rr * 0.2) * U; });   // the plaques close up under the case's cornice
+                for (var tq = 0; tq < 3; tq++) { var tqx = -0.45 + tq * 0.45; _hqDecorWear('trophy_cup', U, g, { hide: [], box: [tqx - 0.1, TC_SHELF, D / 2 - 0.08, tqx + 0.1, TC_SHELF + (tq === 1 ? 0.26 : 0.2), D / 2 + 0.08], fit: 'height' }); }
+            }
             return g;
         },
         /* ROOM 1984 · THE INTERROGATION ROOM (2026-09-13, plan 7.4): the steel
@@ -66318,6 +66413,7 @@ const ThreeRenderer = (function () {
             /* one drawer left open, a card sticking up: the site somebody was looking for */
             var open = _hqBox(dw - 0.04, dh - 0.04, 0.22, face); open.position.set((-W / 2 + 0.08 + dw * 2.5) * U, (PL + 0.1 + dh * 5.5) * U, (D + 0.11) * U); g.add(open);
             var up = _hqBox(0.06, 0.09, 0.003, card); up.position.set((-W / 2 + 0.08 + dw * 2.5) * U, (PL + 0.1 + dh * 6.0 + 0.02) * U, (D + 0.18) * U); g.add(up);
+            _hqDecorWear('card_catalogue', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* a 42U server rack: a dark cabinet, a perforated front door, the
@@ -66352,6 +66448,7 @@ const ThreeRenderer = (function () {
             var base = _hqBox(W + 0.02, 0.06, D, frame); base.position.set(0, 0.03 * U, (D / 2) * U); g.add(base);
             /* the cable loom out the top, into the tray */
             var loom = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.03 * U, 0.5 * U, 8), bezel); loom.rotation.x = Math.PI / 2; loom.position.set(0.2 * U, (H + 0.02) * U, 0.3 * U); g.add(loom);
+            _hqDecorWear('server_rack', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* the door's keypad: twelve keys, a green LED, and the sticky note with the code on it */
@@ -66427,6 +66524,7 @@ const ThreeRenderer = (function () {
             var stripe = _hqBox(0.086, 0.005, 0.02, _hqBasic(0x5a8898)); stripe.position.set(0.02 * U, 0.073 * U, (D / 2 + 0.08) * U); g.add(stripe);   // the desk stripe (SPACE, on the sample card)
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.01 * U, 8, 6), _hqBasic(0x3aff5a)); lamp.position.set((W / 2 - 0.05) * U, 0.11 * U, (D / 2 + 0.004) * U); g.add(lamp);   // READY
             var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.012 * U, 14), dark); dial.rotation.x = Math.PI / 2; dial.position.set((W / 2 - 0.11) * U, 0.11 * U, (D / 2 + 0.004) * U); g.add(dial);
+            _hqDecorWear('laminator', U, g, { hide: [body, lid, tray, slot, lamp, dial] });   // THE MESHY DECOR (2026-11-03): the card stays half out
             return g;
         },
         notice_board: function (U) {
@@ -66442,6 +66540,7 @@ const ThreeRenderer = (function () {
                 var pin = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 8, 6), pinMat); pin.position.set(sh[0] * U, (sh[1] + sh[3] / 2 - 0.02) * U, (D * 0.3 + 0.03) * U); g.add(pin);
             });
             var strip = _hqBox(W - 0.3, 0.05, 0.004, _hqBasic(0xd9b45a)); strip.position.set(0, (H - 0.1) * U, (D * 0.3 + 0.022) * U); g.add(strip);
+            _hqDecorWear('notice_board', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE CLOCK ROOM (Room 247, 2026-09-11 — plan 7.4 / 7.9). Three
@@ -66488,6 +66587,7 @@ const ThreeRenderer = (function () {
             var hb = _hqBox(0.012, 0.05, 0.004, ink); hb.geometry.translate(0, 0.02 * U, 0); hb.rotation.z = -(8 + 47 / 60) / 12 * Math.PI * 2; hb.position.set(-0.22 * U, 0.28 * U, 0.222 * U); g.add(hb);
             var mb = _hqBox(0.008, 0.07, 0.004, ink); mb.geometry.translate(0, 0.03 * U, 0); mb.rotation.z = -47 / 60 * Math.PI * 2; mb.position.set(-0.22 * U, 0.28 * U, 0.224 * U); g.add(mb);
             var btn = _hqBox(0.07, 0.035, 0.025, red); btn.position.set(-0.22 * U, 0.1 * U, 0.21 * U); g.add(btn);
+            _hqDecorWear('punch_clock', U, g, { hide: [body, lip, slot, dialRim, dial, hb, mb, btn], wall: true });   // THE MESHY DECOR (2026-11-03): the clock only; the card rack + the card in the slot stay
             var plate = _hqBox(0.4, 0.42, 0.02, _hqMat('teal', 1, 1, { shininess: 30 })); plate.position.set(0.2 * U, 0.21 * U, 0.01 * U); g.add(plate);
             for (var r = 0; r < 2; r++) for (var c = 0; c < 4; c++) {
                 if (r === 1 && c === 2) continue;   // one card is in the machine
@@ -66546,6 +66646,7 @@ const ThreeRenderer = (function () {
             });
             var foot = _hqBox(0.36, 0.03, 0.18, chrome); foot.position.set(0, 0.3 * U, 0.4 * U); foot.rotation.x = 0.35; g.add(foot);
             var strut = _hqBox(0.05, 0.03, 0.34, chrome); strut.position.set(0, 0.36 * U, 0.24 * U); strut.rotation.x = 0.55; g.add(strut);
+            _hqDecorWear('barber_chair', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         barber_mirror: function (U) {
@@ -66592,6 +66693,7 @@ const ThreeRenderer = (function () {
             var glass = _hqMat(null, 1, 1, { color: 0xf4f1ea, shininess: 80, specular: 0xffffff, emissive: 0x332e22 });
             var top = new THREE.Mesh(new THREE.SphereGeometry(0.075 * U, 14, 10), glass); top.position.set(0, 0.87 * U, 0.08 * U); g.add(top);
             var bot = new THREE.Mesh(new THREE.SphereGeometry(0.06 * U, 12, 8), chrome); bot.position.set(0, 0.04 * U, 0.08 * U); g.add(bot);
+            _hqDecorWear('barber_pole', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* the MÖBIUS BAR: one band with a half twist round a 1.5 m ring at
@@ -66673,6 +66775,7 @@ const ThreeRenderer = (function () {
             var box = _hqBox(0.22, 0.14, 0.1, steel); box.position.set(0.16 * U, 0.7 * U, 0.08 * U); g.add(box);
             var knob = new THREE.Mesh(new THREE.SphereGeometry(0.015 * U, 8, 6), _hqBasic(0xff5a5a)); knob.position.set(0.2 * U, 0.7 * U, 0.14 * U); g.add(knob);
             var lamp = new THREE.PointLight(0x9fd0ff, 1.15, 16 * U, 2); lamp.position.y = 1.3 * U; g.add(lamp);
+            _hqDecorWear('star_projector', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE PROJECTED SKY (ceiling; the group hangs `cat.h` under the
@@ -66846,6 +66949,7 @@ const ThreeRenderer = (function () {
             var modesty = _hqBox(W - 1.1, TOP - 0.25, 0.03, walnut); modesty.position.set(0, ((TOP - 0.25) / 2 + 0.2) * U, (D / 2 - 0.2) * U); g.add(modesty);   // the visitors see walnut, not knees
             var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.2) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (TOP + 0.05) * U, (D / 2 - 0.08) * U); g.add(rail);
             [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.05 * U, 8), brass); post.position.set(s * (W / 2 - 0.12) * U, (TOP + 0.025) * U, (D / 2 - 0.08) * U); g.add(post); });
+            _hqDecorWear('exec_desk', U, g, { turn: 180 });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE EXECUTIVE CHAIR (4C): a high leather back on a five-star
@@ -67070,6 +67174,7 @@ const ThreeRenderer = (function () {
             [-1, 1].forEach(function (s) { var r = new THREE.Mesh(new THREE.CylinderGeometry(0.016 * U, 0.016 * U, 0.72 * U, 8), tube); r.rotation.x = Math.PI / 2; r.position.set(s * (Wd / 2 - 0.04) * U, 0, -0.36 * U); back.add(r); });
             var towel = _hqBox(Wd - 0.2, 0.03, 0.34, _hqMat(null, 1, 1, { color: 0xe8e0c8, shininess: 2 })); towel.position.set(0, (SEAT + 0.035) * U, (L / 2 - 0.35) * U); g.add(towel);
             var stripe = _hqBox(Wd - 0.2, 0.032, 0.05, _hqBasic(0x4b7fa8)); stripe.position.set(0, (SEAT + 0.036) * U, (L / 2 - 0.42) * U); g.add(stripe);
+            _hqDecorWear('pool_lounger', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE UMBRELLA (Room 8): a pole, a base, a canopy of eight cream
@@ -67445,8 +67550,9 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 });
             var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 1.6 * U, 8), steel); bar.rotation.z = Math.PI / 2; bar.position.y = 0.5 * U; g.add(bar);
             [-0.6, 0.6].forEach(function (x) { var ch = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * U, 0.008 * U, 0.5 * U, 6), steel); ch.position.set(x * U, 0.75 * U, 0); g.add(ch); });
+            var prH = null, prPots = []; _hqDecorWear('pot_rack', U, g, { box: [-0.7, 0.2, -0.3, 0.7, 1.0, 0.3], top: true, onDone: function (i, d) { prH = d.h; prPots.forEach(function (pp, k) { pp.position.set((-0.36 + k * 0.24) * d.w * U, (1.0 - d.h - 0.14) * U, 0); }); } });   // THE MESHY DECOR (2026-11-03): its rods reach the ceiling; the pots hang under it
             var pot = _hqMat(null, 1, 1, { color: 0xc8ccd0, shininess: 90, specular: 0xaaaaaa });
-            for (var i = 0; i < 4; i++) { var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.16 * U, 12), pot); p.position.set((-0.6 + i * 0.4) * U, 0.32 * U, 0); g.add(p); }
+            for (var i = 0; i < 4; i++) { var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.16 * U, 12), pot); p.position.set((-0.6 + i * 0.4) * U, (prH != null ? 1.0 - prH - 0.1 : 0.32) * U, 0); g.add(p); prPots.push(p); }
             return g;
         },
         /* the cold room: a carcass on a chain from a rail */
@@ -67455,6 +67561,7 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x6b6f74, shininess: 60 });
             var chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 0.5 * U, 6), steel); chain.position.y = 1.45 * U; g.add(chain);
             var hook = new THREE.Mesh(new THREE.TorusGeometry(0.06 * U, 0.012 * U, 6, 12, Math.PI), steel); hook.position.y = 1.16 * U; hook.rotation.z = Math.PI; g.add(hook);
+            _hqDecorWear('meat_hook', U, g, { hide: [chain, hook], box: [-0.45, 1.15, -0.12, 0.45, 1.7, 0.12], fit: 'width', top: true });   // THE MESHY DECOR (2026-11-03): the carcass hangs under the Meshy rail
             var meat = _hqMat(null, 1, 1, { color: 0x8a3a3c, shininess: 30, specular: 0x553333 });
             var body = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.22 * U, 1.0 * U, 10), meat); body.position.y = 0.62 * U; g.add(body);
             var frost = new THREE.Mesh(new THREE.CylinderGeometry(0.17 * U, 0.23 * U, 0.3 * U, 10), _hqMat(null, 1, 1, { color: 0xdfe8f0, shininess: 10 })); frost.position.y = 1.0 * U; g.add(frost);
@@ -67479,6 +67586,7 @@ const ThreeRenderer = (function () {
             [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.3 * U, 6), frame); leg.position.set(c[0] * 0.32 * U, 0.15 * U, c[1] * 0.42 * U); g.add(leg); var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.04 * U, 0.03 * U, 10), frame); wh.rotation.z = Math.PI / 2; wh.position.set(c[0] * 0.32 * U, 0.04 * U, c[1] * 0.42 * U); g.add(wh); });
             var handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.7 * U, 6), frame); handle.rotation.z = Math.PI / 2; handle.position.set(0, 0.85 * U, 0.46 * U); g.add(handle);
             var sheet = _hqBox(0.6, 0.04, 0.8, _hqMat(null, 1, 1, { color: 0xf2f0ea, shininess: 6 })); sheet.position.y = 0.84 * U; g.add(sheet);
+            _hqDecorWear('laundry_cart', U, g, {});   // THE MESHY DECOR (2026-11-03): its own laundry fills the basket
             return g;
         },
         /* a fluorescent that has not decided: the tube's glow flickers on a seeded pattern (ticker) */
@@ -67527,6 +67635,7 @@ const ThreeRenderer = (function () {
             [-0.3, 0.3].forEach(function (x) { var gz = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.09 * U, 0.04 * U, 14), _hqMat(null, 1, 1, { color: 0xe8e2d0, shininess: 60 })); gz.rotation.x = Math.PI / 2; gz.position.set(x * U, 1.5 * U, 0.75 * U); g.add(gz); });
             var wheel = new THREE.Mesh(new THREE.TorusGeometry(0.14 * U, 0.02 * U, 6, 16), _hqMat(null, 1, 1, { color: 0xa83a30, shininess: 40 })); wheel.position.set(0.55 * U, 1.9 * U, 0.55 * U); g.add(wheel);
             var pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * U, 0.08 * U, 1.2 * U, 10), band); pipe.position.set(0, 2.9 * U, -0.3 * U); g.add(pipe);
+            _hqDecorWear('boiler', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* the dungeon: a barred cell front on the wall; the cell behind the bars is a dark recess */
@@ -67559,6 +67668,7 @@ const ThreeRenderer = (function () {
             var hi = _hqBox(1.3, 0.14, 0.1, wood); hi.position.set(0, 1.02 * U, 0); hi.rotation.z = 0.06; g.add(hi);
             var hole = _hqMat(null, 1, 1, { color: 0x0c0b0a });
             [-0.3, 0, 0.3].forEach(function (x) { var h = new THREE.Mesh(new THREE.CylinderGeometry((x === 0 ? 0.09 : 0.05) * U, (x === 0 ? 0.09 : 0.05) * U, 0.12 * U, 12), hole); h.rotation.x = Math.PI / 2; h.position.set(x * U, 0.93 * U, 0); g.add(h); });
+            _hqDecorWear('stocks', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit.
@@ -67575,6 +67685,7 @@ const ThreeRenderer = (function () {
             var top = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * U, 2.6 * U, 0.1 * U, 36), oak); top.position.y = 0.77 * U; g.add(top);
             var rim = new THREE.Mesh(new THREE.TorusGeometry(2.6 * U, 0.05 * U, 8, 48), dark); rim.rotation.x = Math.PI / 2; rim.position.y = 0.82 * U; g.add(rim);
             var inlay = new THREE.Mesh(new THREE.RingGeometry(0.9 * U, 1.0 * U, 36), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); inlay.rotation.x = -Math.PI / 2; inlay.position.y = 0.826 * U; g.add(inlay);
+            _hqDecorWear('round_table', U, g, { fit: 'stretch' });   // THE MESHY DECOR (2026-11-03): the table only; the chairs are a separate piece
             for (var i = 0; i < 12; i++) {
                 var a = (i / 12) * Math.PI * 2, cx = Math.sin(a) * 3.25 * U, cz = Math.cos(a) * 3.25 * U;
                 var seat = _hqBox(0.5, 0.08, 0.5, dark); seat.position.set(cx, 0.46 * U, cz); seat.rotation.y = a; g.add(seat);
@@ -67596,6 +67707,7 @@ const ThreeRenderer = (function () {
             var tip = new THREE.Mesh(new THREE.ConeGeometry(0.55 * U, 0.55 * U, 4), cloth); tip.rotation.y = Math.PI / 4; tip.rotation.x = Math.PI; tip.position.set(0, -2.2 * U, 0.09 * U); tip.scale.z = 0.04; g.add(tip);
             var band = _hqBox(1.12, 0.12, 0.024, gold); band.position.set(0, -0.35 * U, 0.09 * U); g.add(band);
             var charge = new THREE.Mesh(new THREE.CircleGeometry(0.28 * U, 20), gold); charge.position.set(0, -1.15 * U, 0.105 * U); g.add(charge);
+            _hqDecorWear('banner', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         armour_stand: function (U) {
@@ -67613,6 +67725,8 @@ const ThreeRenderer = (function () {
             var plume = new THREE.Mesh(new THREE.ConeGeometry(0.05 * U, 0.3 * U, 6), red); plume.position.set(0, 2.1 * U, -0.02 * U); g.add(plume);
             var shield = _hqBox(0.42, 0.55, 0.05, red); shield.position.set(-0.38 * U, 1.25 * U, 0.12 * U); shield.rotation.y = 0.3; g.add(shield);
             var boss = new THREE.Mesh(new THREE.CircleGeometry(0.12 * U, 16), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); boss.position.set(-0.36 * U, 1.25 * U, 0.16 * U); boss.rotation.y = 0.3; g.add(boss);
+            var arm0 = g.children.slice(), armBox = [-0.34, 0, -0.34, 0.34, 2.25, 0.34];   // THE MESHY DECOR (2026-11-03): the Meshy stand inside the Meshy suit (two pieces, mondo)
+            _hqDecorWear('armour_stand_post', U, g, { hide: arm0, box: armBox, h: 1.5, fit: 'height' }); _hqDecorWear('armour_stand', U, g, { hide: arm0, box: armBox, h: 1.95, fit: 'height' });
             return g;
         },
         sword_stone: function (U) {
@@ -67648,6 +67762,7 @@ const ThreeRenderer = (function () {
             var iron = _hqMat(null, 1, 1, { color: 0x3a3632, shininess: 30 });
             var br = _hqBox(0.06, 0.22, 0.05, iron); br.position.set(0, 0.11 * U, 0.03 * U); g.add(br);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.075 * U, 0.014 * U, 6, 14), iron); ring.rotation.x = Math.PI / 2; ring.position.set(0, 0.2 * U, 0.12 * U); g.add(ring);
+            _hqDecorWear('wall_torch_bracket', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03): the bracket; the game's own torch + flame stay in it
             var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 0.6, noTint: true });
             parts.model.position.set(0, 0.02 * U, 0.1 * U);
             parts.model.rotation.x = 0.42;   /* the ward's lean off its wall */
@@ -67735,6 +67850,7 @@ const ThreeRenderer = (function () {
             [-0.7, 0.7].forEach(function (x) { var b = _hqBox(0.5, 0.75, 0.8, stone); b.position.set(x * U, 0.375 * U, 0); g.add(b); });
             var top = _hqBox(2.1, 0.2, 1.0, _hqMat('stone', 3, 1, { color: 0x8a8480, shininess: 10 })); top.position.y = 0.85 * U; g.add(top);
             var groove = _hqBox(1.7, 0.01, 0.06, _hqMat(null, 1, 1, { color: 0x3a1a1a })); groove.position.set(0, 0.955 * U, 0.3 * U); g.add(groove);
+            _hqDecorWear('stone_altar', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         floor_stain: function (U) {
@@ -67807,6 +67923,7 @@ const ThreeRenderer = (function () {
             var seat = _hqBox(0.42, 0.04, 0.4, _hqMat(null, 1, 1, { color: 0x4a6a8a, shininess: 20 })); seat.position.set(0, 0.45 * U, 0.55 * U); g.add(seat);
             var back = _hqBox(0.42, 0.35, 0.04, _hqMat(null, 1, 1, { color: 0x4a6a8a, shininess: 20 })); back.position.set(0, 0.65 * U, 0.75 * U); g.add(back);
             [[-0.18, 0.4], [0.18, 0.4], [-0.18, 0.72], [0.18, 0.72]].forEach(function (c) { var l = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.44 * U, 6), steel); l.position.set(c[0] * U, 0.22 * U, c[1] * U); g.add(l); });
+            _hqDecorWear('school_desk', U, g, { hide: g.children.slice(0, 5) });   // THE MESHY DECOR (2026-11-03): the desk only (the chair is a separate piece)
             return g;
         },
         toilet_stall: function (U) {
@@ -67906,6 +68023,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < 4; i++) { var rung = _hqBox(0.6, 0.04, 0.04, white); rung.position.set(0, (0.35 + i * 0.35) * U, 0.32 * U); g.add(rung); }
             var brolly = new THREE.Mesh(new THREE.ConeGeometry(0.9 * U, 0.3 * U, 10, 1, true), _hqMat(null, 1, 1, { color: 0xd84a3a, shininess: 10, side: THREE.DoubleSide })); brolly.position.y = 2.5 * U; g.add(brolly);
             var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 1.0 * U, 8), white); pole.position.set(0, 2.05 * U, -0.25 * U); g.add(pole);
+            _hqDecorWear('lifeguard_chair', U, g, { hide: g.children.filter(function (c) { return c !== brolly && c !== pole; }), box: [-0.45, 0, -0.4, 0.45, 2.2, 0.4], fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* ROOM 1618: the gravel ring and the hedge round it, gaps at the four doors. Place at (0, 0) — the hedge registers its own
@@ -67947,8 +68065,9 @@ const ThreeRenderer = (function () {
             var bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.7 * U, 0.3 * U, 0.25 * U, 16, 1, true), stone); bowl.position.y = 1.25 * U; g.add(bowl);
             var bowlW = new THREE.Mesh(new THREE.CircleGeometry(0.66 * U, 16), water); bowlW.rotation.x = -Math.PI / 2; bowlW.position.y = 1.34 * U; bowlW.renderOrder = 2; g.add(bowlW);
             var jet = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.06 * U, 0.7 * U, 8), new THREE.MeshBasicMaterial({ color: 0xe8f6ff, transparent: true, opacity: 0.7 })); jet.position.y = 1.7 * U; g.add(jet);
-            var glow = _hzGlowSprite(1.6 * U, 0xbfe9ff, 0.25, 0.06, 0.03, 1.4); glow.position.y = 1.6 * U; g.add(glow);
-            if (_hq) _hq.tickers.push(function (dt, now) { jet.scale.y = 0.9 + 0.12 * Math.sin(now * 0.006); jet.position.y = (1.7 + 0.04 * Math.sin(now * 0.006)) * U; });
+            var jetY = 1.7, glow = _hzGlowSprite(1.6 * U, 0xbfe9ff, 0.25, 0.06, 0.03, 1.4); glow.position.y = 1.6 * U; g.add(glow);
+            if (_hq) _hq.tickers.push(function (dt, now) { jet.scale.y = 0.9 + 0.12 * Math.sin(now * 0.006); jet.position.y = (jetY + 0.04 * Math.sin(now * 0.006)) * U; });
+            _hqDecorWear('fountain', U, g, { hide: [basin, lip, bed, column, bowl], box: [-1.7, 0, -1.7, 1.7, 2.0, 1.7], fit: 'width', onDone: function (i, d) { sheet.position.y = d.h * 0.24 * U; bowlW.position.y = d.h * 0.7 * U; bowlW.scale.setScalar(0.95); jetY = d.h + 0.2; jet.position.y = jetY * U; glow.position.y = (d.h * 0.8) * U; } });   // THE MESHY DECOR (2026-11-03): the water + the jet stay
             return g;
         },
         park_bench: function (U) {
@@ -68119,6 +68238,7 @@ const ThreeRenderer = (function () {
             var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * U, 0.12 * U, 0.62 * U, 14, 1, true), brass); tube.material.side = THREE.DoubleSide; tube.position.y = 0.34 * U; g.add(tube);
             var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.17 * U, 0.04 * U, 14), brass); foot.position.y = 0.02 * U; g.add(foot);
             var rim = new THREE.Mesh(new THREE.TorusGeometry(0.12 * U, 0.012 * U, 6, 20), brass); rim.rotation.x = Math.PI / 2; rim.position.y = 0.65 * U; g.add(rim);
+            _hqDecorWear('umbrella_stand', U, g);   // THE MESHY DECOR (2026-11-03): the stand, then a Meshy umbrella in each
             var cols = [0x1a1a22, 0x3a1e1e, 0x1e2a3a];
             for (var i = 0; i < 3; i++) {
                 var a = i * 2.1 + 0.4, tilt = 0.12 + i * 0.03;
@@ -68128,6 +68248,7 @@ const ThreeRenderer = (function () {
                 var handle = new THREE.Mesh(new THREE.TorusGeometry(0.04 * U, 0.011 * U, 6, 12, Math.PI), _hqMat(null, 1, 1, { color: 0x5a3a1a })); handle.position.y = 0.9 * U; handle.rotation.z = Math.PI; um.add(handle);
                 um.position.set(Math.cos(a) * 0.06 * U, 0.06 * U, Math.sin(a) * 0.06 * U);
                 um.rotation.z = Math.cos(a) * tilt; um.rotation.x = -Math.sin(a) * tilt;
+            _hqDecorWear('umbrella_closed', U, um, { fit: 'height' });
                 g.add(um);
             }
             return g;
@@ -68144,6 +68265,7 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
             g.add(parts.model);
+            _hqDecorWear('cave_torch', U, g, { into: parts.model, hide: parts.model.children.slice(0, parts.model.children.indexOf(parts.flame)), fit: 'height' });   // THE MESHY DECOR (2026-11-03): the flame stays
             var entry = { root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27) % 100 };
             if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
             return g;
@@ -68233,6 +68355,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i <= n; i++) { var r = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.05 * U, (W - 0.1) * U, 10), steel); r.rotation.z = Math.PI / 2; r.position.set((-L / 2 + 0.1 + (L - 0.2) * i / n) * U, (H - 0.12) * U, 0); g.add(r); }
             [-1, 1].forEach(function (s) { for (var k = 0; k < 3; k++) { var leg = _hqBox(0.06, H - 0.12, 0.06, steel); leg.position.set((-L / 2 + 0.3 + (L - 0.6) * k / 2) * U, ((H - 0.12) / 2) * U, s * (W / 2 - 0.05) * U); g.add(leg); } });
             var stripe = _hqBox(L - 0.1, 0.01, 0.05, _hqBasic(0xd9b23a)); stripe.position.set(0, (H + 0.045) * U, (W / 2 - 0.12) * U); g.add(stripe);
+            _hqDecorWear('conveyor', U, g, { repeat: Math.max(1, Math.round(L / 3)), fit: 'stretch' });   // THE MESHY DECOR (2026-11-03): Meshy's 3 m section, end to end; the leaves still ride it
             /* the leaves riding it */
             var leaves = [], count = Math.max(2, Math.round(L / 1.6));
             for (var j = 0; j < count; j++) {
@@ -68266,6 +68389,7 @@ const ThreeRenderer = (function () {
             var frame = _hqBox(0.8, 0.06, 0.06, dark); frame.position.set(0, 0.86 * U, 0.06 * U); wrist.add(frame);
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0x40ff60)); lamp.position.set(0.2 * U, 0.35 * U, 0); turret.add(lamp);
             elbow.rotation.x = -0.35;
+            _hqDecorWear('robot_arm', U, g, { hide: [base, shoulder, upper, fore, grip, lamp], box: [-0.6, 0, -1.2, 0.6, 2.3, 1.2], fit: 'height', at: [0, 0, 0.53], onDone: function (i, d) { if (wrist.parent !== g) { elbow.remove(wrist); g.add(wrist); } wrist.rotation.set(0, 0, 0); wrist.position.set(0, d.h * 0.59 * U, (0.53 + d.h * 0.43) * U); } });   // THE MESHY DECOR (2026-11-03): the door hangs from the Meshy gripper
             var seed = (_hqProcSeed++) * 1.3;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed;
@@ -68304,9 +68428,11 @@ const ThreeRenderer = (function () {
             [-1, 1].forEach(function (s) { var j = _hqBox(0.14, mh + 0.1, 0.4, jamb); j.position.set(s * (mw / 2 + 0.07) * U, (0.15 + mh / 2) * U, (D / 2 - 0.2) * U); g.add(j); });
             var head = _hqBox(mw + 0.28, 0.14, 0.4, jamb); head.position.set(0, (0.15 + mh + 0.07) * U, (D / 2 - 0.2) * U); g.add(head);
             var sill = _hqBox(mw + 0.28, 0.15, 0.6, iron); sill.position.set(0, 0.075 * U, (D / 2 + 0.1) * U); g.add(sill);
+            var fdD = null; _hqDecorWear('door_furnace', U, g, { box: [-1.9, 0, -0.9, 1.9, 3.8, 0.9], fit: 'width', onDone: function (i, d) { fdD = d; if (typeof lm !== 'undefined' && lm) { lm.position.z = (d.z + d.d / 2 + 0.02) * U; lm.position.y = Math.max(1.2, d.h * 0.72) * U; } if (typeof glow !== 'undefined' && glow) glow.position.z = (d.z + d.d / 2 + 0.2) * U; } });   // THE MESHY DECOR (2026-11-03): the sign, the glow and the leaf stay
             var glow = _hzGlowSprite(3.0 * U, 0xff9040, 0.5, 0.15, 0.06, 2.0); glow.position.set(0, 1.3 * U, (D / 2 + 0.2) * U); g.add(glow);
             var lab = _hzTextTex('hq_furnace_sign', ['CLOSED FOR GOOD'], { w: 512, h: 96, color: '#f0d8a0' });
             if (lab) { var lm = new THREE.Mesh(new THREE.PlaneGeometry(2.4 * U, 0.45 * U), new THREE.MeshBasicMaterial({ map: lab, transparent: true })); lm.position.set(0, (H - 0.5) * U, (D / 2 + 0.01) * U); g.add(lm); }
+            if (fdD && lm) { lm.position.z = (fdD.z + fdD.d / 2 + 0.02) * U; lm.position.y = Math.max(1.2, fdD.h * 0.72) * U; glow.position.z = (fdD.z + fdD.d / 2 + 0.2) * U; }
             /* the leaf on its way in */
             var leaf = _hqWorksLeaf(U, 0.7, 1.6, _hqProcSeed++, 1); leaf.rotation.x = -0.35; g.add(leaf);
             var seed = (_hqProcSeed++) * 0.7;
@@ -68355,6 +68481,7 @@ const ThreeRenderer = (function () {
             var lipm = _hqBox(2.44, 0.05, 1.24, steel); lipm.position.y = 0.9 * U; g.add(lipm);
             [-1, 1].forEach(function (s) { var ped = _hqBox(0.5, 0.84, 0.6, _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 })); ped.position.set(s * 0.8 * U, 0.42 * U, 0); g.add(ped); });
             var drain = new THREE.Mesh(new THREE.CircleGeometry(0.06 * U, 12), _hqBasic(0x222426)); drain.rotation.x = -Math.PI / 2; drain.position.set(0, 0.905 * U, 0.4 * U); g.add(drain);
+            _hqDecorWear('autopsy_table', U, g);   // THE MESHY DECOR (2026-11-03): the parts + their tags stay on top
             /* the parts: knob, handle, bell, window, boards, knocker, hinges, letterbox, peephole, chain — and the tags */
             var brass = _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 120, specular: 0xffffff });
             var wood = _hqMat('wood', 1, 1, { color: 0x8a5a34 });
@@ -68559,12 +68686,13 @@ const ThreeRenderer = (function () {
         departures_board: function (U) {
             var g = new THREE.Group();
             var box = _hqBox(3.2, 0.9, 0.1, _hqMat(null, 1, 1, { color: 0x1a1a1e, shininess: 30 })); box.position.set(0, 0.45 * U, 0.05 * U); g.add(box);
+            var dbD = null, dbM = null; _hqDecorWear('departures_board', U, g, { fit: 'stretch', wall: true, onDone: function (i, d) { dbD = d; if (dbM) dbM.position.z = (d.z + d.d / 2 + 0.006) * U; } });   // THE MESHY DECOR (2026-11-03): every route stays on its face
             var routes = [];
             try { var R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.routes) || {}; Object.keys(R).forEach(function (k) { routes.push((R[k].label || k).toUpperCase()); }); } catch (e) {}
             if (!routes.length) routes = ['ALL LINES'];
             var lines = routes.slice(0, 6).map(function (r, i) { return (r + '                          ').slice(0, 22) + '  ' + (17 + i * 3) + ' MIN   DELAYED'; });
             var tx = _hzTextTex('hq_departures_' + routes.length, lines, { w: 1024, h: 288, color: '#ffb020', bg: '#0e0e12', font: '"Lucida Console", Menlo, monospace', pad: 0.06 });
-            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(3.1 * U, 0.82 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 0.45 * U, 0.105 * U); g.add(m); }
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(3.1 * U, 0.82 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 0.45 * U, 0.105 * U); g.add(m); dbM = m; if (dbD) m.position.z = (dbD.z + dbD.d / 2 + 0.006) * U; }
             return g;
         },
         /* THE TUNNEL: DOOR_HQ.routes as a subway map on the tiles */
@@ -68607,6 +68735,7 @@ const ThreeRenderer = (function () {
             var R = 2.8, hubY = 3.5;
             [-1, 1].forEach(function (s) { [-1, 1].forEach(function (k) { var leg = _hqBox(0.12, hubY / Math.cos(0.35), 0.12, steel); leg.position.set(s * 0.55 * U, (hubY / 2) * U, k * (hubY * Math.tan(0.35) / 2) * U); leg.rotation.x = -k * 0.35; g.add(leg); }); });
             var axle = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * U, 0.08 * U, 1.3 * U, 10), steel); axle.rotation.z = Math.PI / 2; axle.position.y = hubY * U; g.add(axle);
+            _hqDecorWear('ferris_wheel', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03): the stand, the wheel and the seats are three Meshy pieces (mondo)
             var wheel = new THREE.Group(); wheel.position.y = hubY * U; g.add(wheel);
             [-1, 1].forEach(function (s) { var rim = new THREE.Mesh(new THREE.TorusGeometry(R * U, 0.04 * U, 8, 48), steel); rim.rotation.y = Math.PI / 2; rim.position.x = s * 0.45 * U; wheel.add(rim); });
             var gondolas = [];
@@ -68616,8 +68745,10 @@ const ThreeRenderer = (function () {
                 var piv = new THREE.Group(); piv.position.set(0, Math.cos(a) * R * U, Math.sin(a) * R * U); wheel.add(piv);
                 var car = _hqBox(0.8, 0.5, 0.5, _hqMat(null, 1, 1, { color: [0xe04848, 0x48a0e0, 0xf0d040, 0x60c060][i % 4], shininess: 40 })); car.position.y = -0.4 * U; piv.add(car);
                 var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0xfff0a0)); bulb.position.y = 0.05 * U; piv.add(bulb);
+                _hqDecorWear('ferris_gondola', U, piv, { hide: [car, bulb], box: [-0.4, -0.85, -0.35, 0.4, 0.05, 0.35], fit: 'height' });
                 gondolas.push({ piv: piv, a: a });
             }
+            _hqDecorWear('ferris_wheel_wheel', U, g, { into: wheel, hide: wheel.children.filter(function (c) { return c.isMesh; }), box: [-0.5, -R - 0.05, -R - 0.05, 0.5, R + 0.05, R + 0.05], turn: 90, fit: 'height' });
             var glow = _hzGlowSprite(5.0 * U, 0xffd080, 0.35, 0.05, 0.03, 0.6); glow.position.y = hubY * U; g.add(glow);
             if (_hq) _hq.tickers.push(function (dt) { wheel.rotation.x += dt * 0.18; for (var q = 0; q < gondolas.length; q++) gondolas[q].piv.rotation.x = -wheel.rotation.x; });
             return g;
@@ -68641,10 +68772,12 @@ const ThreeRenderer = (function () {
                 var head = _hqBox(0.14, 0.14, 0.3, body.material); head.position.set(0, 1.45 * U, 0.5 * U); h.add(head);
                 for (var l = 0; l < 4; l++) { var leg = _hqBox(0.06, 0.5, 0.06, body.material); leg.position.set(((l % 2) ? 0.08 : -0.08) * U, 0.62 * U, ((l < 2) ? 0.28 : -0.28) * U); leg.rotation.x = (l < 2) ? -0.5 : 0.4; h.add(leg); }
                 var saddle = _hqBox(0.26, 0.06, 0.3, _hqMat(null, 1, 1, { color: 0xc8303a })); saddle.position.y = 1.16 * U; h.add(saddle);
+                _hqDecorWear('carousel_horse', U, h, { box: [-0.15, 0.35, -0.5, 0.15, 1.55, 0.6], fit: 'height' });   // THE MESHY DECOR (2026-11-03): a Meshy horse on the brass pole (no pole of its own)
                 h.rotation.y = -a + Math.PI / 2;
                 horses.push({ h: h, ph: i * 0.8 });
             }
             var bulbs = new THREE.Group(); for (var b = 0; b < 16; b++) { var ba = (b / 16) * Math.PI * 2; var bl = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic((b % 2) ? 0xfff0a0 : 0xffb0c0)); bl.position.set(Math.cos(ba) * (R + 0.25) * U, 2.9 * U, Math.sin(ba) * (R + 0.25) * U); bulbs.add(bl); } g.add(bulbs);
+            _hqDecorWear('carousel', U, g, { into: spin, hide: [deck, post, canopy, bulbs], box: [-2.7, 0, -2.7, 2.7, 3.75, 2.7], fit: 'width' });   // THE MESHY DECOR (2026-11-03): the whole carousel rides the spin
             if (_hq) _hq.tickers.push(function (dt, now) { spin.rotation.y += dt * 0.25; var t = now * 0.001; for (var q = 0; q < horses.length; q++) horses[q].h.position.y = 0.18 * Math.sin(t * 1.4 + horses[q].ph) * U; });
             return g;
         },
@@ -68681,6 +68814,7 @@ const ThreeRenderer = (function () {
             var tx = _hzTextTex('hq_striker', ['WEAKLING', 'RECRUIT', 'OPERATIVE', 'KEYHOLDER', 'GATEKEEPER', 'THE DIRECTOR'], { w: 128, h: 512, color: '#ffe8a0', pad: 0.05 });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 2.6 * U, 0.065 * U); g.add(m); }
             var puck = _hqBox(0.3, 0.08, 0.06, _hqBasic(0xff3030)); puck.position.set(0, 0.6 * U, 0.08 * U); g.add(puck);
+            _hqDecorWear('high_striker', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* ROOM 1893: the ticket booth — a kiosk with a window and a lit ADMIT ONE */
@@ -68694,6 +68828,7 @@ const ThreeRenderer = (function () {
             var tx = _hzTextTex('hq_admit_one', ['TICKETS', 'ADMIT ONE'], { w: 512, h: 160, color: '#fff0c0', bg: '#2a1010' });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * U, 0.5 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 2.55 * U, 0.72 * U); g.add(m); }
             var glow = _hzGlowSprite(1.8 * U, 0xffd0a0, 0.3, 0.05, 0.02, 0.8); glow.position.set(0, 2.5 * U, 0.8 * U); g.add(glow);
+            _hqDecorWear('ticket_booth', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         popcorn_cart: function (U) {
@@ -68703,6 +68838,7 @@ const ThreeRenderer = (function () {
             var glass = _hqBox(0.8, 0.6, 0.5, new THREE.MeshPhongMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.5, emissive: 0xfff0c0, emissiveIntensity: 0.3 })); glass.position.y = 1.4 * U; g.add(glass);
             var lid = _hqBox(0.95, 0.06, 0.65, red); lid.position.y = 1.73 * U; g.add(lid);
             [-1, 1].forEach(function (s) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.2 * U, 0.05 * U, 14), _hqBasic(0xd8b860)); wh.rotation.x = Math.PI / 2; wh.position.set(s * 0.4 * U, 0.2 * U, 0.33 * U); g.add(wh); });
+            _hqDecorWear('popcorn_cart', U, g);   // THE MESHY DECOR (2026-11-03): the popcorn stays in its case
             for (var i = 0; i < 30; i++) { var k = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 6, 5), _hqBasic(0xfff4d0)); k.position.set((Math.random() - 0.5) * 0.6 * U, (1.15 + Math.random() * 0.3) * U, (Math.random() - 0.5) * 0.4 * U); g.add(k); }
             return g;
         },
@@ -68721,6 +68857,7 @@ const ThreeRenderer = (function () {
             var post = _hqBox(0.06, 1.2, 0.06, steel); post.position.y = 0.6 * U; g.add(post);
             var foot = _hqBox(0.6, 0.05, 0.5, steel); foot.position.y = 0.025 * U; g.add(foot);
             var box = _hqBox(0.5, 0.4, 0.3, _hqMat(null, 1, 1, { color: 0xe8e8e0, shininess: 30 })); box.position.set(0, 1.15 * U, 0.1 * U); g.add(box);
+            _hqDecorWear('eeg_rack', U, g);   // THE MESHY DECOR (2026-11-03): the live trace stays
             var cv = null, tex = null, ctx = null;
             if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 128; cv.height = 96; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); }
             var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * U, 0.28 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x103020)); scr.position.set(0, 1.17 * U, 0.26 * U); g.add(scr);
@@ -68798,6 +68935,7 @@ const ThreeRenderer = (function () {
                 var head = new THREE.Mesh(new THREE.BoxGeometry(0.34 * U, 0.3 * U, 0.26 * U), dark); head.position.set(x, 6.62 * U, 0.06 * U); head.rotation.x = 0.55; g.add(head);
                 var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.28 * U, 0.24 * U), lampMat); lens.position.set(x, 6.55 * U, 0.2 * U); lens.rotation.x = -Math.PI / 2 + 0.55; g.add(lens);
             }
+            _hqDecorWear('flood_mast', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE BOWL (2026-09-26): the scoreboard over the north concourse — two steel legs, an 11 m frame, a lit screen (the score of a
@@ -68807,6 +68945,7 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x3a3e44, shininess: 30 });
             [-4.2, 4.2].forEach(function (x) { var leg = _hqBox(0.5, 3.4, 0.5, steel); leg.position.set(x * U, 1.7 * U, 0); leg.castShadow = true; g.add(leg); });
             var frame = _hqBox(11, 5.4, 0.6, steel); frame.position.y = 6.1 * U; frame.castShadow = true; g.add(frame);
+            _hqDecorWear('scoreboard', U, g, { fit: 'stretch' });   // THE MESHY DECOR (2026-11-03): the screen + the ticker strip stay
             var scrMat;
             try {
                 var cv = document.createElement('canvas'); cv.width = 512; cv.height = 220; var c = cv.getContext('2d');
@@ -68832,6 +68971,7 @@ const ThreeRenderer = (function () {
             var arm = _hqBox(0.16 * k, H * 0.5, 0.06 * k, relief); arm.position.set(0.2 * k * U, H * 0.55 * U, 0.26 * k * U); g.add(arm);
             var hand = _hqBox(0.4 * k, 0.14 * k, 0.06 * k, relief); hand.position.set(0.12 * k * U, H * 0.32 * U, 0.26 * k * U); g.add(hand);
             var fox = _hqBox(0.5 * k, 0.3 * k, 0.05 * k, relief); fox.position.set(-0.1 * k * U, H * 0.78 * U, 0.26 * k * U); fox.rotation.z = 0.35; g.add(fox);   // the animal on the shaft (one of them has moved)
+            _hqDecorWear('t_pillar', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         saucer_rig: function (U) {
@@ -68962,6 +69102,7 @@ const ThreeRenderer = (function () {
             var knob = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 10, 8), _hqBasic(0xff3a3a)); knob.position.set(0.37 * U, 1.5 * U, 0.05 * U); g.add(knob);
             var btn = _hqBox(0.28, 0.04, 0.08, chrome); btn.position.set(-0.05 * U, 0.98 * U, 0.3 * U); g.add(btn);
             var tray = _hqBox(0.44, 0.08, 0.14, chrome); tray.position.set(0, 0.76 * U, 0.3 * U); g.add(tray);
+            _hqDecorWear('slot_machine', U, g, { hide: g.children.filter(function (c) { return c !== plinth; }), box: [-0.34, 0.7, -0.32, 0.34, 1.84, 0.32], fit: 'height' });   // THE MESHY DECOR (2026-11-03): the cabinet stands on the old plinth; the reels spin on behind its glass
             var glow = _hzGlowSprite(1.1 * U, 0xffd040, 0.28, 0.05, 0.02, 0.8); glow.position.set(0, 1.7 * U, 0.3 * U); g.add(glow);
             /* THE TICKER: a spin every few seconds — the reels run, then stop one by one; the top box breathes */
             var spin = 0, t0 = 0, period = 5.5 + Math.random() * 3;
@@ -73695,7 +73836,7 @@ const ThreeRenderer = (function () {
     function _mcSnap(root) {
         var list = [], walk = function (o, M) {
             for (var i = 0; i < o.children.length; i++) {
-                var c = o.children[i]; if (!c || c.visible === false) continue;
+                var c = o.children[i]; if (!c || (c.visible === false && !c._ew_mcKeep)) continue;   // THE MESHY DECOR: a stand-in under its model still collides
                 c.updateMatrix();
                 var m = new THREE.Matrix4().multiplyMatrices(M, c.matrix);
                 if (c.isMesh && !c.isSprite && c.geometry && c.geometry.attributes && c.geometry.attributes.position && _mcSolidMat(c.material)) list.push({ g: c.geometry, m: m, im: c.isInstancedMesh ? c : null });
@@ -76495,6 +76636,7 @@ const ThreeRenderer = (function () {
             var gun = new THREE.Mesh(new THREE.TorusGeometry(0.86 * U, 0.05 * U, 6, 20), wood); gun.rotation.x = Math.PI / 2; gun.scale.set(1, 2.7, 1); gun.position.y = 0.52 * U; proc.add(gun);
             g.add(proc);
             var url = (typeof _MISC_GLB !== 'undefined' && _MISC_GLB.rowboat) ? _R2_MISC + _MISC_GLB.rowboat : null;
+            if (_HQ_DECOR_GLB.skiff && typeof THREE.GLTFLoader === 'function' && !(typeof window !== 'undefined' && window.EW_NO_DECOR_GLB)) { url = null; proc.visible = false; }   // THE MESHY DECOR: the Meshy skiff (hull + mast + sail up) replaces the rowboat file
             if (url && typeof THREE.GLTFLoader === 'function' && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
                 var piv = new THREE.Group(); piv.rotation.y = Math.PI / 2;   // the GLB's length runs along X (the misc rule); the helm's forward is +Z
                 piv.add(_miscModelInstance(url, true, 4.6 * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { proc.visible = false; if (_hq) _hq.dirty = true; } }));
@@ -76505,6 +76647,7 @@ const ThreeRenderer = (function () {
             var boom = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, 2.6 * U, 8), wood); boom.rotation.x = Math.PI / 2; boom.position.set(0, 1.25 * U, -0.8 * U); g.add(boom);
             var sailShape = new THREE.Shape(); sailShape.moveTo(0, 0); sailShape.lineTo(0, 2.4 * U); sailShape.lineTo(-2.3 * U, 0.05 * U); sailShape.lineTo(0, 0);
             var sail = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), canvas); sail.rotation.y = Math.PI / 2; sail.position.set(0.02 * U, 1.3 * U, 0.38 * U); g.add(sail);
+            _hqDecorWear('skiff', U, g, { hide: [proc, mast, boom, sail], box: [-0.9, -0.15, -2.4, 0.9, 3.8, 2.4], turn: 90 });   // THE MESHY DECOR (2026-11-03)
             var seed = (_hqProcSeed++) * 1.3;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; sail.rotation.y = Math.PI / 2 + 0.28 * Math.sin(t * 0.7); boom.rotation.y = 0.28 * Math.sin(t * 0.7); });
             return g;
@@ -76554,6 +76697,7 @@ const ThreeRenderer = (function () {
             var beams = new THREE.Group(); beams.position.y = (0.8 + h + 0.7) * U;
             [0, Math.PI].forEach(function (a) { var b = new THREE.Mesh(new THREE.ConeGeometry(2.2 * U, 34 * U, 10, 1, true), beamMat); b.rotation.z = Math.PI / 2; b.rotation.y = a; b.position.set(Math.cos(a) * 17 * U, 0, Math.sin(a) * 17 * U); var piv = new THREE.Group(); piv.rotation.y = a; piv.add(b); b.position.set(17 * U, 0, 0); beams.add(piv); });
             /* NO LIGHT BOX (mondo 2026-10-05): the turning beam cones are not added */
+            _hqDecorWear('lighthouse', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* a channel buoy: a red can on a float, a lamp on top */
@@ -76564,6 +76708,7 @@ const ThreeRenderer = (function () {
             var can = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * U, 0.42 * U, 1.2 * U, 10), red); can.position.y = 0.85 * U; g.add(can);
             var cage = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.22 * U, 0.6 * U, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0x2a2c30, wireframe: true })); cage.position.y = 1.75 * U; g.add(cage);
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12 * U, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff5a4a })); lamp.position.y = 2.0 * U; g.add(lamp);
+            _hqDecorWear('sea_buoy', U, g, { hide: [fl, can, cage] });   // THE MESHY DECOR (2026-11-03): the lamp keeps its blink
             var seed = (_hqProcSeed++) * 0.7;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; g.rotation.z = 0.08 * Math.sin(t * 1.1); g.rotation.x = 0.06 * Math.sin(t * 0.8); lamp.material.color.setHex((Math.floor(t * 1.2) % 2) ? 0xff5a4a : 0x5a1a14); });
             return g;
@@ -76618,8 +76763,9 @@ const ThreeRenderer = (function () {
             var tents = new THREE.Group(); tents.position.y = 0.16 * U;
             for (var i = 0; i < 14; i++) { var a = i * 0.45, r = 0.06 + (i % 3) * 0.05; var t = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.03 * U, 0.34 * U, 5), m); t.position.set(Math.cos(a) * r * U, 0.16 * U, Math.sin(a) * r * U); t.rotation.set(0.35 * Math.cos(a), 0, -0.35 * Math.sin(a)); tents.add(t); }
             g.add(tents);
+            var anM = _hqDecorWear('anemone', U, g);   // THE MESHY DECOR (2026-11-03)
             var seed = (_hqProcSeed++) * 1.1;
-            if (_hq) _hq.tickers.push(function (dt, now) { var s = 1 + 0.12 * Math.sin(now * 0.0016 + seed); tents.scale.set(s, 1 / s, s); });
+            if (_hq) _hq.tickers.push(function (dt, now) { var s = 1 + 0.12 * Math.sin(now * 0.0016 + seed); tents.scale.set(s, 1 / s, s); if (anM) { var s2 = 1 + 0.04 * Math.sin(now * 0.0016 + seed); anM.scale.set(s2, 1 / s2, s2); } });
             return g;
         },
         /* A GIANT CLAM: two fluted shells, open on a pearl light */
@@ -76632,6 +76778,7 @@ const ThreeRenderer = (function () {
             var pearl = new THREE.Mesh(new THREE.SphereGeometry(0.09 * U, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); pearl.position.set(0, 0.4 * U, 0.05 * U); g.add(pearl);
             var seed = (_hqProcSeed++) * 0.8;
             if (_hq) _hq.tickers.push(function (dt, now) { hi.rotation.x = -0.5 - 0.15 * Math.sin(now * 0.0007 + seed); });
+            _hqDecorWear('giant_clam', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* A BLACK SMOKER: a chimney of dark rock, a glow in the vent, smoke sprites rising */
@@ -76640,6 +76787,7 @@ const ThreeRenderer = (function () {
             var rock = new THREE.MeshPhongMaterial({ color: 0x2a2624, shininess: 6, flatShading: true });
             var stack = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * U, 0.75 * U, 2.2 * U, 9), rock); stack.position.y = 1.1 * U; g.add(stack);
             var stub = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.42 * U, 1.1 * U, 8), rock); stub.position.set(0.55 * U, 0.55 * U, 0.2 * U); stub.rotation.z = -0.2; g.add(stub);
+            _hqDecorWear('sea_vent', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03): the smoke is the sprites below
             var vent = _hzGlowSprite(0.9 * U, 0xff8a30, 0.6, 0.2, 0.1, 1.3); vent.position.y = 2.25 * U; g.add(vent);
             var puffs = [];
             for (var i = 0; i < 6; i++) { var p = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x203038, transparent: true, opacity: 0.3, depthWrite: false })); p.userData.t = i / 6; puffs.push(p); g.add(p); }
@@ -76907,10 +77055,13 @@ const ThreeRenderer = (function () {
             var tint = [0x4fa8ff, 0x7fdc6a, 0xd8802a, 0xa060ff, 0xff4a4a][(_hqProcSeed++) % 5];
             var stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.16 * U, 0.5 * U, 10), new THREE.MeshPhongMaterial({ color: 0x8a4a5a, shininess: 8 })); stalk.position.y = 0.25 * U; g.add(stalk);
             var eye = _hqAstralEye(R, tint, 0xd8a0a8); eye.g.position.y = 1.0 * U; g.add(eye.g);
+            var dmE = _hqDecorWear('dream_eye', U, g, { hide: [stalk, eye.g], box: [-0.6, 0, -0.6, 0.6, 1.6, 0.6], fit: 'height' }), dmQ = new THREE.Quaternion(), dmP = new THREE.Vector3(), dmR = new THREE.Euler();   // THE MESHY DECOR (2026-11-03): the Meshy eye turns to watch you
             var seed = (_hqProcSeed++) * 0.9, nextBlink = 2 + Math.random() * 4, blinkT = -1;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var pl = _hq && _hq.player;
                 if (pl) eye.track(pl.x * U, (pl.y + 1.5) * U, pl.z * U, 0.06);
+                if (dmE && pl) { g.getWorldQuaternion(dmQ); g.getWorldPosition(dmP); var dmW = Math.atan2(pl.x * U - dmP.x, pl.z * U - dmP.z) - dmR.setFromQuaternion(dmQ, 'YXZ').y, dmD = dmW - dmE.rotation.y; dmE.rotation.y += Math.atan2(Math.sin(dmD), Math.cos(dmD)) * 0.06; }
+                if (dmE) dmE.position.y = 0.04 * Math.sin(now * 0.0012 + seed) * U;
                 nextBlink -= dt;
                 if (nextBlink <= 0 && blinkT < 0) { blinkT = 0; nextBlink = 2.5 + Math.random() * 5; }
                 if (blinkT >= 0) { blinkT += dt; var k = blinkT < 0.09 ? blinkT / 0.09 : blinkT < 0.2 ? 1 - (blinkT - 0.09) / 0.11 : 0; eye.blink(Math.max(0, Math.min(1, k))); if (blinkT >= 0.2) { blinkT = -1; eye.blink(0); } }
@@ -76959,11 +77110,12 @@ const ThreeRenderer = (function () {
                 var tooth = new THREE.Mesh(new THREE.ConeGeometry(0.09 * U, 0.55 * U, 6), bone); tooth.position.y = 0.27 * U; piv.add(tooth);
                 head.add(piv); petals.push(piv);
             }
+            var nbM = _hqDecorWear('nightmare_bloom', U, g, { hide: [stem, bulb].concat(petals), into: g, fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             var seed = (_hqProcSeed++) * 1.3;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed, open = 0.55 + 0.45 * Math.sin(t * 0.9);   // 0 shut (a bud of teeth) … 1 wide
                 for (var i = 0; i < petals.length; i++) petals[i].rotation.z = -(0.15 + 1.25 * open) + 0.08 * Math.sin(t * 3 + i);   // the cone leans OUT from the bulb about its own tangent
-                head.rotation.y += dt * 0.15; throat.material.opacity = 0.15 + 0.3 * open;
+                head.rotation.y += dt * 0.15; if (nbM) nbM.rotation.y += dt * 0.15; throat.material.opacity = 0.15 + 0.3 * open;
             });
             return g;
         },
@@ -76995,6 +77147,7 @@ const ThreeRenderer = (function () {
             felt.position.set(0, (H / 2) * U, (D + 0.003) * U); g.add(felt);
             var glass = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.08) * U, (H - 0.08) * U), new THREE.MeshPhongMaterial({ color: 0xd8e8f0, transparent: true, opacity: 0.12, shininess: 120, specular: 0xffffff }));
             glass.position.set(0, (H / 2) * U, (D + 0.02) * U); g.add(glass);
+            _hqDecorWear('directory_board', U, g, { hide: [frame, glass], box: [-0.5, -0.9, 0, 0.5, 1.1, 0.6], fit: 'height', wall: true, onDone: function (i, d) { var pw = d.w * 0.72, ph = Math.min(d.h * 0.6, pw * 1.4); felt.scale.set(pw / (W - 0.1), ph / (H - 0.1), 1); felt.position.set(0, (-0.9 + d.h * 0.6) * U, (d.z + d.d / 2 + 0.005) * U); } });   // THE MESHY DECOR (2026-11-03): the kiosk stands on the floor (mount 0.9); the floor's list on its panel
             return g;
         },
         /* THE ROCKING CHAIR (floor, block): a spindle-back chair on two runners.
@@ -77009,6 +77162,7 @@ const ThreeRenderer = (function () {
             for (var lx = -1; lx <= 1; lx += 2) for (var lz = -1; lz <= 1; lz += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.024 * U, 0.42 * U, 6), wood); leg.position.set(lx * 0.21 * U, 0.21 * U, lz * 0.2 * U); rock.add(leg); }
             for (var rx = -1; rx <= 1; rx += 2) { var rg = new THREE.Group(); var run = new THREE.Mesh(new THREE.TorusGeometry(0.62 * U, 0.02 * U, 6, 20, 0.95), wood); run.rotation.z = 1.5 * Math.PI - 0.475; rg.add(run); rg.rotation.y = Math.PI / 2; rg.position.set(rx * 0.22 * U, 0.62 * U, 0); rock.add(rg); }   // a runner is an arc of a wheel under the legs, its low point on the floor
             for (var ax = -1; ax <= 1; ax += 2) { var arm = _hqBox(0.04, 0.04, 0.44, wood); arm.position.set(ax * 0.25 * U, 0.66 * U, -0.02 * U); rock.add(arm); var post = new THREE.Mesh(new THREE.CylinderGeometry(0.016 * U, 0.016 * U, 0.24 * U, 6), wood); post.position.set(ax * 0.25 * U, 0.54 * U, 0.16 * U); rock.add(post); }
+            _hqDecorWear('rocking_chair', U, g, { into: rock });   // THE MESHY DECOR (2026-11-03): it rocks
             var seed = (_hqProcSeed++) * 1.7, wx = 0, wz = 0;
             g.userData.rockSpot = function (x, z) { wx = x; wz = z; };
             if (_hq) _hq.tickers.push(function (dt, now) {
@@ -77070,6 +77224,7 @@ const ThreeRenderer = (function () {
             var skirt = new THREE.Mesh(new THREE.ConeGeometry(0.03 * U, 0.05 * U, 10), _hqMat(null, 1, 1, { color: 0xf0d8e0, shininess: 20 })); skirt.position.y = 0.025 * U; dancer.add(skirt);
             var body = new THREE.Mesh(new THREE.SphereGeometry(0.014 * U, 8, 6), _hqMat(null, 1, 1, { color: 0xf0d8e0 })); body.position.y = 0.06 * U; dancer.add(body);
             var head = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 8, 6), _hqMat(null, 1, 1, { color: 0xffe8d8 })); head.position.y = 0.085 * U; dancer.add(head);
+            _hqDecorWear('music_box', U, g, { hide: [box, lid, pin], onDone: function (i, d) { dancer.position.y = d.h * 0.38 * U; } }); _hqDecorWear('music_box_dancer', U, dancer, { fit: 'height', h: 0.11 });   // THE MESHY DECOR (2026-11-03): the box, and the Meshy ballerina turning in it
             var glow = _hzGlowSprite(0.5 * U, 0xffd8a0, 0.22, 0.06, 0.04, 0.5); glow.position.y = 0.16 * U; g.add(glow);
             var speed = 1.8, seed = (_hqProcSeed++) * 0.4;
             if (_hq) _hq.tickers.push(function (dt, now) {
@@ -77129,6 +77284,7 @@ const ThreeRenderer = (function () {
                 rod.position.copy(dir).multiplyScalar(0.18 * U).add(new THREE.Vector3(0, 0.5 * U, 0)); rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); g.add(rod);
                 var b = new THREE.Mesh(new THREE.SphereGeometry(0.035 * U, 10, 8), bulb); b.position.copy(dir).multiplyScalar(0.37 * U).add(new THREE.Vector3(0, 0.5 * U, 0)); g.add(b);
             }
+            _hqDecorWear('sputnik_lamp', U, g, { top: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE SAUCER (TWA's flight-centre lamp): a stem, a fluted cream saucer, a lit disc under it */
@@ -77139,6 +77295,7 @@ const ThreeRenderer = (function () {
             var pts = [[0.05, 0.36], [0.18, 0.3], [0.34, 0.26], [0.48, 0.2], [0.56, 0.12], [0.55, 0.1]].map(function (v) { return new THREE.Vector2(v[0] * U, v[1] * U); });
             var saucer = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), cream); saucer.material.side = THREE.DoubleSide; g.add(saucer);
             var lit = new THREE.Mesh(new THREE.CircleGeometry(0.5 * U, 32), _hqMat(null, 1, 1, { color: 0xfff4dc, emissive: 0xffe7b8, emissiveIntensity: 0.85 })); lit.rotation.x = Math.PI / 2; lit.position.y = 0.11 * U; g.add(lit);
+            _hqDecorWear('saucer_pendant', U, g, { top: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE DISCS (the Futuro's pendant): three white discs on threads at three heights */
@@ -77149,6 +77306,7 @@ const ThreeRenderer = (function () {
                 var th = new THREE.Mesh(new THREE.CylinderGeometry(0.003 * U, 0.003 * U, (0.9 - d[1]) * U, 4), thread); th.position.set(d[0] * U, (0.9 + d[1]) / 2 * U, (i - 1) * 0.1 * U); g.add(th);
                 var disc = new THREE.Mesh(new THREE.CylinderGeometry(d[2] * U, d[2] * U, 0.025 * U, 28), white); disc.position.set(d[0] * U, d[1] * U, (i - 1) * 0.1 * U); g.add(disc);
             });
+            _hqDecorWear('disc_cluster', U, g, { top: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE MUSHROOM (Panton): a stem, a domed cap that glows orange from under */
@@ -77160,6 +77318,7 @@ const ThreeRenderer = (function () {
             var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.06 * U, 0.3 * U, 14), body); stem.position.y = 0.17 * U; g.add(stem);
             var cap = new THREE.Mesh(new THREE.SphereGeometry(0.22 * U, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), body); cap.position.y = 0.3 * U; cap.material.side = THREE.DoubleSide; g.add(cap);
             var lit = new THREE.Mesh(new THREE.CircleGeometry(0.2 * U, 22), _hqMat(null, 1, 1, { color: 0xffd7a8, emissive: 0xffbe78, emissiveIntensity: 0.8 })); lit.rotation.x = Math.PI / 2; lit.position.y = 0.31 * U; g.add(lit);
+            _hqDecorWear('mushroom_lamp', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE EGG CHAIR (Aarnio's ball): a white shell with the front cut away on a pedestal, the cushion inside; the opening is +Z */
@@ -77172,6 +77331,7 @@ const ThreeRenderer = (function () {
             var open = 1.75, sphere = new THREE.Mesh(new THREE.SphereGeometry(R * U, 28, 18, Math.PI / 2 + open / 2, Math.PI * 2 - open, 0.35, Math.PI - 0.35), shell); sphere.material.side = THREE.DoubleSide; sphere.position.y = (0.25 + R) * U; g.add(sphere);
             var cushion = new THREE.Mesh(new THREE.SphereGeometry((R - 0.07) * U, 24, 14, Math.PI / 2 + open / 2 + 0.05, Math.PI * 2 - open - 0.1, 1.55, Math.PI - 1.9), velour); cushion.material.side = THREE.DoubleSide; cushion.position.y = (0.25 + R) * U; g.add(cushion);
             var seat = new THREE.Mesh(new THREE.CylinderGeometry(0.44 * U, 0.44 * U, 0.1 * U, 24), velour); seat.position.y = 0.47 * U; g.add(seat);
+            _hqDecorWear('egg_chair', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE TULIP CHAIR (Saarinen): one stem, a shallow shell, a cushion */
@@ -77183,6 +77343,7 @@ const ThreeRenderer = (function () {
             var body = new THREE.Mesh(new THREE.LatheGeometry(pts, 26), white); body.material.side = THREE.DoubleSide; g.add(body);
             var back = new THREE.Mesh(new THREE.SphereGeometry(0.31 * U, 22, 12, Math.PI / 2 + 0.9, Math.PI * 2 - 1.8, 1.2, 0.5), white); back.material.side = THREE.DoubleSide; back.position.y = 0.46 * U; g.add(back);
             var seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26 * U, 0.26 * U, 0.06 * U, 22), velour); seat.position.y = 0.48 * U; g.add(seat);
+            _hqDecorWear('tulip_chair', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE TULIP TABLE: one stem, a white disc — `p.r` the top's radius */
@@ -77192,6 +77353,7 @@ const ThreeRenderer = (function () {
             var pts = [[0.001, 0], [0.3, 0], [0.24, 0.04], [0.07, 0.12], [0.045, 0.45], [0.06, 0.68], [0.12, 0.7]].map(function (v) { return new THREE.Vector2(v[0] * U, v[1] * U); });
             var stem = new THREE.Mesh(new THREE.LatheGeometry(pts, 24), white); g.add(stem);
             var top = new THREE.Mesh(new THREE.CylinderGeometry(r * U, (r - 0.03) * U, 0.035 * U, 32), _hqMat('marble_light', 2, 2, { color: 0xf8f6f0, shininess: 90, specular: 0x777777 })); top.position.y = 0.705 * U; g.add(top);
+            _hqDecorWear('tulip_table', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE CURVED SOFA: a 60° arc of tufted bench, the arc's centre `p.r` in FRONT (+Z) — the seat faces the centre; six rows make a ring */
@@ -77264,6 +77426,7 @@ const ThreeRenderer = (function () {
                 var ring = new THREE.Mesh(new THREE.TorusGeometry(rr * U, 0.02 * U, 8, 24), white);
                 ring.position.set((-Wd / 2 + 0.22 + c * (Wd - 0.44) / (cols - 1)) * U, (0.24 + r * (Hd - 0.48) / (rows - 1)) * U, 0); g.add(ring);
             }
+            _hqDecorWear('space_divider', U, g, { repeat: 2 });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE POD BED: a white trough, a teal glass dome, a blue strip inside; the head is −Z */
