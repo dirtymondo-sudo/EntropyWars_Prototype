@@ -1409,3 +1409,6 @@ differentiate between beach sand and desert sand in the game through color/tint"
 - The beach colours: Bermuda boards' tints.desert, the sea shell's floor/apron colour and the Bermuda horizon kit went
   #e8d8a8 → #f2ead6 (paler) so the beach reads cream, not yellow. Giza / Babel / the desert boards keep their tints.
 - The sand spells' (`_sigTerrainTex`) and the deployable stone's 'desert.png' loads read sand.png.
+- GIZA UNTINTED (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the Giza boards' tints.desert
+  (#e8cf8f full board, #e6d4a0 the arenas) are gone and the Giza site room's floor/apron colour is white, so Giza's sand is
+  the desert-gold sheet as drawn. The Giza horizon pyramids keep their own colour (0xd6c39a).
