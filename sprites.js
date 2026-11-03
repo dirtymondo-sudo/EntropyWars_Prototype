@@ -5783,6 +5783,12 @@ const TERRAIN_SPRITES = {
     cloud:          [`${_T}/cloud.png`],
     cloud_thick:    [`${_T}/cloud_thick.png`],
     cloud_gap:      [`${_T}/cloud_gap.png`],
+    /* THE STORM ZONE (2026-11-03, mondo: "replace this weird looking cloud with a lightning bolt"): 'storm' never had a
+       sheet of its own, so it fell back to the legacy SVG doodle (a dark smudge + one yellow bolt) — on an opaque wall
+       or tile that read as a black blob stamped with bolts (Saturn's storm walls). It wears the pixel-painted storm-cloud
+       sheet the fog wall uses (cloud_thick's style, no bolts), cooled to a thunderhead slate by TERRAIN_BASE_TINT.storm
+       so a Storm Zone is not mistaken for a fog wall (a map's own `tints.storm` still modulates it). */
+    storm:          [`${_T}/fog.png`],
     sky_ruin:       [`${_T}/sky_ruin.png`],
     barrier_passage:[`${_T}/barrier_passage.png`],
     /* 2026-10-07 (mondo): "rampart has the cliff texture. I want that texture removed from everywhere in the game." The
@@ -5987,6 +5993,8 @@ const TERRAIN_BASE_TINT = {
        darkened toward black (their 3D fluid tops, room floors and drapes alike) */
     swamp: '#3c3c3c',
     oil: '#7a7a7a',
+    /* ⛈ THE STORM ZONE (2026-11-03): the fog wall's cloud sheet as a thunderhead — slate, a touch of blue */
+    storm: '#a4b0cc',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 
