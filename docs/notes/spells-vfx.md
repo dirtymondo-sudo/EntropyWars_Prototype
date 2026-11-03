@@ -2898,8 +2898,18 @@ found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He p
   painted smoke layers `ifNoFb: 'fb-explosion'` (`_spawnEffect` skips a layer whose flipbook is ready).
 - Online: both live inside the relayed fire() intents, so the guest plays them; `_pzSeen` keeps fogged tiles empty.
 - Proof sheets: /mnt/project-files/blender-vfx/ (fireball_before_after.jpg, meteor_before_after.jpg).
-- Next (only on mondo's say): roll the sheets out to the shared particle kinds (dust-puff, ember, smoke, flame,
-  explosion-orange), element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise for the burning-tile raymarch.
+- **THE SHARED KINDS (2026-11-03, same day; mondo: "the shared smoke, dust, and embers are still there so the fireball
+  and meteor mostly look the same. Go ahead and give them the same treatment"):** read as game-wide. Two more sheets from
+  `bake-vfx.py` presets: `PRESET=smoke` (a SMOKE-only Mantaflow puff, grey volume, sheet `SHEET=whiten` stretches the lit
+  side to white) → `fb_smoke.png` (16 frames, 4 x 4 of 128 px), `PRESET=fire` (a steady flame, volume EMISSION on black,
+  `SHEET=glow` turns brightness into alpha) → `fb_ember.png` (16 frames, 4 x 4 of 64 px). three-vfx.js `_FB_KINDS`: every
+  sprite-pool spawn of `smoke`, `smoke-soft`, `dust-puff` (→ fb-smoke, tinted by the kind's `_spriteMap` colour, which is
+  the colour the painted texture carried; opts.tint is multiplied by it) and `ember` (→ fb-ember, its own colours) plays
+  the sheet; `op` = the painted texture's peak alpha, `grow` = size so the puff fills like the billow, `jit` = random
+  start frame. Thinning/tumble/blend stay keyed on the kind. World decals + w0/h0 quads keep the painted still. Same
+  kill-switch `EW_NO_FLIPBOOKS`. Both PNGs go into the sync zip by hand (Assets/Sprites/vfx/).
+- Next (only on mondo's say): flame, explosion-orange, element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise
+  for the burning-tile raymarch.
 
 ## THE PROPS IN THE HAND + THE WHIP CRACK + THE GEAR ON THE BODY (2026-11-03, character-models-plan.md row 24)
 mondo: "how do we put these models both in the character creator and in the game for spells (like whip crack)". The Meshy pieces
