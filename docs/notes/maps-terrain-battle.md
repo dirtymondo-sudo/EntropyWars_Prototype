@@ -1351,7 +1351,7 @@ Each site is pinned with HQ_ARENA_RULES.within and all four sizes re-baked; the 
   twins about (17.5, 77). The 2-row causeway crossing (14, 59.5) was tried first: a 9×9's house/nexus rows always land on it.
   Anubis moved (34, 60) → (37, 64) off an obelisk. A wall row's round end reaching the causeway lifts it a level: keep 1.4 m off.
 - BABEL (site_prebuilt_babel_tower): the square between the tower's foot and the barn door; within (0, 70, r 2.6). Four brick
-  houses (plateaus 7 × 7, 3 m — the bake counts them as obstacles) and two brick stacks (1.4 m), 180° twins about (0, 70).
+  houses (point wall rows `x0 = x1, z0 = z1, t 7`, 3 m: crisp brick boxes, level 2; plateaus drew as rounded loaves) and two brick stacks (1.4 m), 180° twins about (0, 70).
 - TECHNOTICLAN (prebuilt_technoticlan): THE BALL COURT and the plaza east of it; within (−38.5, 38.5, r 10) — r 10 because the
   ball court's walls fill a 9×9's house rows, so the 9×9 sits east of the court. Two altar platforms (3.5 × 7, 1.4 m). The causeway
   stair keeps its own railings (`rails: false` was for the hall's walls). A `block: true` prop (a brazier) on a platform corner
