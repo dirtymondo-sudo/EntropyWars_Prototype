@@ -7284,3 +7284,39 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .ms-crt-shot { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.35s; pointer-events: none; filter: saturate(0.85) contrast(1.05); }
 .ms-crt-shot.on { opacity: 0.42; }
 .ms-crt-shot::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 85% 75% at 50% 45%, rgba(4,4,3,0.35) 0%, rgba(4,4,3,0.75) 100%); }
+/* NO CUT-OFF NAMES ON THE SQUAD DESK (playtest 2026-11-03, mondo: "any text getting cut off is high priority"): the plate's
+   unit names ("Bee Que…", "Swordfi…", "Black G…"), the team name and the list's "4 VESSELS" were cut with an ellipsis.
+   They wrap now: a slot grows to its name (up to 120px, a long word breaks over two lines), the team names wrap. */
+#squadDeskPage .sq-plate-faces, .sq-plate-faces { flex-wrap: nowrap; }
+#squadDeskPage .sq-plate-slot, .sq-plate-slot { width: auto; flex: 1 1 0; min-width: 50px; max-width: 132px; }
+#squadDeskPage .sq-plate-slot em, .sq-plate-slot em { white-space: normal; overflow: visible; text-overflow: clip; text-align: center; line-height: 1.1; overflow-wrap: normal; word-break: normal; hyphens: none; min-width: min-content; }
+#squadDeskPage .sq-plate-name, .sq-plate-name, #squadDeskPage .sq-drop-name, .sq-drop-name { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; word-break: normal; }
+#squadDeskPage .sq-drop-n, .sq-drop-n, #squadDeskPage .sq-plate-n, .sq-plate-n { white-space: nowrap; }
+#squadDeskPage .sq-drop-faces, .sq-drop-faces { flex: 0 1 158px; min-width: 60px; }
+/* THE PAUSE TITLE BAR CLEARS ITS SLANTED ENDS (playtest 2026-11-03: under a slanted plate skin the mode name read "EAM…" and
+   the KILLS count sat under the right end's stripe). The skin stretches with the bar, its slant ~10% of the width each side,
+   so the words sit in from both ends by that much. */
+#pauseOverlay .hq-pause-head.bp-head { padding-left: calc(11% + 8px) !important; padding-right: calc(12% + 8px) !important; }
+/* the team count pill with no saved team was an empty black pill at the top right (playtest 2026-11-03) */
+#squadDeskPage .sq-count:empty, .sq-count:empty { display: none !important; }
+/* THE MATCH SELECT, NOTHING CUT (playtest 2026-11-03, mondo: "any text getting cut off is high priority"): a site card's
+   name and status wrap instead of ending in "…", every card keeps its text clear of the slanted skin edge, the mode list
+   makes room for its grown selected row (no sideways scrollbar) and its text clears the slant, the header clears both
+   corner slants, the field assignment's size tag never runs into the name, and an empty meta pill is not drawn */
+.ms-crt:not(.ms-crt-forge) .ms-tty-card { padding-right: 22px !important; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-card > div { flex: 1 1 auto; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-card b { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.2; overflow-wrap: break-word; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-card span { flex-wrap: wrap; row-gap: 2px; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-card span > span { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; text-align: right; margin-left: auto; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-modes .ms-tty-list { padding-right: 16px !important; overflow-x: hidden; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-row { padding-right: 22px !important; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-row p { overflow-wrap: break-word; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-head { padding-left: 30px !important; padding-right: 44px !important; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-assign h2 { flex-wrap: wrap; row-gap: 2px; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-assign h2 span { margin-left: auto; white-space: nowrap; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-meta span:empty { display: none !important; }
+[data-ew-words-empty] { display: none !important; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-head { padding-right: 76px !important; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-assign h2 span { flex-basis: 100%; text-align: right; }
+.ms-crt:not(.ms-crt-forge) .ms-tty-assign h2 span { display: block !important; margin-top: 3px; }
+#squadDeskPage .sq-plate-faces, .sq-plate-faces { column-gap: 18px; }

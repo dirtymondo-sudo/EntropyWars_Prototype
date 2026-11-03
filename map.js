@@ -509,7 +509,39 @@
             if (bump) _sqBump(plate, 'sq-swap');
             if (_sqDropOpen) _sqDropPaint();
             _sqRoomTeam();
+            _sqKeepActs();
         }
+        /* THE BUTTONS STAY ON SCREEN (playtest 2026-11-03): the UI Maker moves the button row up from the bottom dock by a
+           fixed number of pixels, so on a shorter window (1280×720, 1440×810) the row landed under the title bar and DEPLOY
+           could not be clicked. After each paint (and on a resize) the row is measured: one that reaches over the title bar
+           or past the screen's edge is pushed back just far enough, keeping the rest of its UI Maker move. */
+        function _sqKeepActs() {
+            const acts = document.getElementById('sqActions');
+            if (!acts) return;
+            /* the page slides in, fonts and the UI Maker's layout land a beat later: check a few times */
+            [0, 120, 450, 1200].forEach(ms => setTimeout(() => _sqKeepActsNow(acts), ms));
+        }
+        function _sqKeepActsNow(acts) {
+            if (!acts || !acts.isConnected || !acts.getClientRects().length || document.documentElement.classList.contains('uim-live')) return;   // the UI Maker's Layout view places it as set
+            /* THE STRAY SCROLLBAR: a UI Maker height shorter than its buttons gave the row a scrollbar; it grows to fit them */
+            acts.style.removeProperty('height');
+            if (acts.scrollHeight > acts.clientHeight) acts.style.setProperty('height', (acts.scrollHeight + acts.offsetHeight - acts.clientHeight) + 'px', 'important');
+            acts.style.setProperty('overflow', 'visible', 'important');   // a pulsing / grown button never scrolls the row
+            acts.style.removeProperty('translate');
+            const r = acts.getBoundingClientRect();
+            if (!(r.height > 0)) return;
+            let tx = 0, ty = 0;
+            try { const t = (getComputedStyle(acts).translate || '').split(/\s+/); if (t[0] && t[0] !== 'none') { tx = parseFloat(t[0]) || 0; ty = parseFloat(t[1]) || 0; } } catch (e) {}
+            const head = document.querySelector('#squadDeskPage .sq-head');
+            const hr = head && head.getBoundingClientRect();
+            const top = Math.max(6, hr && hr.height > 0 ? hr.bottom + 6 : 6), bot = innerHeight - 6;
+            let dy = 0, dx = 0;
+            if (r.top < top) dy = top - r.top;
+            else if (r.bottom > bot) dy = Math.max(top - r.top, bot - r.bottom);
+            if (r.left < 6) dx = 6 - r.left; else if (r.right > innerWidth - 6) dx = Math.max(6 - r.left, innerWidth - 6 - r.right);
+            if (dx || dy) acts.style.setProperty('translate', `${Math.round(tx + dx)}px ${Math.round(ty + dy)}px`, 'important');
+        }
+        if (!window._ewSqKeepActsWired) { window._ewSqKeepActsWired = true; window.addEventListener('resize', () => { try { _sqKeepActs(); } catch (e) {} }); }
         function _sqFocusCard(id) {
             if (!id || id === _sqFocusId) return;
             _sqFocusId = id;
@@ -16142,40 +16174,41 @@
                 if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(unit);
             }
 
+            /* THE DEFEAT LINE AS IT HAPPENS (playtest 2026-11-03: the line waited out the 800 ms fall, so "Player 2 wins" and
+               the killer's streak line printed before the "… is defeated" they came from): the line is written at the
+               killing blow; the board's shake still lands with the fall */
+            const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
+            let _defShake = 'normal';
+            if (unit._isBoss) {
+                addLog(`👹 ${_ctName(unit)} has been slain!`);
+                _defShake = 'hard';
+            } else if (_gauntlet) {
+                const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
+                addLog(`💀 ${_ctName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
+            } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
+                addLog(unit.player === 1
+                    ? `💀 ${unitDisplayName(unit)} has fallen! They won't return until the run ends.`
+                    : `💀 ${unitDisplayName(unit)} is defeated!`);
+            } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
+                /* Strike Mode: StrikeEngine respawns on a real-time clock,
+                   not rounds — it logs its own countdown. */
+                addLog(`💀 ${_ctName(unit)} is down!`);
+            } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
+                /* RESERVES rule 2: the ladder still runs; a reserve may take
+                   the seat when it opens (battle.js _reserveQueueSeat). */
+                const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
+                addLog(_defeatRespawnLine(unit, freeLeft > 0 ? ' — a reserve may take the seat.' : '.'));
+            } else {
+                addLog(_defeatRespawnLine(unit, '.'));
+            }
+
             const MAP_DEATH_DURATION = state.devAutoSim ? 0 : 800;
             setTimeout(() => {
                 unit._dying = false;
                 unit.dead = true;
                 unit.skyBuff = null;   // a celestial buff lasts until the unit dies (ui.js claimCelestialBuff)
 
-                const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
-                if (unit._isBoss) {
-                    addLog(`👹 ${_ctName(unit)} has been slain!`);
-                    shakeBoard('hard');
-                } else if (_gauntlet) {
-                    const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
-                    addLog(`💀 ${_ctName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
-                    shakeBoard('normal');
-                } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
-                    addLog(unit.player === 1
-                        ? `💀 ${unitDisplayName(unit)} has fallen! They won't return until the run ends.`
-                        : `💀 ${unitDisplayName(unit)} is defeated!`);
-                    shakeBoard('normal');
-                } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
-                    /* Strike Mode: StrikeEngine respawns on a real-time clock,
-                       not rounds — it logs its own countdown. */
-                    addLog(`💀 ${_ctName(unit)} is down!`);
-                    shakeBoard('normal');
-                } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
-                    /* RESERVES rule 2: the ladder still runs; a reserve may take
-                       the seat when it opens (battle.js _reserveQueueSeat). */
-                    const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
-                    addLog(_defeatRespawnLine(unit, freeLeft > 0 ? ' — a reserve may take the seat.' : '.'));
-                    shakeBoard('normal');
-                } else {
-                    addLog(_defeatRespawnLine(unit, '.'));
-                    shakeBoard('normal');
-                }
+                shakeBoard(_defShake);
 
                 if (!state._recentDefeats) state._recentDefeats = [];
                 state._recentDefeats.push({

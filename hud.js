@@ -1930,6 +1930,7 @@ function QuickCone() {
       raf = requestAnimationFrame(tick);
       _subDodge();
       _listRoom();
+      _listDescDodge();
       const svg = ref.current; if (!svg) return;
       const L = window._ewQpCone || {};
       if (ro) {
@@ -2033,8 +2034,8 @@ function _qpPinRoom(L) {
 function _subDodge() {
   const bar = document.getElementById('battleSubtitleBar'), txt = bar && bar.firstElementChild;
   if (!txt) return;
-  const cur = bar._ewDodge || 0;
-  let want = 0;
+  const cur = bar._ewDodge || 0, curW = bar._ewDodgeW || 0;
+  let want = 0, wantW = 0;
   const r = txt.getBoundingClientRect();
   if (r.width > 0 && r.height > 0 && txt.textContent && !document.documentElement.classList.contains('uim-arranging')) {
     let now = 0;   // where the slide is this frame (mid-ease too), so the box's home spot stays put
@@ -2042,7 +2043,8 @@ function _subDodge() {
     const L0 = r.left - now, R0 = r.right - now, obs = [];
     /* the root verbs count too, once a sub menu has dimmed them (playtest 2026-10-21: the bar sat on END TURN beside
        an attack list), and every row on its own — a grown / slanted row reaches past its list's box */
-    const _push = (o) => { if (o.width > 1 && o.height > 1 && o.top < r.bottom + 4 && o.bottom > r.top - 4) obs.push(o); };
+    const _band = (o) => o.width > 1 && o.height > 1 && o.top < r.bottom + 4 && o.bottom > r.top - 4;
+    const _push = (o) => { if (_band(o)) obs.push(o); };
     document.querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root), .hrlg-panels > .hrlg-panel.root.bg').forEach(p => {
       for (const c of p.children) {
         if (c.classList.contains('qp')) continue;   // the unit info card is not a menu
@@ -2050,14 +2052,30 @@ function _subDodge() {
         if (c.classList.contains('hrlg-list')) for (const row of c.children) _push(row.getBoundingClientRect());
       }
     });
-    for (let n = 0; n < 6; n++) {   // clear one, check the next one along
-      let need = want;
-      obs.forEach(o => { if (o.left < R0 + want && o.right > L0 + want) need = Math.max(need, Math.ceil(o.right + 12 - L0)); });
-      if (need === want) break;
-      want = need;
-    }
-    want = Math.max(0, Math.min(want, Math.floor(innerWidth - 8 - R0)));
-  }
+    /* NO WORD UNDER THE MINIMAP (playtest 2026-11-03, mondo: "any text getting cut off is high priority"): the slide
+       used to stop only at the screen's edge, so a long prompt ran under the minimap ("or pick anothe…", "Pick a
+       Tactic… ow…"). The minimap (when it shares the box's rows) is the right wall now, and a box too wide for the
+       room between the menus and that wall WRAPS onto more lines instead of running past it. */
+    let wallR = innerWidth - 8;
+    const mm = document.getElementById('ewMinimap') || document.getElementById('battleMinimap');
+    if (mm && mm.getClientRects().length) { const mr = mm.getBoundingClientRect(); if (_band(mr) && mr.left > innerWidth / 2) wallR = Math.min(wallR, mr.left - 8); }
+    let wallL = 8;
+    obs.forEach(o => { if (o.left < innerWidth / 2 + 80) wallL = Math.max(wallL, Math.ceil(o.right + 12)); });
+    /* in = a menu sits on the box's home spot, or the home spot reaches under the minimap; once in, the box stays in
+       (on the room's left) while any menu shares its rows, so a narrower wrapped box never flips back and forth */
+    const hit = obs.some(o => o.left < R0 && o.right > L0) || R0 > wallR;
+    const keep = bar._ewDodgeOn && (obs.length || R0 > wallR);
+    if (hit || keep) {
+      bar._ewDodgeOn = true;
+      const room = Math.max(160, wallR - wallL);
+      const k = txt.offsetWidth > 0 ? r.width / txt.offsetWidth : 1;   // the box's own scale (UI Maker size / HUD scale)
+      if (r.width > room + 1 || curW) wantW = Math.floor(room / (k || 1));
+      const w = Math.min(r.width, room);
+      want = Math.round(Math.max(wallL, Math.min(wallR - w, L0)) - L0);
+      if (wallL > L0) want = Math.round(wallL - L0);
+    } else bar._ewDodgeOn = false;
+  } else bar._ewDodgeOn = false;
+  if (wantW !== curW) { bar._ewDodgeW = wantW; txt.style.maxWidth = wantW ? wantW + 'px' : ''; }
   if (want !== cur) { bar._ewDodge = want; bar.style.transform = want ? `translateX(${want}px)` : ''; }
 }
 /* THE GROWN ROW KEEPS ITS EDGES (mondo 2026-10-18: "i have the setting on where the selected button grows bigger, but its
@@ -2069,6 +2087,35 @@ function _subDodge() {
    grown row (.ew-room: side margins on every row, a top / bottom one on the first / last). Measured from the rows' own
    layout boxes (a transform never counts), so it never flips back and forth (see THE LIST THAT SHOOK below). Nothing
    grows = nothing changes. */
+/* THE LIST CLEARS THE DESCRIPTION BAR (playtest 2026-11-03: the Abilities list ran on under the spell description bar, so
+   its last rows were cut off): while the bar shows, the open menu's list ends above it. The list gets shorter by the
+   overlap and stands on a margin of the same height, so its panel keeps its size and place and the list scrolls the
+   rows it no longer has room for. Off while the UI Maker is editing. */
+function _listDescDodge() {
+  const bar = document.getElementById('ew-spell-descbar');
+  const on = !!(bar && bar.classList.contains('show') && !document.documentElement.classList.contains('uim-live'));
+  const br = on ? bar.getBoundingClientRect() : null;
+  document.querySelectorAll('.hrlg-panels .hrlg-list').forEach(l => {
+    let cur = +(l.dataset.ewDescLift || 0);
+    if (cur && !l.style.getPropertyValue('margin-bottom')) { cur = 0; delete l.dataset.ewDescLift; }   // a re-render wiped it
+    const live = on && !(l.closest('.hrlg-panel') || l).classList.contains('bg');
+    if (!live || !br || !(br.height > 0)) {
+      if (cur) { l.style.removeProperty('margin-bottom'); l.style.removeProperty('max-height'); delete l.dataset.ewDescLift; }
+      return;
+    }
+    const r = l.getBoundingClientRect();
+    const overX = r.right > br.left + 4 && r.left < br.right - 4;
+    const baseBot = r.bottom + cur, baseH = r.height + cur;
+    let need = overX ? Math.ceil(baseBot - (br.top - 6)) : 0;
+    if (need < 0) need = 0;
+    if (need > baseH - 60) need = Math.max(0, baseH - 60);   // never shrinks a list to nothing
+    if (Math.abs(need - cur) <= 1) return;
+    if (!need) { l.style.removeProperty('margin-bottom'); l.style.removeProperty('max-height'); delete l.dataset.ewDescLift; return; }
+    l.style.setProperty('max-height', Math.round(baseH - need) + 'px', 'important');
+    l.style.setProperty('margin-bottom', need + 'px', 'important');
+    l.dataset.ewDescLift = String(need);
+  });
+}
 function _listRoom() {
   const lists = document.querySelectorAll('.hrlg-panels .hrlg-list');
   if (!lists.length) return;
@@ -4305,7 +4352,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         const _quick = /^(enemy|ally)\|/.test(p.key || '');
         return h('div', {
           key: p.key,
-          className: 'hrlg-panel' + (isOn ? ' on' : ' bg') + (p.key === 'root' ? ' root' : '') + (_quick ? ' quick' : ''),
+          className: 'hrlg-panel' + (isOn ? ' on' : ' bg') + (p.key === 'root' ? ' root' : '') + (p.key === 'tacParty' ? ' tacparty' : '') + (_quick ? ' quick' : ''),
           style: { zIndex: isOn ? 5 : 4 },
           title: isOn ? undefined : 'Back to this menu',
           onClick: isOn ? undefined : () => pressBack(),
@@ -4764,6 +4811,29 @@ function _hrlgComboTypeBadges(combo, fs) {
   }));
 }
 
+/* the Abilities list's sort number for one spell: the best damage it is forecast to do to an enemy the viewer sees
+   (ui.js _estimateSpellDamage, the quick menus' number), else its base power; 0 for a spell that deals none. Cached per
+   board signature so a re-render doesn't re-run the forecasts. */
+const _hrlgSortDmgCache = { key: '', map: new Map() };
+function _hrlgSpellSortDmg(unit, sp) {
+  if (!unit || !sp || (typeof hudSpellShowsDamage === 'function' && !hudSpellShowsDamage(sp))) return 0;
+  const S = typeof state !== 'undefined' ? state : null;
+  const foes = S && Array.isArray(S.units) ? S.units.filter(e => e && !e.dead && e.player !== unit.player
+    && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, e))
+    && (typeof _isTileVisibleToViewer !== 'function' || _isTileVisibleToViewer(e.x, e.y))) : [];
+  const key = unit.id + '|' + (S ? S.round : 0) + '|' + unit.x + ',' + unit.y + '|' + unit.mp + '|' + foes.map(e => e.id + ':' + e.x + ',' + e.y + ':' + e.hp).join(';');
+  if (_hrlgSortDmgCache.key !== key) { _hrlgSortDmgCache.key = key; _hrlgSortDmgCache.map = new Map(); }
+  const M = _hrlgSortDmgCache.map;
+  if (M.has(sp)) return M.get(sp);
+  let best = 0;
+  if (typeof _estimateSpellDamage === 'function') {
+    for (const e of foes) { let d = 0; try { d = +_estimateSpellDamage(unit, e, sp) || 0; } catch (err) {} if (d > best) best = d; }
+  }
+  if (!(best > 0)) best = +sp.dmg || 0;
+  M.set(sp, best);
+  return best;
+}
+
 function _hrlgSpellBlades(unit, st) {
   const am = st.actionMode;
   /* an inherent spell (Machine Elves' Prism Mirror, mondo 2026-10-29 A1) has its own left-panel action (PRISM), never a row here */
@@ -4792,13 +4862,22 @@ function _hrlgSpellBlades(unit, st) {
   // — castable before blocked, cheapest tier first inside each group.
   const _catRank = { damage: 0, debuff: 1, heal: 2, buff: 3, utility: 4 };
   const _catOf = (sp) => (typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage'));
+  /* MOST DAMAGE ON TOP (mondo 2026-10-21: greyed-out spells go to the bottom, the rest sort from most predicted damage
+     to least; playtest 2026-11-03 found the list sorted by job + a tier tiebreak that never fired — the tiers are numbers
+     now, not I / II / III — so Lump of Coal (145) sat above Gore Charge (352)). Each damaging spell's number = its best
+     forecast on an enemy the viewer can see (_hrlgSpellSortDmg, the quick menus' own estimate), then the job order for
+     the rest, then the tier. */
+  const _dmgOf = (sp) => _hrlgSpellSortDmg(unit, sp);
+  const _tierN = (sp) => { const t = sp && sp.tier; return typeof t === 'number' ? t : (tierOrder[t] || 0); };
   spells.sort((a, b) => {
     const aAvail = _availOf(a) ? 0 : 1;
     const bAvail = _availOf(b) ? 0 : 1;
     if (aAvail !== bAvail) return aAvail - bAvail;
+    const dd = _dmgOf(b) - _dmgOf(a);
+    if (dd !== 0) return dd;
     const cr = (_catRank[_catOf(a)] ?? 5) - (_catRank[_catOf(b)] ?? 5);
     if (cr !== 0) return cr;
-    return (tierOrder[a.tier] || 0) - (tierOrder[b.tier] || 0);
+    return _tierN(a) - _tierN(b);
   });
 
   let castableCount = 0;
@@ -5792,10 +5871,7 @@ function _hrlgComboBlades(unit, st) {
           state.pendingTarget = null;
           _hrlgComboPrePick(unit, p);   // THE COMBO PICK: the target list opens with its top row picked
           if (typeof playSfx === 'function') playSfx('uiConfirm');
-          if (typeof addLog === 'function' && combo) {
-            addLog('Partner selected: ' + (typeof unitDisplayName === 'function' ? unitDisplayName(p) : p.cls)
-              + '. Combo: ' + combo.name + (syn.label ? ' (' + syn.label + ')' : '') + '. Now choose a target.');
-          }
+          /* the pick is a click answer, not a combat event: no "Partner selected" line in the combat log (playtest 2026-11-03) */
           _refresh();
         },
       };
@@ -11837,6 +11913,9 @@ function _hudHideCss() {
        click target for backing up. */
     .hrlg-panel.bg + .hrlg-panel { margin-left: -158px; }
     .hrlg-panel.bg.root + .hrlg-panel { margin-left: -112px; }
+    /* the Tactics list stands BESIDE its party list, not over it (playtest 2026-11-03: the greyed Siege / Search / Intercept
+       rows showed the party rows through them, so the two lists read as one tangle) */
+    :root:root:not(#uim-x):not(#uim-x):not(#ew-tp) .hrlg-panel.bg.tacparty + .hrlg-panel { margin-left: 6px !important; }
     .hrlg-panel {
       position: relative; width: 316px; flex: none;
       display: flex; flex-direction: column; gap: 6px;
@@ -12178,6 +12257,14 @@ function _hudHideCss() {
     /* two-line ability/quick-menu rows: name + TYPE badge on top,
        damage/MP/AP/reason chips underneath — nothing ever cut off */
     .hrlg-blade.two { height: 56px; }
+    /* NO CUT-OFF NAMES (playtest 2026-11-03, mondo: "any text getting cut off is high priority. players cant play the game
+       if they cant read what spells they are using"): a spell / target / verb name never ellipsizes any more ("SPLITTING
+       AR…", "ATLANTE…", Baphomet's Rite squeezed to nothing). The name keeps at least its longest word, breaks between
+       words onto a second line when the row is tight, and the badges beside it drop under it instead of eating it; the
+       row grows to fit. */
+    .hrlg-blabel { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; min-width: min-content !important; line-height: 1.08 !important; }
+    .hrlg-brow1, .hrlg-trow-top { flex-wrap: wrap; row-gap: 3px; }
+    .hrlg-blade.two { height: auto !important; min-height: 56px; }
     .hrlg-brow1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
     .hrlg-brow2 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
     /* green !-circle = super effective vs this target */
@@ -12201,6 +12288,8 @@ function _hudHideCss() {
     /* AP cost diamonds — always gold, matching the big AP row */
     .hrlg-cpip { width: 7px; height: 7px; transform: rotate(45deg); background: #f0d060; opacity: 0.95; box-shadow: 0 0 5px rgba(240,208,96,0.6); }
     .hrlg-cfree { font-size: 9px; letter-spacing: 0.16em; color: #7a7490; flex: none; white-space: nowrap; }
+    /* the key hint at a row's right end clears the row's slanted edge (playtest 2026-11-03: CANCEL's "ESC" was cut to "ES") */
+    .hrlg-cfree { margin-right: calc(tan(calc(var(--uim-row-slant-abs, 0) * 1deg)) * 30px); }
     .hrlg-tag {
       flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff8a97;
       border: 1px solid rgba(255,95,95,0.55); padding: 1px 4px;
@@ -12350,7 +12439,11 @@ function _hudHideCss() {
        row's right edge ON TOP of whatever is under it instead — the
        confirm button always wins, it is never clipped. */
     .hrlg-confirm-inline {
-      position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+      /* THE SEAL CLEARS THE SLANT (playtest 2026-11-03, mondo: "the confirm button still gets cut off at the edge boundary
+         of the spell buttons/actions list"): on a slanted row (UI Maker MOTION slant) the upright seal's top corner poked out
+         past the row's slanted end, where the list's box cut it. It sits in from the end by the slant's lean over its own
+         half-height + a margin, so its corner stays inside the row */
+      position: absolute; right: calc(8px + tan(calc(var(--uim-row-slant-abs, 0) * 1deg)) * 40px); top: 50%; transform: translateY(-50%);
       z-index: 6;
       display: inline-flex; align-items: center; gap: 6px;
       height: 26px; padding: 0 10px;
@@ -16770,12 +16863,24 @@ function wordsFix(node, idx) {
   const hits = key && idx ? idx.get(key) : null, pe = node.parentElement;
   if (hits && pe) for (const h of hits) { try { if (pe.closest(h.sel)) { val = h.val; break; } } catch (e) {} }
   if (val == null) {
-    if (r) { _wRec.delete(node); _wNodes.delete(node); if (node.nodeValue === r.val) node.nodeValue = r.orig; }
+    if (r) { _wRec.delete(node); _wNodes.delete(node); if (node.nodeValue === r.val) node.nodeValue = r.orig; wordsEmptyMark(pe); }
     return;
   }
   const nv = val === '' ? '' : orig.match(/^\s*/)[0] + val + orig.match(/\s*$/)[0];
   _wRec.set(node, { orig, val: nv }); _wNodes.add(node);
   if (node.nodeValue !== nv) node.nodeValue = nv;
+  wordsEmptyMark(pe);
+}
+/* a plain text wrapper (an unclassed span / em / b / small / i) whose every word was hidden is not drawn either: the
+   match select's SIZE / SPAWNS pills stood as empty boxes once their words were hidden (playtest 2026-11-03) */
+const _W_EMPTY_TAGS = { SPAN: 1, EM: 1, B: 1, SMALL: 1, I: 1, STRONG: 1 };
+function wordsEmptyMark(pe) {
+  for (let el = pe, k = 0; el && k < 2; el = el.parentElement, k++) {
+    if (!_W_EMPTY_TAGS[el.tagName] || el.className) break;
+    const empty = !el.textContent.trim() && !el.querySelector('img, svg, canvas, input, button, [class]');
+    if (empty) el.setAttribute('data-ew-words-empty', '');
+    else el.removeAttribute('data-ew-words-empty');
+  }
 }
 function wordsWalk(root, idx) {
   if (!root) return;
@@ -19241,7 +19346,7 @@ function surfaceCss(S, T, tid, gid) {
     if (sl && mo.rowUpright) css += `${pre(bt.map(x => x + ' > *').join(', '))} { transform: skewX(${sl}deg); }\n`;
     if (S.roles.buttonSel && (+mo.selTilt || +mo.selGrow !== 1)) css += `${preHi(S.roles.buttonSel)} { ${+mo.selTilt ? `rotate: ${+mo.selTilt}deg !important;` : ''} ${+mo.selGrow !== 1 ? `scale: ${+mo.selGrow} !important;` : ''} z-index: 2; }\n`;
     /* the numbers on the screen's root, for the action lists to make room for them (hud.js _listRoom) */
-    css += `${pre(S.scope)} { --uim-sel-grow: ${+mo.selGrow || 1}; --uim-sel-tilt: ${+mo.selTilt || 0}; --uim-row-tilt: ${+mo.rowTilt || 0}; --uim-row-slant: ${sl}; }\n`;
+    css += `${pre(S.scope)} { --uim-sel-grow: ${+mo.selGrow || 1}; --uim-sel-tilt: ${+mo.selTilt || 0}; --uim-row-tilt: ${+mo.rowTilt || 0}; --uim-row-slant: ${sl}; --uim-row-slant-abs: ${Math.abs(sl)}; }\n`;
   }
   if (mo && S.roles.panel && +mo.panelTilt) css += `${pre(S.roles.panel)} { rotate: ${+mo.panelTilt}deg !important; }\n`;
   // the text

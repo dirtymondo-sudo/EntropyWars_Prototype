@@ -14,7 +14,7 @@
            rows 1.6 → 2.6 s, the bar at 2.0 s.
            ════════════════════════════════════════════════════ */
         .result-overlay {
-            --vic-panel-w: clamp(320px, 31vw, 460px);
+            --vic-panel-w: clamp(340px, 36vw, 600px);   /* 2026-11-03: wider, so the Performance table fits with no sideways scroll */
             --vic-bar-h: 66px;
             --vic-ink: var(--ew-ink, #eef1ff);
             --vic-mute: var(--ew-ink-mute, #b7bee8);
@@ -610,7 +610,23 @@
         .vic-stats-table tr.team-header.p1-hdr td { color: var(--vic-p1); background: color-mix(in srgb, var(--vic-p1) 10%, transparent); }
         .vic-stats-table tr.team-header.p2-hdr td { color: var(--vic-p2); background: color-mix(in srgb, var(--vic-p2) 10%, transparent); }
         .vic-stats-table .unit-sprite-cell { display: flex; align-items: center; gap: 6px; }
-        .vic-stats-table .unit-sprite-cell .unit-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 92px; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; }
+        .vic-stats-table .unit-sprite-cell .unit-name-text { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; }
+        /* THE PERFORMANCE SHEET FITS (playtest 2026-11-03, mondo: "dont give a sideways scroll, that is ugly ... redesign the
+           end screen and panel to fit everything properly"): the Class column went (it repeated the unit's name; a race that
+           differs from the name and the level ride under the name now), the panel is wider, and the table lays out to the
+           panel's width: the name column takes what the numbers leave, names wrap instead of cutting, the numbers sit tight */
+        .vic-stats-table { table-layout: fixed; }
+        .vic-stats-table th:first-child, .vic-stats-table td:first-child { width: 30%; }
+        .vic-stats-table th, .vic-stats-table td { padding-left: 2px; padding-right: 2px; overflow-wrap: anywhere; }
+        .vic-stats-table td { font-size: 10.5px; letter-spacing: -0.01em; }
+        .vic-stats-table .unit-sprite-cell .unit-name-text { white-space: normal; overflow: visible; max-width: none; line-height: 1.15; min-width: 0; overflow-wrap: break-word; }
+        .vic-stats-table .unit-sprite-cell .unit-name-text small { display: block; font-size: 9px; font-weight: 400; opacity: 0.65; }
+        .vic-stats-table .unit-sprite-cell > div:first-child { flex: none; }
+        .vic-stats-table tr.team-header td:first-child { width: auto; }
+        .vic-sheet { overflow-x: hidden; }
+        /* the TOTAL row's numbers sit under their own columns, like every unit row's */
+        .vic-stats-table tr.team-header td:not(:first-child):not([colspan]) { text-align: center; padding-left: 2px; padding-right: 2px; letter-spacing: 0; }
+        .vic-stats-table th:not(:first-child), .vic-stats-table td:not(:first-child) { overflow-wrap: normal; }
         .vic-stats-table .dead-unit { opacity: 0.45; }
         .vic-stats-table .stat-best { color: var(--vic-gold); font-weight: 800; }
         .vic-stats-table .stat-zero { opacity: 0.3; }
