@@ -1270,3 +1270,24 @@ Round 2 (the same day, the rest of his answers):
   `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`; the catalogue `light` went with the proc: file
   rows draw no point light, only the glow). The kitchen range's burner glow went (it is a griddle).
 - KEPT as code: the `castle_wall` spell monument (1 square wide, 2 high: the pack has no piece that shape).
+## THE OPEN SUMMIT + THE OPEN ICE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any sense for those maps")
+- Cause: LEVEL_DESIGN_PLAN L6 (2026-09-30) turned both site rooms into `gen: { kind: 'plan', look: 'walls' }` layouts (5.5 m marble /
+  5 m ice walls round every court, yard and hall; the sealed mass between them baked to pits by bake-holes.js), and every arena size
+  was cut from those walled courts.
+- Fix (whole room, easier than carving a hole in the plan): HQ_AREA_SPECS.prebuilt_olympus / prebuilt_antarctica lost the walls
+  plan and every `space` / `hall` row (a room with `space`/`hall` rows and no `gen` still gets a walls plan — data.js
+  hqTerrainCompile's planGen fallback, so both had to go). Every plateau, stair, climb, pool, deck, rail, prop and NPC stayed.
+  HQ_ROOM_HOLES rows re-baked (0 gaps now). Olympus keeps `outer.lift -26` (the summit is a marble crown with the mountain falling away).
+- Olympus THE COURT OF THE TWELVE (the board, x -21..21, z -10.5..31.5, `HQ_ARENA_RULES.within` (0, 10.5) r 2.6 for every size):
+  twelve greek_column props (h 5, `floor: true`) in two rows of six at x ±12.25 on square centres, each on a one-square ghost wall
+  (h 5 → level 3, the Göbekli pillar rule), and two 1.2 m marble plinths at the far corners. The lower court's stair moved to its
+  north lip (the west court), the first two stepping clouds moved west off the board, the fountain went to (0, 35) south of the
+  board, the riser and a brazier moved off it, the scatter rows got their own areas (with the walls gone they landed on the board).
+  Olympus now has an 11×11 cut too (none fitted the walled room).
+- Antarctica THE STATION YARD (the board, x -21..21, z 10.5..52.5, `within` (0, 31.5) r 2.6): two 1.4 m ice pressure ridges
+  (three squares each, level 1), two 3.0 m metal containers (two squares each, level 2), two iso_tank fuel tanks on one-square ghost
+  blocks (1.3 m), two flood masts off the corners. THE CREVASSE stream now runs wall to wall (x -71..71) so the plank is still the
+  only way north. The signpost, lesson sign, laundry cart, riser and the yeti NPC moved off the board; scatter rows got areas.
+- Both boards are half-turn symmetric about their centre and keep the house lanes (spawn / egress / nexus) clear at 12, 11, 10, 9.
+  Existing rules only: levels, ghost blocks, deep water. bake-arenas.js reports them as walled cuts (the level-3 / level-2 blocks).
+- Audit of the other boards + the exploration rooms still built as walled plans: /mnt/project-files/battle-map-audit/.
