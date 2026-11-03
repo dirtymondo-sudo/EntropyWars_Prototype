@@ -1324,6 +1324,20 @@ inside the parapet, measured in Blender). Where they go:
   `--flags=EW_NO_MODEL_QUEUE` loads them. Shots: Old Town street fronts + two editor rows in Skinwalker fields, all upright, fronts
   to the street.
 
+Round 5, THE TOWN RIM HOUSES (the same day; mondo OK'd the split: "yeah that sounds good"): Area 51 and Skinwalker's town rims stand
+one whole Trailer Park trailer per stop, Haunted's one Abandoned House pack exterior per stop. Babel keeps the code mud-brick houses
+until he OKs Meshy concepts for it.
+- three-renderer.js `_HZ_TOWN_MODELS` { trailers: 6 files, 15.1 m long; abandoned: 1 file, 36.3 m wide, sunk 3.5 m (its stilts) }; a
+  data.js town rim spec with `models: '<key>'` places one model per stop (fit 'span' at m x 0.96-1.04, front turned to the board +-0.25
+  rad, low 'skip'); without `models` the old _nrHouse code draws (Babel only now). Delete that code branch once Babel has models.
+- bake-pack-pieces.py: F 'trailerscene' (Trailer_Park.fbx) + 'abandonedhouse' (Abandoned_House.fbx). A node `{near, pad, keep}` cuts a
+  REGION: every mesh whose centre lies in the named node's box (+pad m) and whose name matches keep (the trailers stand in one scene
+  with no parent per trailer). A trailing `!` on a node name takes that node without its children. Files: R2 Assets/misc/
+  ebd_trailerscene_trailer_0..5.glb, ebd_abandonedhouse_house.glb (zipped by hand).
+- FOUND: a site battle draws NO world rim at all. Every rim site has an HQ_ARENA_RULES pick, the arena drops env.near, so
+  `_nrLastKit` is null and `_worldBuild` returns early; the site's own room stands round the board instead. These rim swaps show only
+  where a rim still builds. Asked mondo whether the pack houses should also stand in the site rooms.
+
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
 3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the map" (his picture: 01 Forward Cover,
@@ -1377,3 +1391,24 @@ Each site is pinned with HQ_ARENA_RULES.within and all four sizes re-baked; the 
   made four squares rock (`tree`): no props on the platforms.
 - AGARTHA (prebuilt_agartha): THE PLAZA (the fountain, the two garden rings); within (0, 14, r 2.6). Two marble low walls
   (1.4 m), four crystal clusters and four greek columns on ghost blocks, 180° twins about (0, 14), placed for the 9×9 too.
+
+## THE TWO SANDS (2026-11-03)
+mondo asked for a new sand "the same way you found another gold texture", picked option A off
+`/mnt/project-files/sand-texture/sand_texture_options.png` (ambientCG Ground097, CC0, dune ripples), then: "you need to
+differentiate between beach sand and desert sand in the game through color/tint".
+- `desert` stays ONE terrain key (every rule unchanged). sprites.js TERRAIN_SPRITES.desert = R2 `Assets/Sprites/terrain/sand.png`
+  (Ground097 baked at 128 px in the desert's warm gold, mean ~0.57). The beach sheet `terrain/sand_beach.png` = the same ripples in
+  pale cream (mean ~0.73, under the white-sheet line so daylight keeps the ripples). Both baked by
+  `/mnt/project-files/sand-texture/grade.py` (contrast ×3-4 + normal-map relief + AO: raw ambientCG sand is flat at 128 px).
+  Repo copies in `Assets/Sprites/terrain/` (zipped by hand). desert.png stays in the bucket, unreferenced.
+- A BEACH (sprites.js SAND_BEACH): a battle board whose id starts with one of `SAND_BEACH.maps` (Bermuda family, Atlantis abyss,
+  Downtown harbour), or a room on a sea shell (data.js hqSeaShell / hqAbyssShell carry `sand: 'beach'`; a room's
+  `terrain.sand` / `shell.sand` works too). three-renderer.js `_ewSandBeach` / `_ewSandUrl` / `_ewSandPart` swap the sheet in
+  getTerrainTexture, _hzTex, _hqTex and fold '@beach' into their cache keys + _tintKeyPart (board materials). Online: reads
+  activeGameMode / the room, which host and guest share.
+- The beach colours: Bermuda boards' tints.desert, the sea shell's floor/apron colour and the Bermuda horizon kit went
+  #e8d8a8 → #f2ead6 (paler) so the beach reads cream, not yellow. Giza / Babel / the desert boards keep their tints.
+- The sand spells' (`_sigTerrainTex`) and the deployable stone's 'desert.png' loads read sand.png.
+- GIZA UNTINTED (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the Giza boards' tints.desert
+  (#e8cf8f full board, #e6d4a0 the arenas) are gone and the Giza site room's floor/apron colour is white, so Giza's sand is
+  the desert-gold sheet as drawn. The Giza horizon pyramids keep their own colour (0xd6c39a).

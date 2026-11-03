@@ -9728,6 +9728,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _SIG_GOLD_TEX = 'gilt.png', _SIG_GILT = 0xffffff;
     function _sigTerrainTex(file, repX, repY) {
         if (file === 'gold.png') file = _SIG_GOLD_TEX;
+        if (file === 'desert.png') file = 'sand.png';   // THE TWO SANDS (2026-11-03): the desert sheet is terrain/sand.png (Ground097)
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_sigTerrainTexCache[key]) return _sigTerrainTexCache[key];
         var tex = _loadCachedTex(
@@ -54811,7 +54812,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* rocks_5 is a dark sheet (mean ~70/255): the stone wears it lifted to a warm ochre grey (a colour over 1 —
        MeshBasic multiplies it into the map), the sand its desert sheet as it is */
     function _eaStoneMat(sand, tint) {
-        var m = _pzSolid(0xffffff, _sigTerrainTex(sand ? 'desert.png' : 'rocks_5.png', 1, 1)), t = tint != null ? tint : (sand ? [1.15, 1.05, 0.95] : [2.35, 2.0, 1.62]);
+        var m = _pzSolid(0xffffff, _sigTerrainTex(sand ? 'sand.png' : 'rocks_5.png', 1, 1)), t = tint != null ? tint : (sand ? [1.15, 1.05, 0.95] : [2.35, 2.0, 1.62]);
         if (Array.isArray(t)) m.color.setRGB(t[0], t[1], t[2]); else m.color.set(t);
         m.vertexColors = true; return m;
     }

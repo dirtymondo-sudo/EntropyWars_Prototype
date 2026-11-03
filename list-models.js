@@ -68,6 +68,8 @@ const SOURCES = [
     { re: /Assets\/misc\/ebd_buildings_/, how: 'PACK', src: 'Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS)' },
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_diner_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out in Blender)' },
+    { re: /Assets\/misc\/ebd_trailerscene_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; town rim _HZ_TOWN_MODELS)' },
+    { re: /Assets\/misc\/ebd_abandonedhouse_/, how: 'PACK', src: 'Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender; town rim _HZ_TOWN_MODELS)' },
     { re: /Assets\/misc\/ebd_trailerpark_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_6twelve_/, how: 'PACK', src: '6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_psx3_/, how: 'PACK', src: 'Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender)' },
@@ -254,6 +256,10 @@ for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('anim
 // THE PACK BUILDINGS (2026-11-03): the Buildings pack's shop blocks (data.js HQ_PACK_BUILDINGS: Disaster City's lots + the editor's Look list)
 const packB = block(read('data.js'), 'const HQ_PACK_BUILDINGS = {');
 for (const m of packB.matchAll(/(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/g)) add('misc', m[1] + ' (a whole building)', BASES.misc + m[2]);
+// THE TOWN RIM HOUSES (2026-11-03): three-renderer.js _HZ_TOWN_MODELS, one pack house per rim stop (Area 51, Skinwalker, Haunted)
+const townM = block(R3, 'var _HZ_TOWN_MODELS = {');
+for (const m of townM.matchAll(/(\w+):\s*\{[^}]*files:\s*\[([^\]]+)\]/g))
+    for (const f of m[2].matchAll(/'([^']+\.glb)'/g)) add('misc', m[1] + ' town rim (' + f[1].replace(/^ebd_\w+?_|\.glb$/g, '') + ')', BASES.misc + f[1]);
 // the halloween pieces the spells cut out of the one kit file
 const hwNodes = new Set();
 for (const m of (VFX + R3).matchAll(/var _(?:HW_SWEETS|HW_PAILS|HW_GRAVE_NODES|HWC_NODES|BP_WARM|PK_LANTERNS|PK_WHOLE|GRAVE_HW_STONES)\s*=\s*\[([^\]]*(?:\][^;]*)?)\]/g))

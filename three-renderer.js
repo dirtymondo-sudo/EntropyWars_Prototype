@@ -331,6 +331,36 @@ const ThreeRenderer = (function () {
     }
     var _userTintCache = {};
 
+    /* THE TWO SANDS (2026-11-03, mondo: "differentiate between beach sand and desert sand in the game through color/tint"):
+       the `desert` key is ONE terrain (one set of rules) drawn in two colours — sprites.js TERRAIN_SPRITES.desert (sand.png,
+       the desert gold) by default, SAND_BEACH.sheet (sand_beach.png, the same ripples in pale cream) on a beach. A beach =
+       the room being drawn (the walk, or the room round a field fight) stands on a sea shell (`shell.sand === 'beach'`, data.js
+       hqSeaShell / hqAbyssShell), else the battle board's id starts with one of SAND_BEACH.maps. activeGameMode is set by
+       applyGameMode on host and guest alike, so both draw the same sand online. */
+    function _ewRoomSand(room) {
+        if (!room) return null;
+        var sh = room.shell, t = room.terrain;
+        return (t && t.sand) || (sh && sh.sand) || null;
+    }
+    function _ewSandBeach() {
+        try {
+            if (typeof SAND_BEACH === 'undefined' || !SAND_BEACH || !SAND_BEACH.sheet) return false;
+            if (typeof _hq !== 'undefined' && _hq && _hq.room) return _ewRoomSand(_hq.room) === 'beach';
+            var R = (typeof _hqBattleRoom === 'function') ? _hqBattleRoom() : null;
+            if (R && R.room) return _ewRoomSand(R.room) === 'beach';
+            var id = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : '';
+            var M = SAND_BEACH.maps || [];
+            for (var i = 0; i < M.length; i++) if (id.indexOf(M[i]) === 0) return true;
+        } catch (e) {}
+        return false;
+    }
+    /* the sheet URL a terrain key wears HERE (only `desert` changes) */
+    function _ewSandUrl(key, url) {
+        return (key === 'desert' && url && _ewSandBeach()) ? SAND_BEACH.sheet : url;
+    }
+    /* a cache-key suffix for anything cached by terrain key */
+    function _ewSandPart(key) { return (key === 'desert' && _ewSandBeach()) ? '@beach' : ''; }
+
     /* Material cache key fragment for the active per-terrain editor tints.
        buildBoxMaterials/_buildBeveledMaterials cache materials by terrain key,
        but the tint is multiplied on at build time (_evTintMat). Without folding
@@ -338,10 +368,11 @@ const ThreeRenderer = (function () {
        cached material and the map never updated. Include the top/side tint hex so
        a tint change yields a fresh cache entry — and rebuilds tinted materials. */
     function _tintKeyPart(topKey, sideKey) {
+        var sp = _ewSandPart(topKey) || _ewSandPart(sideKey);   // THE TWO SANDS: a beach's desert is its own material
         var t = (typeof state !== 'undefined' && state) ? state.terrainTints : null;
-        if (!t) return '';
+        if (!t) return sp;
         var a = t[topKey] || '', b = t[sideKey || topKey] || '';
-        return (a || b) ? '|t:' + a + ':' + b : '';
+        return ((a || b) ? '|t:' + a + ':' + b : '') + sp;
     }
 
     function _lerp(a, b, t) { return a + (b - a) * t; }
@@ -3646,7 +3677,7 @@ const ThreeRenderer = (function () {
     }
 
     function getTerrainTexture(k) {
-        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? TERRAIN_SPRITES[k][0] : null;
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? _ewSandUrl(k, TERRAIN_SPRITES[k][0]) : null;   // THE TWO SANDS
         return url ? getTexture(url) : null;
     }
 
@@ -10402,7 +10433,7 @@ const ThreeRenderer = (function () {
     function _buildGraveGate3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var stoneMat = _deployMat('desert.png', 0xd9bd82);
+        var stoneMat = _deployMat('sand.png', 0xd9bd82);   // THE TWO SANDS (2026-11-03): the desert sheet (Ground097)
         var goldMat = _deployMat('gilt.png', 0xd8b458);
         for (var j = -1; j <= 1; j += 2) {
             var jamb = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.12, ts * 0.72, ts * 0.14), stoneMat);
@@ -33659,13 +33690,14 @@ const ThreeRenderer = (function () {
     // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
     var _hzTexCache = {};
     function _hzTex(terrainKey) {
-        if (_hzTexCache[terrainKey] !== undefined) { var hit = _hzTexCache[terrainKey]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
-        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
+        var ck = terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
+        if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? _ewSandUrl(terrainKey, TERRAIN_SPRITES[terrainKey][0]) : null;
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         /* 2026-09-21: a D.O.O.R. HQ texture name (`concrete`, `stone`, `teal`, `carpet`…) resolves here too — a terrain room's
            `cliff: 'concrete'` used to miss and fall back to rock_wall_1 (the glyph sheet on THE GARAGE's every wall) */
         if (!url && typeof terrainKey === 'string') { var HD = _hqData(), hk = terrainKey.indexOf('hq:') === 0 ? terrainKey.slice(3) : terrainKey; if (HD && HD.textures && HD.textures[hk] && HD.assets) url = HD.assets.textures + HD.textures[hk]; }   // `hq:<name>` (2026-10-30): the painted sheet even where a battle sheet has the same name (stone, drywall, carpet)
-        if (!url) { _hzTexCache[terrainKey] = null; return null; }
+        if (!url) { _hzTexCache[ck] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate (no placeholder — the gate holds the scene until it lands)
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
         tex.magFilter = THREE.LinearFilter;
@@ -33675,7 +33707,7 @@ const ThreeRenderer = (function () {
             var maxA = (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy) ? renderer.capabilities.getMaxAnisotropy() : 1;
             tex.anisotropy = Math.min(8, maxA || 1);       // sharpen grazing angles without shimmer
         } catch (e) {}
-        _hzTexCache[terrainKey] = tex;
+        _hzTexCache[ck] = tex;
         return tex;
     }
 
@@ -39632,8 +39664,8 @@ const ThreeRenderer = (function () {
            tongues or the rock is built there). */
         var top = fy - 0.6;
         _nrMoat(K, { key: 'deep_water', depth: 1, pad: 40, stream: true });
-        if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = 'desert'; _nrLastKit.color = 0xe8d8a8; _nrLastKit.skirt = 'rocks_1'; _nrLastKit.skirtColor = 0x8a8478; }
-        var sand = K.mat('desert', 0xe8d8a8, { lift: 0 }), bank = K.mat('rocks_1', 0x8a8478);
+        if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = 'desert'; _nrLastKit.color = 0xf2ead6; _nrLastKit.skirt = 'rocks_1'; _nrLastKit.skirtColor = 0x8a8478; }
+        var sand = K.mat('desert', 0xf2ead6, { lift: 0 }), bank = K.mat('rocks_1', 0x8a8478);
         if (!HQ) {
             /* the beach tongues: from the spawn rows out to the kit's edge, a rock face into the sea */
             [[K.BX0 + 3 * ts, K.Z0, K.BX1 - 3 * ts, K.BZ0], [K.BX0 + 3 * ts, K.BZ1, K.BX1 - 3 * ts, K.Z1]].forEach(function (r) {
@@ -41119,6 +41151,13 @@ const ThreeRenderer = (function () {
             fn(K.CX + Math.cos(a) * r, K.CZ + Math.sin(a) * r, a, i, r);
         }
     }
+    /* THE TOWN RIM's PACK HOUSES (2026-11-03): whole houses cut from Elbolilloduro packs (CC0) by bake-pack-pieces.py, R2 Assets/misc/ —
+       `m` = the length the house is fitted to (its longest side, metres: its real size), `sink` = metres under the ground (the abandoned
+       house's basement). Every file's front (door / porch) is +Z. */
+    var _HZ_TOWN_MODELS = {
+        trailers: { m: 15.1, files: ['ebd_trailerscene_trailer_0.glb', 'ebd_trailerscene_trailer_1.glb', 'ebd_trailerscene_trailer_2.glb', 'ebd_trailerscene_trailer_3.glb', 'ebd_trailerscene_trailer_4.glb', 'ebd_trailerscene_trailer_5.glb'] },
+        abandoned: { m: 36.3, sink: 3.5, files: ['ebd_abandonedhouse_house.glb'] }
+    };
     /* THE RIM — each builder: (K, spec, c) with c = { y: the ground level, shore, R, sea } */
     var _WD_RIM = {
         /* a mountain range in ranks; `mesa` = flat tops (the desert); `snow` = a cap sheet */
@@ -41151,11 +41190,20 @@ const ThreeRenderer = (function () {
                 t.position.set(x, c.y - 0.05 * ts, z); t.rotation.y = rng() * 6; K.add(t);
             });
         },
-        /* houses and stores in the far distance */
+        /* houses and stores in the far distance. `models` (THE TOWN RIM's PACK HOUSES, 2026-11-03 — mondo: "are there no houses in the
+           asset packs? and again i want things to be individually placed with detail and care, not a cluster"; he OK'd the split) = one
+           whole pack house per stop from _HZ_TOWN_MODELS, at its real size, its front (the door) turned to the board */
         town: function (K, s, c) {
-            var rng = K.rng;
+            var rng = K.rng, TMd = s.models && _HZ_TOWN_MODELS[s.models];
             _wdRing(K, s.d || 18, s.n || 14, function (x, z) {
                 if (rng() > (s.p == null ? 0.7 : s.p)) return;
+                if (TMd) {
+                    var file = TMd.files[(rng() * TMd.files.length) | 0];
+                    var hm = _hzMiscKit('town_house', { url: _R2_MISC + file, metres: TMd.m * (0.96 + rng() * 0.08), fit: 'span', rng: rng, low: 'skip', lift: TMd.lift || 0.1,
+                        sink: TMd.sink ? TMd.sink / 1.75 : 0, onDone: function (grp) { _nrInjectWorld(K, grp); } });
+                    hm.position.set(x, c.y - 0.02 * K.ts, z); hm.rotation.y = K.face(x, z) + (rng() - 0.5) * 0.5; K.add(hm);
+                    return;
+                }
                 var sc = 0.9 + rng() * 0.8;
                 var h = _nrHouse(K, x, z, { w: (s.w || 3) * sc, d: (s.dd || 2.4) * sc, h: (s.h || 1.6) * sc, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, window: s.window, ry: rng() < 0.5 ? K.face(x, z) + (rng() - 0.5) * 0.5 : rng() * 6.3, chimney: rng() < 0.5 });
                 if (h) h.position.y = c.y - 0.02 * K.ts;
@@ -59020,10 +59068,10 @@ const ThreeRenderer = (function () {
         /* an OUTDOOR site room (HQ plan 7.2 stage 3) dresses its floor and
            walls in a battle TERRAIN key (grass, planks, concrete) — those
            come off the terrain sheet, tiled like the HQ's own textures */
-        var url = file ? (D.assets.textures + file) : ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[name]) ? TERRAIN_SPRITES[name][0] : null);
+        var url = file ? (D.assets.textures + file) : ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[name]) ? _ewSandUrl(name, TERRAIN_SPRITES[name][0]) : null);   // THE TWO SANDS: a sea room's desert is the beach sheet
         if (!url && typeof name === 'string' && name.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[name.slice(6)] || null;   // THE URBAN PACK (2026-09-17): a shell / prop may wear `urban:<Name>` (sprites.js URBAN_TEXTURES)
         if (!url) return null;
-        var key = name + '|' + (ru || 1) + '|' + (rv || 1);
+        var key = name + _ewSandPart(name) + '|' + (ru || 1) + '|' + (rv || 1);
         if (_hqTexCache[key]) { _alJoin(_hqTexCache[key]._ew_alRec); return _hqTexCache[key]; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
         /* ONE fetch per file (2026-09-20): a second repeat of the same sheet is a Texture that takes the
            first one's image when it lands (the browser used to be asked for the same PNG once per repeat

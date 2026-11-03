@@ -15160,7 +15160,7 @@ _MF_BUILDERS.prebuilt_giza = function () {
     const M = _mfNew({
         name: 'Pyramids of Giza', w: 20, h: 20, base: 'desert', baseH: 3, seed: 3301,
         strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
-        tints: { desert: '#e8cf8f', dirt_2: '#d8b884', ruins: '#d0b890' },
+        tints: { dirt_2: '#d8b884', ruins: '#d0b890' },   // THE TWO SANDS (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the sand is untinted
     });
     // hard-packed processional avenues
     M.rect(9, 0, 10, 19, 'dirt_2'); M.rect(0, 9, 19, 10, 'dirt_2');
@@ -16409,7 +16409,7 @@ _MF_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfNew({
         name: 'The Bermuda Triangle', w: 16, h: 16, base: 'desert', baseH: 3, seed: 345,
         strata: ['deep_water', 'deep_water', 'rocks_1'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
+        tints: { desert: '#f2ead6', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
     });
     /* THE ISLANDS (2026-09-16, the user: "how is there no water in the
        Bermuda Triangle? it should be a lot of water; it can double as an
@@ -16643,7 +16643,7 @@ _MF_DELTA_BUILDERS.prebuilt_stonehenge = function () {
    sphinx on its plinth, the sandstone causeway, the obelisks. */
 _MF_DELTA_BUILDERS.prebuilt_giza = function () {
     const M = _mfDeltaNew({ name: 'Pyramids of Giza', base: 'desert', seed: 8103,
-        tints: { desert: '#e6d4a0', bricks_1: '#dcb880', dirt_2: '#d8bc88' },
+        tints: { bricks_1: '#dcb880', dirt_2: '#d8bc88' },   // the sand untinted (mondo 2026-11-03: "just make it the default tint")
         desc: 'THE PLATEAU — the pyramid\'s tiers up a stair, the sphinx on its plinth, the sandstone causeway, the obelisks' });
     M.rect(3, 1, 4, 2, 'dirt_2');                            // the causeway
     M.step(1, 2, 'bricks_1'); M.block(0, 2, 'bricks_1'); M.block(0, 3, 'bricks_1', 3);   // the pyramid: three tiers up
@@ -17211,7 +17211,7 @@ _MF_DELTA_BUILDERS.prebuilt_downtown = function () {
 _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfDeltaNew({ name: 'The Bermuda Triangle', base: 'desert', seed: 8420,
         strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
+        tints: { desert: '#f2ead6', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
         desc: 'THE OPEN SEA — a beach each side, THE CAY at the centre with the X on it, the sandbar, the wreck, the lighthouse rock, the jetty, the buoys; the sea streams past, the storm comes on' });
     /* the top half as a sheet — S sand, ~ shallows (a wade), D the deep (a
        swim that drowns), R a rock (+1), W the wreck (+2), L the lighthouse
@@ -18426,7 +18426,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_area51', label: 'Area 51', w: 20, h: 20, teamSize: 6, tier: 2, base: 'wasteland',
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4', near: 'area51',
       desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
-      env: { world: { kind: 'plain', rim: [{ kind: 'town', d: 22, n: 10, p: 0.55, tex: 'wood_planks', color: 0xd8c8a8, roofColor: 0x7a5a48 }, { kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'town', models: 'trailers', d: 22, n: 10, p: 0.55 }, { kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
              tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs',
              motion: { kind: 'wheel', speed: 4.0, ramp: 0.35, max: 5.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
     { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
@@ -18437,7 +18437,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
       biomes: ['ranch', 'clandestine'], deltaPad: 'grass_rocky', near: 'skinwalker',
       desc: '20×20 prebuilt, 6v6 — the ranch: barn & corral, twin observation mesas, the mutilation site & a crop-circle anomaly',
-      env: { world: { kind: 'plain', rim: [{ kind: 'town', d: 21, n: 6, p: 0.5, tex: 'wood_planks', color: 0xb89878, roofColor: 0x5a4030 }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'town', models: 'trailers', d: 21, n: 6, p: 0.5 }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
              tint: 0x2a1638, tintAmt: 0.50, stars: 1.2, nebula: 1.1, fog: { color: 0x453058, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'eyes' } },
     { id: 'prebuilt_hollow_earth', label: 'Hollow Earth', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor', near: 'hollow_earth',
@@ -18529,7 +18529,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_haunted', label: 'The Haunted House', w: 16, h: 16, teamSize: 6, tier: 2, base: 'dirt_2',
       biomes: ['gothic', 'clandestine'], deltaPad: 'wood', near: 'haunted',
       desc: '16×16 prebuilt, 6v6 — the ground floor of the mansion cut open across the middle (the parlour, the hall, the library: thin walls, two front doors, windows you can shoot through) and the graveyard out back on both sides — the stones, the crypt, the bog, the coven\'s fire',
-      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
+      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'town', models: 'abandoned', d: 25, n: 5, p: 0.5 }] },
              tint: 0x1a1428, tintAmt: 0.52, stars: 0.9, nebula: 0.6, fog: { color: 0x2a2438, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.7,
              ambience: 'ambNight' } },   // a still map names its bed too (audio.js reads env.ambience since 2026-09-13)
     { id: 'prebuilt_lodge', label: 'The Lodge', w: 16, h: 16, teamSize: 6, tier: 2, base: 'checkerboard',
@@ -28484,8 +28484,9 @@ function hqSeaShell(o) {
     const S = {
         w: 0, d: 0, h: 6.0, wallH: 6.0, dadoH: 1.0,
         open: true, edge: 'open',
+        sand: 'beach',   /* THE TWO SANDS (2026-11-03): a sea room's sand is the beach's (sprites.js SAND_BEACH), not the desert's */
         floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'wood', ceiling: 'desert',
-        apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8, wallColor: 0x8a8478, dadoColor: 0x8a8478,
+        apron: 'desert', skirt: 'rocks_1', apronColor: 0xf2ead6, floorColor: 0xf2ead6, wallColor: 0x8a8478, dadoColor: 0x8a8478,
         pipes: false, strips: false, lights: [],
         mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, ambient: 0.62, night: 0 },
         sky: { night: 0, tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, day: 1, clouds: 0.3, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5, density: 0.018 }, scenery: 'sea', density: 0.8,
@@ -28501,6 +28502,7 @@ function hqAbyssShell(o) {
     const S = {
         w: 0, d: 0, h: 30, wallH: 30, dadoH: 1.0,
         open: true, edge: 'open', underwater: true,
+        sand: 'beach',   /* THE TWO SANDS (2026-11-03): a sea room's sand is the beach's (sprites.js SAND_BEACH), not the desert's */
         floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'gold', ceiling: 'desert',
         apron: 'desert', skirt: 'rocks_1', apronColor: 0x4a6a78, floorColor: 0x4a6a78, wallColor: 0x3a5060, dadoColor: 0x3a5060,
         pipes: false, strips: false, lights: [],
@@ -43418,7 +43420,7 @@ const DOOR_HQ = {
             label: 'GIZA · THE PLATEAU',
             sub: 'THE GREAT PYRAMID · THE NORTH STAIR · KHAFRE · MENKAURE · THE SPHINX · THE CAUSEWAY · THE DIG',
             kind: 'box', site: 'prebuilt_giza', part: 'plateau',
-            shell: hqAncientShell({ w: 300, d: 240, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c, plate: { x: 0, z: -117.3, y: 5.0 },
+            shell: hqAncientShell({ w: 300, d: 240, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: 0, z: -117.3, y: 5.0 },
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
                                     sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
                                     look: HQ_ROOM_LOOKS.plateau }),
@@ -65467,7 +65469,7 @@ const EW_CREDITS = {
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
-            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, Gas station, Buildings, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
+            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, Gas station, Buildings, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, Abandoned House, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
             { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },
