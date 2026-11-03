@@ -5595,6 +5595,19 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-look-del:hover { color: #f0cc83; background: rgba(240, 204, 131, .08); }
 .pb-looks-empty { margin: 8px 0 0; font-size: 11px; }
 .pb-looks-note { margin-top: 8px; font-size: 11px; color: #f0cc83; letter-spacing: .06em; }
+/* THE ASSIGNED LOOKS (2026-11-03): ASSIGN TO <RACE> + EXPORT ALL ASSIGNED under the creator; names never cut (they wrap) */
+.pb-assigned { margin-top: 12px; }
+.pb-assigned-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.pb-assigned-head b { color: #f0cc83; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.pb-assigned-head .pb-creator-note { margin: 0; font-size: 11px; line-height: 1.5; }
+.pb-assigned .pb-looks-note, .pb-assigned .pb-looks-empty { line-height: 1.5; overflow-wrap: anywhere; }
+.pb-assigned .pb-creator-options { margin: 8px 0 0; }
+.pb-assigned .pb-creator-options .ms-tty-btn { white-space: normal; text-align: center; padding: 6px 12px; }
+.pb-assigned-chip .pb-look-load { cursor: default; max-width: none; flex-wrap: wrap; }
+.pb-assigned-chip .pb-look-load span { overflow: visible; white-space: normal; }
+.pb-assigned-tag { font-size: 9px !important; letter-spacing: .08em; padding: 1px 5px; border: 1px solid #6f5d3d; border-radius: 6px; color: #66ff8a !important; }
+.pb-assigned-chip.baked { opacity: .7; }
+.pb-assigned-chip.baked .pb-assigned-tag { color: #c6b995 !important; }
 .pb-layer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 /* THE SHELVES (2026-11-02): the MEN / WOMEN switch row, the sub-heads inside a tab (Men's / Fits anyone / Costume wings ...) */
 .pb-cc-side { align-items: center; margin-bottom: 4px; }
