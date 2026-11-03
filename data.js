@@ -28603,7 +28603,7 @@ const DOOR_HQ = {
     catalogue: {
         /* ── desk / terminals ── */
         crt_terminal:      { file: 'Meshy_AI_crt_terminal_0903101952_texture.glb',                    h: 0.42, foot: 0 },
-        tube_tv:           { file: 'Meshy_AI_a_tube_tv_0903102007_texture.glb',                       h: 0.46, foot: 0 },
+        tube_tv:           { file: 'ebd_trailerpark_tube_tv.glb', base: 'misc',                       h: 0.46, foot: 0 },
         papers_a:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110113_texture.glb',        h: 0.08, foot: 0 },
         papers_b:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb',        h: 0.10, foot: 0 },
         notebook_paper:    { file: 'Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb',       h: 0.06, foot: 0 },
@@ -28611,8 +28611,8 @@ const DOOR_HQ = {
         pencil:            { file: 'Meshy_AI_a_no_2_pencil_0903110156_texture.glb',                   span: 0.19, foot: 0 },
         pen:               { file: 'Meshy_AI_an_office_pen_0903110146_texture.glb',                   span: 0.15, foot: 0 },
         desk_fan:          { file: 'Meshy_AI_a_circular_desk_fan_0903105635_texture.glb',             h: 0.38, foot: 0 },
-        desk_lamp:         { file: 'Meshy_AI_an_office_desk_lamp_0903110208_texture.glb',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
-        table_lamp:        { file: 'Meshy_AI_a_lamp_0903110007_texture.glb',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
+        desk_lamp:         { file: 'ebd_house_desk_lamp.glb', base: 'misc',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
+        table_lamp:        { file: 'ebd_trailerpark_table_lamp.glb', base: 'misc',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
         house_key:         { file: 'Meshy_AI_a_house_key_0903110053_texture.glb',                     span: 0.07, foot: 0 },
         key:               { file: 'Meshy_AI_a_key_0903110102_texture.glb',                           span: 0.08, foot: 0 },
         car_key:           { file: 'Meshy_AI_car_key_0903110043_texture.glb',                         span: 0.08, foot: 0 },
@@ -28647,22 +28647,22 @@ const DOOR_HQ = {
         folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.44 },
         curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
         curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
-        filing_cabinet:    { file: 'Meshy_AI_a_filing_cabinet_0903105233_texture.glb',                h: 1.32, foot: 0.40, wall: true },
+        filing_cabinet:    { file: 'ebd_laundry_filing_cabinet.glb', base: 'misc',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
-        locker:            { file: 'Meshy_AI_a_locker_0903105424_texture.glb',                        h: 1.85, foot: 0.40, wall: true },
+        locker:            { file: 'ebd_mine_locker.glb', base: 'misc',                        h: 1.85, foot: 0.40, wall: true },
         cardboard_box:     { file: 'Meshy_AI_a_cardboard_box_0903105957_texture.glb',                 h: 0.42, foot: 0.30 },
         cardboard_boxes:   { file: 'Meshy_AI_cardboard_boxes_0903105142_texture.glb',                 h: 0.95, foot: 0.55 },
         /* ── fixtures ── */
         globe_lamp:        { file: 'Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb',           h: 1.95, foot: 0.40, glow: { y: 1.70, size: 1.6, color: 0xfff1d6 } },
-        water_cooler:      { file: 'Meshy_AI_a_water_cooler_0903105259_texture.glb',                  h: 1.28, foot: 0.32, wall: true },
-        vending_machine:   { file: 'Meshy_AI_a_round_vending_machine_0903105625_texture.glb',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
+        water_cooler:      { file: 'ebd_laundry_water_cooler.glb', base: 'misc',                  h: 1.28, foot: 0.32, wall: true },
+        vending_machine:   { file: 'ebd_laundry_vending_machine.glb', base: 'misc',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
         potted_plant:      { file: 'Meshy_AI_a_potted_plant_0903105322_texture.glb',                  h: 1.25, foot: 0.32 },
         office_plant:      { file: 'Meshy_AI_an_office_plant_0903110228_texture.glb',                 h: 1.10, foot: 0.30 },
-        fire_extinguisher: { file: 'Meshy_AI_a_fire_extinguisher_0903105310_texture.glb',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
+        fire_extinguisher: { file: 'ebd_6twelve_fire_extinguisher.glb', base: 'misc',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
         wet_floor_sign:    { file: 'Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb',         h: 0.72, foot: 0.22 },
         mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
-        mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
+        mop:               { file: 'ebd_house_mop.glb', base: 'misc',                           h: 1.45, foot: 0 },
         /* THE DOOR GUN (HQ plan 9.5 rev 3, 2026-09-16; rev 5 2026-09-18 — the user's NEW model): the ray gun
            that shoots doors — the walker holds it drawn (F), the Door Agent carries it in every battle
            (sprites.js `hold`). rev 5: the user's Meshy_AI__0916054803 from the SHARED misc bucket (`base:
@@ -28673,7 +28673,7 @@ const DOOR_HQ = {
            backward). `span` = its real length. The first gun (Meshy_AI_a_retro_gun_that_shoo_0916054449,
            Assets/door/models/) stays in the bucket unreferenced. MODEL_INDEX §3b. */
         door_gun:          { file: 'Meshy_AI__0916054803_texture.glb',                                  base: 'misc', span: 0.62, foot: 0, gun: true },
-        wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
+        wall_clock:        { file: 'ebd_trailerpark_wall_clock.glb', base: 'misc',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
         /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
            three-renderer.js _hqModelUrl): the moving-maps batch's pieces that
            also belong in the building — the pocket watches in the clock room
@@ -28688,7 +28688,7 @@ const DOOR_HQ = {
         ship_cannon:       { file: 'Meshy_AI_iron_canon_0912231022_texture.glb',                     base: 'misc', span: 2.2, foot: 0.9, block: true },          // muzzle −X at face 0: face 0 = run out to port (the west wall), 180 = to starboard
         sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
         ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
-        ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
+        ship_lantern:      { file: 'ebd_survival_lantern.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
         /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3e): the forest
            floor and the cave's furniture, and THE TWO TREES WITH HOLES IN THEM whose holes are the seams (DOOR_HQ.ways
            hollowtree / deadtree read hollow_tree / hollow_dead_tree). Sizes are TARGETS (the files are unmeasured — a wrong
@@ -28698,13 +28698,13 @@ const DOOR_HQ = {
         signpost:          { file: 'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',      base: 'misc', h: 2.2, foot: 0.2, block: true },
         brick_arch:        { file: 'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',         base: 'misc', h: 3.2, foot: 0 },
         greek_column:      { file: 'Meshy_AI_greek_column_0727195651_texture.glb',                 base: 'misc', h: 3.6, foot: 0.45, block: true },   // THE DIVINE STAIR (2026-09-17): the board's greekcol monument standing in heaven (the same file)
-        campfire:          { file: 'Meshy_AI_a_campfire_ring_0916235856_texture.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
+        campfire:          { file: 'ebd_survival_campfire.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
         culvert_mouth:     { file: 'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',              base: 'misc', h: 2.6, foot: 0, mount: 0 },
         /* NO MESHY TREES (2026-10-04, mondo): the four Meshy trees are the retro pack's (base 'rt' = Assets/foilage/retrotreepack/GLB/);
            the hollow / dead tree WAYS keep their own trunk with the hole (three-renderer.js _hqTreeWay) */
         dead_snag:         { file: 'dead_tree_rt_2.glb', base: 'rt', h: 4.6, foot: 0.4, block: true },
         hollow_dead_tree:  { file: 'dead_tree_rt_1.glb', base: 'rt', h: 5.0, foot: 0.6, block: true, rot: 0 },
-        fallen_log:        { file: 'Meshy_AI_a_fallen_log_0916235700_texture.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
+        fallen_log:        { file: 'ebd_vegetation_fallen_log.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
         fern:              { file: 'Meshy_AI_a_fern_0916235806_texture.glb',                       base: 'misc', h: 0.75, foot: 0 },
         pine:              { file: 'tree_rt_1.glb', base: 'rt', h: 6.5, foot: 0.45, block: true },
         footbridge:        { file: 'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',           base: 'misc', span: 4.4, foot: 0 },
@@ -28719,7 +28719,7 @@ const DOOR_HQ = {
         t_pillar:          { proc: 't_pillar',      h: 4.6,  foot: 0.6, block: true },
         cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
-        stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
+        stump:             { file: 'ebd_vegetation_stump.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
         hollow_tree:       { file: 'tree_rt_2_1.glb', base: 'rt', h: 6.0, foot: 0.7, block: true, rot: 0 },
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3g): the
            basilica's furniture (pews of two kinds, the podium, the cathedra, the cross, the windows, the carpet, the
@@ -28769,7 +28769,7 @@ const DOOR_HQ = {
         dorm_bed:           { file: 'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  base: 'misc', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5 },                  // the keep's guardroom
         couples_bed:        { file: 'Meshy_AI_a_couples_bed_0922010443_texture.glb',               base: 'misc', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5 },                // the bunker's loft
         royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
-        camping_tent:       { file: 'Meshy_AI_a_camping_tent_0922010306_texture.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
+        camping_tent:       { file: 'ebd_survival_camping_tent.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
         carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
         fortune_teller_tent:{ file: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',       base: 'misc', span: 3.2, foot: 1.6, block: true },                                                         // the `fortune_tent` proc's model (GLB-first; the proc keeps its key, its glow and its sign)
         retro_control_panel:{ file: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',       base: 'misc', span: 1.6, foot: 0.7, rect: { hw: 0.8, hd: 0.38 }, block: true },                            // the `retro_console` proc's model (GLB-first; the catalogue's glow / light stay)
@@ -28780,7 +28780,7 @@ const DOOR_HQ = {
            files three-renderer.js _MISC_GLB names (the same-thing rule). MEASURED: the crashed car (1.0 × 0.36 × 0.45, nose
            −X → `turn: 90` like the cars), the escalator (0.53 × 0.72 × 1.0, rising toward −Z — face 270 puts its top at +x);
            the rest are TARGETS. `city_bin` is the OUTDOOR bin (the kerbs), `mall_bin` the indoor one (the mall, the casino). */
-        city_bin:          { file: 'Meshy_AI_a_city_bin_0917065144_texture.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
+        city_bin:          { file: 'ebd_6twelve_city_bin.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
         mall_bin:          { file: 'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',            base: 'misc', h: 0.9, foot: 0.3, block: true },
         crashed_car:       { file: 'Meshy_AI_a_crashed_car_0917065033_texture.glb',               base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
         crashed_car_2:     { file: 'Meshy_AI_a_crashed_car_2_0917065052_texture.glb',             base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
@@ -28789,7 +28789,7 @@ const DOOR_HQ = {
         time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
         street_drain:      { proc: 'manhole', h: 0.01, foot: 0 },                                                                                         // a manhole on the road: the urban pack's DecalManholeCover laid flat (2026-10-05, mondo: no Meshy drain GLB)
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
-        bus_shelter:       { file: 'Meshy_AI_bus_shelter_0917064913_texture.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        bus_shelter:       { file: 'ebd_busstop_bus_shelter.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -28873,7 +28873,7 @@ const DOOR_HQ = {
            to bathtub size) and hang it at waist height (`mount` = the
            underside; the rim lands ~0.85 m). `block` keeps its floor
            blocker even though it is mounted — you still can't walk into it. */
-        sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
+        sink:              { file: 'ebd_burgerpiz_sink.glb', base: 'misc',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
         /* rugs: the GLBs are authored standing on edge; `lay` turns the
            thinnest axis upright at load so they lie flat on the floor. */
         rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.5, foot: 0, lay: true },
@@ -29121,27 +29121,27 @@ const DOOR_HQ = {
         hook_rail_long:    { file: 'Meshy_AI_hook_rail_0910054853_texture.glb',                     span: 1.10, foot: 0, wall: true, mount: 1.80 },
         vent_grille:       { file: 'Meshy_AI_vent_0910054228_texture.glb',                          span: 0.45, foot: 0, wall: true, mount: 2.35 },
         floor_drain:       { file: 'Meshy_AI_water_drain_0910054212_texture.glb',                   span: 0.36, foot: 0 },
-        rotary_phone:      { file: 'Meshy_AI_analog_phone_0910054719_texture.glb',                  span: 0.24, foot: 0 },
+        rotary_phone:      { file: 'ebd_vhsshop_rotary_phone.glb', base: 'misc',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
         cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44 },
         molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.44 },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
-        microwave:         { file: 'Meshy_AI_beige_1980s_microwave_0910054901_texture.glb',         span: 0.50, foot: 0 },
-        coffee_maker:      { file: 'Meshy_AI_coffee_maker_0910054513_texture.glb',                  h: 0.38, foot: 0 },
-        cash_register:     { file: 'Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb',         h: 0.34, foot: 0 },
+        microwave:         { file: 'ebd_psx3_microwave.glb', base: 'misc',         span: 0.50, foot: 0 },
+        coffee_maker:      { file: 'ebd_psx3_coffee_maker.glb', base: 'misc',                  h: 0.38, foot: 0 },
+        cash_register:     { file: 'ebd_pizzeria_cash_register.glb', base: 'misc',         h: 0.34, foot: 0 },
         mini_fridge:       { file: 'Meshy_AI_mini_fridge_0910054504_texture.glb',                   h: 0.85, foot: 0.30 },
         round_fridge:      { file: 'Meshy_AI_round_fridge_0910054551_texture.glb',                  h: 1.05, foot: 0.45 },
         coffee_mug:        { file: 'Meshy_AI_cup_0910054308_texture.glb',                           span: 0.12, foot: 0 },
         solo_cup:          { file: 'Meshy_AI_red_solo_cup_0910054318_texture.glb',                  h: 0.12, foot: 0 },
-        trash_bin:         { file: 'Meshy_AI_trash_bin_0910054450_texture.glb',                     h: 0.75, foot: 0.28 },
+        trash_bin:         { file: 'ebd_trailerpark_trash_bin.glb', base: 'misc',                     h: 0.75, foot: 0.28 },
         /* ── the desk / office kit ── */
         clipboard_flat:    { file: 'Meshy_AI_office_clipboard_0910054838_texture.glb',              span: 0.32, foot: 0 },
         manila_folders:    { file: 'Meshy_AI_office_manila_folders_0910054352_texture.glb',         span: 0.33, foot: 0 },
         manila_folder:     { file: 'Meshy_AI_tapered_manila_folder_0910054403_texture.glb',         span: 0.34, foot: 0 },
         stapler:           { file: 'Meshy_AI_stapler_0910054326_texture.glb',                       span: 0.17, foot: 0 },
-        retro_radio:       { file: 'Meshy_AI_retro_radio_0910054335_texture.glb',                   h: 0.30, foot: 0 },
+        retro_radio:       { file: 'ebd_trailerpark_retro_radio.glb', base: 'misc',                   h: 0.30, foot: 0 },
         retro_speakers:    { file: 'Meshy_AI_retro_speakers_0910054343_texture.glb',                span: 0.50, foot: 0 },
         /* the round cubicle: 2.2 m across, 1.8 m high — a whole workstation.
            It needs a 1 m collision disc, so it never goes on the mezzanine
@@ -51152,14 +51152,14 @@ const HQ_CATALOGUE_MISC = {
     clock:           { file: 'Meshy_AI_analog_clock_realist_0727195259_texture.glb',  base: 'misc', h: 0.5,  foot: 0 },
     gclock:          { file: 'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',  base: 'misc', h: 2.1,  foot: 0.35, block: true },
     skateboard:      { file: 'Meshy_AI_a_skateboard_0915212313_texture.glb',          base: 'misc', span: 0.8, foot: 0 },
-    dumpster:        { file: 'Meshy_AI_dumpster_0727195512_texture.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
+    dumpster:        { file: 'ebd_diner_dumpster.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
     mushroom:        { file: 'Meshy_AI_mushroom_0727200342_texture.glb',        base: 'misc', h: 3.5,  foot: 0.5, block: true },
     mushroom2:       { file: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',    base: 'misc', h: 1.75, foot: 0.3 },
     vault:           { file: 'Meshy_AI_a_bank_vault_0912231605_texture.glb',            base: 'misc', h: 5.25, foot: 1.4, block: true },
     flamingo:        { file: 'Meshy_AI_a_flamingo_0912231434_texture.glb',            base: 'misc', h: 1.2,  foot: 0.2 },
     tentacle:        { file: 'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
     tentacle2:       { file: 'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
-    rowboat:         { file: 'Meshy_AI_a_rowboat_0912231059_texture.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
+    rowboat:         { file: 'ebd_housesonwater_rowboat.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
     dish:            { file: 'Meshy_AI_a_satellite_dish_0912231301_texture.glb',        base: 'misc', h: 2.45, foot: 0.6, block: true },
     wheel:           { file: 'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',            base: 'misc', h: 1.66, foot: 0.3, block: true },
     dockring:        { file: 'Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb',          base: 'misc', h: 4.5,  foot: 0 },
@@ -65268,10 +65268,11 @@ const EW_CREDITS = {
         { title: '3D MODELS & ANIMATION', rows: [
             { role: 'Universal Animation Library (UAL1, UAL2)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
-            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'CC0', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
+            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
+            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
             { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },

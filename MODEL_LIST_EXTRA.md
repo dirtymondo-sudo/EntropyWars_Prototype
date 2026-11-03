@@ -158,6 +158,41 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | `lost_shelf` | 4 | WAITS for the new steel shelving model (D05) |
 | `conveyor_z` | 1 | WAITS for the new conveyor model (D48) |
 
+### 10F. MESHY → ELBOLILLODURO PACK SWAPS — done 2026-11-03 (mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
+
+Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recentred, turned to face the way the Meshy model faced, and uploaded as `Assets/misc/ebd_<pack>_<item>.glb`; the catalogue row keeps its size (h / span), so only the look changed. Side-by-side sheets: project files `asset-packs/meshy-swap/`. All 14 packs are CC0.
+
+| key | Meshy file it replaced | new file | pack |
+| --- | --- | --- | --- |
+| `cash_register` | `Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb` | `ebd_pizzeria_cash_register.glb` | Pizzeria PSX |
+| `dumpster` | `Meshy_AI_dumpster_0727195512_texture.glb` | `ebd_diner_dumpster.glb` | DINER |
+| `trash_bin` | `Meshy_AI_trash_bin_0910054450_texture.glb` | `ebd_trailerpark_trash_bin.glb` | Trailer Park |
+| `city_bin` | `Meshy_AI_a_city_bin_0917065144_texture.glb` | `ebd_6twelve_city_bin.glb` | 6TWELVE |
+| `fire_extinguisher` | `Meshy_AI_a_fire_extinguisher_0903105310_texture.glb` | `ebd_6twelve_fire_extinguisher.glb` | 6TWELVE |
+| `coffee_maker` | `Meshy_AI_coffee_maker_0910054513_texture.glb` | `ebd_psx3_coffee_maker.glb` | Paquete de modelos psx 3 |
+| `microwave` | `Meshy_AI_beige_1980s_microwave_0910054901_texture.glb` | `ebd_psx3_microwave.glb` | Paquete de modelos psx 3 |
+| `water_cooler` | `Meshy_AI_a_water_cooler_0903105259_texture.glb` | `ebd_laundry_water_cooler.glb` | Laundry |
+| `mop` | `Meshy_AI_a_mop_0903105505_texture.glb` | `ebd_house_mop.glb` | House |
+| `tube_tv` | `Meshy_AI_a_tube_tv_0903102007_texture.glb` | `ebd_trailerpark_tube_tv.glb` | Trailer Park |
+| `retro_radio` | `Meshy_AI_retro_radio_0910054335_texture.glb` | `ebd_trailerpark_retro_radio.glb` | Trailer Park |
+| `rotary_phone` | `Meshy_AI_analog_phone_0910054719_texture.glb` | `ebd_vhsshop_rotary_phone.glb` | VHS Shop |
+| `wall_clock` | `Meshy_AI_a_clock_0903110243_texture.glb` | `ebd_trailerpark_wall_clock.glb` | Trailer Park |
+| `filing_cabinet` | `Meshy_AI_a_filing_cabinet_0903105233_texture.glb` | `ebd_laundry_filing_cabinet.glb` | Laundry |
+| `bus_shelter` | `Meshy_AI_bus_shelter_0917064913_texture.glb` | `ebd_busstop_bus_shelter.glb` | Bus stop |
+| `campfire` | `Meshy_AI_a_campfire_ring_0916235856_texture.glb` | `ebd_survival_campfire.glb` | Survival PSX |
+| `camping_tent` | `Meshy_AI_a_camping_tent_0922010306_texture.glb` | `ebd_survival_camping_tent.glb` | Survival PSX |
+| `ship_lantern` (+ the ships' `lantern`) | `Meshy_AI_a_hanging_lantern_0912231043_texture.glb` | `ebd_survival_lantern.glb` | Survival PSX |
+| `fallen_log` | `Meshy_AI_a_fallen_log_0916235700_texture.glb` | `ebd_vegetation_fallen_log.glb` | Vegetation |
+| `stump` | `Meshy_AI_a_stump_0916235717_texture.glb` | `ebd_vegetation_stump.glb` | Vegetation |
+| `rowboat` | `Meshy_AI_a_rowboat_0912231059_texture.glb` | `ebd_housesonwater_rowboat.glb` | Houses on the water |
+| `locker` | `Meshy_AI_a_locker_0903105424_texture.glb` | `ebd_mine_locker.glb` | Mine |
+| `vending_machine` | `Meshy_AI_a_round_vending_machine_0903105625_texture.glb` | `ebd_laundry_vending_machine.glb` | Laundry |
+| `sink` | `Meshy_AI_a_sink_0903105415_texture.glb` | `ebd_burgerpiz_sink.glb` | BurgerPiz |
+| `table_lamp` | `Meshy_AI_a_lamp_0903110007_texture.glb` | `ebd_trailerpark_table_lamp.glb` | Trailer Park |
+| `desk_lamp` | `Meshy_AI_an_office_desk_lamp_0903110208_texture.glb` | `ebd_house_desk_lamp.glb` | House |
+
+Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a blue city bus), `cardboard_box` / `cardboard_boxes` (the packs have produce crates and plastic totes), `wooden_bucket` (metal pail only), `car_cop` (already drawn by the low-poly car pack; the Meshy file is only its fallback), fridges, `signpost`, roads, urban buildings (mondo: later).
+
 ### 10D. NOT A MODEL JOB (60) — decals, lit windows/screens, text, walkable steps/ramps, water, effects
 
 `floor_stain` (decal), `warning_tape` (decal), `light_shaft` (light effect), `ritual_circle` (decal), `door_seal` (decal), `doormat` (flat mat), `parking_bay` (floor paint), `platform_edge` (floor paint), `track_bed` (floor strip), `find_tape` (find marker), `find_pay` (find marker), `find_deck` (find marker), `find_stash` (find marker), `riser_1` (walkable riser), `riser_2` (walkable riser), `riser_3` (walkable riser), `stair_step` (walkable step), `stair_step_x` (walkable step), `stair_landing` (walkable landing), `stair_landing_sq` (walkable landing), `house_stairs` (walkable stair), `quarter_pipe` (skate ramp), `garage_ramp` (walkable ramp), `infinity_pool` (water surface), `lap_pool` (water surface), `garden_ring` (flower bed ring), `star_dome` (ceiling effect), `star_chart` (flat wall chart), `festoon` (string lights (strings model badly)), `crib_mobile` (hanging strings (model badly)), `bigtop` (tent cloth ceiling), `porthole` (lit window), `pod_window` (lit window), `false_window` (lit window), `sun_viewport` (lit window), `shaft_window` (lit window), `dream_screen` (lit screen), `now_serving` (lit sign), `evac_button` (wall button), `keypad` (wall keypad), `floor_panel` (lit wall panel), `car_panel` (lit lift panel), `door_xray` (lit x-ray panel), `wall_padding` (wall surface), `graffiti_wall` (wall paint), `price_tag` (card), `sale_banner` (flat banner), `lesson_plaque` (text plaque), `lesson_sign` (text plaque), `motto_plaque` (text plaque), `wall_plaques` (text plaques), `form_sheet` (paper), `thoughtform` (breathing effect (mondo's wish: the core only)), `mobius_bar` (impossible shape), `impossible_stair` (impossible shape), `temple_dome` (glass dome effect), `door_vine` (vine growth), `garbage_chute` (wall hatch), `barber_mirror` (mirror), `street_drain` (manhole decal)

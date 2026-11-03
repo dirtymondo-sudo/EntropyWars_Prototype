@@ -35137,7 +35137,7 @@ const ThreeRenderer = (function () {
         dorm_bed:          'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  // the keep's guardroom
         couples_bed:       'Meshy_AI_a_couples_bed_0922010443_texture.glb',               // the bunker's loft
         royal_bed:         'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 // the solar
-        camping_tent:      'Meshy_AI_a_camping_tent_0922010306_texture.glb',              // the grove's camp
+        camping_tent:      'ebd_survival_camping_tent.glb',              // the grove's camp
         carnival_tent:     'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             // the grove's lawn
         fortune_teller_tent: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',     // the `fortune_tent` proc
         retro_control_panel: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',     // the `retro_console` proc
@@ -35148,7 +35148,7 @@ const ThreeRenderer = (function () {
            are in the repo and were MEASURED (the crashed car 1.0 × 0.36 × 0.45, nose −X like every Meshy piece; the two
            road tiles 1 × 1 squares, the straight one's dashes along Z with kerbs on the X sides, the turn a quarter
            circle joining two adjacent edges; the escalator 0.53 × 0.72 × 1.0, rising toward −Z); the rest are TARGETS. */
-        city_bin:        'Meshy_AI_a_city_bin_0917065144_texture.glb',          // the outdoor bin (the kerbs)
+        city_bin:        'ebd_6twelve_city_bin.glb',          // the outdoor bin (the kerbs)
         city_trash_bin:  'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',    // the indoor bin (the mall, the casino)
         taxi:            'Meshy_AI_a_city_taxi_0917065634_texture.glb',         // NPC traffic (_VEHICLE_KIT)
         truck:           'Meshy_AI_a_truck_0917065131_texture.glb',             // NPC traffic
@@ -35158,7 +35158,7 @@ const ThreeRenderer = (function () {
         road_straight:   'Meshy_AI_a_straight_city_road_0917064651_texture.glb', // the road tiles laid along every street (_hqBuildRoadTiles)
         road_turn:       'Meshy_AI_a_road_turn_quarter_0917065230_texture.glb',
         escalator:       'Meshy_AI_an_escalator_0917064623_texture.glb',        // THE MEZZANINE's escalator (the catalogue row)
-        bus_shelter:     'Meshy_AI_bus_shelter_0917064913_texture.glb',
+        bus_shelter:     'ebd_busstop_bus_shelter.glb',
         cinder_block:    'Meshy_AI_cinder_block_0917064959_texture.glb',
         fire_hydrant:    'Meshy_AI_fire_hydrant_0917064858_texture.glb',
         storefront:      'Meshy_AI_storefront_0917064551_texture.glb',          // a street lot's ground-floor shopfront
@@ -35167,7 +35167,7 @@ const ThreeRenderer = (function () {
         traffic_barrel:  'Meshy_AI_traffic_barrel_0917064936_texture.glb',
         traffic_cone:    'Meshy_AI_traffic_cone_0917064925_texture.glb',
         // 2026-07-28 on-board prop batch — grid-snapped monuments (see _MON_GRID)
-        dumpster:  'Meshy_AI_dumpster_0727195512_texture.glb',
+        dumpster:  'ebd_diner_dumpster.glb',
         greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb',
         mushroom:  'Meshy_AI_mushroom_0727200342_texture.glb',
         mushroom2: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',
@@ -35185,12 +35185,12 @@ const ThreeRenderer = (function () {
         vault:         'Meshy_AI_a_bank_vault_0912231605_texture.glb',
         flamingo:      'Meshy_AI_a_flamingo_0912231434_texture.glb',
         wreck:         'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',
-        lantern:       'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',
+        lantern:       'ebd_survival_lantern.glb',
         tentacle:      'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',
         tentacle2:     'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',
         watch:         'Meshy_AI_a_pocket_watch_0912231541_texture.glb',
         watch_hang:    'Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb',
-        rowboat:       'Meshy_AI_a_rowboat_0912231059_texture.glb',
+        rowboat:       'ebd_housesonwater_rowboat.glb',
         dish:          'Meshy_AI_a_satellite_dish_0912231301_texture.glb',
         crane:         'Meshy_AI_a_scaffold_crane_0912231516_texture.glb',
         wheel:         'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',
@@ -35243,14 +35243,14 @@ const ThreeRenderer = (function () {
            DOOR_HQ.catalogue (base: 'misc'); the near settings through _hzMiscKit. */
         signpost:      'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',
         brick_arch:    'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',
-        campfire:      'Meshy_AI_a_campfire_ring_0916235856_texture.glb',
+        campfire:      'ebd_survival_campfire.glb',
         culvert:       'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',
-        fallen_log:    'Meshy_AI_a_fallen_log_0916235700_texture.glb',
+        fallen_log:    'ebd_vegetation_fallen_log.glb',
         fern:          'Meshy_AI_a_fern_0916235806_texture.glb',
         footbridge:    'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',
         menhir:        'Meshy_AI_a_standing_stone_0916235906_texture.glb',
         drain_grate:   'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',
-        stump:         'Meshy_AI_a_stump_0916235717_texture.glb',
+        stump:         'ebd_vegetation_stump.glb',
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to
            Assets/misc/ — MODEL_INDEX.md §3g): the basilica (two pews, the podium, the
            throne, the cross, the stained glass, the holy carpet, the confessional,
