@@ -1475,3 +1475,14 @@ mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to th
 - Proof: before / after sheets in /mnt/project-files/jiggle/ (the same instant rendered with the jiggle and with every jiggle
   bone at rest, idle and walking). Probe = a scratch Playwright page through playtest_creator.js's routes, DOOR Agent slot >
   GEAR > CHARACTER CREATOR > MPFB FEMALE, EWCharViewer.dev.model() for the bones, EWCharViewer.snapshot({yaw}) per frame.
+
+## THE MASTER MODEL LIST (2026-11-03, mondo: "Any model from spell animations, characters, props, etc. needs to be documented and kept up to date with new additions ... include how the model was made")
+- `MODEL_LIST.md` is written by `node list-models.js` (repo-only tooling): it loads data.js (load-data.js) + sprites.js in one vm sandbox
+  and reads DOOR_HQ.catalogue, HQ_TREE_KINDS, HQ_STAIR_PACK, RACE_MODELS_3D / RACE_MODEL_SKINS / DOOR_CAST_MODELS, EW_ANIM_LIB_URLS,
+  EW_MH_WEAR, EW_HAIR_STYLES, the renderer's `_MISC_GLB` / `_ANIMALS` / `_FOLIAGE_MODEL_FOR_KEY` and the VFX `_WPN_MODELS` by text,
+  every literal cdn model URL in the game scripts (catch-all), and charactercreation/{wear/wear.json, hair/mh/hair_styles.json}.
+- "How made" = the `SOURCES` regex table (first match on the bucket path). A file no row matches lands in UNSORTED at the bottom.
+- Hand-kept parts (§9 Meshy API pieces not wired, §10 decor still missing) live in `MODEL_LIST_EXTRA.md`, pasted in verbatim.
+- §10 sorts all 184 procedural catalogue stand-ins: 92 need a new model (concept prompts + doubled tri targets, also in project files
+  meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
+  old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
