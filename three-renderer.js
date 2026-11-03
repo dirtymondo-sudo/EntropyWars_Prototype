@@ -54444,6 +54444,7 @@ const ThreeRenderer = (function () {
                 if (h.mesh.material && !h.mesh.material._ew_shared) { h.mesh.material.dispose(); var mi = ownedMaterials.indexOf(h.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
             });
             part.hair = []; part.hairRoot = null;
+            part.hairMatKey = null; part.hairMatOn = false;   // THE HAIR MATERIALS (the next build applies it again)
         }
         function buildHair(part, root, a) {
             dropHair(part);
@@ -54503,10 +54504,11 @@ const ThreeRenderer = (function () {
                 mesh._ew_noTwin = true;          // no x-ray / outline hull for alpha-cut hair cards
                 mesh._ew_creatorHair = true;
                 mesh.renderOrder = 2;
-                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count, accent: accent, packTex: packTex });
+                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count, accent: accent, packTex: packTex, ownMap: mat.map });
             });
             fitHair(part);
             paintHair(part, a);
+            setHairMat(part, a);   // THE HAIR MATERIALS
             if (part.headOff) headOff(part);   // THE MESHY PIECES: under a creature head
         }
         function fitHair(part) {
@@ -55382,8 +55384,10 @@ const ThreeRenderer = (function () {
         }
         function paintHair(part, a) {
             var tint = color(a.hairColor), tint2 = a.hairAccent === 'tint' ? color(a.hairColor2 || '#c0392b') : null;
+            var own = !!part.hairMatOn;   // THE HAIR MATERIALS: the material's own colours (white vertices, its texture as painted)
             part.hair.forEach(function (h) {
                 var arr = h.mesh.geometry.attributes.color.array, k = h.isTie ? 1 : 1.22;
+                if (own) { arr.fill(1); h.mesh.geometry.attributes.color.needsUpdate = true; return; }
                 var r = h.isTie ? 1 : Math.min(1, tint.r * k), gg = h.isTie ? 1 : Math.min(1, tint.g * k), b = h.isTie ? 1 : Math.min(1, tint.b * k);
                 // THE SECOND HAIR COLOUR (2026-11-01): an accent piece wears its own colours (white) or the second colour
                 var acc = h.accent ? h.accent.vert : null;
@@ -55399,6 +55403,40 @@ const ThreeRenderer = (function () {
                 }
             });
         }
+        /* THE HAIR MATERIALS (2026-11-03, mondo: "can we download ... system_hair_materials 1 and 2 ... and implement them in the
+           character creator?"): MakeHuman's recolours of its own system styles (sprites.js EW_MH_HAIR_MATS, getHairMaterial). The
+           style's mesh keeps its UVs; its cards wear the material's PNG as painted (no grey mask, white vertices: the texture's own
+           colours) instead of the style's own texture + the Hair colour. 'own' (or another style worn) = the style's own texture
+           again. The PNG is set on each card's CURRENT material (the board may have swapped ours for its copy) */
+        var _ccHairMatTex = {};   // url -> THREE.Texture (shared: never disposed with a part)
+        function setHairMat(part, a) {
+            var hm = a && typeof getHairMaterial === 'function' ? getHairMaterial(a) : null;
+            var key = hm && part.hair.length ? hm.url : '';
+            if (part.hairMatKey === key) return;
+            part.hairMatKey = key;
+            var put = function (tex) {
+                part.hairMatOn = !!tex;
+                part.hair.forEach(function (h) {
+                    var m = h.mesh.material, want = tex && !h.isTie ? tex : h.ownMap;
+                    if (m && want && m.map !== want) { m.map = want; m.needsUpdate = true; }
+                });
+                paintHair(part, state.last || a);
+            };
+            if (!key) { if (part.hairMatOn) put(null); return; }
+            if (_ccHairMatTex[key]) { put(_ccHairMatTex[key]); return; }
+            _ccLoadImage(_asNetUrl(key), function (img) {
+                if (!img) { console.warn('[ThreeRenderer] hair material failed', key); return; }
+                var src = part.hair[0] && part.hair[0].packTex ? part.hair[0].packTex.src : null;
+                var t = _ccHairMatTex[key] || new THREE.Texture(img);
+                if (!_ccHairMatTex[key]) {
+                    t.flipY = src ? !!src.flipY : false; t.wrapS = src ? src.wrapS : THREE.ClampToEdgeWrapping; t.wrapT = src ? src.wrapT : THREE.ClampToEdgeWrapping;
+                    _ewTexSetSRGB(t, !unmanagedColor);
+                    t.anisotropy = 4; t.needsUpdate = true; t._ew_shared = true;
+                    _ccHairMatTex[key] = t;
+                }
+                if (alive && part.hairMatKey === key) put(t);
+            });
+        }
         function setHair(part, a, shapeChanged) {
             var id = a.hair, url = (id !== 'bald' && typeof getHairStyleUrl === 'function') ? getHairStyleUrl(id) : null;
             if (part.hairUrl !== url) {
@@ -55411,6 +55449,7 @@ const ThreeRenderer = (function () {
                 });
             } else if (shapeChanged) fitHair(part);
             paintHair(part, a);
+            setHairMat(part, a);   // THE HAIR MATERIALS
         }
         /* ── wings (2026-10-27, mondo: "add the wings to the character creator too"): his wings GLB on the upper back.
            Each wing is a plain mesh on its own hinge (no skinning: 237k triangles stay on the GPU), the pair hung on
