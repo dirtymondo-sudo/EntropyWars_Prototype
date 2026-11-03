@@ -38432,13 +38432,23 @@ const ThreeRenderer = (function () {
                        sprite (the old per-storey planes, same vertices, same UVs). Downtown
                        drew ~20 meshes a building; a face is now one draw call. */
                     var fp = [], fn = [], fu = [], fi = [];
-                    for (var st = 0; st < stack; st++) {
-                        var y0 = st * h, y1 = y0 + h, b0 = st * 4;
+                    /* THE PRISM BANDS (2026-11-03, data.js HQ_TEXB_PRISM_BANDS): `bands` [top band's end row, bottom band's start row,
+                       storeys in the art] — the bottom band once at the foot, one storey of the middle stack − 1 times, the top band once
+                       at the top, at the sprite's own proportions fitted to H. Without bands every storey wears the whole sprite. */
+                    var BD = o.bands, segs = [];
+                    if (BD && BD.length >= 3 && BD[0] > tt && BD[1] < tb + 1 && BD[1] > BD[0]) {
+                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB, sc = H / (tp + bp + (stack - 1) * mp), yy = 0;
+                        segs.push([yy, yy + bp * sc, 1 - (tb + 1) / sprH, 1 - bB / sprH]); yy += bp * sc;
+                        for (var sm = 0; sm < stack - 1; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
+                        segs.push([yy, H, 1 - bT / sprH, vT]);
+                    } else for (var st0 = 0; st0 < stack; st0++) segs.push([st0 * h, st0 * h + h, vB, vT]);
+                    segs.forEach(function (sg, si) {
+                        var y0 = sg[0], y1 = sg[1], b0 = si * 4;
                         fp.push(-fw / 2, y1, 0, fw / 2, y1, 0, -fw / 2, y0, 0, fw / 2, y0, 0);
                         fn.push(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1);
-                        fu.push(uL, vT, uR, vT, uL, vB, uR, vB);
+                        fu.push(uL, sg[3], uR, sg[3], uL, sg[2], uR, sg[2]);
                         fi.push(b0, b0 + 2, b0 + 1, b0 + 2, b0 + 3, b0 + 1);
-                    }
+                    });
                     var fg = new THREE.BufferGeometry();
                     fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
                     fg.setAttribute('normal', new THREE.Float32BufferAttribute(fn, 3));
@@ -63688,7 +63698,7 @@ const ThreeRenderer = (function () {
             if (!hqTexbPrism(f)) return;
             var st = Math.max(1, Math.min(12, Math.round(f.storeys || 2))), H = (f.h > 0) ? f.h : st * HQ_TEXB.storey;
             try {
-                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180) });
+                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180), bands: (typeof HQ_TEXB_PRISM_BANDS !== 'undefined' && HQ_TEXB_PRISM_BANDS[f.key]) || null });
                 if (b) { b._ew_hqLot = 'texb:' + (f.id || n); n++; }
             } catch (e) { console.warn('[HQ] a prism building failed', f.key, e); }
         });

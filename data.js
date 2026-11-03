@@ -50994,6 +50994,18 @@ function hqTexBuildingRows(f) {
 const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
     'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'church_2', 'shop'];
 function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PRISMS.indexOf(f.key) >= 0); }
+/* THE PRISM BANDS (2026-11-03, mondo: "always apply the bottom of the texture and the top of the texture to the bottom and top of the
+   building, and repeat everything else as needed depending on how many stories"): each prism sprite cut in three, in rows of the sprite
+   file (0 = its top) — [where the TOP band ends, where the BOTTOM band starts, how many storeys the art between them shows]. A building
+   of n storeys wears the bottom band (its door) once at the foot, the top band (its cornice / roof / spire) once at the top, and one
+   storey of the middle (the middle's rows ÷ that count) n − 1 times between them, all at the sprite's own proportions fitted to the
+   building's height (three-renderer.js _nrSpriteBuilding `bands`). n − 1 = that count draws the sprite exactly as painted. */
+const HQ_TEXB_PRISM_BANDS = {
+    building_1: [22, 186, 6], building_2: [30, 146, 3], building_3: [32, 104, 1], building_4: [16, 124, 3], building_5: [56, 96, 1],
+    building_6: [22, 78, 2], building_7: [32, 44, 1], building_8: [32, 124, 2], building_9: [16, 64, 1], building_10: [36, 66, 1],
+    building_11: [290, 380, 2], ancient_building: [250, 290, 1], abandoned_building_1: [100, 404, 6], abandoned_building_2: [150, 400, 5],
+    church_1: [104, 118, 1], church_2: [110, 124, 1], shop: [22, 78, 2],
+};
 /* THE INSIDE (2026-10-30, mondo: "what if i wanted to add an interior to the buildings so i would need an option for them to be more
    like walls but still look like a building"): a `hollow` texbuilding is its four thin walls (the ghost walls above, the walker inside
    them), a doorway in its front and its roof slab over the inside — drawn the same from outside, its inside walls, ceiling and floor
@@ -51073,7 +51085,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
