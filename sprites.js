@@ -4117,7 +4117,10 @@ const EW_MPFB_DEFAULT_FACES = {
    source, face }; the creator lists them under FACE beside DEFAULT FACE / NEUTRAL FACE, the credits page lists the CC-BY authors.
    Only the face carries: a .mhm's body macros (gender / age / ethnic mix) stay with our fixed MPFB bodies. */
 // EW_MPFB_FACE_PRESETS:BEGIN (written by bake-faces.js)
-const EW_MPFB_FACE_PRESETS = [];
+const EW_MPFB_FACE_PRESETS = [
+  {"id":"mh_warrior","label":"Warrior","gender":"female","author":"DREAM_SEARCH_REPEAT","license":"CC0","source":"https://opengameart.org/content/warrior-female-3d-model","face":{"jaw":0.05,"cheeks":0.01,"eyeOpen":0.03,"eyeDepth":0.09,"eyeBags":0.06,"browHeight":-0.2,"noseWidth":-0.4,"noseLength":0.2,"mouthWidth":0.1,"faceAge":0.1,"neckThick":-0.21}},
+  {"id":"mh_gnome","label":"Gnome","gender":"male","author":"Cheb Gonaz","license":"CC0","source":"https://opengameart.org/content/gnome-0","face":{"faceFat":-0.83,"faceAge":0.33}}
+];
 // EW_MPFB_FACE_PRESETS:END
 /* the face keys a look should take when it moves onto `body`: the body gender's default face when the look's face is untouched
    (all 0) or still another default face; all 0 when it goes back to a classic base wearing a default face (head / jaw / nose /

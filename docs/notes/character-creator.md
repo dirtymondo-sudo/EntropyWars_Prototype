@@ -1084,4 +1084,16 @@ and there as an option".
   gender; a pick sets every face slider, the rest to 0). map.js credits, MakeHuman section: "Creator face presets" lists every row's
   author · licence · source. EW_MPFB_DEFAULT_FACES is never touched.
 - After a bake: node --check sprites.js, bump ?v=, merge, sync zip.
+- THE FIRST PRESETS (2026-11-03, full-network thread): the MakeHuman community asset repository (makehumancommunity.org) was
+  OFFLINE ("Community services offline", only static.makehumancommunity.org up; no Wayback from the cloud). Free .mhm found:
+  - BAKED: Warrior ♀ (OpenGameArt "warrior-female-3d-model", DREAM_SEARCH_REPEAT, CC0, 11 sliders) and Gnome ♂ (OpenGameArt
+    "gnome-0", Cheb Gonaz, CC0, thin + aged face: faceFat -0.83, faceAge 0.33).
+  - SKIPPED (nothing to carry): Sam (frontlinestudios.itch.io/asset-sam, CC0): 0 face modifiers, his look is all body macros +
+    an expression; Syl (archive.org thingiverse-1657065, Micah Scott, CC0): 2 tiny sliders; Female Dwarf (OpenGameArt
+    "female-dwarf-0", CC0): MakeHuman 1.0 file (`face head-age-less-more` lines, no `modifier` lines), bake-faces.js reads 1.1+.
+  - ASKED mondo: FaReT (github.com/fsotoc/FaReT, model-database/identities: 12 male + 12 female + 3 averages, 23 sliders each,
+    the best faces found) is GPL-3, not CC0/CC-BY.
+  - Most free .mhm files carry their look in the body macros (gender / age / ethnic mix), which our fixed MPFB bodies drop, so
+    a file with few `modifier <face group>` lines makes a near-default preset. Check with --dry-run before baking.
+  - Files + LICENSES.txt: project files mhm-faces/.
 
