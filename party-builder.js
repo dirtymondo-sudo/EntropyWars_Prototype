@@ -863,6 +863,22 @@ function pbExportRaceLook(race, gender, appearance, note) {
     return true;
   } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
 }
+/* THE HIDDEN PICKS (2026-11-03): EXPORT HIDDEN LIST — the creator's whole hidden list as this browser shows it, for bake-hidden.js
+   ({ kind: 'entropy-wars-creator-hidden', v: 1, made, hidden: { '<kind>:<id>': label } }); the bake replaces the shipped list with it */
+function pbExportHidden(note) {
+  try {
+    if (typeof window.creatorHiddenExport !== 'function') return false;
+    const doc = window.creatorHiddenExport(), d = new Date(), p2 = n => String(n).padStart(2, '0');
+    const stamp = d.getUTCFullYear() + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + '-' + p2(d.getUTCHours()) + p2(d.getUTCMinutes());
+    const name = 'Entropy_Wars_Creator_Hidden_' + stamp + '.json';
+    const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }));
+    const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    if (typeof note === 'function') note('Exported ' + name + ' (' + Object.keys(doc.hidden).length + ' hidden) \u2014 send it to Claude to bake (node bake-hidden.js ' + name + ').');
+    window._ewLastHiddenExport = { name, doc };   // (the browser check reads it back)
+    return true;
+  } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
+}
 /* the NAME field + the locker's rack — one block at the top of the creator (`name` / `onName` / `onLoad` from the home) */
 function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
   const [list, setList] = React.useState(() => pbLooksLoad());
@@ -904,6 +920,17 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const [faceCat, setFaceCat] = React.useState('eyes');   // THE FACE SLIDERS: the FACE tab open (MPFB heads)
   const [accCat, setAccCat] = React.useState('wings');   // THE SHELVES: the ACCESSORIES tab open
   const [wearFor, setWearFor] = React.useState(null);   // THE SHELVES: MEN / WOMEN (null = the body's own)
+  /* THE HIDDEN PICKS (2026-11-03): the dev item hider (sprites.js creatorHidden; on while Settings > Developer > Creator Item Hider is
+     ON). A hide / show / the setting re-renders the controls through the 'ew-creator-hidden' event. */
+  const [, setHidTick] = React.useState(0);
+  const [hideMarks, setHideMarks] = React.useState(true);   // the ✕ / SHOW marks on every tile (off = the lists as players see them)
+  const [hidListOpen, setHidListOpen] = React.useState(false);
+  const [hidNote, setHidNote] = React.useState('');
+  React.useEffect(() => {
+    const f = () => setHidTick(n => n + 1);
+    window.addEventListener('ew-creator-hidden', f);
+    return () => window.removeEventListener('ew-creator-hidden', f);
+  }, []);
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -936,6 +963,21 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     return () => { live = false; };
   }, []);
   if (!appearance) return null;
+  /* THE HIDDEN PICKS (2026-11-03, mondo: "a devtool that let's me remove models like certain clothes and hairstyles from the character
+     creator"): a hidden pick is left off its list unless it is worn (a saved look's piece always shows, so it can be seen + taken off);
+     while the hider is on with its marks, every pick shows, a hidden one dimmed, each with ✕ (hide) / SHOW on its corner. Nothing in
+     the look or the files changes. */
+  const devHider = !!(window.creatorHiderOn && window.creatorHiderOn()), devMarks = devHider && hideMarks;
+  const hidNever = id => id == null || id === 'none' || id === 'own' || id === 'bald' || id === 'default';
+  const isHid = (kind, id) => !!(kind && window.creatorHidden && window.creatorHidden(kind, id));
+  const keepPick = (kind, id, on) => !kind || devMarks || on || !isHid(kind, id);
+  const devTile = (kind, id, label, el) => {
+    if (!kind || !devMarks || hidNever(id) || !window.setCreatorHidden) return el;
+    const hid = isHid(kind, id), nm = String(label || id);
+    return h('div', { key: el.key, className: 'pb-cc-devwrap' + (hid ? ' hidden' : '') }, el,
+      h('button', { type: 'button', className: 'pb-cc-devx', title: hid ? 'Show ' + nm + ' in the creator again' : 'Hide ' + nm + ' from the creator (nothing is deleted)',
+        'aria-label': (hid ? 'Show ' : 'Hide ') + nm, onClick: e => { e.stopPropagation(); window.setCreatorHidden(kind, id, !hid, nm); } }, hid ? 'SHOW' : '\u2715'));
+  };
   const ccLimits = window.EW_APPEARANCE_LIMITS || {}, ccEnums = window.EW_APPEARANCE_ENUMS || {};
   const ccHair = window.EW_HAIR_STYLES || [], ccFabrics = window.EW_FABRICS || {};
   const ccPatterns = window.EW_PATTERNS || [{ id: 'solid', label: 'Solid' }], ccLayers = window.EW_APPEARANCE_LAYERS || [];
@@ -952,8 +994,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
       h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
       h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => queueChange({ [key]: e.target.value }) }), h('i', null, '+'))));
-  const ccChoice = (key, options, lookOf) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
-    h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance(Object.assign({ [key]: id }, lookOf && appearance[key] !== id ? lookOf(id) : {})) }, label)));
+  const ccChoice = (key, options, lookOf, hideKind) => h('div', { className: 'pb-creator-options', role: 'group' }, options.filter(([id]) => keepPick(hideKind, id, appearance[key] === id)).map(([id, label]) =>
+    devTile(hideKind, id, label, h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance(Object.assign({ [key]: id }, lookOf && appearance[key] !== id ? lookOf(id) : {})) }, label))));   // (THE HIDDEN PICKS: hideKind = the pick's kind)
   // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
   /* THE RETIRED CLASSIC CLOTHES (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a
      replacement"): a catalogue without the retired coded picks (sprites.js EW_RETIRED_CLOTHES; a look wearing one is moved to
@@ -962,7 +1004,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const ccLayerWorn = (layer) => (appearance.wear || []).some(id => (window.EW_WEAR_LAYER_OF || {})[id] === layer);
   const ccLayer = (label, key, catalogue, fabricKey, colorKey, onRemove) => {
     const cat = (Array.isArray(catalogue) ? catalogue : (window[catalogue] || [{ id: 'none', label: 'None' }]));
-    const list = cat.map(o => [o.id, o.label]);
+    const hk = key === 'outer' || key === 'outer2' ? 'outer' : key === 'feet' ? 'feet' : null;   // THE HIDDEN PICKS
+    const list = cat.map(o => [o.id, o.label]).filter(([id]) => keepPick(hk, id, appearance[key] === id));
     const worn = appearance[key] !== 'none';
     // THE BLENDER COATS (2026-11-01): a pick with a `look` (sprites.js EW_BLENDER_COATS) starts at its colour + fabric
     const pat = colorKey.replace(/Color$/, 'Pattern');
@@ -983,8 +1026,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, label, onRemove ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take this layer off', onClick: onRemove }, '✕ REMOVE') : null),
       groups ? h(React.Fragment, null,
         list.some(([id]) => id === 'none') ? ccChoice(key, list.filter(([id]) => id === 'none'), lookOf) : null,
-        groups.map(([gl, items]) => h(React.Fragment, { key: gl }, h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, gl), ccChoice(key, items, lookOf))))
-        : ccChoice(key, list, lookOf),
+        groups.map(([gl, items]) => h(React.Fragment, { key: gl }, h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, gl), ccChoice(key, items, lookOf, hk))))
+        : ccChoice(key, list, lookOf, hk),
       hasFronts ? h('div', { className: 'pb-creator-options pb-cc-front', role: 'group', 'aria-label': label + ' front' },
         h('span', { className: 'pb-creator-colorlabel' }, 'Front'),
         [['open', 'OPEN'], ['closed', 'CLOSED']].map(([id, txt]) => h('button', { key: id, className: 'ms-tty-btn' + (frontNow === id ? ' primary' : ''), 'aria-pressed': frontNow === id,
@@ -1103,7 +1146,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const shelves = window.EW_WEAR_SHELVES || [];
   const sideNow = wearFor || (femaleBody ? 'female' : 'male'), sideOther = sideNow === 'female' ? 'male' : 'female';
   const worn = appearance.wear || [];
-  const shelfRows = (t) => (window.EW_MH_WEAR || []).filter(w => shelfOf(w[0]) === t);
+  const shelfRows = (t) => (window.EW_MH_WEAR || []).filter(w => shelfOf(w[0]) === t && keepPick('wear', w[0], worn.includes(w[0])));   // (THE HIDDEN PICKS)
   const shelfMany = (t) => !!(shelves.find(x => x[0] === t) || [])[3];
   // the Outer layer picks for this side (+ the one worn); a pick made for the other body still shows while it is on
   const ccOuterList = (slot) => ccLive('outer', window.EW_OUTER_STYLES).filter(o => o.id === 'none' || o.id === appearance[slot] || (window.outerMadeFor ? window.outerMadeFor(o.id) : 'both') !== sideOther);
@@ -1119,8 +1162,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   };
   const wearTile = (t) => ([id, label]) => {
     const on = worn.includes(id);
-    return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: label, 'data-cc-cam-own': ccWearFace(t, label) ? 'face' : 'body', onClick: () => toggleWear(t, id) },
-      h('span', null, tileLabel(label)));
+    return devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: label, 'data-cc-cam-own': ccWearFace(t, label) ? 'face' : 'body', onClick: () => toggleWear(t, id) },
+      h('span', null, tileLabel(label))));
   };
   const wearGrid = (key, head, t, list) => list.length ? h(React.Fragment, { key },
     head ? h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head) : null,
@@ -1148,9 +1191,9 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const capeOn = appearance.cape && appearance.cape !== 'none', capeDef = (window.EW_CAPE_STYLES || []).find(c => c.id === appearance.cape) || {};
   const ccCape = () => (window.EW_CAPE_STYLES || []).length > 1 ? h(React.Fragment, { key: 'cape' },
     h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Cape'),
-    h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Cape' }, window.EW_CAPE_STYLES.map(c =>
-      h('button', { key: c.id, className: 'ms-tty-btn' + (appearance.cape === c.id ? ' primary' : ''), 'aria-pressed': appearance.cape === c.id,
-        onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, c.label))),
+    h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Cape' }, window.EW_CAPE_STYLES.filter(c => keepPick('cape', c.id, appearance.cape === c.id)).map(c =>
+      devTile('cape', c.id, c.label, h('button', { key: c.id, className: 'ms-tty-btn' + (appearance.cape === c.id ? ' primary' : ''), 'aria-pressed': appearance.cape === c.id,
+        onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, c.label)))),
     // (a fur / leaf cloak keeps its own tile: only its tint is a choice)
     capeOn && !capeDef.own ? ccFabricTiles('capeFabric', 'Cape', true) : null,
     capeOn && !capeDef.own ? ccPrint('capeFabric', 'capeColor', 'Cape') : null,
@@ -1195,7 +1238,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back and flapping; the pack's costume wings beside them
       t === 'wings' ? h(React.Fragment, null,
         h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Flapping wings'),
-        ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
+        ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label]), null, 'wings'),
         appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
         wearTiles('wings', false, 'Costume wings')) : wearTiles(t, false),
       ccWearTints(t));
@@ -1205,24 +1248,47 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   /* THE LOOKS tiles: one MakeHuman pick row (skin / eye colour / brows / lashes), "Body's own" first */
   const mhLookList = (cat) => [['own', "Body's own"]].concat(((window.EW_MH_LOOKS || {})[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[cat]] || []).map(r => [r[0], r[1]]));
   const mhTiles = (cat, head, list, key) => {
-    const rows = list || mhLookList(cat), cam = cat === 'mhSkin' ? 'body' : 'face';
+    const rows = (list || mhLookList(cat)).filter(([id]) => keepPick(cat, id, (appearance[cat] || 'own') === id)), cam = cat === 'mhSkin' ? 'body' : 'face';   // (THE HIDDEN PICKS)
     if (!window.EW_MH_LOOKS || !rows.length) return null;
     return h(React.Fragment, { key: key || cat },
       head ? h('div', { className: 'pb-creator-colorlabel' + (cat === 'mhSkin' ? ' pb-cc-shelf-sub' : ''), 'data-cc-cam-own': cam }, head) : null,
       h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + (head || cat.slice(2)).toLowerCase(), 'data-cc-cam-own': cam },
         rows.map(([id, label]) =>
-          h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[cat] || 'own') === id, title: label, onClick: () => changeAppearance({ [cat]: id }) },
-            h('span', null, cat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label)))));
+          devTile(cat, id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[cat] || 'own') === id, title: label, onClick: () => changeAppearance({ [cat]: id }) },
+            h('span', null, cat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label))))));
   };
   /* THE LOOK COLOURS: "<thing> colour": Original colours / (Same as hair) / Pick a colour, then the swatches + the custom picker */
   const lookTint = (key, label, colorKey, swatches, hairToo, cam) => h(React.Fragment, { key },
     h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam-own': cam || 'face' }, label),
     ccChoice(key, [['own', 'Original colours']].concat(hairToo ? [['hair', 'Same as hair']] : [], [['pick', 'Pick a colour']])),
     appearance[key] === 'pick' ? ccColorRow(colorKey, label, swatches) : null);
-  const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'] };   // THE ONE EYES TAB: the picks shown in each FACE tab (its dot)
+  const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'] };
+  /* THE HIDDEN PICKS: the hider's bar (top of the creator): the marks on / off (off = the lists as players see them), the hidden list
+     (each with SHOW, + SHOW ALL), and EXPORT HIDDEN LIST (the file bake-hidden.js bakes into sprites.js EW_CREATOR_HIDDEN) */
+  const hidKindLabel = (r) => r.kind === 'wear' ? ((window.EW_MH_FACIAL_HAIR || []).includes(r.id) ? 'Facial hair' : ((shelves.find(x => x[0] === shelfOf(r.id)) || [])[1] || 'Clothes'))
+    : ({ hair: 'Hair', outer: 'Outer layer', feet: 'Feet layer', cape: 'Cape', wings: 'Flapping wings', idle: 'Idle pose', mhSkin: 'Skin', mhEyes: 'Eye colour', mhBrows: 'Brows', mhLashes: 'Lashes' })[r.kind] || r.kind;
+  const ccDevBar = () => {
+    const list = window.creatorHiddenList ? window.creatorHiddenList() : [];
+    return h('div', { className: 'pb-cc-devbar', role: 'group', 'aria-label': 'Creator item hider (developer)' },
+      h('div', { className: 'pb-cc-devbar-head' }, h('b', null, 'DEV \u00b7 ITEM HIDER'), h('span', null, list.length + ' hidden')),
+      h('p', { className: 'pb-creator-note' }, devMarks ? '\u2715 on a tile hides it from the creator; SHOW puts it back. Nothing is deleted, and a look wearing a hidden piece still loads (a worn piece keeps its tile).'
+        : 'The lists as players see them: hidden picks are left off (a worn one still shows).'),
+      h('div', { className: 'pb-creator-options' },
+        h('button', { className: 'ms-tty-btn' + (hideMarks ? ' primary' : ''), 'aria-pressed': hideMarks, title: 'Show the \u2715 / SHOW marks on every pick (off = see the lists as players will)', onClick: () => setHideMarks(m => !m) }, hideMarks ? 'MARKS: ON' : 'MARKS: OFF (PLAYER VIEW)'),
+        h('button', { className: 'ms-tty-btn', 'aria-expanded': hidListOpen, onClick: () => setHidListOpen(o => !o) }, (hidListOpen ? '\u25be' : '\u25b8') + ' HIDDEN LIST (' + list.length + ')'),
+        h('button', { className: 'ms-tty-btn gold', title: 'Save the hidden list as a file; bake-hidden.js bakes it into the game for every player', onClick: () => pbExportHidden(setHidNote) }, '\u21e9 EXPORT HIDDEN LIST')),
+      hidListOpen ? h('div', { className: 'pb-cc-devlist', role: 'list', 'aria-label': 'Hidden picks' },
+        list.length ? list.map(r => h('div', { key: r.key, className: 'pb-cc-devrow', role: 'listitem' },
+          h('span', null, h('small', null, hidKindLabel(r) + ' \u00b7 '), r.label, r.shipped ? h('small', null, ' (baked)') : null),
+          h('button', { className: 'ms-tty-btn sm', onClick: () => window.setCreatorHidden(r.kind, r.id, false, r.label) }, 'SHOW')))
+          : h('p', { className: 'pb-creator-note' }, 'Nothing hidden.'),
+        list.length ? h('button', { className: 'ms-tty-btn', onClick: () => { if (window.confirm('Show all ' + list.length + ' hidden picks in the creator again?')) window.creatorHiddenShowAll(); } }, 'SHOW ALL') : null) : null,
+      hidNote ? h('div', { className: 'pb-looks-note', role: 'status' }, hidNote) : null);
+  };   // THE ONE EYES TAB: the picks shown in each FACE tab (its dot)
   return h('fieldset', { className: 'pb-creator-controls', disabled, onPointerDownCapture: ccCamFrom, onFocusCapture: ccCamFrom },
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
+              devHider ? ccDevBar() : null,   // THE HIDDEN PICKS: the dev item hider's bar
               h('legend', { 'data-cc-cam': 'body' }, 'BODY'),
               /* THE MPFB BODIES (2026-11-01): the classic male / female bases + the five MPFB bodies (sprites.js
                  EW_MPFB_BODIES). The rig dresses an MPFB body like the classic ones (clothes, layers, hair, accessories,
@@ -1255,7 +1321,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                  Saved in the look (appearance.idle), so EXPORT DEFAULT LOOK / bake-looks.js carry it and the board plays it. */
               (window.EW_IDLE_POSES || []).length > 1 ? h(React.Fragment, null,
                 h('div', { className: 'pb-creator-colorlabel' }, 'Idle pose'),
-                ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]))) : null,
+                ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]), null, 'idle')) : null,
               h('h3', { 'data-cc-cam': 'face' }, 'FACE'),
               /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of
                  the eyes and the lips and everything"): an MPFB head takes MakeHuman's own face modifiers (sprites.js
@@ -1292,15 +1358,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                  wears the pack's beards + moustaches (sprites.js EW_MH_FACIAL_HAIR, one at a time) in the hair colour, a picked
                  colour or their own */
               mpfb && window.EW_MH_FACIAL_HAIR && window.EW_MH_FACIAL_HAIR.length ? (() => {
-                const ids = window.EW_MH_FACIAL_HAIR, rows = (window.EW_MH_WEAR || []).filter(r => ids.includes(r[0]));
-                const cur = (appearance.wear || []).find(x => ids.includes(x)) || 'none';
+                const ids = window.EW_MH_FACIAL_HAIR, cur = (appearance.wear || []).find(x => ids.includes(x)) || 'none';
+                const rows = (window.EW_MH_WEAR || []).filter(r => ids.includes(r[0]) && keepPick('wear', r[0], cur === r[0]));   // (THE HIDDEN PICKS)
                 return h(React.Fragment, null,
                   h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
                   h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Facial hair' },
                     [['none', 'Clean']].concat(rows.map(r => [r[0], r[1]])).map(([id, label]) =>
-                      h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': cur === id,
+                      devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': cur === id,
                         onClick: () => changeAppearance({ wear: (appearance.wear || []).filter(x => !ids.includes(x)).concat(id === 'none' ? [] : [id]) }) },
-                        h('span', null, label)))),
+                        h('span', null, label))))),
                   cur !== 'none' ? h(React.Fragment, null,
                     h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair colour'),
                     ccChoice('beardTint', [['hair', 'Same as hair'], ['pick', 'Pick a colour'], ['own', 'Original colours']]),
@@ -1334,15 +1400,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccColorRow('skin', 'Skin tone', skinSwatches)),
               h('h3', { 'data-cc-cam': 'face' }, 'HAIR'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
-                [{ id: 'bald', label: 'Bald' }].concat(ccHair.filter(st => !st.mh)).map(style =>
-                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
-                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
+                [{ id: 'bald', label: 'Bald' }].concat(ccHair.filter(st => !st.mh && keepPick('hair', st.id, appearance.hair === st.id))).map(style =>
+                  devTile('hair', style.id, style.label, h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label))))),
               // THE PACK HAIR (2026-11-01): the MakeHuman community styles (sprites.js EW_MH_HAIR_STYLES), same tiles, own row
               h('div', { className: 'pb-creator-colorlabel' }, 'More hair styles'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman hair style' },
-                ccHair.filter(st => st.mh).map(style =>
-                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
-                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
+                ccHair.filter(st => st.mh && keepPick('hair', st.id, appearance.hair === st.id)).map(style =>
+                  devTile('hair', style.id, style.label, h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label))))),
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
               /* THE SECOND HAIR COLOUR (2026-11-01, mondo: "add a secondary hair color picker"): a pack style with its own band /
                  tie / beads / flower (sprites.js `accent: true`): those keep their colours or take the second colour */
