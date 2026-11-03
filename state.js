@@ -3318,7 +3318,7 @@
             // Homosapien bases, so a slot that carries a creator look may wear
             // either gender even though the roster's stock human model is male-only.
             /* THE INTAKE (2026-09-21): the officer is a D.O.O.R. Agent in the creator's clothes — sprites.js EW_CREATOR_LOOK_RACES names the races a look dresses */
-            const lookRace = (typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(race);
+            const lookRace = (typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(race) : race === 'door agent');
             const creatorLook = lookRace && identity.appearance && typeof normalizeCharacterAppearance === 'function' && normalizeCharacterAppearance(identity.appearance);
             if (creatorLook && (gender === 'male' || gender === 'female')) { /* keep the chosen base */ }
             else if (!gender || !validGenders.includes(gender)) {
@@ -4230,7 +4230,7 @@
                     const rebuiltMeta = {
                         race: race,
                         gender: priorMeta.gender || archetype.gender || 'other',
-                        appearance: (typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(race) && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
+                        appearance: (typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(race) : race === 'door agent') && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
                         zodiac: priorMeta.zodiac || archetype.zodiac || 'aries',
                         sleepPreference: priorMeta.sleepPreference || archetype.sleepPreference || 'none',
                         terrainPreference: getTerrainPreferenceForRace(race),

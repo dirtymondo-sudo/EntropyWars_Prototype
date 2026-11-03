@@ -15886,7 +15886,7 @@ const ThreeRenderer = (function () {
         // board build is never a bald unit in plain cloth.
         var fabricUrls = [];
         (units || []).forEach(function (u) {
-            if (!u || u.dead || !(typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(u.race) || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
+            if (!u || u.dead || !(typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(u.race) : u.race === 'door agent') || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
             var _lk = (typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, u.gender || 'male', u.appearance) : null;   // THE RACE LOOKS: the slot's look or the race's baked one
             if (!_lk || !_lk.raceLook) return;
             var as = getCharacterAppearanceAssets(_lk.raceLook);
@@ -56159,7 +56159,7 @@ const ThreeRenderer = (function () {
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
-            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') : '';   // (+ THE CHEST)
+            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') + (layers.tint ? '|tint' + JSON.stringify(layers.tint) : '') : '';   // (+ THE CHEST + THE LIP COLOUR + THE LOOK COLOURS)
             if (part.lookKey === key) return;
             part.lookKey = key;
             function wear(map) {
@@ -56182,13 +56182,20 @@ const ThreeRenderer = (function () {
                     var x = c.getContext('2d');
                     x.drawImage(imgs[0], 0, 0, px, px);
                     if (layers.smooth) smoothChest(c, x, layers.smooth, px / 1024);
+                    var TT = layers.tint || {};
+                    if (TT.skin) { try { tintSheet(x, px, TT.skin, layers.skinSample, layers.skinKeep); } catch (e) { console.warn('[ThreeRenderer] skin colour failed', e); } }   // THE LOOK COLOURS
                     for (var j = 1; j < layers.length; j++) {
                         var b = layers[j][1], cut = layers[j][2]; if (!imgs[j] || !b) continue;
+                        if (layers[j].kind && TT[layers[j].kind]) {   // THE LOOK COLOURS: the irises / brows / lashes in the picked colour
+                            var tl = null; try { tl = tintLayer(imgs[j], layers[j].kind, TT[layers[j].kind], layers.iris); } catch (e) { console.warn('[ThreeRenderer] look colour failed', e); }
+                            if (tl) { x.drawImage(tl, b[0], b[1], b[2], b[3]); continue; }
+                        }
                         if (cut) {   // THE CHEST: the fixed layer without its painted band (draw round the rect)
                             x.save(); x.beginPath(); x.rect(0, 0, px, px); x.rect(cut[0], cut[1] + cut[3], cut[2], -cut[3]); x.clip('evenodd');
                             x.drawImage(imgs[j], b[0], b[1], b[2], b[3]); x.restore();
                         } else x.drawImage(imgs[j], b[0], b[1], b[2], b[3]);
                     }
+                    if (layers.lips) { try { tintLips(x, layers.lips, px / 1024); } catch (e) { console.warn('[ThreeRenderer] lip colour failed', e); } }   // THE LIP COLOUR
                     var S = part.stockMap, t = new THREE.CanvasTexture(c);
                     t.flipY = S.flipY;
                     if (S.encoding !== undefined) t.encoding = S.encoding;
@@ -56221,6 +56228,93 @@ const ThreeRenderer = (function () {
                 tx.fillStyle = gr; tx.fillRect(0, 0, D, D);
                 x.drawImage(t, cx - R, cy - R);
             });
+        }
+        /* THE LIP COLOUR (2026-11-03, mondo: "what if i just want to change the lips specifically?"): the picked colour inside the
+           lips' outline on the hm08 sheet (sprites.js EW_MH_LIPS), feathered at the edge. Each pixel keeps the skin's own shading
+           (its brightness against the lips' average), so the lip lines, the shine and the corners stay, on any skin, and a skin's
+           painted lipstick is replaced, not mixed with the pick. */
+        function tintLips(x, L, k) {
+            var bx = Math.floor(L.box[0] * k), by = Math.floor(L.box[1] * k), bw = Math.ceil(L.box[2] * k), bh = Math.ceil(L.box[3] * k);
+            var mc = _ccCanvas(bw, bh); if (!mc) return;
+            var mx = mc.getContext('2d'), P = L.poly;
+            mx.fillStyle = '#fff'; mx.beginPath();
+            for (var i = 0; i < P.length; i += 2) { var qx = P[i] * k - bx, qy = P[i + 1] * k - by; if (i) mx.lineTo(qx, qy); else mx.moveTo(qx, qy); }
+            mx.closePath(); mx.fill();
+            var md = mx.getImageData(0, 0, bw, bh).data, n = bw * bh, A = new Float32Array(n), B = new Float32Array(n), r = Math.max(1, Math.round((L.feather || 1.5) * k));
+            for (i = 0; i < n; i++) A[i] = md[i * 4 + 3] / 255;
+            for (var pass = 0; pass < 2; pass++) {   // a box blur, twice (rows then columns) = the soft edge
+                for (var yy = 0; yy < bh; yy++) for (var xx = 0; xx < bw; xx++) {
+                    var s = 0, c = 0;
+                    for (var d = -r; d <= r; d++) {
+                        var X = pass ? xx : xx + d, Y = pass ? yy + d : yy;
+                        if (X < 0 || Y < 0 || X >= bw || Y >= bh) continue;
+                        s += A[Y * bw + X]; c++;
+                    }
+                    B[yy * bw + xx] = s / c;
+                }
+                var sw = A; A = B; B = sw;
+            }
+            var img = x.getImageData(bx, by, bw, bh), D = img.data, lum = 0, wsum = 0;
+            for (i = 0; i < n; i++) { if (A[i] < 0.5) continue; lum += (D[i * 4] * 0.299 + D[i * 4 + 1] * 0.587 + D[i * 4 + 2] * 0.114) * A[i]; wsum += A[i]; }
+            if (!wsum) return;
+            lum = Math.max(8, lum / wsum);
+            var hex = parseInt(String(L.color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+            for (i = 0; i < n; i++) {
+                var a = A[i]; if (a <= 0.003) continue;
+                var o = i * 4, l = D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114;
+                var f = Math.max(0.55, Math.min(1.5, l / lum));
+                D[o] = D[o] * (1 - a) + Math.min(255, cr * f) * a;
+                D[o + 1] = D[o + 1] * (1 - a) + Math.min(255, cg * f) * a;
+                D[o + 2] = D[o + 2] * (1 - a) + Math.min(255, cb * f) * a;
+            }
+            x.putImageData(img, bx, by);
+        }
+        /* THE LOOK COLOURS (2026-11-03, mondo: "why can i not just pick a skin color under the skin tab? ... Everything that can
+           possibly have one needs a tint/color picker"). SKIN: every pixel of the skin sheet times (picked / the torso's average), per
+           channel, so the picked colour becomes the skin's average and its pores, freckles, veins and lips keep their contrast. */
+        function tintSheet(x, px, color, sample, keep) {
+            var kept = (keep || []).map(function (q) { var k0 = px / 1024; return [q.map(function (v) { return Math.round(v * k0); }), x.getImageData(Math.round(q[0] * k0), Math.round(q[1] * k0), Math.round(q[2] * k0), Math.round(q[3] * k0))]; });
+            var img = x.getImageData(0, 0, px, px), D = img.data, k = px / 1024, S = sample || [200, 150, 360, 300];
+            var sx = Math.floor(S[0] * k), sy = Math.floor(S[1] * k), sw = Math.floor(S[2] * k), sh = Math.floor(S[3] * k), r = 0, g = 0, bl = 0, n = 0;
+            for (var yy = sy; yy < sy + sh; yy += 2) for (var xx = sx; xx < sx + sw; xx += 2) { var o = (yy * px + xx) * 4; r += D[o]; g += D[o + 1]; bl += D[o + 2]; n++; }
+            if (!n) return;
+            var hex = parseInt(String(color).slice(1), 16);
+            var fr = ((hex >> 16) & 255) / Math.max(1, r / n), fg = ((hex >> 8) & 255) / Math.max(1, g / n), fb = (hex & 255) / Math.max(1, bl / n);
+            for (var i = 0, L = D.length; i < L; i += 4) {
+                var R = D[i] * fr, G = D[i + 1] * fg, B = D[i + 2] * fb;
+                D[i] = R > 255 ? 255 : R; D[i + 1] = G > 255 ? 255 : G; D[i + 2] = B > 255 ? 255 : B;
+            }
+            x.putImageData(img, 0, 0);
+            kept.forEach(function (q) { x.putImageData(q[1], q[0][0], q[0][1]); });
+        }
+        /* THE LOOK COLOURS: a brows / lashes / eyes picture recoloured on its own canvas. Brows + lashes: every hair takes the picked
+           colour at its own brightness against the picture's average (alpha kept). Eyes: only the two irises (sprites.js EW_MH_IRIS,
+           feathered rims), the pupil kept dark, the whites untouched. */
+        function tintLayer(img, kind, color, iris) {
+            var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
+            var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+            var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+            var lum = function (o) { return D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114; };
+            var wOf = function (px, py) {   // 1 inside an iris, 0 outside, a 1 px soft rim
+                if (kind !== 'eyes') return D[(py * w + px) * 4 + 3] > 0 ? 1 : 0;
+                var best = 0, C = (iris && iris.centres) || [], R = (iris && iris.r) || 3.8;
+                for (var q = 0; q < C.length; q++) { var d = Math.hypot(px + 0.5 - C[q][0], py + 0.5 - C[q][1]); best = Math.max(best, Math.max(0, Math.min(1, R + 0.5 - d))); }
+                return best;
+            };
+            var W = new Float32Array(w * hh), m = 0, mw = 0, i, xx, yy;
+            for (yy = 0; yy < hh; yy++) for (xx = 0; xx < w; xx++) { i = yy * w + xx; W[i] = wOf(xx, yy); if (W[i] > 0.5) { var a = kind === 'eyes' ? 1 : D[i * 4 + 3] / 255; m += lum(i * 4) * a; mw += a; } }
+            if (!mw) return null;
+            m = Math.max(6, m / mw);
+            for (i = 0; i < w * hh; i++) {
+                var wt = W[i]; if (!wt) continue;
+                var o = i * 4, f = lum(o) / m;
+                f = kind === 'eyes' ? Math.min(1.6, f) : Math.max(0.7, Math.min(1.3, 1 + 0.5 * (f - 1)));   // (an iris: the pupil stays dark; a hair: half its contrast, so it reads as the picked colour)
+                D[o] = D[o] * (1 - wt) + Math.min(255, cr * f) * wt;
+                D[o + 1] = D[o + 1] * (1 - wt) + Math.min(255, cg * f) * wt;
+                D[o + 2] = D[o + 2] * (1 - wt) + Math.min(255, cb * f) * wt;
+            }
+            x.putImageData(im, 0, 0);
+            return c;
         }
         function paintSkin(part, a, preview) {
             if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face
@@ -56301,9 +56395,9 @@ const ThreeRenderer = (function () {
         return g ? { def: set[g], gender: g } : null;
     }
 
-    function _cvSupports(race, gender) {
+    function _cvSupports(race, gender, appearance) {
         if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return false;
-        return !!_cvResolveDef(race, gender);
+        return !!_cvResolveDef(race, gender, appearance);   // THE MESHY DEFAULT (2026-11-03): a 2D-only race stands on the stage in a creator look
     }
 
     /* Esoteric summoning-circle floor decal, drawn once into a canvas —
@@ -57611,7 +57705,7 @@ const ThreeRenderer = (function () {
         /* dev (rev 9): the live stage record — probes read the posed skeleton / the rig (never used by the game) */
         dev: { state: function () { return _cv; }, model: function () { return _cv ? _cv.model : null; } },
         mount: function (host, race, gender, opts) {
-            if (!host || !_cvSupports(race, gender)) return false;
+            if (!host || !_cvSupports(race, gender, opts && opts.appearance)) return false;
             /* THE HIDDEN STAGE (2026-09-20, the loading pass): the pre-match builder renders at boot behind
                the title page and its stage used to stream the first slot's rig + BOTH animation libraries
                (25 MB) under the title screen. A host with no box on screen (a hidden page) is not mounted:
