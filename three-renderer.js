@@ -2530,6 +2530,33 @@ const ThreeRenderer = (function () {
         img.src = src;
         return img;
     }
+    /* THE WHITE SHEETS (2026-11-03, sprites.js TERRAIN_WHITE_SHEETS): a near-white sheet is darkened ONCE as it lands, into a
+       canvas (its pixels × the row's value, alpha kept), so daylight no longer pushes it past the frame's 100% and wipes its
+       pattern to flat white. Keyed by the file name, so every holder of the sheet gets it. A bitmap (THE BITMAPS) is already
+       flipped at its decode, so its canvas copy is turned back the file's way up (the texture's own flipY then flips it, as it
+       does an <img>). Any failure keeps the sheet as it came. */
+    function _ewWhiteGuard(url, img, tex) {
+        try {
+            var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null;
+            if (!W || !img || typeof document === 'undefined') return img;
+            var name = String(url || '').split('?')[0].split('#')[0]; name = name.slice(name.lastIndexOf('/') + 1);
+            var k = W[name];
+            if (!(k > 0 && k < 1)) return img;
+            var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+            if (!(w > 0 && h > 0)) return img;
+            var c = document.createElement('canvas'); c.width = w; c.height = h;
+            var x = c.getContext('2d');
+            var unflip = !!(tex && tex._ew_bmp && tex.flipY !== false);   // the bitmap was flipped at its decode: the canvas holds the file's own way up, the texture's flipY does the rest (for every holder alike)
+            if (unflip) { x.translate(0, h); x.scale(1, -1); }
+            x.drawImage(img, 0, 0, w, h);
+            var d = x.getImageData(0, 0, w, h), p = d.data;
+            for (var i = 0; i < p.length; i += 4) { p[i] = p[i] * k; p[i + 1] = p[i + 1] * k; p[i + 2] = p[i + 2] * k; }
+            x.putImageData(d, 0, 0);
+            try { c.complete = true; c.naturalWidth = w; c.naturalHeight = h; c.src = img.src || url; } catch (e) {}
+            return c;
+        } catch (e) { return img; }
+    }
+    if (typeof window !== 'undefined') window._ewWhiteGuard = _ewWhiteGuard;
     textureLoader.load = function (url, onLoad, onProgress, onError) {
         var u = window._ewCorsBust ? window._ewCorsBust(url) : url;
         var tex = new THREE.Texture();
@@ -2538,6 +2565,7 @@ const ThreeRenderer = (function () {
         var rec = _alTrack('texture', u);   // THE ASSET LEDGER: a gate waits for this sheet
         tex._ew_alRec = rec;
         function landed(img) {
+            img = _ewWhiteGuard(u, img, tex);   // THE WHITE SHEETS (2026-11-03): a near-white sheet darkened once, before it is drawn
             tex.image = img; tex.needsUpdate = true;
             if (onLoad) { try { onLoad(tex); } catch (e) { console.warn('[ThreeRenderer] texture onLoad threw', e); } }
             rec.settle(true);
@@ -4619,6 +4647,27 @@ const ThreeRenderer = (function () {
         if (ended) _shadowsDirty = true;                 // THE STATIC SHADOW: the field's depth pass lands with the wall
     }
 
+    /* THE WHITE DAYLIGHT on a tile board (2026-11-03, mondo: "can we just make light not 130% too?" / "i dont want the game to change
+       lighting based on the white on the screen"): when half or more of the board's top tiles wear a white sheet (sprites.js
+       TERRAIN_WHITE_SHEETS), the battle's day / night rig (ThreePost.setWhiteDay) runs at HQ_LIGHT_RULES.whiteDay (0.75) — read off
+       the board's own tiles, never off the screen. A room fight takes the room's rule instead (_hqOpenLR). */
+    function _whiteSheetKey(key) {
+        var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null;
+        if (!W || !key || typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES[key]) return false;
+        var name = String(TERRAIN_SPRITES[key][0] || '').split('?')[0]; name = name.slice(name.lastIndexOf('/') + 1);
+        return W[name] > 0 && W[name] < 1;
+    }
+    function _boardWhiteDay(bW, bH) {
+        if (typeof ThreePost === 'undefined' || !ThreePost.setWhiteDay || !state || !state.boardColumns) return;
+        var n = 0, w = 0, memo = {};
+        for (var y = 0; y < bH; y++) { var row = state.boardColumns[y]; if (!row) continue;
+            for (var x = 0; x < bW; x++) { var col = row[x]; if (!col || !col.length) continue;
+                var k = col[col.length - 1].terrain || 'grass'; n++;
+                if (memo[k] === undefined) memo[k] = _whiteSheetKey(k);
+                if (memo[k]) w++; } }
+        var LR = _hqLightRules(), kd = (LR && LR.whiteDay > 0 && LR.whiteDay <= 1) ? +LR.whiteDay : 1;
+        ThreePost.setWhiteDay((n > 0 && w / n >= 0.5) ? kd : 1);
+    }
     function rebuildTerrain() {
         if (!terrainGroup) return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -4650,6 +4699,7 @@ const ThreeRenderer = (function () {
             _shadowsDirty = true;
             return;
         }
+        try { _boardWhiteDay(_bw, _bh); } catch (e) {}   // THE WHITE DAYLIGHT: a board whose ground is mostly a white sheet wears less daylight
 
         for (var y = 0; y < _bh; y++) {
             for (var x = 0; x < _bw; x++) {
@@ -32345,7 +32395,7 @@ const ThreeRenderer = (function () {
     }
     /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
        building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
-    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14,
+    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14, whiteDay: 0.75,
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
         shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
@@ -32372,6 +32422,27 @@ const ThreeRenderer = (function () {
         return v === false || v === 0;
     }
     function _polishLevel(key) { var v = _polishPref(key); return (typeof v === 'number' && isFinite(v)) ? v : (v === false ? 0 : 1); }
+    /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too? that seems so excessive" + "i dont want the game to
+       change lighting based on the white on the screen"): an open room whose FLOOR is a white sheet (sprites.js TERRAIN_WHITE_SHEETS —
+       the terrain room's floor key, else the shell's floor) wears its sky light × HQ_LIGHT_RULES.whiteDay (0.75): the hemisphere and the
+       sun / moon key, by day and by night. Fixed per room from what it is built of; nothing reads the screen. A grass or dirt room keeps 1. */
+    function _hqWhiteDay(room) {
+        try {
+            var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null, LR = _hqLightRules();
+            var k = (LR && LR.whiteDay > 0 && LR.whiteDay <= 1) ? +LR.whiteDay : 1;
+            if (!W || !room || k >= 1) return 1;
+            var key = (room.terrain && room.terrain.floor) || (room.shell && room.shell.floor) || null;
+            var url = (key && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[key]) ? String(TERRAIN_SPRITES[key][0] || '') : '';
+            var name = url.split('?')[0]; name = name.slice(name.lastIndexOf('/') + 1);
+            return (name && W[name] > 0 && W[name] < 1) ? k : 1;
+        } catch (e) { return 1; }
+    }
+    /* the open-room light row (HQ_LIGHT_RULES.open) for `room`, its sky light × _hqWhiteDay */
+    function _hqOpenLR(room) {
+        var LRo = Object.assign({}, _hqLightRules().open || {}), k = _hqWhiteDay(room);
+        if (k < 1) ['dayHemi', 'daySun', 'nightHemi', 'nightSun'].forEach(function (f) { if (LRo[f] != null) LRo[f] = +LRo[f] * k; });
+        return LRo;
+    }
     function _hqLightRules() {
         var R = (typeof HQ_LIGHT_RULES !== 'undefined') ? HQ_LIGHT_RULES : ((typeof window !== 'undefined' && window.HQ_LIGHT_RULES) || null);
         if (!R) return HQ_LIGHT_DEFAULT;
@@ -80136,7 +80207,7 @@ const ThreeRenderer = (function () {
             var field = { ambient: { intensity: 0 }, shadow: !(SH.on === false || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW) };
             var lampMax = (typeof HQ_PROP_LIGHT_MAX !== 'undefined') ? HQ_PROP_LIGHT_MAX : 10;
             if (open) {
-                var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = LR.open || {};
+                var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT
                 field.hemi = { sky: _hqSkyHemiC(skyC, nightO).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
                 field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
                 /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight starts at the hour the room was at — a clocked room's rig is the
@@ -83247,7 +83318,7 @@ const ThreeRenderer = (function () {
         return (V && !V.locked) ? V : _hqStageSkyValsRaw(room);
     }
     function _hqStageSkyValsRaw(room) {
-        var S = room.shell || {}, sky = S.sky || {}, U = _hqUnits(), LRo = _hqLightRules().open, night = sky.night ? 1 : 0;
+        var S = room.shell || {}, sky = S.sky || {}, U = _hqUnits(), LRo = _hqOpenLR(room), night = sky.night ? 1 : 0;   // THE WHITE DAYLIGHT
         var rig = Object.assign({}, (_hqLightRules().key && _hqLightRules().key.open) || {}, S.rig || {});
         var skyC = new THREE.Color((sky.tint != null) ? sky.tint : 0x8090b0);
         return {
@@ -83363,7 +83434,7 @@ const ThreeRenderer = (function () {
         var out = { locked: C.locked, sun: sun, sunDome: _hqClkV(hqWorldDir(sun.sunAz, sun.sunEl, C.rot)), moonDome: _hqClkV(hqWorldDir(sun.moonAz, sun.moonEl, C.rot)),
                     dusk: C.locked ? 0 : sun.dusk, lamp: C.locked ? 1 : sun.lamp };
         if (C.locked) return out;
-        var base = _hqStageSkyValsRaw(room), LRo = _hqLightRules().open, DL = C.dayLook || {};
+        var base = _hqStageSkyValsRaw(room), LRo = _hqOpenLR(room), DL = C.dayLook || {};   // THE WHITE DAYLIGHT
         var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12;
         var dayFog = new THREE.Color(authNight ? ((DL.fog != null) ? DL.fog : CK.day.fog) : fogA);
         var nightFog = authNight ? new THREE.Color(fogA) : new THREE.Color(fogA).multiplyScalar(CK.night.fogK).add(new THREE.Color(CK.night.fog));
@@ -83672,7 +83743,7 @@ const ThreeRenderer = (function () {
             var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0;
             /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
-            var LRo = _hqLightRules().open;
+            var LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT: a white-floored room's sky light × HQ_LIGHT_RULES.whiteDay
             _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
