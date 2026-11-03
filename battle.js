@@ -3731,6 +3731,9 @@
         function igniteTile(x, y, rounds, byUnit) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
+            /* 🌧️ the rain puts the ground fire out (mondo 2026-11-03): a tile the rain falls on does not catch — the fire
+               spell itself still hits, only the ground does not stay burning */
+            if (typeof window._ewRainOnTile === 'function' && window._ewRainOnTile(x, y)) return false;
             const b = _ensureBurningState();
             const k = x + ',' + y;
             const prev = b[k];
@@ -4281,13 +4284,18 @@
             }
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             const startX = v.x, startY = v.y;
+            const _flMark = _logMark();   // THE LOG ORDER: "flings" reads before the slide's wall slams
             const res = resolveForcedSlide(v, d.dx, d.dy, dist, {
                 byUnit: (caster && !caster.dead) ? caster : null, label: `${def.icon} ${def.label}: `,
                 animate: false, noChain: true, perStepMs: 120
             });
             if (v.dead || v._dying || (v.x === startX && v.y === startY)) return out;
             out.moved = true;
-            addLog(`${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word} to ${coordLabel(v.x, v.y)}!`);
+            {
+                const _fl0 = _logMark();
+                addLog(`${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word} to ${coordLabel(v.x, v.y)}!`);
+                if (_logMark().a > _fl0.a) _logHoist(_flMark, null);
+            }
             const _endX = v.x, _endY = v.y;
             const _hurl = () => {
                 const fling = (typeof window.playVortexFlingFx === 'function')
@@ -4667,9 +4675,15 @@
                     _walkFireBurn(unit, x, y, false);
                 } else {
                     // Shoved into a burning tile → the flames bite immediately.
+                    /* the unit's OWN dash / leap / climb / blink onto fire reads as its own move, not as a shove
+                       (playtest 2026-11-03: Krampus's own Gore Charge was logged "is hurled into the flames /
+                       knocked into the burning ground") */
+                    const _ownWay = via === 'self' ? 'charges into the flames: '
+                        : via === 'teleport' ? 'lands in the flames: '
+                        : via === 'climb' ? 'climbs into the flames: ' : null;
                     _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
-                        `${unitDisplayName(unit)} is hurled into the flames: `);
-                    addLog(`🔥 ${_ctName(unit)} is knocked into the burning ground!`);
+                        `${unitDisplayName(unit)} ${_ownWay || 'is hurled into the flames: '}`);
+                    if (!_ownWay) addLog(`🔥 ${_ctName(unit)} is knocked into the burning ground!`);
                 }
                 fired++;
             }
@@ -6408,9 +6422,12 @@
                 /* Phase 5 wave C (2026-09-08): statusFirst (Goo Shot) — the
                    status lands BEFORE the hit so its own damage multiplier
                    (Gooed: magic ×1.25) applies to this very cast. */
+                /* THE LOG ORDER: the status is applied first (rule), but its line reads after the hit's line */
+                const _sfMark = (spell.statusFirst && spell.statusEffects && !target.dead) ? _logMark() : null;
                 if (spell.statusFirst && spell.statusEffects && !target.dead) {
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                 }
+                const _sfMid = _sfMark ? _logMark() : null;
                 /* THE SPELL AUDIT Batch D: purgeFirst (Annihilation) — every buff, every positive stat stage and the
                    whole shield come off BEFORE the hit, so the damage lands on what is left. */
                 if (spell.purgeFirst && !target.dead) _purgeWardsBeforeHit(unit, spell, target);
@@ -6427,6 +6444,10 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                         element: _spellEl, isCrit: _hitCrit.isCrit
                     });
+                if (_sfMark) {
+                    const _sfHead = `${unitDisplayName(unit)} casts ${spell.name}`;
+                    _logSinkAfter(_sfMark, _sfMid, m => _ctPlain(m).indexOf(_sfHead) >= 0);
+                }
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, _hitCrit.isCrit);
                 /* ⏪ THE REPLAY (Overfit, Paradox): the target's own last blow comes back as a second hit of exactly that
                    number — no DEF, level scaling or damage multipliers (link-echo style: source-less, the caster credited) */
@@ -24801,7 +24822,10 @@
                 const _noToast = _firstApply || _autoCam
                     || typeof state === 'undefined' || state.devAutoSim
                     || state.winner != null || state.phase !== 'battle'
-                    || document.body.classList.contains('ewi-cinema');
+                    || document.body.classList.contains('ewi-cinema')
+                    /* playtest 2026-11-03: "Zoom: 3.33x" showed during the Entropy finisher — an action plays its own
+                       camera, so no toast while one runs or a spell shot is up */
+                    || state._actionExecuting || document.body.classList.contains('ew-spell-shot');
                 if (_noToast) {
                     if (zi) zi.style.opacity = '0';
                     return;
@@ -37767,6 +37791,24 @@
             const _ambushWas = caster._ambushStrike;
             const _rearWas = state._doorRearCast;   // 🚪 the rear rider doSpell arms for a door spell (rearAttack)
             _fcTalismanUsed.clear();
+            /* 🔥 THE WALK-IN FORECAST (playtest 2026-11-03: a move-then-cast walked Krampus, weak to fire, through burning
+               ground and the forecast never said): the walk to the cast tile meets the same fire / lava the real walk would
+               (_walkPassHazards + the landing's chain: once each per walk), read through the same hit pipeline. */
+            let _walkIn = null;
+            if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y)
+                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(caster))
+                && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(caster))) {
+                try {
+                    const _wp = findMovePath(caster, opts.castFrom.x, opts.castFrom.y) || [];
+                    let _fire = false, _lava = false;
+                    for (const st of _wp) {
+                        if (!st) continue;
+                        if (_isLavaTile(st.x, st.y)) _lava = true;
+                        else if (_tileIsBurning(st.x, st.y)) _fire = true;
+                    }
+                    if (_fire || _lava) _walkIn = { fire: _fire, lava: _lava };
+                } catch (e) { _walkIn = null; }
+            }
             try {
                 /* a height approach (take off / land / raise the ground) casts from the caster's own column at its new z */
                 if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y
@@ -37809,6 +37851,34 @@
                 }
             }
             _forecastHideFogged(plan, caster, spell, x, y);
+            if (_walkIn) {
+                const _wo = { ignoreArmor: true, damageType: 'dot', consumeMarked: false, allowMarkBonus: false, element: 'fire' };
+                let _wd = 0;
+                const _w1 = (raw) => { const f = forecastHitOnUnit(caster, raw, _wo); return f ? Math.max(0, f.dmg || 0) : raw; };
+                if (_walkIn.fire) _wd += _w1(BURNING_ENTER_DAMAGE);
+                if (_walkIn.lava) _wd += _w1(LAVA_WALK_DAMAGE);
+                let h = plan.byId[caster.id];
+                if (!h) { h = { unit: caster, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[caster.id] = h; plan.hits.push(h); }
+                _wd = Math.min(_wd, Math.max(0, caster.hp || 0));
+                h.dmg += _wd; h.min += _wd; h.max += _wd; h.hits++;
+                h.walkBurn = _wd;
+                const _wt = _walkIn.lava ? 'walkLava' : 'walkFire';
+                if (!h.tags.includes(_wt)) h.tags.push(_wt);
+                plan.walkBurn = _wd;
+            }
+            /* 🩸 THE RECOIL FORECAST (playtest 2026-11-03: Baphomet's Rite took 222 back off Krampus, unannounced): the cast's
+               own price (doSpell's selfDamagePct / recoilPct: that share of max HP, straight off the HP, never below 1) */
+            {
+                const _rf = spell.selfDamagePct || spell.recoilPct || 0;
+                const _price = (_rf > 0 && !caster.dead) ? Math.min(Math.round((caster.maxHp || 0) * _rf), Math.max(0, (caster.hp || 0) - 1)) : 0;
+                if (_price > 0) {
+                    let h = plan.byId[caster.id];
+                    if (!h) { h = { unit: caster, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[caster.id] = h; plan.hits.push(h); }
+                    h.dmg += _price; h.min += _price; h.max += _price; h.hits++;
+                    h.recoil = _price;
+                    if (!h.tags.includes('recoil')) h.tags.push('recoil');
+                }
+            }
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
@@ -38096,6 +38166,35 @@
                     (bx, by) => (bx === t.x && by === t.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
                 body.forEach(b => handled.add(b.x + ',' + b.y));
                 if (body.length > 1) zap(t.x, t.y, body);
+            }
+        }
+        /* 💥 THE OIL FORECAST (playtest 2026-11-03: Baphomet's Rite showed 642 on the target, then the oil it lit blew
+           up under the target and two of the caster's own allies and the forecast said nothing): the fire-oil reaction the
+           cast sets off (triggerTerrainSpellReaction -> _reactFireOil: every grounded body on the connected slick but the
+           caster and the lit tile takes the blast, friend or foe), through the same hit pipeline. */
+        function _forecastFireOil(unit, spell, tiles, hit) {
+            if (!unit || !spell || !tiles || !tiles.length) return;
+            const el = classifySpellElement(spell);
+            if (el !== 'fire' && el !== 'lightning') return;
+            const boom = Math.max(70, Math.round((spell.dmg || 90) * 0.9));
+            const opts = {
+                noTerrainBonus: true, sourceUnit: unit, noRangeMult: true, allowMarkBonus: false, damageType: 'magic',
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), element: 'fire'
+            };
+            const handled = new Set();
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y) || handled.has(t.x + ',' + t.y)) continue;
+                if (el === 'lightning' && _isWetTile(t.x, t.y)) continue;   // the spark races the water first (the reaction's own order)
+                if (!_isOilTile(t.x, t.y)) continue;
+                const slick = _floodConnectedTiles(t.x, t.y, _isOilTile, 40);
+                slick.forEach(b => handled.add(b.x + ',' + b.y));
+                for (const b of slick) {
+                    const u = unitAt(b.x, b.y);
+                    if (!u || u.dead || u._dying || u.id === unit.id || (b.x === t.x && b.y === t.y)) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    hit(u, boom, boom, boom, opts, { tag: 'oil' });
+                }
             }
         }
         /* statusFirst (Goo Shot: "the status lands BEFORE the hit so its own damage multiplier applies to this very cast"):
@@ -38391,7 +38490,7 @@
                     }
                 }
                 /* the struck tile's lightning reaction, after the knock-on like the cast (_applyDamageSpellHit) */
-                _forecastConduction(unit, spell, [{ x: target.x, y: target.y }], hit);
+                _forecastConduction(unit, spell, [{ x: target.x, y: target.y }], hit); _forecastFireOil(unit, spell, [{ x: target.x, y: target.y }], hit);
                 return;
             }
 
@@ -38462,7 +38561,7 @@
                 runPulls(pull1Jobs, 1, 0);
                 /* the area's lightning reaction after the hits and the moves (_applyAoeDamage's triggerTerrainSpellReaction):
                    Crystal Resonator on soaked bodies arcs through them (THE SPELL AUDIT FIX F2) */
-                if (!spell.noDamage && !mopts.statusOnly) _forecastConduction(unit, spell, area, hit);
+                if (!spell.noDamage && !mopts.statusOnly) { _forecastConduction(unit, spell, area, hit); _forecastFireOil(unit, spell, area, hit); }
                 /* TRICK OR TREAT (2026-10-29): aoeAllyHeal — the allies in the area heal (the cast's own amounts) */
                 if (kind === 'aoe' && spell.aoeAllyHeal > 0) {
                     for (const a of aoeAllyHealAlliesOf(unit, area)) {
@@ -38502,7 +38601,7 @@
                         }
                     }
                 }
-                _forecastConduction(unit, spell, plan.tiles, hit);   // the beam's cells react after it (_applyLineDamage)
+                _forecastConduction(unit, spell, plan.tiles, hit); _forecastFireOil(unit, spell, plan.tiles, hit);   // the beam's cells react after it (_applyLineDamage)
                 return;
             }
 
@@ -38551,7 +38650,7 @@
                     const f = (n) => Math.max(32, Math.floor(Math.max(0, n) * w));
                     const _bx = e.x, _by = e.y;
                     hit(e, f(b), f(b - SPELL_DMG_VARIANCE), f(b + SPELL_DMG_VARIANCE), baseOpts(spell.damageType || 'physical', { element: undefined }));
-                    _forecastConduction(unit, spell, [{ x: _bx, y: _by }], hit);   // the struck tile reacts after each hit
+                    _forecastConduction(unit, spell, [{ x: _bx, y: _by }], hit); _forecastFireOil(unit, spell, [{ x: _bx, y: _by }], hit);   // the struck tile reacts after each hit
                 }
                 return;
             }
@@ -41149,7 +41248,12 @@
             state.pendingTarget = null;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
-            addLog(`${_ctName(unit)} moves to ${moveLabel}.`, unit.player);
+            {
+                /* the walk's own lines (fire on the path, a laser, a fall at the end) read after "moves to" */
+                const _ml = _logMark();
+                addLog(`${_ctName(unit)} moves to ${moveLabel}.`, unit.player);
+                if (_walkLogMark && _logMark().a > _ml.a) _logHoist(_walkLogMark, null);
+            }
 
             // Fairy passive: shed pixie dust on the tile she left; anyone
             // arriving on a mote resolves it (ally collects / enemy stamps).
@@ -41950,6 +42054,42 @@
                     renderAudioControls();
                     renderTimer();
                 });
+            }
+        }
+
+        /* THE LOG ORDER (playtest 2026-11-03: "Spy is gooed" printed before the hit that gooed it, the walk's fire and
+           fall lines before "moves to", the wall slams before "the Tornado flings"): _logMark() notes where both logs
+           stand, _logHoist(mark, from) moves the line written at `from` (another mark, or null = the newest line) back
+           to `mark`, in the same order in both logs. Only for lines written in the same task (the log renders on the
+           next frame). */
+        function _logMark() {
+            return { a: (state.logEntries || []).length, b: (state._fullLogEntries || []).length };
+        }
+        function _logHoist(mark, from) {
+            if (!mark || state.devAutoSim) return;
+            for (const [key, at, src] of [['logEntries', mark.a, from ? from.a : null], ['_fullLogEntries', mark.b, from ? from.b : null]]) {
+                const arr = state[key];
+                if (!arr || !(at >= 0)) continue;
+                const i = (src == null) ? arr.length - 1 : src;
+                if (!(i > at) || i >= arr.length) continue;
+                const e = arr.splice(i, 1)[0];
+                arr.splice(at, 0, e);
+            }
+        }
+        /* the lines written between `mark` and `mid` move to just after the first later line `isAnchor` accepts */
+        function _logSinkAfter(mark, mid, isAnchor) {
+            if (!mark || !mid || state.devAutoSim) return;
+            for (const [key, a, b] of [['logEntries', mark.a, mid.a], ['_fullLogEntries', mark.b, mid.b]]) {
+                const arr = state[key];
+                if (!arr || !(b > a) || b > arr.length) continue;
+                let k = -1;
+                for (let i = b; i < arr.length; i++) {
+                    const e = arr[i];
+                    if (isAnchor(typeof e === 'string' ? e : (e && e.m) || '')) { k = i; break; }
+                }
+                if (k < 0) continue;
+                const block = arr.splice(a, b - a);
+                arr.splice(k - block.length + 1, 0, ...block);
             }
         }
 
@@ -48943,9 +49083,8 @@
                 return `<tr class="${deadClass}">
                     <td><div class="unit-sprite-cell">
                         ${sprite ? `<div style="width:24px;height:24px;background-image:url('${sprite}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : ''}
-                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}</span>
+                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}${(() => { const rl = u.race ? getRaceLabel(u.race, u.gender) : ''; const nm = unitDisplayName(u); const extra = [rl && rl !== nm ? rl : '', lvl > 1 ? 'Lv' + lvl : ''].filter(Boolean).join(' · '); return extra ? `<small>${escapeHtml(extra)}</small>` : ''; })()}</span>
                     </div></td>
-                    <td style="font-size:10px;color:var(--muted)">${escapeHtml(u.race ? getRaceLabel(u.race, u.gender) : '')}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}
@@ -48971,19 +49110,19 @@
                 const h = units.reduce((s,u) => s + (u._trackHealDone||0), 0);
                 const c = units.reduce((s,u) => s + (u._matchCrits||0), 0);
                 const dt = units.reduce((s,u) => s + (u._matchDeaths||0), 0);
-                return `<tr class="team-header ${pClass}"><td colspan="2">Total</td><td>${k}</td><td>${dt}</td><td>${a}</td><td>${d}</td><td>${r}</td><td>${h}</td><td>${c}</td></tr>`;
+                return `<tr class="team-header ${pClass}"><td>Total</td><td>${k}</td><td>${dt}</td><td>${a}</td><td>${d}</td><td>${r}</td><td>${h}</td><td>${c}</td></tr>`;
             }
 
             return `<table class="vic-stats-table">
                 <caption>Match Performance</caption>
                 <thead><tr>
-                    <th>Unit</th><th>Class</th><th>K</th><th>D</th><th>A</th><th>Dmg</th><th>Recv</th><th>Heal</th><th>Crit</th>
+                    <th>Unit</th><th title="Kills">K</th><th title="Deaths">D</th><th title="Assists">A</th><th title="Damage dealt">Dmg</th><th title="Damage received">Recv</th><th title="Healing done">Heal</th><th title="Critical hits">Crit</th>
                 </tr></thead>
                 <tbody>
-                    <tr class="team-header p1-hdr"><td colspan="9">Player 1</td></tr>
+                    <tr class="team-header p1-hdr"><td colspan="8">Player 1</td></tr>
                     ${p1Sorted.map(unitRow).join('')}
                     ${teamTotals(p1Units, 'p1-hdr')}
-                    <tr class="team-header p2-hdr"><td colspan="9">Player 2</td></tr>
+                    <tr class="team-header p2-hdr"><td colspan="8">Player 2</td></tr>
                     ${p2Sorted.map(unitRow).join('')}
                     ${teamTotals(p2Units, 'p2-hdr')}
                 </tbody>
@@ -49430,6 +49569,9 @@
             const hasCube = !!(foeCube && foeCube.hp > 0);
             const hasKeys = !!mpm.hasHourglasses;
             if (id === 'siege' && !hasCube) return 'No Cube';
+            /* Anchor guards OUR Cube (ai.js 'anchor' walks to v.ownTower): a mode without one (Team Deathmatch) has nothing
+               for it to guard (playtest 2026-11-03: it was offered in TDM) */
+            if (id === 'anchor') { const _own = state.towers ? state.towers[u.player] : null; if (!(_own && _own.hp > 0)) return 'No Cube'; }
             if (id === 'search' && !hasKeys) return 'No Keys';
             if (id === 'intercept' && !hasCube && !hasKeys) return 'No Cube or Keys';
             if (id === 'heal') {
@@ -64763,9 +64905,7 @@
                         const partners = getComboPartners(actingUnit);
                         if (partners.some(p => p.id === clickedUnit.id)) {
                             state.comboPartner = clickedUnit;
-                            const combo = getComboForUnits(actingUnit, clickedUnit);
-                            const syn = getComboTypeSynergy(actingUnit, clickedUnit);
-                            addLog(`Partner selected: ${_ctName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
+                            /* the pick is a click answer, not a combat event: no "Partner selected" line in the log (playtest 2026-11-03) */
                             state.pendingTarget = null;
                             if (typeof window._hrlgComboPrePick === 'function') window._hrlgComboPrePick(actingUnit, clickedUnit);   // THE COMBO PICK
                             renderBattleSelectionUI();
@@ -65193,9 +65333,12 @@
 
         function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
             _walkBurnt = {};
+            _walkLogMark = _logMark();
             try { _resolveMovePath(unit, path, destinationX, destinationY, startIndex, destZ); }
-            finally { _walkBurnt = null; }
+            finally { _walkBurnt = null; _walkLogMark = null; }
         }
+        /* where the log stood when the walk began: finishMoveAt files "moves to" there (THE LOG ORDER) */
+        let _walkLogMark = null;
         /* 🔥 THE WALK'S BURNS (mondo 2026-10-19: "if i walk on them at any point in my path, i should get burned"): lava
            and ground fire bite a walker on every tile of the path, the landing included (THE CHAIN's B reads this) —
            once each per walk, so a run through a wall of fire burns once, not once a tile. */
@@ -74939,6 +75082,12 @@
                 });
                 if (!_buffResult) return 0;
                 panelFocusTarget = _buffResult.target;
+                /* the cast's own line (playtest 2026-11-03: Rapture's Protect / Levitating showed up with no "casts Rapture") */
+                if (_buffResult.target) {
+                    addLog(_buffResult.target === unit
+                        ? `${_ctName(unit)} casts ${_ctSp(spell.name)}.`
+                        : `${_ctName(unit)} casts ${_ctSp(spell.name)} on ${_ctName(_buffResult.target)}.`, unit.player);
+                }
                 /* THE LONG WAY ROUND (door agent): four doors circle the agent
                    and every friendly open door on the board flares */
                 if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'castFromDoors')) {

@@ -2171,6 +2171,19 @@ const ThreeRenderer = (function () {
         });
     }
     function _asBasePath(url) { var i = String(url || '').lastIndexOf('/'); return i >= 0 ? String(url).slice(0, i + 1) : ''; }
+    /* THE MISSING ATLAS (playtest 2026-11-03: "GLTFLoader: Couldn't load texture ../textures/atlas.png" on every squad screen): the
+       crow and the rabbit name ../textures/atlas.png, a folder the bucket does not have; their sheet sits beside them
+       (crow_and_rabbit/atlas.png, the one _animalAtlas puts on them), so the loader is pointed there */
+    var _asGltfMgrObj = null;
+    function _asGltfMgr() {
+        if (_asGltfMgrObj || typeof THREE === 'undefined' || typeof THREE.LoadingManager !== 'function') return _asGltfMgrObj || undefined;
+        _asGltfMgrObj = new THREE.LoadingManager();
+        _asGltfMgrObj.setURLModifier(function (u) {
+            return /\/Assets\/animals\/textures\/atlas\.png(?:[?#]|$)/.test(String(u))
+                ? String(u).replace(/\/Assets\/animals\/textures\/atlas\.png/, '/Assets/animals/crow_and_rabbit/atlas.png') : u;
+        });
+        return _asGltfMgrObj;
+    }
     /* a GLB through the store → GLTFLoader.parse; else the loader's own network path */
     function _asGltf(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') { if (onError) onError(new Error('no GLTFLoader')); return; }
@@ -2187,9 +2200,9 @@ const ThreeRenderer = (function () {
                 _asGltf(url, onLoad, onError, Object.assign({}, o, { noOpt: true }));
             };
             var done = function (g) { if (opt) _asOptLoads++; onLoad(g); };
-            if (!_asAvailable()) { new THREE.GLTFLoader().load(_asNetUrl(u), done, undefined, fail); return; }
+            if (!_asAvailable()) { new THREE.GLTFLoader(_asGltfMgr()).load(_asNetUrl(u), done, undefined, fail); return; }
             _asFetch(u, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
-                try { new THREE.GLTFLoader().parse(buf, _asBasePath(url), done, fail); } catch (e) { fail(e); }
+                try { new THREE.GLTFLoader(_asGltfMgr()).parse(buf, _asBasePath(url), done, fail); } catch (e) { fail(e); }
             }).catch(fail);
         });
     }
@@ -19448,6 +19461,16 @@ const ThreeRenderer = (function () {
         }
         var bars = document.getElementsByClassName('ew-descbar-inner');
         for (var d = 0; d < bars.length; d++) if (shown(bars[d])) add(bars[d].getBoundingClientRect());
+        /* THE HUD'S OWN CHROME TOO (playtest 2026-11-03: the Nexus counter and the CUBE / unit plates sat on the P1 / P2
+           bars, the weather line, the turn icons and the combat log's words): the world text fades under the scoreboard,
+           the match title + weather, each turn icon, the combat log and the minimap like it does under an open menu */
+        var chrome = ['ew-scoreboard', 'ew-score-side', 'ew-matchmeta', 'ew-tc-icon', 'ew-clog'];
+        for (var ci = 0; ci < chrome.length; ci++) {
+            var els = document.getElementsByClassName(chrome[ci]);
+            for (var ei = 0; ei < els.length && ei < 24; ei++) if (shown(els[ei])) add(els[ei].getBoundingClientRect());
+        }
+        var mm = document.getElementById('ewMinimap') || document.getElementById('battleMinimap');
+        if (mm && shown(mm)) add(mm.getBoundingClientRect());
         return out;
     }
     function _wmOverMenu(l, r, t, b, now) {
@@ -48600,6 +48623,14 @@ const ThreeRenderer = (function () {
         }
         return null;
     }
+    /* the move highlight's class on a square for the selected unit's armed mode ('move', 'move-climb', …), or null */
+    function _hlClsAt(x, y) {
+        var cache = window._ewHlCache;
+        if (!cache || !cache.map || !cache.key || typeof state === 'undefined' || !state || !state.selectedUnitId) return null;
+        if (String(cache.key).indexOf(state.selectedUnitId + '|' + state.actionMode) !== 0) return null;
+        var c = cache.map.get(x + ',' + y);
+        return c ? String(c) : null;
+    }
     function _fieldFloorPick(clientX, clientY) {
         if (!_fieldGroundArmed || !_fieldPickGroup || !_fieldPickGroup.parent || !canvas || typeof THREE === 'undefined') return null;
         var G = _fieldGround(); if (!G || !G.twoFloors) return null;
@@ -48667,7 +48698,23 @@ const ThreeRenderer = (function () {
         /* a field board's pick (THE TWO FLOORS) has already walked its own floor quads along the ray */
         var fieldPick = hit._floorZ !== undefined && hit._floorZ !== null;
         var z0 = fieldPick ? hit._floorZ : _surfaceZFromHitY(hit.tileX, hit.tileY, hit.hitY, hit.faceNY);
-        if (z0 === undefined || _fieldFloorLit(hit.tileX, hit.tileY, z0) !== false) return hit;   // the front floor is lit (or no rule): WYSIWYG
+        if (z0 === undefined || _fieldFloorLit(hit.tileX, hit.tileY, z0) !== false) {
+            /* THE SEE-THROUGH CLIMB (playtest 2026-11-03, Cyberpunk City: the tall block by the P1 spawn is drawn see-through
+               over the move squares behind it, and clicking those squares climbed onto the block instead): in MOVE, a front
+               hit that is only a climb target (move-climb) hands the click to a plain lit move square behind it on the same
+               ray. The block's roof still climbs wherever no move square lies behind it, and CLIMB keeps its own pick. */
+            if (!fieldPick && z0 !== undefined && state.actionMode === 'move' && _hlClsAt(hit.tileX, hit.tileY) === 'move-climb') {
+                var allC = (ThreeCamera.screenToTileAll && canvas) ? ThreeCamera.screenToTileAll(clientX, clientY, canvas, terrainGroup, objectGroup, 6) : [];
+                for (var ci = 1; ci < allC.length; ci++) {
+                    var hc = allC[ci];
+                    if (hc.tileX === hit.tileX && hc.tileY === hit.tileY) continue;
+                    if (_hlClsAt(hc.tileX, hc.tileY) !== 'move') continue;
+                    var zc = _surfaceZFromHitY(hc.tileX, hc.tileY, hc.hitY, hc.faceNY);
+                    if (zc !== undefined && _fieldFloorLit(hc.tileX, hc.tileY, zc) === true) { hc._floorZ = zc; return hc; }
+                }
+            }
+            return hit;   // the front floor is lit (or no rule): WYSIWYG
+        }
         if (!fieldPick) {
             var all = (ThreeCamera.screenToTileAll && canvas) ? ThreeCamera.screenToTileAll(clientX, clientY, canvas, terrainGroup, objectGroup, 6) : [];
             for (var i = 1; i < all.length; i++) {
@@ -84823,7 +84870,10 @@ const ThreeRenderer = (function () {
         if (key === T.key && T.members.length) return;
         T.key = key;
         _trClearTeam(T);
-        var spots = TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4], tok = T.tok;
+        /* THE LINE-UP READS LIKE THE PLATE (playtest 2026-11-03): the spots were a V (lead pair in the middle, the rest on
+           the wings), so the room stood the team in another order than the faces on the plate under it (Bee Queen, Mech,
+           Giant over Mech, Giant, Bee Queen). The spots keep their places; the team fills them left to right */
+        var spots = (TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4]).slice().sort(function (a, b) { return a[0] - b[0]; }), tok = T.tok;
         /* big vessels stand further apart */
         var hMax = 0;
         slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'door agent', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });

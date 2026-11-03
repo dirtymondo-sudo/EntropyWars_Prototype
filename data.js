@@ -5827,7 +5827,7 @@ const SPELL_LIBRARY = [
         aoeOriginSelf: true,
         statusEffects: [{
             id: 'jammed',
-            duration: 1
+            duration: 3
         }],
         desc: 'Deals HEAVY magic damage to All Enemies around the caster (AOE). Applies Jammed.'
     },
@@ -6371,8 +6371,8 @@ const SPELL_LIBRARY = [
           desc: 'Edge of the shield, under the chin. Deals MEDIUM physical damage to an adjacent enemy and Staggers them: they lose 1 AP.' },
         { id: 'raceStaticShock', name: 'Static Shock', tier: 1, families: ['lightning'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 100,
-          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds (a 1-round status ran out before a faster target acted)
-          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 2 rounds).' },
+          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 3 }],   // mondo 11-03: Jammed lasts 3 rounds like other statuses
+          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 3 rounds).' },
         { id: 'raceChainLightning', name: 'Chain Lightning', tier: 3, families: ['lightning'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 130,
           damageType: 'magic', chainProfile: [130, 85, 50], chainRadius: 2,
@@ -6614,8 +6614,8 @@ const SPELL_LIBRARY = [
            finisher for its own status. Their looks: three-vfx-effects.js "THE LIGHTNING PASS". */
         { id: 'raceBallLightning', name: 'Ball Lightning', tier: 2, families: ['lightning'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'lightning', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 4, lineWidth: 1,
-          statusEffects: [{ id: 'jammed', duration: 1 }],
-          desc: 'A crackling ball of plasma rolls down the lane. MEDIUM magic damage to All Enemies in a line, and the static Jams them for 1 round.' },
+          statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'A crackling ball of plasma rolls down the lane. MEDIUM magic damage to All Enemies in a line, and the static Jams them for 3 rounds.' },
         { id: 'raceBoltFromTheBlue', name: 'Bolt from the Blue', tier: 4, families: ['lightning'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic',
           dmg: 170, range: 4, bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -7012,7 +7012,7 @@ const _mkBlink = (arch, over) => Object.assign({}, _BLINK_ARCHETYPES[arch], over
    One stat block per status; per-race identity via _mkBolt overrides. */
 const _JAM_BOLT = {
     type: 'debuff', cost: 30, range: 3, apCost: 1,
-    kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
+    kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 3 }],
     desc: 'Weakens a Single Enemy. Applies Jammed.'
 };
 const _DISCORD_BOLT = {
@@ -7725,9 +7725,9 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Jammed. Breaks it for 1 round (its passives are off; a passive flyer falls).' },
         { id: 'raceMemoryLeak', tier: 2, families: ['computerhacking'], spellType: 'tech', name: 'Memory Leak',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
+          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 3 }],
           mpDrain: 30,   // THE SPELL AUDIT Batch D: the leak
-          desc: 'The leak never closes. A Single Enemy is Jammed for 2 rounds and loses 30 MP.' },
+          desc: 'The leak never closes. A Single Enemy is Jammed for 3 rounds and loses 30 MP.' },
         { id: 'raceBlueScreen', upgradesBlock: ['upBlast'], tier: 3, cooldownRounds: 2, dmg: 110, damageType: 'magic', families: ['computerhacking'], spellType: 'tech', name: 'Blue Screen',   // STATS24 PASS 2026-10-29: dmg 80→110 (0.60× the Tier III median)
           type: 'debuff', cost: 35, range: 4, apCost: 1,
           kind: 'debuff',
@@ -7761,8 +7761,8 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them toward the center. The model converged. You were in the gradient.' },
         /* THE SIGNATURE FAMILY (2026-10-23): Deep Learning, this race's own. */
         { id: 'sigScrape', name: 'Scrape', tier: 2, families: ['deeplearning'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'tech',
-          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, stealSpell: true, statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Every move you ever made is training data now. Steals one spell from a Single Enemy within 4 tiles (they lose it, the AI learns it for the match) and Jams them for 2 rounds. Cooldown: 3 rounds.' },
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, stealSpell: true, statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'Every move you ever made is training data now. Steals one spell from a Single Enemy within 4 tiles (they lose it, the AI learns it for the match) and Jams them for 3 rounds. Cooldown: 3 rounds.' },
         { id: 'sigOverfit', name: 'Overfit', tier: 3, families: ['deeplearning'], cost: 75, apCost: 1, spellType: 'tech',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4, echoLastDealt: true,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -8230,8 +8230,8 @@ const RACE_ABILITIES = {
         /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
         { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 88, range: 5, ignoresLineOfSight: true,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 70→88 (Telepath 28%)
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'White noise behind the eyes. Deals WEAK magic damage to a Single Enemy within 5, through walls, and Jams it for 2 rounds.' },
+          statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'White noise behind the eyes. Deals WEAK magic damage to a Single Enemy within 5, through walls, and Jams it for 3 rounds.' },
         { id: 'pzAneurysm', name: 'Aneurysm', tier: 4, families: ['telepathy'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 6, ignoresLineOfSight: true,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -8334,8 +8334,8 @@ const RACE_ABILITIES = {
           desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
         { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
-          statusEffects: [{ id: 'silence', duration: 2 }],
-          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 1 round. Cooldown: 2 rounds.' },
         { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
           vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 150, damageType: 'magic',   // STATS25 PASS 2026-10-29: dmg 130→150 (Priest 38/17%: 59% of its pool scores nothing in Arena)
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
@@ -8754,8 +8754,8 @@ const RACE_ABILITIES = {
           desc: 'Four walls nobody else can see. Roots a Single Enemy within 3 for a round. Cooldown: 2 rounds.' },
         { id: 'nrShhh', name: 'Shhh!', tier: 2, families: ['mime'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'human', vfxElement: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
-          statusEffects: [{ id: 'silence', duration: 2 }],
-          desc: 'A finger to the lips. Silences a Single Enemy within 4 for 2 rounds. Cooldown: 2 rounds.' },
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'A finger to the lips. Silences a Single Enemy within 4 for 1 round. Cooldown: 2 rounds.' },
         { id: 'nrSilentTreatment', name: 'Silent Treatment', tier: 3, families: ['mime'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 170, damageType: 'physical',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 135→170 (Mime 31%)
           bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
@@ -9120,11 +9120,11 @@ const RACE_ABILITIES = {
           kind: 'debuff', stealSpell: true,
           desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
         /* (Mana Shield deleted 2026-08-12 — Hocus Pocus took its tree slot.) */
-        { id: 'racePolymorph', tier: 3, statusEffects: [{ id: 'silence', duration: 2 }], spellType: 'unholy', vfxElement: 'arcane', name: 'Polymorph',
+        { id: 'racePolymorph', tier: 3, statusEffects: [{ id: 'silence', duration: 1 }], spellType: 'unholy', vfxElement: 'arcane', name: 'Polymorph',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
           kind: 'debuff', cooldownRounds: 3,
           statStageBoost: { atk: -1 },
-          desc: 'Something small and harmless. Ribbit. The target is Silenced for 2 rounds and its ATK drops by 1 stage.' },
+          desc: 'Something small and harmless. Ribbit. The target is Silenced for 1 round and its ATK drops by 1 stage.' },
         /* Wizard capstone since the 2026-08-12 capstone pass (was Polymorph). */
         { id: 'raceHocusPocus', spellType: 'unholy', vfxElement: 'arcane', name: 'Hocus Pocus',
           type: 'damage', tier: 4, bonusVsStatus: { status: 'hexed', mult: 1.5 }, families: ['witchcraft'], cost: 100, dmg: 180, range: 4,
@@ -9452,7 +9452,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 75, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           projectileOverride: 'proj-handgrenade',   // THE NEW PROPS (2026-10-28): mondo's hand grenade is thrown (was the tech bolt sprite)
-          statusEffects: [{ id: 'jammed', duration: 2 }],
+          statusEffects: [{ id: 'jammed', duration: 3 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
         { id: 'raceHydraulicPunch', tier: 1, families: ['machinery'], spellType: 'tech', name: 'Hydraulic Punch',
           type: 'damage', cost: 25, dmg: 90, range: 1,   // BALANCE PASS 2026-10-06: DMG 100→90 (lab: 404 a cast, 1.8 targets with the push crash)
@@ -9887,15 +9887,15 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 35, range: 3, apCost: 1,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 150,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        { id: 'raceTaserBolt', tier: 1, statusEffects: [{ id: 'jammed', duration: 1 }], families: ['cyberpunkweapons'], element: 'lightning', spellType: 'tech', name: 'Taser Bolt',
+        { id: 'raceTaserBolt', tier: 1, statusEffects: [{ id: 'jammed', duration: 3 }], families: ['cyberpunkweapons'], element: 'lightning', spellType: 'tech', name: 'Taser Bolt',
           type: 'damage', cost: 20, dmg: 70, range: 3,
           kind: 'damage', damageType: 'magic',
           desc: 'Two prongs into the housing. Systems stutter. Deals WEAK magic damage to a Single Enemy and Jams it for a round.' },
         /* THE SIGNATURE FAMILY (2026-10-23): Astromech, this race's own. */
         { id: 'sigShockProd', name: 'Shock Prod', tier: 1, families: ['astromech'], cost: 25, apCost: 1, spellType: 'tech',
           element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 1,
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Out of the side panel, into the leg. Deals WEAK magic damage to an adjacent enemy and Jams it for 2 rounds.' },
+          statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'Out of the side panel, into the leg. Deals WEAK magic damage to an adjacent enemy and Jams it for 3 rounds.' },
         { id: 'sigHologram', name: 'Hologram', tier: 2, families: ['astromech'], cost: 50, apCost: 1, spellType: 'tech',
           vfxElement: 'light', type: 'utility', kind: 'deployObject', range: 1, objectHp: 100, maxActivePerCaster: 1,
           drawsRangedAttack: true, drawsMeleeAttack: true,
@@ -9947,7 +9947,7 @@ const RACE_ABILITIES = {
         { id: 'raceFluorideWater', tier: 3, families: ['conspiracyknowledge'], spellType: 'human', element: 'water', name: 'Fluoride Water',
           type: 'damage', cost: 50, dmg: 120, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          statusEffects: [{ id: 'silence', duration: 2 }],
+          statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence.' },
         /* Conspiracy theorist capstone since the 2026-08-12 kit rework. */
         /* §6.28 (Phase 5 wave A, 2026-09-08): Truth Bomb → Flat Earth (id
@@ -10916,7 +10916,7 @@ const RACE_ABILITIES = {
         { id: 'sentaiYellowThunder', tier: 2, families: ['sentai'], element: 'lightning', spellType: 'tech', name: 'Yellow Thunder',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          statusEffects: [{ id: 'jammed', duration: 1 }],
+          statusEffects: [{ id: 'jammed', duration: 3 }],
           _sentaiColor: 'yellow',
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
         { id: 'sentaiPinkHeal', tier: 1, families: ['sentai'], spellType: 'divine', name: 'Pink Healing',
@@ -11968,7 +11968,7 @@ const COMBO_REGISTRY = {
         damageType: 'magic',
         spellType: 'tech',
         range: 3,
-        statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 2 }]
+        statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 3 }]
     },
     'human|human': {
         name: 'Combined Arms',
@@ -12766,7 +12766,19 @@ const STATUS_DEFS = {
             if (typeof levitateUnit === 'function') levitateUnit(unit, info);
         },
         onRemove(unit) {
-            if (typeof forceGroundUnit === 'function') { const _by = unit._levitateBy; unit._levitateBy = null; forceGroundUnit(unit, { byLabel: _by ? `as ${_by} fades` : 'as the fairy dust fades' }); }
+            const _by = unit._levitateBy; unit._levitateBy = null;
+            /* A NATURAL FLYER KEEPS ITS WINGS (playtest 2026-11-03: the CPU's Seraphim was "forced out of the sky as Rapture
+               fades", took 121 fall damage and walked the rest of the match): the lift ending only sets down a unit that
+               could not fly without it */
+            if (unit.status) {
+                const _lv = unit.status.levitating;
+                unit.status.levitating = 0;
+                let _wings = false;
+                try { _wings = typeof canFly === 'function' && canFly(unit); } catch (e) {}
+                unit.status.levitating = _lv;
+                if (_wings) return;
+            }
+            if (typeof forceGroundUnit === 'function') forceGroundUnit(unit, { byLabel: _by ? `as ${_by} fades` : 'as the fairy dust fades' });
         }
     },
     /* 🙏 Blessed: +1 DEF stage, +1 M.DEF stage and 40 HP of regen a round,
@@ -23619,7 +23631,7 @@ const SPELL_UPGRADES = {
                     desc: 'The hit also applies Grievous (healing on them is halved) for 2 rounds.', patch: { addStatus: { id: 'grievous', duration: 2 } } },
     upOvercharged:{ id: 'upOvercharged',name: 'Overcharged',  glyph: '🔌', sp: 1, roles: [], families: ['robot', 'cyberpunkweapons', 'artificialintelligence'],
                     requires: 'statusHit', excl: null, auto: true,
-                    desc: 'The hit also Jams them for 1 round.', patch: { addStatus: { id: 'jammed', duration: 1 } } },
+                    desc: 'The hit also Jams them for 3 rounds.', patch: { addStatus: { id: 'jammed', duration: 3 } } },
     upVenomCoat:  { id: 'upVenomCoat',  name: 'Venom Coat',   glyph: '🐍', sp: 1, roles: [], families: ['beastabilities', 'insectoid', 'arachnid', 'ghoulish', 'feline', 'archery'],
                     requires: 'statusHit', excl: null, auto: true,
                     desc: 'The hit also Poisons them for 2 rounds.', patch: { addStatus: { id: 'poison', duration: 2 } } },
