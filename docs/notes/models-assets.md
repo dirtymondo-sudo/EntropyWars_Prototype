@@ -1514,6 +1514,32 @@ mondo: "now how do we put these models both in the character creator and in the 
   meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
   old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
 
+## THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game")
+The 71 decor + spell-prop models Claude made on Meshy (concepts approved by mondo; IDs D02-D92 / S01-S04 in project files
+`meshy/decor/decor_prompts.json`, list MODEL_LIST_EXTRA.md §10A/§10B) are in. Files: R2 `Assets/decor/<name>.glb` (the
+D-prefix dropped), each one `optimize-assets.js`-style meshopt + WebP 1024 (24 MB for all 71; originals 2048 JPEG in
+project files `meshy/decor/models/`). ASSET_MANIFEST.json lists them. sync-zip.js does not see them (no index.html URL):
+the thread's zip adds `Assets/decor/` by hand.
+- **How a proc wears one:** three-renderer.js `_HQ_DECOR_GLB` (name → file) + `_hqDecorWear(name, U, g, opts)`, called at
+  the end of the proc builder. The catalogue rows in data.js are UNCHANGED (still `proc`), so every placement in every room
+  gets the model. The proc's own meshes hide (`_hqDecorHide` sets `_ew_mcKeep`, so `_mcSnap` still builds the collider
+  from them) and the model is fitted into their box: `fit` contain (default) | height | width | stretch, `wall` (back
+  flush on the wall plane), `top` (hangs from the box top), `turn`, `repeat`, `into` (an animated sub-group), `onDone`
+  (re-seat kept pieces from the model's measured size). Glows, screens, text, flames, water, smoke stay proc.
+- **Kept proc pieces (on purpose):** slot machine plinth (the Meshy cabinet stands on it), round table chairs, school desk
+  seat, eeg live screen, lifeguard brolly, popcorn kernels, sea vent smoke, departures/scoreboard screens, punch-clock
+  card rack, autopsy tags, wall torch + cave torch flames, meat hook carcass, music box dancer pin (Meshy dancer on it),
+  directory kiosk text (moved onto the blank panel), carousel brass poles (Meshy horses on them), ferris wheel spin
+  (Meshy wheel + gondolas in the spinning groups), fountain water (re-seated on the Meshy basin), trophy case glass.
+- **Sub-part models:** armour_stand_post, carousel_horse, ferris_gondola, ferris_wheel_wheel, music_box_dancer,
+  trophy_cup (3 on the shelf), umbrella_closed (in the stand), wall_torch_bracket.
+- **Animated:** dream eye turns to the player + bobs, anemone breathes, nightmare bloom turns, robot arm door hangs from
+  the Meshy gripper, rocking chair rocks the model, skiff hides the old rowboat pack model.
+- **Spell props (three-vfx-effects.js `_WPN_MODELS.piano/sheep/tripodMachine`):** Things That Go Bump throws the piano
+  first; Counting Sheep jumps three Meshy sheep; Tripod Sweep stands the Meshy tripod behind the beam (the ray starts at
+  its head). Ack Ack Ack still uses its old saucer + code legs.
+- **Kill switch:** `window.EW_NO_DECOR_GLB = true` before a room builds = the old procs.
+
 ## THE MESHY SWAP (2026-11-03, mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
 - 26 Meshy props now draw an Elbolilloduro PSX pack piece (all 14 packs CC0; list + the Meshy file each replaced: MODEL_LIST.md 10F).
   Side-by-side sheets: project files `asset-packs/meshy-swap/`. The original pack archives: project files `asset-packs/elbolilloduro/`.
