@@ -23034,6 +23034,7 @@
             if (!isInside(x, y) || !isTerrainPassable(x, y) || objectBlocksLanding(x, y)) return false;
             if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;   // THE SOLID WALL: never landed on (2026-11-03)
             if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
             if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
             return true;
@@ -30724,7 +30725,10 @@
         function _cineGuardSubjects(G) {
             if (!_cineGuardLive(G)) return null;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return null;
-            const ids = G.phase === 'cast' ? [G.casterId] : [...G.hit].slice(0, 4);
+            /* THE DODGE READS (2026-11-03): a mover the shot follows to its landing (keepCaster) stays a subject after the cut,
+               so the clear angle swings the lens off a wall beside the landing instead of craning over the roof */
+            const ids = G.phase === 'cast' ? [G.casterId]
+                : ((G.phase === 'hit' && G.keepCaster) ? [G.casterId, ...G.hit] : [...G.hit]).slice(0, 4);
             const out = [];
             for (const id of ids) {
                 if (id == null) continue;
@@ -33215,6 +33219,20 @@
             /* Teleports — NO travel shot: the vanish, then a HARD cut to the
                arrival (easing a teleport makes it a walk). */
             blink(c) {
+                /* THE DODGE READS (2026-11-03, mondo on Nimble Dodge: "It's absolutely impossible to tell what is going on
+                   with this spell"): an ESCAPE whose body runs, flies, swings or rides out to its landing (no look, or a
+                   fly / swing / eject look) is not a teleport — it never vanishes mid-shot and gets no hard cut ahead of the
+                   body: the support rig's own beat 2 glides with the run to the mover's front ¾ on the landing (THE LANDING).
+                   The escapes that really leave the board (blink, dive) keep the vanish and the cut. */
+                if (c.spell && c.spell.kind === 'escape') {
+                    let _st = null;
+                    try { const L = window.ThreeVFXEffects && window.ThreeVFXEffects.escapeLook ? window.ThreeVFXEffects.escapeLook(c.spell.id) : null; _st = L ? L.style : null; } catch (e) {}
+                    if (_st !== 'blink' && _st !== 'dive') {
+                        /* the family owns the shot (_cineApplyFamily), so it plays the rig's beat 2 itself, on the cut */
+                        c.at(c.cut, () => { if (!c.stockHit()) { const cs = c.live(c.caster); if (cs && c.vis(cs)) cineGlamCam(cs, { tilt: 78 }); } }, 'run');
+                        return;
+                    }
+                }
                 const v0 = (c.rig === 'offensive') ? c.timings.sourceHold : c.cut;
                 c.at(v0, () => cineUnitFade(c.caster, 1, 0.05, 140, () => cineUnitFade(c.caster, 0.05, 1, 160)), 'vanish');
                 c.at(v0 + actionMs(150), () => {
@@ -37530,6 +37548,7 @@
             if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
             if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;   // THE SOLID WALL: never landed on (2026-11-03)
             if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
             if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
             return true;
@@ -73829,8 +73848,21 @@
             const _supHeal = _isHealFlavoredCast(opts);
             const { sourceHold, travelMs, targetHold, totalMs } = _supportShotTimes(unit, target, opts);
 
+            /* THE DODGE READS (2026-11-03): the caster IS the thing that travels (an escape, a self blink, a reel: the
+               landing's mover is the caster) — beat 1 stands BEHIND it looking the way it goes, wide enough for the
+               landing to be in the frame (it turns to the landing and runs into the shot), never in front of it on the
+               landing's side, where the lens met the wall beside the landing and craned over the caster's head */
+            const _selfLand = !!(target._landUnit && target._landUnit.id === unit.id);
+            const _vGap0 = Math.abs(tgtPx - casterPx) / ts;
             // BEAT 1 — the giver: face the caster while they wind up the gift.
-            _cineBeatMove({
+            _cineBeatMove(_selfLand ? {
+                x: unit.x + (dx / len) * Math.min(1.2, len * 0.35), y: unit.y + (dy / len) * Math.min(1.2, len * 0.35),
+                zoom: Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES), _tpsZoomFitTiles(2.6 + _vGap0, len + 2.2)),
+                tilt: CINE_FACE_TILT, yaw: yawFwd + CINE_CAM_YAW_OFFSET * 2,
+                elevZ: casterPx + ts * CINE_FOCAL_RISE,
+                duration: actionMs(380), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            } : {
                 x: unit.x + (dx / len) * 0.1, y: unit.y + (dy / len) * 0.1,
                 zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
                 tilt: CINE_FACE_TILT, yaw: yawFwd + 180 - CINE_CAM_YAW_OFFSET,
@@ -73903,8 +73935,31 @@
                is the mover's own front ¾ there, sized to its body. */
             if (target._landUnit && target._landUnit.id != null) {
                 const _lu = target._landUnit, _stock2 = _supBeat2;
+                /* THE DODGE READS (2026-11-03): a caller that says how long the body's run takes (opts.travelMs, the escape)
+                   gets the glide in that time, so the lens and the body reach the landing together */
+                const _luGlide = (opts.travelMs != null && opts.travelMs > 0) ? opts.travelMs : 460;
                 _supBeat2 = () => {
-                    if (_lu.dead || !cineGlamCam(_lu, { at: { x: target.x, y: target.y }, cut: false, duration: 460 })) _stock2();
+                    if (_lu.dead) { _stock2(); return; }
+                    const _at = { x: target.x, y: target.y };
+                    if (!_selfLand) { if (!cineGlamCam(_lu, { at: _at, cut: false, duration: _luGlide })) _stock2(); return; }
+                    /* THE DODGE READS: the caster's own run — the lens rides along behind it to the landing in the run's
+                       time (same angle, no swing while it moves), then CUTS to its front ¾ once it stands there (a swing
+                       round to the front orbited through the wall beside the landing: one frame inside the building) */
+                    if (!_cineTpsAnchor(_at, _lu)) { _stock2(); return; }
+                    camera._cineShotTarget = { x: target.x, y: target.y, id: _lu.id };
+                    _cineBeatMove({
+                        x: target.x, y: target.y,
+                        zoom: _tpsZoomForBoomTiles(CINE_CLOSEUP_DIST_TILES * 1.5),
+                        tilt: CINE_FACE_TILT, yaw: yawFwd + CINE_CAM_YAW_OFFSET * 2,
+                        elevZ: tgtPx + ts * CINE_FOCAL_RISE,
+                        duration: actionMs(_luGlide), easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                    const _sid = camera._cineShotId;
+                    window.setTimeout(() => {
+                        if (camera._cineShotId !== _sid || state.phase !== 'battle' || state.cameraDisabled || _lu.dead) return;
+                        cineGlamCam(_lu, { at: _at });
+                    }, actionMs(_luGlide) + actionMs(60));
                 };
             }
             /* THE SPELL DIRECTOR: beat 2 (the heal's hard cut / the blessing's
@@ -73924,6 +73979,8 @@
                anyone else the gift lands on) from the cut to the end. */
             _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit,
                 victimIds: (target.id != null) ? [target.id] : [],
+                /* THE DODGE READS: an escape / a reel films the caster itself where it lands — keep it guarded after the cut */
+                keepCaster: !!(target._landUnit && target._landUnit.id === unit.id),
                 castUntilMs: _supCutMs, hitFromMs: _supCutMs, totalMs });
 
             if (opts.spellName) {
@@ -77362,11 +77419,29 @@
                    landing (nowhere free) keeps the self shot. */
                 const _escShotLand = _stealthDecoy ? null
                     : (_escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell));
+                /* THE DODGE READS (2026-11-03, mondo on the Catgirl video: "she just kinda slides backwards? Shouldnt she turn
+                   first and face the direction she is dodging? ... the camera zooms in on the empty tile she was on ... all we
+                   see is her back ... then the camera randomly zooms in to her original tile AGAIN"). The shot below is the
+                   two-beat caster → landing shot, but the body used to leave on the cast frame: beat 1 framed a tile she had
+                   already left, the frame guard dragged the lens after her (the 180° swing, her back), and when the guard let
+                   go the lens fell back to the empty start tile before the arrival cut. Now: she turns to face the way she
+                   goes (the facing every move takes, map rule), beat 1 holds on her there, she leaves ON the cut (the body's
+                   slide waits for it: delayMs, a look only — the tile, the status and the turn are the engine's at once) and
+                   the lens glides with her to her front ¾ where she lands, in the time the run takes (travelMs). */
+                const _escLandOk = !!(_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y));
+                const _escLook0 = (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                    ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
+                const _escRunMs = _escLandOk
+                    ? Math.max(_escLook0 ? _escLook0.ms : 220, (Math.abs(_escShotLand.x - unit.x) + Math.abs(_escShotLand.y - unit.y)) * 150, 200)
+                    : 0;
+                if (_escLandOk) setUnitFacing(unit, _escShotLand.x - unit.x, _escShotLand.y - unit.y);
                 const _escShot = _stealthDecoy ? null
-                    : (_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y))
-                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y, { landUnit: unit })
+                    : _escLandOk
+                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y, { landUnit: unit, travelMs: _escRunMs })
                         : _spellFocusCamera(unit, x, y);
                 const _escShotLive = !!(_escShot && _escShot.mode !== 'pan' && _escShot.totalMs > 0);
+                /* the body waits on its tile through beat 1 (turned to the landing), then runs on the cut */
+                const _escLeaveMs = (_escShotLive && _escShot.mode === 'support') ? Math.max(0, _escShot.sourceHold || 0) : 0;
                 unit.mp -= effectiveSpellCost;
 
                 if (spell.cleanse) {
@@ -77406,16 +77481,26 @@
                            time; an escape that ends Invisible stays hidden from the opponent on the way */
                         const _escTw = _escLook ? _escLook.ms : 220;
                         const _escInvis = !!(spell.statusEffects || []).some(e => e && e.id === 'invisible');
-                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, _escTw,
-                            _escLook ? { escStyle: _escLook.style, escHide: _escInvis } : undefined);
+                        /* THE DODGE READS: the slide leaves on the shot's cut (_escLeaveMs); an escape that ends Invisible
+                           says so (escHide) with or without a look of its own — its own side sees the run solid and the
+                           ghosting after it lands, the opponent sees it go */
+                        const _escAnim = { escStyle: _escLook ? _escLook.style : null, escHide: _escInvis };
+                        if (_escLeaveMs > 0) _escAnim.delayMs = _escLeaveMs;
+                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, _escTw, _escAnim);
 
                         if (typeof window !== 'undefined' && window.ThreeVFXEffects
                             && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
                             if (state.phase === 'battle' && !_skipVisuals()) {
-                                window.ThreeVFXEffects.fire('teleport', spell.id, {
-                                    fromX: _escFromX, fromY: _escFromY,
-                                    toX: candidates[0].x, toY: candidates[0].y,
-                                });
+                                const _escTo = { x: candidates[0].x, y: candidates[0].y };
+                                const _escFx = () => {
+                                    if (state.phase !== 'battle') return;
+                                    window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                        fromX: _escFromX, fromY: _escFromY,
+                                        toX: _escTo.x, toY: _escTo.y,
+                                    });
+                                };
+                                /* the swirl / the escape's own look goes off as the body leaves, not over a body still standing there */
+                                if (_escLeaveMs > 0) window.setTimeout(_escFx, _escLeaveMs); else _escFx();
                             }
                         }
 
@@ -77473,7 +77558,8 @@
                     }
                 }
                 scheduleBoardRender();
-                completionDelay = Math.max(actionMs(500), _escLook ? _escLook.ms + 120 : 0);   // the body lands before the turn moves on
+                completionDelay = Math.max(actionMs(500), _escLook ? _escLook.ms + 120 : 0,
+                    _escLeaveMs > 0 ? _escLeaveMs + _escRunMs + 120 : 0);   // the body lands before the turn moves on
             }
 
             else if (spell.kind === 'selfHeal') {

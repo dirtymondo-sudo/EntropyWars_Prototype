@@ -3082,6 +3082,10 @@
                         tx: target.x, ty: target.y,
                         /* FX-CAM THE LANDING: the mover a blink / escape / reel lands on that tile */
                         landId: (target._landUnit && target._landUnit.id != null) ? target._landUnit.id : null,
+                        /* THE DODGE READS (2026-11-03): the run's length (the glide to the landing matches it) and the caster's
+                           level on its start tile (the guest's synced copy may already stand on the landing) */
+                        travelMs: (opts && opts.travelMs > 0) ? opts.travelMs : undefined,
+                        cz: (unit.z != null) ? unit.z : undefined,
                         spellName: (opts && opts.spellName) || null,
                         spellId: (opts && opts.spellId) || null
                     });
@@ -5219,6 +5223,12 @@
                         try {
                             var _scU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
                             if (!_scU) _scU = { x: data.cx, y: data.cy, player: data.casterPlayer || 1, id: data.casterId };
+                            /* THE DODGE READS (2026-11-03): beat 1 is on the tile the host cast from — an escape's state-sync can
+                               land the guest's copy on the landing first (a stand-in reads the start tile, the rest is the unit) */
+                            else if (data.landId != null && data.landId === _scU.id && Number.isFinite(data.cx) && (_scU.x !== data.cx || _scU.y !== data.cy)) {
+                                var _scReal = _scU; _scU = Object.create(_scReal);
+                                _scU.x = data.cx; _scU.y = data.cy; if (data.cz != null) _scU.z = data.cz;
+                            }
                             var _scT = (data.tgtId != null && typeof window.unitFromId === 'function')
                                 ? window.unitFromId(data.tgtId) : null;
                             if (!_scT) _scT = { x: data.tx, y: data.ty };
@@ -5227,6 +5237,7 @@
                                 if (_scL) _scT._landUnit = _scL;
                             }
                             var _scOpts = {};
+                            if (data.travelMs > 0) _scOpts.travelMs = data.travelMs;
                             if (data.spellName) _scOpts.spellName = data.spellName;
                             if (data.spellId) _scOpts.spellId = data.spellId;
                             if (typeof window._playSupportCineShot === 'function') {

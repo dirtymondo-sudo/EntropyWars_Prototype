@@ -24593,7 +24593,10 @@ const ThreeRenderer = (function () {
             if (unit.player === vp) {
                 /* The viewer's own cloaked units stay on screen but turn ghostly so
                    the player can tell the Invisible buff is actually active. */
-                _setEntrySpriteOpacity(entry, _ownUnitInvisible(unit) ? INVIS_OWN_OPACITY : 1);
+                /* THE DODGE READS (2026-11-03): an escape that ends Invisible (Nimble Dodge) runs solid and ghosts as it
+                   lands — the tween that carries it (escHide) is still live until then */
+                var _ownEsc = _displaceTweens.get(unit.id);
+                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : 1);
                 return;
             }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
@@ -28383,6 +28386,9 @@ const ThreeRenderer = (function () {
                 /* an escape that leaves the board for a beat (the dive, the burrow, the blink, the bones) hides the body
                    then; one that ends invisible stays hidden from a viewer it is hiding from until the tween hands over */
                 if (esc && (esc.hide || (tw.escHide && esc.gone && _escHidesFrom(uid)))) _dpVisible = false;
+                /* THE DODGE READS (2026-11-03): a plain run that ends Invisible (no look of its own: Nimble Dodge) is gone
+                   for the viewer it hides from the moment it leaves its tile */
+                else if (!esc && tw.escHide && t > 0 && _escHidesFrom(uid)) _dpVisible = false;
                 ue.group.visible = _dpVisible;
                 // (destination surface Y — the polyline branch above doesn't
                 // compute toSY, so derive it here for the submersion clip)
