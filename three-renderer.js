@@ -51899,8 +51899,13 @@ const ThreeRenderer = (function () {
            scale with the body's own height against those 1.70 m: the same slider = the same change in proportion everywhere. */
         var SHAPE_REF_H = 1.70;
         function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
+        /* THE SHAPED EARS (2026-11-03): the cat-ear targets (sprites.js EW_SHAPE_EARS). Their offsets are also kept apart (part.earD) so
+           the hair's skull box + skull map are measured WITHOUT them: with them in, the ear tips widened the skull and the hair grew
+           out over the ears and hid them */
+        var EAR_KEYS = (typeof EW_SHAPE_EARS !== 'undefined' ? EW_SHAPE_EARS : []).map(function (r) { return r[0]; });
         function shapeBody(part, P, a) {
             var N = part.count, i, k;
+            part.earD = null;
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
                 var hs = part.height > 0.5 ? part.height / SHAPE_REF_H : 1;
@@ -51911,6 +51916,10 @@ const ThreeRenderer = (function () {
                     var arr = T[tk] && T[tk][v > 0 ? 0 : 1]; if (!arr) return;
                     var gk = SHAPE_GAIN[key], g = Math.abs(v) * (Array.isArray(gk) ? gk[v > 0 ? 0 : 1] : (gk || 1)) * hs;   // [the + end, the - end] where one side tears first
                     for (i = 0; i < arr.length; i += 4) { var o = arr[i] * 3; P[o] += arr[i + 1] * g; P[o + 1] += arr[i + 2] * g; P[o + 2] += arr[i + 3] * g; }
+                    if (EAR_KEYS.indexOf(key) >= 0) {   // (THE SHAPED EARS: kept apart for the hair's skull)
+                        var E = part.earD || (part.earD = new Float32Array(N * 3));
+                        for (i = 0; i < arr.length; i += 4) { var oe = arr[i] * 3; E[oe] += arr[i + 1] * g; E[oe + 1] += arr[i + 2] * g; E[oe + 2] += arr[i + 3] * g; }
+                    }
                 });
                 return;
             }
@@ -52038,8 +52047,10 @@ const ThreeRenderer = (function () {
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
             try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
             part.pokeHide = null; part.skinCov = null;   // THE SKIN UNDER THE CLOTHES: skinCover, once the normals are smoothed (before THE LAYERS below)
+            var PS = P;   // THE SHAPED EARS: the skull as if the ears were not grown (the hair keeps its own size and stays off them)
+            if (part.earD) { PS = new Float32Array(N * 3); for (i = 0; i < N * 3; i++) PS[i] = P[i] - part.earD[i]; }
             for (i = 0; i < N; i++) {
-                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
+                var x = PS[i * 3], y = PS[i * 3 + 1], z = PS[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
                 if (t >= 0.9 && y > skull.topY) skull.topY = y;
             }
@@ -52048,7 +52059,7 @@ const ThreeRenderer = (function () {
             skull.cx = skull.n ? (skull.xMin + skull.xMax) / 2 : 0;
             skull.halfW = skull.n ? (skull.xMax - skull.xMin) / 2 : 0;
             part.skull = skull;
-            part.skullMap = buildSkullMap(P, Q, N, skull, H);
+            part.skullMap = buildSkullMap(PS, Q, N, skull, H);
             // Relax anatomical creases for cloth while retaining limb shape — over the
             // WELDED vertices (CSR adjacency, ping-pong buffers), then fan out to the seam duplicates.
             var weld = part.weld, RC = part.repCount, off = part.adjOff, adj = part.adjIdx;

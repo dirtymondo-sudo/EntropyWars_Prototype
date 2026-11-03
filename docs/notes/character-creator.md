@@ -1461,5 +1461,9 @@ already in project files mhpacks/ carried two cat-ear TARGETS nobody had baked:
   face slider.
 - Face resets keep the shaped picks: DEFAULT FACE / NEUTRAL FACE / a face preset / a body swap / RANDOM use sprites.js
   EW_FACE_RESET_KEYS (every face key but the shaped heads + ears), so they no longer wipe the cat ears or the wolf head; RANDOM sets them 0.
-- Known: pack hair is its own mesh, so a long / big style can cover the ears or the ears can poke through it.
+- THE HAIR STAYS OFF THEM (on-screen check, same day): the first build hid them. The hair's skull box + skull map (fitHair) were
+  measured with the grown ears in, so the hair scaled wider and was pushed out over the ears. three-renderer.js shapeBody now keeps
+  the ear offsets apart (part.earD) and the skull is measured without them. Checked in the real creator (catgirl slot, MPFB female,
+  OUTFIT > HEAD > EARS: both picks, both sliders, Elf ears swapping them off): /mnt/project-files/cat-ears/cat_ears_in_creator.jpg.
+- Known: a long / big hair style can still cover the ears (its cards hang there).
   Proof (mesh render, front / 3/4 / side): /mnt/project-files/cat-ears/. More ears (bunny, canine, dropped) = one ANIMAL_SHAPES row each.
