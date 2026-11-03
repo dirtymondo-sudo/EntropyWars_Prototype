@@ -5600,7 +5600,7 @@ const _emojiPropIcon = (emoji) => 'data:image/svg+xml;utf8,' + encodeURIComponen
 );
 
 const OBJECT_SPRITES = {
-    church:       { url: `${_O}/church_2.png` },
+    church:       { url: `${_O}/church_1.png` },   // church_2.png retired 2026-11-03 (mondo: its shape doesn't work with the prism bands)
     shop:         { url: `${_O}/itemshop.png` },
     tree:         { url: `${_O}/tree.png` },
     ruins:        { url: `${_O}/ruins.png` },
@@ -5630,7 +5630,7 @@ const OBJECT_SPRITES = {
     building_8:   { url: `${_O}/building_8.png` },
     building_9:   { url: `${_O}/building_9.png` },
     building_10:  { url: `${_O}/building_10.png` },
-    building_11:  { url: `${_O}/building_11.png` },
+    building_11:  { url: `${_O}/building_1.png` },   // RETIRED 2026-11-03 (mondo: "dont use the church_2 or building 11 anywhere in the game"): a placed one draws as building_1
     ancient_building: { url: `${_O}/ancient_building.png` },
     abandoned_building_1: { url: `${_O}/abandoned_building_1.png` },
     abandoned_building_2: { url: `${_O}/abandoned_building_2.png` },
@@ -5649,7 +5649,7 @@ const OBJECT_SPRITES = {
     pathway_1:    { url: `${_O}/pathway_1.png` },
     pathway_2:    { url: `${_O}/pathway_2.png` },
     church_1:     { url: `${_O}/church_1.png` },
-    church_2:     { url: `${_O}/church_2.png` },
+    church_2:     { url: `${_O}/church_1.png` },   // RETIRED 2026-11-03 (as building_11): a placed one draws as church_1
     poison_seed:  { url: `${_S}/poison_seed.png` },
     tree_2:       { url: `${_O}/tree_2.png` },
     tree_3:       { url: `${_O}/tree_3.png` },
