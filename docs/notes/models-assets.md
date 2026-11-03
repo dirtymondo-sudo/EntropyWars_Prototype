@@ -1513,3 +1513,18 @@ mondo: "now how do we put these models both in the character creator and in the 
 - §10 sorts all 184 procedural catalogue stand-ins: 92 need a new model (concept prompts + doubled tri targets, also in project files
   meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
   old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
+
+## THE MESHY SWAP (2026-11-03, mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
+- 26 Meshy props now draw an Elbolilloduro PSX pack piece (all 14 packs CC0; list + the Meshy file each replaced: MODEL_LIST.md 10F).
+  Side-by-side sheets: project files `asset-packs/meshy-swap/`. The original pack archives: project files `asset-packs/elbolilloduro/`.
+- Files: R2 `Assets/misc/ebd_<pack>_<item>.glb` (20-600 KB each; the Meshy files were 3-9 MB). NOT in the repo: they go in the
+  sync zip by hand. `bake-pack-pieces.py` (repo-only, Blender) rebuilds them from the unzipped packs (`--packs <dir>` with one folder
+  per itch slug): keeps the named scene nodes, bakes transforms, recentres (base y = 0), turns `rotz` so the front faces where the
+  Meshy model's front faced, packs the textures (the FBXs point at the author's C:/ paths), unlinks the fake alpha (an opaque texture
+  wired to Alpha exports as BLEND), Glass/Vidrio 35 % see-through.
+- Wiring: the catalogue rows only changed `file` (+ `base: 'misc'` on the D.O.O.R. kit rows), so every row keeps its h / span / wall
+  / mount / glow. The renderer's `_MISC_GLB` keys that named the same Meshy files (dumpster, city_bin, bus_shelter, campfire,
+  camping_tent, fallen_log, stump, rowboat, lantern) name the pack files too.
+- Kept Meshy (no pack match): school_bus, cardboard boxes, wooden_bucket, car_cop (the car pack already draws it), fridges, signpost.
+- Licences: Elbolilloduro = CC0 (credits row "PSX prop packs"). Pizza Doggy (Retro Tree Pack, the Mega Packs) is NOT CC0: no AI
+  use of the assets, no redistribution as standalone files (credits + MODEL_LIST fixed).

@@ -35137,7 +35137,7 @@ const ThreeRenderer = (function () {
         dorm_bed:          'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  // the keep's guardroom
         couples_bed:       'Meshy_AI_a_couples_bed_0922010443_texture.glb',               // the bunker's loft
         royal_bed:         'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 // the solar
-        camping_tent:      'Meshy_AI_a_camping_tent_0922010306_texture.glb',              // the grove's camp
+        camping_tent:      'ebd_survival_camping_tent.glb',              // the grove's camp
         carnival_tent:     'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             // the grove's lawn
         fortune_teller_tent: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',     // the `fortune_tent` proc
         retro_control_panel: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',     // the `retro_console` proc
@@ -35148,7 +35148,7 @@ const ThreeRenderer = (function () {
            are in the repo and were MEASURED (the crashed car 1.0 × 0.36 × 0.45, nose −X like every Meshy piece; the two
            road tiles 1 × 1 squares, the straight one's dashes along Z with kerbs on the X sides, the turn a quarter
            circle joining two adjacent edges; the escalator 0.53 × 0.72 × 1.0, rising toward −Z); the rest are TARGETS. */
-        city_bin:        'Meshy_AI_a_city_bin_0917065144_texture.glb',          // the outdoor bin (the kerbs)
+        city_bin:        'ebd_6twelve_city_bin.glb',          // the outdoor bin (the kerbs)
         city_trash_bin:  'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',    // the indoor bin (the mall, the casino)
         taxi:            'Meshy_AI_a_city_taxi_0917065634_texture.glb',         // NPC traffic (_VEHICLE_KIT)
         truck:           'Meshy_AI_a_truck_0917065131_texture.glb',             // NPC traffic
@@ -35158,7 +35158,7 @@ const ThreeRenderer = (function () {
         road_straight:   'Meshy_AI_a_straight_city_road_0917064651_texture.glb', // the road tiles laid along every street (_hqBuildRoadTiles)
         road_turn:       'Meshy_AI_a_road_turn_quarter_0917065230_texture.glb',
         escalator:       'Meshy_AI_an_escalator_0917064623_texture.glb',        // THE MEZZANINE's escalator (the catalogue row)
-        bus_shelter:     'Meshy_AI_bus_shelter_0917064913_texture.glb',
+        bus_shelter:     'ebd_busstop_bus_shelter.glb',
         cinder_block:    'Meshy_AI_cinder_block_0917064959_texture.glb',
         fire_hydrant:    'Meshy_AI_fire_hydrant_0917064858_texture.glb',
         storefront:      'Meshy_AI_storefront_0917064551_texture.glb',          // a street lot's ground-floor shopfront
@@ -35167,7 +35167,7 @@ const ThreeRenderer = (function () {
         traffic_barrel:  'Meshy_AI_traffic_barrel_0917064936_texture.glb',
         traffic_cone:    'Meshy_AI_traffic_cone_0917064925_texture.glb',
         // 2026-07-28 on-board prop batch — grid-snapped monuments (see _MON_GRID)
-        dumpster:  'Meshy_AI_dumpster_0727195512_texture.glb',
+        dumpster:  'ebd_diner_dumpster.glb',
         greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb',
         mushroom:  'Meshy_AI_mushroom_0727200342_texture.glb',
         mushroom2: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',
@@ -35185,12 +35185,12 @@ const ThreeRenderer = (function () {
         vault:         'Meshy_AI_a_bank_vault_0912231605_texture.glb',
         flamingo:      'Meshy_AI_a_flamingo_0912231434_texture.glb',
         wreck:         'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',
-        lantern:       'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',
+        lantern:       'ebd_survival_lantern.glb',
         tentacle:      'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',
         tentacle2:     'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',
         watch:         'Meshy_AI_a_pocket_watch_0912231541_texture.glb',
         watch_hang:    'Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb',
-        rowboat:       'Meshy_AI_a_rowboat_0912231059_texture.glb',
+        rowboat:       'ebd_housesonwater_rowboat.glb',
         dish:          'Meshy_AI_a_satellite_dish_0912231301_texture.glb',
         crane:         'Meshy_AI_a_scaffold_crane_0912231516_texture.glb',
         wheel:         'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',
@@ -35243,14 +35243,14 @@ const ThreeRenderer = (function () {
            DOOR_HQ.catalogue (base: 'misc'); the near settings through _hzMiscKit. */
         signpost:      'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',
         brick_arch:    'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',
-        campfire:      'Meshy_AI_a_campfire_ring_0916235856_texture.glb',
+        campfire:      'ebd_survival_campfire.glb',
         culvert:       'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',
-        fallen_log:    'Meshy_AI_a_fallen_log_0916235700_texture.glb',
+        fallen_log:    'ebd_vegetation_fallen_log.glb',
         fern:          'Meshy_AI_a_fern_0916235806_texture.glb',
         footbridge:    'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',
         menhir:        'Meshy_AI_a_standing_stone_0916235906_texture.glb',
         drain_grate:   'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',
-        stump:         'Meshy_AI_a_stump_0916235717_texture.glb',
+        stump:         'ebd_vegetation_stump.glb',
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to
            Assets/misc/ — MODEL_INDEX.md §3g): the basilica (two pews, the podium, the
            throne, the cross, the stained glass, the holy carpet, the confessional,
@@ -38747,13 +38747,23 @@ const ThreeRenderer = (function () {
                        sprite (the old per-storey planes, same vertices, same UVs). Downtown
                        drew ~20 meshes a building; a face is now one draw call. */
                     var fp = [], fn = [], fu = [], fi = [];
-                    for (var st = 0; st < stack; st++) {
-                        var y0 = st * h, y1 = y0 + h, b0 = st * 4;
+                    /* THE PRISM BANDS (2026-11-03, data.js HQ_TEXB_PRISM_BANDS): `bands` [top band's end row, bottom band's start row,
+                       storeys in the art] — the bottom band once at the foot, one storey of the middle stack − 1 times, the top band once
+                       at the top, at the sprite's own proportions fitted to H. Without bands every storey wears the whole sprite. */
+                    var BD = o.bands, segs = [];
+                    if (BD && BD.length >= 3 && BD[0] > tt && BD[1] < tb + 1 && BD[1] > BD[0]) {
+                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB, sc = H / (tp + bp + (stack - 1) * mp), yy = 0;
+                        segs.push([yy, yy + bp * sc, 1 - (tb + 1) / sprH, 1 - bB / sprH]); yy += bp * sc;
+                        for (var sm = 0; sm < stack - 1; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
+                        segs.push([yy, H, 1 - bT / sprH, vT]);
+                    } else for (var st0 = 0; st0 < stack; st0++) segs.push([st0 * h, st0 * h + h, vB, vT]);
+                    segs.forEach(function (sg, si) {
+                        var y0 = sg[0], y1 = sg[1], b0 = si * 4;
                         fp.push(-fw / 2, y1, 0, fw / 2, y1, 0, -fw / 2, y0, 0, fw / 2, y0, 0);
                         fn.push(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1);
-                        fu.push(uL, vT, uR, vT, uL, vB, uR, vB);
+                        fu.push(uL, sg[3], uR, sg[3], uL, sg[2], uR, sg[2]);
                         fi.push(b0, b0 + 2, b0 + 1, b0 + 2, b0 + 3, b0 + 1);
-                    }
+                    });
                     var fg = new THREE.BufferGeometry();
                     fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
                     fg.setAttribute('normal', new THREE.Float32BufferAttribute(fn, 3));
@@ -61467,6 +61477,14 @@ const ThreeRenderer = (function () {
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var slx = (yAt(px + cs, pz) - yAt(px - cs, pz)) / (2 * cs), slz = (yAt(px, pz + cs) - yAt(px, pz - cs)) / (2 * cs), sl = Math.hypot(slx, slz);
             var rk = (sl - 0.55) / 0.75; rk = rk < 0 ? 0 : rk > 1 ? 1 : rk;
+            /* THE MASS RUNS ON (2026-11-03, mondo on Göbekli Tepe: "there is a harsh boundary at the edge of the map that makes the whole
+               thing look bad"): a room asking `outer: { sheet: 'solid' }` whose plan's mass wears the cliff sheet to its top (a LAYOUT in
+               the rock look) carries that sheet on past its edge wherever the edge is mass — the field's last metre and the land
+               past it are one ground, never the mass's sheet cut off in a straight line against the floor sheet */
+            if (OO.sheet === 'solid' && info.gen && info.gen.solidSheet === 'cliff' && info.maskD && typeof hqTerrainMaskAt === 'function') {
+                var ecx = Math.max(-hx, Math.min(hx, px)), ecz = Math.max(-hz, Math.min(hz, pz)), emd = hqTerrainMaskAt(info, ecx, ecz);
+                if (emd < 0.1) { var emr = (0.1 - emd) / 0.6; rk = Math.max(rk, emr > 1 ? 1 : emr); }
+            }
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
         } if ((j & 7) === 7 && _hqSliceDue()) yield; }
@@ -64658,7 +64676,7 @@ const ThreeRenderer = (function () {
             if (!hqTexbPrism(f)) return;
             var st = Math.max(1, Math.min(12, Math.round(f.storeys || 2))), H = (f.h > 0) ? f.h : st * HQ_TEXB.storey;
             try {
-                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180) });
+                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180), bands: (typeof HQ_TEXB_PRISM_BANDS !== 'undefined' && HQ_TEXB_PRISM_BANDS[f.key]) || null });
                 if (b) { b._ew_hqLot = 'texb:' + (f.id || n); n++; }
             } catch (e) { console.warn('[HQ] a prism building failed', f.key, e); }
         });

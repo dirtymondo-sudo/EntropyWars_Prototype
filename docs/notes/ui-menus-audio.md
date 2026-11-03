@@ -2222,3 +2222,22 @@ stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders m
 - DEVELOPMENT section (same day, mondo): "As Above So Below Studios" = his own credit (developed by); Kenneth Robnett = Game
   Designer (spells, playstyles, passives, stats + race-editor rankings, rules like respawning, playtesting). Dirty Mondo stays on
   music/soundtrack + SFX.
+
+## THE SAVED SETTINGS (2026-11-03)
+mondo: "the game never saves my settings like having the action cam turned off. I have to keep turning it off every time i
+refresh the browser". Cause: the pause menu's Action Cam wrote `ew_cinematicActionCam`, but ui.js's window-load block and
+battle.js `getCameraMode` forced `state.cinematicActionCam = true` (left from the camera-modes retirement), so OFF lasted until
+the next refresh. Now:
+- ui.js THE SAVED SETTINGS (beside `onCameraToggle`): `window._ewActionCamPref()` (no key = ON), `_setCinematicMode`
+  (`ew_cinematicMode`), `_setNametagMode` / `_cycleNametagMode` (`ew_nametagMode`, also the index.html nametag button),
+  `_setGameSpeed` (`ew_gameSpeed`, the pause menu's ×1/×2/×4 only; the sims' ×8/×16 never save). Camera Follow saves
+  `ew_cameraDisabled` from the player's own toggle only (the sim/turbo save-and-restore of cameraDisabled never writes it),
+  like Animation's `ew_animationsDisabled`. All restored at boot.
+- battle.js `getCameraMode` only fills `cinematicActionCam` in when it is not a boolean yet (the playtest harnesses still set
+  it true and it sticks).
+- online.js: cinematicActionCam / cinematicMode / animationsDisabled / nametagMode / particleSettings are per-viewer (skip
+  list + `_guestUIKeys`), so the host's picks no longer stomp the guest's saved ones on every state-sync.
+- The SHIPPED-KEYS bake carries `ew_cinematicActionCam: "0"` (mondo's 11-01 setup file, `--keys all`), so a browser that never
+  touched the toggle now starts with Action Cam OFF. Rebake / drop the key if new players should start with it ON.
+- Proof probe (scratchpad, not committed): changes every control on the battle pause menu's Audio / Video / Game / Controls
+  sheets, reloads, starts a battle again and compares each control.
