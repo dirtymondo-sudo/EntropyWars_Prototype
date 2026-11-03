@@ -2987,3 +2987,46 @@ removed from the game, and those rods should have shown up in the model list as 
     relayed 'burst' beat; online guests replay the same fire call).
   LESSON: grep MODEL_LIST.md with synonyms (flood / light / lamp / mast) before proposing a new model; I proposed a truss when
   flood_mast was already listed. MODEL_LIST rows: list-models.js labels the 4 as "ultimate prop".
+
+## THE DODGE READS (2026-11-03, PR "Fix Nimble Dodge landing and camera")
+mondo on the Catgirl showcase video: Nimble Dodge landed floating far above the street, slid backwards, the camera zoomed
+in on her empty start tile, swung 180° onto her back at the landing, went back to the start tile AGAIN, then cut to her front.
+Root causes (reproduced in the cloud rig, Cyberpunk City Arena, landing (3,5)):
+- LANDING: escape / teleport landings read `canOccupy`, which never asked battle.js `fieldCellRock`. A room arena's rock
+  cell ('#' in field.cells: a sign's / lamp's / wall's hidden column, rockTile levels tall, nothing drawn on top) was a
+  legal landing: she stood at level 10 over a level-5 street. canOccupy, canOccupy3D, canOccupyIgnoringUnits and
+  _escapeOpenIgnoringBody now refuse it (the existing SOLID WALL rule: no body stands there). Covers every blink/escape/teleport.
+- ORDER: the escape branch played the two-beat support shot (beat 1 on the caster, beat 2 on the landing) and moved the
+  body on the same frame (220 ms slide). Beat 1 framed a tile she had left; the frame guard (cast phase = the caster)
+  dragged and swung the lens after her body; when the guard's window closed the lens fell back to beat 1's framing on the
+  empty start tile; then the `blink` family's hard cut (cut + 150 ms) jumped to her front at the landing. The family's
+  'vanish' fade also fired mid-run.
+- NO TURN: an escape never set the facing, so the body slid with its back to where it went.
+Fix (battle.js escape branch, `_playSupportCineShot`, `blink` family, three-renderer.js, online.js):
+- she faces the landing (`setUnitFacing`, the facing every move takes) before the shot; beat 1 holds on her there;
+- the slide waits for the shot's cut (`delayMs` = sourceHold; state, status and facing change at once as before) and runs
+  `_escRunMs` = max(look ms, 150 ms a tile); the teleport VFX fires on the cut too; completionDelay covers it;
+- a SELF-moving shot (`_selfLand`: target._landUnit is the caster — every escape, a self teleport, the self grapple reel):
+  beat 1 stands BEHIND the caster looking the way it goes, wide enough to hold the landing (she turns and runs into the
+  frame; the old in-front angle sat on the landing's side and met the wall beside it, so the sight line craned the lens
+  over her head = the top-down crash zoom). Beat 2 rides along behind her to the landing in the run's time
+  (`opts.travelMs`), then CUTS to her front ¾ (cineGlamCam) once she stands there (an eased swing round to the front
+  orbited through the wall beside the landing: a frame inside the building). A landing on another
+  unit (teleportAnyUnit) keeps the old glam glide, now `travelMs` long when given;
+- `blink` family: an escape whose body travels (no look, or fly / swing / eject) gets no vanish and no early hard cut —
+  it plays the rig's own beat 2 (`c.stockHit()`) on the cut. blink / dive looks keep the vanish + cut;
+- the frame guard keeps the mover a subject after the cut (`keepCaster` when target._landUnit is the caster), so the clear
+  angle swings off a wall beside the landing;
+- an escape ending Invisible runs SOLID for its own side and ghosts as it lands (the displace tween's `escHide`); the
+  opponent loses it the moment it leaves (plain runs had no hide at all, only looks did);
+- online: the support-cine relay carries `travelMs` + the start tile's z; the guest frames beat 1 on the host's start tile
+  even when state-sync already moved its copy.
+SAME RISK, NOT CHANGED HERE: the `teleport` kind (Cathedral Perch, Void Rush, Ocean Current, Door Dash, Mirror Blink,
+Shadow Step, Phase Walk, Gravity Boots, Icky Surprise, Instant Transmission, Web Swing) still moves the body on the cast
+frame under the same support shot, and the self grapple reel moves it 320 ms into beat 1.
+ALSO SEEN, NOT CHANGED: the generic return after ANY spell shot (camera.softResetToUnit: 650-800 ms moveTo back to the
+player's pre-shot yaw/tilt/zoom) swings up to 180° when the shot ended on a front ¾, and the sight-line raise lifts it over
+any roof on the way (a short top-down pass over a building). Shared by every spell; left for mondo's call.
+Capture rig (videos/tools/unit_show.js): cast() now latches `_actionExecuting` + clears the pick previews like the board's
+confirm click; without it the HUD read the shot's camera as idle and the action menu showed mid-shot (a recording artifact,
+not the game). Proof: videos/units/fixes/CATGIRL_NIMBLE_DODGE_BEFORE_AFTER_1080p30.mp4.

@@ -10503,6 +10503,9 @@
             if (objectBlocksLanding(x, y)) return false;
             if (isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;   // 🚪 a SHUT door is a wall
+            /* a field's solid wall / rock cell (battle.js fieldCellRock, THE SOLID WALL): no floor drawn up there — no body
+               lands on it either (2026-11-03: Nimble Dodge landed five levels up on a street sign's hidden column) */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
 
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
@@ -12241,6 +12244,9 @@
 
             if (isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;   // 🚪 a SHUT door is a wall
+            /* THE SOLID WALL: a field's rock cell is never stood on (map rule, unitCanTraverse) — a blink / an escape / a
+               teleport landing reads canOccupy, so it is refused here too (2026-11-03, Nimble Dodge on a sign's column) */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
 
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
