@@ -5781,8 +5781,17 @@ const TERRAIN_SPRITES = {
     cave_floor:     [`${_T}/cave_floor.png`],
     cave_wall:      [`${_T}/cave_wall.png`],
     cloud:          [`${_T}/cloud.png`],
-    cloud_thick:    [`${_T}/cloud_thick.png`],
+    /* THE THICK CLOUD (2026-11-03, mondo: "yes i want the cloud thick gone too"): its own sheet was a grey storm cloud with
+       white lightning forks painted in. It wears the painted puffy cloud sheet now (cloud_2's), so the cloud seas, the
+       Heaven mounds and Saturn's deck read as cloud, never as bolts; each map's own `tints.cloud_thick` still colours it. */
+    cloud_thick:    [`${_T}/cloud_2.png`],
     cloud_gap:      [`${_T}/cloud_gap.png`],
+    /* THE STORM ZONE (2026-11-03, mondo: "replace this weird looking cloud with a lightning bolt"): 'storm' never had a
+       sheet of its own, so it fell back to the legacy SVG doodle (a dark smudge + one yellow bolt) — on an opaque wall
+       or tile that read as a black blob stamped with bolts (Saturn's storm walls). It wears the grey pixel-painted
+       cloud sheet (fog.png, no bolts), cooled to a thunderhead slate by TERRAIN_BASE_TINT.storm (a map's own
+       `tints.storm` still modulates it). */
+    storm:          [`${_T}/fog.png`],
     sky_ruin:       [`${_T}/sky_ruin.png`],
     barrier_passage:[`${_T}/barrier_passage.png`],
     /* 2026-10-07 (mondo): "rampart has the cliff texture. I want that texture removed from everywhere in the game." The
@@ -5987,6 +5996,8 @@ const TERRAIN_BASE_TINT = {
        darkened toward black (their 3D fluid tops, room floors and drapes alike) */
     swamp: '#3c3c3c',
     oil: '#7a7a7a',
+    /* ⛈ THE STORM ZONE (2026-11-03): the grey cloud sheet as a thunderhead — slate, a touch of blue */
+    storm: '#a4b0cc',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 

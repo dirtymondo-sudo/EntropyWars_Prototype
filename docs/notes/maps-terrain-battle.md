@@ -1117,3 +1117,14 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   0.3 → 0.5 m (mondo: "i think it needs to be a little bigger (the drop)"). Hollow Earth's inner-sun floor then read a level over
   its sunk lakes on the 12 and 9 boards' house tiles, so `bake-arenas.js prebuilt_hollow_earth` (+ `--size 9`) re-cut them:
   12 17,15 → 18,18; 9 16,17 → 17,17. The other picks re-read in place (levels only).
+
+## THE STORM ZONE SHEET (2026-11-03, mondo: "replace this weird looking cloud with a lightning bolt from everywhere in the game")
+- `storm` (Storm Zone terrain, also Saturn's cliff + storm-wall key) never had a TERRAIN_SPRITES row, so every path fell back
+  to the legacy `_terrainSvg` doodle (a faint smudge + one yellow bolt). On opaque walls/tiles it read as a black blob
+  stamped with bolts (Saturn arena walls).
+- Now `storm` wears `terrain/fog.png` (a grey pixel cloud sheet, no bolts) and `TERRAIN_BASE_TINT.storm = '#a4b0cc'`
+  cools it to slate on the board / near kit. (fog_wall, the other key on fog.png, is dead code per mondo 11-03.)
+- Same day, mondo: "yes i want the cloud thick gone too". `cloud_thick`'s own sheet (grey storm cloud with white lightning
+  forks) is no longer used: the key wears `terrain/cloud_2.png` (the painted puffy cloud). Map tints still colour it.
+  HQ room wall paths (_hzTex direct) skip the base tint: there it is the plain grey cloud under the room's tints.
+- Before/after: /mnt/project-files/storm-zone/saturn_storm_walls_before_after.jpg. No rule changed.
