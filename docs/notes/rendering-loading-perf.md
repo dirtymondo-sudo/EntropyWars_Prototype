@@ -1335,10 +1335,21 @@ because i can actually see the middle thingy. so maybe do a c and b?" + "i dont 
 white on the screen").** Nothing reads the screen. The light is lowered only where the ground is white, so grass, dirt and units
 on other maps keep their light (he said in October the game was too dark). HQ_LIGHT_RULES.whiteDay = 0.75.
 - ROOMS: an open room whose floor (terrain.floor, else shell.floor) is a white sheet wears its sky light × whiteDay.
-  `_hqWhiteDay` / `_hqOpenLR(room)` in three-renderer.js scale the hemisphere and the sun / moon key, by day and by night.
+  `_hqWhiteDay` / `_hqOpenLR(room)` in three-renderer.js scale the DAY hemisphere and sun key only. The night rig is left
+  alone (follow-up the same day: Agartha Arena, a night room, came out too dark).
 - Where the room rule applies (every `_hqLightRules().open` read): the walk (_hqEnter), the world clock (_hqClockVals,
   _hqStageSkyValsRaw) and the room fight's field light + the battle's day / night halves (_fieldGroundDress, _fieldCycleRig).
 - TILE BOARDS: when half or more of the board's top tiles wear a white sheet, three-renderer.js `_boardWhiteDay` (each
-  rebuildTerrain) calls ThreePost.setWhiteDay(0.75). That scales the battle rig's sun, hemisphere and ambient in _applyCurrent.
+  rebuildTerrain) calls ThreePost.setWhiteDay(0.75). That scales the battle rig's sun, hemisphere and ambient in _applyCurrent, by day
+  only (`_whiteDayK` eases it back to 1 with the night factor).
   A room fight's field light is not scaled again.
 - Fixed per map from what it is built of. Lamps, emissive glows and VFX are untouched.
+
+**THE MARBLE MAPS CHECK (the same day, mondo: "can you also check other marble heavy maps").** Shot the Olympus, Antarctica,
+North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarctica and North Pole read fine under 0.75. Agartha
+(a night room) was darkened by the first cut, fixed by the day-only rule above.
+- THE GROUND TINT: Atlantis Arena (a closed box room) still clipped. Its floor wears shell.floorColor 0xb8c8c8, but the dais
+  flight's mass and flanks (_hqBuildBuiltStairs sideMat, the stairs pack's side bucket in _spBuildFlights) were drawn in the
+  cliff sheet with no floorColor, so the stair stood about 35% brighter than the floor and went flat white. Now the flanks in the
+  room's cliff sheet wear floorColor, like the field's own cliff skirt and the editor boxes. A flight with its own `side` sheet
+  keeps it untinted.

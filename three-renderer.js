@@ -4649,7 +4649,7 @@ const ThreeRenderer = (function () {
 
     /* THE WHITE DAYLIGHT on a tile board (2026-11-03, mondo: "can we just make light not 130% too?" / "i dont want the game to change
        lighting based on the white on the screen"): when half or more of the board's top tiles wear a white sheet (sprites.js
-       TERRAIN_WHITE_SHEETS), the battle's day / night rig (ThreePost.setWhiteDay) runs at HQ_LIGHT_RULES.whiteDay (0.75) — read off
+       TERRAIN_WHITE_SHEETS), the battle's DAY rig (ThreePost.setWhiteDay; it eases back to 1 by night) runs at HQ_LIGHT_RULES.whiteDay (0.75) — read off
        the board's own tiles, never off the screen. A room fight takes the room's rule instead (_hqOpenLR). */
     function _whiteSheetKey(key) {
         var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null;
@@ -32424,8 +32424,8 @@ const ThreeRenderer = (function () {
     function _polishLevel(key) { var v = _polishPref(key); return (typeof v === 'number' && isFinite(v)) ? v : (v === false ? 0 : 1); }
     /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too? that seems so excessive" + "i dont want the game to
        change lighting based on the white on the screen"): an open room whose FLOOR is a white sheet (sprites.js TERRAIN_WHITE_SHEETS —
-       the terrain room's floor key, else the shell's floor) wears its sky light × HQ_LIGHT_RULES.whiteDay (0.75): the hemisphere and the
-       sun / moon key, by day and by night. Fixed per room from what it is built of; nothing reads the screen. A grass or dirt room keeps 1. */
+       the terrain room's floor key, else the shell's floor) wears its DAY sky light × HQ_LIGHT_RULES.whiteDay (0.75): the hemisphere and the
+       sun key (the night's moon rig already leaves a white floor under 100%, and a night map must not get darker). Fixed per room from what it is built of; nothing reads the screen. A grass or dirt room keeps 1. */
     function _hqWhiteDay(room) {
         try {
             var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null, LR = _hqLightRules();
@@ -32440,7 +32440,7 @@ const ThreeRenderer = (function () {
     /* the open-room light row (HQ_LIGHT_RULES.open) for `room`, its sky light × _hqWhiteDay */
     function _hqOpenLR(room) {
         var LRo = Object.assign({}, _hqLightRules().open || {}), k = _hqWhiteDay(room);
-        if (k < 1) ['dayHemi', 'daySun', 'nightHemi', 'nightSun'].forEach(function (f) { if (LRo[f] != null) LRo[f] = +LRo[f] * k; });
+        if (k < 1) ['dayHemi', 'daySun'].forEach(function (f) { if (LRo[f] != null) LRo[f] = +LRo[f] * k; });
         return LRo;
     }
     function _hqLightRules() {
@@ -62256,9 +62256,10 @@ const ThreeRenderer = (function () {
                     var fit = _spFlightFit(soup, spec, f.w, R, L), fr = _spFrameFns(x0, z0, ux, uz, lo, fit);
                     var tread = f.key || kd.tread || info.path, sdl = _hqSideLook(f, kd.side, info), side = sdl.key, tint = (S.floorColor != null && !f.key) ? S.floorColor : null;
                     var pathT = (!f.key && !kd.tread) ? _hqSheetLook(info).path : null;   // THE SHEET LOOKS: a tread in the room's path sheet wears its tint
-                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '');
+                    var sTint = (S.floorColor != null && !(f.side || kd.side)) ? S.floorColor : null;   // THE GROUND TINT (2026-11-03): the flanks in the room's cliff sheet wear its floorColor, like the field's own cliffs
+                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '') + '|' + sTint;
                     if (!mats[tk]) { mats[tk] = _spSheet(tread, spec.look, tint); if (pathT) mats[tk].color.multiply(pathT); }
-                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
+                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look, sTint); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
                     _spEmit(fit.A, fr.P, fr.N, function (A, t) {
                         var mi = A.M[t], mat = A.mats[mi];
                         if (_spIsGlass(mat)) return 'glass';
@@ -62400,6 +62401,9 @@ const ThreeRenderer = (function () {
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(sdl.key) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (sdl.tint) sideMat.color.multiply(sdl.tint);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
+            /* THE GROUND TINT (2026-11-03, the white maps check): the flanks + a packed flight's mass in the room's cliff sheet wear the room's
+               floorColor like the field's own cliffs and the editor boxes (Atlantis's dais flight stood untinted white marble beside its tinted floor) */
+            if (S.floorColor != null && !f.side) sideMat.color.multiply(new THREE.Color(S.floorColor));
             if (pathT) treadMat.color.multiply(pathT);
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
             var lo0 = Math.min(f.h0, f.h1), gLo = (info.flightLo && info.flightLo.has(f)) ? Math.max(lo0 - 4, info.flightLo.get(f)) : Infinity;   // THE JOINED FLIGHTS (2026-10-06): down to the lowest ground under it (≤ 4 m)
