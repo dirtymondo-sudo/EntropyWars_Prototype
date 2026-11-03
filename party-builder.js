@@ -1388,6 +1388,17 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       on('bottom') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms fabric'), ccFabricTiles('bottomFabric', 'Bottoms'), ccPrint('bottomFabric', 'bottomColor', 'Bottom')) : null,
       on('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt'), ccSlider('beltHeight', 'Belt height')) : null);   // THE BELT HEIGHT (2026-11-02): up / down to sit on any trousers' waistband
   };
+  /* THE PANTS IN THE BOOTS (2026-11-03, mondo: "Can we make pants fit inside boots or have the option for them to be inside or
+     outside?"): on LEGS > Bottoms and FOOTWEAR > Shoes + boots, while a pair of trousers is worn with a boot whose shaft reaches over
+     their hem (sprites.js pantsBootsWorn): OUTSIDE (the trouser legs over the boots, the default) / TUCKED IN (appearance.pantsTuck) */
+  const ccPantsTuck = () => {
+    if (!window.pantsBootsWorn || !window.pantsBootsWorn(appearance)) return null;
+    const cur = appearance.pantsTuck === 'in' ? 'in' : 'out';
+    return h('div', { key: 'pantsTuck', className: 'pb-creator-options pb-cc-front', role: 'group', 'aria-label': 'Pants in boots' },
+      h('span', { className: 'pb-creator-colorlabel' }, 'Pants + boots'),
+      [['out', 'OUTSIDE', 'The trouser legs come down over the boots'], ['in', 'TUCKED IN', 'The trouser legs tucked into the boots']].map(([id, txt, tip]) =>
+        h('button', { key: id, className: 'ms-tty-btn' + (cur === id ? ' primary' : ''), 'aria-pressed': cur === id, title: tip, onClick: () => { if (cur !== id) changeAppearance({ pantsTuck: id }); } }, txt)));
+  };
   const capeOn = appearance.cape && appearance.cape !== 'none', capeDef = (window.EW_CAPE_STYLES || []).find(c => c.id === appearance.cape) || {};
   const ccCape = () => (window.EW_CAPE_STYLES || []).length > 1 ? h(React.Fragment, { key: 'cape' },
     h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Cape'),
@@ -1439,6 +1450,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       wearTiles(rows, sided, layer === 'outer' ? 'More coats' : layer === 'feet' ? 'More shoes' : layer === 'wings' ? 'Costume wings' : null, label, cam),
       g === 'held' ? h('p', { className: 'pb-creator-note' }, 'One at a time: the right hand closes round it.') : null,
       groupLayerRows(g),
+      g === 'bottoms' || g === 'shoes' ? ccPantsTuck() : null,
       ccWearTints(id => groupOf(id) === g));   // THE WEAR TINT
   };
   const ccOutfit = () => {

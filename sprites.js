@@ -3857,6 +3857,39 @@ const EW_WEAR_KIND = {
   mhw_elvs_emt_uniform_pants_female: 'bottoms', mhw_elvs_emt_uniform_pants_male: 'bottoms',
 };
 function wearKindOf(id) { const w = EW_MH_WEAR_BY_ID[id]; return w ? (EW_WEAR_KIND[id] || w[2]) : null; }
+/* THE PANTS IN THE BOOTS (2026-11-03, mondo: "Can we make pants fit inside boots or have the option for them to be inside or outside?"):
+   appearance.pantsTuck = 'out' (the trouser legs over the boots, the default) | 'in' (tucked into the boot shafts); three-renderer.js
+   wearBootFit. EW_BOOT_TOPS = every boot with a shaft: its top (the 90th percentile of its vertex heights on the male fit, metres; the
+   Blender Feet picks by their Feet id), EW_PANT_HEMS = every long pair of trousers: its hem (the 1st percentile). The choice shows (and
+   the renderer acts) only while a pair of trousers whose hem is under a worn boot's top is worn. Skirts, shorts and the skin-tight
+   Blender leggings / football pants are not listed. A new boot / trouser = one line here (measure its GLB the same way). */
+const EW_BOOT_TOPS = {
+  mhw_cortu_floppy_overknee_shoes: 0.61, mhw_culturalibre_hero_boots_1: 0.49, mhw_culturalibre_hero_boots_2: 0.34, mhw_culturalibre_hero_boots_3: 0.34,
+  mhw_culturalibre_hero_boots_4: 0.29, mhw_culturalibre_hero_boots_5: 0.49, mhw_culturalibre_heroine_boots_1: 0.74, mhw_culturalibre_heroine_boots_2: 0.28,
+  mhw_culturalibre_heroine_boots_3: 0.34, mhw_culturalibre_heroine_boots_4: 0.35, mhw_culturalibre_male_boots: 0.4, mhw_elvs_basic_felt_elf_shoes: 0.22,
+  mhw_elvs_knee_high_heel_boots1: 0.57, mhw_elvs_wedge_tall_boots1: 0.44, mhw_grinsegold_female_pirate_boots: 0.57, mhw_maciekg_leather_boots: 0.22,
+  mhw_madmanny_tight_leather_boots: 0.24, mhw_mindfront_shoes_biker_boots_female: 0.28, mhw_mindfront_shoes_biker_boots_male: 0.31,
+  'mhw_punkduck_female_half-boots': 0.19, mhw_punkduck_female_knee_boots: 0.48, mhw_punkduck_medieval_boots: 0.13,
+  mhw_punkduck_riding_boots: 0.53, mhw_punkduck_winter_boots: 0.39, mhw_rehmanpolanski_viking_boots: 0.32, mhw_scailman_gogo_platform_boots: 0.54,
+  'mhw_scailman_low-heeled_boots': 0.48, mhw_scailman_semitransparent_water_boots: 0.49, mhw_toigo_ankle_boots_male: 0.13,
+  bboots: 0.16, bhighboots: 0.44, bcowboy: 0.29,   // (the Blender Feet picks)
+};
+const EW_PANT_HEMS = {
+  mhw_cortu_cargo_pants: 0.05, mhw_elvs_disco_pants_double_ruffles: 0.06, mhw_elvs_disco_pants_single_ruffles: 0.06, mhw_elvs_disco_pants_skinny: 0.04,
+  mhw_elvs_emt_uniform_pants_female: 0.06, mhw_elvs_emt_uniform_pants_male: 0.05, mhw_elvs_gored_elephant_pants: 0.07, mhw_elvs_jeans_bootcut: 0.05,
+  mhw_elvs_jeans_straight_leg: 0.07, mhw_elvs_male_trouser: 0.04, mhw_elvs_male_trouser_with_chain: 0.09, mhw_mindfront_female_trousers_1: 0.08,
+  mhw_mindfront_male_trousers_1: 0.08, mhw_mindfront_male_trousers_2: 0.04, mhw_punkduck_female_tight_jeans: 0.08, mhw_punkduck_male_classic_jeans: 0.07,
+  mhw_rehmanpolanski_viking_pants: 0.15, mhw_toigo_harem_pants: 0.12, mhw_toigo_wool_pants: 0.07, ewb_sweatpants: 0.17,
+};
+/* the worn boot (a pack id in a.wear, else the Blender Feet pick) whose top is over a worn pair of trousers' hem, or null */
+function pantsBootsWorn(a) {
+  if (!a || typeof a !== 'object') return null;
+  const W = Array.isArray(a.wear) ? a.wear : [];
+  const hem = W.reduce((m, id) => (EW_PANT_HEMS[id] != null && EW_PANT_HEMS[id] < m ? EW_PANT_HEMS[id] : m), Infinity);
+  if (hem === Infinity) return null;
+  const boot = W.find(id => EW_BOOT_TOPS[id] != null) || (a.feet && EW_MESH_FEET[a.feet] && EW_BOOT_TOPS[a.feet] != null ? a.feet : null);
+  return boot && EW_BOOT_TOPS[boot] > hem + 0.02 ? boot : null;
+}
 const EW_WEAR_PICK_AS_COAT = ['mhw_elvs_emt_uniform_jacket_female', 'mhw_elvs_emt_uniform_jacket_male', 'mhw_punkduck_winter_coat'];
 function wearPickKindOf(id) { return EW_WEAR_PICK_AS_COAT.includes(id) ? 'outer' : wearKindOf(id); }
 /* a valid wear list: known ids, no repeats, one per single-pick kind (the later pick wins), at most 24 */
@@ -4589,6 +4622,7 @@ const EW_APPEARANCE_ENUMS = {
   outer2: EW_OUTER_STYLES.map(o => o.id),   // 2026-11-01 THE SECOND OUTER LAYER: the same catalogue ('none' first = not worn)
   outerFront: ['auto', 'open', 'closed'],    // 2026-11-02 THE OPEN + CLOSED FRONTS ('auto' = as the pick was made)
   outer2Front: ['auto', 'open', 'closed'],
+  pantsTuck: ['out', 'in'],   // 2026-11-03 THE PANTS IN THE BOOTS: the trouser legs over the boots ('out', the default) or tucked in
   feet: EW_FEET_STYLES.map(o => o.id),
   gloves: EW_GLOVE_STYLES.map(o => o.id),
   belt: EW_BELT_STYLES.map(o => o.id),
@@ -5147,7 +5181,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_HAIR_MATS = EW_MH_HAIR_MATS; window.getHairMaterial = getHairMaterial;   // THE HAIR MATERIALS
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT; window.EW_BOOT_TOPS = EW_BOOT_TOPS; window.EW_PANT_HEMS = EW_PANT_HEMS; window.pantsBootsWorn = pantsBootsWorn;   // THE PANTS IN THE BOOTS   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
