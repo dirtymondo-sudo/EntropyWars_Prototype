@@ -1567,3 +1567,11 @@ the thread's zip adds `Assets/decor/` by hand.
 - Kept Meshy (no pack match): school_bus, cardboard boxes, wooden_bucket, car_cop (the car pack already draws it), fridges, signpost.
 - Licences: Elbolilloduro = CC0 (credits row "PSX prop packs"). Pizza Doggy (Retro Tree Pack, the Mega Packs) is NOT CC0: no AI
   use of the assets, no redistribution as standalone files (credits + MODEL_LIST fixed).
+- **Round 2 (mondo 11-03, after the first look):** server rack back to the proc (the Meshy one is not used, not shipped);
+  space divider ONE screen (no repeat); flood mast pole thinned in Blender (shaft x/y ×0.4, base ×0.6); tanker desk
+  retextured with Meshy Retexture on its own UVs (meshy-6, text prompt) and the red top toned to the old oxblood brown
+  (texture swapped into the same mesh); high striker split in Blender into the striker + `high_striker_hammer` (its own piece,
+  laid flat, lying on the floor in front); armour stand = the suit standing ON a new Meshy square oak plinth with a thin iron
+  rod (`armour_plinth`, concept D15c picked by mondo) in place of the T-post whose crossbar stuck out. The Göbekli battle
+  board's T-pillar monument (`_hzTPillar`) wears the hands T-pillar too, stretched into the old 1.9 × 3.8 tile box (the code
+  pieces stay hidden in the group so the monument fit and the 2-voxel stamp are unchanged).
