@@ -6008,6 +6008,23 @@ const TERRAIN_BASE_TINT = {
     storm: '#a4b0cc',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
+/* THE WHITE SHEETS (2026-11-03, mondo on the Heaven Arena: "something about these clouds is just really hard on the eyes, i cant
+   see what im looking at ... any map or area that has a lot of white still looks super bright", bloom off). The cause: a lit
+   surface is texture × light, and daylight puts about 1.35× (a room's open sky) to 1.5× (a battle's day) on a floor, drawn into
+   a frame that stops at 100%. A sheet that is already ~90% white goes past 100% everywhere, so its whole pattern (the marble's
+   veins, the cloud's shading, the marks on top of it) is stored as the same flat white BEFORE Filmic Tone or Brightness ever
+   see it. The fix he picked: the near-white sheets (mean brightness 0.8 and up, measured off the R2 files) are darkened ONCE as
+   they load, each to a mean of ~0.66, so daylight lands them just under 100% and the pattern survives. Keyed by the FILE, so
+   every key, map, room, wall and prop that wears the sheet gets it (three-renderer.js textureLoader.load, _ewWhiteGuard).
+   The value multiplies the sheet's pixels (1 = untouched). The light is not changed. */
+const TERRAIN_WHITE_SHEETS = {
+    'cloud.png': 0.68, 'cloud_2.png': 0.71,
+    'ice.png': 0.73, 'ice_1.png': 0.73,
+    'tilefloor.png': 0.73, 'tilefloor_2.png': 0.73,
+    'marble_light.png': 0.75,
+    'enamel_2.png': 0.79, 'wallpaper.png': 0.80, 'floral_2.png': 0.81,
+};
+if (typeof window !== 'undefined') window.TERRAIN_WHITE_SHEETS = TERRAIN_WHITE_SHEETS;
 
 /* ═══════════════════════════════════════════════════════════════════════
    THE URBAN PACK (2026-09-17) — 320 tileables the user painted at the game's

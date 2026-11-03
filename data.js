@@ -62797,6 +62797,9 @@ const HQ_LIGHT_RULES = {
     fillColor: 0x9fb4d0,
     fill: 0.14,
     open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
+    /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too?"): an open room whose floor is a white sheet
+       (sprites.js TERRAIN_WHITE_SHEETS) wears its sky light (the hemisphere + the sun / moon key) × whiteDay; fixed per room, never read off the screen */
+    whiteDay: 0.75,
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
