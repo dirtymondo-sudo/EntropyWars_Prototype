@@ -90,6 +90,7 @@ const SOURCES = [
     { re: /Assets\/misc\/Castles_and_Forts\.glb/, how: 'PACK', src: 'Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given' },
     { re: /UFO_Low_Poly\.fbx/, how: 'PACK', src: '3D Game Ready UFO Spaceship · FlexUnit · CC0' },
     { re: /_sway\.glb$/, how: 'MESHY_C', src: 'Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py)' },
+    { re: /Assets\/props\/(police_barricade|flat_earth|heart_scales|maat_feather)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a)' },
     { re: /Assets\/props\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827)' },
     { re: /Assets\/decor\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03)' },
     // Meshy exports (mondo's, made on meshy.ai) — before the folder rows so a Meshy file in a pack folder still reads Meshy
@@ -245,7 +246,9 @@ for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _DECOR_BASE \+ '([^']
 // THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, PR #827): the Meshy pieces #47-72 on R2 Assets/props/
 const heldP = (VFX.match(/var P = \{([\s\S]*?)\};/) || [, ''])[1];
 for (const m of heldP.matchAll(/(\w+):\s*\['([^']+\.glb)'/g)) add('spell', m[1] + ' (held in the hand)', CDN + 'Assets/props/' + m[2]);
-for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _PROPS_BASE \+ '([^']+)'/g)) add('spell', m[1] + ' (held in the hand)', CDN + 'Assets/props/' + m[2]);
+// the ultimate spell props (2026-11-03): Lockdown barricades, Flat Earth disc, Weigh the Heart scales + feather; not held in the hand
+const ULT_PROPS = { policeBarricade: 'Lockdown', flatEarth: 'Flat Earth', heartScales: 'Weigh the Heart', maatFeather: 'Weigh the Heart' };
+for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _PROPS_BASE \+ '([^']+)'/g)) add('spell', m[1] + (ULT_PROPS[m[1]] ? ' (' + ULT_PROPS[m[1]] + ' ultimate prop)' : ' (held in the hand)'), CDN + 'Assets/props/' + m[2]);
 const gearW = block(R3, 'var UNIT_GEAR_WEAR = {');
 for (const m of gearW.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/gm)) add('gear', m[1], CDN + 'Assets/props/' + m[2]);
 const ani = block(R3, 'var _ANIMALS = {');

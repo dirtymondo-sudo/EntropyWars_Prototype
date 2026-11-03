@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 607 |
+| Meshy AI | no | 611 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -1378,14 +1378,18 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | fangs | `Assets/animals/top_fangs.glb` | Asset pack (author not recorded yet) | Top fangs (mondo's upload) |
 | femur | `Assets/weapons/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fist | `Assets/weapons/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| flatEarth (Flat Earth ultimate prop) | `Assets/props/flat_earth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
+| floodMast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | football | `Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | frog | `Assets/misc/Meshy_AI_frog_1027232151_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | giantFoot | `Assets/misc/Meshy_AI_giant_foot_1027232131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | grenade | `Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | halo (held in the hand) | `Assets/props/broken_halo.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | handMirror (held in the hand) | `Assets/props/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| heartScales (Weigh the Heart ultimate prop) | `Assets/props/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | jet | `Assets/weapons/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | landmine | `Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| maatFeather (Weigh the Heart ultimate prop) | `Assets/props/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | mic | `Assets/misc/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | milkCookies (held in the hand) | `Assets/props/milk_and_cookies.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1394,6 +1398,7 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | piano | `Assets/decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pistol | `Assets/weapons/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | plasma | `Assets/weapons/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| policeBarricade (Lockdown ultimate prop) | `Assets/props/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | potionFlask (held in the hand) | `Assets/props/potion_flask.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | rope | `Assets/misc/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
