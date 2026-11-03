@@ -45,7 +45,11 @@ same turn as the fix, without asking first):
    Before merging, `git fetch origin main` and merge main into the branch; if
    it conflicts, resolve by hand keeping BOTH sides, never one side wholesale.
    Never force-push main. Render auto-deploys index.html from main.
-3. After the merge, write the CUMULATIVE SYNC ZIP with `node sync-zip.js`
+3. **UPLOAD IT YOURSELF (mondo 11-03, replaces the zip):** right after the merge run `node sync-zip.js --upload`
+   (PUTs every file differing from origin/main to bucket `ewmusicsfx` = cdn.entropywars.net, re-checks each live).
+   R2-only assets: `node sync-zip.js --put <local file> <R2 key> ...`. Reply: each file + sha256[:8], "live, nothing
+   to upload". Never delete R2 objects you didn't upload. Auth = env Network secret (never in files/chat). Only if
+   refused: the zip fallback below. FALLBACK — the CUMULATIVE SYNC ZIP with `node sync-zip.js`
    (does all of this step): for every R2 file that
    index.html on origin/main loads from cdn.entropywars.net, fetch the live
    copy (`curl --compressed` with a random query string) and compare its
@@ -59,9 +63,8 @@ same turn as the fix, without asking first):
    zipped changed. In the reply list each file with the first 8 chars of
    its sha256 and say "upload only the newest sync zip". Expected
    non-matches: react, react-dom, MeshLine (R2-only). ASSET_MANIFEST.json is in the repo since 2026-10-28: zip it when it differs.
-4. The user uploads the newest zip to the R2 bucket — or runs `npm run
-   deploy` (see TOOLING), which uploads + cache-busts in one command.
-Never deliver patches, diffs or loose files in place of the merged PR + zip.
+4. Only on the zip fallback: the user uploads the newest zip to the R2 bucket.
+Never deliver patches, diffs or loose files in place of the merged PR + upload (or zip).
 
 ### TOOLING
 - **NO TESTS (2026-09-29, mondo):** the test suite, the check-* tools and the CI workflow were deleted. Never write
@@ -80,8 +83,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   them, bumps the `?v=` token in index.html, uploads via wrangler, and prints
   the Render-redeploy reminder. `--dry-run` previews. Without a bucket it
   still bumps the token and prints a manual upload checklist. Claude has no
-  wrangler creds — Claude's deliverable is the merged PR + sync zip (RULE #1);
-  this script is how the USER ships the zip's files to R2.
+  wrangler creds; since 2026-11-03 Claude uploads itself with `node sync-zip.js --upload` / `--put` (RULE #1 step 3).
 - `load-data.js` — loads data.js headlessly in a Node vm sandbox (real
   values, not a copy). Use it for any new data validation/tooling instead of
   regex-scraping data.js.
