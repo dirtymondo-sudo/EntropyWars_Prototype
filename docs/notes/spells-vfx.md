@@ -2898,5 +2898,44 @@ found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He p
   painted smoke layers `ifNoFb: 'fb-explosion'` (`_spawnEffect` skips a layer whose flipbook is ready).
 - Online: both live inside the relayed fire() intents, so the guest plays them; `_pzSeen` keeps fogged tiles empty.
 - Proof sheets: /mnt/project-files/blender-vfx/ (fireball_before_after.jpg, meteor_before_after.jpg).
-- Next (only on mondo's say): roll the sheets out to the shared particle kinds (dust-puff, ember, smoke, flame,
-  explosion-orange), element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise for the burning-tile raymarch.
+- **THE SHARED KINDS (2026-11-03, same day; mondo: "the shared smoke, dust, and embers are still there so the fireball
+  and meteor mostly look the same. Go ahead and give them the same treatment"):** read as game-wide. Two more sheets from
+  `bake-vfx.py` presets: `PRESET=smoke` (a SMOKE-only Mantaflow puff, grey volume, sheet `SHEET=whiten` stretches the lit
+  side to white) → `fb_smoke.png` (16 frames, 4 x 4 of 128 px), `PRESET=fire` (a steady flame, volume EMISSION on black,
+  `SHEET=glow` turns brightness into alpha) → `fb_ember.png` (16 frames, 4 x 4 of 64 px). three-vfx.js `_FB_KINDS`: every
+  sprite-pool spawn of `smoke`, `smoke-soft`, `dust-puff` (→ fb-smoke, tinted by the kind's `_spriteMap` colour, which is
+  the colour the painted texture carried; opts.tint is multiplied by it) and `ember` (→ fb-ember, its own colours) plays
+  the sheet; `op` = the painted texture's peak alpha, `grow` = size so the puff fills like the billow, `jit` = random
+  start frame. Thinning/tumble/blend stay keyed on the kind. World decals + w0/h0 quads keep the painted still. Same
+  kill-switch `EW_NO_FLIPBOOKS`. Both PNGs go into the sync zip by hand (Assets/Sprites/vfx/).
+- Next (only on mondo's say): flame, explosion-orange, element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise
+  for the burning-tile raymarch.
+
+## THE PROPS IN THE HAND + THE WHIP CRACK + THE GEAR ON THE BODY (2026-11-03, character-models-plan.md row 24)
+mondo: "how do we put these models both in the character creator and in the game for spells (like whip crack)". The Meshy pieces
+#47-72 (made through the Meshy API, row 15) are on R2 `Assets/props/<name>.glb` — each is the optimize-assets.js `--size 512` output
+(meshopt + WebP) shipped under the plain name (no original beside it; every GLTFLoader decodes meshopt).
+- **_WPN_MODELS** (three-vfx-effects.js): potionFlask, scalpel, wrench, blowpipe, phone, handMirror, camera, milkCookies, cup, halo,
+  wand, staff (matte bake) + `whip` (`rigged`: cloned with SkeletonUtils). The battle's loading card warms them with the rest.
+- **_HELD_PROPS** (spell id -> { key, m metres, grip }) + `_HELD_BY_RACE.wizard` (the wand on every non-finisher cast). On the windup
+  beat (`_heldStart`, fire('windup') carries `uid` + `holdMs`) the prop is cloned at `m` metres (ThreeRenderer.unitPropMetre) and
+  handed to **ThreeRenderer.unitHoldProp(uid, obj, { grip })**: parented to RightHand (LeftHand when the right already holds the
+  def's own prop), seated by THE GRIP (`_gripFrame`: closed fist on a creator body — the fingers curl for the cast via
+  `_gripHandTemp` and open again — or the palm read off the skin on a Meshy hand). Grip `c` / `down` / `barrel` are GLB coords.
+  It pops in, stays to holdMs + 520 ms and fades; `thrown` props hide on the spell's bolt (`_heldThrown`) and the bolt flies the
+  same model (`_propFlyBody`: Acid Flask's pvFlaskFly, Broken Halo's fx3HaloFly; the built stand-ins stay while a file streams).
+  The phone's blank screen gets a lit plane (`_heldScreen`, no scene light); the camera flashes in the hand 380 ms before the hit.
+- **THE WHIP CRACK** (`_whipSetup` / `_whipPose`): the lash bones are set in WORLD terms every frame in the vertical plane caster ->
+  target (angle 0 = at the target, 90 = up, 180 = back), whatever the arm clip does: hang (-95°) -> drawn back over the shoulder
+  (base -240°, tip -165°, a lagging wave) by Tc/2 -> the throw turns each bone over the top in turn (start/end times grow with the
+  bone's index ^1.5 / ^1.15 so the loop speeds up toward the tip, a sideways bow mid-turn) -> the tip snaps 22° past at Tc (Tc =
+  holdMs - 300, the sound wave's launch): `_whipCrackFx` = white flash + sparks at the tip + a soft shake -> it drops (-62..-88°) in a
+  dying wave and fades at Tc + 900. The lion (THE ANIMALS) still bounds in on the burst.
+- Dev still: `window.EW_HELD_T = ms` pins every held prop at that moment of its cast. Off: `window.EW_NO_HELD_PROPS`.
+- **THE GEAR** (three-renderer.js `UNIT_GEAR_WEAR`, `_unitGearSync` on a fresh build and when a kept rig's gear changes): the twelve
+  6c pieces on the body while `unit.equipment.accessory1/2` names them. Placement is read off the bone's own skin (`_boneSkinPts`, the
+  vertices weighted >= 0.45 to it, in the body frame: +Z front, +X the body's left) in the bind pose: `side` back / front / left /
+  right sits it on that face of the skin, pushed out by the prop's own depth; `arm` puts it on the bone's axis (`ring`: sized to the
+  arm's 80th-percentile radius x 2.25 — the Echo Band). `map` turns the GLB onto the body. The censer swings (onBeforeRender). Off:
+  `window.EW_NO_GEAR_WEAR`. Online: equipment is on the synced unit, so the guest builds the same gear.
+- Not in this pass: the 6a weapons that still float beside the caster (the guns already ride the hand, FX-2); the staff has no spell.

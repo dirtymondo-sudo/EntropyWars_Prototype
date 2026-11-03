@@ -14202,6 +14202,200 @@ const ThreeRenderer = (function () {
         holder.userData.inst = inst;
         return holder;
     }
+    /* ══ THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, docs/notes/character-models-plan.md row 24; mondo: "how do we
+       put these models ... in the game for spells (like whip crack)") ══
+       The Meshy pieces #47-72 (R2 Assets/props/, optimize-assets.js'd: meshopt + WebP 512) on any rigged body, pinned to the
+       shared Meshy bone names every model carries.
+       - unitHoldProp(uid, obj, { grip, bones, open }): a spell's prop (three-vfx-effects.js THE PROPS IN THE HAND builds it in
+         world units) in the caster's hand bone for the cast. `grip` is THE GRIP's handle frame ({ c, down, barrel } in obj's own
+         coordinates + meshAt / meshUp / depth / back): seated in the closed fist on a creator body (its fingers curl for the
+         cast and open again when the prop goes, _gripHandTemp) and on the palm read off the skin on a Meshy hand. Returns
+         { holder, inner, bone, remove() } or null (no rig / no hand: a sprite caster keeps the spell's own look).
+       - UNIT_GEAR_WEAR: the twelve worn gear pieces (EQUIP_DEFS keys) on the body while the unit carries them
+         (unit.equipment.accessory1 / 2), placed off the bone's own skin (the back of the chest, the front of the hip, round the
+         upper arm...) in the bind pose and riding that bone from then on. The holder rides the rig cache like the door gun. */
+    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/props/';
+    /* the creator body's fingers curled for a held prop, and a function that opens them again (null: no finger bones, or the
+       hand already holds the def's own prop for good) */
+    function _gripHandTemp(m, handName) {
+        var hand = m.getObjectByName(handName || 'RightHand');
+        if (!hand || hand.userData._ewGrip) return null;
+        var s = /^Left/.test(handName || '') ? 'l' : 'r', saved = [];
+        ['index', 'middle', 'ring', 'pinky', 'thumb'].forEach(function (f) {
+            for (var k = 1; k <= 3; k++) { var b = m.getObjectByName(f + '_0' + k + '_' + s); if (b) saved.push([b, b.quaternion.clone()]); }
+        });
+        if (!saved.length || !_gripHand(m, handName)) return null;
+        return function () { saved.forEach(function (e) { e[0].quaternion.copy(e[1]); }); hand.userData._ewGrip = false; };
+    }
+    function unitHoldProp(unitId, obj, opts) {
+        opts = opts || {};
+        var entry = _getUnitEntry(unitId), rig = _unitModelRigs.get(unitId);
+        var root = (rig && rig.inner) || (entry && entry.mixer && entry.model) || null;
+        if (!root || !obj) return null;
+        var names = opts.bones || ['RightHand', 'LeftHand'], bone = null;
+        for (var i = 0; i < names.length && !bone; i++) {
+            var bn = root.getObjectByName(names[i]) || null;
+            /* a hand that already holds the def's own prop for good (the door gun, the cowboy's revolver): the other hand */
+            if (bn && !opts.bones && bn.children.some(function (k) { return k.name && k.name.indexOf('ew_held_') === 0; })) continue;
+            bone = bn;
+        }
+        if (!bone) return null;
+        root.updateMatrixWorld(true);
+        var ws = new THREE.Vector3(); bone.getWorldScale(ws);
+        var holder = new THREE.Group(); holder.name = 'ew_spellprop';
+        holder.scale.setScalar(1 / (ws.x || 1));
+        var inner = new THREE.Group(); inner.add(obj); holder.add(inner);
+        var restore = null, seat = null;
+        if (opts.grip) {
+            var gr = Object.assign({ c: [0, 0, 0] }, opts.grip);
+            if (!opts.open) { try { restore = _gripHandTemp(root, bone.name); } catch (e) { restore = null; } }
+            try { seat = _gripFrame(root, bone, { bone: bone.name, grip: gr }); } catch (e) { seat = null; }
+            if (seat) {
+                inner.quaternion.copy(seat.q);
+                inner.position.copy(seat.p).sub(new THREE.Vector3(gr.c[0], gr.c[1], gr.c[2]).applyQuaternion(seat.q));
+            }
+        }
+        obj.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; n._ew_pixelate = true; } });
+        bone.add(holder);
+        return { holder: holder, inner: inner, bone: bone, seated: !!seat,
+            remove: function () {
+                if (restore) { try { restore(); } catch (e) {} restore = null; }
+                if (holder.parent) holder.parent.remove(holder);
+            } };
+    }
+    /* world units to a metre on this unit's body (THE BIG SQUARES: a 1.0 body is a tile, HQ_TILE_M metres) */
+    function unitPropMetre(unitId) {
+        var rig = _unitModelRigs.get(unitId);
+        var ts = (rig && rig.ts) || (CONFIG && CONFIG.tileSize) || BASE_TILE;
+        return ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;
+    }
+    /* the gear (EQUIP_DEFS key -> where it is worn). size = metres (fit 'height' = its height, 'span' = its widest side);
+       side = the face of the bone's skin it sits on (back / front / left / right of the body; 'arm' = round the bone);
+       off = metres in the body's frame (+X the body's left, +Y up, +Z its front); map = [propA, bodyA, propB, bodyB]: the turn
+       taking the GLB's axis A onto the body's A and B (kept square) onto B ('bone' = down the bone toward its child). */
+    var UNIT_GEAR_WEAR = {
+        jetpack:          { file: 'jetpack.glb',          bone: 'Spine02', size: 0.5,  side: 'back',  off: [0, -0.06, 0] },
+        binoculars:       { file: 'binoculars.glb',       bone: 'Spine02', size: 0.17, fit: 'span', side: 'front', off: [0, -0.02, 0],
+                            map: [[0, 0, 1], [0, -1, 0], [1, 0, 0], [1, 0, 0]] },
+        walkie_talkie:    { file: 'walkie_talkie.glb',    bone: 'Hips',    size: 0.19, side: 'left',  off: [0, 0.02, 0.03],
+                            map: [[0, 0, 1], [-1, 0, 0], [0, 1, 0], [0, 1, 0]] },
+        flair:            { file: 'flare_gun.glb',        bone: 'Hips',    size: 0.21, fit: 'span', side: 'right', off: [0, -0.02, 0.02],
+                            map: [[-1, 0, 0], [0, -1, 0], [0, 0, 1], [-1, 0, 0]] },
+        ward:             { file: 'ward_totem.glb',       bone: 'Hips',    size: 0.17, side: 'left',  off: [0, -0.02, -0.07],
+                            map: [[0, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0]] },
+        telescope:        { file: 'spyglass.glb',         bone: 'Hips',    size: 0.3,  fit: 'span', side: 'right', off: [0, -0.04, -0.06],
+                            map: [[1, 0, 0], [0, -0.92, 0.38], [0, 1, 0], [-1, 0, 0]] },
+        martyrs_talisman: { file: 'talisman_pendant.glb', bone: 'Spine02', size: 0.08, side: 'front', off: [0, 0.02, 0] },
+        purity_censer:    { file: 'censer.glb',           bone: 'Hips',    size: 0.13, side: 'right', off: [0, -0.1, 0.06], swing: true },
+        grapnel_gauntlet: { file: 'grapple_gauntlet.glb', bone: 'RightForeArm', size: 0.27, fit: 'span', side: 'arm',
+                            map: [[-1, 0, 0], 'bone', [0, 1, 0], [0, 1, 0]] },
+        echo_band:        { file: 'arm_band.glb',         bone: 'LeftArm', size: 0, fit: 'span', side: 'arm', ring: true,
+                            map: [[0, 1, 0], 'bone', [0, 0, 1], [0, 0, 1]] },
+        hagstone:         { file: 'hagstone.glb',         bone: 'Spine02', size: 0.065, side: 'front', off: [0.05, -0.05, 0] },
+        dowsing_rod:      { file: 'dowsing_rod.glb',      bone: 'Hips',    size: 0.38, side: 'back',  off: [0.06, 0.12, 0],
+                            map: [[0, 1, 0], [0.3, 1, 0], [0, 0, 1], [0, 0, -1]] },
+    };
+    /* the turn taking a onto A and b (made square to a) onto B */
+    function _basisQuat(a, A, b, B) {
+        var V = function (x) { return new THREE.Vector3(x[0], x[1], x[2]).normalize(); };
+        var a1 = a.isVector3 ? a.clone().normalize() : V(a), A1 = A.isVector3 ? A.clone().normalize() : V(A);
+        var b1 = b.isVector3 ? b.clone() : V(b), B1 = B.isVector3 ? B.clone() : V(B);
+        b1.addScaledVector(a1, -b1.dot(a1)); B1.addScaledVector(A1, -B1.dot(A1));
+        if (b1.lengthSq() < 1e-8 || B1.lengthSq() < 1e-8) return new THREE.Quaternion().setFromUnitVectors(a1, A1);
+        b1.normalize(); B1.normalize();
+        var Mp = new THREE.Matrix4().makeBasis(a1, b1, new THREE.Vector3().crossVectors(a1, b1));
+        var Mb = new THREE.Matrix4().makeBasis(A1, B1, new THREE.Vector3().crossVectors(A1, B1));
+        return new THREE.Quaternion().setFromRotationMatrix(Mb.multiply(Mp.transpose()));
+    }
+    /* the skin weighted to a bone (>= minW), in `frame`'s coordinates, as the bones stand now */
+    function _boneSkinPts(root, bone, frame, minW) {
+        var pts = [], M = new THREE.Matrix4(), v = new THREE.Vector3();
+        var toFrame = new THREE.Matrix4().copy(frame.matrixWorld).invert().multiply(bone.matrixWorld);
+        root.traverse(function (o) {
+            if (!o.isSkinnedMesh || !o.skeleton || !o.geometry || o._ew_silhouette || o._ew_teamOutline) return;
+            var bi = o.skeleton.bones.indexOf(bone); if (bi < 0) return;
+            var g = o.geometry, pa = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+            if (!pa || !si || !sw) return;
+            M.multiplyMatrices(o.skeleton.boneInverses[bi], o.bindMatrix).premultiply(toFrame);
+            var step = Math.max(1, Math.floor(pa.count / 8000));
+            for (var i = 0; i < pa.count; i += step) {
+                var w = 0;
+                for (var k = 0; k < 4; k++) if (si.getComponent(i, k) === bi) w += sw.getComponent(i, k);
+                if (w >= minW) pts.push(v.fromBufferAttribute(pa, i).applyMatrix4(M).clone());
+            }
+        });
+        return pts;
+    }
+    function _gearAttach(root, frame, key, spec, pxm) {
+        var bone = root.getObjectByName(spec.bone); if (!bone) return null;
+        var pts = _boneSkinPts(root, bone, frame, 0.45);
+        if (pts.length < 12) return null;
+        var box = new THREE.Box3().setFromPoints(pts), c = box.getCenter(new THREE.Vector3());
+        var fi = new THREE.Matrix4().copy(frame.matrixWorld).invert();
+        var bp = new THREE.Vector3().setFromMatrixPosition(bone.matrixWorld).applyMatrix4(fi);
+        var kid = bone.children.filter(function (k) { return k.isBone; })[0];
+        var D = kid ? new THREE.Vector3().setFromMatrixPosition(kid.matrixWorld).applyMatrix4(fi).sub(bp) : new THREE.Vector3(0, -1, 0);
+        if (D.lengthSq() < 1e-10) D.set(0, -1, 0);
+        D.normalize();
+        var N = new THREE.Vector3(), P = c.clone(), size = spec.size * pxm;
+        if (spec.side === 'back') { P.z = box.min.z; N.set(0, 0, -1); }
+        else if (spec.side === 'front') { P.z = box.max.z; N.set(0, 0, 1); }
+        else if (spec.side === 'left') { P.x = box.max.x; N.set(1, 0, 0); }
+        else if (spec.side === 'right') { P.x = box.min.x; N.set(-1, 0, 0); }
+        else {
+            /* round the bone: the middle of its stretch of skin, on the axis; `ring` = sized to go round it */
+            var r = []; pts.forEach(function (p) { var d = p.clone().sub(bp); var t = d.dot(D); r.push(d.addScaledVector(D, -t).length()); });
+            r.sort(function (x, y) { return x - y; });
+            var rr = r[Math.floor(r.length * 0.8)] || 0;
+            var tm = 0; pts.forEach(function (p) { tm += p.clone().sub(bp).dot(D); }); tm /= pts.length;
+            P.copy(bp).addScaledVector(D, spec.ring ? tm * 0.85 : tm);
+            if (spec.ring) size = Math.max(rr * 2.25, 0.05 * pxm);
+            else { N.set(0, 1, 0).addScaledVector(D, -D.y).normalize(); P.addScaledVector(N, rr * 0.9); }   // on top of the forearm
+        }
+        if (spec.off) P.add(new THREE.Vector3(spec.off[0], spec.off[1], spec.off[2]).multiplyScalar(pxm));
+        var mp = spec.map;
+        var q = mp ? _basisQuat(mp[0], mp[1] === 'bone' ? D : mp[1], mp[2], mp[3] === 'bone' ? D : mp[3]) : new THREE.Quaternion();
+        /* frame -> the bone: the holder carries the placement in the bone's own space */
+        var Mw = new THREE.Matrix4().compose(P, q, new THREE.Vector3(1, 1, 1)).premultiply(frame.matrixWorld);
+        var Mh = new THREE.Matrix4().copy(bone.matrixWorld).invert().multiply(Mw);
+        var holder = new THREE.Group(); holder.name = 'ew_gear_' + key;
+        Mh.decompose(holder.position, holder.quaternion, holder.scale);
+        var piv = new THREE.Group(); holder.add(piv);
+        var inst = _miscModelInstance(_PROPS_BASE + spec.file, true, size, { fit: spec.fit === 'span' ? 'span' : 'height', matPick: _hqPropMatPick,
+            onDone: function (g, sc, bb) {
+                var hx = (bb.max.x - bb.min.x) * sc * 0.5, hy = (bb.max.y - bb.min.y) * sc * 0.5, hz = (bb.max.z - bb.min.z) * sc * 0.5;
+                g.position.y = -hy;   /* the instance sits on its base: its middle on the pivot */
+                if (N.lengthSq() > 0) {   /* out of the skin by its own depth along the face's normal */
+                    var Nl = N.clone().applyQuaternion(q.clone().invert());
+                    var e = Math.abs(Nl.x) * hx + Math.abs(Nl.y) * hy + Math.abs(Nl.z) * hz;
+                    piv.position.copy(Nl).multiplyScalar(e * 0.92);
+                }
+                if (spec.swing) {   /* THE CENSER: it hangs from its ring and swings a little as the body moves */
+                    g.position.y = -hy * 2; piv.position.y += hy;
+                    var mesh0 = null; g.traverse(function (n) { if (!mesh0 && n.isMesh) mesh0 = n; });
+                    if (mesh0) mesh0.onBeforeRender = function () { var t = performance.now() * 0.0042; piv.rotation.z = Math.sin(t) * 0.22; piv.rotation.x = Math.sin(t * 0.7 + 1) * 0.12; };
+                }
+                g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
+            } });
+        piv.add(inst);
+        bone.add(holder);
+        return holder;
+    }
+    /* put the unit's worn gear on its rig (fresh build, or a kept rig whose gear changed); off: window.EW_NO_GEAR_WEAR */
+    function _unitGearSync(unit, inner, ts) {
+        if (!unit || !inner || (typeof window !== 'undefined' && window.EW_NO_GEAR_WEAR)) return;
+        var eq = unit.equipment || {}, keys = [eq.accessory1, eq.accessory2].filter(function (k) { return k && UNIT_GEAR_WEAR[k]; });
+        var gk = keys.join('|');
+        if ((inner.userData._ewGearKey || '') === gk) return;
+        var old = []; inner.traverse(function (n) { if (n.name && n.name.indexOf('ew_gear_') === 0) old.push(n); });
+        old.forEach(function (n) { try { if (n.parent) n.parent.remove(n); } catch (e) {} });
+        inner.userData._ewGearKey = gk;
+        if (!keys.length) return;
+        var frame = inner.parent || inner;
+        frame.updateMatrixWorld(true);
+        var pxm = ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;
+        keys.forEach(function (k) { try { _gearAttach(inner, frame, k, UNIT_GEAR_WEAR[k], pxm); } catch (e) { console.warn('[3D] gear failed', k, e); } });
+    }
     function _disposeModelRig(rig) {
         if (!rig) return;
         if (rig.appearanceRig) rig.appearanceRig.dispose();
@@ -16982,6 +17176,7 @@ const ThreeRenderer = (function () {
             entry._ew_modelAttached = true;
             if (_rig.inner.parent) _rig.inner.parent.remove(_rig.inner);
             wrap.add(_rig.inner);
+            try { _unitGearSync(unit, _rig.inner, ts); } catch (_ge) {}   // THE GEAR ON THE BODY: a kept rig whose gear changed
             entry.mixer = _rig.mixer;
             entry.actions = _rig.actions;
             /* THE NEW CLIPS (2026-09-25): the library flags ride the kept rig
@@ -17041,6 +17236,7 @@ const ThreeRenderer = (function () {
                `RACE_MODELS_3D['door agent']`) parents the catalogue GLB to a hand bone of THIS model, so
                it rides the rig cache with the body — the same holder rule as the building's held props */
             if (def.hold) { try { _unitAttachHeld(m, def.hold, ts); } catch (_he) { console.warn('[3D] held prop failed', _he); } }
+            try { _unitGearSync(unit, inner, ts); } catch (_ge) { console.warn('[3D] gear failed', _ge); }   // THE GEAR ON THE BODY (row 24)
 
             var hasSkin = false;
             var _stRef = _unitStencilRef(unit.id);
@@ -85585,6 +85781,8 @@ const ThreeRenderer = (function () {
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
+        unitHoldProp: unitHoldProp,        // THE PROPS IN THE HAND (row 24)
+        unitPropMetre: unitPropMetre,
         /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
            (three-vfx-effects.js _ESC_LOOKS) hang the web line / the ejection's exhaust on the moving body */
         unitBodyWorld: function (uid) {
