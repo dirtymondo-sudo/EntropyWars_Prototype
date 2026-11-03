@@ -61,13 +61,15 @@ JOBS = [
 TRAILER_KEEP = r'^(Home|railing|Frame_Windows|Mesh|Frame_Door|Door|Door_Mesh|air-conditioning|Antenna|ladders|Fuse_box)'
 # THE HAUNTED HOUSE's TOWN RIM (2026-11-03, same OK): the Abandoned House pack's house from the OUTSIDE — its shell alone (`Casa!` = the
 # node without its 69 children: the furniture, the cobwebs, the lamps), its windows, the balcony, the porch posts + rails. The basement
-# hangs 3.5 m under the yard's ground (the rim sinks it). Its front (the porch on its short side, +X in the file) turns to +Z.
-JOBS += [('house', 'abandonedhouse', ['Casa!', 'Ventanas', 'm', 'Columnas', 'Barandal', 'Barandal.003'], -90)]
+# hung 3.5 m under the yard's ground: `cut` 2.5 drops all of it but the last 1 m (the room sinks that 1 m: DOOR_HQ.catalogue
+# abandoned_house `hover: -1`; the rim's `sink`), so a slope never shows stilts. Its front (the porch on its short side, +X in the file) turns to +Z.
+JOBS += [('house', 'abandonedhouse', ['Casa!', 'Ventanas', 'm', 'Columnas', 'Barandal', 'Barandal.003'], -90, {'cut': 2.5})]
 JOBS += [('trailer_%d' % i, 'trailerscene', [{'near': 'Home' if i == 0 else 'Home_%02d' % i, 'pad': 1.2, 'keep': TRAILER_KEEP}], 90) for i in range(6)]
 jobs = []
-for k, p, nodes, rz in JOBS:
+for J in JOBS:
+    k, p, nodes, rz = J[:4]
     if ONLY and k not in ONLY: continue
-    jobs.append({'file': os.path.join(PACKS, F[p]), 'search': os.path.join(PACKS, F[p].split('/')[0]), 'out': os.path.join(OUT, 'ebd_%s_%s.glb' % (p, k)), 'nodes': nodes, 'rotz': rz})
+    jobs.append(dict({'file': os.path.join(PACKS, F[p]), 'search': os.path.join(PACKS, F[p].split('/')[0]), 'out': os.path.join(OUT, 'ebd_%s_%s.glb' % (p, k)), 'nodes': nodes, 'rotz': rz}, **(J[4] if len(J) > 4 else {})))
 byfile = {}
 for j in jobs: byfile.setdefault(j['file'], []).append(j)
 def load(f):
@@ -133,6 +135,19 @@ for f,js in byfile.items():
         rz=j.get('rotz',0)
         R=Matrix.Rotation(rz*3.14159265/180,4,'Z')
         for o in meshes: o.data.transform(R@Matrix.Translation(-off))
+        if j.get('cut'):
+            # `cut` (m over the base): everything under it goes (bisect, inner side cleared, the cut left open: it is under the ground)
+            import bmesh
+            for o in meshes:
+                bm=bmesh.new(); bm.from_mesh(o.data)
+                bmesh.ops.bisect_plane(bm,geom=bm.verts[:]+bm.edges[:]+bm.faces[:],plane_co=(0,0,j['cut']),plane_no=(0,0,1),clear_inner=True)
+                bm.to_mesh(o.data); bm.free()
+            meshes=[o for o in meshes if len(o.data.vertices)]
+            for o in list(bpy.data.objects):
+                if o.type=='MESH' and o not in meshes: bpy.data.objects.remove(o,do_unlink=True)
+            for o in meshes: o.data.transform(Matrix.Translation((0,0,-j['cut'])))
+            pts=[v.co for o in meshes for v in o.data.vertices]
+            mn=Vector((min(p.x for p in pts),min(p.y for p in pts),min(p.z for p in pts)));mx=Vector((max(p.x for p in pts),max(p.y for p in pts),max(p.z for p in pts)))
         if len(meshes)>1 and j.get('join',True):
             bpy.ops.object.join()
         for mat in bpy.data.materials:

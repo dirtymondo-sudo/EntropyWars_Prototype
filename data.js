@@ -28797,6 +28797,17 @@ const DOOR_HQ = {
         street_drain:      { proc: 'manhole', h: 0.01, foot: 0 },                                                                                         // a manhole on the road: the urban pack's DecalManholeCover laid flat (2026-10-05, mondo: no Meshy drain GLB)
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
         bus_shelter:       { file: 'ebd_busstop_bus_shelter.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        /* THE TOWN HOUSES (2026-11-03, mondo: the rims are dead code, "obviously they need to go into the site rooms"): whole pack houses
+           one by one, real size (`span` = the long side). The Trailer Park scene's six trailers (one cut per trailer, its door side to
+           +Z = the row's `face`), Area 51's flight line and the Skinwalker fields; the Abandoned House's shell (its basement cut to the
+           last metre, `hover: -1` sinks that metre under the ground), past the Haunted grounds' pines on the outer ground. */
+        trailer_home_1:    { file: 'ebd_trailerscene_trailer_0.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_2:    { file: 'ebd_trailerscene_trailer_1.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_3:    { file: 'ebd_trailerscene_trailer_2.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_4:    { file: 'ebd_trailerscene_trailer_3.glb', base: 'misc', span: 15.0, foot: 2.8, rect: { hw: 7.5, hd: 2.85 }, block: true },
+        trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
+        trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
+        abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -41947,6 +41958,10 @@ const DOOR_HQ = {
                 { key: 'signpost',        x: 10, z: 26 },
                 { key: 'warning_tape',    x: 18, z: 5.5, face: 0 },
                 { key: 'quarter_pipe',    x: 10, z: 20, face: 90 }, { key: 'quarter_pipe', x: 26, z: 20, face: 270 },  // THE PARK RULE: the half pipe on the apron
+                /* THE TRAILERS PAST THE FENCE (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): the Trailer Park's
+                   trailers one by one on the desert past the open edge (the outer ground), their doors to the base, clear of the gate road */
+                { key: 'trailer_home_1',  x: -30, z: -42.5, face: 180 }, { key: 'trailer_home_3', x: -13, z: -43, face: 180 },
+                { key: 'trailer_home_5',  x: 18, z: -42.5, face: 180 }, { key: 'trailer_home_2', x: -55, z: -18, face: 90 },
             ],
             agents: [],
             npcSpots: [
@@ -45348,6 +45363,9 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 { key: 'ritual_circle',  x: -8.75, z: 5.25, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
+                /* THE TRAILERS (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): three of the Trailer Park's trailers in
+                   the cut rows' clearings, off the tracks and every arena size, doors to the circles */
+                { key: 'trailer_home_4', x: -49.5, z: -22.5, face: 90 }, { key: 'trailer_home_6', x: 10, z: -9.5, face: 180 }, { key: 'trailer_home_2', x: 24, z: -33.5, face: 270 },
                 { key: 'cave_torch',     x: 6.8, z: 36.8 },
                 { key: 'cave_torch',     x: -6.8, z: 36.8 },
                 { key: 'cave_torch',     x: 19.2, z: -15.2 },
@@ -50232,7 +50250,10 @@ const HQ_AREA_SPECS = {
                 { key: 'cave_torch', x: -12.25, z: -36.75 }, { key: 'cave_torch', x: 12.25, z: -36.75 }, { key: 'cave_torch', x: 28, z: 16 }, { key: 'cave_torch', x: -43.75, z: 26.325 },
                 { key: 'planter', x: -9, z: -34 }, { key: 'planter', x: 9, z: -34 }, { key: 'garden_tree', x: -50.75, z: 29.875 }, { key: 'garden_tree', x: 20, z: 48 }, { key: 'hollow_tree', x: 48, z: 40 },
                 { key: 'park_bench', x: -8, z: 24.25, face: 0 }, { key: 'park_bench', x: 24.25, z: 40, face: 180 }, { key: 'signpost', x: 6, z: 24.25 }, { key: 'stocks', x: 19.125, z: 5.25, face: 180 },
-                { key: 'skull_pile', x: 22.875, z: -12.25 }, { key: 'skull_pile', x: 48, z: 12 }, { key: 'brazier', x: 8.875, z: 8.875 }, { key: 'brazier', x: -8.875, z: 8.875 }],
+                { key: 'skull_pile', x: 22.875, z: -12.25 }, { key: 'skull_pile', x: 48, z: 12 }, { key: 'brazier', x: 8.875, z: 8.875 }, { key: 'brazier', x: -8.875, z: 8.875 },
+                /* THE HOUSES PAST THE PINES (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): the Abandoned House's shell
+                   on the outer ground past the treeline, west, east and south of the grounds (side on: its long wall to the grounds) */
+                { key: 'abandoned_house', x: -86, z: -14, face: 0 }, { key: 'abandoned_house', x: 86, z: 18, face: 180 }, { key: 'abandoned_house', x: -34, z: 80, face: 90 }],
         npcSpots: [{ x: -6, z: 24, face: 30, race: 'ghost', say: '“The house is not haunted. The grounds are. The house is where we go to get away from it.”' }, { x: -32, z: -16, y: 0.8, face: 160, race: 'ghoul', say: '“Every stone in the plot has your surname. Most of them are spelled right.”' },
                    { x: 48, z: -38, y: 1.4, face: 270, race: 'vampire', say: '“The terrace was for watching the drive. Nobody comes up the drive. We watch anyway.”' }],
         lines: ['“Which floor?” “The one hotels leave out.”'] },
