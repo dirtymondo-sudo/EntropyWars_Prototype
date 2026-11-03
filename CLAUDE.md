@@ -45,19 +45,11 @@ same turn as the fix, without asking first):
    Before merging, `git fetch origin main` and merge main into the branch; if
    it conflicts, resolve by hand keeping BOTH sides, never one side wholesale.
    Never force-push main. Render auto-deploys index.html from main.
-3. **DIRECT UPLOAD (mondo 2026-11-03, replaces the zip):** right after the merge run
-   `node sync-zip.js --upload`. It compares every R2 file index.html on origin/main loads (random query, like the
-   zip) and PUTs every differing file from origin/main straight to the R2 bucket `ewmusicsfx` (the one behind
-   cdn.entropywars.net; `dirtymondo` is NOT the game bucket), then re-fetches each live and checks its sha256.
-   R2-only assets not in the repo (Assets/decor, props, misc GLBs, Blender bakes): `node sync-zip.js --put
-   <local file> <R2 key> [...]`, e.g. `--put /mnt/project-files/x/anemone.glb Assets/decor/anemone.glb`.
-   Auth: the cloud env has a Network secret that adds the Cloudflare API token to every api.cloudflare.com
-   request; the token is never in the container, a file, memory or chat. In the reply list each uploaded file
-   with the first 8 chars of its sha256 and say it is LIVE (no zip for mondo to upload). Then `node sync-zip.js
-   --dry-run` must say "R2 matches origin/main". Never upload a file that is not from origin/main, never delete
-   R2 objects you did not upload yourself in the same turn. ONLY IF the upload is refused (401/403/10000, e.g. a
-   thread started in an environment without the secret): fall back to the zip below and say why.
-   FALLBACK — the CUMULATIVE SYNC ZIP with `node sync-zip.js`
+3. **UPLOAD IT YOURSELF (mondo 11-03, replaces the zip):** right after the merge run `node sync-zip.js --upload`
+   (PUTs every file differing from origin/main to bucket `ewmusicsfx` = cdn.entropywars.net, re-checks each live).
+   R2-only assets: `node sync-zip.js --put <local file> <R2 key> ...`. Reply: each file + sha256[:8], "live, nothing
+   to upload". Never delete R2 objects you didn't upload. Auth = env Network secret (never in files/chat). Only if
+   refused: the zip fallback below. FALLBACK — the CUMULATIVE SYNC ZIP with `node sync-zip.js`
    (does all of this step): for every R2 file that
    index.html on origin/main loads from cdn.entropywars.net, fetch the live
    copy (`curl --compressed` with a random query string) and compare its
