@@ -64312,6 +64312,7 @@ const ThreeRenderer = (function () {
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
         if (info.texb && info.texb.length) { try { _hqBuildTexRows(info, G, U); } catch (e) { console.warn('[HQ] the textured buildings failed', e); } }
+        if (info.texb && info.texb.length) { try { _hqBuildTexPacks(info, G, U, TM); } catch (e) { console.warn('[HQ] the pack buildings failed', e); } }   // THE PACK BUILDINGS (2026-11-03)
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -64726,6 +64727,7 @@ const ThreeRenderer = (function () {
         if (typeof URBAN_TEXTURES === 'undefined' || typeof urbanTexPick !== 'function') return 0;
         var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
+            if (typeof hqTexbPack === 'function' && hqTexbPack(f)) return;   // THE PACK BUILDINGS: _hqBuildTexPacks
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -64733,6 +64735,33 @@ const ThreeRenderer = (function () {
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
+        return n;
+    }
+    /* THE PACK BUILDINGS (2026-11-03, mondo on the Buildings pack's shop blocks: "incorporate those into the game like in disaster city and
+       the map editor"): one of data.js HQ_PACK_BUILDINGS (a whole photo-textured model, its shop front at +Z) at a footprint `w` × `d`
+       metres — fitted to the width (the height follows, one scale, so a storey stays a storey), its depth stretched or squashed to the
+       footprint's (the city keeps that within 70 %); the base on y = 0, the front at the group's +Z. Never skipped in low-performance mode:
+       it is the building, the walk stands on its roof. */
+    function _hqPackBuildingModel(PB, w, d, neon) {
+        var sc = w / PB.w;
+        var m = _hzMiscKit('pack_building', { url: _R2_MISC + PB.file, metres: w, fit: 'span', lift: neon ? 0.3 : 0.16, cast: false });
+        m.scale.z = Math.max(0.3, d / (PB.d * sc));
+        m.name = 'hq_pack_building';
+        return m;
+    }
+    /* the editor's texbuilding rows whose `key` is a pack building, each that model in its box (data.js hqTexBuildingRows: its walls, its roof) */
+    function _hqBuildTexPacks(info, G, U, TM) {
+        if (typeof hqTexbPack !== 'function') return 0;
+        var neon = !!(info.gen && info.gen.neon), n = 0, prevTs = _hzKitTs; _hzKitTs = TM;
+        try {
+            info.texb.forEach(function (f) {
+                var PB = hqTexbPack(f); if (!PB) return;
+                try {
+                    var g = new THREE.Group(); g.position.set(f.x * U, (f.base || 0) * U + 0.3, f.z * U); g.rotation.y = -((f.rot || 0) * Math.PI / 180); G.add(g);
+                    g.add(_hqPackBuildingModel(PB, Math.max(2, f.w || 8), Math.max(2, f.d || 8), neon)); n++;
+                } catch (e) { console.warn('[HQ] a pack building failed', f.key, e); }
+            });
+        } finally { _hzKitTs = prevTs; }
         return n;
     }
     /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): a
@@ -64807,6 +64836,18 @@ const ThreeRenderer = (function () {
                 lot._roofY = (lot.base || 0) + lot.top;
                 _hqLotStand(lot, (lot.base || 0) + lot.top + 0.5);   // THE ROOFS: the low lot's parapet slab (below), until a building says otherwise
                 if (!prisms) return;   // the mall: the units ARE the rise, fronted below
+                /* THE PACK BUILDINGS (2026-11-03, mondo: the Buildings pack's shop blocks "into the game like in disaster city"): a `pack` lot
+                   (data.js city lots, `packP`) stands that whole model, its shop front to the street, its roof the walk's */
+                var PB = lot.pack && typeof HQ_PACK_BUILDINGS !== 'undefined' ? HQ_PACK_BUILDINGS[lot.pack] : null;
+                if (PB) {
+                    try {
+                        var pg = new THREE.Group(); pg.position.set(lot.x * U, base, lot.z * U); pg.rotation.y = yaw; G.add(pg);
+                        pg.add(_hqPackBuildingModel(PB, lot.w, lot.d, lotNeonOf(lot)));
+                        var pr = PB.roof * lot.w / PB.w;
+                        lot._roofY = (lot.base || 0) + pr; _hqLotStand(lot, (lot.base || 0) + pr + 0.02);
+                        return;
+                    } catch (e) { console.warn('[HQ] a pack building failed', lot.pack, e); }
+                }
                 if (texOn) {
                     var lr = _mulberry32(((lot.seed | 0) * 7 + 11) >>> 0);
                     if (lot.low || lr() < ((lot.texP != null) ? lot.texP : texP)) {
@@ -64864,6 +64905,7 @@ const ThreeRenderer = (function () {
         prevTs = _hzKitTs; _hzKitTs = TM;
         try {
             fronts.forEach(function (f, fi) {
+                if ((lotById[f.lot] || {}).pack) return;   // THE PACK BUILDINGS (2026-11-03): the model wears its own shop fronts
                 var lot = lotById[f.lot] || {}, g = _hqCityFrontGroup(f, U), L = f.len, top = (lot._roofY != null ? lot._roofY - (lot.base || 0) : f.top);
                 var store = (lot.fronts || gen.fronts) === 'store';   // THE DISTRICTS (D2): the front's kind is the lot's district's
                 var ink = _HQ_STORE_INKS[(f.lot * 7 + fi) % _HQ_STORE_INKS.length];

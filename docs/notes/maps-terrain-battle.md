@@ -1304,6 +1304,25 @@ _HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
 Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
 GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
 city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
+Round 4, THE PACK BUILDINGS (the same day; mondo saw the city rim and kept it: "they look fine, but i also like the buildings you
+showed me in building pack 1, so incorporate those into the game like in disaster city and the map editor"): the ten shop blocks of
+Elbolilloduro's Buildings pack (CC0, 126-548 tris each, photo sheets) are cut one by one by bake-pack-pieces.py (`bld_00..09`,
+R2 Assets/misc/ebd_buildings_bld_NN.glb + a front picture .png for the editor, added to the zip by hand; copies in project files
+asset-packs/coded-out-round4/). data.js HQ_PACK_BUILDINGS = each one's metres (w along the shop front at +Z, d, h, roof = the slab
+inside the parapet, measured in Blender). Where they go:
+- THE CITY LOTS: a plan's or a district's `packP` = the share of the runs along a street face that try a pack building first (its own
+  width, else 90 % / 80 %), as deep as the block lets it, never under 70 % of its own depth (three-renderer.js _hqPackBuildingModel
+  fits the width, the height follows at one scale, the depth is fitted to the lot). Its own seeded draw (`prnd`), so plans without
+  packP lay exactly what they laid. A pack lot carries `pack`, `packH` (the solid top + the walk's roof) and never grows or shrinks
+  for an alley; its fronts are skipped (the model has its own shop fronts). Disaster City's OLD TOWN district has packP 0.6: 7 blocks
+  (6 different) on its streets. The FINANCIAL blocks are too shallow (8-11 m deep) for any of them. The arena pick (19,15) and the 9 /
+  10 / 11 cuts were rebaked and did not move.
+- THE EDITOR: a BUILDING's Look list (`bldKey`) has a PACK BUILDINGS group at the top; a texbuilding row whose key is one of them is
+  drawn as that model in its box (_hqBuildTexPacks), solid (no inside), its walls the parapet's height and its roof the model's own at
+  the box's width (data.js hqTexBuildingRows). Storeys does nothing to it.
+- Probe gotcha: in the headless city probe the model queue never started these files (the queue holds on some sheet in swiftshader);
+  `--flags=EW_NO_MODEL_QUEUE` loads them. Shots: Old Town street fronts + two editor rows in Skinwalker fields, all upright, fronts
+  to the street.
 
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these

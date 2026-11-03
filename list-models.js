@@ -65,6 +65,7 @@ const SOURCES = [
     { re: /Assets\/halloween\//, how: 'PACK', src: 'Halloween pack · Elbolilloduro · CC0' },
     { re: /Assets\/christmas\//, how: 'PACK', src: 'Christmas pack · Elbolilloduro' },
     // THE MESHY SWAP (2026-11-03): one piece cut out of an Elbolilloduro pack scene by Claude in Blender (bake-pack-pieces.py), Assets/misc/ebd_<pack>_<item>.glb
+    { re: /Assets\/misc\/ebd_buildings_/, how: 'PACK', src: 'Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS)' },
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_diner_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_trailerpark_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender)' },
@@ -247,6 +248,9 @@ const gearW = block(R3, 'var UNIT_GEAR_WEAR = {');
 for (const m of gearW.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/gm)) add('gear', m[1], CDN + 'Assets/props/' + m[2]);
 const ani = block(R3, 'var _ANIMALS = {');
 for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('animal', m[1], BASES.animals + m[2]);
+// THE PACK BUILDINGS (2026-11-03): the Buildings pack's shop blocks (data.js HQ_PACK_BUILDINGS: Disaster City's lots + the editor's Look list)
+const packB = block(read('data.js'), 'const HQ_PACK_BUILDINGS = {');
+for (const m of packB.matchAll(/(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/g)) add('misc', m[1] + ' (a whole building)', BASES.misc + m[2]);
 // the halloween pieces the spells cut out of the one kit file
 const hwNodes = new Set();
 for (const m of (VFX + R3).matchAll(/var _(?:HW_SWEETS|HW_PAILS|HW_GRAVE_NODES|HWC_NODES|BP_WARM|PK_LANTERNS|PK_WHOLE|GRAVE_HW_STONES)\s*=\s*\[([^\]]*(?:\][^;]*)?)\]/g))
