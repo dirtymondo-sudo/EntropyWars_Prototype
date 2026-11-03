@@ -2875,3 +2875,28 @@ coil". Checked in a real browser (spell-vfx-audit harness): it NEVER went off on
     victim's side (its facing) so the body doesn't hide the coil in the spell shot. The old pop shadowed the coil mesh with
     a number (`var spring = …`), so it never stretched.
   - three-renderer.js `_buildJackBox3D`: the painted box + crank on the board (it was the red trap marker quad).
+
+## THE FLIPBOOKS — the Blender pilot on Fireball + Meteor (2026-11-03)
+mondo asked how Blender could give the spells AAA detail; research doc (Claude Doc "Blender for Entropy Wars spell VFX")
+found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He picked "Pilot on Fireball + Meteor".
+- **The sheet:** `bake-vfx.py` (repo root) runs a Mantaflow fire + smoke sim in the FULL Blender 5.2.3 build (pip's `bpy`
+  module crashes in Mantaflow: `LevelsetGrid has no attribute setConst`) and Cycles renders 64 transparent frames; the
+  sheet keeps 60 (8 x 8 cells of 128 px, 1024 px, ~0.5 MB). Repo copy `Assets/Sprites/vfx/fb_explosion.png`, R2
+  `Assets/Sprites/vfx/fb_explosion.png` (NOT picked up by sync-zip.js: add it to the zip by hand at that path).
+- **three-vfx.js THE FLIPBOOKS:** `_FLIPBOOKS` lists sheets (cols, frames, cell, blend, `lift` = how far below the cell
+  centre the blast sits, 0.32 here). `_fbLoadAll` (at atlas build) cuts the sheet into one CanvasTexture per frame
+  (`_hiResTextures['fb-explosion#N']`), so a flipbook particle is a plain pool particle whose sprite key steps through the
+  frames over its life (tick: `p._fb`, `fbFrom`/`fbTo` = the slice of the sheet). No shader: the instanced batch groups by
+  frame texture, the per-particle path swaps `material.map`; both renderers draw it (checked WebGPU-on-WebGL2 + classic).
+  Not ready / failed / `window.EW_NO_FLIPBOOKS = true` → spawn() returns null and the caller keeps the old look.
+  API: `ThreeVFX.flipbookReady(key)`, `ThreeVFX.flipbookInfo(key)`.
+- **three-vfx-effects.js THE FLIPBOOK PILOT** (end of module): `_fbBlast(F, o)` puts one blast in a frame, a little
+  BEHIND the body from the lens (`_nbCamDir`) so the victim draws over it. Fireball: `_fpBurst(..., fb)` (only spell id
+  fire1) plays frames 0-60% at 2.3 tiles and drops the painted explosion-orange blobs + `_fpSmoke` puffs. Meteor:
+  `_spell3DGeometry.meteor` wrapped: one 3-tile blast at the centre (full sheet, 2.1 s) + up to 4 smaller ones on seen
+  tiles of the strike; `fbMeteor_descent` / `fbMeteor_impact_tile` clones (meteor_impact_tile itself is shared) tag the
+  painted smoke layers `ifNoFb: 'fb-explosion'` (`_spawnEffect` skips a layer whose flipbook is ready).
+- Online: both live inside the relayed fire() intents, so the guest plays them; `_pzSeen` keeps fogged tiles empty.
+- Proof sheets: /mnt/project-files/blender-vfx/ (fireball_before_after.jpg, meteor_before_after.jpg).
+- Next (only on mondo's say): roll the sheets out to the shared particle kinds (dust-puff, ember, smoke, flame,
+  explosion-orange), element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise for the burning-tile raymarch.
