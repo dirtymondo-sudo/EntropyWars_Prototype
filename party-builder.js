@@ -4371,7 +4371,7 @@ function PartyBuilder(props) {
               h('p', null, 'This slot wears the ' + unitRaceLabel + '\u2019s original ' + (refHasModel ? 'model' : 'sprite') + '. Make a custom look for it here; USE ORIGINAL MODEL in the creator puts the original back.'),
               h('div', { className: 'pb-creator-options' },
                 raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
-                h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance({ body: mpfbDefaultBody, model: 'creator' }) }, 'CREATE APPEARANCE'),
+                h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody, model: 'creator' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')))
         : !appearance
           ? h(React.Fragment, null,
@@ -4389,7 +4389,7 @@ function PartyBuilder(props) {
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: (appearance && appearance.body) || mpfbDefaultBody })) }, '⚄ RANDOMIZE'),   // (keeps the body picked)
                 raceSavedLook
                   ? h('button', { className: 'ms-tty-btn', title: 'Back to the saved ' + unitRaceLabel + ' look', onClick: () => setSlotLook(raceSavedLook) }, 'RESET TO SAVED LOOK')
-                  : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({ body: mpfbDefaultBody })) }, 'RESET'),
+                  : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance(Object.assign({ body: mpfbDefaultBody }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {}))) }, 'RESET'),   // + THE DEFAULT FACES
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;
