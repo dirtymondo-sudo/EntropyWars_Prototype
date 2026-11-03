@@ -1353,3 +1353,11 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   cliff sheet with no floorColor, so the stair stood about 35% brighter than the floor and went flat white. Now the flanks in the
   room's cliff sheet wear floorColor, like the field's own cliff skirt and the editor boxes. A flight with its own `side` sheet
   keeps it untinted.
+- THE WHITE ROOMS: Vatican City Arena (the basilica, a closed box room, floor `marble` = marble_light.png) clipped flat white in a
+  pool round the point the camera looks at. That pool is THE KEY LIGHT (the point light riding over the look point, battle 1.5 ×
+  the Key Light setting × 2 = 1.65, decay 1). Measured on the close view: Key Light 0 → 20% of the view at the grade's top
+  drops to 0.6%; key light + hemisphere + key × 0.75 → 3%. `_hqWhiteIn(room)` = whiteDay for a CLOSED box room whose floor is
+  a white sheet (else 1). It scales the hemisphere and the key (`_hqBoxLightVals`, `_hqIndoorLightVals`, `_hqLightArm`, the
+  fight's `_fieldGroundDress`) and the Key Light (`_hqKeyLampTick` on the walk, `_fieldKeyLampTick` via st.keyWhite in a
+  fight). The fill and the room's own lamps keep theirs. Rooms it hits: vatican_basilica, atlantis_temple and the DOOR HQ tiled
+  rooms (kitchen, coldroom, laundry, bathroom, locker, natatorium, autopsy, tank).
