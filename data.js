@@ -38873,7 +38873,7 @@ const DOOR_HQ = {
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
                        districts: [
                            { id: 'financial', label: 'THE FINANCIAL BLOCKS', rect: [-112, -44, 112, 44], storeys: [2, 6], style: 'office', texP: 0.2, ruinP: 0.35 },
-                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 3], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.2, style: 'residential', texP: 0.45, ruinP: 0.15, fenceKey: 'bricks_2', fenceH: 1.9 },
+                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 3], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.2, style: 'residential', texP: 0.45, ruinP: 0.15, packP: 0.6,   /* THE PACK BUILDINGS (2026-11-03): the Buildings pack's shop blocks among the old town's lots (the financial blocks are too shallow for them) */ fenceKey: 'bricks_2', fenceH: 1.9 },
                            { id: 'docks',     label: 'THE DOCKS',            rect: [-112, 44, 112, 88], storeys: [1, 3], lotW: [8, 11], lotD: [9, 12], lowP: 0.25, style: 'factory', texP: 0.4, ruinP: 0.45, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 2.2 },
                        ],
                        streets: [
@@ -51078,13 +51078,15 @@ function hqOpeningPieces(w, ops) {
    so the raised ground showed through. The field under a building is never touched now. A row without `y` stands on the ground:
    its rows carry `texbOf` and heights over 0, and hqTerrainCompile lifts them by the lowest ground under the footprint. */
 function hqTexBuildingRows(f) {
-    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), H = st * R.texStorey, rel = typeof f.y !== 'number', y0 = rel ? 0 : +f.y;
+    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), rel = typeof f.y !== 'number', y0 = rel ? 0 : +f.y;
     const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), t = R.ghostT;
+    /* THE PACK BUILDINGS (2026-11-03): a pack model's height is its own at the footprint's width (its roof slab, its parapet), never the storeys */
+    const PK = hqTexbPack(f), H = PK ? PK.roof * w / PK.w : st * R.texStorey;
     const P = (lx, lz) => [_hqR4(f.x + lx * c - lz * s), _hqR4(f.z + lx * s + lz * c)];
-    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = y0 + H + R.texParapet, of = rel ? f : null;
+    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = PK ? y0 + PK.h * w / PK.w : y0 + H + R.texParapet, of = rel ? f : null;
     const C = [P(-hw, -hd), P(hw, -hd), P(hw, hd), P(-hw, hd)], out = [];
     const gw = (a, b, lift) => { const r = { k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true, texbOf: of }; if (lift) r.lift = lift; out.push(r); };
-    const D = f.hollow && !hqTexbPrism(f) ? hqTexbDoor(f) : null;   // a prism building stays solid (its sprite faces have no doorway to cut)
+    const D = f.hollow && !hqTexbPrism(f) && !PK ? hqTexbDoor(f) : null;   // a prism building stays solid (its sprite faces have no doorway to cut); a pack building too
     for (let i = 0; i < 4; i++) {
         const a = C[i], b = C[(i + 1) % 4];
         if (D && i === 2) {   // THE INSIDE: the front (+z) has its doorway — the wall either side of it and a lintel over it
@@ -51104,6 +51106,26 @@ const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 
 /* the two retired prisms (2026-11-03): no longer offered in the editor, but a building already wearing one still draws as a prism
    (sprites.js points building_11 at building_1's art, church_2 at church_1's) */
 const HQ_TEXB_PRISMS_RETIRED = ['building_11', 'church_2'];
+/* THE PACK BUILDINGS (2026-11-03, mondo on the Buildings pack's ten photo-textured shop blocks: "incorporate those into the game like in
+   disaster city and the map editor"): each a whole model (Elbolilloduro's Buildings pack, CC0, cut by bake-pack-pieces.py into R2
+   Assets/misc/), its shop front at +Z, measured in metres — `w` along the front, `d` deep, `h` to the parapet's top, `roof` = the roof
+   slab inside the parapet (the walk's roof). Drawn at the footprint's width (the height follows, one scale), its depth fitted to the
+   footprint's (three-renderer.js _hqPackBuildingModel). A texbuilding whose `key` is one of these is that model (the editor's Look
+   list: PACK BUILDINGS), and a city plan's `packP` (a district's too) stands a share of its street lots as one (data.js city lots). */
+const HQ_PACK_BUILDINGS = {
+    pack_bld_00: { file: 'ebd_buildings_bld_00.glb', w: 28.18, d: 19.43, h: 19.6, roof: 19.33 },
+    pack_bld_01: { file: 'ebd_buildings_bld_01.glb', w: 34.05, d: 19.51, h: 23.55, roof: 23.36 },
+    pack_bld_02: { file: 'ebd_buildings_bld_02.glb', w: 40.8, d: 22.88, h: 26.34, roof: 26.04 },
+    pack_bld_03: { file: 'ebd_buildings_bld_03.glb', w: 23.19, d: 17.15, h: 18.8, roof: 18.57 },
+    pack_bld_04: { file: 'ebd_buildings_bld_04.glb', w: 25.49, d: 18.15, h: 18.56, roof: 18.31 },
+    pack_bld_05: { file: 'ebd_buildings_bld_05.glb', w: 29.79, d: 19.1, h: 18.82, roof: 18.53 },
+    pack_bld_06: { file: 'ebd_buildings_bld_06.glb', w: 33.45, d: 18.67, h: 14.47, roof: 14.23 },
+    pack_bld_07: { file: 'ebd_buildings_bld_07.glb', w: 24.88, d: 16.24, h: 14.8, roof: 14.47 },
+    pack_bld_08: { file: 'ebd_buildings_bld_08.glb', w: 15.52, d: 13.95, h: 12.97, roof: 12.67 },
+    pack_bld_09: { file: 'ebd_buildings_bld_09.glb', w: 16.89, d: 13.86, h: 11.89, roof: 11.65 },
+};
+/* the pack building a texbuilding row wears (its `key`), or null */
+function hqTexbPack(f) { return (f && typeof f.key === 'string' && Object.prototype.hasOwnProperty.call(HQ_PACK_BUILDINGS, f.key)) ? HQ_PACK_BUILDINGS[f.key] : null; }
 function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && (HQ_TEXB_PRISMS.indexOf(f.key) >= 0 || HQ_TEXB_PRISMS_RETIRED.indexOf(f.key) >= 0)); }
 /* THE PRISM BANDS (2026-11-03, mondo: "always apply the bottom of the texture and the top of the texture to the bottom and top of the
    building, and repeat everything else as needed depending on how many stories"): each prism sprite cut in three, in rows of the sprite
@@ -51196,7 +51218,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, HQ_PACK_BUILDINGS, hqTexbPack, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
@@ -53456,6 +53478,14 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         const distAt = (px, pz) => districts.find(d => px >= d.rect[0] && px <= d.rect[2] && pz >= d.rect[1] && pz <= d.rect[3]) || null;
         const dget = (dd, key, dflt) => (dd && dd[key] != null) ? dd[key] : dflt;
         let LW = LW0, LD = LD0, minW = minW0, lowP = lowP0, st = st0;   // the face's district re-points these per face (tryLot reads LD)
+        /* THE PACK BUILDINGS (2026-11-03, mondo: the Buildings pack's shop blocks "into the game like in disaster city"): `packP` (the plan's,
+           a district's) = the share of the runs along a face that try one of HQ_PACK_BUILDINGS first — at its own width (90 %, 80 % if the face
+           is short), as deep as the block lets it (never under 70 % of its own depth: the model's depth is fitted to the lot's). Its own
+           seeded draw, so a plan without packP lays exactly the lots it laid before. A pack lot carries `pack` (the key), `packH` (its roof's
+           height, the walk's roof and the solid top) and never grows or shrinks for an alley. */
+        const packP0 = (gen.packP != null) ? gen.packP : 0, prnd = _hqTRng(((seed | 0) ^ 0x5bd1e995) >>> 0), stHp = (gen.storeyH != null) ? gen.storeyH : K.storeyH;
+        const PACKS = Object.keys(HQ_PACK_BUILDINGS);
+        let packP = packP0;
         const solidBy = (px, pz, m) => hqTerrainMaskAt(info, px, pz) < -m;
         let li = 0;
         /* THE TERRACE (STREET LEVEL, 2026-09-17): the lots are laid ALONG EVERY STREET FACE, shoulder to shoulder —
@@ -53518,8 +53548,27 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             while (true) {
                 /* THE DISTRICTS (D2): the district is read PER LOT at the run's position along the face (a face may cross a district line) */
                 dd = distAt(F.x0 + F.tx * (u + 2.0), F.z0 + F.tz * (u + 2.0));
-                LW = dget(dd, 'lotW', LW0); LD = dget(dd, 'lotD', LD0); minW = dget(dd, 'lotMinW', minW0); lowP = dget(dd, 'lowP', lowP0); st = dget(dd, 'storeys', st0);
+                LW = dget(dd, 'lotW', LW0); LD = dget(dd, 'lotD', LD0); minW = dget(dd, 'lotMinW', minW0); lowP = dget(dd, 'lowP', lowP0); st = dget(dd, 'storeys', st0); packP = dget(dd, 'packP', packP0);
                 if (!(u < F.L - minW)) break;
+                if (packP > 0 && prnd() < packP) {
+                    const pk = PACKS[Math.floor(prnd() * PACKS.length)], PB = HQ_PACK_BUILDINGS[pk];
+                    let packRow = null;
+                    for (const sc of [1, 0.9, 0.8]) {
+                        const pw = PB.w * sc; if (u + pw > F.L - 0.3) continue;
+                        const fx = F.x0 + F.tx * (u + pw / 2), fz = F.z0 + F.tz * (u + pw / 2);
+                        const plot = tryLot(fx, fz, F.tx, F.tz, F.nx, F.nz, pw, PB.d * sc);
+                        if (!plot || plot.d < PB.d * sc * 0.7) continue;
+                        const base = hqTerrainHeight(info, fx + F.nx * (walkW / 2 + 0.25), fz + F.nz * (walkW / 2 + 0.25)), ph = PB.roof * sc;
+                        packRow = { i: li++, x: Math.round(plot.x * 100) / 100, z: Math.round(plot.z * 100) / 100, w: Math.round(pw * 100) / 100, d: Math.round(plot.d * 100) / 100, rot: Math.round(plot.rot * 1000) / 1000, top: wallH, base: Math.round(base * 100) / 100,
+                                    storeys: Math.max(1, Math.round(ph / stHp)), key: pk, pack: pk, packH: Math.round(ph * 100) / 100, low: false, seed: Math.floor(prnd() * 1e6), face: F.si };
+                        break;
+                    }
+                    if (packRow) {
+                        if (dd) { packRow.district = dd.id; dd.lots++; if (dd.neon != null) packRow.neon = !!dd.neon; if (dd.fronts) packRow.fronts = dd.fronts; }
+                        placed.push(packRow); info.lots.push(packRow);
+                        u += packRow.w + 0.04; continue;
+                    }
+                }
                 let w = LW[0] + rnd() * (LW[1] - LW[0]);
                 const dMax = LD[0] + rnd() * (LD[1] - LD[0]);
                 if (F.L - u - w < minW) w = Math.max(minW, Math.min(w, F.L - u - 0.3));   // the last of the run fills to the face's end
@@ -53617,9 +53666,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 const lotMaxW = (lot) => dget(distAt(lot.x, lot.z), 'lotW', LW0)[1];
                 const lotMinW = (lot) => dget(distAt(lot.x, lot.z), 'lotMinW', minW0);
                 /* a neighbour grows across the gap (never past its district's lotW, never into another lot) — dir = +1 the lot before the run, −1 the lot after */
-                const grow = (lot, dir, g) => { if (!lot || g <= 0) return false; const trial = Object.assign({}, lot, { w: Math.round((lot.w + g) * 100) / 100, x: Math.round((lot.x + dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z + dir * F.tz * g / 2) * 100) / 100 }); if (trial.w > lotMaxW(lot) + 0.01 || overlapsAny(trial, lot)) return false; const R = rectOf(trial); for (const q of [[-1, -1], [1, -1], [0, -1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (!solidBy(px, pz, 0.3) || !inShell(px, pz, 0.6)) return false; } for (const q of [[-1, 1], [1, 1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (hqTerrainMaskAt(info, px, pz) >= fOut + 0.4) return false; } Object.assign(lot, { w: trial.w, x: trial.x, z: trial.z }); return true; };   // the front corners stay on the face line (never grown past the block's corner)
+                const grow = (lot, dir, g) => { if (!lot || lot.pack || g <= 0) return false; const trial = Object.assign({}, lot, { w: Math.round((lot.w + g) * 100) / 100, x: Math.round((lot.x + dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z + dir * F.tz * g / 2) * 100) / 100 }); if (trial.w > lotMaxW(lot) + 0.01 || overlapsAny(trial, lot)) return false; const R = rectOf(trial); for (const q of [[-1, -1], [1, -1], [0, -1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (!solidBy(px, pz, 0.3) || !inShell(px, pz, 0.6)) return false; } for (const q of [[-1, 1], [1, 1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (hqTerrainMaskAt(info, px, pz) >= fOut + 0.4) return false; } Object.assign(lot, { w: trial.w, x: trial.x, z: trial.z }); return true; };   // the front corners stay on the face line (never grown past the block's corner)
                 /* a neighbour SHRINKS away from the gap (never under its district's lotMinW) — the slit becomes an alley */
-                const shrink = (lot, dir, g) => { if (!lot || g <= 0 || lot.w - g < lotMinW(lot) - 0.01) return false; Object.assign(lot, { w: Math.round((lot.w - g) * 100) / 100, x: Math.round((lot.x - dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z - dir * F.tz * g / 2) * 100) / 100 }); return true; };
+                const shrink = (lot, dir, g) => { if (!lot || lot.pack || g <= 0 || lot.w - g < lotMinW(lot) - 0.01) return false; Object.assign(lot, { w: Math.round((lot.w - g) * 100) / 100, x: Math.round((lot.x - dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z - dir * F.tz * g / 2) * 100) / 100 }); return true; };
                 runs.forEach((r) => {
                     let gw = r.u1 - r.u0, u0 = r.u0, u1 = r.u1;
                     /* the run's neighbours along the face: the lot ending at u0 / starting at u1 (a run at the face's end has one) */
@@ -53790,7 +53839,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             const tops = new Float32Array(nx * nz);
             each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : (_hqTBaseAt(info, px, pz) + wallH); });
             info.lots.forEach((lot) => {
-                const R = rectOf(lot), h = (lot.base || 0) + (lot.storeys ? lot.storeys * stH : wallH);
+                const R = rectOf(lot), h = (lot.base || 0) + (lot.packH ? lot.packH : (lot.storeys ? lot.storeys * stH : wallH));   // THE PACK BUILDINGS: the model's own roof
                 const reach = Math.hypot(R.hw, R.hd) + res;
                 const i0 = Math.max(0, Math.floor((lot.x - reach - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((lot.x + reach - x0) / res));
                 const j0 = Math.max(0, Math.floor((lot.z - reach - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((lot.z + reach - z0) / res));
@@ -65411,7 +65460,7 @@ const EW_CREDITS = {
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
-            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, Gas station, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
+            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, Gas station, Buildings, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
             { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },

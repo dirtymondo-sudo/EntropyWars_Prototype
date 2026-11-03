@@ -13,7 +13,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 139 |
+| Asset pack | yes | 149 |
 | Asset pack (author not recorded yet) | yes | 166 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
@@ -1511,6 +1511,16 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | mushroom2 | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | nacelle | `Assets/misc/Meshy_AI_an_engine_nacelle_0912231313_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | obelisk3d | `Assets/misc/Meshy_AI_obelisk_0727195707_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pack_bld_00 (a whole building) | `Assets/misc/ebd_buildings_bld_00.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_01 (a whole building) | `Assets/misc/ebd_buildings_bld_01.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_02 (a whole building) | `Assets/misc/ebd_buildings_bld_02.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_03 (a whole building) | `Assets/misc/ebd_buildings_bld_03.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_04 (a whole building) | `Assets/misc/ebd_buildings_bld_04.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_05 (a whole building) | `Assets/misc/ebd_buildings_bld_05.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_06 (a whole building) | `Assets/misc/ebd_buildings_bld_06.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_07 (a whole building) | `Assets/misc/ebd_buildings_bld_07.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_08 (a whole building) | `Assets/misc/ebd_buildings_bld_08.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_09 (a whole building) | `Assets/misc/ebd_buildings_bld_09.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
 | palmisle | `Assets/misc/Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pearly_gate | `Assets/misc/Meshy_AI_pearly_gate_0917035350_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | retro_control_panel | `Assets/misc/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |

@@ -987,3 +987,7 @@ from the editor".
   HQ_TEXB_PRISMS_RETIRED keeps old rows drawing as prisms; map.js palette (Buildings / Churches) + the Urban random objects drop them;
   Cyberpunk City's building_11 pair is building_1. The append-only id lists (MF_OID, ME_OBJECT_IDS) keep the ids.
 - Shots: /mnt/project-files/urban-buildings/{urban_buildings,glass_buildings,city_prisms}_before_after.jpg.
+
+## THE PACK BUILDINGS IN THE LOOK LIST (2026-11-03, the coded-shapes thread)
+A BUILDING's Look (`bldKey`) can be one of data.js HQ_PACK_BUILDINGS (the Buildings pack's ten shop blocks): the whole model stands in
+the box, its height its own at the box's width. Notes: maps-terrain-battle.md "THE CODED SHAPES OUT" round 4.

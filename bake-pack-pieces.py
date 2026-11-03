@@ -30,6 +30,7 @@ F = {
     'mine':          'mine/Minas/Models/Mines.fbx',
     'burgerpiz':     'burgerpiz/BurgerPiz/Models/BurgerPiz.fbx',
     'gasstation':    'gas-station/Gas_station/Models/Gas_station_Props.fbx',
+    'buildings':     'buildings/Buildings/Models/Buildings.fbx',
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -48,7 +49,9 @@ JOBS = [
     ('sink_row', 'diner', ['Washbasin'], 180), ('urinal', 'burgerpiz', ['urinary.001'], 90),
     ('toilet_stall', 'gasstation', ['Toilet_cubicles_002', 'Toilet_cubicles', 'Toilet_cubicles_Door_001', 'Sanitary_014', 'Sanitary_015'], 0),
     ('shower_stall', 'house', ['Shower', 'Shower_Door', 'Glass_Shower', 'Glass_Shower_02'], -90),
-]
+    # THE PACK BUILDINGS (2026-11-03, mondo: "incorporate those into the game like in disaster city and the map editor"): the ten
+    # photo-textured shop blocks of the Buildings pack, each its own GLB, the shop front at +Z (data.js HQ_PACK_BUILDINGS)
+] + [('bld_%02d' % i, 'buildings', ['Building' if i == 0 else 'Building_%02d' % i], 0) for i in range(10)]
 jobs = []
 for k, p, nodes, rz in JOBS:
     if ONLY and k not in ONLY: continue
