@@ -67550,9 +67550,9 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 });
             var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 1.6 * U, 8), steel); bar.rotation.z = Math.PI / 2; bar.position.y = 0.5 * U; g.add(bar);
             [-0.6, 0.6].forEach(function (x) { var ch = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * U, 0.008 * U, 0.5 * U, 6), steel); ch.position.set(x * U, 0.75 * U, 0); g.add(ch); });
-            var prH = null, prPots = []; _hqDecorWear('pot_rack', U, g, { box: [-0.7, -0.5, -0.3, 0.7, 0.5, 0.3], fit: 'width', top: true, onDone: function (i, d) { prH = d.h; prPots.forEach(function (pp) { pp.position.y = (0.5 - d.h - 0.06) * U; }); } });   // THE MESHY DECOR (2026-11-03): the pots hang under it
+            var prH = null, prPots = []; _hqDecorWear('pot_rack', U, g, { box: [-0.7, 0.2, -0.3, 0.7, 1.0, 0.3], top: true, onDone: function (i, d) { prH = d.h; prPots.forEach(function (pp, k) { pp.position.set((-0.36 + k * 0.24) * d.w * U, (1.0 - d.h - 0.14) * U, 0); }); } });   // THE MESHY DECOR (2026-11-03): its rods reach the ceiling; the pots hang under it
             var pot = _hqMat(null, 1, 1, { color: 0xc8ccd0, shininess: 90, specular: 0xaaaaaa });
-            for (var i = 0; i < 4; i++) { var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.16 * U, 12), pot); p.position.set((-0.6 + i * 0.4) * U, (prH != null ? 0.5 - prH - 0.06 : 0.32) * U, 0); g.add(p); prPots.push(p); }
+            for (var i = 0; i < 4; i++) { var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.16 * U, 12), pot); p.position.set((-0.6 + i * 0.4) * U, (prH != null ? 1.0 - prH - 0.1 : 0.32) * U, 0); g.add(p); prPots.push(p); }
             return g;
         },
         /* the cold room: a carcass on a chain from a rail */
