@@ -2908,6 +2908,12 @@ found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He p
   the sheet; `op` = the painted texture's peak alpha, `grow` = size so the puff fills like the billow, `jit` = random
   start frame. Thinning/tumble/blend stay keyed on the kind. World decals + w0/h0 quads keep the painted still. Same
   kill-switch `EW_NO_FLIPBOOKS`. Both PNGs go into the sync zip by hand (Assets/Sprites/vfx/).
+- **THE SMOKE FADE (same day; mondo: "the smoke kinda just disappears and doesnt fade away properly"):** the first
+  fb_smoke sheet stopped at sim frame 32, while the puff was still dense, so the particle's linear opacity fade read as a
+  dense puff blinking out. The sheet now runs to sim frame 47 (step 3), ending on the sim's own dissolve, with a ROUND
+  vignette (`_edge_fade`, full inside 0.6 of the half-width) instead of the square edge fade, so a puff that reached the
+  sim box thins into a soft round rim. `_opAt` gives shared-kind particles (`p._fbSoft`) a smoothstep fade, flat at both
+  ends. The sheet URLs carry `?r=2`: R2 asset URLs have no ?v= token, so bump r on every re-bake.
 - Next (only on mondo's say): flame, explosion-orange, element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise
   for the burning-tile raymarch.
 
