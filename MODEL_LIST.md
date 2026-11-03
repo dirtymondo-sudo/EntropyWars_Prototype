@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 19 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 589 |
+| Meshy AI | no | 602 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 93 |
@@ -27,7 +27,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
 "Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).
-Not in the count: the horizon. **72 of the 172 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
+Not in the count: the horizon. **65 of the 172 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
 monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.
 
 ## 2. Units — the playable races (sprites.js RACE_MODELS_3D)
@@ -1250,7 +1250,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | --- | --- | --- | --- |
 | toilet_stall | `Assets/misc/ebd_gasstation_toilet_stall.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
 
-### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (68)
+### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (81)
 
 Made 2026-11-03 for the code-drawn stand-ins of §10A (D-IDs in project files meshy/decor/decor_prompts.json). A proc builder
 calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) and the model is fitted into their box.
@@ -1276,6 +1276,8 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | door_furnace | `Assets/decor/door_furnace.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | dream_eye | `Assets/decor/dream_eye.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | eeg_rack | `Assets/decor/eeg_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| effigy_bier | `Assets/decor/effigy_bier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| effigy_figure | `Assets/decor/effigy_figure.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | egg_chair | `Assets/decor/egg_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | exec_desk | `Assets/decor/exec_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | ferris_gondola | `Assets/decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
@@ -1284,10 +1286,16 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | flood_mast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | fountain | `Assets/decor/fountain.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | giant_clam | `Assets/decor/giant_clam.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| greek_column | `Assets/decor/greek_column.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| grow_lamp | `Assets/decor/grow_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | high_striker | `Assets/decor/high_striker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | high_striker_hammer | `Assets/decor/high_striker_hammer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | laminator | `Assets/decor/laminator.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | laundry_cart | `Assets/decor/laundry_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_base | `Assets/decor/lava_lamp_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_cap | `Assets/decor/lava_lamp_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_floor_base | `Assets/decor/lava_lamp_floor_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_floor_cap | `Assets/decor/lava_lamp_floor_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | lifeguard_chair | `Assets/decor/lifeguard_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | lighthouse | `Assets/decor/lighthouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | meat_hook | `Assets/decor/meat_hook.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
@@ -1296,6 +1304,7 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | music_box_dancer | `Assets/decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | nightmare_bloom | `Assets/decor/nightmare_bloom.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | notice_board | `Assets/decor/notice_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| obelisk | `Assets/decor/obelisk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pool_lounger | `Assets/decor/pool_lounger.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | popcorn_cart | `Assets/decor/popcorn_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pot_rack | `Assets/decor/pot_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
@@ -1315,6 +1324,8 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | star_projector | `Assets/decor/star_projector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | stocks | `Assets/decor/stocks.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | stone_altar | `Assets/decor/stone_altar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stone_arch | `Assets/decor/stone_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| submarine | `Assets/decor/submarine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | t_pillar | `Assets/decor/t_pillar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | tanker_desk | `Assets/decor/tanker_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | ticket_booth | `Assets/decor/ticket_booth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
@@ -1325,6 +1336,8 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | umbrella_closed | `Assets/decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | umbrella_stand | `Assets/decor/umbrella_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | wall_torch_bracket | `Assets/decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| windpump_tower | `Assets/decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| windpump_wheel | `Assets/decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 
 ### Stairs pack (data.js HQ_STAIR_PACK — every stair flight, railing and escalator in the rooms)
 
@@ -1698,11 +1711,11 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `_hzFallenColumn` | three.js shapes (code) | — | Box, Cylinder | dark, infernal, pyramids, ruins |
 | `_hzFlamingoFar` | model files | `flamingo` (Meshy AI) | — | wonder |
 | `_hzFleshMound` | model files | `Assets/halloween/models/halloween.fbx` | — | infernal |
-| `_hzGateway` | three.js shapes (code) | — | Box, Plane | city, dark, ruins |
+| `_hzGateway` | model files | `stone_arch` (Meshy AI) | — | city, dark, ruins |
 | `_hzGhostShip` | model files | `wreck` (Meshy AI) | glow sprites | sea |
 | `_hzGirderKnot` | three.js shapes (code) | — | Box, glow sprites | wreckage |
 | `_hzGoldGate` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites | divine |
-| `_hzGreekRuin` | model files + three.js shapes | `greekcol` (Meshy AI) | Box | divine, islands, ruins |
+| `_hzGreekRuin` | model files + three.js shapes | `greek_column` (Meshy AI) | Box | divine, islands, ruins |
 | `_hzGrinSkull` | three.js shapes (code) | — | Circle | dark, infernal |
 | `_hzHoloMonolith` | three.js shapes (code) | — | Box, Plane, Torus | holosim |
 | `_hzHoloRing` | three.js shapes (code) | — | Torus, glow sprites | holosim |
@@ -1720,7 +1733,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `_hzModelStar` | model files | `star` (Meshy AI) | glow sprites | space, wreckage |
 | `_hzMonolith` | three.js shapes (code) | — | Box | city, crystals, dark, eyes, infernal, orbs, pyramids |
 | `_hzMushroomFar` | model files | `mushroom` (Meshy AI) | — | wonder |
-| `_hzObelisk` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | dark, infernal, pyramids, ruins |
+| `_hzObelisk` | model files | `obelisk` (Meshy AI) | glow sprites | dark, infernal, pyramids, ruins |
 | `_hzPalmIsleFar` | model files | `palmisle` (Meshy AI) | — | sea |
 | `_hzPlayingCard` | three.js shapes (code) | — | Plane | wonder |
 | `_hzPocketWatchFar` | model files | `watch_hang` (Meshy AI) | glow sprites | wonder |
@@ -1811,7 +1824,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 
 | key | made with | model files | three.js shapes | builder |
 | --- | --- | --- | --- | --- |
-| `arch` | three.js shapes (code) | — | Box, Plane | _hzGateway |
+| `arch` | model files | `stone_arch` (Meshy AI) | — | _hzGateway |
 | `babelcrane` | model files | `crane` (Meshy AI) | — | _hzBabelCrane |
 | `basilicadome` | model files + three.js shapes | `vatican_dome` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites | _hzBasilicaDome |
 | `beamring` | three.js shapes (code) | — | Box, Cylinder, Torus | _hzBeamRing |
@@ -1831,7 +1844,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `crystal` | model files | `crystals (_CRYSTAL_MODEL_URLS)` | — | _hzCrystalShards |
 | `door` | three.js shapes (code) | — | Box, Plane, Sphere | _hzLoneDoor |
 | `dumpster` | model files | `dumpster` (Asset pack) | — | _hzPropDumpster |
-| `effigy` | three.js shapes (code) | — | Box, Cylinder, Sphere, Torus | _hzEffigy |
+| `effigy` | model files | `effigy_bier` (Meshy AI), `effigy_figure` (Meshy AI) | — | _hzEffigy |
 | `excalibur` | model files + three.js shapes | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Dodecahedron, Sphere | _hzExcalibur |
 | `exitsign` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzExitSign |
 | `fairyring` | model files + three.js shapes | `mushroom2` (Meshy AI) | Sphere | _hzFairyRing |
@@ -1839,11 +1852,11 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `flag` | three.js shapes (code) | — | Cylinder, Plane, Sphere | _hzFlag |
 | `fleshmound` | model files | `Assets/halloween/models/halloween.fbx` | — | _hzFleshMound |
 | `fluorescent` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzFluorescent |
-| `gateway` | three.js shapes (code) | — | Box, Plane | _hzGateway |
+| `gateway` | model files | `stone_arch` (Meshy AI) | — | _hzGateway |
 | `geode` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Sphere, glow sprites | _hzGeode |
 | `goldgate` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites | _hzGoldGate |
 | `gothic_wall` | model files | `church_wall` (Meshy AI) | — | _hzGothicWallSeg |
-| `greek` | model files + three.js shapes | `greekcol` (Meshy AI) | Box | _hzGreekRuin |
+| `greek` | model files + three.js shapes | `greek_column` (Meshy AI) | Box | _hzGreekRuin |
 | `greekcol` | model files | `greekcol` (Meshy AI) | — | _hzPropGreekColumn |
 | `greytube` | model files | `molten_cryo_tube.glb` | — | _hzGreyTube |
 | `holoboard` | three.js shapes (code) | — | Box, Cylinder, Plane | _hzHoloboard |
@@ -1857,7 +1870,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `monolith` | three.js shapes (code) | — | Box | _hzMonolith |
 | `mushroom` | model files | `mushroom` (Meshy AI) | — | _hzPropMushroom |
 | `mushroom2` | model files | `mushroom2` (Meshy AI) | — | _hzPropMushroomReal |
-| `obelisk` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | _hzObelisk |
+| `obelisk` | model files | `obelisk` (Meshy AI) | glow sprites | _hzObelisk |
 | `obelisk3d` | model files | `obelisk3d` (Meshy AI) | — | _hzPropObelisk |
 | `pyramid` | model files | `Pyramid/Pyramid.glb` | glow sprites | _hzModelPyramid |
 | `pyramid_cone` | three.js shapes (code) | — | Cone, glow sprites | _hzPyramid |
@@ -1875,12 +1888,12 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `tpillar` | model files + three.js shapes | `t_pillar` (Meshy AI) | Box | _hzTPillar |
 | `trilithon` | model files | `trilithon` (Meshy AI) | — | _hzTrilithon |
 | `whalebones` | three.js shapes (code) | — | Cylinder, Torus | _hzWhalebones |
-| `windmill` | three.js shapes (code) | — | Box, Cylinder | _hzWindmill |
+| `windmill` | model files | `windpump_tower` (Meshy AI), `windpump_wheel` (Meshy AI) | — | _hzWindmill |
 | `woodcross` | three.js shapes (code) | — | Box, Cylinder, Dodecahedron | _hzWoodCross |
 | `ziggurat` | three.js shapes (code) | — | Box | _hzZiggurat |
 | `ziggurat_block` | three.js shapes (code) | — | Box | _hzZigguratBlock |
 
-**72 of these 172 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
+**65 of these 172 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
 
 **The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms' far weenies `peak` / `mountain`
 (Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons, the Clash temple's
@@ -2115,31 +2128,31 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | --- | --- | --- | --- |
 | 1 | castle / skycastle landmarks | **DONE 11-03 (round 2)**, code deleted | castle pack pieces placed one by one: Wall_2x4 / Wall_2x2 / Gate_2x4 curtain, Tower_Mid corner towers, a Tower_Doorway keep, Tower_top_1 + Roof_Cone caps (the sky castle keeps its clouds) |
 | 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
-| 3 | `_hzObelisk` | swap, model in game | obelisk3d |
+| 3 | `_hzObelisk` | **DONE 11-03 (round 2)**, code deleted | new Meshy granite obelisk (`Assets/decor/obelisk.glb`, mondo: "needs a new meshy model") |
 | 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
 | 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
-| 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the Meshy greekcol (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
+| 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the NEW Meshy column (`greek_column.glb`) (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
 | 7 | rover | **DONE 11-03**, code deleted | mars_rover |
 | 8 | toadstool / fairy ring | **DONE 11-03**, code deleted | mushroom / a ring of mushroom2 |
 | 9 | censer | **DONE 11-03**, code deleted | Meshy props censer |
 | 10 | whale (Atlantis) | **DONE 11-03**, code deleted | ocean pack Whale.fbx (mondo: not the humpback) |
 | 11 | castle_wall | **KEPT as code** (mondo: only if the shape makes sense) | the spell wall is 1 square wide and 2 high; the pack has no piece that shape (Wall_2x2 is square, Wall_2x4 is 4 long), so the swap would change the wall |
-| 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
+| 12 | gateway / arch | **DONE 11-03 (round 2)**, code deleted | new Meshy curved stone arch (`stone_arch.glb`, mondo: "an arch is curved") |
 | 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
 | 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/misc/molten_cryo_tube.glb` |
 | 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/misc/molten_sleeper_casket.glb` |
-| 17 | lava lamps | pack swap | Molten lamp |
-| 18 | grow_lamp | pack swap | Molten lamp |
-| 19 | submarine | pack swap | BlenderVoyage sub (CC-BY: credit) |
+| 17 | lava lamps | **DONE 11-03 (round 2)**, base + cap code deleted | Meshy chrome base + cap (table and floor, `lava_lamp_*.glb`); the glass + the moving wax stay drawn (Meshy can't make glass; mondo: the Molten lamp looks bad) |
+| 18 | grow_lamp | **DONE 11-03 (round 2)**, code deleted | Meshy LED panel (`grow_lamp.glb`), the purple glow + light kept |
+| 19 | submarine | **DONE 11-03 (round 2)**, code deleted | Meshy riveted yellow sub (`submarine.glb`; mondo: the PSX pack sub looked worse than the code one) |
 | 20 | hand_dryer / range_hood / kitchen_range / sink_row | **DONE 11-03 (round 2)**, code deleted | DINER pack Hand_dryer, cooker_hood, Stove (griddle range), Washbasin (three basins) |
 | 21 | urinal | **DONE 11-03 (round 2)**, code deleted | BurgerPiz pack urinary |
 | 22 | toilet / shower stall | **DONE 11-03 (round 2)**, code deleted | Gas station pack stall (two partitions, the door, the toilet); House pack shower (tiles + glass door) |
 | 23 | `_hzFloatingIsland` (upside-down cone) | **DELETED 11-03** (mondo: "just get rid of it, i hate the cones") | — |
 | 24 | `_hzColossus` | **RENAMED 11-03** to `fallen_column` / `_hzFallenColumn` (mondo: it's a column on the floor, not a colossus) | — |
 | 25 | `_hzFleshMound` | **DONE 11-03 (round 2)**, code deleted | a heap of the Halloween pack body parts (the gore spells' pack), each placed on its own |
-| 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |
-| 27 | windmill monument (Skinwalker Ranch) | new Meshy model | ranch windpump |
+| 26 | effigy monument (Bohemian Grove) | **DONE 11-03 (round 2)**, code deleted | Meshy bier + Meshy wrapped figure, two models (`effigy_bier.glb`, `effigy_figure.glb`) |
+| 27 | windmill monument (Skinwalker Ranch) | **DONE 11-03 (round 2)**, code deleted | Meshy windpump tower + its wheel on its own, turning (`windpump_tower.glb`, `windpump_wheel.glb`) |
 | 28 | `_hzGrinSkull` | new Meshy model | giant stone skull |
 | 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
 | - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |

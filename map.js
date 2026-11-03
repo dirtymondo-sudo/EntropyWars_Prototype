@@ -4780,12 +4780,16 @@
         window._hqArenaWarm = _hqArenaWarm;
         /* _msConfirm's gate: the arena's room surveyed before the launch. A small card over the screen says so; no worker = the
            sync compile under that card (the old HQ fallback). true = go on now. */
-        let _msArenaGateBusy = false;
+        let _msArenaGateBusy = false, _msChessRolled = false;
         function _msArenaGate(mapId) {
             if (typeof window.hqArenaOf !== 'function') return true;
+            /* THE CHESS POSITIONS (2026-11-03, mondo: the Looking-Glass "load one of these 3 actual chess positions at random"): one roll per
+               launch, before the room is read (a new position lets go of the arena's field — the survey card below rasters it again) */
+            if (!_msArenaGateBusy && !_msChessRolled) { _msChessRolled = true; try { if (typeof window.hqLgChessRoll === 'function') window.hqLgChessRoll(mapId); } catch (e) { console.warn('[ARENA] the chess roll failed', mapId, e); } }
+            const _go = () => { _msChessRolled = false; return true; };
             const a = window.hqArenaOf(mapId);
             const RE = window.HQ_ROOM_EDITS, editsWait = !!(a && RE && RE.ready && !RE.settled);   // THE GAME ROOM EDITS: his saved edits land first
-            if (!a || ((a.ready || a.failed) && !editsWait)) return true;
+            if (!a || ((a.ready || a.failed) && !editsWait)) return _go();
             if (_msArenaGateBusy) return false;
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[a.room]) || {};
             let card = null;
@@ -9326,6 +9330,7 @@
                lab match after the first kept the first map's latch and drew no room. A lab match on a new board re-activates. */
             const _prevMap = (typeof activeGameMode !== 'undefined') ? activeGameMode : null;
             let _upgraded = false;
+            try { if (typeof window.hqLgChessRoll === 'function' && window.hqLgChessRoll(mapId)) _upgraded = true; } catch (e) {}   // THE CHESS POSITIONS (2026-11-03): each lab match on the Looking-Glass rolls its position too (a new one re-latches the room)
             try {
                 const _a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null;
                 if (_a && !_a.ready && !_a.failed) _upgraded = !!window.hqArenaUpgrade(mapId, { compile: true });

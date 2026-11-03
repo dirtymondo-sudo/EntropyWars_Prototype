@@ -1291,6 +1291,29 @@ assigned created characters so i can give to you to bake in". Before this, EXPOR
 - A baked look is still a SAVED look (THE MESHY DEFAULT): the Meshy model stays the unit default until mondo says.
 - Proof: /mnt/project-files/assigned-looks/ (3 units assigned, exported file, bake-looks.js --dry-run read all 3).
 
+## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
+mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
+(static.makehumancommunity.org/assets/assetpacks), if we havent already, and implement them in the character creator?"
+- Packs: system_eye_materials01 (13, CC0), 02 (19, CC0), 03 (20, CC-BY), system_hair_materials01 (38, CC0, was already in
+  mhpacks but never wired) + 02 (29, CC0). All five zips in project files mhpacks/; ASSET_PACKS_CATALOGUE.json lists them.
+- EYES: sprites.js EW_MH_EYE_MATS rows [id mhm_<asset>, label, PNG, null, folder, group] are PUSHED onto EW_MH_EYE_PACK, so
+  they are THE EYE PACK in every way (same key mhEyes, same eye mesh, Iris colour, hider, renames, preload). row[4] = their
+  folder (mpfb/looks/eyes/materials/<asset>.png, 1024 px as shipped; the two maid-san ones 512). party-builder FACE > EYES:
+  "Eye textures" shows only the pack (rows without a group), then "Eye materials: human / non-human / various".
+  5 PNGs (anime navy, maid-san blue/red, snake, target) were opaque where the cornea dome samples, so the dome painted over
+  the iris (white / yellow eyes): their alpha there was copied from a stock eye PNG (alpha < 128 = the cornea).
+- HAIR: sprites.js EW_MH_HAIR_MATS [id mhh_<asset>, label, style id, PNG] (hair/mh/materials/<asset>.png, 2048 -> 1024).
+  appearance.hairMat ('own' | id, EW_APPEARANCE_ENUMS); getHairMaterial(a) = the material only while its style is worn.
+  three-renderer.js setHairMat (THE HAIR MATERIALS): the cards wear the PNG as painted (flipY etc. from the style's own
+  texture, white vertex colours: its OWN colours, no grey mask); 'own' puts h.ownMap back and paintHair tints again.
+  Called from setHair + buildHair (dropHair clears hairMatKey). The builder's HAIR tab: "Hair texture" row (Style's own +
+  the style's recolours) only on Bob 01/02, Braid 01, Long 01, Ponytail 01, Short 01/02/04; while one is worn the Hair
+  colour row is replaced by a note (it would do nothing to the hair).
+- CREDITS: mpfb/CREDITS.json creator_eye_materials + creator_hair_materials (author, licence, source per asset); the CREDITS
+  page groups them with the other MakeHuman authors (checked: Elvaerwyn's eye 03 assets, Hatshj, MargaretToigo show).
+- Hider kind 'hairMat' ("Hair texture"), bake-hidden.js knows it.
+- Proof: /mnt/project-files/creator-mh-materials/ (12 + 4 eyes, 19 hair textures, back to Style's own + colour, the panel).
+
 ## THE FUR + THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28)
 mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make a new created character for the werewolf to put fur on it".
 - THE TOOL: `bake-fur.py` (repo root, offline Blender: `pip install bpy==5.2.3`, MPFB 2.0.18 clone). `python3 -I bake-fur.py --mpfb <mpfb2> [--haireditor <zip|dir>] [--only ewf_fur]`.

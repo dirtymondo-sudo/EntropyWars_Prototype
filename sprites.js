@@ -3676,6 +3676,145 @@ const EW_MH_EYE_PACK = [
   ['mhp_cat_red', 'Cat eyes red', 'CatEyesRed', 'CatEyesNormalMap'],
   ['mhp_cat_red_bs', 'Cat eyes red bloodshot', 'CatEyesRedBloodShot', 'CatEyesBloodShotNormals'],
 ];
+/* THE EYE MATERIALS (2026-11-03, mondo: "can we download the system_eyes_materials 1 through 3 ... and implement them in the character creator?"):
+   MakeHuman's system eye material packs 01 (human, CC0), 02 (non-human, CC0) and 03 (various, CC-BY: credited on the CREDITS page via
+   mpfb/CREDITS.json). Same 1024 eye sheet as THE EYE PACK, so the same eye mesh wears them; [id, label, PNG, normal (none), folder, group] */
+const EW_MH_EYE_MATS_DIR = 'mpfb/looks/eyes/materials/';
+const EW_MH_EYE_MATS = [
+  ["mhm_bobby_03_diffuse_amber_eyes", "Amber", "bobby_03_diffuse_amber_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_bobby_03_diffuse_blue_eyes", "Blue", "bobby_03_diffuse_blue_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_bobby_03_diffuse_grey_eyes", "Grey", "bobby_03_diffuse_grey_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_bobby_03_diffuse_hazel_eyes", "Hazel", "bobby_03_diffuse_hazel_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_bobby_03_diffuse_sea_breeze_eyes", "Sea breeze", "bobby_03_diffuse_sea_breeze_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_mindfront_brown_eye_02", "Brown 02", "mindfront_brown_eye_02", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_nyloseth_sapphire_blue_eyes", "Sapphire blue", "nyloseth_sapphire_blue_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_spamrakuen_sr_anime_eyes_navy", "Anime navy", "spamrakuen_sr_anime_eyes_navy", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_spamrakuen_sr_anime_maid-san_blue_eyes", "Anime maid-san blue", "spamrakuen_sr_anime_maid-san_blue_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_spamrakuen_sr_anime_maid-san_red_eyes", "Anime maid-san red", "spamrakuen_sr_anime_maid-san_red_eyes", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_wojackowl_blue_eyes_toon", "Blue toon", "wojackowl_blue_eyes_toon", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_wojackowl_brown_eyes_toon", "Brown toon", "wojackowl_brown_eyes_toon", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_wojackowl_green_eyes_toon", "Green toon", "wojackowl_green_eyes_toon", null, EW_MH_EYE_MATS_DIR, "human"],
+  ["mhm_bobby_03_daz_dragon_eyes", "Dragon", "bobby_03_daz_dragon_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_culturalibre_6_eyes", "6 eyes", "culturalibre_6_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_culturalibre_hero_white_eyes", "Hero white", "culturalibre_hero_white_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_culturalibre_hero_yellow_eyes", "Hero yellow", "culturalibre_hero_yellow_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_culturalibre_zombie_eyes", "Zombie", "culturalibre_zombie_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_gpedroso_blank_eye", "Blank", "gpedroso_blank_eye", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_hatshj_alien_eye_2", "Alien 2", "hatshj_alien_eye_2", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_hatshj_alien_eyes", "Alien", "hatshj_alien_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_hatshj_cross_eye", "Cross", "hatshj_cross_eye", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_hatshj_facette_eye", "Facette", "hatshj_facette_eye", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_hatshj_facette_eye_2", "Facette 2", "hatshj_facette_eye_2", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_hatshj_reptile_eyes", "Reptile", "hatshj_reptile_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_nyloseth_bluecateyes", "Blue cat", "nyloseth_bluecateyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_nyloseth_brown_cat_eyes", "Brown cat", "nyloseth_brown_cat_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_nyloseth_green_cat_eyes", "Green cat", "nyloseth_green_cat_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_nyloseth_sapphire_cat_eyes", "Sapphire cat", "nyloseth_sapphire_cat_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_nyloseth_yellow_cat_eyes", "Yellow cat", "nyloseth_yellow_cat_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_sonntag78_orcifyhead_eye", "Orc", "sonntag78_orcifyhead_eye", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_titleknown_trans_eyes", "Trans", "titleknown_trans_eyes", null, EW_MH_EYE_MATS_DIR, "creature"],
+  ["mhm_callharvey3d_harvey_eye1", "Harvey 1", "callharvey3d_harvey_eye1", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_callharvey3d_harvey_eye2", "Harvey 2", "callharvey3d_harvey_eye2", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_culturalibre_snake_eyes", "Snake", "culturalibre_snake_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_culturalibre_target_eyes", "Target", "culturalibre_target_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_anime_eye_1", "Anime 1", "elvs_anime_eye_1", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_bads_hippy-cat_eye", "Hippy cat", "elvs_bads_hippy-cat_eye", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_bionic_eye_red", "Bionic red", "elvs_bionic_eye_red", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_blurple_eye", "Blurple", "elvs_blurple_eye", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_catyellow_rainbow_eye", "Cat yellow rainbow", "elvs_catyellow_rainbow_eye", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_devilian_eye1", "Devilian", "elvs_devilian_eye1", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_earth_moon_eyes", "Earth moon", "elvs_earth_moon_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_fruitcake_eyes", "Fruitcake", "elvs_fruitcake_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_fushia_rainbow_eye", "Fushia rainbow", "elvs_fushia_rainbow_eye", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_midnight_rainbow_eyes", "Midnight rainbow", "elvs_midnight_rainbow_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_rainbow_hueshift_eyes", "Rainbow hue shift", "elvs_rainbow_hueshift_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_santa_helpers_eyes", "Santa's helper", "elvs_santa_helpers_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_saphire_rainbow_eyes", "Sapphire rainbow", "elvs_saphire_rainbow_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_sunspot_eyes", "Sunspot", "elvs_sunspot_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_elvs_zfashion_eye1", "Z fashion", "elvs_zfashion_eye1", null, EW_MH_EYE_MATS_DIR, "more"],
+  ["mhm_mtknife_violet_eyes", "Violet", "mtknife_violet_eyes", null, EW_MH_EYE_MATS_DIR, "more"],
+];
+for (const r of EW_MH_EYE_MATS) EW_MH_EYE_PACK.push(r);   // (one list: the saved key, the hider, the iris colour all work as for the pack)
+/* THE HAIR MATERIALS (2026-11-03, mondo: "can we download ... system_hair_materials 1 and 2 ... and implement them in the character
+   creator?"): MakeHuman's recolours of its own system hair (Bob 01 / 02, Braid 01, Long 01, Ponytail 01, Short 01 / 02 / 04), CC0.
+   appearance.hairMat = one of these: worn only on its own style (the style's UVs), in the texture's OWN colours (three-renderer.js
+   THE HAIR MATERIALS); 'own' = the style's own texture, coloured by the Hair colour. [id, label, style id, PNG (hair/mh/materials/)] */
+const EW_MH_HAIR_MATS = [
+  ["mhh_elvaerwyn_bob_01_blood_copper", "Blood copper", "mh_bob01", "elvaerwyn_bob_01_blood_copper"],
+  ["mhh_elvaerwyn_bob_01_dark_lime_gold", "Dark lime gold", "mh_bob01", "elvaerwyn_bob_01_dark_lime_gold"],
+  ["mhh_elvaerwyn_bob_01_flat_black", "Flat black", "mh_bob01", "elvaerwyn_bob_01_flat_black"],
+  ["mhh_elvaerwyn_bob_01_gothic_brown", "Gothic brown", "mh_bob01", "elvaerwyn_bob_01_gothic_brown"],
+  ["mhh_elvaerwyn_bob_01_new_gold", "New gold", "mh_bob01", "elvaerwyn_bob_01_new_gold"],
+  ["mhh_elvaerwyn_bob_01_old_gold", "Old gold", "mh_bob01", "elvaerwyn_bob_01_old_gold"],
+  ["mhh_elvaerwyn_bob_01_old_world_mermaid", "Old world mermaid", "mh_bob01", "elvaerwyn_bob_01_old_world_mermaid"],
+  ["mhh_elvaerwyn_bob_01_veronika", "Veronika", "mh_bob01", "elvaerwyn_bob_01_veronika"],
+  ["mhh_elvaerwyn_bob_02_50s_cherrybomb", "50s cherrybomb", "mh_bob02", "elvaerwyn_bob_02_50s_cherrybomb"],
+  ["mhh_elvaerwyn_bob_02_candy_fushia", "Candy fuchsia", "mh_bob02", "elvaerwyn_bob_02_candy_fushia"],
+  ["mhh_jartur69_bob02_dark_blond", "Dark blond", "mh_bob02", "jartur69_bob02_dark_blond"],
+  ["mhh_jartur69_bob02_dark_ginger", "Dark ginger", "mh_bob02", "jartur69_bob02_dark_ginger"],
+  ["mhh_jartur69_bob02_ginger", "Ginger", "mh_bob02", "jartur69_bob02_ginger"],
+  ["mhh_elvaerwyn_bob_02_honey_blonde", "Honey blonde", "mh_bob02", "elvaerwyn_bob_02_honey_blonde"],
+  ["mhh_jartur69_bob02_light_ginger", "Light ginger", "mh_bob02", "jartur69_bob02_light_ginger"],
+  ["mhh_elvaerwyn_bob_02_platinum", "Platinum", "mh_bob02", "elvaerwyn_bob_02_platinum"],
+  ["mhh_elvaerwyn_bob_02_pumpkin", "Pumpkin", "mh_bob02", "elvaerwyn_bob_02_pumpkin"],
+  ["mhh_elvaerwyn_bob_02_retro_black", "Retro black", "mh_bob02", "elvaerwyn_bob_02_retro_black"],
+  ["mhh_elvaerwyn_bob_02_retro_grey", "Retro grey", "mh_bob02", "elvaerwyn_bob_02_retro_grey"],
+  ["mhh_elvaerwyn_bob_02_retro_oilslickster", "Retro oil slick", "mh_bob02", "elvaerwyn_bob_02_retro_oilslickster"],
+  ["mhh_elvaerwyn_bob_02_tangerine", "Tangerine", "mh_bob02", "elvaerwyn_bob_02_tangerine"],
+  ["mhh_toigo_braid01_ash", "Ash", "mh_braid01", "toigo_braid01_ash"],
+  ["mhh_toigo_braid01_black", "Black", "mh_braid01", "toigo_braid01_black"],
+  ["mhh_toigo_braid01_fuchsia", "Fuchsia", "mh_braid01", "toigo_braid01_fuchsia"],
+  ["mhh_toigo_braid01_ginger", "Ginger", "mh_braid01", "toigo_braid01_ginger"],
+  ["mhh_toigo_braid01_golden", "Golden", "mh_braid01", "toigo_braid01_golden"],
+  ["mhh_toigo_braid01_gray", "Gray", "mh_braid01", "toigo_braid01_gray"],
+  ["mhh_toigo_braid01_red", "Red", "mh_braid01", "toigo_braid01_red"],
+  ["mhh_toigo_braid01_strawberry", "Strawberry", "mh_braid01", "toigo_braid01_strawberry"],
+  ["mhh_toigo_braid01_teal", "Teal", "mh_braid01", "toigo_braid01_teal"],
+  ["mhh_toigo_braid01_violet", "Violet", "mh_braid01", "toigo_braid01_violet"],
+  ["mhh_toigo_long_01_ash", "Ash", "mh_long01", "toigo_long_01_ash"],
+  ["mhh_toigo_long_01_black", "Black", "mh_long01", "toigo_long_01_black"],
+  ["mhh_joepal_long_01_blond", "Blond", "mh_long01", "joepal_long_01_blond"],
+  ["mhh_punkduck_blond_for_long01", "Blond 2", "mh_long01", "punkduck_blond_for_long01"],
+  ["mhh_toigo_long_01_fuchsia", "Fuchsia", "mh_long01", "toigo_long_01_fuchsia"],
+  ["mhh_toigo_long_01_ginger", "Ginger", "mh_long01", "toigo_long_01_ginger"],
+  ["mhh_toigo_long_01_gray", "Gray", "mh_long01", "toigo_long_01_gray"],
+  ["mhh_toigo_long_01_red", "Red", "mh_long01", "toigo_long_01_red"],
+  ["mhh_toigo_long_01_teal", "Teal", "mh_long01", "toigo_long_01_teal"],
+  ["mhh_toigo_long_01_violet", "Violet", "mh_long01", "toigo_long_01_violet"],
+  ["mhh_dariush086_ponytail01_black", "Black", "mh_ponytail01", "dariush086_ponytail01_black"],
+  ["mhh_dariush086_ponytail01_brown", "Brown", "mh_ponytail01", "dariush086_ponytail01_brown"],
+  ["mhh_mtknife_ponytail01_deep_red", "Deep red", "mh_ponytail01", "mtknife_ponytail01_deep_red"],
+  ["mhh_dariush086_ponytail01_gold", "Gold", "mh_ponytail01", "dariush086_ponytail01_gold"],
+  ["mhh_dariush086_ponytail01_green", "Green", "mh_ponytail01", "dariush086_ponytail01_green"],
+  ["mhh_dariush086_ponytail01_pink", "Pink", "mh_ponytail01", "dariush086_ponytail01_pink"],
+  ["mhh_dariush086_ponytail01_platinum", "Platinum", "mh_ponytail01", "dariush086_ponytail01_platinum"],
+  ["mhh_dariush086_ponytail01_red", "Red", "mh_ponytail01", "dariush086_ponytail01_red"],
+  ["mhh_dariush086_ponytail01_violet", "Violet", "mh_ponytail01", "dariush086_ponytail01_violet"],
+  ["mhh_jartur69_short01_brown", "Brown", "mh_short01", "jartur69_short01_brown"],
+  ["mhh_jartur69_short01_dark_ginger", "Dark ginger", "mh_short01", "jartur69_short01_dark_ginger"],
+  ["mhh_jartur69_short01_rustbrown", "Rustbrown", "mh_short01", "jartur69_short01_rustbrown"],
+  ["mhh_jartur69_short02_blond", "Blond", "mh_short02", "jartur69_short02_blond"],
+  ["mhh_jartur69_short02_blond_for_female", "Blond for female", "mh_short02", "jartur69_short02_blond_for_female"],
+  ["mhh_bogdan666_short_02_brown", "Brown", "mh_short02", "bogdan666_short_02_brown"],
+  ["mhh_bogdan666_short_02_gray", "Gray", "mh_short02", "bogdan666_short_02_gray"],
+  ["mhh_culturalibre_short_02_green", "Green", "mh_short02", "culturalibre_short_02_green"],
+  ["mhh_bogdan666_short_02_red", "Red", "mh_short02", "bogdan666_short_02_red"],
+  ["mhh_toigo_short_04_auburn", "Auburn", "mh_short04", "toigo_short_04_auburn"],
+  ["mhh_toigo_short_04_blonde", "Blonde", "mh_short04", "toigo_short_04_blonde"],
+  ["mhh_toigo_short_04_blue", "Blue", "mh_short04", "toigo_short_04_blue"],
+  ["mhh_toigo_short_04_brown", "Brown", "mh_short04", "toigo_short_04_brown"],
+  ["mhh_toigo_short_04_ginger", "Ginger", "mh_short04", "toigo_short_04_ginger"],
+  ["mhh_toigo_short_04_gray", "Gray", "mh_short04", "toigo_short_04_gray"],
+  ["mhh_toigo_short_04_green", "Green", "mh_short04", "toigo_short_04_green"],
+  ["mhh_toigo_short_04_violet", "Violet", "mh_short04", "toigo_short_04_violet"],
+];
+const EW_MH_HAIR_MATS_BY_ID = {};
+for (const r of EW_MH_HAIR_MATS) EW_MH_HAIR_MATS_BY_ID[r[0]] = r;
+// the hair material a look wears now (its style must be the one worn), or null
+function getHairMaterial(a) {
+  const r = a && EW_MH_HAIR_MATS_BY_ID[a.hairMat];
+  return r && r[2] === a.hair ? { id: r[0], url: EW_CHARACTER_ASSET_BASE + '/hair/mh/materials/' + r[3] + '.png' } : null;
+}
 const EW_MH_EYE_PACK_IRIS = { centres: [[296.9, 733.0], [722.9, 311.0]], r: 124 };
 const EW_MH_EYE_PACK_BY_ID = {};
 for (const r of EW_MH_EYE_PACK) EW_MH_EYE_PACK_BY_ID[r[0]] = r;
@@ -4392,6 +4531,7 @@ const EW_APPEARANCE_ENUMS = {
   eyeTint: ['own', 'pick'],    // 'pick' = the irises in appearance.eyeColor (the classic eye colour's key)
   browTint: ['own', 'hair', 'pick'],   // the brows in their own colour / the hair colour / browColor
   lashTint: ['own', 'pick'],   // 'pick' = lashColor
+  hairMat: ['own'].concat(EW_MH_HAIR_MATS.map(r => r[0])),   // THE HAIR MATERIALS (2026-11-03): a MakeHuman recolour of the worn system style
   hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
   mhChest: ['nipples', 'smooth'],   // THE CHEST (2026-11-01; 'band' gone with the underwear 2026-11-02)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
@@ -4503,7 +4643,7 @@ function normalizeCharacterAppearance(value) {
    file and every look wearing it stay, normalizeCharacterAppearance never reads this list (a saved / baked / locker look with a hidden
    piece loads as it did), and a hidden piece that is worn keeps its tile so it shows + can be taken off.
    Keys are '<kind>:<id>' (kind = the appearance key the pick sets): hair, wear (the pack + Blender pieces, facial hair, accessories),
-   outer (both outer layers), feet, cape, wings, idle, mhSkin, mhEyes, mhBrows, mhLashes.
+   outer (both outer layers), feet, cape, wings, idle, mhSkin, mhEyes, mhBrows, mhLashes, hairMat.
    EW_CREATOR_HIDDEN = the shipped list ({ key: label }), written ONLY by bake-hidden.js. This browser's own edits ride on top in
    localStorage ew_creator_hidden_v1 = { hide: { key: label }, show: { key: label } } (show = a shipped one shown again here).
    The tool itself shows only while Settings > Developer > Creator Item Hider is ON (ew_creator_hider = '1'). */
@@ -4590,6 +4730,7 @@ function creatorPickLabel(kind, id) {
   const L = typeof EW_MH_LOOKS !== 'undefined' ? EW_MH_LOOKS : {};
   const lists = { hair: () => EW_HAIR_STYLES, wear: () => EW_MH_WEAR, outer: () => EW_OUTER_STYLES, feet: () => EW_FEET_STYLES, cape: () => EW_CAPE_STYLES,
     wings: () => EW_WINGS_STYLES, idle: () => EW_IDLE_POSES, mhSkin: () => L.skins, mhEyes: () => (L.eyes || []).concat(typeof EW_MH_EYE_PACK !== 'undefined' ? EW_MH_EYE_PACK : []),
+    hairMat: () => (typeof EW_MH_HAIR_MATS !== 'undefined' ? EW_MH_HAIR_MATS : []),   // THE HAIR MATERIALS
     mhBrows: () => L.brows, mhLashes: () => L.lashes };
   try { return lists[kind] ? row(lists[kind]()) : null; } catch (e) { return null; }
 }
@@ -4747,7 +4888,7 @@ function getMhEyePack(a) {
   const row = a && EW_MH_EYE_PACK_BY_ID[a.mhEyes];
   const body = row && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
   if (!body || !EW_MH_LOOKS.kits[body]) return null;
-  const dir = EW_CHARACTER_ASSET_BASE + '/' + EW_MH_EYE_PACK_DIR;
+  const dir = EW_CHARACTER_ASSET_BASE + '/' + (row[4] || EW_MH_EYE_PACK_DIR);   // (THE EYE MATERIALS: their own folder)
   const tint = a.eyeTint === 'pick' && typeof a.eyeColor === 'string' && /^#[0-9a-f]{6}$/i.test(a.eyeColor) ? a.eyeColor : null;
   return { id: row[0], map: dir + row[2] + '.png', normal: row[3] ? dir + row[3] + '.png' : null, tint: tint, iris: EW_MH_EYE_PACK_IRIS,
     proxy: EW_CHARACTER_ASSET_BASE + '/mpfb/looks/eyes/eye_proxy.json' };
@@ -4919,6 +5060,7 @@ function getCharacterAppearanceAssets(appearance) {
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
   const eyePack = getMhEyePack(a); if (eyePack) { looks.push(eyePack.map); if (eyePack.normal) looks.push(eyePack.normal); }   // THE EYE PACK (its PNGs)
+  const hairMat = getHairMaterial(a); if (hairMat) looks.push(hairMat.url);   // THE HAIR MATERIALS (its PNG)
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
 }
 function getWingsStyleUrl(id) { const o = id && id !== 'none' && EW_WINGS_STYLES.find(x => x.id === id); return o ? o.url || EW_WINGS_URL : null; }
@@ -4957,6 +5099,7 @@ if (typeof window !== 'undefined') {
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
+  window.EW_MH_HAIR_MATS = EW_MH_HAIR_MATS; window.getHairMaterial = getHairMaterial;   // THE HAIR MATERIALS
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES

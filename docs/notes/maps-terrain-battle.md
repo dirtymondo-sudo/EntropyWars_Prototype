@@ -1267,6 +1267,60 @@ Round 2 (the same day, the rest of his answers):
 - Catalogue procs swapped to pack pieces and their code deleted (bake-pack-pieces.py jobs, R2 Assets/misc/, zipped by hand):
   `hand_dryer` / `range_hood` / `kitchen_range` / `sink_row` = DINER pack (Hand_dryer, cooker_hood, Stove griddle, Washbasin);
   `urinal` = BurgerPiz urinary; `toilet_stall` = Gas station stall (two partitions + door + toilet); `shower_stall` = House pack shower;
-  `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`; the catalogue `light` went with the proc: file
+  `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`, kept 1.3 m tall like the old pod: Antarctica stands it on 1.3 m ghost blocks; the catalogue `light` went with the proc: file
   rows draw no point light, only the glow). The kitchen range's burner glow went (it is a griddle).
 - KEPT as code: the `castle_wall` spell monument (1 square wide, 2 high: the pack has no piece that shape).
+Round 2b (the same day, the Meshy concepts mondo OK'd: concepts + models in project files meshy/coded-out/, R2 Assets/decor/, in
+_HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
+- `_hzObelisk` = Meshy granite obelisk (ember glow kept on the point). `_hzGateway` (+ the `arch` / `gateway` monuments) = Meshy curved
+  stone arch (the box piers, lintel and broken variant deleted). `_hzGreekRuin` columns = the new Meshy `greek_column` (not greekcol).
+- `_hzEffigy` = Meshy bier + Meshy wrapped figure on it (two models). `_hzWindmill` = Meshy windpump tower + the wheel as its own
+  model on a hub at 0.92 H, 0.13 H out on +x, turning: `_horizonFloaters` entries now take `spinX` (rotation.x per frame).
+- procs: `grow_lamp` = Meshy LED panel (catalogue h 0.17, flush to the ceiling; glow + light kept), `submarine` = Meshy yellow sub
+  (nose turned to +z, 7 m, the headlamp glows kept; the screw no longer turns), `_hqLavaLampBuild` = Meshy chrome base + cap (table
+  and floor sets) with the glass + wax still drawn (the floor lamp's glass is a straight tube now, to match its base).
+## THE OPEN SUMMIT + THE OPEN ICE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any sense for those maps")
+- Cause: LEVEL_DESIGN_PLAN L6 (2026-09-30) turned both site rooms into `gen: { kind: 'plan', look: 'walls' }` layouts (5.5 m marble /
+  5 m ice walls round every court, yard and hall; the sealed mass between them baked to pits by bake-holes.js), and every arena size
+  was cut from those walled courts.
+- Fix (whole room, easier than carving a hole in the plan): HQ_AREA_SPECS.prebuilt_olympus / prebuilt_antarctica lost the walls
+  plan and every `space` / `hall` row (a room with `space`/`hall` rows and no `gen` still gets a walls plan — data.js
+  hqTerrainCompile's planGen fallback, so both had to go). Every plateau, stair, climb, pool, deck, rail, prop and NPC stayed.
+  HQ_ROOM_HOLES rows re-baked (0 gaps now). Olympus keeps `outer.lift -26` (the summit is a marble crown with the mountain falling away).
+- Olympus THE COURT OF THE TWELVE (the board, x -21..21, z -10.5..31.5, `HQ_ARENA_RULES.within` (0, 10.5) r 2.6 for every size):
+  twelve greek_column props (h 5, `floor: true`) in two rows of six at x ±12.25 on square centres, each on a one-square ghost wall
+  (h 5 → level 3, the Göbekli pillar rule), and two 1.2 m marble plinths at the far corners. The lower court's stair moved to its
+  north lip (the west court), the first two stepping clouds moved west off the board, the fountain went to (0, 35) south of the
+  board, the riser and a brazier moved off it, the scatter rows got their own areas (with the walls gone they landed on the board).
+  Olympus now has an 11×11 cut too (none fitted the walled room).
+- Antarctica THE STATION YARD (the board, x -21..21, z 10.5..52.5, `within` (0, 31.5) r 2.6): two 1.4 m ice pressure ridges
+  (three squares each, level 1), two 3.0 m metal containers (two squares each, level 2), two iso_tank fuel tanks on one-square ghost
+  blocks (1.3 m), two flood masts off the corners. THE CREVASSE stream now runs wall to wall (x -71..71) so the plank is still the
+  only way north. The signpost, lesson sign, laundry cart, riser and the yeti NPC moved off the board; scatter rows got areas.
+- Both boards are half-turn symmetric about their centre and keep the house lanes (spawn / egress / nexus) clear at 12, 11, 10, 9.
+  Existing rules only: levels, ghost blocks, deep water. bake-arenas.js reports them as walled cuts (the level-3 / level-2 blocks).
+- Audit of the other boards + the exploration rooms still built as walled plans: /mnt/project-files/battle-map-audit/.
+Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
+GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
+city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
+
+## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
+mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
+3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the map" (his picture: 01 Forward Cover,
+02 Central Screen, 03 Open Junction; each team on four edge squares).
+- data.js `HQ_LG_CHESS` (above HQ_AREA_SPECS): the three positions as FEN-style rows (north = black = P2), `cur` = the one standing.
+  The garden's `board` feature is 8 × 8 (x −14..14, z 3.5..31.5) in the middle of the unchanged 12 × 12 window (ox 11, oz 14,
+  3.5 m squares): the window's squares 2..9; the two lawn rings round it hold the spawns (rows 0 / 11, x 4..7) as before.
+- The pieces are `...hqLgChessFeatures()` chess trees (existing rule: solid on their square). A piece not in every position has
+  `chessPos`; only the current position's stand: hqFieldTerrainInfo (`trees` filtered, its cache keyed `chess`), _hqFieldTreeAt,
+  and three-renderer.js treeOne (`_hqChessVar`, hidden + off the walker's blockers; `ThreeRenderer.chessPosSync`). The three differ
+  only by one white bishop (c4 / d3 / e2).
+- The roll: hqLgChessRoll(mapId) at the launch (map.js _msArenaGate once per confirm, the labs' launch). A new position calls
+  hqArenaRoomChanged (the field is re-rastered, ~0.1 s, no survey). The field's `build` stamp keys the renderer's room read
+  (_hqBattleRoom / _fieldGround) so a re-raster of the same window is read again.
+- Online: the HOST rolls once per match in _onlineArenaGo (NET._chessRolledFor, cleared per match / rematch); `arena-check` carries
+  `chess`, the room signature ends `|chess<k>`, so a guest on another position is asked again and stands the host's (hqLgChessSet).
+- The garden around it is unchanged (a plateau + the board's `clear: 7` apron keep the plan's forced area and the scatter exactly
+  as with the 12 × 12 board — checked: same scatter + trees). Picks: the 12 re-rastered by hand (all 117 open squares reach both
+  spawn rows); the 9 / 10 / 11 re-baked (`bake-arenas.js --size N prebuilt_lookingglass`): no smaller window fits the house on the
+  8 × 8 (the back ranks sit on the egress rows), so they are other lawn windows of the garden (the 11 takes the board's west files).
