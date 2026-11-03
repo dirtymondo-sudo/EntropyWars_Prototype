@@ -3646,10 +3646,11 @@ const EW_MH_LOOKS = {
     ["mindfront_eyebrows_14", "Mesh brows 14", 836, 470, 16, 118],
   ],
   lashes: [
-    ["eyelashes01", "Lashes 1", 673, 15, 104, 61],
-    ["eyelashes02", "Lashes 2", 673, 15, 105, 61],
-    ["eyelashes03", "Lashes 3", 673, 15, 105, 61],
-    ["eyelashes04", "Lashes 4", 667, 14, 117, 62],
+    // THE LID LASHES (2026-11-03, bake-lashes.py): the stock four drawn on the eyelids (bake-mpfb.py drew them on the cut helper)
+    ["eyelashes01", "Lashes 1", 849, 482, 20, 95],
+    ["eyelashes02", "Lashes 2", 845, 475, 24, 108],
+    ["eyelashes03", "Lashes 3", 843, 476, 26, 107],
+    ["eyelashes04", "Lashes 4", 843, 476, 26, 106],
     ["mindfront_eyelashes_01", "Mesh lashes 1", 850, 482, 17, 93],
     ["mindfront_eyelashes_02", "Mesh lashes 2", 850, 482, 17, 94],
     ["mindfront_eyelashes_03", "Mesh lashes 3", 849, 481, 19, 97],
@@ -4927,6 +4928,15 @@ function getMhLookLayers(a) {
   if (tinted) { out.tint = tint; out.iris = EW_MH_IRIS; out.skinSample = EW_MH_SKIN_SAMPLE; out.skinKeep = EW_MH_SKIN_KEEP; }   // THE LOOK COLOURS (three-renderer.js tintSheet / tintLayer)
   return out;
 }
+/* THE LID LASHES (2026-11-03, mondo: "i click them but i dont see any lashes"): an MPFB body's OWN lashes (its kit's stock
+   lash, EW_MH_LOOKS.kits) as [url, box] | null. The stock sheet baked in each body GLB drew them on the cut eyelash helper,
+   so with every pick 'own' three-renderer.js setLook lays this layer over the stock sheet (one shared texture per body). */
+function getMhOwnLashLayer(body) {
+  const k = typeof body === 'string' && /^mpfb_/.test(body) ? mpfbKitOf(body) : null;
+  const kit = k && EW_MH_LOOKS.kits[k];
+  const row = kit && EW_MH_LOOKS.lashes.find(r => r[0] === kit.lashes);
+  return row ? [EW_CHARACTER_ASSET_BASE + '/mpfb/looks/eyelash_' + row[0] + '.png', row.slice(2, 6)] : null;
+}
 /* THE EYE PACK: an MPFB body's pack eye pick -> { id, map, normal (the R2 PNGs), tint (the Iris colour, or null), iris, proxy }; null
    for the sheet's own eye colours or a body that is not MPFB */
 function getMhEyePack(a) {
@@ -5104,6 +5114,7 @@ function getCharacterAppearanceAssets(appearance) {
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
+  if (!looks.length) { const own = getMhOwnLashLayer(a.body); if (own) looks.push(own[0]); }   // THE LID LASHES (the body's own)
   const eyePack = getMhEyePack(a); if (eyePack) { looks.push(eyePack.map); if (eyePack.normal) looks.push(eyePack.normal); }   // THE EYE PACK (its PNGs)
   const hairMat = getHairMaterial(a); if (hairMat) looks.push(hairMat.url);   // THE HAIR MATERIALS (its PNG)
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
@@ -5145,7 +5156,7 @@ if (typeof window !== 'undefined') {
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
   window.EW_MH_HAIR_MATS = EW_MH_HAIR_MATS; window.getHairMaterial = getHairMaterial;   // THE HAIR MATERIALS
-  window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
+  window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhOwnLashLayer = getMhOwnLashLayer; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT;   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES

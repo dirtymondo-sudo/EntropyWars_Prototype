@@ -1397,3 +1397,21 @@ like cotton and leather and all that? Im not seeing that option anywhere in the 
 - Known: the viking boots' fur wraps show through TIGHT jeans at the shin (they are wider than the jeans' leg); fine with the
   viking / EMT / loose trousers. Shots /mnt/project-files/pack-fabrics/.
 
+
+## THE LID LASHES (2026-11-03)
+mondo: "im not seeing lashes 1 -4 show up in the character creator/ they are there and i click them but i dont see any lashes".
+- CAUSE: MakeHuman's stock eyelashes01-04 (makehuman_system_assets) are fitted to hm08's eyelash HELPER (helper-l/r-eyelashes-1/2,
+  their own UV island at the top of the sheet). bake-mpfb.py cuts that helper from every MPFB body, and bake_looks drew the four lash
+  layers through the helper's UVs (box ~673,15): a patch of the sheet no visible triangle uses. Same for every body's OWN lashes (the
+  kits wear eyelashes01 / 02, baked into each GLB's stock sheet in the same dead spot). The pack's mindfront "Mesh lashes" are fitted to
+  the lid itself, so they always showed.
+- FIX: `bake-lashes.py` (numpy, no Blender: an mpfb2 clone's base.obj + the system eyelashes) drops each proxy vertex's rest point onto
+  the nearest point of the body's own skin round the eye and draws the lash there (bake_looks' rasteriser, alpha 0.8). New PNGs on R2
+  (same keys `mpfb/looks/eyelash_eyelashes0N.png`, ASSET_MANIFEST shas updated) + new boxes in sprites.js EW_MH_LOOKS.lashes
+  (~843-849, 475-482). `--check <eyelashes01_cc0>` re-draws the mindfront lashes and must print the boxes already in sprites.js (it
+  does: proves the tool's UVs are the game sheet's).
+- Body's own: sprites.js `getMhOwnLashLayer(body)` = the kit's lash layer; three-renderer.js setLook with every pick 'own' wears
+  `_ccOwnLashMap` = the stock sheet + that layer, ONE shared canvas texture per stock map (not per unit); the stock sheet until it is
+  ready / if it fails. getCharacterAppearanceAssets warms the PNG.
+- A re-run of `bake-mpfb.py --looks` writes the helper-drawn lash PNGs + boxes again: run bake-lashes.py after it.
+- Shots (MPFB male + female, every lash pick, close-up): /mnt/project-files/creator-lashes/.
