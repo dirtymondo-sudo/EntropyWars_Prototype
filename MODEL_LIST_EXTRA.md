@@ -1,8 +1,9 @@
-## 9. Meshy pieces made 2026-11-03 through the API, NOT wired into the game yet
+## 9. Meshy pieces made 2026-11-03 through the API — WIRED (PR #827 + #829)
 
 Claude made these on Meshy (concept image -> mondo's OK -> smart-topology model) for docs/notes/character-models-plan.md
-section 4a/6 (wearable gear + held spell props). Files: project files `meshy/models/` (GLB + preview). They get rows above
-only when they are wired in. #01 cowboy hat = mondo's own model; #58 playing cards dropped (mondo uses a pack); #49 whip =
+section 4a/6 (wearable gear + held spell props). Files: project files `meshy/models/` (GLB + preview). **Wired 2026-11-03:**
+the held spell props + whip + worn gear (PR #827, R2 `Assets/props/`) are in §7a / §7a-2; the creator fittings (PR #829,
+`charactercreation/wear/ewm_*`) are in §5e. #01 cowboy hat = mondo's own model; #58 playing cards dropped (mondo uses a pack); #49 whip =
 Meshy handle + a lash Claude built in Blender.
 
 `02_gun-belt`, `02b_thigh-holster`, `03_pirate-tricorn`, `04_officer-cap`, `05_firefighter-helmet`, `06_firefighter-air-tank`, `07_football-helmet`, `08_football-shoulder-pads`, `09_astronaut-helmet`, `10_astronaut-backpack`, `11_royal-crown`, `12_ice-crown`, `13_annunaki-headdress`, `14_overlord-helmet`, `15_mushroom-cap-hat`, `16_beret`, `17_straw-hat`, `18_armor-breastplate`, `19_armor-pauldron`, `20_armor-gauntlet`, `21_armor-greave`, `22_egyptian-collar`, `23_sheriff-star`, `24_police-badge`, `25_quiver`, `26_small-backpack`, `27_tool-belt`, `28_cross-pendant`, `29_katana-back-sheath`, `30_trident`, `31_neck-bolt`, `32_elf-ear`, `33_grey-alien-head`, `34_jackal-head`, `35_goat-head`, `36_eagle-head`, `37_shark-head`, `38_lizard-head`, `39_moth-head`, `40_moth-wing`, `41_lizard-tail`, `42a_shark-tail`, `42b_shark-dorsal-fin`, `43_mermaid-tail`, `44_wolf-tail`, `45_hoof`, `46_clawed-beast-foot`, `47_potion-flask`, `48_scalpel`, `49_bullwhip_rigged`, `49_whip-handle`, `50_wrench`, `51_blowpipe`, `52_smartphone`, `53_hand-mirror`, `54_old-camera-flash`, `55_milk-and-cookies`, `56_drinking-cup`, `57_broken-halo`, `58_playing-cards`, `59_magic-wand`, `60_wizard-staff`, `61_jetpack`, `62_binoculars`, `63_walkie-talkie`, `64_flare-gun`, `65_ward-totem`, `66_spyglass`, `67_talisman-pendant`, `68_censer`, `69_grapple-gauntlet`, `70_arm-band`, `71_hagstone`, `72_dowsing-rod`
@@ -28,7 +29,7 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | D01 | `bare_bulb` | Bare ceiling bulb | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord |
 | D02 | `cave_torch` | Standing torch — **WIRED 2026-11-03** | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
 | D03 | `steel_table` | Steel work table | 43 | 6000 | A stainless steel work table with a lower shelf and square legs, brushed metal |
-| D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
+| D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** (regenerated: stadium light D04c) | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
 | D05 | `metal_shelving` | Steel storage shelving (also lost_shelf) | 38 | 12000 | A grey steel storage shelving unit with four shelves holding cardboard boxes and plastic bins |
 | D06 | `notice_board` | Cork notice board — **WIRED 2026-11-03** | 37 | 4000 | A wall-mounted cork notice board in a wooden frame with pinned paper notices, memos and a calendar, no readable text |
 | D07 | `t_pillar` | Göbekli T-pillar (Ley Lines) — **WIRED 2026-11-03** | 34 | 16000 | A Göbekli Tepe style megalithic T-shaped limestone pillar about 4.5 metres tall, weathered pale stone, a fox and a boar carved in low relief on its side and arms carved in relief along the shaft |
@@ -212,3 +213,47 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 - **Astral**: ticket dispenser, bed with something under it, closet with no back
 - **DOOR HQ floors**: pool ladder + starting block
 
+## 11. CODE-BUILT SHAPES — replacement proposal (2026-11-03, awaiting mondo)
+
+mondo 11-03: "focus on the things that were purely coded like the cones ... a box for a building is perfectly fine, but other
+stuff just looks really bad". Each code-only builder in §8b was drawn alone in a browser and judged. Full proposal with
+before/after thumbnails: Claude Doc "Coded shapes worth replacing" (https://claude.ai/artifact/WFS1U2pejBAp4cqXQr6wyF).
+NOTHING is replaced yet; mondo picks rows by number. Existing rules only; replacing = the builder wears the model.
+
+| # | coded piece (three-renderer.js) | verdict | replacement |
+| --- | --- | --- | --- |
+| 1 | castle / skycastle landmarks | swap, model in game | castle pack pieces (`Castles_and_Forts.glb`) |
+| 2 | iceberg ring `bergs` (cones) | swap, model in game | ocean pack rocks tinted ice white |
+| 3 | `_hzObelisk` | swap, model in game | obelisk3d |
+| 4 | `_hzLighthouse` | swap, model in game | Meshy decor lighthouse |
+| 5 | sea stack / island | swap, model in game | ocean pack rocks / palm isle |
+| 6 | greek ruin + ruins rim | swap, model in game | greek columns + castle ruined pieces |
+| 7 | rover | swap, model in game | mars_rover |
+| 8 | toadstool / fairy ring | swap, model in game | mushroom2 / mushroom |
+| 9 | censer | swap, model in game | Meshy props censer |
+| 10 | whale (Atlantis) | swap, model in game | ocean_whale / humpback |
+| 11 | castle_wall | swap, model in game | castle pack Wall_2x4 |
+| 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
+| 13 | brazier | swap, model in game (partial) | cave_torch basket |
+| 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
+| 15 | greytube | pack swap | Molten cryo tube |
+| 16 | iso_tank | pack swap | Molten casket / cryo |
+| 17 | lava lamps | pack swap | Molten lamp |
+| 18 | grow_lamp | pack swap | Molten lamp |
+| 19 | submarine | pack swap | BlenderVoyage sub (CC-BY: credit) |
+| 20 | hand_dryer / range_hood / kitchen_range | pack swap | DINER pack |
+| 21 | urinal / sink_row | pack swap | BurgerPiz pack |
+| 22 | toilet / shower stall | pack swap | Gas station / House packs |
+| 23 | `_hzFloatingIsland` (upside-down cone) | new Meshy model | floating rock island |
+| 24 | `_hzColossus` | new Meshy model | felled giant column, drums scattered |
+| 25 | `_hzFleshMound` | new Meshy model | heap of living flesh, eyes and teeth |
+| 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |
+| 27 | windmill monument (Skinwalker Ranch) | new Meshy model | ranch windpump |
+| 28 | `_hzGrinSkull` | new Meshy model | giant stone skull |
+| 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
+| - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |
+
+Fine as they are (left alone): city/town/hills/dunes/craters rims; tower/gate/stairway/waterspout landmarks; monolith,
+ziggurat, stairway, tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
+void solids, girder knot, gold gate, holo pieces, exit sign, fluorescent tube, sacred rings, orbs, lenticular cloud, inner
+sun; box-room near settings; §10C/§10D procs. Chess pieces and the Göbekli T-pillar already wear models.

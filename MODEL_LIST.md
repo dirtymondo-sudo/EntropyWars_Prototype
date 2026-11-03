@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 18 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 493 |
+| Meshy AI | no | 589 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 101 |
@@ -27,6 +27,8 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
 "Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).
+Not in the count: the horizon. **91 of the 177 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
+monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.
 
 ## 2. Units — the playable races (sprites.js RACE_MODELS_3D)
 
@@ -481,6 +483,85 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewb_vest_open · (front variant) | `Assets/Models/charactercreation/wear/ewb_vest_open.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_zombie | `Assets/Models/charactercreation/wear/ewb_zombie.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
 | ewb_zombie_closed · (front variant) | `Assets/Models/charactercreation/wear/ewb_zombie_closed.glb` | Claude in Blender | bake-clothes.py / bake-garment.py (cloud Blender) |
+
+### 5e. Meshy pieces in the creator (71 files, `Assets/Models/charactercreation/wear/ewm_*`, PR #829)
+
+Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
+(bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
+
+| piece | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| ewm_airtank · Firefighter air tank (equipment) | `Assets/Models/charactercreation/wear/ewm_airtank.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_anunnakihat · Anunnaki headdress (hats) | `Assets/Models/charactercreation/wear/ewm_anunnakihat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_armband · Arm band (equipment) | `Assets/Models/charactercreation/wear/ewm_armband.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_astrohelmet · Astronaut helmet (hats) | `Assets/Models/charactercreation/wear/ewm_astrohelmet.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_astropack · Astronaut backpack (equipment) | `Assets/Models/charactercreation/wear/ewm_astropack.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_backpack · Small backpack (equipment) | `Assets/Models/charactercreation/wear/ewm_backpack.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_beastfeet · Clawed beast feet (bodyparts) | `Assets/Models/charactercreation/wear/ewm_beastfeet.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_beret · Beret (hats) | `Assets/Models/charactercreation/wear/ewm_beret.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_binoculars · Binoculars (equipment) | `Assets/Models/charactercreation/wear/ewm_binoculars.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_blowpipe · Blowpipe (equipment) | `Assets/Models/charactercreation/wear/ewm_blowpipe.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_breastplate · Armour breastplate (equipment) | `Assets/Models/charactercreation/wear/ewm_breastplate.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_brokenhalo · Broken halo (equipment) | `Assets/Models/charactercreation/wear/ewm_brokenhalo.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_camera · Old camera with flash (equipment) | `Assets/Models/charactercreation/wear/ewm_camera.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_censer · Censer (hip) (equipment) | `Assets/Models/charactercreation/wear/ewm_censer.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_crosspendant · Cross pendant (equipment) | `Assets/Models/charactercreation/wear/ewm_crosspendant.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_cup · Drinking cup (equipment) | `Assets/Models/charactercreation/wear/ewm_cup.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_dorsalfin · Shark dorsal fin (bodyparts) | `Assets/Models/charactercreation/wear/ewm_dorsalfin.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_dowsingrod · Dowsing rod (equipment) | `Assets/Models/charactercreation/wear/ewm_dowsingrod.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_eaglehead · Eagle head (heads) | `Assets/Models/charactercreation/wear/ewm_eaglehead.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_egyptcollar · Egyptian collar (equipment) | `Assets/Models/charactercreation/wear/ewm_egyptcollar.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_elfears · Elf ears (bodyparts) | `Assets/Models/charactercreation/wear/ewm_elfears.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_firehelmet · Firefighter helmet (hats) | `Assets/Models/charactercreation/wear/ewm_firehelmet.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_flaregun · Flare gun (hip) (equipment) | `Assets/Models/charactercreation/wear/ewm_flaregun.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_footballhelmet · Football helmet (hats) | `Assets/Models/charactercreation/wear/ewm_footballhelmet.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_gauntlets · Armour gauntlets (equipment) | `Assets/Models/charactercreation/wear/ewm_gauntlets.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_goathead · Goat head (heads) | `Assets/Models/charactercreation/wear/ewm_goathead.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_grapplegauntlet · Grapple gauntlet (equipment) | `Assets/Models/charactercreation/wear/ewm_grapplegauntlet.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_greaves · Armour greaves (equipment) | `Assets/Models/charactercreation/wear/ewm_greaves.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_greyalien · Grey alien head (heads) | `Assets/Models/charactercreation/wear/ewm_greyalien.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_gunbelt · Gun belt (equipment) | `Assets/Models/charactercreation/wear/ewm_gunbelt.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_hagstone · Hagstone (equipment) | `Assets/Models/charactercreation/wear/ewm_hagstone.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_handmirror · Hand mirror (equipment) | `Assets/Models/charactercreation/wear/ewm_handmirror.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_hooves · Hooves (bodyparts) | `Assets/Models/charactercreation/wear/ewm_hooves.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_icecrown · Ice crown (hats) | `Assets/Models/charactercreation/wear/ewm_icecrown.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_jackalhead · Jackal head (heads) | `Assets/Models/charactercreation/wear/ewm_jackalhead.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_jetpack · Jetpack (equipment) | `Assets/Models/charactercreation/wear/ewm_jetpack.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_katana · Katana in a back sheath (equipment) | `Assets/Models/charactercreation/wear/ewm_katana.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_lizardhead · Lizard head (heads) | `Assets/Models/charactercreation/wear/ewm_lizardhead.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_lizardtail · Lizard tail (bodyparts) | `Assets/Models/charactercreation/wear/ewm_lizardtail.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_magicwand · Magic wand (equipment) | `Assets/Models/charactercreation/wear/ewm_magicwand.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_mermaidtail · Mermaid tail (bodyparts) | `Assets/Models/charactercreation/wear/ewm_mermaidtail.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_milkcookies · Milk and cookies (equipment) | `Assets/Models/charactercreation/wear/ewm_milkcookies.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_mothhead · Moth head (heads) | `Assets/Models/charactercreation/wear/ewm_mothhead.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_mothwings · Moth wings (bodyparts) | `Assets/Models/charactercreation/wear/ewm_mothwings.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_mushroomcap · Mushroom cap (hats) | `Assets/Models/charactercreation/wear/ewm_mushroomcap.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_neckbolts · Neck bolts (bodyparts) | `Assets/Models/charactercreation/wear/ewm_neckbolts.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_officercap · Officer cap (hats) | `Assets/Models/charactercreation/wear/ewm_officercap.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_overlordhelm · Overlord helmet (hats) | `Assets/Models/charactercreation/wear/ewm_overlordhelm.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_pauldrons · Armour pauldrons (equipment) | `Assets/Models/charactercreation/wear/ewm_pauldrons.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_policebadge · Police badge (equipment) | `Assets/Models/charactercreation/wear/ewm_policebadge.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_potionflask · Potion flask (equipment) | `Assets/Models/charactercreation/wear/ewm_potionflask.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_quiver · Quiver (equipment) | `Assets/Models/charactercreation/wear/ewm_quiver.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_royalcrown · Royal crown (hats) | `Assets/Models/charactercreation/wear/ewm_royalcrown.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_scalpel · Scalpel (equipment) | `Assets/Models/charactercreation/wear/ewm_scalpel.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_sharkhead · Shark head (heads) | `Assets/Models/charactercreation/wear/ewm_sharkhead.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_sharktail · Shark tail (bodyparts) | `Assets/Models/charactercreation/wear/ewm_sharktail.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_sheriffstar · Sheriff star (equipment) | `Assets/Models/charactercreation/wear/ewm_sheriffstar.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_shoulderpads · Football shoulder pads (equipment) | `Assets/Models/charactercreation/wear/ewm_shoulderpads.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_smartphone · Smartphone (equipment) | `Assets/Models/charactercreation/wear/ewm_smartphone.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_spyglass · Spyglass (hip) (equipment) | `Assets/Models/charactercreation/wear/ewm_spyglass.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_strawhat · Floppy straw hat (hats) | `Assets/Models/charactercreation/wear/ewm_strawhat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_talisman · Talisman pendant (equipment) | `Assets/Models/charactercreation/wear/ewm_talisman.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_thighholster · Thigh holster (equipment) | `Assets/Models/charactercreation/wear/ewm_thighholster.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_toolbelt · Tool belt (equipment) | `Assets/Models/charactercreation/wear/ewm_toolbelt.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_tricorn · Pirate tricorn (hats) | `Assets/Models/charactercreation/wear/ewm_tricorn.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_trident · Trident (equipment) | `Assets/Models/charactercreation/wear/ewm_trident.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_walkietalkie · Walkie-talkie (equipment) | `Assets/Models/charactercreation/wear/ewm_walkietalkie.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_wardtotem · Ward totem (belt) (equipment) | `Assets/Models/charactercreation/wear/ewm_wardtotem.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_wizardstaff · Wizard staff (equipment) | `Assets/Models/charactercreation/wear/ewm_wizardstaff.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_wolftail · Wolf tail (bodyparts) | `Assets/Models/charactercreation/wear/ewm_wolftail.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_wrench · Wrench (equipment) | `Assets/Models/charactercreation/wear/ewm_wrench.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 
 ## 6. Props — every room / editor prop (data.js DOOR_HQ.catalogue)
 
@@ -1242,7 +1323,9 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | asteroid2 | `Assets/door/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | bible | `Assets/misc/Meshy_AI_bible_1027232251_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | blackBlob | `Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| blowpipe (held in the hand) | `Assets/props/blowpipe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | bullet | `Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| camera (held in the hand) | `Assets/props/old_camera_flash.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | candle | `Assets/weapons/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleLine | `Assets/weapons/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleRing | `Assets/weapons/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1252,6 +1335,7 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | crystalBall | `Assets/weapons/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crystalShard | `Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crystalShards | `Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cup (held in the hand) | `Assets/props/drinking_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | dynamite | `Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ejectionSeat | `Assets/misc/Meshy_AI_ejection_seat_1027232003_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fangs | `Assets/animals/top_fangs.glb` | Asset pack (author not recorded yet) | Top fangs (mondo's upload) |
@@ -1261,17 +1345,23 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | frog | `Assets/misc/Meshy_AI_frog_1027232151_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | giantFoot | `Assets/misc/Meshy_AI_giant_foot_1027232131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | grenade | `Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| halo (held in the hand) | `Assets/props/broken_halo.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| handMirror (held in the hand) | `Assets/props/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | jet | `Assets/weapons/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | landmine | `Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mic | `Assets/misc/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| milkCookies (held in the hand) | `Assets/props/milk_and_cookies.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| phone (held in the hand) | `Assets/props/smartphone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | piano | `Assets/decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pistol | `Assets/weapons/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | plasma | `Assets/weapons/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| potionFlask (held in the hand) | `Assets/props/potion_flask.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | rope | `Assets/misc/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sack | `Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sandbags | `Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| scalpel (held in the hand) | `Assets/props/scalpel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | sheep | `Assets/decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | shield | `Assets/weapons/Meshy_AI_shield_1027232025_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | shotgun | `Assets/weapons/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1279,6 +1369,7 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | sleigh | `Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sniper | `Assets/weapons/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | spear | `Assets/weapons/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
+| staff (held in the hand) | `Assets/props/wizard_staff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | sword | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | syringe | `Assets/misc/Meshy_AI_syringe_1027232304_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1292,6 +1383,26 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | voodooDoll | `Assets/misc/Meshy_AI_voodoo_doll_1027232238_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wand (held in the hand) | `Assets/props/magic_wand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| whip (held in the hand) | `Assets/props/bullwhip_rigged.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| wrench (held in the hand) | `Assets/props/wrench.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+
+### 7a-2. Gear worn on the body (three-renderer.js UNIT_GEAR_WEAR, PR #827) — the equipment a unit carries, on its bones
+
+| equipment key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| binoculars | `Assets/props/binoculars.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| dowsing_rod | `Assets/props/dowsing_rod.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| echo_band | `Assets/props/arm_band.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| flair | `Assets/props/flare_gun.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| grapnel_gauntlet | `Assets/props/grapple_gauntlet.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| hagstone | `Assets/props/hagstone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| jetpack | `Assets/props/jetpack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| martyrs_talisman | `Assets/props/talisman_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| purity_censer | `Assets/props/censer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| telescope | `Assets/props/spyglass.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| walkie_talkie | `Assets/props/walkie_talkie.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| ward | `Assets/props/ward_totem.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 
 ### 7b. Settings, horizons, monuments (three-renderer.js _MISC_GLB)
 
@@ -1544,20 +1655,230 @@ show if the file fails) — counted under that model's maker, not as code:
 
 `anemone` (anemone), `armour_stand` (armour_plinth, armour_stand), `autopsy_table` (autopsy_table), `banner` (banner), `barber_chair` (barber_chair), `barber_pole` (barber_pole), `boiler` (boiler), `candle_ring` (candle), `card_catalogue` (card_catalogue), `carousel` (carousel_horse, carousel), `cave_torch` (cave_torch), `conveyor` (conveyor), `conveyor_z` (conveyor), `departures_board` (departures_board), `directory_board` (directory_board), `disc_cluster` (disc_cluster), `door_furnace` (door_furnace), `dream_eye` (dream_eye), `eeg_rack` (eeg_rack), `egg_chair` (egg_chair), `exec_desk` (exec_desk), `ferris_wheel` (ferris_wheel, ferris_gondola, ferris_wheel_wheel), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `flood_mast` (flood_mast), `fortune_tent` (crystalBall, fortune_teller_tent), `fountain` (fountain), `garden_tree` (a retro-pack tree), `giant_clam` (giant_clam), `high_striker` (high_striker, high_striker_hammer), `laminator` (laminator), `laundry_cart` (laundry_cart), `lifeguard_chair` (lifeguard_chair), `lighthouse` (lighthouse), `locker_bench` (city_bench), `lone_gun` (pistol), `meat_hook` (meat_hook), `mushroom_lamp` (mushroom_lamp), `music_box` (music_box, music_box_dancer), `nightmare_bloom` (nightmare_bloom), `notice_board` (notice_board), `park_bench` (city_bench), `parked_car` (honda civic), `pool_lounger` (pool_lounger), `popcorn_cart` (popcorn_cart), `pot_rack` (pot_rack), `punch_clock` (punch_clock), `retro_console` (retro_control_panel), `robot_arm` (robot_arm), `rocking_chair` (rocking_chair), `round_table` (round_table), `saucer_pendant` (saucer_pendant), `saucer_rig` (saucer_lg), `school_desk` (school_desk), `scoreboard` (scoreboard), `sea_buoy` (sea_buoy), `sea_vent` (sea_vent), `skiff` (skiff), `slot_machine` (slot_machine), `space_divider` (space_divider), `sputnik_lamp` (sputnik_lamp), `star_projector` (star_projector), `stocks` (stocks), `stone_altar` (stone_altar), `sword_stone` (sword), `t_pillar` (t_pillar), `tanker_desk` (tanker_desk), `tape_shelf` (vhs_player), `ticket_booth` (ticket_booth), `trophy_case` (trophy_case, trophy_cup), `tulip_chair` (tulip_chair), `tulip_table` (tulip_table), `umbrella_stand` (umbrella_stand, umbrella_closed), `wall_torch` (wall_torch_bracket)
 
-Besides the catalogue, the battle maps' near settings, horizons and monuments have procedural families too
-(the `_hz*` / `_nr*` builders): MODEL_INDEX.md §8 lists them.
+## 8b. The horizon and the sky — everything drawn past the board, and what it is made of
+
+Written by list-models.js from three-renderer.js's own tables (2026-11-03: the cone mountains had no row because this list
+only read model files). **made with** = what the scan found in the builder and the helpers it calls: model files (their
+maker in brackets, from the tables above) and/or three.js shapes. "three.js shapes (code)" = drawn by Claude in code, no
+model: those are the candidates for a real model. Also painted, not modelled: the battle's ring-wall skyline (distant
+snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticular (`_hzLenticular`, a cloud sprite stack).
+
+### 8b-A. The far rosters — what floats / stands in the void round a battle board and in an open room's sky (`_hzThemeRoster`; column = the themes that use it) (51)
+
+| key | made with | model files | three.js shapes | themes |
+| --- | --- | --- | --- | --- |
+| `_hzAsteroidFar` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)) | glow sprites | space, wreckage |
+| `_hzAstralOrbs` | glow sprites (code) | — | glow sprites | city, crystals, divine, eyes, holosim, islands, orbs, sea, space, wonder, wreckage |
+| `_hzAstronautFar` | model files | `astronaut` (Meshy AI) | — | wreckage |
+| `_hzCaterpillarFar` | model files | `caterpillar` (Meshy AI), `mushroom` (Meshy AI) | — | wonder |
+| `_hzChessPieceFar` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Lathe, glow sprites | wonder |
+| `_hzColossus` | three.js shapes (code) | — | Box, Cylinder | dark, infernal, pyramids, ruins |
+| `_hzCrystalShards` | model files | `crystals (_CRYSTAL_MODEL_URLS)` | — | crystals, infernal, space, wreckage |
+| `_hzDockRingFar` | model files | `dockring` (Meshy AI) | glow sprites | wreckage |
+| `_hzEscapePodFar` | model files | `escapepod` (Meshy AI) | — | wreckage |
+| `_hzFlamingoFar` | model files | `flamingo` (Meshy AI) | — | wonder |
+| `_hzFleshMound` | three.js shapes (code) | — | Cone, Sphere | infernal |
+| `_hzFloatingIsland` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Box, Cone, Cylinder | city, crystals, divine, infernal, islands, orbs, pyramids, ruins, space |
+| `_hzGateway` | three.js shapes (code) | — | Box, Plane | city, dark, ruins |
+| `_hzGhostShip` | model files | `wreck` (Meshy AI) | glow sprites | sea |
+| `_hzGirderKnot` | three.js shapes (code) | — | Box, glow sprites | wreckage |
+| `_hzGoldGate` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites | divine |
+| `_hzGreekRuin` | three.js shapes (code) | — | Box, Cylinder | divine, islands, ruins |
+| `_hzGrinSkull` | three.js shapes (code) | — | Circle | dark, infernal |
+| `_hzHoloMonolith` | three.js shapes (code) | — | Box, Plane, Torus | holosim |
+| `_hzHoloRing` | three.js shapes (code) | — | Torus, glow sprites | holosim |
+| `_hzHullChunk` | model files + three.js shapes | `hullplate` (Meshy AI) | Box, Cylinder, Torus, glow sprites | wreckage |
+| `_hzKrakenFar` | model files | `tentacle` (Meshy AI), `tentacle2` (Meshy AI) | — | sea |
+| `_hzLenticular` | three.js shapes (code) | — | Circle, Sphere, glow sprites | islands, sea |
+| `_hzLightPillar` | draws nothing (an empty group) | — | — | divine |
+| `_hzLighthouse` | three.js shapes (code) | — | Cylinder, Plane, glow sprites | sea |
+| `_hzModelClock` | model files | `clock` (Meshy AI), `gclock` (Meshy AI) | glow sprites | dark, divine, wonder |
+| `_hzModelCraft` | model files | `spaceship` (Meshy AI), `ufo` (Meshy AI) | glow sprites | orbs, space, wreckage |
+| `_hzModelEyeball` | model files | `eyeball/eyeball.obj` | glow sprites | eyes, orbs, space |
+| `_hzModelPlanet` | glow sprites (code) | — | glow sprites | crystals, orbs, space, wreckage |
+| `_hzModelPyramid` | model files | `Pyramid/Pyramid.glb` | glow sprites | pyramids |
+| `_hzModelSolarSystem` | model files | `solar` (Meshy AI) | glow sprites | space |
+| `_hzModelStar` | model files | `star` (Meshy AI) | glow sprites | space, wreckage |
+| `_hzMonolith` | three.js shapes (code) | — | Box, Plane | city, crystals, dark, eyes, infernal, orbs, pyramids |
+| `_hzMushroomFar` | model files | `mushroom` (Meshy AI) | — | wonder |
+| `_hzObelisk` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | dark, infernal, pyramids, ruins |
+| `_hzPalmIsleFar` | model files | `palmisle` (Meshy AI) | — | sea |
+| `_hzPlayingCard` | three.js shapes (code) | — | Plane | wonder |
+| `_hzPocketWatchFar` | model files | `watch_hang` (Meshy AI) | glow sprites | wonder |
+| `_hzRoseWindow` | three.js shapes (code) | — | Box, Circle, Torus | divine, ruins |
+| `_hzSacredRings` | three.js shapes (code) | — | Octahedron, Torus, glow sprites | city, crystals, divine, eyes, orbs, sea, space, wonder |
+| `_hzSaucer` | model files + three.js shapes | `saucer_lg` (Meshy AI) | Cylinder, Lathe, Sphere, Torus | orbs, space |
+| `_hzSeaIsland` | three.js shapes (code) | — | Cone, Cylinder, Plane, Sphere, glow sprites | sea |
+| `_hzSeaStack` | three.js shapes (code) | — | Cylinder | sea |
+| `_hzSharkFar` | model files | `shark` (Meshy AI) | — | sea |
+| `_hzStairway` | three.js shapes (code) | — | Box | divine, islands, ruins, wonder |
+| `_hzTeacupsFar` | model files | `teacups` (Meshy AI) | — | wonder |
+| `_hzTeapotFar` | model files | `teapot` (Meshy AI) | — | wonder |
+| `_hzTome` | three.js shapes (code) | — | Box, Octahedron, glow sprites | divine |
+| `_hzVoidSolid` | three.js shapes (code) | — | Box, Dodecahedron, Icosahedron, Octahedron, Tetrahedron, Torus, TorusKnot, glow sprites | wonder |
+| `_hzWoodCross` | three.js shapes (code) | — | Box, Cylinder, Dodecahedron | dark, ruins |
+| `_hzZiggurat` | three.js shapes (code) | — | Box | pyramids |
+
+### 8b-B. The near settings — the landscape right round a battle board, per map (`_NR_BUILDERS`) (37)
+
+| key | made with | model files | three.js shapes |
+| --- | --- | --- | --- |
+| `agartha` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)`, `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `mushroom` (Meshy AI), `mushroom2` (Meshy AI), `standingstone` (Meshy AI) | Box, Cylinder, Plane, glow sprites |
+| `antarctica` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites |
+| `area51` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
+| `atlantis` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)`, `palm_tree` (Meshy AI), `greekcol` (Meshy AI) | Box, Cylinder, Plane, glow sprites |
+| `babel` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
+| `bermuda` | model files + three.js shapes | `palm_tree` (Meshy AI), `chest` (Meshy AI) | Box, Cylinder, Dodecahedron, Plane, glow sprites |
+| `bohemian_grove` | model files + three.js shapes | `trees (foliage models, §7d)` | Box, Cone, Cylinder, Plane, Sphere, glow sprites |
+| `camelot` | model files + three.js shapes | `trees (foliage models, §7d)` | Box, Cylinder, Plane, glow sprites |
+| `cern` | three.js shapes (code) | — | Box, Cylinder, Plane, Torus, glow sprites |
+| `cyberpunk` | model files + three.js shapes | `dumpster` (Asset pack), `utility_box` (Asset pack (author not recorded yet)), `streetlamp/Street%20Lamp.obj`, `copcar` (Meshy AI), `cybercar` (Meshy AI) | Box, Cylinder, Plane, custom mesh, glow sprites |
+| `derelict` | model files + three.js shapes | `astronaut` (Meshy AI), `dish` (Meshy AI), `dockring` (Meshy AI), `escapepod` (Meshy AI), `hullplate` (Meshy AI), `nacelle` (Meshy AI) | Box, Circle, Cylinder, Dodecahedron, Plane, Sphere, Tube, custom mesh, glow sprites |
+| `downtown` | model files + three.js shapes | `dumpster` (Asset pack), `utility_box` (Asset pack (author not recorded yet)), `ambulance` (Meshy AI), `copcar` (Meshy AI), `firetruck` (Meshy AI), `suv` (Meshy AI) | Box, Cylinder, Plane, Sphere, custom mesh, glow sprites |
+| `dumb` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
+| `fairy_forest` | model files + three.js shapes | `fallen_log` (Asset pack), `fern` (Meshy AI), `mushroom2` (Meshy AI), `stump` (Asset pack), `trees (foliage models, §7d)` | Box, Circle, Cone, Cylinder, Plane, glow sprites |
+| `giza` | model files + three.js shapes | `obelisk3d` (Meshy AI) | Box, Cone, Cylinder, Dodecahedron, Plane, Sphere, glow sprites |
+| `gobekli` | three.js shapes (code) | — | Box, Cone, Cylinder, Plane, Sphere, glow sprites |
+| `haunted` | model files + three.js shapes | `stump` (Asset pack), `trees (foliage models, §7d)` | Box, Cone, Cylinder, Plane, Shape, Sphere, glow sprites |
+| `heaven` | model files + three.js shapes | `greekcol` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites |
+| `hell` | model files + three.js shapes | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | Box, Cylinder, Dodecahedron, Plane, glow sprites |
+| `hollow_earth` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)`, `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `mushroom` (Meshy AI), `mushroom2` (Meshy AI), `standingstone` (Meshy AI) | Box, Circle, Cone, Cylinder, Plane, glow sprites |
+| `lodge` | model files + three.js shapes | `eyeball/eyeball.obj`, `greekcol` (Meshy AI) | Box, Cylinder, Plane, Torus, glow sprites |
+| `lookingglass` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/), `caterpillar` (Meshy AI), `flamingo` (Meshy AI), `teacups` (Meshy AI), `teapot` (Meshy AI), `watch` (Meshy AI) | Box, Circle, Cone, Cylinder, Lathe, Octahedron, Plane, Torus, glow sprites |
+| `mars` | model files + three.js shapes | `mars_rover` (Meshy AI), `Pyramid/Pyramid.glb` | Box, Cylinder, Dodecahedron, Plane, glow sprites |
+| `moon` | model files + three.js shapes | `lunar_lander` (Meshy AI), `moon` (Meshy AI) | Box, Cylinder, Dodecahedron, Plane, glow sprites |
+| `northpole` | model files + three.js shapes | `trees (foliage models, §7d)` | Box, Circle, Cone, Cylinder, Plane, Shape, Sphere, glow sprites |
+| `olympus` | model files + three.js shapes | `greekcol` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites |
+| `revenge` | model files + three.js shapes | `anchor` (Meshy AI), `cannon` (Meshy AI), `chest` (Meshy AI), `lantern` (Asset pack), `rowboat` (Asset pack), `tentacle` (Meshy AI), `tentacle2` (Meshy AI), `wheel` (Meshy AI) | Box, Cylinder, Plane, Shape, Torus, Tube, custom mesh, glow sprites |
+| `saturn` | three.js shapes (code) | — | Box, Cylinder, Plane, Ring, Sphere, glow sprites |
+| `shasta` | model files + three.js shapes | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI), `trees (foliage models, §7d)` | Box, Cylinder, Dodecahedron, Plane, glow sprites |
+| `singularity` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Box, Cylinder, Dodecahedron, Plane, Torus, glow sprites |
+| `skinwalker` | model files + three.js shapes | `fallen_log` (Asset pack), `signpost` (Meshy AI), `trees (foliage models, §7d)` | Box, Cylinder, Plane, Shape, Sphere, glow sprites |
+| `stadium` | model files + three.js shapes | `utility_box` (Asset pack (author not recorded yet)), `ambulance` (Meshy AI), `schoolbus` (Meshy AI) | Box, Cylinder, Plane, glow sprites |
+| `stonehenge` | model files + three.js shapes | `standingstone` (Meshy AI) | Box, Cylinder, Plane, Ring, Sphere, glow sprites |
+| `strip` | model files + three.js shapes | `utility_box` (Asset pack (author not recorded yet)), `streetlamp/Street%20Lamp.obj`, `trees (foliage models, §7d)`, `copcar` (Meshy AI), `oldcar` (the car pack, _CAR_PACK) | Box, Circle, Cone, Cylinder, Plane, Shape, custom mesh, glow sprites |
+| `technoticlan` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites |
+| `vatican` | model files + three.js shapes | `greekcol` (Meshy AI), `obelisk3d` (Meshy AI) | Box, Circle, Cone, Cylinder, Plane, glow sprites |
+| `vatican_roof` | three.js shapes (code) | — | Box, Circle, Cylinder, Plane, custom mesh, glow sprites |
+
+### 8b-C. THE WORLD's rim — the rings of land past a planet / plain board (`_WD_RIM`) (11)
+
+| key | made with | model files | three.js shapes |
+| --- | --- | --- | --- |
+| `bergs` | three.js shapes (code) | — | Box, Cone |
+| `city` | three.js shapes (code) | — | Box, custom mesh, glow sprites |
+| `craters` | three.js shapes (code) | — | Lathe, Sphere |
+| `dunes` | three.js shapes (code) | — | Sphere |
+| `hills` | three.js shapes (code) | — | Sphere |
+| `peaks` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
+| `pyramids` | three.js shapes (code) | — | Cone |
+| `ruins` | three.js shapes (code) | — | Box |
+| `spires` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
+| `town` | three.js shapes (code) | — | Box, Plane, Shape |
+| `trees` | model files | `trees (foliage models, §7d)` | — |
+
+### 8b-D. The room weenies — the fixed landmarks on an open room's horizon (`_hqLandmarkBuilders`, data.js `shell.sky.landmarks`) (9)
+
+| key | made with | model files | three.js shapes |
+| --- | --- | --- | --- |
+| `castle` | three.js shapes (code) | — | Box, Cone, Cylinder, glow sprites |
+| `dome` | model files + three.js shapes | `vatican_dome` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites |
+| `eye` | model files + three.js shapes | `eyeball/eyeball.obj` | Circle, Sphere, glow sprites |
+| `gate` | three.js shapes (code) | — | Box, glow sprites |
+| `skycastle` | three.js shapes (code) | — | Box, Cone, Cylinder, Sphere, glow sprites |
+| `stairway` | three.js shapes (code) | — | Box, Sphere, glow sprites |
+| `tower` | three.js shapes (code) | — | Box, Cylinder, glow sprites |
+| `waterspout` | three.js shapes (code) | — | Lathe, Sphere, Torus |
+| `whale` | three.js shapes (code) | — | Box, Cylinder, Sphere, glow sprites |
+
+### 8b-E. The board monuments — landmarks a map stands ON or beside its board (`_monBuilders`; column = the builder) (69)
+
+| key | made with | model files | three.js shapes | builder |
+| --- | --- | --- | --- | --- |
+| `arch` | three.js shapes (code) | — | Box, Plane | _hzGateway |
+| `babelcrane` | model files | `crane` (Meshy AI) | — | _hzBabelCrane |
+| `basilicadome` | model files + three.js shapes | `vatican_dome` (Meshy AI) | Box, Cylinder, Plane, Sphere, glow sprites | _hzBasilicaDome |
+| `beamring` | three.js shapes (code) | — | Box, Cylinder, Torus | _hzBeamRing |
+| `biodome` | three.js shapes (code) | — | Box, Sphere, Torus | _hzBiodome |
+| `blastdoor` | model files | `vault` (Meshy AI) | — | _hzBlastDoor |
+| `brazier` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | _hzBrazier |
+| `candycane` | three.js shapes (code) | — | Cylinder, Torus, glow sprites | _hzCandyCane |
+| `cargo` | three.js shapes (code) | — | Box, Sphere | _hzCargo |
+| `castle_wall` | three.js shapes (code) | — | Box | _hzCastleWallSeg |
+| `censer` | three.js shapes (code) | — | Cylinder, Sphere, glow sprites | _hzCenser |
+| `chess_bishop` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
+| `chess_king` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
+| `chess_knight` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
+| `chess_pawn` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
+| `chess_queen` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
+| `chess_rook` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
+| `colossus` | three.js shapes (code) | — | Box, Cylinder | _hzColossus |
+| `crystal` | model files | `crystals (_CRYSTAL_MODEL_URLS)` | — | _hzCrystalShards |
+| `door` | three.js shapes (code) | — | Box, Plane, Sphere | _hzLoneDoor |
+| `dumpster` | model files | `dumpster` (Asset pack) | — | _hzPropDumpster |
+| `effigy` | three.js shapes (code) | — | Box, Cylinder, Sphere, Torus | _hzEffigy |
+| `excalibur` | model files + three.js shapes | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Dodecahedron, Sphere | _hzExcalibur |
+| `exitsign` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzExitSign |
+| `fairyring` | three.js shapes (code) | — | Cylinder, Sphere | _hzFairyRing |
+| `flag` | three.js shapes (code) | — | Cylinder, Plane, Sphere | _hzFlag |
+| `fleshmound` | three.js shapes (code) | — | Cone, Sphere | _hzFleshMound |
+| `fluorescent` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzFluorescent |
+| `gateway` | three.js shapes (code) | — | Box, Plane | _hzGateway |
+| `geode` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Sphere, glow sprites | _hzGeode |
+| `goldgate` | three.js shapes (code) | — | Box, Cylinder, Plane, Sphere, glow sprites | _hzGoldGate |
+| `gothic_wall` | model files | `church_wall` (Meshy AI) | — | _hzGothicWallSeg |
+| `greek` | three.js shapes (code) | — | Box, Cylinder | _hzGreekRuin |
+| `greekcol` | model files | `greekcol` (Meshy AI) | — | _hzPropGreekColumn |
+| `greytube` | three.js shapes (code) | — | Cylinder, Sphere | _hzGreyTube |
+| `holoboard` | three.js shapes (code) | — | Box, Cylinder, Plane | _hzHoloboard |
+| `holopyramid` | three.js shapes (code) | — | Box, Cone | _hzHoloPyramid |
+| `igloo` | three.js shapes (code) | — | Cylinder, Sphere, glow sprites | _hzIgloo |
+| `innersun` | three.js shapes (code) | — | Cone, Sphere, glow sprites | _hzInnerSun |
+| `island` | model files + three.js shapes | `crystals (_CRYSTAL_MODEL_URLS)` | Box, Cone, Cylinder | _hzFloatingIsland |
+| `jumbotron` | three.js shapes (code) | — | Box, Plane | _hzJumbotron |
+| `lenticular` | three.js shapes (code) | — | Circle, Sphere, glow sprites | _hzLenticular |
+| `lightpillar` | draws nothing (an empty group) | — | — | _hzLightPillar |
+| `menhir` | model files | `menhir` (Meshy AI) | — | _hzPropMenhir |
+| `monolith` | three.js shapes (code) | — | Box, Plane | _hzMonolith |
+| `mushroom` | model files | `mushroom` (Meshy AI) | — | _hzPropMushroom |
+| `mushroom2` | model files | `mushroom2` (Meshy AI) | — | _hzPropMushroomReal |
+| `obelisk` | three.js shapes (code) | — | Cone, Cylinder, glow sprites | _hzObelisk |
+| `obelisk3d` | model files | `obelisk3d` (Meshy AI) | — | _hzPropObelisk |
+| `pyramid` | model files | `Pyramid/Pyramid.glb` | glow sprites | _hzModelPyramid |
+| `pyramid_cone` | three.js shapes (code) | — | Cone, glow sprites | _hzPyramid |
+| `rings` | three.js shapes (code) | — | Octahedron, Torus, glow sprites | _hzSacredRings |
+| `rosewindow` | three.js shapes (code) | — | Box, Circle, Torus | _hzRoseWindow |
+| `rover` | three.js shapes (code) | — | Box, Cylinder, Sphere | _hzRover |
+| `saucer` | model files + three.js shapes | `saucer_lg` (Meshy AI) | Cylinder, Lathe, Sphere, Torus | _hzSaucer |
+| `securitycam` | model files + three.js shapes | `security_camera` (Asset pack (author not recorded yet)) | Box, Cylinder, Sphere | _hzSecurityCam |
+| `skull` | three.js shapes (code) | — | Circle | _hzGrinSkull |
+| `sleigh` | model files | `Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | — | _hzSleigh |
+| `stairway` | three.js shapes (code) | — | Box | _hzStairway |
+| `tablet` | three.js shapes (code) | — | Box, Plane | _hzTablet |
+| `toadstool` | three.js shapes (code) | — | Cylinder, Sphere | _hzToadstool |
+| `tome` | three.js shapes (code) | — | Box, Octahedron, glow sprites | _hzTome |
+| `tpillar` | model files + three.js shapes | `t_pillar` (Meshy AI) | Box | _hzTPillar |
+| `trilithon` | model files | `trilithon` (Meshy AI) | — | _hzTrilithon |
+| `whalebones` | three.js shapes (code) | — | Cylinder, Torus | _hzWhalebones |
+| `windmill` | three.js shapes (code) | — | Box, Cylinder | _hzWindmill |
+| `woodcross` | three.js shapes (code) | — | Box, Cylinder, Dodecahedron | _hzWoodCross |
+| `ziggurat` | three.js shapes (code) | — | Box | _hzZiggurat |
+| `ziggurat_block` | three.js shapes (code) | — | Box | _hzZigguratBlock |
+
+**91 of these 177 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
 
 **The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms' far weenies `peak` / `mountain`
-(`_hqLandmarkBuilders`: Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons,
-the Clash temple's three) were stacked three.js cones with a white cone for snow. Builders and rows removed, nothing replaces
-them: no downloaded pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif read as giant blobs.
+(Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons, the Clash temple's
+three) were stacked three.js cones with a white cone for snow. Builders and rows removed, nothing replaces them: no downloaded
+pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif read as giant blobs.
 **Wanted:** a real far mountain range model (one file, low poly) if mondo wants the weenies back.
 
-## 9. Meshy pieces made 2026-11-03 through the API, NOT wired into the game yet
+## 9. Meshy pieces made 2026-11-03 through the API — WIRED (PR #827 + #829)
 
 Claude made these on Meshy (concept image -> mondo's OK -> smart-topology model) for docs/notes/character-models-plan.md
-section 4a/6 (wearable gear + held spell props). Files: project files `meshy/models/` (GLB + preview). They get rows above
-only when they are wired in. #01 cowboy hat = mondo's own model; #58 playing cards dropped (mondo uses a pack); #49 whip =
+section 4a/6 (wearable gear + held spell props). Files: project files `meshy/models/` (GLB + preview). **Wired 2026-11-03:**
+the held spell props + whip + worn gear (PR #827, R2 `Assets/props/`) are in §7a / §7a-2; the creator fittings (PR #829,
+`charactercreation/wear/ewm_*`) are in §5e. #01 cowboy hat = mondo's own model; #58 playing cards dropped (mondo uses a pack); #49 whip =
 Meshy handle + a lash Claude built in Blender.
 
 `02_gun-belt`, `02b_thigh-holster`, `03_pirate-tricorn`, `04_officer-cap`, `05_firefighter-helmet`, `06_firefighter-air-tank`, `07_football-helmet`, `08_football-shoulder-pads`, `09_astronaut-helmet`, `10_astronaut-backpack`, `11_royal-crown`, `12_ice-crown`, `13_annunaki-headdress`, `14_overlord-helmet`, `15_mushroom-cap-hat`, `16_beret`, `17_straw-hat`, `18_armor-breastplate`, `19_armor-pauldron`, `20_armor-gauntlet`, `21_armor-greave`, `22_egyptian-collar`, `23_sheriff-star`, `24_police-badge`, `25_quiver`, `26_small-backpack`, `27_tool-belt`, `28_cross-pendant`, `29_katana-back-sheath`, `30_trident`, `31_neck-bolt`, `32_elf-ear`, `33_grey-alien-head`, `34_jackal-head`, `35_goat-head`, `36_eagle-head`, `37_shark-head`, `38_lizard-head`, `39_moth-head`, `40_moth-wing`, `41_lizard-tail`, `42a_shark-tail`, `42b_shark-dorsal-fin`, `43_mermaid-tail`, `44_wolf-tail`, `45_hoof`, `46_clawed-beast-foot`, `47_potion-flask`, `48_scalpel`, `49_bullwhip_rigged`, `49_whip-handle`, `50_wrench`, `51_blowpipe`, `52_smartphone`, `53_hand-mirror`, `54_old-camera-flash`, `55_milk-and-cookies`, `56_drinking-cup`, `57_broken-halo`, `58_playing-cards`, `59_magic-wand`, `60_wizard-staff`, `61_jetpack`, `62_binoculars`, `63_walkie-talkie`, `64_flare-gun`, `65_ward-totem`, `66_spyglass`, `67_talisman-pendant`, `68_censer`, `69_grapple-gauntlet`, `70_arm-band`, `71_hagstone`, `72_dowsing-rod`
@@ -1583,7 +1904,7 @@ IDs match project files meshy/decor/decor_prompts.json. D41 locker_bench, D88 ta
 | D01 | `bare_bulb` | Bare ceiling bulb | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord |
 | D02 | `cave_torch` | Standing torch — **WIRED 2026-11-03** | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
 | D03 | `steel_table` | Steel work table | 43 | 6000 | A stainless steel work table with a lower shelf and square legs, brushed metal |
-| D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
+| D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** (regenerated: stadium light D04c) | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
 | D05 | `metal_shelving` | Steel storage shelving (also lost_shelf) | 38 | 12000 | A grey steel storage shelving unit with four shelves holding cardboard boxes and plastic bins |
 | D06 | `notice_board` | Cork notice board — **WIRED 2026-11-03** | 37 | 4000 | A wall-mounted cork notice board in a wooden frame with pinned paper notices, memos and a calendar, no readable text |
 | D07 | `t_pillar` | Göbekli T-pillar (Ley Lines) — **WIRED 2026-11-03** | 34 | 16000 | A Göbekli Tepe style megalithic T-shaped limestone pillar about 4.5 metres tall, weathered pale stone, a fox and a boar carved in low relief on its side and arms carved in relief along the shaft |
@@ -1766,4 +2087,49 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 - **Heaven + Hell + Vatican**: candelabra / bone chandelier, broken column
 - **Astral**: ticket dispenser, bed with something under it, closet with no back
 - **DOOR HQ floors**: pool ladder + starting block
+
+## 11. CODE-BUILT SHAPES — replacement proposal (2026-11-03, awaiting mondo)
+
+mondo 11-03: "focus on the things that were purely coded like the cones ... a box for a building is perfectly fine, but other
+stuff just looks really bad". Each code-only builder in §8b was drawn alone in a browser and judged. Full proposal with
+before/after thumbnails: Claude Doc "Coded shapes worth replacing" (https://claude.ai/artifact/WFS1U2pejBAp4cqXQr6wyF).
+NOTHING is replaced yet; mondo picks rows by number. Existing rules only; replacing = the builder wears the model.
+
+| # | coded piece (three-renderer.js) | verdict | replacement |
+| --- | --- | --- | --- |
+| 1 | castle / skycastle landmarks | swap, model in game | castle pack pieces (`Castles_and_Forts.glb`) |
+| 2 | iceberg ring `bergs` (cones) | swap, model in game | ocean pack rocks tinted ice white |
+| 3 | `_hzObelisk` | swap, model in game | obelisk3d |
+| 4 | `_hzLighthouse` | swap, model in game | Meshy decor lighthouse |
+| 5 | sea stack / island | swap, model in game | ocean pack rocks / palm isle |
+| 6 | greek ruin + ruins rim | swap, model in game | greek columns + castle ruined pieces |
+| 7 | rover | swap, model in game | mars_rover |
+| 8 | toadstool / fairy ring | swap, model in game | mushroom2 / mushroom |
+| 9 | censer | swap, model in game | Meshy props censer |
+| 10 | whale (Atlantis) | swap, model in game | ocean_whale / humpback |
+| 11 | castle_wall | swap, model in game | castle pack Wall_2x4 |
+| 12 | gateway / arch | swap, model in game | castle pack Gate_2x4 |
+| 13 | brazier | swap, model in game (partial) | cave_torch basket |
+| 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
+| 15 | greytube | pack swap | Molten cryo tube |
+| 16 | iso_tank | pack swap | Molten casket / cryo |
+| 17 | lava lamps | pack swap | Molten lamp |
+| 18 | grow_lamp | pack swap | Molten lamp |
+| 19 | submarine | pack swap | BlenderVoyage sub (CC-BY: credit) |
+| 20 | hand_dryer / range_hood / kitchen_range | pack swap | DINER pack |
+| 21 | urinal / sink_row | pack swap | BurgerPiz pack |
+| 22 | toilet / shower stall | pack swap | Gas station / House packs |
+| 23 | `_hzFloatingIsland` (upside-down cone) | new Meshy model | floating rock island |
+| 24 | `_hzColossus` | new Meshy model | felled giant column, drums scattered |
+| 25 | `_hzFleshMound` | new Meshy model | heap of living flesh, eyes and teeth |
+| 26 | effigy monument (Bohemian Grove) | new Meshy model | the wrapped effigy on its bier |
+| 27 | windmill monument (Skinwalker Ranch) | new Meshy model | ranch windpump |
+| 28 | `_hzGrinSkull` | new Meshy model | giant stone skull |
+| 29 | far mountain range (removed cones, PR #846) | new Meshy model, only if wanted | low-poly far range |
+| - | pyramids rim, Giza near, `pyramid_cone` | mondo's call | 4-sided shape is right but flat; option: Meshy limestone pyramid (`Pyramid.glb` is a cosmic one, not Giza) |
+
+Fine as they are (left alone): city/town/hills/dunes/craters rims; tower/gate/stairway/waterspout landmarks; monolith,
+ziggurat, stairway, tome, tablet, card, flag, candy cane, igloo, biodome, beam ring, cargo, wooden cross, whale bones, geode,
+void solids, girder knot, gold gate, holo pieces, exit sign, fluorescent tube, sacred rings, orbs, lenticular cloud, inner
+sun; box-room near settings; §10C/§10D procs. Chess pieces and the Göbekli T-pillar already wear models.
 

@@ -69137,7 +69137,11 @@ const ThreeRenderer = (function () {
             var arm = _hqBox(0.16 * k, H * 0.5, 0.06 * k, relief); arm.position.set(0.2 * k * U, H * 0.55 * U, 0.26 * k * U); g.add(arm);
             var hand = _hqBox(0.4 * k, 0.14 * k, 0.06 * k, relief); hand.position.set(0.12 * k * U, H * 0.32 * U, 0.26 * k * U); g.add(hand);
             var fox = _hqBox(0.5 * k, 0.3 * k, 0.05 * k, relief); fox.position.set(-0.1 * k * U, H * 0.78 * U, 0.26 * k * U); fox.rotation.z = 0.35; g.add(fox);   // the animal on the shaft (one of them has moved)
-            _hqDecorWear('t_pillar', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
+            /* THE ONE SQUARE (2026-11-03, mondo: "the pillars ... are supposed to the space of one square and be like 2 or 3 squares tall"):
+               the Meshy pillar is 0.6 as wide as tall, so at 8.4 m it was 5 m wide. A placement's `w` (metres) is the head's width:
+               the model is stretched in plan to it (its depth kept in the model's own proportion) and stays `h` tall */
+            if (p && p.w > 0) { var hw = p.w / 2, hd = p.w * 0.257; _hqDecorWear('t_pillar', U, g, { fit: 'stretch', box: [-hw, 0, -hd, hw, h, hd] }); }
+            else _hqDecorWear('t_pillar', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         saucer_rig: function (U) {

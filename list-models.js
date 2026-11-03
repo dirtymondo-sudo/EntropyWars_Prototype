@@ -50,6 +50,7 @@ const SOURCES = [
     { re: /charactercreation\/wear\/ewb_cowboyhat_worn/, how: 'MONDO_TEX', src: "mondo's cowboy hat + a Meshy Retexture base colour on his UVs (worn dark / worn tan; bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_cowboyhat/, how: 'MONDO', src: "mondo's cowboy hat, fitted to the bodies in Blender (bake-clothes.py SOLIDS)" },
     { re: /charactercreation\/wear\/ewb_/, how: 'BLENDER', src: 'bake-clothes.py / bake-garment.py (cloud Blender)' },
+    { re: /charactercreation\/wear\/ewm_/, how: 'MESHY', src: 'Meshy AI piece made by Claude through the Meshy API (concept -> mondo\'s OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829)' },
     { re: /charactercreation\/wear\/mhw_/, how: 'MH', src: 'MakeHuman asset packs (author + licence per piece in charactercreation/wear/wear.json)' },
     { re: /charactercreation\/hair\/mh\//, how: 'MH', src: 'MakeHuman hair (author + licence per style in charactercreation/hair/mh/hair_styles.json)' },
     { re: /charactercreation\/hair\/hair\d/, how: 'PACK_ANON', src: "Hair pack part 1 (HairPackPT1.glb, mondo's 2026-09-11 upload), split by character-rig.js" },
@@ -83,6 +84,7 @@ const SOURCES = [
     { re: /Assets\/misc\/Castles_and_Forts\.glb/, how: 'PACK', src: 'Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given' },
     { re: /UFO_Low_Poly\.fbx/, how: 'PACK', src: '3D Game Ready UFO Spaceship · FlexUnit · CC0' },
     { re: /_sway\.glb$/, how: 'MESHY_C', src: 'Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py)' },
+    { re: /Assets\/props\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827)' },
     { re: /Assets\/decor\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03)' },
     // Meshy exports (mondo's, made on meshy.ai) — before the folder rows so a Meshy file in a pack folder still reads Meshy
     { re: /Assets\/misc\/wings\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (single wing, mirrored in code)' },
@@ -234,6 +236,12 @@ for (const m of wpn.matchAll(/^\s+(\w+):\s*\{[^}]*?\b(file|url):\s*'([^']+)'/gm)
 const decor = block(R3, 'var _HQ_DECOR_GLB = {');
 for (const m of decor.matchAll(/(\w+):\s*'([^']+\.glb)'/g)) add('decor', m[1], CDN + 'Assets/decor/' + m[2]);
 for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _DECOR_BASE \+ '([^']+)'/g)) add('spell', m[1], CDN + 'Assets/decor/' + m[2]);
+// THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, PR #827): the Meshy pieces #47-72 on R2 Assets/props/
+const heldP = (VFX.match(/var P = \{([\s\S]*?)\};/) || [, ''])[1];
+for (const m of heldP.matchAll(/(\w+):\s*\['([^']+\.glb)'/g)) add('spell', m[1] + ' (held in the hand)', CDN + 'Assets/props/' + m[2]);
+for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _PROPS_BASE \+ '([^']+)'/g)) add('spell', m[1] + ' (held in the hand)', CDN + 'Assets/props/' + m[2]);
+const gearW = block(R3, 'var UNIT_GEAR_WEAR = {');
+for (const m of gearW.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/gm)) add('gear', m[1], CDN + 'Assets/props/' + m[2]);
 const ani = block(R3, 'var _ANIMALS = {');
 for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('animal', m[1], BASES.animals + m[2]);
 // the halloween pieces the spells cut out of the one kit file
@@ -274,6 +282,8 @@ const hairMh = JSON.parse(read('charactercreation/hair/mh/hair_styles.json'));
 const mpfbFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/mpfb')).filter(f => /\.glb$/.test(f));
 const ccRoot = fs.readdirSync(path.join(ROOT, 'charactercreation')).filter(f => /\.glb$/.test(f));
 const wearFiles = fs.readdirSync(path.join(ROOT, 'charactercreation/wear')).filter(f => /^ewb_.*\.glb$/.test(f));
+// the Meshy creator pieces (PR #829): EW_MH_WEAR rows `ewm_*`, one GLB on R2 (not in the repo)
+for (const w of (SP.WEAR || []).filter(w => /^ewm_/.test(w[0]))) add('meshywear', w[0] + ' · ' + w[1] + ' (' + w[2] + ')', CDN + CC + '/wear/' + w[0] + '.glb');
 for (const f of mpfbFiles) add('creator', f.replace(/\.glb$/, ''), CDN + CC + '/mpfb/' + f);
 for (const f of ccRoot) add('creator', f.replace(/\.glb$/, ''), CDN + CC + '/' + f);
 for (const h of SP.HAIR || []) if (/^hair\d/.test(h.id)) add('creator', h.id + ' · ' + h.label, CDN + CC + '/hair/' + h.id + '.glb');
@@ -328,6 +338,8 @@ L.push('');
 L.push('Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator\'s');
 L.push('picks, each a GLB per body; the code count is procedural catalogue rows).');
 L.push('"Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).');
+L.push('Not in the count: the horizon. **%%HZCODE%% of the %%HZTOTAL%% builders drawn past the board** (far rosters, near settings, rims, room weenies, board');
+L.push('monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.');
 L.push('');
 L.push('## 2. Units — the playable races (sprites.js RACE_MODELS_3D)');
 L.push('');
@@ -381,6 +393,13 @@ L.push('MakeHuman beards). `_open` / `_closed` files are the same garment with t
 L.push('');
 L.push(table(sec('blender'), 'piece'));
 L.push('');
+L.push('### 5e. Meshy pieces in the creator (' + sec('meshywear').length + ' files, `' + CC + '/wear/ewm_*`, PR #829)');
+L.push('');
+L.push('Made 2026-11-03 on Meshy through the API (concept image -> mondo\'s OK -> model) and fitted on the MPFB bodies in Blender');
+L.push('(bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator\'s own id · label (tab).');
+L.push('');
+L.push(table(sec('meshywear'), 'piece'));
+L.push('');
 L.push('## 6. Props — every room / editor prop (data.js DOOR_HQ.catalogue)');
 L.push('');
 const props = sec('props');
@@ -407,6 +426,10 @@ L.push('');
 L.push('### 7a. Spell props (three-vfx-effects.js _WPN_MODELS)');
 L.push('');
 L.push(table(sec('spell'), 'key'));
+L.push('');
+L.push('### 7a-2. Gear worn on the body (three-renderer.js UNIT_GEAR_WEAR, PR #827) — the equipment a unit carries, on its bones');
+L.push('');
+L.push(table(sec('gear'), 'equipment key'));
 L.push('');
 L.push('### 7b. Settings, horizons, monuments (three-renderer.js _MISC_GLB)');
 L.push('');
@@ -446,13 +469,120 @@ L.push('show if the file fails) — counted under that model\'s maker, not as co
 L.push('');
 L.push(wearing.sort((a, b) => a[0].localeCompare(b[0])).map(r => '`' + r[0] + '` (' + r[3] + ')').join(', '));
 L.push('');
-L.push('Besides the catalogue, the battle maps\' near settings, horizons and monuments have procedural families too');
-L.push('(the `_hz*` / `_nr*` builders): MODEL_INDEX.md §8 lists them.');
+// ── 8b. THE HORIZON AND THE SKY (2026-11-03, mondo: "why didnt model list catalogue them? ... what about everything else
+// that is in the horizon? you need to catalogue those too"). The cone mountains were missed because this list only read MODEL
+// FILES; a thing the renderer builds from three.js shapes had no row. This section reads the renderer's horizon tables by text
+// (the far rosters, the near settings, THE WORLD's rim, the room weenies, the board monuments), follows each builder into the
+// _hz / _nr / _wd helpers it calls (3 deep) and says what it is made of: which model files it loads (with their maker, from the
+// tables above) and which three.js shapes it builds. A builder that loads a model AND builds shapes usually keeps the shapes as
+// its stand-in when the file fails, or adds small code parts (a glow, a base) — the row says both, never guesses which.
+const HZ = (function () {
+    const src = R3;
+    function body(at) {   // the {...} after index `at` (brace-matched; the renderer's builders hold no stray braces in strings)
+        let j = src.indexOf('{', at); if (j < 0) return '';
+        for (let k = j, d = 0; k < src.length; k++) { const c = src[k]; if (c === '{') d++; else if (c === '}') { d--; if (!d) return src.slice(j, k + 1); } }
+        return '';
+    }
+    const FN = {};
+    for (const m of src.matchAll(/^\s*function (_\w+)\s*\(/gm)) if (!FN[m[1]]) FN[m[1]] = body(m.index + m[0].length);
+    // the object tables' own entries (`kind: function`), in the literal and in every later Object.assign(table, {...}) / table.kind = function
+    function tableFns(name) {
+        const out = {}, starts = [];
+        for (const m of src.matchAll(new RegExp('var ' + name + ' = \\{|Object\\.assign\\(' + name + ', \\{', 'g'))) starts.push(m.index + m[0].length - 1);
+        for (const st of starts) { const b = body(st), off = src.indexOf(b, st); for (const m of b.matchAll(/^ {8}(\w+): function[^{]*/gm)) out[m[1]] = body(off + m.index + m[0].length - 1); }
+        for (const m of src.matchAll(new RegExp(name.replace(/\$/g, '\\$') + '\\.(\\w+) = function[^{]*', 'g'))) out[m[1]] = body(m.index + m[0].length - 1);
+        for (const k of Object.keys(out)) FN[name + '.' + k] = out[k];
+        return out;
+    }
+    const WD = tableFns('_WD_RIM'), LM = tableFns('_hqLandmarkBuilders'), NRB = tableFns('_NR_BUILDERS');
+    const miscKeys = new Map(all.filter(r => r.section === 'misc').map(r => [r.key, r]));
+    const doorKeys = new Map(all.filter(r => r.section === 'props').map(r => [r.key, r]));
+    const animalKeys = new Map(all.filter(r => r.section === 'animal').map(r => [r.key, r]));
+    const decorKeys = new Map(all.filter(r => r.section === 'decor').map(r => [r.key, r]));
+    // helpers that only make materials / textures / placements / loaders: never followed (the loaders are read from their call)
+    const STOP = /^(_miscModelInstance|_loadMiscModel|_animalBuild|_hqModelUrl|_hqTex|_hqMat|_mulberry32|_disposeR|_hzLit|_hzAt|_hzTex|_hzGeoMat|_hzGlowMat|_hzGlowSprite|_hzPulse|_hzKitTile|_hzRockPick|_hzPropLitPick|_hzPropLitLiftPick|_hzMiscUnlitPick|_hzMiscKit|_hzMiscGLB|_hzPropGLB|_hzDoorKitGLB|_hzVehicle|_hzRock|_hzRockProc|_nrRectRing|_wdRing|_nrUV|_nrSquashUV|_nrInjectWorld|_hzTextTex|_hzStripeTex|_hzScorchTex|_nrPicketTex|_hzFacTex\w*)$|Tex$|Mat$|Pick$|Haze|Fog/;
+    const SHAPE = /new THREE\.(\w+?)(?:Buffer)?Geometry\b/g;
+    function scan(code, depth, seen, out) {
+        for (const m of code.matchAll(/_hz(?:MiscKit|MiscGLB|PropGLB)\(\s*'(\w+)'/g)) out.models.add('misc:' + m[1]);
+        for (const m of code.matchAll(/_MISC_GLB(?:\.(\w+)|\[\s*'(\w+)'\s*\])/g)) out.models.add('misc:' + (m[1] || m[2]));
+        for (const m of code.matchAll(/_hzDoorKitGLB\(\s*'(\w+)'/g)) out.models.add('door:' + m[1]);
+        for (const m of code.matchAll(/_hzVehicle\(\s*'(\w+)'/g)) out.models.add('vehicle:' + m[1]);
+        for (const m of code.matchAll(/_hqDecorWear\(\s*'(\w+)'/g)) out.models.add('decor:' + m[1]);   // THE MESHY DECOR: the builder wears a model (its shapes only show when the file fails)
+        if (/_chessFill\(/.test(code)) out.models.add('chess:Low Poly Chess Set');   // THE CHESS SET: mondo's piece (the lathe only when the set fails)
+        if (/_hzRock\(/.test(code)) { out.models.add('door:asteroid_a'); out.models.add('door:asteroid_b'); out.models.add('misc:standingstone'); }
+        if (/_nrTree\(|_hzTreeModel\(|_FOLIAGE_MODEL_FOR_KEY/.test(code)) out.models.add('trees (foliage models, §7d)');
+        if (/_CRYSTAL_MODEL_URLS/.test(code)) out.models.add('crystals (_CRYSTAL_MODEL_URLS)');
+        for (const m of code.matchAll(/'([^'\s]+\.(?:glb|fbx|obj))'/g)) out.models.add('file:' + m[1].replace(/^https:\/\/cdn\.entropywars\.net\//, ''));
+        for (const m of code.matchAll(/'(\w+)'/g)) { if (miscKeys.has(m[1]) && /MiscKit|MiscGLB|PropGLB|_MISC_GLB|PLANETS/.test(code)) out.models.add('misc:' + m[1]); if (doorKeys.has(m[1]) && /DoorKitGLB/.test(code)) out.models.add('door:' + m[1]); if (animalKeys.has(m[1]) && /_animal|_ANIMALS|Animal/.test(code)) out.models.add('animal:' + m[1]); }
+        for (const m of code.matchAll(SHAPE)) out.shapes.add(m[1]);
+        if (/_hqBox\(|K\.box\(|_hzBox\(/.test(code)) out.shapes.add('Box');
+        if (/_hzGlowSprite\(|new THREE\.Sprite\(/.test(code)) out.glow = true;
+        if (depth >= 3) return;
+        for (const m of code.matchAll(/\b(_\w+(?:\.\w+)?)\s*\(/g)) {
+            const f = m[1]; if (seen.has(f) || STOP.test(f.split('.')[0]) || !FN[f]) continue;
+            seen.add(f); scan(FN[f], depth + 1, seen, out);
+        }
+    }
+    function describe(code) {
+        const out = { models: new Set(), shapes: new Set(), glow: false };
+        scan(code, 0, new Set(), out);
+        const seenKey = new Map();
+        for (const k of [...out.models].sort()) {
+            const [kind, key] = k.indexOf(':') > 0 ? [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)] : ['', k];
+            const r = (kind === 'misc' || kind === 'vehicle') ? miscKeys.get(key) : kind === 'door' ? doorKeys.get(key) : kind === 'animal' ? animalKeys.get(key) : kind === 'decor' ? decorKeys.get(key) : null;
+            const label = '`' + key + '`' + (r && r.src ? ' (' + HOW[r.src.how].label + ')' : kind === 'vehicle' ? ' (the car pack, _CAR_PACK)' : kind === 'chess' ? " (mondo's upload, Assets/chess/)" : '');
+            if (!seenKey.has(key) || (r && r.src)) seenKey.set(key, label);
+        }
+        const models = [...seenKey.values()];
+        const shapes = [...out.shapes].map(x => x === 'Buffer' ? 'custom mesh' : x).sort();
+        const made = models.length && shapes.length ? 'model files + three.js shapes' : models.length ? 'model files' : shapes.length ? 'three.js shapes (code)' : out.glow ? 'glow sprites (code)' : 'draws nothing (an empty group)';
+        return { made, models: models.join(', ') || '—', shapes: shapes.join(', ') + (out.glow ? (shapes.length ? ', ' : '') + 'glow sprites' : '') || '—', code: !models.length && (shapes.length > 0 || out.glow) };
+    }
+    const fams = [];
+    // A. the far rosters (the battle's void + the open rooms' skies): theme -> builders
+    const ros = (function () { const i = src.indexOf('if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {'); return i < 0 ? '' : body(i + 40); })();
+    const byFn = new Map();
+    for (const t of ros.matchAll(/^\s{12}(\w+): \[([\s\S]*?)\]\],?\s*(?:\/\/[^\n]*)?$/gm)) for (const f of t[2].matchAll(/\[[\d.]+,\s*(_hz\w+)/g)) { if (!byFn.has(f[1])) byFn.set(f[1], new Set()); byFn.get(f[1]).add(t[1]); }
+    fams.push({ id: 'A', title: 'The far rosters — what floats / stands in the void round a battle board and in an open room\'s sky (`_hzThemeRoster`; column = the themes that use it)',
+        rows: [...byFn.keys()].sort().map(f => Object.assign({ key: f, extra: [...byFn.get(f)].sort().join(', ') }, describe(FN[f] || ''))) });
+    // B. the near settings (_NR_BUILDERS.<map>)
+    const nr = Object.keys(NRB).map(k => Object.assign({ key: k, extra: '' }, describe(NRB[k])));
+    fams.push({ id: 'B', title: 'The near settings — the landscape right round a battle board, per map (`_NR_BUILDERS`)', rows: nr.sort((a, b) => a.key.localeCompare(b.key)) });
+    // C. THE WORLD's rim (_WD_RIM.<kind>) and D. the room weenies (_hqLandmarkBuilders.<kind>)
+    const objRows = T => Object.keys(T).sort().map(k => Object.assign({ key: k, extra: '' }, describe(T[k])));
+    fams.push({ id: 'C', title: 'THE WORLD\'s rim — the rings of land past a planet / plain board (`_WD_RIM`)', rows: objRows(WD) });
+    fams.push({ id: 'D', title: 'The room weenies — the fixed landmarks on an open room\'s horizon (`_hqLandmarkBuilders`, data.js `shell.sky.landmarks`)', rows: objRows(LM) });
+    // E. the board monuments (_monBuilders: on-board cover a map names, the same _hz builders)
+    const mon = (function () { const i = src.indexOf('if (!_MON_BUILDERS) _MON_BUILDERS = {'); return i < 0 ? '' : body(i + 30); })(), mrows = [];
+    for (const m of mon.matchAll(/(\w+):\s*(_hz\w+)/g)) mrows.push(Object.assign({ key: m[1], extra: m[2] }, describe(FN[m[2]] || '')));
+    fams.push({ id: 'E', title: 'The board monuments — landmarks a map stands ON or beside its board (`_monBuilders`; column = the builder)', rows: mrows.sort((a, b) => a.key.localeCompare(b.key)) });
+    return fams;
+})();
+L.push('## 8b. The horizon and the sky — everything drawn past the board, and what it is made of');
+L.push('');
+L.push('Written by list-models.js from three-renderer.js\'s own tables (2026-11-03: the cone mountains had no row because this list');
+L.push('only read model files). **made with** = what the scan found in the builder and the helpers it calls: model files (their');
+L.push('maker in brackets, from the tables above) and/or three.js shapes. "three.js shapes (code)" = drawn by Claude in code, no');
+L.push('model: those are the candidates for a real model. Also painted, not modelled: the battle\'s ring-wall skyline (distant');
+L.push('snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticular (`_hzLenticular`, a cloud sprite stack).');
+L.push('');
+const hzCounts = { total: 0, code: 0 };
+for (const F of HZ) {
+    L.push('### 8b-' + F.id + '. ' + F.title + ' (' + F.rows.length + ')');
+    L.push('');
+    const extraHead = F.id === 'A' ? ' themes |' : F.id === 'E' ? ' builder |' : '';
+    L.push('| key | made with | model files | three.js shapes |' + extraHead);
+    L.push('| --- | --- | --- | --- |' + (extraHead ? ' --- |' : ''));
+    for (const r of F.rows) { hzCounts.total++; if (r.code) hzCounts.code++; L.push('| `' + esc(r.key) + '` | ' + r.made + ' | ' + esc(r.models) + ' | ' + esc(r.shapes) + ' |' + (extraHead ? ' ' + esc(r.extra) + ' |' : '')); }
+    L.push('');
+}
+for (let i = 0; i < L.length; i++) if (typeof L[i] === 'string' && L[i].indexOf('%%HZCODE%%') >= 0) L[i] = L[i].replace('%%HZCODE%%', hzCounts.code).replace('%%HZTOTAL%%', hzCounts.total);
+L.push('**' + hzCounts.code + ' of these ' + hzCounts.total + ' rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**');
 L.push('');
 L.push('**The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms\' far weenies `peak` / `mountain`');
-L.push('(`_hqLandmarkBuilders`: Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons,');
-L.push('the Clash temple\'s three) were stacked three.js cones with a white cone for snow. Builders and rows removed, nothing replaces');
-L.push('them: no downloaded pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif read as giant blobs.');
+L.push('(Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons, the Clash temple\'s');
+L.push('three) were stacked three.js cones with a white cone for snow. Builders and rows removed, nothing replaces them: no downloaded');
+L.push('pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif read as giant blobs.');
 L.push('**Wanted:** a real far mountain range model (one file, low poly) if mondo wants the weenies back.');
 L.push('');
 if (fs.existsSync(EXTRA)) { L.push(fs.readFileSync(EXTRA, 'utf8').trim()); L.push(''); }
