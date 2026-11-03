@@ -15886,7 +15886,7 @@ const ThreeRenderer = (function () {
         // board build is never a bald unit in plain cloth.
         var fabricUrls = [];
         (units || []).forEach(function (u) {
-            if (!u || u.dead || !(typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(u.race) || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
+            if (!u || u.dead || !(typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(u.race) : u.race === 'door agent') || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
             var _lk = (typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, u.gender || 'male', u.appearance) : null;   // THE RACE LOOKS: the slot's look or the race's baked one
             if (!_lk || !_lk.raceLook) return;
             var as = getCharacterAppearanceAssets(_lk.raceLook);
@@ -56342,9 +56342,9 @@ const ThreeRenderer = (function () {
         return g ? { def: set[g], gender: g } : null;
     }
 
-    function _cvSupports(race, gender) {
+    function _cvSupports(race, gender, appearance) {
         if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return false;
-        return !!_cvResolveDef(race, gender);
+        return !!_cvResolveDef(race, gender, appearance);   // THE MESHY DEFAULT (2026-11-03): a 2D-only race stands on the stage in a creator look
     }
 
     /* Esoteric summoning-circle floor decal, drawn once into a canvas —
@@ -57652,7 +57652,7 @@ const ThreeRenderer = (function () {
         /* dev (rev 9): the live stage record — probes read the posed skeleton / the rig (never used by the game) */
         dev: { state: function () { return _cv; }, model: function () { return _cv ? _cv.model : null; } },
         mount: function (host, race, gender, opts) {
-            if (!host || !_cvSupports(race, gender)) return false;
+            if (!host || !_cvSupports(race, gender, opts && opts.appearance)) return false;
             /* THE HIDDEN STAGE (2026-09-20, the loading pass): the pre-match builder renders at boot behind
                the title page and its stage used to stream the first slot's rig + BOTH animation libraries
                (25 MB) under the title screen. A host with no box on screen (a hidden page) is not mounted:
