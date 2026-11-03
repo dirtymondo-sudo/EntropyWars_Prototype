@@ -1114,3 +1114,45 @@ tell you which ones they are".
 - **Online**: nothing relayed; the creator lists are local UI and every look still travels whole in the unit's appearance.
 - Shots: /mnt/project-files/creator-hider/.
 
+
+## THE COAT HANG + THE HAIR AT THE NAPE (2026-11-03, character-models-plan row 9)
+mondo 11-03 on his Cowboy (open Blender long coat over pack jeans): "Still getting pants clipping through coats. Why is this so
+prevalent and hard for you to fix? Surely this is a known issue in the 3D model community ... it looks like the coat or the collar
+is making the hair stick up in the back."
+- **Why it kept coming back**: the coat's skirt and the trousers ride DIFFERENT bones. Pack trousers follow each thigh + shin
+  (MakeHuman weights); a Blender coat skirt is one sheet over both legs (bake-garment.py skin_weights: 90 % the thigh on its side,
+  the thigh all the way past the knee), so any stride / bent knee / wide stance moves the leg out through it. Every earlier pass
+  (THE COAT OVER THE CLOTHES, THE POSES AUDIT, THE CLOTHES UNDER THE CLOTHES) fixed the BIND pose only.
+- **The fix = the standard game one** (spring / dynamic bones + colliders: VRM spring bones, Unity Dynamic Bone, Kawaii skirts).
+  three-renderer.js THE COAT HANG: `coatHang` (buildWear) gives any Blender Outer pick whose skirt hangs >= `minDrop` below the hip
+  joints and has no sway chains of its own (capes, tailcoat keep theirs) 16 chains x 6 bones `ewhang_<c>_<j>` round the skirt,
+  rooted on Hips, each following the cloth's own drape; the skirt (below the hips, faded over `fade`) is reweighted onto the two
+  nearest chains (only the nearest across an open front). Each joint keeps the coat's OWN baked weights there (`C.t`: its follow
+  target). `hangFit` (after wearLayers, on every rebuild / setWear) fits a tapered capsule per thigh + shin to what is worn there
+  (skin + trousers + boots, 96th percentile, in the leg bone's bind frame), the rest allowance per chain sample (a capsule never
+  pushes further than the coat stood off the leg at bind, so at rest nothing moves) and which side of the leg each sample lies on
+  at bind (`C.side`). `hangTick` (rig tick, before the cape sway): the first bone of each chain springs toward the hips' hang, the
+  rest toward where the coat's baked weights would put the next joint (so the coat keeps its A-line + stride exactly as before), then
+  every sample along the bone is pushed out of every capsule on its bind side (front panel stays in front of the thigh, never wraps
+  behind it). wearLayers holds the trousers 1.2 cm (`gap`) inside a hanging coat near the hips (the seat rides the thighs, the coat
+  the pelvis).
+- **Tried + dropped** (each looked at in shaded shots, not only counted): hanging straight on from a pushed joint (`fall` 0: a bell
+  flare in the wide idle, a stiff board in a kneel / kick); falling toward the ground (`fall` 0.6: clean on the Cowboy but a boxy
+  barrel on the cowgirl's wide hips); aiming at the cloth's rest hang in the hips' frame (`drape`: pulled it back into the leg,
+  70 -> 1,000-1,800 px); pushing to the bone head's side (the front panel ended up behind a bent thigh); `maxRoot` 85 (the side
+  panels stood out in a ledge at the hip).
+- **Hair**: nape-length hair (hair003) rode the HEAD bone alone, so an idle that bows the head (the Cowboy's) swung the hair under
+  the skull back and up over the collar. `hairNape` (fitHair, after hairSkin) paints a gradient of the head weight onto the neck
+  behind the ears below ear level (`HAIR_NAPE`), as hand-made rigs do. The collar tuck (`HAIR_CLEAR.secs/neckR/tuck`) holds hair
+  that ends just under a collar inside the innermost garment; hair003 never reaches it.
+- **Measured** (harness: Playwright + swiftshader, flat ID colours, jeans pixels enclosed by coat pixels, 4 views; sims run 30
+  steps a frame so the chains settle at swiftshader's ~2 fps): mondo's Cowboy look (idle / walk / high kick / hit x 4 views)
+  785 -> 64 px of jeans showing through the coat; the baked telepath (leather coat) 1,260 -> 91. The priest's cassock and the cult
+  robe no longer shred at the hem in the hit / kick (shaded shots). The count is unreliable on OPEN coats (it also counts trousers
+  seen through the opening), so overcoat / lab coat / cowgirl duster were judged on shaded shots: same shape, fewer pokes. Hair
+  close-ups: the nape spikes in the idle are gone, the hit pose keeps a couple of tiny tips.
+- **Known**: a few specks remain in extreme poses (the cowgirl's wide idle at the open front); on curvy female bodies (lab coat)
+  the seat shows a soft crease where the skirt leaves the hips. Not on Meshy models, coded coats or the classic Meshy bases.
+- **Online**: cosmetic + local (each screen runs its own chains, like the cape sway); nothing relayed. `window.EW_DISABLE_SWAY = true`
+  keeps the coat on its baked weights.
+- Shots: /mnt/project-files/coat-hang/.
