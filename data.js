@@ -15160,7 +15160,7 @@ _MF_BUILDERS.prebuilt_giza = function () {
     const M = _mfNew({
         name: 'Pyramids of Giza', w: 20, h: 20, base: 'desert', baseH: 3, seed: 3301,
         strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
-        tints: { desert: '#e8cf8f', dirt_2: '#d8b884', ruins: '#d0b890' },
+        tints: { dirt_2: '#d8b884', ruins: '#d0b890' },   // THE TWO SANDS (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the sand is untinted
     });
     // hard-packed processional avenues
     M.rect(9, 0, 10, 19, 'dirt_2'); M.rect(0, 9, 19, 10, 'dirt_2');
@@ -16409,7 +16409,7 @@ _MF_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfNew({
         name: 'The Bermuda Triangle', w: 16, h: 16, base: 'desert', baseH: 3, seed: 345,
         strata: ['deep_water', 'deep_water', 'rocks_1'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
+        tints: { desert: '#f2ead6', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
     });
     /* THE ISLANDS (2026-09-16, the user: "how is there no water in the
        Bermuda Triangle? it should be a lot of water; it can double as an
@@ -16643,7 +16643,7 @@ _MF_DELTA_BUILDERS.prebuilt_stonehenge = function () {
    sphinx on its plinth, the sandstone causeway, the obelisks. */
 _MF_DELTA_BUILDERS.prebuilt_giza = function () {
     const M = _mfDeltaNew({ name: 'Pyramids of Giza', base: 'desert', seed: 8103,
-        tints: { desert: '#e6d4a0', bricks_1: '#dcb880', dirt_2: '#d8bc88' },
+        tints: { bricks_1: '#dcb880', dirt_2: '#d8bc88' },   // the sand untinted (mondo 2026-11-03: "just make it the default tint")
         desc: 'THE PLATEAU — the pyramid\'s tiers up a stair, the sphinx on its plinth, the sandstone causeway, the obelisks' });
     M.rect(3, 1, 4, 2, 'dirt_2');                            // the causeway
     M.step(1, 2, 'bricks_1'); M.block(0, 2, 'bricks_1'); M.block(0, 3, 'bricks_1', 3);   // the pyramid: three tiers up
@@ -17211,7 +17211,7 @@ _MF_DELTA_BUILDERS.prebuilt_downtown = function () {
 _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfDeltaNew({ name: 'The Bermuda Triangle', base: 'desert', seed: 8420,
         strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
+        tints: { desert: '#f2ead6', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
         desc: 'THE OPEN SEA — a beach each side, THE CAY at the centre with the X on it, the sandbar, the wreck, the lighthouse rock, the jetty, the buoys; the sea streams past, the storm comes on' });
     /* the top half as a sheet — S sand, ~ shallows (a wade), D the deep (a
        swim that drowns), R a rock (+1), W the wreck (+2), L the lighthouse
@@ -28484,8 +28484,9 @@ function hqSeaShell(o) {
     const S = {
         w: 0, d: 0, h: 6.0, wallH: 6.0, dadoH: 1.0,
         open: true, edge: 'open',
+        sand: 'beach',   /* THE TWO SANDS (2026-11-03): a sea room's sand is the beach's (sprites.js SAND_BEACH), not the desert's */
         floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'wood', ceiling: 'desert',
-        apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8, wallColor: 0x8a8478, dadoColor: 0x8a8478,
+        apron: 'desert', skirt: 'rocks_1', apronColor: 0xf2ead6, floorColor: 0xf2ead6, wallColor: 0x8a8478, dadoColor: 0x8a8478,
         pipes: false, strips: false, lights: [],
         mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, ambient: 0.62, night: 0 },
         sky: { night: 0, tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, day: 1, clouds: 0.3, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5, density: 0.018 }, scenery: 'sea', density: 0.8,
@@ -28501,6 +28502,7 @@ function hqAbyssShell(o) {
     const S = {
         w: 0, d: 0, h: 30, wallH: 30, dadoH: 1.0,
         open: true, edge: 'open', underwater: true,
+        sand: 'beach',   /* THE TWO SANDS (2026-11-03): a sea room's sand is the beach's (sprites.js SAND_BEACH), not the desert's */
         floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'gold', ceiling: 'desert',
         apron: 'desert', skirt: 'rocks_1', apronColor: 0x4a6a78, floorColor: 0x4a6a78, wallColor: 0x3a5060, dadoColor: 0x3a5060,
         pipes: false, strips: false, lights: [],
@@ -43433,7 +43435,7 @@ const DOOR_HQ = {
             label: 'GIZA · THE PLATEAU',
             sub: 'THE GREAT PYRAMID · THE NORTH STAIR · KHAFRE · MENKAURE · THE SPHINX · THE CAUSEWAY · THE DIG',
             kind: 'box', site: 'prebuilt_giza', part: 'plateau',
-            shell: hqAncientShell({ w: 300, d: 240, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c, plate: { x: 0, z: -117.3, y: 5.0 },
+            shell: hqAncientShell({ w: 300, d: 240, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: 0, z: -117.3, y: 5.0 },
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
                                     sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
                                     look: HQ_ROOM_LOOKS.plateau }),

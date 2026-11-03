@@ -2972,5 +2972,18 @@ removed from the game, and those rods should have shown up in the model list as 
   - Drop In `_sigDoorDropIn3D`: the body out of the door is a double of the caster's own model on its jump clip
     (`_finRealBody(unit, ts, { copy, noHide })`; `noHide` = new opt, the engine already fades the real one for the fall);
     the `_doorBody` cylinder + box visor is gone from it (`_doorBody` still serves the old door recipes).
-  Round 2 (new Meshy pieces, concepts in project files meshy/ultimates/, waiting on his picks): Lockdown barricade, Stadium Show
-  truss tower, Flat Earth disc, Weigh the Heart scales + feather (heart = Halloween pack Body_part_04).
+  Round 2 (mondo's picks "A A B A A A"; concepts + originals in project files meshy/ultimates/). New Meshy pieces on R2
+  Assets/props/ (meshopt + WebP .opt content uploaded under the plain name), `_WPN_MODELS` keys, all matte:
+  - Lockdown `_sigLockdown3D`: the 8 barricades are `policeBarricade` (police_barricade.glb, U01a); the box sawhorses + canvas
+    stripe are gone. No free pack had one (Pizza Doggy PSX Mega Pack II has them, not bought).
+  - Stadium Show `_sigStadiumShow3D`: the 4 masts are the EXISTING decor `floodMast` (Assets/decor/flood_mast.glb, D04c);
+    steel cylinders + box truss gone. Masts stand at the sides + back of the camera bearing (`_npCamDir`), never in front,
+    so they never cover a body or a number.
+  - Flat Earth `_PZ_SIGS.f4FlatEarth`: the falling disc is `flatEarth` (flat_earth.glb, U03b, axis 'flat'); the cylinder +
+    painted canvas are gone.
+  - Weigh the Heart (new `_sigWeighHeart3D`): `heartScales` (heart_scales.glb, U04a) rises beside the target, the Halloween
+    pack heart (`_bpPiece('heart')` = Body_part_04) drops on one pan, `maatFeather` (maat_feather.glb, U06a) drifts onto the
+    other; 2 s, fades out from 1.6 s. It is a bolt spell with no 'impact' intent, so it is in `_GEOM_ON_BURST` (runs on the
+    relayed 'burst' beat; online guests replay the same fire call).
+  LESSON: grep MODEL_LIST.md with synonyms (flood / light / lamp / mast) before proposing a new model; I proposed a truss when
+  flood_mast was already listed. MODEL_LIST rows: list-models.js labels the 4 as "ultimate prop".
