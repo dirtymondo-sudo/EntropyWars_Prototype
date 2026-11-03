@@ -26276,15 +26276,17 @@
            - action execution          → the TPS action shots
            - end-of-round sequence     → tactical overview
            getCameraMode is pinned to 'tactical' (so the legacy follow-mode
-           branches stay dormant) while state.cinematicActionCam is FORCED on
-           (so every action-shot gate fires). setCameraMode is an inert stub;
+           branches stay dormant); state.cinematicActionCam is the pause menu's
+           Action Cam toggle, saved across refreshes (ui.js THE SAVED SETTINGS). setCameraMode is an inert stub;
            the 'C' key / pad camera button cycles the VIEW PRESETS below. */
         const FOLLOW_CAM_TILT = 68;          // deg — legacy follow pitch (dormant helpers below)
         const FOLLOW_ZOOM_MULT = 2.0;        // × the whole-board default zoom
         const CINE_FOLLOW_TILT = 72;
         const CINE_FOLLOW_ZOOM_MULT = 2.2;
         function getCameraMode() {
-            state.cinematicActionCam = true;   // action shots always on (re-asserted: matches rebuild on new matches)
+            /* THE SAVED SETTINGS (2026-11-03): the Action Cam is the player's toggle (pause menu, saved in ew_cinematicActionCam);
+               this only fills it in when nothing set it yet — it used to force it back ON, so OFF never lasted */
+            if (typeof state.cinematicActionCam !== 'boolean') state.cinematicActionCam = (typeof window._ewActionCamPref === 'function') ? window._ewActionCamPref() : true;
             // keep the 3D lens on the active preset's FOV (no-op when unchanged)
             if (typeof _applyCameraPresetFov === 'function') _applyCameraPresetFov();
             return 'tactical';
