@@ -1340,3 +1340,21 @@ mondo's audit ask (Olympus/Antarctica "built like dungeons with walls"): the aud
 - HQ_ARENA_RULES.within.prebuilt_northpole (−28, 14, r 2.6) pins every size between the workshop deck and the plaza; all four re-baked.
 The 2 × 2 gap on the walkway (HQ_ROOM_HOLES, i 15..16, j 1..2) was there before and stays.
 Still walled (battle + exploration), not changed: Giza, Agartha, Technoticlan, Babel.
+
+## THE OPEN PLATEAU / TOWN / TEMPLE CITY / CRYSTAL CITY (2026-11-03, after THE OPEN VILLAGE)
+mondo: "go ahead and get rid of Giza, Agartha, Technoticlan, and Babel's walled courts". Same fix as Olympus / Antarctica / North
+Pole, whole rooms (exploration + every board): the L6 `gen: {kind:'plan', look:'walls'}` line and every `space` / `hall` row gone
+(the planGen fallback rebuilds the walls while any remain), their L6 layout comments dropped, HQ_ROOM_HOLES rows gone (bake-holes).
+Each site is pinned with HQ_ARENA_RULES.within and all four sizes re-baked; the cover is existing rules only (levels, ghost blocks):
+- GIZA (site_prebuilt_giza_plateau): the sand in front of the sphinx, the raised causeway down its west side, the sphinx's rump in
+  a corner; within (17.5, 77, r 2.6). Four fallen casing blocks (bricks_1 wall rows, 1.4 m) and two obelisks on ghost blocks, 180°
+  twins about (17.5, 77). The 2-row causeway crossing (14, 59.5) was tried first: a 9×9's house/nexus rows always land on it.
+  Anubis moved (34, 60) → (37, 64) off an obelisk. A wall row's round end reaching the causeway lifts it a level: keep 1.4 m off.
+- BABEL (site_prebuilt_babel_tower): the square between the tower's foot and the barn door; within (0, 70, r 2.6). Four brick
+  houses (plateaus 7 × 7, 3 m — the bake counts them as obstacles) and two brick stacks (1.4 m), 180° twins about (0, 70).
+- TECHNOTICLAN (prebuilt_technoticlan): THE BALL COURT and the plaza east of it; within (−38.5, 38.5, r 10) — r 10 because the
+  ball court's walls fill a 9×9's house rows, so the 9×9 sits east of the court. Two altar platforms (3.5 × 7, 1.4 m). The causeway
+  stair keeps its own railings (`rails: false` was for the hall's walls). A `block: true` prop (a brazier) on a platform corner
+  made four squares rock (`tree`): no props on the platforms.
+- AGARTHA (prebuilt_agartha): THE PLAZA (the fountain, the two garden rings); within (0, 14, r 2.6). Two marble low walls
+  (1.4 m), four crystal clusters and four greek columns on ghost blocks, 180° twins about (0, 14), placed for the 9×9 too.
