@@ -3881,10 +3881,10 @@ body.diorama-3d .tile-underpass.jump::before {
     --door-void: #8a8a8a;
     --door-ink: #1a1712;
     --door-paper: #ece5d3;
-    --door-seal-dark: url('https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png');
-    --door-seal-light: url('https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo.png');
-    --door-seal-mid: url('https://cdn.entropywars.net/Assets/door/DOOR_ColoredAndBlackLines_Logo.png');
-    --door-seal-mono: url('https://cdn.entropywars.net/Assets/door/DOOR_BlackAndWhite_Logo.png');
+    --door-seal-dark: url('https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png');
+    --door-seal-light: url('https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo.png');
+    --door-seal-mid: url('https://cdn.entropywars.net/Assets/ui/brand/DOOR_ColoredAndBlackLines_Logo.png');
+    --door-seal-mono: url('https://cdn.entropywars.net/Assets/ui/brand/DOOR_BlackAndWhite_Logo.png');
 }
 
 /* ── Seals ── */
@@ -5623,7 +5623,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-cc-maintabs .ms-tty-btn, .pb-cc-maintabs .ms-tty-btn.primary { flex: 1 1 0; min-width: 0; justify-content: center; padding: 9px 6px 8px; margin-bottom: -2px; font-size: 11px; letter-spacing: .14em; white-space: normal; text-align: center; border-bottom: 0; border-radius: 6px 6px 0 0; box-shadow: none; transform: none; }
 .pb-cc-maintabs .ms-tty-btn.primary { color: #f0cc83; border-color: #8e7951; background: #2a2418; border-bottom: 2px solid #2a2418; }
 /* THE CREATOR ICONS (2026-11-04, mondo: "add icons for the different tabs and wear to make it easier to navigate"): SunGraphica's Minimal
-   Game Icons (R2 Assets/Icons/creator/) drawn as a mask filled with the button's text colour, so an icon dims and lights with its label and
+   Game Icons (R2 Assets/ui/icons/creator/) drawn as a mask filled with the button's text colour, so an icon dims and lights with its label and
    follows the UI Maker's colours. A tab = its icon over its name; a body part = an icon tile in two even rows, a gold dot = worn there. */
 .pb-cc-icon { display: block; flex: 0 0 auto; width: 24px; height: 24px; background-color: currentColor; -webkit-mask: var(--cc-icon) center / contain no-repeat; mask: var(--cc-icon) center / contain no-repeat; pointer-events: none; }
 .pb-cc-maintabs .ms-tty-btn, .pb-cc-maintabs .ms-tty-btn.primary { display: flex; flex-direction: column; align-items: center; gap: 5px; padding-top: 8px; }
@@ -7354,7 +7354,7 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 @media (orientation: portrait) { html.ew-mobile .hqt-top { top: calc(env(safe-area-inset-top, 0px) + 150px); } }
 
 /* THE MAP SHOT (2026-10-06): the selected site's picture behind the tube's text (three-camera.js EWCine.mapShotUrl —
-   this browser's own MAP SHOT, else R2 Assets/MapShots/<site>.jpg); none = the plain phosphor black */
+   this browser's own MAP SHOT, else R2 Assets/ui/mapshots/<site>.jpg); none = the plain phosphor black */
 .ms-crt-shot { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.35s; pointer-events: none; filter: saturate(0.85) contrast(1.05); }
 .ms-crt-shot.on { opacity: 0.42; }
 .ms-crt-shot::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 85% 75% at 50% 45%, rgba(4,4,3,0.35) 0%, rgba(4,4,3,0.75) 100%); }

@@ -13017,10 +13017,10 @@
         window.playForcedFallAnim = playForcedFallAnim;
 
         const HIT_EFFECT_URLS = {
-            hit04: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit04.png',
-            hit02: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit02.png',
-            hit11: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit11.png',
-            spell_hit_01: 'https://cdn.entropywars.net/Assets/Sprites/Effects/spell_hit_01.png'
+            hit04: 'https://cdn.entropywars.net/Assets/fx/flipbooks/hit04.png',
+            hit02: 'https://cdn.entropywars.net/Assets/fx/flipbooks/hit02.png',
+            hit11: 'https://cdn.entropywars.net/Assets/fx/flipbooks/hit11.png',
+            spell_hit_01: 'https://cdn.entropywars.net/Assets/fx/flipbooks/spell_hit_01.png'
         };
 
         const HIT_EFFECT_8FRAME = { spell_hit_01: true };
@@ -53354,7 +53354,7 @@
                 // boulder / ice / forest VFX projectiles + fluid wave overlay
                 'rocks_4.png', 'ice.png', 'forest.png', 'waves_1.png',
             ].forEach(f => texUrls.add(_lsTerrBase + f));
-            texUrls.add('https://cdn.entropywars.net/Assets/Sprites/projectiles/bullet.png');
+            texUrls.add('https://cdn.entropywars.net/Assets/fx/projectiles/bullet.png');
             const texList = Array.from(texUrls).filter(u => !sprUrls.has(u));
             prog.tex = [0, texList.length];
             if (texList.length) {

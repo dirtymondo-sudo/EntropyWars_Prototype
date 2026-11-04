@@ -496,7 +496,7 @@ const ELEMENT_ICONS = {
     psychic: '🌀', sonic: '🔊', blood: '🩸', metal: '⚙️'
 };
 /* ELEMENT ICON ART (2026-09-09). Every element has an image icon on R2 at
-   ELEMENT_ICON_BASE + ELEMENT_ICON_FILES[el] (Assets/Icons/elements/<el>.png,
+   ELEMENT_ICON_BASE + ELEMENT_ICON_FILES[el] (Assets/ui/icons/elements/<el>.png,
    64×64 RGBA, transparent ground — the user's art; placeholders shipped
    first). HTML surfaces (inspect card pills, codex dossier, the Horologe's
    spell-blade chips) render it through elementIconHtml(): an <img> that
@@ -505,7 +505,7 @@ const ELEMENT_ICONS = {
    callouts, the battle log) keep the emoji. Swapping art = replace the file
    on R2 under a NEW name and edit the row here (asset URLs are not ?v=
    tagged — same-name uploads stay cached, see CLAUDE.md RULE #1b). */
-const ELEMENT_ICON_BASE = 'https://cdn.entropywars.net/Assets/Icons/elements/';
+const ELEMENT_ICON_BASE = 'https://cdn.entropywars.net/Assets/ui/icons/elements/';
 const ELEMENT_ICON_FILES = {
     fire: 'fire.png', ice: 'ice.png', lightning: 'lightning.png', water: 'water.png',
     poison: 'poison.png', earth: 'earth.png', wind: 'wind.png', nature: 'nature.png',
@@ -4580,7 +4580,7 @@ const ITEM_RULES = {
     humanBane: {
         name: 'Human Bane',
         icon: '🗡️',
-        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_human_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/fx/projectiles/proj_human_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Human types.',
         baneType: 'human',
@@ -4590,7 +4590,7 @@ const ITEM_RULES = {
     divineBane: {
         name: 'Divine Bane',
         icon: '🌑',
-        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_divine_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/fx/projectiles/proj_divine_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Divine types.',
         baneType: 'divine',
@@ -4600,7 +4600,7 @@ const ITEM_RULES = {
     unholyBane: {
         name: 'Unholy Bane',
         icon: '✝️',
-        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_unholy_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/fx/projectiles/proj_unholy_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Unholy types.',
         baneType: 'unholy',
@@ -4610,7 +4610,7 @@ const ITEM_RULES = {
     techBane: {
         name: 'Tech Bane',
         icon: '⚡',
-        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_tech_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/fx/projectiles/proj_tech_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Tech types.',
         baneType: 'tech',
@@ -4620,7 +4620,7 @@ const ITEM_RULES = {
     anomalyBane: {
         name: 'Anomaly Bane',
         icon: '🔮',
-        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_anomaly_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/fx/projectiles/proj_anomaly_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Anomaly types.',
         baneType: 'anomaly',
@@ -4630,7 +4630,7 @@ const ITEM_RULES = {
     alienBane: {
         name: 'Alien Bane',
         icon: '☄️',
-        sprite: 'https://cdn.entropywars.net/Assets/Sprites/projectiles/proj_alien_bane.png',
+        sprite: 'https://cdn.entropywars.net/Assets/fx/projectiles/proj_alien_bane.png',
         max: 3,
         desc: 'Throw at an enemy. Deals 120 bonus damage to Alien types.',
         baneType: 'alien',
@@ -12225,7 +12225,7 @@ const STATUS_DEFS = {
         stack: 'max',
         dot: 24,
         spriteName: 'burn',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/burn.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/burn.png',
         iconSrc: createStatusIconDataUri('🔥', '#4a1f16', '#ffd3a8', '#ff7b4d'),
         onRoundEnd(unit) {
             // 💧 Standing in water or under rain-type weather puts the fire
@@ -12279,7 +12279,7 @@ const STATUS_DEFS = {
         stack: 'max',
         dot: 32,
         spriteName: 'poison',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/poison.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/poison.png',
         iconSrc: createStatusIconDataUri('☠', '#2a1c34', '#efdcff', '#b06ad3'),
         onRoundEnd(unit) {
             // Credit the applier (tracked in battle.js applyStatusPayload):
@@ -12918,7 +12918,7 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'max',
         spriteName: 'silence',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/silence.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/silence.png',
         iconSrc: createStatusIconDataUri('🔇', '#303543', '#f0f4ff', '#9aa8c7')
     },
     stun: {
@@ -12936,7 +12936,7 @@ const STATUS_DEFS = {
         blockMove: true,
         blockAction: true,
         spriteName: 'stun',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/stun.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/stun.png',
         iconSrc: createStatusIconDataUri('⚡', '#3e2218', '#ffe6da', '#ff9c71')
     },
     root: {
@@ -12962,7 +12962,7 @@ const STATUS_DEFS = {
         stack: 'max',
         apDrain: 1,
         spriteName: 'stagger',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/stagger.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/stagger.png',
         iconSrc: createStatusIconDataUri('💫', '#3e2e18', '#fff2da', '#ffb871')
         // The -1 AP happens the moment the status lands (see applyStatusPayload
         // in battle.js). Draining here in onRoundEnd never worked: the
@@ -12979,7 +12979,7 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'replace',
         spriteName: 'marked',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/marked.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/marked.png',
         iconSrc: createStatusIconDataUri('🎯', '#4b1a24', '#ffe4e8', '#ff6d8d')
     },
     /* (lasered deleted 2026-08-10 — it was a badge with no gameplay effect.
@@ -12996,7 +12996,7 @@ const STATUS_DEFS = {
         stack: 'max',
         noSharedVision: true,   // 2026-10-09 VISION: comms down — the unit can't use its allies' sight (was awrSet: 0)
         spriteName: 'jammed',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/jammed.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/jammed.png',
         iconSrc: createStatusIconDataUri('📵', '#2c183d', '#f6e6ff', '#c789ff')
     },
     drowning: {
@@ -13010,7 +13010,7 @@ const STATUS_DEFS = {
         stack: 'replace',
         moveDelta: -1,
         spriteName: 'drowning',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/drowning.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/drowning.png',
         iconSrc: createStatusIconDataUri('🌊', '#0a2540', '#c8e8ff', '#4a9eff'),
         onRoundEnd(unit) {
             if (unitIsDeepWaterAdapted(unit)) return;
@@ -13066,7 +13066,7 @@ const STATUS_DEFS = {
         // The Bulwark upgrades raise it per spell (payload `blocks`). battle.js applyDamageToUnit spends the charges.
         blocks: 1,
         spriteName: 'protect',
-        spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/protect.png',
+        spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/protect.png',
         iconSrc: createStatusIconDataUri('🛡', '#1b344d', '#ddf2ff', '#5fc7ff')
     },
 
@@ -26548,10 +26548,10 @@ const DOOR_TEXT = {
     //   mono    — solid black → government-doc look, and the alpha MASK for
     //             ink-tinted stamps (CSS mask-image + background = ink colour)
     LOGO: {
-        onDark:  'https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png',
-        onLight: 'https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo.png',
-        onMid:   'https://cdn.entropywars.net/Assets/door/DOOR_ColoredAndBlackLines_Logo.png',
-        mono:    'https://cdn.entropywars.net/Assets/door/DOOR_BlackAndWhite_Logo.png',
+        onDark:  'https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png',
+        onLight: 'https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo.png',
+        onMid:   'https://cdn.entropywars.net/Assets/ui/brand/DOOR_ColoredAndBlackLines_Logo.png',
+        mono:    'https://cdn.entropywars.net/Assets/ui/brand/DOOR_BlackAndWhite_Logo.png',
     },
 
     DEPARTMENTS: {
@@ -28762,7 +28762,7 @@ const DOOR_HQ = {
            a proc that stands for one of these keeps its key and hangs the file over its stand-in through three-renderer.js `_hqCatGlb`
            (the well, the two benches, the fortune tent, the console, the tape, the shelf's VCR) — never a second file for the same thing.
            Every `h` / `span` / `rect` / `turn` is a TARGET (the CDN is unreachable from the sandbox): a piece that lands wrong is that
-           one field. A long Meshy model lies along X (the vehicle rule) — the tank wears `turn: 90`; the F22 (Assets/weapons/, the Air
+           one field. A long Meshy model lies along X (the vehicle rule) — the tank wears `turn: 90`; the F22 (Assets/fx/spell_props/, the Air
            Support spell's own file) comes in nose −Z and wears `turn: 180` so its nose is the placer's +Z front. ═══ */
         ancient_well:       { file: 'Meshy_AI_an_ancient_well_0922010024_texture.glb',            base: 'misc', h: 1.15, foot: 0.42, block: true },   // 2026-09-22: halved (the user: the wells are too big)                                  // EVERY WELL: the `well` way's head (_hqWayBuilders.well)
         wooden_bucket:      { file: 'Meshy_AI_wooden_bucket_0922011434_texture.glb',              base: 'misc', h: 0.16, foot: 0.08 },   // 2026-09-22: halved with the well                                               // the well's bucket on its rope (the way rig lowers it); kickable on a floor
@@ -51346,7 +51346,7 @@ const HQ_CATALOGUE_MISC = {
     space_shuttle:   { file: 'Meshy_AI_space_shuttle_realis_1027103636_texture.glb', base: 'misc', h: 9,    foot: 1.6, block: true },
     space_station:   { file: 'Meshy_AI_international_space_s_1027103646_texture.glb', base: 'misc', span: 14, foot: 0 },
 };
-/* THE SPELL PROPS (§5.2 "_WPN_MODELS through _hqCatGlb"): three-vfx-effects.js's files in Assets/weapons/ that no catalogue row
+/* THE SPELL PROPS (§5.2 "_WPN_MODELS through _hqCatGlb"): three-vfx-effects.js's files in Assets/fx/spell_props/ that no catalogue row
    named (the F22 already is `fighter_jet`), `base: 'weapons'`, at their real-world sizes. */
 const HQ_CATALOGUE_WEAPONS = {
     revolver:    { file: 'Meshy_AI_Revolver_0713030235_texture.glb',                  base: 'weapons', span: 0.3,  foot: 0 },
@@ -51373,7 +51373,7 @@ const HQ_CATALOGUE_WEAPONS = {
     tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
     tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
     cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
-    /* THE SPEAR (2026-10-27, mondo's upload Assets/weapons/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
+    /* THE SPEAR (2026-10-27, mondo's upload Assets/fx/spell_props/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
     spear:       { file: 'spear/Spear.fbx',                                           base: 'weapons', h: 2.0,     foot: 0 },
 };
 /* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
@@ -51785,7 +51785,7 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', chess: 'Assets/chess/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/fx/spell_props/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', chess: 'Assets/chess/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)

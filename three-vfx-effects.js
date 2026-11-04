@@ -7582,7 +7582,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     function _getBulletTexture() {
         if (_bulletTexCache) return _bulletTexCache;
-        _bulletTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/projectiles/bullet.png');
+        _bulletTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/fx/projectiles/bullet.png');
         return _bulletTexCache;
     }
 
@@ -11011,7 +11011,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        back to its procedural/sprite build. Per-model orientation/scale
        fix-ups (if a Meshy export comes in rotated) are console-tunable, no
        code edit:  window.EW_WPN_TWEAK = { sword: { rx: Math.PI, s: 1.2 } } */
-    var _WPN_BASE = 'https://cdn.entropywars.net/Assets/weapons/';
+    var _WPN_BASE = 'https://cdn.entropywars.net/Assets/fx/spell_props/';
     /* axis 'z': the model's LONG axis is normalized to point +Z (muzzle /
        nose / tip forward — guns, jet, arrow, football). axis 'y': the model
        is kept upright as authored (Meshy exports Y-up) and scaled by its
@@ -11093,11 +11093,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            by height, centre-pivoted so it tumbles about itself. */
         asteroid:    { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_1.glb', axis: 'y' },
         asteroid2:   { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_2.glb', axis: 'y' },
-        /* THE SPEAR (2026-10-27, mondo's upload: Assets/weapons/spear/Spear.fbx, its sheets packed in): an FBX, read through the
+        /* THE SPEAR (2026-10-27, mondo's upload: Assets/fx/spell_props/spear/Spear.fbx, its sheets packed in): an FBX, read through the
            renderer's one cache entry for the file (assetGltf → _asFbx). 2 m long, the tip up (+Y) in the file — the long-axis
            swing puts it on +Z. Every spear in the spells: Valkyrie Spear, the Atlatl, the holy spears, the Joust's lance, the
            Valkyrie's on her horse (_spearBody). */
-        spear:       { url: 'https://cdn.entropywars.net/Assets/weapons/spear/Spear.fbx', axis: 'z' },
+        spear:       { url: 'https://cdn.entropywars.net/Assets/fx/spell_props/spear/Spear.fbx', axis: 'z' },
         /* THE NEW PROPS (2026-10-28, mondo: "added some more of your requested models in /weapons and /misc"): the models
            fix/MISSING_MODELS.md asked for. Measured in a browser: the dynamite lies along X, its fuse +X; the grenade, the
            knife (tip up), the mic, the coil, the seat, the sack, the doll and the single shard stand up (+Y); the shield's face,

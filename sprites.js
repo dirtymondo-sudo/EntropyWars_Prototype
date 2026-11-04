@@ -22,7 +22,7 @@ function _ewCorsBust(u) {
 window._ewCorsBust = _ewCorsBust;
 
 /* ── THE ASSET PATH MAP (docs/notes/r2-layout-plan.md, mondo 2026-11-04: "sounds like a good plan, go ahead") ──────────
-   The R2 folders move in waves (Assets/Sprites/Races/ → Assets/characters/races/, Assets/music/ → Assets/audio/music/, ...).
+   The R2 folders move in waves (Sprites/Races → characters/races, music → audio/music, ... under Assets/).
    EW_ASSET_MOVES is the ONE table of what moved: [old bucket prefix, new bucket prefix], longest prefix wins. Each wave's flip
    PR adds its rows here (the same rows as r2-layout.json, which the copy tool reads) and also rewrites the literal paths in
    the code + CSS, so the code reads the new folders. This file loads first, so everything after it can use:
@@ -38,6 +38,21 @@ window._ewCorsBust = _ewCorsBust;
 const EW_CDN = 'https://cdn.entropywars.net/';
 const EW_ASSET_MOVES = [
   // ['Assets/<old>/', 'Assets/<new>/'],   (filled by each wave's flip PR)
+  // W2 audio + ui, W3 fx (2026-11-04)
+  ['Assets/music/', 'Assets/audio/music/'],
+  ['Assets/SFX/', 'Assets/audio/sfx/'],
+  ['Assets/vehicles/Sound effects/', 'Assets/audio/sfx/vehicles/'],
+  ['Assets/fonts/', 'Assets/ui/fonts/'],
+  ['Assets/Icons/', 'Assets/ui/icons/'],
+  ['Assets/Sprites/Status/', 'Assets/ui/status/'],
+  ['Assets/Sprites/ui/', 'Assets/ui/sprites/'],
+  ['Assets/MapShots/', 'Assets/ui/mapshots/'],
+  ['Assets/Entropy Wars_Static Logo.mp4', 'Assets/ui/brand/entropy_wars_static_logo.mp4'],
+  ['Assets/door/DOOR_', 'Assets/ui/brand/DOOR_'],
+  ['Assets/weapons/', 'Assets/fx/spell_props/'],
+  ['Assets/Sprites/Effects/', 'Assets/fx/flipbooks/'],
+  ['Assets/Sprites/vfx/', 'Assets/fx/sprites/'],
+  ['Assets/Sprites/projectiles/', 'Assets/fx/projectiles/'],
 ];
 const _ewMoves = (function () {
   const rows = EW_ASSET_MOVES.slice().sort((a, b) => b[0].length - a[0].length);
@@ -6712,8 +6727,8 @@ const DRAGON_SPRITES = {
     red:   `${_S}/dragon-red.png`
 };
 
-const UI_CURSOR_UNIT = `${_S}/ui/unit_cursor.png`;
-const UI_CURSOR_MENU = `${_S}/ui/menu_cursor.png`;
+const UI_CURSOR_UNIT = `${EW_CDN}Assets/ui/sprites/unit_cursor.png`;
+const UI_CURSOR_MENU = `${EW_CDN}Assets/ui/sprites/menu_cursor.png`;
 
 const FOG_CLOUD_SPRITES = [
     `${_S}/64x64/terrain/fog.png`

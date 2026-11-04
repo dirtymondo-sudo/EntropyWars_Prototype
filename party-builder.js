@@ -1031,11 +1031,11 @@ const _pbSoftWrap = (t) => String(t).replace(/[A-Za-z]{11,}/g, w => w.slice(0, M
 let _pbCcTab = 'body', _pbCcSlot = 'head', _pbCcKinds = {}, _pbCcLayer = 1;   // (THE LAYERS 1 2 3: the torso layer open)
 /* THE CREATOR ICONS (2026-11-04, mondo: "i just want to add icons for the different tabs and wear to make it easier to navigate" + "try
    to find icons from this asset pack" = SunGraphica's Minimal Game Icons Pack, his copy of the full pack). One white silhouette per
-   creator tab (BODY ... OUTFIT) and per OUTFIT body part (Head ... Footwear), on R2 Assets/Icons/creator/<key>.png (bake-creator-icons.py
+   creator tab (BODY ... OUTFIT) and per OUTFIT body part (Head ... Footwear), on R2 Assets/ui/icons/creator/<key>.png (bake-creator-icons.py
    cuts them from the pack: trimmed, square, 128 px). Drawn as a CSS mask filled with the button's own text colour, so a tab's icon
    turns gold with its label and the UI Maker's colours carry over. A key missing here draws no icon (the button is text only).
    Credit: data.js EW_CREDITS (SunGraphica). */
-const CC_ICON_BASE = 'https://cdn.entropywars.net/Assets/Icons/creator/';
+const CC_ICON_BASE = 'https://cdn.entropywars.net/Assets/ui/icons/creator/';
 const CC_ICONS = {
   body: 'tab_body', face: 'tab_face', skin: 'tab_skin', hair: 'tab_hair', outfit: 'tab_outfit',
   'slot:head': 'slot_head', 'slot:face': 'slot_face', 'slot:neck': 'slot_neck', 'slot:torso': 'slot_torso', 'slot:back': 'slot_back',

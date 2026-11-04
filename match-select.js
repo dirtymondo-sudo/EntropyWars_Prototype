@@ -177,7 +177,7 @@ function MapPreview({ mp, size, mini }) {
 }
 
 /* THE MAP SHOT (2026-10-06): the selected site's picture behind the tube's text — the cinematic camera's MAP SHOT
-   (three-camera.js EWCine.mapShotUrl: this browser's own, else R2 Assets/MapShots/<site>.jpg); no picture = nothing drawn */
+   (three-camera.js EWCine.mapShotUrl: this browser's own, else R2 Assets/ui/mapshots/<site>.jpg); no picture = nothing drawn */
 function MapShot({ mp }) {
   const site = mp ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(mp.modeId) : String(mp.modeId || '').replace(/_delta$/, '')) : '';
   const [shot, setShot] = useState({ site: '', url: null });

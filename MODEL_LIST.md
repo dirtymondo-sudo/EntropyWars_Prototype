@@ -585,18 +585,18 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | ancient_walkway | `Assets/misc/Meshy_AI_ancient_walkway_0917035609_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ancient_well | `Assets/misc/Meshy_AI_an_ancient_well_0922010024_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | angel_statue | `Assets/misc/Meshy_AI_angel_statue_0917035332_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| arrow | `Assets/weapons/Meshy_AI_arrow_0713025846_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| arrow | `Assets/fx/spell_props/Meshy_AI_arrow_0713025846_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | astronaut | `Assets/misc/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | babel_crane | `Assets/misc/Meshy_AI_a_scaffold_crane_0912231516_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brass_telescope | `Assets/misc/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brazier | `Assets/misc/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | breaker_panel | `Assets/door/models/Meshy_AI_a_breaker_panel_0903105436_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | brick_arch | `Assets/misc/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| bullet | `Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| bullet | `Assets/fx/spell_props/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cafeteria_chair | `Assets/door/models/Meshy_AI_cafeteria_chair_0910054640_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| candle | `Assets/weapons/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| candleLine | `Assets/weapons/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| candleRing | `Assets/weapons/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| candle | `Assets/fx/spell_props/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| candleLine | `Assets/fx/spell_props/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| candleRing | `Assets/fx/spell_props/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | car_ambulance | `Assets/misc/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | car_cyber | `Assets/misc/Meshy_AI_a_cyberpunk_car_0915195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | car_key | `Assets/door/models/Meshy_AI_car_key_0903110043_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -606,7 +606,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | catacomb_wall | `Assets/misc/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | caterpillar | `Assets/misc/Meshy_AI_caterpillar_0912231445_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | catholic_pew | `Assets/misc/Meshy_AI_catholic_church_pew_0917035928_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cauldron | `Assets/weapons/Meshy_AI_black_cauldron_0713025916_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cauldron | `Assets/fx/spell_props/Meshy_AI_black_cauldron_0713025916_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cave_stone | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | church_building | `Assets/misc/Meshy_AI_catholic_church_building_0917035753_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | church_pew | `Assets/misc/Meshy_AI_church_pew_0917035915_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -622,9 +622,9 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | confessional_booth | `Assets/misc/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cot | `Assets/door/models/Meshy_AI_a_cot_0903105358_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | couples_bed | `Assets/misc/Meshy_AI_a_couples_bed_0922010443_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cross | `Assets/weapons/Meshy_AI_wooden_cross_realist_0725070928_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cross | `Assets/fx/spell_props/Meshy_AI_wooden_cross_realist_0725070928_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crt_terminal | `Assets/door/models/Meshy_AI_crt_terminal_0903101952_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| crystalBall | `Assets/weapons/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| crystalBall | `Assets/fx/spell_props/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | culvert_mouth | `Assets/misc/Meshy_AI_a_culvert_mouth_0916235929_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | curved_couch | `Assets/door/models/Meshy_AI_a_curved_couch_0903105529_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | curved_office_couch | `Assets/door/models/Meshy_AI_a_curved_office_couch_0903105539_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -644,18 +644,18 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | exit_sign | `Assets/door/models/Meshy_AI_an_exit_sign_0903110032_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_mushroom | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fae_toadstool | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| femur | `Assets/weapons/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| femur | `Assets/fx/spell_props/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fern | `Assets/misc/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | field_goal_post | `Assets/misc/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fighter_jet | `Assets/weapons/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fighter_jet | `Assets/fx/spell_props/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fire_hydrant | `Assets/misc/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fire_truck | `Assets/misc/Meshy_AI_a_fire_truck_0915195407_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fist | `Assets/weapons/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fist | `Assets/fx/spell_props/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | flamingo | `Assets/misc/Meshy_AI_a_flamingo_0912231434_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | floor_drain | `Assets/door/models/Meshy_AI_water_drain_0910054212_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fluorescent | `Assets/door/models/Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | folding_chair | `Assets/door/models/Meshy_AI_a_folding_chair_0903105155_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| football | `Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| football | `Assets/fx/spell_props/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | footbridge | `Assets/misc/Meshy_AI_a_plank_footbridge_0916235844_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fortune_teller_tent | `Assets/misc/Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | gclock | `Assets/misc/Meshy_AI_grandfather_clock_re_0727195306_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -718,7 +718,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | menhir | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | military_tank | `Assets/misc/Meshy_AI_a_military_tank_0922010101_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mini_fridge | `Assets/door/models/Meshy_AI_mini_fridge_0910054504_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| missile | `Assets/fx/spell_props/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | molded_chair | `Assets/door/models/Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | moon | `Assets/misc/Meshy_AI_moon_realistic_0727195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | mop_bucket | `Assets/door/models/Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -744,8 +744,8 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | picture_round_b | `Assets/door/models/Meshy_AI_round_empty_picture_f_0910054431_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | picture_round_c | `Assets/door/models/Meshy_AI_round_empty_picture_f_0910054439_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pipe_run | `Assets/door/models/Meshy_AI_office_pipe_run_0903105348_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pistol | `Assets/weapons/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| plasma | `Assets/weapons/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pistol | `Assets/fx/spell_props/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| plasma | `Assets/fx/spell_props/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pocket_watch | `Assets/misc/Meshy_AI_a_pocket_watch_0912231541_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pocket_watch_hung | `Assets/misc/Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | potted_plant | `Assets/door/models/Meshy_AI_a_potted_plant_0903105322_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -753,7 +753,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | reception_wedge | `Assets/door/models/Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | retro_control_panel | `Assets/misc/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | retro_speakers | `Assets/door/models/Meshy_AI_retro_speakers_0910054343_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| revolver | `Assets/fx/spell_props/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | road_straight | `Assets/misc/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | road_turn | `Assets/misc/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | round_cabinet | `Assets/door/models/Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -775,13 +775,13 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | ship_anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ship_cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ship_wreck | `Assets/misc/Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| shotgun | `Assets/weapons/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| shotgun | `Assets/fx/spell_props/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | signpost | `Assets/misc/Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skateboard | `Assets/misc/Meshy_AI_a_skateboard_0915212313_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| skull | `Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| skull | `Assets/fx/spell_props/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull_pile | `Assets/misc/Meshy_AI_skull_pile_0917035243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sleigh | `Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sniper | `Assets/weapons/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sleigh | `Assets/fx/spell_props/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sniper | `Assets/fx/spell_props/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | solar | `Assets/misc/Meshy_AI_solar_system_realist_0727195437_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | solo_cup | `Assets/door/models/Meshy_AI_red_solo_cup_0910054318_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | space_shuttle | `Assets/misc/Meshy_AI_space_shuttle_realis_1027103636_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -794,10 +794,10 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | storefront_unit | `Assets/misc/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | subway_cart | `Assets/misc/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | subway_front | `Assets/misc/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sword | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tarot | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tarot2 | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tarotDeck | `Assets/weapons/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sword | `Assets/fx/spell_props/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tarot | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tarot2 | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tarotDeck | `Assets/fx/spell_props/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | teacups | `Assets/misc/Meshy_AI_stacked_teacups_0912231425_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | teal_chair | `Assets/door/models/Meshy_AI_a_teal_office_chair_0903105124_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | teapot | `Assets/misc/Meshy_AI_teapot_0912231417_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -809,7 +809,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ulna | `Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ulna | `Assets/fx/spell_props/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vatican_dome | `Assets/misc/Meshy_AI_the_Vatican_dome_0917061915_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vault | `Assets/misc/Meshy_AI_a_bank_vault_0912231605_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | vent_grille | `Assets/door/models/Meshy_AI_vent_0910054228_texture.glb` | Meshy AI | Meshy AI (mondo) |
@@ -1273,7 +1273,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| spear | `Assets/weapons/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
+| spear | `Assets/fx/spell_props/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
 
 ### Gas station · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
@@ -1421,76 +1421,76 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| arrow | `Assets/weapons/Meshy_AI_arrow_0713025846_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| arrow | `Assets/fx/spell_props/Meshy_AI_arrow_0713025846_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | asteroid | `Assets/door/models/asteroid_1.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | asteroid2 | `Assets/door/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | bible | `Assets/misc/Meshy_AI_bible_1027232251_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | blackBlob | `Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | blowpipe (held in the hand) | `Assets/props/blowpipe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| bullet | `Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| bullet | `Assets/fx/spell_props/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | camera (held in the hand) | `Assets/props/old_camera_flash.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| candle | `Assets/weapons/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| candleLine | `Assets/weapons/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| candleRing | `Assets/weapons/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| candle | `Assets/fx/spell_props/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| candleLine | `Assets/fx/spell_props/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| candleRing | `Assets/fx/spell_props/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cauldron | `Assets/weapons/Meshy_AI_black_cauldron_0713025916_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cross | `Assets/weapons/Meshy_AI_wooden_cross_realist_0725070928_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| crystalBall | `Assets/weapons/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cauldron | `Assets/fx/spell_props/Meshy_AI_black_cauldron_0713025916_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cross | `Assets/fx/spell_props/Meshy_AI_wooden_cross_realist_0725070928_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| crystalBall | `Assets/fx/spell_props/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crystalShard | `Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crystalShards | `Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cup (held in the hand) | `Assets/props/drinking_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| dynamite | `Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dynamite | `Assets/fx/spell_props/Meshy_AI_dynamite_1027232115_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ejectionSeat | `Assets/misc/Meshy_AI_ejection_seat_1027232003_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fangs | `Assets/animals/top_fangs.glb` | Asset pack (author not recorded yet) | Top fangs (mondo's upload) |
-| femur | `Assets/weapons/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fist | `Assets/weapons/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| femur | `Assets/fx/spell_props/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fist | `Assets/fx/spell_props/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | flatEarth (Flat Earth ultimate prop) | `Assets/props/flat_earth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | floodMast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| football | `Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| football | `Assets/fx/spell_props/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | frog | `Assets/misc/Meshy_AI_frog_1027232151_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | giantFoot | `Assets/misc/Meshy_AI_giant_foot_1027232131_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| grenade | `Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| grenade | `Assets/fx/spell_props/Meshy_AI_grenade_1027232043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | halo (held in the hand) | `Assets/props/broken_halo.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | handMirror (held in the hand) | `Assets/props/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | heartScales (Weigh the Heart ultimate prop) | `Assets/props/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
-| jet | `Assets/weapons/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| landmine | `Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| jet | `Assets/fx/spell_props/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| landmine | `Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | maatFeather (Weigh the Heart ultimate prop) | `Assets/props/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | mic | `Assets/misc/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | milkCookies (held in the hand) | `Assets/props/milk_and_cookies.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| missile | `Assets/weapons/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| missile | `Assets/fx/spell_props/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | organPipe | `Assets/decor/organ_pipe_white.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | phone (held in the hand) | `Assets/props/smartphone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | piano | `Assets/decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| pistol | `Assets/weapons/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| plasma | `Assets/weapons/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pistol | `Assets/fx/spell_props/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| plasma | `Assets/fx/spell_props/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | policeBarricade (Lockdown ultimate prop) | `Assets/props/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | potionFlask (held in the hand) | `Assets/props/potion_flask.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| revolver | `Assets/weapons/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| revolver | `Assets/fx/spell_props/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | rope | `Assets/misc/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sack | `Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sandbags | `Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | scalpel (held in the hand) | `Assets/props/scalpel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | sheep | `Assets/decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| shield | `Assets/weapons/Meshy_AI_shield_1027232025_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| shotgun | `Assets/weapons/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| skull | `Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sleigh | `Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sniper | `Assets/weapons/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| spear | `Assets/weapons/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
+| shield | `Assets/fx/spell_props/Meshy_AI_shield_1027232025_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| shotgun | `Assets/fx/spell_props/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| skull | `Assets/fx/spell_props/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sleigh | `Assets/fx/spell_props/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sniper | `Assets/fx/spell_props/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| spear | `Assets/fx/spell_props/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
 | staff (held in the hand) | `Assets/props/wizard_staff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| sword | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sword | `Assets/fx/spell_props/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | syringe | `Assets/misc/Meshy_AI_syringe_1027232304_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tarot | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tarot2 | `Assets/weapons/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tarotDeck | `Assets/weapons/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tarot | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tarot2 | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tarotDeck | `Assets/fx/spell_props/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | teslaCoil | `Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| throwingKnife | `Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| throwingKnife | `Assets/fx/spell_props/Meshy_AI_throwing_knife_1027232048_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tongs | `Assets/misc/Meshy_AI_tongs_1027232138_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tripodMachine | `Assets/decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | trumpet | `Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ulna | `Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ulna | `Assets/fx/spell_props/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | voodooDoll | `Assets/misc/Meshy_AI_voodoo_doll_1027232238_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | wand (held in the hand) | `Assets/props/magic_wand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | whip (held in the hand) | `Assets/props/bullwhip_rigged.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
@@ -1921,7 +1921,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `door` | three.js shapes (code) | — | Box, Plane, Sphere | _hzLoneDoor |
 | `dumpster` | model files | `dumpster` (Asset pack) | — | _hzPropDumpster |
 | `effigy` | model files | `effigy_bier` (Meshy AI), `effigy_figure` (Meshy AI) | — | _hzEffigy |
-| `excalibur` | model files + three.js shapes | `Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb` | Dodecahedron, Sphere | _hzExcalibur |
+| `excalibur` | model files + three.js shapes | `Assets/fx/spell_props/Meshy_AI_master_sword_0713025949_texture.glb` | Dodecahedron, Sphere | _hzExcalibur |
 | `exitsign` | three.js shapes (code) | — | Box, Cylinder, Plane, glow sprites | _hzExitSign |
 | `fairyring` | model files + three.js shapes | `mushroom2` (Meshy AI) | Sphere | _hzFairyRing |
 | `fallen_column` | three.js shapes (code) | — | Box, Cylinder | _hzFallenColumn |
@@ -1956,7 +1956,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `saucer` | model files + three.js shapes | `saucer_lg` (Meshy AI) | Cylinder, Lathe, Sphere, Torus | _hzSaucer |
 | `securitycam` | model files + three.js shapes | `security_camera` (Asset pack (author not recorded yet)) | Box, Cylinder, Sphere | _hzSecurityCam |
 | `skull` | three.js shapes (code) | — | Circle | _hzGrinSkull |
-| `sleigh` | model files | `Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | — | _hzSleigh |
+| `sleigh` | model files | `Assets/fx/spell_props/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | — | _hzSleigh |
 | `stairway` | three.js shapes (code) | — | Box | _hzStairway |
 | `tablet` | three.js shapes (code) | — | Box, Plane | _hzTablet |
 | `toadstool` | model files | `mushroom` (Meshy AI) | — | _hzToadstool |
@@ -2325,7 +2325,7 @@ Trailer `Fuse_box`; traffic cone ↔ exploration-objects `Cone`; city bench ↔ 
 radiation_sign, D17 planter); §10G G05 bow, G10 gold record, G11 gavel, G13 lipstick; the §10E items not named in its audit
 note; a far mountain range (§8b). Meshy only after mondo's OK on each, with the packs checked named on the to-do row.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (1718 of 2720, bucket `ewmusicsfx`, listed 2026-11-04)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (1716 of 2718, bucket `ewmusicsfx`, listed 2026-11-04)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
@@ -2334,7 +2334,6 @@ before asking for a new one (THE PACK-FIRST RULE).
 
 | folder | why it is on R2 | made by | files | MB |
 | --- | --- | --- | --- | --- |
-| `(bucket root)` | on R2, the game does not load it | Meshy AI, reworked by Claude · Meshy animations from the male sniper, consolidated by Claude (a stray copy at the bucket root) | 2: MAL2_Sniper.glb, MAL3_Sniper.glb | 2.9 |
 | `Assets/animals` | on R2, the game does not load it | Meshy AI · Meshy-style eagle export (mondo's upload): the unrigged original of eagle_rigged.glb | 2: eagle.fbx, eagle.glb | 78.3 |
 | `Assets/animals/horses` | on R2, the game does not load it | Asset pack (author not recorded yet) · Horse pack (mondo's upload) | 2: Horse.blend, Horse_fbx.fbx | 3.5 |
 | `Assets/christmas/models` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Christmas pack · Elbolilloduro | 1: Christmas.fbx | 0.7 |

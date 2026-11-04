@@ -440,7 +440,7 @@ const ThreeVFX = (function () {
     /* ── THE FLIPBOOKS (2026-11-03, the Blender pilot; mondo picked "Pilot on Fireball + Meteor") ──────────────────────
        A flipbook is a real fire + smoke SIMULATION baked offline in cloud Blender (Mantaflow, Cycles) to a sheet of
        frames: the particle plays the movie over its life instead of growing one painted still. The sheet loads once
-       from R2 (Assets/Sprites/vfx/, repo copy in Assets/Sprites/vfx/) and is cut into one texture per frame at load,
+       from R2 (Assets/fx/sprites/, repo copy in Assets/fx/sprites/) and is cut into one texture per frame at load,
        so a flipbook particle is an ordinary pool particle whose sprite key steps 'fb-x#0' → 'fb-x#59' (no shader:
        both renderers draw it, the instanced batch groups it by frame). Not loaded yet / failed / switched off →
        spawn() returns null and the caller keeps its old look. opts.fbFrom / opts.fbTo (0..1) play part of the sheet.
@@ -449,12 +449,12 @@ const ThreeVFX = (function () {
     var _FLIPBOOKS = {
         /* 60 frames of 128 px, 8 per row: a fireball that rolls, darkens to embers in smoke and rises. The blast's
            centre sits 0.82 down the frame (the smoke climbs into the rest), so callers lift the sprite by `lift`. */
-        'fb-explosion': { url: _R2 + 'vfx/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32 },
+        'fb-explosion': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32 },
         /* THE SHARED KINDS (2026-11-03, mondo: "give them the same treatment"): a Mantaflow smoke puff (16 frames, lit
            side baked to white so the kind's own colour tints it) and a Mantaflow flame flicker (16 frames, additive) */
         /* ?r=N: these URLs carry no ?v= token, so bump r whenever a sheet is re-baked (players + the edge cache keep the old one) */
-        'fb-smoke': { url: _R2 + 'vfx/fb_smoke.png?r=2', cols: 4, frames: 16, cell: 128, blend: 'nrm' },
-        'fb-ember': { url: _R2 + 'vfx/fb_ember.png?r=2', cols: 4, frames: 16, cell: 64, blend: 'add' }
+        'fb-smoke': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_smoke.png?r=2', cols: 4, frames: 16, cell: 128, blend: 'nrm' },
+        'fb-ember': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_ember.png?r=2', cols: 4, frames: 16, cell: 64, blend: 'add' }
     };
     /* THE SHARED KINDS: every spawn of these old painted kinds (smoke ~130 uses, dust-puff ~220, ember ~170, game-wide)
        plays the Blender sheet instead once it is cut, in a plain sprite-pool particle (not a world decal / quad).
