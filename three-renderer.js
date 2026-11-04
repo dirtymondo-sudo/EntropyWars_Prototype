@@ -56338,7 +56338,23 @@ const ThreeRenderer = (function () {
            out; when under 5% of a mesh would be left (scraps at the coat's edges) all of it is
            out of the drawn index (`w.ix0` keeps the full one): the coat hides it anyway, and none of it can show through. A part of
            it past the coat's hems / cuffs / opening stays. */
-        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035, openReach: 0.03, openOut: 0.004, rest: 0.05 };
+        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035, openReach: 0.03, openOut: 0.004, rest: 0.05, seeReach: 0.09, seeOff: 0.002, standOut: 0.008 };
+        /* THE LAYERS 1 2 3 (2026-11-04): how many of a point's lines hit a cast (coverGrid): its outward normal + 4 lines tilted `tilt`
+           off it (each side, both ways round). Out of an open front all of them get out; under a garment whose mesh has a crack (two
+           pieces sewn edge to edge but not welded: a pack sweater's sleeve seam) only the normal one slips through the crack. */
+        var LINE_TILT = { tilt: 0.55, hitsCrack: 3 };
+        function lineHits(cast, x, y, z, nx, ny, nz, lo, hi) {
+            var n = 0, ax = Math.abs(nx) < 0.9 ? 1 : 0, ay = ax ? 0 : 1;   // (a tangent pair off any axis the normal is not)
+            var t1x = ny * 0 - nz * ay, t1y = nz * ax - nx * 0, t1z = nx * ay - ny * ax, l1 = Math.sqrt(t1x * t1x + t1y * t1y + t1z * t1z) || 1;
+            t1x /= l1; t1y /= l1; t1z /= l1;
+            var t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x, c = Math.cos(LINE_TILT.tilt), sn = Math.sin(LINE_TILT.tilt);
+            if (cast(x, y, z, nx, ny, nz, lo, hi) < Infinity) n++;
+            [[t1x, t1y, t1z], [-t1x, -t1y, -t1z], [t2x, t2y, t2z], [-t2x, -t2y, -t2z]].forEach(function (t) {
+                var dx = nx * c + t[0] * sn, dy = ny * c + t[1] * sn, dz = nz * c + t[2] * sn;
+                if (cast(x, y, z, dx, dy, dz, lo, hi) < Infinity) n++;
+            });
+            return n;
+        }
         function wearUnderOuter2(part) {
             var top = (part.wear || []).filter(function (w) { return w.layer === 'outer2' && w.mesh; })[0];
             var lows = (part.wear || []).filter(function (w) { return w !== top && w.mesh && !w.facial && w.layer !== 'cape' && (w.outer || WEAR_LAYER.cats[w.cat]); });
@@ -56351,9 +56367,9 @@ const ThreeRenderer = (function () {
             var eachMesh = function (w, test) {
                 [w.mesh].concat(w.accents || []).forEach(function (mh) {
                     var g = mh.geometry; if (!g.index || !g.attributes.position) return;
-                    var A = g.attributes.position.array, n = A.length / 3, nb = mh === w.mesh ? w.nb : null, cov = new Uint8Array(n), any = false;
+                    var A = g.attributes.position.array, n = A.length / 3, nb = mh === w.mesh ? w.nb : null, cov = new Uint8Array(n), any = false, NA = g.attributes.normal ? g.attributes.normal.array : null;
                     if (!nb || nb.length !== n) { try { nb = nearestBody(part, A); } catch (e) { nb = null; } }
-                    for (var v1 = 0; v1 < n; v1++) if (test(A, v1, nb)) { cov[v1] = 1; any = true; }
+                    for (var v1 = 0; v1 < n; v1++) if (test(A, v1, nb, NA)) { cov[v1] = 1; any = true; }
                     if (!any) return;
                     if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
                     var I = mh._ewIx0, keep = [];   // every triangle with its 3 vertices covered leaves the drawn index (`_ewIx0` keeps the full one)
@@ -56393,8 +56409,12 @@ const ThreeRenderer = (function () {
                     var l3 = oGrid.get(gk(cx + a, cy + b, cz + c)); if (!l3) continue;
                     for (var q = 0; q < l3.length; q++) { var u = l3[q], dx = UA[u * 3] - x, dy = UA[u * 3 + 1] - y, dz = UA[u * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = u; } }
                 }
-                return best >= 0 && (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2] > -oOut;
+                if (best < 0) return false;
+                var so = (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2];
+                if (so > -oOut) { uS = Math.max(uS, so); return true; }
+                return false;
             };
+            var uS = -Infinity;   // (THE LAYERS 1 2 3: how far in front of the coat the point that decided stands)
             var under = function (x, y, z) {
                 var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
@@ -56403,11 +56423,30 @@ const ThreeRenderer = (function () {
                 }
                 if (best < 0) return pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 0;
                 var s = (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2], lat = Math.max(OUTER2_HIDE.lat * Hm, Math.min(0.75 * USp.sp[best], OUTER2_HIDE.latMax * Hm));
-                return bd - s * s <= lat * lat || pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 1;
+                if (bd - s * s <= lat * lat) { uS = Math.max(uS, s); return 2; }
+                return pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 1;
             };
             var skin = wearMask(part, function (w) { return w === top; });   // (the skin the coat hides: a gi's wide sleeve stood 2 cm out of the leather coat's sleeve, off to its side)
+            /* THE LAYERS 1 2 3 (2026-11-04): a point of the garment under it that looks OUT through the coat's opening - its outward line
+               and its tilted lines all miss the coat (lineHits 0) - is part of what the open front shows: it stays, unless it stands
+               clearly in front of the coat there (standOut: a duster's lapel 5 cm out through a police coat's front). The rules above
+               cut a hoodie / sweater under an OPEN long coat full of holes down the chest (the open edges are within 3 cm of all of it). */
+            var castTop = coverGrid([top], SKIN_COVER.cell, null), seeOff = OUTER2_HIDE.seeOff * Hm, seeReach = OUTER2_HIDE.seeReach * Hm, standOut = OUTER2_HIDE.standOut * Hm;
+            var seen = function (A, v3, nb, NA) {
+                if (!castTop || !NA || !nb || nb[v3] == null || nb[v3] < 0) return false;
+                var o = nb[v3] * 3, nx = NA[v3 * 3], ny = NA[v3 * 3 + 1], nz = NA[v3 * 3 + 2];
+                var rx = A[v3 * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v3 * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v3 * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
+                if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+                var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) return false;
+                return lineHits(castTop, A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2], nx / nl, ny / nl, nz / nl, seeOff, seeReach) === 0;
+            };
             lows.forEach(function (w) {
-                eachMesh(w, function (A, v3, nb) { var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]); return k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]); });
+                eachMesh(w, function (A, v3, nb, NA) {
+                    uS = -Infinity;
+                    var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]), hid = k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]);
+                    if (hid && !(uS > standOut) && seen(A, v3, nb, NA)) hid = false;
+                    return hid;
+                });
             });
         }
         /* THE CLOTHES UNDER THE CLOTHES (2026-11-02, mondo: "these clothes are still clipping ... Holes around the shoulders, armpits,
@@ -56435,15 +56474,23 @@ const ThreeRenderer = (function () {
                    line only the trousers + belt stop hiding it: under a coat it is still hidden (the sleeves came through the coat) */
                 var wbUps = ups.filter(function (u) { return TUCK.cats[u.cat]; }), WB = wbUps.length ? waistband(part, wbUps) : null, keep = TUCK.keep * Hm;
                 var oUps = WB ? ups.filter(function (u) { return !TUCK.cats[u.cat] && u.layer !== 'belt'; }) : null, castO = oUps && oUps.length ? coverGrid(oUps, SKIN_COVER.cell, null) : null;
+                /* THE LAYERS 1 2 3 (2026-11-04): the skin the garments over it hide whole (their delete lists): a point of this garment
+                   sitting on that skin is under them even where none of its lines meets them (the armpit + shoulder seam of a Blender
+                   shirt under a pack sweater: no line hit, and each such point grew a 2-ring hole of shirt through the sweater) */
+                var delUp = wearMask(part, function (u) { return ups.indexOf(u) >= 0; }), delO = WB ? (oUps && oUps.length ? wearMask(part, function (u) { return oUps.indexOf(u) >= 0; }) : null) : delUp;
                 for (var v = 0; v < n; v++) {
                     if (A[v * 3 + 1] < yHip) continue;
-                    var cv = cast;
-                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) { if (!castO) continue; cv = castO; }
+                    var cv = cast, dm = delUp;
+                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) { if (!castO) continue; cv = castO; dm = delO; }
                     var o = lo.nb[v] * 3, nx = Nn[v * 3], ny = Nn[v * 3 + 1], nz = Nn[v * 3 + 2];
                     var rx = A[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
                     if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
                     var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) continue;
                     if (cv(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
+                    /* THE LAYERS 1 2 3 (2026-11-04): its normal line got out, but through a CRACK (a pack sweater's unwelded sleeve seam):
+                       its tilted lines hit the garment over it. Left out, each such point grew a hole of two rings (the erosion below) and
+                       the collared shirt showed in blue specks along the sweater's sleeve seams + armpits. */
+                    else if ((dm && dm[lo.nb[v]]) || lineHits(cv, A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) >= LINE_TILT.hitsCrack) { cov[v] = 1; any = true; }
                 }
                 /* eroded by SKIN_COVER.erode rings (welded by position): seen at an angle the upper garment's edge (a lapel, the coat's
                    opening) does not reach as far as its normal line, and the shirt's teeth showed beside the lapels */
@@ -57282,7 +57329,7 @@ const ThreeRenderer = (function () {
         }
         function setWear(part, a) {
             if (!part.stock && !part.fit) {   // (a classic base: through THE CLASSIC FIT, once it has loaded - at once when it is cached)
-                var anyW = (a.wear || []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
+                var anyW = (a.wear || []).concat(a.wear2 && a.wear2 !== 'none' ? [a.wear2] : []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
                     var f = k === 'cape' ? (typeof getCapeMeshUrl === 'function' && getCapeMeshUrl) : k === 'feet' ? (typeof getFeetMeshUrl === 'function' && getFeetMeshUrl) : (typeof getOuterMeshUrl === 'function' && getOuterMeshUrl);
                     return f && a[k] && f(a[k]);
                 });
@@ -57294,7 +57341,10 @@ const ThreeRenderer = (function () {
             var mo2 = typeof getOuterMeshUrl === 'function' && a.outer2 ? getOuterMeshUrl(a.outer2, a.outer2Front) : null;   // THE SECOND OUTER LAYER (a Blender pick)
             var mc = typeof getCapeMeshUrl === 'function' ? getCapeMeshUrl(a.cape) : null;   // THE BLENDER CAPES
             var mf = typeof getFeetMeshUrl === 'function' ? getFeetMeshUrl(a.feet) : null;   // THE BLENDER SHOES
-            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mo2 ? '|@2' + mo2 : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '');
+            /* THE LAYERS 1 2 3 (2026-11-04): a second top (appearance.wear2, creator LAYER 2) - a pack / Blender Tops piece worn over the
+               Layer 1 top(s) in a.wear and under every coat */
+            var w2 = a.wear2 && a.wear2 !== 'none' && ids.indexOf(a.wear2) < 0 && typeof getWearUrl === 'function' ? a.wear2 : null, mw2 = w2 ? getWearUrl(w2) : null;
+            var key = ids.join('|') + (mw2 ? '|~' + w2 : '') + (mo ? '|@' + mo : '') + (mo2 ? '|@2' + mo2 : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '');
             if (part.wearKey === key) return;
             part.wearKey = key;
             var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
@@ -57302,6 +57352,20 @@ const ThreeRenderer = (function () {
                 if (!alive || part.wearTok !== tok) return;
                 dropWear(part);
                 ids.forEach(function (id) { if (got[id]) { var w = buildWear(part, got[id], id); if (w) part.wear.push(w); } });
+                /* THE LAYERS 1 2 3: the Layer 2 top goes over every Layer 1 top in THE LAYERS (z: 3 over the highest of them, under the
+                   Blender coats' 70), so they fold in under it and THE CLOTHES UNDER THE CLOTHES hides them where it covers them; a
+                   Blender one is painted by the top2 keys (the top2 shell's tile, paintMeshOuter) instead of the Layer 1 top's */
+                if (mw2 && got['~' + w2]) {
+                    var ww2 = buildWear(part, got['~' + w2], w2);
+                    if (ww2) {
+                        var z1 = 0; part.wear.forEach(function (w) { if (w.cat === 'tops') z1 = Math.max(z1, w.z); });
+                        ww2.z = Math.min(69, Math.max(ww2.z, z1 + 3)); ww2.wear2 = true;
+                        if (ww2.layer === 'top') { ww2.layer = 'top2'; part.fabricUrl.top2 = null; setFabric(part, 'top2', state.last || a); }
+                        [ww2.mesh].concat(ww2.accents || []).forEach(function (mh) { mh.renderOrder = 1 + ww2.z / 100; });
+                        part.wear.push(ww2);
+                        if (ww2.layer === 'top2') paintMeshOuter(part, state.last || a);
+                    }
+                }
                 if (mo && got['@outer']) { var wo = buildWear(part, got['@outer'], 'outer_' + a.outer); if (wo) { part.wear.push(wo); paintMeshOuter(part, state.last || a); } }
                 /* THE SECOND OUTER LAYER (2026-11-01): a Blender pick worn over the first outer - painted by the outer2 keys (its tile on
                    the coded outer2 shell's material, like the outer's), and over every other garment but a cape in THE LAYERS (z):
@@ -57337,6 +57401,7 @@ const ThreeRenderer = (function () {
                 if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the new clothes follow the soft spots
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
+            if (mw2) pending++;
             if (mo) pending++;
             if (mo2) pending++;
             if (mc) pending++;
@@ -57345,6 +57410,7 @@ const ThreeRenderer = (function () {
             ids.forEach(function (id) {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
             });
+            if (mw2) _ccLoadWear(mw2, function (root) { got['~' + w2] = root; if (--pending === 0) apply(); });
             if (mo) _ccLoadWear(mo, function (root) { got['@outer'] = root; if (--pending === 0) apply(); });
             if (mo2) _ccLoadWear(mo2, function (root) { got['@outer2'] = root; if (--pending === 0) apply(); });
             if (mc) _ccLoadWear(mc, function (root) { got['@cape'] = root; if (--pending === 0) apply(); });

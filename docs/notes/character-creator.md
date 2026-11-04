@@ -1467,3 +1467,39 @@ already in project files mhpacks/ carried two cat-ear TARGETS nobody had baked:
   OUTFIT > HEAD > EARS: both picks, both sliders, Elf ears swapping them off): /mnt/project-files/cat-ears/cat_ears_in_creator.jpg.
 - Known: a long / big hair style can still cover the ears (its cards hang there).
   Proof (mesh render, front / 3/4 / side): /mnt/project-files/cat-ears/. More ears (bunny, canine, dropped) = one ANIMAL_SHAPES row each.
+
+## THE LAYERS 1 2 3 (2026-11-04, character-models-plan row 12r)
+mondo: "there really needs to be some sort of layer system in the character creator. Like layer 1, 2, and 3. I dont like how i can only
+add an outer layer of coats". Before this the torso had a Tops kind (one shirt), a Coats + jackets kind (the Outer layer, a hidden
+＋ ADD LAYER for the second outer, More coats) and nothing for a shirt over a shirt.
+- **The UI** (party-builder.js ccTorsoLayers): OUTFIT > TORSO opens on LAYERS 1 · 2 · 3 (sprites.js EW_WEAR_GROUPS row 'layers'; the
+  'tops' + 'coats' rows are gone, their pieces keep those groups and show inside the layers). Three tabs side by side, each with its
+  number, what it is for and what it holds now ("Nothing" in italics), then one line on the layer + ✕ TAKE LAYER n OFF:
+  - LAYER 1 · Shirt / top = the Tops shelf pick (pack + Blender), its Top fabric rows (a Blender one) and tints.
+  - LAYER 2 · Shirt, vest or jacket = one of: a second shirt / top over Layer 1 (`appearance.wear2`, the Layer 1 piece not offered
+    again), any Outer pick (`outer`, kinds Vests + jackets first: EW_OUTER_GROUPS split 'Coats + jackets' into 'Vests + jackets' and
+    'Coats', display only), or a pack coat ('coats' group). A pick takes the other two off. A Blender wear2 shirt has "Layer 2 shirt
+    fabric" + print + colour (the top2Fabric / top2Color / top2Pattern / top2Color2 keys of the retired coded second top; top2Color
+    default now slate #5e6f80), a pack one its own tint row.
+  - LAYER 3 · Coat = the second outer layer (`outer2`), Coats listed first.
+  - Text wraps in the tabs (overflow-wrap), never cut; grid of 3 at any width. Layer tab kept while the page lives (_pbCcLayer).
+- **The data** (sprites.js): `wear2` = a Tops piece id (wearPickKindOf 'tops') not in `wear`, else 'none' (normalizeWear2);
+  wearTint / wearFabric keep it; getCharacterAppearanceAssets warms it; TAKE ALL OFF clears it. Every old look loads unchanged
+  (Layer 1 = its top, Layer 2 = its outer, Layer 3 = its second outer). Online: nothing to relay, the look travels whole.
+- **The renderer** (three-renderer.js setWear): wear2 loads with the pack clothes; built after them with z = min(69, max(own z,
+  highest Layer 1 top z + 3)) so THE LAYERS fold every Layer 1 top in under it and it stays under the Blender coats (70) and the second
+  outer (200); a Blender one paints through the top2 shell (layer 'top2', paintMeshOuter / setFabric).
+- **The clipping found + fixed** (browser, MPFB male + female, posed idle + bind, 4 views each):
+  - Collared shirt (Blender) under a pack knitted sweater: blue specks along the sweater's sleeve seams + armpits. Cause: shirt points
+    there whose lines meet no sweater triangle grew 2-ring holes (the erosion in wearUnderCover). Now a point also counts as covered
+    when it sits on skin the garments over it delete (their del lists, `delUp`; inside a waistband only the non-trouser ones) or when
+    3+ of its 4 tilted lines (`lineHits`, LINE_TILT 0.55 rad) hit them (a crack between unwelded pieces).
+  - Hoodie / sweater under an OPEN Blender long coat (the old second outer too): the chest cut full of holes, skin showing. Cause:
+    wearUnderOuter2's opening rule (within 3 cm of an open edge and not 4 mm behind it) + the side rule caught everything in the
+    opening. Now a point whose outward line and tilted lines all miss the coat (it looks out through the opening) stays, unless it
+    stands more than 8 mm in front of the coat (OUTER2_HIDE.standOut: a duster's lapel through a police coat still goes).
+  - Rechecked: shirt + waistcoat + open duster, henley + duster + police uniform, henley + jacket + closed greatcoat, collared shirt +
+    open duster (no teeth at the lapels), tank + hoodie + long coat, tee + untucked shirt; female camisole + cardigan + trench,
+    camisole + lace-up blouse + long coat.
+- Known, not from the layers: an untucked Blender shirt shows a dark patch of the pack jeans' seat at the back (same when worn alone).
+- Shots: /mnt/project-files/creator-layers/.
