@@ -21,6 +21,99 @@ function _ewCorsBust(u) {
 }
 window._ewCorsBust = _ewCorsBust;
 
+/* ── THE ASSET PATH MAP (docs/notes/r2-layout-plan.md, mondo 2026-11-04: "sounds like a good plan, go ahead") ──────────
+   The R2 folders move in waves (Assets/Sprites/Races/ → Assets/characters/races/, Assets/music/ → Assets/audio/music/, ...).
+   EW_ASSET_MOVES is the ONE table of what moved: [old bucket prefix, new bucket prefix], longest prefix wins. Each wave's flip
+   PR adds its rows here (the same rows as r2-layout.json, which the copy tool reads) and also rewrites the literal paths in
+   the code + CSS, so the code reads the new folders. This file loads first, so everything after it can use:
+     ewAsset(url)      a cdn.entropywars.net URL (or a bare 'Assets/...' key) → its moved URL / key; anything else unchanged.
+     ewAssetKey(key)   a bucket key → its moved key (ASSET_MANIFEST lookups).
+   THE SAFETY NET: every URL the page asks for goes through ewAsset at the browser's own doors — fetch, XHR, an <img>/<audio>/
+   <video>/<source> src (property or setAttribute) — so a path a flip PR missed, one in a save file (editor rooms, UI Maker,
+   creator looks) or one in another thread's in-flight PR still finds its file. CSS url() and inline style backgrounds can't
+   be caught here: flip PRs edit those literally. Old keys stay on R2 until mondo has checked the wave.
+   window.EW_ASSET_MOVE_HITS counts the URLs the net rewrote, per old prefix (and EW_ASSET_MOVE_LOG keeps the first 200) —
+   after a flip, anything listed there is a literal still to update. Kill-switch: ?ew_no_asset_moves=1 or
+   window.EW_NO_ASSET_MOVES = true before load (then every URL is exactly as written; only useful while old keys exist). */
+const EW_CDN = 'https://cdn.entropywars.net/';
+const EW_ASSET_MOVES = [
+  // ['Assets/<old>/', 'Assets/<new>/'],   (filled by each wave's flip PR)
+];
+const _ewMoves = (function () {
+  const rows = EW_ASSET_MOVES.slice().sort((a, b) => b[0].length - a[0].length);
+  let off = false;
+  try { off = !!window.EW_NO_ASSET_MOVES || /[?&]ew_no_asset_moves=1/.test(location.search); } catch (e) {}
+  return off ? [] : rows;
+})();
+const _ewMoveMemo = new Map();
+function ewAssetKey(key) {
+  if (!_ewMoves.length || typeof key !== 'string') return key;
+  for (let i = 0; i < _ewMoves.length; i++) if (key.startsWith(_ewMoves[i][0])) return _ewMoves[i][1] + key.slice(_ewMoves[i][0].length);
+  return key;
+}
+function ewAsset(u) {
+  if (!_ewMoves.length || typeof u !== 'string') return u;
+  const bare = u.startsWith('Assets/');
+  if (!bare && !u.startsWith(EW_CDN)) return u;
+  const hit = _ewMoveMemo.get(u);
+  if (hit !== undefined) return hit;
+  const body = bare ? u : u.slice(EW_CDN.length);
+  const q = body.search(/[?#]/), p = q >= 0 ? body.slice(0, q) : body, tail = q >= 0 ? body.slice(q) : '';
+  let dp = p; try { dp = decodeURIComponent(p); } catch (e) {}
+  const nk = ewAssetKey(dp);
+  let out = u;
+  if (nk !== dp) {
+    const enc = nk.split('/').map(encodeURIComponent).join('/');
+    out = (bare ? '' : EW_CDN) + enc + tail;
+    try {
+      const row = _ewMoves.find(r => dp.startsWith(r[0]))[0];
+      const H = window.EW_ASSET_MOVE_HITS || (window.EW_ASSET_MOVE_HITS = {}); H[row] = (H[row] || 0) + 1;
+      const L = window.EW_ASSET_MOVE_LOG || (window.EW_ASSET_MOVE_LOG = []); if (L.length < 200) L.push(u);
+    } catch (e) {}
+  }
+  if (_ewMoveMemo.size > 20000) _ewMoveMemo.clear();
+  _ewMoveMemo.set(u, out);
+  return out;
+}
+window.ewAsset = ewAsset;
+window.ewAssetKey = ewAssetKey;
+(function _ewAssetNet() {
+  if (!_ewMoves.length || typeof window === 'undefined') return;   // nothing moved: the browser's doors stay untouched
+  try {
+    if (typeof window.fetch === 'function') {
+      const f0 = window.fetch;
+      window.fetch = function (input, init) {
+        if (typeof input === 'string') input = ewAsset(input);
+        else if (input && typeof input.url === 'string' && typeof Request === 'function' && input instanceof Request) {
+          const nu = ewAsset(input.url); if (nu !== input.url) input = new Request(nu, input);
+        }
+        return f0.call(this, input, init);
+      };
+    }
+  } catch (e) {}
+  try {
+    const o0 = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (m, url) { const a = Array.prototype.slice.call(arguments); a[1] = ewAsset(String(url)); return o0.apply(this, a); };
+  } catch (e) {}
+  const wrapSrc = (C, prop) => {
+    try {
+      const d = C && Object.getOwnPropertyDescriptor(C.prototype, prop);
+      if (!d || !d.set) return;
+      Object.defineProperty(C.prototype, prop, Object.assign({}, d, { set: function (v) { return d.set.call(this, typeof v === 'string' ? ewAsset(v) : v); } }));
+    } catch (e) {}
+  };
+  wrapSrc(window.HTMLImageElement, 'src');
+  wrapSrc(window.HTMLMediaElement, 'src');
+  wrapSrc(window.HTMLSourceElement, 'src');
+  try {
+    const s0 = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (n, v) {
+      if (typeof v === 'string' && (n === 'src' || n === 'href' || n === 'xlink:href') && v.indexOf('cdn.entropywars.net') !== -1) v = ewAsset(v);
+      return s0.call(this, n, v);
+    };
+  } catch (e) {}
+})();
+
 const RACE_PATH_RULES = {
   'werewolf':   { folder: 'Werewolf',   capGender: false },
   'giant':      { folder: 'Giant',      capGender: false },
