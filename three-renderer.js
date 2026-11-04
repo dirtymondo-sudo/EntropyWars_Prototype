@@ -3153,6 +3153,7 @@ const ThreeRenderer = (function () {
     var _castTweens = new Map();
 
     var _flashTweens = new Map();
+    var _hitBlinks = new Map();   // THE HIT BLINK (2026-11-04): unit id -> { t0, hold, steps, amp, saved } on the REAL clock
 
     var _wiggleTweens = new Map();
 
@@ -3210,8 +3211,12 @@ const ThreeRenderer = (function () {
         // A stronger (slower) warp already running keeps the stage — a weaker
         // request during a freeze is dropped rather than cutting it short.
         if (real < _warpEndsAt && scale > _warpScale) return;
-        _warpScale = Math.max(0, Math.min(1, Number(scale) || 1));
-        _warpEndsAt = real + Math.max(0, Number(durationMs) || 0);
+        var sc = Number(scale), end = real + Math.max(0, Number(durationMs) || 0);
+        sc = Math.max(0, Math.min(1, isFinite(sc) ? sc : 1));   // 0 is a real value now (the true hit stop), never "1"
+        // the same warp asked again (the host's freeze + its juice call, back-to-back hits) never cuts the running one short
+        if (real < _warpEndsAt && sc === _warpScale) end = Math.max(end, _warpEndsAt);
+        _warpScale = sc;
+        _warpEndsAt = end;
     }
     function _resetTimeWarp() {
         _warpScale = 1;
@@ -31328,6 +31333,102 @@ const ThreeRenderer = (function () {
         return null;
     }
 
+    /* ── THE HIT BLINK (2026-11-04, mondo: "like pokemon or fire emblem where they flash all white a couple times" +
+       "im talking about the 3d models, i cant even tell if there is hit stop") ──────────────────────────────────────────
+       The victim goes SOLID white for the whole impact freeze, shaking in place, then blinks white twice more as time
+       resumes. It runs on the REAL clock (performance.now), never _animNow, because the freeze stops _animNow — the old
+       colour flash rode the frozen clock, so a unit was never white during its own hit stop. White = the material's
+       emissive pushed far past 1 (the emissive map × a big intensity, or plain white emissive on an untextured
+       material): every lit pixel clips to white on both renderers, with no shader or program change. Called by
+       three-vfx-effects.js juiceHit (battle.js's damage path; relayed to the guest by online.js vfx3d-x).
+       Tune live: EW_JUICE.blinkOn / blinkOff (ms) / blinks (extra blinks after the hold) / blinkShake (world units). */
+    var _HIT_BLINK_WHITE = 60;   // the emissive intensity that clips a textured body to white
+    function _hitBlinkCfg(k, d) {
+        var J = (typeof window !== 'undefined') ? window.EW_JUICE : null;
+        var v = J ? Number(J[k]) : NaN;
+        return isFinite(v) && v >= 0 ? v : d;
+    }
+    function hitBlink(unitId, holdMs, opts) {
+        if (unitId == null || _ewAnimsOff()) return;
+        opts = opts || {};
+        var w = Math.max(0, Math.min(3, Number(opts.weight) || 0));
+        var on = _hitBlinkCfg('blinkOn', 60), off = _hitBlinkCfg('blinkOff', 70);
+        var n = Math.round(_hitBlinkCfg('blinks', 2)) + (opts.kill ? 1 : 0);
+        var hold = Math.max(on, Number(holdMs) || 0);
+        // the timeline after the hold: off, on, off, on … (ms, from the hold's end)
+        var steps = [];
+        for (var i = 0; i < n; i++) { steps.push(off); steps.push(on); }
+        var prev = _hitBlinks.get(unitId);
+        if (prev) _hitBlinkRestore(prev);   // a second hit on the same body restarts the blink cleanly
+        _hitBlinks.set(unitId, {
+            t0: performance.now(), hold: hold, steps: steps,
+            amp: _hitBlinkCfg('blinkShake', 5) * (1 + w * 0.35) * (opts.kill ? 1.3 : 1),
+            saved: null, node: null
+        });
+    }
+    /* white on / off for one body's materials; the untextured ones keep their own emissive to put back */
+    function _hitBlinkWhite(b, mats, white) {
+        if (white) {
+            if (!b.saved) {
+                b.saved = [];
+                for (var i = 0; i < mats.length; i++) {
+                    var m = mats[i];
+                    if (!m || !m.emissive) { b.saved.push(null); continue; }
+                    b.saved.push({ m: m, map: !!m.emissiveMap, e: m.emissive.getHex(), ei: m.emissiveIntensity });
+                }
+            }
+            for (var j = 0; j < b.saved.length; j++) {
+                var r = b.saved[j]; if (!r) continue;
+                if (r.map) r.m.emissiveIntensity = _HIT_BLINK_WHITE;
+                else { r.m.emissive.setRGB(1, 1, 1); r.m.emissiveIntensity = 1.6; }
+            }
+        } else if (b.saved) {
+            _hitBlinkRestore(b);
+        }
+    }
+    function _hitBlinkRestore(b) {
+        if (!b) return;
+        if (b.saved) {
+            for (var i = 0; i < b.saved.length; i++) {
+                var r = b.saved[i]; if (!r) continue;
+                // a textured material's intensity is the self glow's — it rewrites it next frame; put the last value back anyway
+                r.m.emissive.setHex(r.e); r.m.emissiveIntensity = r.ei;
+            }
+            b.saved = null;
+        }
+        if (b.node) { b.node.position.x = 0; b.node = null; }
+    }
+    function _updateHitBlinks() {
+        if (!_hitBlinks.size) return;
+        var now = performance.now(), done = [];
+        _hitBlinks.forEach(function (b, uid) {
+            var ft = _flashTargets(_getUnitEntry(uid));
+            var el = now - b.t0;
+            if (!ft) { done.push(uid); return; }
+            // the body was rebuilt under the blink (a model swap): drop the old saved set
+            if (b.saved && b.saved.length && b.saved[0] && ft.mats.indexOf(b.saved[0].m) < 0) { b.saved = null; }
+            var white = false, end = b.hold;
+            if (el < b.hold) {
+                white = true;
+                // the hit-lag shake: the body jitters side to side while the world is frozen, easing out
+                var k = 1 - (el / b.hold) * 0.6;
+                ft.node.position.x = ((Math.floor(el / 32) % 2) ? -1 : 1) * b.amp * k;
+                b.node = ft.node;
+            } else {
+                if (b.node) { b.node.position.x = 0; b.node = null; }
+                var t = el - b.hold;
+                for (var i = 0; i < b.steps.length; i++) {
+                    end += b.steps[i];
+                    if (t < b.steps[i]) { white = (i % 2) === 1; break; }
+                    t -= b.steps[i];
+                }
+            }
+            if (el >= end) { _hitBlinkRestore(b); done.push(uid); return; }
+            _hitBlinkWhite(b, ft.mats, white);
+        });
+        for (var d = 0; d < done.length; d++) _hitBlinks.delete(done[d]);
+    }
+
     function _updateFlashTweens() {
         var now = _animNow();
         var toRemove = [];
@@ -31363,6 +31464,9 @@ const ThreeRenderer = (function () {
                 // UNIT_MODEL_DIFFUSE) — flash around that base, not 1, so
                 // the tween's endpoints don't pop the model brighter.
                 var _fsc = ft.model ? _modelDiffuseScale() : 1;
+                // THE HIT BLINK owns a white hit: its off beats show the plain body (crisp blinks, no grey brighten between)
+                if (_hitBlinks.has(uid) && tw.kind !== 'heal' && tw.kind !== 'block' && tw.kind !== 'burn' && tw.kind !== 'drowning'
+                    && tw.kind !== 'poison' && tw.kind !== 'paralysis') { fr = 1; fg = 1; fb = 1; }
                 for (var mi = 0; mi < ft.mats.length; mi++) ft.mats[mi].color.setRGB(fr * _fsc, fg * _fsc, fb * _fsc);
 
                 // No impact shake on heals (nothing hit) or blocks (the whole
@@ -31756,6 +31860,7 @@ const ThreeRenderer = (function () {
         _updateUnitModels();
         _updateUnitSelfGlow();
         _updateDecoyEntries();
+        _updateHitBlinks();   // THE HIT BLINK: after the self glow, so its white wins this frame
     }
 
     function _clearAnimations() {
@@ -31772,6 +31877,8 @@ const ThreeRenderer = (function () {
         _dodgeTweens.clear();
         _castTweens.clear();
         _flashTweens.clear();
+        _hitBlinks.forEach(function (b, uid) { _hitBlinkRestore(b); });
+        _hitBlinks.clear();
         _strikeTweens.clear();
         _clipTravelTweens.clear();
         _prevAttackIds.clear();
@@ -85985,6 +86092,7 @@ const ThreeRenderer = (function () {
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
         setTimeWarp,
+        hitBlink,
         /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's
            cast / attack chain would play at which the hit lands; -1 = no
            rigged library clip (sprite, Meshy fallback, unknown kind). */
@@ -86565,7 +86673,13 @@ window.ThreeAnim = {
 
     // Impact frame: near-freeze all combat animation for a real-time beat.
     hitstop: function(durationMs) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.setTimeWarp(0.05, durationMs);
+        // a TRUE stop (was 0.05 — a crawl nobody could see; mondo 11-04 "i cant even tell if there is hit stop")
+        if (ThreeRenderer.isActive()) ThreeRenderer.setTimeWarp(0, durationMs);
+    },
+
+    // THE HIT BLINK: solid white for the freeze, then white blinks (real clock; see hitBlink in the renderer)
+    hitBlink: function(unitId, holdMs, opts) {
+        if (ThreeRenderer.isActive() && ThreeRenderer.hitBlink) ThreeRenderer.hitBlink(unitId, holdMs, opts);
     },
 
     // Death slow-mo etc: run combat animation at `scale` speed for `durationMs`.

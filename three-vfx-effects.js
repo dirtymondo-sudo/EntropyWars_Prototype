@@ -62947,6 +62947,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ═════════ END THE FLIPBOOK PILOT ═════════ */
 
 
+    /* ── THE JUICE HIT (2026-11-04, SPELL_DIRECTOR_PLAN Phase 7's missing half; mondo: "make the hit stops impactful, add
+       drama, and enhance the tactile feel of attacks") ── battle.js calls it on every non-DoT hit, on contact, with the
+       hit's weight (0 light · 1 standard · 2 heavy · 3 ultimate), the freeze it picked (ms), the kill flag and the
+       victim's id. It is ONE call for the whole impact on any screen:
+         · the freeze — ThreeAnim.hitstop (the host's damage path froze already; same freeze asked twice is one freeze).
+           This is how Player 2 gets the SAME stop: online.js relays this call (vfx3d-x, fog-gated on the victim's tile).
+         · the victim blinks solid white for the freeze, shaking in place, then twice more (ThreeAnim.hitBlink).
+         · the screen kick as time resumes, by weight (the shake language: light · normal · heavy · hard; a kill one up).
+       Looks only — no rule reads any of it. Off: window.EW_DISABLE_JUICE (battle.js never calls it then). */
+    function juiceHit(tx, ty, w, hsMs, kill, unitId) {
+        if (_VS.on) return;
+        var A = (typeof window !== 'undefined') ? window.ThreeAnim : null;
+        if (!A || !A.isActive || !A.isActive()) return;
+        w = Math.max(0, Math.min(3, Math.round(Number(w) || 0)));
+        var hs = Math.max(0, Number(hsMs) || 0);
+        if (hs > 0 && A.hitstop) A.hitstop(hs);
+        // the host's own fog: a hit it cannot see gets no blink / kick (the freeze stays — the board's one clock)
+        try {
+            var st = window._gameState;
+            if (st && st.fogOfWar && typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(tx, ty)) return;
+        } catch (e) {}
+        if (unitId == null) {
+            try {
+                var us = (window._gameState && window._gameState.units) || [];
+                for (var i = 0; i < us.length; i++) if (us[i] && us[i].x === tx && us[i].y === ty && !us[i].dead) { unitId = us[i].id; break; }
+            } catch (e) {}
+        }
+        if (unitId != null && A.hitBlink) A.hitBlink(unitId, hs, { weight: w, kill: !!kill });
+        var kind = kill ? (w >= 2 ? 'hard' : 'heavy') : (['light', 'light', 'normal', 'heavy'][w] || 'light');
+        _fxDelay(function () { _shake(kind); }, hs);
+    }
+
     return {
 
         warmNextSheet: _warmNextSheet,   // THE SHEET WARM: ThreeRenderer makes + uploads the cached spell sheets ahead of the first cast
@@ -63048,6 +63080,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireLevelUp: fireLevelUp,
         fireDeath: fireDeath,
         fireBlood: fireBlood,
+        juiceHit: juiceHit,   // THE JUICE HIT (battle.js applyDamageToUnit; relayed vfx3d-x)
         fireBloodLand: fireBloodLand,
         fireDash: fireDash,
         fireTeleportLegacy: fireTeleportLegacy,
