@@ -36,11 +36,11 @@ just upload stuff and then you reorganize it whereever it needs to go."
 | Kind | Home | How |
 |---|---|---|
 | Game code he edited (`*.js`, `*.css`, `index.html` with repo names) | the repo file IN PLACE | diff vs origin/main first (other threads changed it since); merge by hand keeping both. Never a new game .js. PR, merge, bump `?v=`, `node sync-zip.js --upload`. |
-| Rigged character / race model (`_Character_output.glb`, `_withSkin`) | R2 `ewmusicsfx` `Assets/Sprites/<race folder>/` (the folder sprites.js already uses) | `node sync-zip.js --put`; wire per CLAUDE.md "Wiring up a 3D character" only if he asked. |
-| Prop / decor / building / vehicle / animal / weapon model | R2 `ewmusicsfx` `Assets/<the folder that kind already lives in>/` (decor, props, misc, vehicles, animals, weapons, ...) | `--put`; wire only if he asked. |
-| Creator pieces (clothes, hair, MPFB, faces, `.mhm`) | repo `charactercreation/` (= R2 `Assets/Models/charactercreation/`) | commit + `--put`; bake tools in CLAUDE.md TOOLING; update its row in docs/notes/character-models-plan.md. |
+| Rigged character / race model (`_Character_output.glb`, `_withSkin`) | R2 `ewmusicsfx` `Assets/characters/races/<race folder>/<male|female>/` (lower case; since the R2 layout W5, docs/notes/r2-layout-plan.md) | `node sync-zip.js --put`; wire per CLAUDE.md "Wiring up a 3D character" only if he asked. |
+| Prop / decor / building / vehicle / animal / weapon model | R2 `ewmusicsfx` `Assets/world/<props/meshy | props/meshy_decor | packs/<maker>_<pack> | vehicles | animals | nature>/`, spell props `Assets/fx/spell_props/` (r2-layout-plan.md §2) | `--put`; wire only if he asked. |
+| Creator pieces (clothes, hair, MPFB, faces, `.mhm`) | repo `charactercreation/` (= R2 `Assets/characters/creator/`) | commit + `--put`; bake tools in CLAUDE.md TOOLING; update its row in docs/notes/character-models-plan.md. |
 | Asset pack (zip of a pack) | `/mnt/project-files/asset-packs/<pack name>/` (zip + unzipped) | CHECK THE LICENCE: CC0 / CC-BY OK (add credits), GPL NO, non-commercial = flag to him. Only pieces actually used go to R2. Add a list in `asset-packs/contents-lists/`. |
-| Game texture / sky / icon / font | R2 `ewmusicsfx` `Assets/<matching folder>/` | `--put`. |
+| Game texture / sky / icon / font | R2 `ewmusicsfx` `Assets/world/{terrain,sky}/`, `Assets/ui/{icons,fonts,status,sprites}/`, audio `Assets/audio/{music,sfx}/` | `--put` (an old folder name is moved to the new one by sync-zip.js). |
 | PNG art / concept art not loaded by the game | R2 `dirtymondo` (art bucket) | `EW_R2_BUCKET=dirtymondo node sync-zip.js --put <local> <key>`. |
 | Reference images, screenshots, videos, docs for a task | `/mnt/project-files/<topic folder>/` | move; the thread doing that task reads it there. |
 | Setup / balance / look / spell-library exports (`Entropy_Wars_*.json`) | the bake tool | bake-setup.js / bake-power.js / bake-looks.js / bake-spell-mods.js per CLAUDE.md TOOLING (ask before baking non-look settings). |

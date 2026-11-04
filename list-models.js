@@ -161,9 +161,8 @@ const SOURCES = [
     { re: /Assets\/door\/models\/[^/]*\bdoor\b[^/]*\.glb$/i, how: 'PACK_ANON', src: "Door leaves (mondo's upload, author not recorded)" },
 ];
 function sourceOf(p) {
-    for (const s of SOURCES) if (s.re.test(p)) return s;
-    const o = unmoved(p);
-    if (o !== p) for (const s of SOURCES) if (s.re.test(o)) return s;
+    const o = unmoved(p);   // first row wins, tested on the new path AND the path before the R2 layout move
+    for (const s of SOURCES) if (s.re.test(p) || (o !== p && s.re.test(o))) return s;
     return null;
 }
 

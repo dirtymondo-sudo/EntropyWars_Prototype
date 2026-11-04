@@ -708,7 +708,7 @@
   ],
   [
    "Assets/Sprites/",
-   "Assets/characters/sprites/equipment/"
+   "Assets/loose_sprites/"
   ]
  ],
  "_doc": "docs/notes/r2-layout-plan.md \u2014 [old bucket prefix, new prefix], longest prefix wins; sprites.js EW_ASSET_MOVES gets a wave's rows in its flip PR"
