@@ -1028,7 +1028,7 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 // THE TABS (2026-11-03): the creator's open tab / body part / kinds, kept while the page lives (every creator is one CreatorControls)
 // (THE BODY SLOTS: a word of 11+ letters gets a soft hyphen at its middle, so a narrow tile breaks it there with a "-", never mid-cut)
 const _pbSoftWrap = (t) => String(t).replace(/[A-Za-z]{11,}/g, w => w.slice(0, Math.ceil(w.length / 2)) + '\u00ad' + w.slice(Math.ceil(w.length / 2)));
-let _pbCcTab = 'body', _pbCcSlot = 'head', _pbCcKinds = {};
+let _pbCcTab = 'body', _pbCcSlot = 'head', _pbCcKinds = {}, _pbCcLayer = 1;   // (THE LAYERS 1 2 3: the torso layer open)
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
@@ -1041,6 +1041,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const [kindBySlot, setKindBySlot] = React.useState(() => ({ ..._pbCcKinds }));   // THE BODY SLOTS: the kind open on each body part
   React.useEffect(() => { _pbCcSlot = slotTab; }, [slotTab]);
   React.useEffect(() => { _pbCcKinds = kindBySlot; }, [kindBySlot]);
+  const [layerTab, setLayerTab] = React.useState(() => _pbCcLayer);   // THE LAYERS 1 2 3: the torso layer open (1, 2 or 3)
+  React.useEffect(() => { _pbCcLayer = layerTab; }, [layerTab]);
   const [faceCat, setFaceCat] = React.useState('eyes');   // THE FACE SLIDERS: the FACE tab open (MPFB heads)
   const [wearFor, setWearFor] = React.useState(null);   // THE SHELVES: MEN / WOMEN (null = the body's own)
   /* THE HIDDEN PICKS (2026-11-03): the dev item hider (sprites.js creatorHidden; on while Settings > Developer > Creator Item Hider is
@@ -1160,14 +1162,16 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
      its replacement by normalizeCharacterAppearance), and whether a worn Blender piece takes a layer's fabric / colour / print */
   const ccLive = (slot, cat) => (cat || []).filter(o => !((window.EW_RETIRED_CLOTHES || {})[slot] || {})[o.id]);
   const ccLayerWorn = (layer) => (appearance.wear || []).some(id => (window.EW_WEAR_LAYER_OF || {})[id] === layer);
-  const ccLayer = (label, key, catalogue, fabricKey, colorKey, onRemove) => {
+  // (THE LAYERS 1 2 3: opts.extra = what else a pick takes off (the layer's other kinds); opts.first = the kind listed first; opts.noNone)
+  const ccLayer = (label, key, catalogue, fabricKey, colorKey, onRemove, opts) => {
+    opts = opts || {};
     const cat = (Array.isArray(catalogue) ? catalogue : (window[catalogue] || [{ id: 'none', label: 'None' }]));
     const hk = key === 'outer' || key === 'outer2' ? 'outer' : key === 'feet' ? 'feet' : null;   // THE HIDDEN PICKS
     const list = cat.map(o => [o.id, o.label]).filter(([id]) => keepPick(hk, id, appearance[key] === id));
     const worn = appearance[key] !== 'none';
     // THE BLENDER COATS (2026-11-01): a pick with a `look` (sprites.js EW_BLENDER_COATS) starts at its colour + fabric
     const pat = colorKey.replace(/Color$/, 'Pattern');
-    const lookOf = id => { const o = cat.find(x => x.id === id); return o && o.look ? { [colorKey]: o.look.color, [fabricKey]: o.look.fabric, [pat]: 'solid' } : {}; };
+    const lookOf = id => { const o = cat.find(x => x.id === id); return Object.assign({}, id !== 'none' && opts.extra ? opts.extra : {}, o && o.look ? { [colorKey]: o.look.color, [fabricKey]: o.look.fabric, [pat]: 'solid' } : {}); };
     /* THE OPEN + CLOSED FRONTS (2026-11-02, mondo: "any coat or jacket etc option needs to have an open and closed option"): an
        Outer pick with a front opening (sprites.js outerHasFronts) shows FRONT: OPEN / CLOSED; the choice is the layer's own
        (outerFront / outer2Front) and stays when another coat is picked */
@@ -1177,13 +1181,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     // THE SHELVES (2026-11-02): an Outer layer's picks in kinds (sprites.js EW_OUTER_GROUPS): None, then Coats + jackets, Robes, Uniforms, Costumes
     const groups = (key === 'outer' || key === 'outer2') && window.EW_OUTER_GROUPS ? (() => {
       const known = new Set([].concat(...window.EW_OUTER_GROUPS.map(g => g[1])));
-      return window.EW_OUTER_GROUPS.map(([gl, ids]) => [gl, list.filter(([id]) => ids.includes(id))])
+      const gs = window.EW_OUTER_GROUPS.map(([gl, ids]) => [gl, list.filter(([id]) => ids.includes(id))])
         .concat([['Other', list.filter(([id]) => id !== 'none' && !known.has(id))]]).filter(g => g[1].length);
+      const f = opts.first ? gs.findIndex(g => g[0] === opts.first) : -1;
+      return f > 0 ? [gs[f]].concat(gs.filter((g, i) => i !== f)) : gs;
     })() : null;
     return h(React.Fragment, { key },
       h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, label, onRemove ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take this layer off', onClick: onRemove }, '✕ REMOVE') : null),
       groups ? h(React.Fragment, null,
-        list.some(([id]) => id === 'none') ? ccChoice(key, list.filter(([id]) => id === 'none'), lookOf) : null,
+        !opts.noNone && list.some(([id]) => id === 'none') ? ccChoice(key, list.filter(([id]) => id === 'none'), lookOf) : null,
         groups.map(([gl, items]) => h(React.Fragment, { key: gl }, h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, gl), ccChoice(key, items, lookOf, hk))))
         : ccChoice(key, list, lookOf, hk),
       hasFronts ? h('div', { className: 'pb-creator-options pb-cc-front', role: 'group', 'aria-label': label + ' front' },
@@ -1270,7 +1276,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const wearSwatches = clothSwatches.concat(['#0f0d0c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#e2c184', '#b5b5b5']);
   const ccWearTints = (shelf) => {
     const ok = window.wearTintable || (() => false), all = window.EW_MH_WEAR || [];
-    const rows = (appearance.wear || []).filter(id => ok(id) && (!shelf || (typeof shelf === 'function' ? shelf(id) : shelfOf(id) === shelf))).map(id => all.find(w => w[0] === id)).filter(Boolean);   // (THE BODY SLOTS: shelf = a test on the id)
+    const rows = (appearance.wear || []).concat(appearance.wear2 && appearance.wear2 !== 'none' ? [appearance.wear2] : []).filter(id => ok(id) && (!shelf || (typeof shelf === 'function' ? shelf(id) : shelfOf(id) === shelf))).map(id => all.find(w => w[0] === id)).filter(Boolean);   // (THE BODY SLOTS: shelf = a test on the id)
     if (!rows.length) return null;
     const T = appearance.wearTint || {};
     const setT = (id, c, queued) => { const next = { ...T }; if (c) next[id] = c; else delete next[id]; (queued ? queueChange : changeAppearance)({ wearTint: next }); };
@@ -1417,7 +1423,83 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     capeOn && !capeDef.own ? ccPrint('capeFabric', 'capeColor', 'Cape') : null,
     capeOn && capeDef.own ? ccColorRow('capeColor', 'Cape tint', clothSwatches) : null) : null;
   const clothesShelves = shelves.filter(x => x[2] === 'clothes').map(x => x[0]);
-  const clothesWorn = worn.filter(id => clothesShelves.includes(shelfOf(id))).length + ['outer', 'outer2', 'cape', 'feet'].filter(k => appearance[k] && appearance[k] !== 'none').length;
+  const clothesWorn = worn.filter(id => clothesShelves.includes(shelfOf(id))).length + ['outer', 'outer2', 'cape', 'feet', 'wear2'].filter(k => appearance[k] && appearance[k] !== 'none').length;
+  /* THE LAYERS 1 2 3 (2026-11-04, mondo: "there really needs to be some sort of layer system in the character creator. Like layer 1, 2,
+     and 3. I dont like how i can only add an outer layer of coats"): OUTFIT > TORSO > LAYERS = the three torso layers from the skin out,
+     each one pick, each its own tab with what it holds written on it:
+       LAYER 1 · Shirt / top        = the Tops shelf pick (pack + Blender shirts, tees, tanks, sweaters) in appearance.wear
+       LAYER 2 · Shirt, vest, jacket = a second shirt / top over Layer 1 (appearance.wear2, sprites.js normalizeWear2), OR any Outer pick
+                                      (appearance.outer: the vests + jackets first, then the coats, robes ...) OR a pack coat (the
+                                      'coats' group in appearance.wear); one of the three at a time, a pick takes the others off
+       LAYER 3 · Coat               = the second outer layer (appearance.outer2), the coats first; worn over everything but a cape
+     Same keys as before (wear / outer / outer2), so every saved, locker and race look shows its layers as they were; wear2 is new.
+     The renderer lays each layer over the one under it (three-renderer.js setWear: wear2's z over every Layer 1 top, the Blender coats
+     at 70, the second outer at 200). */
+  const wear2 = appearance.wear2 && appearance.wear2 !== 'none' ? appearance.wear2 : null;
+  const wearRow = id => (window.EW_MH_WEAR || []).find(w => w[0] === id);
+  const wearNm = id => { const r = wearRow(id); const n = renamedOf('wear', id); return n != null ? n : r ? r[1] : id; };
+  const outerNm = id => { const o = (window.EW_OUTER_STYLES || []).find(x => x.id === id); return shownName('outer', id, o ? o.label : id); };
+  const layer1 = () => worn.filter(id => groupOf(id) === 'tops');
+  const packCoats = () => worn.filter(id => groupOf(id) === 'coats');
+  const layerWorn = (n) => n === 1 ? layer1().map(wearNm)
+    : n === 2 ? (wear2 ? [wearNm(wear2)] : []).concat(appearance.outer && appearance.outer !== 'none' ? [outerNm(appearance.outer)] : [], packCoats().map(wearNm))
+    : appearance.outer2 && appearance.outer2 !== 'none' ? [outerNm(appearance.outer2)] : [];
+  const layerOff = (n) => n === 1 ? { wear: worn.filter(id => groupOf(id) !== 'tops') }
+    : n === 2 ? { wear2: 'none', outer: 'none', wear: worn.filter(id => groupOf(id) !== 'coats') } : { outer2: 'none' };
+  const LAYER_DEFS = [[1, 'Shirt / top', 'Worn on the skin: a t-shirt, a tank, a shirt, a sweater.'],
+    [2, 'Shirt, vest or jacket', 'Worn over Layer 1: a second shirt or top, a vest, a jacket - or a coat.'],
+    [3, 'Coat', 'Worn over Layers 1 + 2: a coat, a robe, a uniform. A cape still goes over all of it (BACK > Capes).']];
+  // Layer 2's shirts / tops: the same pieces as Layer 1, worn over it (a pick here takes the Layer 2 coat / jacket off)
+  const wear2Tile = (cam) => ([id, label]) => {
+    const on = wear2 === id, rn = renamedOf('wear', id);
+    return devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: (rn || label) + ' (over Layer 1)', 'data-cc-cam-own': cam,
+      onClick: () => changeAppearance(on ? { wear2: 'none' } : { wear2: id, outer: 'none', wear: worn.filter(x => x !== id && groupOf(x) !== 'coats') }) },
+      h('span', null, rn != null ? _pbSoftWrap(rn) : tileLabel(label))));
+  };
+  // Layer 2's pack coats (one at a time, like the Coats shelf): a pick takes the Layer 2 top + Outer pick off
+  const packCoatTile = (cam) => ([id, label]) => {
+    const on = worn.includes(id), rn = renamedOf('wear', id);
+    return devTile('wear', id, label, h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: rn || label, 'data-cc-cam-own': cam,
+      onClick: () => on ? toggleWear(shelfOf(id), id) : changeAppearance({ wear: worn.filter(x => shelfOf(x) !== shelfOf(id)).concat([id]), wear2: 'none', outer: 'none' }) },
+      h('span', null, rn != null ? _pbSoftWrap(rn) : tileLabel(label))));
+  };
+  const sidedTiles = (rows, tile, name, cam, isOn) => {
+    const mine = rows.filter(r => madeFor(r[0]) === sideNow), both = rows.filter(r => madeFor(r[0]) === 'both'), other = rows.filter(r => madeFor(r[0]) === sideOther && isOn(r[0]));
+    const grid = (k, head, list) => list.length ? h(React.Fragment, { key: k },
+      h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head),
+      h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': name + ' ' + head, 'data-cc-cam-own': cam }, list.map(tile(cam)))) : null;
+    return h(React.Fragment, null,
+      grid('mine', sideNow === 'female' ? 'Women\u2019s' : 'Men\u2019s', mine), grid('both', 'Fits anyone', both),
+      grid('other', 'Worn from the ' + (sideOther === 'female' ? 'women\u2019s' : 'men\u2019s') + ' list', other));
+  };
+  const ccTorsoLayers = (cam) => {
+    const lt = [1, 2, 3].includes(layerTab) ? layerTab : 1, def = LAYER_DEFS[lt - 1], wornNow = layerWorn(lt);
+    const tops = groupRows('tops'), coats = groupRows('coats');
+    return h(React.Fragment, null,
+      h('p', { className: 'pb-creator-note' }, 'Three layers from the skin out. Each layer holds one piece; a higher layer is worn over the ones under it.'),
+      h('div', { className: 'pb-cc-layers', role: 'tablist', 'aria-label': 'Torso layers' },
+        LAYER_DEFS.map(([n, kind]) => {
+          const w = layerWorn(n);
+          return h('button', { key: n, role: 'tab', className: 'pb-cc-layer' + (n === lt ? ' on' : ''), 'aria-selected': n === lt, 'aria-pressed': n === lt, 'data-cc-cam-own': cam,
+            title: 'Layer ' + n + ': ' + kind + (w.length ? ' (now: ' + w.join(', ') + ')' : ''), onClick: () => setLayerTab(n) },
+            h('b', null, 'LAYER ' + n), h('small', null, kind), h('span', { className: 'pb-cc-layer-worn' + (w.length ? '' : ' empty') }, w.length ? w.join(' + ') : 'Nothing'));
+        })),
+      h('div', { className: 'pb-cc-layer-bar' },
+        h('span', { className: 'pb-creator-note' }, def[2]),
+        wornNow.length ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take Layer ' + lt + ' off', onClick: () => changeAppearance(layerOff(lt)) }, '\u2715 TAKE LAYER ' + lt + ' OFF') : null),
+      h('div', { key: 'layer' + lt, className: 'pb-cc-layerpanel', role: 'tabpanel', 'aria-label': 'Layer ' + lt, 'data-cc-cam-own': cam },
+        lt === 1 ? h(React.Fragment, null,
+          wearTiles(tops, true, 'Shirts + tops', 'Layer 1', cam),
+          groupLayerRows('tops'),
+          ccWearTints(id => groupOf(id) === 'tops' && id !== wear2)) : null,
+        lt === 2 ? h(React.Fragment, null,
+          tops.length ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Shirts + tops over Layer 1'), sidedTiles(tops.filter(r => !worn.includes(r[0])), wear2Tile, 'Layer 2 shirts', cam, id => wear2 === id)) : null,   // (the Layer 1 piece itself is not offered again)
+          wear2 && (window.EW_WEAR_LAYER_OF || {})[wear2] === 'top' ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel' }, 'Layer 2 shirt fabric'), ccFabricTiles('top2Fabric', 'Layer 2 shirt'), ccPrint('top2Fabric', 'top2Color', 'Layer 2 shirt')) : null,
+          ccLayer('Vests, jackets + coats', 'outer', ccOuterList('outer'), 'outerFabric', 'outerColor', null, { noNone: true, first: 'Vests + jackets', extra: { wear2: 'none', wear: worn.filter(x => groupOf(x) !== 'coats') } }),
+          coats.length ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'More coats'), sidedTiles(coats, packCoatTile, 'Layer 2 coats', cam, id => worn.includes(id))) : null,
+          ccWearTints(id => id === wear2 || groupOf(id) === 'coats')) : null,
+        lt === 3 ? ccLayer('Coats', 'outer2', ccOuterList('outer2'), 'outer2Fabric', 'outer2Color', null, { noNone: true, first: 'Coats' }) : null));
+  };
   /* THE BODY SLOTS (2026-11-03, mondo: "can we have tabs instead of one long list where i have to scroll through everything. And I want
      the clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."). The
      OUTFIT tab = one tab per body part (sprites.js EW_WEAR_SLOTS: Head, Face, Neck, Torso, Back, Left arm, Right arm, Waist, Legs,
@@ -1431,13 +1513,14 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const slotOfGroup = window.wearSlotOfGroup || (() => null);
   const onSlot = (g, slot) => { const s = slotOfGroup(g); return s === slot || (s === 'arms' && (slot === 'larm' || slot === 'rarm')); };
   const groupRows = (g) => (window.EW_MH_WEAR || []).filter(w => shelfOf(w[0]) && groupOf(w[0]) === g && keepPick('wear', w[0], worn.includes(w[0])));   // (THE HIDDEN PICKS)
-  const layerShown = (layer) => layer === 'outer' || layer === 'feet' || (layer === 'cape' && (window.EW_CAPE_STYLES || []).length > 1) || (layer === 'wings' && (window.EW_WINGS_STYLES || []).length > 1);
+  const layerShown = (layer) => layer === 'layers' || layer === 'outer' || layer === 'feet' || (layer === 'cape' && (window.EW_CAPE_STYLES || []).length > 1) || (layer === 'wings' && (window.EW_WINGS_STYLES || []).length > 1);
   const slotGroups = (slot) => wearGroups.filter(gr => onSlot(gr[1], slot) && (groupRows(gr[1]).length || layerShown(gr[4]) || (gr[1] === 'heads' && shapeHeads.length) || (gr[1] === 'ears' && shapeEars.length)));
   // a tab's / a kind's dot: something worn there (the layer picks count with their group)
   const groupWorn = (gr) => worn.filter(id => shelfOf(id) && groupOf(id) === gr[1]).length
     + (gr[1] === 'heads' ? shapeHeads.filter(([k]) => shapeHeadOn(k)).length : 0)
     + (gr[1] === 'ears' ? shapeEars.filter(([k]) => shapeHeadOn(k)).length : 0)
     + (gr[4] === 'outer' ? ['outer', 'outer2'].filter(k => appearance[k] && appearance[k] !== 'none').length : 0)
+    + (gr[4] === 'layers' ? layer1().length + packCoats().length + ['wear2', 'outer', 'outer2'].filter(k => appearance[k] && appearance[k] !== 'none').length : 0)   // THE LAYERS 1 2 3
     + (gr[4] === 'cape' && capeOn ? 1 : 0) + (gr[4] === 'wings' && appearance.wings && appearance.wings !== 'none' ? 1 : 0)
     + (gr[4] === 'feet' && appearance.feet && appearance.feet !== 'none' ? 1 : 0);
   const slotWorn = (slot) => slotGroups(slot).reduce((n, gr) => n + groupWorn(gr), 0);
@@ -1446,6 +1529,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const ccGroup = (slot, gr) => {
     const [, g, label, sided, layer] = gr, cam = slotCam(slot), rows = groupRows(g);
     return h(React.Fragment, null,
+      layer === 'layers' ? ccTorsoLayers(cam) : null,   // THE LAYERS 1 2 3
       layer === 'outer' ? h(React.Fragment, null, ccLayer('Outer layer', 'outer', ccOuterList('outer'), 'outerFabric', 'outerColor'), ccExtraLayers()) : null,
       layer === 'cape' ? ccCape() : null,
       // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back and flapping; the pack's costume wings beside them
@@ -1484,7 +1568,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
         (cur && cur[3] ? [['male', 'MEN'], ['female', 'WOMEN']] : []).map(([g, txt]) => h('button', { key: g, className: 'ms-tty-btn' + (sideNow === g ? ' primary' : ''), 'aria-pressed': sideNow === g,
           title: 'List the clothes made for ' + (g === 'female' ? 'women' : 'men') + ' (+ the ones that fit anyone). Any piece fits any body.', onClick: () => setWearFor(g) }, txt)),
         clothesWorn ? h('button', { key: 'off', className: 'ms-tty-btn pb-cc-alloff', title: 'Take off every piece of clothing (the facial hair and the accessories stay)',
-          onClick: () => changeAppearance({ wear: worn.filter(id => !clothesShelves.includes(shelfOf(id))), outer: 'none', outer2: 'none', cape: 'none', feet: 'none' }) }, 'TAKE ALL OFF') : null) : null,
+          onClick: () => changeAppearance({ wear: worn.filter(id => !clothesShelves.includes(shelfOf(id))), wear2: 'none', outer: 'none', outer2: 'none', cape: 'none', feet: 'none' }) }, 'TAKE ALL OFF') : null) : null,
       cur ? h('div', { key: slot + ':' + cur[1], className: 'pb-cc-slotpanel', role: 'tabpanel', 'data-cc-cam-own': slotCam(slot) },
         arm && slotOfGroup(cur[1]) === 'arms' ? h('p', { className: 'pb-creator-note' }, 'A pair: worn on both arms (the same pick shows on LEFT ARM and RIGHT ARM).') : null,
         ccGroup(slot, cur)) : null);

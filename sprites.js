@@ -3906,6 +3906,12 @@ function normalizeWearList(list) {
   }
   return out.slice(-24);
 }
+/* THE LAYERS 1 2 3 (2026-11-04): appearance.wear2 = a Tops piece (pack or Blender) worn as LAYER 2, over the Layer 1 top in
+   appearance.wear (three-renderer.js setWear lays it over every Layer 1 top and under every coat; a Blender one takes the top2
+   fabric / colour / print keys). Not the Layer 1 pick itself; 'none' = not worn. */
+function normalizeWear2(id, wear) {
+  return typeof id === 'string' && EW_MH_WEAR_BY_ID[id] && wearPickKindOf(id) === 'tops' && !(wear || []).includes(id) ? id : 'none';
+}
 /* THE SHELVES (2026-11-02, mondo: "Can we organize the character creator better? Like there are wings at the bottom but then there
    are wings in equipment or another tab ... There are male and female clothes scattered all throughout, it should be separated by
    male and female"). How the creator SHOWS the pieces; nothing here changes what a piece is (its category in EW_MH_WEAR stays the
@@ -3978,8 +3984,14 @@ const EW_WEAR_GROUPS = [
   ['head', 'headgear', 'Headsets'],
   ['face', 'glasses', 'Glasses + goggles', true], ['face', 'masks', 'Masks + hoods', true],
   ['neck', 'neckwear', 'Ties + neckwear'], ['neck', 'pendants', 'Pendants'],
-  ['torso', 'tops', 'Tops', true], ['torso', 'dresses', 'Dresses', true], ['torso', 'suits', 'Suits + bodysuits', true],
-  ['torso', 'coats', 'Coats + jackets', true, 'outer'], ['torso', 'underwear', 'Underwear + swimwear', true],
+  /* THE LAYERS 1 2 3 (2026-11-04, mondo: "there really needs to be some sort of layer system in the character creator. Like layer 1,
+     2, and 3. I dont like how i can only add an outer layer of coats"): the Tops and the Coats + jackets kinds are one kind now, the
+     three torso layers from the skin out (party-builder.js ccTorsoLayers): LAYER 1 = a shirt / top (the 'tops' group's pieces, the
+     Tops shelf pick), LAYER 2 = a second shirt / top over it (appearance.wear2), a vest / jacket / coat (the Outer layer) or a pack
+     coat (the 'coats' group), LAYER 3 = a coat over all of it (the second outer layer, appearance.outer2). The 'tops' + 'coats'
+     groups keep their pieces (wearGroupOf); only their own chips are gone. */
+  ['torso', 'layers', 'Layers 1 \u00b7 2 \u00b7 3', true, 'layers'], ['torso', 'dresses', 'Dresses', true], ['torso', 'suits', 'Suits + bodysuits', true],
+  ['torso', 'underwear', 'Underwear + swimwear', true],
   ['torso', 'chestarmour', 'Armour + vests'], ['torso', 'badges', 'Badges + straps'], ['torso', 'fur', 'Fur'],
   ['back', 'capes', 'Capes', false, 'cape'], ['back', 'wings', 'Wings', false, 'wings'], ['back', 'backgear', 'Back gear'], ['back', 'tails', 'Tails + fins'],
   ['rarm', 'held', 'In the hand'], ['rarm', 'rgear', 'Weapons + tools'], ['rarm', 'rbags', 'Bags'], ['rarm', 'rarmgear', 'On the arm'],
@@ -4076,7 +4088,9 @@ function wearMadeFor(id) {
 const EW_OUTER_FOR_FEMALE = ['bhabit', 'bsuccubus', 'bleafdress'];
 // the Outer layer picks in kinds (a pick in none of them shows under "Other")
 const EW_OUTER_GROUPS = [
-  ['Coats + jackets', ['btrench', 'bduster', 'bpirate', 'bleather', 'blongcoat', 'bgreatcoat', 'bovercoat', 'bfrock', 'btailcoat', 'blabcoat', 'bjacket', 'bblazer', 'bvest', 'bcardigan', 'bfringe']],
+  // (THE LAYERS 1 2 3, 2026-11-04: the short pieces apart from the long coats, so a layer lists vests + jackets / coats as their own rows)
+  ['Vests + jackets', ['bvest', 'bjacket', 'bblazer', 'bcardigan', 'bfringe']],
+  ['Coats', ['btrench', 'bduster', 'bpirate', 'bleather', 'blongcoat', 'bgreatcoat', 'bovercoat', 'bfrock', 'btailcoat', 'blabcoat']],
   ['Robes', ['bcassock', 'bhabit', 'bcultrobe', 'banunnaki', 'bsuccubus', 'braggedrobe']],
   ['Uniforms', ['bpolice', 'bgeneral', 'bturnout', 'briot', 'bchef', 'bgi', 'bjersey']],
   ['Costumes', ['bsanta', 'brobinhood', 'btabard', 'bkrampus', 'bscarecrow', 'bzombie', 'bclown', 'bleafdress']],
@@ -4673,7 +4687,8 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   // rev 9: the accessories' colours
   tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
-  top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e',
+  top2Color: '#5e6f80', top2Color2: '#f0ece2',   // (THE LAYERS 1 2 3, 2026-11-04: the Layer 2 shirt's colour, slate; was red for the retired coded second top)
+  bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e',
   outer2Color: '#5a4636', outer2Color2: '#c9a227',   // THE SECOND OUTER LAYER
   capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
   beardColor: '#27201c',   // THE FACIAL HAIR (beardTint 'pick')
@@ -4724,8 +4739,10 @@ function normalizeCharacterAppearance(value) {
     out[key] = EW_APPEARANCE_ENUMS[key].includes(v) ? v : (EW_APPEARANCE_DEFAULTS[key] || EW_APPEARANCE_ENUMS[key][0]);
   }
   out.wear = normalizeWearList(value.wear);   // THE PACK CLOTHES (an MPFB body wears them)
-  out.wearTint = normalizeWearTint(value.wearTint, out.wear);   // THE WEAR TINT (a worn pack piece's colour; left out = its own)
-  out.wearFabric = normalizeWearFabric(value.wearFabric, out.wear);   // THE PACK FABRICS (a worn pack pair of trousers' fabric; left out = its own)
+  out.wear2 = normalizeWear2(value.wear2, out.wear);   // THE LAYERS 1 2 3: a second top over the first ('none' = not worn)
+  const wornAll = out.wear2 !== 'none' ? out.wear.concat([out.wear2]) : out.wear;
+  out.wearTint = normalizeWearTint(value.wearTint, wornAll);   // THE WEAR TINT (a worn pack piece's colour; left out = its own)
+  out.wearFabric = normalizeWearFabric(value.wearFabric, wornAll);   // THE PACK FABRICS (a worn pack pair of trousers' fabric; left out = its own)
   return out;
 }
 /* THE HIDDEN PICKS (2026-11-03, mondo: "a devtool that let's me remove models like certain clothes and hairstyles from the character
@@ -5155,7 +5172,7 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer, a.outerFront), getOuterMeshUrl(a.outer2, a.outer2Front), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean);   // THE PACK CLOTHES (+ THE BLENDER COAT, its worn front)
+  const wear = a.wear.concat(a.wear2 !== 'none' ? [a.wear2] : []).map(getWearUrl).concat([getOuterMeshUrl(a.outer, a.outerFront), getOuterMeshUrl(a.outer2, a.outer2Front), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean);   // THE PACK CLOTHES (+ THE BLENDER COAT, its worn front)
   if (wear.length && (!a.body || a.body === 'classic')) wear.push(getClassicFitUrl('male'), getClassicFitUrl('female'));   // THE CLASSIC FIT (2026-11-02: the look has no gender; both are small)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
