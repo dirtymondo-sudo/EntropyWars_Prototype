@@ -3676,15 +3676,15 @@ def tile_bytes(name, tiles_dir, grey=False):
     return buf.getvalue()
 
 
-def write_glb(path, Ps, F, FUV, W, G, A, wear, images, accent_mats, chains):
+def write_glb(path, Ps, F, FUV, W, G, A, wear, images, accent_mats, chains, FA=None):
     """the pilot's compact layout (POSITION = male, _D_<BODY>, _N, _J/_W, _G) + triangles grouped by accent (one
     primitive each: primitive 0 = the layer's cloth, then each accent with its own material) + the sway chains as output
-    vertex indices (ewWear.sway)"""
+    vertex indices (ewWear.sway). FA = an accent per FACE (a solid's band), in place of the face's first vertex's A"""
     gl = lambda c: np.stack([c[:, 0], c[:, 2], -c[:, 1]], axis=1)
     N = PG.vertex_normals(Ps['male'], F)
     verts, key_of, first = [], {}, {}
     tri_by_acc = {}
-    for f, fu in zip(F, FUV):
+    for fi, (f, fu) in enumerate(zip(F, FUV)):
         corner = []
         for vi, u in zip(f, fu):
             k = (vi, round(float(u[0]), 5), round(float(u[1]), 5))
@@ -3693,7 +3693,7 @@ def write_glb(path, Ps, F, FUV, W, G, A, wear, images, accent_mats, chains):
                 j = key_of[k] = len(verts); verts.append((vi, (float(u[0]), float(u[1]))))
                 first.setdefault(vi, j)
             corner.append(j)
-        acc_i = A[f[0]]
+        acc_i = A[f[0]] if FA is None else FA[fi]
         for k in range(1, len(corner) - 1):
             tri_by_acc.setdefault(acc_i, []).extend([corner[0], corner[k], corner[k + 1]])
     vsel = np.array([v[0] for v in verts])
@@ -3789,14 +3789,24 @@ def write_view(path, f, V, F, G, A, accent_mats):
 #   line_k             the hat line between the eyes (0) and the crown of the head (1)
 #   ease, thick        the room inside the crown past the head; the crown wall's thickness
 #   tilt               degrees the front is lifted (worn pushed back: level, the front brim sat at the eyes and hid the face)
+#   band_tint          the band_mat faces go in their own primitive (accent 1, the same texture; ewWear.band = 1) so the creator
+#                      colours the band apart from the hat (2026-11-03, mondo: "change the color of the band and the hat separately")
+#   occ None           no ambient-occlusion map (a texture with its shading painted in)
 R2_BASE = 'https://cdn.entropywars.net/'
 SOLIDS = {
     'cowboyhat': {'label': 'Cowboy hat', 'cat': 'hats', 'z': 56, 'px': 1024, 'rough': 0.85,
                   'blend': 'Assets/Models/charactercreation/wear/cowboyhat/Cowboy-Hat.blend', 'obj': 'Cowboy-Hat',
                   'tex': 'Assets/Models/charactercreation/wear/cowboyhat/textures/Cowboy-Hat_base.png',
                   'occ': 'Assets/Models/charactercreation/wear/cowboyhat/textures/Cowboy-Hat_occ.png',
-                  'band_mat': 1, 'line_k': 0.42, 'ease': 0.014, 'thick': 0.004, 'tilt': 8},
+                  'band_mat': 1, 'line_k': 0.42, 'ease': 0.014, 'thick': 0.004, 'tilt': 8, 'band_tint': True},
 }
+# THE WORN HATS (2026-11-03, mondo: "make it look more realistic/weathered/worn/textured. Like look at the cowboy meshy model and his
+# hat"): his same hat (mesh, UVs, fit) wearing a Meshy Retexture base colour painted on HIS UVs (enable_original_uv; Meshy's own
+# re-exported mesh is never used). F = text prompt "realistic weathered dark charcoal felt ... frayed brown leather band" on meshy-7,
+# H = "realistic weathered sand tan felt ... cracked brown leather band" on meshy-6 (remove_lighting). Shading is painted in: no occ.
+_HAT_TEX = 'Assets/Models/charactercreation/wear/cowboyhat/textures/'
+SOLIDS['cowboyhat_worn'] = dict(SOLIDS['cowboyhat'], label='Cowboy hat (worn dark)', tex=_HAT_TEX + 'Cowboy-Hat_meshy_worn_dark.png', occ=None)
+SOLIDS['cowboyhat_worntan'] = dict(SOLIDS['cowboyhat'], label='Cowboy hat (worn tan)', tex=_HAT_TEX + 'Cowboy-Hat_meshy_worn_tan.png', occ=None)
 
 
 def r2_file(key, cache):
@@ -3842,6 +3852,7 @@ def load_solid(spec, cache):
     F = [list(p.vertices) for p in me.polygons]
     FUV = [[(float(uvl[li].uv[0]), 1.0 - float(uvl[li].uv[1])) for li in p.loop_indices] for p in me.polygons]   # (glTF v runs down)
     mat = [p.material_index for p in me.polygons]
+    spec['_face_mat'] = mat                             # (bake_solid's band_tint reads it)
     bpy.data.objects.remove(o)
     band = sorted({v for f, m_ in zip(F, mat) if m_ == spec['band_mat'] for v in f})
     B = co[band] - co[band].mean(0); n = np.linalg.eigh(B.T @ B)[1][:, 0]
@@ -3886,17 +3897,24 @@ def bake_solid(key, spec, frames, m, out, cache):
     n = len(P)
     # his colour x his ambient occlusion (soft: 0.45 + 0.55 occ), at spec px
     base = Image.open(r2_file(spec['tex'], cache)).convert('RGB')
-    occ = Image.open(r2_file(spec['occ'], cache)).convert('L').resize(base.size)
-    a = np.asarray(base).astype(np.float32) * (0.45 + 0.55 * np.asarray(occ).astype(np.float32)[:, :, None] / 255.0)
-    im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    if spec.get('occ'):
+        occ = Image.open(r2_file(spec['occ'], cache)).convert('L').resize(base.size)
+        a = np.asarray(base).astype(np.float32) * (0.45 + 0.55 * np.asarray(occ).astype(np.float32)[:, :, None] / 255.0)
+        im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    else:
+        im = base
     if max(im.size) > spec['px']:
         im = im.resize((spec['px'], spec['px']), Image.LANCZOS)
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=88)
     mats = [{'color': [1, 1, 1], 'rough': spec['rough'], 'metal': 0.0, 'tile': key}]
     wear = {'name': name, 'pack': 'entropywars', 'cat': spec['cat'], 'z': spec['z'], 'del': [], 'solid': True,
             'accents': [dict(color=[1, 1, 1], rough=spec['rough'], metal=0)]}
+    FA = None
+    if spec.get('band_tint'):                           # the band: its own primitive on the same texture (ewWear.band)
+        FA = [1 if mi == spec['band_mat'] else 0 for mi in spec['_face_mat']]
+        mats.append(dict(mats[0])); wear['accents'].append(dict(wear['accents'][0])); wear['band'] = 1
     path = os.path.join(out, name + '.glb')
-    ntri, bones = write_glb(path, Ps, F, FUV, [{'head': 1.0}] * n, np.ones(n), [0] * n, wear, [(key, buf.getvalue())], mats, None)
+    ntri, bones = write_glb(path, Ps, F, FUV, [{'head': 1.0}] * n, np.ones(n), [0] * n, wear, [(key, buf.getvalue())], mats, None, FA)
     print('[bake-clothes] %-28s %6d tris %5d KB  solid, scale %s  bones %s' % (
         name, ntri, os.path.getsize(path) // 1024, ' '.join('%s %.3f' % kv for kv in scales.items()), ','.join(bones)))
     return {'id': name, 'file': name, 'label': spec['label'], 'cat': spec['cat'], 'tris': ntri, 'kb': os.path.getsize(path) // 1024}

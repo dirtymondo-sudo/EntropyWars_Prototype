@@ -1304,3 +1304,60 @@ fog was full (R), but nothing changed how sharply it climbed from the rim (alway
   back to the walk converts 1 / L into the room frame like `den`. Probe: `ThreeRenderer.boardFog()` now has fadeLen + fadeSoft.
 - On his shipped setup (Density 10 %) R is already at the map's edge (Fairy Forest Arena: about 19.6 squares), so the ramp is only
   softer, not longer. At Density 55 % the 0 % ramp is 2.4× longer. Shots: /mnt/project-files/board-fog/7-10.
+
+## THE WHITE SHEETS (2026-11-03, mondo on the Heaven Arena: "something about these clouds is just really hard on the eyes, i cant see what im looking at. Bloom is off in the game but any map or area that has a lot of white still looks super bright")
+
+**Cause (measured in the Heaven Arena on his shipped settings).** The scene draws into an 8-bit target with no tone map (three
+only tone-maps a draw into the canvas, and three-post.js `_hdrSupported` reads `!THREE.NoToneMapping`, which is 0, so the HDR
+chain never runs). A lit surface is texture × light. Daylight puts about 1.35× on a floor in an open room (hemi 0.78 of a
+near-white sky + sun 0.6 + fill 0.14 + the brazier lamps) and about 1.5× on a battle's day rig. cloud_2.png has a mean sRGB of
+0.92 and marble_light.png 0.88, so the whole sheet goes past 100% and is stored as one flat white. The marble's pattern, the
+cloud shading and the sun-disc marks are gone before any later step runs.
+- Filmic Tone (ewFilmic, on in his setup) then maps that white to about 0.91 and lifts light greys toward it.
+- Filmic off shows the clip as pure white (35% of the board).
+- Brightness, auto exposure and bloom act after the clip, so they cannot bring the pattern back.
+
+**Options shown to him** (/mnt/project-files/white-glare/): A lower the light per map, B darken the white sheets, C auto-dim the
+lights on white views. He picked B.
+
+**THE WHITE SHEETS (sprites.js `TERRAIN_WHITE_SHEETS`, three-renderer.js `_ewWhiteGuard` in `textureLoader.load`).**
+- What it changes: every terrain sheet whose mean brightness is 0.8 or more (measured off the R2 files) is darkened ONCE as it
+  lands, to a mean of about 0.66. The pixels × the row's value go into a canvas; alpha is kept.
+- The sheets: cloud, cloud_2, ice, ice_1, tilefloor, tilefloor_2, marble_light, enamel_2, wallpaper, floral_2.
+- Keyed by FILE, so every key, map, room, wall, spell block and prop that wears the sheet gets it.
+- The light is not changed.
+- A Chromium bitmap (THE BITMAPS) was flipped at its decode, so its canvas copy is drawn back the file's way up and the
+  texture's flipY handles it like an <img>.
+- Not covered: textures inside GLB models (white statues, cloud prop models) keep their own pixels.
+
+**THE WHITE DAYLIGHT (the same day, mondo: "can we just make light not 130% too? that seems so excessive ... A/C looks better
+because i can actually see the middle thingy. so maybe do a c and b?" + "i dont want the game to change lighting based on the
+white on the screen").** Nothing reads the screen. The light is lowered only where the ground is white, so grass, dirt and units
+on other maps keep their light (he said in October the game was too dark). HQ_LIGHT_RULES.whiteDay = 0.75.
+- ROOMS: an open room whose floor (terrain.floor, else shell.floor) is a white sheet wears its sky light × whiteDay.
+  `_hqWhiteDay` / `_hqOpenLR(room)` in three-renderer.js scale the DAY hemisphere and sun key only. The night rig is left
+  alone (follow-up the same day: Agartha Arena, a night room, came out too dark).
+- Where the room rule applies (every `_hqLightRules().open` read): the walk (_hqEnter), the world clock (_hqClockVals,
+  _hqStageSkyValsRaw) and the room fight's field light + the battle's day / night halves (_fieldGroundDress, _fieldCycleRig).
+- TILE BOARDS: when half or more of the board's top tiles wear a white sheet, three-renderer.js `_boardWhiteDay` (each
+  rebuildTerrain) calls ThreePost.setWhiteDay(0.75). That scales the battle rig's sun, hemisphere and ambient in _applyCurrent, by day
+  only (`_whiteDayK` eases it back to 1 with the night factor).
+  A room fight's field light is not scaled again.
+- Fixed per map from what it is built of. Lamps, emissive glows and VFX are untouched.
+
+**THE MARBLE MAPS CHECK (the same day, mondo: "can you also check other marble heavy maps").** Shot the Olympus, Antarctica,
+North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarctica and North Pole read fine under 0.75. Agartha
+(a night room) was darkened by the first cut, fixed by the day-only rule above.
+- THE GROUND TINT: Atlantis Arena (a closed box room) still clipped. Its floor wears shell.floorColor 0xb8c8c8, but the dais
+  flight's mass and flanks (_hqBuildBuiltStairs sideMat, the stairs pack's side bucket in _spBuildFlights) were drawn in the
+  cliff sheet with no floorColor, so the stair stood about 35% brighter than the floor and went flat white. Now the flanks in the
+  room's cliff sheet wear floorColor, like the field's own cliff skirt and the editor boxes. A flight with its own `side` sheet
+  keeps it untinted.
+- THE WHITE ROOMS: Vatican City Arena (the basilica, a closed box room, floor `marble` = marble_light.png) clipped flat white in a
+  pool round the point the camera looks at. That pool is THE KEY LIGHT (the point light riding over the look point, battle 1.5 ×
+  the Key Light setting × 2 = 1.65, decay 1). Measured on the close view: Key Light 0 → 20% of the view at the grade's top
+  drops to 0.6%; key light + hemisphere + key × 0.75 → 3%. `_hqWhiteIn(room)` = whiteDay for a CLOSED box room whose floor is
+  a white sheet (else 1). It scales the hemisphere and the key (`_hqBoxLightVals`, `_hqIndoorLightVals`, `_hqLightArm`, the
+  fight's `_fieldGroundDress`) and the Key Light (`_hqKeyLampTick` on the walk, `_fieldKeyLampTick` via st.keyWhite in a
+  fight). The fill and the room's own lamps keep theirs. Rooms it hits: vatican_basilica, atlantis_temple and the DOOR HQ tiled
+  rooms (kitchen, coldroom, laundry, bathroom, locker, natatorium, autopsy, tank).

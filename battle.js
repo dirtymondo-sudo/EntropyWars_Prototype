@@ -3731,6 +3731,9 @@
         function igniteTile(x, y, rounds, byUnit) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
+            /* 🌧️ the rain puts the ground fire out (mondo 2026-11-03): a tile the rain falls on does not catch — the fire
+               spell itself still hits, only the ground does not stay burning */
+            if (typeof window._ewRainOnTile === 'function' && window._ewRainOnTile(x, y)) return false;
             const b = _ensureBurningState();
             const k = x + ',' + y;
             const prev = b[k];
@@ -4281,13 +4284,18 @@
             }
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             const startX = v.x, startY = v.y;
+            const _flMark = _logMark();   // THE LOG ORDER: "flings" reads before the slide's wall slams
             const res = resolveForcedSlide(v, d.dx, d.dy, dist, {
                 byUnit: (caster && !caster.dead) ? caster : null, label: `${def.icon} ${def.label}: `,
                 animate: false, noChain: true, perStepMs: 120
             });
             if (v.dead || v._dying || (v.x === startX && v.y === startY)) return out;
             out.moved = true;
-            addLog(`${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word} to ${coordLabel(v.x, v.y)}!`);
+            {
+                const _fl0 = _logMark();
+                addLog(`${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word} to ${coordLabel(v.x, v.y)}!`);
+                if (_logMark().a > _fl0.a) _logHoist(_flMark, null);
+            }
             const _endX = v.x, _endY = v.y;
             const _hurl = () => {
                 const fling = (typeof window.playVortexFlingFx === 'function')
@@ -4667,9 +4675,15 @@
                     _walkFireBurn(unit, x, y, false);
                 } else {
                     // Shoved into a burning tile → the flames bite immediately.
+                    /* the unit's OWN dash / leap / climb / blink onto fire reads as its own move, not as a shove
+                       (playtest 2026-11-03: Krampus's own Gore Charge was logged "is hurled into the flames /
+                       knocked into the burning ground") */
+                    const _ownWay = via === 'self' ? 'charges into the flames: '
+                        : via === 'teleport' ? 'lands in the flames: '
+                        : via === 'climb' ? 'climbs into the flames: ' : null;
                     _burnUnitOnTile(unit, BURNING_KNOCKIN_DAMAGE,
-                        `${unitDisplayName(unit)} is hurled into the flames: `);
-                    addLog(`🔥 ${_ctName(unit)} is knocked into the burning ground!`);
+                        `${unitDisplayName(unit)} ${_ownWay || 'is hurled into the flames: '}`);
+                    if (!_ownWay) addLog(`🔥 ${_ctName(unit)} is knocked into the burning ground!`);
                 }
                 fired++;
             }
@@ -6408,9 +6422,12 @@
                 /* Phase 5 wave C (2026-09-08): statusFirst (Goo Shot) — the
                    status lands BEFORE the hit so its own damage multiplier
                    (Gooed: magic ×1.25) applies to this very cast. */
+                /* THE LOG ORDER: the status is applied first (rule), but its line reads after the hit's line */
+                const _sfMark = (spell.statusFirst && spell.statusEffects && !target.dead) ? _logMark() : null;
                 if (spell.statusFirst && spell.statusEffects && !target.dead) {
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                 }
+                const _sfMid = _sfMark ? _logMark() : null;
                 /* THE SPELL AUDIT Batch D: purgeFirst (Annihilation) — every buff, every positive stat stage and the
                    whole shield come off BEFORE the hit, so the damage lands on what is left. */
                 if (spell.purgeFirst && !target.dead) _purgeWardsBeforeHit(unit, spell, target);
@@ -6427,6 +6444,10 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                         element: _spellEl, isCrit: _hitCrit.isCrit
                     });
+                if (_sfMark) {
+                    const _sfHead = `${unitDisplayName(unit)} casts ${spell.name}`;
+                    _logSinkAfter(_sfMark, _sfMid, m => _ctPlain(m).indexOf(_sfHead) >= 0);
+                }
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, _hitCrit.isCrit);
                 /* ⏪ THE REPLAY (Overfit, Paradox): the target's own last blow comes back as a second hit of exactly that
                    number — no DEF, level scaling or damage multipliers (link-echo style: source-less, the caster credited) */
@@ -8862,6 +8883,7 @@
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (!isInside(tx, ty)) continue;
                     if (typeof isTowerTile === 'function' && isTowerTile(tx, ty)) continue;   // ⬡ the Cube is never a landing
+                    if (typeof fieldCellRock === 'function' && fieldCellRock(tx, ty)) continue;   // THE SOLID WALL: never landed on (2026-11-03)
                     if (spell.needsLoS && d >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
                     out.push({ x: tx, y: ty });
                 }
@@ -23026,6 +23048,7 @@
             if (!isInside(x, y) || !isTerrainPassable(x, y) || objectBlocksLanding(x, y)) return false;
             if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;   // THE SOLID WALL: never landed on (2026-11-03)
             if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
             if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
             return true;
@@ -24504,6 +24527,7 @@
             return h;
         }
 
+        const RETURN_CUT_YAW_DEG = 60;   // THE CLEAN RETURN (camera._returnCut): a spell shot's return home that turns more than this cuts
         const camera = {
 
             x: 0, y: 0, zoom: 1, tilt: DEFAULT_BOARD_TILT, yaw: DEFAULT_BOARD_YAW, camZ: 900,
@@ -24814,7 +24838,10 @@
                 const _noToast = _firstApply || _autoCam
                     || typeof state === 'undefined' || state.devAutoSim
                     || state.winner != null || state.phase !== 'battle'
-                    || document.body.classList.contains('ewi-cinema');
+                    || document.body.classList.contains('ewi-cinema')
+                    /* playtest 2026-11-03: "Zoom: 3.33x" showed during the Entropy finisher — an action plays its own
+                       camera, so no toast while one runs or a spell shot is up */
+                    || state._actionExecuting || document.body.classList.contains('ew-spell-shot');
                 if (_noToast) {
                     if (zi) zi.style.opacity = '0';
                     return;
@@ -25004,7 +25031,9 @@
                                 _setZoom * TURN_FRAMING_ZOOM_MULT));
                         }
                     }
-                    this.moveTo({
+                    /* THE CLEAN RETURN: the shot's return that has to turn a long way cuts home */
+                    if (!(_pull && _pre && this._returnCut({ tilt: _setTilt, yaw: _setYaw, zoom: _setZoom,
+                        x: _px2 !== undefined ? _px2 : this._tx, y: _py2 !== undefined ? _py2 : this._ty }))) this.moveTo({
                         tilt: _setTilt, yaw: _setYaw,
                         ...(_pull ? {
                             zoom: _setZoom,
@@ -25017,6 +25046,30 @@
                     // release the keep-subject floor response once it lands.
                     this._releaseCineSubject(actionMs(800));
                 }, delayMs);
+            },
+
+            /* THE CLEAN RETURN (2026-11-03, mondo on the Nimble Dodge video: the camera "swinging back over rooftops after
+               a spell shot"): a spell shot that ended on a front ¾ faces up to 180° away from the player's own view, and
+               the 650-800 ms glide home swung the lens round through that arc — over every roof on the way (the sight
+               line lifts it above whatever stands between) and through the odd wall. A return that has to turn more
+               than RETURN_CUT_YAW_DEG CUTS straight to the player's view instead (the shot's letterbox has just gone, so
+               it reads as the end of the shot); a smaller turn keeps its glide. Camera only, viewer-local. */
+            _returnCut(o) {
+                if (!o || !Number.isFinite(o.yaw) || !Number.isFinite(this.yaw)) return false;
+                const d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
+                if (Math.abs(d) <= RETURN_CUT_YAW_DEG) return false;
+                this._stop();
+                if (Number.isFinite(o.x)) this.x = this._tx = o.x;
+                if (Number.isFinite(o.y)) this.y = this._ty = o.y;
+                if (Number.isFinite(o.zoom)) this.zoom = this._tz = Math.max(0.15, Math.min(10.0, o.zoom));
+                if (Number.isFinite(o.tilt)) this.tilt = this._tt = o.tilt;
+                this.yaw = this._tyaw = o.yaw;
+                this._elevOverride = this._tElev = -1;
+                this._elevRelease = false;
+                this._smoothInited = false;
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+                this._apply();
+                return true;
             },
 
             // Natural (un-overridden) focal height at a tile — the same value
@@ -25552,6 +25605,12 @@
                     // angle. Never leave it at the cinematic tilt.
                     const _rTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : saved.tilt);
                     const _rYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : saved.yaw);
+                    /* THE CLEAN RETURN: a long turn home cuts */
+                    if (cineWasActive && this._returnCut({ x: focusUnit.x, y: focusUnit.y, tilt: _rTilt, yaw: _rYaw,
+                        zoom: pre ? (isUserZoomEngaged() ? getUserZoomScale() : pre.zoom) : saved.zoom })) {
+                        this._busy = false;
+                        return;
+                    }
                     this.moveTo({ ...saved,
                         // Re-centre on the unit ITSELF, not the remembered
                         // pre-action position: after a movement action (dash /
@@ -25588,6 +25647,11 @@
                     const retTilt = pre ? pre.tilt : (cineWasActive ? this._restTilt : undefined);
                     const retYaw  = pre ? pre.yaw  : (cineWasActive ? this._restYaw  : undefined);
                     const zoom = isUserZoomEngaged() ? userZoom : (pre ? pre.zoom : getRestZoom());
+                    /* THE CLEAN RETURN: a long turn home cuts */
+                    if (cineWasActive && this._returnCut({ x: focusUnit.x, y: focusUnit.y, tilt: retTilt, yaw: retYaw, zoom })) {
+                        this._busy = false;
+                        return;
+                    }
                     const dur = actionMs(650);
                     this._busy = true;
                     const seq = ++this._seqId;
@@ -26265,15 +26329,17 @@
            - action execution          → the TPS action shots
            - end-of-round sequence     → tactical overview
            getCameraMode is pinned to 'tactical' (so the legacy follow-mode
-           branches stay dormant) while state.cinematicActionCam is FORCED on
-           (so every action-shot gate fires). setCameraMode is an inert stub;
+           branches stay dormant); state.cinematicActionCam is the pause menu's
+           Action Cam toggle, saved across refreshes (ui.js THE SAVED SETTINGS). setCameraMode is an inert stub;
            the 'C' key / pad camera button cycles the VIEW PRESETS below. */
         const FOLLOW_CAM_TILT = 68;          // deg — legacy follow pitch (dormant helpers below)
         const FOLLOW_ZOOM_MULT = 2.0;        // × the whole-board default zoom
         const CINE_FOLLOW_TILT = 72;
         const CINE_FOLLOW_ZOOM_MULT = 2.2;
         function getCameraMode() {
-            state.cinematicActionCam = true;   // action shots always on (re-asserted: matches rebuild on new matches)
+            /* THE SAVED SETTINGS (2026-11-03): the Action Cam is the player's toggle (pause menu, saved in ew_cinematicActionCam);
+               this only fills it in when nothing set it yet — it used to force it back ON, so OFF never lasted */
+            if (typeof state.cinematicActionCam !== 'boolean') state.cinematicActionCam = (typeof window._ewActionCamPref === 'function') ? window._ewActionCamPref() : true;
             // keep the 3D lens on the active preset's FOV (no-op when unchanged)
             if (typeof _applyCameraPresetFov === 'function') _applyCameraPresetFov();
             return 'tactical';
@@ -30711,7 +30777,10 @@
         function _cineGuardSubjects(G) {
             if (!_cineGuardLive(G)) return null;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return null;
-            const ids = G.phase === 'cast' ? [G.casterId] : [...G.hit].slice(0, 4);
+            /* THE DODGE READS (2026-11-03): a mover the shot follows to its landing (keepCaster) stays a subject after the cut,
+               so the clear angle swings the lens off a wall beside the landing instead of craning over the roof */
+            const ids = G.phase === 'cast' ? [G.casterId]
+                : ((G.phase === 'hit' && G.keepCaster) ? [G.casterId, ...G.hit] : [...G.hit]).slice(0, 4);
             const out = [];
             for (const id of ids) {
                 if (id == null) continue;
@@ -33202,6 +33271,26 @@
             /* Teleports — NO travel shot: the vanish, then a HARD cut to the
                arrival (easing a teleport makes it a walk). */
             blink(c) {
+                /* THE DODGE READS (2026-11-03, mondo on Nimble Dodge: "It's absolutely impossible to tell what is going on
+                   with this spell"): an ESCAPE whose body runs, flies, swings or rides out to its landing (no look, or a
+                   fly / swing / eject look) is not a teleport — it never vanishes mid-shot and gets no hard cut ahead of the
+                   body: the support rig's own beat 2 glides with the run to the mover's front ¾ on the landing (THE LANDING).
+                   The escapes that really leave the board (blink, dive) keep the vanish and the cut. */
+                /* THE BLINK READS (2026-11-03): a self TELEPORT that travels (a leap: Land on Your Feet, Cathedral Perch; a
+                   look that carries the body: Web Swing) rides the same way; a plain blink keeps the vanish + cut */
+                if (c.spell && (c.spell.kind === 'escape' || c.spell.kind === 'teleport')) {
+                    let _st = null;
+                    try { const L = window.ThreeVFXEffects && window.ThreeVFXEffects.escapeLook ? window.ThreeVFXEffects.escapeLook(c.spell.id) : null; _st = L ? L.style : null; } catch (e) {}
+                    const _selfMove = !!(c.target && c.target._landUnit && c.caster && c.target._landUnit.id === c.caster.id);
+                    const _travels = (c.spell.kind === 'escape')
+                        ? (_st !== 'blink' && _st !== 'dive')
+                        : (_selfMove && (!!c.spell.leap || (!!_st && _st !== 'blink' && _st !== 'dive')));
+                    if (_travels) {
+                        /* the family owns the shot (_cineApplyFamily), so it plays the rig's beat 2 itself, on the cut */
+                        c.at(c.cut, () => { if (!c.stockHit()) { const cs = c.live(c.caster); if (cs && c.vis(cs)) cineGlamCam(cs, { tilt: 78 }); } }, 'run');
+                        return;
+                    }
+                }
                 const v0 = (c.rig === 'offensive') ? c.timings.sourceHold : c.cut;
                 c.at(v0, () => cineUnitFade(c.caster, 1, 0.05, 140, () => cineUnitFade(c.caster, 0.05, 1, 160)), 'vanish');
                 c.at(v0 + actionMs(150), () => {
@@ -37517,6 +37606,7 @@
             if (typeof objectBlocksLanding === 'function' && objectBlocksLanding(x, y)) return false;
             if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;   // THE SOLID WALL: never landed on (2026-11-03)
             if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
             if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
             return true;
@@ -37780,6 +37870,24 @@
             const _ambushWas = caster._ambushStrike;
             const _rearWas = state._doorRearCast;   // 🚪 the rear rider doSpell arms for a door spell (rearAttack)
             _fcTalismanUsed.clear();
+            /* 🔥 THE WALK-IN FORECAST (playtest 2026-11-03: a move-then-cast walked Krampus, weak to fire, through burning
+               ground and the forecast never said): the walk to the cast tile meets the same fire / lava the real walk would
+               (_walkPassHazards + the landing's chain: once each per walk), read through the same hit pipeline. */
+            let _walkIn = null;
+            if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y)
+                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(caster))
+                && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(caster))) {
+                try {
+                    const _wp = findMovePath(caster, opts.castFrom.x, opts.castFrom.y) || [];
+                    let _fire = false, _lava = false;
+                    for (const st of _wp) {
+                        if (!st) continue;
+                        if (_isLavaTile(st.x, st.y)) _lava = true;
+                        else if (_tileIsBurning(st.x, st.y)) _fire = true;
+                    }
+                    if (_fire || _lava) _walkIn = { fire: _fire, lava: _lava };
+                } catch (e) { _walkIn = null; }
+            }
             try {
                 /* a height approach (take off / land / raise the ground) casts from the caster's own column at its new z */
                 if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y
@@ -37822,6 +37930,34 @@
                 }
             }
             _forecastHideFogged(plan, caster, spell, x, y);
+            if (_walkIn) {
+                const _wo = { ignoreArmor: true, damageType: 'dot', consumeMarked: false, allowMarkBonus: false, element: 'fire' };
+                let _wd = 0;
+                const _w1 = (raw) => { const f = forecastHitOnUnit(caster, raw, _wo); return f ? Math.max(0, f.dmg || 0) : raw; };
+                if (_walkIn.fire) _wd += _w1(BURNING_ENTER_DAMAGE);
+                if (_walkIn.lava) _wd += _w1(LAVA_WALK_DAMAGE);
+                let h = plan.byId[caster.id];
+                if (!h) { h = { unit: caster, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[caster.id] = h; plan.hits.push(h); }
+                _wd = Math.min(_wd, Math.max(0, caster.hp || 0));
+                h.dmg += _wd; h.min += _wd; h.max += _wd; h.hits++;
+                h.walkBurn = _wd;
+                const _wt = _walkIn.lava ? 'walkLava' : 'walkFire';
+                if (!h.tags.includes(_wt)) h.tags.push(_wt);
+                plan.walkBurn = _wd;
+            }
+            /* 🩸 THE RECOIL FORECAST (playtest 2026-11-03: Baphomet's Rite took 222 back off Krampus, unannounced): the cast's
+               own price (doSpell's selfDamagePct / recoilPct: that share of max HP, straight off the HP, never below 1) */
+            {
+                const _rf = spell.selfDamagePct || spell.recoilPct || 0;
+                const _price = (_rf > 0 && !caster.dead) ? Math.min(Math.round((caster.maxHp || 0) * _rf), Math.max(0, (caster.hp || 0) - 1)) : 0;
+                if (_price > 0) {
+                    let h = plan.byId[caster.id];
+                    if (!h) { h = { unit: caster, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[caster.id] = h; plan.hits.push(h); }
+                    h.dmg += _price; h.min += _price; h.max += _price; h.hits++;
+                    h.recoil = _price;
+                    if (!h.tags.includes('recoil')) h.tags.push('recoil');
+                }
+            }
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
@@ -38109,6 +38245,35 @@
                     (bx, by) => (bx === t.x && by === t.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
                 body.forEach(b => handled.add(b.x + ',' + b.y));
                 if (body.length > 1) zap(t.x, t.y, body);
+            }
+        }
+        /* 💥 THE OIL FORECAST (playtest 2026-11-03: Baphomet's Rite showed 642 on the target, then the oil it lit blew
+           up under the target and two of the caster's own allies and the forecast said nothing): the fire-oil reaction the
+           cast sets off (triggerTerrainSpellReaction -> _reactFireOil: every grounded body on the connected slick but the
+           caster and the lit tile takes the blast, friend or foe), through the same hit pipeline. */
+        function _forecastFireOil(unit, spell, tiles, hit) {
+            if (!unit || !spell || !tiles || !tiles.length) return;
+            const el = classifySpellElement(spell);
+            if (el !== 'fire' && el !== 'lightning') return;
+            const boom = Math.max(70, Math.round((spell.dmg || 90) * 0.9));
+            const opts = {
+                noTerrainBonus: true, sourceUnit: unit, noRangeMult: true, allowMarkBonus: false, damageType: 'magic',
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), element: 'fire'
+            };
+            const handled = new Set();
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y) || handled.has(t.x + ',' + t.y)) continue;
+                if (el === 'lightning' && _isWetTile(t.x, t.y)) continue;   // the spark races the water first (the reaction's own order)
+                if (!_isOilTile(t.x, t.y)) continue;
+                const slick = _floodConnectedTiles(t.x, t.y, _isOilTile, 40);
+                slick.forEach(b => handled.add(b.x + ',' + b.y));
+                for (const b of slick) {
+                    const u = unitAt(b.x, b.y);
+                    if (!u || u.dead || u._dying || u.id === unit.id || (b.x === t.x && b.y === t.y)) continue;
+                    if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                    hit(u, boom, boom, boom, opts, { tag: 'oil' });
+                }
             }
         }
         /* statusFirst (Goo Shot: "the status lands BEFORE the hit so its own damage multiplier applies to this very cast"):
@@ -38404,7 +38569,7 @@
                     }
                 }
                 /* the struck tile's lightning reaction, after the knock-on like the cast (_applyDamageSpellHit) */
-                _forecastConduction(unit, spell, [{ x: target.x, y: target.y }], hit);
+                _forecastConduction(unit, spell, [{ x: target.x, y: target.y }], hit); _forecastFireOil(unit, spell, [{ x: target.x, y: target.y }], hit);
                 return;
             }
 
@@ -38475,7 +38640,7 @@
                 runPulls(pull1Jobs, 1, 0);
                 /* the area's lightning reaction after the hits and the moves (_applyAoeDamage's triggerTerrainSpellReaction):
                    Crystal Resonator on soaked bodies arcs through them (THE SPELL AUDIT FIX F2) */
-                if (!spell.noDamage && !mopts.statusOnly) _forecastConduction(unit, spell, area, hit);
+                if (!spell.noDamage && !mopts.statusOnly) { _forecastConduction(unit, spell, area, hit); _forecastFireOil(unit, spell, area, hit); }
                 /* TRICK OR TREAT (2026-10-29): aoeAllyHeal — the allies in the area heal (the cast's own amounts) */
                 if (kind === 'aoe' && spell.aoeAllyHeal > 0) {
                     for (const a of aoeAllyHealAlliesOf(unit, area)) {
@@ -38515,7 +38680,7 @@
                         }
                     }
                 }
-                _forecastConduction(unit, spell, plan.tiles, hit);   // the beam's cells react after it (_applyLineDamage)
+                _forecastConduction(unit, spell, plan.tiles, hit); _forecastFireOil(unit, spell, plan.tiles, hit);   // the beam's cells react after it (_applyLineDamage)
                 return;
             }
 
@@ -38564,7 +38729,7 @@
                     const f = (n) => Math.max(32, Math.floor(Math.max(0, n) * w));
                     const _bx = e.x, _by = e.y;
                     hit(e, f(b), f(b - SPELL_DMG_VARIANCE), f(b + SPELL_DMG_VARIANCE), baseOpts(spell.damageType || 'physical', { element: undefined }));
-                    _forecastConduction(unit, spell, [{ x: _bx, y: _by }], hit);   // the struck tile reacts after each hit
+                    _forecastConduction(unit, spell, [{ x: _bx, y: _by }], hit); _forecastFireOil(unit, spell, [{ x: _bx, y: _by }], hit);   // the struck tile reacts after each hit
                 }
                 return;
             }
@@ -41162,7 +41327,12 @@
             state.pendingTarget = null;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
-            addLog(`${_ctName(unit)} moves to ${moveLabel}.`, unit.player);
+            {
+                /* the walk's own lines (fire on the path, a laser, a fall at the end) read after "moves to" */
+                const _ml = _logMark();
+                addLog(`${_ctName(unit)} moves to ${moveLabel}.`, unit.player);
+                if (_walkLogMark && _logMark().a > _ml.a) _logHoist(_walkLogMark, null);
+            }
 
             // Fairy passive: shed pixie dust on the tile she left; anyone
             // arriving on a mote resolves it (ally collects / enemy stamps).
@@ -41963,6 +42133,42 @@
                     renderAudioControls();
                     renderTimer();
                 });
+            }
+        }
+
+        /* THE LOG ORDER (playtest 2026-11-03: "Spy is gooed" printed before the hit that gooed it, the walk's fire and
+           fall lines before "moves to", the wall slams before "the Tornado flings"): _logMark() notes where both logs
+           stand, _logHoist(mark, from) moves the line written at `from` (another mark, or null = the newest line) back
+           to `mark`, in the same order in both logs. Only for lines written in the same task (the log renders on the
+           next frame). */
+        function _logMark() {
+            return { a: (state.logEntries || []).length, b: (state._fullLogEntries || []).length };
+        }
+        function _logHoist(mark, from) {
+            if (!mark || state.devAutoSim) return;
+            for (const [key, at, src] of [['logEntries', mark.a, from ? from.a : null], ['_fullLogEntries', mark.b, from ? from.b : null]]) {
+                const arr = state[key];
+                if (!arr || !(at >= 0)) continue;
+                const i = (src == null) ? arr.length - 1 : src;
+                if (!(i > at) || i >= arr.length) continue;
+                const e = arr.splice(i, 1)[0];
+                arr.splice(at, 0, e);
+            }
+        }
+        /* the lines written between `mark` and `mid` move to just after the first later line `isAnchor` accepts */
+        function _logSinkAfter(mark, mid, isAnchor) {
+            if (!mark || !mid || state.devAutoSim) return;
+            for (const [key, a, b] of [['logEntries', mark.a, mid.a], ['_fullLogEntries', mark.b, mid.b]]) {
+                const arr = state[key];
+                if (!arr || !(b > a) || b > arr.length) continue;
+                let k = -1;
+                for (let i = b; i < arr.length; i++) {
+                    const e = arr[i];
+                    if (isAnchor(typeof e === 'string' ? e : (e && e.m) || '')) { k = i; break; }
+                }
+                if (k < 0) continue;
+                const block = arr.splice(a, b - a);
+                arr.splice(k - block.length + 1, 0, ...block);
             }
         }
 
@@ -48956,9 +49162,8 @@
                 return `<tr class="${deadClass}">
                     <td><div class="unit-sprite-cell">
                         ${sprite ? `<div style="width:24px;height:24px;background-image:url('${sprite}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : ''}
-                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}</span>
+                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}${(() => { const rl = u.race ? getRaceLabel(u.race, u.gender) : ''; const nm = unitDisplayName(u); const extra = [rl && rl !== nm ? rl : '', lvl > 1 ? 'Lv' + lvl : ''].filter(Boolean).join(' · '); return extra ? `<small>${escapeHtml(extra)}</small>` : ''; })()}</span>
                     </div></td>
-                    <td style="font-size:10px;color:var(--muted)">${escapeHtml(u.race ? getRaceLabel(u.race, u.gender) : '')}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}
@@ -48984,19 +49189,19 @@
                 const h = units.reduce((s,u) => s + (u._trackHealDone||0), 0);
                 const c = units.reduce((s,u) => s + (u._matchCrits||0), 0);
                 const dt = units.reduce((s,u) => s + (u._matchDeaths||0), 0);
-                return `<tr class="team-header ${pClass}"><td colspan="2">Total</td><td>${k}</td><td>${dt}</td><td>${a}</td><td>${d}</td><td>${r}</td><td>${h}</td><td>${c}</td></tr>`;
+                return `<tr class="team-header ${pClass}"><td>Total</td><td>${k}</td><td>${dt}</td><td>${a}</td><td>${d}</td><td>${r}</td><td>${h}</td><td>${c}</td></tr>`;
             }
 
             return `<table class="vic-stats-table">
                 <caption>Match Performance</caption>
                 <thead><tr>
-                    <th>Unit</th><th>Class</th><th>K</th><th>D</th><th>A</th><th>Dmg</th><th>Recv</th><th>Heal</th><th>Crit</th>
+                    <th>Unit</th><th title="Kills">K</th><th title="Deaths">D</th><th title="Assists">A</th><th title="Damage dealt">Dmg</th><th title="Damage received">Recv</th><th title="Healing done">Heal</th><th title="Critical hits">Crit</th>
                 </tr></thead>
                 <tbody>
-                    <tr class="team-header p1-hdr"><td colspan="9">Player 1</td></tr>
+                    <tr class="team-header p1-hdr"><td colspan="8">Player 1</td></tr>
                     ${p1Sorted.map(unitRow).join('')}
                     ${teamTotals(p1Units, 'p1-hdr')}
-                    <tr class="team-header p2-hdr"><td colspan="9">Player 2</td></tr>
+                    <tr class="team-header p2-hdr"><td colspan="8">Player 2</td></tr>
                     ${p2Sorted.map(unitRow).join('')}
                     ${teamTotals(p2Units, 'p2-hdr')}
                 </tbody>
@@ -49443,6 +49648,9 @@
             const hasCube = !!(foeCube && foeCube.hp > 0);
             const hasKeys = !!mpm.hasHourglasses;
             if (id === 'siege' && !hasCube) return 'No Cube';
+            /* Anchor guards OUR Cube (ai.js 'anchor' walks to v.ownTower): a mode without one (Team Deathmatch) has nothing
+               for it to guard (playtest 2026-11-03: it was offered in TDM) */
+            if (id === 'anchor') { const _own = state.towers ? state.towers[u.player] : null; if (!(_own && _own.hp > 0)) return 'No Cube'; }
             if (id === 'search' && !hasKeys) return 'No Keys';
             if (id === 'intercept' && !hasCube && !hasKeys) return 'No Cube or Keys';
             if (id === 'heal') {
@@ -53141,7 +53349,7 @@
                 'wood.png', 'leaves.png', 'rock.png', 'liquids/Liquid_Blue_05-128x128.png', 'enamel.png',   // crystal: the blue sheet (2026-11-02; the cones are the Meshy shards now)
                 'objects/flower.png', 'objects/flower_2.png', 'objects/flower_3.png', 'objects/flower_4.png',
                 // tesla coil + signature-object cladding
-                'gunmetal.png', 'copper.png', 'aluminium.png', 'gold.png', 'metal.png',
+                'gunmetal.png', 'copper.png', 'aluminium.png', 'gilt.png', 'metal.png',   // gold.png is out (2026-11-03): the gold is gilt.png (Metal007)
                 'wood_planks.png', 'obsidian.png', 'leather.png', 'parchment.png', 'marble_light.png',
                 // boulder / ice / forest VFX projectiles + fluid wave overlay
                 'rocks_4.png', 'ice.png', 'forest.png', 'waves_1.png',
@@ -54506,6 +54714,19 @@
             return typeof row === 'string' && row[x] === '#';
         }
         window.fieldCellRock = fieldCellRock;
+        /* THE OPEN SKY (2026-11-03, mondo: "a flyer should absolutely be able to fly over a rock or a street sign ... an outdoor map
+           like cyberpunk does not need that, bc it is outside and there is no ceiling"): a rock cell of a room with no ceiling, as
+           tall as what is drawn there (data.js hqFieldSkyApply) — still never stood on, walked, climbed or landed on (fieldCellRock),
+           but an airborne flyer crosses and hovers over it (map.js unitCanTraverse) */
+        function fieldCellSky(x, y) {
+            const m = _encMatch || _encRoomLast;
+            const fid = _encFieldId(m);
+            if (!fid) return false;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
+            const row = e && e.field && e.field.sky ? e.field.sky[y] : null;
+            return typeof row === 'string' && row[x] === '1';
+        }
+        window.fieldCellSky = fieldCellSky;
         /* THE ROOFS (2026-11-01): a field square a building's roof / a rock's top stands in (data.js hqFieldRoofsApply — the no-deform
            flag 'R'): its height is the thing drawn there, so the spawn zones' ripple (map.js _clearSpawnZoneTiles) never lowers it */
         function fieldCellRoof(x, y) {
@@ -64776,9 +64997,7 @@
                         const partners = getComboPartners(actingUnit);
                         if (partners.some(p => p.id === clickedUnit.id)) {
                             state.comboPartner = clickedUnit;
-                            const combo = getComboForUnits(actingUnit, clickedUnit);
-                            const syn = getComboTypeSynergy(actingUnit, clickedUnit);
-                            addLog(`Partner selected: ${_ctName(clickedUnit)}. Combo: ${combo?.name || '?'}${syn.label ? ` (${syn.label})` : ''}. Now choose a target.`);
+                            /* the pick is a click answer, not a combat event: no "Partner selected" line in the log (playtest 2026-11-03) */
                             state.pendingTarget = null;
                             if (typeof window._hrlgComboPrePick === 'function') window._hrlgComboPrePick(actingUnit, clickedUnit);   // THE COMBO PICK
                             renderBattleSelectionUI();
@@ -65206,9 +65425,12 @@
 
         function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
             _walkBurnt = {};
+            _walkLogMark = _logMark();
             try { _resolveMovePath(unit, path, destinationX, destinationY, startIndex, destZ); }
-            finally { _walkBurnt = null; }
+            finally { _walkBurnt = null; _walkLogMark = null; }
         }
+        /* where the log stood when the walk began: finishMoveAt files "moves to" there (THE LOG ORDER) */
+        let _walkLogMark = null;
         /* 🔥 THE WALK'S BURNS (mondo 2026-10-19: "if i walk on them at any point in my path, i should get burned"): lava
            and ground fire bite a walker on every tile of the path, the landing included (THE CHAIN's B reads this) —
            once each per walk, so a run through a wall of fire burns once, not once a tile. */
@@ -70645,6 +70867,10 @@
                 if (unitZ <= groundZ) {
                     return { ok: false, reason: 'Already on the ground.' };
                 }
+                /* THE OPEN SKY: over a building's edge / a wall / a rock a flyer may hover, never land (THE SOLID WALL) */
+                if (typeof fieldCellRock === 'function' && fieldCellRock(unit.x, unit.y)) {
+                    return { ok: false, reason: 'Nowhere to land here.' };
+                }
 
             }
             return { ok: true };
@@ -73600,6 +73826,17 @@
         // offensive shot uses) so a big blessing breathes longer than a
         // cheap utility poke. Heal-flavored casts breathe LONGER — the
         // restore is the payoff, so beat 2 holds while the number lands.
+        /* THE BLINK READS (2026-11-03): a self blink's body (no look of its own) is off the board for the middle of this
+           many ms after the shot's cut — gone from its tile as the blink family's vanish fades it, on the landing before
+           the family's hard cut to its front (cut + 150 ms) */
+        const TP_BLINK_MS = 150;
+        /* the unit as it stands right now: its own x / y / z over the real unit (id, model, statuses read through) */
+        function _cineHeldAt(u) {
+            if (!u) return u;
+            const h = Object.create(u);
+            h.x = u.x; h.y = u.y; h.z = u.z;
+            return h;
+        }
         function _supportShotTimes(unit, target, opts = {}) {
             const len = Math.max(1, Math.hypot(target.x - unit.x, target.y - unit.y));
             const _supHeal = _isHealFlavoredCast(opts);
@@ -73697,8 +73934,21 @@
             const _supHeal = _isHealFlavoredCast(opts);
             const { sourceHold, travelMs, targetHold, totalMs } = _supportShotTimes(unit, target, opts);
 
+            /* THE DODGE READS (2026-11-03): the caster IS the thing that travels (an escape, a self blink, a reel: the
+               landing's mover is the caster) — beat 1 stands BEHIND it looking the way it goes, wide enough for the
+               landing to be in the frame (it turns to the landing and runs into the shot), never in front of it on the
+               landing's side, where the lens met the wall beside the landing and craned over the caster's head */
+            const _selfLand = !!(target._landUnit && target._landUnit.id === unit.id);
+            const _vGap0 = Math.abs(tgtPx - casterPx) / ts;
             // BEAT 1 — the giver: face the caster while they wind up the gift.
-            _cineBeatMove({
+            _cineBeatMove(_selfLand ? {
+                x: unit.x + (dx / len) * Math.min(1.2, len * 0.35), y: unit.y + (dy / len) * Math.min(1.2, len * 0.35),
+                zoom: Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES), _tpsZoomFitTiles(2.6 + _vGap0, len + 2.2)),
+                tilt: CINE_FACE_TILT, yaw: yawFwd + CINE_CAM_YAW_OFFSET * 2,
+                elevZ: casterPx + ts * CINE_FOCAL_RISE,
+                duration: actionMs(380), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            } : {
                 x: unit.x + (dx / len) * 0.1, y: unit.y + (dy / len) * 0.1,
                 zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
                 tilt: CINE_FACE_TILT, yaw: yawFwd + 180 - CINE_CAM_YAW_OFFSET,
@@ -73771,8 +74021,31 @@
                is the mover's own front ¾ there, sized to its body. */
             if (target._landUnit && target._landUnit.id != null) {
                 const _lu = target._landUnit, _stock2 = _supBeat2;
+                /* THE DODGE READS (2026-11-03): a caller that says how long the body's run takes (opts.travelMs, the escape)
+                   gets the glide in that time, so the lens and the body reach the landing together */
+                const _luGlide = (opts.travelMs != null && opts.travelMs > 0) ? opts.travelMs : 460;
                 _supBeat2 = () => {
-                    if (_lu.dead || !cineGlamCam(_lu, { at: { x: target.x, y: target.y }, cut: false, duration: 460 })) _stock2();
+                    if (_lu.dead) { _stock2(); return; }
+                    const _at = { x: target.x, y: target.y };
+                    if (!_selfLand) { if (!cineGlamCam(_lu, { at: _at, cut: false, duration: _luGlide })) _stock2(); return; }
+                    /* THE DODGE READS: the caster's own run — the lens rides along behind it to the landing in the run's
+                       time (same angle, no swing while it moves), then CUTS to its front ¾ once it stands there (a swing
+                       round to the front orbited through the wall beside the landing: one frame inside the building) */
+                    if (!_cineTpsAnchor(_at, _lu)) { _stock2(); return; }
+                    camera._cineShotTarget = { x: target.x, y: target.y, id: _lu.id };
+                    _cineBeatMove({
+                        x: target.x, y: target.y,
+                        zoom: _tpsZoomForBoomTiles(CINE_CLOSEUP_DIST_TILES * 1.5),
+                        tilt: CINE_FACE_TILT, yaw: yawFwd + CINE_CAM_YAW_OFFSET * 2,
+                        elevZ: tgtPx + ts * CINE_FOCAL_RISE,
+                        duration: actionMs(_luGlide), easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                    const _sid = camera._cineShotId;
+                    window.setTimeout(() => {
+                        if (camera._cineShotId !== _sid || state.phase !== 'battle' || state.cameraDisabled || _lu.dead) return;
+                        cineGlamCam(_lu, { at: _at });
+                    }, actionMs(_luGlide) + actionMs(60));
                 };
             }
             /* THE SPELL DIRECTOR: beat 2 (the heal's hard cut / the blessing's
@@ -73792,6 +74065,8 @@
                anyone else the gift lands on) from the cut to the end. */
             _cineArmFrameGuard({ seq: sequenceId, cine: true, caster: unit,
                 victimIds: (target.id != null) ? [target.id] : [],
+                /* THE DODGE READS: an escape / a reel films the caster itself where it lands — keep it guarded after the cut */
+                keepCaster: !!(target._landUnit && target._landUnit.id === unit.id),
                 castUntilMs: _supCutMs, hitFromMs: _supCutMs, totalMs });
 
             if (opts.spellName) {
@@ -73806,7 +74081,11 @@
                unreachable before (the rig never consulted the table). */
             if (!window.EW_DISABLE_SPELL_DIRECTOR && opts.spellId && _cineClaimCast(opts.spellId)) {
                 _cinePlaySpellSequence(opts.spellId, {
-                    caster: unit, target, sequenceId, rig: 'support',
+                    /* THE BLINK READS (2026-11-03): a self-moving cast hands its director the caster AS IT STANDS NOW —
+                       the engine moves the body at once and the body goes on the cut, so a director beat before the cut
+                       (Void Rush's / Instant Transmission's face cam) framed the empty landing. c.live() still finds the
+                       real body by id for the beats after the cut. */
+                    caster: _selfLand ? _cineHeldAt(unit) : unit, target, sequenceId, rig: 'support',
                     timings: { sourceHold, travelMs, targetHold, resetBuffer: actionMs(200), totalMs },
                     cutMs: _supCutMs, impactMs: sourceHold + travelMs, shotOpts: {},
                     spell: _cineSpellById(opts.spellId)
@@ -74952,6 +75231,12 @@
                 });
                 if (!_buffResult) return 0;
                 panelFocusTarget = _buffResult.target;
+                /* the cast's own line (playtest 2026-11-03: Rapture's Protect / Levitating showed up with no "casts Rapture") */
+                if (_buffResult.target) {
+                    addLog(_buffResult.target === unit
+                        ? `${_ctName(unit)} casts ${_ctSp(spell.name)}.`
+                        : `${_ctName(unit)} casts ${_ctSp(spell.name)} on ${_ctName(_buffResult.target)}.`, unit.player);
+                }
                 /* THE LONG WAY ROUND (door agent): four doors circle the agent
                    and every friendly open door on the board flares */
                 if (spell.statusEffects && spell.statusEffects.some(se => se && se.id === 'castFromDoors')) {
@@ -77224,11 +77509,29 @@
                    landing (nowhere free) keeps the self shot. */
                 const _escShotLand = _stealthDecoy ? null
                     : (_escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell));
+                /* THE DODGE READS (2026-11-03, mondo on the Catgirl video: "she just kinda slides backwards? Shouldnt she turn
+                   first and face the direction she is dodging? ... the camera zooms in on the empty tile she was on ... all we
+                   see is her back ... then the camera randomly zooms in to her original tile AGAIN"). The shot below is the
+                   two-beat caster → landing shot, but the body used to leave on the cast frame: beat 1 framed a tile she had
+                   already left, the frame guard dragged the lens after her (the 180° swing, her back), and when the guard let
+                   go the lens fell back to the empty start tile before the arrival cut. Now: she turns to face the way she
+                   goes (the facing every move takes, map rule), beat 1 holds on her there, she leaves ON the cut (the body's
+                   slide waits for it: delayMs, a look only — the tile, the status and the turn are the engine's at once) and
+                   the lens glides with her to her front ¾ where she lands, in the time the run takes (travelMs). */
+                const _escLandOk = !!(_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y));
+                const _escLook0 = (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                    ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
+                const _escRunMs = _escLandOk
+                    ? Math.max(_escLook0 ? _escLook0.ms : 220, (Math.abs(_escShotLand.x - unit.x) + Math.abs(_escShotLand.y - unit.y)) * 150, 200)
+                    : 0;
+                if (_escLandOk) setUnitFacing(unit, _escShotLand.x - unit.x, _escShotLand.y - unit.y);
                 const _escShot = _stealthDecoy ? null
-                    : (_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y))
-                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y, { landUnit: unit })
+                    : _escLandOk
+                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y, { landUnit: unit, travelMs: _escRunMs })
                         : _spellFocusCamera(unit, x, y);
                 const _escShotLive = !!(_escShot && _escShot.mode !== 'pan' && _escShot.totalMs > 0);
+                /* the body waits on its tile through beat 1 (turned to the landing), then runs on the cut */
+                const _escLeaveMs = (_escShotLive && _escShot.mode === 'support') ? Math.max(0, _escShot.sourceHold || 0) : 0;
                 unit.mp -= effectiveSpellCost;
 
                 if (spell.cleanse) {
@@ -77268,16 +77571,26 @@
                            time; an escape that ends Invisible stays hidden from the opponent on the way */
                         const _escTw = _escLook ? _escLook.ms : 220;
                         const _escInvis = !!(spell.statusEffects || []).some(e => e && e.id === 'invisible');
-                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, _escTw,
-                            _escLook ? { escStyle: _escLook.style, escHide: _escInvis } : undefined);
+                        /* THE DODGE READS: the slide leaves on the shot's cut (_escLeaveMs); an escape that ends Invisible
+                           says so (escHide) with or without a look of its own — its own side sees the run solid and the
+                           ghosting after it lands, the opponent sees it go */
+                        const _escAnim = { escStyle: _escLook ? _escLook.style : null, escHide: _escInvis };
+                        if (_escLeaveMs > 0) _escAnim.delayMs = _escLeaveMs;
+                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, _escTw, _escAnim);
 
                         if (typeof window !== 'undefined' && window.ThreeVFXEffects
                             && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
                             if (state.phase === 'battle' && !_skipVisuals()) {
-                                window.ThreeVFXEffects.fire('teleport', spell.id, {
-                                    fromX: _escFromX, fromY: _escFromY,
-                                    toX: candidates[0].x, toY: candidates[0].y,
-                                });
+                                const _escTo = { x: candidates[0].x, y: candidates[0].y };
+                                const _escFx = () => {
+                                    if (state.phase !== 'battle') return;
+                                    window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                        fromX: _escFromX, fromY: _escFromY,
+                                        toX: _escTo.x, toY: _escTo.y,
+                                    });
+                                };
+                                /* the swirl / the escape's own look goes off as the body leaves, not over a body still standing there */
+                                if (_escLeaveMs > 0) window.setTimeout(_escFx, _escLeaveMs); else _escFx();
                             }
                         }
 
@@ -77335,7 +77648,8 @@
                     }
                 }
                 scheduleBoardRender();
-                completionDelay = Math.max(actionMs(500), _escLook ? _escLook.ms + 120 : 0);   // the body lands before the turn moves on
+                completionDelay = Math.max(actionMs(500), _escLook ? _escLook.ms + 120 : 0,
+                    _escLeaveMs > 0 ? _escLeaveMs + _escRunMs + 120 : 0);   // the body lands before the turn moves on
             }
 
             else if (spell.kind === 'selfHeal') {
@@ -78884,8 +79198,14 @@
                         /* THE REEL SHOT (spell look fix FX-CAM, 2026-10-26: Grapple toward a tile played at the far overview
                            with no action cam): the caster → landing shot, read before the body moves; the board glide
                            below only runs when no shot played. */
-                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id, landUnit: unit });
+                        /* THE BLINK READS (2026-11-03): the reel used to start 380 ms into beat 1 (the body was on the landing
+                           before the shot's cut). Now the caster faces the rope, the hook flies in beat 1 and the reel pulls
+                           the body in ON the cut, in the shot's own travel time (the rope cam rides with it). */
+                        const _grSlideMs = actionMs(360);
+                        setUnitFacing(unit, cx - unit.x, cy - unit.y);
+                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id, landUnit: unit, travelMs: _grSlideMs });
                         const _grSelfShotLive = !!(_grSelfShot && _grSelfShot.mode !== 'pan' && _grSelfShot.totalMs > 0);
+                        const _grSelfLeave = (_grSelfShotLive && _grSelfShot.mode === 'support') ? Math.max(0, _grSelfShot.sourceHold || 0) : 0;
                         unit.mp -= effectiveSpellCost;
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
 
@@ -78894,7 +79214,7 @@
                         const _grShootMs = actionMs(320);
                         const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs, hook: true });
 
-                        const _grSlideMs = actionMs(360);
+                        const _grReelAt = Math.max(_grShootMs + actionMs(60), _grSelfLeave);
                         window.setTimeout(() => {
                             unit.x = cx;
                             unit.y = cy;
@@ -78920,9 +79240,9 @@
                                 }, _grSlideMs + 30);
                             }
                             scheduleBoardRender();
-                        }, _grShootMs + actionMs(60));
+                        }, _grReelAt);
                         addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grUnitAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
-                        completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
+                        completionDelay = _grReelAt + _grSlideMs + actionMs(280);
                     } else {
                         addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');
                         playErrorSfx();
@@ -79140,7 +79460,8 @@
                         _tpDrop();
                         return 0;
                     }
-                    if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
+                    if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))   // ⬡ never into the Cube
+                        || (typeof fieldCellRock === 'function' && fieldCellRock(x, y))) {   // THE SOLID WALL: a sign's / wall's hidden column is no landing (2026-11-03)
                         addLog('Cannot teleport there.');
                         playErrorSfx();
                         _tpDrop();
@@ -79184,35 +79505,54 @@
                     playSfx('teleport');
                     const _tpFromX = tUnit.x, _tpFromY = tUnit.y, _tpFromZ = tUnit.z ?? 0;
 
+                    /* THE BLINK READS (2026-11-03, mondo: fix the teleports the same way as Nimble Dodge). A self teleport
+                       used to leave its tile on the cast frame under the caster → landing shot: beat 1 framed a tile it
+                       had left and the frame guard dragged the lens after it. Now, like an escape (THE DODGE READS): it
+                       turns to face the landing, beat 1 holds behind it there, and the body goes ON the shot's cut — a
+                       blink vanishes and appears (the blink family's vanish + hard cut to its front), a leap / a swing
+                       travels with the lens riding along (then the cut to its front). Looks and timing only: the tile,
+                       the cost and every arrival rule are the engine's at once, as before. */
+                    const _tpSelf = (tUnit === unit);
+                    const _tpLook = (!spell.leap && !spell.doorGun && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                        ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
+                    const _tpLeapMs = Math.max(actionMs(420), destDist * actionMs(140));
+                    const _tpRunMs = spell.leap ? _tpLeapMs : _tpLook ? _tpLook.ms : TP_BLINK_MS;
+                    if (_tpSelf) setUnitFacing(unit, x - unit.x, y - unit.y);
+                    const _tpShot = _spellFocusCamera(unit, x, y, _tpSelf ? { landUnit: tUnit, travelMs: _tpRunMs } : { landUnit: tUnit });   // THE LANDING: the mover framed where it lands
+                    const _tpLeave = (_tpSelf && _tpShot && _tpShot.mode === 'support' && _tpShot.totalMs > 0) ? Math.max(0, _tpShot.sourceHold || 0) : 0;
+                    const _tpOnCut = (fn) => { if (_tpLeave > 0) window.setTimeout(() => { if (state.phase === 'battle') fn(); }, _tpLeave); else fn(); };
+
                     if (spell.leap && tUnit === unit) {
                         /* THE SPELL AUDIT Batch D: `leap` (Land on Your Feet) — the caster jumps the arc to the landing,
                            any height up or down, and lands on its feet (a teleport never pays fall damage). The arc is
                            relayed (online.js wraps animateJumpArc). */
                         const _lpToZ = (_tpLandZ !== null) ? _tpLandZ : (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, _tpFromZ) : _tpFromZ;
-                        if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, Math.max(actionMs(420), destDist * actionMs(140)));
+                        if (!_skipVisuals()) animateJumpArc(tUnit, _tpFromX, _tpFromY, x, y, _tpFromZ, _lpToZ, _tpLeapMs, _tpLeave > 0 ? { delayMs: _tpLeave } : undefined);
                     } else if (spell.doorGun) {
                         /* 🚪 DOOR DASH (the door wheel, DOOR_GUN_PLAN §3.5): the gun's shot to the landing, a door
                            at the agent's feet facing it, one at the landing facing back — in one, out the other
                            (Breaking and Entering's door; every beat through _doorGeom → relayed, RULE #2) */
                         window._doorGeom('raceDoorGun:shot', x, y, { fromX: tUnit.x, fromY: tUnit.y });
-                        window._doorGeom('raceBreakingEntering:door', tUnit.x, tUnit.y, { fromX: x, fromY: y });
-                        window._doorGeom('raceDoorDash:out', x, y, { fromX: tUnit.x, fromY: tUnit.y, delay: 260 });
-                        /* the agent is inside the doors between the two: hidden until the far one opens */
-                        if (!_skipVisuals() && typeof cineUnitFade === 'function') {
-                            try { cineUnitFade(tUnit, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(tUnit, 0, 1, 160), actionMs(380)); }); } catch (e) {}
-                        }
+                        /* THE BLINK READS: the gun fires in beat 1; the doors open and the agent steps through on the cut */
+                        _tpOnCut(() => {
+                            window._doorGeom('raceBreakingEntering:door', _tpFromX, _tpFromY, { fromX: x, fromY: y });
+                            window._doorGeom('raceDoorDash:out', x, y, { fromX: _tpFromX, fromY: _tpFromY, delay: 260 });
+                            /* the agent is inside the doors between the two: hidden until the far one opens */
+                            if (!_skipVisuals() && typeof cineUnitFade === 'function') {
+                                try { cineUnitFade(tUnit, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(tUnit, 0, 1, 160), actionMs(380)); }); } catch (e) {}
+                            }
+                        });
                     } else if (typeof window !== 'undefined' && window.ThreeVFXEffects
                         && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
                         if (state.phase === 'battle' && !_skipVisuals()) {
-                            window.ThreeVFXEffects.fire('teleport', spell.id, {
-                                fromX: tUnit.x, fromY: tUnit.y,
+                            _tpOnCut(() => window.ThreeVFXEffects.fire('teleport', spell.id, {
+                                fromX: _tpFromX, fromY: _tpFromY,
                                 toX: x, toY: y,
-                            });
+                            }));
                         }
                     } else {
-                        _vfxTeleport(tUnit.x, tUnit.y, x, y);
+                        _tpOnCut(() => _vfxTeleport(_tpFromX, _tpFromY, x, y));
                     }
-                    const _tpShot = _spellFocusCamera(unit, x, y, { landUnit: tUnit });   // THE LANDING: the mover framed where it lands
                     // Third Eye (the `teleportMpDiscount` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
                     const _tpOff = unitPassiveSum(unit, 'teleportMpDiscount') || 0;
                     const mpCost = _tpOff ? Math.max(1, effectiveSpellCost - _tpOff) : effectiveSpellCost;
@@ -79227,9 +79567,11 @@
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     /* THE ESCAPE LOOKS (FX-5): a teleport with its own look (Web Swing) carries the body along its path
                        instead of popping it there (relayed by the displace wrapper) */
-                    const _tpLook = (!spell.leap && !spell.doorGun && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
-                        ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
-                    if (_tpLook && !_skipVisuals()) animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, _tpLook.ms, { escStyle: _tpLook.style });
+                    if (_tpLook && !_skipVisuals()) animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, _tpLook.ms, _tpLeave > 0 ? { escStyle: _tpLook.style, delayMs: _tpLeave } : { escStyle: _tpLook.style });
+                    /* THE BLINK READS: a plain blink (or the doors) keeps the body on its tile through beat 1, then it is
+                       gone from there and stands on the landing (the blink path: off the board between the two) */
+                    else if (!spell.leap && _tpLeave > 0 && !_skipVisuals())
+                        animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, spell.doorGun ? actionMs(480) : TP_BLINK_MS, { escStyle: 'blink', delayMs: _tpLeave });
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
                         : tUnit === unit

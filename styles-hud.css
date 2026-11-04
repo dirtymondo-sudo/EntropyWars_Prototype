@@ -241,6 +241,9 @@
         #pauseOverlay .bp-unit.ko { border-left-color: #ff6a6a; }
         #pauseOverlay .bp-face { border-radius: 50%; border: 2px solid var(--hq-plate-rim); overflow: hidden; }
         #pauseOverlay .bp-face em { color: var(--hq-sel); }
+        /* the ACTING / KO tag hangs under the round face as a pill instead of being cut by the circle (playtest 2026-11-03: "CTING") */
+        #pauseOverlay .bp-face { overflow: visible; }
+        #pauseOverlay .bp-face em { left: 50%; right: auto; bottom: -9px; transform: translateX(-50%); padding: 2px 6px 2px 8px; border-radius: 999px; white-space: nowrap; }
         #pauseOverlay .bp-vit em { color: var(--hq-ink-dim); }
         #pauseOverlay .bp-vit tt { color: var(--hq-ink); }
 

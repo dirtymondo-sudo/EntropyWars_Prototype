@@ -23,11 +23,19 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/door-gun-skate-vehicles.md` | Door Gun revs, skateboarding revs, vehicles. | Those systems. |
 | `docs/notes/character-creator.md` | Character creator revs 3-11, cloth, wardrobe. | Creator work. |
 | `docs/notes/character-models-plan.md` | THE TRACKER for all new character-model work: MPFB bodies, creator rebuild, pack + Blender clothes, sway, the Meshy list, owner thread + status per piece. | BEFORE any MPFB / creator / clothes / sway / Meshy-part / face work; update its row in the same PR. |
+| `MODEL_LIST.md` (`node list-models.js` writes it) | THE master list: every 3D model in the game + how it was made (pack/author, MakeHuman, Meshy, Blender, code) + §8b every horizon / sky / monument builder and what it is made of (model files or three.js shapes) + §10 decor still missing. | ANY model OR horizon builder added/changed (a new `_hz*` / `_NR_BUILDERS` / `_WD_RIM` / `_hqLandmarkBuilders` / `_monBuilders` entry lands in §8b by itself): add a SOURCES row in list-models.js if new folder/pack/maker, rerun it, commit MODEL_LIST.md in the same PR (mondo 11-03). |
 | `docs/notes/models-assets.md` | Model batches, kits, model queue, asset store, matte bake. | Adding models/assets. |
 | `docs/notes/maps-terrain-battle.md` | Battle maps, moving maps, horizon, planets, sky. | Battle map work. |
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
 | `docs/notes/editor.md` | The in-game editor (EDITOR_PLAN.md): editor.js, world file, E0+. | Editor work. |
 | `docs/notes/rendering-loading-perf.md` | Polish passes, bloom, textures, loading/lanes, freezes, crashes. RENDERER_PLAN.md = the three.js r128→current upgrade + add-ons (R1-R7). WEBGPU_PLAN.md = the WebGL→WebGPU (TSL) port, W0-W13; read it before any shader/renderer work. | Render / load / perf work; before touching three.js versions. |
+| `docs/notes/inbox.md` | THE INBOX: mondo's drop-off folder `/mnt/project-files/inbox/` + the sorting routine (where each kind of file goes). | Whenever he says "sort the inbox" / "I dropped X", or a task needs a file he dropped. |
+
+## RULE #0 — THE INBOX (mondo 11-03)
+Files mondo uploads by hand go in `/mnt/project-files/inbox/` (huge ones: R2 bucket `dirtymondo`, prefix `inbox/`).
+On "sort the inbox", follow docs/notes/inbox.md exactly: identify each file, leave it + ask if unsure, move it home
+(repo / R2 / project files), models -> `node list-models.js` + MODEL_LIST.md, upload with `node sync-zip.js`, verify the
+sha256, THEN remove the inbox copy and log it in `inbox/_sorted-log.md`. Never delete a file that has no verified home.
 
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
 The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
@@ -44,7 +52,11 @@ same turn as the fix, without asking first):
    Before merging, `git fetch origin main` and merge main into the branch; if
    it conflicts, resolve by hand keeping BOTH sides, never one side wholesale.
    Never force-push main. Render auto-deploys index.html from main.
-3. After the merge, write the CUMULATIVE SYNC ZIP with `node sync-zip.js`
+3. **UPLOAD IT YOURSELF (mondo 11-03, replaces the zip):** right after the merge run `node sync-zip.js --upload`
+   (PUTs every file differing from origin/main to bucket `ewmusicsfx` = cdn.entropywars.net, re-checks each live).
+   R2-only assets: `node sync-zip.js --put <local file> <R2 key> ...`. Reply: each file + sha256[:8], "live, nothing
+   to upload". Never delete R2 objects you didn't upload. Auth = env Network secret (never in files/chat). Only if
+   refused: the zip fallback below. FALLBACK — the CUMULATIVE SYNC ZIP with `node sync-zip.js`
    (does all of this step): for every R2 file that
    index.html on origin/main loads from cdn.entropywars.net, fetch the live
    copy (`curl --compressed` with a random query string) and compare its
@@ -58,9 +70,8 @@ same turn as the fix, without asking first):
    zipped changed. In the reply list each file with the first 8 chars of
    its sha256 and say "upload only the newest sync zip". Expected
    non-matches: react, react-dom, MeshLine (R2-only). ASSET_MANIFEST.json is in the repo since 2026-10-28: zip it when it differs.
-4. The user uploads the newest zip to the R2 bucket — or runs `npm run
-   deploy` (see TOOLING), which uploads + cache-busts in one command.
-Never deliver patches, diffs or loose files in place of the merged PR + zip.
+4. Only on the zip fallback: the user uploads the newest zip to the R2 bucket.
+Never deliver patches, diffs or loose files in place of the merged PR + upload (or zip).
 
 ### TOOLING
 - **NO TESTS (2026-09-29, mondo):** the test suite, the check-* tools and the CI workflow were deleted. Never write
@@ -79,8 +90,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   them, bumps the `?v=` token in index.html, uploads via wrangler, and prints
   the Render-redeploy reminder. `--dry-run` previews. Without a bucket it
   still bumps the token and prints a manual upload checklist. Claude has no
-  wrangler creds — Claude's deliverable is the merged PR + sync zip (RULE #1);
-  this script is how the USER ships the zip's files to R2.
+  wrangler creds; since 2026-11-03 Claude uploads itself with `node sync-zip.js --upload` / `--put` (RULE #1 step 3).
 - `load-data.js` — loads data.js headlessly in a Node vm sandbox (real
   values, not a copy). Use it for any new data validation/tooling instead of
   regex-scraping data.js.
@@ -103,6 +113,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   Meshy rig; three-renderer.js THE SWAY swings them. Notes: models-assets.md "THE SWAY".
 - `bake-looks.js` (2026-11-01): `node bake-looks.js <Entropy_Wars_Race_Look_….json> [--dry-run] | --list | --remove race[:gender]` bakes a
   forge EXPORT DEFAULT LOOK into sprites.js RACE_CREATOR_LOOKS (a race's creator look replaces its Meshy model). Notes: character-creator.md "THE RACE LOOKS".
+- `bake-faces.js` (2026-11-03): .mhm face -> creator FACE preset. Notes: character-creator.md "THE FACE PRESETS".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for

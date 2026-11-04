@@ -331,6 +331,36 @@ const ThreeRenderer = (function () {
     }
     var _userTintCache = {};
 
+    /* THE TWO SANDS (2026-11-03, mondo: "differentiate between beach sand and desert sand in the game through color/tint"):
+       the `desert` key is ONE terrain (one set of rules) drawn in two colours — sprites.js TERRAIN_SPRITES.desert (sand.png,
+       the desert gold) by default, SAND_BEACH.sheet (sand_beach.png, the same ripples in pale cream) on a beach. A beach =
+       the room being drawn (the walk, or the room round a field fight) stands on a sea shell (`shell.sand === 'beach'`, data.js
+       hqSeaShell / hqAbyssShell), else the battle board's id starts with one of SAND_BEACH.maps. activeGameMode is set by
+       applyGameMode on host and guest alike, so both draw the same sand online. */
+    function _ewRoomSand(room) {
+        if (!room) return null;
+        var sh = room.shell, t = room.terrain;
+        return (t && t.sand) || (sh && sh.sand) || null;
+    }
+    function _ewSandBeach() {
+        try {
+            if (typeof SAND_BEACH === 'undefined' || !SAND_BEACH || !SAND_BEACH.sheet) return false;
+            if (typeof _hq !== 'undefined' && _hq && _hq.room) return _ewRoomSand(_hq.room) === 'beach';
+            var R = (typeof _hqBattleRoom === 'function') ? _hqBattleRoom() : null;
+            if (R && R.room) return _ewRoomSand(R.room) === 'beach';
+            var id = (typeof activeGameMode !== 'undefined') ? String(activeGameMode || '') : '';
+            var M = SAND_BEACH.maps || [];
+            for (var i = 0; i < M.length; i++) if (id.indexOf(M[i]) === 0) return true;
+        } catch (e) {}
+        return false;
+    }
+    /* the sheet URL a terrain key wears HERE (only `desert` changes) */
+    function _ewSandUrl(key, url) {
+        return (key === 'desert' && url && _ewSandBeach()) ? SAND_BEACH.sheet : url;
+    }
+    /* a cache-key suffix for anything cached by terrain key */
+    function _ewSandPart(key) { return (key === 'desert' && _ewSandBeach()) ? '@beach' : ''; }
+
     /* Material cache key fragment for the active per-terrain editor tints.
        buildBoxMaterials/_buildBeveledMaterials cache materials by terrain key,
        but the tint is multiplied on at build time (_evTintMat). Without folding
@@ -338,10 +368,11 @@ const ThreeRenderer = (function () {
        cached material and the map never updated. Include the top/side tint hex so
        a tint change yields a fresh cache entry — and rebuilds tinted materials. */
     function _tintKeyPart(topKey, sideKey) {
+        var sp = _ewSandPart(topKey) || _ewSandPart(sideKey);   // THE TWO SANDS: a beach's desert is its own material
         var t = (typeof state !== 'undefined' && state) ? state.terrainTints : null;
-        if (!t) return '';
+        if (!t) return sp;
         var a = t[topKey] || '', b = t[sideKey || topKey] || '';
-        return (a || b) ? '|t:' + a + ':' + b : '';
+        return ((a || b) ? '|t:' + a + ':' + b : '') + sp;
     }
 
     function _lerp(a, b, t) { return a + (b - a) * t; }
@@ -2171,6 +2202,19 @@ const ThreeRenderer = (function () {
         });
     }
     function _asBasePath(url) { var i = String(url || '').lastIndexOf('/'); return i >= 0 ? String(url).slice(0, i + 1) : ''; }
+    /* THE MISSING ATLAS (playtest 2026-11-03: "GLTFLoader: Couldn't load texture ../textures/atlas.png" on every squad screen): the
+       crow and the rabbit name ../textures/atlas.png, a folder the bucket does not have; their sheet sits beside them
+       (crow_and_rabbit/atlas.png, the one _animalAtlas puts on them), so the loader is pointed there */
+    var _asGltfMgrObj = null;
+    function _asGltfMgr() {
+        if (_asGltfMgrObj || typeof THREE === 'undefined' || typeof THREE.LoadingManager !== 'function') return _asGltfMgrObj || undefined;
+        _asGltfMgrObj = new THREE.LoadingManager();
+        _asGltfMgrObj.setURLModifier(function (u) {
+            return /\/Assets\/animals\/textures\/atlas\.png(?:[?#]|$)/.test(String(u))
+                ? String(u).replace(/\/Assets\/animals\/textures\/atlas\.png/, '/Assets/animals/crow_and_rabbit/atlas.png') : u;
+        });
+        return _asGltfMgrObj;
+    }
     /* a GLB through the store → GLTFLoader.parse; else the loader's own network path */
     function _asGltf(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') { if (onError) onError(new Error('no GLTFLoader')); return; }
@@ -2187,9 +2231,9 @@ const ThreeRenderer = (function () {
                 _asGltf(url, onLoad, onError, Object.assign({}, o, { noOpt: true }));
             };
             var done = function (g) { if (opt) _asOptLoads++; onLoad(g); };
-            if (!_asAvailable()) { new THREE.GLTFLoader().load(_asNetUrl(u), done, undefined, fail); return; }
+            if (!_asAvailable()) { new THREE.GLTFLoader(_asGltfMgr()).load(_asNetUrl(u), done, undefined, fail); return; }
             _asFetch(u, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
-                try { new THREE.GLTFLoader().parse(buf, _asBasePath(url), done, fail); } catch (e) { fail(e); }
+                try { new THREE.GLTFLoader(_asGltfMgr()).parse(buf, _asBasePath(url), done, fail); } catch (e) { fail(e); }
             }).catch(fail);
         });
     }
@@ -2517,6 +2561,33 @@ const ThreeRenderer = (function () {
         img.src = src;
         return img;
     }
+    /* THE WHITE SHEETS (2026-11-03, sprites.js TERRAIN_WHITE_SHEETS): a near-white sheet is darkened ONCE as it lands, into a
+       canvas (its pixels × the row's value, alpha kept), so daylight no longer pushes it past the frame's 100% and wipes its
+       pattern to flat white. Keyed by the file name, so every holder of the sheet gets it. A bitmap (THE BITMAPS) is already
+       flipped at its decode, so its canvas copy is turned back the file's way up (the texture's own flipY then flips it, as it
+       does an <img>). Any failure keeps the sheet as it came. */
+    function _ewWhiteGuard(url, img, tex) {
+        try {
+            var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null;
+            if (!W || !img || typeof document === 'undefined') return img;
+            var name = String(url || '').split('?')[0].split('#')[0]; name = name.slice(name.lastIndexOf('/') + 1);
+            var k = W[name];
+            if (!(k > 0 && k < 1)) return img;
+            var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+            if (!(w > 0 && h > 0)) return img;
+            var c = document.createElement('canvas'); c.width = w; c.height = h;
+            var x = c.getContext('2d');
+            var unflip = !!(tex && tex._ew_bmp && tex.flipY !== false);   // the bitmap was flipped at its decode: the canvas holds the file's own way up, the texture's flipY does the rest (for every holder alike)
+            if (unflip) { x.translate(0, h); x.scale(1, -1); }
+            x.drawImage(img, 0, 0, w, h);
+            var d = x.getImageData(0, 0, w, h), p = d.data;
+            for (var i = 0; i < p.length; i += 4) { p[i] = p[i] * k; p[i + 1] = p[i + 1] * k; p[i + 2] = p[i + 2] * k; }
+            x.putImageData(d, 0, 0);
+            try { c.complete = true; c.naturalWidth = w; c.naturalHeight = h; c.src = img.src || url; } catch (e) {}
+            return c;
+        } catch (e) { return img; }
+    }
+    if (typeof window !== 'undefined') window._ewWhiteGuard = _ewWhiteGuard;
     textureLoader.load = function (url, onLoad, onProgress, onError) {
         var u = window._ewCorsBust ? window._ewCorsBust(url) : url;
         var tex = new THREE.Texture();
@@ -2525,6 +2596,7 @@ const ThreeRenderer = (function () {
         var rec = _alTrack('texture', u);   // THE ASSET LEDGER: a gate waits for this sheet
         tex._ew_alRec = rec;
         function landed(img) {
+            img = _ewWhiteGuard(u, img, tex);   // THE WHITE SHEETS (2026-11-03): a near-white sheet darkened once, before it is drawn
             tex.image = img; tex.needsUpdate = true;
             if (onLoad) { try { onLoad(tex); } catch (e) { console.warn('[ThreeRenderer] texture onLoad threw', e); } }
             rec.settle(true);
@@ -3610,7 +3682,7 @@ const ThreeRenderer = (function () {
     }
 
     function getTerrainTexture(k) {
-        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? TERRAIN_SPRITES[k][0] : null;
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? _ewSandUrl(k, TERRAIN_SPRITES[k][0]) : null;   // THE TWO SANDS
         return url ? getTexture(url) : null;
     }
 
@@ -4611,6 +4683,27 @@ const ThreeRenderer = (function () {
         if (ended) _shadowsDirty = true;                 // THE STATIC SHADOW: the field's depth pass lands with the wall
     }
 
+    /* THE WHITE DAYLIGHT on a tile board (2026-11-03, mondo: "can we just make light not 130% too?" / "i dont want the game to change
+       lighting based on the white on the screen"): when half or more of the board's top tiles wear a white sheet (sprites.js
+       TERRAIN_WHITE_SHEETS), the battle's DAY rig (ThreePost.setWhiteDay; it eases back to 1 by night) runs at HQ_LIGHT_RULES.whiteDay (0.75) — read off
+       the board's own tiles, never off the screen. A room fight takes the room's rule instead (_hqOpenLR). */
+    function _whiteSheetKey(key) {
+        var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null;
+        if (!W || !key || typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES[key]) return false;
+        var name = String(TERRAIN_SPRITES[key][0] || '').split('?')[0]; name = name.slice(name.lastIndexOf('/') + 1);
+        return W[name] > 0 && W[name] < 1;
+    }
+    function _boardWhiteDay(bW, bH) {
+        if (typeof ThreePost === 'undefined' || !ThreePost.setWhiteDay || !state || !state.boardColumns) return;
+        var n = 0, w = 0, memo = {};
+        for (var y = 0; y < bH; y++) { var row = state.boardColumns[y]; if (!row) continue;
+            for (var x = 0; x < bW; x++) { var col = row[x]; if (!col || !col.length) continue;
+                var k = col[col.length - 1].terrain || 'grass'; n++;
+                if (memo[k] === undefined) memo[k] = _whiteSheetKey(k);
+                if (memo[k]) w++; } }
+        var LR = _hqLightRules(), kd = (LR && LR.whiteDay > 0 && LR.whiteDay <= 1) ? +LR.whiteDay : 1;
+        ThreePost.setWhiteDay((n > 0 && w / n >= 0.5) ? kd : 1);
+    }
     function rebuildTerrain() {
         if (!terrainGroup) return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -4642,6 +4735,7 @@ const ThreeRenderer = (function () {
             _shadowsDirty = true;
             return;
         }
+        try { _boardWhiteDay(_bw, _bh); } catch (e) {}   // THE WHITE DAYLIGHT: a board whose ground is mostly a white sheet wears less daylight
 
         for (var y = 0; y < _bh; y++) {
             for (var x = 0; x < _bw; x++) {
@@ -6840,10 +6934,11 @@ const ThreeRenderer = (function () {
        plinth, copper primary winding, wound secondary column, aluminium
        toroid with a spark-gap electrode, and an owner-colored corona so you
        can read whose trap it is at a glance. Same pixel-sprite recipe as
-       the trees/turrets (gold.png tinted copper stands in until a dedicated
-       copper sprite lands on the R2). */
+       the trees/turrets (copper.png is on the R2 now; the gold sheet is out, 2026-11-03). */
     var _teslaTexCache = {};
     function _getTeslaTex(file, repX, repY) {
+        /* THE GOLD SHEET IS OUT (2026-11-03): terrain/gold.png is never loaded; the gold is terrain/gilt.png (Metal007) */
+        if (file === 'gold.png') file = 'gilt.png';
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_teslaTexCache[key]) return _teslaTexCache[key];
         var t = textureLoader.load('https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
@@ -9118,7 +9213,7 @@ const ThreeRenderer = (function () {
             ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
             obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
             greek: _hzGreekRuin, crystal: _hzCrystalShards,
-            rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland,
+            rings: _hzSacredRings, fallen_column: _hzFallenColumn,
             flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
             lightpillar: _hzLightPillar, fluorescent: _hzFluorescent,
             exitsign: _hzExitSign,
@@ -10082,7 +10177,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var marbleMat = _deployMat('marble_light.png', 0xeaf2ee);
-        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var goldMat = _deployMat('gilt.png', 0xd8b458);
         var plinth = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.26, ts * 0.08, 10), marbleMat);
         plinth.position.y = ts * 0.04; g.add(plinth);
         var col = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.13, ts * 0.15, ts * 0.62, 12), marbleMat);
@@ -10236,7 +10331,7 @@ const ThreeRenderer = (function () {
     function _buildFlashbangMine3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var brassMat = _deployMat('gold.png', 0xc8a850);
+        var brassMat = _deployMat('gilt.png', 0xc8a850);
         var ironMat = _deployMat('gunmetal.png', 0xb8bec8);
         var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.17, ts * 0.19, ts * 0.09, 12), brassMat);
         body.position.y = ts * 0.045; g.add(body);
@@ -10343,8 +10438,8 @@ const ThreeRenderer = (function () {
     function _buildGraveGate3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var stoneMat = _deployMat('desert.png', 0xd9bd82);
-        var goldMat = _deployMat('gold.png', 0xd8b458);
+        var stoneMat = _deployMat('sand.png', 0xd9bd82);   // THE TWO SANDS (2026-11-03): the desert sheet (Ground097)
+        var goldMat = _deployMat('gilt.png', 0xd8b458);
         for (var j = -1; j <= 1; j += 2) {
             var jamb = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.12, ts * 0.72, ts * 0.14), stoneMat);
             jamb.position.set(j * ts * 0.2, ts * 0.36, 0); g.add(jamb);
@@ -14194,6 +14289,200 @@ const ThreeRenderer = (function () {
         holder.userData.inst = inst;
         return holder;
     }
+    /* ══ THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, docs/notes/character-models-plan.md row 24; mondo: "how do we
+       put these models ... in the game for spells (like whip crack)") ══
+       The Meshy pieces #47-72 (R2 Assets/props/, optimize-assets.js'd: meshopt + WebP 512) on any rigged body, pinned to the
+       shared Meshy bone names every model carries.
+       - unitHoldProp(uid, obj, { grip, bones, open }): a spell's prop (three-vfx-effects.js THE PROPS IN THE HAND builds it in
+         world units) in the caster's hand bone for the cast. `grip` is THE GRIP's handle frame ({ c, down, barrel } in obj's own
+         coordinates + meshAt / meshUp / depth / back): seated in the closed fist on a creator body (its fingers curl for the
+         cast and open again when the prop goes, _gripHandTemp) and on the palm read off the skin on a Meshy hand. Returns
+         { holder, inner, bone, remove() } or null (no rig / no hand: a sprite caster keeps the spell's own look).
+       - UNIT_GEAR_WEAR: the twelve worn gear pieces (EQUIP_DEFS keys) on the body while the unit carries them
+         (unit.equipment.accessory1 / 2), placed off the bone's own skin (the back of the chest, the front of the hip, round the
+         upper arm...) in the bind pose and riding that bone from then on. The holder rides the rig cache like the door gun. */
+    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/props/';
+    /* the creator body's fingers curled for a held prop, and a function that opens them again (null: no finger bones, or the
+       hand already holds the def's own prop for good) */
+    function _gripHandTemp(m, handName) {
+        var hand = m.getObjectByName(handName || 'RightHand');
+        if (!hand || hand.userData._ewGrip) return null;
+        var s = /^Left/.test(handName || '') ? 'l' : 'r', saved = [];
+        ['index', 'middle', 'ring', 'pinky', 'thumb'].forEach(function (f) {
+            for (var k = 1; k <= 3; k++) { var b = m.getObjectByName(f + '_0' + k + '_' + s); if (b) saved.push([b, b.quaternion.clone()]); }
+        });
+        if (!saved.length || !_gripHand(m, handName)) return null;
+        return function () { saved.forEach(function (e) { e[0].quaternion.copy(e[1]); }); hand.userData._ewGrip = false; };
+    }
+    function unitHoldProp(unitId, obj, opts) {
+        opts = opts || {};
+        var entry = _getUnitEntry(unitId), rig = _unitModelRigs.get(unitId);
+        var root = (rig && rig.inner) || (entry && entry.mixer && entry.model) || null;
+        if (!root || !obj) return null;
+        var names = opts.bones || ['RightHand', 'LeftHand'], bone = null;
+        for (var i = 0; i < names.length && !bone; i++) {
+            var bn = root.getObjectByName(names[i]) || null;
+            /* a hand that already holds the def's own prop for good (the door gun, the cowboy's revolver): the other hand */
+            if (bn && !opts.bones && bn.children.some(function (k) { return k.name && k.name.indexOf('ew_held_') === 0; })) continue;
+            bone = bn;
+        }
+        if (!bone) return null;
+        root.updateMatrixWorld(true);
+        var ws = new THREE.Vector3(); bone.getWorldScale(ws);
+        var holder = new THREE.Group(); holder.name = 'ew_spellprop';
+        holder.scale.setScalar(1 / (ws.x || 1));
+        var inner = new THREE.Group(); inner.add(obj); holder.add(inner);
+        var restore = null, seat = null;
+        if (opts.grip) {
+            var gr = Object.assign({ c: [0, 0, 0] }, opts.grip);
+            if (!opts.open) { try { restore = _gripHandTemp(root, bone.name); } catch (e) { restore = null; } }
+            try { seat = _gripFrame(root, bone, { bone: bone.name, grip: gr }); } catch (e) { seat = null; }
+            if (seat) {
+                inner.quaternion.copy(seat.q);
+                inner.position.copy(seat.p).sub(new THREE.Vector3(gr.c[0], gr.c[1], gr.c[2]).applyQuaternion(seat.q));
+            }
+        }
+        obj.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; n._ew_pixelate = true; } });
+        bone.add(holder);
+        return { holder: holder, inner: inner, bone: bone, seated: !!seat,
+            remove: function () {
+                if (restore) { try { restore(); } catch (e) {} restore = null; }
+                if (holder.parent) holder.parent.remove(holder);
+            } };
+    }
+    /* world units to a metre on this unit's body (THE BIG SQUARES: a 1.0 body is a tile, HQ_TILE_M metres) */
+    function unitPropMetre(unitId) {
+        var rig = _unitModelRigs.get(unitId);
+        var ts = (rig && rig.ts) || (CONFIG && CONFIG.tileSize) || BASE_TILE;
+        return ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;
+    }
+    /* the gear (EQUIP_DEFS key -> where it is worn). size = metres (fit 'height' = its height, 'span' = its widest side);
+       side = the face of the bone's skin it sits on (back / front / left / right of the body; 'arm' = round the bone);
+       off = metres in the body's frame (+X the body's left, +Y up, +Z its front); map = [propA, bodyA, propB, bodyB]: the turn
+       taking the GLB's axis A onto the body's A and B (kept square) onto B ('bone' = down the bone toward its child). */
+    var UNIT_GEAR_WEAR = {
+        jetpack:          { file: 'jetpack.glb',          bone: 'Spine02', size: 0.5,  side: 'back',  off: [0, -0.06, 0] },
+        binoculars:       { file: 'binoculars.glb',       bone: 'Spine02', size: 0.17, fit: 'span', side: 'front', off: [0, -0.02, 0],
+                            map: [[0, 0, 1], [0, -1, 0], [1, 0, 0], [1, 0, 0]] },
+        walkie_talkie:    { file: 'walkie_talkie.glb',    bone: 'Hips',    size: 0.19, side: 'left',  off: [0, 0.02, 0.03],
+                            map: [[0, 0, 1], [-1, 0, 0], [0, 1, 0], [0, 1, 0]] },
+        flair:            { file: 'flare_gun.glb',        bone: 'Hips',    size: 0.21, fit: 'span', side: 'right', off: [0, -0.02, 0.02],
+                            map: [[-1, 0, 0], [0, -1, 0], [0, 0, 1], [-1, 0, 0]] },
+        ward:             { file: 'ward_totem.glb',       bone: 'Hips',    size: 0.17, side: 'left',  off: [0, -0.02, -0.07],
+                            map: [[0, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0]] },
+        telescope:        { file: 'spyglass.glb',         bone: 'Hips',    size: 0.3,  fit: 'span', side: 'right', off: [0, -0.04, -0.06],
+                            map: [[1, 0, 0], [0, -0.92, 0.38], [0, 1, 0], [-1, 0, 0]] },
+        martyrs_talisman: { file: 'talisman_pendant.glb', bone: 'Spine02', size: 0.08, side: 'front', off: [0, 0.02, 0] },
+        purity_censer:    { file: 'censer.glb',           bone: 'Hips',    size: 0.13, side: 'right', off: [0, -0.1, 0.06], swing: true },
+        grapnel_gauntlet: { file: 'grapple_gauntlet.glb', bone: 'RightForeArm', size: 0.27, fit: 'span', side: 'arm',
+                            map: [[-1, 0, 0], 'bone', [0, 1, 0], [0, 1, 0]] },
+        echo_band:        { file: 'arm_band.glb',         bone: 'LeftArm', size: 0, fit: 'span', side: 'arm', ring: true,
+                            map: [[0, 1, 0], 'bone', [0, 0, 1], [0, 0, 1]] },
+        hagstone:         { file: 'hagstone.glb',         bone: 'Spine02', size: 0.065, side: 'front', off: [0.05, -0.05, 0] },
+        dowsing_rod:      { file: 'dowsing_rod.glb',      bone: 'Hips',    size: 0.38, side: 'back',  off: [0.06, 0.12, 0],
+                            map: [[0, 1, 0], [0.3, 1, 0], [0, 0, 1], [0, 0, -1]] },
+    };
+    /* the turn taking a onto A and b (made square to a) onto B */
+    function _basisQuat(a, A, b, B) {
+        var V = function (x) { return new THREE.Vector3(x[0], x[1], x[2]).normalize(); };
+        var a1 = a.isVector3 ? a.clone().normalize() : V(a), A1 = A.isVector3 ? A.clone().normalize() : V(A);
+        var b1 = b.isVector3 ? b.clone() : V(b), B1 = B.isVector3 ? B.clone() : V(B);
+        b1.addScaledVector(a1, -b1.dot(a1)); B1.addScaledVector(A1, -B1.dot(A1));
+        if (b1.lengthSq() < 1e-8 || B1.lengthSq() < 1e-8) return new THREE.Quaternion().setFromUnitVectors(a1, A1);
+        b1.normalize(); B1.normalize();
+        var Mp = new THREE.Matrix4().makeBasis(a1, b1, new THREE.Vector3().crossVectors(a1, b1));
+        var Mb = new THREE.Matrix4().makeBasis(A1, B1, new THREE.Vector3().crossVectors(A1, B1));
+        return new THREE.Quaternion().setFromRotationMatrix(Mb.multiply(Mp.transpose()));
+    }
+    /* the skin weighted to a bone (>= minW), in `frame`'s coordinates, as the bones stand now */
+    function _boneSkinPts(root, bone, frame, minW) {
+        var pts = [], M = new THREE.Matrix4(), v = new THREE.Vector3();
+        var toFrame = new THREE.Matrix4().copy(frame.matrixWorld).invert().multiply(bone.matrixWorld);
+        root.traverse(function (o) {
+            if (!o.isSkinnedMesh || !o.skeleton || !o.geometry || o._ew_silhouette || o._ew_teamOutline) return;
+            var bi = o.skeleton.bones.indexOf(bone); if (bi < 0) return;
+            var g = o.geometry, pa = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+            if (!pa || !si || !sw) return;
+            M.multiplyMatrices(o.skeleton.boneInverses[bi], o.bindMatrix).premultiply(toFrame);
+            var step = Math.max(1, Math.floor(pa.count / 8000));
+            for (var i = 0; i < pa.count; i += step) {
+                var w = 0;
+                for (var k = 0; k < 4; k++) if (si.getComponent(i, k) === bi) w += sw.getComponent(i, k);
+                if (w >= minW) pts.push(v.fromBufferAttribute(pa, i).applyMatrix4(M).clone());
+            }
+        });
+        return pts;
+    }
+    function _gearAttach(root, frame, key, spec, pxm) {
+        var bone = root.getObjectByName(spec.bone); if (!bone) return null;
+        var pts = _boneSkinPts(root, bone, frame, 0.45);
+        if (pts.length < 12) return null;
+        var box = new THREE.Box3().setFromPoints(pts), c = box.getCenter(new THREE.Vector3());
+        var fi = new THREE.Matrix4().copy(frame.matrixWorld).invert();
+        var bp = new THREE.Vector3().setFromMatrixPosition(bone.matrixWorld).applyMatrix4(fi);
+        var kid = bone.children.filter(function (k) { return k.isBone; })[0];
+        var D = kid ? new THREE.Vector3().setFromMatrixPosition(kid.matrixWorld).applyMatrix4(fi).sub(bp) : new THREE.Vector3(0, -1, 0);
+        if (D.lengthSq() < 1e-10) D.set(0, -1, 0);
+        D.normalize();
+        var N = new THREE.Vector3(), P = c.clone(), size = spec.size * pxm;
+        if (spec.side === 'back') { P.z = box.min.z; N.set(0, 0, -1); }
+        else if (spec.side === 'front') { P.z = box.max.z; N.set(0, 0, 1); }
+        else if (spec.side === 'left') { P.x = box.max.x; N.set(1, 0, 0); }
+        else if (spec.side === 'right') { P.x = box.min.x; N.set(-1, 0, 0); }
+        else {
+            /* round the bone: the middle of its stretch of skin, on the axis; `ring` = sized to go round it */
+            var r = []; pts.forEach(function (p) { var d = p.clone().sub(bp); var t = d.dot(D); r.push(d.addScaledVector(D, -t).length()); });
+            r.sort(function (x, y) { return x - y; });
+            var rr = r[Math.floor(r.length * 0.8)] || 0;
+            var tm = 0; pts.forEach(function (p) { tm += p.clone().sub(bp).dot(D); }); tm /= pts.length;
+            P.copy(bp).addScaledVector(D, spec.ring ? tm * 0.85 : tm);
+            if (spec.ring) size = Math.max(rr * 2.25, 0.05 * pxm);
+            else { N.set(0, 1, 0).addScaledVector(D, -D.y).normalize(); P.addScaledVector(N, rr * 0.9); }   // on top of the forearm
+        }
+        if (spec.off) P.add(new THREE.Vector3(spec.off[0], spec.off[1], spec.off[2]).multiplyScalar(pxm));
+        var mp = spec.map;
+        var q = mp ? _basisQuat(mp[0], mp[1] === 'bone' ? D : mp[1], mp[2], mp[3] === 'bone' ? D : mp[3]) : new THREE.Quaternion();
+        /* frame -> the bone: the holder carries the placement in the bone's own space */
+        var Mw = new THREE.Matrix4().compose(P, q, new THREE.Vector3(1, 1, 1)).premultiply(frame.matrixWorld);
+        var Mh = new THREE.Matrix4().copy(bone.matrixWorld).invert().multiply(Mw);
+        var holder = new THREE.Group(); holder.name = 'ew_gear_' + key;
+        Mh.decompose(holder.position, holder.quaternion, holder.scale);
+        var piv = new THREE.Group(); holder.add(piv);
+        var inst = _miscModelInstance(_PROPS_BASE + spec.file, true, size, { fit: spec.fit === 'span' ? 'span' : 'height', matPick: _hqPropMatPick,
+            onDone: function (g, sc, bb) {
+                var hx = (bb.max.x - bb.min.x) * sc * 0.5, hy = (bb.max.y - bb.min.y) * sc * 0.5, hz = (bb.max.z - bb.min.z) * sc * 0.5;
+                g.position.y = -hy;   /* the instance sits on its base: its middle on the pivot */
+                if (N.lengthSq() > 0) {   /* out of the skin by its own depth along the face's normal */
+                    var Nl = N.clone().applyQuaternion(q.clone().invert());
+                    var e = Math.abs(Nl.x) * hx + Math.abs(Nl.y) * hy + Math.abs(Nl.z) * hz;
+                    piv.position.copy(Nl).multiplyScalar(e * 0.92);
+                }
+                if (spec.swing) {   /* THE CENSER: it hangs from its ring and swings a little as the body moves */
+                    g.position.y = -hy * 2; piv.position.y += hy;
+                    var mesh0 = null; g.traverse(function (n) { if (!mesh0 && n.isMesh) mesh0 = n; });
+                    if (mesh0) mesh0.onBeforeRender = function () { var t = performance.now() * 0.0042; piv.rotation.z = Math.sin(t) * 0.22; piv.rotation.x = Math.sin(t * 0.7 + 1) * 0.12; };
+                }
+                g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
+            } });
+        piv.add(inst);
+        bone.add(holder);
+        return holder;
+    }
+    /* put the unit's worn gear on its rig (fresh build, or a kept rig whose gear changed); off: window.EW_NO_GEAR_WEAR */
+    function _unitGearSync(unit, inner, ts) {
+        if (!unit || !inner || (typeof window !== 'undefined' && window.EW_NO_GEAR_WEAR)) return;
+        var eq = unit.equipment || {}, keys = [eq.accessory1, eq.accessory2].filter(function (k) { return k && UNIT_GEAR_WEAR[k]; });
+        var gk = keys.join('|');
+        if ((inner.userData._ewGearKey || '') === gk) return;
+        var old = []; inner.traverse(function (n) { if (n.name && n.name.indexOf('ew_gear_') === 0) old.push(n); });
+        old.forEach(function (n) { try { if (n.parent) n.parent.remove(n); } catch (e) {} });
+        inner.userData._ewGearKey = gk;
+        if (!keys.length) return;
+        var frame = inner.parent || inner;
+        frame.updateMatrixWorld(true);
+        var pxm = ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;
+        keys.forEach(function (k) { try { _gearAttach(inner, frame, k, UNIT_GEAR_WEAR[k], pxm); } catch (e) { console.warn('[3D] gear failed', k, e); } });
+    }
     function _disposeModelRig(rig) {
         if (!rig) return;
         if (rig.appearanceRig) rig.appearanceRig.dispose();
@@ -16168,7 +16457,7 @@ const ThreeRenderer = (function () {
         });
         var hipsParent = tgtHips.parent >= 0 ? tgt.nodes[tgtHips.parent] : null;
         return {
-            pairs: pairs, tgt: tgt,
+            pairs: pairs, tgt: tgt, modelEntry: modelEntry,
             scaleRatio: tgtHips.wp[1] / (src.rest.pelvis.wp[1] || 1),
             srcHipsRestWp: src.rest.pelvis.wp,
             tgtHipsRestWp: tgtHips.wp.slice(),
@@ -16186,21 +16475,108 @@ const ThreeRenderer = (function () {
        so the off wrist sits where the source clip holds it RELATIVE TO THE GUN HAND (the source offset x the hips-height
        scale), and the off hand keeps the clip's own world turn. Bake-time only; the clip is the same for every body. */
     var _LIB_SUPPORT_HAND = { Pistol_Idle_Loop: 'l' };
-    function _libSupportHand(setup, src, side) {
-        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left';
-        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
-        var sh = src.bones['hand_' + side], sr = src.bones['hand_' + (side === 'l' ? 'r' : 'l')];
-        if (!A || !B || !C || !R || !sh || !sr || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+    /* THE WRAP (2026-11-03, mondo: "Their left hand goes under their other wrist and is holding nothing, it looks weird"):
+       the source clip's own off-hand spot is a cup UNDER the gun hand, and on our bodies that read as a hand under the wrist
+       holding nothing. The off hand is now laid on the gun hand itself, in the GUN HAND'S OWN FRAME (along the hand to the
+       knuckles, across it to the thumb, out of the palm), the way a real two-handed pistol hold sits: the off palm on the
+       grip's open side over the gun hand's fingertips, its fingers wrapping down round the front of the gun hand's fingers,
+       its thumb along the frame. Numbers are in hand lengths (wrist to middle knuckle), so every body size gets the same
+       hold. _libHandFrame reads each hand's frame in its bone's local space: from its own finger bones (MPFB), else from the
+       library mannequin's through the retarget offset (the classic bodies, any Meshy rig: their palms already match the
+       library's, THE CLASSIC HANDS). */
+    var SUPPORT_WRAP = {
+        out: 0.50,     // off palm from the gun palm, out of the gun palm (through the grip + the gun hand's fingertips)
+        down: 0.06,    // ... down the gun hand (away from its thumb)
+        fwd: 0.02,     // ... along the gun hand
+        tilt: 38,      // off fingers point this far (deg) down from the gun hand's line: they wrap the front of its fingers
+        palm: 0.45,    // wrist -> palm centre along the hand
+        thick: 0.11,   // the bone -> the palm's skin, out of the palm
+        flat: { out: 0.50, tilt: 18, grip: 0.25 }   // a fingerless hand (modelled open, nothing curls): the palm flat on the grip, the fingers laid over the gun hand's;
+                                                     // grip = the handle's half thickness (its seat's centre back to the gun hand's side)
+    };
+    function _libHandFrame(setup, src, side) {
+        var T = setup.tgt, O = side === 'l' ? 'Left' : 'Right', H = T.byName[O + 'Hand'];
+        if (!H) return null;
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
+        var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
+        var add3 = function (p, v, k) { return [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]; };
+        var frame = function (h, m1, i1, p1, hq) {   // world points + the hand's world turn -> the frame in the hand's local space
+            var fw = _lvSub(m1, h), L = len(fw), f = _lvNorm(fw), ts = _lvNorm(_lvSub(i1, p1));
+            var n = _lvNorm(side === 'r' ? cross(ts, f) : cross(f, ts));   // out of the palm
+            var t = side === 'r' ? cross(f, n) : cross(n, f);              // to the thumb side, square to both
+            var iq = _lqInv(hq);
+            return { f: _lvNorm(_lqRotV(iq, f)), t: _lvNorm(_lqRotV(iq, t)), n: _lvNorm(_lqRotV(iq, n)), L: L };
+        };
         T.evalWorld();
-        var ep = new THREE.Vector3(), eq = new THREE.Quaternion(), es = new THREE.Vector3();
-        sh.matrixWorld.decompose(ep, eq, es); var hl = [ep.x, ep.y, ep.z];
-        sr.matrixWorld.decompose(ep, eq, es); var hr = [ep.x, ep.y, ep.z];
-        var k = setup.scaleRatio || 1;
-        var t = [R.wp[0] + (hl[0] - hr[0]) * k, R.wp[1] + (hl[1] - hr[1]) * k, R.wp[2] + (hl[2] - hr[2]) * k];
+        var tb = function (nm) { return T.byName[nm + '_' + side]; };
+        if (tb('middle_01') && tb('index_01') && tb('pinky_01')) { var FB = frame(H.wp, tb('middle_01').wp, tb('index_01').wp, tb('pinky_01').wp, H.wq); FB.fingers = true; return FB; }
+        var root = src.root, gp = function (nm) { var o = root.getObjectByName(nm); return o ? new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).toArray() : null; };
+        var pr = null; setup.pairs.forEach(function (x) { if (x.t === O + 'Hand') pr = x; });
+        var sh = src.bones['hand_' + side];
+        var m1 = gp('middle_01_' + side), i1 = gp('index_01_' + side), p1 = gp('pinky_01_' + side);
+        if (!sh || !m1 || !i1 || !p1) return null;
+        // the library's frame in ITS hand's space (its length scaled to this body)
+        var mq = new THREE.Quaternion(), mp = new THREE.Vector3(), ms = new THREE.Vector3();
+        root.updateMatrixWorld(true); sh.matrixWorld.decompose(mp, mq, ms);
+        var F = frame(mp.toArray(), m1, i1, p1, [mq.x, mq.y, mq.z, mq.w]), Lb = F.L * (setup.scaleRatio || 1);
+        // a fingerless hand (the classic bodies, a Meshy rig): its frame off its own skin, in the bone's space (THE GRIP ON A MESHY HAND)
+        var me = setup.modelEntry, bone = me && me.root ? me.root.getObjectByName(O + 'Hand') : null, S = null;
+        try { S = bone ? _gripHandSkin({ traverse: function (fn) { me.root.traverse(fn); }, userData: {} }, bone) : null; } catch (_e) { S = null; }   // (no cache on the shared GLB: its clones copy userData as JSON)
+        if (S && S.f && S.t) {
+            var sf = S.f.toArray(), stt = S.t.toArray();
+            var sn = _lvNorm(side === 'r' ? cross(stt, sf) : cross(sf, stt));
+            /* the palm's face where THE GRIP ON A MESHY HAND seats a handle (_gripFrameMesh, its default meshAt / meshUp): the
+               gun's handle centre on the gun hand, the palm's face point on the off hand (bone space) */
+            var at = 0.36 * S.L, nv = new THREE.Vector3().fromArray(sn), face = -Infinity;
+            S.pts.forEach(function (q) { if (Math.abs(q.dot(S.f) - at) < S.L * 0.12) { var o = q.dot(nv); if (o > face) face = o; } });
+            if (!isFinite(face)) face = S.c.dot(nv);
+            var base = add3(add3([0, 0, 0], sf, at), stt, S.c.dot(S.t));
+            return { f: _lvNorm(sf), t: _lvNorm(side === 'r' ? cross(sf, sn) : cross(sn, sf)), n: sn, L: Lb,
+                     palmPt: add3(base, sn, face), seat: add3(base, sn, face + 0.08 * S.L), skinL: S.L };
+        }
+        // else the library's frame through the retarget offset into the target hand's space
+        if (!pr || !pr.roff) return null;
+        var ir = _lqInv(pr.roff);
+        return { f: _lvNorm(_lqRotV(ir, F.f)), t: _lvNorm(_lqRotV(ir, F.t)), n: _lvNorm(_lqRotV(ir, F.n)), L: Lb };
+    }
+    /* the turn taking the basis (a1, a2, a3) onto (b1, b2, b3) (both orthonormal) */
+    function _lqFromBases(a1, a2, a3, b1, b2, b3) {
+        var m = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], A = [a1, a2, a3], B = [b1, b2, b3];
+        for (var k = 0; k < 3; k++) for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) m[r][c] += B[k][r] * A[k][c];
+        var mat = new THREE.Matrix4().set(m[0][0], m[0][1], m[0][2], 0, m[1][0], m[1][1], m[1][2], 0, m[2][0], m[2][1], m[2][2], 0, 0, 0, 0, 1);
+        var q = new THREE.Quaternion().setFromRotationMatrix(mat);
+        return _lqNorm([q.x, q.y, q.z, q.w]);
+    }
+    function _libSupportHand(setup, src, side) {
+        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left', gs = side === 'l' ? 'r' : 'l';
+        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
+        if (!A || !B || !C || !R || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+        if (!setup.handFrames) setup.handFrames = {};
+        if (setup.handFrames[side] === undefined) setup.handFrames[side] = _libHandFrame(setup, src, side);
+        if (setup.handFrames[gs] === undefined) setup.handFrames[gs] = _libHandFrame(setup, src, gs);
+        var FS = setup.handFrames[side], FG = setup.handFrames[gs];
+        if (!FS || !FG) return null;
+        T.evalWorld();
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
         var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
         var dot = function (u, v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; };
+        var add = function (p, v, k) { return [p[0] + v[0] * k, p[1] + v[1] * k, p[2] + v[2] * k]; };
+        var W = SUPPORT_WRAP, L = FG.L, Ls = FS.L;
+        // the gun hand as drawn (after the wrist limit): its frame in the world
+        var gf = _lqRotV(R.wq, FG.f), gt = _lqRotV(R.wq, FG.t), gn = _lqRotV(R.wq, FG.n);
+        var gPalm = add(add(R.wp, gf, W.palm * L), gn, W.thick * L);
+        var sc = function (v, n) { return [v[0] * n.ws[0], v[1] * n.ws[1], v[2] * n.ws[2]]; };
+        if (FG.seat) gPalm = add(add(R.wp, _lqRotV(R.wq, sc(FG.seat, R)), 1), gn, -W.flat.grip * L);   // a fingerless gun hand: from the handle's seat
+        // the off hand's frame: palm onto the grip's open side, fingers down round the front of the gun hand
+        var flat = !FS.fingers, tl = (flat ? W.flat.tilt : W.tilt) * Math.PI / 180, sn = [-gn[0], -gn[1], -gn[2]];
+        var sf = _lvNorm(add(add([0, 0, 0], gf, Math.cos(tl)), gt, -Math.sin(tl)));
+        sf = _lvNorm(add(sf, sn, -dot(sf, sn)));
+        var st = side === 'l' ? cross(sn, sf) : cross(sf, sn);
+        var handWq = _lqFromBases(FS.f, FS.t, FS.n, sf, st, sn);
+        var sPalm = add(add(add(gPalm, gn, (flat ? W.flat.out : W.out) * L), gt, -W.down * L), gf, W.fwd * L);
+        var t = add(add(sPalm, sf, -W.palm * Ls), sn, -W.thick * Ls);   // the off wrist
+        if (FS.palmPt) t = add(sPalm, _lqRotV(handWq, sc(FS.palmPt, C)), -1);   // a fingerless off hand: its own palm's face on the spot
         var setWorld = function (n, wq) { n.q = _lqNorm(_lqMul(_lqInv(T.nodes[n.parent].wq), wq)); };
-        var handWq = C.wq.slice();
         var a = A.wp.slice(), ab = _lvSub(B.wp, a), l1 = len(ab), l2 = len(_lvSub(C.wp, B.wp));
         var at = _lvSub(t, a), d = len(at);
         if (!(l1 > 1e-6 && l2 > 1e-6 && d > 1e-6)) return null;
@@ -16215,6 +16591,15 @@ const ThreeRenderer = (function () {
         T.evalWorld();
         setWorld(B, _lqMul(_lqFromUnitVectors(_lvNorm(_lvSub(C.wp, B.wp)), _lvNorm(_lvSub(t, B.wp))), B.wq));
         T.evalWorld();
+        /* the forearm takes half the hand's roll about its length (no candy-wrapper wrist) */
+        var ax = _lvNorm(_lvSub(C.wp, B.wp)), rel = _lqNorm(_lqMul(handWq, _lqInv(C.wq)));
+        if (rel[3] < 0) rel = [-rel[0], -rel[1], -rel[2], -rel[3]];
+        var ang = 2 * Math.atan2(dot([rel[0], rel[1], rel[2]], ax), rel[3]);   // the hand's roll about the forearm, -pi..pi
+        if (Math.abs(ang) > 0.05) {
+            var hh = ang / 4, s2 = Math.sin(hh);
+            setWorld(B, _lqMul([ax[0] * s2, ax[1] * s2, ax[2] * s2, Math.cos(hh)], B.wq));
+            T.evalWorld();
+        }
         setWorld(C, handWq);
         return [A, B, C];
     }
@@ -16222,7 +16607,7 @@ const ThreeRenderer = (function () {
        as constant tracks on THIS clip only — the mixer hands them back to the rest pose when another clip plays. The hinge
        per finger joint is THE GRIP's (_gripHand: the finger's direction x the palm's normal), lighter angles. A Meshy rig has
        no finger bones: nothing. */
-    var SUPPORT_CURL = { index: [26, 36, 22], middle: [34, 46, 28], ring: [40, 50, 28], pinky: [46, 52, 28], thumb: [10, 16, 10] };
+    var SUPPORT_CURL = { index: [48, 58, 32], middle: [54, 62, 36], ring: [58, 62, 36], pinky: [62, 62, 36], thumb: [6, 10, 6] };
     function _libSupportCurl(setup, side) {
         var T = setup.tgt, get = function (f, k) { return T.byName[f + '_0' + k + '_' + side]; }, out = [];
         if (!get('middle', 1) || !get('middle', 3) || !get('index', 1) || !get('pinky', 1)) return out;
@@ -16878,6 +17263,7 @@ const ThreeRenderer = (function () {
             entry._ew_modelAttached = true;
             if (_rig.inner.parent) _rig.inner.parent.remove(_rig.inner);
             wrap.add(_rig.inner);
+            try { _unitGearSync(unit, _rig.inner, ts); } catch (_ge) {}   // THE GEAR ON THE BODY: a kept rig whose gear changed
             entry.mixer = _rig.mixer;
             entry.actions = _rig.actions;
             /* THE NEW CLIPS (2026-09-25): the library flags ride the kept rig
@@ -16937,6 +17323,7 @@ const ThreeRenderer = (function () {
                `RACE_MODELS_3D['door agent']`) parents the catalogue GLB to a hand bone of THIS model, so
                it rides the rig cache with the body — the same holder rule as the building's held props */
             if (def.hold) { try { _unitAttachHeld(m, def.hold, ts); } catch (_he) { console.warn('[3D] held prop failed', _he); } }
+            try { _unitGearSync(unit, inner, ts); } catch (_ge) { console.warn('[3D] gear failed', _ge); }   // THE GEAR ON THE BODY (row 24)
 
             var hasSkin = false;
             var _stRef = _unitStencilRef(unit.id);
@@ -19357,6 +19744,16 @@ const ThreeRenderer = (function () {
         }
         var bars = document.getElementsByClassName('ew-descbar-inner');
         for (var d = 0; d < bars.length; d++) if (shown(bars[d])) add(bars[d].getBoundingClientRect());
+        /* THE HUD'S OWN CHROME TOO (playtest 2026-11-03: the Nexus counter and the CUBE / unit plates sat on the P1 / P2
+           bars, the weather line, the turn icons and the combat log's words): the world text fades under the scoreboard,
+           the match title + weather, each turn icon, the combat log and the minimap like it does under an open menu */
+        var chrome = ['ew-scoreboard', 'ew-score-side', 'ew-matchmeta', 'ew-tc-icon', 'ew-clog'];
+        for (var ci = 0; ci < chrome.length; ci++) {
+            var els = document.getElementsByClassName(chrome[ci]);
+            for (var ei = 0; ei < els.length && ei < 24; ei++) if (shown(els[ei])) add(els[ei].getBoundingClientRect());
+        }
+        var mm = document.getElementById('ewMinimap') || document.getElementById('battleMinimap');
+        if (mm && shown(mm)) add(mm.getBoundingClientRect());
         return out;
     }
     function _wmOverMenu(l, r, t, b, now) {
@@ -24201,7 +24598,10 @@ const ThreeRenderer = (function () {
             if (unit.player === vp) {
                 /* The viewer's own cloaked units stay on screen but turn ghostly so
                    the player can tell the Invisible buff is actually active. */
-                _setEntrySpriteOpacity(entry, _ownUnitInvisible(unit) ? INVIS_OWN_OPACITY : 1);
+                /* THE DODGE READS (2026-11-03): an escape that ends Invisible (Nimble Dodge) runs solid and ghosts as it
+                   lands — the tween that carries it (escHide) is still live until then */
+                var _ownEsc = _displaceTweens.get(unit.id);
+                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : 1);
                 return;
             }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
@@ -27991,6 +28391,9 @@ const ThreeRenderer = (function () {
                 /* an escape that leaves the board for a beat (the dive, the burrow, the blink, the bones) hides the body
                    then; one that ends invisible stays hidden from a viewer it is hiding from until the tween hands over */
                 if (esc && (esc.hide || (tw.escHide && esc.gone && _escHidesFrom(uid)))) _dpVisible = false;
+                /* THE DODGE READS (2026-11-03): a plain run that ends Invisible (no look of its own: Nimble Dodge) is gone
+                   for the viewer it hides from the moment it leaves its tile */
+                else if (!esc && tw.escHide && t > 0 && _escHidesFrom(uid)) _dpVisible = false;
                 ue.group.visible = _dpVisible;
                 // (destination surface Y — the polyline branch above doesn't
                 // compute toSY, so derive it here for the submersion clip)
@@ -28059,12 +28462,15 @@ const ThreeRenderer = (function () {
             toX: toX, toY: toY, toZ: toZ || 0,
             startTime: _animNow(),
             durationMs: durationMs || 480,
+            /* THE BLINK READS (2026-11-03): a self leap (Land on Your Feet, Cathedral Perch) holds on its own tile
+               through the spell shot's first beat and jumps on the cut */
+            delayMs: (opts && opts.delayMs > 0) ? opts.delayMs : 0,
             arcPeak: arcPeak
         });
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
         /* THE KNOCK: a hurled body (opts.knock 'fling' — the kinetic throws) goes over in the air and gets up after */
-        if (opts && opts.knock) _knockBegin(unit, opts.knock, 0, durationMs || 480, toX - fromX, toY - fromY, true);
+        if (opts && opts.knock) _knockBegin(unit, opts.knock, (opts.delayMs > 0) ? opts.delayMs : 0, durationMs || 480, toX - fromX, toY - fromY, true);
         else _knockRecs.delete(unit.id);
     }
 
@@ -28075,7 +28481,7 @@ const ThreeRenderer = (function () {
         var _jpVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _jumpTweens) {
             var uid = entry[0], tw = entry[1];
-            var t = Math.min((now - tw.startTime) / tw.durationMs, 1);
+            var t = Math.min(Math.max(0, now - tw.startTime - (tw.delayMs || 0)) / tw.durationMs, 1);
             var ease = _easeInOut(t);
             var fromSY = _tileSurfaceY(tw.fromX, tw.fromY, tw.fromZ);
             var toSY = _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
@@ -32137,7 +32543,7 @@ const ThreeRenderer = (function () {
     }
     /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
        building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
-    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14,
+    var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14, whiteDay: 0.75,
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
         shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
@@ -32164,6 +32570,35 @@ const ThreeRenderer = (function () {
         return v === false || v === 0;
     }
     function _polishLevel(key) { var v = _polishPref(key); return (typeof v === 'number' && isFinite(v)) ? v : (v === false ? 0 : 1); }
+    /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too? that seems so excessive" + "i dont want the game to
+       change lighting based on the white on the screen"): an open room whose FLOOR is a white sheet (sprites.js TERRAIN_WHITE_SHEETS —
+       the terrain room's floor key, else the shell's floor) wears its DAY sky light × HQ_LIGHT_RULES.whiteDay (0.75): the hemisphere and the
+       sun key (the night's moon rig already leaves a white floor under 100%, and a night map must not get darker). Fixed per room from what it is built of; nothing reads the screen. A grass or dirt room keeps 1. */
+    function _hqWhiteDay(room) {
+        try {
+            var W = (typeof TERRAIN_WHITE_SHEETS !== 'undefined') ? TERRAIN_WHITE_SHEETS : null, LR = _hqLightRules();
+            var k = (LR && LR.whiteDay > 0 && LR.whiteDay <= 1) ? +LR.whiteDay : 1;
+            if (!W || !room || k >= 1) return 1;
+            var key = (room.terrain && room.terrain.floor) || (room.shell && room.shell.floor) || null;
+            var url = (key && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[key]) ? String(TERRAIN_SPRITES[key][0] || '') : '';
+            var name = url.split('?')[0]; name = name.slice(name.lastIndexOf('/') + 1);
+            return (name && W[name] > 0 && W[name] < 1) ? k : 1;
+        } catch (e) { return 1; }
+    }
+    /* the open-room light row (HQ_LIGHT_RULES.open) for `room`, its sky light × _hqWhiteDay */
+    function _hqOpenLR(room) {
+        var LRo = Object.assign({}, _hqLightRules().open || {}), k = _hqWhiteDay(room);
+        if (k < 1) ['dayHemi', 'daySun'].forEach(function (f) { if (LRo[f] != null) LRo[f] = +LRo[f] * k; });
+        return LRo;
+    }
+    /* THE WHITE ROOMS (2026-11-03, the marble maps check: the Vatican basilica's nave went flat white round the spot the camera looks
+       at): a CLOSED box room whose floor is a white sheet wears the same whiteDay on its hemisphere, its key and the Key Light that
+       rides with the camera (the fill and the room's own lamps keep theirs). Fixed per room, like the open rooms above */
+    function _hqWhiteIn(room) {
+        if (!room || room.kind !== 'box') return 1;
+        var S = room.shell || {}; if (S.open && S.sky) return 1;
+        return _hqWhiteDay(room);
+    }
     function _hqLightRules() {
         var R = (typeof HQ_LIGHT_RULES !== 'undefined') ? HQ_LIGHT_RULES : ((typeof window !== 'undefined' && window.HQ_LIGHT_RULES) || null);
         if (!R) return HQ_LIGHT_DEFAULT;
@@ -33371,13 +33806,14 @@ const ThreeRenderer = (function () {
     // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
     var _hzTexCache = {};
     function _hzTex(terrainKey) {
-        if (_hzTexCache[terrainKey] !== undefined) { var hit = _hzTexCache[terrainKey]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
-        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? TERRAIN_SPRITES[terrainKey][0] : null;
+        var ck = terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
+        if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? _ewSandUrl(terrainKey, TERRAIN_SPRITES[terrainKey][0]) : null;
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         /* 2026-09-21: a D.O.O.R. HQ texture name (`concrete`, `stone`, `teal`, `carpet`…) resolves here too — a terrain room's
            `cliff: 'concrete'` used to miss and fall back to rock_wall_1 (the glyph sheet on THE GARAGE's every wall) */
         if (!url && typeof terrainKey === 'string') { var HD = _hqData(), hk = terrainKey.indexOf('hq:') === 0 ? terrainKey.slice(3) : terrainKey; if (HD && HD.textures && HD.textures[hk] && HD.assets) url = HD.assets.textures + HD.textures[hk]; }   // `hq:<name>` (2026-10-30): the painted sheet even where a battle sheet has the same name (stone, drywall, carpet)
-        if (!url) { _hzTexCache[terrainKey] = null; return null; }
+        if (!url) { _hzTexCache[ck] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate (no placeholder — the gate holds the scene until it lands)
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
         tex.magFilter = THREE.LinearFilter;
@@ -33387,7 +33823,7 @@ const ThreeRenderer = (function () {
             var maxA = (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy) ? renderer.capabilities.getMaxAnisotropy() : 1;
             tex.anisotropy = Math.min(8, maxA || 1);       // sharpen grazing angles without shimmer
         } catch (e) {}
-        _hzTexCache[terrainKey] = tex;
+        _hzTexCache[ck] = tex;
         return tex;
     }
 
@@ -34929,7 +35365,7 @@ const ThreeRenderer = (function () {
         dorm_bed:          'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  // the keep's guardroom
         couples_bed:       'Meshy_AI_a_couples_bed_0922010443_texture.glb',               // the bunker's loft
         royal_bed:         'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 // the solar
-        camping_tent:      'Meshy_AI_a_camping_tent_0922010306_texture.glb',              // the grove's camp
+        camping_tent:      'ebd_survival_camping_tent.glb',              // the grove's camp
         carnival_tent:     'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             // the grove's lawn
         fortune_teller_tent: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',     // the `fortune_tent` proc
         retro_control_panel: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',     // the `retro_console` proc
@@ -34940,7 +35376,7 @@ const ThreeRenderer = (function () {
            are in the repo and were MEASURED (the crashed car 1.0 × 0.36 × 0.45, nose −X like every Meshy piece; the two
            road tiles 1 × 1 squares, the straight one's dashes along Z with kerbs on the X sides, the turn a quarter
            circle joining two adjacent edges; the escalator 0.53 × 0.72 × 1.0, rising toward −Z); the rest are TARGETS. */
-        city_bin:        'Meshy_AI_a_city_bin_0917065144_texture.glb',          // the outdoor bin (the kerbs)
+        city_bin:        'ebd_6twelve_city_bin.glb',          // the outdoor bin (the kerbs)
         city_trash_bin:  'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',    // the indoor bin (the mall, the casino)
         taxi:            'Meshy_AI_a_city_taxi_0917065634_texture.glb',         // NPC traffic (_VEHICLE_KIT)
         truck:           'Meshy_AI_a_truck_0917065131_texture.glb',             // NPC traffic
@@ -34950,7 +35386,7 @@ const ThreeRenderer = (function () {
         road_straight:   'Meshy_AI_a_straight_city_road_0917064651_texture.glb', // the road tiles laid along every street (_hqBuildRoadTiles)
         road_turn:       'Meshy_AI_a_road_turn_quarter_0917065230_texture.glb',
         escalator:       'Meshy_AI_an_escalator_0917064623_texture.glb',        // THE MEZZANINE's escalator (the catalogue row)
-        bus_shelter:     'Meshy_AI_bus_shelter_0917064913_texture.glb',
+        bus_shelter:     'ebd_busstop_bus_shelter.glb',
         cinder_block:    'Meshy_AI_cinder_block_0917064959_texture.glb',
         fire_hydrant:    'Meshy_AI_fire_hydrant_0917064858_texture.glb',
         storefront:      'Meshy_AI_storefront_0917064551_texture.glb',          // a street lot's ground-floor shopfront
@@ -34959,7 +35395,7 @@ const ThreeRenderer = (function () {
         traffic_barrel:  'Meshy_AI_traffic_barrel_0917064936_texture.glb',
         traffic_cone:    'Meshy_AI_traffic_cone_0917064925_texture.glb',
         // 2026-07-28 on-board prop batch — grid-snapped monuments (see _MON_GRID)
-        dumpster:  'Meshy_AI_dumpster_0727195512_texture.glb',
+        dumpster:  'ebd_diner_dumpster.glb',
         greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb',
         mushroom:  'Meshy_AI_mushroom_0727200342_texture.glb',
         mushroom2: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',
@@ -34977,12 +35413,12 @@ const ThreeRenderer = (function () {
         vault:         'Meshy_AI_a_bank_vault_0912231605_texture.glb',
         flamingo:      'Meshy_AI_a_flamingo_0912231434_texture.glb',
         wreck:         'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',
-        lantern:       'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',
+        lantern:       'ebd_survival_lantern.glb',
         tentacle:      'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',
         tentacle2:     'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',
         watch:         'Meshy_AI_a_pocket_watch_0912231541_texture.glb',
         watch_hang:    'Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb',
-        rowboat:       'Meshy_AI_a_rowboat_0912231059_texture.glb',
+        rowboat:       'ebd_housesonwater_rowboat.glb',
         dish:          'Meshy_AI_a_satellite_dish_0912231301_texture.glb',
         crane:         'Meshy_AI_a_scaffold_crane_0912231516_texture.glb',
         wheel:         'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',
@@ -35035,14 +35471,14 @@ const ThreeRenderer = (function () {
            DOOR_HQ.catalogue (base: 'misc'); the near settings through _hzMiscKit. */
         signpost:      'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',
         brick_arch:    'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',
-        campfire:      'Meshy_AI_a_campfire_ring_0916235856_texture.glb',
+        campfire:      'ebd_survival_campfire.glb',
         culvert:       'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',
-        fallen_log:    'Meshy_AI_a_fallen_log_0916235700_texture.glb',
+        fallen_log:    'ebd_vegetation_fallen_log.glb',
         fern:          'Meshy_AI_a_fern_0916235806_texture.glb',
         footbridge:    'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',
         menhir:        'Meshy_AI_a_standing_stone_0916235906_texture.glb',
         drain_grate:   'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',
-        stump:         'Meshy_AI_a_stump_0916235717_texture.glb',
+        stump:         'ebd_vegetation_stump.glb',
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to
            Assets/misc/ — MODEL_INDEX.md §3g): the basilica (two pews, the podium, the
            throne, the cross, the stained glass, the holy carpet, the confessional,
@@ -35157,13 +35593,14 @@ const ThreeRenderer = (function () {
     function _hzMiscKit(key, o) {
         o = o || {};
         var ts = _hzKitTile(), rng = o.rng || Math.random;
-        var off = !_MISC_GLB[key] || typeof THREE.GLTFLoader !== 'function' ||
+        var url = o.url || (_MISC_GLB[key] ? _R2_MISC + _MISC_GLB[key] : null);   // `url` = a model outside Assets/misc (the decor, the props, the packs: THE CODED SHAPES OUT, 2026-11-03)
+        var off = !url || typeof THREE.GLTFLoader !== 'function' ||
                   (typeof window !== 'undefined' && window.EW_PERF_LOW && o.low === 'skip');
         if (off) return o.fallback ? (o.fallback(rng) || new THREE.Group()) : new THREE.Group();
         var target = o.tiles != null ? o.tiles * ts : (o.metres != null ? o.metres / 1.75 * ts : ts);
         var lit = o.lit !== false;
         var pick = o.matPick || (lit ? (o.lift ? _hzPropLitLiftPick(o.lift) : _hzPropLitPick) : _hzMiscUnlitPick);   // `matPick` = the caller's own material (THE ROCKS)
-        var g = _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, {
+        var g = _miscModelInstance(url, true, target, {
             fit: o.fit || 'height', matPick: pick, repeat: o.repeat,
             onDone: function (grp, s, bb) {
                 var kids = grp.children.slice();
@@ -35436,6 +35873,84 @@ const ThreeRenderer = (function () {
     function _hzPropMushroom(rng)     { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('mushroom',  ts * 2.0); }
     function _hzPropMushroomReal(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('mushroom2', ts * 1.0); }
     function _hzPropObelisk(rng)      { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('obelisk3d', ts * 3.0); }
+
+    /* THE CODED SHAPES OUT (mondo 2026-11-03: "isnt this already replaced everywhere in the game? if not it needs to be"): the rover
+       is the Meshy mars_rover everywhere (the Mars and Moon settings, the `rover` monument); the boxes-on-wheels builder is gone */
+    function _hzRover(rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng }); }
+
+    /* THE CODED SHAPES OUT (mondo 2026-11-03: "toadstool/fairy ring ... yes replace with the mushrooms"): the giant toadstool is the
+       Meshy fae cap (`mushroom`), the fairy ring is a ring of the small Meshy toadstools (`mushroom2`), each its own model, with the
+       will-o-wisps over it kept; the sphere-cap builders are gone */
+    function _hzToadstool(rng) { return _hzMiscKit('mushroom', { tiles: 2.9, rng: rng }); }
+    function _hzFairyRing(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var n = 7 + (rng() * 4 | 0);
+        for (var i = 0; i < n; i++) {
+            var a = i * Math.PI * 2 / n;
+            var col = [0x9affd0, 0xffd0f2, 0xcfe0ff][i % 3];
+            var wispM = _hzGlowMat(col, 0.75);
+            var wisp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.12, 6, 5), wispM);
+            _hzAt(g, wisp, Math.cos(a) * ts * 1.6, ts * (1.2 + Math.sin(a * 3) * 0.4), Math.sin(a) * ts * 1.6);
+            _hzPulse(wispM, wisp, 0.3, 0.15, 0.5 + rng() * 0.8);
+        }
+        var caps = 8 + (rng() * 3 | 0);
+        for (var j = 0; j < caps; j++) {
+            var b = (j + rng() * 0.5) * Math.PI * 2 / caps, rr = ts * (1.35 + rng() * 0.3);
+            var cap = _hzMiscKit('mushroom2', { tiles: 0.32 + rng() * 0.2, rng: rng });
+            cap.position.set(Math.cos(b) * rr, 0, Math.sin(b) * rr); cap.rotation.y = rng() * 6.28; g.add(cap);
+        }
+        return g;
+    }
+
+    /* the Vatican censer (mondo 2026-11-03: "censer - replace"): the Meshy censer (R2 Assets/props/, Purity's held one) stood on the
+       ground at a tile and a bit, its ember glowing inside; the gold tripod and the smoke ball are gone */
+    function _hzCenser(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 1.25;
+        g.add(_hzMiscKit('censer', { url: 'https://cdn.entropywars.net/Assets/props/censer.glb', tiles: H, rng: rng }));
+        var gc = _hzGlowCore(ts * 0.18, 0xffb060, 0xff7020); gc.position.y = ts * H * 0.55; g.add(gc);
+        return g;
+    }
+
+    /* the brazier (mondo 2026-11-03: "brazier - yes replace ... id prefer the cave torch"): the Meshy standing torch (the cave_torch
+       decor, R2 Assets/decor/) two tiles tall, its fire a glow over the iron basket; the obsidian legs and the cone flame are gone */
+    function _hzBrazier(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 2.0;
+        g.add(_hzMiscKit('cave_torch', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.cave_torch, tiles: H, rng: rng }));
+        var fire = _hzGlowSprite(ts * 1.1, 0xff8a30, 0.8, 0.2, 0.12, 1.4 + rng() * 0.8); fire.position.y = ts * (H + 0.1); g.add(fire);
+        var gc = _hzGlowCore(ts * 0.35, 0xffa050, 0xff5010); gc.position.y = ts * (H - 0.05); g.add(gc);
+        return g;
+    }
+
+    /* the lighthouse (mondo 2026-11-03: "lighthouse - replace"): the Meshy lighthouse (the decor's, R2 Assets/decor/) with its lamp lit;
+       the banded cylinders are gone. The cone island it sometimes stood on is gone too ("sea island - replace with the palm isle"):
+       the sea's islands are the Meshy palm isle (_hzPalmIsleFar) */
+    function _hzLighthouse(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 5.2 + rng() * 1.2;
+        g.add(_hzMiscKit('lighthouse', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.lighthouse, tiles: H, lift: 0.25, rng: rng }));
+        var lamp = _hzGlowCore(ts * 0.3, 0xfff1c8, 0xffd080); lamp.position.y = ts * H * 0.86; g.add(lamp);
+        return g;
+    }
+
+    /* THE FLESH MOUND (mondo 2026-11-03: "we have a bunch of body parts from an asset pack that are used in gory spells, use those to make
+       a flesh mound"): a heap of the Halloween pack's severed parts (Body_part … Body_part_09, the gory spells' pieces), each its own
+       model, piled highest in the middle and tumbled every way. The sphere lobes, eyes and fangs are gone; the pack off, no mound. */
+    function _hzFleshMound(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        if (!_hwPackOn()) return g;
+        /* mostly the meat, the guts, the hearts and the heads (05-09, 04, 01, the skull); a few limbs laid along the heap's flank */
+        var LUMP = ['Body_part_05', 'Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09', 'Body_part_04', 'Body_part_01', 'Body_part', 'Body_part_06', 'Body_part_08'];
+        var R = ts * (1.2 + rng() * 1.0), H = R * 0.85, n = 60 + (rng() * 16 | 0);
+        for (var i = 0; i < n; i++) {
+            var limb = (i % 8) === 7, node = limb ? (rng() < 0.5 ? 'Body_part_02' : 'Body_part_03') : LUMP[(rng() * LUMP.length) | 0];
+            var r = R * Math.sqrt(rng()) * (limb ? 0.7 : 1), a = rng() * Math.PI * 2, span = limb ? ts * (0.35 + rng() * 0.15) : ts * (0.4 + rng() * 0.3);
+            var part = _miscModelInstance(_hwUrl(node), true, span, { fit: 'span' }), pv = new THREE.Group();
+            pv.position.set(Math.cos(a) * r, Math.max(0, 1 - (r / R) * (r / R)) * H * (0.75 + rng() * 0.25), Math.sin(a) * r);
+            if (limb) { pv.rotation.y = a + (rng() - 0.5) * 0.8; part.rotation.z = Math.PI / 2 + (rng() - 0.5) * 0.4; }   // a limb lies down the flank (the files stand them up)
+            else part.rotation.set(rng() * 6.28, rng() * 6.28, rng() * 6.28);
+            pv.add(part); g.add(pv);
+        }
+        return g;
+    }
 
     // ── Camelot: the sword in the stone (real Meshy master-sword GLB) ─────
     function _hzExcalibur(rng) {
@@ -35774,9 +36289,9 @@ const ThreeRenderer = (function () {
         var topTex = _hzTex('bricks_3');
         var sideTex = _hzTex('ruins') || topTex;
         var steps = 16 + (rng() * 12 | 0);
-        var stepW = ts * (2.4 + rng() * 1.8);
+        var stepW = ts; rng();                            // ONE TILE WIDE (mondo 2026-11-03: "make sure the stair steps are one tile wide"; the draw keeps the seed)
         var rise = ts * (0.55 + rng() * 0.25);
-        var depth = ts * (0.85 + rng() * 0.35);
+        var depth = ts; rng();                            // and a tile deep: a step is one board square
         var th = rise * 0.4;
         var lean = (rng() - 0.5) * 0.18;                 // slight sideways drift
         var topMat = _hzGeoMat(topTex, 0xe6ddca);
@@ -35811,28 +36326,24 @@ const ThreeRenderer = (function () {
         stylobate.position.y = baseH * 0.5;
         g.add(stylobate);
 
+        /* the columns are the Meshy greek column (mondo 2026-11-03: "greek ruins - i like the coded one, but we need a new meshy greek
+           column or asset pack greek column"), each its own model at the colonnade's height; a fallen one leaves its gap (the stub
+           cylinders and box capitals are gone) */
         var startX = -spacing * (cols - 1) / 2;
         var allIntact = true;
         for (var c = 0; c < cols; c++) {
             var broken = rng() < 0.35;
-            var h = broken ? colH * (0.3 + rng() * 0.45) : colH;
-            if (broken) allIntact = false;
-            var col = _hzCyl(colR * 0.9, colR, h, 12, ts, _hzGeoMat(stoneTex, 0xe6dcc4));
-            col.position.set(startX + c * spacing, baseH + h * 0.5, 0);
+            if (broken) { allIntact = false; rng(); continue; }
+            var col = _hzMiscKit('greek_column', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.greek_column, tiles: colH / ts, fit: 'height', rng: rng });   // the new Meshy column (mondo 11-03: "we need a new meshy greek column")
+            col.position.set(startX + c * spacing, baseH, 0);
             g.add(col);
-            if (!broken) {
-                var cw = colR * 2.5, capH = ts * 0.4;
-                var cap = _hzBox(cw, capH, cw, ts, _hzGeoMat(stoneTex, 0xe6dcc4));
-                cap.position.set(startX + c * spacing, baseH + h + ts * 0.18, 0);
-                g.add(cap);
-            }
         }
         // entablature beam spanning the colonnade when enough columns survive
         if (allIntact || rng() < 0.5) {
             var span = allIntact ? baseW * 0.96 : baseW * (0.4 + rng() * 0.4);
             var bh = ts * 0.7, bd = colR * 2.6;
             var beam = _hzBox(span, bh, bd, ts, _hzGeoMat(beamTex, 0xd8cdb0));
-            beam.position.set(allIntact ? 0 : startX + ts, baseH + colH + ts * 0.5, 0);
+            beam.position.set(allIntact ? 0 : startX + ts, baseH + colH + bh * 0.5, 0);
             g.add(beam);
         }
         return g;
@@ -35889,8 +36400,9 @@ const ThreeRenderer = (function () {
             g.add(box);
             y += th;
         }
-        var shrine = _hzBox(w * 0.16, th * 1.5, w * 0.16, ts, _hzGeoMat(tex, 0xb29070));
-        shrine.position.y = y + th * 0.75;
+        var sw = w * 0.16;   // the shrine on top is a CUBE (mondo 2026-11-03: "that top part does not look like a cube, it looks taller than it is wide")
+        var shrine = _hzBox(sw, sw, sw, ts, _hzGeoMat(tex, 0xb29070));
+        shrine.position.y = y + sw * 0.5;
         g.add(shrine);
         return g;
     }
@@ -35901,79 +36413,38 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         var tex = _hzTex('rocks_1');
         var h = ts * (8 + rng() * 9);
-        var w = ts * (1.5 + rng() * 1.1), d = w * (0.28 + rng() * 0.12);
+        /* THICKER, NO RUNE (mondo 2026-11-03: "it is too thin and i dont like the nether portal looking purple thing"): the slab
+           is half as deep as it is wide (it was a quarter), the glowing seam is gone (the draws keep the seed) */
+        var w = ts * (1.8 + rng() * 1.1), d = w * (0.5 + rng() * 0.12);
         var slab = _hzBox(w, h, d, ts, _hzGeoMat(tex, 0x8f8a82));
         slab.position.y = h * 0.5;
         g.add(slab);
-        // a glowing rune-seam down the obsidian face — a cold, eerie sigil light
-        var runeCol = (rng() < 0.5) ? 0x66ffd0 : 0x8a7bff;   // sickly green or arcane violet
-        var runeMat = _hzGlowMat(runeCol, 0.6);
-        var rune = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.14, h * 0.66), runeMat);
-        rune.position.set(0, h * 0.5, d * 0.5 + 1.5);
-        g.add(rune);
-        _hzPulse(runeMat, null, 0.30, 0, 0.30 + rng() * 0.45);
+        rng(); rng();
         g.rotation.z = (rng() - 0.5) * 0.22;              // ominous lean
         g.rotation.x = (rng() - 0.5) * 0.06;
         return g;
     }
-
-    // A free-standing gateway to nowhere — two piers and a lintel framing only
-    // sky. Sometimes a pier has crumbled and the lintel hangs broken.
+    /* A free-standing stone arch to nowhere (mondo 2026-11-03: "an arch is curved"): the Meshy stone arch (Assets/decor/stone_arch.glb),
+       5.5-9.5 tiles tall; the box piers, the lintel and the broken-pier variant are gone */
     function _hzGateway(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('bricks_2') || _hzTex('ruins');
-        var base = 0xcabfa2;
-        var h = ts * (5 + rng() * 4.5);
-        var pw = ts * (0.8 + rng() * 0.45);
-        var gap = ts * (2.2 + rng() * 1.6);
-        var leftBroken = rng() < 0.3;
-        var lh = leftBroken ? h * (0.4 + rng() * 0.3) : h;
-        var L = _hzBox(pw, lh, pw, ts, _hzGeoMat(tex, base));
-        L.position.set(-gap * 0.5, lh * 0.5, 0); g.add(L);
-        var R = _hzBox(pw, h, pw, ts, _hzGeoMat(tex, base));
-        R.position.set(gap * 0.5, h * 0.5, 0); g.add(R);
-        if (!leftBroken) {
-            var lint = _hzBox(gap + pw * 2.0, pw * 1.1, pw, ts, _hzGeoMat(tex, base * 1));
-            lint.position.set(0, h + pw * 0.5, 0); g.add(lint);
-            // a faint shimmering veil filling the arch — a dream-portal to nowhere
-            var veilMat = _hzGlowMat(0xb38cff, 0.14);
-            var veil = new THREE.Mesh(new THREE.PlaneGeometry(gap, h * 0.92), veilMat);
-            veil.position.set(0, h * 0.5, 0);   /* NO LIGHT BOX (mondo 2026-10-05): no lit veil in the arch */
-            rng();
-        } else {
-            var stub = _hzBox(gap * 0.55, pw * 1.0, pw, ts, _hzGeoMat(tex, 0xb8ad90));
-            stub.position.set(gap * 0.18, h + pw * 0.45, 0);
-            stub.rotation.z = -0.12; g.add(stub);
-        }
-        return g;
+        var h = 5.5 + rng() * 4; rng(); rng(); rng();
+        return _hzMiscKit('stone_arch', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.stone_arch, tiles: h, rng: rng });
     }
 
-    // A tapered obelisk capped by a pyramidion — fingers of dead empires.
+    /* An obelisk (mondo 2026-11-03: "obelisk - Needs a new meshy model"): the Meshy granite obelisk (Assets/decor/obelisk.glb), 7-13 tiles
+       tall, the ember glow kept on its point; the code shaft and the cone are gone */
     function _hzObelisk(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('scorched') || _hzTex('wasteland');
-        var h = ts * (7 + rng() * 6);
-        var w = ts * (0.6 + rng() * 0.35);
-        var geo = new THREE.CylinderGeometry(w * 0.55, w, h, 4, 1);
-        _hzTileUV(geo, w, h, ts);
-        var shaft = new THREE.Mesh(geo, _hzGeoMat(tex, 0xbcad8e));
-        shaft.rotation.y = Math.PI / 4; shaft.position.y = h * 0.5; g.add(shaft);
-        var capGeo = new THREE.ConeGeometry(w * 0.78, w * 1.15, 4, 1);
-        _hzTileUV(capGeo, w, w, ts);
-        var cap = new THREE.Mesh(capGeo, _hzGeoMat(tex, 0xc8b896));
-        cap.rotation.y = Math.PI / 4; cap.position.y = h + w * 0.55; g.add(cap);
-        // a warm ember light crowning the pyramidion — a lit beacon of dead empires
-        var tip = _hzGlowCore(w * 0.5, 0xffd9a0, 0xffb060);
-        tip.position.y = h + w * 1.0;
-        g.add(tip);
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var h = 7 + rng() * 6; rng();
+        g.add(_hzMiscKit('obelisk', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.obelisk, tiles: h, rng: rng }));
+        var tip = _hzGlowCore(ts * h * 0.04, 0xffd9a0, 0xffb060); tip.position.y = ts * h * 1.0; g.add(tip);
         return g;
     }
 
-    // A toppled colossus: a felled giant column lying in the dust with its
+    // A FALLEN COLUMN (named `colossus` until 2026-11-03 — mondo: "a collosus is like a big creature, this is literally just a column
+    // on the floor"): a felled giant column lying in the dust with its
     // drums scattered around it — the Ozymandias beat of the skyline.
-    function _hzColossus(rng) {
+    function _hzFallenColumn(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var tex = _hzTex('bricks_2') || _hzTex('ruins');
@@ -36014,37 +36485,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // A broken-off island of land hovering in the air: a slab top (with a small
-    // ruin or crystals) over a tapered rocky underside, debris trailing below.
-    function _hzFloatingIsland(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var topTex = _hzTex(rng() < 0.5 ? 'wasteland' : 'scorched') || _hzTex('dirt');
-        var rockTex = _hzTex('cliff') || _hzTex('rock');
-        var r = ts * (3 + rng() * 3.5), topH = ts * 0.8;
-        var top = _hzCyl(r, r * 0.95, topH, 9, ts, _hzGeoMat(topTex, 0xb6a886));
-        g.add(top);
-        var uh = r * (1.4 + rng() * 0.9);
-        var ug = new THREE.ConeGeometry(r * 0.95, uh, 9, 1);
-        _hzTileUV(ug, r, uh, ts);
-        var under = new THREE.Mesh(ug, _hzGeoMat(rockTex, 0x6e665a));
-        under.rotation.x = Math.PI; under.position.y = -topH * 0.5 - uh * 0.5; g.add(under);
-        if (rng() < 0.65) {                               // crown it
-            var crown = rng() < 0.5 ? _hzGreekRuin(rng) : _hzCrystalShards(rng);
-            crown.scale.setScalar(0.5); crown.position.y = topH * 0.5; g.add(crown);
-        }
-        // a few chunks of falling debris
-        var deb = 2 + (rng() * 3 | 0);
-        for (var i = 0; i < deb; i++) {
-            var s = ts * (0.4 + rng() * 0.5);
-            var chunk = _hzBox(s, s, s, ts, _hzGeoMat(rockTex, 0x6a6256));
-            var a = rng() * Math.PI * 2;
-            chunk.position.set(Math.cos(a) * r * (0.3 + rng() * 0.5), -uh * (0.4 + rng() * 0.8), Math.sin(a) * r * (0.3 + rng() * 0.5));
-            chunk.rotation.set(rng() * Math.PI, rng() * Math.PI, rng() * Math.PI);
-            g.add(chunk);
-        }
-        return g;
-    }
 
     // Sacred-geometry orbital halo — tilted obsidian rings spinning around a
     // glowing crystal core, like a derelict armillary sphere adrift in the sky.
@@ -36166,90 +36606,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // Apollo Lunar Roving Vehicle — an open tubular chassis that is LONGER than
-    // it is wide (≈3.1 m × 1.8 m in life), four wire-mesh wheels under flared
-    // fenders, twin mesh bucket seats, a central control console, a gold-foil
-    // equipment/battery bay at the back and the big umbrella high-gain antenna
-    // on a forward mast. Forward is +Z (where the dish + console live).
-    function _hzRover(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var foil  = function () { return _hzGeoMat(_hzTex('gold'), 0xcaa23f); };                          // kapton gold foil
-        var alum  = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xc6cad1); };  // bare aluminium
-        var frame = function () { return _hzGeoMat(_hzTex('metal'), 0x44474e); };                         // dark structural tube
-        var seatM = function () { return _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x2b2d33); };    // dark mesh seat
-
-        // length runs along Z, width along X — longer than wide, the right way round
-        var L = ts * 2.3, W = ts * 1.25, deckH = ts * 0.14, wheelR = ts * 0.30;
-        var deckY = wheelR + ts * 0.16;                 // open deck sits just above the axles
-        var deckTop = deckY + deckH * 0.5;
-
-        // ── open chassis: thin aluminium floor pan + tubular frame rails ────
-        var deck = _hzBox(W, deckH, L, ts, alum());
-        deck.position.y = deckY; g.add(deck);
-        [-1, 1].forEach(function (sx) {
-            var rail = _hzBox(ts * 0.10, ts * 0.10, L * 0.98, ts, frame());
-            rail.position.set(sx * W * 0.5, deckTop, 0); g.add(rail);
-        });
-        [-1, 1].forEach(function (sz) {
-            var xm = _hzBox(W * 1.02, ts * 0.10, ts * 0.10, ts, frame());
-            xm.position.set(0, deckTop, sz * L * 0.46); g.add(xm);
-        });
-
-        // ── twin bucket seats, side by side across the width, mid-deck ──────
-        for (var s = 0; s < 2; s++) {
-            var sx2 = (s === 0 ? -1 : 1) * W * 0.24;
-            var seatZ = L * 0.04;
-            var pan = _hzBox(W * 0.42, ts * 0.10, ts * 0.52, ts, seatM());
-            pan.position.set(sx2, deckTop + ts * 0.17, seatZ); g.add(pan);
-            var back = _hzBox(W * 0.42, ts * 0.52, ts * 0.10, ts, seatM());
-            back.position.set(sx2, deckTop + ts * 0.42, seatZ - ts * 0.27); g.add(back);
-            var rest = _hzBox(W * 0.40, ts * 0.13, ts * 0.11, ts, foil());     // gold head-rest pad
-            rest.position.set(sx2, deckTop + ts * 0.67, seatZ - ts * 0.27); g.add(rest);
-        }
-
-        // ── central control console + hand-controller stalk, toward the front ─
-        var con = _hzBox(ts * 0.30, ts * 0.24, ts * 0.20, ts, frame());
-        con.position.set(0, deckTop + ts * 0.18, L * 0.30); g.add(con);
-        var tstem = _hzCyl(ts * 0.025, ts * 0.025, ts * 0.26, 6, ts, frame());
-        tstem.position.set(0, deckTop + ts * 0.34, L * 0.30); g.add(tstem);
-
-        // ── rear equipment / battery bay clad in gold foil + aluminium lid ──
-        var bay = _hzBox(W * 0.86, ts * 0.32, ts * 0.5, ts, foil());
-        bay.position.set(0, deckTop + ts * 0.19, -L * 0.34); g.add(bay);
-        var bayTop = _hzBox(W * 0.88, ts * 0.05, ts * 0.52, ts, alum());
-        bayTop.position.set(0, deckTop + ts * 0.37, -L * 0.34); g.add(bayTop);
-
-        // ── four wire-mesh wheels, bright hubs, flared fenders ──────────────
-        var wx = W * 0.56, wz = L * 0.34;
-        [[-wx, wz], [wx, wz], [-wx, -wz], [wx, -wz]].forEach(function (p) {
-            var side = p[0] < 0 ? -1 : 1;
-            var wheel = _hzCyl(wheelR, wheelR, ts * 0.26, 16, ts, frame());
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(p[0], wheelR, p[1]); g.add(wheel);
-            var hub = _hzCyl(wheelR * 0.36, wheelR * 0.36, ts * 0.30, 10, ts, alum());
-            hub.rotation.z = Math.PI / 2;
-            hub.position.set(p[0] + side * ts * 0.01, wheelR, p[1]); g.add(hub);
-            var fender = _hzBox(ts * 0.34, ts * 0.05, wheelR * 2.4, ts, alum());
-            fender.position.set(p[0], wheelR * 1.95, p[1]); g.add(fender);
-        });
-
-        // ── umbrella high-gain antenna on a forward mast ────────────────────
-        var mast = _hzCyl(ts * 0.03, ts * 0.035, ts * 1.15, 6, ts, alum());
-        mast.position.set(W * 0.30, deckTop + ts * 0.58, L * 0.40); g.add(mast);
-        var dishGeo = new THREE.SphereGeometry(ts * 0.5, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.5);
-        var dish = new THREE.Mesh(dishGeo, _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xe6e8ee));
-        dish.scale.set(1, 0.3, 1);
-        dish.position.set(W * 0.30, deckTop + ts * 1.16, L * 0.40);
-        dish.rotation.x = -0.6; g.add(dish);
-
-        // ── low-gain whip antenna at the rear ───────────────────────────────
-        var whip = _hzCyl(ts * 0.012, ts * 0.012, ts * 0.9, 5, ts, frame());
-        whip.position.set(-W * 0.34, deckTop + ts * 0.5, -L * 0.28);
-        whip.rotation.z = 0.18; g.add(whip);
-
-        return g;
-    }
 
     // The Golden Gates — two fluted gold pillars under an ornate lintel, a
     // luminous veil filling the threshold and a crowning glow.
@@ -36467,24 +36823,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Hell: obsidian brazier, always burning ──
-    function _hzBrazier(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var obsidian = function () { return _hzGeoMat(_hzTex('obsidian'), 0x4a3f58); };
-        for (var i = 0; i < 3; i++) {
-            var a = i * Math.PI * 2 / 3;
-            _hzAt(g, _hzCyl(ts * 0.08, ts * 0.11, ts * 1.4, 6, ts, obsidian()),
-                Math.cos(a) * ts * 0.55, ts * 0.7, Math.sin(a) * ts * 0.55, 0, Math.cos(a) * 0.25, Math.sin(a) * 0.25);
-        }
-        _hzAt(g, _hzCyl(ts * 0.85, ts * 0.5, ts * 0.6, 10, ts, obsidian()), 0, ts * 1.55, 0);
-        var fireMat = _hzGlowMat(0xff8a30, 0.9);
-        var fire = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.55, ts * 1.1, 8), fireMat);
-        _hzAt(g, fire, 0, ts * 2.35, 0);
-        _hzPulse(fireMat, fire, 0.28, 0.14, 1.4 + rng() * 0.8);
-        (function () { var _gc = _hzGlowCore(ts * 0.6, 0xffa050, 0xff5010); _gc.position.y = ts * 2.2; g.add(_gc); })();
-        return g;
-    }
 
     // ── Cyberpunk: flickering holo-billboard ──
     function _hzHoloboard(rng) {
@@ -36699,27 +37037,17 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Skinwalker Ranch: the windpump that turns with no wind ──
+    /* ── Skinwalker Ranch: the windpump that turns with no wind (THE CODED SHAPES OUT 2026-11-03): the Meshy windpump tower and, on
+       its own, the Meshy wheel (Assets/decor/windpump_*.glb), the wheel turning slowly on the head's axle (a _horizonFloaters spinX
+       entry); the wooden legs, the box head, the eight boxes and the box vane are gone ── */
     function _hzWindmill(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var wood = function () { return _hzGeoMat(_hzTex('wood') || _hzTex('wood_planks'), 0x7d6242); };
-        var steel = function () { return _hzGeoMat(_hzTex('metal'), 0x8f959e); };
-        var H = ts * 4.2;
-        for (var i = 0; i < 4; i++) {
-            var a = i * Math.PI / 2 + Math.PI / 4;
-            _hzAt(g, _hzCyl(ts * 0.07, ts * 0.1, H, 5, ts, wood()),
-                Math.cos(a) * ts * 0.62, H / 2, Math.sin(a) * ts * 0.62, 0, Math.cos(a) * 0.16, Math.sin(a) * 0.16);
-        }
-        _hzAt(g, _hzBox(ts * 0.7, ts * 0.35, ts * 0.7, ts, wood()), 0, H, 0);
-        for (var b = 0; b < 8; b++) {                                   // rotor
-            var blade = _hzBox(ts * 0.16, ts * 0.85, ts * 0.04, ts, steel());
-            var ba = b * Math.PI / 4;
-            blade.position.set(Math.cos(ba) * ts * 0.55, H + ts * 0.25 + Math.sin(ba) * ts * 0.55, -ts * 0.42);
-            blade.rotation.z = ba;
-            g.add(blade);
-        }
-        _hzAt(g, _hzBox(ts * 0.1, ts * 0.4, ts * 0.9, ts, steel()), 0, H + ts * 0.25, ts * 0.7);          // tail vane
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 4.8;
+        g.add(_hzMiscKit('windpump_tower', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.windpump_tower, tiles: H, rng: rng }));
+        var D = H * 0.28, hub = new THREE.Group();   // the head is at 0.92 H, its front 0.13 H out along +x (the vane points -x)
+        hub.position.set(ts * H * 0.13, ts * H * 0.92, 0); g.add(hub);
+        var wheel = _hzMiscKit('windpump_wheel', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.windpump_wheel, tiles: D, rng: rng });
+        wheel.position.y = -ts * D / 2; wheel.rotation.y = Math.PI / 2; hub.add(wheel);
+        _horizonFloaters.push({ obj: hub, baseY: hub.position.y, spd: 0, phase: 0, amp: 0, spin: 0, spinX: 0.004 + rng() * 0.004 });
         return g;
     }
 
@@ -36748,52 +37076,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Fairy Forest: giant crystal toadstool ──
-    function _hzToadstool(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var stemMat = _hzGeoMat(_hzTex('drywall') || _hzTex('marble_2'), 0xe8ded2);
-        var capMat = _hzGeoMat(_hzTex('mushroom') || _hzTex('crystal'), 0xe06a9a);
-        var stemH = ts * 1.9;
-        _hzAt(g, _hzCyl(ts * 0.4, ts * 0.6, stemH, 9, ts, stemMat), 0, stemH / 2, 0, 0, 0.06);
-        var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.5, 14, 9, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
-        cap.scale.y = 0.72;
-        _hzAt(g, cap, 0, stemH - ts * 0.1, 0);
-        for (var i = 0; i < 6; i++) {                                    // glow spots
-            var a = rng() * Math.PI * 2, rr = ts * (0.4 + rng() * 0.85);
-            var spotM = _hzGlowMat(0xfff0c8, 0.7);
-            var spot = new THREE.Mesh(new THREE.SphereGeometry(ts * (0.08 + rng() * 0.08), 6, 5), spotM);
-            _hzAt(g, spot, Math.cos(a) * rr, stemH + ts * 0.65 - rr * 0.42, Math.sin(a) * rr);
-            if (i < 2) _hzPulse(spotM, spot, 0.3, 0.1, 0.5 + rng());
-        }
-        var gillMat = _hzGlowMat(0x9affd0, 0.35);                        // bioluminescent gills
-        var gills = new THREE.Mesh(new THREE.CylinderGeometry(ts * 1.2, ts * 0.55, ts * 0.16, 12, 1, true), gillMat);
-        _hzAt(g, gills, 0, stemH - ts * 0.05, 0);
-        _hzPulse(gillMat, null, 0.15, 0, 0.4);
-        return g;
-    }
 
-    // ── Fairy Forest: a ring of will-o-wisps over the fairy circle ──
-    function _hzFairyRing(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var n = 7 + (rng() * 4 | 0);
-        for (var i = 0; i < n; i++) {
-            var a = i * Math.PI * 2 / n;
-            var col = [0x9affd0, 0xffd0f2, 0xcfe0ff][i % 3];
-            var wispM = _hzGlowMat(col, 0.75);
-            var wisp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.12, 6, 5), wispM);
-            _hzAt(g, wisp, Math.cos(a) * ts * 1.6, ts * (1.2 + Math.sin(a * 3) * 0.4), Math.sin(a) * ts * 1.6);
-            _hzPulse(wispM, wisp, 0.3, 0.15, 0.5 + rng() * 0.8);
-        }
-        // one tiny real mushroom grounds the ring
-        var stem = _hzCyl(ts * 0.06, ts * 0.09, ts * 0.3, 6, ts, _hzGeoMat(_hzTex('drywall'), 0xe8ded2));
-        _hzAt(g, stem, 0, ts * 0.15, 0);
-        var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.16, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
-            _hzGeoMat(_hzTex('mushroom'), 0xe06a9a));
-        _hzAt(g, cap, 0, ts * 0.3, 0);
-        return g;
-    }
 
     // ── Technoticlan: hologram pyramid over the tech-altar ──
     function _hzHoloPyramid(rng) {
@@ -36881,45 +37164,16 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Vatican: censer tripod, incense burning ──
-    function _hzCenser(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xd8b458); };
-        for (var i = 0; i < 3; i++) {
-            var a = i * Math.PI * 2 / 3;
-            _hzAt(g, _hzCyl(ts * 0.05, ts * 0.07, ts * 2.6, 5, ts, gold()),
-                Math.cos(a) * ts * 0.62, ts * 1.3, Math.sin(a) * ts * 0.62, 0, Math.cos(a) * 0.42, Math.sin(a) * 0.42);
-        }
-        _hzAt(g, _hzCyl(ts * 0.02, ts * 0.02, ts * 0.9, 4, ts, gold()), 0, ts * 2.05, 0);                 // chain
-        var bowl = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.34, 9, 7), gold());
-        bowl.scale.y = 0.75;
-        _hzAt(g, bowl, 0, ts * 1.5, 0);
-        var smokeMat = _hzGlowMat(0xd8cfc0, 0.22);
-        var smoke = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 8, 6), smokeMat);
-        smoke.scale.set(0.7, 1.8, 0.7);
-        _hzAt(g, smoke, ts * 0.05, ts * 2.4, 0);
-        _hzPulse(smokeMat, smoke, 0.12, 0.2, 0.25);
-        (function () { var _gc = _hzGlowCore(ts * 0.22, 0xffb060, 0xff7020); _gc.position.y = ts * 1.5; g.add(_gc); })();
-        return g;
-    }
 
-    // ── Bohemian Grove: the wrapped effigy on its bier ──
+    /* ── Bohemian Grove: the wrapped effigy on its bier (THE CODED SHAPES OUT 2026-11-03): the Meshy bier and, on it, the Meshy
+       wrapped figure (Assets/decor/effigy_*.glb), two models each placed on its own; the box bier, the cylinder body and the ring
+       bindings are gone ── */
     function _hzEffigy(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var wood = _hzGeoMat(_hzTex('wood_planks') || _hzTex('wood'), 0x6e5638);
-        var shroud = function () { return _hzGeoMat(_hzTex('drywall_2') || _hzTex('drywall'), 0xb8b2a4); };
-        _hzAt(g, _hzBox(ts * 1.1, ts * 0.5, ts * 2.6, ts, wood), 0, ts * 0.25, 0);                        // bier
-        var body = _hzCyl(ts * 0.3, ts * 0.38, ts * 2.1, 8, ts, shroud());
-        body.rotation.x = Math.PI / 2;
-        _hzAt(g, body, 0, ts * 0.75, 0);
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 8, 6), shroud()), 0, ts * 0.78, -ts * 1.15);
-        for (var i = 0; i < 3; i++) {                                    // rope bindings
-            var band = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.36, ts * 0.035, 5, 10), wood);
-            band.rotation.x = 0;
-            _hzAt(g, band, 0, ts * 0.75, -ts * 0.6 + i * ts * 0.6);
-        }
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
+        var bier = _hzMiscKit('effigy_bier', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.effigy_bier, tiles: 3.0, fit: 'span', rng: rng });
+        bier.rotation.y = Math.PI / 2; g.add(bier);
+        var fig = _hzMiscKit('effigy_figure', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.effigy_figure, tiles: 2.2, fit: 'span', rng: rng });
+        fig.rotation.y = Math.PI / 2; fig.position.y = ts * 3.0 * 0.128 / 0.952 * 0.9; g.add(fig);   // on the planks (the bier is 0.134 of its length tall)
         return g;
     }
 
@@ -36938,28 +37192,19 @@ const ThreeRenderer = (function () {
         _hzAt(g, _hzBox(ts * 1.9, ts * 0.7, ts * 0.62, ts, stone(0xd6c6a4)), 0, H + ts * 0.35, 0);        // T head
         _hzAt(g, _hzBox(ts * 0.16, H * 0.5, ts * 0.06, ts, stone(0xb8a678)), ts * 0.2, H * 0.55, ts * 0.26); // relief arm
         _hzAt(g, _hzBox(ts * 0.4, ts * 0.14, ts * 0.06, ts, stone(0xb8a678)), ts * 0.12, H * 0.32, ts * 0.26); // relief hand
+        /* THE MESHY DECOR (mondo 11-03: "use the one with hands on it"): the Meshy T-pillar (the carved arms and hands) stands in the
+           same box. The code pieces hide but stay in the group, so the monument fit above measures the same 1.9 x 3.8 tiles and the
+           T-head stays flush with the 2-voxel stamp; the model is stretched into that box exactly. */
+        _hqDecorWear('t_pillar', ts, g, { box: [-0.95, 0, -0.31, 0.95, 3.8, 0.31], fit: 'stretch' });
         return g;
     }
 
-    // ── D.U.M.B.: specimen tank (occupied) ──
+    // ── D.U.M.B.: specimen tank ──
+    /* THE CODED SHAPES OUT (mondo 2026-11-03: "grey tube - yes replace"): the Molten Maps sci-fi pack cryo tube (CC0, R2
+       Assets/misc/molten_cryo_tube.glb), lit; the steel caps, the see-through fluid and the code grey inside are gone. The
+       monument fit stretches it toward its 3-tile stamp as it did the code tank. */
     function _hzGreyTube(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var steel = function () { return _hzGeoMat(_hzTex('metal'), 0x6a707a); };
-        var H = ts * 2.4;
-        _hzAt(g, _hzCyl(ts * 0.7, ts * 0.8, ts * 0.35, 10, ts, steel()), 0, ts * 0.17, 0);
-        var fluidMat = new THREE.MeshBasicMaterial({
-            color: 0x59e8c8, transparent: true, opacity: 0.22,
-            side: THREE.DoubleSide, depthWrite: false, fog: false
-        });
-        _hzAt(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.58, ts * 0.58, H, 12, 1, true), fluidMat), 0, ts * 0.35 + H / 2, 0);
-        var grey = function () { return _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x39424a); };
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 8, 6), grey()), 0, ts * 2.0, 0);      // the big head
-        _hzAt(g, _hzCyl(ts * 0.12, ts * 0.16, ts * 0.9, 6, ts, grey()), 0, ts * 1.35, 0);                 // the small body
-        _hzAt(g, _hzCyl(ts * 0.7, ts * 0.8, ts * 0.35, 10, ts, steel()), 0, ts * 0.35 + H + ts * 0.17, 0);
-        var glowMat = _hzGlowMat(0x59e8c8, 0.30);
-        /* NO LIGHT BOX (mondo 2026-10-05): no glow shell round the tube */
-        return g;
+        return _hzMiscKit('molten_cryo_tube', { url: _R2_MISC + 'molten_cryo_tube.glb', tiles: 2.4, rng: rng });
     }
 
     /* ── THE CARGO STACK (2026-09-13) — the Spaceship's cover, in place of the
@@ -37150,48 +37395,6 @@ const ThreeRenderer = (function () {
         return new THREE.Group();   // NO STAND-INS (2026-10-05): no procedural skull — the GLB or nothing
     }
 
-    // ── Unholy wastes: a heap of living flesh, all eyes and teeth ──
-    function _hzFleshMound(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var fleshKeys = ['flesh', 'flesh_2', 'flesh_3'];
-        var R = ts * (1.2 + rng() * 1.0);
-        // overlapping squashed lobes make the mass read as grown, not built
-        var lobes = 4 + (rng() * 3 | 0);
-        for (var i = 0; i < lobes; i++) {
-            var lr = R * (0.45 + rng() * 0.5);
-            var lobeGeo = new THREE.SphereGeometry(lr, 10, 8);
-            _hzScaleUV(lobeGeo, lr / ts * 4, lr / ts * 3);
-            var lobe = new THREE.Mesh(lobeGeo,
-                _hzGeoMat(_hzTex(fleshKeys[(rng() * fleshKeys.length) | 0]), 0xb98a8a));
-            lobe.scale.y = 0.55 + rng() * 0.25;
-            var a = rng() * Math.PI * 2, d = rng() * R * 0.7;
-            _hzAt(g, lobe, Math.cos(a) * d, lr * lobe.scale.y * 0.55, Math.sin(a) * d, rng() * Math.PI);
-        }
-        // unblinking eyes stud the mass — the mound is watching
-        var eyes = 3 + (rng() * 3 | 0);
-        for (var e = 0; e < eyes; e++) {
-            var er = ts * (0.08 + rng() * 0.08);
-            var ea = rng() * Math.PI * 2, ed = R * (0.35 + rng() * 0.55);
-            var eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(er, 7, 6),
-                _hzGeoMat(_hzTex('enamel') || null, 0xf0e8d8));
-            _hzAt(g, eyeWhite, Math.cos(ea) * ed, R * (0.35 + rng() * 0.45), Math.sin(ea) * ed);
-            var pupilMat = _hzGlowMat(rng() < 0.5 ? 0xffd040 : 0x8fff70, 0.8);
-            var pupil = new THREE.Mesh(new THREE.SphereGeometry(er * 0.45, 5, 4), pupilMat);
-            _hzAt(g, pupil, Math.cos(ea) * (ed + er * 0.7), R * (0.35 + rng() * 0.45), Math.sin(ea) * (ed + er * 0.7));
-            _hzPulse(pupilMat, pupil, 0.3, 0.08, 0.3 + rng() * 0.6);
-        }
-        // stray fangs erupting where no mouth should be
-        var fangs = 4 + (rng() * 4 | 0);
-        for (var f = 0; f < fangs; f++) {
-            var fa = rng() * Math.PI * 2, fd = R * (0.4 + rng() * 0.5);
-            var fang = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.06, ts * (0.2 + rng() * 0.25), 5),
-                _hzGeoMat(_hzTex('enamel') || null, 0xe8dfc8));
-            _hzAt(g, fang, Math.cos(fa) * fd, R * (0.2 + rng() * 0.4), Math.sin(fa) * fd,
-                0, (rng() - 0.5) * 1.2, (rng() - 0.5) * 1.2);
-        }
-        return g;
-    }
 
     // ── Arcane library / Heaven: a colossal tome hanging open in the air ──
     function _hzTome(rng) {
@@ -38539,13 +38742,30 @@ const ThreeRenderer = (function () {
                        sprite (the old per-storey planes, same vertices, same UVs). Downtown
                        drew ~20 meshes a building; a face is now one draw call. */
                     var fp = [], fn = [], fu = [], fi = [];
-                    for (var st = 0; st < stack; st++) {
-                        var y0 = st * h, y1 = y0 + h, b0 = st * 4;
+                    /* THE PRISM BANDS (2026-11-03, data.js HQ_TEXB_PRISM_BANDS): `bands` [top band's end row, bottom band's start row,
+                       storeys in the art] — the bottom band once at the foot, one storey of the middle stack − 1 times, the top band once
+                       at the top, at the sprite's own proportions fitted to H. Without bands every storey wears the whole sprite. */
+                    /* Every prism in the game (2026-11-03, mondo: "lets make sure any already on a map get the same fix"): with no
+                       `bands` opt the sprite's own row in HQ_TEXB_PRISM_BANDS is read, and the middle repeats as many times as fill the
+                       building's height (H unchanged, so every roof, climb and sight line stays where it was) at the sprite's own
+                       aspect; an editor building (`bands` passed, its storeys set) repeats it storeys − 1 times */
+                    var BD = o.bands, segs = [], bandFit = (BD === undefined);
+                    if (bandFit) BD = (typeof HQ_TEXB_PRISM_BANDS !== 'undefined' && HQ_TEXB_PRISM_BANDS[key]) || null;
+                    if (BD && BD.length >= 3 && BD[0] > tt && BD[1] < tb + 1 && BD[1] > BD[0]) {
+                        var bT = BD[0], bB = BD[1], mp = (bB - bT) / Math.max(1, BD[2]), tp = bT - tt, bp = tb + 1 - bB;
+                        var nMid = bandFit ? Math.max(0, Math.round((H / (w * 0.85 / core) - tp - bp) / mp)) : stack - 1;
+                        var sc = H / (tp + bp + nMid * mp), yy = 0;
+                        segs.push([yy, yy + bp * sc, 1 - (tb + 1) / sprH, 1 - bB / sprH]); yy += bp * sc;
+                        for (var sm = 0; sm < nMid; sm++) { segs.push([yy, yy + mp * sc, 1 - (bT + mp) / sprH, 1 - bT / sprH]); yy += mp * sc; }
+                        segs.push([yy, H, 1 - bT / sprH, vT]);
+                    } else for (var st0 = 0; st0 < stack; st0++) segs.push([st0 * h, st0 * h + h, vB, vT]);
+                    segs.forEach(function (sg, si) {
+                        var y0 = sg[0], y1 = sg[1], b0 = si * 4;
                         fp.push(-fw / 2, y1, 0, fw / 2, y1, 0, -fw / 2, y0, 0, fw / 2, y0, 0);
                         fn.push(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1);
-                        fu.push(uL, vT, uR, vT, uL, vB, uR, vB);
+                        fu.push(uL, sg[3], uR, sg[3], uL, sg[2], uR, sg[2]);
                         fi.push(b0, b0 + 2, b0 + 1, b0 + 2, b0 + 3, b0 + 1);
-                    }
+                    });
                     var fg = new THREE.BufferGeometry();
                     fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
                     fg.setAttribute('normal', new THREE.Float32BufferAttribute(fn, 3));
@@ -38776,14 +38996,12 @@ const ThreeRenderer = (function () {
             if (K.inLane(xb, zb, 2.2 * ts) || rng() < 0.2) continue;
             _nrProp(K, function (r) { return _hzMiscKit('standingstone', { tiles: 1.5 + r() * 1.2, rng: r, cast: true, foot: 0.5, low: 'skip' }); }, xb, zb, { ry: rng() * 6.3, y: -0.12 });
         }
-        _nrMounds(K, { tex: 'grass_2', d: 7.5, spacing: 3.5, r: 2.0, flat: 0.18, p: 0.5 });
         var ditch = K.mat('dirt', 0x8a7a60); var ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.28, R * 1.42, 40), ditch); ring.rotation.x = -Math.PI / 2; ring.position.set(K.CX, K.fy + 0.4, K.CZ); K.add(ring);
     };
     /* GIZA — the necropolis: dunes, two pyramids on the diagonal, obelisks. */
     _NR_BUILDERS.giza = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 4.5 }), ts = K.ts;
         _nrApron(K, { tex: 'desert', deep: true, skirt: 'dirt_2', skirtColor: 0xe0c48c });
-        _nrMounds(K, { tex: 'desert', d: 3.4, spacing: 2.4, r: 1.8, flat: 0.3, p: 0.75 });
         var pyr = K.mat('desert', 0xd6c39a);
         [[K.BX1 + 9 * ts, K.BZ0 - 8 * ts, 11], [K.BX0 - 10 * ts, K.BZ1 + 9 * ts, 13], [K.BX1 + 12 * ts, K.BZ1 + 11 * ts, 7]].forEach(function (p) {
             var h = p[2] * ts, r = h * 0.95; var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrConeUV(geo, r, h, ts, 0.5);
@@ -38942,7 +39160,7 @@ const ThreeRenderer = (function () {
         mesas.forEach(function (m) { var b = K.box(m[2] * ts, m[4] * ts, m[3] * ts, mesa, 0.5); b.position.set(m[0], K.fy + m[4] * ts / 2 - 0.3 * ts, m[1]); b.rotation.y = 0.3; K.add(K.lit(b, true)); var cap = K.box(m[2] * ts * 1.04, 0.2 * ts, m[3] * ts * 1.04, K.mat('mars', 0xc88a5a)); cap.position.set(m[0], K.fy + m[4] * ts - 0.2 * ts, m[1]); cap.rotation.y = 0.3; K.add(cap); });
         /* the rover is the user's real model (2026-09-11: DOOR_HQ.catalogue
            `mars_rover`, 2.6 m long here); the procedural buggy is its fallback */
-        _nrProp(K, function (rng) { return _hzDoorKitGLB('mars_rover', { metres: 2.6, foot: 1.1, rng: rng, fallback: _hzRover }); }, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
+        _nrProp(K, _hzRover, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { ry: 0.8 });
         _nrProp(K, _hzBiodome, K.BX0 - 2.8 * ts, K.BZ1 + 2.6 * ts, { s: 0.8 });
         _nrRocks(K, { tex: 'mars_2', color: 0x9a5a44, d: 1.0, p: 0.4, r: 0.3 });
         /* THE PYRAMID (2026-09-16, the user: "Mars needs the glb pyramid"): the Cydonia
@@ -38979,7 +39197,6 @@ const ThreeRenderer = (function () {
         _nrMoat(K, { key: 'deep_water', depth: 1, pad: 10 });
         var ice = K.mat('igloo', 0xdcecf8);
         for (var i = 0; i < 9; i++) { var a = rng() * Math.PI * 2, r = ts * (6.5 + rng() * 4); var w = ts * (1 + rng() * 2), h = ts * (0.4 + rng() * 1.4); var b = K.box(w, h, w * (0.6 + rng() * 0.8), ice, 0.5); b.position.set(K.CX + Math.cos(a) * r, K.fy - 1.2 * ts + h / 2, K.CZ + Math.sin(a) * r); b.rotation.y = rng() * 6; K.add(K.lit(b, true)); }
-        _nrMounds(K, { tex: 'marble_light', color: 0xf4faff, d: 2.6, spacing: 2.0, r: 1.3, flat: 0.3, p: 0.7 });
         _nrProp(K, _hzIgloo, K.BX0 - 2.8 * ts, K.BZ1 + 2.4 * ts, { s: 0.8 });
         _nrProp(K, _hzWhalebones, K.BX1 + 2.8 * ts, K.BZ0 - 2.4 * ts, { s: 0.8 });
         _nrRibbons(K, { n: 4, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff] });
@@ -38996,7 +39213,6 @@ const ThreeRenderer = (function () {
         _nrHouse(K, K.BX1 + 3.2 * ts, K.CZ - 0.5 * ts, { w: 3.0, d: 3.6, h: 2.2, tex: 'wood_planks', color: 0xa83a30, roofTex: 'metal', roofColor: 0x6a6e74, ry: -Math.PI / 2, window: 0xffc060, chimney: false });
         _nrProp(K, _hzWindmill, K.BX0 - 3.0 * ts, K.BZ0 - 2.4 * ts, { s: 0.9 });
         _nrTrees(K, { d: 3.4, spacing: 2.6, kinds: ['tree_5', 'tree_6'], p: 0.6, h: 2.2 });
-        _nrMounds(K, { tex: 'rocks_1', color: 0xb09878, d: 8.5, spacing: 5, r: 4, flat: 0.5, p: 0.8 });
         var bale = K.mat('wood', 0xc8a860); [[K.BX0 - 1.1 * ts, K.BZ1 + 2.0 * ts], [K.BX0 - 2.0 * ts, K.BZ1 + 2.2 * ts]].forEach(function (p) { var b = K.cyl(0.4 * ts, 0.4 * ts, 0.7 * ts, 10, bale); b.rotation.z = Math.PI / 2; b.position.set(p[0], K.fy + 0.4 * ts, p[1]); K.add(K.lit(b, true)); });
         var tank = K.cyl(0.9 * ts, 0.9 * ts, 0.5 * ts, 12, K.mat('metal_2', 0x9a9088)); tank.position.set(K.BX1 + 1.6 * ts, K.fy + 0.25 * ts, K.BZ1 + 2.6 * ts); K.add(K.lit(tank, true));
         var eye = K.lamp(K.CX + 4 * ts, K.fy + 9 * ts, K.CZ - 7 * ts, 0xff4060, 1.2 * ts, 0.35); K.add(eye); _hzPulse(eye.material, eye, 0.3, 0.2, 0.25);
@@ -39057,7 +39273,7 @@ const ThreeRenderer = (function () {
         };
         _nrProp(K, function (rng) { return _hzDoorKitGLB('lunar_lander', { metres: 3.2, foot: 1.5, rng: rng, fallback: landerProc }); }, lx, lz, { ry: 0.55 });
         _nrProp(K, _hzFlag, lx - 1.6 * ts, lz + 0.4 * ts, { s: 0.5, ry: 0.4 });
-        _nrProp(K, _hzRover, K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, { s: 0.7, ry: 2.4 });
+        _nrProp(K, _hzRover, K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, { ry: 2.4 });
         var trk = new THREE.MeshBasicMaterial({ color: 0x7a7e90, transparent: true, opacity: 0.5, depthWrite: false });
         for (var t = 0; t < 2; t++) { var tr = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * ts, 6 * ts), trk); tr.rotation.x = -Math.PI / 2; tr.rotation.z = 0.9; tr.position.set(K.BX0 - 1.6 * ts + t * 0.5 * ts, K.fy + 0.7, K.BZ1 + 1.4 * ts); tr.renderOrder = 1; K.add(tr); }
         _nrProp(K, _hzMonolith, K.BX1 + 4.6 * ts, K.BZ1 + 4.2 * ts, { s: 0.28 });
@@ -39152,8 +39368,6 @@ const ThreeRenderer = (function () {
         [1.6, 3.2].forEach(function (d, ri) { _nrRectRing(K, d * ts, 0.7 * ts, function (x, z) { if (rng() < 0.12) return; var h = ts * (0.5 + rng() * 0.35); var b = K.box(0.72 * ts, h, 0.5 * ts, wall); b.position.set(x, K.fy + h / 2 - 0.1 * ts, z); b.rotation.y = K.face(x, z) + (rng() - 0.5) * 0.2; K.add(K.lit(b, true)); }, { skipLanes: true, corners: true }); });
         _nrRectRing(K, 2.4 * ts, 2.6 * ts, function (x, z) { _nrProp(K, _hzTPillar, x, z, { s: 0.55 }); }, { skipLanes: true, corners: true });
         var dig = K.mat('dirt_3', 0xb89868); [[K.BX0 - 4.0 * ts, K.BZ0 - 1.5 * ts], [K.BX1 + 4.0 * ts, K.BZ1 + 1.5 * ts]].forEach(function (p) { var t = K.box(1.6 * ts, 0.6 * ts, 2.6 * ts, dig); t.position.set(p[0], K.fy - 0.3 * ts - 0.7, p[1]); K.add(t); var tent = new THREE.Mesh(new THREE.ConeGeometry(0.9 * ts, 0.9 * ts, 4), K.mat('drywall', 0xe8dcc0)); tent.position.set(p[0] + 1.6 * ts, K.fy + 0.45 * ts, p[1]); tent.rotation.y = Math.PI / 4; K.add(K.lit(tent, true)); });
-        _nrMounds(K, { tex: 'grass_2', color: 0xa8b070, d: 5.5, spacing: 3.2, r: 2.8, flat: 0.28, p: 0.85, skipLanes: false });
-        _nrMounds(K, { tex: 'dirt_3', color: 0xc8a878, d: 9, spacing: 5, r: 5, flat: 0.35, p: 0.8, skipLanes: false });
     };
     /* D.U.M.B. — a bay of the base: concrete walls, blast doors at both ends,
        server banks, pipes, red emergency light, the cameras. */
@@ -39197,7 +39411,6 @@ const ThreeRenderer = (function () {
         _nrProp(K, _hzSleigh, K.BX1 + 2.4 * ts, K.BZ1 + 2.0 * ts, { s: 1.0, ry: 2.2 });
         var wrap = [0xd84040, 0x40a860, 0xf0d040, 0x5080e0];
         for (var i = 0; i < 8; i++) { var s = ts * (0.35 + rng() * 0.4); var b = K.box(s, s, s, K.mat('wood_planks', wrap[i % 4])); b.position.set(K.BX1 + (1.4 + rng() * 2.2) * ts, K.fy + s / 2, K.BZ0 - (1.2 + rng() * 2.0) * ts); b.rotation.y = rng(); K.add(K.lit(b, true)); var rib = K.box(s * 1.04, 0.08 * ts, s * 1.04, _hzLit(null, 0xfff0a0)); rib.position.copy(b.position); rib.rotation.y = b.rotation.y; K.add(rib); }
-        _nrMounds(K, { tex: 'marble_light', color: 0xf8fcff, d: 3.6, spacing: 2.2, r: 1.4, flat: 0.35, p: 0.7 });
         _nrRibbons(K, { n: 5, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff, 0xff9ad0] });
         var pole = K.cyl(0.06 * ts, 0.06 * ts, 2.4 * ts, 8, K.mat('marble_light', 0xffffff)); pole.position.set(K.BX1 + 1.4 * ts, K.fy + 1.2 * ts, K.CZ); K.add(pole); var stripe = K.cyl(0.07 * ts, 0.07 * ts, 2.4 * ts, 8, _hzLit(null, 0xd03030)); stripe.scale.set(1, 1, 1); stripe.position.copy(pole.position); stripe.scale.y = 0.5; K.add(stripe); K.add(K.lamp(K.BX1 + 1.4 * ts, K.fy + 2.5 * ts, K.CZ, 0xfff2c0, 0.8 * ts, 0.7));
         _nrPool(K, K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.1 * ts, 'water', { rimTex: 'marble_light', rimColor: 0xffffff });
@@ -39385,7 +39598,6 @@ const ThreeRenderer = (function () {
         _nrApron(K, { tex: 'concrete_floor', color: 0xb0aeaa, deep: true, skirt: 'urban_wall', skirtColor: 0x9a9aa0 });
         _nrRoadLines(K, { color: 0xf0f0e8 });
         _nrSpriteBlocks(K, { d: 2.6, minW: 2.4, maxW: 3.4, stack: [2, 5], tex: 'concrete_floor', color: 0x9a9894, roofTex: 'concrete_floor', roofColor: 0x8a8d92, gates: true, beacon: 0xff3030 });   // the map-builder's buildings (2026-09-14)
-        _nrMounds(K, { tex: 'rubble_3', color: 0xa09a94, d: 1.2, spacing: 2.6, r: 0.9, flat: 0.3, p: 0.4, only: ['w', 'e'] });
         [[K.BX0 - 1.2 * ts, K.CZ - 2.4 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.6 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], fy, p[1]); d.rotation.y = p[2]; K.add(d); });
         _nrProp(K, _hzSecurityCam, K.BX1 + 2.0 * ts, K.BZ0 - 2.0 * ts, { s: 0.8 });
         /* the utility boxes (the user's GLB, 2026-09-13): the block's power, on the curbs beside the dumpsters */
@@ -39568,8 +39780,8 @@ const ThreeRenderer = (function () {
            tongues or the rock is built there). */
         var top = fy - 0.6;
         _nrMoat(K, { key: 'deep_water', depth: 1, pad: 40, stream: true });
-        if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = 'desert'; _nrLastKit.color = 0xe8d8a8; _nrLastKit.skirt = 'rocks_1'; _nrLastKit.skirtColor = 0x8a8478; }
-        var sand = K.mat('desert', 0xe8d8a8, { lift: 0 }), bank = K.mat('rocks_1', 0x8a8478);
+        if (_nrLastKit) { _nrLastKit.apronTop = top; _nrLastKit.tex = 'desert'; _nrLastKit.color = 0xf2ead6; _nrLastKit.skirt = 'rocks_1'; _nrLastKit.skirtColor = 0x8a8478; }
+        var sand = K.mat('desert', 0xf2ead6, { lift: 0 }), bank = K.mat('rocks_1', 0x8a8478);
         if (!HQ) {
             /* the beach tongues: from the spawn rows out to the kit's edge, a rock face into the sea */
             [[K.BX0 + 3 * ts, K.Z0, K.BX1 - 3 * ts, K.BZ0], [K.BX0 + 3 * ts, K.BZ1, K.BX1 - 3 * ts, K.Z1]].forEach(function (r) {
@@ -40218,26 +40430,6 @@ const ThreeRenderer = (function () {
         t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
         _hzFacTexCache[key] = t; return t;
     }
-    // ── the sea ──
-    /* an island on the water: a low rock cone (its base under the sea) with
-       a grassy crown, palms / pines, sometimes a lighthouse */
-    function _hzSeaIsland(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
-        var r = ts * (2.5 + rng() * 4.5), h = ts * (0.8 + rng() * 1.6);
-        var rock = _hzTex('rocks_1') || _hzTex('cliff'), top = _hzTex('grass_2') || _hzTex('dirt');
-        var geo = new THREE.ConeGeometry(r, h * 2.2, 9, 1); _hzTileUV(geo, r, h * 2.2, ts);
-        var m = new THREE.Mesh(geo, _hzGeoMat(rock, 0x6e7a6a)); m.position.y = h * 2.2 * 0.5 - h * 1.1; m.rotation.y = rng() * 6; g.add(m);
-        var cg = new THREE.ConeGeometry(r * 0.58, h * 0.95, 9, 1); _hzTileUV(cg, r, h, ts);
-        var cap = new THREE.Mesh(cg, _hzGeoMat(top, 0x7fa060)); cap.position.y = h * 0.62; cap.rotation.y = m.rotation.y; g.add(cap);
-        var n = 2 + (rng() * 4 | 0), trunkMat = _hzGeoMat(_hzTex('wood') || null, 0x6a4a30), leafMat = _hzGeoMat(_hzTex('leaves') || null, 0x3f8a4a);
-        for (var i = 0; i < n; i++) {
-            var a = rng() * Math.PI * 2, rad = r * (0.15 + rng() * 0.35), th = ts * (0.9 + rng() * 1.3);
-            var tr = _hzCyl(ts * 0.05, ts * 0.09, th, 5, ts, trunkMat); tr.position.set(Math.cos(a) * rad, h * 0.9 + th / 2, Math.sin(a) * rad); tr.rotation.z = (rng() - 0.5) * 0.4; g.add(tr);
-            var can = new THREE.Mesh(new THREE.SphereGeometry(ts * (0.35 + rng() * 0.3), 7, 6), leafMat); can.position.set(tr.position.x + Math.sin(tr.rotation.z) * th * 0.5, h * 0.9 + th, tr.position.z); can.scale.y = 0.6; g.add(can);
-        }
-        if (rng() < 0.3) { var lh = _hzLighthouse(rng); lh.scale.setScalar(0.75); lh.position.y = h * 1.05; g.add(lh); }
-        return g;
-    }
     /* sea stacks: two or three rock pillars standing out of the water */
     function _hzSeaStack(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
@@ -40247,21 +40439,6 @@ const ThreeRenderer = (function () {
             var h = ts * (2 + rng() * 5), r = ts * (0.5 + rng() * 1.1);
             var m = _hzCyl(r * (0.5 + rng() * 0.4), r, h, 7, ts, mat); m.position.set((rng() - 0.5) * ts * 5, h / 2 - ts * 0.6, (rng() - 0.5) * ts * 5); m.rotation.z = (rng() - 0.5) * 0.12; g.add(m);
         }
-        return g;
-    }
-    /* a lighthouse on a rock: red and white bands, a lamp, a beam that turns */
-    function _hzLighthouse(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
-        var rock = _hzGeoMat(_hzTex('cliff') || _hzTex('rocks_1'), 0x6a7270);
-        var base = _hzCyl(ts * 1.4, ts * 1.9, ts * 1.2, 9, ts, rock); base.position.y = ts * 0.6 - ts * 0.5; g.add(base);
-        var h = ts * (3.2 + rng() * 1.6), bands = 4, white = _hzGeoMat(null, 0xf2efe6), red = _hzGeoMat(null, 0xc83a3a);
-        for (var i = 0; i < bands; i++) { var seg = _hzCyl(ts * (0.42 - i * 0.05), ts * (0.46 - i * 0.05), h / bands, 12, ts, i % 2 ? red : white); seg.position.y = ts * 0.7 + h / bands * (i + 0.5); g.add(seg); }
-        var lamp = _hzGlowCore(ts * 0.3, 0xfff1c8, 0xffd080); lamp.position.y = ts * 0.7 + h + ts * 0.25; g.add(lamp);
-        var beamMat = _hzGlowMat(0xfff1c8, 0.16);
-        var beam = new THREE.Group(); beam.position.y = ts * 0.7 + h + ts * 0.25;
-        var bm = new THREE.Mesh(new THREE.PlaneGeometry(ts * 9, ts * 0.5), beamMat); bm.position.x = ts * 4.5; beam.add(bm);
-        var bm2 = bm.clone(); bm2.rotation.x = Math.PI / 2; beam.add(bm2);
-        rng();   /* NO LIGHT BOX (mondo 2026-10-05): the turning searchlight planes are not added (the rng draw keeps the horizon seed) */
         return g;
     }
     /* a ghost ship on the horizon — 2026-09-12: the user's ghost-ship-wreck GLB
@@ -40306,7 +40483,7 @@ const ThreeRenderer = (function () {
     }
     function _hzPalmIsleFar(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        return _hzMiscKit('palmisle', { tiles: 5 + rng() * 4, fit: 'span', sink: 0.45, lit: false, rng: rng, low: 'skip', fallback: _hzSeaIsland });
+        return _hzMiscKit('palmisle', { tiles: 5 + rng() * 4, fit: 'span', sink: 0.45, lit: false, rng: rng, low: 'skip' });
     }
     // ── the wreckage field ──
     /* an asteroid: a rock solid with its vertices jostled */
@@ -40441,6 +40618,19 @@ const ThreeRenderer = (function () {
             put(p, w);
         });
     }
+    /* THE CHESS POSITIONS (2026-11-03, mondo: the Looking-Glass loads one of his three chess positions at random): the garden's pieces that
+       only some positions have (data.js HQ_LG_CHESS, `chessPos`) — shown, and a blocker for the walker, only while their position stands.
+       data.js hqLgChessSet calls chessPosSync when a launch rolls another position. */
+    var _hqChessVar = [];
+    function _hqChessVarApply(v) {
+        var on = (typeof hqLgChessOn === 'function') ? hqLgChessOn(v.t) : true;
+        if (v.obj) v.obj.visible = on;
+        var L = v.H && v.H.blockers; if (!L) return;
+        var i = L.indexOf(v.blk);
+        if (on && i < 0) L.push(v.blk); else if (!on && i >= 0) L.splice(i, 1);
+        v.H.dirty = true;
+    }
+    function _hqChessPosSync() { for (var i = 0; i < _hqChessVar.length; i++) { try { _hqChessVarApply(_hqChessVar[i]); } catch (e) {} } _objectsDirty = true; }
     function _hqChessStatue(kind, dark, hM, U, cell, done) {
         var piece = _CHESS_PROFILES[kind] ? kind : 'pawn';
         var mat = function (k, col, shine) {
@@ -40539,53 +40729,51 @@ const ThreeRenderer = (function () {
             divine: [
                 [0.14, _hzGoldGate, false, 0.00, 0.45], [0.29, _hzLightPillar, false, -0.15, 0.50],
                 [0.42, _hzStairway, false, -0.30, 0.55], [0.56, _hzGreekRuin, false, -0.35, 0.50],
-                [0.64, _hzFloatingIsland, false, -0.30, 0.60], [0.73, _hzTome, false, -0.20, 0.60],
+                [0.73, _hzTome, false, -0.20, 0.60],
                 [0.81, _hzRoseWindow, false, -0.35, 0.50], [0.88, _hzModelClock, false, -0.25, 0.55],
                 [0.94, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
-                [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
+                [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzFallenColumn, false, -0.50, 0.30],
                 [0.66, _hzCrystalShards, true, -0.55, 0.45],
                 [0.76, _hzObelisk, false, -0.50, 0.40], [0.86, _hzGrinSkull, false, -0.45, 0.35],
-                [0.94, _hzFleshMound, false, -0.50, 0.30], [1.00, _hzFloatingIsland, false, -0.60, 0.35]],
+                [1.00, _hzFleshMound, false, -0.50, 0.30]],
             ruins: [
                 [0.22, _hzGreekRuin, false, -0.40, 0.50], [0.36, _hzStairway, false, -0.45, 0.55],
-                [0.50, _hzColossus, false, -0.45, 0.45], [0.62, _hzObelisk, false, -0.45, 0.55],
+                [0.50, _hzFallenColumn, false, -0.45, 0.45], [0.62, _hzObelisk, false, -0.45, 0.55],
                 [0.72, _hzGateway, false, -0.40, 0.55], [0.82, _hzWoodCross, false, -0.45, 0.45],
-                [0.91, _hzRoseWindow, false, -0.42, 0.50],
-                [1.00, _hzFloatingIsland, false, -0.50, 0.60]],
+                [1.00, _hzRoseWindow, false, -0.42, 0.50]],
             pyramids: [
                 [0.30, _hzModelPyramid, false, -0.40, 0.45], [0.50, _hzZiggurat, false, -0.40, 0.50],
                 [0.66, _hzObelisk, false, -0.45, 0.55], [0.80, _hzMonolith, false, -0.50, 0.55],
-                [0.90, _hzColossus, false, -0.45, 0.40], [1.00, _hzFloatingIsland, false, -0.50, 0.55]],
+                [1.00, _hzFallenColumn, false, -0.45, 0.40]],
             crystals: [
                 [0.30, _hzCrystalShards, true, -0.55, 0.65], [0.48, _hzSacredRings, true, -0.50, 0.70],
                 [0.64, _hzAstralOrbs, true, -0.55, 0.75], [0.78, _hzModelPlanet, false, -0.55, 0.72],
-                [0.90, _hzFloatingIsland, false, -0.55, 0.60], [1.00, _hzMonolith, false, -0.50, 0.55]],
+                [1.00, _hzMonolith, false, -0.50, 0.55]],
             orbs: [
                 [0.28, _hzAstralOrbs, true, -0.55, 0.75], [0.44, _hzSacredRings, true, -0.55, 0.70],
                 [0.58, _hzModelEyeball, true, -0.45, 0.65], [0.70, _hzModelPlanet, false, -0.55, 0.75],
                 [0.80, _hzSaucer, false, -0.35, 0.62], [0.88, _hzModelCraft, false, -0.35, 0.65],
-                [0.95, _hzMonolith, false, -0.50, 0.55], [1.00, _hzFloatingIsland, false, -0.55, 0.60]],
+                [1.00, _hzMonolith, false, -0.50, 0.55]],
             eyes: [
                 [0.34, _hzModelEyeball, true, -0.45, 0.65], [0.60, _hzAstralOrbs, true, -0.55, 0.75],
                 [0.76, _hzSacredRings, true, -0.55, 0.70], [1.00, _hzMonolith, false, -0.55, 0.55]],
             islands: [
-                [0.50, _hzFloatingIsland, false, -0.55, 0.65],
                 [0.64, _hzStairway, false, -0.45, 0.55], [0.78, _hzGreekRuin, false, -0.40, 0.50],
                 [0.90, _hzLenticular, false, -0.10, 0.45], [1.00, _hzAstralOrbs, true, -0.50, 0.70]],
             city: [
                 [0.30, _hzMonolith, false, -0.50, 0.55], [0.50, _hzGateway, false, -0.40, 0.55],
-                [0.68, _hzFloatingIsland, false, -0.55, 0.60], [0.84, _hzAstralOrbs, true, -0.50, 0.72],
+                [0.84, _hzAstralOrbs, true, -0.50, 0.72],
                 [1.00, _hzSacredRings, true, -0.50, 0.70]],
             space: [   // 2026-09-13: the asteroids are the user's GLBs (_hzAsteroidFar)
                 [0.17, _hzModelPlanet, false, -0.60, 0.78], [0.31, _hzAsteroidFar, true, -0.60, 0.75],
                 [0.42, _hzAstralOrbs, true, -0.60, 0.76],
                 [0.52, _hzCrystalShards, true, -0.60, 0.70], [0.60, _hzModelStar, false, -0.55, 0.80],
-                [0.66, _hzModelSolarSystem, false, -0.40, 0.70], [0.74, _hzFloatingIsland, false, -0.58, 0.66],
+                [0.66, _hzModelSolarSystem, false, -0.40, 0.70],
                 [0.82, _hzModelEyeball, true, -0.50, 0.70], [0.88, _hzSaucer, false, -0.45, 0.68],
                 [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
-                [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzColossus, false, -0.45, 0.45],
+                [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzFallenColumn, false, -0.45, 0.45],
                 [0.70, _hzGateway, false, -0.45, 0.55],
                 [0.79, _hzObelisk, false, -0.45, 0.58], [0.87, _hzGrinSkull, false, -0.45, 0.40],
                 [0.94, _hzModelClock, false, -0.42, 0.55], [1.00, _hzWoodCross, false, -0.42, 0.45]],
@@ -40593,7 +40781,7 @@ const ThreeRenderer = (function () {
             // board. A sixth field 'sea' = on the water (the sea's level from the
             // motion config, + row[3] tiles); the sky rows use the disc factors.
             sea: [   // 2026-09-12: the wreck, the kraken, the shark and the palm island are the user's GLBs
-                [0.20, _hzSeaIsland, false, 0, 0, 'sea'], [0.32, _hzPalmIsleFar, false, 0, 0, 'sea'],
+                [0.32, _hzPalmIsleFar, false, 0, 0, 'sea'],
                 [0.42, _hzSeaStack, false, 0, 0, 'sea'], [0.52, _hzGhostShip, false, 0, 0, 'sea'],
                 [0.56, _hzLighthouse, false, 0, 0, 'sea'], [0.66, _hzKrakenFar, false, 0, 0, 'sea'],
                 [0.76, _hzSharkFar, false, 0, 0, 'sea'],
@@ -40634,8 +40822,7 @@ const ThreeRenderer = (function () {
             [0.468, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
             [0.521, _hzObelisk,        false, -0.45,  0.58],   // obelisks
             [0.583, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
-            [0.629, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
-            [0.691, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
+            [0.629, _hzFallenColumn,       false, -0.45,  0.48],   // fallen columns
             [0.725, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
             [0.748, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
             [0.768, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
@@ -40938,8 +41125,8 @@ const ThreeRenderer = (function () {
     //      `fogTop`, band = top) — the ground's far edge and the sky's haze
     //      are then one colour, so there is no rim at any zoom.
     //    • THE RIM — silhouettes on the ground 14–40 tiles out that close the
-    //      horizon (`rim`: peaks / hills / dunes / trees / town / city /
-    //      spires / bergs / ruins / pyramids / craters — _WD_RIM), fogged
+    //      horizon (`rim`: peaks / spires — _WD_RIM; the rest were deleted
+    //      2026-11-03, nothing drew them), fogged
     //      like the ground. Skipped under EW_PERF_LOW.
     //    • THE WALL — `kind: 'cavern'` + `wall` = a rock cylinder round the
     //      whole world rising into the haze (Hollow Earth, Agartha, Hell).
@@ -41099,64 +41286,8 @@ const ThreeRenderer = (function () {
                 });
             }
         },
-        /* soft downs: squashed spheres */
-        hills: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'grass_2', s.color != null ? s.color : 0xffffff, { lift: 0.26 });
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 16) * (1 + k * 0.4), Math.round((s.n || 16) * (1 + k * 0.3)), function (x, z, a, i, rr) {
-                if (rng() > (s.p == null ? 0.8 : s.p)) return;
-                var r = ts * (s.r || 4) * (0.6 + rng() * 0.9);
-                r = Math.min(r, (rr - ((K._wdMinD || 0) + 1) * ts) / 1.9); if (r < ts * 0.6) return;   // a hill never rolls back over the shore
-                var geo = new THREE.SphereGeometry(r, 14, 9); _nrUV(geo, r / ts * 3, r / ts * 1.5);
-                var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.9, (s.flat || 0.3) * (0.7 + rng() * 0.6), 1 + rng() * 0.9); _nrSquashUV(geo, m.scale);
-                m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - r * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
-            });
-        },
-        dunes: function (K, s, c) { _WD_RIM.hills(K, Object.assign({ tex: 'desert', flat: 0.2, r: 4.5, n: 20, ranks: 3 }, s), c); },
-        /* a tree line — the board's own foliage models (_nrTree; the procedural
-           stand-in swaps out as each OBJ lands and joins the haze through
-           K._wdFog, 2026-09-14). `h` = tiles tall (else 1.5 × the old `s`). */
-        trees: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, kinds = s.kinds || ['tree', 'tree_2', 'tree_3'], h = s.h || (s.s || 1.6) * 1.5;
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.16), Math.round((s.n || 44) * (1 + k * 0.2)), function (x, z) {
-                if (rng() > (s.p == null ? 0.85 : s.p)) return;
-                var t = _nrTree(K, kinds[(rng() * kinds.length) | 0], { h: h });
-                t.position.set(x, c.y - 0.05 * ts, z); t.rotation.y = rng() * 6; K.add(t);
-            });
-        },
-        /* houses and stores in the far distance */
-        town: function (K, s, c) {
-            var rng = K.rng;
-            _wdRing(K, s.d || 18, s.n || 14, function (x, z) {
-                if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                var sc = 0.9 + rng() * 0.8;
-                var h = _nrHouse(K, x, z, { w: (s.w || 3) * sc, d: (s.dd || 2.4) * sc, h: (s.h || 1.6) * sc, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, window: s.window, ry: rng() < 0.5 ? K.face(x, z) + (rng() - 0.5) * 0.5 : rng() * 6.3, chimney: rng() < 0.5 });
-                if (h) h.position.y = c.y - 0.02 * K.ts;
-            });
-        },
-        /* a skyline: the map-builder's buildings (building_1..8, _nrSpriteBuilding)
-           stacked to `h` tiles, with window lights; `proc: true` = the old plain
-           boxes; `keys` = another building set (2026-09-14) */
-        city: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, pal = s.lights || [0x35e0ff, 0xff2f8a, 0xffd36a], keys = s.keys || _NR_BUILDING_KEYS;
-            var spr = s.proc !== true && typeof OBJECT_SPRITES !== 'undefined' && !!OBJECT_SPRITES[keys[0]];
-            var mat = spr ? null : K.mat(s.tex || 'urban_wall', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 18) * (1 + k * 0.35), Math.round((s.n || 18) * (1 + k * 0.3)), function (x, z) {
-                if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                var w = ts * (2 + rng() * 2.5), d = ts * (2 + rng() * 2.5), h = ts * (s.h || 9) * (0.4 + rng() * 1.1);
-                if (spr) {
-                    var wT = 2 + rng() * 1.6, n = Math.max(1, Math.round(h / (wT * 0.85 * ts)));
-                    var b = _nrSpriteBuilding(K, keys[(rng() * keys.length) | 0], x, z, { w: wT, stack: n, tex: s.tex, color: s.color, roofTex: s.roofTex, roofColor: s.roofColor, lift: 0.3, yAbs: c.y - ts * 0.1, ry: ((rng() * 4) | 0) * Math.PI / 2 + (rng() - 0.5) * 0.35, wall: false, roofKit: s.lights !== false && n >= 3, beacon: pal[0] });
-                    w = d = wT * ts; if (b && b.userData.H) h = b.userData.H;
-                } else { var m = K.box(w, h, d, mat, 0.5); m.position.set(x, c.y + h / 2 - ts * 0.1, z); m.rotation.y = rng() * 6; K.add(K.lit(m)); }
-                var nl = s.lights === false ? 0 : 2 + (rng() * 3 | 0);
-                for (var l = 0; l < nl; l++) {
-                    var sp = _hzGlowSprite(ts * (0.6 + rng() * 0.8), pal[(rng() * pal.length) | 0], 0.45, 0.15, 0.05, 0.4 + rng());
-                    var ang = rng() * 6.3, rr = Math.max(w, d) * 0.55;
-                    sp.position.set(x + Math.cos(ang) * rr, c.y + h * (0.2 + rng() * 0.75), z + Math.sin(ang) * rr);
-                    K.add(sp); _wd.extras.push({ obj: sp, d: Math.hypot(x - K.CX, z - K.CZ) });
-                }
-            });
-        },
+        /* NO SWELLS (mondo 2026-11-03: "no map should be using the dune swells or hill swells, they look bad" — hills and dunes
+           are made with the map editor by raising the height): the squashed-sphere `hills` and `dunes` rims are gone */
         /* stalagmites and rock spires — the floor of a cavern */
         spires: function (K, s, c) {
             var ts = K.ts, rng = K.rng;
@@ -41168,68 +41299,11 @@ const ThreeRenderer = (function () {
                 m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - ts * 0.25, z); K.add(m);
             });
         },
-        /* icebergs and pack ice in the sea */
-        bergs: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, ice = K.mat(s.tex || 'ice_1', s.color != null ? s.color : 0xe8f6ff, { lift: 0.34 });
-            for (var k = 0; k < (s.ranks || 3); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.5), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
-                if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                var h = ts * (s.h || 3) * (0.4 + rng() * 1.2), r = h * (0.8 + rng() * 1.2);
-                var geo = rng() < 0.5 ? new THREE.ConeGeometry(r, h, 5, 1) : new THREE.BoxGeometry(r * 1.6, h * 0.6, r * 1.1);
-                _nrUV(geo, r / ts, h / ts);
-                var m = new THREE.Mesh(geo, ice); m.position.set(x, c.y + (geo.type === 'ConeGeometry' ? h / 2 : h * 0.3) - ts * 0.15, z); m.rotation.set((rng() - 0.5) * 0.2, rng() * 6, (rng() - 0.5) * 0.2); K.add(K.lit(m));
-            });
-        },
-        /* broken columns and blocks — a drowned or buried city */
-        ruins: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'marble_light', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.45), Math.round((s.n || 14) * (1 + k * 0.3)), function (x, z) {
-                if (rng() > (s.p == null ? 0.7 : s.p)) return;
-                if (rng() < 0.55) {
-                    var h = ts * (s.h || 4) * (0.4 + rng() * 1.0), r = ts * (0.25 + rng() * 0.3);
-                    var col = K.cyl(r, r * 1.1, h, 9, mat); col.position.set(x, c.y + h / 2 - ts * 0.1, z); col.rotation.z = (rng() - 0.5) * 0.2; K.add(K.lit(col));
-                } else {
-                    var w = ts * (1.5 + rng() * 3), hh = ts * (0.8 + rng() * 2.2), d = ts * (1 + rng() * 2);
-                    var b = K.box(w, hh, d, mat); b.position.set(x, c.y + hh / 2 - ts * 0.2, z); b.rotation.y = rng() * 6; b.rotation.z = (rng() - 0.5) * 0.15; K.add(K.lit(b));
-                }
-            });
-        },
-        /* the necropolis on the horizon */
-        pyramids: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, mat = K.mat(s.tex || 'desert', s.color != null ? s.color : 0xd6c39a, { lift: 0.3 });
-            _wdRing(K, s.d || 32, s.n || 7, function (x, z) {
-                if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                var h = ts * (s.h || 14) * (0.5 + rng() * 0.9), r = h * 0.95;
-                var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrConeUV(geo, r, h, ts, 0.5);
-                var m = new THREE.Mesh(geo, mat); m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) + h / 2 - ts * 0.3, z); m.rotation.y = Math.PI / 4 + (rng() - 0.5) * 0.4; K.add(K.lit(m));
-            });
-        },
-        /* craters and low hills — a dead world's surface. THE CRATERS
-           (2026-09-16): on a `planet` world the field is CARVED into the
-           ground itself (_wdBuildPlanet reads the row's `craters`) and this
-           builder adds only the low hills between them; elsewhere a lathe
-           BOWL with a raised rim standing on the ground — never the old
-           torus (a ring lying flat is a mound, the "upside-down crater"). */
-        craters: function (K, s, c) {
-            var ts = K.ts, rng = K.rng;
-            if (!c.planet) {
-                var mat = K.mat(s.tex || 'moon', s.color != null ? s.color : 0xffffff, { lift: 0.3 });
-                for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 15) * (1 + k * 0.55), Math.round((s.n || 10) * (1 + k * 0.4)), function (x, z) {
-                    if (rng() > (s.p == null ? 0.75 : s.p)) return;
-                    var r = ts * (s.r || 3) * (0.5 + rng() * 1.2);
-                    var m = new THREE.Mesh(_wdCraterLathe(r, r * 0.12, ts), mat); m.position.set(x, c.y, z); m.rotation.y = rng() * 6; K.add(K.lit(m));
-                });
-            }
-            _WD_RIM.hills(K, Object.assign({ tex: s.tex || 'moon', color: s.color, flat: 0.22, r: 3.5, d: (s.d || 15) * 1.7, n: 10, p: 0.6 }, s.hills || {}), c);
-        }
+        /* THE RIMS OUT (2026-11-03, mondo: "Yes please delete the rim code since nothing is using it"): the trees, town, city, bergs,
+           ruins, pyramids and craters rims are gone — every board that wore one is a site arena (nothing round it); the town's pack
+           houses stand in the site rooms (DOOR_HQ.catalogue trailer_home_N / abandoned_house). Peaks + spires stay for the kept voxel
+           boards (Hell Δ · voxel, Göbekli Tepe Δ · voxel). */
     };
-    /* a crater standing on flat ground: the ejecta apron rises to a sharp rim,
-       the inner wall drops back to the floor (the ground itself) — read from
-       the board's camera by the shaded inner wall, not a bump */
-    function _wdCraterLathe(r, h, ts) {
-        var pts = [new THREE.Vector2(0.001, 0.01), new THREE.Vector2(r * 0.6, 0.01), new THREE.Vector2(r * 0.84, h * 0.7), new THREE.Vector2(r * 0.97, h), new THREE.Vector2(r * 1.1, h * 0.78), new THREE.Vector2(r * 1.5, h * 0.18), new THREE.Vector2(r * 1.9, 0)];
-        var geo = new THREE.LatheGeometry(pts, 28); geo.computeVertexNormals(); _nrUV(geo, Math.max(1, Math.round(Math.PI * 2 * r / ts / 1.5)), Math.max(1, r / ts / 1.5));
-        return geo;
-    }
     /* THE WALL — a cavern's rock round the whole world, fading up into the haze */
     function _wdBuildWall(K, w, o) {
         var ts = K.ts, r = (w.r || 32) * ts, h = (w.h || 36) * ts;
@@ -41793,7 +41867,7 @@ const ThreeRenderer = (function () {
         // esoteric misc models (textured pyramid, watcher eyeball). The old
         // procedural _hzPyramid (wasteland-textured) is intentionally omitted.
         var BUILDERS = [
-            _hzGreekRuin, _hzColossus, _hzObelisk, _hzMonolith,
+            _hzGreekRuin, _hzFallenColumn, _hzObelisk, _hzMonolith,
             _hzGateway, _hzZiggurat, _hzCrystalShards,
             _hzModelPyramid, _hzModelEyeball
         ];
@@ -42025,6 +42099,7 @@ const ThreeRenderer = (function () {
             var f = _horizonFloaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
             f.obj.rotation.y += f.spin;
+            if (f.spinX) f.obj.rotation.x += f.spinX;   // a wheel on its axle (the windpump, THE CODED SHAPES OUT 2026-11-03)
         }
         _motionAnimate(t);   // MOVING MAPS: the streams, the motes, the sea, the wake
         // breathe the self-lit glow accents — a slow luminous swell
@@ -48611,6 +48686,14 @@ const ThreeRenderer = (function () {
         }
         return null;
     }
+    /* the move highlight's class on a square for the selected unit's armed mode ('move', 'move-climb', …), or null */
+    function _hlClsAt(x, y) {
+        var cache = window._ewHlCache;
+        if (!cache || !cache.map || !cache.key || typeof state === 'undefined' || !state || !state.selectedUnitId) return null;
+        if (String(cache.key).indexOf(state.selectedUnitId + '|' + state.actionMode) !== 0) return null;
+        var c = cache.map.get(x + ',' + y);
+        return c ? String(c) : null;
+    }
     function _fieldFloorPick(clientX, clientY) {
         if (!_fieldGroundArmed || !_fieldPickGroup || !_fieldPickGroup.parent || !canvas || typeof THREE === 'undefined') return null;
         var G = _fieldGround(); if (!G || !G.twoFloors) return null;
@@ -48678,7 +48761,23 @@ const ThreeRenderer = (function () {
         /* a field board's pick (THE TWO FLOORS) has already walked its own floor quads along the ray */
         var fieldPick = hit._floorZ !== undefined && hit._floorZ !== null;
         var z0 = fieldPick ? hit._floorZ : _surfaceZFromHitY(hit.tileX, hit.tileY, hit.hitY, hit.faceNY);
-        if (z0 === undefined || _fieldFloorLit(hit.tileX, hit.tileY, z0) !== false) return hit;   // the front floor is lit (or no rule): WYSIWYG
+        if (z0 === undefined || _fieldFloorLit(hit.tileX, hit.tileY, z0) !== false) {
+            /* THE SEE-THROUGH CLIMB (playtest 2026-11-03, Cyberpunk City: the tall block by the P1 spawn is drawn see-through
+               over the move squares behind it, and clicking those squares climbed onto the block instead): in MOVE, a front
+               hit that is only a climb target (move-climb) hands the click to a plain lit move square behind it on the same
+               ray. The block's roof still climbs wherever no move square lies behind it, and CLIMB keeps its own pick. */
+            if (!fieldPick && z0 !== undefined && state.actionMode === 'move' && _hlClsAt(hit.tileX, hit.tileY) === 'move-climb') {
+                var allC = (ThreeCamera.screenToTileAll && canvas) ? ThreeCamera.screenToTileAll(clientX, clientY, canvas, terrainGroup, objectGroup, 6) : [];
+                for (var ci = 1; ci < allC.length; ci++) {
+                    var hc = allC[ci];
+                    if (hc.tileX === hit.tileX && hc.tileY === hit.tileY) continue;
+                    if (_hlClsAt(hc.tileX, hc.tileY) !== 'move') continue;
+                    var zc = _surfaceZFromHitY(hc.tileX, hc.tileY, hc.hitY, hc.faceNY);
+                    if (zc !== undefined && _fieldFloorLit(hc.tileX, hc.tileY, zc) === true) { hc._floorZ = zc; return hc; }
+                }
+            }
+            return hit;   // the front floor is lit (or no rule): WYSIWYG
+        }
         if (!fieldPick) {
             var all = (ThreeCamera.screenToTileAll && canvas) ? ThreeCamera.screenToTileAll(clientX, clientY, canvas, terrainGroup, objectGroup, 6) : [];
             for (var i = 1; i < all.length; i++) {
@@ -49351,7 +49450,13 @@ const ThreeRenderer = (function () {
        landing when the board has no setting (custom maps, EW_NO_FACILITY_
        SCENERY, low-perf). Returns the animation record _introUpdateDoors
        drives. */
-    function _introBuildDoor(zi, ts, leaf, mapId) {
+    /* THE DOOR AT BODY SIZE (2026-11-03, mondo: "the door model that the characters walk out of at the start of a match is too
+       big for them now"): the threshold is built in battle tiles (a leaf 1.35 tiles tall), and since THE BIG SQUARES a board of
+       3.5 m squares draws its bodies at half a tile (UNIT_SPRITE_SIZE_RATIO) — the door stood twice their size. `bodyK` (the
+       match intro passes UNIT_SPRITE_SIZE_RATIO; the menu door passes none = 1) scales the door proper about its foot, so the
+       leaf is the same size to the bodies as on a 1.75 m board; where it stands (doorOut, in tiles) and the walk are unchanged. */
+    function _introBuildDoor(zi, ts, leaf, mapId, bodyK) {
+        var bk = (bodyK > 0 && bodyK < 1) ? bodyK : 1;
         var kit = _nrLastKit;
         var elev = ts * ELEV_STEP_RATIO;
         var apronY = kit ? kit.apronTop : zi.topZ * elev;
@@ -49368,7 +49473,7 @@ const ThreeRenderer = (function () {
            top × the level step) is not where the floor is past the board's edge — the door and the walkers' first steps
            read the room's own ground under the door instead (_introDoorFloorY) */
         if (!kit) {
-            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow);
+            var _dfY = _introDoorFloorY(zi, ts, doorOut, ow * bk);
             if (_dfY !== null) { apronY = _dfY; zB = _dfY / elev; }
         }
         var jw = 0.14 * ts, lh = 0.2 * ts, pd = 0.2 * ts;
@@ -49390,6 +49495,7 @@ const ThreeRenderer = (function () {
         rec.group = g;
         var D = new THREE.Group();                        // the door proper, at the door plane
         D.position.set(0, 0, doorOut * ts);
+        if (bk !== 1) D.scale.setScalar(bk);   // THE DOOR AT BODY SIZE
         g.add(D);
         /* NO LANDING (mondo 2026-10-18: "get rid of the circular platform thing underneath the door"): the round dais that
            stood under every crossing door (menu + match intro) is gone — the frame and its sill stand straight on the
@@ -49557,7 +49663,7 @@ const ThreeRenderer = (function () {
             var p = walkTeams[w];
             var zi = _introZoneInfo(p);
             if (!zi) continue;
-            var d = _introBuildDoor(zi, ts, leaf, opts.mapId);
+            var d = _introBuildDoor(zi, ts, leaf, opts.mapId, UNIT_SPRITE_SIZE_RATIO);   // THE DOOR AT BODY SIZE
             _introDoorGroup.add(d.group);
             var team = (state.units || []).filter(function (u) { return u.player === p && !u.dead; });
             var delay = (opts.walkDelayMs && opts.walkDelayMs[p]) || 0;
@@ -49864,6 +49970,97 @@ const ThreeRenderer = (function () {
     function _ccCanvas(w, h) {
         if (typeof document === 'undefined') return null;
         var c = document.createElement('canvas'); c.width = w; c.height = h; return c;
+    }
+
+    /* THE EYE PACK (2026-11-03): MakeHuman's high-poly eye mesh (eye_proxy.json, bake-eyes.py), loaded once. cb(data | null).
+       The table names the body's vertices by UV (every MPFB GLB keeps hm08's sheet), so one file fits all the MPFB bodies. */
+    var _ccEyeProxy = null, _ccEyeProxyWait = null;
+    function _ccLoadEyeProxy(url, cb) {
+        if (_ccEyeProxy) { cb(_ccEyeProxy); return; }
+        if (_ccEyeProxy === false || typeof fetch !== 'function') { cb(null); return; }
+        if (_ccEyeProxyWait) { _ccEyeProxyWait.push(cb); return; }
+        _ccEyeProxyWait = [cb];
+        var done = function (d) {
+            _ccEyeProxy = d && d.verts && d.gv && d.tris && d.ref ? d : false;
+            if (!_ccEyeProxy) console.warn('[ThreeRenderer] eye pack mesh failed', url);
+            var w = _ccEyeProxyWait; _ccEyeProxyWait = null;
+            for (var i = 0; i < w.length; i++) { try { w[i](_ccEyeProxy || null); } catch (e) { console.warn('[ThreeRenderer] eye pack', e); } }
+        };
+        fetch(_asNetUrl(url)).then(function (r) { return r.ok ? r.json() : null; }).then(done, function () { done(null); });
+    }
+    /* THE LID LASHES (2026-11-03): an MPFB body's stock sheet with its own lashes drawn on the eyelids (sprites.js
+       getMhOwnLashLayer: [url, box in the 1024 sheet]), made once per stock map + lash and shared by every unit wearing it (never
+       disposed). cb(texture | null): null = the stock sheet stays (no image to draw from, the PNG failed). */
+    var _ccOwnLashCache = {};
+    function _ccOwnLashMap(S, lash, cb) {
+        var k = S.uuid + '|' + lash[0], e = _ccOwnLashCache[k];
+        if (e) { if (e.cbs) e.cbs.push(cb); else cb(e.tex); return; }
+        e = _ccOwnLashCache[k] = { tex: null, cbs: [cb] };
+        _ccLoadImage(_asNetUrl(lash[0]), function (img) {
+            var t = null;
+            try {
+                var src = S.image, w = src && (src.naturalWidth || src.width), h = src && (src.naturalHeight || src.height);
+                var c = img && w && h ? _ccCanvas(w, h) : null;
+                if (c) {
+                    var x = c.getContext('2d'), px = (typeof EW_MH_LOOKS !== 'undefined' && EW_MH_LOOKS.px) || 1024, b = lash[1];
+                    x.drawImage(src, 0, 0, w, h);
+                    x.drawImage(img, b[0] * w / px, b[1] * h / px, b[2] * w / px, b[3] * h / px);
+                    t = new THREE.CanvasTexture(c);
+                    t.flipY = S.flipY;
+                    if (S.encoding !== undefined) t.encoding = S.encoding;
+                    if (S.colorSpace !== undefined) t.colorSpace = S.colorSpace;
+                    t.wrapS = S.wrapS; t.wrapT = S.wrapT; t.anisotropy = S.anisotropy || 1;
+                    t.needsUpdate = true; t._ew_shared = true;
+                }
+            } catch (ex) { console.warn('[ThreeRenderer] own lashes failed', ex); t = null; }
+            e.tex = t;
+            var cbs = e.cbs; e.cbs = null;
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](t); } catch (_ex) {} }
+        });
+    }
+    /* the pack textures, shared by every unit wearing the same pick (never disposed): the colour PNG (recoloured on a canvas for an
+       Iris colour) and the normal map; flipY off like the GLB maps (the mesh's UVs are glTF's, v down) */
+    var _ccEyeTexCache = {};
+    function _ccEyeTexture(img, key, tint, iris, colorSpace, normal) {
+        var k = key + '|' + (tint || '') + '|' + colorSpace + (normal ? '|n' : '');
+        if (_ccEyeTexCache[k]) return _ccEyeTexCache[k];
+        var srcImg = img;
+        if (tint && !normal) { var c = _ccTintIris(img, tint, iris); if (c) srcImg = c; }
+        var t = srcImg.tagName === 'CANVAS' ? new THREE.CanvasTexture(srcImg) : new THREE.Texture(srcImg);
+        t.flipY = false;
+        if (normal) { if (THREE.NoColorSpace !== undefined) t.colorSpace = THREE.NoColorSpace; }
+        else if (colorSpace !== undefined && colorSpace !== 'undefined') t.colorSpace = colorSpace;
+        t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.anisotropy = 4;
+        t.needsUpdate = true; t._ew_shared = true;
+        _ccEyeTexCache[k] = t;
+        return t;
+    }
+    /* THE LOOK COLOURS on a pack eye: the two irises in the picked colour at each pixel's own brightness (the pupil stays dark,
+       the whites, the veins and a cat eye's slit untouched outside / kept dark inside), feathered over 6 px at the rim */
+    function _ccTintIris(img, color, iris) {
+        var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
+        var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
+        var C = (iris && iris.centres) || [], R = ((iris && iris.r) || 124) * w / 1024, F = 6 * w / 1024, m = 0, mw = 0, i, xx, yy, q, W = new Float32Array(w * hh);
+        for (q = 0; q < C.length; q++) {
+            var cx = C[q][0] * w / 1024, cy = C[q][1] * hh / 1024;
+            for (yy = Math.max(0, Math.floor(cy - R - F)); yy < Math.min(hh, Math.ceil(cy + R + F)); yy++) for (xx = Math.max(0, Math.floor(cx - R - F)); xx < Math.min(w, Math.ceil(cx + R + F)); xx++) {
+                var d = Math.hypot(xx + 0.5 - cx, yy + 0.5 - cy), wt = Math.max(0, Math.min(1, (R + F / 2 - d) / F));
+                i = yy * w + xx; if (wt > W[i]) W[i] = wt;
+            }
+        }
+        for (i = 0; i < w * hh; i++) if (W[i] > 0.5) { var o = i * 4, l = D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114; m += l; mw++; }
+        if (!mw) return null;
+        m = Math.max(6, m / mw);
+        for (i = 0; i < w * hh; i++) {
+            var wt2 = W[i]; if (!wt2) continue;
+            var o2 = i * 4, f = Math.min(1.6, (D[o2] * 0.299 + D[o2 + 1] * 0.587 + D[o2 + 2] * 0.114) / m);
+            D[o2] = D[o2] * (1 - wt2) + Math.min(255, cr * f) * wt2;
+            D[o2 + 1] = D[o2 + 1] * (1 - wt2) + Math.min(255, cg * f) * wt2;
+            D[o2 + 2] = D[o2 + 2] * (1 - wt2) + Math.min(255, cb * f) * wt2;
+        }
+        x.putImageData(im, 0, 0);
+        return c;
     }
 
     /* Shared <img> loads (CORS-clean) with the same-origin retry sprites.js
@@ -50290,6 +50487,7 @@ const ThreeRenderer = (function () {
        hair colour (_ccHairAccent); they keep their ORIGINAL colours by default and take appearance.hairColor2 when
        appearance.hairAccent = 'tint' (sprites.js EW_HAIR_STYLES `accent: true` lists the styles; the builder's "Second hair
        colour" row). Same files, no new art. */
+    var _ccWearFabricCache = {};   // THE PACK FABRICS: grey mask uuid|fabric|tiles per UV → THREE.Texture (shared)
     var _ccPackHairCache = {};   // srcTex.uuid|enc|accent geometry uuid|mode → THREE.Texture
     function _ccHairPixels(src) {
         if (!src || !src.image || src.isCompressedTexture) return null;
@@ -51460,6 +51658,14 @@ const ThreeRenderer = (function () {
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 })),
                 outer2: shell('outer2', material({ roughness: 0.9 }))   // THE SECOND OUTER LAYER (2026-11-01)
             };
+            /* THE EYE PACK (2026-11-03): an MPFB body's MakeHuman eye mesh, made with the shells (so the board's material swap
+               covers it) and empty until a pack eye is picked (eyePackWrite); glossy, like an eye */
+            if (stockSkin) {
+                // (alphaTest: the mesh's cornea dome sits over the iris on the PNGs' clear corner - MakeHuman draws it see-through)
+                shells.eyes = shell('eyes', material({ roughness: 0.3, side: THREE.FrontSide, vertexColors: true, alphaTest: 0.5 }));
+                shells.eyes.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+                shells.eyes.visible = false;
+            }
             var part = { jig: jig, faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
@@ -51800,8 +52006,13 @@ const ThreeRenderer = (function () {
            scale with the body's own height against those 1.70 m: the same slider = the same change in proportion everywhere. */
         var SHAPE_REF_H = 1.70;
         function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
+        /* THE SHAPED EARS (2026-11-03): the cat-ear targets (sprites.js EW_SHAPE_EARS). Their offsets are also kept apart (part.earD) so
+           the hair's skull box + skull map are measured WITHOUT them: with them in, the ear tips widened the skull and the hair grew
+           out over the ears and hid them */
+        var EAR_KEYS = (typeof EW_SHAPE_EARS !== 'undefined' ? EW_SHAPE_EARS : []).map(function (r) { return r[0]; });
         function shapeBody(part, P, a) {
             var N = part.count, i, k;
+            part.earD = null;
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
                 var hs = part.height > 0.5 ? part.height / SHAPE_REF_H : 1;
@@ -51812,6 +52023,10 @@ const ThreeRenderer = (function () {
                     var arr = T[tk] && T[tk][v > 0 ? 0 : 1]; if (!arr) return;
                     var gk = SHAPE_GAIN[key], g = Math.abs(v) * (Array.isArray(gk) ? gk[v > 0 ? 0 : 1] : (gk || 1)) * hs;   // [the + end, the - end] where one side tears first
                     for (i = 0; i < arr.length; i += 4) { var o = arr[i] * 3; P[o] += arr[i + 1] * g; P[o + 1] += arr[i + 2] * g; P[o + 2] += arr[i + 3] * g; }
+                    if (EAR_KEYS.indexOf(key) >= 0) {   // (THE SHAPED EARS: kept apart for the hair's skull)
+                        var E = part.earD || (part.earD = new Float32Array(N * 3));
+                        for (i = 0; i < arr.length; i += 4) { var oe = arr[i] * 3; E[oe] += arr[i + 1] * g; E[oe + 1] += arr[i + 2] * g; E[oe + 2] += arr[i + 3] * g; }
+                    }
                 });
                 return;
             }
@@ -51919,6 +52134,7 @@ const ThreeRenderer = (function () {
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
             var si = part.siW, sw = part.swW, pos = src.attributes.position.array, uvA = src.attributes.uv.array;   // welded skin weights (see the parts setup)
             var P = new Float32Array(N * 3), i, j, k;
+            var eyeOn = !!(part.stock && part.shells.eyes && part.eyePack && !part.headOff && _ccEyeProxy && eyePackIndex(part, uvA)), eyeTri = eyeOn ? part.eyeTris : null;   // THE EYE PACK: its mesh replaces the eyeballs
             var skull = { halfW: 0, xMin: Infinity, xMax: -Infinity, zMin: Infinity, zMax: -Infinity, topY: -Infinity, cx: 0, n: 0 };
             /* rev 10: THE BEARD HAS VOLUME — a beard / goatee / full beard pushes the jaw, the chin and the cheeks under the
                sideburn line OUT along the skin's normal (4 / 3 / 6 mm), so it reads as hair standing off the face and
@@ -51932,12 +52148,16 @@ const ThreeRenderer = (function () {
             for (i = 0; i < N * 3; i++) if (P[i] !== pos[i]) { shD = new Float32Array(N * 3); for (j = 0; j < N * 3; j++) shD[j] = P[j] - pos[j]; break; }
             part.shapeD = shD;
             part.beltH = a.beltHeight || 0;   // THE BELT HEIGHT
+            part.bootIn = a.pantsTuck === 'in';   // THE PANTS IN THE BOOTS
             wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
+            try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
             try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
             part.pokeHide = null; part.skinCov = null;   // THE SKIN UNDER THE CLOTHES: skinCover, once the normals are smoothed (before THE LAYERS below)
+            var PS = P;   // THE SHAPED EARS: the skull as if the ears were not grown (the hair keeps its own size and stays off them)
+            if (part.earD) { PS = new Float32Array(N * 3); for (i = 0; i < N * 3; i++) PS[i] = P[i] - part.earD[i]; }
             for (i = 0; i < N; i++) {
-                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
+                var x = PS[i * 3], y = PS[i * 3 + 1], z = PS[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
                 if (t >= 0.9 && y > skull.topY) skull.topY = y;
             }
@@ -51946,7 +52166,7 @@ const ThreeRenderer = (function () {
             skull.cx = skull.n ? (skull.xMin + skull.xMax) / 2 : 0;
             skull.halfW = skull.n ? (skull.xMax - skull.xMin) / 2 : 0;
             part.skull = skull;
-            part.skullMap = buildSkullMap(P, Q, N, skull, H);
+            part.skullMap = buildSkullMap(PS, Q, N, skull, H);
             // Relax anatomical creases for cloth while retaining limb shape — over the
             // WELDED vertices (CSR adjacency, ping-pong buffers), then fan out to the seam duplicates.
             var weld = part.weld, RC = part.repCount, off = part.adjOff, adj = part.adjIdx;
@@ -53764,6 +53984,8 @@ const ThreeRenderer = (function () {
                 /* THE SKIN UNDER THE CLOTHES: a skin triangle is left out when all three corners are covered (skinCover); without the
                    cover (a classic base before its fit has loaded) the delete lists as before */
                 var SC = part.skinCov, wHid = SC ? !!(SC.cov[i0] && SC.cov[i1] && SC.cov[i2]) : !!(part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]));
+                if (eyeTri && eyeTri[k / 3]) wHid = true;   // THE EYE PACK: the body's own eyeball (its mesh is drawn instead)
+                if (part.solidHide && (part.solidHide[i0] || part.solidHide[i1] || part.solidHide[i2])) wHid = true;   // THE MESHY PIECES: the head / feet / legs a solid piece takes the place of
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (wHid) { /* under a pack garment */ }
                 else if (!anyFull && !anyPart) {
@@ -53906,6 +54128,7 @@ const ThreeRenderer = (function () {
                 if (index === 0 && part.faceMorph) faceMorphWrite(mesh, part.faceMorph, n, b.xCount);   // THE IDLE FACE
                 mesh.visible = b.index.length > 0;
             });
+            try { eyePackWrite(part, P, si, sw, eyeOn); } catch (e) { console.warn('[ThreeRenderer] eye pack mesh failed', e); }   // THE EYE PACK
             /* rev 12: A COAT HANGS FROM THE HIPS — a shell that stops at the hips (a coat, a trench, a parka) rode the skin's own
                weights down to its hem, so in a walk (and the idle stance) its back wrapped each buttock as the thigh swung it and
                its hem stood out over the tail (a lathe hanging from the hips) as a shelf. The shell's weights — and its buttons'
@@ -54270,6 +54493,7 @@ const ThreeRenderer = (function () {
                 if (h.mesh.material && !h.mesh.material._ew_shared) { h.mesh.material.dispose(); var mi = ownedMaterials.indexOf(h.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
             });
             part.hair = []; part.hairRoot = null;
+            part.hairMatKey = null; part.hairMatOn = false;   // THE HAIR MATERIALS (the next build applies it again)
         }
         function buildHair(part, root, a) {
             dropHair(part);
@@ -54329,10 +54553,12 @@ const ThreeRenderer = (function () {
                 mesh._ew_noTwin = true;          // no x-ray / outline hull for alpha-cut hair cards
                 mesh._ew_creatorHair = true;
                 mesh.renderOrder = 2;
-                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count, accent: accent, packTex: packTex });
+                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count, accent: accent, packTex: packTex, ownMap: mat.map });
             });
             fitHair(part);
             paintHair(part, a);
+            setHairMat(part, a);   // THE HAIR MATERIALS
+            if (part.headOff) headOff(part);   // THE MESHY PIECES: under a creature head
         }
         function fitHair(part) {
             TW = part.tw || TW_ID;   // THE BODY MAP
@@ -54386,6 +54612,45 @@ const ThreeRenderer = (function () {
             try { hairRide(part); } catch (e) { console.warn('[ThreeRenderer] hair ride failed', e); }
             try { hatRide(part); } catch (e) { console.warn('[ThreeRenderer] hair under the hat failed', e); }
             try { hairSkin(part); } catch (e) { console.warn('[ThreeRenderer] hair on the skin failed', e); }
+            try { hairNape(part); } catch (e) { console.warn('[ThreeRenderer] hair on the nape failed', e); }
+        }
+        /* THE HAIR AT THE NAPE (2026-11-03, mondo: "it looks like the coat or the collar is making the hair stick up in the back"):
+           in the bind pose a nape-length style (hair003) lies down the neck inside the collar, but it rode the HEAD bone alone - and
+           every idle that bows the head (the Cowboy's) swung the hair below the skull backwards and up round the head's pivot, so it
+           flared out over the collar in dark spikes (hairSkin only caught the hair within 1-2.5 cm of the skin). Hair is weight-
+           painted with a gradient onto the neck in every rig made by hand: the roots ride the skull, the nape hair follows the neck.
+           Here every hair vertex still on the head / neck bones only (no sway chain, not under a hat) behind the ears and below
+           ear level moves a share of its head weight onto the neck, growing from 0 at `top` (just over the ears) to `k` (all of
+           it) at `low` (of the body's height, near the jaw line) and below, x how far behind the skull's centre it sits (the
+           sideburns and the face side stay on the head). */
+        var HAIR_NAPE = { top: 0.925, low: 0.885, k: 1, back0: -0.1, back1: 0.35 };
+        function hairNape(part) {
+            var sk = part.body.skeleton, S = part.skull;
+            if (!sk || !S || !part.hair.length || !isFinite(S.zMin)) return;
+            var hb = part.headBone, nk = sk.bones.findIndex(function (b0) { return /^neck(_01)?$/i.test(b0.name); });
+            if (hb < 0 || nk < 0 || nk === hb) return;
+            var H = part.height, yTop = part.minY + TW.i(HAIR_NAPE.top) * H, yLow = part.minY + TW.i(HAIR_NAPE.low) * H, cz = (S.zMin + S.zMax) / 2, dz = (S.zMax - S.zMin) / 2;
+            if (!(yTop > yLow) || !(dz > 0)) return;
+            var hatV = {}; (part.hairHat || []).forEach(function (x, k) { if (k % 4 === 0) hatV[x + ':' + part.hairHat[k + 1]] = true; });
+            var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+            part.hair.forEach(function (h, hi) {
+                if (h.isTie) return;
+                var g = h.mesh.geometry, p = g.attributes.position.array, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, any = false;
+                for (var u = 0; u < h.count; u++) {
+                    var y = p[u * 3 + 1]; if (y >= yTop || hatV[hi + ':' + u]) continue;
+                    var f = HAIR_NAPE.k * sst(yTop, yLow, y) * sst(HAIR_NAPE.back0, HAIR_NAPE.back1, (cz - p[u * 3 + 2]) / dz);
+                    if (!(f > 0.01)) continue;
+                    var rigid = true, q; for (q = 0; q < 4; q++) if (sw[u * 4 + q] > 0 && si[u * 4 + q] !== hb && si[u * 4 + q] !== nk) rigid = false;
+                    if (!rigid) continue;
+                    var wh = 0, wn = 0; for (q = 0; q < 4; q++) { if (si[u * 4 + q] === hb) wh += sw[u * 4 + q]; else if (si[u * 4 + q] === nk) wn += sw[u * 4 + q]; }
+                    var tot = wh + wn; if (!(tot > 0)) continue;
+                    var mv = wh * f; wh -= mv; wn += mv;   // (a share of the head's weight onto the neck; what hairSkin already put on the neck stays)
+                    si[u * 4] = hb; sw[u * 4] = wh / tot; si[u * 4 + 1] = nk; sw[u * 4 + 1] = wn / tot;
+                    for (q = 2; q < 4; q++) { si[u * 4 + q] = 0; sw[u * 4 + q] = 0; }
+                    any = true;
+                }
+                if (any) { g.attributes.skinIndex.needsUpdate = true; g.attributes.skinWeight.needsUpdate = true; }
+            });
         }
         /* THE HAIR ON THE NAPE (2026-11-01, the poses audit): the hair still on the head bone alone (a short style, the roots of a
            long one) sank into the back of the neck and the collar whenever a clip turned the head on the neck (the run, every
@@ -54440,7 +54705,7 @@ const ThreeRenderer = (function () {
             /* + a garment's part that sits ON the scalp (a hood worn up, a nun's habit, a full bodysuit): its vertices whose nearest
                skin is the head above ear level, `onHead` at most off it; a mask over the crown, the luchador's, the same) */
             var sm = part.skullMap, Q = part.Q, SP = part.src.attributes.position.array, SD = part.shapeD, earT = TW.i(0.912);
-            var hats = (part.wear || []).filter(function (w) { return w.mesh && w.mesh.visible && !w.facial && w.cat !== 'glasses' && w.cat !== 'bodyparts' && w.cat !== 'equipment'; });
+            var hats = (part.wear || []).filter(function (w) { return w.mesh && w.mesh.visible && !w.facial && w.cat !== 'glasses' && w.cat !== 'bodyparts' && w.cat !== 'equipment' && w.cat !== 'heads'; });
             if (!hats.length || !part.hair.length || !sm) return;
             var Hm = part.height / 1.7, C = 0.02, grid = new Map(), HV = [], gap = HAIR_HAT.gap * Hm, lat2 = Math.pow(HAIR_HAT.lat * Hm, 2), reach = HAIR_HAT.reach * Hm, rc = Math.ceil(reach / C), onHead2 = Math.pow(HAIR_HAT.onHead * Hm, 2), i, k;
             hats.forEach(function (w) {
@@ -54528,7 +54793,7 @@ const ThreeRenderer = (function () {
            Blender garment (their vertices' height over the skin they sit on, the most within `near`, `cap` at most). The push
            goes along that skin's normal, is smoothed over the hair (the cards bend over the shoulder as one, no strand tears)
            and topped up where the smoothing left a strand inside. Bind pose; the sway (swayHair, after this) hangs from it. */
-        var HAIR_CLEAR = { gap: 0.004, near: 0.03, reach: 0.09, cap: 0.06, smooth: 0.02 };
+        var HAIR_CLEAR = { gap: 0.004, near: 0.03, reach: 0.09, cap: 0.06, smooth: 0.02, secs: 24, neckR: 0.11, tuck: 0.06 };   // (secs / neckR / tuck: THE HAIR IN THE COLLAR)
         function hairClear(part) {
             var BP = part.collP, BN = part.collN, N = part.count;
             if (!BP || !BN || !part.hair.length || !part.src) return;
@@ -54550,7 +54815,7 @@ const ThreeRenderer = (function () {
                 if (ix) { used = new Uint8Array(n); var I = ix.array, c = Math.min(I.length, m.geometry.drawRange && isFinite(m.geometry.drawRange.count) ? m.geometry.drawRange.count : I.length); for (var q = 0; q < c; q++) used[I[q]] = 1; }
                 for (var q2 = 0; q2 < n; q2++) { if (used && !used[q2]) continue; var y = A[q2 * 3 + 1]; if (y >= yLo && y <= yHi) G.push(A[q2 * 3], y, A[q2 * 3 + 2]); }
             };
-            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
+            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || nm === 'eyes' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
             (part.wear || []).forEach(function (w) { if (w.facial) return; take(w.mesh); (w.accents || []).forEach(take); });   // (+ its accents: a collar, a fur trim - the hair stood through the cassock's collar)
             var thick = new Float32Array(N);
             if (G.length) {
@@ -54574,14 +54839,53 @@ const ThreeRenderer = (function () {
             var M = pick.length / 2, HP = new Float32Array(M * 3);
             for (k = 0; k < M; k++) { var pa = part.hair[pick[k * 2]].mesh.geometry.attributes.position.array, u0 = pick[k * 2 + 1] * 3; HP[k * 3] = pa[u0]; HP[k * 3 + 1] = pa[u0 + 1]; HP[k * 3 + 2] = pa[u0 + 2]; }
             var nbH = nearestBody(part, HP), gap = HAIR_CLEAR.gap * Hm, reach = HAIR_CLEAR.reach * Hm;
-            var need = function (k2, x, y, z, out) {   // the push that puts this hair vertex `gap` over what is worn there
+            /* THE HAIR IN THE COLLAR (2026-11-03, mondo: "it looks like the coat or the collar is making the hair stick up in the
+               back"): a style that ENDS at the collar (hair003's nape, any short cut) was pushed out over the collar's outside, 3-5 cm
+               off the neck, and stood out behind the head like a shelf. The way hair meets a collar: a long style lies over it, a
+               short one goes INSIDE it. Per sector round the neck (HAIR_CLEAR.secs), when the hair there ends less than `tuck` below
+               the top of what is worn round the neck (the collar, `neckR` of the neck axis), its vertices inside the clothes stay
+               inside: held between `gap` off the skin and `gap` under the INNERMOST thing worn there (thinAt), never pushed out over
+               the collar (the collar hides them, as it hides a real nape). With no room inside (a tight collar) the old push holds. */
+            var NS = HAIR_CLEAR.secs, Sk = part.skull, ncx = Sk && isFinite(Sk.cx) ? Sk.cx : 0, ncz = Sk && isFinite(Sk.zMin) ? (Sk.zMin + Sk.zMax) / 2 : 0, neckR2 = Math.pow(HAIR_CLEAR.neckR * Hm, 2);
+            var secOf = function (x, z) { return Math.floor((Math.atan2(x - ncx, z - ncz) + Math.PI) / (2 * Math.PI) * NS) % NS; };
+            var hairLo = new Float32Array(NS).fill(Infinity), colTop = new Float32Array(NS).fill(-Infinity), tuckS = new Uint8Array(NS);
+            for (k = 0; k < M; k++) { var sk0 = secOf(HP[k * 3], HP[k * 3 + 2]); if (HP[k * 3 + 1] < hairLo[sk0]) hairLo[sk0] = HP[k * 3 + 1]; }
+            for (v = 0; v < G.length; v += 3) { var gx = G[v] - ncx, gz = G[v + 2] - ncz; if (gx * gx + gz * gz > neckR2) continue; var sg0 = secOf(G[v], G[v + 2]); if (G[v + 1] > colTop[sg0]) colTop[sg0] = G[v + 1]; }
+            for (k = 0; k < NS; k++) {   // (with the sectors either side: a strand never sits on the edge of a rule)
+                var lo3 = Math.min(hairLo[k], hairLo[(k + 1) % NS], hairLo[(k + NS - 1) % NS]), top3 = Math.max(colTop[k], colTop[(k + 1) % NS], colTop[(k + NS - 1) % NS]);
+                tuckS[k] = top3 > -Infinity && lo3 < Infinity && lo3 > top3 - HAIR_CLEAR.tuck * Hm ? 1 : 0;
+            }
+            var thin = null;
+            if (tuckS.some(function (t0) { return t0; }) && G.length) {   // the innermost thing worn over each skin vertex (its height over the skin; 0 = none)
+                thin = new Float32Array(N);
+                var nbG2 = nearestBody(part, G);
+                for (v = 0; v < nbG2.length; v++) {
+                    var j2 = nbG2[v], o2 = j2 * 3, d2 = (G[v * 3] - BP[o2]) * BN[o2] + (G[v * 3 + 1] - BP[o2 + 1]) * BN[o2 + 1] + (G[v * 3 + 2] - BP[o2 + 2]) * BN[o2 + 2];
+                    if (d2 > 0.002 * Hm && d2 < cap && (!thin[j2] || d2 < thin[j2])) thin[j2] = d2;
+                }
+            }
+            var thinCache = new Map(), thinAt = function (j) {   // (the least worn within `near`: the inside of the collar)
+                var got = thinCache.get(j); if (got !== undefined) return got;
+                var x = SP[j * 3], y = SP[j * 3 + 1], z = SP[j * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = thin[j] || Infinity;
+                if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var q = 0; q < l2.length; q++) { var jj = l2[q]; if (!thin[jj] || thin[jj] >= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thin[jj]; }
+                }
+                thinCache.set(j, best); return best;
+            };
+            var tucked = new Uint8Array(M);
+            var need = function (k2, x, y, z, out) {   // the push that puts this hair vertex `gap` over what is worn there (THE HAIR IN THE COLLAR: or keeps it inside)
                 var j = nbH[k2], o = j * 3, dx = x - BP[o], dy = y - BP[o + 1], dz = z - BP[o + 2];
                 if (dx * dx + dy * dy + dz * dz > reach * reach) { out[0] = out[1] = out[2] = 0; return 0; }
-                var h = dx * BN[o] + dy * BN[o + 1] + dz * BN[o + 2], want = thickAt(j) + gap, s = want > h ? want - h : 0;
+                var h = dx * BN[o] + dy * BN[o + 1] + dz * BN[o + 2], th = thickAt(j), want = th + gap, s = want > h ? want - h : 0;
+                if (thin && tuckS[secOf(x, z)] && th > 0 && h < th) {
+                    var hi = thinAt(j) - gap;
+                    if (hi > gap) { s = (h < gap ? gap : h > hi ? hi : h) - h; tucked[k2] = 1; }
+                }
                 out[0] = BN[o] * s; out[1] = BN[o + 1] * s; out[2] = BN[o + 2] * s; return s;
             };
             var D = new Float32Array(M * 3), t3 = [0, 0, 0], any = false;
-            for (k = 0; k < M; k++) { if (need(k, HP[k * 3], HP[k * 3 + 1], HP[k * 3 + 2], t3) > 0) any = true; D[k * 3] = t3[0]; D[k * 3 + 1] = t3[1]; D[k * 3 + 2] = t3[2]; }
+            for (k = 0; k < M; k++) { if (need(k, HP[k * 3], HP[k * 3 + 1], HP[k * 3 + 2], t3) !== 0) any = true; D[k * 3] = t3[0]; D[k * 3 + 1] = t3[1]; D[k * 3 + 2] = t3[2]; }
             if (any) spaceSmooth(HP, 2, HAIR_CLEAR.smooth * Hm).run(D);
             var CL = new Float32Array(M);   // each vertex's clearance over what is worn there (hairRide reads it)
             for (k = 0; k < M; k++) {
@@ -54674,6 +54978,129 @@ const ThreeRenderer = (function () {
            the eyes glancing to a new point every 1-4 s (a big glance may blink), the brows drifting and lifting now and then,
            a faint smile coming and going, the jaw breathing a hair open. Small on purpose; no sound. Cosmetic: each screen
            runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_FACE_IDLE = true (before the model loads). */
+        /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack: "please add them to the character creator"): a
+           pack eye on an MPFB body is MakeHuman's own high-poly eye mesh (eye_proxy.json, bake-eyes.py) wearing the pack PNG + its
+           normal map at full size (drawn into the skin sheet an iris was ~6 texels and a cat eye's slit was lost). Each of its
+           vertices is three body vertices x weights + an offset scaled by the head (MakeHuman's .mhclo fit), so the face sliders and
+           the idle face's glances move it with the eyeballs it replaces; the body's eyeball triangles are left out while it shows.
+           eyePackIndex: the table's hm08 vertices -> this body's vertices, by UV (nearest within 2e-5; -1 = the fit is off) */
+        function eyePackIndex(part, uvA) {
+            if (part.eyeIdx !== undefined) return part.eyeIdx;
+            var D = _ccEyeProxy, n = uvA.length / 2, grid = new Map(), i, q;
+            for (i = 0; i < n; i++) { var key = Math.floor(uvA[i * 2] * 2048) + ',' + Math.floor(uvA[i * 2 + 1] * 2048), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            var near = function (u, v) {
+                var best = -1, bd = 2e-5, a = Math.floor(u * 2048), b = Math.floor(v * 2048);
+                for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
+                    var L = grid.get((a + da) + ',' + (b + db)); if (!L) continue;
+                    for (var t = 0; t < L.length; t++) { var j = L[t], d = Math.abs(uvA[j * 2] - u) + Math.abs(uvA[j * 2 + 1] - v); if (d < bd) { best = j; bd = d; } }
+                }
+                return best;
+            };
+            var idx = new Int32Array(D.ref.length), alt = D.refAlt || {};
+            for (q = 0; q < D.ref.length; q++) {
+                var g = near(D.ref[q][0], D.ref[q][1]);
+                for (var k = 0; g < 0 && alt[q] && k < alt[q].length; k++) g = near(alt[q][k][0], alt[q][k][1]);
+                if (g < 0) { console.warn('[ThreeRenderer] eye pack: this body does not fit (vertex ' + q + ')'); part.eyeIdx = null; return null; }
+                idx[q] = g;
+            }
+            // the body's eyeball triangles (all three corners on an eyeball-helper UV): left out while the mesh shows
+            var eyeV = new Uint8Array(n), E = D.eyeUv || [];
+            for (q = 0; q < E.length; q += 2) {
+                var a0 = Math.floor(E[q] * 2048), b0 = Math.floor(E[q + 1] * 2048);
+                for (var da = -1; da <= 1; da++) for (var db = -1; db <= 1; db++) {
+                    var L2 = grid.get((a0 + da) + ',' + (b0 + db)); if (!L2) continue;
+                    for (var t2 = 0; t2 < L2.length; t2++) { var j2 = L2[t2]; if (Math.abs(uvA[j2 * 2] - E[q]) + Math.abs(uvA[j2 * 2 + 1] - E[q + 1]) < 2e-5) eyeV[j2] = 1; }
+                }
+            }
+            var ids = part.ids, tris = new Uint8Array(ids.length / 3);
+            for (i = 0; i < ids.length; i += 3) tris[i / 3] = eyeV[ids[i]] && eyeV[ids[i + 1]] && eyeV[ids[i + 2]] ? 1 : 0;
+            part.eyeTris = tris;
+            part.eyeIdx = idx;
+            return idx;
+        }
+        function eyePackWrite(part, P, si, sw, on) {
+            var mesh = part.shells && part.shells.eyes;
+            if (!mesh) return;
+            if (!on) { mesh.visible = false; return; }
+            var D = _ccEyeProxy, G = part.eyeIdx, V = D.verts, nv = V.length, g = mesh.geometry, i, k;
+            var sc = [0, 1, 2].map(function (ax) { var s = D.scale['xyz'[ax]]; return s ? Math.abs(P[G[s[0]] * 3 + ax] - P[G[s[1]] * 3 + ax]) / s[2] : 0.1; });
+            var pp = new Float32Array(nv * 3), dom = new Int32Array(nv);
+            for (i = 0; i < nv; i++) {
+                var r = V[i], g0 = G[r[0]], g1 = G[r[1]], g2 = G[r[2]];
+                for (k = 0; k < 3; k++) pp[i * 3 + k] = r[3] * P[g0 * 3 + k] + r[4] * P[g1 * 3 + k] + r[5] * P[g2 * 3 + k] + r[6 + k] * sc[k];
+                dom[i] = r[3] >= r[4] && r[3] >= r[5] ? g0 : r[4] >= r[5] ? g1 : g2;   // (the skin weights: the nearest body vertex's)
+            }
+            // smooth normals per proxy vertex (over its faces), then one GPU vertex per (vertex, uv) pair
+            var GV = D.gv, T = D.tris, ng = GV.length, nn = new Float32Array(nv * 3);
+            for (i = 0; i < T.length; i += 3) {
+                var a = GV[T[i]][0] * 3, b = GV[T[i + 1]][0] * 3, c = GV[T[i + 2]][0] * 3;
+                var ux = pp[b] - pp[a], uy = pp[b + 1] - pp[a + 1], uz = pp[b + 2] - pp[a + 2], vx = pp[c] - pp[a], vy = pp[c + 1] - pp[a + 1], vz = pp[c + 2] - pp[a + 2];
+                var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+                [a, b, c].forEach(function (o) { nn[o] += nx; nn[o + 1] += ny; nn[o + 2] += nz; });
+            }
+            var position = new Float32Array(ng * 3), normal = new Float32Array(ng * 3), uv = new Float32Array(ng * 2), col = new Float32Array(ng * 3).fill(1);
+            var skinIndex = new Uint16Array(ng * 4), skinWeight = new Float32Array(ng * 4);
+            for (i = 0; i < ng; i++) {
+                var v = GV[i][0], d0 = dom[v];
+                for (k = 0; k < 3; k++) { position[i * 3 + k] = pp[v * 3 + k]; normal[i * 3 + k] = nn[v * 3 + k]; }
+                uv[i * 2] = GV[i][1]; uv[i * 2 + 1] = GV[i][2];
+                for (k = 0; k < 4; k++) { skinIndex[i * 4 + k] = si[d0 * 4 + k]; skinWeight[i * 4 + k] = sw[d0 * 4 + k]; }
+            }
+            if (g.attributes.position) g.dispose();
+            g.morphAttributes = {};
+            g.setAttribute('position', new THREE.BufferAttribute(position, 3));
+            g.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+            g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(skinIndex, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(skinWeight, 4));
+            g.setIndex(new THREE.BufferAttribute(Uint32Array.from(T), 1));
+            g.normalizeNormals(); g.computeBoundingBox(); g.computeBoundingSphere();
+            // THE IDLE FACE: the body's own face shapes, carried over (the glances turn this eye too); the body's influences, shared
+            var fm = part.faceMorph;
+            if (fm) {
+                g.morphAttributes.position = fm.arrays.map(function (A, m) {
+                    var f = new Float32Array(ng * 3);
+                    for (var j = 0; j < ng; j++) {
+                        var r2 = V[GV[j][0]], h0 = G[r2[0]] * 3, h1 = G[r2[1]] * 3, h2 = G[r2[2]] * 3;
+                        for (var c3 = 0; c3 < 3; c3++) f[j * 3 + c3] = r2[3] * A[h0 + c3] + r2[4] * A[h1 + c3] + r2[5] * A[h2 + c3] + (fm.rel ? 0 : r2[6 + c3] * sc[c3]);
+                    }
+                    var at = new THREE.BufferAttribute(f, 3); at.name = fm.names[m]; return at;
+                });
+                g.morphTargetsRelative = fm.rel;
+                mesh.updateMorphTargets();
+                if (part.body.morphTargetInfluences && part.body.morphTargetInfluences.length === fm.names.length) mesh.morphTargetInfluences = part.body.morphTargetInfluences;
+            } else { mesh.morphTargetInfluences = undefined; mesh.morphTargetDictionary = undefined; }
+            mesh.visible = true;
+        }
+        /* the pick: part.eyePack (read by the shape key and rebuildGeometry, so the mesh comes and goes with it); the mesh JSON on
+           first use (then the geometry pass again); the PNGs onto the eye mesh's CURRENT material (the board may have swapped ours
+           for its Lambert copy: that one glows with the body's emissive, so the eyes do too) */
+        function setEyePack(part, a) {
+            var ep = part.stock && part.shells.eyes && typeof getMhEyePack === 'function' ? getMhEyePack(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody })) : null;
+            part.eyePack = ep;
+            if (ep && !_ccEyeProxy && _ccEyeProxy !== false) {
+                _ccLoadEyeProxy(ep.proxy, function (d) { if (d && alive && part.eyePack && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } });
+            }
+            var key = ep ? ep.map + '|' + (ep.normal || '') + '|' + (ep.tint || '') : '';
+            if (part.eyeTexKey === key) return;
+            part.eyeTexKey = key;
+            if (!ep) return;
+            var imgs = {}, pending = ep.normal ? 2 : 1;
+            var apply = function () {
+                if (--pending || !alive || part.eyeTexKey !== key || !imgs.map) { if (!pending && !imgs.map) console.warn('[ThreeRenderer] eye pack texture failed', ep.map); return; }
+                var S = part.stockMap, cs = S && S.colorSpace !== undefined ? S.colorSpace : undefined;
+                var map = _ccEyeTexture(imgs.map, ep.map, ep.tint, ep.iris, cs, false), nmap = imgs.normal ? _ccEyeTexture(imgs.normal, ep.normal, null, null, cs, true) : null;
+                var m = part.shells.eyes.material, bm = part.body.material;
+                if (!m) return;
+                m.map = map;
+                if ('normalMap' in m) { m.normalMap = nmap; if (m.normalScale) m.normalScale.set(1, -1); }   // (an OpenGL-style map on glTF's v-down UVs, as GLTFLoader does)
+                if (bm && bm.emissiveMap && m.emissive) { m.emissiveMap = map; m.emissive.copy(bm.emissive); m.emissiveIntensity = bm.emissiveIntensity; }
+                m.needsUpdate = true;
+            };
+            _ccLoadImage(_asNetUrl(ep.map), function (img) { imgs.map = img; apply(); });
+            if (ep.normal) _ccLoadImage(_asNetUrl(ep.normal), function (img) { imgs.normal = img; apply(); });
+        }
         function faceMorphWrite(mesh, fm, N, extra) {
             var g = mesh.geometry, total = N + (extra || 0);
             g.morphAttributes.position = fm.arrays.map(function (a, k) {
@@ -55006,8 +55433,10 @@ const ThreeRenderer = (function () {
         }
         function paintHair(part, a) {
             var tint = color(a.hairColor), tint2 = a.hairAccent === 'tint' ? color(a.hairColor2 || '#c0392b') : null;
+            var own = !!part.hairMatOn;   // THE HAIR MATERIALS: the material's own colours (white vertices, its texture as painted)
             part.hair.forEach(function (h) {
                 var arr = h.mesh.geometry.attributes.color.array, k = h.isTie ? 1 : 1.22;
+                if (own) { arr.fill(1); h.mesh.geometry.attributes.color.needsUpdate = true; return; }
                 var r = h.isTie ? 1 : Math.min(1, tint.r * k), gg = h.isTie ? 1 : Math.min(1, tint.g * k), b = h.isTie ? 1 : Math.min(1, tint.b * k);
                 // THE SECOND HAIR COLOUR (2026-11-01): an accent piece wears its own colours (white) or the second colour
                 var acc = h.accent ? h.accent.vert : null;
@@ -55023,6 +55452,40 @@ const ThreeRenderer = (function () {
                 }
             });
         }
+        /* THE HAIR MATERIALS (2026-11-03, mondo: "can we download ... system_hair_materials 1 and 2 ... and implement them in the
+           character creator?"): MakeHuman's recolours of its own system styles (sprites.js EW_MH_HAIR_MATS, getHairMaterial). The
+           style's mesh keeps its UVs; its cards wear the material's PNG as painted (no grey mask, white vertices: the texture's own
+           colours) instead of the style's own texture + the Hair colour. 'own' (or another style worn) = the style's own texture
+           again. The PNG is set on each card's CURRENT material (the board may have swapped ours for its copy) */
+        var _ccHairMatTex = {};   // url -> THREE.Texture (shared: never disposed with a part)
+        function setHairMat(part, a) {
+            var hm = a && typeof getHairMaterial === 'function' ? getHairMaterial(a) : null;
+            var key = hm && part.hair.length ? hm.url : '';
+            if (part.hairMatKey === key) return;
+            part.hairMatKey = key;
+            var put = function (tex) {
+                part.hairMatOn = !!tex;
+                part.hair.forEach(function (h) {
+                    var m = h.mesh.material, want = tex && !h.isTie ? tex : h.ownMap;
+                    if (m && want && m.map !== want) { m.map = want; m.needsUpdate = true; }
+                });
+                paintHair(part, state.last || a);
+            };
+            if (!key) { if (part.hairMatOn) put(null); return; }
+            if (_ccHairMatTex[key]) { put(_ccHairMatTex[key]); return; }
+            _ccLoadImage(_asNetUrl(key), function (img) {
+                if (!img) { console.warn('[ThreeRenderer] hair material failed', key); return; }
+                var src = part.hair[0] && part.hair[0].packTex ? part.hair[0].packTex.src : null;
+                var t = _ccHairMatTex[key] || new THREE.Texture(img);
+                if (!_ccHairMatTex[key]) {
+                    t.flipY = src ? !!src.flipY : false; t.wrapS = src ? src.wrapS : THREE.ClampToEdgeWrapping; t.wrapT = src ? src.wrapT : THREE.ClampToEdgeWrapping;
+                    _ewTexSetSRGB(t, !unmanagedColor);
+                    t.anisotropy = 4; t.needsUpdate = true; t._ew_shared = true;
+                    _ccHairMatTex[key] = t;
+                }
+                if (alive && part.hairMatKey === key) put(t);
+            });
+        }
         function setHair(part, a, shapeChanged) {
             var id = a.hair, url = (id !== 'bald' && typeof getHairStyleUrl === 'function') ? getHairStyleUrl(id) : null;
             if (part.hairUrl !== url) {
@@ -55035,6 +55498,7 @@ const ThreeRenderer = (function () {
                 });
             } else if (shapeChanged) fitHair(part);
             paintHair(part, a);
+            setHairMat(part, a);   // THE HAIR MATERIALS
         }
         /* ── wings (2026-10-27, mondo: "add the wings to the character creator too"): his wings GLB on the upper back.
            Each wing is a plain mesh on its own hinge (no skinning: 237k triangles stay on the GPU), the pair hung on
@@ -55124,6 +55588,36 @@ const ThreeRenderer = (function () {
            slots into extras.ewWear.bones, bound here by name to the body's skeleton) - it rides the body's bones like the
            body's own skin. The skin under it (its delete_verts, matched on the body's _base_index) is cut from the body once
            it has loaded (`wearHide`, read by rebuildGeometry). Layered by MakeHuman's z_depth (renderOrder). */
+        /* THE MESHY PIECES (2026-11-03, plan row 16, bake-meshy.py): a creature head (ex.hideHead: the grey alien, the jackal ...)
+           takes the head's place - the skin under it is its del list; the hair, the facial hair and the eye pack go with it (the
+           eye pack through part.headOff in the geometry pass). A piece held in the right hand (ex.grip) closes the hand round it
+           with THE GRIP's curl (_gripHand), undone when it comes off (unless the unit's own `hold` curled it first). */
+        function headOff(part) {
+            var off = (part.wear || []).some(function (w) { return w.hideHead; });
+            if (!!part.headOff !== off) { part.headOff = off; state.shapeKey = null; }
+            (part.hair || []).forEach(function (h) { h.mesh.visible = !off; });
+            (part.wear || []).forEach(function (w) { if (w.facial) [w.mesh].concat(w.accents || []).forEach(function (mh) { mh.visible = !off; }); });
+            // the mermaid tail (ex.hideLegs): the trousers, skirts, shoes and socks under it are not drawn (the coded feet layer neither)
+            var legs = (part.wear || []).some(function (w) { return w.hideLegs; });
+            (part.wear || []).forEach(function (w) {
+                if (!w.hideLegs && (w.cat === 'bottoms' || w.cat === 'skirts' || w.cat === 'shoes' || w.layer === 'feet')) [w.mesh].concat(w.accents || []).forEach(function (mh) { mh.visible = !legs; });
+            });
+            ['feet', 'bottom', 'skirt'].forEach(function (nm) { var sh = part.shells && part.shells[nm]; if (sh && legs) sh.visible = false; });
+        }
+        function wearGrip(part) {
+            var want = (part.wear || []).some(function (w) { return w.grip; });
+            if (want && !part.gripSave) {
+                var hand = root.getObjectByName('RightHand');
+                if (!hand || hand.userData._ewGrip) return;
+                var save = [];
+                ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach(function (f) { for (var k = 1; k <= 3; k++) { var b = root.getObjectByName(f + '_0' + k + '_r'); if (b) save.push([b, b.quaternion.clone()]); } });
+                if (_gripHand(root, 'RightHand')) part.gripSave = { hand: hand, bones: save };
+            } else if (!want && part.gripSave) {
+                part.gripSave.bones.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+                part.gripSave.hand.userData._ewGrip = false;
+                part.gripSave = null;
+            }
+        }
         function dropWear(part) {
             (part.wear || []).forEach(function (w) {
                 [w.mesh].concat(w.accents || []).forEach(function (mh) {
@@ -55133,8 +55627,9 @@ const ThreeRenderer = (function () {
                 });
                 (w.texs || [w.tex]).forEach(function (t) { if (t) { t.dispose(); var ti = ownedTextures.indexOf(t); if (ti >= 0) ownedTextures.splice(ti, 1); } });
                 if (w.sway) w.sway.bones.forEach(function (b) { if (b.parent) b.parent.remove(b); });   // THE BLENDER CAPES
+                if (w.hang) w.hang.bones.forEach(function (b) { if (b.parent) b.parent.remove(b); });   // THE COAT HANG
             });
-            part.wear = [];
+            part.wear = []; part.hangRun = null; part.hangCaps = null;
             if (part.wearSway) { part.wearSway = false; if (_swStates && state.capeSway) _swStates.delete(state.capeSway.key); }
             part.swayCol = 0;
         }
@@ -55169,6 +55664,309 @@ const ThreeRenderer = (function () {
                 });
             });
             return { bones: newBones, names: names, skel: new THREE.Skeleton(sk.bones.concat(newBones), sk.boneInverses.concat(newInv)) };
+        }
+        /* THE COAT HANG (2026-11-03, mondo: "Still getting pants clipping through coats. Why is this so prevalent ... Surely this is a
+           known issue in the 3D model community"). Why it kept coming back: a long coat's skirt and the trousers under it ride
+           DIFFERENT bones. The trousers follow each thigh and shin exactly (MakeHuman's weights); the coat's skirt is one sheet over
+           both legs (bake-garment.py skin_weights: 90 % the thigh on its side, blended across the middle, the THIGH all the way down
+           past the knee), so a stride, a bent knee or a wide stance moved the leg out through the cloth over it - and every earlier
+           pass (THE LAYERS, THE CLOTHES UNDER THE CLOTHES) only fixed the BIND pose. The standard fix in games (spring / dynamic
+           bones with colliders: VRM spring bones, Unity Dynamic Bone, Unreal AnimDynamics + Kawaii-style skirts) is used here: a
+           Blender coat or robe whose skirt hangs below the hips and has no chains of its own gets `cols` chains of `joints` bones
+           round its skirt at runtime (each following the cloth's own drape from the hips to its hem, rooted on the Hips bone), its
+           skirt weighted onto them (two nearest chains by angle, the segment by height, faded in over `fade` under the hip joints,
+           never across an open front), and every frame (hangTick) each chain FOLLOWS where the coat's own baked weights would carry it
+           (its first bone the hips' hang, the rest the thighs as before: the coat keeps its A-line and its stride), swings a little,
+           and is pushed OUT of capsules fitted to what is actually worn on each thigh and shin (hangFit: the trousers / boots / skin,
+           tapered, in the leg bone's own frame), on the side of the leg that piece of cloth lies on at bind. The leg can no longer
+           come through the cloth over it; at rest nothing moves (a capsule never reaches further than the coat stood off the leg
+           in the bind pose). Tried + dropped: hanging straight on from a pushed joint (a bell in a wide idle, a board in a kneel),
+           falling toward the ground (`fall`: a barrel on wide hips), aiming back at the cloth's rest hang in the hips' frame (pulled
+           it back into the leg); `maxRoot` 40 (a wider swing stood the side out in a ledge at the hip). Cosmetic and local (nothing relayed); window.EW_DISABLE_SWAY
+           keeps the coat on its baked weights.
+           THE FLAPS FIX (2026-11-03, mondo on his Cowboy, closed coat, wide stance: "all of the coats have these 2 parts sticking up and
+           out of the sides ... when the coats are closed the legs still clip through, and there is a bunch of flickering between the coat
+           and the leg"): (1) `rootFollow` - the first bone of each chain follows the coat's own weights like the rest (held on the hips it
+           stayed put while the thighs swung out, the legs shoved it out from right under its root = the two flaps, and where they could
+           not, the jeans came through); (2) `rootUp` / `rootW` - the chains start where the bake stops blending the thigh in (~10-15 cm
+           over the hip joints, at the waist), not at the hip joints: the cloth just above a hip-joint root rode the thighs up while the
+           chain under it hinged, and the side stood up in a corner; (3) `thighTop` 0.25 - the thigh collider starts a quarter down the
+           thigh (a straight capsule from the hip ball sweeps out where no flesh goes and stood the side out in a shelf), with a THE SEAT
+           part from the hip ball for the cloth BEHIND the hip joints only (the jeans' seat through the back otherwise); (4) `maxPush` -
+           the legs never swing a bone more than 30 / 40 degrees off where the coat's own weights carry it; (5) `gravity` 0.6 -> 0.2 (at
+           rest it sagged the skirt 13 degrees into the legs, so the push was always fighting), `rad` 1.2 -> 3 cm + `limExtra` 0.8 cm
+           (the pushed cloth sat ON the jeans: the flicker). Measured (jeans px through the coat, front / side / side / back): his
+           Cowboy closed greatcoat wide stance 1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7, duster 2,199 / 2,243 -> 15 / 0, cult robe
+           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/. */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+        function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
+        function coatHang(part, P, si, sw, count) {
+            var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
+            var bones = sk.bones, BM = part.body.bindMatrix, BMi = new THREE.Matrix4().copy(BM).invert();
+            var bi = function (nm) { return bones.findIndex(function (b) { return b.name === nm; }); };
+            var hip = bi('Hips'), lu = bi('LeftUpLeg'), ru = bi('RightUpLeg');
+            if (hip < 0 || lu < 0 || ru < 0 || !sk.boneInverses[hip] || !sk.boneInverses[lu] || !sk.boneInverses[ru]) return null;
+            var pl = hangBonePos(sk, lu, BMi), pr = hangBonePos(sk, ru, BMi), yA = (pl.y + pr.y) / 2, cx = (pl.x + pr.x) / 2, cz = (pl.z + pr.z) / 2;
+            var Hm = part.height / 1.7, minY = Infinity, i, c, k;
+            for (i = 0; i < count; i++) if (P[i * 3 + 1] < minY) minY = P[i * 3 + 1];
+            if (!(minY < yA - COAT_HANG.minDrop * Hm)) return null;   // (a jacket, a short coat: it ends at the hips)
+            /* THE ROOT AT THE WAIST (2026-11-03): the chains start where the coat's own weights stop following the thighs (the
+               bake blends the thigh in from ~10 cm over the hip joints: 0.1 -> 0.6 at the joint), not at the hip joints - rooted
+               there, the cloth above the root rode the thighs up and out in a wide stance while the chain under it hinged on the
+               hips, and the side panels stood up in two flaps at the hips */
+            var yR = yA;
+            if (COAT_HANG.rootUp > 0) {
+                var RB = 40, rbin = [], rb;
+                for (rb = 0; rb < RB; rb++) rbin.push([0, 0]);
+                for (i = 0; i < count; i++) {
+                    var dy = (P[i * 3 + 1] - yA) / Hm; if (!(dy >= 0 && dy < COAT_HANG.rootUp)) continue;
+                    var th = 0; for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0 && bones[si[i * 4 + k]] && /UpLeg$/.test(bones[si[i * 4 + k]].name)) th += sw[i * 4 + k];
+                    rb = Math.min(RB - 1, Math.floor(dy / COAT_HANG.rootUp * RB)); rbin[rb][0] += th; rbin[rb][1]++;
+                }
+                for (rb = 0; rb < RB; rb++) { if (!rbin[rb][1]) continue; if (rbin[rb][0] / rbin[rb][1] < COAT_HANG.rootW) break; yR = yA + (rb + 1) / RB * COAT_HANG.rootUp * Hm; }
+            }
+            var NC = COAT_HANG.cols, JN = COAT_HANG.joints, TAU = Math.PI * 2, step = TAU / NC;
+            var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };
+            var adiff = function (a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };   // signed, -PI..PI
+            var sec = []; for (c = 0; c < NC; c++) sec.push([]);
+            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
+            var chains = [];
+            for (c = 0; c < NC; c++) {
+                var L = sec[c]; if (L.length < 24) continue;   // (the opening of an open coat: no cloth there)
+                var lo = Infinity; L.forEach(function (v) { if (P[v * 3 + 1] < lo) lo = P[v * 3 + 1]; });
+                if (!(lo < yA - COAT_HANG.minDrop * Hm)) continue;
+                var J = [], JW = [], band = (yR - lo) / (JN - 1) * 0.6;
+                for (k = 0; k < JN; k++) {
+                    var y0 = yR - (yR - lo) * k / (JN - 1), xs = [], zs = [], wa = {};
+                    L.forEach(function (v) { if (Math.abs(P[v * 3 + 1] - y0) <= band) { xs.push(P[v * 3]); zs.push(P[v * 3 + 2]); for (var q = 0; q < 4; q++) if (sw[v * 4 + q] > 0) wa[si[v * 4 + q]] = (wa[si[v * 4 + q]] || 0) + sw[v * 4 + q]; } });
+                    if (!xs.length) { J.push(J.length ? [J[J.length - 1][0], y0, J[J.length - 1][2]] : null); JW.push(JW.length ? JW[JW.length - 1] : null); if (!J[0]) break; continue; }
+                    xs.sort(function (p1, p2) { return p1 - p2; }); zs.sort(function (p1, p2) { return p1 - p2; });
+                    J.push([xs[xs.length >> 1], y0, zs[zs.length >> 1]]);
+                    JW.push(Object.keys(wa).map(function (bk) { return [+bk, wa[bk]]; }).sort(function (x, y2) { return y2[1] - x[1]; }).slice(0, 4));   // the cloth's OWN weights there (its baked follow)
+                }
+                if (J.length === JN && J[0]) chains.push({ a: -Math.PI + c * step, j: J, jw: JW });
+            }
+            if (chains.length < 3) return null;
+            var pInv = sk.boneInverses[hip], base = bones.length, newBones = [], newInv = [];
+            chains.forEach(function (C, ci) {
+                C.bones = [];
+                var prev = bones[hip], prevL = new THREE.Vector3();
+                C.j.forEach(function (p, jn) {
+                    var b = new THREE.Bone(); b.name = 'ewhang_' + ci + '_' + jn;   // (not `ewsway_`: THE SWAY's cape / hair ticks never see them)
+                    var Lp = new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(pInv);
+                    b.position.copy(Lp).sub(prevL); prev.add(b); prev = b; prevL = Lp;
+                    newInv.push(new THREE.Matrix4().makeTranslation(-Lp.x, -Lp.y, -Lp.z).multiply(pInv));
+                    C.bones.push(b); newBones.push(b);
+                });
+                C.idx0 = base + ci * JN;
+            });
+            // the skirt's weights: faded from its own onto the two chains either side of it (one, across an open front) by height
+            var fade = COAT_HANG.fade * Hm, acc = {}, b4;
+            for (i = 0; i < count; i++) {
+                var y = P[i * 3 + 1], t = (yR - y) / fade; if (!(t > 0)) continue;
+                t = t > 1 ? 1 : t; var f = t * t * (3 - 2 * t), av = ang(P[i * 3], P[i * 3 + 2]);
+                var c0 = -1, c1 = -1, d0 = Infinity, d1 = Infinity;
+                chains.forEach(function (C, ci) { var d = adiff(av, C.a); if (Math.abs(d) < Math.abs(d0)) { d0 = d; c0 = ci; } });
+                chains.forEach(function (C, ci) { if (ci === c0) return; var d = adiff(av, C.a); if ((d0 >= 0) !== (d >= 0) && Math.abs(d) < Math.abs(d1)) { d1 = d; c1 = ci; } });
+                var picks = [[c0, 1]];
+                if (c1 >= 0 && Math.abs(adiff(chains[c0].a, chains[c1].a)) <= 1.6 * step && Math.abs(d0) + Math.abs(d1) > 1e-6) picks = [[c0, Math.abs(d1) / (Math.abs(d0) + Math.abs(d1))], [c1, Math.abs(d0) / (Math.abs(d0) + Math.abs(d1))]];
+                for (b4 in acc) delete acc[b4];
+                for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0) acc[si[i * 4 + k]] = (acc[si[i * 4 + k]] || 0) + sw[i * 4 + k] * (1 - f);
+                picks.forEach(function (pk) {
+                    var C = chains[pk[0]], Jy = C.j, s = 0;
+                    while (s < JN - 2 && y < Jy[s + 1][1]) s++;
+                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, wP = s > 0 && u < 0.25 ? 0.5 * (0.25 - u) / 0.25 : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
+                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP);
+                    if (wP > 0) acc[C.idx0 + s - 1] = (acc[C.idx0 + s - 1] || 0) + pk[1] * f * wP;
+                });
+                var top = Object.keys(acc).map(function (bk) { return [+bk, acc[bk]]; }).sort(function (x, y2) { return y2[1] - x[1]; }).slice(0, 4), tt = 0;
+                top.forEach(function (tp) { tt += tp[1]; });
+                for (k = 0; k < 4; k++) { si[i * 4 + k] = top[k] ? top[k][0] : 0; sw[i * 4 + k] = top[k] && tt > 0 ? top[k][1] / tt : 0; }
+            }
+            /* the follow target of each joint: where the cloth's own baked weights would carry it in the pose (the bone + the joint in that
+               bone's bind frame, normalized weights) - the spring aims there, the legs push it out */
+            chains.forEach(function (C) {
+                C.t = C.j.map(function (p, jn) {
+                    var W4 = C.jw[jn] || [[hip, 1]], tw = 0; W4.forEach(function (x) { tw += x[1]; });
+                    return W4.filter(function (x) { return sk.boneInverses[x[0]] && bones[x[0]]; }).map(function (x) { return { b: bones[x[0]], w: tw > 0 ? x[1] / tw : 0, L: new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(sk.boneInverses[x[0]]) }; });
+                });
+            });
+            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
+        }
+        /* the leg capsules (THE COAT HANG): per thigh (UpLeg -> Leg) and shin (Leg -> Foot), in that bone's own bind frame, the
+           axis + radius (tapered: one at each end) of everything worn on it under the hanging coat - the skin, the trousers, the
+           boots (each garment vertex counted on the bone its nearest skin rides most); then, per chain sample, how far the coat
+           stood off that capsule in the bind pose (a capsule never pushes the coat at rest) */
+        function hangFit(part) {
+            var hw = (part.wear || []).filter(function (w) { return w.hang; });
+            part.hangCaps = null;
+            if (!hw.length) return;
+            var sk = part.body.skeleton, BM = part.body.bindMatrix, SI = part.siW, SW = part.swW;
+            if (!sk || !SI || !SW) return;
+            var bones = sk.bones, bi = function (nm) { return bones.findIndex(function (b) { return b.name === nm; }); };
+            var SP = part.src.attributes.position.array, SD = part.shapeD, N = part.count, Hm = part.height / 1.7, O = COAT_HANG;
+            var dom = new Int32Array(N);
+            for (var i = 0; i < N; i++) { var bw = -1, bb = -1; for (var k = 0; k < 4; k++) if (SW[i * 4 + k] > bw) { bw = SW[i * 4 + k]; bb = SI[i * 4 + k]; } dom[i] = bb; }
+            var segs = [];
+            ['Left', 'Right'].forEach(function (s) {
+                var up = bi(s + 'UpLeg'), kn = bi(s + 'Leg'), ft = bi(s + 'Foot');
+                if (up >= 0 && kn >= 0) segs.push({ a: up, b: kn, pts: [] });
+                if (kn >= 0 && ft >= 0) segs.push({ a: kn, b: ft, pts: [] });
+            });
+            var byBone = {}; segs.forEach(function (S) { if (sk.boneInverses[S.a] && sk.boneInverses[S.b]) { S.M = new THREE.Matrix4().multiplyMatrices(sk.boneInverses[S.a], BM); byBone[S.a] = S; } });
+            var v3 = new THREE.Vector3();
+            var add = function (x, y, z, j) { var S = byBone[dom[j]]; if (!S || !S.M) return; v3.set(x, y, z).applyMatrix4(S.M); S.pts.push(v3.x, v3.y, v3.z); };
+            for (i = 0; i < N; i++) add(SP[i * 3] + (SD ? SD[i * 3] : 0), SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0), SP[i * 3 + 2] + (SD ? SD[i * 3 + 2] : 0), i);
+            (part.wear || []).forEach(function (w) {
+                if (w.hang || !w.mesh || !w.nb || w.facial || w.layer === 'cape' || w.layer === 'outer2') return;
+                if (!(w.outer || w.layer === 'belt' || WEAR_LAYER.cats[w.cat])) return;
+                var A = w.mesh.geometry.attributes.position.array, n = Math.min(A.length / 3, w.nb.length);
+                for (var v = 0; v < n; v++) add(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], w.nb[v]);
+            });
+            var caps = [];
+            segs.forEach(function (S) {
+                if (!S.M || S.pts.length < 60) return;
+                var bL = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[S.b]).invert()).applyMatrix4(sk.boneInverses[S.a]), L2 = bL.lengthSq();
+                if (!(L2 > 1e-8)) return;
+                var Pt = S.pts, n = Pt.length / 3, sec = [[], []], q;
+                for (q = 0; q < n; q++) {
+                    var t = (Pt[q * 3] * bL.x + Pt[q * 3 + 1] * bL.y + Pt[q * 3 + 2] * bL.z) / L2;
+                    if (t >= O.sect[0] && t <= O.sect[1]) sec[0].push(q, t); else if (t >= O.sect[2] && t <= O.sect[3]) sec[1].push(q, t);
+                }
+                if (sec[0].length < 20 || sec[1].length < 20) return;
+                var ctr = sec.map(function (L) { var x = 0, y = 0, z = 0, tt = 0, m = L.length / 2; for (var e = 0; e < L.length; e += 2) { var o = L[e] * 3; x += Pt[o]; y += Pt[o + 1]; z += Pt[o + 2]; tt += L[e + 1]; } return { p: new THREE.Vector3(x / m, y / m, z / m), t: tt / m }; });
+                var ax = new THREE.Vector3().subVectors(ctr[1].p, ctr[0].p), al = ax.length(); if (!(al > 1e-6)) return; ax.multiplyScalar(1 / al);
+                var rad = sec.map(function (L) {   // the high quantile of the distance from the axis line
+                    var ds = []; for (var e = 0; e < L.length; e += 2) { var o = L[e] * 3; v3.set(Pt[o], Pt[o + 1], Pt[o + 2]).sub(ctr[0].p); var along = v3.dot(ax); ds.push(Math.sqrt(Math.max(0, v3.lengthSq() - along * along))); }
+                    ds.sort(function (p1, p2) { return p1 - p2; }); return ds[Math.min(ds.length - 1, Math.floor(ds.length * O.pct))];
+                });
+                var at = function (t) { return ctr[0].p.clone().lerp(ctr[1].p, (t - ctr[0].t) / (ctr[1].t - ctr[0].t)); };
+                var rAt = function (t) { var r = rad[0] + (rad[1] - rad[0]) * (t - ctr[0].t) / (ctr[1].t - ctr[0].t); return Math.max(Math.min(rad[0], rad[1]), Math.min(Math.max(rad[0], rad[1]), r)); };
+                var ms = S.M.getMaxScaleOnAxis();   // mesh metres -> the bone's frame
+                var t0 = S.a === bi('LeftUpLeg') || S.a === bi('RightUpLeg') ? O.thighTop : 0;   // (the thigh from a little under the hip joint: its top merges into the seat, and a ball there stood the coat's side out in a shelf)
+                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M });
+                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
+            });
+            if (!caps.length) return;
+            /* the rest allowance: per chain bone, per sample along it, per capsule, how far (in the capsule's frame) the cloth stood
+               from that capsule's axis in the bind pose - the push never reaches past it */
+            var cp = new THREE.Vector3(), seg = new THREE.Vector3(), cl = new THREE.Vector3(), BMi = new THREE.Matrix4().copy(BM).invert();
+            var lu = bi('LeftUpLeg'), ru = bi('RightUpLeg'), zSeat = lu >= 0 && ru >= 0 && sk.boneInverses[lu] && sk.boneInverses[ru] ? (hangBonePos(sk, lu, BMi).z + hangBonePos(sk, ru, BMi).z) / 2 : -Infinity;   // (behind the hip joints)
+            hw.forEach(function (w) {
+                w.hang.chains.forEach(function (C) {
+                    var NB = C.j.length - 1, NS = O.samples.length;
+                    C.lim = new Float32Array(NB * NS * caps.length); C.side = new Float32Array(NB * NS * caps.length * 3);
+                    for (var s = 0; s < NB; s++) for (var q2 = 0; q2 < NS; q2++) {
+                        var t2 = O.samples[q2], h0 = C.j[s], h1 = C.j[s + 1];
+                        var px = h0[0] + (h1[0] - h0[0]) * t2, py = h0[1] + (h1[1] - h0[1]) * t2, pz = h0[2] + (h1[2] - h0[2]) * t2;
+                        caps.forEach(function (K, ki) {
+                            cp.set(px, py, pz).applyMatrix4(K.M);
+                            seg.subVectors(K.pb, K.pa); var sl = seg.lengthSq(), u = sl > 0 ? Math.max(0, Math.min(1, cl.subVectors(cp, K.pa).dot(seg) / sl)) : 0;
+                            cl.copy(K.pa).addScaledVector(seg, u);
+                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) + ((O.limExtra || 0) - 0.002) * Hm);
+                            cl.subVectors(cp, cl); var o3 = ((s * NS + q2) * caps.length + ki) * 3; C.side[o3] = cl.x; C.side[o3 + 1] = cl.y; C.side[o3 + 2] = cl.z;   // (which side of the leg the cloth lies on, in the leg's own frame)
+                        });
+                    }
+                });
+            });
+            part.hangCaps = caps;
+            if (part.hangRun) part.hangRun.fresh = true;
+        }
+        var _hgA = null, _hgB = null, _hgC = null, _hgD = null, _hgE = null, _hgF = null, _hgG = null, _hgQ = null, _hgQ2 = null, _hgP = null, _hgS = null;
+        function hangTick(part, dt) {
+            var caps = part.hangCaps; if (!caps || !(dt > 0)) return;
+            if (!_hgA) { _hgA = new THREE.Vector3(); _hgB = new THREE.Vector3(); _hgC = new THREE.Vector3(); _hgD = new THREE.Vector3(); _hgE = new THREE.Vector3(); _hgF = new THREE.Vector3(); _hgG = new THREE.Vector3(); _hgQ = new THREE.Quaternion(); _hgQ2 = new THREE.Quaternion(); _hgP = new THREE.Vector3(); _hgS = new THREE.Vector3(); }
+            var O = COAT_HANG, R = part.hangRun;
+            if (!R) {
+                R = part.hangRun = { chains: [], fresh: true };
+                (part.wear || []).forEach(function (w) {
+                    if (!w.hang) return;
+                    w.hang.chains.forEach(function (C) {
+                        var bs = [];
+                        for (var i = 0; i + 1 < C.bones.length; i++) {
+                            bs.push({ j: C.bones[i], q0: C.bones[i].quaternion.clone(), axis: C.bones[i + 1].position.clone(), len: C.bones[i + 1].position.length(), cur: new THREE.Vector3(), prev: new THREE.Vector3(), head: new THREE.Vector3() });
+                        }
+                        R.chains.push({ bones: bs, C: C, hip: w.hang.hip });
+                    });
+                });
+            }
+            dt = Math.min(dt, 1 / 30);
+            var fresh = R.fresh; R.fresh = false;
+            var NK = caps.length, NS = O.samples.length;
+            var W = R.capW || (R.capW = caps.map(function () { return { a: new THREE.Vector3(), b: new THREE.Vector3(), s: 1 }; }));
+            for (var ci = 0; ci < NK; ci++) {
+                var K = caps[ci], mw = K.a.matrixWorld;
+                W[ci].a.copy(K.pa).applyMatrix4(mw); W[ci].b.copy(K.pb).applyMatrix4(mw); W[ci].s = _hgS.setFromMatrixScale(mw).x;
+            }
+            /* out of every capsule (radius: the fitted one + the coat's clearance, never past the rest allowance), on the side of the
+               leg that piece of cloth lies on in the bind pose (front panel in front of the thigh, side panel at its side): pushed
+               straight out from the axis, a point that had gone past the middle of the leg came out on the far side and the cloth
+               wrapped behind it */
+            var _hd = R.hd || (R.hd = new THREE.Vector3());
+            var push = function (p, lim, side, so) {
+                for (var k = 0; k < NK; k++) {
+                    var K = caps[k], Wk = W[k];
+                    _hgE.subVectors(Wk.b, Wk.a); var L2 = _hgE.lengthSq();
+                    var u = L2 > 0 ? Math.max(0, Math.min(1, _hgF.subVectors(p, Wk.a).dot(_hgE) / L2)) : 0;
+                    _hgF.copy(Wk.a).addScaledVector(_hgE, u);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad, lim[k]) * Wk.s;
+                    var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
+                    if (!(d < r)) continue;
+                    if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
+                    _hd.addScaledVector(_hgE, -_hd.dot(_hgE) / (L2 || 1));        // (across the axis only)
+                    var hl = _hd.length();
+                    if (hl > 1e-6 && (d < 1e-6 || (px * _hd.x + py * _hd.y + pz * _hd.z) < 0.5 * d * hl)) { px = _hd.x; py = _hd.y; pz = _hd.z; d = hl; }
+                    if (d < 1e-6) continue;
+                    p.set(_hgF.x + px * r / d, _hgF.y + py * r / d, _hgF.z + pz * r / d);
+                }
+            };
+            for (var c = 0; c < R.chains.length; c++) {
+                var bones = R.chains[c].bones, C = R.chains[c].C;
+                for (var i = 0; i < bones.length; i++) {
+                    var B = bones[i], j = B.j;
+                    j.quaternion.copy(B.q0); j.updateWorldMatrix(false, false);
+                    B.head.setFromMatrixPosition(j.matrixWorld);
+                    _hgA.copy(B.axis).applyMatrix4(j.matrixWorld);
+                    var wl = _hgA.distanceTo(B.head); if (!(wl > 0)) continue;
+                    var sc = wl / B.len;
+                    _hgG.subVectors(_hgA, B.head).multiplyScalar(1 / wl);   // the bone's direction as its parent left it (the turn below starts from it)
+                    var Tn = (i || O.rootFollow) && C.t && C.t[i + 1];   // (THE FLAPS FIX: the first bone follows the coat's own weights too - held on the hips' hang, it stayed put while the thighs under it swung out and the legs had to shove it out in a flap)
+                    if (Tn && Tn.length) {   // toward where the cloth's own weights would carry its next joint (the coat as baked, following the thighs)
+                        _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
+                        _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
+                    } else _hgB.copy(_hgG);
+                    if (i && O.fall > 0) _hgB.multiplyScalar(1 - O.fall).y -= O.fall, _hgB.normalize();   // (below the first joint the cloth falls toward the ground: straight on from a pushed joint the skirt flared out like a bell / stood out stiff as a board in a kneel or kick. NOT back toward its rest hang: that pulled it back into the leg)
+                    _hgA.copy(B.head).addScaledVector(_hgB, wl);
+                    if (fresh || B.cur.distanceTo(B.head) > wl * 4) { B.cur.copy(_hgA); B.prev.copy(_hgA); }
+                    _hgD.subVectors(B.cur, B.prev).multiplyScalar(1 - O.drag);
+                    _hgC.copy(B.cur).add(_hgD).addScaledVector(_hgB, O.stiffness * dt * sc);
+                    _hgC.y -= O.gravity * dt * sc;
+                    _hgC.sub(B.head).setLength(wl).add(B.head);
+                    _hgE.subVectors(_hgC, B.head).multiplyScalar(1 / wl);   // (no folds: at most maxRoot / maxBend off the baked direction)
+                    var lim = (i ? O.maxBend : O.maxRoot) * Math.PI / 180, an = Math.acos(Math.max(-1, Math.min(1, _hgE.dot(_hgB))));
+                    if (an > lim) { _hgQ.setFromUnitVectors(_hgB, _hgE); _hgQ2.identity().slerp(_hgQ, lim / an); _hgC.copy(_hgB).applyQuaternion(_hgQ2).multiplyScalar(wl).add(B.head); }
+                    /* the legs: each sample along the bone (a third, two thirds, its tail) pushed out of the capsules, the bone turned
+                       to clear it (the cloth between two joints is straight: the tail alone let a thigh through the middle) */
+                    for (var q = 0; q < NS; q++) {
+                        var t = O.samples[q], L0 = C.lim ? (i * NS + q) * NK : -1;
+                        _hgP.subVectors(_hgC, B.head).multiplyScalar(t).add(B.head);
+                        var px = _hgP.x, py = _hgP.y, pz = _hgP.z;
+                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3);
+                        if (_hgP.x !== px || _hgP.y !== py || _hgP.z !== pz) _hgC.copy(_hgP).sub(B.head).setLength(wl).add(B.head);
+                    }
+                    if (O.maxPush) {   // (the legs push the cloth out, but never stand it out further than maxPush off where the coat's own weights carry it: a straight bone swung far out from near its root stood up in a flap)
+                        _hgE.subVectors(_hgC, B.head).multiplyScalar(1 / wl);
+                        var plim = (i ? O.maxPush[1] : O.maxPush[0]) * Math.PI / 180, pan = Math.acos(Math.max(-1, Math.min(1, _hgE.dot(_hgB))));
+                        if (pan > plim) { _hgQ.setFromUnitVectors(_hgB, _hgE); _hgQ2.identity().slerp(_hgQ, plim / pan); _hgC.copy(_hgB).applyQuaternion(_hgQ2).multiplyScalar(wl).add(B.head); }
+                    }
+                    B.prev.copy(B.cur); B.cur.copy(_hgC);
+                    _hgE.subVectors(B.cur, B.head).multiplyScalar(1 / wl);
+                    _hgQ.setFromUnitVectors(_hgG, _hgE);
+                    j.parent.matrixWorld.decompose(_hgP, _hgQ2, _hgS);
+                    _hgQ.multiply(_hgQ2); _hgQ2.invert(); _hgQ.premultiply(_hgQ2);   // parent^-1 . turn . parent
+                    j.quaternion.premultiply(_hgQ); j.updateWorldMatrix(false, false);
+                }
+            }
         }
         function buildWear(part, root, id) {
             var gm = null, gms = [], exw = null;
@@ -55238,6 +56036,10 @@ const ThreeRenderer = (function () {
                             dF.set(tmp);
                         }
                     }
+                    if (ex.solid) {   // THE MESHY PIECES: a solid piece (a helmet, a staff) takes the mean reshape, as one
+                        var mF = [0, 0, 0]; for (i = 0; i < count; i++) { mF[0] += dF[i * 3]; mF[1] += dF[i * 3 + 1]; mF[2] += dF[i * 3 + 2]; }
+                        for (i = 0; i < P.length; i++) dF[i] = mF[i % 3] / Math.max(1, count);
+                    }
                     for (i = 0; i < P.length; i++) P[i] += dF[i];
                 }
             }
@@ -55268,6 +56070,10 @@ const ThreeRenderer = (function () {
                 }
                 if (tot > 0) for (k = 0; k < 4; k++) sw[v * 4 + k] /= tot; else sw[v * 4] = 1;
             }
+            /* THE COAT HANG (2026-11-03): a Blender coat / robe whose skirt hangs below the hips (no chains of its own) gets its
+               runtime chains + the skirt's weights on them; the legs push them out (hangFit / hangTick) */
+            var hangRig = null;
+            if (ex.outer && !ex.sway && !swayRig && (!ex.cat || ex.cat === 'outer') && ex.layer !== 'feet') { try { hangRig = coatHang(part, P, si, sw, count); } catch (e) { hangRig = null; console.warn('[ThreeRenderer] coat hang failed', e); } }
             g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
             g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
             if (sg.index) g.setIndex(sg.index.clone());
@@ -55298,19 +56104,22 @@ const ThreeRenderer = (function () {
                 mh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mh.geometry), 1);
                 mh.geometry = geo;
                 if (swayRig) mh.bind(swayRig.skel, part.body.bindMatrix);
+                else if (hangRig) mh.bind(hangRig.skel, part.body.bindMatrix);   // THE COAT HANG
                 mh.castShadow = true; mh.receiveShadow = true;
                 if (cut) mh._ew_noTwin = true;
                 mh._ew_creatorWear = true;
                 mh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
                 return { mesh: mh, tex: tex };
             };
-            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [];
+            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
                 ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
-                accents.push(wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai).mesh);
+                var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
+                accents.push(madeA.mesh);
+                if (ex.band === ai) bandMade = madeA;   // THE BAND TINT: a solid's band (bake-clothes.py band_tint), coloured apart from the hat
             }
             if (swayRig) part.wearSway = true;
             /* THE BLENDER TIGHT CLOTHES (bake-clothes.py batch 4b): a skin-tight garment lists the skin it hides per body
@@ -55322,9 +56131,14 @@ const ThreeRenderer = (function () {
                hair) can wear a colour instead (appearance.wearTint, paintWear): its texture's grey levels x the colour */
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
-                      cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
+            if (hangRig) part.hangRun = null;
+            /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
+               appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
+            var bandTint = (tint && bandMade && bandMade.tex) ? { mesh: bandMade.mesh, src: tint.src, sg: sg, own: bandMade.tex } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, bandTint: bandTint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+                      cat: ((typeof EW_WEAR_KIND !== 'undefined' && EW_WEAR_KIND[id]) || ex.cat) || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z; sprites.js EW_WEAR_KIND: a pack piece mis-filed under Suits reads what it is)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
+                      solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
@@ -55426,6 +56240,12 @@ const ThreeRenderer = (function () {
                     for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); dW[u * 3] = off[0]; dW[u * 3 + 1] = off[1]; dW[u * 3 + 2] = off[2]; }
                     if (w.ss) w.ss.run(dW);   // THE BLENDER COATS: the layers of a long skirt move as one (spaceSmooth)
                     for (u = 0; u < A.length; u++) A[u] = B[u] + dW[u];
+                }
+                else if (w.solid) {   // THE MESHY PIECES: a solid piece rides the sliders as one (the mean offset of the skin under it)
+                    var mo = [0, 0, 0];
+                    if (D) for (var vs = 0; vs < nb.length; vs++) { var os = nb[vs] * 3; mo[0] += D[os]; mo[1] += D[os + 1]; mo[2] += D[os + 2]; }
+                    var nS = Math.max(1, nb.length);
+                    for (var us = 0; us < A.length; us++) A[us] = B[us] + mo[us % 3] / nS;
                 }
                 else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
                 if (w.lay) for (u = 0; u < A.length; u++) A[u] += w.lay[u];   // THE LAYERS: tucked under the garment over it
@@ -55625,7 +56445,23 @@ const ThreeRenderer = (function () {
            out; when under 5% of a mesh would be left (scraps at the coat's edges) all of it is
            out of the drawn index (`w.ix0` keeps the full one): the coat hides it anyway, and none of it can show through. A part of
            it past the coat's hems / cuffs / opening stays. */
-        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035, openReach: 0.03, openOut: 0.004, rest: 0.05 };
+        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035, openReach: 0.03, openOut: 0.004, rest: 0.05, seeReach: 0.09, seeOff: 0.002, standOut: 0.008 };
+        /* THE LAYERS 1 2 3 (2026-11-04): how many of a point's lines hit a cast (coverGrid): its outward normal + 4 lines tilted `tilt`
+           off it (each side, both ways round). Out of an open front all of them get out; under a garment whose mesh has a crack (two
+           pieces sewn edge to edge but not welded: a pack sweater's sleeve seam) only the normal one slips through the crack. */
+        var LINE_TILT = { tilt: 0.55, hitsCrack: 3 };
+        function lineHits(cast, x, y, z, nx, ny, nz, lo, hi) {
+            var n = 0, ax = Math.abs(nx) < 0.9 ? 1 : 0, ay = ax ? 0 : 1;   // (a tangent pair off any axis the normal is not)
+            var t1x = ny * 0 - nz * ay, t1y = nz * ax - nx * 0, t1z = nx * ay - ny * ax, l1 = Math.sqrt(t1x * t1x + t1y * t1y + t1z * t1z) || 1;
+            t1x /= l1; t1y /= l1; t1z /= l1;
+            var t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x, c = Math.cos(LINE_TILT.tilt), sn = Math.sin(LINE_TILT.tilt);
+            if (cast(x, y, z, nx, ny, nz, lo, hi) < Infinity) n++;
+            [[t1x, t1y, t1z], [-t1x, -t1y, -t1z], [t2x, t2y, t2z], [-t2x, -t2y, -t2z]].forEach(function (t) {
+                var dx = nx * c + t[0] * sn, dy = ny * c + t[1] * sn, dz = nz * c + t[2] * sn;
+                if (cast(x, y, z, dx, dy, dz, lo, hi) < Infinity) n++;
+            });
+            return n;
+        }
         function wearUnderOuter2(part) {
             var top = (part.wear || []).filter(function (w) { return w.layer === 'outer2' && w.mesh; })[0];
             var lows = (part.wear || []).filter(function (w) { return w !== top && w.mesh && !w.facial && w.layer !== 'cape' && (w.outer || WEAR_LAYER.cats[w.cat]); });
@@ -55638,9 +56474,9 @@ const ThreeRenderer = (function () {
             var eachMesh = function (w, test) {
                 [w.mesh].concat(w.accents || []).forEach(function (mh) {
                     var g = mh.geometry; if (!g.index || !g.attributes.position) return;
-                    var A = g.attributes.position.array, n = A.length / 3, nb = mh === w.mesh ? w.nb : null, cov = new Uint8Array(n), any = false;
+                    var A = g.attributes.position.array, n = A.length / 3, nb = mh === w.mesh ? w.nb : null, cov = new Uint8Array(n), any = false, NA = g.attributes.normal ? g.attributes.normal.array : null;
                     if (!nb || nb.length !== n) { try { nb = nearestBody(part, A); } catch (e) { nb = null; } }
-                    for (var v1 = 0; v1 < n; v1++) if (test(A, v1, nb)) { cov[v1] = 1; any = true; }
+                    for (var v1 = 0; v1 < n; v1++) if (test(A, v1, nb, NA)) { cov[v1] = 1; any = true; }
                     if (!any) return;
                     if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
                     var I = mh._ewIx0, keep = [];   // every triangle with its 3 vertices covered leaves the drawn index (`_ewIx0` keeps the full one)
@@ -55680,8 +56516,12 @@ const ThreeRenderer = (function () {
                     var l3 = oGrid.get(gk(cx + a, cy + b, cz + c)); if (!l3) continue;
                     for (var q = 0; q < l3.length; q++) { var u = l3[q], dx = UA[u * 3] - x, dy = UA[u * 3 + 1] - y, dz = UA[u * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = u; } }
                 }
-                return best >= 0 && (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2] > -oOut;
+                if (best < 0) return false;
+                var so = (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2];
+                if (so > -oOut) { uS = Math.max(uS, so); return true; }
+                return false;
             };
+            var uS = -Infinity;   // (THE LAYERS 1 2 3: how far in front of the coat the point that decided stands)
             var under = function (x, y, z) {
                 var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
@@ -55690,11 +56530,30 @@ const ThreeRenderer = (function () {
                 }
                 if (best < 0) return pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 0;
                 var s = (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2], lat = Math.max(OUTER2_HIDE.lat * Hm, Math.min(0.75 * USp.sp[best], OUTER2_HIDE.latMax * Hm));
-                return bd - s * s <= lat * lat || pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 1;
+                if (bd - s * s <= lat * lat) { uS = Math.max(uS, s); return 2; }
+                return pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 1;
             };
             var skin = wearMask(part, function (w) { return w === top; });   // (the skin the coat hides: a gi's wide sleeve stood 2 cm out of the leather coat's sleeve, off to its side)
+            /* THE LAYERS 1 2 3 (2026-11-04): a point of the garment under it that looks OUT through the coat's opening - its outward line
+               and its tilted lines all miss the coat (lineHits 0) - is part of what the open front shows: it stays, unless it stands
+               clearly in front of the coat there (standOut: a duster's lapel 5 cm out through a police coat's front). The rules above
+               cut a hoodie / sweater under an OPEN long coat full of holes down the chest (the open edges are within 3 cm of all of it). */
+            var castTop = coverGrid([top], SKIN_COVER.cell, null), seeOff = OUTER2_HIDE.seeOff * Hm, seeReach = OUTER2_HIDE.seeReach * Hm, standOut = OUTER2_HIDE.standOut * Hm;
+            var seen = function (A, v3, nb, NA) {
+                if (!castTop || !NA || !nb || nb[v3] == null || nb[v3] < 0) return false;
+                var o = nb[v3] * 3, nx = NA[v3 * 3], ny = NA[v3 * 3 + 1], nz = NA[v3 * 3 + 2];
+                var rx = A[v3 * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v3 * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v3 * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
+                if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+                var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) return false;
+                return lineHits(castTop, A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2], nx / nl, ny / nl, nz / nl, seeOff, seeReach) === 0;
+            };
             lows.forEach(function (w) {
-                eachMesh(w, function (A, v3, nb) { var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]); return k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]); });
+                eachMesh(w, function (A, v3, nb, NA) {
+                    uS = -Infinity;
+                    var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]), hid = k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]);
+                    if (hid && !(uS > standOut) && seen(A, v3, nb, NA)) hid = false;
+                    return hid;
+                });
             });
         }
         /* THE CLOTHES UNDER THE CLOTHES (2026-11-02, mondo: "these clothes are still clipping ... Holes around the shoulders, armpits,
@@ -55704,6 +56563,7 @@ const ThreeRenderer = (function () {
            outside or `underIn` inside covers it, and a triangle with all three corners covered leaves the drawn index (`_ewIx0` keeps
            the full one), as under the second outer layer. Below the hips nothing is left out: coat tails and skirts swing open. */
         function wearUnderCover(part) {
+            try { wearBootHide(part); } catch (e) { console.warn('[ThreeRenderer] pants + boots hide failed', e); }   // THE PANTS IN THE BOOTS (after THE SECOND OUTER LAYER put the full index back)
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && w.layer !== 'cape' && (w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });
             if (L.length < 2) return;
             var zOf = function (w) { return w.layer === 'outer2' ? 1000 : w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };
@@ -55721,15 +56581,23 @@ const ThreeRenderer = (function () {
                    line only the trousers + belt stop hiding it: under a coat it is still hidden (the sleeves came through the coat) */
                 var wbUps = ups.filter(function (u) { return TUCK.cats[u.cat]; }), WB = wbUps.length ? waistband(part, wbUps) : null, keep = TUCK.keep * Hm;
                 var oUps = WB ? ups.filter(function (u) { return !TUCK.cats[u.cat] && u.layer !== 'belt'; }) : null, castO = oUps && oUps.length ? coverGrid(oUps, SKIN_COVER.cell, null) : null;
+                /* THE LAYERS 1 2 3 (2026-11-04): the skin the garments over it hide whole (their delete lists): a point of this garment
+                   sitting on that skin is under them even where none of its lines meets them (the armpit + shoulder seam of a Blender
+                   shirt under a pack sweater: no line hit, and each such point grew a 2-ring hole of shirt through the sweater) */
+                var delUp = wearMask(part, function (u) { return ups.indexOf(u) >= 0; }), delO = WB ? (oUps && oUps.length ? wearMask(part, function (u) { return oUps.indexOf(u) >= 0; }) : null) : delUp;
                 for (var v = 0; v < n; v++) {
                     if (A[v * 3 + 1] < yHip) continue;
-                    var cv = cast;
-                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) { if (!castO) continue; cv = castO; }
+                    var cv = cast, dm = delUp;
+                    if (WB && A[v * 3 + 1] > tuckAt(WB.yT, tuckBin(A[v * 3] - WB.cx, A[v * 3 + 2] - WB.cz)) - keep) { if (!castO) continue; cv = castO; dm = delO; }
                     var o = lo.nb[v] * 3, nx = Nn[v * 3], ny = Nn[v * 3 + 1], nz = Nn[v * 3 + 2];
                     var rx = A[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
                     if (rx * nx + ry * ny + rz * nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
                     var nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (nl < 1e-6) continue;
                     if (cv(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) < Infinity) { cov[v] = 1; any = true; }
+                    /* THE LAYERS 1 2 3 (2026-11-04): its normal line got out, but through a CRACK (a pack sweater's unwelded sleeve seam):
+                       its tilted lines hit the garment over it. Left out, each such point grew a hole of two rings (the erosion below) and
+                       the collared shirt showed in blue specks along the sweater's sleeve seams + armpits. */
+                    else if ((dm && dm[lo.nb[v]]) || lineHits(cv, A[v * 3], A[v * 3 + 1], A[v * 3 + 2], nx / nl, ny / nl, nz / nl, -dIn, reach) >= LINE_TILT.hitsCrack) { cov[v] = 1; any = true; }
                 }
                 /* eroded by SKIN_COVER.erode rings (welded by position): seen at an angle the upper garment's edge (a lapel, the coat's
                    opening) does not reach as far as its normal line, and the shirt's teeth showed beside the lapels */
@@ -56028,14 +56896,310 @@ const ThreeRenderer = (function () {
                 for (v = 0; v < A.length; v++) A[v] += D[v];
             });
         }
+        /* THE PANTS IN THE BOOTS (2026-11-03, mondo: "Can we make pants fit inside boots or have the option for them to be inside or
+           outside?"): appearance.pantsTuck (creator OUTFIT > LEGS > Bottoms / FOOTWEAR > Shoes + boots, shown while a pair of
+           trousers is worn with a boot whose shaft is over their hem: sprites.js EW_BOOT_TOPS / EW_PANT_HEMS / pantsBootsWorn). Each
+           was fitted to the bare leg, so a shaft and a trouser leg crossed: the viking boots' fur wraps (5 cm out) and the knee boots
+           stood out through tight jeans past THE LAYERS' 4 cm reach. Both are read round each leg (legFrame: the leg's own centre per
+           1 cm slice of the skin; legGrid: per 2 cm row x 15 degrees the garment's outermost / innermost / mean radius + per angle its
+           top (opened: a pull tab is not the top) and its bottom):
+           - 'out' (the default): the trouser leg's last `flare` over its hem is let out to clear the boot (at most `maxPush`), and every
+             part of the boot higher up under the trouser leg is drawn in `gap` inside it, whatever its distance (no reach); under there
+             by `deep` the boot's triangles are left out (posed, the trouser leg on its own bones never shows the shaft through it).
+           - 'in': the trouser leg inside the boot is drawn in `gap` inside the shaft (never nearer the skin than `onSkin`, `onSkinIn`
+             deep in the boot), narrowing into the opening over `blend` above it; there it takes the bones of the boot (inside) and of
+             the skin (over the opening, fading out over `wFade`), so the knee bending does not lift it out of the boot; `inDeep` under
+             the lowest top within 2 angles its triangles are left out. THE LAYERS then lay the boot OVER the trousers (bootOver).
+           Low shoes, skirts, shorts: untouched. Runs in THE LAYERS (wearLayers) before the layers fold; the triangles leave the drawn
+           index in wearBootHide (the start of wearUnderCover, after THE SECOND OUTER LAYER put the full index back).
+           window.EW_DISABLE_BOOT_FIT = true: each as it was fitted. */
+        var BOOT_FIT = { bins: 24, row: 2, cell: 0.01, legTop: 0.4, ankle: 0.07, ankleFade: 0.02, gap: 0.004, blend: 0.03, flare: 0.06, maxPush: 0.02, edge: 0.012, deep: 0.03, inDeep: 0.025, hemOver: 0.01, onSkin: 0.01, wFade: 0.05, onSkinIn: 0.007 };
+        function wearIsBoot(w) {
+            if (!w.mesh || typeof EW_BOOT_TOPS === 'undefined' || !(w.cat === 'shoes' || w.layer === 'feet')) return false;
+            var id = String(w.id || ''); return EW_BOOT_TOPS[id] != null || (id.indexOf('feet_') === 0 && EW_BOOT_TOPS[id.slice(5)] != null);
+        }
+        function wearIsPants(w) { return !!(w.mesh && typeof EW_PANT_HEMS !== 'undefined' && EW_PANT_HEMS[w.id] != null); }
+        /* each leg's centre per slice (the skin below `legTop`, split at the body's middle; under the ankle the ankle's centre, so the
+           foot reaching forward does not drag it) + a (leg, slice, angle) reader for a point */
+        function legFrame(part) {
+            var SP = part.src.attributes.position.array, SD = part.shapeD, N = part.count, H = part.height, Hm = H / 1.7, y0 = part.minY || 0;
+            var C = BOOT_FIT.cell * Hm, NY = Math.ceil(BOOT_FIT.legTop * H / C) + 1, yTop = y0 + BOOT_FIT.legTop * H, i, j;
+            var sx = 0, sn = 0;
+            for (i = 0; i < N; i++) { var yy = SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0); if (yy < yTop && yy > y0 + 0.15 * H) { sx += SP[i * 3] + (SD ? SD[i * 3] : 0); sn++; } }
+            if (!sn) return null;
+            var mx = sx / sn, S = new Float64Array(2 * NY * 3);
+            for (i = 0; i < N; i++) {
+                var x = SP[i * 3] + (SD ? SD[i * 3] : 0), y = SP[i * 3 + 1] + (SD ? SD[i * 3 + 1] : 0), z = SP[i * 3 + 2] + (SD ? SD[i * 3 + 2] : 0);
+                if (y < y0 || y > yTop) continue;
+                j = Math.round((y - y0) / C); var o = ((x < mx ? 0 : 1) * NY + j) * 3; S[o] += x; S[o + 1] += z; S[o + 2]++;
+            }
+            var jA = Math.round(BOOT_FIT.ankle * H / C), cen = new Float32Array(2 * NY * 2);
+            for (var L = 0; L < 2; L++) {
+                for (j = 0; j < NY; j++) {   // (an empty slice: the nearest filled one)
+                    var src = -1;
+                    for (var d = 0; d < NY && src < 0; d++) { if (j + d < NY && S[(L * NY + j + d) * 3 + 2] > 0) src = j + d; else if (j - d >= 0 && S[(L * NY + j - d) * 3 + 2] > 0) src = j - d; }
+                    if (src < 0) return null;
+                    var oo = (L * NY + src) * 3; cen[(L * NY + j) * 2] = S[oo] / S[oo + 2]; cen[(L * NY + j) * 2 + 1] = S[oo + 1] / S[oo + 2];
+                }
+                for (j = 0; j < jA && jA < NY; j++) { cen[(L * NY + j) * 2] = cen[(L * NY + jA) * 2]; cen[(L * NY + j) * 2 + 1] = cen[(L * NY + jA) * 2 + 1]; }
+            }
+            var NB = BOOT_FIT.bins, TAU = Math.PI * 2;
+            return { y0: y0, C: C, NY: NY, NB: NB, yTop: yTop, H: H, Hm: Hm,
+                at: function (x, y, z, out) {   // out = [leg, fj, fb, dx, dz, r]; false above the legs
+                    if (y > yTop) return false;
+                    var fj = (y - y0) / C; fj = fj < 0 ? 0 : fj > NY - 1 ? NY - 1 : fj;
+                    var j0 = Math.round(fj), c0 = cen[j0 * 2], c1 = cen[(NY + j0) * 2], L = Math.abs(x - c0) <= Math.abs(x - c1) ? 0 : 1;
+                    var ja = Math.floor(fj), jb = Math.min(NY - 1, ja + 1), t = fj - ja, o1 = (L * NY + ja) * 2, o2 = (L * NY + jb) * 2;
+                    var cx = cen[o1] + (cen[o2] - cen[o1]) * t, cz = cen[o1 + 1] + (cen[o2 + 1] - cen[o1 + 1]) * t, dx = x - cx, dz = z - cz;
+                    out[0] = L; out[1] = fj; out[2] = ((Math.atan2(dx, dz) + Math.PI) / TAU * NB) % NB; out[3] = dx; out[4] = dz; out[5] = Math.sqrt(dx * dx + dz * dz);
+                    return true;
+                } };
+        }
+        /* a garment set round the legs, on a coarse grid (a pack garment's vertices sit 2-4 cm apart): per (leg, 2 cm row, 15 degrees)
+           its outermost / innermost / mean radius (empty angles filled round the ring, empty rows between filled ones), per (leg,
+           angle) its top (opened: see below) + its bottom (the lowest of the angle and its two neighbours: a hem ring's sparse vertices) */
+        function legGrid(LF, ws) {
+            var NB = LF.NB, RY = BOOT_FIT.row, NY = Math.ceil(LF.NY / RY) + 1, M = 2 * NY * NB;
+            var rMax = new Float32Array(M).fill(-1), rMin = new Float32Array(M).fill(-1), rSum = new Float32Array(M), rN = new Float32Array(M);
+            var yHi = new Float32Array(2 * NB).fill(-Infinity), yLo = new Float32Array(2 * NB).fill(Infinity), q = [0, 0, 0, 0, 0, 0], any = false, L, j, b;
+            ws.forEach(function (w) {
+                var A = w.mesh.geometry.attributes.position.array;
+                for (var v = 0; v < A.length; v += 3) {
+                    if (!LF.at(A[v], A[v + 1], A[v + 2], q)) continue;
+                    var l = q[0], jj = Math.round(q[1] / RY), bb = Math.floor(q[2]) % NB, k = (l * NY + jj) * NB + bb, r = q[5];
+                    if (rMax[k] < 0 || r > rMax[k]) rMax[k] = r; if (rMin[k] < 0 || r < rMin[k]) rMin[k] = r; rSum[k] += r; rN[k]++;
+                    if (A[v + 1] > yHi[l * NB + bb]) yHi[l * NB + bb] = A[v + 1]; if (A[v + 1] < yLo[l * NB + bb]) yLo[l * NB + bb] = A[v + 1];
+                    any = true;
+                }
+            });
+            if (!any) return null;
+            var rAvg = new Float32Array(M).fill(-1);
+            for (var k0 = 0; k0 < M; k0++) if (rN[k0]) rAvg[k0] = rSum[k0] / rN[k0];
+            var circ = function (arr, base, empty) {   // empty angles of one ring: linear between the nearest filled ones round it
+                var fill = 0, cp = Array.prototype.slice.call(arr, base, base + NB);
+                for (b = 0; b < NB; b++) if (!empty(cp[b])) fill++;
+                if (fill < minFill) return false;   // (a ring of a few scattered vertices is not read round the leg: the rows above + below fill it)
+                if (fill === NB) return true;
+                for (b = 0; b < NB; b++) if (empty(cp[b])) {
+                    var l = 1, r = 1; while (empty(cp[(b - l + NB) % NB])) l++; while (empty(cp[(b + r) % NB])) r++;
+                    arr[base + b] = (cp[(b - l + NB) % NB] * r + cp[(b + r) % NB] * l) / (l + r);
+                }
+                return true;
+            };
+            var neg = function (x) { return x < 0; }, inf = function (x) { return !isFinite(x); }, minFill = Math.ceil(NB / 3);
+            var rowOn = new Uint8Array(2 * NY), R = [rMax, rMin, rAvg];
+            for (L = 0; L < 2; L++) {
+                for (j = 0; j < NY; j++) if (circ(rAvg, (L * NY + j) * NB, neg)) { rowOn[L * NY + j] = 1; circ(rMax, (L * NY + j) * NB, neg); circ(rMin, (L * NY + j) * NB, neg); }
+                for (j = 0; j < NY; j++) if (!rowOn[L * NY + j]) {   // (an empty row between two filled ones: between them)
+                    var ja = j - 1, jb = j + 1; while (ja >= 0 && !rowOn[L * NY + ja]) ja--; while (jb < NY && !rowOn[L * NY + jb]) jb++;
+                    if (ja < 0 || jb >= NY) continue;
+                    var t = (j - ja) / (jb - ja);
+                    R.forEach(function (arr) { for (b = 0; b < NB; b++) arr[(L * NY + j) * NB + b] = arr[(L * NY + ja) * NB + b] * (1 - t) + arr[(L * NY + jb) * NB + b] * t; });
+                    rowOn[L * NY + j] = 2;
+                }
+                minFill = 1; circ(yHi, L * NB, inf); circ(yLo, L * NB, inf); minFill = Math.ceil(NB / 3);
+                var lo = Array.prototype.slice.call(yLo, L * NB, L * NB + NB), hi = Array.prototype.slice.call(yHi, L * NB, L * NB + NB), er = [], dk;
+                /* the top opened (the lowest within +-2 angles, then the highest of those): a narrow peak - a cowboy boot's pull tab,
+                   2 cm over its rim - is not the top (the trouser leg next to it was hidden as deep in the boot, a hole to the shin);
+                   the dips (valleys) stay */
+                for (b = 0; b < NB; b++) { er[b] = Infinity; for (dk = -2; dk <= 2; dk++) er[b] = Math.min(er[b], hi[(b + dk + NB) % NB]); }
+                for (b = 0; b < NB; b++) { var mx2 = -Infinity; for (dk = -2; dk <= 2; dk++) mx2 = Math.max(mx2, er[(b + dk + NB) % NB]); yHi[L * NB + b] = mx2; }
+                for (b = 0; b < NB; b++) {
+                    yLo[L * NB + b] = Math.min(lo[(b + NB - 1) % NB], lo[b], lo[(b + 1) % NB]);
+                }
+            }
+            var ang = function (arr, base, fb) { var b0 = Math.floor(fb) % NB, b1 = (b0 + 1) % NB, t = fb - Math.floor(fb); return arr[base + b0] * (1 - t) + arr[base + b1] * t; };
+            var rad = function (arr) {   // r at (leg, fj in cells, fb); -1 where the garment has no ring
+                return function (L, fj, fb) {
+                    var fr = fj / RY, ja = Math.max(0, Math.min(NY - 1, Math.floor(fr))), jb = Math.min(NY - 1, ja + 1), t = Math.max(0, Math.min(1, fr - ja));
+                    var ra = rowOn[L * NY + ja] ? ang(arr, (L * NY + ja) * NB, fb) : -1, rb = rowOn[L * NY + jb] ? ang(arr, (L * NY + jb) * NB, fb) : -1;
+                    return ra < 0 ? rb : rb < 0 ? ra : ra + (rb - ra) * t;
+                };
+            };
+            var edgeAt = function (arr) { return function (L, fb) { var v = ang(arr, L * NB, fb); return isFinite(v) ? v : NaN; }; };
+            return { rMax: rad(rMax), rMin: rad(rMin), rAvg: rad(rAvg), top: edgeAt(yHi), bottom: edgeAt(yLo) };
+        }
+        var bootSmooth = function (e0, e1, x) { var u = (x - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+        /* move the vertices of `w` radially (round their leg) to target(q, y) (a radius, or < 0 = leave it): the pull smoothed over the
+           garment (it moves as one), then topped up where the smoothing left it short (`inward`: only ever in / only ever out) */
+        function bootMove(part, LF, w, target, inward, floor) {
+            var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, D = new Float32Array(n * 3), q = [0, 0, 0, 0, 0, 0], v, any = false;
+            var step = function (x, y, z, out, v) {
+                out[0] = out[1] = 0;
+                if (!LF.at(x, y, z, q) || q[5] < 1e-4) return false;
+                var rt = target(q, y, v); if (rt < 0) return false;
+                if (inward ? q[5] <= rt : q[5] >= rt) return false;
+                var k = (rt - q[5]) / q[5]; out[0] = q[3] * k; out[1] = q[4] * k; return true;
+            };
+            var o2 = [0, 0];
+            for (v = 0; v < n; v++) if (step(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], o2, v)) { D[v * 3] = o2[0]; D[v * 3 + 2] = o2[1]; any = true; }
+            if (!any) return false;
+            spaceSmooth(A, 2, WEAR_LAYER.smooth * LF.Hm).run(D);
+            for (v = 0; v < n; v++) if (step(A[v * 3] + D[v * 3], A[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2], o2, v)) { D[v * 3] += o2[0]; D[v * 3 + 2] += o2[1]; }
+            /* (and never past it: a vertex the smoothing dragged further than its own target - the jeans just over a cowboy boot's dip,
+               next to the deep-pulled rows inside it - goes back out to it) */
+            var q0 = [0, 0, 0, 0, 0, 0];
+            for (v = 0; v < n; v++) {
+                if (!D[v * 3] && !D[v * 3 + 2]) continue;
+                if (!LF.at(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], q0)) continue;
+                var rt0 = target(q0, A[v * 3 + 1], v); if (rt0 < 0) continue;
+                if (inward ? q0[5] < rt0 : q0[5] > rt0) continue;   // (it did not need to move this way at all: as smoothed)
+                if (!LF.at(A[v * 3] + D[v * 3], A[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2], q) || q[5] < 1e-4) continue;
+                var rt1 = target(q, A[v * 3 + 1], v); if (rt1 < 0 || (inward ? q[5] >= rt1 : q[5] <= rt1)) continue;
+                var k1 = (rt1 - q[5]) / q[5]; D[v * 3] += q[3] * k1; D[v * 3 + 2] += q[4] * k1;
+            }
+            /* (and, drawn in, never under `floor` (the skin under it): the smoothing dragged the rows just over a boot's top - with no
+               target of their own - in under the shin as well) */
+            if (floor && inward) for (v = 0; v < n; v++) {
+                if (!D[v * 3] && !D[v * 3 + 2]) continue;
+                var fl = floor(v); if (!(fl > 0)) continue;
+                if (!LF.at(A[v * 3] + D[v * 3], A[v * 3 + 1], A[v * 3 + 2] + D[v * 3 + 2], q) || q[5] < 1e-4 || q[5] >= fl) continue;
+                if (!LF.at(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], q0)) continue;
+                var rk = Math.min(q0[5], fl), k2 = (rk - q[5]) / q[5]; D[v * 3] += q[3] * k2; D[v * 3 + 2] += q[4] * k2;
+            }
+            if (w.lay) { for (v = 0; v < D.length; v++) w.lay[v] += D[v]; } else w.lay = D;
+            for (v = 0; v < A.length; v++) A[v] += D[v];
+            return true;
+        }
+        function wearBootFit(part) {
+            var W = part.wear || [];
+            W.forEach(function (w) {
+                w.bootDeep = null; w.bootOver = false; w.bootIn = false;
+                if (w.bootSi0) {   // (the trouser leg's own bones back first)
+                    var ga = w.mesh.geometry.attributes; ga.skinIndex.array.set(w.bootSi0); ga.skinWeight.array.set(w.bootSw0); ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true;
+                }
+            });
+            var boots = W.filter(wearIsBoot), pants = W.filter(wearIsPants);
+            if (!boots.length || !pants.length) return;
+            if (typeof window !== 'undefined' && window.EW_DISABLE_BOOT_FIT) return;   // (kill-switch: the trousers + boots as each was fitted)
+            var LF = legFrame(part); if (!LF) return;
+            var Hm = LF.Hm, H = LF.H, gap = BOOT_FIT.gap * Hm, BG = legGrid(LF, boots); if (!BG) return;
+            var deepOf = function (w, test) {   // the vertices `test` says lie deep under / inside the other
+                var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, f = new Uint8Array(n), any = false, q = [0, 0, 0, 0, 0, 0];
+                for (var v = 0; v < n; v++) if (LF.at(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], q) && test(q, A[v * 3 + 1])) { f[v] = 1; any = true; }
+                w.bootDeep = any ? f : null;
+            };
+            if (part.bootIn) {
+                var PG0 = legGrid(LF, pants); if (!PG0) return;
+                var blend = BOOT_FIT.blend * Hm;
+                var pz = Math.max.apply(null, pants.map(function (p) { return p.z; }));
+                boots.forEach(function (b) { b.bootOver = pz + 0.5; });   // THE LAYERS: the boot just over the trouser leg (a coat's hem stays over the boot)
+                /* the skin: the trouser leg stays `onSkin` off it (its nearest skin vertex), never under it - laid tighter, the shin's ridge
+                   came out between its 3 cm-apart vertices over a cowboy boot's dip; the boot's opening (the last `rim`) is let out round it */
+                var SPs = part.src.attributes.position.array, SDs = part.shapeD, onSkin = BOOT_FIT.onSkin * Hm, onSkinIn = BOOT_FIT.onSkinIn * Hm, qs = [0, 0, 0, 0, 0, 0];
+                var skinR = function (w, v) {   // the radius round its leg of the skin vertex nearest this garment vertex (buildWear's nb)
+                    var o = w.nb ? w.nb[v] * 3 : -1; if (o < 0) return -1;
+                    return LF.at(SPs[o] + (SDs ? SDs[o] : 0), SPs[o + 1] + (SDs ? SDs[o + 1] : 0), SPs[o + 2] + (SDs ? SDs[o + 2] : 0), qs) ? qs[5] : -1;
+                };
+                var curW = null;   // (the garment bootMove is moving: skinR reads its nb)
+                var inTarget = function (q, y, v) {
+                    var L = q[0], fb = q[2], top = BG.top(L, fb), hem = PG0.bottom(L, fb);
+                    if (!(top > hem + BOOT_FIT.hemOver * Hm) || y > top + blend) return -1;   // (a hem over the boot's top: not in it)
+                    var yq = Math.min(y, top - LF.C), rin = BG.rMin(L, (yq - LF.y0) / LF.C, fb); if (rin < 0) return -1;
+                    var rt = rin - gap;
+                    var oS = onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, y));   // (deep in the boot, where only the boot shows, closer)
+                    var rs = skinR(curW, v); if (rs > 0 && rt < rs + oS) rt = rs + oS;   // (everywhere: a 3 cm triangle from a row deep in the boot to one over a dip's rim went in under the shin)
+                    if (y <= top) return rt;
+                    return rt + (q[5] - rt) * bootSmooth(top, top + blend, y);   // (bloused: narrowing into the opening)
+                };
+                pants.forEach(function (p) {
+                    p.bootIn = true; curW = p;
+                    var PA = p.mesh.geometry.attributes.position.array, qf = [0, 0, 0, 0, 0, 0];
+                    bootMove(part, LF, p, inTarget, true, function (v) {
+                        var rs = skinR(p, v); if (!(rs > 0) || !LF.at(PA[v * 3], PA[v * 3 + 1], PA[v * 3 + 2], qf)) return -1;
+                        var top = BG.top(qf[0], qf[2]); return rs + onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, PA[v * 3 + 1]));
+                    });
+                    /* its bones: inside the boot (and over its opening, fading out over `blend`) the trouser leg takes the bones of the
+                       skin under it, the ones the boot rides: on its own (the thigh in them) the knee bent in the idle lifted it 3 cm out of
+                       the boot's top over the shin */
+                    var gi = p.mesh.geometry.attributes.skinIndex, gw = p.mesh.geometry.attributes.skinWeight;
+                    if (part.siW && gi && gw && p.nb) {
+                        var SI0 = p.bootSi0 || (p.bootSi0 = Uint16Array.from(gi.array)), SW0 = p.bootSw0 || (p.bootSw0 = Float32Array.from(gw.array));
+                        var A2 = p.mesh.geometry.attributes.position.array, q3 = [0, 0, 0, 0, 0, 0], SIW = part.siW, SWW = part.swW, any2 = false;
+                        /* (the boot's own bones where it is near: the boot rides the foot + ankle as well as the shin, and on the shin's
+                           bones alone the trouser leg slid 3 cm up out of a cowboy boot's dips at the front + back, the shin showing) */
+                        var BCs = 0.02, bGrid = new Map(), bReach = 0.05 * Hm, wFade = BOOT_FIT.wFade * Hm;
+                        boots.forEach(function (b) {
+                            var bg = b.mesh.geometry.attributes; if (!bg.skinIndex || !bg.skinWeight || b.mesh.skeleton !== p.mesh.skeleton) return;
+                            var BA = bg.position.array;
+                            for (var bv = 0; bv < BA.length / 3; bv++) { var key = Math.floor(BA[bv * 3] / BCs) + ',' + Math.floor(BA[bv * 3 + 1] / BCs) + ',' + Math.floor(BA[bv * 3 + 2] / BCs), bl = bGrid.get(key); if (bl) bl.push(b, bv); else bGrid.set(key, [b, bv]); }
+                        });
+                        var nearBoot = function (x, y, z) {   // [boot, vertex] nearest within bReach, or null
+                            var cx = Math.floor(x / BCs), cy = Math.floor(y / BCs), cz = Math.floor(z / BCs), rr = Math.ceil(bReach / BCs), bd = bReach * bReach, best = null;
+                            for (var ia = -rr; ia <= rr; ia++) for (var ib = -rr; ib <= rr; ib++) for (var ic = -rr; ic <= rr; ic++) {
+                                var bl = bGrid.get((cx + ia) + ',' + (cy + ib) + ',' + (cz + ic)); if (!bl) continue;
+                                for (var m = 0; m < bl.length; m += 2) { var BA = bl[m].mesh.geometry.attributes.position.array, o = bl[m + 1] * 3, d = (BA[o] - x) * (BA[o] - x) + (BA[o + 1] - y) * (BA[o + 1] - y) + (BA[o + 2] - z) * (BA[o + 2] - z); if (d < bd) { bd = d; best = [bl[m], bl[m + 1]]; } }
+                            }
+                            return best;
+                        };
+                        for (var v2 = 0; v2 < A2.length / 3; v2++) {
+                            if (!LF.at(A2[v2 * 3], A2[v2 * 3 + 1], A2[v2 * 3 + 2], q3)) continue;
+                            var top2 = BG.top(q3[0], q3[2]); if (!(top2 > PG0.bottom(q3[0], q3[2]) + BOOT_FIT.hemOver * Hm)) continue;
+                            var wv = 1 - bootSmooth(top2 + blend, top2 + blend + wFade, A2[v2 * 3 + 1]); if (wv <= 0) continue;
+                            var acc = {}, k4, bi, sv = p.nb[v2], nbt = A2[v2 * 3 + 1] < top2 ? nearBoot(A2[v2 * 3], A2[v2 * 3 + 1], A2[v2 * 3 + 2]) : null, TI = SIW, TW = SWW, tv = sv;
+                            if (nbt) { TI = nbt[0].mesh.geometry.attributes.skinIndex.array; TW = nbt[0].mesh.geometry.attributes.skinWeight.array; tv = nbt[1]; }
+                            for (k4 = 0; k4 < 4; k4++) { bi = SI0[v2 * 4 + k4]; acc[bi] = (acc[bi] || 0) + SW0[v2 * 4 + k4] * (1 - wv); bi = TI[tv * 4 + k4]; acc[bi] = (acc[bi] || 0) + TW[tv * 4 + k4] * wv; }
+                            var tb = Object.keys(acc).map(function (kb) { return [+kb, acc[kb]]; }).sort(function (p1, p2) { return p2[1] - p1[1]; }).slice(0, 4), tot = 0;
+                            tb.forEach(function (x) { tot += x[1]; });
+                            for (k4 = 0; k4 < 4; k4++) { gi.array[v2 * 4 + k4] = tb[k4] ? tb[k4][0] : tb[0][0]; gw.array[v2 * 4 + k4] = tb[k4] && tot > 0 ? tb[k4][1] / tot : 0; }
+                            any2 = true;
+                        }
+                        if (any2) { gi.needsUpdate = true; gw.needsUpdate = true; }
+                    }
+                    /* (deep under the LOWEST top within 2 angles either side: a 3 cm triangle of the trouser leg reaches that far round,
+                       and with its corners deep under a cowboy boot's high sides it was cut out over the dip at its front, the shin showing) */
+                    deepOf(p, function (q, y) { var top = Math.min(BG.top(q[0], q[2]), BG.top(q[0], (q[2] + LF.NB - 1) % LF.NB), BG.top(q[0], (q[2] + 1) % LF.NB), BG.top(q[0], (q[2] + LF.NB - 2) % LF.NB), BG.top(q[0], (q[2] + 2) % LF.NB)); return y < top - BOOT_FIT.inDeep * Hm && PG0.bottom(q[0], q[2]) < top - BOOT_FIT.hemOver * Hm; });
+                });
+                return;
+            }
+            /* outside: the trouser leg's hem let out over the boot, then the boot drawn in under the trouser leg */
+            var PG = legGrid(LF, pants); if (!PG) return;
+            var flare = BOOT_FIT.flare * Hm, maxPush = BOOT_FIT.maxPush * Hm, yAnk = LF.y0 + BOOT_FIT.ankle * H, ankF = BOOT_FIT.ankleFade * H;
+            var outTarget = function (q, y) {
+                var L = q[0], fb = q[2], top = BG.top(L, fb), hem = PG.bottom(L, fb);
+                if (!(top > hem) || y > hem + flare || y > top) return -1;
+                var rb = BG.rMax(L, q[1], fb); if (rb < 0) return -1;
+                var need = Math.min(rb + gap, q[5] + maxPush);
+                return q[5] + (need - q[5]) * (1 - bootSmooth(hem, hem + flare, y));
+            };
+            pants.forEach(function (p) { bootMove(part, LF, p, outTarget, false); });
+            PG = legGrid(LF, pants); if (!PG) return;   // (as they now lie)
+            var edge = BOOT_FIT.edge * Hm;
+            var underTarget = function (q, y) {
+                var L = q[0], fb = q[2], hem = PG.bottom(L, fb);
+                if (!(y > hem) || y < yAnk) return -1;   // (the foot: never - the toe box reaches forward past the trouser leg's ring)
+                var rp = PG.rAvg(L, q[1], fb); if (rp < 0) return -1;
+                var rt = rp - gap, w = bootSmooth(hem, hem + edge, y) * bootSmooth(yAnk, yAnk + ankF, y);
+                return q[5] + (rt - q[5]) * w;
+            };
+            boots.forEach(function (b) {
+                bootMove(part, LF, b, underTarget, true);
+                deepOf(b, function (q, y) { return y > yAnk + ankF && y > PG.bottom(q[0], q[2]) + BOOT_FIT.deep * Hm && y < PG.top(q[0], q[2]); });
+            });
+        }
+        /* the part of a boot / trouser leg wearBootFit found deep under / inside the other leaves the drawn index (all 3 corners) */
+        function wearBootHide(part) {
+            (part.wear || []).forEach(function (w) {
+                if (!w.bootDeep) return;
+                var F = w.bootDeep;
+                [w.mesh].concat(w.accents || []).forEach(function (mh) {
+                    var g = mh.geometry; if (!g.index) return;
+                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
+                    var I = g.index.array, keep = [];
+                    for (var t = 0; t + 2 < I.length; t += 3) if (!(F[I[t]] && F[I[t + 1]] && F[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    if (keep.length !== I.length) g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
+                });
+            });
+        }
         function wearLayers(part) {
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
             (part.wear || []).forEach(function (w) { w.lay = null; w.tuckW = null; });
             wearFollow(part);
             try { wearBeltLift(part); } catch (e) { console.warn('[ThreeRenderer] belt height failed', e); }   // THE BELT HEIGHT
             try { wearTuckIn(part); } catch (e) { console.warn('[ThreeRenderer] tuck failed', e); }   // THE TUCK
+            try { wearBootFit(part); } catch (e) { (part.wear || []).forEach(function (w) { w.bootDeep = null; w.bootOver = false; }); console.warn('[ThreeRenderer] pants + boots fit failed', e); }   // THE PANTS IN THE BOOTS
             if (L.length < 2) return;
-            var Hm = part.height / 1.7, C = 0.02, gap = WEAR_LAYER.gap * Hm, capeGap = WEAR_LAYER.capeGap * Hm, latW = WEAR_LAYER.lat * Hm, reach = WEAR_LAYER.reach * Hm, rc = Math.ceil(reach / C);
+            var Hm = part.height / 1.7, C = 0.02, gap = WEAR_LAYER.gap * Hm, capeGap = WEAR_LAYER.capeGap * Hm, hangGap = COAT_HANG.gap * Hm, latW = WEAR_LAYER.lat * Hm, reach = WEAR_LAYER.reach * Hm, rc = Math.ceil(reach / C);
             var SP = part.src.attributes.position.array, SD = part.shapeD;
             var outN = {};   // each upper garment's normals, turned to face away from the skin it sits on
             var normalsOut = function (w) {
@@ -56047,11 +57211,11 @@ const ThreeRenderer = (function () {
                 }
                 return (outN[w.id] = N2);
             };
-            var zOf = function (w) { return w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };   // (underwear goes under every other garment whatever its z, then the shoes + gloves: the trousers come down over the boots, a sleeve over a long glove)
+            var zOf = function (w) { return w.bootOver ? w.bootOver : w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };   // (THE PANTS IN THE BOOTS: a boot the trousers tuck into goes over them)   // (underwear goes under every other garment whatever its z, then the shoes + gloves: the trousers come down over the boots, a sleeve over a long glove)
             L.sort(function (x, y) { return zOf(y) - zOf(x); });   // from the top down: each garment folds under the ones over it as they now lie
             L.forEach(function (lo) {
                 if (lo.layer === 'cape') return;   // (a cape is only ever the one over: its hem swings on its own chains)
-                var ups = L.filter(function (u) { return u !== lo && (u.layer === 'cape' || zOf(u) > zOf(lo)); });   // (a cape is over everything else whatever its z: the police coat stood through the hooded cape)
+                var ups = L.filter(function (u) { return u !== lo && (u.layer === 'cape' || zOf(u) > zOf(lo)) && !(u.bootOver && lo.bootIn); });   // (a cape is over everything else whatever its z: the police coat stood through the hooded cape; THE PANTS IN THE BOOTS: the tucked trouser leg is already inside the boot - pulled again along the cowboy boot's pull tabs it went in under the shin)
                 if (!ups.length) return;
                 var A = lo.mesh.geometry.attributes.position.array, n = A.length / 3;
                 var mkNeed = function (ups) {
@@ -56072,7 +57236,7 @@ const ThreeRenderer = (function () {
                     var u = UV[best], v = UV[best + 1], UA2 = u.mesh.geometry.attributes.position.array, N2 = normalsOut(u);
                     var s = (x - UA2[v * 3]) * N2[v * 3] + (y - UA2[v * 3 + 1]) * N2[v * 3 + 1] + (z - UA2[v * 3 + 2]) * N2[v * 3 + 2];
                     if (bd - s * s > UV[best + 2]) return -1;
-                    var g = u.layer === 'cape' ? capeGap : gap;   // (under a cape: deeper - the cape rides its own chains, the coat the body, and they slid through each other in stripes)
+                    var g = u.layer === 'cape' ? capeGap : u.hang && y < u.hang.yA + 0.12 * Hm ? hangGap : gap;   // (under a cape: deeper - the cape rides its own chains, the coat the body, and they slid through each other in stripes; THE COAT HANG: under a hanging coat too - its hips ride the pelvis, the trousers' seat the thighs)
                     if (s <= -g) return 0;
                     var t = s + g; out[0] = -N2[v * 3] * t; out[1] = -N2[v * 3 + 1] * t; out[2] = -N2[v * 3 + 2] * t; return t;
                 };
@@ -56143,19 +57307,96 @@ const ThreeRenderer = (function () {
         /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
            the asset packs"): appearance.wearTint[id] = a colour -> the piece wears its texture's grey mask (_ccPackHairTexture,
            the levels the pack hair + beards use: folds, seams, stitching kept) x the colour; no entry = its own texture + colour */
+        /* THE PACK FABRICS (2026-11-03, mondo: "can we add the option to change the pants textures like cotton and leather and all that?
+           Im not seeing that option anywhere in the pants section"): appearance.wearFabric[id] = a creator fabric (sprites.js
+           EW_FABRICS, the same tiles the Top / Bottoms / Outer layers wear) -> the pack piece wears that fabric's tile under its own
+           texture's grey levels (the folds, seams, pockets and stitching stay), in its picked colour (wearTint) or, with none, its
+           texture's own average colour, with the fabric's roughness / metalness. The tile repeats at the fabric's tiles per METRE:
+           a pack garment's UVs are an atlas, so its metres per UV unit is measured from its own triangles (wearUvMetres). The
+           composite is a canvas (fabric pattern x grey mask, the piece's alpha kept), cached per grey mask + fabric. */
+        function wearUvMetres(sg) {
+            sg.userData = sg.userData || {};
+            if (sg.userData._ewUvMetres) return sg.userData._ewUvMetres;
+            var pa = sg.attributes.position && sg.attributes.position.array, ua = sg.attributes.uv && sg.attributes.uv.array, ix = sg.index ? sg.index.array : null;
+            var tc = ix ? ix.length : (pa ? pa.length / 3 : 0), a3 = 0, a2 = 0;
+            for (var k = 0; pa && ua && k + 2 < tc; k += 3) {
+                var i0 = ix ? ix[k] : k, i1 = ix ? ix[k + 1] : k + 1, i2 = ix ? ix[k + 2] : k + 2;
+                var ax = pa[i1 * 3] - pa[i0 * 3], ay = pa[i1 * 3 + 1] - pa[i0 * 3 + 1], az = pa[i1 * 3 + 2] - pa[i0 * 3 + 2];
+                var bx = pa[i2 * 3] - pa[i0 * 3], by = pa[i2 * 3 + 1] - pa[i0 * 3 + 1], bz = pa[i2 * 3 + 2] - pa[i0 * 3 + 2];
+                var cx = ay * bz - az * by, cy = az * bx - ax * bz, cz = ax * by - ay * bx;
+                a3 += Math.sqrt(cx * cx + cy * cy + cz * cz);
+                a2 += Math.abs((ua[i1 * 2] - ua[i0 * 2]) * (ua[i2 * 2 + 1] - ua[i0 * 2 + 1]) - (ua[i2 * 2] - ua[i0 * 2]) * (ua[i1 * 2 + 1] - ua[i0 * 2 + 1]));
+            }
+            return (sg.userData._ewUvMetres = (a2 > 1e-9 && a3 > 1e-9) ? Math.sqrt(a3 / a2) : 1);
+        }
+        // the piece's own colour (its texture read at its vertices' UVs, sRGB average) as '#rrggbb'
+        function wearOwnColour(P) {
+            if (P.mean !== undefined) return P.mean;
+            var px = _ccHairPixels(P.src), ua = P.sg && P.sg.attributes.uv && P.sg.attributes.uv.array, r = 0, g = 0, b = 0, n = 0;
+            if (px && ua) {
+                var d = px.id.data, fy = !!P.src.flipY;
+                for (var v = 0; v < ua.length; v += 2) {
+                    var x = Math.min(px.w - 1, Math.max(0, Math.floor((ua[v] - Math.floor(ua[v])) * px.w)));
+                    var uy = ua[v + 1] - Math.floor(ua[v + 1]), y = Math.min(px.h - 1, Math.max(0, Math.floor((fy ? 1 - uy : uy) * px.h))), o = (y * px.w + x) * 4;
+                    if (d[o + 3] < 128) continue;
+                    r += d[o]; g += d[o + 1]; b += d[o + 2]; n++;
+                }
+            }
+            var hx = function (c) { return ('0' + Math.round(c / n).toString(16)).slice(-2); };
+            return (P.mean = n ? '#' + hx(r) + hx(g) + hx(b) : '#808080');
+        }
+        function wearFabricMap(P, key, tile) {
+            var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, def = _ccFabricDef(key);
+            if (!grey || !grey.image || !tile || !tile.image) return null;
+            var tpu = Math.max(1, (def.repeat || 12) * wearUvMetres(P.sg));   // fabric tiles per UV unit
+            var ck = grey.uuid + '|' + key + '|' + tpu.toFixed(2);
+            if (_ccWearFabricCache[ck]) return _ccWearFabricCache[ck];
+            var S = Math.min(2048, Math.max(1024, Math.pow(2, Math.ceil(Math.log2(tpu * 96))))), cell = Math.max(8, Math.round(S / tpu));
+            var cnv = _ccCanvas(S, S), tc = _ccCanvas(cell, cell);
+            if (!cnv || !tc) return null;
+            try {
+                tc.getContext('2d').drawImage(tile.image, 0, 0, cell, cell);
+                var g = cnv.getContext('2d');
+                g.fillStyle = g.createPattern(tc, 'repeat'); g.fillRect(0, 0, S, S);
+                g.globalCompositeOperation = 'multiply'; g.drawImage(grey.image, 0, 0, S, S);
+                g.globalCompositeOperation = 'destination-in'; g.drawImage(grey.image, 0, 0, S, S);   // the piece's own alpha (lace, see-through)
+            } catch (ex) { return null; }
+            var tex = new THREE.CanvasTexture(cnv);
+            tex.flipY = grey.flipY; tex.wrapS = grey.wrapS; tex.wrapT = grey.wrapT;
+            _ewTexSetSRGB(tex, !unmanagedColor);
+            tex.anisotropy = 4;
+            tex._ew_shared = true;
+            return (_ccWearFabricCache[ck] = tex);
+        }
         function paintWear(part, a) {
             if (!a) return;
-            var T = a.wearTint || {};
-            (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                var want = T[w.id], map = P.own;
+            var T = a.wearTint || {}, FB = a.wearFabric || {};
+            var paint = function (P, m, want, fab) {   // its texture's grey levels x the colour (x a fabric), or its own texture
+                var map = P.own, tile = null, def = null;
+                if (fab && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fab)) {
+                    var sync = true;
+                    _ccLoadFabric(getFabricTextureUrl(fab), unmanagedColor, function (t) { if (sync) tile = t; else if (alive && state.last) paintWear(part, state.last); });
+                    sync = false;
+                    var fm = tile ? wearFabricMap(P, fab, tile) : null;
+                    if (fm) { map = fm; def = _ccFabricDef(fab); want = want || wearOwnColour(P); }
+                }
                 if (want) {
-                    var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
+                    var grey = def ? null : (P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null), t = color(want), k = def ? 1.22 * 1.18 : grey ? 1.22 : 1;
                     if (grey) map = grey;
                     m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
                 } else if (P.c0) m.color.copy(P.c0);
                 else m.color.setRGB(1, 1, 1);
+                if (m.isMeshStandardMaterial) {
+                    if (P.r0 === undefined) { P.r0 = m.roughness; P.m0 = m.metalness; }
+                    m.roughness = def ? (def.rough != null ? def.rough : 0.9) : P.r0; m.metalness = def ? (def.metal || 0) : P.m0;
+                }
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+            };
+            (part.wear || []).forEach(function (w) {
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id], FB[w.id]);
+                var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
+                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
@@ -56195,7 +57436,7 @@ const ThreeRenderer = (function () {
         }
         function setWear(part, a) {
             if (!part.stock && !part.fit) {   // (a classic base: through THE CLASSIC FIT, once it has loaded - at once when it is cached)
-                var anyW = (a.wear || []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
+                var anyW = (a.wear || []).concat(a.wear2 && a.wear2 !== 'none' ? [a.wear2] : []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
                     var f = k === 'cape' ? (typeof getCapeMeshUrl === 'function' && getCapeMeshUrl) : k === 'feet' ? (typeof getFeetMeshUrl === 'function' && getFeetMeshUrl) : (typeof getOuterMeshUrl === 'function' && getOuterMeshUrl);
                     return f && a[k] && f(a[k]);
                 });
@@ -56207,7 +57448,10 @@ const ThreeRenderer = (function () {
             var mo2 = typeof getOuterMeshUrl === 'function' && a.outer2 ? getOuterMeshUrl(a.outer2, a.outer2Front) : null;   // THE SECOND OUTER LAYER (a Blender pick)
             var mc = typeof getCapeMeshUrl === 'function' ? getCapeMeshUrl(a.cape) : null;   // THE BLENDER CAPES
             var mf = typeof getFeetMeshUrl === 'function' ? getFeetMeshUrl(a.feet) : null;   // THE BLENDER SHOES
-            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mo2 ? '|@2' + mo2 : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '');
+            /* THE LAYERS 1 2 3 (2026-11-04): a second top (appearance.wear2, creator LAYER 2) - a pack / Blender Tops piece worn over the
+               Layer 1 top(s) in a.wear and under every coat */
+            var w2 = a.wear2 && a.wear2 !== 'none' && ids.indexOf(a.wear2) < 0 && typeof getWearUrl === 'function' ? a.wear2 : null, mw2 = w2 ? getWearUrl(w2) : null;
+            var key = ids.join('|') + (mw2 ? '|~' + w2 : '') + (mo ? '|@' + mo : '') + (mo2 ? '|@2' + mo2 : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '');
             if (part.wearKey === key) return;
             part.wearKey = key;
             var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
@@ -56215,6 +57459,20 @@ const ThreeRenderer = (function () {
                 if (!alive || part.wearTok !== tok) return;
                 dropWear(part);
                 ids.forEach(function (id) { if (got[id]) { var w = buildWear(part, got[id], id); if (w) part.wear.push(w); } });
+                /* THE LAYERS 1 2 3: the Layer 2 top goes over every Layer 1 top in THE LAYERS (z: 3 over the highest of them, under the
+                   Blender coats' 70), so they fold in under it and THE CLOTHES UNDER THE CLOTHES hides them where it covers them; a
+                   Blender one is painted by the top2 keys (the top2 shell's tile, paintMeshOuter) instead of the Layer 1 top's */
+                if (mw2 && got['~' + w2]) {
+                    var ww2 = buildWear(part, got['~' + w2], w2);
+                    if (ww2) {
+                        var z1 = 0; part.wear.forEach(function (w) { if (w.cat === 'tops') z1 = Math.max(z1, w.z); });
+                        ww2.z = Math.min(69, Math.max(ww2.z, z1 + 3)); ww2.wear2 = true;
+                        if (ww2.layer === 'top') { ww2.layer = 'top2'; part.fabricUrl.top2 = null; setFabric(part, 'top2', state.last || a); }
+                        [ww2.mesh].concat(ww2.accents || []).forEach(function (mh) { mh.renderOrder = 1 + ww2.z / 100; });
+                        part.wear.push(ww2);
+                        if (ww2.layer === 'top2') paintMeshOuter(part, state.last || a);
+                    }
+                }
                 if (mo && got['@outer']) { var wo = buildWear(part, got['@outer'], 'outer_' + a.outer); if (wo) { part.wear.push(wo); paintMeshOuter(part, state.last || a); } }
                 /* THE SECOND OUTER LAYER (2026-11-01): a Blender pick worn over the first outer - painted by the outer2 keys (its tile on
                    the coded outer2 shell's material, like the outer's), and over every other garment but a cape in THE LAYERS (z):
@@ -56236,16 +57494,21 @@ const ThreeRenderer = (function () {
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 paintWear(part, state.last || a);   // THE WEAR TINT
                 part.beltH = (state.last || a).beltHeight || 0;   // THE BELT HEIGHT
+                part.bootIn = (state.last || a).pantsTuck === 'in';   // THE PANTS IN THE BOOTS
                 try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
+                try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
                 try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
                 try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
             try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+                try { headOff(part); wearGrip(part); } catch (e) { console.warn("[ThreeRenderer] creature head / grip failed", e); }   // THE MESHY PIECES
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
+                part.solidHide = wearMask(part, function (w) { return w.solid; });   // THE MESHY PIECES: always hidden, whatever covers the rest
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
                 if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the new clothes follow the soft spots
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
+            if (mw2) pending++;
             if (mo) pending++;
             if (mo2) pending++;
             if (mc) pending++;
@@ -56254,6 +57517,7 @@ const ThreeRenderer = (function () {
             ids.forEach(function (id) {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
             });
+            if (mw2) _ccLoadWear(mw2, function (root) { got['~' + w2] = root; if (--pending === 0) apply(); });
             if (mo) _ccLoadWear(mo, function (root) { got['@outer'] = root; if (--pending === 0) apply(); });
             if (mo2) _ccLoadWear(mo2, function (root) { got['@outer2'] = root; if (--pending === 0) apply(); });
             if (mc) _ccLoadWear(mc, function (root) { got['@cape'] = root; if (--pending === 0) apply(); });
@@ -56265,6 +57529,7 @@ const ThreeRenderer = (function () {
            stock sheet. The canvas keeps the stock map's settings (flipY, colour space). */
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
+            try { setEyePack(part, a); } catch (e) { console.warn('[ThreeRenderer] eye pack failed', e); }   // THE EYE PACK
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
             var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') + (layers.lips ? '|lips' + layers.lips.color : '') + (layers.tint ? '|tint' + JSON.stringify(layers.tint) : '') : '';   // (+ THE CHEST + THE LIP COLOUR + THE LOOK COLOURS)
             if (part.lookKey === key) return;
@@ -56277,7 +57542,14 @@ const ThreeRenderer = (function () {
                     part.lookTex.dispose(); part.lookTex = null;
                 }
             }
-            if (!layers) { wear(part.stockMap); return; }
+            if (!layers) {
+                /* THE LID LASHES (2026-11-03): every pick 'own' = the stock sheet + the body's own lashes (the sheet baked in the GLB
+                   drew them on the cut eyelash helper), one shared texture per body; the stock sheet until it is ready or if it fails */
+                var own = typeof getMhOwnLashLayer === 'function' ? getMhOwnLashLayer('mpfb_' + part.mpfbBody) : null;
+                if (!own) { wear(part.stockMap); return; }
+                _ccOwnLashMap(part.stockMap, own, function (t) { if (alive && part.lookKey === key) wear(t || part.stockMap); });
+                return;
+            }
             var imgs = new Array(layers.length), pending = layers.length;
             layers.forEach(function (l, i) {
                 _ccLoadImage(_asNetUrl(l[0]), function (img) {
@@ -56445,7 +57717,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight, a.pantsTuck].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
@@ -56472,6 +57744,10 @@ const ThreeRenderer = (function () {
                 /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
+                if (parts.some(function (p) { return p.hangCaps; })) {   // THE COAT HANG: the long coat's skirt off the legs (before anything reads the pose)
+                    root.updateWorldMatrix(true, true);
+                    for (var hi = 0; hi < parts.length; hi++) if (parts[hi].hangCaps) { try { hangTick(parts[hi], sdt); } catch (e) { if (!state.hangWarned) { state.hangWarned = true; console.warn('[ThreeRenderer] coat hang failed', e); } } }
+                }
                 if (parts.some(function (p) { return p.wearSway; })) {   // THE BLENDER CAPES: their chains on the cape's spring
                     if (!state.capeSway) state.capeSway = Object.assign({ key: {} }, CAPE_SWAY);
                     try { _swayTick(root, sdt, state.capeSway, true); } catch (e) { if (!state.capeWarned) { state.capeWarned = true; console.warn('[ThreeRenderer] cape sway failed', e); } }
@@ -58312,10 +59588,10 @@ const ThreeRenderer = (function () {
         /* an OUTDOOR site room (HQ plan 7.2 stage 3) dresses its floor and
            walls in a battle TERRAIN key (grass, planks, concrete) — those
            come off the terrain sheet, tiled like the HQ's own textures */
-        var url = file ? (D.assets.textures + file) : ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[name]) ? TERRAIN_SPRITES[name][0] : null);
+        var url = file ? (D.assets.textures + file) : ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[name]) ? _ewSandUrl(name, TERRAIN_SPRITES[name][0]) : null);   // THE TWO SANDS: a sea room's desert is the beach sheet
         if (!url && typeof name === 'string' && name.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[name.slice(6)] || null;   // THE URBAN PACK (2026-09-17): a shell / prop may wear `urban:<Name>` (sprites.js URBAN_TEXTURES)
         if (!url) return null;
-        var key = name + '|' + (ru || 1) + '|' + (rv || 1);
+        var key = name + _ewSandPart(name) + '|' + (ru || 1) + '|' + (rv || 1);
         if (_hqTexCache[key]) { _alJoin(_hqTexCache[key]._ew_alRec); return _hqTexCache[key]; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
         /* ONE fetch per file (2026-09-20): a second repeat of the same sheet is a Texture that takes the
            first one's image when it lands (the browser used to be asked for the same PNG once per repeat
@@ -58803,12 +60079,116 @@ const ThreeRenderer = (function () {
         (o.hide || []).forEach(function (m) { if (m) m.visible = false; });   // NO STAND-INS (2026-10-05): hidden from the start
         return inst;
     }
+    /* ═══ THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game") ═══════════════════════════════════
+       The decor models Claude made on Meshy for the code-drawn stand-ins (concept → mondo's OK → smart-topology model; the list
+       is MODEL_LIST.md §10A, the sources project files meshy/decor/) dress the procs they were made for. Files: R2
+       Assets/decor/<name>.glb (optimize-assets.js: meshopt + WebP 1024; Meshy's unit box, Y up, the front on +Z).
+       A builder calls _hqDecorWear(name, U, g, o) where its stand-in pieces are built: those pieces hide at once (NO
+       STAND-INS) but keep the prop's collision (_ew_mcKeep: the walker meets the same shape as before), and the model is
+       fitted into THEIR box, so it stands where the proc stood at the proc's size. What the builder adds after the call (a
+       glow, a light, a screen, the leaves on the belt, the dancer) stays and keeps its ticker.
+       o: into (the group the pieces are in, default g) · hide (the pieces, default every mesh child of `into` so far) ·
+          box ([x0, y0, z0, x1, y1, z1] metres, default the pieces' box) · fit ('contain' default: inside the box; 'height';
+          'width'; 'stretch': each axis to the box) · turn (degrees) · wall (the back flush on the box's back) · top (hung
+          from the box's top) · h (the fitted height, metres) · at ([x, y, z] metres: the base centre) · repeat (n side by
+          side) · onDone(inst, { w, h, d } metres as fitted).
+       Kill switch: window.EW_NO_DECOR_GLB = true (every proc draws its code shape again). */
+    var _HQ_DECOR_BASE = 'https://cdn.entropywars.net/Assets/decor/';
+    var _HQ_DECOR_GLB = {
+        anemone: 'anemone.glb', armour_plinth: 'armour_plinth.glb', armour_stand: 'armour_stand.glb', autopsy_table: 'autopsy_table.glb',
+        banner: 'banner.glb', barber_chair: 'barber_chair.glb', barber_pole: 'barber_pole.glb', boiler: 'boiler.glb',
+        card_catalogue: 'card_catalogue.glb', carousel: 'carousel.glb', carousel_horse: 'carousel_horse.glb', cave_torch: 'cave_torch.glb',
+        conveyor: 'conveyor.glb', departures_board: 'departures_board.glb', directory_board: 'directory_board.glb', disc_cluster: 'disc_cluster.glb',
+        door_furnace: 'door_furnace.glb', dream_eye: 'dream_eye.glb', eeg_rack: 'eeg_rack.glb', egg_chair: 'egg_chair.glb',
+        exec_desk: 'exec_desk.glb', ferris_gondola: 'ferris_gondola.glb', ferris_wheel: 'ferris_wheel.glb', ferris_wheel_wheel: 'ferris_wheel_wheel.glb',
+        flood_mast: 'flood_mast.glb', high_striker_hammer: 'high_striker_hammer.glb', fountain: 'fountain.glb', giant_clam: 'giant_clam.glb', high_striker: 'high_striker.glb',
+        laminator: 'laminator.glb', laundry_cart: 'laundry_cart.glb', lifeguard_chair: 'lifeguard_chair.glb', lighthouse: 'lighthouse.glb',
+        meat_hook: 'meat_hook.glb', mushroom_lamp: 'mushroom_lamp.glb', music_box: 'music_box.glb', music_box_dancer: 'music_box_dancer.glb',
+        nightmare_bloom: 'nightmare_bloom.glb', notice_board: 'notice_board.glb', pool_lounger: 'pool_lounger.glb', popcorn_cart: 'popcorn_cart.glb',
+        pot_rack: 'pot_rack.glb', punch_clock: 'punch_clock.glb', robot_arm: 'robot_arm.glb', rocking_chair: 'rocking_chair.glb',
+        round_table: 'round_table.glb', saucer_pendant: 'saucer_pendant.glb', school_desk: 'school_desk.glb', scoreboard: 'scoreboard.glb',
+        sea_buoy: 'sea_buoy.glb', sea_vent: 'sea_vent.glb', skiff: 'skiff.glb',
+        slot_machine: 'slot_machine.glb', space_divider: 'space_divider.glb', sputnik_lamp: 'sputnik_lamp.glb', star_projector: 'star_projector.glb',
+        stocks: 'stocks.glb', stone_altar: 'stone_altar.glb', t_pillar: 't_pillar.glb', tanker_desk: 'tanker_desk.glb',
+        ticket_booth: 'ticket_booth.glb', trophy_case: 'trophy_case.glb', trophy_cup: 'trophy_cup.glb', tulip_chair: 'tulip_chair.glb',
+        tulip_table: 'tulip_table.glb', umbrella_closed: 'umbrella_closed.glb', umbrella_stand: 'umbrella_stand.glb', wall_torch_bracket: 'wall_torch_bracket.glb',
+        /* THE CODED SHAPES OUT (2026-11-03, round 2, concepts approved by mondo): the horizon / monument / proc pieces that replaced code shapes */
+        obelisk: 'obelisk.glb', greek_column: 'greek_column.glb', stone_arch: 'stone_arch.glb', effigy_figure: 'effigy_figure.glb', effigy_bier: 'effigy_bier.glb',
+        windpump_tower: 'windpump_tower.glb', windpump_wheel: 'windpump_wheel.glb', grow_lamp: 'grow_lamp.glb', submarine: 'submarine.glb',
+        lava_lamp_base: 'lava_lamp_base.glb', lava_lamp_cap: 'lava_lamp_cap.glb', lava_lamp_floor_base: 'lava_lamp_floor_base.glb', lava_lamp_floor_cap: 'lava_lamp_floor_cap.glb'
+    };
+    /* THE PACK WEAR (2026-11-04, THE MESHY AUDIT, mondo: "You are supposed to document every single model and try to not use meshy
+       models"): the §10A stand-ins whose PACK piece was named in the 11-03 decor list (status `pack: …`) but never wired. Same
+       call as the Meshy decor (`_hqDecorWear(name, U, g, o)`: the proc's pieces hide, keep the collision, the model fits their
+       box), the file from R2 Assets/misc/ (one Elbolilloduro CC0 piece cut out in Blender by bake-pack-pieces.py, front at +Z).
+       MODEL_LIST.md §6 / §10A list them. Kill switch: window.EW_NO_DECOR_GLB (the code shapes again). */
+    var _HQ_PACK_WEAR_BASE = 'https://cdn.entropywars.net/Assets/misc/';
+    var _HQ_PACK_WEAR = {
+        metal_shelving: 'ebd_gasstation_metal_shelving.glb', washer: 'ebd_house_washer.glb', dryer: 'ebd_abandonedhouse_dryer.glb',
+        broom: 'ebd_house_broom.glb', toilet_paper: 'ebd_house_toilet_paper.glb', wall_shelf: 'ebd_house_wall_shelf.glb',
+        steel_table: 'ebd_dinerscene_steel_table.glb'
+    };
+    function _hqDecorBox(into, list) {
+        into.updateMatrixWorld(true);
+        var inv = new THREE.Matrix4().copy(into.matrixWorld).invert(), rel = new THREE.Matrix4(), all = new THREE.Box3(), bx = new THREE.Box3();
+        list.forEach(function (o) {
+            if (!o) return;
+            o.traverse(function (n) {
+                if (!n.isMesh || n.isSprite || !n.geometry) return;
+                if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+                rel.multiplyMatrices(inv, n.matrixWorld); bx.copy(n.geometry.boundingBox).applyMatrix4(rel); all.union(bx);
+            });
+        });
+        return all;
+    }
+    function _hqDecorHide(m) { if (!m) return; if (m.visible !== false) m._ew_mcKeep = true; m.visible = false; }
+    function _hqDecorWear(name, U, g, o) {
+        o = o || {};
+        var file = _HQ_DECOR_GLB[name], base = _HQ_DECOR_BASE;
+        if (!file && _HQ_PACK_WEAR[name]) { file = _HQ_PACK_WEAR[name]; base = _HQ_PACK_WEAR_BASE; }   // THE PACK WEAR (2026-11-04)
+        if (!file || typeof _miscModelInstance !== 'function' || typeof THREE.GLTFLoader !== 'function') return null;
+        if (typeof window !== 'undefined' && window.EW_NO_DECOR_GLB) return null;
+        var into = o.into || g;
+        var hide = o.hide || into.children.filter(function (n) { return !n.isSprite && !n.isLight && !n.isPoints && !n._ew_decor; });
+        var box = o.box ? new THREE.Box3(new THREE.Vector3(o.box[0] * U, o.box[1] * U, o.box[2] * U), new THREE.Vector3(o.box[3] * U, o.box[4] * U, o.box[5] * U)) : _hqDecorBox(into, hide);
+        if (box.isEmpty()) return null;
+        var bw = box.max.x - box.min.x, bh = box.max.y - box.min.y, bd = box.max.z - box.min.z;
+        var H = (o.h != null) ? o.h * U : bh, turn = _hqRad(o.turn || 0), side = Math.abs(Math.sin(turn)) > 0.7, fit = o.fit || 'contain', rep = Math.max(1, o.repeat || 1);
+        var outer = new THREE.Group(); outer._ew_decor = name;
+        if (o.at) outer.position.set(o.at[0] * U, o.at[1] * U, o.at[2] * U);
+        else outer.position.set((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+        var cz = outer.position.z;
+        var inst = _miscModelInstance(base + file, true, H, {
+            fit: 'height', repeat: rep, matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined,
+            onDone: function (grp, s, bb) {
+                var ex = (bb.max.x - bb.min.x) * s, ez = (bb.max.z - bb.min.z) * s;
+                if (ez >= ex) ez *= rep; else ex *= rep;                       // _miscModelInstance lays the copies along the longer side
+                var wx = side ? ez : ex, wz = side ? ex : ez, big = 0.12 * U, sx = 1, sy = 1, sz = 1;   // the footprint, the scales in the BOX's axes
+                if (fit === 'stretch') { sx = bw > big ? bw / wx : 1; sz = bd > big ? bd / wz : 1; }
+                else if (fit === 'width') sx = sy = sz = bw / wx;
+                else if (fit === 'contain') { var k = 1; if (bw > big) k = Math.min(k, bw / wx); if (bd > big && !o.wall) k = Math.min(k, bd / wz); sx = sy = sz = k; }
+                grp.scale.set(side ? sz : sx, sy, side ? sx : sz);              // the model's own axes
+                var dw = wx * sx, dh = H * sy, dd = wz * sz;
+                if (!o.at && o.wall) grp.position.z = box.min.z + dd / 2 - cz;
+                if (!o.at && o.top) grp.position.y = bh - dh;
+                hide.forEach(_hqDecorHide);
+                if (o.onDone) { try { o.onDone(grp, { w: dw / U, h: dh / U, d: dd / U, y: (outer.position.y + grp.position.y) / U, z: (cz + grp.position.z) / U });   /* y, z: in the builder frame */ } catch (e) { console.warn('[HQ] decor', name, e); } }
+                if (_hq) _hq.dirty = true;
+            }
+        });
+        inst.rotation.y = turn;
+        inst._ew_oneModel = file;
+        outer.add(inst);
+        hide.forEach(_hqDecorHide);   // NO STAND-INS (2026-10-05): hidden from the start; the collision keeps them (_ew_mcKeep)
+        into.add(outer);
+        return outer;
+    }
     function _hqModelUrl(entry) {
         var D = _hqData();
         /* 2026-09-12: a catalogue entry with `base: 'misc'` lives in the shared
            Assets/misc/ bucket (the moving-maps batch — the pocket watch in the
            clock room) instead of the D.O.O.R. kit folder */
-        if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
+        if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CASTLE AND FORT PACK (2026-11-03): a piece of the one file
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'halloween') return _R2_HW + 'models/' + encodeURIComponent(entry.file || _HW_FILE) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE HALLOWEEN PACK (2026-10-29): a piece of the one file
@@ -59835,24 +61215,29 @@ const ThreeRenderer = (function () {
         [a0, a1].forEach(function (a) { var e = _hqBox(w, y1 - y0, 0.02, mat); e.position.set(Math.sin(a) * R * U, (y0 + y1) / 2 * U, Math.cos(a) * R * U); e.rotation.y = a; g.add(e); });
         return g;
     }
+    /* THE LAVA LAMPS (THE CODED SHAPES OUT 2026-11-03): the chrome base and the chrome cap are Meshy models (Assets/decor/lava_lamp_*.glb;
+       the floor lamp K > 2 has its own tall base + cap); the glass and the wax stay drawn (Meshy can't make glass, and the wax moves). The
+       brass lathe base and the cylinder cap are gone. Table: base 0.135, glass to 0.445, cap to 0.485 (× K). Floor: base 0.6 m, a straight
+       glass tube to 1.43 m, the cap to 1.56 m. */
     function _hqLavaLampBuild(U, p, K) {
-        var g = new THREE.Group();
-        var brass = _hqMat(null, 1, 1, { color: 0xc9a24a, shininess: 90, specular: 0xaa8844 });
+        var g = new THREE.Group(), floor = K > 2, pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
         var liquidC = (p && p.color != null) ? p.color : 0xff9a3c, waxC = (p && p.wax != null) ? p.wax : 0xff4a1e;
-        var base = new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.001, 0), new THREE.Vector2(0.075 * K, 0), new THREE.Vector2(0.06 * K, 0.06 * K), new THREE.Vector2(0.035 * K, 0.13 * K), new THREE.Vector2(0.05 * K, 0.135 * K)].map(function (v) { return new THREE.Vector2(v.x * U, v.y * U); }), 20), brass); g.add(base);
-        var glassPts = [0.05, 0.062, 0.058, 0.048, 0.036, 0.024].map(function (r, i) { return new THREE.Vector2(r * K * U, (0.135 + i * 0.062) * K * U); });
+        var bH = floor ? 0.6 : 0.135 * K, gTop = floor ? 1.43 : 0.445 * K, cH = floor ? 0.13 : 0.04 * K;
+        g.add(_miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB[floor ? 'lava_lamp_floor_base' : 'lava_lamp_base'], true, bH * U, { fit: 'height', matPick: pick }));
+        var cap = _miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB[floor ? 'lava_lamp_floor_cap' : 'lava_lamp_cap'], true, cH * U, { fit: 'height', matPick: pick });
+        cap.position.y = gTop * U; g.add(cap);
         var liquid = new THREE.MeshPhongMaterial({ color: liquidC, transparent: true, opacity: 0.55, shininess: 120, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false, emissive: liquidC, emissiveIntensity: 0.28 });
-        g.add(new THREE.Mesh(new THREE.LatheGeometry(glassPts, 20), liquid));
-        var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.026 * K * U, 0.03 * K * U, 0.04 * K * U, 14), brass); cap.position.y = (0.135 + 5 * 0.062 + 0.02) * K * U; g.add(cap);
+        if (floor) { var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * U, 0.1 * U, (gTop - bH) * U, 20, 1, true), liquid); tube.position.y = (bH + gTop) / 2 * U; g.add(tube); }
+        else g.add(new THREE.Mesh(new THREE.LatheGeometry([0.05, 0.062, 0.058, 0.048, 0.036, 0.024].map(function (r, i) { return new THREE.Vector2(r * K * U, (0.135 + i * 0.062) * K * U); }), 20), liquid));
         var waxMat = _hqMat(null, 1, 1, { color: waxC, emissive: waxC, emissiveIntensity: 0.65, shininess: 60 });
-        var blobs = [];
-        for (var i = 0; i < 4; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(0.02 * K * U, 10, 8), waxMat); g.add(b); blobs.push({ m: b, ph: i * 1.7, sp: 0.35 + i * 0.09, sz: 0.85 + (i % 2) * 0.4 }); }
-        var y0 = 0.16 * K, y1 = 0.41 * K, seed = (_hqProcSeed++) * 0.9;
+        var blobs = [], bR = floor ? 0.045 : 0.02 * K;
+        for (var i = 0; i < 4; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(bR * U, 10, 8), waxMat); g.add(b); blobs.push({ m: b, ph: i * 1.7, sp: 0.35 + i * 0.09, sz: 0.85 + (i % 2) * 0.4 }); }
+        var y0 = floor ? bH + 0.08 : 0.16 * K, y1 = floor ? gTop - 0.08 : 0.41 * K, seed = (_hqProcSeed++) * 0.9;
         if (_hq && _hq.tickers) _hq.tickers.push(function (dt, now) {
             var t = now * 0.001 + seed;
             for (var k = 0; k < blobs.length; k++) {
                 var bl = blobs[k], u = 0.5 + 0.5 * Math.sin(t * bl.sp + bl.ph), y = y0 + (y1 - y0) * u;
-                var r = 0.04 * K * (1 - u * 0.55);   // the glass narrows toward the top
+                var r = floor ? 0.035 : 0.04 * K * (1 - u * 0.55);   // the table glass narrows toward the top; the floor tube is straight
                 bl.m.position.set(Math.sin(t * 0.7 + bl.ph) * r * U, y * U, Math.cos(t * 0.5 + bl.ph) * r * U);
                 var sq = 1 + 0.35 * Math.sin(t * 1.3 + bl.ph);
                 bl.m.scale.set(bl.sz / Math.sqrt(sq), bl.sz * sq, bl.sz / Math.sqrt(sq));
@@ -60215,6 +61600,9 @@ const ThreeRenderer = (function () {
     /* the cave's feet at (x, z) in the CURRENT room (null = no cave / not walkable) */
     function _hqCaveTop(x, z) {
         /* THE TERRAIN ROOM (2026-09-17): the ground under (x, z) — the walker's feet there, else the raw height (a prop in a hazard still stands on its bed) */
+        /* THE TOWN PAST THE HEDGE (2026-11-03): a prop placed past an open field's edge stands on THE OUTER GROUND there (the
+           Abandoned House past the Haunted grounds' pines), never on the field's edge height carried out */
+        if (_hq && _hq.terrain && _hq.outer && (Math.abs(x) > _hq.outer.hx || Math.abs(z) > _hq.outer.hz)) return _hq.outer.yAt(x, z);
         if (_hq && _hq.terrain && typeof hqTerrainFeet === 'function') { var tf = hqTerrainFeet(_hq.terrain, x, z, null); return (tf == null) ? hqTerrainHeight(_hq.terrain, x, z) : tf; }
         var st = _hq && _hq.site; if (!st || !st.cave || typeof hqCaveTopAt !== 'function') return null;
         return hqCaveTopAt(st.info, x, z);
@@ -60516,6 +61904,21 @@ const ThreeRenderer = (function () {
        128 sprite; 2 = one sheet per 2 × 2 squares; 0.5 = four a square) and `floorTint` / `cliffTint` / `pathTint` ('#rrggbb',
        multiplied over that sheet; white or none = as drawn). A stair row's `sideZoom` / `sideTint` set its own sides. A room or a
        row naming none looks as before (the editor's THE GROUND and a stair's fields write them). */
+    /* ONE SPRITE PER SQUARE (2026-11-03, mondo picked it from side-by-sides: "one sprite per square"): since 2× EVERYWHERE a
+       terrain room fights on 3.5 m squares (HQ_FIELD_RULES.squareM; every terrain room passes hqFieldSquareFor), but its sheets
+       stayed one per 1.75 m (HQ_TERRAIN_RULES.tile), so each battle square showed a 2 × 2 of sprites. The floor / cliff / path /
+       painted sheets, the room's wall boxes, the board marks and the spell skins now lay one sheet per the room's fight square (the room's own fieldSquareM,
+       else the rules' squareM), never smaller than the room's own tile (the Holo Sim's 3.5 m plate stays). ONLY the repeat: _hqBuildTerrain's TM (the tile every
+       kit, tree, car and prop is sized against) and the water sheets keep info.tile. Read cheaply (no
+       lattice): hqFieldSquareFor's region test costs seconds on a big room. Back to real size: window.EW_SHEET_REAL_SIZE = true. */
+    function _hqSheetM(info) {
+        var t = (info && +info.tile > 0) ? +info.tile : 1.75;
+        if (typeof window !== 'undefined' && window.EW_SHEET_REAL_SIZE) return t;
+        var room = info && info.room, sq = 0;
+        if (room && +room.fieldSquareM > 0) sq = +room.fieldSquareM;
+        else if (typeof HQ_FIELD_RULES !== 'undefined' && HQ_FIELD_RULES && +HQ_FIELD_RULES.squareM > 0) sq = +HQ_FIELD_RULES.squareM;
+        return Math.max(t, sq);
+    }
     function _hqZoomOf(v) { v = +v; return (isFinite(v) && v > 0) ? Math.max(0.125, Math.min(16, v)) : 1; }
     function _hqTintOf(v) {
         if (v == null || v === '') return null;
@@ -60636,6 +62039,14 @@ const ThreeRenderer = (function () {
             uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
             var slx = (yAt(px + cs, pz) - yAt(px - cs, pz)) / (2 * cs), slz = (yAt(px, pz + cs) - yAt(px, pz - cs)) / (2 * cs), sl = Math.hypot(slx, slz);
             var rk = (sl - 0.55) / 0.75; rk = rk < 0 ? 0 : rk > 1 ? 1 : rk;
+            /* THE MASS RUNS ON (2026-11-03, mondo on Göbekli Tepe: "there is a harsh boundary at the edge of the map that makes the whole
+               thing look bad"): a room asking `outer: { sheet: 'solid' }` whose plan's mass wears the cliff sheet to its top (a LAYOUT in
+               the rock look) carries that sheet on past its edge wherever the edge is mass — the field's last metre and the land
+               past it are one ground, never the mass's sheet cut off in a straight line against the floor sheet */
+            if (OO.sheet === 'solid' && info.gen && info.gen.solidSheet === 'cliff' && info.maskD && typeof hqTerrainMaskAt === 'function') {
+                var ecx = Math.max(-hx, Math.min(hx, px)), ecz = Math.max(-hz, Math.min(hz, pz)), emd = hqTerrainMaskAt(info, ecx, ecz);
+                if (emd < 0.1) { var emr = (0.1 - emd) / 0.6; rk = Math.max(rk, emr > 1 ? 1 : emr); }
+            }
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
         } if ((j & 7) === 7 && _hqSliceDue()) yield; }
@@ -61205,9 +62616,10 @@ const ThreeRenderer = (function () {
                     var fit = _spFlightFit(soup, spec, f.w, R, L), fr = _spFrameFns(x0, z0, ux, uz, lo, fit);
                     var tread = f.key || kd.tread || info.path, sdl = _hqSideLook(f, kd.side, info), side = sdl.key, tint = (S.floorColor != null && !f.key) ? S.floorColor : null;
                     var pathT = (!f.key && !kd.tread) ? _hqSheetLook(info).path : null;   // THE SHEET LOOKS: a tread in the room's path sheet wears its tint
-                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '');
+                    var sTint = (S.floorColor != null && !(f.side || kd.side)) ? S.floorColor : null;   // THE GROUND TINT (2026-11-03): the flanks in the room's cliff sheet wear its floorColor, like the field's own cliffs
+                    var tk = 'tread|' + tread + '|' + tint + '|' + (pathT ? pathT.getHexString() : ''), sk = 'side|' + side + '|' + sdl.zoom + '|' + (sdl.tint ? sdl.tint.getHexString() : '') + '|' + sTint;
                     if (!mats[tk]) { mats[tk] = _spSheet(tread, spec.look, tint); if (pathT) mats[tk].color.multiply(pathT); }
-                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
+                    if (!mats[sk]) { mats[sk] = _spSheet(side, spec.look, sTint); if (sdl.tint) mats[sk].color.multiply(sdl.tint); kOf[sk] = texK / sdl.zoom; }
                     _spEmit(fit.A, fr.P, fr.N, function (A, t) {
                         var mi = A.M[t], mat = A.mats[mi];
                         if (_spIsGlass(mat)) return 'glass';
@@ -61349,6 +62761,9 @@ const ThreeRenderer = (function () {
             var sideMat = new THREE.MeshPhongMaterial({ map: _hzTex(sdl.key) || null, color: 0xffffff, shininess: 10 }); sideMat.emissive = new THREE.Color(0x121212);
             if (sdl.tint) sideMat.color.multiply(sdl.tint);
             if (S.floorColor != null && !f.key) treadMat.color.multiply(new THREE.Color(S.floorColor));
+            /* THE GROUND TINT (2026-11-03, the white maps check): the flanks + a packed flight's mass in the room's cliff sheet wear the room's
+               floorColor like the field's own cliffs and the editor boxes (Atlantis's dais flight stood untinted white marble beside its tinted floor) */
+            if (S.floorColor != null && !f.side) sideMat.color.multiply(new THREE.Color(S.floorColor));
             if (pathT) treadMat.color.multiply(pathT);
             var dx = f.x1 - f.x0, dz = f.z1 - f.z0, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L, yaw = Math.atan2(dx, dz);
             var lo0 = Math.min(f.h0, f.h1), gLo = (info.flightLo && info.flightLo.has(f)) ? Math.max(lo0 - 4, info.flightLo.get(f)) : Infinity;   // THE JOINED FLIGHTS (2026-10-06): down to the lowest ground under it (≤ 4 m)
@@ -62768,7 +64183,7 @@ const ThreeRenderer = (function () {
         /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
         var bufs = {};
         var strip = function (cx, cz, w, d, yaw, y, ck) {
-            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = info.tile || 1.75;
+            var B = bufs[ck] || (bufs[ck] = { P: [], I: [], T: [] }), c = Math.cos(yaw), sn = Math.sin(yaw), base = B.P.length / 3, yy = (y + 0.015) * U + 0.3, tl = _hqSheetM(info);   // ONE SPRITE PER SQUARE
             [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].forEach(function (p) { var wx = cx + p[0] * c + p[1] * sn, wz = cz - p[0] * sn + p[1] * c; B.P.push(wx * U, yy, wz * U); B.T.push(wx / tl, -wz / tl); });
             B.I.push(base, base + 2, base + 1, base, base + 3, base + 2);
         };
@@ -63132,6 +64547,7 @@ const ThreeRenderer = (function () {
         _hq.terrain = info;
         _hq.rails = _hq.rails || []; _hq.ramps = _hq.ramps || [];
         var TM = info.tile * U, res = info.res, nx = info.nx, nz = info.nz;
+        var TS = _hqSheetM(info) * U;   // ONE SPRITE PER SQUARE: the sheets' repeat only — TM stays the tile every kit / tree / car / prop is built against
         var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
@@ -63148,6 +64564,9 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
             return Math.max(0, Math.min(1, w));
         };
+        /* THE GROUND UNDER (2026-11-03): the ground under the floating pieces = the field less the lift they add (data.js info.GD) */
+        var GHa = null;
+        if (info.GD && info.GD.length === info.H.length) { GHa = new Float32Array(info.H.length); for (var gk = 0; gk < GHa.length; gk++) GHa[gk] = info.H[gk] - info.GD[gk]; }
         for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = info.x0 + i * res, pz = info.z0 + j * res, h = info.H[k];
             /* THE JOINED FLIGHTS (2026-10-06): under a flight the field is drawn at the ground it stands on, its side nodes on its sides (data.js hqTerrainCompile) */
@@ -63156,8 +64575,13 @@ const ThreeRenderer = (function () {
             /* PAST THE EDGE (2026-10-28): JUST THE ROOM's ground ends at the room's edge + edgeOut (data.js info.cut) — a node past it is drawn ON that edge, at the ground there */
             if (info.cut) { var cxv = Math.max(-info.cut.hw, Math.min(info.cut.hw, vx)), czv = Math.max(-info.cut.hd, Math.min(info.cut.hd, vz)); if (cxv !== vx || czv !== vz) { vx = cxv; vz = czv; vh = hqTerrainHeight(info, vx, vz); } }
             pos[k * 3] = vx * U; pos[k * 3 + 1] = vh * U; pos[k * 3 + 2] = vz * U;
-            uv[k * 2] = vx * U / TM; uv[k * 2 + 1] = vz * U / TM;
+            uv[k * 2] = vx * U / TS; uv[k * 2 + 1] = vz * U / TS;
             var sl = hqTerrainSlope(info, px, pz);
+            /* THE GROUND UNDER (2026-11-03): a node of the ground round / under a floating piece reads its slope on the ground (GHa,
+               from data.js info.GD) — the flank it no longer joins painted it the cliff sheet and darkened it: a stepped dark band round every cloud */
+            var ghN = (GHa && Math.abs(GHa[k] - h) < 0.05) ? GHa : null;
+            if (ghN) { var gi0 = Math.max(0, i - 1), gi1 = Math.min(nx - 1, i + 1), gj0 = Math.max(0, j - 1), gj1 = Math.min(nz - 1, j + 1);
+                sl = Math.hypot((ghN[j * nx + gi1] - ghN[j * nx + gi0]) / ((gi1 - gi0) * res || 1), (ghN[gj1 * nx + i] - ghN[gj0 * nx + i]) / ((gj1 - gj0) * res || 1)); }
             var rock = (sl - R.cliffFrom) / (R.cliffTo - R.cliffFrom); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
             var rockSl = rock;
             /* THE GENERATED FLOOR PLAN (2026-09-17): a cave's solid wears the cliff sheet to its top (info.gen.solidSheet); the woods' thicket bank keeps the forest floor */
@@ -63176,6 +64600,11 @@ const ThreeRenderer = (function () {
             }
             blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
+            if (ghN && Math.abs(info.H[k] - h) < 0.05 && ao[k] < 1) {   // THE GROUND UNDER: the hollow is read on the ground, not against a flank it no longer meets
+                var aoR = _hqLightRules().ao || {}, aoT2 = (aoR.terrain != null) ? aoR.terrain : 0.32;
+                var lapG = (ghN[j * nx + Math.max(0, i - 1)] + ghN[j * nx + Math.min(nx - 1, i + 1)] + ghN[Math.max(0, j - 1) * nx + i] + ghN[Math.min(nz - 1, j + 1) * nx + i] - 4 * ghN[k]) / res;
+                ao[k] = Math.max(ao[k], Math.max(0.5, 1 - aoT2 * Math.max(0, Math.min(1, lapG * 0.9))));
+            }
         } if (_hqSliceDue()) yield; }
         var idx = [], escalators = info.drawH ? [] : (room.terrain.features || []).filter(function (f) { return f.escalator; });   // THE JOINED FLIGHTS: the field runs on under an escalator, drawn at its ground
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
@@ -63183,22 +64612,36 @@ const ThreeRenderer = (function () {
            blend — so nothing joins it to the ground; a `float: true` stair ramp loses everything under its run but the first
            0.4 m (its foot on the ground) and the last 0.9 m (its mouth on the tier). The treads and the puffs are hung below. */
         var floats = (info.floats || []).concat(info.drawH ? [] : (info.builts || []));   // THE JOINED FLIGHTS (2026-10-06): a flight no longer cuts the field away (that cut was the gap along both sides of every stair) — the field is drawn under it at its ground
+        /* → 0 drawn · 1 a float PLATEAU's ring (THE FLAT FILL below draws it back) · 2 cut (the void, a flight's run in a void room)
+           · 3 a float flight's run over THE GROUND UNDER (GHa, from data.js info.GD: drawn on the ground under it, no hole under the stair) */
         var underFloat = function (mx, mz) {
-            if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return true;   // THE VOID: no ground drawn between the islands
+            if (info.void && typeof hqTerrainVoidAt === 'function' && hqTerrainVoidAt(info, mx, mz)) return 2;   // THE VOID: no ground drawn between the islands
+            var ring = 0;
             for (var fi = 0; fi < floats.length; fi++) {
                 var f = floats[fi];
                 if (f.k === 'plateau') {
                     var edge = (f.edge != null) ? f.edge : 0.35, din;
                     if (f.r) din = (1 - _hqTEllipse(mx, mz, f)) * Math.min(f.r, f.rz || f.r); else din = _hqTRectIn(mx, mz, f);
-                    if (din > -(edge + res * 1.2) && din < edge + res * 0.75) return true;
+                    if (din > -(edge + res * 1.2) && din < edge + res * 0.75) ring = 1;
                 } else {
                     var L = _hqTRamp(mx, mz, f), ed = (f.edge != null) ? f.edge : 0.35;
-                    if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
-                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return true;
+                    if (f.built || (f.stairs && !f.float)) { if (L.s > -res * 0.5 && L.s < L.L - 0.3 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return 2; continue; }   // (THE STAIRS PACK: every flight is drawn over its wedge)
+                    if (L.s > 0.4 && L.s < L.L - 0.9 && Math.abs(L.v) < f.w / 2 + ed + res * 0.9) return GHa ? 3 : 2;
                 }
             }
-            return false;
+            return ring;
         };
+        /* THE FLAT FILL (2026-11-03, mondo: "what is up with those platforms and how they have ugly cutouts underneath them?"): the ring
+           cut round a float plateau took whole quads of the field — its flank, but also the flat ground round its foot and the flat rim
+           of its top — so every floating cloud stood in a stair-stepped hole straight through the world (the sky's own colour showed
+           through it: the green notches under Heaven's clouds). Now only the flank goes: each quad of the ring is drawn back FLAT at
+           its lowest corner (the ground round the foot stays ground, the rim stays the top, the slope between them is laid flat on
+           the ground under the hanging cloud); a quad with a corner on the open sky of a void room stays cut (the island's cap). */
+        var fillQ = [], fillK = [];
+        var voidCorner = (info.void && typeof hqTerrainVoidAt === 'function') ? function (i, j) {
+            var px = info.x0 + i * res, pz = info.z0 + j * res;
+            return hqTerrainVoidAt(info, px, pz) || hqTerrainVoidAt(info, px + res, pz) || hqTerrainVoidAt(info, px, pz + res) || hqTerrainVoidAt(info, px + res, pz + res);
+        } : null;
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the field runs a metre past the shell; where a staged neighbour lies past that
            edge, the ground there is the NEIGHBOUR's (both would draw the same street a centimetre apart — the flicker) */
         /* THE GAPS (2026-10-28): a quad goes only when it lies wholly on gap squares (its corners, a hair in) — the floor round a gap runs to
@@ -63223,7 +64666,9 @@ const ThreeRenderer = (function () {
             });
             if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
             if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
-            if (!underEscalator && !((floats.length || (info.void && !info.void.holesOnly)) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            var uf = (floats.length || (info.void && !info.void.holesOnly)) ? underFloat(mx, mz) : 0;
+            if (!underEscalator && !uf && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            else if ((uf === 1 || uf === 3) && !underEscalator && !nbGround(mx, mz) && !(voidCorner && voidCorner(i2, j2))) { fillQ.push(a, b, c, d); fillK.push(uf); }   // THE FLAT FILL
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -63233,7 +64678,7 @@ const ThreeRenderer = (function () {
         if (info.paint && info.paint.pal && info.paint.pal.length) _hqPaintAttrs(geo, info.paint.P, nx * nz);   // THE GROUND GRIDS (E3): the painted sheets, one-hot per vertex
         geo.setIndex(idx); geo.computeVertexNormals();
         if (_hqSliceDue()) yield;
-        info._TM = TM;   // THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
+        info._TM = TS;   // ONE SPRITE PER SQUARE (the sheet, not the model scale) — THE TRIPLANAR CLIFF: the sheet's tile in world units (the uv = pos / TM rule, now on every axis)
         var fieldMat = _hqTerrainMat(info, S), field = null;
         /* THE TILES (OPEN_WORLD_PLAN §5.5, Phase 1): the field is cut into HQ_ENGINE_RULES.tileM squares — one mesh each, the
            same material, the normals of the WHOLE field (no seam in the light) — so the frustum drops the squares behind the
@@ -63244,6 +64689,44 @@ const ThreeRenderer = (function () {
             fm.position.y = 0.3; fm.receiveShadow = true; fm.renderOrder = 1; fm._ew_hqPart = 'floor'; fm._ew_hqTerrain = true;
             G.add(fm); if (!field) field = fm;
         });
+        /* THE FLAT FILL: the cut quads drawn back in the field's own material (every attribute copied per corner). THE GROUND UNDER
+           (2026-11-03, mondo on the first fill: "what are these jagged edges" / "what is this gap"): with GHa (the field
+           without its floating pieces) a ring quad that is flat (the ground round the foot, the rim of the top) stays where it is,
+           a quad across the flank and every quad under a float flight's run lie ON THE GROUND UNDER — the same heights as the ground
+           round them, so no step, no crack, no hole; the rock blend of the flank is dropped there (it is ground, not a cliff).
+           Without GH (a void room) a quad lies flat at its lowest corner, as before. */
+        if (fillQ.length) {
+            var fG = new THREE.BufferGeometry(), nQ = fillQ.length / 4, fIdx = [], GHf = GHa, onGround = new Uint8Array(nQ);
+            if (GHf) for (var qg = 0; qg < nQ; qg++) {
+                var hlo = Infinity, hhi = -Infinity; for (var vg = 0; vg < 4; vg++) { var hv = info.H[fillQ[qg * 4 + vg]]; if (hv < hlo) hlo = hv; if (hv > hhi) hhi = hv; }
+                onGround[qg] = (fillK[qg] === 3 || hhi - hlo > 0.05) ? 1 : 0;
+            }
+            Object.keys(geo.attributes).forEach(function (an) {
+                var A = geo.attributes[an], isz = A.itemSize, src = A.array, dst = new src.constructor(nQ * 4 * isz);
+                for (var q = 0; q < fillQ.length; q++) for (var e = 0; e < isz; e++) dst[q * isz + e] = src[fillQ[q] * isz + e];
+                if (an === 'position') for (var q2 = 0; q2 < nQ; q2++) {
+                    if (GHf) { if (onGround[q2]) for (var vq = 0; vq < 4; vq++) dst[(q2 * 4 + vq) * 3 + 1] = GHf[fillQ[q2 * 4 + vq]] * U; continue; }
+                    var lo = Infinity; for (var v = 0; v < 4; v++) lo = Math.min(lo, dst[(q2 * 4 + v) * 3 + 1]);
+                    for (v = 0; v < 4; v++) dst[(q2 * 4 + v) * 3 + 1] = lo;
+                }
+                if (an === 'aBlend' && GHf) for (var q4 = 0; q4 < nQ; q4++) if (onGround[q4]) for (var vb = 0; vb < 4; vb++) {
+                    var nk = fillQ[q4 * 4 + vb]; if (Math.abs(GHf[nk] - info.H[nk]) > 0.05) { dst[(q4 * 4 + vb) * 2] = 0; dst[(q4 * 4 + vb) * 2 + 1] = 0; }
+                }
+                if (an === 'aAO' && GHf) for (var q6 = 0; q6 < nQ; q6++) if (onGround[q6]) for (var va = 0; va < 4; va++) {   // (the hollow under the flank is no hollow on the ground)
+                    var nk3 = fillQ[q6 * 4 + va]; if (Math.abs(GHf[nk3] - info.H[nk3]) > 0.05) dst[q6 * 4 + va] = 1;
+                }
+                fG.setAttribute(an, new THREE.BufferAttribute(dst, isz, A.normalized));
+            });
+            for (var q3 = 0; q3 < nQ; q3++) { var o4 = q3 * 4; fIdx.push(o4, o4 + 2, o4 + 1, o4 + 1, o4 + 2, o4 + 3); }   // (a, c, b, b, c, d) as the field
+            fG.setIndex(fIdx); fG.deleteAttribute('normal'); fG.computeVertexNormals();
+            /* a corner the ground shares with the field takes the field's own normal (no facet in the light at the seam) */
+            if (geo.attributes.normal) { var fn = fG.attributes.normal.array, gn = geo.attributes.normal.array;
+                for (var q5 = 0; q5 < nQ; q5++) for (var vn = 0; vn < 4; vn++) { var nk2 = fillQ[q5 * 4 + vn], at = (q5 * 4 + vn) * 3;
+                    if (!GHf || !onGround[q5] || Math.abs(GHf[nk2] - info.H[nk2]) <= 0.05) { if (gn[nk2 * 3] || gn[nk2 * 3 + 1] || gn[nk2 * 3 + 2]) { fn[at] = gn[nk2 * 3]; fn[at + 1] = gn[nk2 * 3 + 1]; fn[at + 2] = gn[nk2 * 3 + 2]; } } }
+                fG.attributes.normal.needsUpdate = true; }
+            var fMesh = new THREE.Mesh(fG, fieldMat); fMesh.position.y = 0.3; fMesh.receiveShadow = true; fMesh.renderOrder = 1; fMesh._ew_hqPart = 'floor'; fMesh._ew_hqTerrain = true; fMesh.name = 'hq:field:flatfill';
+            G.add(fMesh);
+        }
         if (tiles) geo.dispose();
         if (_hqSliceDue()) yield;
         /* THE OUTER GROUND (2026-09-17): an open field no longer ends at a square edge over a flat apron — the ground
@@ -63384,7 +64867,7 @@ const ThreeRenderer = (function () {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
             if (w.block) {
                 var bm = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), boxMatOf(w));
-                _nrBoxUV(bm.geometry, w.t * U, hM * U, (L + w.t) * U, TM * (w.key ? 1 : sheetLook.cliffZoom));
+                _nrBoxUV(bm.geometry, w.t * U, hM * U, (L + w.t) * U, TS * (w.key ? 1 : sheetLook.cliffZoom));
                 bm.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); bm.rotation.y = yaw;
                 bm.renderOrder = 1; bm.castShadow = true; bm.receiveShadow = true; bm._ew_hqPart = 'floor'; bm._ew_hqBox = true; G.add(bm);
                 return;
@@ -63398,7 +64881,7 @@ const ThreeRenderer = (function () {
             if (w.glass) { m.renderOrder = 3; m.castShadow = false; }
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat
                (2026-10-24: every wall row now, the yard's rule was the only one at the board's density) */
-            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
+            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TS * sheetLook.cliffZoom : TS);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
@@ -63407,11 +64890,12 @@ const ThreeRenderer = (function () {
         var tierWalls = info.walls.filter(function (w) { return w.tier && !w.ghost; });
         for (var wi = 0; wi < info.walls.length; wi++) { var w0 = info.walls[wi]; if (!w0.tier && !w0.ghost) drawWall(w0); if ((wi & 15) === 15 && _hqSliceDue()) yield; }   // a `ghost` wall is the walker's only (the stands' tunnel lining)
         if (_hqSliceDue()) yield;
-        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k, w) { return matOf(k, w); }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
+        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TS, function (k, w) { return matOf(k, w); }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
         try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
         if (info.texb && info.texb.length) { try { _hqBuildTexRows(info, G, U); } catch (e) { console.warn('[HQ] the textured buildings failed', e); } }
+        if (info.texb && info.texb.length) { try { _hqBuildTexPacks(info, G, U, TM); } catch (e) { console.warn('[HQ] the pack buildings failed', e); } }   // THE PACK BUILDINGS (2026-11-03)
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -63457,6 +64941,8 @@ const ThreeRenderer = (function () {
                 });
                 cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; cg._ew_occNoTree = true; G.add(cg);
                 cblk.obj = cg; _hq.blockers.push(cblk);
+                /* THE CHESS POSITIONS (2026-11-03): a piece only some of the garden's positions have stands only in the current one (data.js hqLgChessOn) */
+                if (Array.isArray(t.chessPos)) { var cvr = { obj: cg, blk: cblk, H: Hrec, t: t }; _hqChessVar.push(cvr); if (_hqChessVar.length > 24) _hqChessVar.splice(0, _hqChessVar.length - 24); _hqChessVarApply(cvr); }
                 return;
             }
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
@@ -63667,11 +65153,49 @@ const ThreeRenderer = (function () {
             },
         };
     }
+    /* THE BUILDING FROM THE PACK (2026-11-03, mondo: "making a building now just paints all of its sides with the window ... the bottom
+       of the buildings are just all half windows which doesnt make sense"): a building wearing one urban sheet (`key`) gets the pieces
+       the pack draws for the rest of a building, picked to suit that sheet unless the row names its own —
+       `keyGround` the ground floor's lower row (a glass sheet: the tall storefront glass under a concrete band; a painted plaster: the
+       banded plaster the pack paints for the foot), `keyDoor` the door (a half-wide door sheet, drawn as a DOUBLE door: the sheet and its
+       mirror), `keyOver` the see-through window decal laid over the wall on each upper storey's upper row (a plaster / stucco: the
+       residential windows; corrugated metal / striped concrete: the factory windows; glass: none). 'none' = no door / no decal. */
+    function _hqTexSheetPlan(lot, rng, neon) {
+        var U = function (n) { return n ? 'urban:' + n : null; }, nm = String(lot.sheet || '').replace(/^urban:/, ''), Q = { sheet: { key: lot.sheet }, g1: null, door: null, over: null };
+        var pick = function (fam, f) { return (typeof urbanTexPick === 'function') ? urbanTexPick(fam, rng, f) : null; };
+        var glowOf = function (n) { var g = neon && n && typeof urbanTexGlow === 'function' ? urbanTexGlow(n) : null; return g ? U(g) : null; };
+        var m, isGlass = /^GlassWindow/.test(nm);
+        if (isGlass) {
+            m = /(\d)/.exec(nm); var n = m ? m[1] : '1', broken = /Broken/.test(nm), tall = broken ? ('GlassWindowTallBroken' + n + 'a') : ('GlassWindowTall' + n + 'a');
+            if (!URBAN_TEXTURES[tall]) tall = 'GlassWindowTall1a';
+            Q.g0 = { key: U(tall), glow: broken ? null : glowOf(tall), glass: true }; Q.g1 = { key: U('ConcreteStriped2a') };
+            Q.door = U(pick('DoorStorefrontHalf')); Q.sheet.glass = true; Q.sheet.glow = glowOf(nm); Q.parapet = U('ConcreteStriped2a');
+        } else if ((m = /^PlasterWallPainted1([a-f])$/.exec(nm))) {
+            var band = 'PlasterWallPainted2' + ({ a: 'a', b: 'a', c: 'b', d: 'c', e: 'd', f: 'e' })[m[1]];
+            Q.g0 = { key: U(band) }; Q.door = U('DoorPaintedHalf' + ({ a: '1', b: '1', c: '2', d: '3', e: '4', f: '1' })[m[1]] + 'a');
+            var dr = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr), glow: glowOf(dr) };
+        } else if (/^PlasterWallPainted2/.test(nm)) {
+            Q.sheet = { key: U('PlasterWallPainted1a') }; Q.g0 = { key: lot.sheet }; Q.door = U('DoorPaintedHalf1a');
+            var dr2 = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr2), glow: glowOf(dr2) };
+        } else if (/^PlasterWallStucco/.test(nm)) {
+            Q.door = U(pick('DoorWoodenHalf')); var dr3 = pick('DecalWindowsResidential', /[12]a$/); Q.over = { key: U(dr3), glow: glowOf(dr3) };
+        } else if (/^(MetalCorrugatedPainted|ConcreteStriped)/.test(nm)) {
+            Q.door = U('DoorPaintedHalf1a'); var df = pick('DecalWindowsFactory', /[12]a$/); Q.over = { key: U(df), glow: glowOf(df) };
+        } else Q.door = U('DoorPaintedHalf1a');
+        if (!Q.g0) Q.g0 = Q.sheet;
+        return Q;
+    }
+    /* the row's own pieces over the picks: a sheet key (`urban:` added to a bare pack name), 'none' = nothing, empty = the pick */
+    function _hqTexOwn(v) { if (v == null || v === '') return undefined; if (v === 'none') return null; v = String(v); return (v.indexOf(':') < 0 && typeof URBAN_TEXTURES !== 'undefined' && URBAN_TEXTURES[v]) ? 'urban:' + v : v; }
     /* one textured building on a lot: the box's four faces as cell grids, the roof, the parapet, the plant */
     function _hqTexBuilding(lot, info, batch, rng, gen, U) {
         var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = (lot.h > 0) ? lot.h : st * HQ_TEXB.storey, CY = H / rows;   // `h` (THE BUILDING TIERS): a set roof height, the cells stretched to it
         /* THE BUILDING'S OWN SHEET (2026-10-30): a row's `key` on every face cell (and the parapet), as a wall wears its key — the style's door stays */
         if (lot.sheet) { var one = { key: lot.sheet }; P.wall = P.win = P.ground = P.base = P.top = one; P.over = null; P.one = true; }
+        var Q = lot.sheet ? _hqTexSheetPlan(lot, rng, P.neon) : null;   // THE BUILDING FROM THE PACK: the ground floor, the door, the decals
+        var ownG = _hqTexOwn(lot.keyGround), ownD = _hqTexOwn(lot.keyDoor), ownO = _hqTexOwn(lot.keyOver);
+        var doorKey = ownD !== undefined ? ownD : (Q ? Q.door : undefined), doorPair = !!Q || ownD !== undefined;   // a pack building's door is a double door
+        var overOwn = ownO !== undefined ? (ownO ? { key: ownO, glow: (P.neon && typeof urbanTexGlow === 'function' && urbanTexGlow(ownO.replace(/^urban:/, ''))) ? 'urban:' + urbanTexGlow(ownO.replace(/^urban:/, '')) : null } : null) : (Q ? Q.over : undefined);
         if (lot.roofOnly && !lot.sheet) P.wall = P.top = { key: 'urban:ConcreteStriped2a' };   // THE PRISM ROOFS: a prism building's parapet in concrete
         /* THE INSIDE (2026-10-30): a hollow building's doorway (data.js hqTexbDoor — the walker's gap in its front wall) */
         var hol = (lot.hollow && !lot.roofOnly && typeof hqTexbDoor === 'function') ? hqTexbDoor(lot) : null;
@@ -63707,16 +65231,26 @@ const ThreeRenderer = (function () {
                     if (upperOfStorey || (ground && !(F.front && ci === doorCol))) { if (!(ground && P.style === 'stucco')) over = P.over; }
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
+                if (Q) { cell = r === 0 ? Q.g0 : (r === 1 && Q.g1 ? Q.g1 : Q.sheet); over = null; door = (ground && F.front && ci === doorCol) ? door : null; }
+                if (ownG !== undefined && r === 0 && ownG) cell = { key: ownG, glass: /GlassWindow/.test(ownG) };
+                if (overOwn !== undefined) over = (r >= 3 && r % 2 === 1) ? overOwn : null;
+                if (door && doorKey !== undefined) door = doorKey ? { key: doorKey, half: true, pair: doorPair } : null;
                 if (!cell || !cell.key) continue;
                 var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY, v0 = 0;
                 if (hol && F.front && ci === hol.col && y0 < hol.doorH - 1e-3) { if (y1 <= hol.doorH + 1e-3) continue; v0 = (hol.doorH - y0) / CY; y0 = hol.doorH; over = null; }   // THE INSIDE: the doorway's square, open to the lintel
-                var uRep = cell.tall ? 2 : 1, kind = (!P.one && (cell === P.win || cell === P.ground)) ? 'glass' : 'wall';
+                var uRep = cell.tall ? 2 : 1, kind = ((!P.one && (cell === P.win || cell === P.ground)) || cell.glass) ? 'glass' : 'wall';
                 batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, v0], [uRep, v0], [uRep, 1], [0, 1]]);
                 if (over && over.key) {
                     var ox = F.n[0] * out, oz = F.n[1] * out;
                     batch.add(over.key, over.glow || null, 'over', [W(x0 + ox, y0, z0 + oz), W(x1 + ox, y0, z1 + oz), W(x1 + ox, y1, z1 + oz), W(x0 + ox, y1, z0 + oz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
                 }
-                if (door && door.key) {
+                if (door && door.key && door.pair) {   // THE DOUBLE DOOR: the half-wide sheet and its mirror, side by side in the middle of the square
+                    var hd2 = Math.min(cw / 2, HQ_TEXB.cell / 2), pc = (cw - 2 * hd2) / 2, ox3 = F.n[0] * out * 1.5, oz3 = F.n[1] * out * 1.5;
+                    [[0, 1], [1, 0]].forEach(function (uu, side) {
+                        var a0 = pc + side * hd2, ax0 = x0 + F.a[0] * a0, az0 = z0 + F.a[1] * a0, ax1 = ax0 + F.a[0] * hd2, az1 = az0 + F.a[1] * hd2;
+                        batch.add(door.key, null, 'over', [W(ax0 + ox3, y0, az0 + oz3), W(ax1 + ox3, y0, az1 + oz3), W(ax1 + ox3, y1, az1 + oz3), W(ax0 + ox3, y1, az0 + oz3)], [[uu[0], 0], [uu[1], 0], [uu[1], 1], [uu[0], 1]]);
+                    });
+                } else if (door && door.key) {
                     var dw = door.wide ? cw : cw / 2, dx0 = x0 + F.a[0] * (cw - dw) / 2, dz0 = z0 + F.a[1] * (cw - dw) / 2, dx1 = dx0 + F.a[0] * dw, dz1 = dz0 + F.a[1] * dw;
                     var ox2 = F.n[0] * out * 1.5, oz2 = F.n[1] * out * 1.5;
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
@@ -63724,7 +65258,7 @@ const ThreeRenderer = (function () {
             }
             if (lot.flat) return;   // THE BUILDING TIERS: a walked roof has no parapet (its rails, bridges and stairs meet the edge)
             /* the parapet's outer face in the wall's sheet (the top row's, if any) */
-            var pk = (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
+            var pk = (Q && Q.parapet) || (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
             var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
             batch.add(pk, null, 'wall', [W(px0, H, pz0), W(px1, H, pz1), W(px1, H + ph, pz1), W(px0, H + ph, pz0)], [[0, 0.7], [F.L / C, 0.7], [F.L / C, 0.7 + ph / C], [0, 0.7 + ph / C]]);
         });
@@ -63776,13 +65310,41 @@ const ThreeRenderer = (function () {
         if (typeof URBAN_TEXTURES === 'undefined' || typeof urbanTexPick !== 'function') return 0;
         var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
+            if (typeof hqTexbPack === 'function' && hqTexbPack(f)) return;   // THE PACK BUILDINGS: _hqBuildTexPacks
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
+        return n;
+    }
+    /* THE PACK BUILDINGS (2026-11-03, mondo on the Buildings pack's shop blocks: "incorporate those into the game like in disaster city and
+       the map editor"): one of data.js HQ_PACK_BUILDINGS (a whole photo-textured model, its shop front at +Z) at a footprint `w` × `d`
+       metres — fitted to the width (the height follows, one scale, so a storey stays a storey), its depth stretched or squashed to the
+       footprint's (the city keeps that within 70 %); the base on y = 0, the front at the group's +Z. Never skipped in low-performance mode:
+       it is the building, the walk stands on its roof. */
+    function _hqPackBuildingModel(PB, w, d, neon) {
+        var sc = w / PB.w;
+        var m = _hzMiscKit('pack_building', { url: _R2_MISC + PB.file, metres: w, fit: 'span', lift: neon ? 0.3 : 0.16, cast: false });
+        m.scale.z = Math.max(0.3, d / (PB.d * sc));
+        m.name = 'hq_pack_building';
+        return m;
+    }
+    /* the editor's texbuilding rows whose `key` is a pack building, each that model in its box (data.js hqTexBuildingRows: its walls, its roof) */
+    function _hqBuildTexPacks(info, G, U, TM) {
+        if (typeof hqTexbPack !== 'function') return 0;
+        var neon = !!(info.gen && info.gen.neon), n = 0, prevTs = _hzKitTs; _hzKitTs = TM;
+        try {
+            info.texb.forEach(function (f) {
+                var PB = hqTexbPack(f); if (!PB) return;
+                try {
+                    var g = new THREE.Group(); g.position.set(f.x * U, (f.base || 0) * U + 0.3, f.z * U); g.rotation.y = -((f.rot || 0) * Math.PI / 180); G.add(g);
+                    g.add(_hqPackBuildingModel(PB, Math.max(2, f.w || 8), Math.max(2, f.d || 8), neon)); n++;
+                } catch (e) { console.warn('[HQ] a pack building failed', f.key, e); }
+            });
+        } finally { _hzKitTs = prevTs; }
         return n;
     }
     /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): a
@@ -63795,7 +65357,7 @@ const ThreeRenderer = (function () {
             if (!hqTexbPrism(f)) return;
             var st = Math.max(1, Math.min(12, Math.round(f.storeys || 2))), H = (f.h > 0) ? f.h : st * HQ_TEXB.storey;
             try {
-                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180) });
+                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180), bands: (typeof HQ_TEXB_PRISM_BANDS !== 'undefined' && HQ_TEXB_PRISM_BANDS[f.key]) || null });
                 if (b) { b._ew_hqLot = 'texb:' + (f.id || n); n++; }
             } catch (e) { console.warn('[HQ] a prism building failed', f.key, e); }
         });
@@ -63857,6 +65419,18 @@ const ThreeRenderer = (function () {
                 lot._roofY = (lot.base || 0) + lot.top;
                 _hqLotStand(lot, (lot.base || 0) + lot.top + 0.5);   // THE ROOFS: the low lot's parapet slab (below), until a building says otherwise
                 if (!prisms) return;   // the mall: the units ARE the rise, fronted below
+                /* THE PACK BUILDINGS (2026-11-03, mondo: the Buildings pack's shop blocks "into the game like in disaster city"): a `pack` lot
+                   (data.js city lots, `packP`) stands that whole model, its shop front to the street, its roof the walk's */
+                var PB = lot.pack && typeof HQ_PACK_BUILDINGS !== 'undefined' ? HQ_PACK_BUILDINGS[lot.pack] : null;
+                if (PB) {
+                    try {
+                        var pg = new THREE.Group(); pg.position.set(lot.x * U, base, lot.z * U); pg.rotation.y = yaw; G.add(pg);
+                        pg.add(_hqPackBuildingModel(PB, lot.w, lot.d, lotNeonOf(lot)));
+                        var pr = PB.roof * lot.w / PB.w;
+                        lot._roofY = (lot.base || 0) + pr; _hqLotStand(lot, (lot.base || 0) + pr + 0.02);
+                        return;
+                    } catch (e) { console.warn('[HQ] a pack building failed', lot.pack, e); }
+                }
                 if (texOn) {
                     var lr = _mulberry32(((lot.seed | 0) * 7 + 11) >>> 0);
                     if (lot.low || lr() < ((lot.texP != null) ? lot.texP : texP)) {
@@ -63914,6 +65488,7 @@ const ThreeRenderer = (function () {
         prevTs = _hzKitTs; _hzKitTs = TM;
         try {
             fronts.forEach(function (f, fi) {
+                if ((lotById[f.lot] || {}).pack) return;   // THE PACK BUILDINGS (2026-11-03): the model wears its own shop fronts
                 var lot = lotById[f.lot] || {}, g = _hqCityFrontGroup(f, U), L = f.len, top = (lot._roofY != null ? lot._roofY - (lot.base || 0) : f.top);
                 var store = (lot.fronts || gen.fronts) === 'store';   // THE DISTRICTS (D2): the front's kind is the lot's district's
                 var ink = _HQ_STORE_INKS[(f.lot * 7 + fi) % _HQ_STORE_INKS.length];
@@ -64749,46 +66324,26 @@ const ThreeRenderer = (function () {
        clockwise — the star chart's rule), `dist` = the share of the sky disc (0.6–1.0), `s` = a
        size multiplier, `y` = the base in shares of the disc (default just under the horizon so the
        foot hides in the haze). Every kind builds in metres (U px per metre) and faces the room.
-       `peak` = a snow-capped cone with a shoulder and a lenticular cloud over it (Shasta);
+       THE CONE MOUNTAINS ARE GONE (2026-11-03, mondo: "can we please get rid of these mountains in the game, they look
+       terrible"): `peak` (Shasta, the Range, the Transantarctics, Olympus Mons, the Clash temple's three) and `mountain`
+       (the editor's default mark) were stacked ConeGeometry with a white cone for snow, standing INSIDE the wide rooms'
+       own extent (the 82 m disc). Both builders and every data.js row are removed; THE ROCKS' tinted asteroid rocks were
+       tried as a stand-in (stretched to a massif) and read as giant blobs, and no pack holds a real mountain. A real far
+       range model would come back as a new kind here. An old editor row naming either kind is skipped (no builder).
        `castle` = a curtain wall, four corner towers and the keep with its lit windows (Camelot).
        Adding a kind = one builder here; the woods' rooms name theirs in data.js HQ_WOODS_LANDMARKS. */
     var _hqLandmarkBuilders = {
-        /* THE WEENIES ON THE GROUND (OPEN_WORLD_PLAN Phase 3, fork 14's default kinds; a room's `shell.sky.landmarks` names
-           them). MOUNTAIN: a broad massif — a tall snow-capped summit over two shoulders
-           and a ridge of lower peaks, the lenticular over the top; `temple` = a marble colonnade glinting on the summit
-           (Olympus). `s` scales the whole. */
-        mountain: function (U, o, rng) {
-            var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
-            var rock = _hqMat('mountain', 6, 4, { color: 0x7f8798, shininess: 2, specular: 0x080808 });
-            var rockD = _hqMat('mountain', 5, 3, { color: 0x69707f, shininess: 2, specular: 0x060606 });
-            var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
-            var H0 = 64 * s, R0 = 46 * s;
-            var cone = function (r, h, x, z, mat, seg) { var c = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, seg || 10), mat); c.position.set(x * U, h * U / 2, z * U); c.rotation.y = R() * Math.PI; g.add(c); return c; };
-            cone(R0, H0, 0, 0, rock, 12);
-            cone(R0 * 0.9, H0 * 0.66, R0 * 0.75, R0 * 0.15, rockD, 10);
-            cone(R0 * 0.85, H0 * 0.6, -R0 * 0.8, R0 * 0.1, rockD, 10);
-            [[1.55, 0.42, 0.62], [-1.6, 0.36, 0.58], [2.2, 0.28, 0.5], [-2.25, 0.25, 0.46]].forEach(function (q) { cone(R0 * q[2], H0 * q[1], R0 * q[0], R0 * (0.25 + R() * 0.3), rock, 8); });
-            var capH = H0 * 0.34; var cap = new THREE.Mesh(new THREE.ConeGeometry(R0 * 0.36 * U + 0.4 * U, capH * U, 12), snow); cap.position.y = (H0 - capH / 2) * U + 0.3 * U; g.add(cap);
-            var cap2 = new THREE.Mesh(new THREE.ConeGeometry(R0 * 0.3 * U, H0 * 0.2 * U, 10), snow); cap2.position.set(R0 * 0.75 * U, (H0 * 0.66 - H0 * 0.1) * U + 0.2 * U, R0 * 0.15 * U); g.add(cap2);
-            if (o.temple) {
-                /* the gods' house: a stylobate, eight columns, a pediment — small at this distance, it reads as a white glint on the top */
-                var marble = _hqMat('marble_light', 2, 1, { color: 0xfff8ea, shininess: 10 });
-                var ty = H0 * U - 0.4 * U, tw = 7 * s, td = 4.5 * s;
-                var base = _hqBox(tw, 0.8 * s, td, marble); base.position.set(0, ty + 0.4 * s * U, 0); g.add(base);
-                for (var i = 0; i < 8; i++) { var cx = (-tw / 2 + 0.5 * s + (i % 4) * (tw - 1 * s) / 3), cz = (i < 4 ? -1 : 1) * (td / 2 - 0.5 * s); var col = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * s * U, 0.3 * s * U, 3.4 * s * U, 8), marble); col.position.set(cx * U, ty + (0.8 + 1.7) * s * U, cz * U); g.add(col); }
-                var roof = _hqBox(tw + 0.4 * s, 0.7 * s, td + 0.4 * s, marble); roof.position.set(0, ty + 4.55 * s * U, 0); g.add(roof);
-                var glint = _hzGlowSprite(9 * s * U, 0xfff2d0, 0.45, 0.08, 0.04, 0.5); glint.position.set(0, ty + 3 * s * U, 0); g.add(glint);
-            }
-            try { var len = _hzLenticular(R); if (len) { len.position.set(0, (H0 + 10 * s) * U, 0); g.add(len); } } catch (e) {}
-            return g;
-        },
         /* TOWER: a far city's skyline — a cluster of towers of mixed height round one tall spire, their windows a grid of
            warm glows that are NIGHT LAMPS (`_ew_night`: the clock lights them at dusk), a red beacon blinking on the spire */
         tower: function (U, o, rng) {
             var g = new THREE.Group(), s = o.s || 1, R = rng || Math.random;
-            var glassA = _hqMat(null, 1, 1, { color: 0x5a6878, shininess: 60, specular: 0x445566 });
-            var glassB = _hqMat(null, 1, 1, { color: 0x6c7482, shininess: 40, specular: 0x333b44 });
-            var stone = _hqMat(null, 1, 1, { color: 0x8a8580, shininess: 6 });
+            /* THE TEXTURED TOWERS (mondo 2026-11-03: "tower weenie - they still need to be textured"): every block wears an urban pack
+               facade sheet (green curtain glass, square office glass, bronze-framed glass), sized by the landmark world UVs (one sheet per
+               6 m: a storey every 3 m), never a flat colour; the mast is plain steel */
+            var glassA = _hqMat('urban:GlassWindowTall1a', 1, 1, { shininess: 60, specular: 0x445566 });
+            var glassB = _hqMat('urban:GlassWindowSquare1a', 1, 1, { shininess: 40, specular: 0x333b44 });
+            var stone = _hqMat('urban:GlassWindowTall4a', 1, 1, { shininess: 20 });
+            var steel = _hqMat(null, 1, 1, { color: 0x6a6e74, shininess: 50 });
             var n = 9, spire = null;
             for (var i = 0; i < n; i++) {
                 var tall = (i === 0), h = (tall ? 78 : 26 + R() * 40) * s, w = (tall ? 12 : 8 + R() * 8) * s, d = (tall ? 12 : 8 + R() * 7) * s;
@@ -64803,7 +66358,7 @@ const ThreeRenderer = (function () {
                 if (tall) spire = { x: x, z: z, h: h };
             }
             if (spire) {
-                var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s * U, 0.6 * s * U, 18 * s * U, 6), stone); mast.position.set(spire.x * U, (spire.h + 9 * s) * U, spire.z * U); g.add(mast);
+                var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s * U, 0.6 * s * U, 18 * s * U, 6), steel); mast.position.set(spire.x * U, (spire.h + 9 * s) * U, spire.z * U); g.add(mast);
                 var beacon = _hzGlowSprite(4.5 * s * U, 0xff3a2a, 0.7, 0.55, 0.0, 1.4); beacon.position.set(spire.x * U, (spire.h + 18.5 * s) * U, spire.z * U); g.add(beacon);
             }
             return g;
@@ -64840,43 +66395,35 @@ const ThreeRenderer = (function () {
             g.children[0].position.y = 26 * s * U;
             return g;
         },
-        peak: function (U, o, rng) {
-            var g = new THREE.Group(), s = o.s || 1;
-            var h = 46 * s, r = 40 * s;
-            /* `tex` / `color` dress it in the land's own rock (Olympus Mons wears Mars's red rock), `snow: false` drops the cap and the cloud (2026-10-06) */
-            var rock = _hqMat(o.tex || 'mountain', 6, 4, { color: (o.color != null) ? o.color : 0x8892a6, shininess: 2, specular: 0x080808 });
-            var snow = _hqMat('marble_light', 4, 3, { color: 0xf2f6ff, shininess: 4 });
-            var cone = new THREE.Mesh(new THREE.ConeGeometry(r * U, h * U, 11), rock); cone.position.y = h * U / 2; g.add(cone);
-            var sh = new THREE.Mesh(new THREE.ConeGeometry(r * 0.72 * U, h * 0.58 * U, 9), rock); sh.position.set(r * 0.55 * U, h * 0.29 * U, r * 0.2 * U); g.add(sh);
-            var sh2 = new THREE.Mesh(new THREE.ConeGeometry(r * 0.5 * U, h * 0.42 * U, 8), rock); sh2.position.set(-r * 0.62 * U, h * 0.21 * U, -r * 0.1 * U); g.add(sh2);
-            if (o.snow === false) return g;
-            var cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.43 * U + 0.4 * U, h * 0.43 * U, 11), snow); cap.position.y = (h - h * 0.43 / 2) * U + 0.3 * U; g.add(cap);
-            /* the lenticular over the summit — the mountain's own cloud (the far roster's builder, hung still) */
-            try { var len = _hzLenticular(rng || Math.random); if (len) { len.position.set(0, (h + 9 * s) * U, 0); len.scale.multiplyScalar(0.9); g.add(len); } } catch (e) {}
-            return g;
-        },
+        /* THE CASTLE (mondo 2026-11-03: "castle - im assuming you would make the entire castle using assets from the castle pack?"):
+           built piece by piece from the Castle and Fort pack (McSteeg, R2 Assets/misc/Castles_and_Forts.glb — one node per piece,
+           a 2 m grid: walls 4 or 2 long × 2 tall, tower storeys 2 × 2 × 2), every piece its own model. The curtain wall at ×6 (a
+           12 m wall, the old height): two 4-long walls a side, the front a gate between two 2-long walls; a round tower (a storey,
+           the crenellated top, the pack's cone roof) on each corner; the keep a taller round tower at ×7 in the ward. The boxes,
+           cylinders, the banner and the window glows are gone. The pieces stream in (nothing stands in while they load). */
         castle: function (U, o, rng) {
             var g = new THREE.Group(), s = o.s || 1;
-            var wall = _hqMat('castle_wall', 8, 2, { color: 0x9aa0ac, shininess: 3 });
-            var keepM = _hqMat('bricks_2', 6, 6, { color: 0x8c909c, shininess: 3 });
-            var roof = _hqMat(null, 1, 1, { color: 0x2c3c58, shininess: 8 });
-            var W = 44 * s, Hw = 12 * s, T = 2.4 * s;
-            [[0, -W / 2], [0, W / 2]].forEach(function (p) { var b = _hqBox(W, Hw, T, wall); b.position.set(p[0] * U, Hw / 2 * U, p[1] * U); g.add(b); });
-            [[-W / 2, 0], [W / 2, 0]].forEach(function (p) { var b = _hqBox(T, Hw, W, wall); b.position.set(p[0] * U, Hw / 2 * U, p[1] * U); g.add(b); });
-            var tower = function (x, z, rr, hh) {
-                var t = new THREE.Mesh(new THREE.CylinderGeometry(rr * U, rr * 1.08 * U, hh * U, 12), wall); t.position.set(x * U, hh / 2 * U, z * U); g.add(t);
-                var c = new THREE.Mesh(new THREE.ConeGeometry(rr * 1.18 * U, rr * 1.6 * U, 12), roof); c.position.set(x * U, (hh + rr * 0.8) * U, z * U); g.add(c);
+            var url = _R2_MISC + 'Castles_and_Forts.glb#', pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            var H = { Wall_2x4: 2, Wall_2x2: 2, Gate_2x4: 2.05, Tower_Mid: 2, Tower_Doorway: 2, Tower_top_1: 2.16, Roof_Cone: 2.23 };
+            var piece = function (node, k, x, y, z, ry) {
+                var m = _miscModelInstance(url + node, true, H[node] * k * U, { fit: 'height', matPick: pick });
+                m.position.set(x * U, y * U, z * U); m.rotation.y = ry || 0; g.add(m); return m;
             };
-            [[-W / 2, -W / 2], [W / 2, -W / 2], [-W / 2, W / 2], [W / 2, W / 2]].forEach(function (p) { tower(p[0], p[1], 5 * s, 20 * s); });
-            var keep = _hqBox(20 * s, 24 * s, 20 * s, keepM); keep.position.y = 12 * s * U; g.add(keep);
-            tower(0, 0, 5.5 * s, 36 * s);
-            /* the banner on the great tower, and the lit windows */
-            var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * s * U, 0.15 * s * U, 8 * s * U, 6), roof); pole.position.y = (36 + 5.5 * 0.8 + 4) * s * U; g.add(pole);
-            var flag = _hqBox(4 * s, 2.2 * s, 0.1 * s, _hqMat(null, 1, 1, { color: 0xb8322e, shininess: 4 })); flag.position.set(2 * s * U, (36 + 5.5 * 0.8 + 6.5) * s * U, 0); g.add(flag);
-            for (var i = 0; i < 6; i++) {
-                var wx = (-6 + (i % 3) * 6) * s, wy = (8 + Math.floor(i / 3) * 8) * s;
-                var gl = _hzGlowSprite(2.2 * s * U, 0xffb060, 0.55, 0.1, 0.05, 0.8 + i * 0.13); gl.position.set(wx * U, wy * U, (10 * s + 0.6) * U); g.add(gl);
-            }
+            var tower = function (k, x, z, storeys) {
+                var y = 0;
+                storeys.forEach(function (n) { piece(n, k, x, y, z, 0); y += 2 * k; });
+                piece('Tower_top_1', k, x, y, z, 0);
+                piece('Roof_Cone', k, x, y + 2.0 * k, z, 0);
+            };
+            var k = 6 * s, hw = 24 * s, Q = Math.PI / 2;
+            /* the curtain wall: the sides along z stand as authored (long along z), the sides along x turned a quarter */
+            [-1, 1].forEach(function (sd) {
+                piece('Wall_2x4', k, sd * hw, 0, -12 * s, 0); piece('Wall_2x4', k, sd * hw, 0, 12 * s, 0);   // west / east
+                piece('Wall_2x4', k, -12 * s, 0, -hw, Q); piece('Wall_2x4', k, 12 * s, 0, -hw, Q);           // the back
+            });
+            piece('Wall_2x2', k, -18 * s, 0, hw, Q); piece('Gate_2x4', k, 0, 0, hw, Q); piece('Wall_2x2', k, 18 * s, 0, hw, Q);   // the front: the gate
+            [[-hw, -hw], [hw, -hw], [-hw, hw], [hw, hw]].forEach(function (p) { tower(k, p[0], p[1], ['Tower_Mid']); });
+            tower(7 * s, 0, -4 * s, ['Tower_Doorway', 'Tower_Mid']);   // the keep
             return g;
         },
         /* THE CASTLE IN THE SKY (2026-09-18, CAMELOT CASTLE — the user's "possibly a castle in the sky"):
@@ -64913,12 +66460,12 @@ const ThreeRenderer = (function () {
                 var isle = new THREE.Mesh(new THREE.SphereGeometry(r * U, 14, 9), cloud);
                 isle.scale.set(1, 0.34, 0.8); isle.position.set(p[0] * s * U, p[1] * s * U, p[2] * s * U); g.add(isle);
                 if (last) {
-                    /* the flight between: nine treads climbing from the last isle's rim to this one's */
-                    var n = 9;
+                    /* the flight between: one-tile treads (mondo 2026-11-03), as many as the climb needs to read as a stair */
+                    var n = Math.max(9, Math.ceil(Math.hypot(p[0] - last[0], p[1] - last[1], p[2] - last[2]) * s / HQ_TILE_M));
                     for (var k = 0; k < n; k++) {
                         var t = (k + 0.5) / n;
                         var tx = (last[0] + (p[0] - last[0]) * t) * s, ty = (last[1] + (p[1] - last[1]) * t) * s + 2 * s, tz = (last[2] + (p[2] - last[2]) * t) * s;
-                        var tread = _hqBox(6 * s, 1.1 * s, 4 * s, step); tread.position.set(tx * U, ty * U, tz * U); tread.rotation.y = Math.atan2(p[0] - last[0], -(p[2] - last[2])); g.add(tread);
+                        var tread = _hqBox(HQ_TILE_M, 1.1 * s, HQ_TILE_M, step);   /* ONE TILE a tread (mondo 2026-11-03) */ tread.position.set(tx * U, ty * U, tz * U); tread.rotation.y = Math.atan2(p[0] - last[0], -(p[2] - last[2])); g.add(tread);
                     }
                 }
                 last = p;
@@ -65176,6 +66723,7 @@ const ThreeRenderer = (function () {
             }
             var leg = _hqBox(0.06, h - 0.05, d - 0.1, body); leg.position.set((w / 2 - 0.05) * U, ((h - 0.05) / 2) * U, 0); g.add(leg);
             var mod = _hqBox(w - 0.5, h - 0.3, 0.03, body); mod.position.set(0.2 * U, ((h - 0.3) / 2 + 0.12) * U, -(d / 2 - 0.06) * U); g.add(mod);
+            _hqDecorWear('tanker_desk', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE SERVING LINE (Room 86, 2026-09-16 — "food trays floating in the
@@ -65261,6 +66809,7 @@ const ThreeRenderer = (function () {
                 b2.position.set((-0.32 + i * 0.16) * U, (0.03 + hgt / 2) * U, (0.08 + (i % 2) * 0.07) * U);
                 g.add(b2);
             }
+            _hqDecorWear('wall_shelf', U, g, { wall: true });   // THE PACK WEAR (2026-11-04): House pack Shelf_01 (plank on two brackets)
             return g;
         },
         metal_shelving: function (U) {
@@ -65285,6 +66834,7 @@ const ThreeRenderer = (function () {
                     }
                 }
             });
+            _hqDecorWear('metal_shelving', U, g, { fit: 'stretch' });   // THE PACK WEAR (2026-11-04): Gas station pack Shelf_Metal (four steel shelves, empty; the pack's is 2.75 m wide: stretched into the 0.9 m bay)
             return g;
         },
         hook_rail: function (U) {
@@ -65304,6 +66854,7 @@ const ThreeRenderer = (function () {
             handle.position.y = 0.72 * U; g.add(handle);
             var head = _hqBox(0.26, 0.05, 0.05, _hqMat(null, 1, 1, { color: 0x6a4a30, shininess: 8 })); head.position.y = 0.14 * U; g.add(head);
             var bristle = _hqBox(0.26, 0.12, 0.06, _hqMat(null, 1, 1, { color: 0xc9a55a, shininess: 4 })); bristle.position.y = 0.06 * U; g.add(bristle);
+            _hqDecorWear('broom', U, g);   // THE PACK WEAR (2026-11-04): House pack Broom
             g.rotation.x = 0.1;   // leans back against the wall
             return g;
         },
@@ -65329,6 +66880,8 @@ const ThreeRenderer = (function () {
                 var hole = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.102 * U, 10), _hqMat(null, 1, 1, { color: 0x6a5a48, shininess: 2 }));
                 hole.position.copy(r.position); g.add(hole);
             });
+            /* THE PACK WEAR (2026-11-04): House pack Toilet_paper, one roll where each code roll stood */
+            [[-0.06, 0], [0.06, 0], [0, 0.1]].forEach(function (p) { _hqDecorWear('toilet_paper', U, g, { at: [p[0], p[1], 0], h: 0.1 }); });
             return g;
         },
         clipboard: function (U) {
@@ -65351,7 +66904,7 @@ const ThreeRenderer = (function () {
            rest. The catalogue's glow is the cabinet's own light. */
         trophy_case: function (U) {
             var g = new THREE.Group();
-            var W = 1.6, H = 2.1, D = 0.42, PL = 0.5;
+            var W = 1.6, H = 2.1, D = 0.42, PL = 0.5, TC_SHELF = 1.37;
             var wood = _hqMat('teal', 2, 2, { shininess: 30 });
             var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90, specular: 0xaaaaaa });
             var back = _hqMat(null, 1, 1, { color: 0x2b2330, shininess: 8 });
@@ -65374,13 +66927,13 @@ const ThreeRenderer = (function () {
                 var tc = (typeof window !== 'undefined' && typeof window.hqTrophyCount === 'function') ? window.hqTrophyCount(prof) : null;
                 engraved = tc ? Math.min(9, tc.lines.length) : 0;
             } catch (e) { engraved = 0; }
-            var n = 0;
+            var n = 0, plq = [];
             for (var r = 0; r < 3; r++) for (var c = 0; c < 3; c++) {
                 var isGold = n < engraved; n++;
                 var pq = _hqBox(0.3, 0.17, 0.025, isGold ? gold : brass);
-                pq.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.045 * U); g.add(pq);
+                pq.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.045 * U); g.add(pq); plq.push(pq);
                 var plate = _hqBox(0.22, 0.09, 0.006, isGold ? _hqBasic(0xfff1c0) : _hqBasic(0x6a5c44));
-                plate.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.06 * U); g.add(plate);
+                plate.position.set((-0.46 + c * 0.46) * U, (PL + 1.02 + (2 - r) * 0.27 - (r === 2 ? 0.02 : 0)) * U, 0.06 * U); g.add(plate); plq.push(plate);
             }
             /* the cups on the top shelf */
             for (var k = 0; k < 3; k++) {
@@ -65392,6 +66945,12 @@ const ThreeRenderer = (function () {
             /* the bulbs under the top */
             var bulb = _hqBasic(0xfff3d9);
             for (var b = 0; b < 4; b++) { var bl = new THREE.Mesh(new THREE.SphereGeometry(0.022 * U, 8, 6), bulb); bl.position.set((-0.6 + b * 0.4) * U, (H - 0.06) * U, (D - 0.08) * U); g.add(bl); }
+            /* THE MESHY DECOR (2026-11-03): the open wooden case (Meshy can't do glass, so the pane is ours: mondo "add a clear pane in-game"),
+               stretched to the wall's 1.6 m; three Meshy cups on its top shelf; the engraved plaques stay on the back */
+            if (_hqDecorWear('trophy_case', U, g, { hide: g.children.filter(function (c) { return c !== glass && plq.indexOf(c) < 0; }), fit: 'stretch', wall: true })) {
+                plq.forEach(function (pp) { var rr = Math.round((pp.position.y / U - (PL + 1.02)) / 0.27); pp.position.y = (1.5 + rr * 0.2) * U; });   // the plaques close up under the case's cornice
+                for (var tq = 0; tq < 3; tq++) { var tqx = -0.45 + tq * 0.45; _hqDecorWear('trophy_cup', U, g, { hide: [], box: [tqx - 0.1, TC_SHELF, D / 2 - 0.08, tqx + 0.1, TC_SHELF + (tq === 1 ? 0.26 : 0.2), D / 2 + 0.08], fit: 'height' }); }
+            }
             return g;
         },
         /* ROOM 1984 · THE INTERROGATION ROOM (2026-09-13, plan 7.4): the steel
@@ -65410,6 +66969,7 @@ const ThreeRenderer = (function () {
             var brace = _hqBox(W - 0.14, 0.04, 0.04, dark); brace.position.set(0, 0.22 * U, 0); g.add(brace);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.045 * U, 0.008 * U, 8, 18), dark); ring.rotation.x = Math.PI / 2; ring.position.set(0, (H + 0.006) * U, 0); g.add(ring);
             var bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.02 * U, 10), dark); bolt.position.set(0, (H + 0.005) * U, 0); g.add(bolt);
+            _hqDecorWear('steel_table', U, g);   // THE PACK WEAR (2026-11-04): DINER pack Table_Metal (steel prep table, lower shelf)
             return g;
         },
         /* ROOM 42 · RECORDS + ROOM 1337 · IT (2026-09-13, plan 7.4). Three
@@ -65437,6 +66997,7 @@ const ThreeRenderer = (function () {
             /* one drawer left open, a card sticking up: the site somebody was looking for */
             var open = _hqBox(dw - 0.04, dh - 0.04, 0.22, face); open.position.set((-W / 2 + 0.08 + dw * 2.5) * U, (PL + 0.1 + dh * 5.5) * U, (D + 0.11) * U); g.add(open);
             var up = _hqBox(0.06, 0.09, 0.003, card); up.position.set((-W / 2 + 0.08 + dw * 2.5) * U, (PL + 0.1 + dh * 6.0 + 0.02) * U, (D + 0.18) * U); g.add(up);
+            _hqDecorWear('card_catalogue', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* a 42U server rack: a dark cabinet, a perforated front door, the
@@ -65546,6 +67107,7 @@ const ThreeRenderer = (function () {
             var stripe = _hqBox(0.086, 0.005, 0.02, _hqBasic(0x5a8898)); stripe.position.set(0.02 * U, 0.073 * U, (D / 2 + 0.08) * U); g.add(stripe);   // the desk stripe (SPACE, on the sample card)
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.01 * U, 8, 6), _hqBasic(0x3aff5a)); lamp.position.set((W / 2 - 0.05) * U, 0.11 * U, (D / 2 + 0.004) * U); g.add(lamp);   // READY
             var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.012 * U, 14), dark); dial.rotation.x = Math.PI / 2; dial.position.set((W / 2 - 0.11) * U, 0.11 * U, (D / 2 + 0.004) * U); g.add(dial);
+            _hqDecorWear('laminator', U, g, { hide: [body, lid, tray, slot, lamp, dial] });   // THE MESHY DECOR (2026-11-03): the card stays half out
             return g;
         },
         notice_board: function (U) {
@@ -65561,6 +67123,7 @@ const ThreeRenderer = (function () {
                 var pin = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 8, 6), pinMat); pin.position.set(sh[0] * U, (sh[1] + sh[3] / 2 - 0.02) * U, (D * 0.3 + 0.03) * U); g.add(pin);
             });
             var strip = _hqBox(W - 0.3, 0.05, 0.004, _hqBasic(0xd9b45a)); strip.position.set(0, (H - 0.1) * U, (D * 0.3 + 0.022) * U); g.add(strip);
+            _hqDecorWear('notice_board', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE CLOCK ROOM (Room 247, 2026-09-11 — plan 7.4 / 7.9). Three
@@ -65607,6 +67170,7 @@ const ThreeRenderer = (function () {
             var hb = _hqBox(0.012, 0.05, 0.004, ink); hb.geometry.translate(0, 0.02 * U, 0); hb.rotation.z = -(8 + 47 / 60) / 12 * Math.PI * 2; hb.position.set(-0.22 * U, 0.28 * U, 0.222 * U); g.add(hb);
             var mb = _hqBox(0.008, 0.07, 0.004, ink); mb.geometry.translate(0, 0.03 * U, 0); mb.rotation.z = -47 / 60 * Math.PI * 2; mb.position.set(-0.22 * U, 0.28 * U, 0.224 * U); g.add(mb);
             var btn = _hqBox(0.07, 0.035, 0.025, red); btn.position.set(-0.22 * U, 0.1 * U, 0.21 * U); g.add(btn);
+            _hqDecorWear('punch_clock', U, g, { hide: [body, lip, slot, dialRim, dial, hb, mb, btn], wall: true });   // THE MESHY DECOR (2026-11-03): the clock only; the card rack + the card in the slot stay
             var plate = _hqBox(0.4, 0.42, 0.02, _hqMat('teal', 1, 1, { shininess: 30 })); plate.position.set(0.2 * U, 0.21 * U, 0.01 * U); g.add(plate);
             for (var r = 0; r < 2; r++) for (var c = 0; c < 4; c++) {
                 if (r === 1 && c === 2) continue;   // one card is in the machine
@@ -65665,6 +67229,7 @@ const ThreeRenderer = (function () {
             });
             var foot = _hqBox(0.36, 0.03, 0.18, chrome); foot.position.set(0, 0.3 * U, 0.4 * U); foot.rotation.x = 0.35; g.add(foot);
             var strut = _hqBox(0.05, 0.03, 0.34, chrome); strut.position.set(0, 0.36 * U, 0.24 * U); strut.rotation.x = 0.55; g.add(strut);
+            _hqDecorWear('barber_chair', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         barber_mirror: function (U) {
@@ -65711,6 +67276,7 @@ const ThreeRenderer = (function () {
             var glass = _hqMat(null, 1, 1, { color: 0xf4f1ea, shininess: 80, specular: 0xffffff, emissive: 0x332e22 });
             var top = new THREE.Mesh(new THREE.SphereGeometry(0.075 * U, 14, 10), glass); top.position.set(0, 0.87 * U, 0.08 * U); g.add(top);
             var bot = new THREE.Mesh(new THREE.SphereGeometry(0.06 * U, 12, 8), chrome); bot.position.set(0, 0.04 * U, 0.08 * U); g.add(bot);
+            _hqDecorWear('barber_pole', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* the MÖBIUS BAR: one band with a half twist round a 1.5 m ring at
@@ -65792,6 +67358,7 @@ const ThreeRenderer = (function () {
             var box = _hqBox(0.22, 0.14, 0.1, steel); box.position.set(0.16 * U, 0.7 * U, 0.08 * U); g.add(box);
             var knob = new THREE.Mesh(new THREE.SphereGeometry(0.015 * U, 8, 6), _hqBasic(0xff5a5a)); knob.position.set(0.2 * U, 0.7 * U, 0.14 * U); g.add(knob);
             var lamp = new THREE.PointLight(0x9fd0ff, 1.15, 16 * U, 2); lamp.position.y = 1.3 * U; g.add(lamp);
+            _hqDecorWear('star_projector', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE PROJECTED SKY (ceiling; the group hangs `cat.h` under the
@@ -65965,6 +67532,7 @@ const ThreeRenderer = (function () {
             var modesty = _hqBox(W - 1.1, TOP - 0.25, 0.03, walnut); modesty.position.set(0, ((TOP - 0.25) / 2 + 0.2) * U, (D / 2 - 0.2) * U); g.add(modesty);   // the visitors see walnut, not knees
             var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, (W - 0.2) * U, 8), brass); rail.rotation.z = Math.PI / 2; rail.position.set(0, (TOP + 0.05) * U, (D / 2 - 0.08) * U); g.add(rail);
             [-1, 1].forEach(function (s) { var post = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.05 * U, 8), brass); post.position.set(s * (W / 2 - 0.12) * U, (TOP + 0.025) * U, (D / 2 - 0.08) * U); g.add(post); });
+            _hqDecorWear('exec_desk', U, g, { turn: 180 });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE EXECUTIVE CHAIR (4C): a high leather back on a five-star
@@ -66189,6 +67757,7 @@ const ThreeRenderer = (function () {
             [-1, 1].forEach(function (s) { var r = new THREE.Mesh(new THREE.CylinderGeometry(0.016 * U, 0.016 * U, 0.72 * U, 8), tube); r.rotation.x = Math.PI / 2; r.position.set(s * (Wd / 2 - 0.04) * U, 0, -0.36 * U); back.add(r); });
             var towel = _hqBox(Wd - 0.2, 0.03, 0.34, _hqMat(null, 1, 1, { color: 0xe8e0c8, shininess: 2 })); towel.position.set(0, (SEAT + 0.035) * U, (L / 2 - 0.35) * U); g.add(towel);
             var stripe = _hqBox(Wd - 0.2, 0.032, 0.05, _hqBasic(0x4b7fa8)); stripe.position.set(0, (SEAT + 0.036) * U, (L / 2 - 0.42) * U); g.add(stripe);
+            _hqDecorWear('pool_lounger', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE UMBRELLA (Room 8): a pole, a base, a canopy of eight cream
@@ -66541,31 +68110,14 @@ const ThreeRenderer = (function () {
             var box = _hqBox(2.6, 0.3, 0.3, slat); box.position.set(0, 2.55 * U, 0.15 * U); g.add(box);
             return g;
         },
-        kitchen_range: function (U) {
-            var g = new THREE.Group();
-            var steel = _hqMat(null, 1, 1, { color: 0xb4b9bd, shininess: 90, specular: 0x999999 });
-            var body = _hqBox(1.2, 0.9, 0.7, steel); body.position.set(0, 0.45 * U, 0.35 * U); g.add(body);
-            var top = _hqBox(1.2, 0.03, 0.7, _hqMat(null, 1, 1, { color: 0x2a2d31, shininess: 60 })); top.position.set(0, 0.915 * U, 0.35 * U); g.add(top);
-            var ring = _hqBasic(0xff6a20);
-            [[-0.35, 0.18], [0.35, 0.18], [-0.35, 0.52], [0.35, 0.52]].forEach(function (p) { var r = new THREE.Mesh(new THREE.RingGeometry(0.06 * U, 0.1 * U, 16), ring); r.rotation.x = -Math.PI / 2; r.position.set(p[0] * U, 0.935 * U, p[1] * U); g.add(r); });
-            var door = _hqBox(1.0, 0.5, 0.02, _hqMat(null, 1, 1, { color: 0x1c1e22, shininess: 80 })); door.position.set(0, 0.35 * U, 0.71 * U); g.add(door);
-            var hd = _hqBox(0.9, 0.03, 0.04, steel); hd.position.set(0, 0.62 * U, 0.73 * U); g.add(hd);
-            return g;
-        },
-        range_hood: function (U) {
-            var g = new THREE.Group();
-            var steel = _hqMat(null, 1, 1, { color: 0xb4b9bd, shininess: 70, specular: 0x888888 });
-            var hood = _hqBox(1.3, 0.4, 0.7, steel); hood.position.set(0, 0.2 * U, 0.35 * U); g.add(hood);
-            var duct = _hqBox(0.4, 0.5, 0.4, steel); duct.position.set(0, 0.55 * U, 0.3 * U); g.add(duct);
-            return g;
-        },
         pot_rack: function (U) {
             var g = new THREE.Group();
             var steel = _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 });
             var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 1.6 * U, 8), steel); bar.rotation.z = Math.PI / 2; bar.position.y = 0.5 * U; g.add(bar);
             [-0.6, 0.6].forEach(function (x) { var ch = new THREE.Mesh(new THREE.CylinderGeometry(0.008 * U, 0.008 * U, 0.5 * U, 6), steel); ch.position.set(x * U, 0.75 * U, 0); g.add(ch); });
+            var prH = null, prPots = []; _hqDecorWear('pot_rack', U, g, { box: [-0.7, 0.2, -0.3, 0.7, 1.0, 0.3], top: true, onDone: function (i, d) { prH = d.h; prPots.forEach(function (pp, k) { pp.position.set((-0.36 + k * 0.24) * d.w * U, (1.0 - d.h - 0.14) * U, 0); }); } });   // THE MESHY DECOR (2026-11-03): its rods reach the ceiling; the pots hang under it
             var pot = _hqMat(null, 1, 1, { color: 0xc8ccd0, shininess: 90, specular: 0xaaaaaa });
-            for (var i = 0; i < 4; i++) { var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.16 * U, 12), pot); p.position.set((-0.6 + i * 0.4) * U, 0.32 * U, 0); g.add(p); }
+            for (var i = 0; i < 4; i++) { var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * U, 0.09 * U, 0.16 * U, 12), pot); p.position.set((-0.6 + i * 0.4) * U, (prH != null ? 1.0 - prH - 0.1 : 0.32) * U, 0); g.add(p); prPots.push(p); }
             return g;
         },
         /* the cold room: a carcass on a chain from a rail */
@@ -66574,6 +68126,7 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x6b6f74, shininess: 60 });
             var chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 0.5 * U, 6), steel); chain.position.y = 1.45 * U; g.add(chain);
             var hook = new THREE.Mesh(new THREE.TorusGeometry(0.06 * U, 0.012 * U, 6, 12, Math.PI), steel); hook.position.y = 1.16 * U; hook.rotation.z = Math.PI; g.add(hook);
+            _hqDecorWear('meat_hook', U, g, { hide: [chain, hook], box: [-0.45, 1.15, -0.12, 0.45, 1.7, 0.12], fit: 'width', top: true });   // THE MESHY DECOR (2026-11-03): the carcass hangs under the Meshy rail
             var meat = _hqMat(null, 1, 1, { color: 0x8a3a3c, shininess: 30, specular: 0x553333 });
             var body = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.22 * U, 1.0 * U, 10), meat); body.position.y = 0.62 * U; g.add(body);
             var frost = new THREE.Mesh(new THREE.CylinderGeometry(0.17 * U, 0.23 * U, 0.3 * U, 10), _hqMat(null, 1, 1, { color: 0xdfe8f0, shininess: 10 })); frost.position.y = 1.0 * U; g.add(frost);
@@ -66588,6 +68141,7 @@ const ThreeRenderer = (function () {
             var rim = new THREE.Mesh(new THREE.RingGeometry(0.24 * U, 0.29 * U, 24), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); rim.position.set(0, 0.45 * U, 0.71 * U); g.add(rim);
             var panel = _hqBox(0.8, 0.12, 0.02, _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 })); panel.position.set(0, 0.86 * U, 0.71 * U); g.add(panel);
             var led = _hqBox(0.05, 0.03, 0.01, _hqBasic(dryer ? 0xff5030 : 0x40ff90)); led.position.set(0.3 * U, 0.86 * U, 0.725 * U); g.add(led);
+            _hqDecorWear(dryer ? 'dryer' : 'washer', U, g);   // THE PACK WEAR (2026-11-04): House pack Washing_machine / Abandoned House pack Secadora
             return g;
         },
         laundry_cart: function (U) {
@@ -66598,6 +68152,7 @@ const ThreeRenderer = (function () {
             [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.3 * U, 6), frame); leg.position.set(c[0] * 0.32 * U, 0.15 * U, c[1] * 0.42 * U); g.add(leg); var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.04 * U, 0.03 * U, 10), frame); wh.rotation.z = Math.PI / 2; wh.position.set(c[0] * 0.32 * U, 0.04 * U, c[1] * 0.42 * U); g.add(wh); });
             var handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.7 * U, 6), frame); handle.rotation.z = Math.PI / 2; handle.position.set(0, 0.85 * U, 0.46 * U); g.add(handle);
             var sheet = _hqBox(0.6, 0.04, 0.8, _hqMat(null, 1, 1, { color: 0xf2f0ea, shininess: 6 })); sheet.position.y = 0.84 * U; g.add(sheet);
+            _hqDecorWear('laundry_cart', U, g, {});   // THE MESHY DECOR (2026-11-03): its own laundry fills the basket
             return g;
         },
         /* a fluorescent that has not decided: the tube's glow flickers on a seeded pattern (ticker) */
@@ -66607,6 +68162,10 @@ const ThreeRenderer = (function () {
             var tubeMat = new THREE.MeshBasicMaterial({ color: 0xeef3ff });
             var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 1.2 * U, 8), tubeMat); tube.rotation.z = Math.PI / 2; tube.position.y = -0.1 * U; g.add(tube);
             var glow = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0, 0, 0); glow.position.y = -0.3 * U; g.add(glow);
+            /* THE ONE MODEL (2026-11-03, mondo: swap the stand-ins to the models we have): the catalogue's `fluorescent` fixture
+               hangs in place of the box + tube (1.3 m long, its top at the ceiling); the glow keeps the flicker */
+            var fixGlb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('fluorescent', U, { fit: 'span', h: 1.3, hide: [fix, tube] });
+            if (fixGlb) { fixGlb.position.y = -0.17 * U; g.add(fixGlb); }
             var seed = (_hqProcSeed++) * 1.7;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed;
@@ -66642,6 +68201,7 @@ const ThreeRenderer = (function () {
             [-0.3, 0.3].forEach(function (x) { var gz = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.09 * U, 0.04 * U, 14), _hqMat(null, 1, 1, { color: 0xe8e2d0, shininess: 60 })); gz.rotation.x = Math.PI / 2; gz.position.set(x * U, 1.5 * U, 0.75 * U); g.add(gz); });
             var wheel = new THREE.Mesh(new THREE.TorusGeometry(0.14 * U, 0.02 * U, 6, 16), _hqMat(null, 1, 1, { color: 0xa83a30, shininess: 40 })); wheel.position.set(0.55 * U, 1.9 * U, 0.55 * U); g.add(wheel);
             var pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * U, 0.08 * U, 1.2 * U, 10), band); pipe.position.set(0, 2.9 * U, -0.3 * U); g.add(pipe);
+            _hqDecorWear('boiler', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* the dungeon: a barred cell front on the wall; the cell behind the bars is a dark recess */
@@ -66674,6 +68234,7 @@ const ThreeRenderer = (function () {
             var hi = _hqBox(1.3, 0.14, 0.1, wood); hi.position.set(0, 1.02 * U, 0); hi.rotation.z = 0.06; g.add(hi);
             var hole = _hqMat(null, 1, 1, { color: 0x0c0b0a });
             [-0.3, 0, 0.3].forEach(function (x) { var h = new THREE.Mesh(new THREE.CylinderGeometry((x === 0 ? 0.09 : 0.05) * U, (x === 0 ? 0.09 : 0.05) * U, 0.12 * U, 12), hole); h.rotation.x = Math.PI / 2; h.position.set(x * U, 0.93 * U, 0); g.add(h); });
+            _hqDecorWear('stocks', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the castle's own kit.
@@ -66690,6 +68251,7 @@ const ThreeRenderer = (function () {
             var top = new THREE.Mesh(new THREE.CylinderGeometry(2.6 * U, 2.6 * U, 0.1 * U, 36), oak); top.position.y = 0.77 * U; g.add(top);
             var rim = new THREE.Mesh(new THREE.TorusGeometry(2.6 * U, 0.05 * U, 8, 48), dark); rim.rotation.x = Math.PI / 2; rim.position.y = 0.82 * U; g.add(rim);
             var inlay = new THREE.Mesh(new THREE.RingGeometry(0.9 * U, 1.0 * U, 36), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); inlay.rotation.x = -Math.PI / 2; inlay.position.y = 0.826 * U; g.add(inlay);
+            _hqDecorWear('round_table', U, g, { fit: 'stretch' });   // THE MESHY DECOR (2026-11-03): the table only; the chairs are a separate piece
             for (var i = 0; i < 12; i++) {
                 var a = (i / 12) * Math.PI * 2, cx = Math.sin(a) * 3.25 * U, cz = Math.cos(a) * 3.25 * U;
                 var seat = _hqBox(0.5, 0.08, 0.5, dark); seat.position.set(cx, 0.46 * U, cz); seat.rotation.y = a; g.add(seat);
@@ -66711,6 +68273,7 @@ const ThreeRenderer = (function () {
             var tip = new THREE.Mesh(new THREE.ConeGeometry(0.55 * U, 0.55 * U, 4), cloth); tip.rotation.y = Math.PI / 4; tip.rotation.x = Math.PI; tip.position.set(0, -2.2 * U, 0.09 * U); tip.scale.z = 0.04; g.add(tip);
             var band = _hqBox(1.12, 0.12, 0.024, gold); band.position.set(0, -0.35 * U, 0.09 * U); g.add(band);
             var charge = new THREE.Mesh(new THREE.CircleGeometry(0.28 * U, 20), gold); charge.position.set(0, -1.15 * U, 0.105 * U); g.add(charge);
+            _hqDecorWear('banner', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         armour_stand: function (U) {
@@ -66728,6 +68291,11 @@ const ThreeRenderer = (function () {
             var plume = new THREE.Mesh(new THREE.ConeGeometry(0.05 * U, 0.3 * U, 6), red); plume.position.set(0, 2.1 * U, -0.02 * U); g.add(plume);
             var shield = _hqBox(0.42, 0.55, 0.05, red); shield.position.set(-0.38 * U, 1.25 * U, 0.12 * U); shield.rotation.y = 0.3; g.add(shield);
             var boss = new THREE.Mesh(new THREE.CircleGeometry(0.12 * U, 16), _hqMat(null, 1, 1, { color: 0xd8b060, shininess: 40 })); boss.position.set(-0.36 * U, 1.25 * U, 0.16 * U); boss.rotation.y = 0.3; g.add(boss);
+            /* THE MESHY DECOR (2026-11-03): two pieces (mondo). The stand is a square oak plinth with a thin iron rod (redone 11-03: the old
+               T-post's crossbar stuck out through the suit); the suit stands ON the plinth and the rod runs up between its legs into the body. */
+            var arm0 = g.children.slice(), armBox = [-0.34, 0, -0.34, 0.34, 2.25, 0.34];
+            if (_hqDecorWear('armour_plinth', U, g, { hide: arm0, box: [-0.4, 0, -0.4, 0.4, 1.2, 0.4], fit: 'stretch' }))
+                _hqDecorWear('armour_stand', U, g, { hide: arm0, box: armBox, h: 1.95, fit: 'height', at: [0, 0.2, 0] });   // the plinth's slab is 0.2 m
             return g;
         },
         sword_stone: function (U) {
@@ -66763,6 +68331,7 @@ const ThreeRenderer = (function () {
             var iron = _hqMat(null, 1, 1, { color: 0x3a3632, shininess: 30 });
             var br = _hqBox(0.06, 0.22, 0.05, iron); br.position.set(0, 0.11 * U, 0.03 * U); g.add(br);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.075 * U, 0.014 * U, 6, 14), iron); ring.rotation.x = Math.PI / 2; ring.position.set(0, 0.2 * U, 0.12 * U); g.add(ring);
+            _hqDecorWear('wall_torch_bracket', U, g, { wall: true });   // THE MESHY DECOR (2026-11-03): the bracket; the game's own torch + flame stay in it
             var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 0.6, noTint: true });
             parts.model.position.set(0, 0.02 * U, 0.1 * U);
             parts.model.rotation.x = 0.42;   /* the ward's lean off its wall */
@@ -66850,6 +68419,7 @@ const ThreeRenderer = (function () {
             [-0.7, 0.7].forEach(function (x) { var b = _hqBox(0.5, 0.75, 0.8, stone); b.position.set(x * U, 0.375 * U, 0); g.add(b); });
             var top = _hqBox(2.1, 0.2, 1.0, _hqMat('stone', 3, 1, { color: 0x8a8480, shininess: 10 })); top.position.y = 0.85 * U; g.add(top);
             var groove = _hqBox(1.7, 0.01, 0.06, _hqMat(null, 1, 1, { color: 0x3a1a1a })); groove.position.set(0, 0.955 * U, 0.3 * U); g.add(groove);
+            _hqDecorWear('stone_altar', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         floor_stain: function (U) {
@@ -66922,45 +68492,7 @@ const ThreeRenderer = (function () {
             var seat = _hqBox(0.42, 0.04, 0.4, _hqMat(null, 1, 1, { color: 0x4a6a8a, shininess: 20 })); seat.position.set(0, 0.45 * U, 0.55 * U); g.add(seat);
             var back = _hqBox(0.42, 0.35, 0.04, _hqMat(null, 1, 1, { color: 0x4a6a8a, shininess: 20 })); back.position.set(0, 0.65 * U, 0.75 * U); g.add(back);
             [[-0.18, 0.4], [0.18, 0.4], [-0.18, 0.72], [0.18, 0.72]].forEach(function (c) { var l = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.44 * U, 6), steel); l.position.set(c[0] * U, 0.22 * U, c[1] * U); g.add(l); });
-            return g;
-        },
-        toilet_stall: function (U) {
-            var g = new THREE.Group();
-            var part = _hqMat(null, 1, 1, { color: 0xb8c8c0, shininess: 40 });
-            [-0.5, 0.5].forEach(function (x) { var p = _hqBox(0.03, 1.8, 1.5, part); p.position.set(x * U, 1.05 * U, 0); g.add(p); });
-            var door = _hqBox(0.9, 1.8, 0.03, part); door.position.set(0, 1.05 * U, 0.74 * U); door.rotation.y = 0.35; door.position.x = -0.1 * U; g.add(door);   // ajar
-            var bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.15 * U, 0.4 * U, 14), _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 })); bowl.position.set(0, 0.2 * U, -0.3 * U); g.add(bowl);
-            var tank = _hqBox(0.45, 0.4, 0.18, _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 })); tank.position.set(0, 0.62 * U, -0.62 * U); g.add(tank);
-            var seat = new THREE.Mesh(new THREE.TorusGeometry(0.19 * U, 0.03 * U, 6, 18), _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 })); seat.rotation.x = Math.PI / 2; seat.position.set(0, 0.41 * U, -0.3 * U); g.add(seat);
-            var roll = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.06 * U, 0.1 * U, 10), _hqMat(null, 1, 1, { color: 0xffffff, shininess: 2 })); roll.rotation.z = Math.PI / 2; roll.position.set(0.44 * U, 0.75 * U, -0.1 * U); g.add(roll);
-            return g;
-        },
-        urinal: function (U) {
-            var g = new THREE.Group();
-            var por = _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 });
-            var body = _hqBox(0.35, 0.6, 0.3, por); body.position.set(0, 0.3 * U, 0.15 * U); g.add(body);
-            var bowl = new THREE.Mesh(new THREE.SphereGeometry(0.17 * U, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), por); bowl.rotation.x = Math.PI; bowl.position.set(0, 0.2 * U, 0.2 * U); g.add(bowl);
-            var pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.3 * U, 8), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); pipe.position.set(0, 0.75 * U, 0.05 * U); g.add(pipe);
-            var div = _hqBox(0.03, 0.9, 0.4, _hqMat(null, 1, 1, { color: 0xb8c8c0, shininess: 40 })); div.position.set(0.3 * U, 0.45 * U, 0.2 * U); g.add(div);
-            return g;
-        },
-        sink_row: function (U) {
-            var g = new THREE.Group();
-            var por = _hqMat(null, 1, 1, { color: 0xf2f2ee, shininess: 80 });
-            var counter = _hqBox(2.4, 0.08, 0.55, _hqMat('marble_light', 3, 1, { color: 0xdedcd4, shininess: 50 })); counter.position.set(0, 0.86 * U, 0.275 * U); g.add(counter);
-            var front = _hqBox(2.4, 0.82, 0.03, _hqMat(null, 1, 1, { color: 0xb8c8c0, shininess: 30 })); front.position.set(0, 0.41 * U, 0.535 * U); g.add(front);
-            [-0.8, 0, 0.8].forEach(function (x) {
-                var basin = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * U, 0.12 * U, 0.12 * U, 14), por); basin.position.set(x * U, 0.86 * U, 0.28 * U); g.add(basin);
-                var tap = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 0.16 * U, 8), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 120, specular: 0xffffff })); tap.position.set(x * U, 0.98 * U, 0.1 * U); g.add(tap);
-            });
-            var mirror = new THREE.Mesh(new THREE.PlaneGeometry(2.3 * U, 0.6 * U), new THREE.MeshPhongMaterial({ color: 0xc8d8e0, shininess: 200, specular: 0xffffff })); mirror.position.set(0, 1.45 * U, 0.02 * U); g.add(mirror);
-            var strip = _hqBox(2.3, 0.05, 0.05, _hqBasic(0xf0f6ff)); strip.position.set(0, 1.78 * U, 0.05 * U); g.add(strip);
-            return g;
-        },
-        hand_dryer: function (U) {
-            var g = new THREE.Group();
-            var body = _hqBox(0.3, 0.3, 0.2, _hqMat(null, 1, 1, { color: 0xe8e8e4, shininess: 60 })); body.position.set(0, 0.15 * U, 0.1 * U); g.add(body);
-            var nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.05 * U, 0.08 * U, 10), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); nozzle.position.set(0, 0.0, 0.14 * U); g.add(nozzle);
+            _hqDecorWear('school_desk', U, g, { hide: g.children.slice(0, 5) });   // THE MESHY DECOR (2026-11-03): the desk only (the chair is a separate piece)
             return g;
         },
         locker_bench: function (U) {
@@ -66970,16 +68502,6 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 });
             [-0.8, 0.8].forEach(function (x) { var leg = _hqBox(0.06, 0.41, 0.34, steel); leg.position.set(x * U, 0.205 * U, 0); stand.add(leg); });
             var glb = (typeof _hqCatGlb === 'function' ? _hqCatGlb : function () { return null; })('city_bench', U, { fit: 'span', h: 2.0, hide: [stand] }); if (glb) g.add(glb);
-            return g;
-        },
-        shower_stall: function (U) {
-            var g = new THREE.Group();
-            var tile = _hqMat('tilefloor_2', 2, 4, { color: 0xdfe6e6, shininess: 50 });
-            [-0.5, 0.5].forEach(function (x) { var p = _hqBox(0.04, 2.1, 1.0, tile); p.position.set(x * U, 1.05 * U, 0); g.add(p); });
-            var curtain = _hqBox(0.96, 1.7, 0.02, _hqMat(null, 1, 1, { color: 0xa8c8d0, shininess: 10, transparent: true, opacity: 0.85 })); curtain.position.set(0.15 * U, 1.05 * U, 0.49 * U); g.add(curtain);
-            var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.015 * U, 0.015 * U, 1.0 * U, 8), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); rail.rotation.z = Math.PI / 2; rail.position.set(0, 1.95 * U, 0.49 * U); g.add(rail);
-            var head = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * U, 0.03 * U, 0.06 * U, 10), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 120 })); head.position.set(0, 1.85 * U, -0.3 * U); head.rotation.x = 0.6; g.add(head);
-            var drain = new THREE.Mesh(new THREE.CircleGeometry(0.08 * U, 12), _hqMat(null, 1, 1, { color: 0x3a3e46, shininess: 40 })); drain.rotation.x = -Math.PI / 2; drain.position.set(0, 0.006 * U, -0.1 * U); g.add(drain);
             return g;
         },
         /* ROOM 50M: six lanes in a raised basin (the coping is knee high — a sunk pool would open the floor) */
@@ -67021,6 +68543,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < 4; i++) { var rung = _hqBox(0.6, 0.04, 0.04, white); rung.position.set(0, (0.35 + i * 0.35) * U, 0.32 * U); g.add(rung); }
             var brolly = new THREE.Mesh(new THREE.ConeGeometry(0.9 * U, 0.3 * U, 10, 1, true), _hqMat(null, 1, 1, { color: 0xd84a3a, shininess: 10, side: THREE.DoubleSide })); brolly.position.y = 2.5 * U; g.add(brolly);
             var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 1.0 * U, 8), white); pole.position.set(0, 2.05 * U, -0.25 * U); g.add(pole);
+            _hqDecorWear('lifeguard_chair', U, g, { hide: g.children.filter(function (c) { return c !== brolly && c !== pole; }), box: [-0.45, 0, -0.4, 0.45, 2.2, 0.4], fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* ROOM 1618: the gravel ring and the hedge round it, gaps at the four doors. Place at (0, 0) — the hedge registers its own
@@ -67062,8 +68585,9 @@ const ThreeRenderer = (function () {
             var bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.7 * U, 0.3 * U, 0.25 * U, 16, 1, true), stone); bowl.position.y = 1.25 * U; g.add(bowl);
             var bowlW = new THREE.Mesh(new THREE.CircleGeometry(0.66 * U, 16), water); bowlW.rotation.x = -Math.PI / 2; bowlW.position.y = 1.34 * U; bowlW.renderOrder = 2; g.add(bowlW);
             var jet = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * U, 0.06 * U, 0.7 * U, 8), new THREE.MeshBasicMaterial({ color: 0xe8f6ff, transparent: true, opacity: 0.7 })); jet.position.y = 1.7 * U; g.add(jet);
-            var glow = _hzGlowSprite(1.6 * U, 0xbfe9ff, 0.25, 0.06, 0.03, 1.4); glow.position.y = 1.6 * U; g.add(glow);
-            if (_hq) _hq.tickers.push(function (dt, now) { jet.scale.y = 0.9 + 0.12 * Math.sin(now * 0.006); jet.position.y = (1.7 + 0.04 * Math.sin(now * 0.006)) * U; });
+            var jetY = 1.7, glow = _hzGlowSprite(1.6 * U, 0xbfe9ff, 0.25, 0.06, 0.03, 1.4); glow.position.y = 1.6 * U; g.add(glow);
+            if (_hq) _hq.tickers.push(function (dt, now) { jet.scale.y = 0.9 + 0.12 * Math.sin(now * 0.006); jet.position.y = (jetY + 0.04 * Math.sin(now * 0.006)) * U; });
+            _hqDecorWear('fountain', U, g, { hide: [basin, lip, bed, column, bowl], box: [-1.7, 0, -1.7, 1.7, 2.0, 1.7], fit: 'width', onDone: function (i, d) { sheet.position.y = d.h * 0.24 * U; bowlW.position.y = d.h * 0.7 * U; bowlW.scale.setScalar(0.95); jetY = d.h + 0.2; jet.position.y = jetY * U; glow.position.y = (d.h * 0.8) * U; } });   // THE MESHY DECOR (2026-11-03): the water + the jet stay
             return g;
         },
         park_bench: function (U) {
@@ -67234,6 +68758,7 @@ const ThreeRenderer = (function () {
             var tube = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * U, 0.12 * U, 0.62 * U, 14, 1, true), brass); tube.material.side = THREE.DoubleSide; tube.position.y = 0.34 * U; g.add(tube);
             var foot = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * U, 0.17 * U, 0.04 * U, 14), brass); foot.position.y = 0.02 * U; g.add(foot);
             var rim = new THREE.Mesh(new THREE.TorusGeometry(0.12 * U, 0.012 * U, 6, 20), brass); rim.rotation.x = Math.PI / 2; rim.position.y = 0.65 * U; g.add(rim);
+            _hqDecorWear('umbrella_stand', U, g);   // THE MESHY DECOR (2026-11-03): the stand, then a Meshy umbrella in each
             var cols = [0x1a1a22, 0x3a1e1e, 0x1e2a3a];
             for (var i = 0; i < 3; i++) {
                 var a = i * 2.1 + 0.4, tilt = 0.12 + i * 0.03;
@@ -67243,6 +68768,7 @@ const ThreeRenderer = (function () {
                 var handle = new THREE.Mesh(new THREE.TorusGeometry(0.04 * U, 0.011 * U, 6, 12, Math.PI), _hqMat(null, 1, 1, { color: 0x5a3a1a })); handle.position.y = 0.9 * U; handle.rotation.z = Math.PI; um.add(handle);
                 um.position.set(Math.cos(a) * 0.06 * U, 0.06 * U, Math.sin(a) * 0.06 * U);
                 um.rotation.z = Math.cos(a) * tilt; um.rotation.x = -Math.sin(a) * tilt;
+            _hqDecorWear('umbrella_closed', U, um, { fit: 'height' });
                 g.add(um);
             }
             return g;
@@ -67259,6 +68785,7 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var parts = _makeTorchModel({ ts: HQ_TILE_M * U, scale: 1.0, noTint: true });
             g.add(parts.model);
+            _hqDecorWear('cave_torch', U, g, { into: parts.model, hide: parts.model.children.slice(0, parts.model.children.indexOf(parts.flame)), fit: 'height' });   // THE MESHY DECOR (2026-11-03): the flame stays
             var entry = { root: g, flame: parts.flame, mat: parts.flameMat, light: null, seed: ((_hqProcSeed++) * 27) % 100 };
             if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
             return g;
@@ -67348,6 +68875,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i <= n; i++) { var r = new THREE.Mesh(new THREE.CylinderGeometry(0.05 * U, 0.05 * U, (W - 0.1) * U, 10), steel); r.rotation.z = Math.PI / 2; r.position.set((-L / 2 + 0.1 + (L - 0.2) * i / n) * U, (H - 0.12) * U, 0); g.add(r); }
             [-1, 1].forEach(function (s) { for (var k = 0; k < 3; k++) { var leg = _hqBox(0.06, H - 0.12, 0.06, steel); leg.position.set((-L / 2 + 0.3 + (L - 0.6) * k / 2) * U, ((H - 0.12) / 2) * U, s * (W / 2 - 0.05) * U); g.add(leg); } });
             var stripe = _hqBox(L - 0.1, 0.01, 0.05, _hqBasic(0xd9b23a)); stripe.position.set(0, (H + 0.045) * U, (W / 2 - 0.12) * U); g.add(stripe);
+            _hqDecorWear('conveyor', U, g, { repeat: Math.max(1, Math.round(L / 3)), fit: 'stretch' });   // THE MESHY DECOR (2026-11-03): Meshy's 3 m section, end to end; the leaves still ride it
             /* the leaves riding it */
             var leaves = [], count = Math.max(2, Math.round(L / 1.6));
             for (var j = 0; j < count; j++) {
@@ -67381,6 +68909,7 @@ const ThreeRenderer = (function () {
             var frame = _hqBox(0.8, 0.06, 0.06, dark); frame.position.set(0, 0.86 * U, 0.06 * U); wrist.add(frame);
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0x40ff60)); lamp.position.set(0.2 * U, 0.35 * U, 0); turret.add(lamp);
             elbow.rotation.x = -0.35;
+            _hqDecorWear('robot_arm', U, g, { hide: [base, shoulder, upper, fore, grip, lamp], box: [-0.6, 0, -1.2, 0.6, 2.3, 1.2], fit: 'height', at: [0, 0, 0.53], onDone: function (i, d) { if (wrist.parent !== g) { elbow.remove(wrist); g.add(wrist); } wrist.rotation.set(0, 0, 0); wrist.position.set(0, d.h * 0.59 * U, (0.53 + d.h * 0.43) * U); } });   // THE MESHY DECOR (2026-11-03): the door hangs from the Meshy gripper
             var seed = (_hqProcSeed++) * 1.3;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed;
@@ -67419,9 +68948,11 @@ const ThreeRenderer = (function () {
             [-1, 1].forEach(function (s) { var j = _hqBox(0.14, mh + 0.1, 0.4, jamb); j.position.set(s * (mw / 2 + 0.07) * U, (0.15 + mh / 2) * U, (D / 2 - 0.2) * U); g.add(j); });
             var head = _hqBox(mw + 0.28, 0.14, 0.4, jamb); head.position.set(0, (0.15 + mh + 0.07) * U, (D / 2 - 0.2) * U); g.add(head);
             var sill = _hqBox(mw + 0.28, 0.15, 0.6, iron); sill.position.set(0, 0.075 * U, (D / 2 + 0.1) * U); g.add(sill);
+            var fdD = null; _hqDecorWear('door_furnace', U, g, { box: [-1.9, 0, -0.9, 1.9, 3.8, 0.9], fit: 'width', onDone: function (i, d) { fdD = d; if (typeof lm !== 'undefined' && lm) { lm.position.z = (d.z + d.d / 2 + 0.02) * U; lm.position.y = Math.max(1.2, d.h * 0.72) * U; } if (typeof glow !== 'undefined' && glow) glow.position.z = (d.z + d.d / 2 + 0.2) * U; } });   // THE MESHY DECOR (2026-11-03): the sign, the glow and the leaf stay
             var glow = _hzGlowSprite(3.0 * U, 0xff9040, 0.5, 0.15, 0.06, 2.0); glow.position.set(0, 1.3 * U, (D / 2 + 0.2) * U); g.add(glow);
             var lab = _hzTextTex('hq_furnace_sign', ['CLOSED FOR GOOD'], { w: 512, h: 96, color: '#f0d8a0' });
             if (lab) { var lm = new THREE.Mesh(new THREE.PlaneGeometry(2.4 * U, 0.45 * U), new THREE.MeshBasicMaterial({ map: lab, transparent: true })); lm.position.set(0, (H - 0.5) * U, (D / 2 + 0.01) * U); g.add(lm); }
+            if (fdD && lm) { lm.position.z = (fdD.z + fdD.d / 2 + 0.02) * U; lm.position.y = Math.max(1.2, fdD.h * 0.72) * U; glow.position.z = (fdD.z + fdD.d / 2 + 0.2) * U; }
             /* the leaf on its way in */
             var leaf = _hqWorksLeaf(U, 0.7, 1.6, _hqProcSeed++, 1); leaf.rotation.x = -0.35; g.add(leaf);
             var seed = (_hqProcSeed++) * 0.7;
@@ -67470,6 +69001,7 @@ const ThreeRenderer = (function () {
             var lipm = _hqBox(2.44, 0.05, 1.24, steel); lipm.position.y = 0.9 * U; g.add(lipm);
             [-1, 1].forEach(function (s) { var ped = _hqBox(0.5, 0.84, 0.6, _hqMat(null, 1, 1, { color: 0x8a9298, shininess: 60 })); ped.position.set(s * 0.8 * U, 0.42 * U, 0); g.add(ped); });
             var drain = new THREE.Mesh(new THREE.CircleGeometry(0.06 * U, 12), _hqBasic(0x222426)); drain.rotation.x = -Math.PI / 2; drain.position.set(0, 0.905 * U, 0.4 * U); g.add(drain);
+            _hqDecorWear('autopsy_table', U, g);   // THE MESHY DECOR (2026-11-03): the parts + their tags stay on top
             /* the parts: knob, handle, bell, window, boards, knocker, hinges, letterbox, peephole, chain — and the tags */
             var brass = _hqMat(null, 1, 1, { color: 0xc8a850, shininess: 120, specular: 0xffffff });
             var wood = _hqMat('wood', 1, 1, { color: 0x8a5a34 });
@@ -67537,12 +69069,12 @@ const ThreeRenderer = (function () {
             });
             return g;
         },
-        /* ROOM ½: the grow lamp — a hood on a chain, purple underneath */
+        /* ROOM ½: the grow lamp (THE CODED SHAPES OUT 2026-11-03): the Meshy LED panel (Assets/decor/grow_lamp.glb) 0.7 m across, its
+           brackets flush with the ceiling (the catalogue `h` is the panel's height), the purple glow + light under it; the code hood,
+           chain and disc are gone */
         grow_lamp: function (U) {
-            var g = new THREE.Group();
-            var chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01 * U, 0.01 * U, 0.3 * U, 6), _hqBasic(0x444444)); chain.position.y = 0.35 * U; g.add(chain);
-            var hood = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * U, 0.34 * U, 0.2 * U, 16, 1, true), _hqMat(null, 1, 1, { color: 0xd8d8d0, shininess: 60 })); hood.material.side = THREE.DoubleSide; hood.position.y = 0.1 * U; g.add(hood);
-            var bulb = new THREE.Mesh(new THREE.CircleGeometry(0.3 * U, 16), _hqBasic(0xd070ff)); bulb.rotation.x = Math.PI / 2; bulb.position.y = 0.005 * U; g.add(bulb);
+            var g = new THREE.Group(), pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            g.add(_miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB.grow_lamp, true, 0.7 * U, { fit: 'span', matPick: pick }));
             return g;
         },
         /* ROOM 24/7: nine CRTs in a rack, each showing a room off the register (a canvas; the ticker swaps the feeds and rolls the static) */
@@ -67674,12 +69206,13 @@ const ThreeRenderer = (function () {
         departures_board: function (U) {
             var g = new THREE.Group();
             var box = _hqBox(3.2, 0.9, 0.1, _hqMat(null, 1, 1, { color: 0x1a1a1e, shininess: 30 })); box.position.set(0, 0.45 * U, 0.05 * U); g.add(box);
+            var dbD = null, dbM = null; _hqDecorWear('departures_board', U, g, { fit: 'stretch', wall: true, onDone: function (i, d) { dbD = d; if (dbM) dbM.position.z = (d.z + d.d / 2 + 0.006) * U; } });   // THE MESHY DECOR (2026-11-03): every route stays on its face
             var routes = [];
             try { var R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.routes) || {}; Object.keys(R).forEach(function (k) { routes.push((R[k].label || k).toUpperCase()); }); } catch (e) {}
             if (!routes.length) routes = ['ALL LINES'];
             var lines = routes.slice(0, 6).map(function (r, i) { return (r + '                          ').slice(0, 22) + '  ' + (17 + i * 3) + ' MIN   DELAYED'; });
             var tx = _hzTextTex('hq_departures_' + routes.length, lines, { w: 1024, h: 288, color: '#ffb020', bg: '#0e0e12', font: '"Lucida Console", Menlo, monospace', pad: 0.06 });
-            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(3.1 * U, 0.82 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 0.45 * U, 0.105 * U); g.add(m); }
+            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(3.1 * U, 0.82 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 0.45 * U, 0.105 * U); g.add(m); dbM = m; if (dbD) m.position.z = (dbD.z + dbD.d / 2 + 0.006) * U; }
             return g;
         },
         /* THE TUNNEL: DOOR_HQ.routes as a subway map on the tiles */
@@ -67722,6 +69255,7 @@ const ThreeRenderer = (function () {
             var R = 2.8, hubY = 3.5;
             [-1, 1].forEach(function (s) { [-1, 1].forEach(function (k) { var leg = _hqBox(0.12, hubY / Math.cos(0.35), 0.12, steel); leg.position.set(s * 0.55 * U, (hubY / 2) * U, k * (hubY * Math.tan(0.35) / 2) * U); leg.rotation.x = -k * 0.35; g.add(leg); }); });
             var axle = new THREE.Mesh(new THREE.CylinderGeometry(0.08 * U, 0.08 * U, 1.3 * U, 10), steel); axle.rotation.z = Math.PI / 2; axle.position.y = hubY * U; g.add(axle);
+            _hqDecorWear('ferris_wheel', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03): the stand, the wheel and the seats are three Meshy pieces (mondo)
             var wheel = new THREE.Group(); wheel.position.y = hubY * U; g.add(wheel);
             [-1, 1].forEach(function (s) { var rim = new THREE.Mesh(new THREE.TorusGeometry(R * U, 0.04 * U, 8, 48), steel); rim.rotation.y = Math.PI / 2; rim.position.x = s * 0.45 * U; wheel.add(rim); });
             var gondolas = [];
@@ -67731,8 +69265,10 @@ const ThreeRenderer = (function () {
                 var piv = new THREE.Group(); piv.position.set(0, Math.cos(a) * R * U, Math.sin(a) * R * U); wheel.add(piv);
                 var car = _hqBox(0.8, 0.5, 0.5, _hqMat(null, 1, 1, { color: [0xe04848, 0x48a0e0, 0xf0d040, 0x60c060][i % 4], shininess: 40 })); car.position.y = -0.4 * U; piv.add(car);
                 var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic(0xfff0a0)); bulb.position.y = 0.05 * U; piv.add(bulb);
+                _hqDecorWear('ferris_gondola', U, piv, { hide: [car, bulb], box: [-0.4, -0.85, -0.35, 0.4, 0.05, 0.35], fit: 'height' });
                 gondolas.push({ piv: piv, a: a });
             }
+            _hqDecorWear('ferris_wheel_wheel', U, g, { into: wheel, hide: wheel.children.filter(function (c) { return c.isMesh; }), box: [-0.5, -R - 0.05, -R - 0.05, 0.5, R + 0.05, R + 0.05], turn: 90, fit: 'height' });
             var glow = _hzGlowSprite(5.0 * U, 0xffd080, 0.35, 0.05, 0.03, 0.6); glow.position.y = hubY * U; g.add(glow);
             if (_hq) _hq.tickers.push(function (dt) { wheel.rotation.x += dt * 0.18; for (var q = 0; q < gondolas.length; q++) gondolas[q].piv.rotation.x = -wheel.rotation.x; });
             return g;
@@ -67756,10 +69292,12 @@ const ThreeRenderer = (function () {
                 var head = _hqBox(0.14, 0.14, 0.3, body.material); head.position.set(0, 1.45 * U, 0.5 * U); h.add(head);
                 for (var l = 0; l < 4; l++) { var leg = _hqBox(0.06, 0.5, 0.06, body.material); leg.position.set(((l % 2) ? 0.08 : -0.08) * U, 0.62 * U, ((l < 2) ? 0.28 : -0.28) * U); leg.rotation.x = (l < 2) ? -0.5 : 0.4; h.add(leg); }
                 var saddle = _hqBox(0.26, 0.06, 0.3, _hqMat(null, 1, 1, { color: 0xc8303a })); saddle.position.y = 1.16 * U; h.add(saddle);
+                _hqDecorWear('carousel_horse', U, h, { box: [-0.15, 0.35, -0.5, 0.15, 1.55, 0.6], fit: 'height' });   // THE MESHY DECOR (2026-11-03): a Meshy horse on the brass pole (no pole of its own)
                 h.rotation.y = -a + Math.PI / 2;
                 horses.push({ h: h, ph: i * 0.8 });
             }
             var bulbs = new THREE.Group(); for (var b = 0; b < 16; b++) { var ba = (b / 16) * Math.PI * 2; var bl = new THREE.Mesh(new THREE.SphereGeometry(0.05 * U, 8, 6), _hqBasic((b % 2) ? 0xfff0a0 : 0xffb0c0)); bl.position.set(Math.cos(ba) * (R + 0.25) * U, 2.9 * U, Math.sin(ba) * (R + 0.25) * U); bulbs.add(bl); } g.add(bulbs);
+            _hqDecorWear('carousel', U, g, { into: spin, hide: [deck, post, canopy, bulbs], box: [-2.7, 0, -2.7, 2.7, 3.75, 2.7], fit: 'width' });   // THE MESHY DECOR (2026-11-03): the whole carousel rides the spin
             if (_hq) _hq.tickers.push(function (dt, now) { spin.rotation.y += dt * 0.25; var t = now * 0.001; for (var q = 0; q < horses.length; q++) horses[q].h.position.y = 0.18 * Math.sin(t * 1.4 + horses[q].ph) * U; });
             return g;
         },
@@ -67796,6 +69334,8 @@ const ThreeRenderer = (function () {
             var tx = _hzTextTex('hq_striker', ['WEAKLING', 'RECRUIT', 'OPERATIVE', 'KEYHOLDER', 'GATEKEEPER', 'THE DIRECTOR'], { w: 128, h: 512, color: '#ffe8a0', pad: 0.05 });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, 2.6 * U, 0.065 * U); g.add(m); }
             var puck = _hqBox(0.3, 0.08, 0.06, _hqBasic(0xff3030)); puck.position.set(0, 0.6 * U, 0.08 * U); g.add(puck);
+            if (_hqDecorWear('high_striker', U, g, { hide: g.children.filter(function (c) { return c !== mallet && c !== handle; }), box: [-0.6, 0, -0.4, 0.6, 4.85, 0.4], fit: 'height' }))   // THE MESHY DECOR (2026-11-03)
+                _hqDecorWear('high_striker_hammer', U, g, { hide: [mallet, handle], box: [-0.15, 0, 0.45, 0.85, 0.2, 0.85], fit: 'width', turn: -20 });   // the mallet: its own piece, lying on the floor in front (mondo 11-03: hammer and striker separate)
             return g;
         },
         /* ROOM 1893: the ticket booth — a kiosk with a window and a lit ADMIT ONE */
@@ -67809,6 +69349,7 @@ const ThreeRenderer = (function () {
             var tx = _hzTextTex('hq_admit_one', ['TICKETS', 'ADMIT ONE'], { w: 512, h: 160, color: '#fff0c0', bg: '#2a1010' });
             if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * U, 0.5 * U), new THREE.MeshBasicMaterial({ map: tx })); m.position.set(0, 2.55 * U, 0.72 * U); g.add(m); }
             var glow = _hzGlowSprite(1.8 * U, 0xffd0a0, 0.3, 0.05, 0.02, 0.8); glow.position.set(0, 2.5 * U, 0.8 * U); g.add(glow);
+            _hqDecorWear('ticket_booth', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         popcorn_cart: function (U) {
@@ -67818,6 +69359,7 @@ const ThreeRenderer = (function () {
             var glass = _hqBox(0.8, 0.6, 0.5, new THREE.MeshPhongMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.5, emissive: 0xfff0c0, emissiveIntensity: 0.3 })); glass.position.y = 1.4 * U; g.add(glass);
             var lid = _hqBox(0.95, 0.06, 0.65, red); lid.position.y = 1.73 * U; g.add(lid);
             [-1, 1].forEach(function (s) { var wh = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.2 * U, 0.05 * U, 14), _hqBasic(0xd8b860)); wh.rotation.x = Math.PI / 2; wh.position.set(s * 0.4 * U, 0.2 * U, 0.33 * U); g.add(wh); });
+            _hqDecorWear('popcorn_cart', U, g);   // THE MESHY DECOR (2026-11-03): the popcorn stays in its case
             for (var i = 0; i < 30; i++) { var k = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 6, 5), _hqBasic(0xfff4d0)); k.position.set((Math.random() - 0.5) * 0.6 * U, (1.15 + Math.random() * 0.3) * U, (Math.random() - 0.5) * 0.4 * U); g.add(k); }
             return g;
         },
@@ -67836,6 +69378,7 @@ const ThreeRenderer = (function () {
             var post = _hqBox(0.06, 1.2, 0.06, steel); post.position.y = 0.6 * U; g.add(post);
             var foot = _hqBox(0.6, 0.05, 0.5, steel); foot.position.y = 0.025 * U; g.add(foot);
             var box = _hqBox(0.5, 0.4, 0.3, _hqMat(null, 1, 1, { color: 0xe8e8e0, shininess: 30 })); box.position.set(0, 1.15 * U, 0.1 * U); g.add(box);
+            _hqDecorWear('eeg_rack', U, g);   // THE MESHY DECOR (2026-11-03): the live trace stays
             var cv = null, tex = null, ctx = null;
             if (typeof document !== 'undefined') { cv = document.createElement('canvas'); cv.width = 128; cv.height = 96; ctx = cv.getContext('2d'); tex = new THREE.CanvasTexture(cv); }
             var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * U, 0.28 * U), tex ? new THREE.MeshBasicMaterial({ map: tex }) : _hqBasic(0x103020)); scr.position.set(0, 1.17 * U, 0.26 * U); g.add(scr);
@@ -67872,21 +69415,6 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { acc += dt; if (acc < 0.15) return; acc = 0; draw(now * 0.001 + seed); });
             return g;
         },
-        /* ROOM 0dB: the tank — a pod with its lid ajar and a blue light inside; the lid breathes (ticker) */
-        iso_tank: function (U) {
-            var g = new THREE.Group();
-            var shell = _hqMat(null, 1, 1, { color: 0xe8e8f0, shininess: 90, specular: 0xffffff });
-            var body = _hqBox(2.4, 0.9, 1.6, shell); body.position.y = 0.45 * U; g.add(body);
-            var inner = _hqBox(2.1, 0.02, 1.3, new THREE.MeshBasicMaterial({ color: 0x60a0ff })); inner.position.y = 0.905 * U; g.add(inner);
-            var water = _hqBox(2.1, 0.01, 1.3, new THREE.MeshPhongMaterial({ color: 0x3060c0, transparent: true, opacity: 0.6, shininess: 160 })); water.position.y = 0.92 * U; g.add(water);
-            var hinge = new THREE.Group(); hinge.position.set(0, 0.9 * U, -0.8 * U); g.add(hinge);
-            var lid = _hqBox(2.4, 0.1, 1.6, shell); lid.position.set(0, 0.05 * U, 0.8 * U); hinge.add(lid);
-            hinge.rotation.x = -0.35;
-            var glow = _hzGlowSprite(2.0 * U, 0x60a0ff, 0.35, 0.1, 0.04, 0.5); glow.position.y = 1.0 * U; g.add(glow);
-            var seed = (_hqProcSeed++) * 0.5;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; hinge.rotation.x = -0.35 - 0.05 * Math.sin(t * 0.4); glow.material.opacity = 0.25 + 0.12 * Math.sin(t * 0.4); });
-            return g;
-        },
         /* ROOM 4B: the red button under a hinged cover, a label, a lamp */
         evac_button: function (U) {
             var g = new THREE.Group();
@@ -67913,6 +69441,7 @@ const ThreeRenderer = (function () {
                 var head = new THREE.Mesh(new THREE.BoxGeometry(0.34 * U, 0.3 * U, 0.26 * U), dark); head.position.set(x, 6.62 * U, 0.06 * U); head.rotation.x = 0.55; g.add(head);
                 var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.28 * U, 0.24 * U), lampMat); lens.position.set(x, 6.55 * U, 0.2 * U); lens.rotation.x = -Math.PI / 2 + 0.55; g.add(lens);
             }
+            _hqDecorWear('flood_mast', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE BOWL (2026-09-26): the scoreboard over the north concourse — two steel legs, an 11 m frame, a lit screen (the score of a
@@ -67922,6 +69451,7 @@ const ThreeRenderer = (function () {
             var steel = _hqMat(null, 1, 1, { color: 0x3a3e44, shininess: 30 });
             [-4.2, 4.2].forEach(function (x) { var leg = _hqBox(0.5, 3.4, 0.5, steel); leg.position.set(x * U, 1.7 * U, 0); leg.castShadow = true; g.add(leg); });
             var frame = _hqBox(11, 5.4, 0.6, steel); frame.position.y = 6.1 * U; frame.castShadow = true; g.add(frame);
+            _hqDecorWear('scoreboard', U, g, { fit: 'stretch' });   // THE MESHY DECOR (2026-11-03): the screen + the ticker strip stay
             var scrMat;
             try {
                 var cv = document.createElement('canvas'); cv.width = 512; cv.height = 220; var c = cv.getContext('2d');
@@ -67947,6 +69477,11 @@ const ThreeRenderer = (function () {
             var arm = _hqBox(0.16 * k, H * 0.5, 0.06 * k, relief); arm.position.set(0.2 * k * U, H * 0.55 * U, 0.26 * k * U); g.add(arm);
             var hand = _hqBox(0.4 * k, 0.14 * k, 0.06 * k, relief); hand.position.set(0.12 * k * U, H * 0.32 * U, 0.26 * k * U); g.add(hand);
             var fox = _hqBox(0.5 * k, 0.3 * k, 0.05 * k, relief); fox.position.set(-0.1 * k * U, H * 0.78 * U, 0.26 * k * U); fox.rotation.z = 0.35; g.add(fox);   // the animal on the shaft (one of them has moved)
+            /* THE ONE SQUARE (2026-11-03, mondo: "the pillars ... are supposed to the space of one square and be like 2 or 3 squares tall"):
+               the Meshy pillar is 0.6 as wide as tall, so at 8.4 m it was 5 m wide. A placement's `w` (metres) is the head's width:
+               the model is stretched in plan to it (its depth kept in the model's own proportion) and stays `h` tall */
+            if (p && p.w > 0) { var hw = p.w / 2, hd = p.w * 0.257; _hqDecorWear('t_pillar', U, g, { fit: 'stretch', box: [-hw, 0, -hd, hw, h, hd] }); }
+            else _hqDecorWear('t_pillar', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         saucer_rig: function (U) {
@@ -68077,6 +69612,7 @@ const ThreeRenderer = (function () {
             var knob = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 10, 8), _hqBasic(0xff3a3a)); knob.position.set(0.37 * U, 1.5 * U, 0.05 * U); g.add(knob);
             var btn = _hqBox(0.28, 0.04, 0.08, chrome); btn.position.set(-0.05 * U, 0.98 * U, 0.3 * U); g.add(btn);
             var tray = _hqBox(0.44, 0.08, 0.14, chrome); tray.position.set(0, 0.76 * U, 0.3 * U); g.add(tray);
+            _hqDecorWear('slot_machine', U, g, { hide: g.children.filter(function (c) { return c !== plinth; }), box: [-0.34, 0.7, -0.32, 0.34, 1.84, 0.32], fit: 'height' });   // THE MESHY DECOR (2026-11-03): the cabinet stands on the old plinth; the reels spin on behind its glass
             var glow = _hzGlowSprite(1.1 * U, 0xffd040, 0.28, 0.05, 0.02, 0.8); glow.position.set(0, 1.7 * U, 0.3 * U); g.add(glow);
             /* THE TICKER: a spin every few seconds — the reels run, then stop one by one; the top box breathes */
             var spin = 0, t0 = 0, period = 5.5 + Math.random() * 3;
@@ -69895,6 +71431,9 @@ const ThreeRenderer = (function () {
             var pY = p.y;   // the prop's own lift over the ground under it (a desk top, a sheet of paper)
             if (isBox && _hqHasGround() && typeof p.wall !== 'string' && !(cat.ceil || p.ceil)) {
                 var pcy = _hqCaveTop(p.x || 0, p.z || 0);
+                /* THE FLOOR UNDER IT (2026-11-03, Göbekli Tepe): a prop authored `floor: true` stands on the field's own ground (the plateau,
+                   the pit), never on a wall row's top at its foot (a pillar round its battle stone stood on that stone) */
+                if (p.floor === true && _hq && _hq.terrain && typeof hqTerrainHeight === 'function') pcy = hqTerrainHeight(_hq.terrain, p.x || 0, p.z || 0);
                 /* THE TIER HEIGHT (2026-09-22 — the user: "floating objects on the Looking Glass, Mars, Technoticlan"): a terrain / cave
                    room's prop authored with `y` ≥ 1 (or a sunk cellar's ≤ −0.5) names a HEIGHT FROM THE ROOM'S FLOOR — a tier's top,
                    a slab, the air — like a native's `y` and a door's sill, never a lift over the ground (the sarcophagus at y 3.0 on
@@ -69905,6 +71444,12 @@ const ThreeRenderer = (function () {
                 /* THE OCEAN PACK (2026-10-27, the on-screen check): a swimmer authored under the water (`y` ≤ −0.5) swims at that height —
                    its circle's centre can stand on an islet, a deck or a statue (the shark round the Bermuda wreck flew at the islet's top) */
                 if (pcy != null && typeof p.y === 'number' && p.y <= -0.5 && (p.swim || cat.swim) && p.swim !== false) y0 += p.y - Math.max(pcy, p.y);
+                /* THE OPEN SKY (2026-11-03, THE NEW HEAVEN): a void room's prop over open sky has no ground to stand on — its `y` is its
+                   height from the room's floor (a cloud of the sea under the board, a castle on its island), never lifted onto the
+                   cut ground's level (the heaven clouds at y −4 stood on the board at the base and buried it); one authored under the
+                   floor (`y` ≤ −0.5) hangs there even under a floating deck */
+                else if (pcy != null && typeof p.y === 'number' && _hq.terrain.void && !_hq.terrain.void.holesOnly && typeof hqTerrainVoidAt === 'function'
+                    && (p.y <= -0.5 || hqTerrainVoidAt(_hq.terrain, p.x || 0, p.z || 0))) { y0 += p.y - ((p.y >= 1 || p.y <= -0.5) ? Math.max(pcy, p.y) : pcy); pY = 0; }
             }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
@@ -72804,7 +74349,7 @@ const ThreeRenderer = (function () {
     function _mcSnap(root) {
         var list = [], walk = function (o, M) {
             for (var i = 0; i < o.children.length; i++) {
-                var c = o.children[i]; if (!c || c.visible === false) continue;
+                var c = o.children[i]; if (!c || (c.visible === false && !c._ew_mcKeep)) continue;   // THE MESHY DECOR: a stand-in under its model still collides
                 c.updateMatrix();
                 var m = new THREE.Matrix4().multiplyMatrices(M, c.matrix);
                 if (c.isMesh && !c.isSprite && c.geometry && c.geometry.attributes && c.geometry.attributes.position && _mcSolidMat(c.material)) list.push({ g: c.geometry, m: m, im: c.isInstancedMesh ? c : null });
@@ -75604,6 +77149,7 @@ const ThreeRenderer = (function () {
             var gun = new THREE.Mesh(new THREE.TorusGeometry(0.86 * U, 0.05 * U, 6, 20), wood); gun.rotation.x = Math.PI / 2; gun.scale.set(1, 2.7, 1); gun.position.y = 0.52 * U; proc.add(gun);
             g.add(proc);
             var url = (typeof _MISC_GLB !== 'undefined' && _MISC_GLB.rowboat) ? _R2_MISC + _MISC_GLB.rowboat : null;
+            if (_HQ_DECOR_GLB.skiff && typeof THREE.GLTFLoader === 'function' && !(typeof window !== 'undefined' && window.EW_NO_DECOR_GLB)) { url = null; proc.visible = false; }   // THE MESHY DECOR: the Meshy skiff (hull + mast + sail up) replaces the rowboat file
             if (url && typeof THREE.GLTFLoader === 'function' && !(typeof window !== 'undefined' && window.EW_PERF_LOW)) {
                 var piv = new THREE.Group(); piv.rotation.y = Math.PI / 2;   // the GLB's length runs along X (the misc rule); the helm's forward is +Z
                 piv.add(_miscModelInstance(url, true, 4.6 * U, { fit: 'span', matPick: _hqPropMatPick, onDone: function () { proc.visible = false; if (_hq) _hq.dirty = true; } }));
@@ -75614,36 +77160,19 @@ const ThreeRenderer = (function () {
             var boom = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.035 * U, 2.6 * U, 8), wood); boom.rotation.x = Math.PI / 2; boom.position.set(0, 1.25 * U, -0.8 * U); g.add(boom);
             var sailShape = new THREE.Shape(); sailShape.moveTo(0, 0); sailShape.lineTo(0, 2.4 * U); sailShape.lineTo(-2.3 * U, 0.05 * U); sailShape.lineTo(0, 0);
             var sail = new THREE.Mesh(new THREE.ShapeGeometry(sailShape), canvas); sail.rotation.y = Math.PI / 2; sail.position.set(0.02 * U, 1.3 * U, 0.38 * U); g.add(sail);
+            _hqDecorWear('skiff', U, g, { hide: [proc, mast, boom, sail], box: [-0.9, -0.15, -2.4, 0.9, 3.8, 2.4], turn: 90 });   // THE MESHY DECOR (2026-11-03)
             var seed = (_hqProcSeed++) * 1.3;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; sail.rotation.y = Math.PI / 2 + 0.28 * Math.sin(t * 0.7); boom.rotation.y = 0.28 * Math.sin(t * 0.7); });
             return g;
         },
-        /* THE BATHYSCAPHE: a brass hull, a conning tower with a hatch, a screw, two lamps with their cones, portholes lit */
+        /* THE BATHYSCAPHE (THE CODED SHAPES OUT 2026-11-03, mondo: "the coded one looks better, so it needs a meshy replacement"): the
+           Meshy riveted yellow sub (Assets/decor/submarine.glb, its nose turned to +z) 7 m long, its two headlamps kept as glows; the
+           code hull, tower, skids, fins and screw are gone (the screw is the model's own, it no longer turns) */
         submarine: function (U) {
-            var g = new THREE.Group();
-            var brass = _hqMat(null, 1, 1, { color: 0x9a7a3c, shininess: 70, specular: 0x886622 });
-            var dark = _hqMat(null, 1, 1, { color: 0x3a3428, shininess: 30 });
-            var glass = new THREE.MeshPhongMaterial({ color: 0xbfefff, emissive: 0x6fc8e0, emissiveIntensity: 0.8, shininess: 90, transparent: true, opacity: 0.9 });
-            var hull = new THREE.Mesh(new THREE.CylinderGeometry(1.05 * U, 1.05 * U, 3.8 * U, 16), brass); hull.rotation.x = Math.PI / 2; hull.position.y = 1.2 * U; g.add(hull);
-            var nose = new THREE.Mesh(new THREE.SphereGeometry(1.05 * U, 16, 12), brass); nose.position.set(0, 1.2 * U, 1.9 * U); nose.scale.z = 1.3; g.add(nose);
-            var tail = new THREE.Mesh(new THREE.SphereGeometry(1.05 * U, 16, 12), brass); tail.position.set(0, 1.2 * U, -1.9 * U); tail.scale.z = 1.1; g.add(tail);
-            var tower = new THREE.Mesh(new THREE.CylinderGeometry(0.5 * U, 0.6 * U, 0.9 * U, 12), brass); tower.position.set(0, 2.5 * U, 0.3 * U); g.add(tower);
-            var hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * U, 0.34 * U, 0.08 * U, 12), dark); hatch.position.set(0, 2.98 * U, 0.3 * U); g.add(hatch);
-            var skidL = _hqBox(0.12, 0.25, 3.0, dark); skidL.position.set(-0.7 * U, 0.12 * U, 0); g.add(skidL);
-            var skidR = _hqBox(0.12, 0.25, 3.0, dark); skidR.position.set(0.7 * U, 0.12 * U, 0); g.add(skidR);
-            var fin = _hqBox(2.4, 0.08, 0.7, brass); fin.position.set(0, 1.2 * U, -2.6 * U); g.add(fin);
-            var finV = _hqBox(0.08, 1.6, 0.7, brass); finV.position.set(0, 1.4 * U, -2.6 * U); g.add(finV);
-            var screw = new THREE.Group(); screw.position.set(0, 1.2 * U, -3.15 * U);
-            for (var i = 0; i < 3; i++) { var bl = _hqBox(0.14, 0.7, 0.05, dark); bl.rotation.z = i * Math.PI * 2 / 3; bl.rotation.y = 0.5; screw.add(bl); }
-            g.add(screw);
-            [-0.9, 0, 0.9].forEach(function (z) { var port = new THREE.Mesh(new THREE.CircleGeometry(0.16 * U, 12), glass); port.position.set(1.06 * U, 1.35 * U, z * U); port.rotation.y = Math.PI / 2; g.add(port); var port2 = port.clone(); port2.position.x = -1.06 * U; port2.rotation.y = -Math.PI / 2; g.add(port2); });
-            var eye = new THREE.Mesh(new THREE.CircleGeometry(0.42 * U, 16), glass); eye.position.set(0, 1.25 * U, 3.28 * U); g.add(eye);
-            var coneMat = new THREE.MeshBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
-            [-0.62, 0.62].forEach(function (x) {
-                var lamp = _hzGlowSprite(0.5 * U, 0xdfffff, 0.75, 0.1, 0.05, 1.1); lamp.position.set(x * U, 0.95 * U, 2.6 * U); g.add(lamp);
-                /* NO LIGHT BOX (mondo 2026-10-05): no headlamp beam cone */
-            });
-            if (_hq) _hq.tickers.push(function (dt) { var V = _hq && _hq.vehicle; var on = V && V.on && V.rec && V.rec.grp && g.parent && V.rec.grp === g.parent; screw.rotation.z += dt * (on ? (2 + Math.abs(V.v) * 1.5) : 0.4); });
+            var g = new THREE.Group(), pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            var m = _miscModelInstance(_HQ_DECOR_BASE + _HQ_DECOR_GLB.submarine, true, 7.0 * U, { fit: 'span', matPick: pick });
+            m.rotation.y = Math.PI / 2; g.add(m);
+            [-0.45, 0.45].forEach(function (x) { var lamp = _hzGlowSprite(0.5 * U, 0xdfffff, 0.75, 0.1, 0.05, 1.1); lamp.position.set(x * U, 0.9 * U, 3.3 * U); g.add(lamp); });
             return g;
         },
         /* THE LIGHTHOUSE: a tapered white-and-red tower on a plinth, the gallery, the lantern room and a BEAM that turns */
@@ -75663,6 +77192,7 @@ const ThreeRenderer = (function () {
             var beams = new THREE.Group(); beams.position.y = (0.8 + h + 0.7) * U;
             [0, Math.PI].forEach(function (a) { var b = new THREE.Mesh(new THREE.ConeGeometry(2.2 * U, 34 * U, 10, 1, true), beamMat); b.rotation.z = Math.PI / 2; b.rotation.y = a; b.position.set(Math.cos(a) * 17 * U, 0, Math.sin(a) * 17 * U); var piv = new THREE.Group(); piv.rotation.y = a; piv.add(b); b.position.set(17 * U, 0, 0); beams.add(piv); });
             /* NO LIGHT BOX (mondo 2026-10-05): the turning beam cones are not added */
+            _hqDecorWear('lighthouse', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* a channel buoy: a red can on a float, a lamp on top */
@@ -75673,6 +77203,7 @@ const ThreeRenderer = (function () {
             var can = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * U, 0.42 * U, 1.2 * U, 10), red); can.position.y = 0.85 * U; g.add(can);
             var cage = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * U, 0.22 * U, 0.6 * U, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0x2a2c30, wireframe: true })); cage.position.y = 1.75 * U; g.add(cage);
             var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12 * U, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff5a4a })); lamp.position.y = 2.0 * U; g.add(lamp);
+            _hqDecorWear('sea_buoy', U, g, { hide: [fl, can, cage] });   // THE MESHY DECOR (2026-11-03): the lamp keeps its blink
             var seed = (_hqProcSeed++) * 0.7;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; g.rotation.z = 0.08 * Math.sin(t * 1.1); g.rotation.x = 0.06 * Math.sin(t * 0.8); lamp.material.color.setHex((Math.floor(t * 1.2) % 2) ? 0xff5a4a : 0x5a1a14); });
             return g;
@@ -75727,8 +77258,9 @@ const ThreeRenderer = (function () {
             var tents = new THREE.Group(); tents.position.y = 0.16 * U;
             for (var i = 0; i < 14; i++) { var a = i * 0.45, r = 0.06 + (i % 3) * 0.05; var t = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.03 * U, 0.34 * U, 5), m); t.position.set(Math.cos(a) * r * U, 0.16 * U, Math.sin(a) * r * U); t.rotation.set(0.35 * Math.cos(a), 0, -0.35 * Math.sin(a)); tents.add(t); }
             g.add(tents);
+            var anM = _hqDecorWear('anemone', U, g);   // THE MESHY DECOR (2026-11-03)
             var seed = (_hqProcSeed++) * 1.1;
-            if (_hq) _hq.tickers.push(function (dt, now) { var s = 1 + 0.12 * Math.sin(now * 0.0016 + seed); tents.scale.set(s, 1 / s, s); });
+            if (_hq) _hq.tickers.push(function (dt, now) { var s = 1 + 0.12 * Math.sin(now * 0.0016 + seed); tents.scale.set(s, 1 / s, s); if (anM) { var s2 = 1 + 0.04 * Math.sin(now * 0.0016 + seed); anM.scale.set(s2, 1 / s2, s2); } });
             return g;
         },
         /* A GIANT CLAM: two fluted shells, open on a pearl light */
@@ -75741,6 +77273,7 @@ const ThreeRenderer = (function () {
             var pearl = new THREE.Mesh(new THREE.SphereGeometry(0.09 * U, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); pearl.position.set(0, 0.4 * U, 0.05 * U); g.add(pearl);
             var seed = (_hqProcSeed++) * 0.8;
             if (_hq) _hq.tickers.push(function (dt, now) { hi.rotation.x = -0.5 - 0.15 * Math.sin(now * 0.0007 + seed); });
+            _hqDecorWear('giant_clam', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* A BLACK SMOKER: a chimney of dark rock, a glow in the vent, smoke sprites rising */
@@ -75749,6 +77282,7 @@ const ThreeRenderer = (function () {
             var rock = new THREE.MeshPhongMaterial({ color: 0x2a2624, shininess: 6, flatShading: true });
             var stack = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * U, 0.75 * U, 2.2 * U, 9), rock); stack.position.y = 1.1 * U; g.add(stack);
             var stub = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * U, 0.42 * U, 1.1 * U, 8), rock); stub.position.set(0.55 * U, 0.55 * U, 0.2 * U); stub.rotation.z = -0.2; g.add(stub);
+            _hqDecorWear('sea_vent', U, g, { fit: 'height' });   // THE MESHY DECOR (2026-11-03): the smoke is the sprites below
             var vent = _hzGlowSprite(0.9 * U, 0xff8a30, 0.6, 0.2, 0.1, 1.3); vent.position.y = 2.25 * U; g.add(vent);
             var puffs = [];
             for (var i = 0; i < 6; i++) { var p = new THREE.Sprite(new THREE.SpriteMaterial({ map: _hzGlowTexture(), color: 0x203038, transparent: true, opacity: 0.3, depthWrite: false })); p.userData.t = i / 6; puffs.push(p); g.add(p); }
@@ -75829,29 +77363,18 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt) { funnel.rotation.y += dt * 0.9; funnel.rotation.z = 0.06 * Math.sin(performance.now() * 0.0003); });
             return g;
         },
-        /* THE WHALE: a great dark body with flukes and a fin, drifting a slow circle round its post on the horizon */
+        /* THE WHALE: the ocean pack's whale (Whale.fbx, swimming on its own clip — mondo 2026-11-03: "use the ocean pack whale not the
+           humpback"), drifting a slow circle round its post on the horizon. The coded body is gone: the pack off, no whale. */
         whale: function (U, o, rng) {
-            var g = new THREE.Group(), s = o.s || 1;
-            var skin = new THREE.MeshPhongMaterial({ color: 0x1c2a34, emissive: 0x0a1418, emissiveIntensity: 0.5, shininess: 20 });
-            var body = new THREE.Group();
-            var trunk = new THREE.Mesh(new THREE.SphereGeometry(30 * s * U, 20, 12), skin); trunk.scale.set(1, 0.7, 3.2); body.add(trunk);
-            var head = new THREE.Mesh(new THREE.SphereGeometry(26 * s * U, 16, 10), skin); head.scale.set(1, 0.72, 1.4); head.position.z = 70 * s * U; body.add(head);
-            var tail = new THREE.Mesh(new THREE.CylinderGeometry(6 * s * U, 20 * s * U, 90 * s * U, 10), skin); tail.rotation.x = Math.PI / 2; tail.position.z = -120 * s * U; body.add(tail);
-            var fluke = new THREE.Mesh(new THREE.BoxGeometry(80 * s * U, 3 * s * U, 30 * s * U), skin); fluke.position.z = -168 * s * U; body.add(fluke);
-            var fin = new THREE.Mesh(new THREE.BoxGeometry(4 * s * U, 24 * s * U, 22 * s * U), skin); fin.position.set(0, 24 * s * U, -20 * s * U); fin.rotation.x = 0.4; body.add(fin);
-            [-1, 1].forEach(function (side) { var flip = new THREE.Mesh(new THREE.BoxGeometry(44 * s * U, 3 * s * U, 16 * s * U), skin); flip.position.set(side * 40 * s * U, -8 * s * U, 40 * s * U); flip.rotation.z = side * 0.3; body.add(flip); });
-            var eye = _hzGlowSprite(6 * s * U, 0x9ff0ff, 0.6, 0.1, 0.05, 0.5); eye.position.set(22 * s * U, 6 * s * U, 84 * s * U); body.add(eye);
-            /* THE OCEAN PACK (2026-10-27): the whale IS the pack's humpback (Whale2.fbx, swimming on its own clip) on the same slow circle;
-               NO STAND-INS — the built body is not drawn while it streams. The pack off → the built body as before. */
+            var g = new THREE.Group(), s = o.s || 1, body = new THREE.Group();
             if (_oceanPackOn()) {
-                body.children.slice().forEach(function (k) { body.remove(k); });
-                fluke = new THREE.Object3D();
-                body.add(_miscModelInstance(_oceanUrl('Whale2'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
-                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } }));   // lit from within a little, like the built one: the abyss is dark
+                var wm = _miscModelInstance(_oceanUrl('Whale'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
+                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } });   // lit from within a little: the abyss is dark
+                wm.rotation.y = Math.PI; body.add(wm);   // Whale.fbx swims the other way round from the humpback (the catalogue's ocean_whale row: turn 180)
             }
             g.add(body);
             var t0 = Math.random() * 6.28;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; fluke.rotation.x = 0.35 * Math.sin(now * 0.0009); });
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; });
             return g;
         },
     });
@@ -76016,10 +77539,13 @@ const ThreeRenderer = (function () {
             var tint = [0x4fa8ff, 0x7fdc6a, 0xd8802a, 0xa060ff, 0xff4a4a][(_hqProcSeed++) % 5];
             var stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * U, 0.16 * U, 0.5 * U, 10), new THREE.MeshPhongMaterial({ color: 0x8a4a5a, shininess: 8 })); stalk.position.y = 0.25 * U; g.add(stalk);
             var eye = _hqAstralEye(R, tint, 0xd8a0a8); eye.g.position.y = 1.0 * U; g.add(eye.g);
+            var dmE = _hqDecorWear('dream_eye', U, g, { hide: [stalk, eye.g], box: [-0.6, 0, -0.6, 0.6, 1.6, 0.6], fit: 'height' }), dmQ = new THREE.Quaternion(), dmP = new THREE.Vector3(), dmR = new THREE.Euler();   // THE MESHY DECOR (2026-11-03): the Meshy eye turns to watch you
             var seed = (_hqProcSeed++) * 0.9, nextBlink = 2 + Math.random() * 4, blinkT = -1;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var pl = _hq && _hq.player;
                 if (pl) eye.track(pl.x * U, (pl.y + 1.5) * U, pl.z * U, 0.06);
+                if (dmE && pl) { g.getWorldQuaternion(dmQ); g.getWorldPosition(dmP); var dmW = Math.atan2(pl.x * U - dmP.x, pl.z * U - dmP.z) - dmR.setFromQuaternion(dmQ, 'YXZ').y, dmD = dmW - dmE.rotation.y; dmE.rotation.y += Math.atan2(Math.sin(dmD), Math.cos(dmD)) * 0.06; }
+                if (dmE) dmE.position.y = 0.04 * Math.sin(now * 0.0012 + seed) * U;
                 nextBlink -= dt;
                 if (nextBlink <= 0 && blinkT < 0) { blinkT = 0; nextBlink = 2.5 + Math.random() * 5; }
                 if (blinkT >= 0) { blinkT += dt; var k = blinkT < 0.09 ? blinkT / 0.09 : blinkT < 0.2 ? 1 - (blinkT - 0.09) / 0.11 : 0; eye.blink(Math.max(0, Math.min(1, k))); if (blinkT >= 0.2) { blinkT = -1; eye.blink(0); } }
@@ -76068,11 +77594,12 @@ const ThreeRenderer = (function () {
                 var tooth = new THREE.Mesh(new THREE.ConeGeometry(0.09 * U, 0.55 * U, 6), bone); tooth.position.y = 0.27 * U; piv.add(tooth);
                 head.add(piv); petals.push(piv);
             }
+            var nbM = _hqDecorWear('nightmare_bloom', U, g, { hide: [stem, bulb].concat(petals), into: g, fit: 'height' });   // THE MESHY DECOR (2026-11-03)
             var seed = (_hqProcSeed++) * 1.3;
             if (_hq) _hq.tickers.push(function (dt, now) {
                 var t = now * 0.001 + seed, open = 0.55 + 0.45 * Math.sin(t * 0.9);   // 0 shut (a bud of teeth) … 1 wide
                 for (var i = 0; i < petals.length; i++) petals[i].rotation.z = -(0.15 + 1.25 * open) + 0.08 * Math.sin(t * 3 + i);   // the cone leans OUT from the bulb about its own tangent
-                head.rotation.y += dt * 0.15; throat.material.opacity = 0.15 + 0.3 * open;
+                head.rotation.y += dt * 0.15; if (nbM) nbM.rotation.y += dt * 0.15; throat.material.opacity = 0.15 + 0.3 * open;
             });
             return g;
         },
@@ -76104,6 +77631,7 @@ const ThreeRenderer = (function () {
             felt.position.set(0, (H / 2) * U, (D + 0.003) * U); g.add(felt);
             var glass = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.08) * U, (H - 0.08) * U), new THREE.MeshPhongMaterial({ color: 0xd8e8f0, transparent: true, opacity: 0.12, shininess: 120, specular: 0xffffff }));
             glass.position.set(0, (H / 2) * U, (D + 0.02) * U); g.add(glass);
+            _hqDecorWear('directory_board', U, g, { hide: [frame, glass], box: [-0.5, -0.9, 0, 0.5, 1.1, 0.6], fit: 'height', wall: true, onDone: function (i, d) { var pw = d.w * 0.72, ph = Math.min(d.h * 0.6, pw * 1.4); felt.scale.set(pw / (W - 0.1), ph / (H - 0.1), 1); felt.position.set(0, (-0.9 + d.h * 0.6) * U, (d.z + d.d / 2 + 0.005) * U); } });   // THE MESHY DECOR (2026-11-03): the kiosk stands on the floor (mount 0.9); the floor's list on its panel
             return g;
         },
         /* THE ROCKING CHAIR (floor, block): a spindle-back chair on two runners.
@@ -76118,6 +77646,7 @@ const ThreeRenderer = (function () {
             for (var lx = -1; lx <= 1; lx += 2) for (var lz = -1; lz <= 1; lz += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.024 * U, 0.42 * U, 6), wood); leg.position.set(lx * 0.21 * U, 0.21 * U, lz * 0.2 * U); rock.add(leg); }
             for (var rx = -1; rx <= 1; rx += 2) { var rg = new THREE.Group(); var run = new THREE.Mesh(new THREE.TorusGeometry(0.62 * U, 0.02 * U, 6, 20, 0.95), wood); run.rotation.z = 1.5 * Math.PI - 0.475; rg.add(run); rg.rotation.y = Math.PI / 2; rg.position.set(rx * 0.22 * U, 0.62 * U, 0); rock.add(rg); }   // a runner is an arc of a wheel under the legs, its low point on the floor
             for (var ax = -1; ax <= 1; ax += 2) { var arm = _hqBox(0.04, 0.04, 0.44, wood); arm.position.set(ax * 0.25 * U, 0.66 * U, -0.02 * U); rock.add(arm); var post = new THREE.Mesh(new THREE.CylinderGeometry(0.016 * U, 0.016 * U, 0.24 * U, 6), wood); post.position.set(ax * 0.25 * U, 0.54 * U, 0.16 * U); rock.add(post); }
+            _hqDecorWear('rocking_chair', U, g, { into: rock });   // THE MESHY DECOR (2026-11-03): it rocks
             var seed = (_hqProcSeed++) * 1.7, wx = 0, wz = 0;
             g.userData.rockSpot = function (x, z) { wx = x; wz = z; };
             if (_hq) _hq.tickers.push(function (dt, now) {
@@ -76179,6 +77708,7 @@ const ThreeRenderer = (function () {
             var skirt = new THREE.Mesh(new THREE.ConeGeometry(0.03 * U, 0.05 * U, 10), _hqMat(null, 1, 1, { color: 0xf0d8e0, shininess: 20 })); skirt.position.y = 0.025 * U; dancer.add(skirt);
             var body = new THREE.Mesh(new THREE.SphereGeometry(0.014 * U, 8, 6), _hqMat(null, 1, 1, { color: 0xf0d8e0 })); body.position.y = 0.06 * U; dancer.add(body);
             var head = new THREE.Mesh(new THREE.SphereGeometry(0.012 * U, 8, 6), _hqMat(null, 1, 1, { color: 0xffe8d8 })); head.position.y = 0.085 * U; dancer.add(head);
+            _hqDecorWear('music_box', U, g, { hide: [box, lid, pin], onDone: function (i, d) { dancer.position.y = d.h * 0.38 * U; } }); _hqDecorWear('music_box_dancer', U, dancer, { fit: 'height', h: 0.11 });   // THE MESHY DECOR (2026-11-03): the box, and the Meshy ballerina turning in it
             var glow = _hzGlowSprite(0.5 * U, 0xffd8a0, 0.22, 0.06, 0.04, 0.5); glow.position.y = 0.16 * U; g.add(glow);
             var speed = 1.8, seed = (_hqProcSeed++) * 0.4;
             if (_hq) _hq.tickers.push(function (dt, now) {
@@ -76238,6 +77768,7 @@ const ThreeRenderer = (function () {
                 rod.position.copy(dir).multiplyScalar(0.18 * U).add(new THREE.Vector3(0, 0.5 * U, 0)); rod.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); g.add(rod);
                 var b = new THREE.Mesh(new THREE.SphereGeometry(0.035 * U, 10, 8), bulb); b.position.copy(dir).multiplyScalar(0.37 * U).add(new THREE.Vector3(0, 0.5 * U, 0)); g.add(b);
             }
+            _hqDecorWear('sputnik_lamp', U, g, { top: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE SAUCER (TWA's flight-centre lamp): a stem, a fluted cream saucer, a lit disc under it */
@@ -76248,6 +77779,7 @@ const ThreeRenderer = (function () {
             var pts = [[0.05, 0.36], [0.18, 0.3], [0.34, 0.26], [0.48, 0.2], [0.56, 0.12], [0.55, 0.1]].map(function (v) { return new THREE.Vector2(v[0] * U, v[1] * U); });
             var saucer = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), cream); saucer.material.side = THREE.DoubleSide; g.add(saucer);
             var lit = new THREE.Mesh(new THREE.CircleGeometry(0.5 * U, 32), _hqMat(null, 1, 1, { color: 0xfff4dc, emissive: 0xffe7b8, emissiveIntensity: 0.85 })); lit.rotation.x = Math.PI / 2; lit.position.y = 0.11 * U; g.add(lit);
+            _hqDecorWear('saucer_pendant', U, g, { top: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE DISCS (the Futuro's pendant): three white discs on threads at three heights */
@@ -76258,6 +77790,7 @@ const ThreeRenderer = (function () {
                 var th = new THREE.Mesh(new THREE.CylinderGeometry(0.003 * U, 0.003 * U, (0.9 - d[1]) * U, 4), thread); th.position.set(d[0] * U, (0.9 + d[1]) / 2 * U, (i - 1) * 0.1 * U); g.add(th);
                 var disc = new THREE.Mesh(new THREE.CylinderGeometry(d[2] * U, d[2] * U, 0.025 * U, 28), white); disc.position.set(d[0] * U, d[1] * U, (i - 1) * 0.1 * U); g.add(disc);
             });
+            _hqDecorWear('disc_cluster', U, g, { top: true });   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE MUSHROOM (Panton): a stem, a domed cap that glows orange from under */
@@ -76269,6 +77802,7 @@ const ThreeRenderer = (function () {
             var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035 * U, 0.06 * U, 0.3 * U, 14), body); stem.position.y = 0.17 * U; g.add(stem);
             var cap = new THREE.Mesh(new THREE.SphereGeometry(0.22 * U, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), body); cap.position.y = 0.3 * U; cap.material.side = THREE.DoubleSide; g.add(cap);
             var lit = new THREE.Mesh(new THREE.CircleGeometry(0.2 * U, 22), _hqMat(null, 1, 1, { color: 0xffd7a8, emissive: 0xffbe78, emissiveIntensity: 0.8 })); lit.rotation.x = Math.PI / 2; lit.position.y = 0.31 * U; g.add(lit);
+            _hqDecorWear('mushroom_lamp', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE EGG CHAIR (Aarnio's ball): a white shell with the front cut away on a pedestal, the cushion inside; the opening is +Z */
@@ -76281,6 +77815,7 @@ const ThreeRenderer = (function () {
             var open = 1.75, sphere = new THREE.Mesh(new THREE.SphereGeometry(R * U, 28, 18, Math.PI / 2 + open / 2, Math.PI * 2 - open, 0.35, Math.PI - 0.35), shell); sphere.material.side = THREE.DoubleSide; sphere.position.y = (0.25 + R) * U; g.add(sphere);
             var cushion = new THREE.Mesh(new THREE.SphereGeometry((R - 0.07) * U, 24, 14, Math.PI / 2 + open / 2 + 0.05, Math.PI * 2 - open - 0.1, 1.55, Math.PI - 1.9), velour); cushion.material.side = THREE.DoubleSide; cushion.position.y = (0.25 + R) * U; g.add(cushion);
             var seat = new THREE.Mesh(new THREE.CylinderGeometry(0.44 * U, 0.44 * U, 0.1 * U, 24), velour); seat.position.y = 0.47 * U; g.add(seat);
+            _hqDecorWear('egg_chair', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE TULIP CHAIR (Saarinen): one stem, a shallow shell, a cushion */
@@ -76292,6 +77827,7 @@ const ThreeRenderer = (function () {
             var body = new THREE.Mesh(new THREE.LatheGeometry(pts, 26), white); body.material.side = THREE.DoubleSide; g.add(body);
             var back = new THREE.Mesh(new THREE.SphereGeometry(0.31 * U, 22, 12, Math.PI / 2 + 0.9, Math.PI * 2 - 1.8, 1.2, 0.5), white); back.material.side = THREE.DoubleSide; back.position.y = 0.46 * U; g.add(back);
             var seat = new THREE.Mesh(new THREE.CylinderGeometry(0.26 * U, 0.26 * U, 0.06 * U, 22), velour); seat.position.y = 0.48 * U; g.add(seat);
+            _hqDecorWear('tulip_chair', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE TULIP TABLE: one stem, a white disc — `p.r` the top's radius */
@@ -76301,6 +77837,7 @@ const ThreeRenderer = (function () {
             var pts = [[0.001, 0], [0.3, 0], [0.24, 0.04], [0.07, 0.12], [0.045, 0.45], [0.06, 0.68], [0.12, 0.7]].map(function (v) { return new THREE.Vector2(v[0] * U, v[1] * U); });
             var stem = new THREE.Mesh(new THREE.LatheGeometry(pts, 24), white); g.add(stem);
             var top = new THREE.Mesh(new THREE.CylinderGeometry(r * U, (r - 0.03) * U, 0.035 * U, 32), _hqMat('marble_light', 2, 2, { color: 0xf8f6f0, shininess: 90, specular: 0x777777 })); top.position.y = 0.705 * U; g.add(top);
+            _hqDecorWear('tulip_table', U, g, {});   // THE MESHY DECOR (2026-11-03)
             return g;
         },
         /* THE CURVED SOFA: a 60° arc of tufted bench, the arc's centre `p.r` in FRONT (+Z) — the seat faces the centre; six rows make a ring */
@@ -76373,6 +77910,7 @@ const ThreeRenderer = (function () {
                 var ring = new THREE.Mesh(new THREE.TorusGeometry(rr * U, 0.02 * U, 8, 24), white);
                 ring.position.set((-Wd / 2 + 0.22 + c * (Wd - 0.44) / (cols - 1)) * U, (0.24 + r * (Hd - 0.48) / (rows - 1)) * U, 0); g.add(ring);
             }
+            _hqDecorWear('space_divider', U, g, {});   // THE MESHY DECOR (2026-11-03): ONE folding screen (mondo 11-03: not two side by side)
             return g;
         },
         /* THE POD BED: a white trough, a teal glass dome, a blue strip inside; the head is −Z */
@@ -77461,7 +78999,7 @@ const ThreeRenderer = (function () {
             H.keyDir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
         } else H.keyDir = L.position.clone().normalize();
         if (rig.color != null) L.color.setHex(rig.color);
-        if (rig.intensity != null) L.intensity = +rig.intensity;
+        if (rig.intensity != null) L.intensity = +rig.intensity * (kind === 'box' ? _hqWhiteIn(room) : 1);   // THE WHITE ROOMS
         L.position.copy(H.keyDir).multiplyScalar(1000);
     }
     /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really
@@ -77504,7 +79042,7 @@ const ThreeRenderer = (function () {
         var K = _keyLampRules(), U = _hqUnits(), pl = H.player;
         var NFl = _hqLightRules().nightFill || {};
         var nOut = (!_hqEnclosed(H.room) && H.sky && H.room && H.room.kind === 'box') ? Math.max(0, Math.min(1, +H.sky.night || 0)) * (NFl.keyLight || 0) : 0;   // THE NIGHT FILL: outdoors, a share of it by night
-        var want = (_hqEnclosed(H.room) ? 1 : nOut) * (K.intensity || 0) * _keyLampGain();
+        var want = (_hqEnclosed(H.room) ? _hqWhiteIn(H.room) : nOut) * (K.intensity || 0) * _keyLampGain();   // THE WHITE ROOMS: × whiteDay on a white floor
         L.intensity += (want - L.intensity) * Math.min(1, (dt || 0) * 3);
         if (Math.abs(L.intensity - want) < 0.002) L.intensity = want;
         var C = cam.position;
@@ -78770,7 +80308,9 @@ const ThreeRenderer = (function () {
         /* read once per run (the scenery key asks every frame; the marker is a fresh object per call) */
         var bd = run.field && run.field.board;
         var rev = (typeof hqRoomRev === 'function') ? hqRoomRev(run.room) : 0;   // THE GAME ROOM EDITS (2026-10-18): an edited room is read again
-        var ck = run.room + '|' + rev + '|' + (run.fieldId || '') + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
+        /* the field's build stamp (data.js hqArenaUpgrade): THE CHESS POSITIONS re-raster the same window with other pieces — a new read */
+        var fb = 0; try { var fe = (run.fieldId && typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[run.fieldId] : null; fb = (fe && fe.field && fe.field.build) | 0; } catch (e) { fb = 0; }
+        var ck = run.room + '|' + rev + '|' + (run.fieldId || '') + '|' + fb + '|' + (bd ? [bd.N, bd.W, bd.H, bd.C, bd.x0, bd.z0, bd.half].join(',') : '');
         if (_hqBattleRoomCache.key === ck) return _hqBattleRoomCache.R;
         var R = null;
         try {
@@ -78791,7 +80331,7 @@ const ThreeRenderer = (function () {
                        void room stand 4–9 m over room metre 0: drawn at base + 0 they rose 3 tiles over the levels the camera, the fog
                        and every elevation read use, and the action shots sat inside / under the island. */
                     var refM = (fld && isFinite(+fld.ref)) ? +fld.ref : 0;
-                    R = { room: room, roomId: run.room, rev: rev, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld,
+                    R = { room: room, roomId: run.room, rev: rev, T: T, cave: cave, terrain: !!room.terrain, base: base, refM: refM, field: fld, build: fb,
                           grid: (entry && Array.isArray(entry.grid)) ? entry.grid : null };   // THE SKINS: the surface each cell was built with (tids)   // THE SEAMLESS FIELD, delivery 2: a terrain room is drawn round its window too
                 }
             }
@@ -78867,7 +80407,7 @@ const ThreeRenderer = (function () {
         if (!R || (R.cave && !(R.field && R.field.caveGround)) || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         if (typeof hqFieldGroundOn === 'function' ? !hqFieldGroundOn() : !!(typeof window !== 'undefined' && window.EW_HQ_NO_TRUE_GROUND)) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         var ts = CONFIG.tileSize || BASE_TILE;
-        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer;   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read
+        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer + '|' + (R.build | 0);   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read (THE CHESS POSITIONS: a re-rastered field too)
         if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
         var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
         /* THE BIG SQUARES (2026-10-28): on a board of bigger squares a level is still the room's 1.75 m (data.js THE TIER RULE), so a
@@ -78885,7 +80425,7 @@ const ThreeRenderer = (function () {
                 return row.map(function (t, x) { var li = lr[x]; if (li === null || li === undefined || t === null || t === undefined) return t; var d = _hqLotStandY(R.roomId, li); return (d !== null) ? d : t; });
             });
         }
-        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, skyTops: Array.isArray(R.field.skyTops) ? R.field.skyTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -79025,6 +80565,9 @@ const ThreeRenderer = (function () {
         var cx = Math.round(tx), cy = Math.round(ty);
         if (cx < 0 || cy < 0 || cx >= G.W || cy >= G.H) return null;
         var top = G.yAt(cx, cy);
+        /* THE OPEN SKY (2026-11-03): over a rock square of a room with no ceiling a flyer hovers its clearance over what is DRAWN
+           there (data.js hqFieldSkyApply: a building's edge, a wall's top, a rock) */
+        if ((top === null || top === undefined) && G.skyTops) { var _sr = G.skyTops[cy], _st = _sr ? _sr[cx] : null; if (_st !== null && _st !== undefined && isFinite(+_st)) top = G.floorY + (+_st) * G.s; }
         if (top === null || top === undefined) return null;
         var eh = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(cx, cy)
                : (state.boardHeights && state.boardHeights[cy]) ? (state.boardHeights[cy][cx] || 0) : 0;
@@ -79082,7 +80625,7 @@ const ThreeRenderer = (function () {
             var field = { ambient: { intensity: 0 }, shadow: !(SH.on === false || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW) };
             var lampMax = (typeof HQ_PROP_LIGHT_MAX !== 'undefined') ? HQ_PROP_LIGHT_MAX : 10;
             if (open) {
-                var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = LR.open || {};
+                var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0, LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT
                 field.hemi = { sky: _hqSkyHemiC(skyC, nightO).getHex(), ground: 0x2a2620, intensity: nightO ? LRo.nightHemi : LRo.dayHemi };
                 field.sun = { color: nightO ? 0xaabfe0 : 0xfff1d6, intensity: nightO ? LRo.nightSun : LRo.daySun, dir: [0.45, 1, 0.3] };
                 /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): a fight starts at the hour the room was at — a clocked room's rig is the
@@ -79105,12 +80648,12 @@ const ThreeRenderer = (function () {
                     if (FCy) { ml.intensity = LRo.nightLamp + (LRo.dayLamp - LRo.nightLamp) * _fieldCycleEase(FCy.k); FCy.lamps.push({ l: ml, d: LRo.dayLamp, n: LRo.nightLamp }); }
                 });
             } else {
-                var amb = _hqMoodAmb(S, LR);   // THE LIFT (2026-10-24): the walk's own numbers
-                field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb };
+                var amb = _hqMoodAmb(S, LR), kwF = _hqWhiteIn(room);   // THE LIFT (2026-10-24): the walk's own numbers; THE WHITE ROOMS
+                field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb * kwF };
                 /* THE KEY LIGHT (2026-10-24): the walk's key strength (HQ_LIGHT_RULES.key.box / shell.rig, _hqLightArm) — the fight used to
                    keep the pre-rig 0.22 × mood, so the same room read darker in a fight than on the walk */
                 var rigB = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
-                field.sun = { color: 0xe8ecf5, intensity: (rigB.intensity != null) ? +rigB.intensity : 0.22 * amb, dir: [0.3, 1, 0.2] };
+                field.sun = { color: 0xe8ecf5, intensity: ((rigB.intensity != null) ? +rigB.intensity : 0.22 * amb) * kwF, dir: [0.3, 1, 0.2] };
                 var bxf = new THREE.DirectionalLight(LR.fillColor, (LR.fill || 0) * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(bxf);
                 var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
                 var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
@@ -79130,7 +80673,7 @@ const ThreeRenderer = (function () {
         /* THE KEY LIGHT (2026-10-24): a fight in an enclosed room hangs the walk's key light over what the camera looks at */
         try {
             if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
-            st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0;
+            st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0; st.keyWhite = _hqWhiteIn(room);
             if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
                 var KL = _keyLampRules();
                 var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);
@@ -79394,6 +80937,7 @@ const ThreeRenderer = (function () {
         t = Math.max(0, Math.min(40 * s, t));
         L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
         var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
+        if (!st.keyOpen && st.keyWhite > 0) want *= st.keyWhite;   // THE WHITE ROOMS: a white-floored closed room's Key Light × whiteDay
         if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL
         if (L.intensity !== want) L.intensity = want;
         L.distance = (K.battleReach || 30) * s;
@@ -79804,7 +81348,7 @@ const ThreeRenderer = (function () {
     /* the sheet's repeat in battle px: the terrain room's own floor tile (info.tile metres), else two cells */
     function _fieldPatchRep(G) {
         var tm = 0;
-        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf && +inf.tile; } catch (e) { tm = 0; } }
+        if (G.R && G.R.terrain && typeof hqTerrainInfo === 'function') { try { var inf = hqTerrainInfo(G.R.roomId); tm = inf ? _hqSheetM(inf) : 0; } catch (e) { tm = 0; } }   // ONE SPRITE PER SQUARE
         var rep = (tm > 0) ? tm * G.s : 2 * G.ts;
         return Math.max(G.ts, Math.min(6 * G.ts, rep));
     }
@@ -81342,8 +82886,8 @@ const ThreeRenderer = (function () {
     }
     function _hqBoxLightVals(room) {
         var S = room.shell || {}, LRb = _hqLightRules();
-        var amb = _hqMoodAmb(S, LRb);
-        return { hemiI: 0.5 * amb, keyI: 0.22 * amb, fillI: LRb.fill * amb };
+        var amb = _hqMoodAmb(S, LRb), kw = _hqWhiteIn(room);   // THE WHITE ROOMS
+        return { hemiI: 0.5 * amb * kw, keyI: 0.22 * amb * kw, fillI: LRb.fill * amb };
     }
     /* a closed box room's own lamps (the fluorescents at shell.light / shell.lights, a warm pool at each desk lamp) — _hqEnter
        hangs them on the scene; a stage neighbour hangs them in its part (Phase 2: the ward is lit through its open door) */
@@ -82193,7 +83737,7 @@ const ThreeRenderer = (function () {
         return (V && !V.locked) ? V : _hqStageSkyValsRaw(room);
     }
     function _hqStageSkyValsRaw(room) {
-        var S = room.shell || {}, sky = S.sky || {}, U = _hqUnits(), LRo = _hqLightRules().open, night = sky.night ? 1 : 0;
+        var S = room.shell || {}, sky = S.sky || {}, U = _hqUnits(), LRo = _hqOpenLR(room), night = sky.night ? 1 : 0;   // THE WHITE DAYLIGHT
         var rig = Object.assign({}, (_hqLightRules().key && _hqLightRules().key.open) || {}, S.rig || {});
         var skyC = new THREE.Color((sky.tint != null) ? sky.tint : 0x8090b0);
         return {
@@ -82214,7 +83758,7 @@ const ThreeRenderer = (function () {
             return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
         }
         var bx = _hqBoxLightVals(room), S = room.shell || {}, kb = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
-        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: new THREE.Color(0x1c1a1e), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
+        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: new THREE.Color(0x1c1a1e), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity * _hqWhiteIn(room) : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
     }
     function _hqStageBlendStart(H, fromRoom, toRoom, fromId, toId) {
         var st = H.stage;
@@ -82309,7 +83853,7 @@ const ThreeRenderer = (function () {
         var out = { locked: C.locked, sun: sun, sunDome: _hqClkV(hqWorldDir(sun.sunAz, sun.sunEl, C.rot)), moonDome: _hqClkV(hqWorldDir(sun.moonAz, sun.moonEl, C.rot)),
                     dusk: C.locked ? 0 : sun.dusk, lamp: C.locked ? 1 : sun.lamp };
         if (C.locked) return out;
-        var base = _hqStageSkyValsRaw(room), LRo = _hqLightRules().open, DL = C.dayLook || {};
+        var base = _hqStageSkyValsRaw(room), LRo = _hqOpenLR(room), DL = C.dayLook || {};   // THE WHITE DAYLIGHT
         var authNight = !!sky.night, fogA = (sky.fog && sky.fog.color != null) ? sky.fog.color : 0x0d0e12;
         var dayFog = new THREE.Color(authNight ? ((DL.fog != null) ? DL.fog : CK.day.fog) : fogA);
         var nightFog = authNight ? new THREE.Color(fogA) : new THREE.Color(fogA).multiplyScalar(CK.night.fogK).add(new THREE.Color(CK.night.fog));
@@ -82618,7 +84162,7 @@ const ThreeRenderer = (function () {
             var skyC = new THREE.Color((S.sky.tint != null) ? S.sky.tint : 0x8090b0), nightO = S.sky.night ? 1 : 0;
             /* THE KEY LIGHT (2026-09-20): the numbers are HQ_LIGHT_RULES.open — a night room keeps a real MOON key
                (the user: "I have to turn the brightness all the way up in some places that are dark") */
-            var LRo = _hqLightRules().open;
+            var LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT: a white-floored room's sky light × HQ_LIGHT_RULES.whiteDay
             _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
             var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
@@ -84280,7 +85824,10 @@ const ThreeRenderer = (function () {
         if (key === T.key && T.members.length) return;
         T.key = key;
         _trClearTeam(T);
-        var spots = TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4], tok = T.tok;
+        /* THE LINE-UP READS LIKE THE PLATE (playtest 2026-11-03): the spots were a V (lead pair in the middle, the rest on
+           the wings), so the room stood the team in another order than the faces on the plate under it (Bee Queen, Mech,
+           Giant over Mech, Giant, Bee Queen). The spots keep their places; the team fills them left to right */
+        var spots = (TR_SPOTS[Math.max(1, Math.min(4, slots.length))] || TR_SPOTS[4]).slice().sort(function (a, b) { return a[0] - b[0]; }), tok = T.tok;
         /* big vessels stand further apart */
         var hMax = 0;
         slots.forEach(function (s) { var r = _cvResolveDef(s.race || 'door agent', s.gender || 'male', s.appearance); if (r && r.def) hMax = Math.max(hMax, (r.def.heightRatio || 1) * TR_HUMAN_M); });
@@ -84917,6 +86464,7 @@ const ThreeRenderer = (function () {
         chessNodes: function () { var e = _miscModelCache[_chessUrl(null)]; return e && e.root ? e.root.children.map(function (c) { return c.name; }) : null; },
         chessSetOn: _chessSetOn,
         warmChessSet: _warmChessSet,
+        chessPosSync: _hqChessPosSync,   // THE CHESS POSITIONS (2026-11-03): data.js hqLgChessSet
         halloweenClone: _hwClone,            // THE HALLOWEEN PACK (2026-10-29): a spell's piece of the kit (g.userData.mats to fade), or null while it streams
         warmHalloweenModels: _warmHwModels,  // THE HALLOWEEN PACK: the spells' pieces warmed on the loading card
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
@@ -84948,6 +86496,8 @@ const ThreeRenderer = (function () {
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
+        unitHoldProp: unitHoldProp,        // THE PROPS IN THE HAND (row 24)
+        unitPropMetre: unitPropMetre,
         /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
            (three-vfx-effects.js _ESC_LOOKS) hang the web line / the ejection's exhaust on the moving body */
         unitBodyWorld: function (uid) {

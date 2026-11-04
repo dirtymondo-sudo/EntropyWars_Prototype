@@ -1066,10 +1066,20 @@
            `arena-check`, the guest lays it over its room before it surveys, and `arena-ready` carries the signature of the room
            the guest surveyed — the host counts only a ready on its own room. Viewer-local, nothing on `state`. */
         function _arenaRoomOf(mapId) { try { var a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null; return a ? a.room : null; } catch (e) { return null; } }
-        function _arenaRoomSig(mapId) { var r = _arenaRoomOf(mapId); try { return (r && typeof window.hqRoomEditSig === 'function') ? window.hqRoomEditSig(r) : ''; } catch (e) { return ''; } }
+        /* THE CHESS POSITIONS (2026-11-03, mondo: the Looking-Glass "load one of these 3 actual chess positions at random"): the HOST rolls
+           the position once per match (_onlineArenaGo); it rides `arena-check` (`chess`) and the room's signature, so a guest that
+           surveyed another position is asked again and stands the host's (data.js hqLgChessSet). Viewer-local, nothing on `state`. */
+        function _arenaChessOf(mapId) { var r = _arenaRoomOf(mapId); try { return (r && typeof window.hqLgChessRoom === 'function' && window.hqLgChessRoom(r)) ? window.hqLgChessCur() : null; } catch (e) { return null; } }
+        function _arenaRoomSig(mapId) {
+            var r = _arenaRoomOf(mapId), sig = '';
+            try { sig = (r && typeof window.hqRoomEditSig === 'function') ? window.hqRoomEditSig(r) : ''; } catch (e) { sig = ''; }
+            var ch = _arenaChessOf(mapId); if (ch !== null) sig = (sig || '') + '|chess' + ch;
+            return sig;
+        }
         function _arenaCheckMsg(mapId) {
             var m = { type: 'arena-check', mapId: mapId }, r = _arenaRoomOf(mapId);
             if (r && typeof window.hqRoomEditOf === 'function') { try { m.room = r; m.edit = window.hqRoomEditOf(r) || null; m.sig = _arenaRoomSig(mapId); } catch (e) {} }
+            var ch = _arenaChessOf(mapId); if (ch !== null) m.chess = ch;
             return m;
         }
         function _onlineMatchMapId() {
@@ -1116,6 +1126,12 @@
         function _onlineArenaGo(NET) {
             var id = _onlineMatchMapId();
             if (!id || typeof window.hqArenaOf !== 'function' || !window.hqArenaOf(id)) return true;   // not an arena: nothing to survey
+            /* THE CHESS POSITIONS: the host rolls the Looking-Glass's position once per match; a new one is surveyed again on both seats */
+            if (NET._chessRolledFor !== id) {
+                NET._chessRolledFor = id;
+                var _chNew = false; try { _chNew = (typeof window.hqLgChessRoll === 'function') && window.hqLgChessRoll(id); } catch (e) { _chNew = false; }
+                if (_chNew) { _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen }; NET._guestArenaReady = null; NET._arenaWaitOver = null; }
+            }
             if (NET._arenaWaitOver === id) return true;
             if (_arenaPrep.id !== id) _onlineArenaPrep(id);
             var guestOk = NET._guestArenaReady === id;
@@ -1879,6 +1895,7 @@
                 }
                 window._NET._waitingForOpponent = false;
                 window._NET._autoStartFired = false;
+                window._NET._chessRolledFor = null;   // THE CHESS POSITIONS: the next match rolls its own position
                 state.showPlayer2Builder = true;
                 state.matchNumber = (state.matchNumber || 1) + 1;
                 render();
@@ -2612,7 +2629,8 @@
                     toX: toX, toY: toY,
                     fromZ: fromZ ?? 0, toZ: toZ ?? 0,
                     durationMs: durationMs || 480,
-                    knock: (opts && opts.knock) || undefined   // THE KNOCK: a hurled body tumbles on the guest too
+                    knock: (opts && opts.knock) || undefined,   // THE KNOCK: a hurled body tumbles on the guest too
+                    delayMs: (opts && opts.delayMs > 0) ? opts.delayMs : undefined   // THE BLINK READS: a self leap jumps on the shot's cut
                 });
             }
             return _origAnimateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts);
@@ -3069,6 +3087,10 @@
                         tx: target.x, ty: target.y,
                         /* FX-CAM THE LANDING: the mover a blink / escape / reel lands on that tile */
                         landId: (target._landUnit && target._landUnit.id != null) ? target._landUnit.id : null,
+                        /* THE DODGE READS (2026-11-03): the run's length (the glide to the landing matches it) and the caster's
+                           level on its start tile (the guest's synced copy may already stand on the landing) */
+                        travelMs: (opts && opts.travelMs > 0) ? opts.travelMs : undefined,
+                        cz: (unit.z != null) ? unit.z : undefined,
                         spellName: (opts && opts.spellName) || null,
                         spellId: (opts && opts.spellId) || null
                     });
@@ -3167,6 +3189,7 @@
                 NET._guestArenaReady = null;
                 NET._arenaWaitFor = null;
                 NET._arenaWaitOver = null;
+                NET._chessRolledFor = null;   // THE CHESS POSITIONS: every match rolls its own
                 NET._rematchState = null;
                 NET._rankedResultEmitted = false;
                 NET.lastSyncJson = '';
@@ -4434,6 +4457,12 @@
                             try { _reChanged = window.hqRoomEditUse(String(data.room), data.edit || null); } catch (e) { console.warn('[ARENA] the host\'s room edit did not apply', data.room, e); }
                             if (_reChanged && _arenaPrep.id === String(data.mapId)) _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen };
                         }
+                        /* THE CHESS POSITIONS: the host's position before the survey */
+                        if (data.chess !== undefined && data.chess !== null && typeof window.hqLgChessSet === 'function') {
+                            var _chChanged = false;
+                            try { _chChanged = window.hqLgChessSet(data.chess); } catch (e) { console.warn('[ARENA] the host\'s chess position did not apply', data.chess, e); }
+                            if (_chChanged && _arenaPrep.id === String(data.mapId)) _arenaPrep = { id: null, ready: false, gen: _arenaPrep.gen };
+                        }
                         _onlineArenaPrep(data.mapId);
                         if (window._ewOnlineArenaBusy && window._ewOnlineArenaBusy(data.mapId)) _emit('relay', { type: 'arena-busy', mapId: data.mapId });   // THE SLOW SEAT: still surveying
                     }
@@ -4895,8 +4924,11 @@
 
                                 var _jumpThreeOk = false;
                                 if (window.ThreeAnim && window.ThreeAnim.isActive()) {
+                                    var _jOpts = (data.knock || data.delayMs > 0) ? {} : undefined;
+                                    if (data.knock) _jOpts.knock = data.knock;
+                                    if (data.delayMs > 0) _jOpts.delayMs = data.delayMs;
                                     window.ThreeAnim.jumpArc(jumpUnit, data.fromX, data.fromY, data.toX, data.toY,
-                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480, data.knock ? { knock: data.knock } : undefined);
+                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480, _jOpts);
                                     _jumpThreeOk = true;
                                 }
 
@@ -4905,7 +4937,8 @@
                                         data.fromZ || 0, data.toZ || 0, data.durationMs || 480);
                                 }
 
-                                if (typeof focusBoardCameraOnTiles === 'function') {
+                                /* a delayed jump is a spell shot's self leap: the replayed shot owns the camera */
+                                if (typeof focusBoardCameraOnTiles === 'function' && !(data.delayMs > 0)) {
                                     var _jz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _djz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
                                     focusBoardCameraOnTiles([{ x: _jumpCamX, y: _jumpCamY }], {
@@ -5199,6 +5232,12 @@
                         try {
                             var _scU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
                             if (!_scU) _scU = { x: data.cx, y: data.cy, player: data.casterPlayer || 1, id: data.casterId };
+                            /* THE DODGE READS (2026-11-03): beat 1 is on the tile the host cast from — an escape's state-sync can
+                               land the guest's copy on the landing first (a stand-in reads the start tile, the rest is the unit) */
+                            else if (data.landId != null && data.landId === _scU.id && Number.isFinite(data.cx) && (_scU.x !== data.cx || _scU.y !== data.cy)) {
+                                var _scReal = _scU; _scU = Object.create(_scReal);
+                                _scU.x = data.cx; _scU.y = data.cy; if (data.cz != null) _scU.z = data.cz;
+                            }
                             var _scT = (data.tgtId != null && typeof window.unitFromId === 'function')
                                 ? window.unitFromId(data.tgtId) : null;
                             if (!_scT) _scT = { x: data.tx, y: data.ty };
@@ -5207,6 +5246,7 @@
                                 if (_scL) _scT._landUnit = _scL;
                             }
                             var _scOpts = {};
+                            if (data.travelMs > 0) _scOpts.travelMs = data.travelMs;
                             if (data.spellName) _scOpts.spellName = data.spellName;
                             if (data.spellId) _scOpts.spellId = data.spellId;
                             if (typeof window._playSupportCineShot === 'function') {
@@ -5442,6 +5482,13 @@
                     musicVolume: 1,
                     sfxVolume: 1,
                     ambienceVolume: 1,
+                    /* THE SAVED SETTINGS (2026-11-03): the pause menu's own display picks are per-viewer
+                       and saved per device — the host's must never stomp the guest's */
+                    cinematicActionCam: 1,
+                    cinematicMode: 1,
+                    animationsDisabled: 1,
+                    nametagMode: 1,
+                    particleSettings: 1,
 
                     selectedUnitId: 1,
                     focusedUnitId: 1,
@@ -6372,7 +6419,9 @@
                 '_matchAchievementsKey',
                 // per-viewer audio mix — snapshots from older builds (and
                 // replays) still carry these; never let them stomp the sliders
-                'musicVolume', 'sfxVolume', 'ambienceVolume'
+                'musicVolume', 'sfxVolume', 'ambienceVolume',
+                // the saved display settings (see the skip list): each viewer keeps their own
+                'cinematicActionCam', 'cinematicMode', 'animationsDisabled', 'nametagMode', 'particleSettings'
             ];
 
             var _grsRaf = 0, _grsTo = 0;

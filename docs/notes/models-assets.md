@@ -1433,6 +1433,19 @@ skinned 100 % to one bone) that the creator lists like any pack piece (EW_MH_WEA
 - First piece: Cowboy hat (`ewb_cowboyhat`, Hats, z 56): 2020 tris, 311 KB; scales male 0.931, female 0.859, heavy 1.101,
   thin 1.105, short 0.791; ≥ 1.5 cm clearance on all bodies, front brim 3.4 cm above the eye. The hat's underside floor
   across the crown opening stays (hidden inside the head).
+- THE WORN HATS (2026-11-03, mondo: "make it look more realistic/weathered/worn/textured. Like look at the cowboy meshy model
+  and his hat"): Meshy Retexture API (POST /openapi/v1/retexture, his hat GLB as a data URI, `enable_original_uv: true`, 10 credits)
+  paints a 2K base colour on HIS UVs; Meshy's own re-exported mesh (4 vertices fewer, rescaled) is never used: the texture goes
+  through bake_solid like his own (`SOLIDS` cowboyhat_worn / cowboyhat_worntan: `tex` = R2 wear/cowboyhat/textures/
+  Cowboy-Hat_meshy_worn_dark.png / _worn_tan.png, `occ: None`). Same mesh, same fit, every vertex the same as `ewb_cowboyhat`.
+  All the tries + the sheets: /mnt/project-files/meshy/retexture/cowboyhat/ (mondo picked F + H of round 2; the best match to
+  the Meshy cowboy's hat came from `image_style_url` = a render of that hat).
+- THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): `band_tint: True` writes the
+  `band_mat` faces as accent primitive 1 (write_glb `FA`, a per-face accent; same texture; ewWear.band = 1). three-renderer.js
+  paintWear colours it from `appearance.wearTint['<id>:band']` like the hat from `wearTint[id]` (none = its own texture); sprites.js
+  `EW_WEAR_BANDS` lists the hats with a band (normalizeWearTint keeps their ':band' key); the creator's colour row for the hat
+  gets a second block, "Band". The band no longer follows the hat's colour. The band faces are the thin strip of his band
+  material; the worn textures paint the band a little wider, so a sliver of painted band takes the hat's colour.
 - Held props of a race look (`RACE_CREATOR_LOOK_DEFS.hold`): `_unitAttachHeld` now also reads catalogue rows with base
   `weapons` (`_R2_WEAPONS`), so the R2 revolver works as a hold.
 
@@ -1475,3 +1488,109 @@ mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to th
 - Proof: before / after sheets in /mnt/project-files/jiggle/ (the same instant rendered with the jiggle and with every jiggle
   bone at rest, idle and walking). Probe = a scratch Playwright page through playtest_creator.js's routes, DOOR Agent slot >
   GEAR > CHARACTER CREATOR > MPFB FEMALE, EWCharViewer.dev.model() for the bones, EWCharViewer.snapshot({yaw}) per frame.
+
+## THE MESHY PIECES (2026-11-03, character-models-plan.md row 16)
+mondo: "now how do we put these models both in the character creator and in the game for spells". This is the creator half.
+- `bake-meshy.py` (repo root, imports bake-clothes.py): `python3 -I bake-meshy.py --mpfb /tmp/mpfb2 [--only key1,key2] [--views dir]`
+  (cloud Blender 4.2.3 bpy + MPFB; ~2.5 min for all). Reads `/mnt/project-files/meshy/models/<num>_<name>.glb`, writes
+  `charactercreation/wear/ewm_<key>.glb` in the compact wear layout (male fit + `_d_<body>` offsets for female/heavy/thin/short),
+  `extras.ewWear.solid = true`, texture downsized to a 1024 JPEG (512 for small pieces) in place of optimize-assets.js (the compact
+  layout is not a plain glTF scene). `--views` draws a 3x3 check sheet per piece (male front/side/back, zooms, the other bodies).
+- One spec line per piece (`piece(key, src, label, cat, z, mode=...)`). Modes: `hat` (dropped onto the crown), `helm` (sized to the
+  head width, `sink`/`top` from the crown), `head` (creature heads: the piece's eye point on the face, the head skin hidden), `float`
+  (halo), `front`/`back` (rayed to the chest/back skin), `side` (hip pieces, `anchor` ear/neck), `drop` (collar: hole wider than the
+  neck oval, `cone` drape, then lowered), `pads` (shoulder pads: front/back halves deepened apart until clear), `cap` (pauldron over
+  the shoulder joint, tilted half down the arm), `ring`/`limb`/`foot`/`mermaid` (wraps: length set, widened all round until the
+  outer surface clears, then each way across taken in + the centre slid while clear: belts take the waist oval, greaves sit on the
+  shin), `tail` (sway chains, `chains` joints), `hand` (THE GRIP's seat, the same formula as three-renderer.js `_gripFrame`).
+- Hidden skin (`delBy` per body): creature heads = every head-dominated vertex + the neck inside the piece; hooves/beast feet = the
+  feet; mermaid = the legs + the hips under the waist; breastplate = the skin inside it (`hide='cover'`). Gotcha: the signed
+  distance test is wrong next to a cut-away part's rim (BVH of the body with the arms removed) - keep the arms in for shoulder pieces.
+- Renderer (three-renderer.js): `w.solid` pieces ride the body sliders as one (mean offset), on the classic bodies too; their del
+  list ALWAYS hides (`part.solidHide`, the skin cover pass would otherwise draw the head under a creature head); `ex.hideHead` ->
+  `headOff` hides the hair, the facial hair and the eye pack; `ex.hideLegs` (mermaid) hides worn bottoms/skirts/shoes; `ex.grip`
+  (the 12 props) -> `wearGrip` curls the right hand (`_gripHand`) and restores the fingers when the prop comes off (skipped when the
+  unit's own `hold` already curled it, e.g. the DOOR Agent's gun).
+- sprites.js: EW_MH_WEAR rows `ewm_*`, category `heads` (new, one at a time), tabs Armour / Creature heads / In the hand (one prop) /
+  Badges + jewellery / Back gear / Ears, feet + fins (EW_WEAR_SHELVES + EW_WEAR_SHELF_MOVE). The whip (#49) is the spell side's.
+- Not on R2 by sync-zip.js: the `ewm_*.glb` files go in the sync zip by hand (Assets/Models/charactercreation/wear/) and are listed
+  in ASSET_MANIFEST.json.
+
+## THE MASTER MODEL LIST (2026-11-03, mondo: "Any model from spell animations, characters, props, etc. needs to be documented and kept up to date with new additions ... include how the model was made")
+- `MODEL_LIST.md` is written by `node list-models.js` (repo-only tooling): it loads data.js (load-data.js) + sprites.js in one vm sandbox
+  and reads DOOR_HQ.catalogue, HQ_TREE_KINDS, HQ_STAIR_PACK, RACE_MODELS_3D / RACE_MODEL_SKINS / DOOR_CAST_MODELS, EW_ANIM_LIB_URLS,
+  EW_MH_WEAR, EW_HAIR_STYLES, the renderer's `_MISC_GLB` / `_ANIMALS` / `_FOLIAGE_MODEL_FOR_KEY` and the VFX `_WPN_MODELS` by text,
+  every literal cdn model URL in the game scripts (catch-all), and charactercreation/{wear/wear.json, hair/mh/hair_styles.json}.
+- "How made" = the `SOURCES` regex table (first match on the bucket path). A file no row matches lands in UNSORTED at the bottom.
+- Hand-kept parts (§9 Meshy API pieces not wired, §10 decor still missing) live in `MODEL_LIST_EXTRA.md`, pasted in verbatim.
+- §10 sorts all 184 procedural catalogue stand-ins: 92 need a new model (concept prompts + doubled tri targets, also in project files
+  meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
+  old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
+
+## THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game")
+The 71 decor + spell-prop models Claude made on Meshy (concepts approved by mondo; IDs D02-D92 / S01-S04 in project files
+`meshy/decor/decor_prompts.json`, list MODEL_LIST_EXTRA.md §10A/§10B) are in. Files: R2 `Assets/decor/<name>.glb` (the
+D-prefix dropped), each one `optimize-assets.js`-style meshopt + WebP 1024 (24 MB for all 71; originals 2048 JPEG in
+project files `meshy/decor/models/`). ASSET_MANIFEST.json lists them. sync-zip.js does not see them (no index.html URL):
+the thread's zip adds `Assets/decor/` by hand.
+- **How a proc wears one:** three-renderer.js `_HQ_DECOR_GLB` (name → file) + `_hqDecorWear(name, U, g, opts)`, called at
+  the end of the proc builder. The catalogue rows in data.js are UNCHANGED (still `proc`), so every placement in every room
+  gets the model. The proc's own meshes hide (`_hqDecorHide` sets `_ew_mcKeep`, so `_mcSnap` still builds the collider
+  from them) and the model is fitted into their box: `fit` contain (default) | height | width | stretch, `wall` (back
+  flush on the wall plane), `top` (hangs from the box top), `turn`, `repeat`, `into` (an animated sub-group), `onDone`
+  (re-seat kept pieces from the model's measured size). Glows, screens, text, flames, water, smoke stay proc.
+- **Kept proc pieces (on purpose):** slot machine plinth (the Meshy cabinet stands on it), round table chairs, school desk
+  seat, eeg live screen, lifeguard brolly, popcorn kernels, sea vent smoke, departures/scoreboard screens, punch-clock
+  card rack, autopsy tags, wall torch + cave torch flames, meat hook carcass, music box dancer pin (Meshy dancer on it),
+  directory kiosk text (moved onto the blank panel), carousel brass poles (Meshy horses on them), ferris wheel spin
+  (Meshy wheel + gondolas in the spinning groups), fountain water (re-seated on the Meshy basin), trophy case glass.
+- **Sub-part models:** armour_stand_post, carousel_horse, ferris_gondola, ferris_wheel_wheel, music_box_dancer,
+  trophy_cup (3 on the shelf), umbrella_closed (in the stand), wall_torch_bracket.
+- **Animated:** dream eye turns to the player + bobs, anemone breathes, nightmare bloom turns, robot arm door hangs from
+  the Meshy gripper, rocking chair rocks the model, skiff hides the old rowboat pack model.
+- **Spell props (three-vfx-effects.js `_WPN_MODELS.piano/sheep/tripodMachine`):** Things That Go Bump throws the piano
+  first; Counting Sheep jumps three Meshy sheep; Tripod Sweep stands the Meshy tripod behind the beam (the ray starts at
+  its head). Ack Ack Ack still uses its old saucer + code legs.
+- **Kill switch:** `window.EW_NO_DECOR_GLB = true` before a room builds = the old procs.
+
+## THE MESHY SWAP (2026-11-03, mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
+- 26 Meshy props now draw an Elbolilloduro PSX pack piece (all 14 packs CC0; list + the Meshy file each replaced: MODEL_LIST.md 10F).
+  Side-by-side sheets: project files `asset-packs/meshy-swap/`. The original pack archives: project files `asset-packs/elbolilloduro/`.
+- Files: R2 `Assets/misc/ebd_<pack>_<item>.glb` (20-600 KB each; the Meshy files were 3-9 MB). NOT in the repo: they go in the
+  sync zip by hand. `bake-pack-pieces.py` (repo-only, Blender) rebuilds them from the unzipped packs (`--packs <dir>` with one folder
+  per itch slug): keeps the named scene nodes, bakes transforms, recentres (base y = 0), turns `rotz` so the front faces where the
+  Meshy model's front faced, packs the textures (the FBXs point at the author's C:/ paths), unlinks the fake alpha (an opaque texture
+  wired to Alpha exports as BLEND), Glass/Vidrio 35 % see-through.
+- Wiring: the catalogue rows only changed `file` (+ `base: 'misc'` on the D.O.O.R. kit rows), so every row keeps its h / span / wall
+  / mount / glow. The renderer's `_MISC_GLB` keys that named the same Meshy files (dumpster, city_bin, bus_shelter, campfire,
+  camping_tent, fallen_log, stump, rowboat, lantern) name the pack files too.
+- Kept Meshy (no pack match): school_bus, cardboard boxes, wooden_bucket, car_cop (the car pack already draws it), fridges, signpost.
+- Licences: Elbolilloduro = CC0 (credits row "PSX prop packs"). Pizza Doggy (Retro Tree Pack, the Mega Packs) is NOT CC0: no AI
+  use of the assets, no redistribution as standalone files (credits + MODEL_LIST fixed).
+- **Round 2 (mondo 11-03, after the first look):** server rack back to the proc (the Meshy one is not used, not shipped);
+  space divider ONE screen (no repeat); flood mast pole thinned in Blender (shaft x/y ×0.4, base ×0.6); tanker desk
+  retextured with Meshy Retexture on its own UVs (meshy-6, text prompt) and the red top toned to the old oxblood brown
+  (texture swapped into the same mesh); high striker split in Blender into the striker + `high_striker_hammer` (its own piece,
+  laid flat, lying on the floor in front); armour stand = the suit standing ON a new Meshy square oak plinth with a thin iron
+  rod (`armour_plinth`, concept D15c picked by mondo) in place of the T-post whose crossbar stuck out. The Göbekli battle
+  board's T-pillar monument (`_hzTPillar`) wears the hands T-pillar too, stretched into the old 1.9 × 3.8 tile box (the code
+  pieces stay hidden in the group so the monument fit and the 2-voxel stamp are unchanged).
+- **Round 3 (mondo 11-03: the thinned mast "still looks dumb", regenerate it):** new Meshy stadium floodlight `flood_mast.glb`
+  (concept D04c picked by mondo: slim dark pole on a concrete footing, a crossbar of 8 floodlights facing +Z), same name, same
+  `_hqDecorWear('flood_mast', U, g, { fit: 'height' })`. Concepts A/B/C in project files meshy/decor/concepts/D04_flood_mast_redo_A_B_C.jpg.
+
+## THE PACK WEAR + THE MESHY AUDIT (2026-11-04, mondo: "Why ... did you have me making meshy models for the stadium lights and other stuff when we already have non meshy versions??? You are supposed to document every single model and try to not use meshy models.")
+- **The floodlight was not a duplicate:** no downloaded pack has a stadium floodlight; the "Beach world props v4" sheet labelled
+  Meshy decor as "decor" without saying Meshy. MODEL_LIST.md §12 is the full audit write-up.
+- **THE PACK WEAR (three-renderer.js `_HQ_PACK_WEAR`, before `_hqDecorBox`):** name → `Assets/misc/ebd_<pack>_<key>.glb`. `_hqDecorWear`
+  looks a name up in `_HQ_DECOR_GLB` (Meshy, Assets/decor/) first, then here, so a proc wears a pack piece exactly like a Meshy model
+  (its pieces hide, keep collision, the piece fits their box). Wired: steel_table (DINER Table_Metal), metal_shelving (Gas Station
+  Shelf_Metal, `fit: 'stretch'`), wall_shelf (House Shelf_01, `wall`), toilet_paper (House Toilet_paper, three rolls `at`), broom
+  (House Broom), washer / dryer (House Washing_machine / Abandoned House Secadora, via `_laundry_machine`). Kill switch: EW_NO_DECOR_GLB.
+- **bake-pack-pieces.py AUDIT jobs** cut them (+ the candidates bare_bulb Foco, concrete_pillar Metro Column, roller_shutter Tacos
+  doors_garage, chalkboard VHS Shop Blackboard, turnstile Metro automatic_ticket_gate — cut, NOT wired, mondo's call). The rotations in
+  AUDIT are the shipped ones; `--rot '{"k":deg}'` overrides. Copies in project files asset-packs/meshy-swap/glb/.
+- **list-models.js:** the car pack rows list the GGBot OBJs (pool read off `_CAR_PACK_POOLS`) and the Meshy cars go under "fallback
+  only"; procWears follows `_hqProcBuilders._x(` / `_hqXxxBuild(` helpers and `_HQ_DECOR_GLB.x` / ternary names; §10A gets an AUTO
+  "in the game now" column; §13 lists every model file on R2 from `R2_MODEL_FILES.json` (`node list-models.js --r2` re-lists the
+  bucket — rerun after uploading models); THE PACK-FIRST RULE box at the top.

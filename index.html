@@ -722,7 +722,7 @@
                     <span class="pill" id="cycleLabel">Day</span>
                     <span class="pill" id="terrainLabel">Terrain: Grassland</span>
                     <button class="zoom-toggle-btn" id="zoomToggleBtn" title="Toggle map zoom level">🔍 Full Map</button>
-                    <button class="zoom-toggle-btn" id="nametagToggleBtn" title="Cycle nametag display: Name / Race / Job / Level only" onclick="const modes=['name','race','job','none']; const icons={name:'👤 Names',race:'🧬 Race',job:'⚔ Jobs',none:'🔢 Level'}; let i=(modes.indexOf(state.nametagMode)+1)%modes.length; state.nametagMode=modes[i]; this.textContent=icons[modes[i]]; markDirty('board'); renderIfDirty();">👤 Names</button>
+                    <button class="zoom-toggle-btn" id="nametagToggleBtn" title="Cycle nametag display: Name / Race / Job / Level only" onclick="window._cycleNametagMode();">👤 Names</button>
                 </div>
             </div>
         </section>
@@ -805,7 +805,7 @@
                         <label class="dev-toggle-label"><input type="checkbox" id="cameraToggleBattle" checked /> Camera</label>
                     </div>
                     <div class="dev-speed-row">
-                        <label class="dev-toggle-label"><input type="checkbox" id="cinematicToggle" onchange="state.cinematicMode = this.checked;" /> Cin</label>
+                        <label class="dev-toggle-label"><input type="checkbox" id="cinematicToggle" onchange="window._setCinematicMode(this.checked);" /> Cin</label>
                         <label class="dev-toggle-label"><input type="checkbox" id="visionToggleBattle" checked onchange="toggleTeamVision(this.checked)" /> Vis</label>
                         <label class="dev-toggle-label"><input type="checkbox" id="animToggleBattle" checked /> Anim</label>
                         <label class="dev-toggle-label"><input type="checkbox" id="fogToggleBattle" /> Fog</label>

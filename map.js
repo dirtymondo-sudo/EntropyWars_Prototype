@@ -509,7 +509,39 @@
             if (bump) _sqBump(plate, 'sq-swap');
             if (_sqDropOpen) _sqDropPaint();
             _sqRoomTeam();
+            _sqKeepActs();
         }
+        /* THE BUTTONS STAY ON SCREEN (playtest 2026-11-03): the UI Maker moves the button row up from the bottom dock by a
+           fixed number of pixels, so on a shorter window (1280×720, 1440×810) the row landed under the title bar and DEPLOY
+           could not be clicked. After each paint (and on a resize) the row is measured: one that reaches over the title bar
+           or past the screen's edge is pushed back just far enough, keeping the rest of its UI Maker move. */
+        function _sqKeepActs() {
+            const acts = document.getElementById('sqActions');
+            if (!acts) return;
+            /* the page slides in, fonts and the UI Maker's layout land a beat later: check a few times */
+            [0, 120, 450, 1200].forEach(ms => setTimeout(() => _sqKeepActsNow(acts), ms));
+        }
+        function _sqKeepActsNow(acts) {
+            if (!acts || !acts.isConnected || !acts.getClientRects().length || document.documentElement.classList.contains('uim-live')) return;   // the UI Maker's Layout view places it as set
+            /* THE STRAY SCROLLBAR: a UI Maker height shorter than its buttons gave the row a scrollbar; it grows to fit them */
+            acts.style.removeProperty('height');
+            if (acts.scrollHeight > acts.clientHeight) acts.style.setProperty('height', (acts.scrollHeight + acts.offsetHeight - acts.clientHeight) + 'px', 'important');
+            acts.style.setProperty('overflow', 'visible', 'important');   // a pulsing / grown button never scrolls the row
+            acts.style.removeProperty('translate');
+            const r = acts.getBoundingClientRect();
+            if (!(r.height > 0)) return;
+            let tx = 0, ty = 0;
+            try { const t = (getComputedStyle(acts).translate || '').split(/\s+/); if (t[0] && t[0] !== 'none') { tx = parseFloat(t[0]) || 0; ty = parseFloat(t[1]) || 0; } } catch (e) {}
+            const head = document.querySelector('#squadDeskPage .sq-head');
+            const hr = head && head.getBoundingClientRect();
+            const top = Math.max(6, hr && hr.height > 0 ? hr.bottom + 6 : 6), bot = innerHeight - 6;
+            let dy = 0, dx = 0;
+            if (r.top < top) dy = top - r.top;
+            else if (r.bottom > bot) dy = Math.max(top - r.top, bot - r.bottom);
+            if (r.left < 6) dx = 6 - r.left; else if (r.right > innerWidth - 6) dx = Math.max(6 - r.left, innerWidth - 6 - r.right);
+            if (dx || dy) acts.style.setProperty('translate', `${Math.round(tx + dx)}px ${Math.round(ty + dy)}px`, 'important');
+        }
+        if (!window._ewSqKeepActsWired) { window._ewSqKeepActsWired = true; window.addEventListener('resize', () => { try { _sqKeepActs(); } catch (e) {} }); }
         function _sqFocusCard(id) {
             if (!id || id === _sqFocusId) return;
             _sqFocusId = id;
@@ -4748,12 +4780,16 @@
         window._hqArenaWarm = _hqArenaWarm;
         /* _msConfirm's gate: the arena's room surveyed before the launch. A small card over the screen says so; no worker = the
            sync compile under that card (the old HQ fallback). true = go on now. */
-        let _msArenaGateBusy = false;
+        let _msArenaGateBusy = false, _msChessRolled = false;
         function _msArenaGate(mapId) {
             if (typeof window.hqArenaOf !== 'function') return true;
+            /* THE CHESS POSITIONS (2026-11-03, mondo: the Looking-Glass "load one of these 3 actual chess positions at random"): one roll per
+               launch, before the room is read (a new position lets go of the arena's field — the survey card below rasters it again) */
+            if (!_msArenaGateBusy && !_msChessRolled) { _msChessRolled = true; try { if (typeof window.hqLgChessRoll === 'function') window.hqLgChessRoll(mapId); } catch (e) { console.warn('[ARENA] the chess roll failed', mapId, e); } }
+            const _go = () => { _msChessRolled = false; return true; };
             const a = window.hqArenaOf(mapId);
             const RE = window.HQ_ROOM_EDITS, editsWait = !!(a && RE && RE.ready && !RE.settled);   // THE GAME ROOM EDITS: his saved edits land first
-            if (!a || ((a.ready || a.failed) && !editsWait)) return true;
+            if (!a || ((a.ready || a.failed) && !editsWait)) return _go();
             if (_msArenaGateBusy) return false;
             const room = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms && DOOR_HQ.rooms[a.room]) || {};
             let card = null;
@@ -7926,6 +7962,17 @@
                         });
                         html += '</div>';
                     }
+                    /* THE FACE PRESETS (2026-11-03): the creator's MakeHuman community faces (sprites.js EW_MPFB_FACE_PRESETS) */
+                    const fp = (window.EW_MPFB_FACE_PRESETS || []).filter(p => p && p.author);
+                    if (fp.length) {
+                        html += '<p class="credits-note">Creator face presets (MakeHuman community characters):</p><div class="credits-mh" role="list" aria-label="Face preset credits">';
+                        fp.forEach(p => {
+                            html += '<p role="listitem"><b>' + _creditsEsc(p.author) + '</b> \u00b7 ' + _creditsEsc(p.license || '')
+                                + (/^https?:\/\//.test(p.source || '') ? ' \u00b7 <a href="' + _creditsEsc(p.source) + '" target="_blank" rel="noopener noreferrer">source</a>' : '')
+                                + ' \u2014 ' + _creditsEsc(p.label) + '</p>';
+                        });
+                        html += '</div>';
+                    }
                 }
                 html += '</section>';
             });
@@ -9152,6 +9199,10 @@
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('items')">Open Item Editor</button>
                             <button class="pm-set-btn" onclick="window.openAreaUnits && window.openAreaUnits()">Open Area Units</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Creator Item Hider — in the character creator, a ✕ on every hair style, clothing piece, accessory, skin, eye colour and idle pose hides it from the creator's lists (and from RANDOM), and a ✎ renames it (only the name on its tile). Nothing is deleted: SHOW puts it back, and a look wearing a hidden piece still loads. F2 in the creator opens and closes it too. EXPORT HIDDEN + NAMES (top of the creator) hands both lists to a thread to bake in for every player.${typeof window.creatorHiddenList === 'function' && window.creatorHiddenList().length ? ` <span style="color:#ffd86a">●</span> ${window.creatorHiddenList().length} hidden` : ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>
@@ -9279,6 +9330,7 @@
                lab match after the first kept the first map's latch and drew no room. A lab match on a new board re-activates. */
             const _prevMap = (typeof activeGameMode !== 'undefined') ? activeGameMode : null;
             let _upgraded = false;
+            try { if (typeof window.hqLgChessRoll === 'function' && window.hqLgChessRoll(mapId)) _upgraded = true; } catch (e) {}   // THE CHESS POSITIONS (2026-11-03): each lab match on the Looking-Glass rolls its position too (a new one re-latches the room)
             try {
                 const _a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null;
                 if (_a && !_a.ready && !_a.failed) _upgraded = !!window.hqArenaUpgrade(mapId, { compile: true });
@@ -9341,6 +9393,16 @@
         // battle.js (restartDevSimFromBuilder) calls this between Balance Lab
         // matches so mode/map rotation keeps advancing through a long run.
         window._simApplyModeAndMap = _simApplyModeAndMap;
+
+        // Settings → Developer: THE HIDDEN PICKS (2026-11-03) — the character creator's dev item hider on / off (sprites.js
+        // creatorHiderOn; localStorage ew_creator_hider). The creator re-renders through the 'ew-creator-hidden' event.
+        window._toggleCreatorHider = function() {
+            if (typeof window.setCreatorHiderOn !== 'function') return;
+            const on = !window.creatorHiderOn();
+            window.setCreatorHiderOn(on);
+            const btn = document.getElementById('mmCreatorHiderBtn');
+            if (btn) { btn.textContent = 'Creator Item Hider: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
 
         // Settings → Developer: flip the view-layer unlock-all flag. Never
         // writes to the profile/server — isUnitUnlocked() just reads true while
@@ -10441,6 +10503,9 @@
             if (objectBlocksLanding(x, y)) return false;
             if (isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;   // 🚪 a SHUT door is a wall
+            /* a field's solid wall / rock cell (battle.js fieldCellRock, THE SOLID WALL): no floor drawn up there — no body
+               lands on it either (2026-11-03: Nimble Dodge landed five levels up on a street sign's hidden column) */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
 
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
@@ -10639,7 +10704,7 @@
              pyramid/ziggurat → stepped rings (climbable, "scale" it)
              stairway         → a rising flight of steps (climbable)
              obelisk          → a tall thin solid (impassable, blocks sight)
-             colossus         → a low platform you can clamber onto
+             fallen_column    → a low platform you can clamber onto (was `colossus`, renamed 2026-11-03)
              tpillar          → EXACTLY 2 voxels of hard cover: blocks sight at
                                 ground level; only jump-stat-2+ units can JUMP
                                 onto the T-head (never stand inside it) — for
@@ -10658,7 +10723,7 @@
             ziggurat: (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
             stairway: (dx, dy, rr) => dy + rr,
             obelisk:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
-            colossus: (dx, dy, rr) => 1,
+            fallen_column: (dx, dy, rr) => 1,
             greek:    (dx, dy, rr) => 1,
             // 2026-07-15 hard-cover pass: solid landmarks you can no longer
             // stand inside / see through (see the profile notes above)
@@ -12179,6 +12244,9 @@
 
             if (isTowerTile(x, y)) return false;
             if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;   // 🚪 a SHUT door is a wall
+            /* THE SOLID WALL: a field's rock cell is never stood on (map rule, unitCanTraverse) — a blink / an escape / a
+               teleport landing reads canOccupy, so it is refused here too (2026-11-03, Nimble Dodge on a sign's column) */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
 
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
@@ -14124,8 +14192,13 @@
                refuses the whole column). Same rule as a unit-occupied tile. */
             if (isTowerTile(x, y)) return false;
 
-            /* a field's solid wall / rock cell: no floor on top to stand on (battle.js fieldCellRock, THE SOLID WALL) */
-            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
+            /* a field's solid wall / rock cell: no floor on top to stand on (battle.js fieldCellRock, THE SOLID WALL) — THE OPEN SKY
+               (2026-11-03): on a room with no ceiling an airborne flyer crosses / hovers over it, above what is drawn there */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) {
+                const _skyOk = typeof fieldCellSky === 'function' && fieldCellSky(x, y) && canFly(unit)
+                    && ((_has3D && z !== undefined && z !== null) ? z > getHeightAt(x, y) : isUnitAirborne(unit));
+                if (!_skyOk) return false;
+            }
 
             if (terrain === 'tower_base') {
                 return false;
@@ -16117,40 +16190,41 @@
                 if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(unit);
             }
 
+            /* THE DEFEAT LINE AS IT HAPPENS (playtest 2026-11-03: the line waited out the 800 ms fall, so "Player 2 wins" and
+               the killer's streak line printed before the "… is defeated" they came from): the line is written at the
+               killing blow; the board's shake still lands with the fall */
+            const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
+            let _defShake = 'normal';
+            if (unit._isBoss) {
+                addLog(`👹 ${_ctName(unit)} has been slain!`);
+                _defShake = 'hard';
+            } else if (_gauntlet) {
+                const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
+                addLog(`💀 ${_ctName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
+            } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
+                addLog(unit.player === 1
+                    ? `💀 ${unitDisplayName(unit)} has fallen! They won't return until the run ends.`
+                    : `💀 ${unitDisplayName(unit)} is defeated!`);
+            } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
+                /* Strike Mode: StrikeEngine respawns on a real-time clock,
+                   not rounds — it logs its own countdown. */
+                addLog(`💀 ${_ctName(unit)} is down!`);
+            } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
+                /* RESERVES rule 2: the ladder still runs; a reserve may take
+                   the seat when it opens (battle.js _reserveQueueSeat). */
+                const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
+                addLog(_defeatRespawnLine(unit, freeLeft > 0 ? ' — a reserve may take the seat.' : '.'));
+            } else {
+                addLog(_defeatRespawnLine(unit, '.'));
+            }
+
             const MAP_DEATH_DURATION = state.devAutoSim ? 0 : 800;
             setTimeout(() => {
                 unit._dying = false;
                 unit.dead = true;
                 unit.skyBuff = null;   // a celestial buff lasts until the unit dies (ui.js claimCelestialBuff)
 
-                const _gauntlet = typeof _isGauntlet === 'function' && _isGauntlet();
-                if (unit._isBoss) {
-                    addLog(`👹 ${_ctName(unit)} has been slain!`);
-                    shakeBoard('hard');
-                } else if (_gauntlet) {
-                    const reservesLeft = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(unit.player) : 0;
-                    addLog(`💀 ${_ctName(unit)} has fallen${reservesLeft > 0 ? ' — send in a reserve!' : ' — no reserves remain!'}`);
-                    shakeBoard('normal');
-                } else if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
-                    addLog(unit.player === 1
-                        ? `💀 ${unitDisplayName(unit)} has fallen! They won't return until the run ends.`
-                        : `💀 ${unitDisplayName(unit)} is defeated!`);
-                    shakeBoard('normal');
-                } else if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) {
-                    /* Strike Mode: StrikeEngine respawns on a real-time clock,
-                       not rounds — it logs its own countdown. */
-                    addLog(`💀 ${_ctName(unit)} is down!`);
-                    shakeBoard('normal');
-                } else if (typeof _isReservesMatch === 'function' && _isReservesMatch()) {
-                    /* RESERVES rule 2: the ladder still runs; a reserve may take
-                       the seat when it opens (battle.js _reserveQueueSeat). */
-                    const freeLeft = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player, { free: true }).length : 0;
-                    addLog(_defeatRespawnLine(unit, freeLeft > 0 ? ' — a reserve may take the seat.' : '.'));
-                    shakeBoard('normal');
-                } else {
-                    addLog(_defeatRespawnLine(unit, '.'));
-                    shakeBoard('normal');
-                }
+                shakeBoard(_defShake);
 
                 if (!state._recentDefeats) state._recentDefeats = [];
                 state._recentDefeats.push({
@@ -17391,8 +17465,8 @@
             { label: 'Rocks', keys: ['rock'] },
             { label: 'Barriers', keys: ['barrier_1','barrier_2','barrier_3','barrier_4','barrier_5'] },
             { label: 'Columns', keys: ['column_1','column_2','column_3','column_4'] },
-            { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2'] },
-            { label: 'Churches', keys: ['church_1','church_2'] },
+            { label: 'Buildings', keys: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','ancient_building','abandoned_building_1','abandoned_building_2'] },   // building_11 retired 2026-11-03
+            { label: 'Churches', keys: ['church_1'] },   // church_2 retired 2026-11-03
             { label: 'Paths', keys: ['stairs','stairs_2','pathway_1','pathway_2'] },
             { label: 'Props', keys: ['lamp_post','lamp_post_2','torch','traffic_light'] },
             { label: 'Spell Props', keys: ['gravestone','bone_pile','bone_wall','atlantis_pillar','totem_pole','federation_beacon'] },
@@ -17486,7 +17560,7 @@
         const ME_ENV_SCENERY = [
             ['cosmic',   '🌌 Cosmic (default mix)'],
             ['divine',   '😇 Divine — gates & light pillars'],
-            ['infernal', '😈 Infernal — colossi & skulls'],
+            ['infernal', '😈 Infernal — fallen columns & skulls'],
             ['ruins',    '🏛 Ruins — temples & obelisks'],
             ['pyramids', '🔺 Pyramids & ziggurats'],
             ['crystals', '💎 Crystals & sacred rings'],
@@ -17508,14 +17582,13 @@
             { kind: 'pyramid',     label: 'Great Pyramid',   emoji: '🔺', foot: 5, maxH: 3 },
             { kind: 'pyramid_cone',label: 'Cone Pyramid',    emoji: '⛰️', foot: 3, maxH: 3 },
             { kind: 'ziggurat',    label: 'Ziggurat',        emoji: '🏛️', foot: 5, maxH: 3 },
-            { kind: 'colossus',    label: 'Colossus',        emoji: '🗽', foot: 2, maxH: 4 },
+            { kind: 'fallen_column', label: 'Fallen column', emoji: '🏛️', foot: 2, maxH: 4 },
             { kind: 'stairway',    label: 'Stairway',        emoji: '🪜', foot: 2, maxH: 3 },
             { kind: 'arch',        label: 'Arch',            emoji: '🌉', foot: 3, maxH: 3 },
             { kind: 'gateway',     label: 'Gateway',         emoji: '⛩️', foot: 3, maxH: 3 },
             { kind: 'greek',       label: 'Greek Ruin',      emoji: '🏛️', foot: 3, maxH: 2 },
             { kind: 'crystal',     label: 'Crystal Shards',  emoji: '💎', foot: 2, maxH: 3 },
             { kind: 'rings',       label: 'Sacred Rings',    emoji: '🌀', foot: 2, maxH: 3 },
-            { kind: 'island',      label: 'Floating Island', emoji: '🏝️', foot: 3, maxH: 3 },
             { kind: 'flag',        label: 'Flag',            emoji: '🚩', foot: 1, maxH: 2 },
             { kind: 'rover',       label: 'Rover',           emoji: '🛻', foot: 1, maxH: 1 },
             { kind: 'goldgate',    label: 'Golden Gate',     emoji: '🌁', foot: 3, maxH: 3 },
@@ -19998,7 +20071,7 @@
                 html += `<span class="me-plbl">Max H</span><div class="me-pbtn-row">`;
                 for (const hh of [1,2,3,4,5,6]) html += `<div class="me-pbtn${curMaxH===hh?' active':''}" onclick="window._meSetMonMaxH(${hh})">${hh}</div>`;
                 html += `</div></div>`;
-                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place. Click a placed monument (or use the 🎯 Select tool) to pick it — a big rotation dial appears so you can spin it any direction; Delete is in that panel. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, colossus) stamp climb voxels.</div>`;
+                html += `<div class="me-inspector-empty" style="font-size:9px;opacity:0.6;padding:6px;line-height:1.4">Click the board to place. Click a placed monument (or use the 🎯 Select tool) to pick it — a big rotation dial appears so you can spin it any direction; Delete is in that panel. They render as real 3D landmarks in Play Test. Climbable kinds (pyramid, ziggurat, obelisk, stairway, fallen column) stamp climb voxels.</div>`;
                 pal.innerHTML = html || `<div class="me-inspector-empty">No results for "${searchVal}"</div>`;
                 return;
             }
@@ -23047,7 +23120,7 @@
                 wall: ['urban_wall','urban_wall','rock_wall_1'],
                 hazard: [],
                 water: [],
-                objects: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','building_11','ancient_building','abandoned_building_1','abandoned_building_2','ruins','column_1','tree_3','tree_5','stairs','pathway_1','pathway_2'],
+                objects: ['building_1','building_2','building_3','building_4','building_5','building_6','building_7','building_8','building_9','building_10','ancient_building','abandoned_building_1','abandoned_building_2','ruins','column_1','tree_3','tree_5','stairs','pathway_1','pathway_2'],
                 objChance: 0.14,
             },
             cavern: {

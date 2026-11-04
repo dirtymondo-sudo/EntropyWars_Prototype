@@ -2876,6 +2876,185 @@ coil". Checked in a real browser (spell-vfx-audit harness): it NEVER went off on
     a number (`var spring = …`), so it never stretched.
   - three-renderer.js `_buildJackBox3D`: the painted box + crank on the board (it was the red trap marker quad).
 
+## THE FLIPBOOKS — the Blender pilot on Fireball + Meteor (2026-11-03)
+mondo asked how Blender could give the spells AAA detail; research doc (Claude Doc "Blender for Entropy Wars spell VFX")
+found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He picked "Pilot on Fireball + Meteor".
+- **The sheet:** `bake-vfx.py` (repo root) runs a Mantaflow fire + smoke sim in the FULL Blender 5.2.3 build (pip's `bpy`
+  module crashes in Mantaflow: `LevelsetGrid has no attribute setConst`) and Cycles renders 64 transparent frames; the
+  sheet keeps 60 (8 x 8 cells of 128 px, 1024 px, ~0.5 MB). Repo copy `Assets/Sprites/vfx/fb_explosion.png`, R2
+  `Assets/Sprites/vfx/fb_explosion.png` (NOT picked up by sync-zip.js: add it to the zip by hand at that path).
+- **three-vfx.js THE FLIPBOOKS:** `_FLIPBOOKS` lists sheets (cols, frames, cell, blend, `lift` = how far below the cell
+  centre the blast sits, 0.32 here). `_fbLoadAll` (at atlas build) cuts the sheet into one CanvasTexture per frame
+  (`_hiResTextures['fb-explosion#N']`), so a flipbook particle is a plain pool particle whose sprite key steps through the
+  frames over its life (tick: `p._fb`, `fbFrom`/`fbTo` = the slice of the sheet). No shader: the instanced batch groups by
+  frame texture, the per-particle path swaps `material.map`; both renderers draw it (checked WebGPU-on-WebGL2 + classic).
+  Not ready / failed / `window.EW_NO_FLIPBOOKS = true` → spawn() returns null and the caller keeps the old look.
+  API: `ThreeVFX.flipbookReady(key)`, `ThreeVFX.flipbookInfo(key)`.
+- **three-vfx-effects.js THE FLIPBOOK PILOT** (end of module): `_fbBlast(F, o)` puts one blast in a frame, a little
+  BEHIND the body from the lens (`_nbCamDir`) so the victim draws over it. Fireball: `_fpBurst(..., fb)` (only spell id
+  fire1) plays frames 0-60% at 2.3 tiles and drops the painted explosion-orange blobs + `_fpSmoke` puffs. Meteor:
+  `_spell3DGeometry.meteor` wrapped: one 3-tile blast at the centre (full sheet, 2.1 s) + up to 4 smaller ones on seen
+  tiles of the strike; `fbMeteor_descent` / `fbMeteor_impact_tile` clones (meteor_impact_tile itself is shared) tag the
+  painted smoke layers `ifNoFb: 'fb-explosion'` (`_spawnEffect` skips a layer whose flipbook is ready).
+- Online: both live inside the relayed fire() intents, so the guest plays them; `_pzSeen` keeps fogged tiles empty.
+- Proof sheets: /mnt/project-files/blender-vfx/ (fireball_before_after.jpg, meteor_before_after.jpg).
+- **THE SHARED KINDS (2026-11-03, same day; mondo: "the shared smoke, dust, and embers are still there so the fireball
+  and meteor mostly look the same. Go ahead and give them the same treatment"):** read as game-wide. Two more sheets from
+  `bake-vfx.py` presets: `PRESET=smoke` (a SMOKE-only Mantaflow puff, grey volume, sheet `SHEET=whiten` stretches the lit
+  side to white) → `fb_smoke.png` (16 frames, 4 x 4 of 128 px), `PRESET=fire` (a steady flame, volume EMISSION on black,
+  `SHEET=glow` turns brightness into alpha) → `fb_ember.png` (16 frames, 4 x 4 of 64 px). three-vfx.js `_FB_KINDS`: every
+  sprite-pool spawn of `smoke`, `smoke-soft`, `dust-puff` (→ fb-smoke, tinted by the kind's `_spriteMap` colour, which is
+  the colour the painted texture carried; opts.tint is multiplied by it) and `ember` (→ fb-ember, its own colours) plays
+  the sheet; `op` = the painted texture's peak alpha, `grow` = size so the puff fills like the billow, `jit` = random
+  start frame. Thinning/tumble/blend stay keyed on the kind. World decals + w0/h0 quads keep the painted still. Same
+  kill-switch `EW_NO_FLIPBOOKS`. Both PNGs go into the sync zip by hand (Assets/Sprites/vfx/).
+- **THE SMOKE FADE (same day; mondo: "the smoke kinda just disappears and doesnt fade away properly"):** the first
+  fb_smoke sheet stopped at sim frame 32, while the puff was still dense, so the particle's linear opacity fade read as a
+  dense puff blinking out. The sheet now runs to sim frame 47 (step 3), ending on the sim's own dissolve, with a ROUND
+  vignette (`_edge_fade`, full inside 0.6 of the half-width) instead of the square edge fade, so a puff that reached the
+  sim box thins into a soft round rim. `_opAt` gives shared-kind particles (`p._fbSoft`) a smoothstep fade, flat at both
+  ends. The sheet URLs carry `?r=2`: R2 asset URLs have no ?v= token, so bump r on every re-bake.
+- Next (only on mondo's say): flame, explosion-orange, element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise
+  for the burning-tile raymarch.
+
+## THE PROPS IN THE HAND + THE WHIP CRACK + THE GEAR ON THE BODY (2026-11-03, character-models-plan.md row 24)
+mondo: "how do we put these models both in the character creator and in the game for spells (like whip crack)". The Meshy pieces
+#47-72 (made through the Meshy API, row 15) are on R2 `Assets/props/<name>.glb` — each is the optimize-assets.js `--size 512` output
+(meshopt + WebP) shipped under the plain name (no original beside it; every GLTFLoader decodes meshopt).
+- **_WPN_MODELS** (three-vfx-effects.js): potionFlask, scalpel, wrench, blowpipe, phone, handMirror, camera, milkCookies, cup, halo,
+  wand, staff (matte bake) + `whip` (`rigged`: cloned with SkeletonUtils). The battle's loading card warms them with the rest.
+- **_HELD_PROPS** (spell id -> { key, m metres, grip }) + `_HELD_BY_RACE.wizard` (the wand on every non-finisher cast). On the windup
+  beat (`_heldStart`, fire('windup') carries `uid` + `holdMs`) the prop is cloned at `m` metres (ThreeRenderer.unitPropMetre) and
+  handed to **ThreeRenderer.unitHoldProp(uid, obj, { grip })**: parented to RightHand (LeftHand when the right already holds the
+  def's own prop), seated by THE GRIP (`_gripFrame`: closed fist on a creator body — the fingers curl for the cast via
+  `_gripHandTemp` and open again — or the palm read off the skin on a Meshy hand). Grip `c` / `down` / `barrel` are GLB coords.
+  It pops in, stays to holdMs + 520 ms and fades; `thrown` props hide on the spell's bolt (`_heldThrown`) and the bolt flies the
+  same model (`_propFlyBody`: Acid Flask's pvFlaskFly, Broken Halo's fx3HaloFly; the built stand-ins stay while a file streams).
+  The phone's blank screen gets a lit plane (`_heldScreen`, no scene light); the camera flashes in the hand 380 ms before the hit.
+- **THE WHIP CRACK** (`_whipSetup` / `_whipPose`): the lash bones are set in WORLD terms every frame in the vertical plane caster ->
+  target (angle 0 = at the target, 90 = up, 180 = back), whatever the arm clip does: hang (-95°) -> drawn back over the shoulder
+  (base -240°, tip -165°, a lagging wave) by Tc/2 -> the throw turns each bone over the top in turn (start/end times grow with the
+  bone's index ^1.5 / ^1.15 so the loop speeds up toward the tip, a sideways bow mid-turn) -> the tip snaps 22° past at Tc (Tc =
+  holdMs - 300, the sound wave's launch): `_whipCrackFx` = white flash + sparks at the tip + a soft shake -> it drops (-62..-88°) in a
+  dying wave and fades at Tc + 900. The lion (THE ANIMALS) still bounds in on the burst.
+- Dev still: `window.EW_HELD_T = ms` pins every held prop at that moment of its cast. Off: `window.EW_NO_HELD_PROPS`.
+- **THE GEAR** (three-renderer.js `UNIT_GEAR_WEAR`, `_unitGearSync` on a fresh build and when a kept rig's gear changes): the twelve
+  6c pieces on the body while `unit.equipment.accessory1/2` names them. Placement is read off the bone's own skin (`_boneSkinPts`, the
+  vertices weighted >= 0.45 to it, in the body frame: +Z front, +X the body's left) in the bind pose: `side` back / front / left /
+  right sits it on that face of the skin, pushed out by the prop's own depth; `arm` puts it on the bone's axis (`ring`: sized to the
+  arm's 80th-percentile radius x 2.25 — the Echo Band). `map` turns the GLB onto the body. The censer swings (onBeforeRender). Off:
+  `window.EW_NO_GEAR_WEAR`. Online: equipment is on the synced unit, so the guest builds the same gear.
+- Not in this pass: the 6a weapons that still float beside the caster (the guns already ride the hand, FX-2); the staff has no spell.
+
+## THE GOLD SHEET IS OUT (2026-11-03)
+mondo: "Barbarella uses a spell called excessive machine that has these gold rods. I previously requested that that gold texture be
+removed from the game, and those rods should have shown up in the model list as needing to be replaced."
+- The 2026-09-21 swap (sprites.js TERRAIN_SPRITES `gold` = aluminium tinted by TERRAIN_BASE_TINT) never reached the 17 spell / trap
+  pieces that loaded `Assets/Sprites/terrain/gold.png` by file name. Now nothing loads it: three-vfx-effects.js `_SIG_GOLD_TEX`
+  ('aluminium.png') + `_SIG_GILT` (0xe0b048, the boards' gilt) next to `_sigTerrainTex` (which also redirects a stray 'gold.png'),
+  three-renderer.js `_getTeslaTex` redirects it, battle.js's loading warm dropped it. White-tinted gold pieces (the fist plates'
+  default, Excalibur's stand-in blade, the judgment blades) take `_SIG_GILT`. To change the gold look, change `_SIG_GOLD_TEX`.
+- Excessive Machine's nine pipes are the Meshy organ pipe (`_WPN_MODELS.organPipe`, R2 `Assets/decor/organ_pipe_white.glb`,
+  meshopt + WebP via optimize-assets.js, 178 KB). Each rises from its foot, mouth toward the victim; no stand-in while it loads.
+  A brass version was made too (project files gold-texture/models/).
+- The other 16 pieces are listed in MODEL_LIST.md §10G as needing a model. Gold texture candidates (ambientCG CC0, regraded to gold
+  for flat lighting): project files gold-texture/.
+- THE GILT (2026-11-03, mondo: "Option D, metal007"): every gold key (sprites.js TERRAIN_SPRITES gold / gold_2 / gold_3) and the
+  spell / trap gold (`_SIG_GOLD_TEX`, `_getTeslaTex`, the deployables) is R2 `Assets/Sprites/terrain/gilt.png` = ambientCG Metal007
+  (CC0) regraded to a gold ramp at 128 px (source + candidates in project files gold-texture/). `_SIG_GILT` is white now (the sheet
+  is already gold); TERRAIN_BASE_TINT keeps gold_2 / gold_3 a touch deeper. Screenshot: gold-texture/excessive_machine_ingame.jpg.
+- THE ULTIMATE STAND-INS (2026-11-03, mondo: "replace the ones with confirmed stand ins", after the ultimate props audit doc
+  https://claude.ai/artifact/KFwXoLmigSgHjr2sdkE8ZB). Round 1, models already in the game:
+  - The Gathering `_sigGathering3D`: the member stepping out of the door is the cult member rig (getCastModel('cult1'), the
+    summon's own) on its walk clip via `_finRealBody`; the `_nrvRobe` cone + ball is gone from it. Nothing while it streams.
+  - Raise the Dead / Plaguefield `_sigFleshMound3D`: a heap of the Halloween pack severed parts (`_bpPiece` meat, guts, hearts,
+    heads, skull, a few limbs), like the `_hzFleshMound` horizon; the sphere lobes, sphere eyes and cone fangs are gone.
+  - Drop In `_sigDoorDropIn3D`: the body out of the door is a double of the caster's own model on its jump clip
+    (`_finRealBody(unit, ts, { copy, noHide })`; `noHide` = new opt, the engine already fades the real one for the fall);
+    the `_doorBody` cylinder + box visor is gone from it (`_doorBody` still serves the old door recipes).
+  Round 2 (mondo's picks "A A B A A A"; concepts + originals in project files meshy/ultimates/). New Meshy pieces on R2
+  Assets/props/ (meshopt + WebP .opt content uploaded under the plain name), `_WPN_MODELS` keys, all matte:
+  - Lockdown `_sigLockdown3D`: the 8 barricades are `policeBarricade` (police_barricade.glb, U01a); the box sawhorses + canvas
+    stripe are gone. No free pack had one (Pizza Doggy PSX Mega Pack II has them, not bought).
+  - Stadium Show `_sigStadiumShow3D`: the 4 masts are the EXISTING decor `floodMast` (Assets/decor/flood_mast.glb, D04c);
+    steel cylinders + box truss gone. Masts stand at the sides + back of the camera bearing (`_npCamDir`), never in front,
+    so they never cover a body or a number.
+  - Flat Earth `_PZ_SIGS.f4FlatEarth`: the falling disc is `flatEarth` (flat_earth.glb, U03b, axis 'flat'); the cylinder +
+    painted canvas are gone.
+  - Weigh the Heart (new `_sigWeighHeart3D`): `heartScales` (heart_scales.glb, U04a) rises beside the target, the Halloween
+    pack heart (`_bpPiece('heart')` = Body_part_04) drops on one pan, `maatFeather` (maat_feather.glb, U06a) drifts onto the
+    other; 2 s, fades out from 1.6 s. It is a bolt spell with no 'impact' intent, so it is in `_GEOM_ON_BURST` (runs on the
+    relayed 'burst' beat; online guests replay the same fire call).
+  LESSON: grep MODEL_LIST.md with synonyms (flood / light / lamp / mast) before proposing a new model; I proposed a truss when
+  flood_mast was already listed. MODEL_LIST rows: list-models.js labels the 4 as "ultimate prop".
+
+## THE DODGE READS (2026-11-03, PR "Fix Nimble Dodge landing and camera")
+mondo on the Catgirl showcase video: Nimble Dodge landed floating far above the street, slid backwards, the camera zoomed
+in on her empty start tile, swung 180° onto her back at the landing, went back to the start tile AGAIN, then cut to her front.
+Root causes (reproduced in the cloud rig, Cyberpunk City Arena, landing (3,5)):
+- LANDING: escape / teleport landings read `canOccupy`, which never asked battle.js `fieldCellRock`. A room arena's rock
+  cell ('#' in field.cells: a sign's / lamp's / wall's hidden column, rockTile levels tall, nothing drawn on top) was a
+  legal landing: she stood at level 10 over a level-5 street. canOccupy, canOccupy3D, canOccupyIgnoringUnits and
+  _escapeOpenIgnoringBody now refuse it (the existing SOLID WALL rule: no body stands there). Covers every blink/escape/teleport.
+- ORDER: the escape branch played the two-beat support shot (beat 1 on the caster, beat 2 on the landing) and moved the
+  body on the same frame (220 ms slide). Beat 1 framed a tile she had left; the frame guard (cast phase = the caster)
+  dragged and swung the lens after her body; when the guard's window closed the lens fell back to beat 1's framing on the
+  empty start tile; then the `blink` family's hard cut (cut + 150 ms) jumped to her front at the landing. The family's
+  'vanish' fade also fired mid-run.
+- NO TURN: an escape never set the facing, so the body slid with its back to where it went.
+Fix (battle.js escape branch, `_playSupportCineShot`, `blink` family, three-renderer.js, online.js):
+- she faces the landing (`setUnitFacing`, the facing every move takes) before the shot; beat 1 holds on her there;
+- the slide waits for the shot's cut (`delayMs` = sourceHold; state, status and facing change at once as before) and runs
+  `_escRunMs` = max(look ms, 150 ms a tile); the teleport VFX fires on the cut too; completionDelay covers it;
+- a SELF-moving shot (`_selfLand`: target._landUnit is the caster — every escape, a self teleport, the self grapple reel):
+  beat 1 stands BEHIND the caster looking the way it goes, wide enough to hold the landing (she turns and runs into the
+  frame; the old in-front angle sat on the landing's side and met the wall beside it, so the sight line craned the lens
+  over her head = the top-down crash zoom). Beat 2 rides along behind her to the landing in the run's time
+  (`opts.travelMs`), then CUTS to her front ¾ (cineGlamCam) once she stands there (an eased swing round to the front
+  orbited through the wall beside the landing: a frame inside the building). A landing on another
+  unit (teleportAnyUnit) keeps the old glam glide, now `travelMs` long when given;
+- `blink` family: an escape whose body travels (no look, or fly / swing / eject) gets no vanish and no early hard cut —
+  it plays the rig's own beat 2 (`c.stockHit()`) on the cut. blink / dive looks keep the vanish + cut;
+- the frame guard keeps the mover a subject after the cut (`keepCaster` when target._landUnit is the caster), so the clear
+  angle swings off a wall beside the landing;
+- an escape ending Invisible runs SOLID for its own side and ghosts as it lands (the displace tween's `escHide`); the
+  opponent loses it the moment it leaves (plain runs had no hide at all, only looks did);
+- online: the support-cine relay carries `travelMs` + the start tile's z; the guest frames beat 1 on the host's start tile
+  even when state-sync already moved its copy.
+SAME RISK, NOT CHANGED HERE: the `teleport` kind (Cathedral Perch, Void Rush, Ocean Current, Door Dash, Mirror Blink,
+Shadow Step, Phase Walk, Gravity Boots, Icky Surprise, Instant Transmission, Web Swing) still moves the body on the cast
+frame under the same support shot, and the self grapple reel moves it 320 ms into beat 1.
+ALSO SEEN, NOT CHANGED: the generic return after ANY spell shot (camera.softResetToUnit: 650-800 ms moveTo back to the
+player's pre-shot yaw/tilt/zoom) swings up to 180° when the shot ended on a front ¾, and the sight-line raise lifts it over
+any roof on the way (a short top-down pass over a building). Shared by every spell; left for mondo's call.
+Capture rig (videos/tools/unit_show.js): cast() now latches `_actionExecuting` + clears the pick previews like the board's
+confirm click; without it the HUD read the shot's camera as idle and the action menu showed mid-shot (a recording artifact,
+not the game). Proof: videos/units/fixes/CATGIRL_NIMBLE_DODGE_BEFORE_AFTER_1080p30.mp4.
+
+## THE BLINK READS + THE CLEAN RETURN (2026-11-03, mondo: "yes please" to fixing the flagged spells the Nimble Dodge way)
+Follow-up to THE DODGE READS. Looks and timing only, no rules.
+- TELEPORT kind, self casts (battle.js teleport branch): the caster faces the landing, the shot (caster -> landing,
+  `travelMs` = the body's own time) is played BEFORE any look, and the body goes on the shot's cut (`_tpLeave` =
+  sourceHold): the teleport VFX, the leap's jump arc (three-renderer startJumpTween `delayMs`, relayed in jump-anim),
+  Web Swing's swing path and Door Dash's doors + fade all wait for it. A plain blink keeps its body on the tile through
+  beat 1 with a short `escStyle: 'blink'` displace tween (`TP_BLINK_MS` 150) so it vanishes with the blink family's fade
+  and stands on the landing for the family's hard cut. The Door Dash gun shot still fires in beat 1.
+- blink family: a self teleport that TRAVELS (spell.leap: Land on Your Feet, Cathedral Perch; a swing / fly look: Web
+  Swing) rides like a running escape (c.stockHit on the cut); plain blinks (Shadow Step, Phase Walk, Mirror Blink,
+  Rabbit Hole, Ocean Current, Gravity Boots, Icky Surprise, Door Dash) keep vanish + cut.
+- Directors of self-moving shots get `_cineHeldAt(unit)` as ctx.caster (x/y/z frozen at the cast over the real unit), so
+  a beat before the cut (Void Rush's face cam, Instant Transmission's face cam) frames the body where it still stands;
+  c.live() finds the real unit after the cut.
+- Teleport landings refuse field rock cells too (getTeleportLandingReach + the teleport landing gate) — the same hidden
+  column Nimble Dodge landed on.
+- GRAPPLE self reel: faces the rope, the hook flies in beat 1, the reel starts on the cut (`_grReelAt` =
+  max(hook + 60, sourceHold)) and the shot's travel = the reel time, so raceGrapple's rope cam rides with the body.
+- THE CLEAN RETURN (camera._returnCut): the return home after a spell shot (softResetToUnit both branches, the level
+  settle's pull-back with a pending pre-shot view) CUTS when it would turn more than RETURN_CUT_YAW_DEG (60°); smaller
+  turns keep the glide. The 180° swing home went over roofs (sight-line raise) and through walls.
+Capture gotcha: never re-run H.freeze on a frozen capture page (`globalThis.__frozen=false`): it empties the rAF shim's
+queue and the game's render loop dies (the picture freezes, no error).
+Proof: /mnt/project-files/videos/units/fixes/CATGIRL_TELEPORTS_GRAPPLE_RETURN_1080p30.mp4.
 ## THE HIT STOP REV 2 + THE HIT BLINK + THE JUICE HIT (2026-11-04)
 mondo: "like pokemon or fire emblem where they flash all white a couple times", "im talking about the 3d models, i cant even
 tell if there is hit stop", "shouldnt p2 have the same freeze as p1?", "light attacks need one the same as any other spell",

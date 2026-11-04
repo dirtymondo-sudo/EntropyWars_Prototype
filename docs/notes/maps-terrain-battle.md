@@ -913,6 +913,23 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
   Sim's old gaps landed on the new board's corners until it was rerun).
 - **Not changed**: the voxel boards (the full-site voxel maps, the area Δ 8 × 8s, every "· voxel" board) — reported to mondo, waiting on his call.
 
+## THE DOOR AT BODY SIZE + THE SHEET SIZE QUESTION (2026-11-03, mondo: "did that stretch the terrain textures to cover a 2x2 instead of 1x1? ... the door model that the characters walk out of at the start of a match is too big for them now")
+- The match intro's crossing door (three-renderer.js `_introBuildDoor`) is built in battle tiles (leaf 1.35 tiles tall). On 3.5 m squares the
+  bodies are half a tile (UNIT_SPRITE_SIZE_RATIO 0.5), so the door stood twice their size. `_introBuildDoor(…, bodyK)`: the match intro
+  passes UNIT_SPRITE_SIZE_RATIO and the door proper (frame, leaf, seal, case line) is scaled by it about its foot; where it stands
+  (doorOut, tiles) and the walk path are unchanged. The main-menu door passes nothing (1). Online: both clients build it locally.
+- The terrain sheets did NOT stretch: a terrain room's floor / cliff / path sheets are laid in metres (HQ_TERRAIN_RULES.tile 1.75 m per
+  sheet, triplanar `uTriTM`), so a grown room on 3.5 m squares shows a 2 × 2 of sprites in each square (probe: 0.5 squares per sheet on
+  Stonehenge / Skinwalker). Board marks (`k: 'board'` chess courts) tile at the same 1.75 m. Holo Sim is the exception (tile 3.5).
+  mondo picked "one sprite per square" from side-by-sides (/mnt/project-files/terrain-sheet-size/). three-renderer.js `_hqSheetM(info)`
+  = max(info.tile, room.fieldSquareM || HQ_FIELD_RULES.squareM): `_hqBuildTerrain`'s TS (the field's UVs + info._TM, the triplanar
+  floor / cliff / path / paint, and the wall boxes' _nrBoxUV). TM stays info.tile × U: it is ALSO the model scale (_nrKit ts, trees, traffic,
+  hulls) — doubling it doubled every tree (Codex review on PR #840). The water sheets keep TM too.
+  the board marks' `tl` (chess courts: one sprite per court cell) and `_fieldPatchRep` (spell skins / strata) all read it, in fights
+  AND exploration (the room is one mesh). No lattice read (hqFieldSquareFor takes seconds on a big room; all 82 terrain rooms pass it
+  at 3.5 today). A room that someday fights on 1.75 m would still draw 3.5 m sheets: give it `fieldSquareM: 1.75`. Box-room floors,
+  walls and the city sprite buildings are unchanged. Kill-switch `window.EW_SHEET_REAL_SIZE = true` (back to 1.75 m sheets).
+
 ## THE OPEN SKY SHOT (2026-10-29, mondo: "maybe temporarily fade the celing out for sky and celestial events")
 - 10-28 playtest: the Pisces zodiac crane on Hell Arena (site_prebuilt_hell_walkways, a true-ground room) went black. Checked in a
   browser: the kept ceiling was ALREADY faded there (the sky-gaze lift puts the eye over it, `_fieldGroundTick` op 0.03); the room's
@@ -1117,3 +1134,313 @@ forms above are the most the two meshes give. Proof shots: /mnt/project-files/cr
   0.3 → 0.5 m (mondo: "i think it needs to be a little bigger (the drop)"). Hollow Earth's inner-sun floor then read a level over
   its sunk lakes on the 12 and 9 boards' house tiles, so `bake-arenas.js prebuilt_hollow_earth` (+ `--size 9`) re-cut them:
   12 17,15 → 18,18; 9 16,17 → 17,17. The other picks re-read in place (levels only).
+
+## THE STORM ZONE SHEET (2026-11-03, mondo: "replace this weird looking cloud with a lightning bolt from everywhere in the game")
+- `storm` (Storm Zone terrain, also Saturn's cliff + storm-wall key) never had a TERRAIN_SPRITES row, so every path fell back
+  to the legacy `_terrainSvg` doodle (a faint smudge + one yellow bolt). On opaque walls/tiles it read as a black blob
+  stamped with bolts (Saturn arena walls).
+- Now `storm` wears `terrain/fog.png` (a grey pixel cloud sheet, no bolts) and `TERRAIN_BASE_TINT.storm = '#a4b0cc'`
+  cools it to slate on the board / near kit. (fog_wall, the other key on fog.png, is dead code per mondo 11-03.)
+- Same day, mondo: "yes i want the cloud thick gone too". `cloud_thick`'s own sheet (grey storm cloud with white lightning
+  forks) is no longer used: the key wears `terrain/cloud_2.png` (the painted puffy cloud). Map tints still colour it.
+  HQ room wall paths (_hzTex direct) skip the base tint: there it is the plain grey cloud under the room's tints.
+- Before/after: /mnt/project-files/storm-zone/saturn_storm_walls_before_after.jpg. No rule changed.
+
+## THE CONE MOUNTAINS GONE (2026-11-03)
+mondo (Antarctica Arena screenshot): "can we please get rid of these mountains in the game, they look terrible". They were the
+room landmark kinds `peak` / `mountain` (three-renderer.js `_hqLandmarkBuilders`): a 12-sided ConeGeometry rock cone, shoulder
+cones and a white cone for snow, hung on the battle's 82 m disc, so in a wide room (Antarctica 140 × 112 m, Mars, the Clash temple
+192 × 192) they stood right behind the arena walls. Placements removed from data.js: Shasta (HQ_WOODS_LANDMARKS, 5 woods rooms;
+HQ_RANCH_LANDMARKS), the Range (hqAirbaseShell, 2 rooms), THE TRANSANTARCTICS (prebuilt_antarctica), OLYMPUS MONS (prebuilt_mars),
+clash_temple's three. Both builders deleted; the editor's sky-mark list lost both kinds (its "add mark" adds a `tower`). THE ROCKS'
+asteroid GLBs stretched into a massif were tried first and looked like giant blobs, so nothing replaces them. MODEL_LIST.md §8
+records it and asks for a real far-range model. The battle rims' `_nrPeaks` / `_WD_RIM.peaks` are rocks since 2026-09-16 (untouched).
+
+## GÖBEKLI TEPE ARENA REMADE (2026-11-03, mondo: "why are there t-pillars on top of these walls? get rid of the walls. Also there is a harsh boundary at the edge of the map ... the terrain texture that has the glyphs ... should only be for ancient structures, not for the ground")
+- WHY THE PILLARS WERE ON THE WALLS: ENCLOSURE E (the arena's place in `site_prebuilt_gobekli_tell`) had ten lesser T-pillars "set
+  in the ring wall" like the real dig's pillars, which are built into their enclosure walls. A prop stands on the ground under its
+  foot (three-renderer.js `_hqCaveTop` → `hqTerrainFeet`), and a wall row IS that ground, so every one stood on the 1.8 m wall's top.
+- The six ring-wall rows round E are gone; the ten pillars stand on the ledge round the pit. In enclosures A-D, six ring pillars
+  whose foot was inside or touching a wall row moved clear (rim inside the wall, or the sunk floor 8.2 m out where the chord is tight).
+- THE GLYPHS: the tell's `cliff` (the plan's mass + cut faces) was `rock_wall_1` (the glyph sheet), so the whole unexcavated mound
+  wore it. Now `dirt_4`; the glyph stone stays on built pieces (wall rows, bastions, benches, built stairs keyed `rock_wall_1`).
+- THE HARD EDGE: the room ends 28 m east of the board; the outer ground past it wears the floor sheet, the mound the cliff sheet —
+  a straight line. New opt-in `terrain.outer: { sheet: 'solid' }` (three-renderer.js `_hqBuildOuterGround`, THE MASS RUNS ON):
+  where the edge is the plan's mass in the cliff sheet, the outer ground carries that sheet on. Only the tell asks for it.
+- THE GAPS: bake-holes had punched pits into the bastions' corners (squares under a block the walker cannot climb) and into the
+  terrace nook inside each bastion's L — black squares and `cloud_gap` cells in the 12 × 12 and 11 × 11. `hqTerrainSealedSquares`:
+  a wall row a whole square thick keeps its floor (A BLOCK IS GROUND), and an `HQ_ARENA_RULES.within` place keeps every square
+  (THE ARENA'S PLACE IS GROUND). Only the tell's row was re-baked (now none); other rooms change only when re-baked.
+- `within.prebuilt_gobekli.r` 6 → 2.5: with the wall gone the wider search shifted the 12 × 12 a square west onto the ledge (lost
+  the half-turn symmetry); 2.5 keeps every size on its designed window. All four sizes re-baked: same windows, no gap cells.
+## THE NEW HEAVEN + THE FLAT FILL (2026-11-03, mondo: "on the heave map, what is up with those platforms and how they have ugly cutouts underneath them? Use this concept art to make a new heaven map")
+
+**The cutouts (cause).** A `float: true` plateau (a hanging cloud) cut a RING of whole 0.5 m ground quads out of the field round its
+edge (three-renderer.js field build, `underFloat`): its flank, but also the flat ground round its foot and the flat rim of its top.
+The round puff underside never covered the square-stepped hole, so the sky dome's lower half (the mood's fog colour, green on
+"Haunted Green") showed straight through the world under every floating cloud.
+
+**THE FLAT FILL** (three-renderer.js, after the tiles): `underFloat` now answers 0 drawn / 1 a float plateau's ring / 2 cut (the
+void, a float flight's run). Each ring quad with no corner on a void room's open sky is drawn back FLAT at its lowest corner in
+the field's own material (mesh `hq:field:flatfill`): the ground round the foot stays ground, the slope under the hanging cloud is
+laid flat. Every float-plateau room gets it. Left as it was: the
+void rooms' open sky. Shot: /mnt/project-files/heaven-map/cutouts_before_after.jpg (Heaven Stairway 9×9).
+
+**THE GROUND UNDER** (2026-11-03, second pass; mondo pinned the first fill's shot: "what are these jagged edges", "wtf is this",
+"what is this gap"). Three leftovers of the first fill: the whole run under a FLOAT STAIR was still a hole (the jagged edge), the
+fill sat at each quad's lowest corner so it cracked against ground that had been raised after sampling (Heaven Stairway's
+generated mass: H is moved by the plan pass after `hFinal`), and the ground nodes round a flank still read the flank's slope and
+hollow (the cliff sheet + dark AO: a stepped dark band round every cloud). Now data.js compiles `info.GD`, the LIFT the floating
+plateaus and floating flights add at each node (`hFinal` with vs without them, `skipFloats`; non-void rooms with floats only).
+three-renderer.js takes the ground under = H − GD (`GHa`): a flat ring quad stays where it is, a quad across the flank and every
+quad under a float flight's run (underFloat → 3) lie on that ground with the cliff blend and AO dropped, and a ground node next
+to a float reads its slope + AO on the ground. Shots: /mnt/project-files/heaven-map/cutouts_fixed_v2.jpg.
+Left as the room has it: Heaven Stairway's generated mass pokes through the round cloud at (17.5, 10.5) (its own nodes at 4.4 m).
+
+**THE OPEN SKY** (three-renderer.js prop placement): in a void room a prop over open sky, or any prop authored at `y` ≤ −0.5,
+hangs at its own `y` (height from the room floor). Before, it was lifted onto the cut ground's level (the base), so the heaven
+cloud sea at y −4 stood ON the board and buried it. Only the heaven gate room has such props (checked with load-data.js).
+
+**The room** `site_prebuilt_heaven_gate` (THE CLOUD FIELDS) is rebuilt from mondo's concept art (top-down 12×12): the gate
+platform (pearly gate, two angel statues) north, the round SUN in the middle (lavender disc, gold rings + rays as terrain marks),
+two side terraces (angel, column, harp; no potted plants, mondo 11-03: "potted plants in heaven?"), the big bottom platform with the grand stair, cloud paths between them, a castle on
+each corner island, balustrades on every edge over the sky. New helper `hqSkyPlan(rows, o)` (data.js, after hqDeckPlan) turns a
+character plan (one char per 3.5 m battle square, `.` = open sky) into float plateaus (proud 0.45 m past the square onto sky or
+same-height floors), cloud-path polylines and balustrade rails (`HQ_STAIR_PACK.railings` balusters_d, `block: false`).
+- Board rules unchanged: the void squares are the existing `cloud_gap` (Open Sky); floors are marble_light, paths cloud_2 (both
+  plain passable cost 1). The gate + bottom platforms are 3.7 (0.5 m up, still battle level 0: spawn rows and the nexus must be
+  one level, so the concept's raised end platforms are three broad marble steps, not a full tier).
+- Exactly 48 open-sky squares = HQ_ARENA_RULES.wallMax (the walled cut's cap): the plan's side terraces are 3×4 and the gate /
+  bottom rows 8 wide to get there. `HQ_ARENA_RULES.within.prebuilt_heaven` pins the cut to the sun; `node bake-arenas.js
+  prebuilt_heaven` → @0,0 walled, solid 48. The 9/10/11 boards stay on the Heaven Stairway room (no 9/11 fits the new plan).
+- Every platform has `under: 'cloud'` (a cloud body + puffs, `_hqBuildFloats`), not the void room's default stepped rock.
+- Cloud sea: 40 white_cloud 8-11 m under the board + a bank of 12 round it (THE OPEN SKY hangs them).
+- Castles: McSteeg's Castle and Fort Builder Pack (`Castles_and_Forts.glb` → R2 `Assets/misc/`, catalogue rows castle_tower /
+  castle_tower_top / castle_cone / castle_gate / castle_wall via `#node`; `_hqModelUrl` now keeps a misc row's `node`). Credited
+  in EW_CREDITS + list-models.js. No Meshy.
+- Removed from the old room (the concept has none of them): the rift + plank, stepping clouds, pillar of light, lookout, the two
+  healing pools, the fountain stand-in, park benches, the priest + angel NPCs. The seraphim stays (on the NW castle island, off
+  the board: an NPC spot blocks its square). No banners (only a code stand-in exists).
+- Shots: /mnt/project-files/heaven-map/.
+- SAME DAY, second pass (mondo: "the t-pillars are still standing on top of the walls"): the four pit pillars (the two great ones, the
+  two lesser) each had a DRAWN battle-stone wall row (5.45 m / 3.15 m glyph blocks) and stood on its top. Those rows are `ghost: true`
+  now (never drawn; still the walker's and the fight's, so the boards are unchanged) and the props carry `floor: true` — new prop flag
+  (three-renderer.js `_hqPlaceProps`, THE FLOOR UNDER IT): stand on the field's own ground (hqTerrainHeight), never a wall row's top.
+- SAME DAY, third pass, THE SIZE (mondo: "the pillars look small, they are supposed to the space of one square and be like 2 or 3
+  squares tall"): every pillar of enclosure E is one 3.5 m square wide and 6.6-8.4 m tall (the two great 8.4, the pit's lesser 7.0, the
+  rim 6.6-7.4). The four pit pillars sit on square centres (3×5, 8×6, 2×8, 9×3, half-turn symmetric) and their ghost stones are one
+  square each (h = the pillar's), so the boards bake those squares at level 3. The Meshy t_pillar.glb is 0.6 as wide as tall, so
+  `fit: 'height'` made an 8.4 m pillar 5 m wide: a t_pillar placement's new `w` (metres, the head's width) stretches it in plan to `w`
+  (its depth kept in the model's own proportion, 0.514·w) and keeps it `h` tall (three-renderer.js t_pillar proc, THE ONE SQUARE).
+  Rows without `w` keep the plain height fit. Proof: a VS CPU battle on the arena, with the model queue drained.
+
+## THE CODED SHAPES OUT (2026-11-03, mondo, answering the "Coded shapes worth replacing" proposal: "All of the ones i said to replace and already have replacements ready, i want you to completely delete from the game and the code")
+Round 1 (three-renderer.js; the procedural builders deleted, the same names now place a model, so every map / roster / near setting / monument that named them gets the model):
+- `_hzRover` = the Meshy mars_rover (`_hzDoorKitGLB`), the Mars + Moon settings and the `rover` monument. The Mars setting's `fallback: _hzRover` went (it would recurse).
+- `_hzToadstool` = the Meshy fae cap (`mushroom`); `_hzFairyRing` = 8-10 small Meshy toadstools (`mushroom2`), each its own model, in a ring under the kept will-o-wisps.
+- `_hzCenser` = the Meshy censer (R2 Assets/props/censer.glb) stood on the ground, ember glow inside (the smoke ball went).
+- `_hzBrazier` = the Meshy standing torch (decor `cave_torch`) 2 tiles tall + a glow over the basket (mondo preferred it to the Meshy brazier).
+- `_hzLighthouse` = the Meshy decor lighthouse + its lamp glow. `_hzSeaIsland` (the cone island) deleted: the sea roster's islands are the palm isle; `_hzPalmIsleFar` lost its fallback.
+- the `whale` weenie = the ocean pack's Whale.fbx (turned 180°, like the catalogue's ocean_whale), not the humpback; the coded body deleted (pack off = no whale).
+- the `bergs` rim = the ocean pack's rocks (Rock, Rock1-3, Rock6-7) tinted ice, widened at random (pack off = no bergs).
+- `_hzFloatingIsland` deleted outright (rosters: the band goes to the next row, a last row's threshold moved to 1.00), the `island` monument + its 2 map placements + the editor entry gone.
+- NO SWELLS: `_WD_RIM.hills` + `.dunes` deleted (10 data.js rim rows dropped, the craters rim no longer adds hills), and the 8 ground `_nrMounds` calls (stonehenge, giza, antarctica, skinwalker, gobekli ×2, northpole, downtown); the 3 cloud-bank calls (heaven, olympus, saturn) stay.
+- `_hzMiscKit(key, { url })` places any model URL (decor, props, ocean pack) the misc way. list-models.js reads `_HQ_DECOR_GLB.x`, `_oceanUrl('X')` and url-placed props in §8b.
+- Headless check recipe that works: scratch patched copy exporting the builders + `window.EW_NO_OPT_ASSETS = true` + a 30 s wait (decor/props are meshopt, FBX streams slowly).
+Round 2 (the same day, the rest of his answers):
+- THE CASTLE (`_hqLandmarkBuilders.castle`, the sky castle reuses it and keeps its cloud bank): built from the castle pack
+  (`Castles_and_Forts.glb#<node>`), every piece placed on its own, height-fit at k = 6 × s: Wall_2x4 east/west/back curtain, Wall_2x2 +
+  Gate_2x4 + Wall_2x2 front, four Tower_Mid corner towers, a Tower_Doorway + Tower_Mid keep, each tower capped with Tower_top_1 +
+  Roof_Cone. The code walls / drums / cones are deleted.
+- THE RUINS RIM (`_WD_RIM.ruins`): ONE castle pack ruined piece per stop (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined),
+  facing the board ± a little, `low: 'skip'`. No clusters called one thing (mondo).
+- `_hzGreekRuin`: the standing columns are the Meshy `greekcol` (height-fit to the code column), the base + the beam stay code (mondo
+  likes the shape); the broken stubs are gone (an rng() call keeps the seed).
+- `_hzZiggurat`: the shrine on top is a cube. `_hzStairway` + the sky `stairway` landmark: one-square treads.
+- `_hzMonolith`: 1.8-2.9 tiles wide, half as deep (it was a thin slab), the purple rune deleted.
+- `colossus` renamed `fallen_column` / `_hzFallenColumn` everywhere (data.js maps + MF_DELTA_SOLID_MONS, map.js _MON_COLLISION + the
+  editor + the infernal theme label): it is a column lying on the floor, not a colossus. Same shape, same collision.
+- `_hzFleshMound`: a heap of the Halloween pack body parts (`_hwUrl('Body_part_0N')`, the gore spells' pack), 60-76 parts, each placed
+  on its own on a dome; every 8th is a limb laid flat. Pack off = nothing drawn. The code blobs, eyes and teeth are deleted.
+- `_hzGreyTube` (the specimen tank monument) = the Molten Maps sci-fi pack Cryo_Tube_ON (CC0), R2 `Assets/misc/molten_cryo_tube.glb`
+  (the monument fit stretches it toward its 3-square stamp as it did the code tank).
+- Catalogue procs swapped to pack pieces and their code deleted (bake-pack-pieces.py jobs, R2 Assets/misc/, zipped by hand):
+  `hand_dryer` / `range_hood` / `kitchen_range` / `sink_row` = DINER pack (Hand_dryer, cooker_hood, Stove griddle, Washbasin);
+  `urinal` = BurgerPiz urinary; `toilet_stall` = Gas station stall (two partitions + door + toilet); `shower_stall` = House pack shower;
+  `iso_tank` = Molten Maps sleeper casket (R2 `Assets/misc/molten_sleeper_casket.glb`, kept 1.3 m tall like the old pod: Antarctica stands it on 1.3 m ghost blocks; the catalogue `light` went with the proc: file
+  rows draw no point light, only the glow). The kitchen range's burner glow went (it is a griddle).
+- KEPT as code: the `castle_wall` spell monument (1 square wide, 2 high: the pack has no piece that shape).
+Round 2b (the same day, the Meshy concepts mondo OK'd: concepts + models in project files meshy/coded-out/, R2 Assets/decor/, in
+_HQ_DECOR_GLB so MODEL_LIST lists them; the GLBs go in the sync zip by hand):
+- `_hzObelisk` = Meshy granite obelisk (ember glow kept on the point). `_hzGateway` (+ the `arch` / `gateway` monuments) = Meshy curved
+  stone arch (the box piers, lintel and broken variant deleted). `_hzGreekRuin` columns = the new Meshy `greek_column` (not greekcol).
+- `_hzEffigy` = Meshy bier + Meshy wrapped figure on it (two models). `_hzWindmill` = Meshy windpump tower + the wheel as its own
+  model on a hub at 0.92 H, 0.13 H out on +x, turning: `_horizonFloaters` entries now take `spinX` (rotation.x per frame).
+- procs: `grow_lamp` = Meshy LED panel (catalogue h 0.17, flush to the ceiling; glow + light kept), `submarine` = Meshy yellow sub
+  (nose turned to +z, 7 m, the headlamp glows kept; the screw no longer turns), `_hqLavaLampBuild` = Meshy chrome base + cap (table
+  and floor sets) with the glass + wax still drawn (the floor lamp's glass is a straight tube now, to match its base).
+## THE OPEN SUMMIT + THE OPEN ICE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any sense for those maps")
+- Cause: LEVEL_DESIGN_PLAN L6 (2026-09-30) turned both site rooms into `gen: { kind: 'plan', look: 'walls' }` layouts (5.5 m marble /
+  5 m ice walls round every court, yard and hall; the sealed mass between them baked to pits by bake-holes.js), and every arena size
+  was cut from those walled courts.
+- Fix (whole room, easier than carving a hole in the plan): HQ_AREA_SPECS.prebuilt_olympus / prebuilt_antarctica lost the walls
+  plan and every `space` / `hall` row (a room with `space`/`hall` rows and no `gen` still gets a walls plan — data.js
+  hqTerrainCompile's planGen fallback, so both had to go). Every plateau, stair, climb, pool, deck, rail, prop and NPC stayed.
+  HQ_ROOM_HOLES rows re-baked (0 gaps now). Olympus keeps `outer.lift -26` (the summit is a marble crown with the mountain falling away).
+- Olympus THE COURT OF THE TWELVE (the board, x -21..21, z -10.5..31.5, `HQ_ARENA_RULES.within` (0, 10.5) r 2.6 for every size):
+  twelve greek_column props (h 5, `floor: true`) in two rows of six at x ±12.25 on square centres, each on a one-square ghost wall
+  (h 5 → level 3, the Göbekli pillar rule), and two 1.2 m marble plinths at the far corners. The lower court's stair moved to its
+  north lip (the west court), the first two stepping clouds moved west off the board, the fountain went to (0, 35) south of the
+  board, the riser and a brazier moved off it, the scatter rows got their own areas (with the walls gone they landed on the board).
+  Olympus now has an 11×11 cut too (none fitted the walled room).
+- Antarctica THE STATION YARD (the board, x -21..21, z 10.5..52.5, `within` (0, 31.5) r 2.6): two 1.4 m ice pressure ridges
+  (three squares each, level 1), two 3.0 m metal containers (two squares each, level 2), two iso_tank fuel tanks on one-square ghost
+  blocks (1.3 m), two flood masts off the corners. THE CREVASSE stream now runs wall to wall (x -71..71) so the plank is still the
+  only way north. The signpost, lesson sign, laundry cart, riser and the yeti NPC moved off the board; scatter rows got areas.
+- Both boards are half-turn symmetric about their centre and keep the house lanes (spawn / egress / nexus) clear at 12, 11, 10, 9.
+  Existing rules only: levels, ghost blocks, deep water. bake-arenas.js reports them as walled cuts (the level-3 / level-2 blocks).
+- Audit of the other boards + the exploration rooms still built as walled plans: /mnt/project-files/battle-map-audit/.
+
+Round 3 (the same day): the `tower` landmark (the downtown weenie) wears urban pack facade sheets (GlassWindowTall1a,
+GlassWindowSquare1a, GlassWindowTall4a) sized by the landmark world UVs (6 m a sheet), the mast plain steel; no flat colours. The
+city rim needed nothing: its map-builder buildings have had the prism bands since PR #843 (checked on screen 11-03).
+Round 4, THE PACK BUILDINGS (the same day; mondo saw the city rim and kept it: "they look fine, but i also like the buildings you
+showed me in building pack 1, so incorporate those into the game like in disaster city and the map editor"): the ten shop blocks of
+Elbolilloduro's Buildings pack (CC0, 126-548 tris each, photo sheets) are cut one by one by bake-pack-pieces.py (`bld_00..09`,
+R2 Assets/misc/ebd_buildings_bld_NN.glb + a front picture .png for the editor, added to the zip by hand; copies in project files
+asset-packs/coded-out-round4/). data.js HQ_PACK_BUILDINGS = each one's metres (w along the shop front at +Z, d, h, roof = the slab
+inside the parapet, measured in Blender). Where they go:
+- THE CITY LOTS: a plan's or a district's `packP` = the share of the runs along a street face that try a pack building first (its own
+  width, else 90 % / 80 %), as deep as the block lets it, never under 70 % of its own depth (three-renderer.js _hqPackBuildingModel
+  fits the width, the height follows at one scale, the depth is fitted to the lot). Its own seeded draw (`prnd`), so plans without
+  packP lay exactly what they laid. A pack lot carries `pack`, `packH` (the solid top + the walk's roof) and never grows or shrinks
+  for an alley; its fronts are skipped (the model has its own shop fronts). Disaster City's OLD TOWN district has packP 0.6: 7 blocks
+  (6 different) on its streets. The FINANCIAL blocks are too shallow (8-11 m deep) for any of them. The arena pick (19,15) and the 9 /
+  10 / 11 cuts were rebaked and did not move.
+- THE EDITOR: a BUILDING's Look list (`bldKey`) has a PACK BUILDINGS group at the top; a texbuilding row whose key is one of them is
+  drawn as that model in its box (_hqBuildTexPacks), solid (no inside), its walls the parapet's height and its roof the model's own at
+  the box's width (data.js hqTexBuildingRows). Storeys does nothing to it.
+- Probe gotcha: in the headless city probe the model queue never started these files (the queue holds on some sheet in swiftshader);
+  `--flags=EW_NO_MODEL_QUEUE` loads them. Shots: Old Town street fronts + two editor rows in Skinwalker fields, all upright, fronts
+  to the street.
+
+Round 5, THE TOWN RIM HOUSES (the same day; mondo OK'd the split: "yeah that sounds good"): Area 51 and Skinwalker's town rims stand
+one whole Trailer Park trailer per stop, Haunted's one Abandoned House pack exterior per stop. Babel keeps the code mud-brick houses
+until he OKs Meshy concepts for it.
+- three-renderer.js `_HZ_TOWN_MODELS` { trailers: 6 files, 15.1 m long; abandoned: 1 file, 36.3 m wide, sunk 3.5 m (its stilts) }; a
+  data.js town rim spec with `models: '<key>'` places one model per stop (fit 'span' at m x 0.96-1.04, front turned to the board +-0.25
+  rad, low 'skip'); without `models` the old _nrHouse code draws (Babel only now). Delete that code branch once Babel has models.
+- bake-pack-pieces.py: F 'trailerscene' (Trailer_Park.fbx) + 'abandonedhouse' (Abandoned_House.fbx). A node `{near, pad, keep}` cuts a
+  REGION: every mesh whose centre lies in the named node's box (+pad m) and whose name matches keep (the trailers stand in one scene
+  with no parent per trailer). A trailing `!` on a node name takes that node without its children. Files: R2 Assets/misc/
+  ebd_trailerscene_trailer_0..5.glb, ebd_abandonedhouse_house.glb (zipped by hand).
+- FOUND: a site battle draws NO world rim at all. Every rim site has an HQ_ARENA_RULES pick, the arena drops env.near, so
+  `_nrLastKit` is null and `_worldBuild` returns early; the site's own room stands round the board instead. These rim swaps show only
+  where a rim still builds. Asked mondo whether the pack houses should also stand in the site rooms.
+- mondo 13:28: "none of those, i think the rims are just dead code from the voxel boards right? obviouslyy they need to go into the
+  site rooms". True: a VS-CPU / online fight at a site is its arena cut with nothing round it, and no site keeps a Δ board, so the
+  world rim never draws. THE TOWN HOUSES are ROOM PROPS now (data.js DOOR_HQ.catalogue trailer_home_1..6 + abandoned_house, real
+  size, `rect` blockers): Area 51's flight line 4 trailers on the desert past its open edge (north, clear of the gate road; one west),
+  the Skinwalker fields 3 trailers in the corn's clearings, the Haunted grounds 3 Abandoned Houses past the pines (west, east, south),
+  side on. Every spot is clear of all four arena sizes (12/11/10/9), the tracks, the doors, the props and the natives (a scratch plan
+  search over hqFieldLattice cells). three-renderer.js _hqCaveTop: a prop past an open field's edge stands on THE OUTER GROUND
+  (`_hq.outer.yAt`), never the edge height carried out. The house GLB is re-cut (bake-pack-pieces.py job option `cut`: 2.5 m of its
+  3.5 m basement dropped) and sinks its last metre (`hover: -1`), so no stilts show on the outer ground's slope.
+- THE RIMS OUT (14:05, mondo: "Yes please delete the rim code since nothing is using it"): three-renderer.js _WD_RIM keeps only
+  `peaks` + `spires` (the kept voxel boards draw them: Hell Δ · voxel spires+peaks, Göbekli Tepe Δ · voxel peaks; checked in a VS CPU
+  match: Göbekli's world mats 10); trees / town / city / bergs / ruins / pyramids / craters builders, _HZ_TOWN_MODELS and
+  _wdCraterLathe deleted, and every data.js EW_MAP_META `rim` entry of those kinds (25 entries; an emptied `rim` key goes). The planet
+  world's carved craters (`world.craters`) are not the rim and stay. Asked him whether peaks + spires go too.
+
+## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
+mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these
+3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the map" (his picture: 01 Forward Cover,
+02 Central Screen, 03 Open Junction; each team on four edge squares).
+- data.js `HQ_LG_CHESS` (above HQ_AREA_SPECS): the three positions as FEN-style rows (north = black = P2), `cur` = the one standing.
+  The garden's `board` feature is 8 × 8 (x −14..14, z 3.5..31.5) in the middle of the unchanged 12 × 12 window (ox 11, oz 14,
+  3.5 m squares): the window's squares 2..9; the two lawn rings round it hold the spawns (rows 0 / 11, x 4..7) as before.
+- The pieces are `...hqLgChessFeatures()` chess trees (existing rule: solid on their square). A piece not in every position has
+  `chessPos`; only the current position's stand: hqFieldTerrainInfo (`trees` filtered, its cache keyed `chess`), _hqFieldTreeAt,
+  and three-renderer.js treeOne (`_hqChessVar`, hidden + off the walker's blockers; `ThreeRenderer.chessPosSync`). The three differ
+  only by one white bishop (c4 / d3 / e2).
+- The roll: hqLgChessRoll(mapId) at the launch (map.js _msArenaGate once per confirm, the labs' launch). A new position calls
+  hqArenaRoomChanged (the field is re-rastered, ~0.1 s, no survey). The field's `build` stamp keys the renderer's room read
+  (_hqBattleRoom / _fieldGround) so a re-raster of the same window is read again.
+- Online: the HOST rolls once per match in _onlineArenaGo (NET._chessRolledFor, cleared per match / rematch); `arena-check` carries
+  `chess`, the room signature ends `|chess<k>`, so a guest on another position is asked again and stands the host's (hqLgChessSet).
+- The garden around it is unchanged (a plateau + the board's `clear: 7` apron keep the plan's forced area and the scatter exactly
+  as with the 12 × 12 board — checked: same scatter + trees). Picks: the 12 re-rastered by hand (all 117 open squares reach both
+  spawn rows); the 9 / 10 / 11 re-baked (`bake-arenas.js --size N prebuilt_lookingglass`): no smaller window fits the house on the
+  8 × 8 (the back ranks sit on the egress rows), so they are other lawn windows of the garden (the 11 takes the board's west files).
+
+## THE OPEN VILLAGE (2026-11-03, North Pole, after THE OPEN SUMMIT + THE OPEN ICE)
+mondo's audit ask (Olympus/Antarctica "built like dungeons with walls"): the audit found the North Pole village built the same way
+(L6 `gen: {kind:'plan', look:'walls'}`, 4.5 m wood_planks walls, black pits). Fixed the whole room:
+- the gen line and every `space` / `hall` row removed (the planGen fallback rebuilds the walls plan while any remain);
+- the ramp to the walkway off the sledge yard keeps its own railings now (`rails: false` was for the hall's walls);
+- THE BAY GATE: two 3 m wood_planks posts at x ±3.9, z 28..32 carry the hall's two wreaths;
+- the hearth is the fireplace way's own chimney breast at the deck's west edge (a wall row past the room edge x −64 is clipped by
+  the heightfield, so none was added);
+- THE COTTAGES: the Christmas pack's `xmas_house` (was editor-palette only), h 6.0, `floor: true`, on 3 × 3 ghost blocks
+  (`x0 = x1, z0 = z1, t 10.2` — a wall row's ends are round, t 9 gave a plus shape) at (−43.75, 15.75) and its 180° twin (−12.25, 12.25);
+- two `sleigh`s and two snowmen on one-square ghost blocks (h 1.3, level 1), 180° twins round the board centre (−28, 14);
+- HQ_ARENA_RULES.within.prebuilt_northpole (−28, 14, r 2.6) pins every size between the workshop deck and the plaza; all four re-baked.
+The 2 × 2 gap on the walkway (HQ_ROOM_HOLES, i 15..16, j 1..2) was there before and stays.
+Still walled (battle + exploration), not changed: Giza, Agartha, Technoticlan, Babel.
+
+## THE OPEN PLATEAU / TOWN / TEMPLE CITY / CRYSTAL CITY (2026-11-03, after THE OPEN VILLAGE)
+mondo: "go ahead and get rid of Giza, Agartha, Technoticlan, and Babel's walled courts". Same fix as Olympus / Antarctica / North
+Pole, whole rooms (exploration + every board): the L6 `gen: {kind:'plan', look:'walls'}` line and every `space` / `hall` row gone
+(the planGen fallback rebuilds the walls while any remain), their L6 layout comments dropped, HQ_ROOM_HOLES rows gone (bake-holes).
+Each site is pinned with HQ_ARENA_RULES.within and all four sizes re-baked; the cover is existing rules only (levels, ghost blocks):
+- GIZA (site_prebuilt_giza_plateau): the sand in front of the sphinx, the raised causeway down its west side, the sphinx's rump in
+  a corner; within (17.5, 77, r 2.6). Four fallen casing blocks (bricks_1 wall rows, 1.4 m) and two obelisks on ghost blocks, 180°
+  twins about (17.5, 77). The 2-row causeway crossing (14, 59.5) was tried first: a 9×9's house/nexus rows always land on it.
+  Anubis moved (34, 60) → (37, 64) off an obelisk. A wall row's round end reaching the causeway lifts it a level: keep 1.4 m off.
+- BABEL (site_prebuilt_babel_tower): the square between the tower's foot and the barn door; within (0, 70, r 2.6). Four brick
+  houses (point wall rows `x0 = x1, z0 = z1, t 7`, 3 m: crisp brick boxes, level 2; plateaus drew as rounded loaves) and two brick stacks (1.4 m), 180° twins about (0, 70).
+- TECHNOTICLAN (prebuilt_technoticlan): THE BALL COURT and the plaza east of it; within (−38.5, 38.5, r 10) — r 10 because the
+  ball court's walls fill a 9×9's house rows, so the 9×9 sits east of the court. Two altar platforms (3.5 × 7, 1.4 m). The causeway
+  stair keeps its own railings (`rails: false` was for the hall's walls). A `block: true` prop (a brazier) on a platform corner
+  made four squares rock (`tree`): no props on the platforms.
+- AGARTHA (prebuilt_agartha): THE PLAZA (the fountain, the two garden rings); within (0, 14, r 2.6). Two marble low walls
+  (1.4 m), four crystal clusters and four greek columns on ghost blocks, 180° twins about (0, 14), placed for the 9×9 too.
+
+## THE TWO SANDS (2026-11-03)
+mondo asked for a new sand "the same way you found another gold texture", picked option A off
+`/mnt/project-files/sand-texture/sand_texture_options.png` (ambientCG Ground097, CC0, dune ripples), then: "you need to
+differentiate between beach sand and desert sand in the game through color/tint".
+- `desert` stays ONE terrain key (every rule unchanged). sprites.js TERRAIN_SPRITES.desert = R2 `Assets/Sprites/terrain/sand.png`
+  (Ground097 baked at 128 px in the desert's warm gold, mean ~0.57). The beach sheet `terrain/sand_beach.png` = the same ripples in
+  pale cream (mean ~0.73, under the white-sheet line so daylight keeps the ripples). Both baked by
+  `/mnt/project-files/sand-texture/grade.py` (contrast ×3-4 + normal-map relief + AO: raw ambientCG sand is flat at 128 px).
+  Repo copies in `Assets/Sprites/terrain/` (zipped by hand). desert.png stays in the bucket, unreferenced.
+- A BEACH (sprites.js SAND_BEACH): a battle board whose id starts with one of `SAND_BEACH.maps` (Bermuda family, Atlantis abyss,
+  Downtown harbour), or a room on a sea shell (data.js hqSeaShell / hqAbyssShell carry `sand: 'beach'`; a room's
+  `terrain.sand` / `shell.sand` works too). three-renderer.js `_ewSandBeach` / `_ewSandUrl` / `_ewSandPart` swap the sheet in
+  getTerrainTexture, _hzTex, _hqTex and fold '@beach' into their cache keys + _tintKeyPart (board materials). Online: reads
+  activeGameMode / the room, which host and guest share.
+- The beach colours: Bermuda boards' tints.desert, the sea shell's floor/apron colour and the Bermuda horizon kit went
+  #e8d8a8 → #f2ead6 (paler) so the beach reads cream, not yellow. Giza / Babel / the desert boards keep their tints.
+- The sand spells' (`_sigTerrainTex`) and the deployable stone's 'desert.png' loads read sand.png.
+- GIZA UNTINTED (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the Giza boards' tints.desert
+  (#e8cf8f full board, #e6d4a0 the arenas) are gone and the Giza site room's floor/apron colour is white, so Giza's sand is
+  the desert-gold sheet as drawn. The Giza horizon pyramids keep their own colour (0xd6c39a).
+
+## THE OPEN SKY (2026-11-03, mondo: flyers fly over outdoor walls)
+mondo: "a flyer should absolutely be able to fly over a rock or a street sign. That wall fix was probably intended for rooms
+that have a ceiling ... i shouldnt be able to just fly over the wall of a hallway, because it is implied that the wall goes up
+to the ceiling. Where as an outdoor map like cyberpunk does not need that, bc it is outside and there is no ceiling".
+- data.js `hqFieldSkyApply(R)` (after `hqFieldRoofsApply`, in `hqFieldBuild` and the arena re-raster): on a TERRAIN field of a
+  room with `shell.open`, every square that stays rock gets the drawn top `hqFieldSkyTopOf` (room metres): the ground's highest
+  sample, a city lot's top under ANY share of the square (a building's edge), a solidMass wall's top, a custom map wall / tall
+  piece's top (`hqFieldSolidCell` now returns `top` with `out`). Its column is that tall (`hqFieldRoofTier`, uncapped) and it is
+  marked `c.sky`. Entry: `field.sky` ('1' rows) + `field.skyTops`.
+- Stays the tall column: a tree anywhere in the square (no height known), a tree-bank mass, a gap (`hole`), a square past the
+  room's edge (no src), every square of a room with a ceiling, every box / cave field. Kill-switch `window.EW_NO_OPEN_SKY`.
+- battle.js `fieldCellSky(x, y)`; map.js `unitCanTraverse`: a rock cell passes only for a flyer at a z over the column (or,
+  with no z, an airborne flyer). `fieldCellRock` is unchanged, so walking, climbing, jumping, teleport / escape landings and
+  `canOccupy*` still refuse it; `canChangeAltitude('descend')` refuses a Land over it ("Nowhere to land here.").
+- three-renderer.js `_fieldSurfaceY`: over a sky square the flyer hovers its clearance over `skyTops` (marks keep `rockTops`).
+- Cyberpunk arena: all 5 rock squares are sky (3.7 m, 10.3 m x2, 6.9 m building edges; 2.7 m the slope crest at 9,5).
+  Proof: videos/units/fixes/FLYER_OVER_BUILDING_EDGE_CYBERPUNK_1080p30.mp4.

@@ -5827,7 +5827,7 @@ const SPELL_LIBRARY = [
         aoeOriginSelf: true,
         statusEffects: [{
             id: 'jammed',
-            duration: 1
+            duration: 3
         }],
         desc: 'Deals HEAVY magic damage to All Enemies around the caster (AOE). Applies Jammed.'
     },
@@ -6371,8 +6371,8 @@ const SPELL_LIBRARY = [
           desc: 'Edge of the shield, under the chin. Deals MEDIUM physical damage to an adjacent enemy and Staggers them: they lose 1 AP.' },
         { id: 'raceStaticShock', name: 'Static Shock', tier: 1, families: ['lightning'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 100,
-          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds (a 1-round status ran out before a faster target acted)
-          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 2 rounds).' },
+          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 3 }],   // mondo 11-03: Jammed lasts 3 rounds like other statuses
+          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 3 rounds).' },
         { id: 'raceChainLightning', name: 'Chain Lightning', tier: 3, families: ['lightning'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 130,
           damageType: 'magic', chainProfile: [130, 85, 50], chainRadius: 2,
@@ -6614,8 +6614,8 @@ const SPELL_LIBRARY = [
            finisher for its own status. Their looks: three-vfx-effects.js "THE LIGHTNING PASS". */
         { id: 'raceBallLightning', name: 'Ball Lightning', tier: 2, families: ['lightning'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'lightning', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 4, lineWidth: 1,
-          statusEffects: [{ id: 'jammed', duration: 1 }],
-          desc: 'A crackling ball of plasma rolls down the lane. MEDIUM magic damage to All Enemies in a line, and the static Jams them for 1 round.' },
+          statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'A crackling ball of plasma rolls down the lane. MEDIUM magic damage to All Enemies in a line, and the static Jams them for 3 rounds.' },
         { id: 'raceBoltFromTheBlue', name: 'Bolt from the Blue', tier: 4, families: ['lightning'], cost: 100, apCost: 1,
           cooldownRounds: 2, spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic',
           dmg: 170, range: 4, bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -7012,7 +7012,7 @@ const _mkBlink = (arch, over) => Object.assign({}, _BLINK_ARCHETYPES[arch], over
    One stat block per status; per-race identity via _mkBolt overrides. */
 const _JAM_BOLT = {
     type: 'debuff', cost: 30, range: 3, apCost: 1,
-    kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
+    kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 3 }],
     desc: 'Weakens a Single Enemy. Applies Jammed.'
 };
 const _DISCORD_BOLT = {
@@ -7725,9 +7725,9 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Jammed. Breaks it for 1 round (its passives are off; a passive flyer falls).' },
         { id: 'raceMemoryLeak', tier: 2, families: ['computerhacking'], spellType: 'tech', name: 'Memory Leak',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
+          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 3 }],
           mpDrain: 30,   // THE SPELL AUDIT Batch D: the leak
-          desc: 'The leak never closes. A Single Enemy is Jammed for 2 rounds and loses 30 MP.' },
+          desc: 'The leak never closes. A Single Enemy is Jammed for 3 rounds and loses 30 MP.' },
         { id: 'raceBlueScreen', upgradesBlock: ['upBlast'], tier: 3, cooldownRounds: 2, dmg: 110, damageType: 'magic', families: ['computerhacking'], spellType: 'tech', name: 'Blue Screen',   // STATS24 PASS 2026-10-29: dmg 80→110 (0.60× the Tier III median)
           type: 'debuff', cost: 35, range: 4, apCost: 1,
           kind: 'debuff',
@@ -7761,8 +7761,8 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them toward the center. The model converged. You were in the gradient.' },
         /* THE SIGNATURE FAMILY (2026-10-23): Deep Learning, this race's own. */
         { id: 'sigScrape', name: 'Scrape', tier: 2, families: ['deeplearning'], cost: 50, apCost: 1, cooldownRounds: 3, spellType: 'tech',
-          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, stealSpell: true, statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Every move you ever made is training data now. Steals one spell from a Single Enemy within 4 tiles (they lose it, the AI learns it for the match) and Jams them for 2 rounds. Cooldown: 3 rounds.' },
+          element: 'psychic', type: 'debuff', kind: 'debuff', range: 4, stealSpell: true, statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'Every move you ever made is training data now. Steals one spell from a Single Enemy within 4 tiles (they lose it, the AI learns it for the match) and Jams them for 3 rounds. Cooldown: 3 rounds.' },
         { id: 'sigOverfit', name: 'Overfit', tier: 3, families: ['deeplearning'], cost: 75, apCost: 1, spellType: 'tech',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4, echoLastDealt: true,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -8230,8 +8230,8 @@ const RACE_ABILITIES = {
         /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
         { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 88, range: 5, ignoresLineOfSight: true,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 70→88 (Telepath 28%)
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'White noise behind the eyes. Deals WEAK magic damage to a Single Enemy within 5, through walls, and Jams it for 2 rounds.' },
+          statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'White noise behind the eyes. Deals WEAK magic damage to a Single Enemy within 5, through walls, and Jams it for 3 rounds.' },
         { id: 'pzAneurysm', name: 'Aneurysm', tier: 4, families: ['telepathy'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 6, ignoresLineOfSight: true,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -8334,8 +8334,8 @@ const RACE_ABILITIES = {
           desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
         { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
-          statusEffects: [{ id: 'silence', duration: 2 }],
-          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 1 round. Cooldown: 2 rounds.' },
         { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
           vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 150, damageType: 'magic',   // STATS25 PASS 2026-10-29: dmg 130→150 (Priest 38/17%: 59% of its pool scores nothing in Arena)
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
@@ -8754,8 +8754,8 @@ const RACE_ABILITIES = {
           desc: 'Four walls nobody else can see. Roots a Single Enemy within 3 for a round. Cooldown: 2 rounds.' },
         { id: 'nrShhh', name: 'Shhh!', tier: 2, families: ['mime'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'human', vfxElement: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
-          statusEffects: [{ id: 'silence', duration: 2 }],
-          desc: 'A finger to the lips. Silences a Single Enemy within 4 for 2 rounds. Cooldown: 2 rounds.' },
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'A finger to the lips. Silences a Single Enemy within 4 for 1 round. Cooldown: 2 rounds.' },
         { id: 'nrSilentTreatment', name: 'Silent Treatment', tier: 3, families: ['mime'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 170, damageType: 'physical',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 135→170 (Mime 31%)
           bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
@@ -9120,11 +9120,11 @@ const RACE_ABILITIES = {
           kind: 'debuff', stealSpell: true,
           desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
         /* (Mana Shield deleted 2026-08-12 — Hocus Pocus took its tree slot.) */
-        { id: 'racePolymorph', tier: 3, statusEffects: [{ id: 'silence', duration: 2 }], spellType: 'unholy', vfxElement: 'arcane', name: 'Polymorph',
+        { id: 'racePolymorph', tier: 3, statusEffects: [{ id: 'silence', duration: 1 }], spellType: 'unholy', vfxElement: 'arcane', name: 'Polymorph',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
           kind: 'debuff', cooldownRounds: 3,
           statStageBoost: { atk: -1 },
-          desc: 'Something small and harmless. Ribbit. The target is Silenced for 2 rounds and its ATK drops by 1 stage.' },
+          desc: 'Something small and harmless. Ribbit. The target is Silenced for 1 round and its ATK drops by 1 stage.' },
         /* Wizard capstone since the 2026-08-12 capstone pass (was Polymorph). */
         { id: 'raceHocusPocus', spellType: 'unholy', vfxElement: 'arcane', name: 'Hocus Pocus',
           type: 'damage', tier: 4, bonusVsStatus: { status: 'hexed', mult: 1.5 }, families: ['witchcraft'], cost: 100, dmg: 180, range: 4,
@@ -9452,7 +9452,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 75, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           projectileOverride: 'proj-handgrenade',   // THE NEW PROPS (2026-10-28): mondo's hand grenade is thrown (was the tech bolt sprite)
-          statusEffects: [{ id: 'jammed', duration: 2 }],
+          statusEffects: [{ id: 'jammed', duration: 3 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
         { id: 'raceHydraulicPunch', tier: 1, families: ['machinery'], spellType: 'tech', name: 'Hydraulic Punch',
           type: 'damage', cost: 25, dmg: 90, range: 1,   // BALANCE PASS 2026-10-06: DMG 100→90 (lab: 404 a cast, 1.8 targets with the push crash)
@@ -9887,15 +9887,15 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 35, range: 3, apCost: 1,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 150,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        { id: 'raceTaserBolt', tier: 1, statusEffects: [{ id: 'jammed', duration: 1 }], families: ['cyberpunkweapons'], element: 'lightning', spellType: 'tech', name: 'Taser Bolt',
+        { id: 'raceTaserBolt', tier: 1, statusEffects: [{ id: 'jammed', duration: 3 }], families: ['cyberpunkweapons'], element: 'lightning', spellType: 'tech', name: 'Taser Bolt',
           type: 'damage', cost: 20, dmg: 70, range: 3,
           kind: 'damage', damageType: 'magic',
           desc: 'Two prongs into the housing. Systems stutter. Deals WEAK magic damage to a Single Enemy and Jams it for a round.' },
         /* THE SIGNATURE FAMILY (2026-10-23): Astromech, this race's own. */
         { id: 'sigShockProd', name: 'Shock Prod', tier: 1, families: ['astromech'], cost: 25, apCost: 1, spellType: 'tech',
           element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 85, range: 1,
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Out of the side panel, into the leg. Deals WEAK magic damage to an adjacent enemy and Jams it for 2 rounds.' },
+          statusEffects: [{ id: 'jammed', duration: 3 }],
+          desc: 'Out of the side panel, into the leg. Deals WEAK magic damage to an adjacent enemy and Jams it for 3 rounds.' },
         { id: 'sigHologram', name: 'Hologram', tier: 2, families: ['astromech'], cost: 50, apCost: 1, spellType: 'tech',
           vfxElement: 'light', type: 'utility', kind: 'deployObject', range: 1, objectHp: 100, maxActivePerCaster: 1,
           drawsRangedAttack: true, drawsMeleeAttack: true,
@@ -9947,7 +9947,7 @@ const RACE_ABILITIES = {
         { id: 'raceFluorideWater', tier: 3, families: ['conspiracyknowledge'], spellType: 'human', element: 'water', name: 'Fluoride Water',
           type: 'damage', cost: 50, dmg: 120, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          statusEffects: [{ id: 'silence', duration: 2 }],
+          statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence.' },
         /* Conspiracy theorist capstone since the 2026-08-12 kit rework. */
         /* §6.28 (Phase 5 wave A, 2026-09-08): Truth Bomb → Flat Earth (id
@@ -10916,7 +10916,7 @@ const RACE_ABILITIES = {
         { id: 'sentaiYellowThunder', tier: 2, families: ['sentai'], element: 'lightning', spellType: 'tech', name: 'Yellow Thunder',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          statusEffects: [{ id: 'jammed', duration: 1 }],
+          statusEffects: [{ id: 'jammed', duration: 3 }],
           _sentaiColor: 'yellow',
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
         { id: 'sentaiPinkHeal', tier: 1, families: ['sentai'], spellType: 'divine', name: 'Pink Healing',
@@ -11968,7 +11968,7 @@ const COMBO_REGISTRY = {
         damageType: 'magic',
         spellType: 'tech',
         range: 3,
-        statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 2 }]
+        statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 3 }]
     },
     'human|human': {
         name: 'Combined Arms',
@@ -12766,7 +12766,19 @@ const STATUS_DEFS = {
             if (typeof levitateUnit === 'function') levitateUnit(unit, info);
         },
         onRemove(unit) {
-            if (typeof forceGroundUnit === 'function') { const _by = unit._levitateBy; unit._levitateBy = null; forceGroundUnit(unit, { byLabel: _by ? `as ${_by} fades` : 'as the fairy dust fades' }); }
+            const _by = unit._levitateBy; unit._levitateBy = null;
+            /* A NATURAL FLYER KEEPS ITS WINGS (playtest 2026-11-03: the CPU's Seraphim was "forced out of the sky as Rapture
+               fades", took 121 fall damage and walked the rest of the match): the lift ending only sets down a unit that
+               could not fly without it */
+            if (unit.status) {
+                const _lv = unit.status.levitating;
+                unit.status.levitating = 0;
+                let _wings = false;
+                try { _wings = typeof canFly === 'function' && canFly(unit); } catch (e) {}
+                unit.status.levitating = _lv;
+                if (_wings) return;
+            }
+            if (typeof forceGroundUnit === 'function') forceGroundUnit(unit, { byLabel: _by ? `as ${_by} fades` : 'as the fairy dust fades' });
         }
     },
     /* 🙏 Blessed: +1 DEF stage, +1 M.DEF stage and 40 HP of regen a round,
@@ -14458,7 +14470,7 @@ let MAP_HAS_FLOORS = true;
 const PREBUILT_MAPS = {
     prebuilt_custommap: {
         name: 'Custom Map', w: 20, h: 20,
-        monuments: [{"kind":"colossus","x":17,"y":18,"rot":0,"foot":2,"maxH":4,"seed":14340},{"kind":"arch","x":18,"y":17,"rot":0,"foot":3,"maxH":3,"seed":8454},{"kind":"arch","x":5,"y":0,"rot":0,"foot":3,"maxH":3,"seed":80466},{"kind":"colossus","x":7,"y":1,"rot":0,"foot":2,"maxH":4,"seed":42037},{"kind":"greek","x":17,"y":1,"rot":1,"foot":3,"maxH":2,"seed":16787},{"kind":"colossus","x":18,"y":4,"rot":90,"foot":2,"maxH":4,"seed":88471},{"kind":"exitsign","x":6,"y":12,"rot":0,"foot":1,"maxH":1,"seed":76283},{"kind":"exitsign","x":13,"y":12,"rot":0,"foot":1,"maxH":1,"seed":75886},{"kind":"exitsign","x":13,"y":7,"rot":0,"foot":1,"maxH":1,"seed":49281},{"kind":"exitsign","x":6,"y":7,"rot":0,"foot":1,"maxH":1,"seed":83192},{"kind":"exitsign","x":3,"y":11,"rot":0,"foot":1,"maxH":1,"seed":42403},{"kind":"fluorescent","x":3,"y":6,"rot":0,"foot":1,"maxH":2,"seed":88142},{"kind":"fluorescent","x":3,"y":3,"rot":0,"foot":1,"maxH":2,"seed":48235},{"kind":"fluorescent","x":3,"y":16,"rot":0,"foot":1,"maxH":2,"seed":42504},{"kind":"fluorescent","x":8,"y":6,"rot":0,"foot":1,"maxH":2,"seed":83443}],
+        monuments: [{"kind":"fallen_column","x":17,"y":18,"rot":0,"foot":2,"maxH":4,"seed":14340},{"kind":"arch","x":18,"y":17,"rot":0,"foot":3,"maxH":3,"seed":8454},{"kind":"arch","x":5,"y":0,"rot":0,"foot":3,"maxH":3,"seed":80466},{"kind":"fallen_column","x":7,"y":1,"rot":0,"foot":2,"maxH":4,"seed":42037},{"kind":"greek","x":17,"y":1,"rot":1,"foot":3,"maxH":2,"seed":16787},{"kind":"fallen_column","x":18,"y":4,"rot":90,"foot":2,"maxH":4,"seed":88471},{"kind":"exitsign","x":6,"y":12,"rot":0,"foot":1,"maxH":1,"seed":76283},{"kind":"exitsign","x":13,"y":12,"rot":0,"foot":1,"maxH":1,"seed":75886},{"kind":"exitsign","x":13,"y":7,"rot":0,"foot":1,"maxH":1,"seed":49281},{"kind":"exitsign","x":6,"y":7,"rot":0,"foot":1,"maxH":1,"seed":83192},{"kind":"exitsign","x":3,"y":11,"rot":0,"foot":1,"maxH":1,"seed":42403},{"kind":"fluorescent","x":3,"y":6,"rot":0,"foot":1,"maxH":2,"seed":88142},{"kind":"fluorescent","x":3,"y":3,"rot":0,"foot":1,"maxH":2,"seed":48235},{"kind":"fluorescent","x":3,"y":16,"rot":0,"foot":1,"maxH":2,"seed":42504},{"kind":"fluorescent","x":8,"y":6,"rot":0,"foot":1,"maxH":2,"seed":83443}],
         grid: [
             [3,3,6,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48],
             [3,3,6,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48],
@@ -15099,8 +15111,8 @@ _MF_BUILDERS.prebuilt_hell = function () {
     M.monSym('crystal', 14, 5, 2, 2, { solid: false });
     M.mon('rings', 9, 9, 3, 3, { solid: false });
     M.monSym('brazier', 8, 8, 1, 2, { solid: false });
-    M.mon('colossus', 3, 16, 2, 3, { rot: 45 });
-    M.mon('colossus', 16, 3, 2, 3, { rot: 225 });
+    M.mon('fallen_column', 3, 16, 2, 3, { rot: 45 });
+    M.mon('fallen_column', 16, 3, 2, 3, { rot: 225 });
     M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'scorched') M.rock(x, y, 'rocks_3'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('scorched');
@@ -15134,8 +15146,8 @@ _MF_BUILDERS.prebuilt_stonehenge = function () {
     M.sym180();
     M.mon('rings', 7, 7, 2, 3, { solid: false });
     M.monSym('monolith', 2, 7, 1, 3, { solid: false });
-    M.mon('colossus', 12, 12, 2, 1, { rot: 300 });
-    M.mon('colossus', 3, 3, 2, 1, { rot: 120 });
+    M.mon('fallen_column', 12, 12, 2, 1, { rot: 300 });
+    M.mon('fallen_column', 3, 3, 2, 1, { rot: 120 });
     M.monSym('trilithon', 2, 6, 2, 3, { rot: 90, solid: false });
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_2');
@@ -15148,7 +15160,7 @@ _MF_BUILDERS.prebuilt_giza = function () {
     const M = _mfNew({
         name: 'Pyramids of Giza', w: 20, h: 20, base: 'desert', baseH: 3, seed: 3301,
         strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
-        tints: { desert: '#e8cf8f', dirt_2: '#d8b884', ruins: '#d0b890' },
+        tints: { dirt_2: '#d8b884', ruins: '#d0b890' },   // THE TWO SANDS (2026-11-03, mondo: "hate the giza tint, just make it the default tint"): the sand is untinted
     });
     // hard-packed processional avenues
     M.rect(9, 0, 10, 19, 'dirt_2'); M.rect(0, 9, 19, 10, 'dirt_2');
@@ -15239,7 +15251,7 @@ _MF_BUILDERS.prebuilt_cyberpunk = function () {
     // city blocks: towers (2×2, roof-walkable)
     M.buildingSym(2, 2, 'building_5');
     M.buildingSym(18, 3, 'building_7');
-    M.buildingSym(3, 10, 'building_11');
+    M.buildingSym(3, 10, 'building_1');   // was building_11 (retired 2026-11-03, mondo)
     M.buildingSym(19, 10, 'abandoned_building_1');
     // holographic billboards + searchlights
     M.monSym('fluorescent', 10, 7, 1, 2, { solid: false });
@@ -15407,7 +15419,7 @@ _MF_BUILDERS.prebuilt_atlantis = function () {
     M.monSym('greek', 4, 4, 3, 2, {});
     M.monSym('greek', 20, 8, 3, 2, { rot: 90 });
     M.objSym(3, 8, 'column_2', {}); M.objSym(9, 4, 'column_1', {});
-    M.monSym('colossus', 3, 15, 2, 2, { rot: 315 });
+    M.monSym('fallen_column', 3, 15, 2, 2, { rot: 315 });
     M.spawnEdges('s', 8);
     M.finishSpawns('dirt_3');
     return M;
@@ -15439,7 +15451,7 @@ _MF_BUILDERS.prebuilt_babel = function () {
     M.monSym('tablet', 1, 3, 1, 2, { rot: 20, solid: false });
     M.monSym('arch', 7, 5, 3, 3, { solid: false });
     M.monSym('obelisk', 2, 3, 1, 4, {});
-    M.monSym('colossus', 13, 8, 2, 2, { rot: 270 });
+    M.monSym('fallen_column', 13, 8, 2, 2, { rot: 270 });
     M.spawnEdges('s', 6);
     M.finishSpawns('bricks_1');
     return M;
@@ -15472,8 +15484,8 @@ _MF_BUILDERS.prebuilt_olympus = function () {
     M.monSym('greek', 8, 8, 3, 2, {});
     M.monSym('greek', 15, 8, 3, 2, { rot: 180 });
     M.monSym('stairway', 11, 3, 2, 2, {});
-    M.mon('colossus', 8, 15, 2, 4, { rot: 45 });
-    M.mon('colossus', 15, 8, 2, 4, { rot: 225 });
+    M.mon('fallen_column', 8, 15, 2, 4, { rot: 45 });
+    M.mon('fallen_column', 15, 8, 2, 4, { rot: 225 });
     M.mon('lightpillar', 11, 11, 1, 4, { solid: false });
     M.objSym(9, 9, 'torch', {}); M.objSym(14, 9, 'torch', {});
     M.objSym(9, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
@@ -15557,7 +15569,7 @@ _MF_BUILDERS.prebuilt_area51 = function () {
 };
 
 /* ANTARCTICA — 24×24 8v8. The ice wall and what's behind it: seawater
-   channels with iceberg hops, slide-gap chokepoints, frozen colossus. */
+   channels with iceberg hops, slide-gap chokepoints, frozen fallen column. */
 _MF_BUILDERS.prebuilt_antarctica = function () {
     const M = _mfNew({
         name: 'Antarctica', w: 24, h: 24, base: 'marble_light', baseH: 3, seed: 1501,
@@ -15581,9 +15593,9 @@ _MF_BUILDERS.prebuilt_antarctica = function () {
     // research huts? no — the Old Ones' relics
     M.rect(2, 8, 3, 9, 'ruins');
     M.sym180();
-    // the frozen colossus half-buried at the wall's central gap
-    M.mon('colossus', 11, 10, 3, 2, { rot: 0 });
-    M.mon('colossus', 12, 13, 3, 2, { rot: 180 });
+    // the frozen fallen column half-buried at the wall's central gap
+    M.mon('fallen_column', 11, 10, 3, 2, { rot: 0 });
+    M.mon('fallen_column', 12, 13, 3, 2, { rot: 180 });
     M.monSym('crystal', 4, 6, 2, 3, { solid: false });
     M.monSym('whalebones', 6, 4, 3, 2, { rot: 40, solid: false });
     M.monSym('monolith', 8, 3, 1, 3, {});
@@ -15668,7 +15680,6 @@ _MF_BUILDERS.prebuilt_hollow_earth = function () {
     M.mon('gateway', 15, 10, 2, 3, { rot: 180, solid: false });
     M.mon('innersun', 9, 14, 2, 6, { solid: false });    // the sun they keep down here
     M.mon('crystal', 9, 16, 2, 3, { solid: false });
-    M.mon('island', 2, 17, 3, 2, { solid: false });
     M.obj(4, 10, 'cave_entrance'); M.obj(15, 9, 'cave_entrance');
     M.spawnEdges('s', 6);
     M.finishSpawns('cave_floor');
@@ -15712,7 +15723,6 @@ _MF_BUILDERS.prebuilt_fairy_forest = function () {
     M.monSym('mushroom', 6, 13, 1, 2, {});                  // giant fae cap — solid, tree-like cover
     M.monSym('mushroom2', 13, 15, 1, 1, {});                // squat cap — clamber onto it
     M.mon('fairyring', 9, 9, 2, 2, { solid: false });       // dance at your peril
-    M.monSym('island', 1, 16, 2, 2, { solid: false });   // fae islet drifting over the wood
     M.scatter(14, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_2') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('grass_2');
@@ -15856,7 +15866,7 @@ _MF_BUILDERS.prebuilt_vatican = function () {
     M.monSym('basilicadome', 5, 1, 3, 4, { solid: false });
     M.monSym('censer', 7, 8, 1, 3, { solid: false });
     M.monSym('greek', 3, 6, 3, 2, { rot: 45 });
-    M.monSym('colossus', 15, 6, 1, 2, { rot: 90 });
+    M.monSym('fallen_column', 15, 6, 1, 2, { rot: 90 });
     M.objSym(5, 5, 'column_3', {}); M.objSym(14, 5, 'column_3', {});
     M.objSym(7, 12, 'torch', {});
     M.spawnEdges('s', 6);
@@ -15925,7 +15935,7 @@ _MF_BUILDERS.prebuilt_gobekli = function () {
     M.mon('tpillar', 7, 7, 1, 3, {});
     M.mon('tpillar', 8, 8, 1, 3, { rot: 180 });
     M.monSym('arch', 12, 2, 2, 2, { solid: false });
-    M.monSym('colossus', 2, 12, 2, 1, { rot: 45 });
+    M.monSym('fallen_column', 2, 12, 2, 1, { rot: 45 });
     M.scatter(8, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'dirt_3') M.rock(x, y, 'rocks_1'); });
     M.spawnEdges('s', 6);
     M.finishSpawns('dirt_3');
@@ -16399,7 +16409,7 @@ _MF_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfNew({
         name: 'The Bermuda Triangle', w: 16, h: 16, base: 'desert', baseH: 3, seed: 345,
         strata: ['deep_water', 'deep_water', 'rocks_1'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
+        tints: { desert: '#f2ead6', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c' },
     });
     /* THE ISLANDS (2026-09-16, the user: "how is there no water in the
        Bermuda Triangle? it should be a lot of water; it can double as an
@@ -16499,7 +16509,7 @@ const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
    The entry records it as `bed`; delta-maps.test.js checks each board
    against its own bed (the shared lava bed stays the default). */
 /* monument kinds with a real collision stamp (map.js _MON_COLLISION / _MON_GRID) */
-const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'cargo', 'dumpster', 'obelisk', 'colossus', 'greek',
+const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'cargo', 'dumpster', 'obelisk', 'fallen_column', 'greek',
     'menhir', 'castle_wall', 'gothic_wall', 'ziggurat_block',   // THE SPELL-MADE MONUMENTS (2026-09-18): the wall spells' pieces, placeable by the forge / editor too
     'chess_pawn', 'chess_rook', 'chess_knight', 'chess_bishop', 'chess_queen', 'chess_king']);   // the Looking-Glass's pieces (2026-09-12)
 
@@ -16633,7 +16643,7 @@ _MF_DELTA_BUILDERS.prebuilt_stonehenge = function () {
    sphinx on its plinth, the sandstone causeway, the obelisks. */
 _MF_DELTA_BUILDERS.prebuilt_giza = function () {
     const M = _mfDeltaNew({ name: 'Pyramids of Giza', base: 'desert', seed: 8103,
-        tints: { desert: '#e6d4a0', bricks_1: '#dcb880', dirt_2: '#d8bc88' },
+        tints: { bricks_1: '#dcb880', dirt_2: '#d8bc88' },   // the sand untinted (mondo 2026-11-03: "just make it the default tint")
         desc: 'THE PLATEAU — the pyramid\'s tiers up a stair, the sphinx on its plinth, the sandstone causeway, the obelisks' });
     M.rect(3, 1, 4, 2, 'dirt_2');                            // the causeway
     M.step(1, 2, 'bricks_1'); M.block(0, 2, 'bricks_1'); M.block(0, 3, 'bricks_1', 3);   // the pyramid: three tiers up
@@ -17201,7 +17211,7 @@ _MF_DELTA_BUILDERS.prebuilt_downtown = function () {
 _MF_DELTA_BUILDERS.prebuilt_bermuda = function () {
     const M = _mfDeltaNew({ name: 'The Bermuda Triangle', base: 'desert', seed: 8420,
         strata: ['deep_water', 'deep_water', 'rocks_1', 'rocks_1', 'desert'], underTop: 'rocks_1',
-        tints: { desert: '#e8d8a8', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
+        tints: { desert: '#f2ead6', water: '#5fc8d0', deep_water: '#123c5a', wood: '#6a4a30', rocks_1: '#8a8478', dirt_2: '#cfae7c', bridge: '#a88860' },
         desc: 'THE OPEN SEA — a beach each side, THE CAY at the centre with the X on it, the sandbar, the wreck, the lighthouse rock, the jetty, the buoys; the sea streams past, the storm comes on' });
     /* the top half as a sheet — S sand, ~ shallows (a wade), D the deep (a
        swim that drowns), R a rock (+1), W the wreck (+2), L the lighthouse
@@ -18340,8 +18350,8 @@ const HQ_ROOM_LOOKS = {
 // THE WORLD (2026-09-13): `env.world` on a row = how the setting continues to the horizon and how
 // ENTROPY takes it apart (three-renderer.js THE WORLD block): { kind: plain | cavern | void | room,
 //   ground (terrain key; default = the apron's sheet), groundColor, sea (the moat's liquid runs to the
-//   horizon), bank / bankColor (the shore's face), rim: [{ kind: peaks | hills | dunes | trees | town |
-//   city | spires | bergs | ruins | pyramids | craters, d (tiles from the centre), n, h, tex, color, … }],
+//   horizon), bank / bankColor (the shore's face), rim: [{ kind: peaks | spires (the rest deleted
+//   2026-11-03: only the kept voxel boards still draw a rim), d (tiles from the centre), n, h, tex, color, … }],
 //   wall: { tex, color, r, h, fade } (a cavern), root: false (a hull under the board), rootTex /
 //   rootColor / rootDepth, r (the ground's radius, 56), fogTop / fogBand (the sky's haze while
 //   grounded) }. `void` never grounds (the cloud islands, the ships); `room` is inert (the facilities).
@@ -18350,18 +18360,18 @@ const EW_MAP_META = [
     { id: 'prebuilt_shasta', label: 'Mount Shasta', w: 20, h: 20, teamSize: 6, tier: 1, base: 'grass_2',
       biomes: ['forest', 'inner_earth'], deltaPad: 'grass_2', near: 'shasta',
       desc: '20×20 prebuilt, 6v6 — the sacred volcano: snow-crown vantage, switchback terraces, pine woods, twin cold lakes & the Lemurian gate',
-      env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_2', 'tree_3'], d: 13, n: 60, s: 1.7 }, { kind: 'peaks', tex: 'mountain', snow: 'marble_light', d: 26, n: 12, h: 7 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', snow: 'marble_light', d: 26, n: 12, h: 7 }] },
              tint: 0x9fc4e8, tintAmt: 0.30, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.35, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_stonehenge', label: 'Stonehenge', w: 16, h: 16, teamSize: 6, tier: 1, base: 'grass_2',
       biomes: ['ancient', 'arthurian'], deltaPad: 'grass_2', near: 'stonehenge',
       desc: '16×16 prebuilt, 6v6 — the sarsen ring on crossing ley-lines: pillar cover, cardinal entrances, an armillary over the altar',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', d: 16, n: 14, r: 4.5, flat: 0.28 }, { kind: 'trees', d: 24, n: 30, p: 0.5, s: 1.8 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x241b3e, tintAmt: 0.42, stars: 1.3, nebula: 0.9, fog: { color: 0x35284f, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'ruins',
              motion: { kind: 'wheel', speed: 2.4, ramp: 0.3, max: 5.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the heavens wheel round the henge — the stones are an observatory, and the night is on fast-forward
     { id: 'prebuilt_giza', label: 'Pyramids of Giza', w: 20, h: 20, teamSize: 6, tier: 1, base: 'desert',
       biomes: ['desert', 'ancient'], deltaPad: 'dirt_2', near: 'giza',
       desc: '20×20 prebuilt, 6v6 — three pyramids on the great diagonal, twin obelisks, processional avenues & excavation trenches',
-      env: { world: { kind: 'plain', rim: [{ kind: 'dunes', d: 14, n: 20 }, { kind: 'pyramids', d: 34, n: 6, h: 16 }] },
+      env: { world: { kind: 'plain' },
              tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 }, scenery: 'pyramids' } },
     { id: 'prebuilt_heaven', label: 'Heaven', w: 20, h: 20, teamSize: 6, tier: 1, base: 'cloud_2',
       biomes: ['divine'], deltaPad: 'cloud_2', near: 'heaven',
@@ -18371,35 +18381,35 @@ const EW_MAP_META = [
              motion: { kind: 'drift', axis: 'x', speed: 0.25, ramp: 0.04, max: 1.5, sky: 0.35 } } },   // the cloud islands drift past (MOVING MAPS, a gentle one)
     { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
-      desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the chained colossi',
+      desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the fallen columns',
       env: { look: HQ_ROOM_LOOKS.hell, world: { kind: 'cavern', sea: true, rim: [{ kind: 'spires', tex: 'obsidian', color: 0x5a4058, d: 14, n: 22, h: 9 }, { kind: 'peaks', tex: 'obsidian', color: 0x4a3048, d: 28, n: 12, h: 8, ranks: 1 }], wall: { tex: 'obsidian', color: 0x3a2838, r: 40, h: 40 }, fogTop: 0.45, rootTex: 'obsidian', rootColor: 0x584058 },
              tint: 0x3a0505, tintAmt: 0.50, stars: 0.25, nebula: 0.55, fog: { color: 0x5a0f08, amount: 0.65, top: 0.08, band: 0.6 }, scenery: 'infernal',
              motion: { kind: 'rise', dir: -1, speed: 1.6, ramp: 0.4, max: 6.0, sky: 0.8 } } },   // MOVING MAPS rev 2: the board SINKS — a circle deeper every round, the infernal roster rising past
     { id: 'prebuilt_cyberpunk', label: 'Cyberpunk City', w: 24, h: 24, teamSize: 8, tier: 1, base: 'urban_wall', streetLamps: true,
       biomes: ['neon_city', 'urban'], deltaPad: 'urban_street', near: 'cyberpunk',
       desc: '24×24 prebuilt, 8v8 — rain-slick neon grid: fast avenues, walkable rooftops, holo-plaza & alley chokes',
-      env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 16, n: 22, h: 10 }, { kind: 'city', d: 30, n: 26, h: 16, ranks: 1 }], fogTop: 0.2 },
+      env: { world: { kind: 'plain', fogTop: 0.2 },
              tint: 0x1a0f33, tintAmt: 0.50, stars: 0.7, nebula: 1.3, fog: { color: 0x8a2fd0, amount: 0.5, top: 0.10, band: 0.55 }, scenery: 'city' } },
     { id: 'prebuilt_camelot', label: 'Camelot', w: 16, h: 16, teamSize: 6, tier: 1, base: 'bricks_2',
       biomes: ['arthurian', 'gothic'], deltaPad: 'bricks_2', near: 'camelot',
       desc: '16×16 prebuilt, 6v6 — the castle walls: a moat-cut lowland climbing stair terraces into the walled keep, parapet walks & the twin ward braziers',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', d: 17, n: 14, r: 4 }, { kind: 'trees', d: 22, n: 34, p: 0.6, s: 1.8 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x1c2030, tintAmt: 0.45, stars: 0.8, nebula: 0.7, fog: { color: 0x39415a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'dark' } },
     { id: 'prebuilt_stadium', label: 'Football Stadium', w: 16, h: 28, teamSize: 8, tier: 1, base: 'grass_2', streetLamps: true,
       biomes: ['stadium', 'urban'], deltaPad: 'grass_2', near: 'stadium',
       desc: '16×28 prebuilt, 8v8 — the void bowl: chalk yard lines, team end zones, climbable bleacher tiers & goalpost gateways',
-      env: { world: { kind: 'plain', ground: 'urban_street', groundColor: 0x9a9a96, rim: [{ kind: 'city', d: 18, n: 20, h: 7, lights: [0xffd36a, 0xffffff] }] },
+      env: { world: { kind: 'plain', ground: 'urban_street', groundColor: 0x9a9a96 },
              tint: 0x9fc4e8, tintAmt: 0.28, stars: 0.05, nebula: 0.2, day: 1, clouds: 0.25, fog: { color: 0xc8d8ea, amount: 0.4, top: 0.06, band: 0.5 }, scenery: 'city', density: 0.6, ambience: 'ambDay' } },
     // ── Tier 2 — roster & lore expansion ──
     { id: 'prebuilt_atlantis', label: 'Atlantis', w: 24, h: 24, teamSize: 8, tier: 2, base: 'water',
       biomes: ['deep_sea', 'ancient'], deltaPad: 'marble_light', near: 'atlantis',
       desc: '24×24 prebuilt, 8v8 — the half-sunken capital: deep-water moat, flooded streets, plaza islands & the crystal spire',
-      env: { world: { kind: 'plain', sea: true, rim: [{ kind: 'ruins', tex: 'marble_light', color: 0xa8c8c8, d: 14, n: 16, h: 5 }] },
+      env: { world: { kind: 'plain', sea: true },
              tint: 0x0e3a4a, tintAmt: 0.45, stars: 0.6, nebula: 0.8, fog: { color: 0x2a8a9a, amount: 0.6, top: 0.08, band: 0.55 }, scenery: 'ruins' } },
     { id: 'prebuilt_babel', label: 'Tower of Babel', w: 16, h: 24, teamSize: 6, tier: 2, base: 'bricks_1',
       biomes: ['ancient', 'desert'], deltaPad: 'bricks_1', near: 'babel',
       desc: '16×24 prebuilt, 6v6 — the unfinished tower: a grand climbable ziggurat, brick streets, scaffolds & the rubble of scattered tongues',
-      env: { world: { kind: 'plain', ground: 'desert', groundColor: 0xd8b888, rim: [{ kind: 'dunes', d: 15, n: 18 }, { kind: 'town', d: 24, n: 16, tex: 'bricks_1', color: 0xd8a878, roofTex: 'bricks_1', roofColor: 0xb88858, h: 1.3 }] },
+      env: { world: { kind: 'plain', ground: 'desert', groundColor: 0xd8b888 },
              tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, day: 1, clouds: 0.15, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids',
              motion: { kind: 'rise', dir: 1, speed: 1.8, ramp: 0.35, max: 6.0, sky: 1.0 } } },   // MOVING MAPS rev 2: the tower is still going up — the board climbs, the plain and the clouds sink past
     { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
@@ -18411,23 +18421,23 @@ const EW_MAP_META = [
       biomes: ['space', 'desert'], deltaPad: 'moon_2', near: 'mars',
       desc: '20×20 prebuilt, 6v6 — red regolith: mesa cover, twin dead rovers & crater dust bowls',
       env: { world: { kind: 'planet', ground: 'moon_2', groundColor: 0xc88a5a, curve: 7, swell: 0.12, craters: { n: 18, r: [1.4, 5.5], d0: 12, depth: 0.26, rim: 0.09 },
-                      rim: [{ kind: 'craters', tex: 'moon_2', color: 0xc88a5a, d: 22, n: 8, hills: { r: 5, flat: 0.18 } }, { kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }], rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
+                      rim: [{ kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }], rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
              tint: 0x8a3a1a, tintAmt: 0.45, stars: 0.8, nebula: 0.4, fog: { color: 0xc88a5a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'space' } },
     { id: 'prebuilt_area51', label: 'Area 51', w: 20, h: 20, teamSize: 6, tier: 2, base: 'wasteland',
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4', near: 'area51',
       desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
-      env: { world: { kind: 'plain', rim: [{ kind: 'dunes', tex: 'dirt_4', color: 0xc8b088, d: 16, n: 14, flat: 0.15, ranks: 2 }, { kind: 'town', d: 22, n: 10, p: 0.55, tex: 'wood_planks', color: 0xd8c8a8, roofColor: 0x7a5a48 }, { kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
              tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs',
              motion: { kind: 'wheel', speed: 4.0, ramp: 0.35, max: 5.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
     { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
       biomes: ['polar', 'deep_sea'], deltaPad: 'marble_light', near: 'antarctica', deltaY: 7,
-      desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen colossus',
-      env: { world: { kind: 'plain', sea: true, rim: [{ kind: 'bergs', d: 16, n: 10, h: 3 }] },
+      desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen fallen column',
+      env: { world: { kind: 'plain', sea: true },
              tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, day: 1, clouds: 0.75, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
       biomes: ['ranch', 'clandestine'], deltaPad: 'grass_rocky', near: 'skinwalker',
       desc: '20×20 prebuilt, 6v6 — the ranch: barn & corral, twin observation mesas, the mutilation site & a crop-circle anomaly',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', tex: 'grass_rocky', d: 16, n: 14, r: 4, flat: 0.26 }, { kind: 'town', d: 21, n: 6, p: 0.5, tex: 'wood_planks', color: 0xb89878, roofColor: 0x5a4030 }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
              tint: 0x2a1638, tintAmt: 0.50, stars: 1.2, nebula: 1.1, fog: { color: 0x453058, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'eyes' } },
     { id: 'prebuilt_hollow_earth', label: 'Hollow Earth', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor', near: 'hollow_earth',
@@ -18437,19 +18447,18 @@ const EW_MAP_META = [
     { id: 'prebuilt_fairy_forest', label: 'Fairy Forest', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['forest', 'astral'], deltaPad: 'grass_2', near: 'fairy_forest',
       desc: '20×20 prebuilt, 6v6 — glowing woodland: mushroom-ring hedges that eat arrows, winding fae paths, springs & crystal toadstools',
-      env: { look: HQ_ROOM_LOOKS.woods, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree', 'tree_2', 'tree_5'], d: 13, n: 64, s: 1.9, ranks: 3 }] },
+      env: { look: HQ_ROOM_LOOKS.woods, world: { kind: 'plain' },
              tint: 0x0e2a1a, tintAmt: 0.50, stars: 1.1, nebula: 1.2, fog: { color: 0x1e4a30, amount: 0.55, top: 0.07, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_moon', label: 'Moon', w: 16, h: 16, teamSize: 6, tier: 2, base: 'moon',
       biomes: ['space'], deltaPad: 'moon', near: 'moon',
       desc: '16×16 prebuilt, 6v6 — the sparse low-grav arena: crater bowls, regolith ridges, two landing sites & one black monolith',
-      env: { world: { kind: 'planet', ground: 'moon', groundColor: 0xc8ccd8, curve: 10, swell: 0.1, craters: { n: 24, r: [1.2, 6.5], d0: 10, depth: 0.32, rim: 0.1 },
-                      rim: [{ kind: 'craters', tex: 'moon', color: 0xc8ccd8, d: 24, n: 8, hills: { r: 5, flat: 0.16 } }], r: 64, fogTop: 0.06, rootTex: 'moon_3', rootColor: 0x989cb0 },   // THE PLANET (2026-09-16)
+      env: { world: { kind: 'planet', ground: 'moon', groundColor: 0xc8ccd8, curve: 10, swell: 0.1, craters: { n: 24, r: [1.2, 6.5], d0: 10, depth: 0.32, rim: 0.1 }, r: 64, fogTop: 0.06, rootTex: 'moon_3', rootColor: 0x989cb0 },   // THE PLANET (2026-09-16)
              tint: 0x05060d, tintAmt: 0.55, stars: 1.8, nebula: 0.25, fog: { color: 0x0a0c14, amount: 0.15, top: 0.02, band: 0.3 }, scenery: 'space', density: 0.5 } },
     // ── Tier 3 — flavor & deep cuts ──
     { id: 'prebuilt_technoticlan', label: 'Technoticlan', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cobblestone',
       biomes: ['ancient', 'neon_city'], deltaPad: 'cobblestone', near: 'technoticlan',
       desc: '24×24 prebuilt, 8v8 — neon-Aztec canal city: glowing waterways, stone causeways, storming-ziggurats & the tech-altar',
-      env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_3', 'tree_5'], d: 14, n: 50, s: 1.8 }, { kind: 'pyramids', tex: 'bricks_3', color: 0x9ab8b8, d: 28, n: 6, h: 11 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x0d1f2a, tintAmt: 0.50, stars: 0.9, nebula: 1.4, fog: { color: 0x0fdccf, amount: 0.45, top: 0.08, band: 0.5 }, scenery: 'pyramids' } },
     { id: 'prebuilt_agartha', label: 'Agartha', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cave_floor',
       biomes: ['inner_earth', 'ancient'], deltaPad: 'marble_light', near: 'agartha',
@@ -18459,17 +18468,17 @@ const EW_MAP_META = [
     { id: 'prebuilt_vatican', label: 'Vatican City', w: 20, h: 20, teamSize: 6, tier: 3, base: 'cobblestone',
       biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble_light', near: 'vatican',
       desc: '20×20 prebuilt, 6v6 — the colonnade piazza: central obelisk, twin basilica steps, fountains & consecrated ground',
-      env: { world: { kind: 'plain', rim: [{ kind: 'city', tex: 'marble_light', color: 0xd8d0c0, d: 16, n: 22, h: 4, lights: [0xffd36a] }, { kind: 'hills', d: 30, n: 14, ranks: 1 }] },
+      env: { world: { kind: 'plain' },
              tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'divine' } },
     { id: 'prebuilt_bohemian_grove', label: 'Bohemian Grove', w: 20, h: 20, teamSize: 6, tier: 3, base: 'grass_2',
       biomes: ['forest', 'clandestine'], deltaPad: 'dirt', near: 'bohemian_grove',
       desc: '20×20 prebuilt, 6v6 — old-growth redwoods around the ritual clearing: the Owl, the altar fire, lantern trails & the creek',
-      env: { world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_2', 'tree_4'], d: 13, n: 60, s: 2.4, ranks: 3 }, { kind: 'peaks', tex: 'mountain', d: 30, n: 12, h: 9, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', d: 30, n: 12, h: 9, ranks: 1 }] },
              tint: 0x0d1810, tintAmt: 0.55, stars: 0.8, nebula: 0.7, fog: { color: 0x16281a, amount: 0.65, top: 0.09, band: 0.6 }, scenery: 'eyes', density: 0.6 } },
     { id: 'prebuilt_gobekli', label: 'Göbekli Tepe', w: 16, h: 16, teamSize: 6, tier: 3, base: 'dirt_3',
       biomes: ['ancient', 'desert'], deltaPad: 'dirt_3', near: 'gobekli',
       desc: '16×16 prebuilt, 6v6 — the first temple: concentric ring walls, T-pillar sentinels, excavation trenches & the twin great pillars',
-      env: { world: { kind: 'plain', rim: [{ kind: 'hills', tex: 'dirt_3', color: 0xc8a878, d: 15, n: 16, r: 4.5, flat: 0.24 }, { kind: 'peaks', tex: 'mountain', color: 0xc8b090, d: 30, n: 12, h: 7, ranks: 1 }] },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', color: 0xc8b090, d: 30, n: 12, h: 7, ranks: 1 }] },
              tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
     { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'tilefloor',
       biomes: ['underground_base', 'clandestine'], deltaPad: 'tilefloor', near: 'dumb',
@@ -18484,7 +18493,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_northpole', label: 'North Pole', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
       biomes: ['polar'], deltaPad: 'marble_light', near: 'northpole',
       desc: '16×16 prebuilt, 6v6 — the workshop compound: present depots, pine wind-breaks, aurora beacons & a frozen slide-pond objective',
-      env: { world: { kind: 'plain', ground: 'marble_light', groundColor: 0xe8f4ff, rim: [{ kind: 'hills', tex: 'marble_light', color: 0xeef6ff, d: 15, n: 16, r: 4, flat: 0.2 }, { kind: 'bergs', d: 28, n: 10, h: 4, ranks: 1 }] },
+      env: { world: { kind: 'plain', ground: 'marble_light', groundColor: 0xe8f4ff },
              tint: 0x0d1424, tintAmt: 0.50, stars: 1.4, nebula: 1.6, fog: { color: 0x1c2c48, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'islands', density: 0.6 } },
     // ── MOVING MAPS (2026-09-12) — the setting travels. `env.motion` (three-renderer.js MOTION):
     //    kind sea|space|void|drift · axis (the world streams toward −axis) · speed tiles/s at round 1 ·
@@ -18519,7 +18528,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_haunted', label: 'The Haunted House', w: 16, h: 16, teamSize: 6, tier: 2, base: 'dirt_2',
       biomes: ['gothic', 'clandestine'], deltaPad: 'wood', near: 'haunted',
       desc: '16×16 prebuilt, 6v6 — the ground floor of the mansion cut open across the middle (the parlour, the hall, the library: thin walls, two front doors, windows you can shoot through) and the graveyard out back on both sides — the stones, the crypt, the bog, the coven\'s fire',
-      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain', rim: [{ kind: 'trees', kinds: ['tree_5', 'tree_6'], d: 13, n: 48, s: 2.0, ranks: 2 }, { kind: 'hills', d: 20, n: 12, r: 4 }, { kind: 'town', d: 25, n: 5, p: 0.5, tex: 'wood_planks', color: 0x4a4048, roofColor: 0x2a2228, window: 0xffb060 }] },
+      env: { look: HQ_ROOM_LOOKS.haunted, world: { kind: 'plain' },
              tint: 0x1a1428, tintAmt: 0.52, stars: 0.9, nebula: 0.6, fog: { color: 0x2a2438, amount: 0.62, top: 0.08, band: 0.55 }, scenery: 'dark', density: 0.7,
              ambience: 'ambNight' } },   // a still map names its bed too (audio.js reads env.ambience since 2026-09-13)
     { id: 'prebuilt_lodge', label: 'The Lodge', w: 16, h: 16, teamSize: 6, tier: 2, base: 'checkerboard',
@@ -18541,12 +18550,12 @@ const EW_MAP_META = [
     { id: 'prebuilt_strip', label: 'The Strip', w: 16, h: 16, teamSize: 6, tier: 2, base: 'concrete_floor',
       biomes: ['urban', 'neon_city'], deltaPad: 'urban_street', near: 'strip',
       desc: '16×16 prebuilt, 6v6 — the boulevard at night: the Strip down the middle with its median and sidewalks, fountain plazas, the wedding chapel and the storefronts (roof-walkable), palms, the marquees, the Luxor\'s obelisk',
-      env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 20, h: 8, lights: [0xff3ad8, 0x35e0ff, 0xffd34a] }, { kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }], fogTop: 0.16 },
+      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }], fogTop: 0.16 },
              tint: 0x10131c, tintAmt: 0.5, stars: 0.25, nebula: 0, fog: { color: 0x262a34, amount: 0.4, top: 0.09, band: 0.5 }, scenery: 'city', ambience: 'ambNight' } },   // NO PURPLE (mondo 2026-10-05)
     { id: 'prebuilt_downtown', label: 'Downtown', w: 16, h: 16, teamSize: 6, tier: 1, base: 'concrete_floor',
       biomes: ['urban', 'stadium'], deltaPad: 'urban_street', near: 'downtown',
       desc: '16×16 prebuilt, 6v6 — the monster-movie downtown in daylight: the avenue and the cross street, roof-walkable blocks, the rubble where something walked through, the collapsed tower as a ramp of debris, a dumpster in every alley',
-      env: { world: { kind: 'plain', rim: [{ kind: 'city', d: 17, n: 22, h: 11, tex: 'concrete_floor', color: 0xb8b8bc, lights: false }, { kind: 'city', d: 32, n: 26, h: 18, tex: 'urban_wall', color: 0xa0a4ac, lights: false, ranks: 1 }], fogTop: 0.2 },
+      env: { world: { kind: 'plain', fogTop: 0.2 },
              tint: 0x9fc4e8, tintAmt: 0.25, stars: 0.05, nebula: 0.2, day: 1, clouds: 0.3, fog: { color: 0xc8d8ea, amount: 0.55, top: 0.1, band: 0.5 }, scenery: 'city', density: 0.5, ambience: 'ambDay' } },
     /* 7.7 WAVE 2 (2026-09-16): Room 345 first — the user's right triangle, on the sea kit the Dutchman built */
     { id: 'prebuilt_bermuda', label: 'The Bermuda Triangle', w: 16, h: 16, teamSize: 6, tier: 2, base: 'desert',
@@ -23619,7 +23628,7 @@ const SPELL_UPGRADES = {
                     desc: 'The hit also applies Grievous (healing on them is halved) for 2 rounds.', patch: { addStatus: { id: 'grievous', duration: 2 } } },
     upOvercharged:{ id: 'upOvercharged',name: 'Overcharged',  glyph: '🔌', sp: 1, roles: [], families: ['robot', 'cyberpunkweapons', 'artificialintelligence'],
                     requires: 'statusHit', excl: null, auto: true,
-                    desc: 'The hit also Jams them for 1 round.', patch: { addStatus: { id: 'jammed', duration: 1 } } },
+                    desc: 'The hit also Jams them for 3 rounds.', patch: { addStatus: { id: 'jammed', duration: 3 } } },
     upVenomCoat:  { id: 'upVenomCoat',  name: 'Venom Coat',   glyph: '🐍', sp: 1, roles: [], families: ['beastabilities', 'insectoid', 'arachnid', 'ghoulish', 'feline', 'archery'],
                     requires: 'statusHit', excl: null, auto: true,
                     desc: 'The hit also Poisons them for 2 rounds.', patch: { addStatus: { id: 'poison', duration: 2 } } },
@@ -27823,7 +27832,7 @@ const DOOR_HQ_ASSETS = 'https://cdn.entropywars.net/Assets/door/';
    rule; dist = the share of the sky's disc; s = a size multiplier). One
    function so the seven rooms cannot drift apart; `o` overrides a field. */
 const HQ_WOODS_LANDMARKS = [
-    { kind: 'peak', id: 'prebuilt_shasta', deg: 340, dist: 0.92, s: 1.0, label: 'MOUNT SHASTA' },
+    /* Shasta's cone peak (deg 340) removed 2026-11-03 (mondo: the cone mountains "look terrible") */
     { kind: 'castle', id: 'prebuilt_camelot', deg: 150, dist: 0.88, s: 1.0, label: 'CAMELOT' },
 ];
 function hqWoodsShell(o) {
@@ -27861,7 +27870,7 @@ function hqWoodsShell(o) {
    that way, through the grove), the mesa inside. One function so a second
    ranch room cannot drift from the first; `o` overrides a field. */
 const HQ_RANCH_LANDMARKS = [
-    { kind: 'peak', id: 'prebuilt_shasta', deg: 318, dist: 0.9, s: 0.9, label: 'MOUNT SHASTA' },
+    /* Shasta's cone peak (deg 318) removed 2026-11-03 (mondo: the cone mountains "look terrible") */
 ];
 function hqRanchShell(o) {
     o = o || {};
@@ -28236,7 +28245,7 @@ function hqBunkerShell(o) {
 function hqAirbaseShell(o) {
     o = Object.assign({}, o || {});
     const sky = { night: 1, tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5, density: 0.02 }, scenery: 'orbs', density: 0.6,
-                  landmarks: [{ kind: 'peak', id: 'prebuilt_area51', deg: 300, dist: 0.9, s: 0.75, label: 'THE RANGE' }] };
+                  landmarks: [] };   // the Groom range's cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible")
     const S = {
         w: 0, d: 0, h: 9.0, wallH: 9.0, dadoH: 1.0,
         open: true, edge: 'open',
@@ -28474,8 +28483,9 @@ function hqSeaShell(o) {
     const S = {
         w: 0, d: 0, h: 6.0, wallH: 6.0, dadoH: 1.0,
         open: true, edge: 'open',
+        sand: 'beach',   /* THE TWO SANDS (2026-11-03): a sea room's sand is the beach's (sprites.js SAND_BEACH), not the desert's */
         floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'wood', ceiling: 'desert',
-        apron: 'desert', skirt: 'rocks_1', apronColor: 0xe8d8a8, floorColor: 0xe8d8a8, wallColor: 0x8a8478, dadoColor: 0x8a8478,
+        apron: 'desert', skirt: 'rocks_1', apronColor: 0xf2ead6, floorColor: 0xf2ead6, wallColor: 0x8a8478, dadoColor: 0x8a8478,
         pipes: false, strips: false, lights: [],
         mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff0d0, ambient: 0.62, night: 0 },
         sky: { night: 0, tint: 0x6fa8c8, tintAmt: 0.34, stars: 0.35, nebula: 0.25, day: 1, clouds: 0.3, fog: { color: 0x9fc4d8, amount: 0.5, top: 0.06, band: 0.5, density: 0.018 }, scenery: 'sea', density: 0.8,
@@ -28491,6 +28501,7 @@ function hqAbyssShell(o) {
     const S = {
         w: 0, d: 0, h: 30, wallH: 30, dadoH: 1.0,
         open: true, edge: 'open', underwater: true,
+        sand: 'beach',   /* THE TWO SANDS (2026-11-03): a sea room's sand is the beach's (sprites.js SAND_BEACH), not the desert's */
         floor: 'desert', wall: 'rocks_1', dado: 'rocks_1', trim: 'gold', ceiling: 'desert',
         apron: 'desert', skirt: 'rocks_1', apronColor: 0x4a6a78, floorColor: 0x4a6a78, wallColor: 0x3a5060, dadoColor: 0x3a5060,
         pipes: false, strips: false, lights: [],
@@ -28591,7 +28602,7 @@ const DOOR_HQ = {
     catalogue: {
         /* ── desk / terminals ── */
         crt_terminal:      { file: 'Meshy_AI_crt_terminal_0903101952_texture.glb',                    h: 0.42, foot: 0 },
-        tube_tv:           { file: 'Meshy_AI_a_tube_tv_0903102007_texture.glb',                       h: 0.46, foot: 0 },
+        tube_tv:           { file: 'ebd_trailerpark_tube_tv.glb', base: 'misc',                       h: 0.46, foot: 0 },
         papers_a:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110113_texture.glb',        h: 0.08, foot: 0 },
         papers_b:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb',        h: 0.10, foot: 0 },
         notebook_paper:    { file: 'Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb',       h: 0.06, foot: 0 },
@@ -28599,8 +28610,8 @@ const DOOR_HQ = {
         pencil:            { file: 'Meshy_AI_a_no_2_pencil_0903110156_texture.glb',                   span: 0.19, foot: 0 },
         pen:               { file: 'Meshy_AI_an_office_pen_0903110146_texture.glb',                   span: 0.15, foot: 0 },
         desk_fan:          { file: 'Meshy_AI_a_circular_desk_fan_0903105635_texture.glb',             h: 0.38, foot: 0 },
-        desk_lamp:         { file: 'Meshy_AI_an_office_desk_lamp_0903110208_texture.glb',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
-        table_lamp:        { file: 'Meshy_AI_a_lamp_0903110007_texture.glb',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
+        desk_lamp:         { file: 'ebd_house_desk_lamp.glb', base: 'misc',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
+        table_lamp:        { file: 'ebd_trailerpark_table_lamp.glb', base: 'misc',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
         house_key:         { file: 'Meshy_AI_a_house_key_0903110053_texture.glb',                     span: 0.07, foot: 0 },
         key:               { file: 'Meshy_AI_a_key_0903110102_texture.glb',                           span: 0.08, foot: 0 },
         car_key:           { file: 'Meshy_AI_car_key_0903110043_texture.glb',                         span: 0.08, foot: 0 },
@@ -28635,22 +28646,22 @@ const DOOR_HQ = {
         folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28, front: 'back', seat: 0.44 },
         curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
         curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0, front: 'back', seat: 0.42 },
-        filing_cabinet:    { file: 'Meshy_AI_a_filing_cabinet_0903105233_texture.glb',                h: 1.32, foot: 0.40, wall: true },
+        filing_cabinet:    { file: 'ebd_laundry_filing_cabinet.glb', base: 'misc',                h: 1.32, foot: 0.40, wall: true },
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
-        locker:            { file: 'Meshy_AI_a_locker_0903105424_texture.glb',                        h: 1.85, foot: 0.40, wall: true },
+        locker:            { file: 'ebd_mine_locker.glb', base: 'misc',                        h: 1.85, foot: 0.40, wall: true },
         cardboard_box:     { file: 'Meshy_AI_a_cardboard_box_0903105957_texture.glb',                 h: 0.42, foot: 0.30 },
         cardboard_boxes:   { file: 'Meshy_AI_cardboard_boxes_0903105142_texture.glb',                 h: 0.95, foot: 0.55 },
         /* ── fixtures ── */
         globe_lamp:        { file: 'Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb',           h: 1.95, foot: 0.40, glow: { y: 1.70, size: 1.6, color: 0xfff1d6 } },
-        water_cooler:      { file: 'Meshy_AI_a_water_cooler_0903105259_texture.glb',                  h: 1.28, foot: 0.32, wall: true },
-        vending_machine:   { file: 'Meshy_AI_a_round_vending_machine_0903105625_texture.glb',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
+        water_cooler:      { file: 'ebd_laundry_water_cooler.glb', base: 'misc',                  h: 1.28, foot: 0.32, wall: true },
+        vending_machine:   { file: 'ebd_laundry_vending_machine.glb', base: 'misc',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
         potted_plant:      { file: 'Meshy_AI_a_potted_plant_0903105322_texture.glb',                  h: 1.25, foot: 0.32 },
         office_plant:      { file: 'Meshy_AI_an_office_plant_0903110228_texture.glb',                 h: 1.10, foot: 0.30 },
-        fire_extinguisher: { file: 'Meshy_AI_a_fire_extinguisher_0903105310_texture.glb',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
+        fire_extinguisher: { file: 'ebd_6twelve_fire_extinguisher.glb', base: 'misc',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
         wet_floor_sign:    { file: 'Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb',         h: 0.72, foot: 0.22 },
         mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
-        mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
+        mop:               { file: 'ebd_house_mop.glb', base: 'misc',                           h: 1.45, foot: 0 },
         /* THE DOOR GUN (HQ plan 9.5 rev 3, 2026-09-16; rev 5 2026-09-18 — the user's NEW model): the ray gun
            that shoots doors — the walker holds it drawn (F), the Door Agent carries it in every battle
            (sprites.js `hold`). rev 5: the user's Meshy_AI__0916054803 from the SHARED misc bucket (`base:
@@ -28661,7 +28672,7 @@ const DOOR_HQ = {
            backward). `span` = its real length. The first gun (Meshy_AI_a_retro_gun_that_shoo_0916054449,
            Assets/door/models/) stays in the bucket unreferenced. MODEL_INDEX §3b. */
         door_gun:          { file: 'Meshy_AI__0916054803_texture.glb',                                  base: 'misc', span: 0.62, foot: 0, gun: true },
-        wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
+        wall_clock:        { file: 'ebd_trailerpark_wall_clock.glb', base: 'misc',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
         /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
            three-renderer.js _hqModelUrl): the moving-maps batch's pieces that
            also belong in the building — the pocket watches in the clock room
@@ -28676,7 +28687,7 @@ const DOOR_HQ = {
         ship_cannon:       { file: 'Meshy_AI_iron_canon_0912231022_texture.glb',                     base: 'misc', span: 2.2, foot: 0.9, block: true },          // muzzle −X at face 0: face 0 = run out to port (the west wall), 180 = to starboard
         sea_chest:         { file: 'Meshy_AI_pirate_treasure_chest_0912231220_texture.glb',         base: 'misc', h: 0.7, foot: 0.5, block: true },             // lock +Z
         ship_anchor:       { file: 'Meshy_AI_ship_anchor_0912231033_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true },             // the spare, stowed on its flukes
-        ship_lantern:      { file: 'Meshy_AI_a_hanging_lantern_0912231043_texture.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
+        ship_lantern:      { file: 'ebd_survival_lantern.glb',             base: 'misc', h: 0.5, foot: 0, ceil: true, glow: { y: -0.25, size: 1.4, color: 0xffb060 }, light: { color: 0xffa860, intensity: 0.75, dist: 7, y: -0.3 }, sway: { amp: 0.06, period: 3.4 } },   // hangs from the beams; the deck's yard lanterns, below
         /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3e): the forest
            floor and the cave's furniture, and THE TWO TREES WITH HOLES IN THEM whose holes are the seams (DOOR_HQ.ways
            hollowtree / deadtree read hollow_tree / hollow_dead_tree). Sizes are TARGETS (the files are unmeasured — a wrong
@@ -28686,13 +28697,13 @@ const DOOR_HQ = {
         signpost:          { file: 'Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb',      base: 'misc', h: 2.2, foot: 0.2, block: true },
         brick_arch:        { file: 'Meshy_AI_a_brick_arch_section_0916235939_texture.glb',         base: 'misc', h: 3.2, foot: 0 },
         greek_column:      { file: 'Meshy_AI_greek_column_0727195651_texture.glb',                 base: 'misc', h: 3.6, foot: 0.45, block: true },   // THE DIVINE STAIR (2026-09-17): the board's greekcol monument standing in heaven (the same file)
-        campfire:          { file: 'Meshy_AI_a_campfire_ring_0916235856_texture.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
+        campfire:          { file: 'ebd_survival_campfire.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
         culvert_mouth:     { file: 'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',              base: 'misc', h: 2.6, foot: 0, mount: 0 },
         /* NO MESHY TREES (2026-10-04, mondo): the four Meshy trees are the retro pack's (base 'rt' = Assets/foilage/retrotreepack/GLB/);
            the hollow / dead tree WAYS keep their own trunk with the hole (three-renderer.js _hqTreeWay) */
         dead_snag:         { file: 'dead_tree_rt_2.glb', base: 'rt', h: 4.6, foot: 0.4, block: true },
         hollow_dead_tree:  { file: 'dead_tree_rt_1.glb', base: 'rt', h: 5.0, foot: 0.6, block: true, rot: 0 },
-        fallen_log:        { file: 'Meshy_AI_a_fallen_log_0916235700_texture.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
+        fallen_log:        { file: 'ebd_vegetation_fallen_log.glb',                 base: 'misc', span: 3.6, foot: 0.5, rect: { hw: 1.8, hd: 0.45 }, block: true },
         fern:              { file: 'Meshy_AI_a_fern_0916235806_texture.glb',                       base: 'misc', h: 0.75, foot: 0 },
         pine:              { file: 'tree_rt_1.glb', base: 'rt', h: 6.5, foot: 0.45, block: true },
         footbridge:        { file: 'Meshy_AI_a_plank_footbridge_0916235844_texture.glb',           base: 'misc', span: 4.4, foot: 0 },
@@ -28707,7 +28718,7 @@ const DOOR_HQ = {
         t_pillar:          { proc: 't_pillar',      h: 4.6,  foot: 0.6, block: true },
         cave_stone:        { file: 'Meshy_AI_a_standing_stone_0916235906_texture.glb',             base: 'misc', span: 0.9, foot: 0.35, block: true },   // the same stone, knee-high: the cave's rubble
         drain_grate:       { file: 'Meshy_AI_a_storm_drain_grate_0916235918_texture.glb',          base: 'misc', span: 1.2, foot: 0, mount: 0.4 },
-        stump:             { file: 'Meshy_AI_a_stump_0916235717_texture.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
+        stump:             { file: 'ebd_vegetation_stump.glb',                      base: 'misc', h: 0.6, foot: 0.4, block: true },
         hollow_tree:       { file: 'tree_rt_2_1.glb', base: 'rt', h: 6.0, foot: 0.7, block: true, rot: 0 },
         /* 2026-09-17 THE VATICAN BATCH (twenty-four Meshy props the user uploaded to Assets/misc/ — MODEL_INDEX §3g): the
            basilica's furniture (pews of two kinds, the podium, the cathedra, the cross, the windows, the carpet, the
@@ -28734,6 +28745,13 @@ const DOOR_HQ = {
         italian_building:   { file: 'Meshy_AI_Italian_building_0917035900_texture.glb',               base: 'misc', span: 12, foot: 4.5, block: true },
         italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
         holy_carpet:        { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', span: 6.0, foot: 0 },
+        /* THE CASTLE AND FORT PACK (McSteeg, itch.io — "use this asset in your animation or game projects, both personally and commercially",
+           2026-11-03 for THE NEW HEAVEN's floating castles): pieces of the one file (Assets/misc/Castles_and_Forts.glb), each `node` a piece */
+        castle_tower:       { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_Mid',   h: 2.0,  foot: 0 },
+        castle_tower_top:   { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_top_1', h: 2.16, foot: 0 },
+        castle_cone:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Roof_Cone',   h: 2.23, foot: 0 },
+        castle_gate:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Gate_2x4',    h: 2.05, foot: 0 },
+        castle_wall:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Wall_2x4',    h: 2.0,  foot: 0 },
         pearly_gate:        { file: 'Meshy_AI_pearly_gate_0917035350_texture.glb',                    base: 'misc', span: 4.2, foot: 0, glow: { y: 2.2, size: 3.2, color: 0xfff0c0 } },
         royal_throne:       { file: 'Meshy_AI_royal_throne_0917035803_texture.glb',                   base: 'misc', h: 1.9, foot: 0.5, block: true, front: 'back', seat: 0.55 },
         skull_pile:         { file: 'Meshy_AI_skull_pile_0917035243_texture.glb',                     base: 'misc', span: 1.3, foot: 0.5, block: true },
@@ -28757,7 +28775,7 @@ const DOOR_HQ = {
         dorm_bed:           { file: 'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  base: 'misc', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5 },                  // the keep's guardroom
         couples_bed:        { file: 'Meshy_AI_a_couples_bed_0922010443_texture.glb',               base: 'misc', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5 },                // the bunker's loft
         royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
-        camping_tent:       { file: 'Meshy_AI_a_camping_tent_0922010306_texture.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
+        camping_tent:       { file: 'ebd_survival_camping_tent.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
         carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
         fortune_teller_tent:{ file: 'Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb',       base: 'misc', span: 3.2, foot: 1.6, block: true },                                                         // the `fortune_tent` proc's model (GLB-first; the proc keeps its key, its glow and its sign)
         retro_control_panel:{ file: 'Meshy_AI_a_retro_control_panel_0922010114_texture.glb',       base: 'misc', span: 1.6, foot: 0.7, rect: { hw: 0.8, hd: 0.38 }, block: true },                            // the `retro_console` proc's model (GLB-first; the catalogue's glow / light stay)
@@ -28768,7 +28786,7 @@ const DOOR_HQ = {
            files three-renderer.js _MISC_GLB names (the same-thing rule). MEASURED: the crashed car (1.0 × 0.36 × 0.45, nose
            −X → `turn: 90` like the cars), the escalator (0.53 × 0.72 × 1.0, rising toward −Z — face 270 puts its top at +x);
            the rest are TARGETS. `city_bin` is the OUTDOOR bin (the kerbs), `mall_bin` the indoor one (the mall, the casino). */
-        city_bin:          { file: 'Meshy_AI_a_city_bin_0917065144_texture.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
+        city_bin:          { file: 'ebd_6twelve_city_bin.glb',                  base: 'misc', h: 1.05, foot: 0.32, block: true },
         mall_bin:          { file: 'Meshy_AI_a_city_trash_bin_0917065157_texture.glb',            base: 'misc', h: 0.9, foot: 0.3, block: true },
         crashed_car:       { file: 'Meshy_AI_a_crashed_car_0917065033_texture.glb',               base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
         crashed_car_2:     { file: 'Meshy_AI_a_crashed_car_2_0917065052_texture.glb',             base: 'misc', pack: 'wreck', span: 4.6, foot: 1.2, rect: { hw: 1.05, hd: 2.3 }, block: true, turn: 90 },
@@ -28777,7 +28795,18 @@ const DOOR_HQ = {
         time_machine:      { file: 'Meshy_AI_a_retro_time_machine_0917064610_texture.glb',        base: 'misc', h: 2.4, foot: 0.7, block: true, rot: 90 },   // the `timemachine` way's model (the brass cage is its stand-in)
         street_drain:      { proc: 'manhole', h: 0.01, foot: 0 },                                                                                         // a manhole on the road: the urban pack's DecalManholeCover laid flat (2026-10-05, mondo: no Meshy drain GLB)
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
-        bus_shelter:       { file: 'Meshy_AI_bus_shelter_0917064913_texture.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        bus_shelter:       { file: 'ebd_busstop_bus_shelter.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        /* THE TOWN HOUSES (2026-11-03, mondo: the rims are dead code, "obviously they need to go into the site rooms"): whole pack houses
+           one by one, real size (`span` = the long side). The Trailer Park scene's six trailers (one cut per trailer, its door side to
+           +Z = the row's `face`), Area 51's flight line and the Skinwalker fields; the Abandoned House's shell (its basement cut to the
+           last metre, `hover: -1` sinks that metre under the ground), past the Haunted grounds' pines on the outer ground. */
+        trailer_home_1:    { file: 'ebd_trailerscene_trailer_0.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_2:    { file: 'ebd_trailerscene_trailer_1.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_3:    { file: 'ebd_trailerscene_trailer_2.glb', base: 'misc', span: 15.1, foot: 3.0, rect: { hw: 7.55, hd: 3.15 }, block: true },
+        trailer_home_4:    { file: 'ebd_trailerscene_trailer_3.glb', base: 'misc', span: 15.0, foot: 2.8, rect: { hw: 7.5, hd: 2.85 }, block: true },
+        trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
+        trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
+        abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -28792,10 +28821,10 @@ const DOOR_HQ = {
         lighthouse:     { proc: 'lighthouse',     h: 11, foot: 1.6, block: true, glow: { y: 10.2, size: 5.0, color: 0xfff1c8 }, light: { color: 0xfff1c8, intensity: 1.2, dist: 30, y: 10.2, night: true } },   // the beam turns (a ticker); `night`: THE WORLD CLOCK lights it at dusk (Phase 3)
         sea_buoy:       { proc: 'sea_buoy',       h: 2.2, foot: 0, float: true, glow: { y: 2.0, size: 1.6, color: 0xff5a4a }, light: { color: 0xff6a5a, intensity: 0.55, dist: 9, y: 2.0 } },   // the maelstrom's ring of red lamps
         ship_wreck:     { file: 'Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb',                 base: 'misc', span: 16, foot: 0 },   // the misc `wreck` file standing on the floor (the same-thing rule — MODEL_INDEX §9)
-        kelp:           { proc: 'kelp',           h: 4.5, foot: 0 },                                                                        // a sway in the vertex shader (_hqKelpMat)
-        coral_brain:    { proc: 'coral_brain',    h: 0.9, foot: 0.5, block: true },
-        coral_fan:      { proc: 'coral_fan',      h: 1.6, foot: 0.2 },
-        coral_tube:     { proc: 'coral_tube',     h: 1.1, foot: 0.35, block: true },
+        kelp:           { file: 'SeaWeed.fbx', base: 'ocean', h: 4.5, foot: 0, anim: '*', mesh: false },   // THE ONE MODEL (2026-11-03, mondo: swap the stand-ins to models we have): the ocean pack's seaweed (its own sway clip); was proc 'kelp' (a sway in the vertex shader)
+        coral_brain:    { file: 'Coral.fbx',  base: 'ocean', h: 0.9, foot: 0.5, block: true },   // 2026-11-03: the ocean pack's coral (was proc 'coral_brain')
+        coral_fan:      { file: 'Coral1.fbx', base: 'ocean', h: 1.6, foot: 0.2 },                 // 2026-11-03: the ocean pack's coral (was proc 'coral_fan')
+        coral_tube:     { file: 'Coral2.fbx', base: 'ocean', h: 1.1, foot: 0.35, block: true },   // 2026-11-03: the ocean pack's coral (was proc 'coral_tube')
         anemone:        { proc: 'anemone',        h: 0.5, foot: 0, glow: { y: 0.3, size: 0.9, color: 0xff7fb0 } },
         giant_clam:     { proc: 'giant_clam',     h: 0.7, foot: 0.6, block: true, glow: { y: 0.4, size: 1.2, color: 0xdff8ff } },
         sea_vent:       { proc: 'sea_vent',       h: 2.4, foot: 0.7, block: true, glow: { y: 2.2, size: 2.4, color: 0xff9a40 }, light: { color: 0xff8a30, intensity: 0.9, dist: 10, y: 2.0 } },   // a black smoker: the trench's light
@@ -28861,7 +28890,7 @@ const DOOR_HQ = {
            to bathtub size) and hang it at waist height (`mount` = the
            underside; the rim lands ~0.85 m). `block` keeps its floor
            blocker even though it is mounted — you still can't walk into it. */
-        sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
+        sink:              { file: 'ebd_burgerpiz_sink.glb', base: 'misc',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
         /* rugs: the GLBs are authored standing on edge; `lay` turns the
            thinnest axis upright at load so they lie flat on the floor. */
         rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.5, foot: 0, lay: true },
@@ -28918,7 +28947,7 @@ const DOOR_HQ = {
         /* ROOM 111 · THE TROPHY CASE + ROOM 1984 · THE INTERROGATION ROOM (2026-09-13, plan 7.4) */
         trophy_case:       { proc: 'trophy_case',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.42, block: true, glow: { y: 1.7, size: 1.6, color: 0xfff3d9 } },   // a lit glass cabinet: plaques in threes, the cups
         steel_table:       { proc: 'steel_table',    h: 0.76,    foot: 0.75, block: true },   // the interrogation table: a steel top, a ring bolt
-        telescope:         { proc: 'telescope',      h: 1.6,     foot: 0.45, block: true },
+        telescope:         { file: 'Meshy_AI_telescope_0917035520_texture.glb', base: 'misc', h: 1.6, foot: 0.45, block: true },   // 2026-11-03: brass_telescope's file (one model per thing; was proc 'telescope')
         /* ROOM 42 · RECORDS + ROOM 1337 · IT (2026-09-13, plan 7.4) */
         card_catalogue:    { proc: 'card_catalogue', h: 1.9,     foot: 0, wall: true, mount: 0,    depth: 0.5,  block: true },   // the wall of little drawers: UNFILED SITES
         server_rack:       { proc: 'server_rack',    h: 2.1,     foot: 0, wall: true, mount: 0,    depth: 0.8,  block: true, glow: { y: 1.2, size: 1.1, color: 0x8fe0c8 } },   // a 42U rack, the LEDs on
@@ -28930,7 +28959,7 @@ const DOOR_HQ = {
         floor_panel:       { proc: 'floor_panel',    h: 0.9,     foot: 0, wall: true, mount: 1.0,  depth: 0.05, glow: { y: 0.45, size: 0.7, color: 0xffb020 } },   // the lobby: sixteen buttons, two lit
         exec_desk:         { proc: 'exec_desk',      span: 2.4,  foot: 1.2, depth: 1.05, rect: { hw: 1.2, hd: 0.525 }, block: true },   // 4C: the executive desk (top at 0.76 — desk props sit at y: 0.76). A FLOOR prop since 2026-09-16: centred, the drawers on the sitter's side (−z), the modesty panel to the room (+z)
         serving_line:      { proc: 'serving_line',   span: 3.0,  foot: 1.5, wall: true, depth: 1.15, rect: { hw: 1.5, hd: 0.575 }, block: true },   // Room 86 (2026-09-16): a 3 m cafeteria counter — the hot wells + sneeze guard on the wall side, THE TRAY SLIDE (0.85 m) along the front; trays at z = wall + 0.95
-        exec_chair:        { proc: 'exec_chair',     h: 1.25,    foot: 0.36, block: true, seat: 0.48 },   // 4C: the high-backed leather chair
+        exec_chair:        { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb', h: 1.1, foot: 0.36, block: true, front: 'back', seat: 0.48 },   // 4C: the chair behind the desk — 2026-11-03: office_chair's file (was proc 'exec_chair')
         wall_plaques:      { proc: 'wall_plaques',   h: 1.2,     foot: 0, wall: true, mount: 1.3,  depth: 0.05 },   // 4C: the achievements engraved (gold per hqTrophyCount, read at build)
         motto_plaque:      { proc: 'motto_plaque',   h: 0.6,     foot: 0, wall: true, mount: 1.5,  depth: 0.05 },
         /* THE MAP REMEMBERS (PHASE9_QUALITY_PLAN §6 D8, 2026-09-16): the door gun's
@@ -28981,8 +29010,8 @@ const DOOR_HQ = {
         garage_ramp:     { proc: 'garage_ramp',     h: 2.6,  foot: 2.6, rect: { hw: 2.6, hd: 4.2 }, block: true, glow: { y: 2.0, size: 5.0, color: 0xfff1c0 } },   // THE RAMP: the way out you can see and not take (a barrier arm, daylight at the top)
         roller_shutter:  { proc: 'roller_shutter',  h: 2.6,  foot: 0, wall: true, mount: 0,    depth: 0.12 },
         /* B · services */
-        kitchen_range:   { proc: 'kitchen_range',   h: 0.92, foot: 0.7, wall: true, mount: 0, depth: 0.7, block: true, glow: { y: 0.92, size: 0.9, color: 0xff7a30 } },
-        range_hood:      { proc: 'range_hood',      h: 0.5,  foot: 0, wall: true, mount: 1.75, depth: 0.7 },
+        kitchen_range:   { file: 'ebd_diner_kitchen_range.glb', base: 'misc', span: 1.5, foot: 0.7, wall: true, mount: 0, block: true },   // THE CODED SHAPES OUT (2026-11-03): the Diner pack griddle range
+        range_hood:      { file: 'ebd_diner_range_hood.glb', base: 'misc', span: 1.5, foot: 0, wall: true, mount: 1.75 },   // the Diner pack hood
         pot_rack:        { proc: 'pot_rack',        h: 0.5,  foot: 0, ceil: true, sway: { amp: 0.03, period: 3.8 } },
         meat_hook:       { proc: 'meat_hook',       h: 1.7,  foot: 0.3, ceil: true, block: true, sway: { amp: 0.05, period: 2.9 } },                          // the cold room: a carcass on a chain; blocks
         washer:          { proc: 'washer',          h: 0.95, foot: 0.5, wall: true, mount: 0, depth: 0.7, block: true },
@@ -28993,7 +29022,7 @@ const DOOR_HQ = {
         boiler:          { proc: 'boiler',          h: 2.3,  foot: 1.0, block: true, glow: { y: 0.55, size: 1.8, color: 0xff6a20 }, light: { color: 0xff7a30, intensity: 0.9, dist: 8, y: 0.6 } },
         /* B2 · the undercroft */
         cell_bars:       { proc: 'cell_bars',       h: 2.4,  foot: 0, wall: true, mount: 0, depth: 0.12 },                   // a barred cell front on the wall; the cell behind it is painted dark
-        wall_chains:     { proc: 'wall_chains',     h: 1.4,  foot: 0, wall: true, mount: 1.2, depth: 0.08, sway: { amp: 0.04, period: 3.1 } },
+        wall_chains:     { file: 'Chain_Draped.glb', base: 'traps', span: 1.0, foot: 0, wall: true, mount: 1.5 },   // 2026-11-03: the traps pack's draped chain (trap_chain_draped's file; was proc 'wall_chains')
         stocks:          { proc: 'stocks',          h: 1.1,  foot: 0.5, block: true },
         wall_torch:      { proc: 'wall_torch',      h: 1.1,  foot: 0, wall: true, mount: 1.6, depth: 0.2, glow: { y: 0.7, size: 1.0, color: 0xffa040 }, light: { color: 0xff9a40, intensity: 0.8, dist: 8, y: 0.66 } },   /* the game's own torch (ward / editor) on a bracket, leaning into the room — 2026-09-15 */
         candle_ring:     { proc: 'candle_ring',     h: 0.3,  foot: 0, glow: { y: 0.3, size: 1.2, color: 0xffb060 }, light: { color: 0xffb060, intensity: 0.7, dist: 6, y: 0.45 } },
@@ -29010,7 +29039,7 @@ const DOOR_HQ = {
         floating_orb:    { proc: 'floating_orb',    h: 1.9,  foot: 0.7, block: true, glow: { y: 1.35, size: 3.0, color: 0x9fe8ff }, light: { color: 0x8fdcff, intensity: 1.3, dist: 12, y: 1.35 } },   // Room X: the object (ticker: it bobs and turns)
         /* 3 · the annex */
         chalkboard:      { proc: 'chalkboard',      h: 1.3,  foot: 0, wall: true, mount: 0.95, depth: 0.05 },
-        lectern:         { proc: 'lectern',         h: 1.15, foot: 0.35, block: true },
+        lectern:         { file: 'Meshy_AI_church_podium_0917035658_texture.glb', base: 'misc', h: 1.15, foot: 0.35, block: true },   // 2026-11-03: church_podium's file (was proc 'lectern')
         riser_1:         { proc: 'riser_1',         h: 0.3,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.3 } },   // SKATEBOARDING (9.8): `ramp` = a rise the rider hops off at speed           // the lecture hall's tiers: three steps the walker climbs (≤ HQ_STEP_TOL each)
         riser_2:         { proc: 'riser_2',         h: 0.6,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.6 } },
         riser_3:         { proc: 'riser_3',         h: 0.9,  foot: 3.0, rect: { hw: 4.2, hd: 0.7 }, block: true, ramp: { w: 8.4, len: 1.4, h: 0.9 } },
@@ -29028,12 +29057,12 @@ const DOOR_HQ = {
         find_stash:      { proc: 'find_stash',      h: 0.24, foot: 0, glow: { y: 0.14, size: 1.0, color: 0xff8a5a } },   // D5 THE STASH (2026-09-21): a first-aid tin with a bottle in it — a facility room's cache of THE BAG's goods   // SKATEBOARDING (9.8): the board in the locker room (only while HQ_SKATE_RULES.free is off)
         tape_shelf:      { proc: 'tape_shelf',      h: 1.9,  foot: 0.35, wall: true, mount: 0, depth: 0.36, block: true },
         school_desk:     { proc: 'school_desk',     h: 0.75, foot: 0.45, block: true },
-        toilet_stall:    { proc: 'toilet_stall',    h: 2.0,  foot: 0.6, wall: true, mount: 0, depth: 1.5, rect: { hw: 0.5, hd: 0.75 }, block: true },   // on a n / s wall (the rect is room-axis)
-        urinal:          { proc: 'urinal',          h: 0.7,  foot: 0, wall: true, mount: 0.55, depth: 0.35 },
-        sink_row:        { proc: 'sink_row',        h: 1.8,  foot: 1.0, wall: true, mount: 0, depth: 0.55, rect: { hw: 1.2, hd: 0.28 }, block: true },  // three basins under a mirror strip; on a n / s wall
-        hand_dryer:      { proc: 'hand_dryer',      h: 0.3,  foot: 0, wall: true, mount: 1.2, depth: 0.2 },
+        toilet_stall:    { file: 'ebd_gasstation_toilet_stall.glb', base: 'misc', h: 2.0, foot: 0.6, wall: true, mount: 0, rect: { hw: 0.58, hd: 0.73 }, block: true },   // the Gas station pack stall (two partitions, the door, the toilet); on a n / s wall (the rect is room-axis)
+        urinal:          { file: 'ebd_burgerpiz_urinal.glb', base: 'misc', h: 0.85, foot: 0, wall: true, mount: 0.5 },   // the BurgerPiz pack urinal
+        sink_row:        { file: 'ebd_diner_sink_row.glb', base: 'misc', span: 2.4, foot: 1.0, wall: true, mount: 0, rect: { hw: 1.2, hd: 0.38 }, block: true },  // the Diner pack counter of three basins; on a n / s wall
+        hand_dryer:      { file: 'ebd_diner_hand_dryer.glb', base: 'misc', h: 0.3, foot: 0, wall: true, mount: 1.2 },   // the Diner pack dryer
         locker_bench:    { proc: 'locker_bench',    h: 0.45, foot: 1.0, rect: { hw: 1.0, hd: 0.2 }, block: true, seat: 0.42 },
-        shower_stall:    { proc: 'shower_stall',    h: 2.1,  foot: 0.6, wall: true, mount: 0, depth: 1.0, rect: { hw: 0.5, hd: 0.5 }, block: true },
+        shower_stall:    { file: 'ebd_house_shower_stall.glb', base: 'misc', h: 2.1, foot: 0.6, wall: true, mount: 0, rect: { hw: 0.58, hd: 0.48 }, block: true },   // the House pack shower (tiles + the glass door)
         lap_pool:        { proc: 'lap_pool',        h: 0.35, foot: 5.0, rect: { hw: 6.2, hd: 2.9 }, block: true },           // Room 50M: six lanes, starting blocks, a rect the walker never enters
         lifeguard_chair: { proc: 'lifeguard_chair', h: 2.2,  foot: 0.4, block: true },
         garden_ring:     { proc: 'garden_ring',     h: 0.7,  foot: 0 },                                                       // Room 1618: the gravel ring + the hedge (the proc registers its own blockers)
@@ -29061,7 +29090,7 @@ const DOOR_HQ = {
         door_xray:       { proc: 'door_xray',       h: 1.0,  foot: 0,    wall: true, mount: 1.1, depth: 0.08, glow: { y: 0.5, size: 1.4, color: 0xbfe6ff } },   // the light box
         planter:         { proc: 'planter',         h: 0.5,  foot: 1.0,  rect: { hw: 1.0, hd: 0.5 }, block: true },         // Room ½: a raised bed
         door_vine:       { proc: 'door_vine',       h: 1.8,  foot: 0,    wall: true, mount: 0, depth: 0.3 },                  // Room ½: a trellis of vines with tiny doors at the stem ends (ticker; also stands in a planter at y 0.5)
-        grow_lamp:       { proc: 'grow_lamp',       h: 0.5,  foot: 0,    ceil: true, glow: { y: 0.1, size: 1.6, color: 0xd070ff }, light: { color: 0xc060ff, intensity: 0.9, dist: 6, y: 0.1 } },   // Room ½: the purple lamp
+        grow_lamp:       { proc: 'grow_lamp',       h: 0.17, foot: 0,    ceil: true, glow: { y: -0.02, size: 1.6, color: 0xd070ff }, light: { color: 0xc060ff, intensity: 0.9, dist: 6, y: -0.05 } },   // Room ½: the purple lamp (the Meshy LED panel, 2026-11-03)
         monitor_stack:   { proc: 'monitor_stack',   h: 2.2,  foot: 0,    wall: true, mount: 0, depth: 0.6, block: true, glow: { y: 1.3, size: 1.8, color: 0x9fc7ff } },   // Room 24/7: nine CRTs in a rack, each on a room (ticker: the feeds swap)
         lost_shelf:      { proc: 'lost_shelf',      h: 2.0,  foot: 0,    wall: true, mount: 0, depth: 0.5, block: true },    // Room ?: shelves of things left in other realities
         stair_step:      { proc: 'stair_step',      h: 0.25, foot: 0.6,  rect: { hw: 0.6, hd: 0.15 }, block: true },        // THE STAIRWELL: one step, wide in x, the run along z; stack them by `y`
@@ -29085,7 +29114,7 @@ const DOOR_HQ = {
         turnstile:       { proc: 'turnstile',       h: 1.0,  foot: 0.4,  block: true },                                        // THE PLATFORM: a tripod gate that turns as you come up (ticker)
         eeg_rack:        { proc: 'eeg_rack',        h: 1.4,  foot: 0.35, block: true, glow: { y: 1.0, size: 0.9, color: 0x80ffb0 }, light: { color: 0x60ff90, intensity: 0.5, dist: 4, y: 1.0 } },   // Room REM: the trace beside a cot (ticker)
         dream_screen:    { proc: 'dream_screen',    h: 1.2,  foot: 0,    wall: true, mount: 1.1, depth: 0.1, glow: { y: 0.6, size: 2.2, color: 0xc0a0ff } },   // Room REM: what the sleepers see (ticker: the drawing drifts)
-        iso_tank:        { proc: 'iso_tank',        h: 1.3,  foot: 1.2,  rect: { hw: 1.2, hd: 0.8 }, block: true, glow: { y: 0.9, size: 2.0, color: 0x60a0ff }, light: { color: 0x4080ff, intensity: 0.7, dist: 5, y: 1.0 } },   // Room 0dB: the pod, lid ajar (ticker: it breathes)
+        iso_tank:        { file: 'molten_sleeper_casket.glb', base: 'misc', h: 1.3, foot: 0.6, rect: { hw: 0.35, hd: 0.55 }, block: true, glow: { y: 0.8, size: 1.6, color: 0x60a0ff } },   /* h stays the old pod's 1.3 m: the boards stand it on 1.3 m ghost blocks (Antarctica) */   // Room 0dB: the pod (THE CODED SHAPES OUT 2026-11-03: the Molten Maps sci-fi pack sleeper casket, CC0)
         evac_button:     { proc: 'evac_button',     h: 0.3,  foot: 0,    wall: true, mount: 1.2, depth: 0.1, glow: { y: 0.15, size: 0.8, color: 0xff3020 }, light: { color: 0xff3020, intensity: 0.5, dist: 3, y: 0.15 } },   // Room 4B: the red button under its cover
         scoreboard:      { proc: 'scoreboard',      h: 8.8,  foot: 0.5,  rect: { hw: 5.5, hd: 0.35 }, block: true, glow: { y: 6.3, size: 9.0, color: 0x86e8ff } },   // THE BOWL (2026-09-26): over the north concourse
         flood_mast:      { proc: 'flood_mast',      h: 7.0,  foot: 0.35, block: true, glow: { y: 6.6, size: 5.0, color: 0xeaf4ff }, light: { color: 0xeaf4ff, intensity: 1.2, dist: 26, y: 6.6, night: true } },   // (`night`: on at dusk, THE WORLD CLOCK) THE FLIGHT LINE (2026-09-18): a floodlight mast — the outdoor room's own light
@@ -29109,27 +29138,27 @@ const DOOR_HQ = {
         hook_rail_long:    { file: 'Meshy_AI_hook_rail_0910054853_texture.glb',                     span: 1.10, foot: 0, wall: true, mount: 1.80 },
         vent_grille:       { file: 'Meshy_AI_vent_0910054228_texture.glb',                          span: 0.45, foot: 0, wall: true, mount: 2.35 },
         floor_drain:       { file: 'Meshy_AI_water_drain_0910054212_texture.glb',                   span: 0.36, foot: 0 },
-        rotary_phone:      { file: 'Meshy_AI_analog_phone_0910054719_texture.glb',                  span: 0.24, foot: 0 },
+        rotary_phone:      { file: 'ebd_vhsshop_rotary_phone.glb', base: 'misc',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
            counter is the `reception_wedge`, as the plan's fallback says) ── */
         cafeteria_chair:   { file: 'Meshy_AI_cafeteria_chair_0910054640_texture.glb',               h: 0.86, foot: 0.28, front: 'back', seat: 0.44 },
         molded_chair:      { file: 'Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb',         h: 0.82, foot: 0.28, front: 'back', seat: 0.44 },
         meal_tray:         { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb',         span: 0.45, foot: 0 },
         meal_tray_empty:   { file: 'Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb',         span: 0.42, foot: 0 },
-        microwave:         { file: 'Meshy_AI_beige_1980s_microwave_0910054901_texture.glb',         span: 0.50, foot: 0 },
-        coffee_maker:      { file: 'Meshy_AI_coffee_maker_0910054513_texture.glb',                  h: 0.38, foot: 0 },
-        cash_register:     { file: 'Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb',         h: 0.34, foot: 0 },
+        microwave:         { file: 'ebd_psx3_microwave.glb', base: 'misc',         span: 0.50, foot: 0 },
+        coffee_maker:      { file: 'ebd_psx3_coffee_maker.glb', base: 'misc',                  h: 0.38, foot: 0 },
+        cash_register:     { file: 'ebd_pizzeria_cash_register.glb', base: 'misc',         h: 0.34, foot: 0 },
         mini_fridge:       { file: 'Meshy_AI_mini_fridge_0910054504_texture.glb',                   h: 0.85, foot: 0.30 },
         round_fridge:      { file: 'Meshy_AI_round_fridge_0910054551_texture.glb',                  h: 1.05, foot: 0.45 },
         coffee_mug:        { file: 'Meshy_AI_cup_0910054308_texture.glb',                           span: 0.12, foot: 0 },
         solo_cup:          { file: 'Meshy_AI_red_solo_cup_0910054318_texture.glb',                  h: 0.12, foot: 0 },
-        trash_bin:         { file: 'Meshy_AI_trash_bin_0910054450_texture.glb',                     h: 0.75, foot: 0.28 },
+        trash_bin:         { file: 'ebd_trailerpark_trash_bin.glb', base: 'misc',                     h: 0.75, foot: 0.28 },
         /* ── the desk / office kit ── */
         clipboard_flat:    { file: 'Meshy_AI_office_clipboard_0910054838_texture.glb',              span: 0.32, foot: 0 },
         manila_folders:    { file: 'Meshy_AI_office_manila_folders_0910054352_texture.glb',         span: 0.33, foot: 0 },
         manila_folder:     { file: 'Meshy_AI_tapered_manila_folder_0910054403_texture.glb',         span: 0.34, foot: 0 },
         stapler:           { file: 'Meshy_AI_stapler_0910054326_texture.glb',                       span: 0.17, foot: 0 },
-        retro_radio:       { file: 'Meshy_AI_retro_radio_0910054335_texture.glb',                   h: 0.30, foot: 0 },
+        retro_radio:       { file: 'ebd_trailerpark_retro_radio.glb', base: 'misc',                   h: 0.30, foot: 0 },
         retro_speakers:    { file: 'Meshy_AI_retro_speakers_0910054343_texture.glb',                span: 0.50, foot: 0 },
         /* the round cubicle: 2.2 m across, 1.8 m high — a whole workstation.
            It needs a 1 m collision disc, so it never goes on the mezzanine
@@ -29704,7 +29733,7 @@ const DOOR_HQ = {
         /* THE DIVINE STAIR */
         { id: 'heaven_olympus', route: 'divine', way: 'cloud',   // THE PASSAGES (2026-10-01): a gate of cloud is a road of cloud you walk into, not a frame
           /* THE DIVINE STAIR, second pass (2026-09-18): RE-POINTED off Heaven's bypassed board onto THE CLOUD FIELDS' east wall */
-          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 12, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },
+          a: { site: 'prebuilt_heaven', part: 'gate', wall: 'e', z: 0, y: 3.2, sub: 'A GATE OF CLOUD · THE OTHER MANAGEMENT' },   // THE NEW HEAVEN (2026-11-03): off the east terrace
           b: { site: 'prebuilt_olympus', part: 'summit', wall: 'w', z: -38, y: 3.0 },   // THE AREAS (2026-09-18): on THE SUMMIT; AREA CONTENT D3 (2026-09-19): ON THE HIGH TERRACE's west end — a door you climb to
           why: 'a gate of cloud between the two managements; the stair only goes up, which is a problem for whoever is on top', note: 'a gate of cloud', draft: true },
         /* vatican_heaven — PRUNED 2026-09-18 (THE AREAS): a plain door that shortcut a built path */
@@ -30164,7 +30193,7 @@ const DOOR_HQ = {
                door is its sill (hqApplySiteEntries copies the row whole). */
             prebuilt_vatican:   { room: 'site_prebuilt_vatican_basilica',   door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_hell:      { room: 'site_prebuilt_hell_pit',           door: { id: 'bay', wall: 's', x: 0, y: 5 } },
-            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 1.75 } },
+            prebuilt_heaven:    { room: 'site_prebuilt_heaven_gate',        door: { id: 'bay', wall: 'n', x: 0, y: 3.7 } },   // THE NEW HEAVEN (2026-11-03): on the gate platform
             /* CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2): the portcullis lands you in THE OUTER WARD, on the approach south of the moat — the
                drawbridge is the way in. The four links that stood on the board room (the spring's pool, the Lodge's door, the wardrobe, the well) moved
                onto the parts the same day. */
@@ -38856,7 +38885,7 @@ const DOOR_HQ = {
                        /* THE DISTRICTS (D2): three bands — the lot rows carry each band's look */
                        districts: [
                            { id: 'financial', label: 'THE FINANCIAL BLOCKS', rect: [-112, -44, 112, 44], storeys: [2, 6], style: 'office', texP: 0.2, ruinP: 0.35 },
-                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 3], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.2, style: 'residential', texP: 0.45, ruinP: 0.15, fenceKey: 'bricks_2', fenceH: 1.9 },
+                           { id: 'oldtown',   label: 'THE OLD TOWN',         rect: [-112, -88, 112, -44], storeys: [1, 3], lotW: [5.2, 7.4], lotD: [7, 10], lowP: 0.2, style: 'residential', texP: 0.45, ruinP: 0.15, packP: 0.6,   /* THE PACK BUILDINGS (2026-11-03): the Buildings pack's shop blocks among the old town's lots (the financial blocks are too shallow for them) */ fenceKey: 'bricks_2', fenceH: 1.9 },
                            { id: 'docks',     label: 'THE DOCKS',            rect: [-112, 44, 112, 88], storeys: [1, 3], lotW: [8, 11], lotD: [9, 12], lowP: 0.25, style: 'factory', texP: 0.4, ruinP: 0.45, fenceKey: 'urban:MetalCorrugatedPainted2a', fenceH: 2.2 },
                        ],
                        streets: [
@@ -40734,102 +40763,127 @@ const DOOR_HQ = {
             ],
             spawn: { x: 0, z: 45, face: 0 },
         },
-        /* ── THE CLOUD FIELDS — islands of cloud, the rift and its plank, the dais and THE GATE ── */
+        /* ── THE CLOUD FIELDS — THE NEW HEAVEN (2026-11-03): the gate, the sun, the two terraces, the grand stair, the cloud paths over the open sky ── */
         site_prebuilt_heaven_gate: {
             label: 'THE DIVINE STAIR · THE CLOUD FIELDS',
-            sub: 'THE GATE · THE DAIS · THE RIFT · THE STEPPING CLOUDS · THE HEALING POOLS · DOWN TO THE STAIR',
+            sub: 'THE GATE · THE SUN · THE TERRACES · THE CLOUD PATHS · THE GRAND STAIR · DOWN TO THE STAIR',
             kind: 'box', site: 'prebuilt_heaven', part: 'gate',
-            shell: hqDivineShell({ w: 84, d: 70, plate: { x: 0, z: -32, y: 5.0 } }),
-            /* THE FIELD (second pass, 2026-09-18 — the board room is bypassed: Room 777's
-               hotel door is THE BAY DOOR on the north wall, ON THE DAIS, so you arrive at
-               the top of everything and every stair from here goes DOWN to the dome): THE
-               DAIS (1.75 m) along the north with THE PEARLY WALLS either side of the gap
-               the steps come up into; cloud mounds and a hollow; THE RIFT (bottomless —
-               never entered) with THE PLANK over it; THE STEPPING CLOUDS west of the rift
-               (three floating clouds hopped up to THE LOOKOUT, 3.4 m); THE PILLAR OF LIGHT
-               in the east (4.6 m, floating — the tape's); two healing pools; the archive's
-               elevator on the west wall, Olympus's gate of cloud on the east; the top of
-               the stair on the south wall. */
+            shell: hqDivineShell({ w: 42, d: 42, plate: { x: 0, z: -20.6, y: 9.2 } }),
+            /* THE NEW HEAVEN (2026-11-03, mondo, with his concept art — "on the heave map, what is up with those platforms and how they have
+               ugly cutouts underneath them? Use this concept art to make a new heaven map"): the field is no longer the rooms plan's
+               cloud islands (THE RIFT, THE PLANK, THE STEPPING CLOUDS, THE PILLAR OF LIGHT, THE LOOKOUT, the two pools — the old field,
+               2026-09-18): it IS the concept's board, drawn square by square on the arena's own 3.5 m squares (hqSkyPlan, one string per
+               row, north first; the lattice 12 × 12, x = −21 + 3.5 col, z = −21 + 3.5 row) over THE VOID (terrain.void, the Spaceship's
+               rule: no ground, the field reads it as open sky, a fall comes back to the last ground stood on). THE GATE PLATFORM on the
+               north (half a metre up, three broad marble steps — the same battle level: the arena's spawn rows and its nexus are one level by
+               rule — the pearly gate and Room 777's hotel door — the bay door — between the two angels), THE SUN in the
+               middle (a round floor, the sun inlaid in gold on lavender — the nexus), THE TWO TERRACES east and west (an angel, a
+               column, a harp), THE GRAND STAIR's platform on the south (half a metre up the same way, the top of the stair — the stair door — on its
+               south edge), marble flights down off both raised platforms, and the CLOUD PATHS between them all: off the gate's corners
+               round to the terraces, the terraces into the sun, the sun up to the gate and down to the grand stair, the terraces round
+               to the grand stair's corners. Every platform is an island of rock hung in the sky (_hqBuildIslandRock), every cloud path a
+               cloud on its puffs, balustrades (the stair pack's balusters) wherever a platform meets the open sky, four little castles
+               on their own islands in the corners (THE CASTLE AND FORT PACK) and a sea of cloud under it all. The board is the same both
+               ways round (the two teams' halves mirror). Existing rules only: marble and cloud are plain floors, the gaps Open Sky. */
             terrain: { res: 0.5,
-                floor: 'cloud_2', cliff: 'cloud_thick', path: 'marble_light',
-                noise: { amp: 0.22, scale: 13 },
-                gen: { unit: 2, minIsland: 8.8, edge: 2, pathGrow: 2.2, forceGrow: 1.6, rim: 2.4, kind: 'rooms', seed: 12, loops: 3, thicket: false, wallH: 2.6 }, // THE FLOOR PLAN: cloud islands joined by cloud bridges
+                floor: 'marble_light', cliff: 'cloud_thick', path: 'cloud_2',
+                noise: { amp: 0, scale: 13 },
+                base: 2.5, void: { lip: 0.6, fall: -8, rock: 'rocks_5' },   // the open sky: every sample under 3.1 m (the floors stand at 3.2 and 3.7)
+                marks: [
+                    /* THE SUN (the nexus): the lavender disc, the gold rings, the sun and its sixteen rays */
+                    { k: 'ring', x: 0, z: 0, r: 2.6, w: 5.2, color: 0xb4a2e6, a: 0.55 },
+                    { k: 'ring', x: 0, z: 0, r: 5.45, w: 0.22, color: 0xd8b860, a: 0.9 }, { k: 'ring', x: 0, z: 0, r: 6.25, w: 0.12, color: 0xd8b860, a: 0.85 },
+                    { k: 'ring', x: 0, z: 0, r: 0.75, w: 1.5, color: 0xe8c860, a: 0.95 },
+                    ...Array.from({ length: 16 }, (_, i) => { const a = i * Math.PI / 8, r1 = (i % 2) ? 3.5 : 4.6; return { k: 'line', x0: Math.round(Math.sin(a) * 1.7 * 1000) / 1000, z0: Math.round(-Math.cos(a) * 1.7 * 1000) / 1000, x1: Math.round(Math.sin(a) * r1 * 1000) / 1000, z1: Math.round(-Math.cos(a) * r1 * 1000) / 1000, w: 0.22, color: 0xe8c860, a: 0.95 }; }),
+                    /* the gold stars: the gate's, the terraces', the grand stair's */
+                    ...[[0, -16.6, 1.6], [-17.5, 0, 1.4], [17.5, 0, 1.4], [0, 16.6, 1.6]].flatMap(([x, z, s]) => [
+                        { k: 'line', x0: x - s, z0: z, x1: x + s, z1: z, w: 0.16, color: 0xd8b860, a: 0.9 }, { k: 'line', x0: x, z0: z - s, x1: x, z1: z + s, w: 0.16, color: 0xd8b860, a: 0.9 },
+                        { k: 'ring', x: x, z: z, r: s * 0.45, w: 0.1, color: 0xd8b860, a: 0.85 }]),
+                ],
                 features: [
-                    { k: 'hill', x: -26, z: 12, r: 12, h: 1.4 },                                                        // the mounds
-                    { k: 'hill', x: 28, z: 16, r: 10, h: 1.0 },
-                    { k: 'dip', x: 8, z: 4, r: 8, h: 0.6 },                                                           // the hollow
-                    { k: 'pool', x: -7, z: -8.75, r: 7, rz: 3.5, y: -0.1, depth: 3.0, key: 'deep_water' },    // THE RIFT (never entered) — square to the grid (2026-10-26: was turned 20°), 4 × 2 squares
-                    { k: 'deck', x0: -8.75, z0: -17.5, x1: -8.75, z1: 0, w: 3.5, y: 0.3 },                                // THE PLANK over it, both banks
-                    { k: 'plateau', x: -1.75, z: -28, w: 31.5, d: 14, h: 1.75 },                                             // THE DAIS (the gate — the bay door — on it)
-                    { k: 'ramp', x0: 7, z0: -10.5, x1: 7, z1: -22, w: 8.8, h0: 0, h1: 1.75, stairs: true, float: true },   // the floating steps up to it (ending 0.5 m inside the dais's edge)
-                    { k: 'wall', x0: -17.5, z0: -21.5, x1: -3.5, z1: -21.5, h: 2.0, t: 1, key: 'marble_light' },      // THE PEARLY WALLS (the rider's)
-                    { k: 'wall', x0: 10.5, z0: -21.5, x1: 17.5, z1: -21.5, h: 2.0, t: 1, key: 'marble_light' },
-                    { k: 'plateau', x: 22.75, z: -15.75, r: 1.75, h: 4.6, edge: 0.6, float: true },                           // THE PILLAR OF LIGHT (the tape's) — hung in the air
-                    { k: 'plateau', x: -21, z: -3.5, r: 3.8, h: 1.2, edge: 0.6, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
-                    { k: 'plateau', x: -24.5, z: -14, r: 4.4, h: 2.4, edge: 0.6, float: true },
-                    { k: 'plateau', x: -28, z: -24.5, r: 3.5, h: 3.4, edge: 0.6, float: true },                     // THE LOOKOUT over the dais
-                    /* AREA CONTENT D4 (2026-09-20): two clouds hung in the fields — the dais sees one door, not two (R3) */
-                    { k: 'plateau', x: 15.75, z: -8.75, r: 1.75, h: 3.6, edge: 0.6, float: true },
-                    { k: 'plateau', x: 0, z: 7, r: 3.5, h: 3.5, edge: 0.6, float: true },
-                    { k: 'pool', x: 24.5, z: 7, r: 3.5, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
-                    { k: 'pool', x: -26.25, z: 5.25, r: 1.75, y: -0.05, depth: 0.5 },
-                    { k: 'rail', x0: -17.5, z0: -34.4, x1: -7, z1: -34.4 },                                              // the dais's back rail
-                    { k: 'path', pts: [[0, 32], [0, 16], [-8, 1]], w: 3.6 },                                         // the way from the stair, to the plank
-                    { k: 'path', pts: [[-8, -19.2], [0, -16], [6, -13.2]], w: 3.2 },                                     // off the plank to the steps
-                    { k: 'path', pts: [[0, 16], [16, 12], [24, 4]], w: 2.8 },                                            // to the east pool
-                    { k: 'path', pts: [[0, 16], [-20, 8]], w: 2.8 },                                                   // to the mound
-                    { k: 'path', pts: [[6, -25], [0, -28], [-12, -28]], w: 3.2 },                                    // across the dais
-                    { k: 'scatter', key: 'white_cloud', n: 6, seed: 5, r0: 0.4 },                                     // cloud puffs on the ground (foot 0)
+                    /* THE PLAN: '.' open sky · 'H' a raised platform (3.7) · 'P' a terrace (3.2) · 'S' the sun (3.2) · 's' under a flight (3.2) · 'c' a cloud path (3.2) */
+                    ...hqSkyPlan([
+                    '....HHHH....',
+                    '..HHHHHHHH..',
+                    '.ccHHssHHcc.',
+                    '.c...cc...c.',
+                    'PPP.cSSc.PPP',
+                    'PPPcSSSScPPP',
+                    'PPPcSSSScPPP',
+                    'PPP.cSSc.PPP',
+                    '.c...cc...c.',
+                    '.ccHHssHHcc.',
+                    '..HHHHHHHH..',
+                    '....HHHH....',
+                    ], { C: 3.5, x0: -21, z0: -21, proud: 0.45, rail: { model: 'balusters_d', out: -0.2 },
+                         legend: { H: { h: 3.7, top: 'marble_light', under: 'cloud', rail: true }, P: { h: 3.2, top: 'marble_light', under: 'cloud', rail: true }, S: { h: 3.2, top: 'marble_light', under: 'cloud' },
+                                   s: { h: 3.2, top: 'marble_light', under: 'cloud' }, c: { h: 3.2, under: 'cloud', path: true } } }),
+                    { k: 'plateau', x: 0, z: 0, r: 6.9, h: 3.2, edge: 0.15, float: true, top: 'marble_light', under: 'cloud' },   // THE SUN's round floor (no square's centre past the plus: the corners stay open sky)
+                    /* the sun's balustrade: the four quarter-arcs between the cloud paths */
+                    ...[32, 122, 212, 302].map(a0 => ({ k: 'rail', arc: { x: 0, z: 0, r: 6.65, a0: a0, a1: a0 + 26 }, y: 3.2, model: 'balusters_d', block: false })),
+                    /* THE FLIGHTS: marble, a parapet each side — down off the gate to the cloud path, up from the cloud path to the grand stair's platform */
+                    { k: 'ramp', x0: 0, z0: -10.1, x1: 0, z1: -14.3, w: 7, h0: 3.2, h1: 3.7, stairs: true, model: 'stone', key: 'marble_light', side: 'marble_light' },
+                    { k: 'ramp', x0: 0, z0: 10.1, x1: 0, z1: 14.3, w: 7, h0: 3.2, h1: 3.7, stairs: true, model: 'stone', key: 'marble_light', side: 'marble_light' },
+                    /* THE CASTLES' ISLANDS: in the four corners, under the floors (open sky to the board) */
+                    { k: 'plateau', x: -16.5, z: -17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 }, { k: 'plateau', x: 16.5, z: -17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 },
+                    { k: 'plateau', x: -16.5, z: 17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 }, { k: 'plateau', x: 16.5, z: 17.5, r: 4.2, h: -1.0, edge: 0.15, float: true, top: 'grass_2', depth: 6 },
                 ],
             },
-            /* the north wall at x 0, 1.75 m up on the dais, is THE BAY DOOR (siteRooms.entry, 2026-09-18): Room 777's hotel door — the board room is bypassed, the gate lands you here */
+            /* the north wall at x 0, ON THE GATE PLATFORM (4.95 m), is THE BAY DOOR (siteRooms.entry): Room 777's hotel door behind the pearly gate */
             doors: [
-                { id: 'stair', wall: 's', x: 0, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white
+                { id: 'stair', wall: 's', x: 0, y: 3.7, way: 'cloud',   // THE PASSAGES (2026-10-01): back to the stair through the white — off the grand stair's platform
                   label: 'THE STAIRWAY', sub: 'DOWN · FOUR FLIGHTS · TO THE DOME',
                   action: { room: 'site_prebuilt_heaven_stair', at: 'gates' },
                   desc: 'The top of the stair, from above. It goes down from here, which the sign does not admit.' },
             ],
             counters: [],
             props: [
-                { key: 'greek_column',   x: -19, z: -27 },                                   // the columns: the dais's two, the way in's two
-                { key: 'greek_column',   x: 19, z: -27 },
-                { key: 'greek_column',   x: -12, z: 31 },
-                { key: 'greek_column',   x: 11.7, z: 31 },
-                { key: 'fountain',       x: 28, z: -2 },
-                { key: 'lectern',        x: 4.4, z: -28.4, face: 180 },                          // THE BOOK, beside the gate
-                { key: 'park_bench',     x: -24, z: 18, face: 120 },                          // the waiting
-                { key: 'park_bench',     x: 17.75, z: 20, face: 240 },
-                { key: 'potted_plant',   x: -32, z: 30 },
-                { key: 'potted_plant',   x: 32, z: 30 },
-                { key: 'paper_sheet',    x: -3.75, z: 27.6, y: 0.01, face: 320 },                 // a form on the cloud: GATE — WHICH
-                /* THE VATICAN BATCH (2026-09-17): THE PEARLY GATE standing open in the gap of the pearly walls (the hotel door stays the leaf), the angels, the clouds */
-                { key: 'pearly_gate',    x: 7, z: -21.25, face: 0 },
-                { key: 'angel_statue',   x: -14, z: -30, face: 180 },
-                { key: 'angel_statue',   x: 14, z: -30, face: 180 },
-                { key: 'brazier',        x: -20, z: 24 },
-                { key: 'brazier',        x: 20, z: 24 },
-                { key: 'white_cloud',    x: -28, z: 16, y: 5.0 },                                 // THE FLOATING CLOUDS
-                { key: 'white_cloud',    x: 16, z: 16, y: 6.5 },
-                { key: 'white_cloud',    x: 32, z: -28, y: 4.5 },
-                { key: 'white_cloud',    x: -12, z: 28, y: 7.0 },
-                { key: 'white_cloud',    x: 11.7, z: -8, y: 8.0 },
-                { key: 'instrument_harp', x: -9.2, z: -29.2, face: 180 }, { key: 'instrument_harp', x: 21.8, z: 20.8, face: 250 }, { key: 'instrument_harp', x: 23.6, z: -24.8, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
+                /* THE GATE PLATFORM (3.7): the pearly gate, the angels, the book, a brazier */
+                { key: 'pearly_gate',    x: 0, z: -20.3, y: 3.7, face: 0 },
+                { key: 'angel_statue',   x: -8.75, z: -15.75, y: 3.7, face: 180 }, { key: 'angel_statue', x: 8.75, z: -15.75, y: 3.7, face: 180 },
+                { key: 'lectern',        x: -5.25, z: -12.25, y: 3.7, face: 180 },   // THE BOOK, beside the flight
+                { key: 'brazier',        x: 5.25, z: -12.25, y: 3.7 },
+                { key: 'paper_sheet',    x: -10.2, z: -13.2, y: 3.71, face: 320 },   // a form on the marble: GATE — WHICH
+                /* THE GRAND STAIR's PLATFORM (3.7): the columns, the braziers */
+                { key: 'greek_column',   x: -8.75, z: 15.75, y: 3.7 }, { key: 'greek_column', x: 8.75, z: 15.75, y: 3.7 },
+                { key: 'brazier',        x: -5.25, z: 12.25, y: 3.7 }, { key: 'brazier', x: 5.25, z: 12.25, y: 3.7 },
+                /* THE TERRACES (3.2): an angel and a column on each outer edge, a harp */
+                { key: 'angel_statue',   x: -19.25, z: -1.75, y: 3.2, face: 90 }, { key: 'angel_statue', x: 19.25, z: 1.75, y: 3.2, face: 270 },
+                { key: 'greek_column',   x: -19.25, z: 1.75, y: 3.2 }, { key: 'greek_column', x: 19.25, z: -1.75, y: 3.2 },
+                { key: 'instrument_harp', x: -15.6, z: -5.0, y: 3.2, face: 120 }, { key: 'instrument_harp', x: 15.6, z: 5.0, y: 3.2, face: 300 },   // THE INSTRUMENTS (2026-10-27): the angels' harps
+                /* THE SUN (3.2): a harp (no potted plants: mondo 11-03 "potted plants in heaven?") */
+                { key: 'instrument_harp', x: 2.9, z: -6.3, y: 3.2, face: 200 },
+                /* THE CASTLES (THE CASTLE AND FORT PACK, McSteeg): a keep, two towers and a gate on each corner island, facing the sun */
+                { key: 'castle_tower', x: -17.39, z: -18.45, y: -1.0, face: 136.68 }, { key: 'castle_tower', x: -17.39, z: -18.45, y: 1.0, face: 136.68 }, { key: 'castle_cone', x: -17.39, z: -18.45, y: 3.0, face: 136.68 }, { key: 'castle_tower', x: -17.57, z: -14.84, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -17.57, z: -14.84, y: 1.0, face: 136.68 }, { key: 'castle_tower', x: -13.79, z: -18.41, y: -1.0, face: 136.68 }, { key: 'castle_tower_top', x: -13.79, z: -18.41, y: 1.0, face: 136.68 }, { key: 'castle_gate', x: -15.68, z: -16.63, y: -1.0, face: 46.68 }, { key: 'castle_wall', x: -18.76, z: -19.9, y: -1.0, face: 46.68 },
+                { key: 'castle_tower', x: 17.39, z: -18.45, y: -1.0, face: 223.32 }, { key: 'castle_tower', x: 17.39, z: -18.45, y: 1.0, face: 223.32 }, { key: 'castle_cone', x: 17.39, z: -18.45, y: 3.0, face: 223.32 }, { key: 'castle_tower', x: 13.79, z: -18.41, y: -1.0, face: 223.32 }, { key: 'castle_tower_top', x: 13.79, z: -18.41, y: 1.0, face: 223.32 }, { key: 'castle_tower', x: 17.57, z: -14.84, y: -1.0, face: 223.32 }, { key: 'castle_tower_top', x: 17.57, z: -14.84, y: 1.0, face: 223.32 }, { key: 'castle_gate', x: 15.68, z: -16.63, y: -1.0, face: 133.32 }, { key: 'castle_wall', x: 18.76, z: -19.9, y: -1.0, face: 133.32 },
+                { key: 'castle_tower', x: -17.39, z: 18.45, y: -1.0, face: 43.32 }, { key: 'castle_tower', x: -17.39, z: 18.45, y: 1.0, face: 43.32 }, { key: 'castle_cone', x: -17.39, z: 18.45, y: 3.0, face: 43.32 }, { key: 'castle_tower', x: -13.79, z: 18.41, y: -1.0, face: 43.32 }, { key: 'castle_tower_top', x: -13.79, z: 18.41, y: 1.0, face: 43.32 }, { key: 'castle_tower', x: -17.57, z: 14.84, y: -1.0, face: 43.32 }, { key: 'castle_tower_top', x: -17.57, z: 14.84, y: 1.0, face: 43.32 }, { key: 'castle_gate', x: -15.68, z: 16.63, y: -1.0, face: 313.32 }, { key: 'castle_wall', x: -18.76, z: 19.9, y: -1.0, face: 313.32 },
+                { key: 'castle_tower', x: 17.39, z: 18.45, y: -1.0, face: 316.68 }, { key: 'castle_tower', x: 17.39, z: 18.45, y: 1.0, face: 316.68 }, { key: 'castle_cone', x: 17.39, z: 18.45, y: 3.0, face: 316.68 }, { key: 'castle_tower', x: 17.57, z: 14.84, y: -1.0, face: 316.68 }, { key: 'castle_tower_top', x: 17.57, z: 14.84, y: 1.0, face: 316.68 }, { key: 'castle_tower', x: 13.79, z: 18.41, y: -1.0, face: 316.68 }, { key: 'castle_tower_top', x: 13.79, z: 18.41, y: 1.0, face: 316.68 }, { key: 'castle_gate', x: 15.68, z: 16.63, y: -1.0, face: 226.68 }, { key: 'castle_wall', x: 18.76, z: 19.9, y: -1.0, face: 226.68 },
+                /* THE CLOUD SEA (hung over the open sky, THE OPEN SKY in three-renderer.js): a field of clouds 8-11 m under the board, then the bank round it */
+                { key: 'white_cloud', x: -27.72, z: -19.74, y: -10.01, span: 11.28 }, { key: 'white_cloud', x: -28.08, z: -7.48, y: -10.72, span: 12.09 }, { key: 'white_cloud', x: -28.12, z: -2.36, y: -8.79, span: 11.6 }, { key: 'white_cloud', x: -26.74, z: 10.26, y: -8.37, span: 11.53 },
+                { key: 'white_cloud', x: -27.29, z: 18.55, y: -10.41, span: 13.97 }, { key: 'white_cloud', x: -20.93, z: -27.11, y: -9.84, span: 12.42 }, { key: 'white_cloud', x: -20.05, z: -9.19, y: -10.61, span: 13.17 }, { key: 'white_cloud', x: -16.68, z: 1.25, y: -8.58, span: 12.06 },
+                { key: 'white_cloud', x: -17.11, z: 9.27, y: -10.46, span: 14.0 }, { key: 'white_cloud', x: -9.14, z: -28.44, y: -8.72, span: 11.58 }, { key: 'white_cloud', x: -10.69, z: -19.36, y: -9.94, span: 13.19 }, { key: 'white_cloud', x: -9.71, z: -7.28, y: -10.27, span: 11.93 },
+                { key: 'white_cloud', x: -7.28, z: -1.25, y: -9.14, span: 12.53 }, { key: 'white_cloud', x: -10.43, z: 9.67, y: -10.55, span: 13.12 }, { key: 'white_cloud', x: -8.76, z: 20.8, y: -9.2, span: 11.78 }, { key: 'white_cloud', x: -8.48, z: 29.82, y: -9.45, span: 11.9 },
+                { key: 'white_cloud', x: -1.49, z: -28.88, y: -10.08, span: 13.99 }, { key: 'white_cloud', x: -0.57, z: -21.07, y: -10.21, span: 11.22 }, { key: 'white_cloud', x: 2.13, z: -10.62, y: -9.55, span: 12.65 }, { key: 'white_cloud', x: 0.38, z: 2.08, y: -8.36, span: 13.83 },
+                { key: 'white_cloud', x: 1.27, z: 10.7, y: -8.79, span: 13.9 }, { key: 'white_cloud', x: -0.55, z: 18.79, y: -10.74, span: 13.78 }, { key: 'white_cloud', x: 1.97, z: 30.27, y: -8.55, span: 13.98 }, { key: 'white_cloud', x: 7.08, z: -30.39, y: -8.47, span: 11.87 },
+                { key: 'white_cloud', x: 11.46, z: -20.66, y: -8.68, span: 13.68 }, { key: 'white_cloud', x: 10.34, z: -11.44, y: -8.91, span: 13.94 }, { key: 'white_cloud', x: 11.02, z: 0.88, y: -9.69, span: 11.36 }, { key: 'white_cloud', x: 7.17, z: 7.8, y: -9.97, span: 11.95 },
+                { key: 'white_cloud', x: 10.75, z: 18.54, y: -8.99, span: 12.98 }, { key: 'white_cloud', x: 9.79, z: 28.75, y: -8.33, span: 11.42 }, { key: 'white_cloud', x: 19.93, z: -28.04, y: -8.65, span: 11.83 }, { key: 'white_cloud', x: 19.36, z: -7.66, y: -11.08, span: 13.05 },
+                { key: 'white_cloud', x: 20.61, z: 1.37, y: -9.1, span: 13.45 }, { key: 'white_cloud', x: 20.63, z: 9.22, y: -11.07, span: 12.95 }, { key: 'white_cloud', x: 18.02, z: 27.94, y: -10.76, span: 13.57 }, { key: 'white_cloud', x: 28.46, z: -16.83, y: -10.87, span: 12.23 },
+                { key: 'white_cloud', x: 26.24, z: -10.68, y: -8.44, span: 13.25 }, { key: 'white_cloud', x: 29.34, z: 0.73, y: -10.29, span: 12.59 }, { key: 'white_cloud', x: 27.48, z: 9.1, y: -8.65, span: 11.63 }, { key: 'white_cloud', x: 26.06, z: 20.47, y: -10.0, span: 13.17 },
+                { key: 'white_cloud', x: -2.9, z: -31.92, y: 2.99, span: 9.31 }, { key: 'white_cloud', x: 17.3, z: -25.09, y: 3.08, span: 10.28 }, { key: 'white_cloud', x: 23.37, z: -15.44, y: 2.55, span: 10.15 }, { key: 'white_cloud', x: 29.34, z: 1.67, y: 2.66, span: 9.69 },
+                { key: 'white_cloud', x: 23.84, z: 16.67, y: 2.8, span: 10.55 }, { key: 'white_cloud', x: 14.89, z: 24.49, y: 2.75, span: 8.0 }, { key: 'white_cloud', x: -1.47, z: 29.58, y: 2.69, span: 8.87 }, { key: 'white_cloud', x: -17.04, z: 25.05, y: 3.48, span: 8.49 },
+                { key: 'white_cloud', x: -24.95, z: 15.2, y: 2.87, span: 10.52 }, { key: 'white_cloud', x: -28.99, z: -0.57, y: 1.33, span: 9.02 }, { key: 'white_cloud', x: -25.96, z: -13.72, y: 1.59, span: 9.46 }, { key: 'white_cloud', x: -13.13, z: -26.9, y: 1.77, span: 9.87 },
             ],
             agents: [],
             npcSpots: [
-                { x: -5.2, z: -28, face: 90, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
-                { x: 20, z: 4, face: 250, race: 'priest', gender: 'male', say: '“The pools are for the injured. I am here on a technicality.”' },
-                { x: -18, z: 7, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
+                { x: -19.4, z: -16.2, face: 135, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
             ],
             onlineSpots: [],
             lines: [
                 '“Is this the queue?” “This is the field.” “Where is the queue?” “This is the queue.”',
-                '“The plank is the only way over.” “There is a way round.” “The way round is the plank.”',
                 '“Room 777 has no door on the inside.” “Then how do they leave?” “They are asked to wait.”',
-                '“The pillar of light is structural.” “It has no stair.” “Faith has no stair.”',
                 '“Everything from here goes down.” “To where?” “To a telescope. Do not look back up through it.”',
             ],
-            spawn: { x: 0, z: -29, face: 180 },
+            spawn: { x: 0, z: -17.2, face: 180 },
         },
         /* ═══════════════════════════════════════════════════════════════════
            CAMELOT CASTLE (2026-09-18 — THE COMPLEX CANDIDATES #2: "the exterior
@@ -41903,6 +41957,10 @@ const DOOR_HQ = {
                 { key: 'signpost',        x: 10, z: 26 },
                 { key: 'warning_tape',    x: 18, z: 5.5, face: 0 },
                 { key: 'quarter_pipe',    x: 10, z: 20, face: 90 }, { key: 'quarter_pipe', x: 26, z: 20, face: 270 },  // THE PARK RULE: the half pipe on the apron
+                /* THE TRAILERS PAST THE FENCE (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): the Trailer Park's
+                   trailers one by one on the desert past the open edge (the outer ground), their doors to the base, clear of the gate road */
+                { key: 'trailer_home_1',  x: -30, z: -42.5, face: 180 }, { key: 'trailer_home_3', x: -13, z: -43, face: 180 },
+                { key: 'trailer_home_5',  x: 18, z: -42.5, face: 180 }, { key: 'trailer_home_2', x: -55, z: -18, face: 90 },
             ],
             agents: [],
             npcSpots: [
@@ -43149,8 +43207,12 @@ const DOOR_HQ = {
                D (hall H), hall I back to the doorway's space (loop 3). TRENCH I (off A) and TRENCH II (off B) are dead-end cuts sunk a
                metre; the ley's mouth on the north wall is its own space off hall D (hall J) — a door pair into the tunnels, the same site
                (never a link). The doors never see each other. */
+            /* THE TELL'S EARTH (2026-11-03, mondo: "I like the terrain texture that has the glyphs on it but this is way too much on the map,
+               like that should only be for ancient structures, not for the ground"): the unexcavated mound and the dig's cut faces wear
+               plain earth (dirt_4); the glyph stone (rock_wall_1) stays on what was BUILT — the ring walls, the bastions, the benches, the
+               built stairs. `outer.sheet: 'solid'`: the mound's earth runs on past the room's edge (no straight line where it stopped) */
             terrain: { res: 1,
-                floor: 'dirt_3', cliff: 'rock_wall_1', path: 'dirt_2',
+                floor: 'dirt_3', cliff: 'dirt_4', path: 'dirt_2', outer: { sheet: 'solid' },
                 noise: { amp: 0, scale: 14 }, crag: false,
                 gen: { minIsland: 8.8, edge: 1.8, pathGrow: 2.2, kind: 'plan', look: 'rock', wallH: 3.4, jitter: 0.1, topNoise: 0.3, rim: 0, forceGrow: -0.8 },   // THE LAYOUT: the unexcavated tell a bank drawn by hand
                 features: [
@@ -43261,8 +43323,8 @@ const DOOR_HQ = {
                        the bedrock left standing is a TERRACE on each flank (squares 0..1 × 1..6 west, 10..11 × 5..10 east, one level up)
                        with a built stair down to the floor at its end, the TWO GREAT PILLARS stand on their pedestals either side of the
                        nexus (squares 3 and 8 × 5..6), two lesser pillars (2 × 8, 9 × 3) and two stone benches (3 × 3, 8 × 8, one level
-                       up) are the cover — the middle four columns stay open ground, so the 9 / 10 / 11 cuts all fit, and ten lesser pillars stand in the ring wall round the pit facing in. Outside the ring a ledge runs round
-                       the pit at the old ground (the walk round it, the ring wall's two gaps on the terraces), the unexcavated tell
+                       up) are the cover — the middle four columns stay open ground, so the 9 / 10 / 11 cuts all fit, and ten lesser pillars stand on the ledge round the pit facing in (no ring wall since 2026-11-03). A ledge runs round
+                       the pit at the old ground (the walk round it), the unexcavated tell
                        stands round that, a hall west to hall C and one south to the east flank. bake-arenas.js cuts every arena size
                        here (HQ_ARENA_RULES.within). */
                     { k: 'space', x: 87.5, z: 0, w: 74, d: 74, round: true },                                                    // ENCLOSURE E (the pit, the ring wall, the ledge round it)
@@ -43275,14 +43337,10 @@ const DOOR_HQ = {
                     { k: 'ramp', x0: 105, z0: -10.5, x1: 105, z1: -3.5, w: 7, h0: -1.75, h1: 0, stairs: true, built: true, edge: 0.3, key: 'rock_wall_1' },   // the east stair up to the east terrace (10..11 × 3..4)
                     { k: 'plateau', x: 78.75, z: 0, w: 3.5, d: 7, h: -1.45, blend: 'ground', edge: 0.2 },                     // the west great pillar's pedestal (3 × 5..6)
                     { k: 'plateau', x: 96.25, z: 0, w: 3.5, d: 7, h: -1.45, blend: 'ground', edge: 0.2 },                     // the east great pillar's pedestal (8 × 5..6)
-                    /* the ring wall (1.8 m on the ledge, its inner face on the board's edge; a wall row draws its box half its thickness past
-                       each end, so the runs below meet square at the corners) and its two gaps: the west terrace (squares 3..4), the east (7..8) */
-                    { k: 'wall', x0: 65.6, z0: -21.9, x1: 109.4, z1: -21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },                // north
-                    { k: 'wall', x0: 65.6, z0: 21.9, x1: 109.4, z1: 21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },                  // south
-                    { k: 'wall', x0: 65.6, z0: -21.9, x1: 65.6, z1: -11.4, h: 1.8, t: 1.8, key: 'rock_wall_1' },                  // west
-                    { k: 'wall', x0: 65.6, z0: -2.6, x1: 65.6, z1: 21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },
-                    { k: 'wall', x0: 109.4, z0: -21.9, x1: 109.4, z1: 2.6, h: 1.8, t: 1.8, key: 'rock_wall_1' },                   // east
-                    { k: 'wall', x0: 109.4, z0: 11.4, x1: 109.4, z1: 21.9, h: 1.8, t: 1.8, key: 'rock_wall_1' },
+                    /* NO RING WALL (2026-11-03, mondo: "why are there t-pillars on top of these walls? get rid of the walls"): the six runs of
+                       the 1.8 m ring wall round the board's edge are gone. The ten lesser pillars had been set INTO it (the real enclosures'
+                       pillars are built into their stone walls), but a prop stands on the ground under its foot and a wall row IS that ground,
+                       so every one of them stood on the wall's top. They stand free on the ledge round the pit now, facing in. */
                     /* the four BASTIONS: one stone block per square (a zero-length row t 1.75 is a box exactly its square, and THE FIELD
                        reads its top on that square only), 2.2 m on the old ground — two levels over the pit floor */
                     { k: 'wall', x0: 68.25, z0: -19.25, x1: 68.25, z1: -19.25, h: 2.2, t: 3.5, key: 'rock_wall_1' },          // NW: 0 × 0
@@ -43299,12 +43357,18 @@ const DOOR_HQ = {
                     { k: 'wall', x0: 106.75, z0: 15.75, x1: 106.75, z1: 15.75, h: 2.2, t: 3.5, key: 'rock_wall_1' },            // 11 × 10
                     { k: 'wall', x0: 78.75, z0: -8.75, x1: 78.75, z1: -8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },          // a stone bench, one level up (3 × 3)
                     { k: 'wall', x0: 96.25, z0: 8.75, x1: 96.25, z1: 8.75, h: 1.3, t: 3.5, key: 'rock_wall_1' },            // its twin (8 × 8)
-                    /* the pillars' own stone for the battle: a wall row inside each shaft (never seen — the pillar is drawn round it) is the
-                       ground THE FIELD reads there, as Stonehenge's sarsens are, so a pillar is a tall square nobody walks through */
-                    { k: 'wall', x0: 78.75, z0: -0.9, x1: 78.75, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the west great pillar (3 × 5..6)
-                    { k: 'wall', x0: 96.25, z0: -0.9, x1: 96.25, z1: 0.9, h: 5.45, t: 1, key: 'rock_wall_1' },             // the east great pillar (8 × 5..6)
-                    { k: 'wall', x0: 74.75, z0: 8.75, x1: 75.75, z1: 8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },            // the lesser pillar at 2 × 8
-                    { k: 'wall', x0: 99.25, z0: -8.75, x1: 100.25, z1: -8.75, h: 3.15, t: 0.6, key: 'rock_wall_1' },          // the lesser pillar at 9 × 3
+                    /* the pillars' own stone for the battle: a wall row inside each shaft is the ground THE FIELD reads there, so a pillar is
+                       a tall square nobody walks through. GHOSTS (2026-11-03, mondo: "the t-pillars are still standing on top of the walls"):
+                       the rows were drawn (a 5.45 m glyph block under each great pillar, 3.15 m under the lesser ones) and the pillar props
+                       stood on their tops — `ghost: true` = never drawn, still the walker's and the fight's; the props stand on the floor
+                       under them (`floor: true`). THE SIZE (2026-11-03, mondo: "the pillars look small, they are supposed to the space of one square
+                       and be like 2 or 3 squares tall"): each pit pillar stands on a battle square's centre, its head one square wide (8.4 m great,
+                       7 m lesser: a T-pillar's head is 0.41 × its height), its stone a 2.6 m column as tall as it over the square (the fight's: the square is the
+                       pillar's); the ten round the rim 6.6-7.4 m, stood back off the board's edge so their heads clear it */
+                    { k: 'wall', x0: 78.75, z0: -1.75, x1: 78.75, z1: -1.75, h: 8.4, t: 2.6, key: 'rock_wall_1', ghost: true },             // the west great pillar (3.5 m square 3 × 5)
+                    { k: 'wall', x0: 96.25, z0: 1.75, x1: 96.25, z1: 1.75, h: 8.4, t: 2.6, key: 'rock_wall_1', ghost: true },             // the east great pillar (3.5 m square 8 × 6)
+                    { k: 'wall', x0: 75.25, z0: 8.75, x1: 75.25, z1: 8.75, h: 7.0, t: 2.6, key: 'rock_wall_1', ghost: true },            // the lesser pillar (3.5 m square 2 × 8)
+                    { k: 'wall', x0: 99.75, z0: -8.75, x1: 99.75, z1: -8.75, h: 7.0, t: 2.6, key: 'rock_wall_1', ghost: true },          // the lesser pillar (3.5 m square 9 × 3)
                     { k: 'path', pts: [[121.3, 0], [120.14, 8.74], [116.78, 16.9], [111.4, 23.9], [104.4, 29.28], [96.24, 32.64], [87.5, 33.8], [78.76, 32.64], [70.6, 29.28], [63.6, 23.9], [58.22, 16.9], [54.86, 8.74], [53.7, 0], [54.86, -8.74], [58.22, -16.9], [63.6, -23.9], [70.6, -29.28], [78.76, -32.64], [87.5, -33.8], [96.24, -32.64], [104.4, -29.28], [111.4, -23.9], [116.78, -16.9], [120.14, -8.74], [121.3, 0]], w: 2.8 },   // the walk round the ring wall
                 ],
             },
@@ -43316,15 +43380,18 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* THE ENCLOSURES: the T-pillars (two great ones in the middle of each, the ring round them) */
+                /* THE ENCLOSURES: the T-pillars (two great ones in the middle of each, the ring round them). OFF THE WALLS (2026-11-03, mondo:
+                   "why are there t-pillars on top of these walls?"): four of the ring's pillars (B's, C's two, D's) had their foot inside a
+                   ring wall row and stood on its top, two more (A's, B's) leaned on one. They stand clear of the stone now: on the rim inside
+                   the wall where it is wide enough, else on the sunk floor 8.2 m out (where the wall's chord comes close to the floor's edge) */
                 { key: 't_pillar',       x: -36.75, z: -15.875, face: 90, h: 4.6 }, { key: 't_pillar', x: -29.875, z: -15.875, face: 90, h: 4.6 },
-                { key: 't_pillar',       x: -33.25, z: -24.933, face: 0, h: 3.0 }, { key: 't_pillar', x: -41.299, z: -10.412, face: 60, h: 3.0 }, { key: 't_pillar', x: -25.654, z: -8.302, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: -33.25, z: -24.933, face: 0, h: 3.0 }, { key: 't_pillar', x: -41.007, z: -10.605, face: 60, h: 3.0 }, { key: 't_pillar', x: -25.654, z: -8.302, face: 300, h: 3.0 },
                 { key: 't_pillar',       x: 19.25, z: -26.25, face: 90, h: 4.6 }, { key: 't_pillar', x: 26.325, z: -26.25, face: 90, h: 4.6 },
-                { key: 't_pillar',       x: 22.75, z: -35.366, face: 0, h: 3.0 }, { key: 't_pillar', x: 14.751, z: -20.912, face: 60, h: 3.0 }, { key: 't_pillar', x: 30.346, z: -18.827, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: 22.75, z: -35.366, face: 0, h: 3.0 }, { key: 't_pillar', x: 15.001, z: -21.079, face: 60, h: 3.0 }, { key: 't_pillar', x: 28.615, z: -20.519, face: 300, h: 3.0 },
                 { key: 't_pillar',       x: -12.125, z: 26.25, face: 90, h: 4.6 }, { key: 't_pillar', x: -5.125, z: 26.25, face: 90, h: 4.6 },
-                { key: 't_pillar',       x: -8.875, z: 17.067, face: 0, h: 3.0 }, { key: 't_pillar', x: -16.999, z: 31.838, face: 60, h: 3.0 }, { key: 't_pillar', x: -1.202, z: 33.846, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: -8.875, z: 17.067, face: 0, h: 3.0 }, { key: 't_pillar', x: -16.325, z: 31.382, face: 60, h: 3.0 }, { key: 't_pillar', x: -2.97, z: 32.067, face: 300, h: 3.0 },
                 { key: 't_pillar',       x: 33.175, z: 15.75, face: 90, h: 4.6 },                                                          // D's other great pillar (THE SENTINEL is the tier beside it)
-                { key: 't_pillar',       x: 36.75, z: 6.817, face: 0, h: 3.0 }, { key: 't_pillar', x: 28.701, z: 21.088, face: 60, h: 3.0 }, { key: 't_pillar', x: 44.173, z: 23.298, face: 300, h: 3.0 },
+                { key: 't_pillar',       x: 36.75, z: 6.817, face: 0, h: 3.0 }, { key: 't_pillar', x: 28.701, z: 21.088, face: 60, h: 3.0 }, { key: 't_pillar', x: 42.5, z: 21.596, face: 300, h: 3.0 },
                 /* THE DIG: the crates, the fire, the rail, the signs, the forms */
                 { key: 'cardboard_boxes', x: -78.75, z: 61.125, face: 20 }, { key: 'cardboard_boxes', x: -47.125, z: 61.125, face: 340 },
                 { key: 'campfire',       x: -43.675, z: 50.75 },
@@ -43335,14 +43402,14 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -26.25, z: -78.75 }, { key: 'brazier', x: -12.125, z: -78.75 },
                 { key: 'brazier',        x: 36.75, z: 25.041 },
                 /* ENCLOSURE E (2026-10-20): the two great pillars on their pedestals either side of the nexus (broad faces to each other),
-                   the ten lesser ones set in the ring wall (narrow face in, as the dig found them), two standing in the pit, two stones,
+                   the ten lesser ones round the pit's rim on the ledge (narrow face in; the ring wall they stood on is gone, 2026-11-03), two standing in the pit, two stones,
                    a brazier on each bastion (the pit's light) — every one on its square, the layout half-turn symmetric */
-                { key: 't_pillar',       x: 78.75, z: 0, face: 90, h: 5.5 }, { key: 't_pillar', x: 96.25, z: 0, face: 270, h: 5.5 },
-                { key: 't_pillar',       x: 78.75, z: -21.696, face: 90, h: 3.2 }, { key: 't_pillar', x: 96.25, z: -21.696, face: 90, h: 3.4 },
-                { key: 't_pillar',       x: 78.75, z: 21.696, face: 270, h: 3.4 }, { key: 't_pillar', x: 96.25, z: 21.696, face: 270, h: 3.2 },
-                { key: 't_pillar',       x: 65.7, z: -12.25, face: 180, h: 3.0 }, { key: 't_pillar', x: 65.7, z: 1.875, face: 180, h: 3.4 }, { key: 't_pillar', x: 65.7, z: 12.25, face: 180, h: 3.2 },
-                { key: 't_pillar',       x: 109.3, z: 12.25, face: 0, h: 3.0 }, { key: 't_pillar', x: 109.3, z: -1.875, face: 0, h: 3.4 }, { key: 't_pillar', x: 109.3, z: -12.25, face: 0, h: 3.2 },
-                { key: 't_pillar',       x: 75, z: 8.9, face: 0, h: 3.2 }, { key: 't_pillar', x: 99.5, z: -8.875, face: 180, h: 3.2 },
+                { key: 't_pillar',       x: 78.75, z: -1.75, face: 90, h: 8.4, w: 3.5, floor: true }, { key: 't_pillar', x: 96.25, z: 1.75, face: 270, h: 8.4, w: 3.5, floor: true },
+                { key: 't_pillar',       x: 78.75, z: -22.75, face: 90, h: 7.0, w: 3.5 }, { key: 't_pillar', x: 96.25, z: -22.75, face: 90, h: 7.4, w: 3.5 },
+                { key: 't_pillar',       x: 78.75, z: 22.75, face: 270, h: 7.4, w: 3.5 }, { key: 't_pillar', x: 96.25, z: 22.75, face: 270, h: 7.0, w: 3.5 },
+                { key: 't_pillar',       x: 64.75, z: -12.25, face: 180, h: 6.6, w: 3.5 }, { key: 't_pillar', x: 64.75, z: 1.875, face: 180, h: 7.4, w: 3.5 }, { key: 't_pillar', x: 64.75, z: 12.25, face: 180, h: 7.0, w: 3.5 },
+                { key: 't_pillar',       x: 110.25, z: 12.25, face: 0, h: 6.6, w: 3.5 }, { key: 't_pillar', x: 110.25, z: -1.875, face: 0, h: 7.4, w: 3.5 }, { key: 't_pillar', x: 110.25, z: -12.25, face: 0, h: 7.0, w: 3.5 },
+                { key: 't_pillar',       x: 75.25, z: 8.75, face: 0, h: 7.0, w: 3.5, floor: true }, { key: 't_pillar', x: 99.75, z: -8.75, face: 180, h: 7.0, w: 3.5, floor: true },
                 { key: 'brazier',        x: 68.25, z: -19.125, y: 2.2 }, { key: 'brazier', x: 106.75, z: -19.125, y: 2.2 },
                 { key: 'brazier',        x: 68.25, z: 19.25, y: 2.2 }, { key: 'brazier', x: 106.75, z: 19.25, y: 2.2 },
             ],
@@ -43367,7 +43434,7 @@ const DOOR_HQ = {
             label: 'GIZA · THE PLATEAU',
             sub: 'THE GREAT PYRAMID · THE NORTH STAIR · KHAFRE · MENKAURE · THE SPHINX · THE CAUSEWAY · THE DIG',
             kind: 'box', site: 'prebuilt_giza', part: 'plateau',
-            shell: hqAncientShell({ w: 300, d: 240, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c, plate: { x: 0, z: -117.3, y: 5.0 },
+            shell: hqAncientShell({ w: 300, d: 240, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: 0, z: -117.3, y: 5.0 },
                                     mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
                                     sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'pyramids', density: 0.7 },
                                     look: HQ_ROOM_LOOKS.plateau }),
@@ -43385,25 +43452,10 @@ const DOOR_HQ = {
             terrain: { res: 1,
                 floor: 'desert', cliff: 'bricks_1', path: 'dirt_2',
                 noise: { amp: 0, scale: 20 }, crag: false,
-                gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'walls', wallKey: 'bricks_1', wallH: 4.5, rim: 0, forceGrow: -0.6 },   // THE LAYOUT: walled courts in the dressed stone
                 features: [
+                    /* THE OPEN PLATEAU (2026-11-03, mondo: "get rid of Giza, Agartha, Technoticlan, and Babel's walled courts"): the L6 walls plan below is gone — no court walls, no halls, no black pits; the pyramids, the sphinx, the causeway, the dig and the trenches stand on the open sand. */
                     /* THE ROOMS */
-                    { k: 'space', x: 0, z: 100, w: 32, d: 36 },                           // the sealed tomb door's court (the bay door)
-                    { k: 'space', x: -60, z: -44.5, w: 136, d: 145 },                   // THE GREAT PYRAMID's court (THE NORTH STAIR, THE ROBBERS' TUNNEL)
-                    { k: 'space', x: -60, z: 38, w: 32, d: 20 },                         // room 1 (the twin obelisks), in front of the pyramid's court
-                    { k: 'space', x: 29, z: -74, w: 30, d: 52 },                       // THE DIG
-                    { k: 'space', x: 87, z: -63, w: 78, d: 86 },                     // KHAFRE's court
-                    { k: 'space', x: 55, z: 42, w: 58, d: 52 },                        // THE SPHINX's court
-                    { k: 'space', x: 111, z: 56, w: 46, d: 52 },                        // MENKAURE's court (a dead end)
-                    { k: 'space', x: 32, z: 90, w: 24, d: 20 },                          // side room 1 (a dead end: TRENCH II)
                     /* THE HALLS */
-                    { k: 'hall', pts: [[0, 83], [0, 52.5]], w: 7 },                  // THE CAUSEWAY, north from the door's court (2 squares)
-                    { k: 'hall', pts: [[-59.5, 52.5], [27, 52.5]], w: 7 },        // … west to room 1, east to the sphinx's paws
-                    { k: 'hall', pts: [[7, -80.5], [15, -80.5]], w: 7 },                // hall C: the pyramid's court to THE DIG
-                    { k: 'hall', pts: [[43, -59.5], [49, -59.5]], w: 7 },              // hall D: THE DIG to KHAFRE's court
-                    { k: 'hall', pts: [[72, -21], [72, -4], [56, -4], [56, 17]], w: 6.8 },   // hall F: KHAFRE's court down to the sphinx's (the loop)
-                    { k: 'hall', pts: [[83, 64], [89, 64]], w: 6 },                  // hall G: the sphinx's court to MENKAURE's
-                    { k: 'hall', pts: [[15, 90], [21, 90]], w: 6 },                   // hall H: the door's court to side room 1
                     /* THE GREAT PYRAMID: four crisp tiers and THE NORTH STAIR's four built flights — THE SQUARES (2026-10-26, mondo: "redesign the maps
                        with the square grid in mind"): every tier 34 / 24 / 14 / 4 squares about the square corner (−29.75, −21), each ledge
                        5 squares deep, each flight 2 squares wide with both ends on square lines (none steeper than it was) */
@@ -43464,6 +43516,12 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[4, 20], [4, -80], [28, -80], [28, -60], [72, -60]], w: 4 },                             // to the dig and on
                     { k: 'scatter', key: 'cave_stone', n: 12, seed: 8 },
                     { k: 'scatter', key: 'skull_pile', n: 2, x: 32, z: -94, r: 8, seed: 9 },
+                    /* THE OPEN PLATEAU's board (the sand in front of the sphinx, the causeway along its west side; 180° twins about (17.5, 77)):
+                       four fallen casing blocks of the dressed stone (one square deep, two long, 1.4 m) and two obelisks on one-square ghost
+                       blocks (props are not fight squares) */
+                    { k: 'wall', x0: 25.5, z0: 71.75, x1: 29.0, z1: 71.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 6.0, z0: 82.25, x1: 9.5, z1: 82.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 6.0, z0: 65.75, x1: 9.5, z1: 65.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 25.5, z0: 88.25, x1: 29.0, z1: 88.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 33.25, z0: 61.25, x1: 33.25, z1: 61.25, h: 5.0, t: 2.4, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 92.75, x1: 1.75, z1: 92.75, h: 5.0, t: 2.4, key: 'bricks_1', ghost: true, rail: false },
                 ],
             },
             doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); THE ROBBERS' TUNNEL on the north wall is links.giza_ley
@@ -43471,6 +43529,7 @@ const DOOR_HQ = {
             props: [
                 /* the obelisks flanking the causeway's turn, the braziers at the stair's foot and the sphinx's paws */
                 { key: 'obelisk',        x: -71.75, z: 33.25 }, { key: 'obelisk', x: -47.25, z: 33.25 },
+                { key: 'obelisk',        x: 33.25, z: 61.25, floor: true }, { key: 'obelisk', x: 1.75, z: 92.75, floor: true },   // THE OPEN PLATEAU: the board's pair (on their ghost blocks)
                 { key: 'brazier',        x: -68.25, z: -113.75 }, { key: 'brazier', x: -50.75, z: -113.75 },
                 { key: 'brazier',        x: 29.75, z: 47.25 }, { key: 'brazier', x: 29.75, z: 57.75 },
                 /* THE DIG: the camp between the trenches */
@@ -43484,7 +43543,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 34, z: 60, face: 200, race: 'anubis', say: ['“She faces east.” “Why?” “That is where the line comes out of the ground.”', '“Do not climb her.” “Something is on her head.” “Something is always on her head.”'] },
+                { x: 37, z: 64, face: 200, race: 'anubis', say: ['“She faces east.” “Why?” “That is where the line comes out of the ground.”', '“Do not climb her.” “Something is on her head.” “Something is always on her head.”'] },
                 { x: -66, z: -110, face: 90, race: 'annunaki', say: ['“We did not build it.” “You are on the stair.” “We built the STAIR. The stair is the easy part.”'] },
                 { x: 28, z: -64, face: 300, race: 'skeleton', say: ['“The trench hit a door.” “Whose?” “Mine, apparently. I have the paperwork.”'] },
                 { x: 3, z: 68, face: 40, race: 'conspiracy theorist', say: ['“The robbers’ tunnel.” “Robbers of what?” “It was dug INWARD. Ask yourself who was robbing whom.”', '“Four faces, three times.” “Three pyramids.” “Three times. Not three pyramids.”'] },
@@ -43522,27 +43581,10 @@ const DOOR_HQ = {
             terrain: { res: 1,
                 floor: 'bricks_1', cliff: 'bricks_1', path: 'desert',
                 noise: { amp: 0, scale: 16 }, crag: false,
-                gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'walls', wallKey: 'bricks_1', wallH: 5, rim: 0, forceGrow: -0.6 },   // THE LAYOUT: the town's brick
                 features: [
+                    /* THE OPEN TOWN (2026-11-03, mondo: "get rid of Giza, Agartha, Technoticlan, and Babel's walled courts"): the L6 walls plan below is gone — no yard walls, no halls, no black pits; the tower, the kiln and the brick stacks stand in the open. */
                     /* THE ROOMS */
-                    { k: 'space', x: 0, z: -25, w: 144, d: 166 },                        // THE TOWER's foot (the walk round it, the north apron)
-                    { k: 'space', x: 0, z: 94, w: 32, d: 28 },                           // the barn door's square (the bay door)
-                    { k: 'space', x: -39, z: 88, w: 38, d: 20 },                       // room 3 (a brick stack)
-                    { k: 'space', x: -96, z: 50, w: 36, d: 44 },                         // THE KILN's yard
-                    { k: 'space', x: -92, z: -30, w: 24, d: 40 },                        // room 1 (a brick stack)
-                    { k: 'space', x: 100, z: 24, w: 32, d: 32 },                          // room 2 (a brick stack)
-                    { k: 'space', x: 68, z: 90, w: 24, d: 20 },                          // side room 1 (a dead end)
-                    { k: 'space', x: -96, z: -84, w: 24, d: 24 },                        // side room 2 (a dead end)
                     /* THE HALLS */
-                    { k: 'hall', pts: [[10, 81], [10, 57]], w: 8 },                    // hall A: the square up to the tower's foot
-                    { k: 'hall', pts: [[-17, 92], [-21, 92]], w: 6 },                 // the square to room 3
-                    { k: 'hall', pts: [[-57, 84], [-68, 84], [-68, 60], [-81, 60]], w: 6.8 },   // hall C: room 3 to THE KILN's yard
-                    { k: 'hall', pts: [[-84, 29], [-84, -11]], w: 6.8 },              // THE KILN's yard north to room 1
-                    { k: 'hall', pts: [[-81, -31.5], [-71, -31.5]], w: 7 },            // room 1 into the tower's foot (loop 1)
-                    { k: 'hall', pts: [[71, 17.5], [85, 17.5]], w: 7 },                  // the tower's foot to room 2
-                    { k: 'hall', pts: [[100, 39], [100, 68], [40, 68], [40, 88], [17, 88]], w: 6.8 },   // hall B: room 2 back round to the square (loop 2)
-                    { k: 'hall', pts: [[68, 71], [68, 81]], w: 6 },                  // to side room 1
-                    { k: 'hall', pts: [[-71, -88], [-85, -88]], w: 6 },              // to side room 2
                     /* THE TOWER: four crisp round tiers and THE SPIRAL's four built flights (the stairs pass, 2026-10-05: round terraces, each
                        flight's foot 3-4 m in from the ledge's rim, parapets round every rim with gaps to drop through) — THE SQUARES (2026-10-26,
                        mondo: "redesign the maps with the square grid in mind"): the tiers 36 / 26 / 16 / 6 squares across about the square corner
@@ -43590,6 +43632,11 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[-16, 92], [-68, 84], [-68, 60], [-92, 60]], w: 4.8 },                                     // to the kiln
                     { k: 'scatter', key: 'cave_stone', n: 10, seed: 10 },
                     { k: 'scatter', key: 'cinder_block', n: 14, seed: 11 },                                                       // the fired bricks
+                    /* THE OPEN TOWN's board (the square between the tower's foot and the barn door, 180° twins about (0, 70)): four brick houses,
+                       two squares by two, 3 m, either side of the barn door's path, and two brick stacks (1.4 m) */
+                    { k: 'wall', x0: -17.5, z0: 56, x1: -17.5, z1: 56, h: 3.0, t: 7.0, key: 'bricks_1', rail: false }, { k: 'wall', x0: 17.5, z0: 84, x1: 17.5, z1: 84, h: 3.0, t: 7.0, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 17.5, z0: 63, x1: 17.5, z1: 63, h: 3.0, t: 7.0, key: 'bricks_1', rail: false }, { k: 'wall', x0: -17.5, z0: 77, x1: -17.5, z1: 77, h: 3.0, t: 7.0, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: -20.0, z0: 68.25, x1: -15.0, z1: 68.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 15.0, z0: 71.75, x1: 20.0, z1: 71.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },   // two brick stacks between them
                 ],
             },
             doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); THE FOUNDATION SHAFT on the north wall is links.babel_ley
@@ -45315,6 +45362,9 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 { key: 'ritual_circle',  x: -8.75, z: 5.25, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
+                /* THE TRAILERS (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): three of the Trailer Park's trailers in
+                   the cut rows' clearings, off the tracks and every arena size, doors to the circles */
+                { key: 'trailer_home_4', x: -49.5, z: -22.5, face: 90 }, { key: 'trailer_home_6', x: 10, z: -9.5, face: 180 }, { key: 'trailer_home_2', x: 24, z: -33.5, face: 270 },
                 { key: 'cave_torch',     x: 6.8, z: 36.8 },
                 { key: 'cave_torch',     x: -6.8, z: 36.8 },
                 { key: 'cave_torch',     x: 19.2, z: -15.2 },
@@ -48694,7 +48744,7 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_area51_hangar: { x: 0, z: 0 },   // HANGAR 18: the floor under the rig
     site_prebuilt_vatican_basilica: { x: 0, z: 0 },   // THE BASILICA: the crossing
     site_prebuilt_hell_pit: { x: -0.5, z: 0 },   // THE PIT: the bowl floor
-    site_prebuilt_heaven_gate: { x: -3, z: 2 },   // THE CLOUD FIELDS: under the dais
+    site_prebuilt_heaven_gate: { x: 0, z: 0 },   // THE CLOUD FIELDS: the sun (THE NEW HEAVEN, 2026-11-03)
     site_prebuilt_camelot_ward: { x: 8, z: 54 },   // CAMELOT: inside the portcullis (G6: the ward is the entry)
     site_prebuilt_skinwalker_fields: { x: -8, z: 12 },   // THE CORN FIELDS: by the circle
     site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
@@ -48827,6 +48877,146 @@ function hqDeckPlan(rows, o) {
     }
     return out;
 }
+/* THE SKY PLAN (2026-11-03, mondo's Heaven concept art: "Use this concept art to make a new heaven map"): a board drawn square by
+   square over THE VOID, hqDeckPlan's rule with a legend — one string per lattice row, north first, '.' open sky; every other char is
+   a class `{ h, under?, top?, path?, rail? }` drawn as FLOAT plateaus (each rect its own island: a stepped rock under it in a void
+   room, `under: 'cloud'` the puffs), `path: true` paints the class in the room's path sheet (a cloud path), `rail: true` stands
+   `o.rail.model` (HQ_STAIR_PACK) along every side that meets the open sky, at the class's height (`o.rail.out` m off the edge,
+   < 0 = inside the square; `block: false`, never a wall to the walker or the board). A rect runs `o.proud` m past a side onto open sky or a floor of its own height (floors of two heights meet edge to edge). */
+function hqSkyPlan(rows, o) {
+    const C = o.C || 3.5, P = (o.proud != null) ? o.proud : 0.45, r3 = v => Math.round(v * 1000) / 1000, L = o.legend || {};
+    const H = rows.length, W = rows.reduce((m, r) => Math.max(m, r.length), 0), at = (x, y) => (rows[y] || '').charAt(x) || '.';
+    const sky = (x, y) => at(x, y) === '.';
+    const rects = (pred) => {
+        const used = rows.map(() => new Array(W).fill(false)), out = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (used[y][x] || !pred(at(x, y))) continue;
+            let x1 = x; while (x1 + 1 < W && !used[y][x1 + 1] && pred(at(x1 + 1, y))) x1++;
+            const same = (yy) => { for (let k = x; k <= x1; k++) if (used[yy][k] || !pred(at(k, yy))) return false; return !(x > 0 && pred(at(x - 1, yy)) && !used[yy][x - 1]) && !(x1 + 1 < W && pred(at(x1 + 1, yy))); };
+            let y1 = y; while (y1 + 1 < H && same(y1 + 1)) y1++;
+            for (let yy = y; yy <= y1; yy++) for (let k = x; k <= x1; k++) used[yy][k] = true;
+            out.push({ x0: x, x1, y0: y, y1 });
+        }
+        return out;
+    };
+    const out = [], cx = i => o.x0 + (i + 0.5) * C, cz = j => o.z0 + (j + 0.5) * C;
+    Object.keys(L).forEach(ch => {
+        const D = L[ch];
+        rects(c => c === ch).forEach(r => {
+            /* a side runs P past the square where every square beyond it is open sky or a floor at the same height (two floors at one
+               height overlap — no seam dips between them); where a floor at another height meets it, it stops on the line */
+            const ok = (x, y) => sky(x, y) || (L[at(x, y)] && L[at(x, y)].h === D.h);
+            let all = true; for (let k = r.x0; k <= r.x1; k++) if (!ok(k, r.y0 - 1)) all = false; const pN = all ? P : 0;
+            all = true; for (let k = r.x0; k <= r.x1; k++) if (!ok(k, r.y1 + 1)) all = false; const pS = all ? P : 0;
+            all = true; for (let k = r.y0; k <= r.y1; k++) if (!ok(r.x0 - 1, k)) all = false; const pW = all ? P : 0;
+            all = true; for (let k = r.y0; k <= r.y1; k++) if (!ok(r.x1 + 1, k)) all = false; const pE = all ? P : 0;
+            const ax = o.x0 + r.x0 * C - pW, bx = o.x0 + (r.x1 + 1) * C + pE, az = o.z0 + r.y0 * C - pN, bz = o.z0 + (r.y1 + 1) * C + pS;
+            const f = { k: 'plateau', x: r3((ax + bx) / 2), z: r3((az + bz) / 2), w: r3(bx - ax), d: r3(bz - az), h: D.h, edge: 0.15, float: true };
+            if (D.under) f.under = D.under; if (D.top) f.top = D.top; if (D.rock) f.rock = D.rock;
+            out.push(f);
+        });
+        /* the path sheet: a run between every two neighbouring squares of the class, a dab on a lone one (round caps of w / 2) */
+        if (D.path) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (at(x, y) !== ch) continue;
+            const w = C + 2 * P * 0.8, lone = at(x + 1, y) !== ch && at(x, y + 1) !== ch && at(x - 1, y) !== ch && at(x, y - 1) !== ch;
+            if (at(x + 1, y) === ch) out.push({ k: 'path', pts: [[r3(cx(x)), r3(cz(y))], [r3(cx(x + 1)), r3(cz(y))]], w: r3(w) });
+            if (at(x, y + 1) === ch) out.push({ k: 'path', pts: [[r3(cx(x)), r3(cz(y))], [r3(cx(x)), r3(cz(y + 1))]], w: r3(w) });
+            if (lone) out.push({ k: 'path', pts: [[r3(cx(x) - 0.01), r3(cz(y))], [r3(cx(x) + 0.01), r3(cz(y))]], w: r3(w) });
+        }
+    });
+    /* the balustrades: every side of a railed square that meets the open sky, run together along each line */
+    if (o.rail) {
+        const out2 = o.rail.out != null ? o.rail.out : -0.2, railed = (x, y) => !sky(x, y) && L[at(x, y)] && L[at(x, y)].rail;
+        [['n', 0, -1], ['s', 0, 1], ['w', -1, 0], ['e', 1, 0]].forEach(([s, dx, dy]) => {
+            const along = dx === 0;   // a north / south side runs along x
+            const open = (x, y) => railed(x, y) && sky(x + dx, y + dy);
+            const lines = along ? H : W, steps = along ? W : H;
+            for (let l = 0; l < lines; l++) {
+                let k = 0;
+                while (k < steps) {
+                    const X = (kk) => along ? kk : l, Y = (kk) => along ? l : kk;
+                    if (!open(X(k), Y(k))) { k++; continue; }
+                    const cls = at(X(k), Y(k)), ry = L[cls].h;
+                    let k1 = k; while (k1 + 1 < steps && open(X(k1 + 1), Y(k1 + 1)) && at(X(k1 + 1), Y(k1 + 1)) === cls) k1++;
+                    /* the corner: run on to meet the perpendicular rail where that side is open sky too */
+                    const pa = along ? sky(X(k) - 1, Y(k)) : sky(X(k), Y(k) - 1), pb = along ? sky(X(k1) + 1, Y(k1)) : sky(X(k1), Y(k1) + 1);
+                    const ea = pa ? out2 : 0, eb = pb ? out2 : 0;
+                    if (along) {
+                        const z = r3(o.z0 + (l + (dy > 0 ? 1 : 0)) * C + dy * out2);
+                        out.push({ k: 'rail', x0: r3(o.x0 + k * C - ea), z0: z, x1: r3(o.x0 + (k1 + 1) * C + eb), z1: z, y: ry, model: o.rail.model, block: false });
+                    } else {
+                        const x = r3(o.x0 + (l + (dx > 0 ? 1 : 0)) * C + dx * out2);
+                        out.push({ k: 'rail', x0: x, z0: r3(o.z0 + k * C - ea), x1: x, z1: r3(o.z0 + (k1 + 1) * C + eb), y: ry, model: o.rail.model, block: false });
+                    }
+                    k = k1 + 1;
+                }
+            }
+        });
+    }
+    return out;
+}
+/* ══ THE CHESS POSITIONS (2026-11-03, mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and
+   i want the map to load one of these 3 actual chess positions at random. As you can see the chess pieces carve out the lanes of the
+   map which will allow for more tactical strategic play") ══
+   The garden's board is 8 × 8 squares in the middle of the 12 × 12 arena (the arena's squares 2..9 each way); the two outer rings are
+   the lawn the teams spawn on (row 0 / 11, x 4..7, as ever). Every battle on it stands ONE of his three positions, picked at random at
+   the launch (hqLgChessRoll: VS CPU at map.js _msArenaGate and the labs; online the HOST rolls and its pick rides `arena-check` — the
+   guest stands the same one). A row is a rank from the NORTH (P2's side, the black set) to the south (P1's, the white set), a file west →
+   east; FEN letters: lower case black, upper case white, '.' empty. The pieces are the room's chess trees (HQ_TREE_KINDS chess_*: solid on
+   their square, existing rules — the raster files the square as rock, the fight's LOS stops at it). A piece that stands in every position
+   is planted once; a piece only some positions have carries `chessPos` (the positions it stands in), and only the current position's
+   stand — the field lattice (hqFieldTerrainInfo), the roofs' read and the renderer (three-renderer.js treeOne) read hqLgChessOn. The
+   three differ only by where one white bishop stands. */
+const HQ_LG_CHESS = {
+    room: 'site_prebuilt_lookingglass_garden',
+    board: { x: 0, z: 17.5, n: 8, cell: 3.5 },   // the board feature below (the arena window's middle: x −21..21, z −3.5..38.5)
+    positions: [
+        { name: 'Forward Cover',  rows: ['r...k..r', 'p...bppp', 'npb.pn..', '........', '..B..B..', 'N...PPQ.', 'PP....PP', 'R...K.NR'] },
+        { name: 'Central Screen', rows: ['r...k..r', 'p...bppp', 'npb.pn..', '........', '.....B..', 'N..BPPQ.', 'PP....PP', 'R...K.NR'] },
+        { name: 'Open Junction',  rows: ['r...k..r', 'p...bppp', 'npb.pn..', '........', '.....B..', 'N...PPQ.', 'PP..B.PP', 'R...K.NR'] },
+    ],
+    cur: 0,   // the position standing now (the explore garden shows the last battle's)
+};
+const _HQ_LG_KINDS = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+/* the board's pieces as terrain `tree` rows (one per square and piece; `chessPos` on a piece not every position has) */
+function hqLgChessFeatures() {
+    const L = HQ_LG_CHESS, B = L.board, P = L.positions, x0 = B.x - B.n * B.cell / 2, z0 = B.z - B.n * B.cell / 2, out = [];
+    for (let j = 0; j < B.n; j++) for (let i = 0; i < B.n; i++) {
+        const at = {};
+        P.forEach((p, k) => { const ch = String(p.rows[j] || '').charAt(i); if (ch && ch !== '.') (at[ch] = at[ch] || []).push(k); });
+        Object.keys(at).forEach(ch => {
+            const kind = _HQ_LG_KINDS[ch.toLowerCase()]; if (!kind) return;
+            const dark = ch !== ch.toUpperCase();
+            const f = { k: 'tree', kind: 'chess_' + kind + (dark ? '_dark' : ''), x: x0 + (i + 0.5) * B.cell, z: z0 + (j + 0.5) * B.cell, r: 0.72 };
+            if (kind === 'knight') f.face = dark ? 0 : 180;   // the knights look at each other (the black set's toward the south)
+            if (at[ch].length < P.length) f.chessPos = at[ch].slice();
+            out.push(f);
+        });
+    }
+    return out;
+}
+function hqLgChessRoom(roomId) { return String(roomId || '') === HQ_LG_CHESS.room; }
+/* the cache key a room's field lattice carries ('' for every room but the garden) */
+function hqLgChessKey(roomId) { return hqLgChessRoom(roomId) ? 'chess' + (HQ_LG_CHESS.cur | 0) : ''; }
+/* does this tree stand in the current position (every tree without `chessPos` does) */
+function hqLgChessOn(t) { return !(t && Array.isArray(t.chessPos)) || t.chessPos.indexOf(HQ_LG_CHESS.cur | 0) >= 0; }
+function hqLgChessCur() { return HQ_LG_CHESS.cur | 0; }
+/* stand position k: the arenas cut from the garden let go of their field (the next launch rasters the new position — the room stays
+   compiled, so no survey), the renderer shows / hides the pieces. true = it changed */
+function hqLgChessSet(k) {
+    k = Math.floor(+k);
+    if (!(k >= 0 && k < HQ_LG_CHESS.positions.length) || k === (HQ_LG_CHESS.cur | 0)) return false;
+    HQ_LG_CHESS.cur = k;
+    try { hqArenaRoomChanged(HQ_LG_CHESS.room); } catch (e) {}
+    try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer && ThreeRenderer.chessPosSync) ThreeRenderer.chessPosSync(); } catch (e) {}
+    return true;
+}
+/* a launch on a map cut from the garden rolls the position (any other map: nothing). true = the position changed */
+function hqLgChessRoll(mapId) {
+    let a = null; try { a = hqArenaOf(mapId); } catch (e) { a = null; }
+    if (!a || !hqLgChessRoom(a.room)) return false;
+    return hqLgChessSet(Math.floor(Math.random() * HQ_LG_CHESS.positions.length));
+}
 /* ── THE SPECS (Claude's DRAFT layouts — the user rules the names, A15) ── */
 const HQ_AREA_SPECS = {
     /* ROOM 50 · FOOTBALL STADIUM · THE BOWL (rebuilt 2026-09-26, the user: "the football stadium doesn't even look like a football stadium
@@ -48945,34 +49135,10 @@ const HQ_AREA_SPECS = {
     prebuilt_technoticlan: { grown: 2, part: 'templecity', label: 'THE TEMPLE CITY', sub: 'THE CAUSEWAY · THE CANAL · THE BALL COURT · THE PYRAMID', w: 144, d: 124, night: 1, look: 'tell', fogD: 0.02,
         parti: 'A causeway from the door to a pyramid that was climbed once a year, past a ball court where the losing side knew the rules; the other stair is under all of it.', typology: 'processional',
         floor: 'cobblestone', cliff: 'bricks_3', path: 'cobblestone', floorColor: 0x8fb0b8, cliffColor: 0x7aa0a8,
-        gen: { kind: 'plan', look: 'walls', wallKey: 'bricks_3', wallH: 5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 9 },
+        noise: { amp: 0, scale: 9 },
         plaza: { x: 14, z: 28 }, plazaR: 11,
         features: [
-            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built stone walls (5 m) where the rooms gen raised banks. The bay door's
-               hall to THE PLAZA; THE CAUSEWAY north from it over THE CANAL (straight now, east–west, in culverts between the rooms) to
-               THE PYRAMID's court; the aqueduct's court west of it (THE PRIEST HOUSE north of the canal, THE MARKET TERRACE south of it,
-               the span over the water); THE LEY TERRACE's court north of that; the observatory's yard west (the temple city's
-               draught off its south end); THE BALL COURT south-west; side room 1 east of the plaza, side room 2 a dead end off it;
-               side room 3 at the bay door.
-               Loops: observatory yard ⇄ ley court ⇄ aqueduct court ⇄ observatory yard; plaza ⇄ causeway ⇄ pyramid court ⇄ side room 1
-               ⇄ plaza; observatory yard ⇄ ball court ⇄ aqueduct court (⇄ plaza). */
-            { k: 'hall', pts: [[0, 62], [0, 39]], w: 7 },                                           // the bay door's hall
-            { k: 'space', x: 4, z: 49, w: 16, d: 14 },                                                   // side room 3 (the bay door's, open onto the plaza)
-            { k: 'space', x: 14, z: 28, w: 36, d: 32 },                                                  // THE PLAZA
-            { k: 'hall', pts: [[28, 13], [28, 1]], w: 7 },                                         // THE CAUSEWAY
-            { k: 'space', x: 30, z: -29, w: 60, d: 62 },                                              // THE PYRAMID's court (the canal along its south side)
-            { k: 'space', x: -24, z: -9.5, w: 36, d: 53 },                                           // the aqueduct's court
-            { k: 'hall', pts: [[-7, -7], [1, -7]], w: 7 }, { k: 'hall', pts: [[-45, -7], [-41, -7]], w: 7 },   // the canal's culverts
-            { k: 'hall', pts: [[-9, 16], [-9, 24], [-3, 24]], w: 6 },
-            { k: 'space', x: -23, z: -50, w: 30, d: 20 },                                             // THE LEY TERRACE's court
-            { k: 'hall', pts: [[-24, -41], [-24, -35]], w: 6 }, { k: 'hall', pts: [[-45, -48], [-37, -48]], w: 6 },
-            { k: 'space', x: -56, z: -29, w: 24, d: 62 },                                             // the observatory's yard
-            { k: 'hall', pts: [[-72, 8], [-62, 8], [-62, 1]], w: 6 },                                 // Agartha's draught
-            { k: 'space', x: -50, z: 36.5, w: 40, d: 35 },                                           // THE BALL COURT
-            { k: 'hall', pts: [[-52, 1], [-52, 20]], w: 6 }, { k: 'hall', pts: [[-38, 20], [-38, 16]], w: 6 },
-            { k: 'space', x: 50, z: 30, w: 20, d: 20 },                                                 // side room 1
-            { k: 'hall', pts: [[31, 28], [41, 28]], w: 6 }, { k: 'hall', pts: [[56, 1], [56, 21]], w: 6 },
-            { k: 'space', x: 58, z: 52, w: 20, d: 12 }, { k: 'hall', pts: [[54, 39], [54, 47]], w: 5.2 },   // side room 2 (a dead end)
+            /* THE OPEN TEMPLE CITY (2026-11-03, mondo: "get rid of Giza, Agartha, Technoticlan, and Babel's walled courts"): the L6 walls plan is gone — no court walls, no halls, no black pits; the pyramid, the canal, the aqueduct, the ball court and the observatory stand on one open plaza. */
             /* THE SQUARES (2026-10-26, mondo: "redesign the maps with the square grid in mind"): every stair, span, tier and terrace below has
                its sides and ends on battle-square lines (1.75 m; this room's lines are the multiples of 1.75), the stairs 1 or 2 squares wide and
                no steeper than before, the observatory a whole-square circle on a square's centre, the ball-court walls on lines, the props on
@@ -48982,7 +49148,7 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: 28, z0: 0, x1: 28, z1: -14, w: 7, y: 0.25 }, { k: 'deck', x0: -54.25, z0: 0, x1: -54.25, z1: -14, w: 3.5, y: 0.3 },
             /* THE CAUSEWAY (2.5): a stair up the causeway's hall from the plaza, then a raised span north to the pyramid's forecourt in two parts — a one-square gap over the canal
                (a rail across it) — the bridge layer (the plank still crosses under it) */
-            { k: 'ramp', x0: 28, z0: 14, x1: 28, z1: 0, w: 7, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone', rails: false },   // (the hall's walls either side)
+            { k: 'ramp', x0: 28, z0: 14, x1: 28, z1: 0, w: 7, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },   // THE OPEN TEMPLE CITY: its own railings (the hall's walls are gone)
             { k: 'bridge', x0: 28, z0: 0, x1: 28, z1: -3.5, w: 7, y: 2.5 }, { k: 'bridge', x0: 28, z0: -7, x1: 28, z1: -14, w: 7, y: 2.5 },
             { k: 'rail', x0: 28, z0: -2.9, x1: 28, z1: -7.6, y: 2.5, model: 'pipe', block: false },                                   // across the gap
             /* THE PYRAMID: tier 1 (2.5) and its forecourt up a flight either side from the court (or over the causeway), tier 2 (5.0) up THE GREAT STAIR from the forecourt or THE OTHER STAIR on the west flank, the hand-holds up both east faces, THE TEMPLE (7.5, the tape — the door gun's) */
@@ -49021,7 +49187,9 @@ const HQ_AREA_SPECS = {
             { k: 'climb', x: -61.25, z: 25.1, face: 180, look: 'ladder' },
             { k: 'climb', x: -56.6, z: 40.25, face: 270, look: 'ladder' },
             { k: 'rail', x0: -69.4, z0: 25.1, x1: -63, z1: 25.1, model: 'parapet' }, { k: 'rail', x0: -59.5, z0: 25.1, x1: -49.4, z1: 25.1, model: 'parapet' },
-            { k: 'rail', x0: -69.4, z0: 51.9, x1: -56.6, z1: 51.9, model: 'parapet' }, { k: 'rail', x0: -56.6, z0: 35.3, x1: -56.6, z1: 38.5, model: 'parapet' }, { k: 'rail', x0: -56.6, z0: 42, x1: -56.6, z1: 49, model: 'parapet' },
+            { k: 'rail', x0: -69.4, z0: 51.9, x1: -56.6, z1: 51.9, model: 'parapet' },
+            /* THE OPEN TEMPLE CITY's board (the ball court and the plaza east of it): two altar platforms (one square by two, 1.4 m) */
+            { k: 'plateau', x: -22.75, z: 24.5, w: 3.5, d: 7, h: 1.4, edge: 0.1 }, { k: 'plateau', x: -22.75, z: 52.5, w: 3.5, d: 7, h: 1.4, edge: 0.1 }, { k: 'rail', x0: -56.6, z0: 35.3, x1: -56.6, z1: 38.5, model: 'parapet' }, { k: 'rail', x0: -56.6, z0: 42, x1: -56.6, z1: 49, model: 'parapet' },
             /* THE OBSERVATORY (4.2): the long stair down from the north wall's side, a chain up its east face, a curved railing round its rim */
             { k: 'plateau', x: -57.75, z: -33.25, r: 8.75, h: 4.2, edge: 0.15 },
             { k: 'ramp', x0: -57.75, z0: -59.5, x1: -57.75, z1: -42, w: 3.5, h0: 0, h1: 4.2, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
@@ -49054,30 +49222,10 @@ const HQ_AREA_SPECS = {
     prebuilt_agartha: { plazaR: 11, res: 1, part: 'crystalcity', label: 'THE CRYSTAL CITY', sub: 'THE TERRACES · THE LAKE · THE SPIRE', w: 132, d: 112, night: 1, look: 'cave', fogD: 0.024,
         parti: 'A city of white terraces under a roof of lit crystal, where every hidden way into the inner earth comes out on a different terrace; the sun is inside.', typology: 'terraces',
         floor: 'marble_light', cliff: 'rocks_dark_fantasy', path: 'marble_light', floorColor: 0xbfe8c8, cliffColor: 0x8a9a88,
-        gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'walls', wallKey: 'marble_light', wallH: 5, rim: 0, forceGrow: -0.6 }, noise: { amp: 0, scale: 14 },
+        noise: { amp: 0, scale: 14 },
         plaza: { x: 0, z: 16 },
         features: [
-            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built marble walls (5 m) where the rooms gen raised banks. Side room 1 at
-               the bay door; THE PLAZA (the fountain, the marker); THE TERRACES north-west (the lower terrace, the upper terrace, the
-               gallery to the balcony) with THE ADIT TERRACE's yard off their north side; side room 2 west (the polar opening) and
-               side room 4 off it (a dead end); THE LAKE north-east (the bridge, the pier's wall, the spire; Lemuria's draught off
-               its north side) and side room 3 off it (a dead end); THE CRYSTAL FOREST east up its stair (the temple city's draught).
-               Loops: plaza ⇄ terraces ⇄ side room 2 ⇄ plaza; plaza ⇄ lake ⇄ crystal forest ⇄ side room 1 ⇄ plaza. */
-            { k: 'space', x: -1.75, z: 45.5, w: 17.5, d: 14 },                                                   // side room 1 (the bay door)
-            { k: 'hall', pts: [[0, 52.5], [0, 56]], w: 7 }, { k: 'hall', pts: [[0, 38.5], [0, 31.5]], w: 7 },
-            { k: 'space', x: -1.75, z: 17.5, w: 31.5, d: 28 },                                                  // THE PLAZA
-            { k: 'space', x: -35, z: -21, w: 56, d: 35 },                                              // THE TERRACES
-            { k: 'hall', pts: [[-12.25, 3.5], [-12.25, -3.5]], w: 10.5 },
-            { k: 'space', x: -10.5, z: -45.5, w: 28, d: 14 },                                              // THE ADIT TERRACE's yard
-            { k: 'space', x: -45.5, z: 29.75, w: 28, d: 17.5 },                                               // side room 2 (the polar opening)
-            { k: 'hall', pts: [[-66.5, 28], [-59.5, 28]], w: 7 }, { k: 'hall', pts: [[-31.5, 24.5], [-17.5, 24.5]], w: 7 }, { k: 'hall', pts: [[-49, -3.5], [-49, 21]], w: 7 },
-            { k: 'space', x: -56, z: 47.25, w: 14, d: 10.5 }, { k: 'hall', pts: [[-54.25, 38.5], [-54.25, 45.5]], w: 3.5 },   // side room 4 (a dead end)
-            { k: 'space', x: 31.5, z: -22.75, w: 49, d: 38.5 },                                               // THE LAKE
-            { k: 'hall', pts: [[14, 3.5], [14, -3.5]], w: 7 }, { k: 'hall', pts: [[21, -56], [21, -42]], w: 7 },   // from the plaza; Lemuria's draught
-            { k: 'space', x: 49, z: -49, w: 21, d: 7 }, { k: 'hall', pts: [[50.75, -45.5], [50.75, -42]], w: 3.5 },   // side room 3 (a dead end)
-            { k: 'space', x: 45.5, z: 28, w: 28, d: 35 },                                                // THE CRYSTAL FOREST
-            { k: 'hall', pts: [[14, 28], [31.5, 28]], w: 7 }, { k: 'hall', pts: [[45.5, -3.5], [45.5, 10.5]], w: 7 }, { k: 'hall', pts: [[66.5, 10.5], [56, 10.5]], w: 7 },
-            { k: 'hall', pts: [[31.5, 42], [7, 42]], w: 7 },
+            /* THE OPEN CRYSTAL CITY (2026-11-03, mondo: "get rid of Giza, Agartha, Technoticlan, and Babel's walled courts"): the L6 walls plan is gone — no marble court walls, no halls, no black pits; the terraces, the lake and the crystal forest stand open under the crystal roof. */
             /* THE LAKE and its bridge (both banks, a skate rail along it); THE PIER's wall along the south bank (a ledge, the grind); THE SPIRE's foot (6.2, the tape — the door gun's) over the lake's west bank */
             { k: 'pool', x: 33.25, z: -22.75, r: 15.75, rz: 12.25, depth: 1.0, key: 'water', bank: 2.4 },
             { k: 'deck', x0: 14, z0: -22.75, x1: 52.5, z1: -22.75, w: 3.5, y: 0.3 },
@@ -49118,9 +49266,21 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: 31.8, z0: 21.3, x1: 31.8, z1: 24.4, model: 'glass' }, { k: 'rail', x0: 31.8, z0: 31.8, x1: 31.8, z1: 41.7, model: 'glass' }, { k: 'rail', x0: 31.763, z0: 41.7, x1: 48.737, z1: 41.7, model: 'glass' },
             { k: 'rail', x0: 31.763, z0: 21.3, x1: 38.5, z1: 21.3, model: 'glass' }, { k: 'rail', x0: 42, z0: 21.3, x1: 48.737, z1: 21.3, model: 'glass' }, { k: 'rail', x0: 48.7, z0: 21.315, x1: 48.7, z1: 41.685, model: 'glass' },
             { k: 'rail', x0: -59.5, z0: -3.5, x1: -42, z1: -3.5 },
+            /* THE OPEN CRYSTAL CITY's board (THE PLAZA, 180° twins about (0, 14)): two marble low walls (two squares, 1.4 m), two crystal clusters
+               and two greek columns on one-square ghost blocks (props are not fight squares) */
+            { k: 'wall', x0: 14.25, z0: -1.75, x1: 20.75, z1: -1.75, h: 1.4, t: 2.8, key: 'marble_light', rail: false }, { k: 'wall', x0: -20.75, z0: 29.75, x1: -14.25, z1: 29.75, h: 1.4, t: 2.8, key: 'marble_light', rail: false },
+            { k: 'wall', x0: 19.25, z0: 5.25, x1: 19.25, z1: 5.25, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 22.75, x1: -19.25, z1: 22.75, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -15.75, z0: -5.25, x1: -15.75, z1: -5.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 33.25, x1: 15.75, z1: 33.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -15.75, z0: 15.75, x1: -15.75, z1: 15.75, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 12.25, x1: 15.75, z1: 12.25, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -12.25, z0: 26.25, x1: -12.25, z1: 26.25, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -12.25, z0: 1.75, x1: -12.25, z1: 1.75, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 26.25, x1: 12.25, z1: 26.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -19.25, z0: 12.25, x1: -19.25, z1: 12.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 15.75, x1: 19.25, z1: 15.75, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false },
             { k: 'scatter', key: 'crystal_cluster', n: 10, seed: 5 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'greek_column', n: 4, seed: 8 }, { k: 'scatter', key: 'menhir', n: 3, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 12 },
         ],
-        props: [{ key: 'riser_1', x: 10.25, z: 24.25 }, { key: 'crystal_cluster', x: 12.25, z: -33.25, y: 6.2 }, { key: 'fountain', x: 0, z: 6 }, { key: 'crystal_cluster', x: 44, z: 24.25, y: 3.0 }, { key: 'crystal_cluster', x: 36, z: 31.75, y: 3.0 }, { key: 'crystal_cluster', x: 42, z: 34, y: 3.0 },
+        props: [{ key: 'crystal_cluster', x: 19.25, z: 5.25, floor: true }, { key: 'crystal_cluster', x: -19.25, z: 22.75, floor: true }, { key: 'greek_column', x: -15.75, z: -5.25, floor: true }, { key: 'greek_column', x: 15.75, z: 33.25, floor: true },   // THE OPEN CRYSTAL CITY: the plaza's cover
+                { key: 'crystal_cluster', x: -15.75, z: 15.75, floor: true }, { key: 'crystal_cluster', x: 15.75, z: 12.25, floor: true }, { key: 'greek_column', x: -19.25, z: 12.25, floor: true }, { key: 'greek_column', x: 19.25, z: 15.75, floor: true },
+                { key: 'crystal_cluster', x: -12.25, z: 26.25, floor: true }, { key: 'crystal_cluster', x: 12.25, z: 1.75, floor: true }, { key: 'greek_column', x: -12.25, z: 1.75, floor: true }, { key: 'greek_column', x: 12.25, z: 26.25, floor: true },
+                { key: 'riser_1', x: 10.25, z: 24.25 }, { key: 'crystal_cluster', x: 12.25, z: -33.25, y: 6.2 }, { key: 'fountain', x: 0, z: 6 }, { key: 'crystal_cluster', x: 44, z: 24.25, y: 3.0 }, { key: 'crystal_cluster', x: 36, z: 31.75, y: 3.0 }, { key: 'crystal_cluster', x: 42, z: 34, y: 3.0 },
                 { key: 'park_bench', x: -8, z: 24.25, face: 0 }, { key: 'park_bench', x: 8, z: 24.25, face: 0 }, { key: 'garden_ring', x: -10.75, z: 6 }, { key: 'garden_ring', x: 10.75, z: 6 }, { key: 'planter', x: -7, z: 42 }, { key: 'planter', x: 7, z: 50 },
                 { key: 'lectern', x: -56, z: -28, y: 3.6, face: 180 }, { key: 'brass_telescope', x: -59.25, z: -24.75, y: 3.6, face: 0 }, { key: 'brazier', x: -44, z: -10.25, y: 1.6 }, { key: 'brazier', x: -59.75, z: -10.25, y: 1.6 }, { key: 'sea_chest', x: -21, z: -28, y: 3.6 },
                 { key: 'stone_altar', x: -10.25, z: -52.25, y: 2.4 }, { key: 'brazier', x: -17.75, z: -48, y: 2.4 }, { key: 'brazier', x: -2, z: -48, y: 2.4 }, { key: 'candle_ring', x: -36, z: -16, y: 1.6 },
@@ -49138,32 +49298,23 @@ const HQ_AREA_SPECS = {
     prebuilt_antarctica: { plazaR: 11, res: 1, part: 'station', label: 'THE STATION', sub: 'THE HUTS · THE CREVASSE · THE ICE WALL · THE COLLAR', w: 140, d: 112, look: 'white', fogD: 0.028,
         parti: 'A research station on the ice over a hull nobody drilled for; the crevasse runs across the whole traverse, the only way over it is a plank, and the only way down is the collar.', typology: 'traverse',
         floor: 'marble_light', cliff: 'ice_1', path: 'ice_1', floorColor: 0xe4f2fc, cliffColor: 0xbfe0ff,
-        gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'walls', wallKey: 'ice_1', wallH: 5, rim: 0, forceGrow: -0.6 }, noise: { amp: 0, scale: 16 },
+        noise: { amp: 0, scale: 16 },
         plaza: { x: 0, z: 16 },
-        landmarks: [{ kind: 'peak', id: 'prebuilt_antarctica', deg: 250, dist: 0.85, s: 1.1, label: 'THE TRANSANTARCTICS' }],
+        /* THE TRANSANTARCTICS' cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible") */
         features: [
-            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built ice walls (5 m) where the rooms gen raised banks. The bay door's
-               hall to THE PLAZA; THE DECK the huts stand on west of it (its stair from the plaza) with the radio mast's yard beyond
-               (the polar opening off its west end, side room 2 a dead end off its east side); the pressure ridges' yard east (the melt
-               pool, the ridges, the polar opening behind the east ridge) with side room 1 a dead end off its north side; THE
-               CREVASSE's room north of the plaza, the one plank across it; beyond it THE HULL's court (the collar on the hull, the
-               ice wall, the drill rig) and the ice shelf's yard west of that. Loops: plaza ⇄ crevasse ⇄ ridges' yard ⇄ plaza;
-               plaza ⇄ deck ⇄ mast yard ⇄ plaza; deck yard ⇄ crevasse; hull court ⇄ ice shelf yard (two halls). */
-            { k: 'hall', pts: [[0, 56], [0, 28]], w: 7 },                                             // the bay door's hall
-            { k: 'space', x: -1.75, z: 17.5, w: 31.5, d: 28 },                                                     // THE PLAZA
-            { k: 'space', x: -38.5, z: 3.5, w: 28, d: 28 },                                                 // THE DECK's yard (the huts)
-            { k: 'hall', pts: [[-14, 3.5], [-24.5, 3.5]], w: 7 }, { k: 'hall', pts: [[-24.5, -10.5], [-14, -10.5]], w: 7 },
-            { k: 'space', x: -50.75, z: 35, w: 24.5, d: 21 },                                                // the radio mast's yard
-            { k: 'hall', pts: [[-70, 35], [-59.5, 35]], w: 7 }, { k: 'hall', pts: [[-45.5, 17.5], [-45.5, 24.5]], w: 7 }, { k: 'hall', pts: [[-38.5, 24.5], [-14, 24.5]], w: 7 },
-            { k: 'space', x: -24.5, z: 42, w: 14, d: 14 }, { k: 'hall', pts: [[-38.5, 43.75], [-31.5, 43.75]], w: 3.5 },   // side room 2 (a dead end)
-            { k: 'space', x: 40.25, z: 22.75, w: 38.5, d: 52.5 },                                                 // the pressure ridges' yard
-            { k: 'hall', pts: [[14, 10.5], [24.5, 10.5]], w: 7 }, { k: 'hall', pts: [[70, 17.5], [59.5, 17.5]], w: 7 },
-            { k: 'space', x: 47.25, z: -17.5, w: 24.5, d: 14 }, { k: 'hall', pts: [[47.25, -14], [47.25, -3.5]], w: 3.5 },   // side room 1 (a dead end)
-            { k: 'space', x: 5.25, z: -22.75, w: 45.5, d: 24.5 },                                                   // THE CREVASSE (the plank)
-            { k: 'hall', pts: [[-7, 3.5], [-7, -10.5]], w: 7 }, { k: 'hall', pts: [[24.5, -3.5], [24.5, -10.5]], w: 7 },
-            { k: 'space', x: 22.75, z: -45.5, w: 87.5, d: 21 },                                                // THE HULL's court (the collar, the ice wall, the drill rig)
-            { k: 'space', x: -45.5, z: -40.25, w: 42, d: 24.5 },                                               // THE ICE SHELF's yard
-            { k: 'hall', pts: [[-24.5, -38.5], [-17.5, -38.5]], w: 7 }, { k: 'hall', pts: [[-24.5, -50.75], [-17.5, -50.75]], w: 3.5 },
+            /* THE OPEN ICE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any
+               sense"): the L6 walls plan (5 m ice walls round every yard and hall, the sealed mass between them drawn as pits) is gone — the
+               station stands on open ice. Every piece stands where it stood: THE DECK the huts stand on (its stair, its ladder), THE RADIO
+               MAST's plinth, the east module's walkway on stilts over THE MELT POOL, THE PRESSURE RIDGES, THE HULL (the collar on it), THE ICE
+               SHELF, THE ICE WALL, THE DRILL RIG. THE CREVASSE now runs the whole width of the traverse (x -71..71), so the one plank is still
+               the only way over it. THE STATION YARD (the fight's board) is south of the plaza between the bay door and the east walkway. */
+            /* THE STATION YARD (2026-11-03, THE OPEN ICE — the fight's board, x -21..21, z 10.5..52.5 on its 3.5 m squares, centre (0, 31.5),
+               HQ_ARENA_RULES.within): two pressure ridges of ice (1.4 m, walkable high ground, three squares each), two freight containers
+               (3.0 m, two squares each) and two fuel tanks on the ice (iso_tank on a one-square ghost block, 1.3 m). Every piece turns into
+               its twin about the centre; the middle lane stays open for the house at every size */
+            { k: 'wall', x0: -20.5, z0: 22.75, x1: -11, z1: 22.75, h: 1.4, t: 2.8, key: 'ice_1' }, { k: 'wall', x0: 11, z0: 40.25, x1: 20.5, z1: 40.25, h: 1.4, t: 2.8, key: 'ice_1' },   // the ridges (squares 0..2 × 3, 9..11 × 8)
+            { k: 'wall', x0: -12.25, z0: 32, x1: -12.25, z1: 38, h: 3.0, t: 2.6, key: 'urban:MetalCorrugatedPainted1a', rail: false }, { k: 'wall', x0: 12.25, z0: 25, x1: 12.25, z1: 31, h: 3.0, t: 2.6, key: 'urban:MetalCorrugatedPainted1a', rail: false },   // the containers (2 × 6..7, 9 × 4..5)
+            { k: 'wall', x0: -8.75, z0: 29.75, x1: -8.75, z1: 29.75, h: 1.3, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 33.25, x1: 8.75, z1: 33.25, h: 1.3, t: 2.4, key: 'metal', ghost: true, rail: false },   // under the fuel tanks (3 × 5, 8 × 6)
             /* THE DECK the huts stand on: a module on stilts (2.4) — the steel stair from the plaza up the west hall (a pipe rail down
                it), a ladder on its north face, the hand-holds up its south; a walkway north from it through the hall to the mast's plinth
                (a jump up onto it) */
@@ -49186,7 +49337,7 @@ const HQ_AREA_SPECS = {
             { k: 'pool', x: 33.25, z: 5.25, r: 5.25, depth: 0.6, key: 'water', bank: 1.6 },
             { k: 'wall', x0: 24.5, z0: 24.5, x1: 49, z1: 24.5, h: 0.9, t: 1.2, key: 'ice_1' }, { k: 'wall', x0: 40, z0: 42, x1: 56, z1: 26, h: 2.2, t: 1.2, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
             /* THE CREVASSE (never entered) and the one plank across it */
-            { k: 'stream', pts: [[-16, -24], [6, -22], [28, -25]], w: 7.2, depth: 0.55, key: 'deep_water' },
+            { k: 'stream', pts: [[-71, -25], [-16, -24], [6, -22], [28, -25], [71, -24]], w: 7.2, depth: 0.55, key: 'deep_water' },   // THE OPEN ICE: wall to wall (the plank the only way over)
             { k: 'deck', x0: 5.25, z0: -14, x1: 5.25, z1: -28, w: 3.5, y: 0.2 },
             /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side (behind the ice wall), a ladder on its west face */
             { k: 'plateau', x: -1.75, z: -51.75, w: 31.5, d: 12.5, h: 3.0, edge: 0.3 },
@@ -49201,18 +49352,19 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: 38.5, z: -42, w: 28, d: 7, h: 6.0, edge: 0.3 },
             { k: 'plateau', x: 61.25, z: -40.25, r: 5.25, h: 2.2, edge: 0.3 }, { k: 'climb', x: 61.25, z: -35.3, face: 0, look: 'chain' }, { k: 'climb', x: 56.3, z: -40.25, face: 90, look: 'ladder' },
             { k: 'rail', x0: -52.5, z0: 14, x1: -45.7, z1: 14 },
-            { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2 },
+            { k: 'scatter', key: 'cave_stone', n: 6, seed: 6, x: 22, z: -44, r: 14 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3, x: -48, z: 38, r: 10 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9, x: 42, z: 22, r: 12 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2, x: -45, z: -40, r: 9 },   // THE OPEN ICE: each row in its own yard, off THE STATION YARD
         ],
-        props: [{ key: 'railing_1m', x: -29.464, z: 13.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 10, z: -45.8, face: 0, y: 3.0 }, { key: 'railing_1m', x: -52.25, z: -31.8, face: 0, y: 4.0 }, { key: 'riser_1', x: 12, z: 23.95 },
+        props: [{ key: 'railing_1m', x: -29.464, z: 13.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 10, z: -45.8, face: 0, y: 3.0 }, { key: 'railing_1m', x: -52.25, z: -31.8, face: 0, y: 4.0 }, { key: 'riser_1', x: 40, z: 50 },
                 { key: 'cot', x: -37.408, z: 5.25, y: 2.4, face: 90 }, { key: 'cot', x: -37.408, z: 10.75, y: 2.4, face: 90 }, { key: 'cot', x: -37.408, z: -0.25, y: 2.4, face: 90 }, { key: 'sea_chest', x: -43.366, z: 12.6, y: 2.4 }, { key: 'steel_table', x: -31.475, z: 10.75, y: 2.4 }, { key: 'crt_terminal', x: -31.75, z: 9, y: 3.16 },
                 { key: 'retro_radio', x: -31.75, z: 7.2, y: 3.16 }, { key: 'folding_chair', x: -33.04, z: 12.7, y: 2.4, face: 0 }, { key: 'mini_fridge', x: -41.69, z: -2.5, y: 2.4 }, { key: 'cardboard_boxes', x: -26.193, z: -1.9, y: 2.4 },
-                { key: 'flood_mast', x: -50.75, z: 33.25, y: 3.2 }, { key: 'boiler', x: -58, z: 28 }, { key: 'traffic_barrel', x: -40, z: 42 }, { key: 'traffic_barrel', x: -42, z: 44 }, { key: 'laundry_cart', x: -13, z: 19 },
-                { key: 'signpost', x: 6, z: 23.95 }, { key: 'signpost', x: 8, z: -36 }, { key: 'campfire', x: -56, z: 43 }, { key: 'campfire', x: 12, z: -38.25 }, { key: 'lesson_sign', x: -12, z: 20, face: 180, lesson: 'climb' },
+                { key: 'flood_mast', x: -50.75, z: 33.25, y: 3.2 }, { key: 'boiler', x: -58, z: 28 }, { key: 'traffic_barrel', x: -40, z: 42 }, { key: 'traffic_barrel', x: -42, z: 44 }, { key: 'laundry_cart', x: -30, z: 18 },
+                { key: 'signpost', x: -6, z: 8.5 }, { key: 'signpost', x: 8, z: -36 }, { key: 'campfire', x: -56, z: 43 }, { key: 'campfire', x: 12, z: -38.25 }, { key: 'lesson_sign', x: -11, z: 8.5, face: 180, lesson: 'climb' },
                 { key: 'car_truck', x: 28, z: 34, face: 90 }, { key: 'car_suv', x: 30, z: 44, face: 60 }, { key: 'flood_mast', x: 57, z: 45.25 }, { key: 'flood_mast', x: -59.75, z: -50 }, { key: 'flood_mast', x: 48, z: -52.25 },
                 { key: 'iso_tank', x: 61.25, z: -40.25, y: 2.2 }, { key: 'warning_tape', x: 54, z: -36 }, { key: 'warning_tape', x: 64, z: -37 }, { key: 'sea_chest', x: -56, z: -44, y: 4.0 }, { key: 'brass_telescope', x: -59.75, z: -38.25, y: 4.0, face: 90 },
                 { key: 'sea_chest', x: 6, z: -52.25, y: 3.0 }, { key: 'lone_gun', x: -6, z: -52.25, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 8, z: -13 }, { key: 'traffic_cone', x: 1, z: -31.25 }, { key: 'traffic_cone', x: 7, z: -31.25 },
-                { key: 'cave_stone', x: 26, z: -43, y: 6.0 }, { key: 'cardboard_boxes', x: 57, z: -2 }, { key: 'cinder_block', x: -28, z: 45.75 }],
-        npcSpots: [{ x: -6, z: 24, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 8, z: -40, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
+                { key: 'cave_stone', x: 26, z: -43, y: 6.0 }, { key: 'cardboard_boxes', x: 57, z: -2 }, { key: 'cinder_block', x: -28, z: 45.75 },
+                { key: 'iso_tank', x: -8.75, z: 29.75, floor: true }, { key: 'iso_tank', x: 8.75, z: 33.25, face: 180, floor: true }, { key: 'flood_mast', x: -22.75, z: 12.25 }, { key: 'flood_mast', x: 22.75, z: 50.75 }],   // THE STATION YARD: the fuel tanks on their ghost blocks, a light mast off two corners
+        npcSpots: [{ x: -6, z: 5, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 8, z: -40, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
                    { x: -35.422, z: 10, y: 2.4, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
     /* ROOM 14179 · MOUNT SHASTA · THE SLOPES (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the mountain climbs from THE MEADOW at
@@ -49273,39 +49425,17 @@ const HQ_AREA_SPECS = {
         outer: { keep: 1, lift: -26 },   // OPEN WORLD Phase 6 (2026-09-27): the summit stands 60 m up — the ground past its field falls away (the switchbacks' face below it is on the stage)
         parti: 'A marble court on a cloud where every stair goes up to a throne nobody sits in, and the lightning comes from below.', typology: 'hub',
         floor: 'marble_light', cliff: 'cloud_thick', path: 'gold', floorColor: 0xf8f8f2, cliffColor: 0xf0eee8,
-        /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built marble, no banks. THE COURT in the middle (the fountain, the plaza);
-           the stair from it up THE THRONE DAIS, which stands in its own hall (the Lodge's painting in side room 2 behind it);
-           hall A (the stepping clouds) from the court's west side to the throne hall and the west court; THE LIGHTNING SPIRE in
-           the west court, the stair from it up THE HIGH TERRACE (the gate of cloud); THE LOWER COURT a raised court up its
-           stair from the court (the rope over its lip from the west court); THE FORGE's room east of the court, THE ANVIL
-           TERRACE's room north of it up its stair, THE LOFT up the chain; the south colonnade from the switchbacks' join (the
-           bay door) to side room 1 in the south-west, with a walk up into the court and one up to the forge. Loops: court ⇄
-           stair ⇄ dais ⇄ throne hall ⇄ hall A ⇄ court; court ⇄ forge ⇄ colonnade ⇄ court; throne hall ⇄ anvil stair ⇄ forge ⇄ court. */
-        gen: { kind: 'plan', look: 'walls', wallKey: 'marble_light', wallH: 5.5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 9 },
+        /* THE OPEN SUMMIT (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? That doesnt make any
+           sense"): the L6 walls plan (5.5 m marble walls round every court and hall, the sealed mass between them drawn as pits) is gone —
+           the summit is one open marble crown above the cloud (outer.lift: the mountain falls away past its edge). Every tier stands where
+           it stood: THE COURT in the middle (the fountain, the Twelve's columns), THE THRONE DAIS north of it up its stair (the carved
+           flank's hand-holds, the Lodge's painting on the north edge behind it), the stepping clouds west of the court to the dais, THE
+           LIGHTNING SPIRE in the west court, THE HIGH TERRACE (the gate of cloud) up its stair, THE LOWER COURT up its stair (the rope over
+           its lip), THE FORGE's lava east of the court under THE ANVIL TERRACE (THE LOFT up the chain), the colonnade along the south edge
+           with its raised west walk. Nothing walls the courts off: every tier is reached from the open marble round it. */
+        noise: { amp: 0, scale: 9 },
         plaza: { x: 0, z: 12 }, plazaR: 11,
         features: [
-            { k: 'space', x: 0, z: 7, w: 35, d: 35 },                                          // THE COURT
-            { k: 'space', x: -1.75, z: -28, w: 38.5, d: 28 },                                       // the throne hall (THE THRONE DAIS in it)
-            { k: 'hall', pts: [[0, -7], [0, -17.5]], w: 7 },                                    // the dais stair's slot
-            { k: 'space', x: 15.75, z: -43.75, w: 10.5, d: 10.5 },                                     // side room 2 (the Lodge's painting)
-            { k: 'hall', pts: [[-21, 0], [-21, -17.5]], w: 7 },                                   // hall A (the stepping clouds)
-            { k: 'space', x: -43.75, z: -17.5, w: 31.5, d: 14 }, { k: 'space', x: -43.75, z: -1.75, w: 31.5, d: 17.5 },   // the west court (THE LIGHTNING SPIRE between its halves)
-            { k: 'hall', pts: [[-31.5, -3.5], [-21, -3.5]], w: 7 },
-            { k: 'space', x: -42, z: -40.25, w: 35, d: 17.5 },                                   // THE HIGH TERRACE
-            { k: 'hall', pts: [[-35, -21], [-35, -31.5]], w: 7 },                                // its stair's slot
-            { k: 'space', x: -33.25, z: 19.25, w: 24.5, d: 24.5 },                                       // THE LOWER COURT
-            { k: 'hall', pts: [[-24.5, 21], [-17.5, 21]], w: 7 },                                 // its stair's slot
-            { k: 'space', x: 38.5, z: 7, w: 35, d: 35 },                                     // THE FORGE
-            { k: 'hall', pts: [[17.5, 21], [24.5, 21]], w: 7 },
-            { k: 'space', x: 40.25, z: -31.5, w: 31.5, d: 35 },                                     // THE ANVIL TERRACE's room
-            { k: 'hall', pts: [[24.5, -7], [24.5, -17.5]], w: 7 },
-            { k: 'hall', pts: [[17.5, -24.5], [24.5, -24.5]], w: 7 },                               // the throne hall's east door onto the anvil stair
-            { k: 'hall', pts: [[-52.5, 43.75], [49, 43.75]], w: 10.5 },                                   // the south colonnade (the bay door on it)
-            { k: 'hall', pts: [[0, 24.5], [0, 42]], w: 7 },                                      // the walk up into the court
-            { k: 'hall', pts: [[49, 21], [49, 42]], w: 7 },                                    // the walk up to the forge
-            { k: 'space', x: -54.25, z: 29.75, w: 10.5, d: 10.5 },                                       // side room 1 (a dead end)
-            { k: 'hall', pts: [[-52.5, 35], [-52.5, 42]], w: 7 },
-            { k: 'hall', pts: [[-35, 31.5], [-35, 42]], w: 7 },                              // the lower court's walk onto the colonnade
             /* THE THRONE DAIS (3.0): the stair up its front, the carved flank's hand-holds up its east side */
             { k: 'plateau', x: -1.75, z: -28, w: 24.5, d: 14, h: 3.0, edge: 0.15 },
             { k: 'ramp', x0: 0, z0: -10.5, x1: 0, z1: -21, w: 7, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
@@ -49334,10 +49464,10 @@ const HQ_AREA_SPECS = {
             { k: 'wall', x0: 31.4, z0: -49, x1: 31.4, z1: -28.4, y: 2.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 31.4, z0: -20.6, x1: 31.4, z1: -14, y: 2.2, t: 0.5, key: 'marble_light', rail: false },   // its marble face on the stair's strip
             /* THE LOWER COURT (1.2) up its stair — or a rope over its lip from the west court; the stepping clouds (float) up hall A to the dais's west side */
             { k: 'plateau', x: -33.25, z: 19.25, w: 26.1, d: 26.1, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: -10.5, z0: 21, x1: -20.8, z1: 21, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'ramp', x0: -24.1, z0: -3.5, x1: -24.1, z1: 6.8, w: 3.5, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE OPEN SUMMIT: its stair up from the west court (off the court's board)
             { k: 'climb', x: -33.25, z: 7.4, face: 180, look: 'rope' },
             { k: 'wall', x0: -45.5, z0: 6.7, x1: -35.05, z1: 6.7, y: 1.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -31.45, z0: 6.7, x1: -28, z1: 6.7, y: 1.2, t: 0.5, key: 'marble_light', rail: false },   // its marble lip on the west court (the rope between)
-            { k: 'plateau', x: -17.5, z: -3.5, r: 3.5, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -21, z: -10.5, r: 4.4, h: 2.0, edge: 0.3, float: true }, { k: 'plateau', x: -21, z: -21, r: 3.5, h: 3.0, edge: 0.3, float: true },
+            { k: 'plateau', x: -24.5, z: -9.5, r: 3.5, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -27, z: -16.5, r: 4.4, h: 2.0, edge: 0.3, float: true },   // THE OPEN SUMMIT: off the court's board (its west edge x -21) { k: 'plateau', x: -21, z: -21, r: 3.5, h: 3.0, edge: 0.3, float: true },
             { k: 'rail', x0: -18.3, z0: -22.75, x1: -13.2, z1: -22.75, y: 3.0, model: 'pipe', block: false },                              // across the last cloud's gap to the dais
             /* THE COLONNADE WALK (1.2): the colonnade's west half raised to the lower court's level, joined to it by its walk; a stair down at its east end (a centre handrail) and one down into side room 1 */
             { k: 'plateau', x: -33.25, z: 43.75, w: 52.5, d: 10.5, h: 1.2, edge: 0.15 },
@@ -49345,17 +49475,26 @@ const HQ_AREA_SPECS = {
             { k: 'ramp', x0: 0, z0: 45.5, x1: -7, z1: 45.5, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
             { k: 'rail', pts: [[-0.438, 45.5, 0.07], [-6.562, 45.5, 1.13]], model: 'pipe', block: false },                                      // its centre handrail
             { k: 'ramp', x0: -52.5, z0: 31.5, x1: -52.5, z1: 38.5, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            /* THE COURT OF THE TWELVE (2026-11-03, THE OPEN SUMMIT — the court's board, x -21..21, z -10.5..31.5 on its 3.5 m squares, centre
+               (0, 10.5), HQ_ARENA_RULES.within): the Twelve's columns in two rows of six either side of the court (x ±12.25, one square each,
+               5 m: a ghost block under each — the fight's and the walker's, never drawn; the column stands on the floor, `floor: true`), the
+               middle lane open for the house at every size, two marble plinths (1.2) at the far corners. Every piece turns into its twin about the centre (the two sides fight the same court) */
+            { k: 'wall', x0: -12.25, z0: -5.25, x1: -12.25, z1: -5.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 1.75, x1: -12.25, z1: 1.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 8.75, x1: -12.25, z1: 8.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 12.25, x1: -12.25, z1: 12.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 19.25, x1: -12.25, z1: 19.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 26.25, x1: -12.25, z1: 26.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -5.25, x1: 12.25, z1: -5.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 8.75, x1: 12.25, z1: 8.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 12.25, x1: 12.25, z1: 12.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 19.25, x1: 12.25, z1: 19.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 26.25, x1: 12.25, z1: 26.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false },
+            { k: 'plateau', x: -17.5, z: -7, w: 7.9, d: 7.9, h: 1.2, edge: 0.15 }, { k: 'plateau', x: 17.5, z: 28, w: 7.9, d: 7.9, h: 1.2, edge: 0.15 },   // the two plinths (squares 0..1 × 0..1 and 10..11 × 10..11)
             { k: 'wall', x0: 31.5, z0: 10.5, x1: 49, z1: 10.5, h: 1.0, t: 0.6, key: 'marble_light' },                  // the balustrade on the lava's lip (the grind)
             { k: 'path', pts: [[0, 44], [0, -8]], w: 6.4 }, { k: 'path', pts: [[-54, 44], [48, 44]], w: 4.4 },
-            { k: 'scatter', key: 'white_cloud', n: 4, seed: 4 }, { k: 'scatter', key: 'garden_ring', n: 5, seed: 7 }, { k: 'scatter', key: 'armour_stand', n: 4, seed: 9 }, { k: 'scatter', key: 'brazier', n: 3, seed: 5 },
+            /* THE OPEN SUMMIT: the scatter keeps off THE COURT OF THE TWELVE (with the walls gone it landed on the board) — each row in its own court; one garden ring
+               (14 m across: five of them piled up on the open marble) between the forge and the colonnade */
+            { k: 'scatter', key: 'white_cloud', n: 4, seed: 4, x: -44, z: 2, r: 13 }, { k: 'scatter', key: 'garden_ring', n: 1, seed: 7, x: 36, z: 26, r: 1 }, { k: 'scatter', key: 'armour_stand', n: 4, seed: 9, x: 44, z: -31, r: 11 }, { k: 'scatter', key: 'brazier', n: 3, seed: 5, x: -44, z: -40, r: 11 },
         ],
-        props: [{ key: 'railing_1m', x: -28, z: -32.225, face: 0, y: 3.0 }, { key: 'riser_1', x: 16, z: 20 }, { key: 'royal_throne', x: 0, z: -30, y: 3.0, face: 180 }, { key: 'brazier', x: 16.575, z: -4 },
-                { key: 'angel_statue', x: -40.25, z: -8.75, y: 6.6 }, { key: 'stone_altar', x: 42, z: -26, y: 2.2 }, { key: 'lectern', x: -6, z: -30, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: -2 }, { key: 'armour_stand', x: 47.25, z: -40.25, y: 5.0 }, { key: 'park_bench', x: -32, z: 20, y: 1.2, face: 180 },
+        props: [{ key: 'railing_1m', x: -28, z: -32.225, face: 0, y: 3.0 }, { key: 'riser_1', x: 52, z: 22 }, { key: 'royal_throne', x: 0, z: -30, y: 3.0, face: 180 }, { key: 'brazier', x: 24.5, z: -8.75 },
+                { key: 'angel_statue', x: -40.25, z: -8.75, y: 6.6 }, { key: 'stone_altar', x: 42, z: -26, y: 2.2 }, { key: 'lectern', x: -6, z: -30, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: 35 }, { key: 'armour_stand', x: 47.25, z: -40.25, y: 5.0 }, { key: 'park_bench', x: -32, z: 20, y: 1.2, face: 180 },
                 /* the colonnade's columns (on its north side) and the court's */
                 { key: 'greek_column', x: -42, z: 41.2, y: 1.2 }, { key: 'greek_column', x: -28, z: 41.2, y: 1.2 }, { key: 'greek_column', x: -18, z: 41.2, y: 1.2 }, { key: 'greek_column', x: -11, z: 41.2, y: 1.2 },
                 { key: 'greek_column', x: 8, z: 41.2 }, { key: 'greek_column', x: 20, z: 41.2 }, { key: 'greek_column', x: 32, z: 41.2 }, { key: 'greek_column', x: 42, z: 41.2 },
          { key: 'instrument_harp', x: 6.4, z: -30.8, y: 3.0, face: 180 }, { key: 'instrument_harp', x: -30, z: -37, face: 120 }, { key: 'instrument_drum', x: -32.4, z: -33.8, face: 110 },   // THE INSTRUMENTS (2026-10-27): the court's harp beside the throne, the angel's harp and a drum by the west end
-                { key: 'greek_column', x: -16, z: 24.075 }, { key: 'greek_column', x: 16, z: 24.075 }, { key: 'greek_column', x: -16.431, z: -6.915 }, { key: 'greek_column', x: 16.575, z: -8 }],
+                /* THE COURT OF THE TWELVE: the Twelve's columns on their ghost blocks (two rows of six either side of the court) */
+                { key: 'greek_column', x: -12.25, z: -5.25, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 1.75, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 8.75, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 12.25, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 19.25, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 26.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: -5.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 1.75, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 8.75, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 12.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 19.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 26.25, h: 5.0, floor: true }],
         npcSpots: [{ x: -6, z: 20, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 24, z: 12, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
                    { x: -34, z: -40, face: 90, race: 'angel', say: '“The gate of cloud is on the terrace because the stair only goes up. Think about it.”' }],
         lines: ['“Which management?” “The other one.”'] },
@@ -49369,7 +49508,7 @@ const HQ_AREA_SPECS = {
         floor: 'moon_2', cliff: 'mars_2', path: 'moon_2', floorColor: 0xc88a5a, cliffColor: 0xa86048,
         gen: { kind: 'plan', look: 'rock', keep: true, wallH: 2.6, rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, open: [{ x: -44, z: -30, r: 16 }, { x: -62, z: -28, r: 10 }, { x: -48, z: -3, r: 9 }] }, noise: { amp: 0.2, scale: 14 },   // the third open circle: the strip between the west mesa's north cliff and a rock bank was a pocket (a rescue ramp) — forced open
         plaza: { x: 0, z: 16 }, plazaR: 11,
-        landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, tex: 'mars_2', color: 0xa86048, snow: false, label: 'OLYMPUS MONS' }],
+        /* OLYMPUS MONS' cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible") */
         features: [
             /* THE WEST MESA (3.2): the long ramp up its south side, a rope on its east face, the hand-holds on its north — THE BASE CAMP stands on it */
             /* THE FROZEN PLAN (2× squares, 2026-10-28): the generated clearings and winding paths (gen.kind rooms, seed 4) as hand rows, then ×2 */
@@ -49610,32 +49749,19 @@ const HQ_AREA_SPECS = {
     prebuilt_northpole: { grown: 2, part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE DRIFT · THE POLE', w: 128, d: 104, night: 1, look: 'white', fogD: 0.026,
         parti: 'A workshop village on a frozen lake; the sleigh road leaves north over the drift where the pole stands.', typology: 'pearls',
         floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
-        gen: { kind: 'plan', look: 'walls', wallKey: 'wood_planks', wallH: 4.5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 7 },
+        noise: { amp: 0, scale: 7 },
         forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['xmas_pine', 'xmas_pine_2', 'xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'] },   // THE CHRISTMAS PACK (2026-10-24): the pack's snowy pines (were the retro pine)
         plaza: { x: 0, z: 12 }, plazaR: 11,
         features: [
-            /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built timber walls (4.5 m) where the rooms gen raised banks. The bay
-               door's hall to THE PLAZA; THE WORKSHOP west (its deck to the west wall, the hearth's door on it, THE LOFT) up its steps
-               from the plaza; THE SLEDGE HILL's yard north-west (THE ICE SHELF on it); the pole's yard north (THE DRIFT with the
-               sleigh road's door on it, THE POLE's cairn, THE ICE WALL); THE FROZEN LAKE east; the gift yard south-east (THE GIFT
-               STACK, the meltwater and its plank); side room 1 south-west (the pines), side room 2 a dead end off the pole's yard.
-               Loops: plaza ⇄ workshop ⇄ sledge yard ⇄ pole yard ⇄ plaza; plaza ⇄ lake ⇄ pole yard; plaza ⇄ workshop ⇄ side room 1
-               ⇄ plaza; plaza ⇄ lake ⇄ gift yard ⇄ plaza. */
-            { k: 'hall', pts: [[0, 52.5], [0, 24.5]], w: 7 },                                             // the bay door's hall
-            { k: 'space', x: -1.75, z: 10.5, w: 31.5, d: 28 },                                                     // THE PLAZA
-            { k: 'space', x: -42, z: 0, w: 42, d: 35 },                                                   // THE WORKSHOP (its deck)
-            { k: 'hall', pts: [[-14, 0], [-24.5, 0]], w: 7 },
-            { k: 'space', x: -42, z: -35, w: 35, d: 28 },                                               // THE SLEDGE HILL's yard
-            { k: 'hall', pts: [[-31.5, -24.5], [-31.5, -14]], w: 7 }, { k: 'hall', pts: [[-24.5, -38.5], [-7, -38.5]], w: 7 },
-            { k: 'space', x: 21, z: -31.5, w: 56, d: 35 },                                                // the pole's yard (THE DRIFT, THE POLE)
-            { k: 'hall', pts: [[-3.5, -17.5], [-3.5, 0]], w: 7 },
-            { k: 'space', x: 59.5, z: -36.75, w: 7, d: 24.5 }, { k: 'hall', pts: [[45.5, -26.25], [56, -26.25]], w: 3.5 },   // side room 2 (a dead end)
-            { k: 'space', x: 38.5, z: 3.5, w: 35, d: 28 },                                                    // THE FROZEN LAKE
-            { k: 'hall', pts: [[14, 7], [21, 7]], w: 7 }, { k: 'hall', pts: [[49, -10.5], [49, -17.5]], w: 7 },
-            { k: 'space', x: 40.25, z: 31.5, w: 31.5, d: 21 },                                                 // the gift yard
-            { k: 'hall', pts: [[35, 14], [35, 24.5]], w: 7 }, { k: 'hall', pts: [[14, 24.5], [24.5, 24.5]], w: 7 },
-            { k: 'space', x: -24.5, z: 36.75, w: 28, d: 17.5 },                                                 // side room 1 (the pines)
-            { k: 'hall', pts: [[-14, 24.5], [-21, 24.5], [-21, 28]], w: 7 }, { k: 'hall', pts: [[-45.5, 14], [-45.5, 35], [-38.5, 35]], w: 7 },
+            /* THE OPEN VILLAGE (2026-11-03, mondo: "why are mount olympus and antartica built like dungeons with walls? ... audit every map"):
+               the L6 walls plan (4.5 m timber walls carved round rooms and halls, black pits between) is gone; the village stands open on
+               the frozen lake's shore. The hearth is the fireplace way's own chimney breast at the workshop deck's west edge; THE BAY GATE's
+               two posts carry the hall's wreaths; two cottages (the Christmas pack's House) either side of the board between the workshop and
+               the plaza, each on a 3 × 3 ghost block (props are not fight squares). */
+            { k: 'wall', x0: -3.9, z0: 28, x1: -3.9, z1: 32, h: 3.0, t: 0.8, key: 'wood_planks', rail: false }, { k: 'wall', x0: 3.9, z0: 28, x1: 3.9, z1: 32, h: 3.0, t: 0.8, key: 'wood_planks', rail: false },   // THE BAY GATE's posts
+            { k: 'wall', x0: -43.75, z0: 15.75, x1: -43.75, z1: 15.75, h: 5.0, t: 10.2, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 12.25, x1: -12.25, z1: 12.25, h: 5.0, t: 10.2, key: 'wood_planks', ghost: true, rail: false },   // THE COTTAGES' blocks
+            { k: 'wall', x0: -8.75, z0: 29.75, x1: -8.75, z1: 29.75, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -47.25, z0: -1.75, x1: -47.25, z1: -1.75, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false },   // the two sleighs' squares
+            { k: 'wall', x0: -40.25, z0: 33.25, x1: -40.25, z1: 33.25, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -5.25, x1: -15.75, z1: -5.25, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false },   // two more snowmen's squares
             /* THE WORKSHOP's deck (1.0) to the west wall — the hearth stands on it; the steps up from the plaza, the ice-block hand-holds up its south lip; THE LOFT (3.4) up the ladder */
             { k: 'plateau', x: -42.5, z: -1.75, w: 43, d: 24.5, h: 1.0, edge: 0.15 },
             { k: 'ramp', x0: -14, z0: 0, x1: -21, z1: 0, w: 7, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
@@ -49664,7 +49790,7 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: 9.9, z0: -45.5, x1: 14, z1: -45.5, y: 2.2, model: 'pipe', block: false },                                    // across the gap
             { k: 'plateau', x: -12.25, z: -38.75, w: 17.5, d: 7.5, h: 2.2, edge: 0.15 },
             { k: 'ramp', x0: -5.25, z0: -24.5, x1: -5.25, z1: -35, w: 3.5, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: -31.5, z0: -38.5, x1: -21, z1: -38.5, w: 7, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: false },   // (the hall's walls either side)
+            { k: 'ramp', x0: -31.5, z0: -38.5, x1: -21, z1: -38.5, w: 7, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },   // THE OPEN VILLAGE: its own railings (the hall's walls are gone)
             { k: 'rail', x0: -1.216, z0: -42.6, x1: 9.836, z1: -42.6, model: 'ranch' }, { k: 'rail', x0: -4.1, z0: -41.4, x1: -4.1, z1: -35.6, model: 'ranch' },
             { k: 'rail', x0: -20.37, z0: -35.6, x1: -7.2, z1: -35.6, model: 'ranch' },
             /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank */
@@ -49684,6 +49810,10 @@ const HQ_AREA_SPECS = {
                 /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): every piece stands off the North Pole arena's windows (the board's cells are
                    baked from this room, x −25 … −4), so no fight square changes. THE PLAZA's tree with the presents under it */
                 { key: 'xmas_tree', x: 8, z: 6, h: 3.2 },
+                /* THE OPEN VILLAGE: THE COTTAGES (the pack's House, its own patch of snow) on their ghost blocks */
+                { key: 'xmas_house', x: -43.75, z: 15.75, face: 90, h: 6.0, floor: true }, { key: 'xmas_house', x: -12.25, z: 12.25, face: 270, h: 6.0, floor: true },
+                { key: 'sleigh', x: -8.75, z: 29.75, face: 300, floor: true }, { key: 'sleigh', x: -47.25, z: -1.75, face: 120, floor: true },   // two sleighs parked
+                { key: 'xmas_snowman_2', x: -40.25, z: 33.25, face: 160, floor: true }, { key: 'xmas_snowman', x: -15.75, z: -5.25, face: 340, floor: true },
                 { key: 'xmas_gift', x: 5.8, z: 7.4, face: 20 }, { key: 'xmas_gift_2', x: 10.2, z: 7.8, face: -15 }, { key: 'xmas_gift_3', x: 6.6, z: 3.6, face: 35 }, { key: 'xmas_gift_4', x: 10, z: 4, face: 60 },
                 /* the hearth (the fireplace way on the workshop deck's west wall, its mantel 1.7 over the deck): the wreath on the breast, the
                    garland and two stockings off the mantel, the cocoa and a gingerbread man left on it; the workshop's mallets by the wall */
@@ -49716,28 +49846,27 @@ const HQ_AREA_SPECS = {
        (HQ_ARENA_RULES.picks: bake-arenas.js). The marble pieces stand ON it as cover, one square each (HQ_TREE_KINDS chess_*: the walker
        bumps them, the fight's LOS stops at them): the black set on the north half (P2's), the white set its 180° twin on the south
        (P1's). A marble walk a square wide runs round the board, braziers at its corners light it, the black king and queen stand over
-       the fountain at the north end, the white pair at the gate in the south hedge. The garden is a lawn (grass_2) with marble walks. */
+       the fountain at the north end, the white pair at the gate in the south hedge. The garden is a lawn (grass_2) with marble walks.
+       THE CHESS POSITIONS (2026-11-03): the board is 8 × 8 in the middle of the 12 × 12 window and stands one of mondo's three real
+       positions per battle (HQ_LG_CHESS) — the pieces carve the lanes. */
     prebuilt_lookingglass: { grown: 2, part: 'garden', label: 'THE GARDEN', sub: 'THE HEDGES · THE CHESSBOARD · THE TEA TABLE · THE MOON', w: 124, d: 108, night: 1, look: 'skycastle', fogD: 0.024,
         parti: 'A chessboard between hedges; the pieces are the towers, and the moon perches over the whole game with its grin on.', typology: 'grid',
         floor: 'grass_2', cliff: 'leaves_3', path: 'marble', floorColor: 0x86a468, cliffColor: 0x3a5a34,   // THE CHESS COURT: a lawn with marble walks (was marble everywhere)
         gen: { kind: 'rooms', seed: 64, loops: 4, rMin: 5, rMax: 9, wallH: 2.2, thicket: false, corridor: [2.2, 3.0], open: [{ x: 32, z: -29, r: 12 }, { x: 50, z: -24, r: 10 }, { x: 18, z: 44, r: 10 }, { x: -8, z: -48, r: 8 }, { x: -13.6, z: -36, r: 3 }], grow: 2 }, noise: { amp: 0.04, scale: 9 },   // the open circles: the strip north of the croquet ground under the red tower's ramp, its east end, behind the south hedge, and between the bishop's landing and the moon's perch were pockets (rescue ramps)
         plaza: { x: 0, z: 43.2 }, plazaR: 6.4, marker: { x: 0, z: 17.5 },   // THE CHESS COURT: the way in ends at the gate; the BATTLE marker on the board's middle (the bake's nearest window)
         features: [
-            /* THE CHESSBOARD (2026-09-30, mondo: "there needs to be a chessboard in the looking glass explorable area"; 12 × 12 since
-               2026-10-20, THE CHESS COURT): squares of a battle tile each, the light marble and the dark (the Δ's two sheets and tints),
-               on THE FIELD's lattice (x −10.5..10.5 = ±6 tiles, z −1.75..19.25 = tiles −1..11), the marble walk a square wide round it */
-            { k: 'board', x: 0, z: 17.5, n: 12, cell: 3.5, keys: ['marble_light', 'marble'], colors: [0xf2eee6, 0x2c2a38] },
-            { k: 'path', pts: [[-22.75, -5.25], [22.75, -5.25], [22.75, 40.25], [-22.75, 40.25], [-22.75, -5.25]], w: 3.5 },   // THE WALK round the board
-            /* THE PIECES (cover, one square each, on the squares' middles): the black set (P2, the north half) — a rook, a bishop, a knight,
-               two pawns, the queen — and the white set, each the 180° twin of a black one (square (i, j) ⇄ (11 − i, 11 − j), (0, 0) the NW
-               square). All in columns 0..3 / 8..11, so every arena size's house (the 4v4 and 5v5 zones, the egress rows, the nexus — the
-               middle four columns) stays clear: the 9, 10 and 11 cuts are on the board too */
-            { k: 'tree', kind: 'chess_rook_dark', x: -15.75, z: 1.75, r: 0.72 }, { k: 'tree', kind: 'chess_rook', x: 15.75, z: 33.25, r: 0.72 },   // (1, 1) ⇄ (10, 10)
-            { k: 'tree', kind: 'chess_bishop_dark', x: 12.25, z: 5.25, r: 0.72 }, { k: 'tree', kind: 'chess_bishop', x: -12.25, z: 29.75, r: 0.72 },   // (9, 2) ⇄ (2, 9)
-            { k: 'tree', kind: 'chess_knight_dark', x: -12.25, z: 12.25, r: 0.72, face: 0 }, { k: 'tree', kind: 'chess_knight', x: 12.25, z: 22.75, r: 0.72, face: 180 },   // (2, 4) ⇄ (9, 7)
-            { k: 'tree', kind: 'chess_pawn_dark', x: 8.75, z: 12.25, r: 0.72 }, { k: 'tree', kind: 'chess_pawn', x: -8.75, z: 22.75, r: 0.72 },   // (8, 4) ⇄ (3, 7)
-            { k: 'tree', kind: 'chess_pawn_dark', x: -8.75, z: 15.75, r: 0.72 }, { k: 'tree', kind: 'chess_pawn', x: 8.75, z: 19.25, r: 0.72 },   // (3, 5) ⇄ (8, 6)
-            { k: 'tree', kind: 'chess_queen_dark', x: -19.25, z: 15.75, r: 0.72 }, { k: 'tree', kind: 'chess_queen', x: 19.25, z: 19.25, r: 0.72 },   // (0, 5) ⇄ (11, 6)
+            /* THE CHESSBOARD (2026-09-30, mondo: "there needs to be a chessboard in the looking glass explorable area"; 12 × 12 from
+               2026-10-20, THE CHESS COURT; 8 × 8 since 2026-11-03, THE CHESS POSITIONS — "the chess board needs to be an 8x8 (the game
+               board stays 12x12)"): squares of a battle square each (3.5 m), the light marble and the dark, in the middle of the 12 × 12
+               arena window (x −14..14, z 3.5..31.5 = the window's squares 2..9; the lawn rings round it are where the teams spawn), the
+               marble walk a square wide round the window */
+            { k: 'board', x: HQ_LG_CHESS.board.x, z: HQ_LG_CHESS.board.z, n: HQ_LG_CHESS.board.n, cell: HQ_LG_CHESS.board.cell, keys: ['marble_light', 'marble'], colors: [0xf2eee6, 0x2c2a38], clear: 7 },   // clear: the two lawn rings of the arena stay bare
+            { k: 'path', pts: [[-22.75, -5.25], [22.75, -5.25], [22.75, 40.25], [-22.75, 40.25], [-22.75, -5.25]], w: 3.5 },   // THE WALK round the arena
+            { k: 'plateau', x: 0, z: 17.5, w: 43.6, d: 43.6, h: 0.06, edge: 0.2 },   // the whole 12 × 12 window's flat lawn (the 12 × 12 board's own floor until 11-03: the garden's plan keeps out of it as before)
+            /* THE PIECES (THE CHESS POSITIONS): his three positions' pieces, one square each on the squares' middles — the black set on
+               the north ranks (P2's side), the white set on the south (P1's); the pieces every position shares stand always, the one white
+               bishop that moves stands in its own position only (HQ_LG_CHESS, hqLgChessOn) */
+            ...hqLgChessFeatures(),
             /* THE GIANTS off the board: the black king and queen over the fountain at the north end, the white pair at the gate */
             { k: 'tree', kind: 'chess_king_dark', x: 15, z: -12.4, r: 0.8, h: 3.4 }, { k: 'tree', kind: 'chess_queen_dark', x: -15, z: -12.4, r: 0.8, h: 3.1 },
             { k: 'tree', kind: 'chess_king', x: -9.2, z: 48, r: 0.8, h: 3.4 }, { k: 'tree', kind: 'chess_queen', x: 9.2, z: 48, r: 0.8, h: 3.1 },
@@ -50120,7 +50249,10 @@ const HQ_AREA_SPECS = {
                 { key: 'cave_torch', x: -12.25, z: -36.75 }, { key: 'cave_torch', x: 12.25, z: -36.75 }, { key: 'cave_torch', x: 28, z: 16 }, { key: 'cave_torch', x: -43.75, z: 26.325 },
                 { key: 'planter', x: -9, z: -34 }, { key: 'planter', x: 9, z: -34 }, { key: 'garden_tree', x: -50.75, z: 29.875 }, { key: 'garden_tree', x: 20, z: 48 }, { key: 'hollow_tree', x: 48, z: 40 },
                 { key: 'park_bench', x: -8, z: 24.25, face: 0 }, { key: 'park_bench', x: 24.25, z: 40, face: 180 }, { key: 'signpost', x: 6, z: 24.25 }, { key: 'stocks', x: 19.125, z: 5.25, face: 180 },
-                { key: 'skull_pile', x: 22.875, z: -12.25 }, { key: 'skull_pile', x: 48, z: 12 }, { key: 'brazier', x: 8.875, z: 8.875 }, { key: 'brazier', x: -8.875, z: 8.875 }],
+                { key: 'skull_pile', x: 22.875, z: -12.25 }, { key: 'skull_pile', x: 48, z: 12 }, { key: 'brazier', x: 8.875, z: 8.875 }, { key: 'brazier', x: -8.875, z: 8.875 },
+                /* THE HOUSES PAST THE PINES (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): the Abandoned House's shell
+                   on the outer ground past the treeline, west, east and south of the grounds (side on: its long wall to the grounds) */
+                { key: 'abandoned_house', x: -86, z: -14, face: 0 }, { key: 'abandoned_house', x: 86, z: 18, face: 180 }, { key: 'abandoned_house', x: -34, z: 80, face: 90 }],
         npcSpots: [{ x: -6, z: 24, face: 30, race: 'ghost', say: '“The house is not haunted. The grounds are. The house is where we go to get away from it.”' }, { x: -32, z: -16, y: 0.8, face: 160, race: 'ghoul', say: '“Every stone in the plot has your surname. Most of them are spelled right.”' },
                    { x: 48, z: -38, y: 1.4, face: 270, race: 'vampire', say: '“The terrace was for watching the drive. Nobody comes up the drive. We watch anyway.”' }],
         lines: ['“Which floor?” “The one hotels leave out.”'] },
@@ -50970,13 +51102,15 @@ function hqOpeningPieces(w, ops) {
    so the raised ground showed through. The field under a building is never touched now. A row without `y` stands on the ground:
    its rows carry `texbOf` and heights over 0, and hqTerrainCompile lifts them by the lowest ground under the footprint. */
 function hqTexBuildingRows(f) {
-    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), H = st * R.texStorey, rel = typeof f.y !== 'number', y0 = rel ? 0 : +f.y;
+    const R = HQ_SHAPE_RULES, st = Math.max(1, Math.min(12, Math.round(+f.storeys || 2))), rel = typeof f.y !== 'number', y0 = rel ? 0 : +f.y;
     const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), t = R.ghostT;
+    /* THE PACK BUILDINGS (2026-11-03): a pack model's height is its own at the footprint's width (its roof slab, its parapet), never the storeys */
+    const PK = hqTexbPack(f), H = PK ? PK.roof * w / PK.w : st * R.texStorey;
     const P = (lx, lz) => [_hqR4(f.x + lx * c - lz * s), _hqR4(f.z + lx * s + lz * c)];
-    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = y0 + H + R.texParapet, of = rel ? f : null;
+    const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = PK ? y0 + PK.h * w / PK.w : y0 + H + R.texParapet, of = rel ? f : null;
     const C = [P(-hw, -hd), P(hw, -hd), P(hw, hd), P(-hw, hd)], out = [];
     const gw = (a, b, lift) => { const r = { k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true, texbOf: of }; if (lift) r.lift = lift; out.push(r); };
-    const D = f.hollow && !hqTexbPrism(f) ? hqTexbDoor(f) : null;   // a prism building stays solid (its sprite faces have no doorway to cut)
+    const D = f.hollow && !hqTexbPrism(f) && !PK ? hqTexbDoor(f) : null;   // a prism building stays solid (its sprite faces have no doorway to cut); a pack building too
     for (let i = 0; i < 4; i++) {
         const a = C[i], b = C[(i + 1) % 4];
         if (D && i === 2) {   // THE INSIDE: the front (+z) has its doorway — the wall either side of it and a lintel over it
@@ -50991,9 +51125,44 @@ function hqTexBuildingRows(f) {
 /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): the
    building sprites the battle board's prisms and the city's prism lots wear (sprites.js OBJECT_SPRITES) — a texbuilding whose `key`
    is one of them is drawn as that prism (three-renderer.js _hqBuildTexPrisms), its box and its roof the same as the textured one's */
-const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
-    'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'church_2', 'shop'];
-function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PRISMS.indexOf(f.key) >= 0); }
+const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10',
+    'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'shop'];   // building_11 + church_2 retired 2026-11-03 (mondo)
+/* the two retired prisms (2026-11-03): no longer offered in the editor, but a building already wearing one still draws as a prism
+   (sprites.js points building_11 at building_1's art, church_2 at church_1's) */
+const HQ_TEXB_PRISMS_RETIRED = ['building_11', 'church_2'];
+/* THE PACK BUILDINGS (2026-11-03, mondo on the Buildings pack's ten photo-textured shop blocks: "incorporate those into the game like in
+   disaster city and the map editor"): each a whole model (Elbolilloduro's Buildings pack, CC0, cut by bake-pack-pieces.py into R2
+   Assets/misc/), its shop front at +Z, measured in metres — `w` along the front, `d` deep, `h` to the parapet's top, `roof` = the roof
+   slab inside the parapet (the walk's roof). Drawn at the footprint's width (the height follows, one scale), its depth fitted to the
+   footprint's (three-renderer.js _hqPackBuildingModel). A texbuilding whose `key` is one of these is that model (the editor's Look
+   list: PACK BUILDINGS), and a city plan's `packP` (a district's too) stands a share of its street lots as one (data.js city lots). */
+const HQ_PACK_BUILDINGS = {
+    pack_bld_00: { file: 'ebd_buildings_bld_00.glb', w: 28.18, d: 19.43, h: 19.6, roof: 19.33 },
+    pack_bld_01: { file: 'ebd_buildings_bld_01.glb', w: 34.05, d: 19.51, h: 23.55, roof: 23.36 },
+    pack_bld_02: { file: 'ebd_buildings_bld_02.glb', w: 40.8, d: 22.88, h: 26.34, roof: 26.04 },
+    pack_bld_03: { file: 'ebd_buildings_bld_03.glb', w: 23.19, d: 17.15, h: 18.8, roof: 18.57 },
+    pack_bld_04: { file: 'ebd_buildings_bld_04.glb', w: 25.49, d: 18.15, h: 18.56, roof: 18.31 },
+    pack_bld_05: { file: 'ebd_buildings_bld_05.glb', w: 29.79, d: 19.1, h: 18.82, roof: 18.53 },
+    pack_bld_06: { file: 'ebd_buildings_bld_06.glb', w: 33.45, d: 18.67, h: 14.47, roof: 14.23 },
+    pack_bld_07: { file: 'ebd_buildings_bld_07.glb', w: 24.88, d: 16.24, h: 14.8, roof: 14.47 },
+    pack_bld_08: { file: 'ebd_buildings_bld_08.glb', w: 15.52, d: 13.95, h: 12.97, roof: 12.67 },
+    pack_bld_09: { file: 'ebd_buildings_bld_09.glb', w: 16.89, d: 13.86, h: 11.89, roof: 11.65 },
+};
+/* the pack building a texbuilding row wears (its `key`), or null */
+function hqTexbPack(f) { return (f && typeof f.key === 'string' && Object.prototype.hasOwnProperty.call(HQ_PACK_BUILDINGS, f.key)) ? HQ_PACK_BUILDINGS[f.key] : null; }
+function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && (HQ_TEXB_PRISMS.indexOf(f.key) >= 0 || HQ_TEXB_PRISMS_RETIRED.indexOf(f.key) >= 0)); }
+/* THE PRISM BANDS (2026-11-03, mondo: "always apply the bottom of the texture and the top of the texture to the bottom and top of the
+   building, and repeat everything else as needed depending on how many stories"): each prism sprite cut in three, in rows of the sprite
+   file (0 = its top) — [where the TOP band ends, where the BOTTOM band starts, how many storeys the art between them shows]. A building
+   of n storeys wears the bottom band (its door) once at the foot, the top band (its cornice / roof / spire) once at the top, and one
+   storey of the middle (the middle's rows ÷ that count) n − 1 times between them, all at the sprite's own proportions fitted to the
+   building's height (three-renderer.js _nrSpriteBuilding `bands`). n − 1 = that count draws the sprite exactly as painted. */
+const HQ_TEXB_PRISM_BANDS = {
+    building_1: [22, 186, 6], building_2: [30, 146, 3], building_3: [32, 104, 1], building_4: [16, 124, 3], building_5: [56, 96, 1],
+    building_6: [22, 78, 2], building_7: [32, 44, 1], building_8: [32, 124, 2], building_9: [16, 64, 1], building_10: [36, 66, 1],
+    building_11: [22, 186, 6], ancient_building: [250, 290, 1], abandoned_building_1: [100, 404, 6], abandoned_building_2: [150, 400, 5],
+    church_1: [104, 118, 1], church_2: [104, 118, 1], shop: [22, 78, 2],
+};
 /* THE INSIDE (2026-10-30, mondo: "what if i wanted to add an interior to the buildings so i would need an option for them to be more
    like walls but still look like a building"): a `hollow` texbuilding is its four thin walls (the ghost walls above, the walker inside
    them), a doorway in its front and its roof slab over the inside — drawn the same from outside, its inside walls, ceiling and floor
@@ -51073,7 +51242,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, HQ_TEXB_PRISM_BANDS, hqTexbPrism, hqTexbDoor, HQ_PACK_BUILDINGS, hqTexbPack, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
@@ -51140,14 +51309,14 @@ const HQ_CATALOGUE_MISC = {
     clock:           { file: 'Meshy_AI_analog_clock_realist_0727195259_texture.glb',  base: 'misc', h: 0.5,  foot: 0 },
     gclock:          { file: 'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',  base: 'misc', h: 2.1,  foot: 0.35, block: true },
     skateboard:      { file: 'Meshy_AI_a_skateboard_0915212313_texture.glb',          base: 'misc', span: 0.8, foot: 0 },
-    dumpster:        { file: 'Meshy_AI_dumpster_0727195512_texture.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
+    dumpster:        { file: 'ebd_diner_dumpster.glb',              base: 'misc', h: 1.6,  foot: 0.9, block: true },
     mushroom:        { file: 'Meshy_AI_mushroom_0727200342_texture.glb',        base: 'misc', h: 3.5,  foot: 0.5, block: true },
     mushroom2:       { file: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',    base: 'misc', h: 1.75, foot: 0.3 },
     vault:           { file: 'Meshy_AI_a_bank_vault_0912231605_texture.glb',            base: 'misc', h: 5.25, foot: 1.4, block: true },
     flamingo:        { file: 'Meshy_AI_a_flamingo_0912231434_texture.glb',            base: 'misc', h: 1.2,  foot: 0.2 },
     tentacle:        { file: 'Meshy_AI_a_kraken_tentacle_0912231121_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
     tentacle2:       { file: 'Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb',     base: 'misc', h: 6,    foot: 0.6, block: true },
-    rowboat:         { file: 'Meshy_AI_a_rowboat_0912231059_texture.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
+    rowboat:         { file: 'ebd_housesonwater_rowboat.glb',      base: 'misc', span: 3, foot: 0.9, block: true },
     dish:            { file: 'Meshy_AI_a_satellite_dish_0912231301_texture.glb',        base: 'misc', h: 2.45, foot: 0.6, block: true },
     wheel:           { file: 'Meshy_AI_a_ship_s_wheel_0912230950_texture.glb',            base: 'misc', h: 1.66, foot: 0.3, block: true },
     dockring:        { file: 'Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb',          base: 'misc', h: 4.5,  foot: 0 },
@@ -52865,7 +53034,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 const shrink = span <= 5.0 ? -0.5 : Math.min(2.2, 0.3 * span / 2);
                 if (f.r) discs.push({ x: f.x, z: f.z, r: Math.max(0.8, Math.max(f.r, f.rz || f.r) - shrink) }); else rects.push({ x: f.x, z: f.z, w: Math.max(1.6, f.w - 2 * shrink), d: Math.max(1.6, f.d - 2 * shrink), rot: f.rot || 0 });
                 break; }
-            case 'board': { const b = hqTerrainBoard(f), side = b.n * b.C + 2 * b.C + 1.0; rects.push({ x: b.x0 + b.n * b.C / 2, z: b.z0 + b.n * b.C / 2, w: side, d: side, rot: 0 }); break; }   // THE CHESS COURT (2026-10-20): the WHOLE board and a square round it (a big tier keeps only its core — the plan stood a hedge on the board's first row)
+            case 'board': { const b = hqTerrainBoard(f), side = b.n * b.C + 2 * b.C + 1.0 + 2 * b.clear; rects.push({ x: b.x0 + b.n * b.C / 2, z: b.z0 + b.n * b.C / 2, w: side, d: side, rot: 0 }); break; }   // THE CHESS COURT (2026-10-20): the WHOLE board and a square round it (a big tier keeps only its core — the plan stood a hedge on the board's first row)
             case 'hill': case 'dip': if (f.open) discs.push({ x: f.x, z: f.z, r: Math.max(f.r || 0, f.rz || 0, (f.w || 0) / 2) * 0.8 }); break;   // relief is never forced (rock stands on a hill's flank) unless the row says open: true
             case 'ramp': case 'deck': {
                 /* the run and 3 m PAST each end (a ramp's mouth opens onto the tier it climbs; a deck's onto both banks) */
@@ -53333,6 +53502,14 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
         const distAt = (px, pz) => districts.find(d => px >= d.rect[0] && px <= d.rect[2] && pz >= d.rect[1] && pz <= d.rect[3]) || null;
         const dget = (dd, key, dflt) => (dd && dd[key] != null) ? dd[key] : dflt;
         let LW = LW0, LD = LD0, minW = minW0, lowP = lowP0, st = st0;   // the face's district re-points these per face (tryLot reads LD)
+        /* THE PACK BUILDINGS (2026-11-03, mondo: the Buildings pack's shop blocks "into the game like in disaster city"): `packP` (the plan's,
+           a district's) = the share of the runs along a face that try one of HQ_PACK_BUILDINGS first — at its own width (90 %, 80 % if the face
+           is short), as deep as the block lets it (never under 70 % of its own depth: the model's depth is fitted to the lot's). Its own
+           seeded draw, so a plan without packP lays exactly the lots it laid before. A pack lot carries `pack` (the key), `packH` (its roof's
+           height, the walk's roof and the solid top) and never grows or shrinks for an alley. */
+        const packP0 = (gen.packP != null) ? gen.packP : 0, prnd = _hqTRng(((seed | 0) ^ 0x5bd1e995) >>> 0), stHp = (gen.storeyH != null) ? gen.storeyH : K.storeyH;
+        const PACKS = Object.keys(HQ_PACK_BUILDINGS);
+        let packP = packP0;
         const solidBy = (px, pz, m) => hqTerrainMaskAt(info, px, pz) < -m;
         let li = 0;
         /* THE TERRACE (STREET LEVEL, 2026-09-17): the lots are laid ALONG EVERY STREET FACE, shoulder to shoulder —
@@ -53395,8 +53572,27 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             while (true) {
                 /* THE DISTRICTS (D2): the district is read PER LOT at the run's position along the face (a face may cross a district line) */
                 dd = distAt(F.x0 + F.tx * (u + 2.0), F.z0 + F.tz * (u + 2.0));
-                LW = dget(dd, 'lotW', LW0); LD = dget(dd, 'lotD', LD0); minW = dget(dd, 'lotMinW', minW0); lowP = dget(dd, 'lowP', lowP0); st = dget(dd, 'storeys', st0);
+                LW = dget(dd, 'lotW', LW0); LD = dget(dd, 'lotD', LD0); minW = dget(dd, 'lotMinW', minW0); lowP = dget(dd, 'lowP', lowP0); st = dget(dd, 'storeys', st0); packP = dget(dd, 'packP', packP0);
                 if (!(u < F.L - minW)) break;
+                if (packP > 0 && prnd() < packP) {
+                    const pk = PACKS[Math.floor(prnd() * PACKS.length)], PB = HQ_PACK_BUILDINGS[pk];
+                    let packRow = null;
+                    for (const sc of [1, 0.9, 0.8]) {
+                        const pw = PB.w * sc; if (u + pw > F.L - 0.3) continue;
+                        const fx = F.x0 + F.tx * (u + pw / 2), fz = F.z0 + F.tz * (u + pw / 2);
+                        const plot = tryLot(fx, fz, F.tx, F.tz, F.nx, F.nz, pw, PB.d * sc);
+                        if (!plot || plot.d < PB.d * sc * 0.7) continue;
+                        const base = hqTerrainHeight(info, fx + F.nx * (walkW / 2 + 0.25), fz + F.nz * (walkW / 2 + 0.25)), ph = PB.roof * sc;
+                        packRow = { i: li++, x: Math.round(plot.x * 100) / 100, z: Math.round(plot.z * 100) / 100, w: Math.round(pw * 100) / 100, d: Math.round(plot.d * 100) / 100, rot: Math.round(plot.rot * 1000) / 1000, top: wallH, base: Math.round(base * 100) / 100,
+                                    storeys: Math.max(1, Math.round(ph / stHp)), key: pk, pack: pk, packH: Math.round(ph * 100) / 100, low: false, seed: Math.floor(prnd() * 1e6), face: F.si };
+                        break;
+                    }
+                    if (packRow) {
+                        if (dd) { packRow.district = dd.id; dd.lots++; if (dd.neon != null) packRow.neon = !!dd.neon; if (dd.fronts) packRow.fronts = dd.fronts; }
+                        placed.push(packRow); info.lots.push(packRow);
+                        u += packRow.w + 0.04; continue;
+                    }
+                }
                 let w = LW[0] + rnd() * (LW[1] - LW[0]);
                 const dMax = LD[0] + rnd() * (LD[1] - LD[0]);
                 if (F.L - u - w < minW) w = Math.max(minW, Math.min(w, F.L - u - 0.3));   // the last of the run fills to the face's end
@@ -53494,9 +53690,9 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
                 const lotMaxW = (lot) => dget(distAt(lot.x, lot.z), 'lotW', LW0)[1];
                 const lotMinW = (lot) => dget(distAt(lot.x, lot.z), 'lotMinW', minW0);
                 /* a neighbour grows across the gap (never past its district's lotW, never into another lot) — dir = +1 the lot before the run, −1 the lot after */
-                const grow = (lot, dir, g) => { if (!lot || g <= 0) return false; const trial = Object.assign({}, lot, { w: Math.round((lot.w + g) * 100) / 100, x: Math.round((lot.x + dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z + dir * F.tz * g / 2) * 100) / 100 }); if (trial.w > lotMaxW(lot) + 0.01 || overlapsAny(trial, lot)) return false; const R = rectOf(trial); for (const q of [[-1, -1], [1, -1], [0, -1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (!solidBy(px, pz, 0.3) || !inShell(px, pz, 0.6)) return false; } for (const q of [[-1, 1], [1, 1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (hqTerrainMaskAt(info, px, pz) >= fOut + 0.4) return false; } Object.assign(lot, { w: trial.w, x: trial.x, z: trial.z }); return true; };   // the front corners stay on the face line (never grown past the block's corner)
+                const grow = (lot, dir, g) => { if (!lot || lot.pack || g <= 0) return false; const trial = Object.assign({}, lot, { w: Math.round((lot.w + g) * 100) / 100, x: Math.round((lot.x + dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z + dir * F.tz * g / 2) * 100) / 100 }); if (trial.w > lotMaxW(lot) + 0.01 || overlapsAny(trial, lot)) return false; const R = rectOf(trial); for (const q of [[-1, -1], [1, -1], [0, -1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (!solidBy(px, pz, 0.3) || !inShell(px, pz, 0.6)) return false; } for (const q of [[-1, 1], [1, 1]]) { const px = trial.x + R.ax[0] * q[0] * R.hw + R.az[0] * q[1] * R.hd, pz = trial.z + R.ax[1] * q[0] * R.hw + R.az[1] * q[1] * R.hd; if (hqTerrainMaskAt(info, px, pz) >= fOut + 0.4) return false; } Object.assign(lot, { w: trial.w, x: trial.x, z: trial.z }); return true; };   // the front corners stay on the face line (never grown past the block's corner)
                 /* a neighbour SHRINKS away from the gap (never under its district's lotMinW) — the slit becomes an alley */
-                const shrink = (lot, dir, g) => { if (!lot || g <= 0 || lot.w - g < lotMinW(lot) - 0.01) return false; Object.assign(lot, { w: Math.round((lot.w - g) * 100) / 100, x: Math.round((lot.x - dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z - dir * F.tz * g / 2) * 100) / 100 }); return true; };
+                const shrink = (lot, dir, g) => { if (!lot || lot.pack || g <= 0 || lot.w - g < lotMinW(lot) - 0.01) return false; Object.assign(lot, { w: Math.round((lot.w - g) * 100) / 100, x: Math.round((lot.x - dir * F.tx * g / 2) * 100) / 100, z: Math.round((lot.z - dir * F.tz * g / 2) * 100) / 100 }); return true; };
                 runs.forEach((r) => {
                     let gw = r.u1 - r.u0, u0 = r.u0, u1 = r.u1;
                     /* the run's neighbours along the face: the lot ending at u0 / starting at u1 (a run at the face's end has one) */
@@ -53667,7 +53863,7 @@ function _hqTGenerate(info, room, roomId, gen, doorPads, features) {
             const tops = new Float32Array(nx * nz);
             each((k, px, pz) => { tops[k] = (mask[k] || D[k] > -0.05) ? 0 : (_hqTBaseAt(info, px, pz) + wallH); });
             info.lots.forEach((lot) => {
-                const R = rectOf(lot), h = (lot.base || 0) + (lot.storeys ? lot.storeys * stH : wallH);
+                const R = rectOf(lot), h = (lot.base || 0) + (lot.packH ? lot.packH : (lot.storeys ? lot.storeys * stH : wallH));   // THE PACK BUILDINGS: the model's own roof
                 const reach = Math.hypot(R.hw, R.hd) + res;
                 const i0 = Math.max(0, Math.floor((lot.x - reach - x0) / res)), i1 = Math.min(nx - 1, Math.ceil((lot.x + reach - x0) / res));
                 const j0 = Math.max(0, Math.floor((lot.z - reach - z0) / res)), j1 = Math.min(nz - 1, Math.ceil((lot.z + reach - z0) / res));
@@ -54250,7 +54446,8 @@ function hqTerrainBoard(f) {
     const n = Math.max(1, (f.n | 0) || 8), C = +f.cell || HQ_TERRAIN_RULES.tile;
     const keys = (Array.isArray(f.keys) && f.keys.length) ? f.keys : ['marble_light', 'marble'];
     const colors = Array.isArray(f.colors) ? f.colors : [0xf2eee6, 0x2c2a38];
-    return { n, C, x0: (+f.x || 0) - n * C / 2, z0: (+f.z || 0) - n * C / 2, keys: [keys[0], keys[1] || keys[0]], colors: [colors[0], (colors[1] != null) ? colors[1] : colors[0]], y: (typeof f.h === 'number') ? f.h : 0.06 };
+    return { n, C, x0: (+f.x || 0) - n * C / 2, z0: (+f.z || 0) - n * C / 2, keys: [keys[0], keys[1] || keys[0]], colors: [colors[0], (colors[1] != null) ? colors[1] : colors[0]], y: (typeof f.h === 'number') ? f.h : 0.06,
+             clear: Math.max(0, +f.clear || 0) };   // `clear`: metres round the board the scatter keeps off too (THE CHESS POSITIONS: the 8 × 8's 12 × 12 arena)
 }
 function _hqTBoardFloors(features) {
     if (!features || !features.some(f => f && f.k === 'board')) return features;
@@ -54476,7 +54673,7 @@ function hqTerrainCompile(room, roomId) {
             case 'wall': walls.push(f); break;
             case 'rail': rails.push(f); break;
             case 'path': paths.push(f); break;
-            case 'tree': trees.push({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }); break;   // face (E6): the editor's R turns a tree
+            case 'tree': trees.push(Object.assign({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }, Array.isArray(f.chessPos) ? { chessPos: f.chessPos.slice() } : null)); break;   // THE CHESS POSITIONS: the positions a piece stands in   // face (E6): the editor's R turns a tree
             case 'grove': case 'scatter': scatterRows.push(f); break;
             case 'climb': climbRows.push(f); break;
             case 'board': boards.push(hqTerrainBoard(f)); break;   // THE BOARD: the squares (drawn as marks, read by THE FIELD's raster)
@@ -54529,10 +54726,12 @@ function hqTerrainCompile(room, roomId) {
     const ordered = F.filter(f => /^(hill|dip|ridge|plateau|ramp|spiral|deck|pool|stream)$/.test(f.k) && !(f.k === 'deck' && f.over));   // THE BRIDGE LAYER: a deck wearing `over` is a bridge — never a height
     const hmap = T.hmap ? hqGridDecode(T.hmap) : null;   // THE GROUND GRIDS (E3): the brushes' height delta, added after the rows
     let skipFlights = false;   // THE JOINED FLIGHTS (below): the ground a flight stands on — the field without the flights
+    let skipFloats = false;    // THE GROUND UNDER (2026-11-03): the ground under the floating pieces — the field without them (info.GH)
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
         for (const f of ordered) {
             if (skipFlights && f.k === 'ramp' && (f.escalator || (f.stairs && !f.float))) continue;
+            if (skipFloats && f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))) continue;
             if (f.k === 'ridge') { const r = _hqTPolyDist(px, pz, f.pts); h += f.h * _hqTSmooth(1 - r.d / (f.w / 2)); }
             else if (f.k === 'hill' || f.k === 'dip') { const e = _hqTEllipse(px, pz, f); const sm = _hqTSmooth(1 - e); h += (f.k === 'dip' ? -f.h : f.h) * (f.dome ? sm * sm : sm); }
             else if (f.k === 'plateau') {
@@ -54681,6 +54880,15 @@ function hqTerrainCompile(room, roomId) {
     /* ── sample the grid ── */
     const H = new Float32Array(nx * nz);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
+    /* THE GROUND UNDER (2026-11-03, mondo on the flat fill's shot: "what are these jagged edges" / "what is this gap"): the field
+       sampled WITHOUT its floating plateaus and floating flights — the ground that runs on under a hanging cloud or a hanging stair.
+       three-renderer.js draws the cut ring round a float plateau and the cut under a float flight's run on H − GD (seamless with the
+       ground round it: no hole, no step, no crack). Only a non-void room with floats needs it (a void room's sky stays open). */
+    let GD = null;   // kept as the LIFT the floats add (H − the ground under): the passes after this one (the plan's walls, the cuts) move H, the lift stays
+    if (!(T.void && typeof T.void === 'object') && F.some(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs)))) {
+        GD = new Float32Array(nx * nz); skipFloats = true;
+        try { for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = j * nx + i; GD[k] = Math.max(0, H[k] - hFinal(x0 + i * res, z0 + j * res)); } } finally { skipFloats = false; }
+    }
     const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, cut: cut != null ? { hw: S.w / 2 + cut, hd: S.d / 2 + cut } : null, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
                    pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, boards, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
                    slope: slopeB,   // G7: the base's profile (room metres → m over `base`), null on a flat room
@@ -54688,7 +54896,7 @@ function hqTerrainCompile(room, roomId) {
                       PLATFORM / a flight of FLOATING STEPS — the height rule is untouched (the field carries it like any tier: the walker climbs its
                       low end, never its flank); the renderer (three-renderer.js _hqBuildTerrain) cuts the field's flank / underside away and hangs
                       the piece in the air — a puffy underside under a platform, a slab tread + a puff under every step of a flight */
-                   floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))),
+                   floats: F.filter(f => f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))), GD,
                    /* THE BUILT STAIR (LEVEL_DESIGN_PLAN §4, 2026-09-30): a stair `ramp` wearing `built: true` is drawn as a solid flight of
                       masonry (a tread and a riser per compiled step, the sides down to the floor, an optional carpet `runner: { w, color }`) —
                       the field keeps the steps for the walker, the renderer cuts the field away under the flight (three-renderer.js
@@ -54964,7 +55172,7 @@ function hqTerrainCompile(room, roomId) {
         if (hqTerrainSlope(info, px, pz) > (opts.slope || 0.5)) return false;
         for (const p of doorPads) { const din = p.r ? p.r - Math.hypot(px - p.x, pz - p.z) : _hqTRectIn(px, pz, p); if (din > -(rad + 0.4)) return false; }
         if (!opts.onPath) for (const p of paths) if (_hqTPolyDist(px, pz, p.pts).d < p.w / 2 + rad) return false;
-        for (const b of boards) if (px > b.x0 - rad - 0.3 && px < b.x0 + b.n * b.C + rad + 0.3 && pz > b.z0 - rad - 0.3 && pz < b.z0 + b.n * b.C + rad + 0.3) return false;   // THE BOARD: nothing scattered on the squares
+        for (const b of boards) { const m = rad + 0.3 + (b.clear || 0); if (px > b.x0 - m && px < b.x0 + b.n * b.C + m && pz > b.z0 - m && pz < b.z0 + b.n * b.C + m) return false; }   // THE BOARD: nothing scattered on the squares (nor on its `clear` apron)
         for (const d of decks) { const L = _hqTRamp(px, pz, d); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < d.w / 2 + rad + 0.3) return false; }
         for (const b of info.bridges) { if (b.arc) { if (_hqTArcIn(b.arc, px, pz, rad + 0.3)) return false; continue; } const L = _hqTRamp(px, pz, b); if (L.t > -0.1 && L.t < 1.1 && Math.abs(L.v) < b.w / 2 + rad + 0.3) return false; }   // THE BRIDGE LAYER: nothing under a bridge's mouth or its span
         /* THE MALL, THE THIRD PASS (2026-09-17 — the plant pot on the escalator): nothing stands on a ramp, a stair or an escalator, nor on the field's skirt beside it */
@@ -55431,11 +55639,8 @@ const HQ_ROOM_HOLES = {
     "facility_holosim": [[-17,-16,-12],[-17,11,15],[-16,-17,-12],[-16,11,16],[-15,-17,-12],[-15,11,16],[-14,-17,-12],[-14,11,16],[-13,-17,-12],[-13,11,16],[-12,-17,-12],[-12,11,16],[11,-17,-12],[11,11,16],[12,-17,-12],[12,11,16],[13,-17,-12],[13,11,16],[14,-17,-12],[14,11,16],[15,-17,-12],[15,11,16],[16,-16,-12],[16,11,15]],
     "garage": [[-16,-16,-6],[-16,6,15],[-15,-16,-9],[-15,8,15],[-14,-16,-10],[-14,9,15],[-13,-16,-12],[-13,11,15],[-12,-16,-13],[-12,12,15],[-11,-16,-14],[-11,13,15],[-10,-16,-14],[-10,14,15],[-9,-16,-15],[-9,14,15],[-8,-16,-16],[-8,15,15],[-7,15,15],[6,-16,-16],[6,15,15],[7,-16,-16],[7,15,15],[8,-16,-15],[8,14,15],[9,-16,-14],[9,13,15],[10,-16,-14],[10,13,15],[11,-16,-13],[11,12,15],[12,-16,-12],[12,11,15],[13,-16,-10],[13,9,15],[14,-16,-9],[14,8,15],[15,-16,-7],[15,6,15]],
     "hwing_floor": [[-17,-20,-3],[-17,2,6],[-17,11,19],[-16,-20,-17],[-16,16,19],[-15,-20,-19],[-15,16,19],[-14,-20,-19],[-14,16,19],[-13,16,19],[-12,-12,-3],[-12,2,11],[-10,-18,-17],[-2,16,17],[-1,-20,-17],[-1,16,17],[0,-20,-17],[0,16,17],[1,-20,-17],[1,16,17],[2,-20,-17],[2,-12,-12],[2,-2,3],[2,9,11],[3,-20,-17],[3,-12,-12],[3,-2,3],[3,9,11],[4,-20,-17],[4,-12,-12],[4,-2,3],[4,9,11],[5,-20,-17],[5,-12,-12],[5,-2,3],[5,9,11],[5,19,19],[6,-20,-17],[6,-12,-12],[6,-2,3],[6,9,11],[7,-12,-12],[7,-2,11],[8,-12,-12],[8,7,11],[9,-12,-8],[9,7,11],[10,-12,-8],[10,16,19],[11,-20,-17],[11,-12,-8],[11,16,19],[12,-20,-17],[12,-12,-8],[13,-12,-8],[14,-12,-8],[14,7,11],[15,-12,-8],[15,7,11],[16,-12,11]],
-    "site_prebuilt_agartha_crystalcity": [[-32,-37,-17],[-32,3,9],[-32,14,36],[-31,-37,-17],[-31,3,9],[-31,14,36],[-30,-37,-17],[-30,3,9],[-30,14,21],[-30,34,36],[-29,-37,-17],[-29,3,9],[-29,14,21],[-29,34,36],[-28,-37,-17],[-28,3,9],[-28,14,21],[-28,34,36],[-27,-37,-17],[-27,3,9],[-27,14,21],[-27,34,36],[-26,-37,-15],[-26,2,9],[-26,14,26],[-26,30,36],[-25,-37,-15],[-25,2,2],[-25,33,36],[-24,-37,-15],[-24,2,2],[-24,33,36],[-23,-18,-15],[-23,2,2],[-23,33,36],[-22,-3,2],[-22,33,36],[-21,-3,2],[-21,33,36],[-20,-3,2],[-20,33,36],[-19,-3,2],[-19,33,36],[-18,-3,2],[-18,33,36],[-17,-3,2],[-17,33,36],[-16,-3,2],[-16,33,36],[-15,-3,2],[-15,33,36],[-14,-3,2],[-14,33,36],[-13,-3,2],[-13,33,36],[-12,-3,2],[-12,33,36],[-11,-3,2],[-11,33,36],[-10,-3,2],[-10,33,36],[-9,-3,2],[-9,33,36],[-8,-3,2],[-8,33,36],[-7,-3,2],[-7,33,36],[-6,-3,2],[-6,33,36],[-5,-3,2],[-5,33,36],[-4,-3,2],[-4,33,36],[-3,-3,2],[-3,33,36],[-2,-37,-31],[-2,-26,-11],[-2,-3,5],[-2,10,22],[-2,31,36],[-1,-37,-31],[-1,-26,-11],[-1,-3,5],[-1,10,22],[-1,29,36],[0,-37,-31],[0,-26,-11],[0,-3,5],[0,10,22],[0,29,36],[1,-37,-31],[1,-26,-11],[1,-3,-2],[1,1,5],[1,10,22],[1,29,36],[2,-37,-31],[2,-26,-11],[2,10,22],[2,29,36],[3,-37,-31],[3,-26,-11],[3,10,22],[3,29,29],[4,-37,-31],[4,-26,-11],[4,10,22],[4,29,29],[5,-37,-31],[5,-26,-11],[5,9,22],[5,29,29],[6,-37,-31],[6,-26,-11],[6,9,17],[7,-37,-31],[7,-26,-11],[7,9,17],[8,-37,-31],[8,-26,-11],[8,9,17],[9,-37,-31],[9,-26,-11],[9,9,17],[9,34,36],[10,-37,-31],[10,-26,-11],[10,9,17],[10,34,36],[11,-37,-35],[11,9,17],[11,34,36],[12,-37,-35],[12,9,17],[12,34,36],[13,-37,-35],[13,9,17],[13,34,36],[14,34,36],[15,34,36],[16,34,36],[17,-18,-11],[17,34,36],[18,-37,-35],[18,-18,-3],[18,2,17],[18,34,36],[19,-37,-35],[19,-18,-3],[19,3,17],[19,34,36],[20,-37,-35],[20,-18,-3],[20,3,17],[20,34,36],[21,-37,-35],[21,-18,-3],[21,2,17],[21,34,36],[22,-37,-34],[22,-30,-7],[22,34,36],[23,-27,-7],[23,34,36],[24,-27,-7],[24,34,36],[25,-27,-7],[25,34,36],[26,-27,-7],[26,5,36],[27,-27,-7],[27,5,36],[28,-27,-7],[28,5,36],[29,-27,-7],[29,5,36],[30,-37,-3],[30,2,36],[31,-37,-3],[31,2,36]],
-    "site_prebuilt_antarctica_station": [[-32,-40,-14],[-32,38,39],[-31,-40,-14],[-31,38,39],[-30,-40,-39],[-30,38,39],[-29,-40,-39],[-29,38,39],[-28,-40,-39],[-28,38,39],[-27,-40,-39],[-27,-14,-14],[-27,38,39],[-26,-40,-39],[-26,-14,-14],[-26,38,39],[-25,-40,-39],[-25,38,39],[-24,-40,-39],[-24,38,39],[-23,-40,-39],[-23,38,39],[-22,-40,-39],[-22,38,39],[-21,-40,-39],[-21,38,39],[-20,-40,-39],[-20,38,39],[-19,-40,-39],[-19,-14,-11],[-19,17,39],[-18,-40,-39],[-18,-14,-11],[-18,17,39],[-17,-40,-39],[-17,-14,-11],[-17,17,39],[-16,-40,-39],[-16,-14,-11],[-16,18,39],[-15,-40,-12],[-15,18,39],[-14,-40,-12],[-14,18,18],[-14,34,39],[-13,-40,-12],[-13,17,18],[-13,34,39],[-12,-40,-11],[-12,17,18],[-12,34,39],[-11,-40,-11],[-11,17,18],[-11,34,39],[-10,-40,-11],[-10,17,18],[-10,34,39],[-9,-40,-18],[-9,17,18],[-9,34,39],[-8,-40,-18],[-8,17,18],[-8,34,39],[-7,-40,-18],[-7,17,18],[-7,34,39],[-6,-40,-31],[-6,-2,10],[-6,17,25],[-6,29,39],[-5,-40,-31],[-5,-2,10],[-5,17,25],[-5,29,39],[-4,-40,-31],[-4,-2,10],[-4,17,25],[-4,29,39],[-3,-40,-31],[-3,-14,-7],[-3,-2,10],[-3,17,25],[-3,29,39],[-2,-40,-31],[-2,-14,-7],[-2,-2,10],[-2,34,39],[-1,-40,-34],[-1,-2,10],[-1,34,39],[0,-40,-35],[0,-2,10],[0,34,39],[1,-40,-35],[1,-2,10],[1,34,39],[2,-40,-36],[2,9,10],[2,34,39],[3,-40,-36],[3,37,39],[4,-40,-35],[4,37,39],[5,-40,-35],[5,37,39],[6,-40,-34],[6,-11,-11],[6,37,39],[7,-40,-31],[7,-14,-11],[8,-40,-31],[8,-14,-11],[9,-40,-31],[9,-14,-11],[9,9,10],[10,-40,-30],[10,-23,-11],[10,9,10],[11,-40,-30],[11,9,10],[12,-40,-30],[12,9,10],[13,-40,-30],[13,9,10],[13,34,39],[14,-40,-38],[14,9,10],[14,34,39],[15,-40,-38],[15,9,10],[15,34,39],[16,-40,-38],[16,9,10],[16,34,39],[17,-38,-38],[17,-22,-11],[17,9,10],[17,34,39],[18,-22,-3],[18,2,10],[18,34,39],[19,-22,-19],[19,-10,-3],[19,2,10],[19,34,39],[20,-22,-19],[20,-10,-3],[20,2,10],[20,34,39],[21,-22,-19],[21,-10,-3],[21,2,10],[21,34,39],[22,-40,-38],[22,-22,-19],[22,-10,-3],[22,2,10],[22,34,39],[23,-40,-38],[23,-10,-3],[23,2,10],[23,34,39],[24,-40,-38],[24,-10,-3],[24,2,10],[24,34,39],[25,-40,-38],[25,-10,-3],[25,2,10],[25,34,39],[26,-40,-19],[26,-10,-3],[26,2,10],[26,34,39],[27,-40,-19],[27,-10,-3],[27,2,10],[27,34,39],[28,-40,-19],[28,-10,-3],[28,2,10],[28,34,39],[29,-40,-3],[29,2,39],[30,-40,-3],[30,2,39],[31,-40,-3],[31,2,39]],
     "site_prebuilt_area51_hangar": [[-10,-12,7],[-5,16,19],[-4,16,19],[-3,-20,-16],[-2,-20,-16],[-1,-20,-16],[0,-20,-16],[1,-20,-16],[6,-6,-2],[6,3,6],[6,10,10],[6,12,12],[7,16,17],[7,19,19],[8,16,19],[9,16,19],[10,-15,-14],[10,-5,-5],[10,4,4],[10,13,19],[11,-15,-14],[11,-5,-5],[11,4,4],[11,13,19],[12,-20,-14],[12,-5,-5],[12,4,4],[12,13,19]],
     "site_prebuilt_area51_ward": [[-8,-12,-11],[-8,-3,-3],[-8,3,4],[-7,-12,-11],[-7,-3,-3],[-7,3,4],[-6,-12,-11],[-6,-3,-3],[-2,-6,-4],[-2,-1,0],[2,1,5],[3,1,5],[4,1,5],[6,9,11],[7,9,11]],
-    "site_prebuilt_babel_tower": [[-62,-74,-43],[-62,42,73],[-61,-74,-43],[-61,42,73],[-60,-74,-43],[-60,42,73],[-59,-74,-43],[-59,42,73],[-58,-74,-43],[-58,42,73],[-57,-74,-43],[-57,42,73],[-56,-74,-43],[-56,42,73],[-55,-74,-63],[-55,-47,-43],[-55,42,73],[-54,-74,-63],[-54,-47,-43],[-54,42,73],[-53,-74,-63],[-53,42,73],[-52,-74,-63],[-52,42,73],[-51,-74,-63],[-51,42,73],[-50,-74,-63],[-50,42,73],[-49,-74,-63],[-49,42,73],[-48,-74,-63],[-48,-47,-43],[-48,42,73],[-47,-74,-63],[-47,-47,-43],[-47,42,73],[-46,-74,-63],[-46,-47,-43],[-46,42,73],[-45,-74,-63],[-45,-47,-43],[-45,42,73],[-44,-74,-63],[-44,-47,-43],[-44,42,73],[-43,-74,-63],[-43,-47,-43],[-43,42,73],[-42,-74,-63],[-42,-47,-43],[-42,42,73],[-41,-74,-43],[-41,42,73],[-40,-74,-43],[-40,42,73],[-39,-74,-43],[-39,42,73],[-38,-74,-43],[-38,42,73],[-37,-74,-43],[-37,42,73],[-36,-74,-43],[-36,42,73],[-35,-74,-43],[-35,42,73],[-34,-74,-43],[-34,42,73],[-33,-74,-43],[-33,42,73],[-32,-74,-43],[-32,42,73],[-31,-74,-43],[-31,42,73],[-30,-74,-43],[-30,42,73],[-29,-74,-61],[-29,-45,-43],[-29,42,73],[-28,-74,-61],[-28,-45,-43],[-28,42,73],[-27,-74,-62],[-27,-45,-43],[-27,42,73],[-26,-74,-62],[-26,-45,-43],[-26,42,73],[-25,-74,-61],[-25,-45,-43],[-25,42,73],[-24,-74,-61],[-24,-45,-43],[-24,42,73],[-23,-74,-61],[-23,-45,-43],[-23,42,73],[-22,-74,-61],[-22,-45,-43],[-22,42,73],[-21,-74,-61],[-21,42,73],[-20,-74,-61],[-20,42,73],[-19,-74,-61],[-19,42,73],[-18,-74,-61],[-18,42,73],[-17,-74,-61],[-17,42,73],[-16,-74,-61],[-16,42,73],[-15,-74,-61],[-15,-45,-43],[-15,42,73],[-14,-74,-61],[-14,-45,-43],[-14,42,73],[-13,-74,-61],[-13,-45,-43],[-13,42,73],[-12,-74,-61],[-12,-45,-43],[-12,42,73],[-11,-74,-61],[-11,-45,-43],[-11,42,73],[-10,-74,-61],[-10,-45,-43],[-10,42,73],[-9,-74,-61],[-9,-45,-43],[-9,42,73],[-8,-74,-61],[-8,-45,-43],[-8,42,73],[-7,-74,-61],[-7,-45,-43],[-7,42,73],[-6,-74,-61],[-6,-45,-43],[-6,42,73],[-5,-74,-51],[-5,-46,-43],[-5,42,73],[-4,-74,-51],[-4,-46,-43],[-4,42,73],[-3,-74,-51],[-3,-46,-43],[-3,42,73],[-2,-74,-51],[-2,-46,-43],[-2,42,73],[-1,-74,-51],[-1,-46,-43],[-1,42,73],[0,-74,-51],[0,-46,-43],[0,42,73],[1,-74,-51],[1,-46,-43],[1,42,73],[2,-74,-51],[2,-46,-43],[2,42,73],[3,-74,-51],[3,-46,-43],[3,42,73],[4,-74,-51],[4,-46,-43],[4,42,46],[4,67,73],[5,-74,-51],[5,-46,-43],[5,42,46],[5,67,73],[6,-74,-51],[6,-46,-43],[6,42,46],[6,67,73],[7,-74,-51],[7,-46,-43],[7,67,73],[8,-74,-51],[8,-46,-43],[8,67,73],[9,-74,-51],[9,-46,-43],[9,67,73],[10,-74,-51],[10,-46,-43],[10,67,73],[11,-74,-51],[11,-46,-43],[11,67,73],[12,-74,-51],[12,-46,-43],[12,67,73],[13,-74,-51],[13,-46,-43],[13,42,46],[13,67,73],[14,-74,-51],[14,-46,-43],[14,42,46],[14,67,73],[15,-74,-67],[15,-44,-43],[15,42,46],[15,67,73],[16,-74,-67],[16,-44,-43],[16,42,46],[16,67,73],[17,-74,-67],[17,-44,-43],[17,42,46],[17,67,73],[18,-74,-67],[18,-44,-43],[18,42,46],[18,67,73],[19,-74,-67],[19,-44,-43],[19,42,46],[19,67,73],[20,-74,-67],[20,-44,-43],[20,42,46],[20,67,73],[21,-74,-67],[21,-44,-43],[21,42,46],[21,67,73],[22,-74,-67],[22,-44,-43],[22,42,46],[22,67,73],[23,-74,-67],[23,-44,-43],[23,42,54],[23,59,73],[24,-74,-67],[24,-44,-43],[24,42,54],[24,59,73],[25,-74,-67],[25,-44,-43],[25,42,54],[25,59,73],[26,-74,-67],[26,-44,-43],[26,42,54],[26,59,73],[27,-74,-67],[27,-44,-43],[27,42,54],[27,59,73],[28,-74,-67],[28,-44,-43],[28,42,54],[28,59,73],[29,-74,-67],[29,-44,-43],[29,42,54],[29,59,73],[30,-74,-67],[30,-44,-43],[30,42,54],[30,59,73],[31,-74,-67],[31,-44,-43],[31,42,54],[31,59,73],[32,-74,-67],[32,42,54],[32,59,73],[33,-74,-67],[33,42,54],[33,59,73],[34,-74,-67],[34,-37,2],[34,9,54],[34,59,73],[35,-74,-67],[35,-37,2],[35,9,54],[35,59,73],[36,-74,-67],[36,-37,2],[36,9,41],[36,44,54],[36,59,73],[37,-74,-67],[37,-44,-42],[37,-37,2],[37,9,20],[37,59,73],[38,-74,-67],[38,-44,-42],[38,-37,2],[38,9,20],[38,59,73],[39,-74,-67],[39,-44,-42],[39,-37,2],[39,9,20],[39,59,73],[40,-74,-67],[40,-44,-42],[40,-37,2],[40,9,20],[40,59,73],[41,-74,-67],[41,-44,-42],[41,-37,2],[41,9,20],[41,25,36],[41,41,73],[42,-74,-42],[42,-37,2],[42,9,20],[42,25,36],[42,41,73],[43,-74,-42],[43,-37,2],[43,9,20],[43,25,36],[43,41,73],[44,-74,-42],[44,-37,-35],[44,-11,2],[44,9,20],[44,25,36],[44,41,73],[45,-74,-42],[45,-37,-35],[45,-11,-11],[45,10,20],[45,25,30],[45,46,73],[46,-74,-42],[46,-11,-11],[46,10,20],[46,25,30],[46,46,73],[47,-74,-42],[47,-11,-11],[47,10,20],[47,25,30],[47,46,73],[48,-74,-42],[48,-11,-11],[48,25,30],[48,46,73],[49,-74,-42],[49,-11,-11],[49,25,30],[49,46,73],[50,-74,-35],[50,25,30],[50,46,73],[51,-74,-35],[51,25,30],[51,46,73],[52,-74,-35],[52,25,30],[52,46,73],[53,-74,-35],[53,10,30],[53,46,73],[54,-74,-35],[54,10,30],[54,46,73],[55,-74,-35],[55,-11,-11],[55,10,30],[55,46,73],[56,-74,-35],[56,-11,-11],[56,10,30],[56,46,73],[57,-74,-11],[57,10,30],[57,46,73],[58,-74,-11],[58,10,73],[59,-74,-11],[59,10,73],[60,-74,-11],[60,10,73],[61,-74,-11],[61,10,73]],
     "site_prebuilt_camelot_dungeon": [[-20,-27,8],[-20,13,26],[-19,-27,-12],[-19,1,8],[-19,13,26],[-18,-27,-12],[-18,1,8],[-18,13,26],[-17,-27,-12],[-17,1,8],[-17,23,26],[-16,-27,-12],[-16,1,8],[-16,23,26],[-15,-27,-12],[-15,1,8],[-15,23,26],[-14,-27,-12],[-14,1,8],[-14,23,26],[-13,1,2],[-13,23,26],[-12,1,2],[-12,23,26],[-11,-9,-8],[-11,-3,2],[-11,23,26],[-10,-9,-8],[-10,-3,2],[-10,23,26],[-9,-9,-8],[-9,-3,2],[-9,7,8],[-9,23,26],[-8,-9,-8],[-8,-3,2],[-8,7,8],[-8,23,26],[-7,-27,-26],[-7,7,8],[-7,23,26],[-6,-27,-26],[-6,7,8],[-6,23,26],[-5,-27,-26],[-5,7,16],[-5,21,26],[-4,-27,-26],[-4,7,16],[-4,21,26],[-3,-27,-26],[-3,-17,-16],[-3,-11,-10],[-3,9,16],[-2,-27,-25],[-2,-18,-15],[-2,-12,-10],[-2,9,16],[-1,-17,-10],[-1,9,16],[0,-17,-10],[0,9,16],[1,-17,-10],[1,9,16],[2,-17,-10],[2,9,16],[3,-27,-24],[3,-17,-10],[3,9,16],[4,-27,-22],[4,-17,-10],[4,9,16],[5,-27,-26],[5,-11,-10],[5,9,16],[6,-27,-26],[6,-11,-10],[6,9,16],[7,-27,-26],[8,-27,-26],[9,-27,-26],[9,17,18],[9,23,26],[10,-27,-26],[10,17,18],[10,23,26],[11,-27,-26],[11,-11,-10],[11,23,26],[12,-27,-26],[12,-11,-10],[12,23,26],[13,-27,-26],[13,-11,-10],[13,23,26],[14,-27,-26],[14,-11,-10],[14,23,26],[15,-27,-26],[15,-11,-10],[15,3,26],[16,-27,-26],[16,-11,26],[17,-27,26],[18,-27,26],[19,-27,26]],
     "site_prebuilt_camelot_keep": [[-12,-12,-12],[-12,11,11],[-11,-12,-12],[-11,11,11],[-10,10,11],[-9,9,11],[-8,9,11],[-7,9,11],[-6,9,11],[-5,9,11],[-4,10,11],[-3,9,11],[-2,10,11],[0,-12,-12],[1,-12,-12],[2,-12,-12],[3,-12,-12],[4,-12,-12],[4,-7,-6],[4,5,5],[5,-12,-11],[5,11,11],[6,-12,-12],[6,6,6],[6,10,11],[7,-12,-12],[7,5,5],[7,11,11],[8,-12,-12],[8,11,11],[9,-12,-12],[9,-6,-6],[9,11,11],[10,-12,-12],[10,11,11],[11,-12,-12],[11,10,11]],
     "site_prebuilt_camelot_ward": [[-28,26,26],[-27,25,26],[-26,25,26],[-25,25,26],[-24,25,26],[-23,25,26],[-22,25,26],[-21,25,26],[-20,25,26]],
@@ -55449,15 +55654,11 @@ const HQ_ROOM_HOLES = {
     "site_prebuilt_dumb_motorpool": [[-22,-36,-35],[-22,-4,-2],[-22,1,3],[-22,32,35],[-21,-36,-35],[-21,32,35],[-20,-36,-35],[-20,32,35],[-19,-36,-35],[-19,32,35],[-18,-36,-35],[-18,32,35],[-17,-36,-35],[-17,32,35],[-16,-36,-35],[-16,31,35],[-15,-36,-35],[-15,31,35],[-14,-36,-35],[-14,31,35],[-13,-36,-35],[-13,31,35],[-12,-36,-35],[-12,31,35],[-11,-36,-35],[-11,31,35],[-10,-36,-35],[-10,31,35],[-9,-36,-35],[-9,31,35],[-8,-36,-35],[-8,31,35],[-7,-36,-35],[-7,-28,-20],[-7,-15,-2],[-7,6,14],[-7,19,35],[-6,-21,-20],[-6,-15,-2],[-6,6,14],[-6,19,20],[-5,-21,-20],[-5,-15,-2],[-5,6,14],[-5,19,20],[-4,-21,-20],[-4,-15,-2],[-4,6,6],[-4,14,14],[-4,19,20],[-3,-21,-20],[-3,-15,-7],[-3,14,14],[-3,19,20],[-2,-15,-7],[-2,14,14],[-1,-15,-7],[-1,14,14],[0,-15,-7],[0,14,14],[1,-15,-7],[1,14,14],[2,-21,-20],[2,-15,-7],[2,1,6],[2,14,14],[2,19,20],[3,-21,-20],[3,-15,-14],[3,1,14],[3,19,20],[4,-21,-20],[4,-15,-14],[4,1,14],[4,19,20],[5,-21,-20],[5,-15,-14],[5,1,14],[5,19,20],[6,-36,-20],[6,-15,-14],[6,26,29],[6,34,35],[7,-36,-20],[7,-15,-14],[7,26,29],[7,34,35],[8,-36,-20],[8,-15,-14],[8,26,29],[8,34,35],[9,-36,-20],[9,26,29],[9,34,35],[10,-36,-20],[10,26,27],[11,-36,-20],[11,26,27],[12,-36,-20],[12,26,27],[13,-36,-13],[14,-36,-24],[14,-13,-13],[15,-36,-24],[15,-13,-13],[16,-36,-24],[17,-36,-24],[18,-36,-24],[19,-36,-24],[19,26,27],[20,-36,-24],[20,26,35],[21,-36,-24],[21,-13,-2],[21,1,35]],
     "site_prebuilt_dumb_sublevel7": [[-41,-54,-2],[-41,1,53],[-40,-54,-43],[-40,-34,-7],[-40,6,53],[-39,-54,-43],[-39,-34,-7],[-39,6,24],[-39,26,31],[-39,33,53],[-38,-54,-43],[-38,-16,-7],[-38,42,53],[-37,-54,-43],[-37,-16,-7],[-37,42,53],[-36,-54,-43],[-36,42,53],[-35,-54,-43],[-35,42,53],[-34,-54,-43],[-34,50,53],[-33,-54,-43],[-33,-7,-7],[-33,6,15],[-33,50,53],[-32,-54,-43],[-32,-7,-7],[-32,6,15],[-32,50,53],[-31,-54,-43],[-31,-7,-7],[-31,6,15],[-31,50,53],[-30,-54,-43],[-30,-17,-12],[-30,-7,-7],[-30,6,15],[-29,-54,-43],[-29,-17,-12],[-29,-7,-3],[-29,2,15],[-28,-54,-43],[-28,-17,-15],[-28,-7,-3],[-28,2,16],[-27,-43,-43],[-27,-17,-15],[-27,-7,-3],[-27,2,16],[-26,-43,-43],[-26,-17,-15],[-26,-7,-3],[-26,2,16],[-26,41,42],[-25,-43,-43],[-25,-17,-15],[-25,-11,-3],[-25,2,16],[-25,41,42],[-24,-43,-42],[-24,-17,-15],[-24,-11,-3],[-24,9,16],[-24,41,42],[-23,-43,-42],[-23,-11,-3],[-23,9,16],[-23,41,42],[-22,-43,-42],[-22,-11,-3],[-22,9,16],[-22,41,42],[-21,-43,-42],[-21,-11,-3],[-21,9,16],[-21,41,42],[-20,-43,-42],[-20,-17,-3],[-20,9,16],[-20,41,42],[-19,-43,-42],[-19,-17,4],[-19,9,16],[-19,41,42],[-18,-43,-42],[-18,-17,4],[-18,9,16],[-18,41,42],[-17,-43,-31],[-17,-25,4],[-17,9,19],[-17,22,26],[-17,32,42],[-16,-43,-31],[-16,-25,4],[-16,9,26],[-16,32,42],[-15,-43,-31],[-15,-25,4],[-15,9,26],[-15,32,42],[-14,-54,-50],[-14,-45,-31],[-14,-25,-15],[-14,14,26],[-14,32,42],[-13,-54,-50],[-13,-45,-31],[-13,-25,-15],[-13,14,26],[-13,32,42],[-12,-54,-50],[-12,-45,-31],[-12,-25,-15],[-12,14,26],[-12,32,42],[-12,48,53],[-11,-54,-50],[-11,-45,-43],[-11,-34,-31],[-11,-25,-15],[-11,14,26],[-11,32,42],[-11,48,53],[-10,-54,-50],[-10,-45,-43],[-10,-34,-31],[-10,-25,-15],[-10,14,26],[-10,32,42],[-10,48,53],[-9,-54,-50],[-9,-45,-43],[-9,-34,-31],[-9,-25,-15],[-9,14,26],[-9,32,42],[-9,48,53],[-8,-54,-50],[-8,-45,-43],[-8,-34,-31],[-8,-25,-15],[-8,14,26],[-8,32,42],[-8,48,53],[-7,-54,-50],[-7,-45,-43],[-7,-34,-31],[-7,-25,-15],[-7,14,26],[-7,32,42],[-7,48,53],[-6,-54,-50],[-6,-45,-43],[-6,-34,-31],[-6,-25,-15],[-6,14,26],[-6,32,42],[-6,48,53],[-5,-54,-50],[-5,-45,-41],[-5,-35,-31],[-5,-25,-15],[-5,14,26],[-5,32,42],[-5,48,53],[-4,-54,-50],[-4,-45,-41],[-4,-35,-31],[-4,-25,-15],[-4,14,26],[-4,32,42],[-4,48,53],[-3,-54,-51],[-3,48,53],[-2,-54,-51],[-2,48,53],[-1,-54,-51],[-1,48,53],[0,-54,-51],[0,48,53],[1,-54,-51],[1,48,53],[2,-54,-51],[2,48,53],[3,-54,-50],[3,-45,-31],[3,-25,-15],[3,14,22],[3,27,33],[3,38,53],[4,-54,-50],[4,-45,-31],[4,-25,-15],[4,14,22],[4,27,30],[4,41,53],[5,-54,-50],[5,-45,-31],[5,-25,-15],[5,14,22],[5,27,30],[5,41,53],[6,-54,-50],[6,-45,-31],[6,-25,-15],[6,14,22],[6,27,30],[6,41,53],[7,-54,-50],[7,-45,-31],[7,-25,-15],[7,14,22],[7,27,30],[7,41,53],[8,-54,-50],[8,-45,-31],[8,-25,-15],[8,14,22],[8,27,30],[8,41,53],[9,-54,-50],[9,-45,-31],[9,-25,-15],[9,14,22],[9,27,30],[9,41,53],[10,-54,-50],[10,-45,-31],[10,-25,-15],[10,14,22],[10,27,30],[10,41,53],[11,-54,-50],[11,-45,-31],[11,-25,-15],[11,14,22],[11,27,30],[11,41,53],[12,-54,-50],[12,-45,-31],[12,-25,-15],[12,14,22],[12,27,53],[13,-54,-50],[13,-45,-31],[13,-25,-15],[13,14,22],[13,27,53],[14,-43,-31],[14,-25,-10],[14,-4,22],[14,27,39],[15,-43,-31],[15,-25,-10],[15,-4,22],[15,27,39],[16,-43,-31],[16,-25,-10],[16,-4,15],[16,20,22],[16,27,29],[17,-43,-42],[17,-17,-10],[17,-4,15],[18,-43,-42],[18,-17,-10],[18,-4,15],[19,-43,-42],[19,-17,-10],[19,3,15],[20,-43,-42],[20,-17,-10],[20,3,15],[21,-43,-42],[21,-17,-10],[21,3,15],[22,-43,-42],[22,-17,-10],[22,3,15],[23,-43,-42],[23,-17,-10],[23,3,15],[24,-43,-42],[24,-17,-4],[24,3,15],[25,-43,-42],[25,-17,-4],[25,3,15],[26,-43,-42],[26,-17,-4],[26,3,15],[27,-54,-42],[27,-17,-4],[27,3,15],[28,-54,-42],[28,-17,-4],[28,3,15],[28,42,53],[29,-54,-42],[29,-17,-7],[29,14,15],[29,42,53],[30,-54,-42],[30,-17,-7],[30,14,15],[30,42,53],[31,-54,-42],[31,-17,-7],[31,14,15],[31,42,53],[32,-54,-42],[32,-17,-7],[32,14,15],[32,42,53],[33,-54,-42],[33,-17,-7],[33,14,15],[33,42,53],[34,-54,-43],[34,14,15],[34,42,53],[35,-54,-43],[35,14,15],[35,42,53],[36,-54,-43],[36,14,15],[36,42,53],[37,-54,-43],[37,6,15],[37,42,53],[38,-54,-43],[38,-16,-7],[38,6,18],[38,29,53],[39,-54,-43],[39,-16,-7],[39,6,53],[40,-54,-2],[40,1,53]],
     "site_prebuilt_fairy_forest_deadmans": [[-16,-24,-17],[-16,-6,3],[-16,14,23],[-15,-24,-17],[-15,-6,3],[-15,14,23],[-14,-24,-17],[-14,-12,3],[-14,14,23],[-13,-24,-17],[-13,-12,3],[-13,14,23],[-12,-24,-17],[-12,-12,1],[-12,14,23],[-11,-24,-17],[-11,-12,1],[-11,14,23],[-10,-24,-17],[-10,-12,-7],[-10,14,23],[-9,-24,-17],[-9,-12,-7],[-9,14,23],[-8,-24,-17],[-8,-12,-7],[-8,14,23],[-7,-24,-17],[-7,-12,-7],[-7,14,23],[-6,-24,-17],[-6,-12,-7],[-6,14,23],[-5,-24,-21],[-5,-18,-17],[-5,-11,-7],[-5,14,23],[-4,-24,-23],[-4,-11,-7],[-4,14,23],[-3,-24,-23],[-3,-12,-7],[-3,12,23],[2,-24,-23],[2,-12,-7],[2,10,11],[2,22,23],[3,-24,-23],[3,-12,-8],[3,10,11],[3,22,23],[4,-24,-21],[4,-16,-8],[4,10,11],[4,22,23],[5,-24,-21],[5,-16,-8],[5,10,10],[5,22,23],[6,-24,-21],[6,-16,-13],[6,-2,-1],[6,7,10],[6,15,15],[6,20,23],[7,-24,-21],[7,-16,-13],[7,-2,-1],[7,7,15],[7,20,23],[8,-24,-21],[8,7,15],[8,20,23],[9,-24,-21],[9,7,15],[9,20,23],[10,-24,-21],[10,7,13],[10,22,23],[11,-24,-21],[11,7,13],[11,22,23],[12,-24,-15],[12,-10,-8],[12,-4,3],[12,7,13],[12,22,23],[13,-24,-15],[13,-10,-8],[13,-4,3],[13,7,13],[13,22,23],[14,-24,-15],[14,-10,-8],[14,-4,3],[14,7,23],[15,-24,-15],[15,-10,-8],[15,-4,3],[15,7,23]],
-    "site_prebuilt_giza_plateau": [[-68,-85,-37],[-68,-32,-14],[-68,-10,84],[-67,-85,-75],[-67,5,84],[-66,-85,-75],[-66,5,84],[-65,-85,-75],[-65,5,84],[-64,-85,-75],[-64,5,84],[-63,-85,-75],[-63,5,84],[-62,-85,-75],[-62,5,84],[-61,-85,-75],[-61,5,26],[-61,73,84],[-60,-85,-75],[-60,5,26],[-60,73,84],[-59,-85,-75],[-59,5,26],[-59,73,84],[-58,-85,-75],[-58,5,6],[-58,26,26],[-58,73,84],[-57,-85,-75],[-57,5,6],[-57,26,26],[-57,73,84],[-56,-85,-75],[-56,5,6],[-56,26,26],[-56,73,84],[-55,-85,-75],[-55,5,6],[-55,26,26],[-55,73,84],[-54,-85,-75],[-54,5,6],[-54,26,26],[-54,73,84],[-53,-85,-75],[-53,5,6],[-53,26,26],[-53,73,84],[-52,-85,-75],[-52,5,6],[-52,26,26],[-52,73,84],[-51,-85,-75],[-51,5,6],[-51,26,26],[-51,73,84],[-50,-85,-75],[-50,5,6],[-50,26,26],[-50,73,84],[-49,-85,-75],[-49,73,84],[-48,-85,-75],[-48,73,84],[-47,-85,-75],[-47,73,84],[-46,-85,-75],[-46,73,84],[-45,-85,-75],[-45,73,84],[-44,-85,-75],[-44,73,84],[-43,-85,-75],[-43,5,6],[-43,26,26],[-43,73,84],[-42,-85,-75],[-42,5,6],[-42,26,26],[-42,73,84],[-41,-85,-75],[-41,5,6],[-41,26,26],[-41,73,84],[-40,-85,-75],[-40,5,6],[-40,26,26],[-40,73,84],[-39,-85,-75],[-39,5,6],[-39,26,26],[-39,73,84],[-38,-85,-75],[-38,5,6],[-38,26,26],[-38,73,84],[-37,-85,-75],[-37,5,6],[-37,73,84],[-36,-85,-75],[-36,5,6],[-36,73,84],[-35,-85,-75],[-35,5,6],[-35,73,84],[-34,-85,-75],[-34,5,6],[-34,73,84],[-33,-85,-75],[-33,5,6],[-33,73,84],[-32,-85,-75],[-32,5,6],[-32,73,84],[-31,-85,-75],[-31,5,6],[-31,26,26],[-31,73,84],[-30,-85,-75],[-30,5,6],[-30,26,26],[-30,73,84],[-29,-85,-75],[-29,5,6],[-29,26,26],[-29,73,84],[-28,-85,-75],[-28,5,6],[-28,26,26],[-28,73,84],[-27,-85,-75],[-27,5,26],[-27,73,84],[-26,-85,-75],[-26,5,26],[-26,73,84],[-25,-85,-75],[-25,5,26],[-25,73,84],[-24,-85,-75],[-24,5,26],[-24,73,84],[-23,-85,-75],[-23,5,26],[-23,73,84],[-22,-85,-75],[-22,5,26],[-22,73,84],[-21,-85,-75],[-21,5,26],[-21,73,84],[-20,-85,-75],[-20,5,26],[-20,73,84],[-19,-85,-75],[-19,5,26],[-19,73,84],[-18,-85,-75],[-18,5,26],[-18,73,84],[-17,-85,-75],[-17,5,26],[-17,73,84],[-16,-85,-75],[-16,5,26],[-16,73,84],[-15,-85,-75],[-15,5,26],[-15,73,84],[-14,-85,-75],[-14,5,26],[-14,73,84],[-13,-85,-75],[-13,5,26],[-13,73,84],[-12,-85,-75],[-12,5,26],[-12,73,84],[-11,-85,-75],[-11,5,38],[-11,43,47],[-11,52,84],[-10,-85,-75],[-10,5,38],[-10,43,48],[-10,51,84],[-9,-85,-75],[-9,5,38],[-9,43,84],[-8,-85,-75],[-8,5,38],[-8,43,84],[-7,-85,-75],[-7,5,38],[-7,43,84],[-6,-85,-75],[-6,5,38],[-6,43,84],[-5,-85,-75],[-5,5,29],[-5,43,84],[-4,-85,-75],[-4,5,29],[-4,43,84],[-3,-85,-75],[-3,5,29],[-3,43,84],[-2,-85,-75],[-2,5,29],[-2,43,84],[-1,-85,-75],[-1,5,29],[-1,43,84],[0,-85,-75],[0,5,29],[0,34,84],[1,-85,-75],[1,5,29],[1,34,84],[2,-85,-75],[2,5,29],[2,34,84],[3,-85,-75],[3,5,29],[3,34,84],[4,-85,-75],[4,5,29],[4,34,84],[5,-85,-75],[5,5,29],[5,34,84],[6,-85,-75],[6,5,29],[6,34,84],[7,-85,-75],[7,5,29],[7,34,84],[8,-85,-75],[8,5,29],[8,34,84],[9,-85,-75],[9,5,13],[9,49,84],[10,-85,-75],[10,5,13],[10,49,84],[11,-85,-75],[11,5,13],[11,49,84],[12,-85,-75],[12,5,13],[12,49,84],[13,-85,-75],[13,5,13],[13,49,84],[14,-85,-75],[14,5,13],[14,49,84],[15,-85,-75],[15,5,13],[15,49,60],[15,63,84],[16,-85,-75],[16,5,13],[16,49,59],[16,64,84],[17,-85,-45],[17,-25,13],[17,49,49],[17,77,84],[18,-85,-45],[18,-25,13],[18,49,49],[18,77,84],[19,-85,-45],[19,-25,13],[19,49,49],[19,77,84],[20,-85,-45],[20,-25,13],[20,49,49],[20,77,84],[21,-85,-45],[21,-25,13],[21,49,49],[21,77,84],[22,-85,-45],[22,-25,13],[22,49,49],[22,77,84],[23,-85,-45],[23,-25,13],[23,49,49],[23,77,84],[24,-85,-45],[24,-25,13],[24,49,49],[24,77,84],[25,-85,-45],[25,-25,13],[25,49,49],[25,77,84],[26,-85,-45],[26,-25,13],[26,49,49],[26,77,84],[27,-85,-45],[27,49,49],[27,77,84],[28,-85,-38],[28,49,49],[28,77,84],[29,-85,-38],[29,49,49],[29,77,84],[30,-85,-38],[30,49,49],[30,77,84],[31,-85,-38],[31,49,49],[31,77,84],[32,-85,-38],[32,49,49],[32,77,84],[33,-85,-4],[33,3,13],[33,49,49],[33,77,84],[34,-85,-4],[34,3,13],[34,77,84],[35,-85,-4],[35,3,13],[35,77,84],[36,-85,-4],[36,3,13],[36,77,84],[37,-85,-4],[37,3,13],[37,77,84],[38,-85,-4],[38,3,13],[38,77,84],[39,-85,-4],[39,3,49],[39,77,84],[40,-85,-4],[40,3,49],[40,77,84],[41,-85,-4],[41,3,49],[41,77,84],[42,-85,-4],[42,3,49],[42,77,84],[43,-85,-4],[43,3,49],[43,77,84],[44,-85,-4],[44,3,49],[44,77,84],[45,-85,-4],[45,3,10],[45,26,49],[45,77,84],[46,-85,-11],[46,10,10],[46,26,49],[46,77,84],[47,-85,-11],[47,10,10],[47,26,84],[48,-85,-11],[48,10,10],[48,26,84],[49,-85,-11],[49,26,84],[50,-85,-11],[50,26,84],[51,-85,-11],[51,26,84],[52,-85,-11],[52,26,84],[53,-85,-11],[53,26,84],[54,-85,-11],[54,10,10],[54,26,84],[55,-85,-11],[55,10,10],[55,26,84],[56,-85,-11],[56,10,10],[56,26,84],[57,-85,-11],[57,10,10],[57,26,84],[58,-85,-11],[58,10,84],[59,-85,-11],[59,10,84],[60,-85,-11],[60,10,84],[61,-85,-11],[61,10,84],[62,-85,-11],[62,10,84],[63,-85,-11],[63,10,84],[64,-85,-11],[64,10,84],[65,-85,-11],[65,10,84],[66,-85,-11],[66,10,84],[67,-85,-11],[67,10,84]],
     "site_prebuilt_gobekli_leylines": [[-42,-57,-38],[-42,-32,-3],[-42,0,8],[-42,12,25],[-42,31,56],[-41,-57,-38],[-41,-31,-3],[-41,0,7],[-41,12,25],[-41,33,56],[-40,-57,-38],[-40,-31,-3],[-40,0,6],[-40,11,25],[-40,33,56],[-39,-57,-36],[-39,-31,-3],[-39,0,5],[-39,10,24],[-39,31,56],[-38,-57,-36],[-38,-32,-3],[-38,0,4],[-38,9,24],[-38,28,56],[-37,-57,-35],[-37,-32,-17],[-37,-13,-2],[-37,1,2],[-37,7,23],[-37,27,56],[-36,-57,-35],[-36,-32,-17],[-36,-13,-2],[-36,1,1],[-36,6,23],[-36,33,56],[-35,-57,-35],[-35,-32,-16],[-35,-12,-2],[-35,5,22],[-35,34,56],[-34,-57,-35],[-34,-31,-16],[-34,-11,-2],[-34,4,21],[-34,35,56],[-33,-57,-35],[-33,-31,-14],[-33,-10,-2],[-33,3,20],[-33,35,56],[-32,-57,-34],[-32,-31,-14],[-32,-9,-3],[-32,2,20],[-32,36,56],[-31,-57,-34],[-31,-31,-12],[-31,-8,-4],[-31,7,20],[-31,36,56],[-30,-57,-34],[-30,-31,-12],[-30,-7,-5],[-30,36,56],[-29,-57,-34],[-29,-30,-11],[-29,-7,-7],[-29,-2,5],[-29,36,56],[-28,-57,-34],[-28,-30,-10],[-28,-3,16],[-28,36,56],[-27,-57,-34],[-27,-29,-9],[-27,-4,18],[-27,36,56],[-26,-57,-56],[-26,-53,-39],[-26,-28,-10],[-26,-5,17],[-26,36,56],[-25,-52,-45],[-25,-27,-11],[-25,-6,16],[-25,35,56],[-24,-53,-49],[-24,-35,-33],[-24,-27,-12],[-24,-7,16],[-24,35,56],[-23,-41,-32],[-23,-26,-14],[-23,-9,15],[-23,20,20],[-23,34,56],[-22,-46,-32],[-22,-29,-29],[-22,-25,-14],[-22,-10,15],[-22,19,20],[-22,24,24],[-22,33,56],[-21,-57,-57],[-21,-43,-34],[-21,-29,-28],[-21,-24,-16],[-21,-11,14],[-21,19,21],[-21,25,56],[-20,-57,-51],[-20,-40,-35],[-20,-28,-27],[-20,-23,-17],[-20,-12,14],[-20,18,22],[-20,25,56],[-19,-57,-48],[-19,-36,-36],[-19,-22,-18],[-19,-13,13],[-19,19,22],[-19,26,56],[-18,-57,-45],[-18,-21,-19],[-18,-11,13],[-18,21,23],[-18,27,56],[-17,-57,-47],[-17,-24,-24],[-17,-20,-20],[-17,-16,-15],[-17,-8,12],[-17,17,17],[-17,23,24],[-17,27,56],[-16,-57,-50],[-16,-41,-39],[-16,-23,-23],[-16,-17,-12],[-16,-5,12],[-16,16,19],[-16,28,56],[-15,-57,-54],[-15,-41,-35],[-15,-18,-9],[-15,-2,11],[-15,15,21],[-15,28,56],[-14,-57,-57],[-14,-46,-44],[-14,-41,-35],[-14,-19,-6],[-14,1,11],[-14,15,22],[-14,29,56],[-13,-57,-57],[-13,-51,-44],[-13,-41,-35],[-13,-17,-3],[-13,4,10],[-13,14,24],[-13,29,56],[-12,-57,-44],[-12,-41,-34],[-12,-14,-1],[-12,8,10],[-12,13,26],[-12,29,56],[-11,-57,-44],[-11,-41,-34],[-11,-10,3],[-11,9,9],[-11,13,56],[-10,-57,-44],[-10,-41,-33],[-10,-24,-24],[-10,-20,-19],[-10,-7,5],[-10,12,56],[-9,-57,-45],[-9,-41,-33],[-9,-24,-15],[-9,-4,6],[-9,12,56],[-8,-57,-45],[-8,-41,-34],[-8,-24,-12],[-8,-1,4],[-8,11,56],[-7,-57,-45],[-7,-42,-34],[-7,-24,-8],[-7,3,3],[-7,11,56],[-6,-57,-45],[-6,-42,-34],[-6,-25,-6],[-6,11,56],[-5,-57,-45],[-5,-42,-34],[-5,-25,-2],[-5,12,56],[-4,-57,-45],[-4,-42,-35],[-4,-25,0],[-4,13,56],[-3,-57,-45],[-3,-42,-36],[-3,-29,-28],[-3,-25,2],[-3,17,56],[-2,-57,-45],[-2,-42,-37],[-2,-33,-28],[-2,-25,2],[-2,19,56],[-1,-57,-45],[-1,-42,-39],[-1,-34,-28],[-1,-25,3],[-1,11,11],[-1,23,56],[0,-57,-45],[0,-42,-40],[0,-35,-28],[0,-24,3],[0,10,14],[0,26,56],[1,-57,-45],[1,-42,-41],[1,-36,-28],[1,-24,2],[1,6,17],[1,29,56],[2,-57,-45],[2,-42,-42],[2,-37,-28],[2,-24,2],[2,6,20],[2,32,56],[3,-57,-45],[3,-38,-27],[3,-24,1],[3,5,24],[3,35,56],[4,-57,-46],[4,-39,-28],[4,-24,1],[4,5,26],[4,39,56],[5,-57,-46],[5,-41,-29],[5,-23,0],[5,4,30],[5,43,56],[6,-57,-46],[6,-42,-30],[6,-23,0],[6,4,33],[6,45,56],[7,-57,-48],[7,-43,-31],[7,-27,-26],[7,-18,-1],[7,3,36],[7,49,56],[8,-57,-49],[8,-44,-32],[8,-28,-26],[8,-18,-1],[8,3,40],[8,51,52],[8,55,56],[9,-57,-50],[9,-45,-34],[9,-29,-29],[9,-17,-2],[9,2,43],[10,-57,-51],[10,-47,-35],[10,-17,-3],[10,2,46],[11,-57,-52],[11,-48,-35],[11,-17,-3],[11,1,50],[12,-57,-53],[12,-49,-35],[12,-29,-25],[12,-18,-4],[12,1,52],[13,-57,-55],[13,-50,-25],[13,-19,-4],[13,0,52],[14,-57,-56],[14,-51,-25],[14,-21,-5],[14,-1,52],[14,56,56],[15,-57,-57],[15,-52,-25],[15,-21,-5],[15,-1,56],[16,-53,-24],[16,-21,-6],[16,-2,56],[17,-55,-24],[17,-21,-7],[17,-3,56],[18,-57,-24],[18,-21,-7],[18,-3,56],[19,-57,-24],[19,-21,-8],[19,-3,56],[20,-57,-24],[20,-20,-8],[20,-4,56],[21,-57,-24],[21,-20,-9],[21,-5,56],[22,-57,-23],[22,-20,-9],[22,-5,56],[23,-57,-23],[23,-20,-10],[23,-6,56],[24,-57,-23],[24,-19,-10],[24,-6,56],[25,-57,-23],[25,-19,-11],[25,-7,56],[26,-57,-22],[26,-19,-11],[26,-7,56],[27,-57,-22],[27,-15,-12],[27,-8,56],[28,-57,-22],[28,-13,-12],[28,-8,56],[29,-57,-23],[29,-9,56],[30,-57,-24],[30,-9,56],[31,-57,-25],[31,-10,56],[32,-57,-25],[32,-11,56],[33,-57,-25],[33,-10,56],[34,-57,-25],[34,-10,56],[35,-57,-25],[35,-10,56],[36,-57,-25],[36,-10,56],[37,-57,-24],[37,-11,56],[38,-57,-24],[38,-11,56],[39,-57,-23],[39,-12,56],[40,-57,-22],[40,-14,56],[41,-57,-20],[41,-15,56]],
     "site_prebuilt_lodge_halls": [[-26,-33,-27],[-26,31,32],[-25,-33,-27],[-25,31,32],[-24,-33,-27],[-24,31,32],[-23,-33,-27],[-23,31,32],[-22,-33,-27],[-22,-23,-14],[-22,13,27],[-22,31,32],[-21,-33,-27],[-21,-23,-14],[-21,13,14],[-21,27,27],[-21,31,32],[-20,-33,-32],[-20,-18,-14],[-20,13,14],[-20,27,27],[-20,31,32],[-19,-33,-32],[-19,-18,-14],[-19,13,14],[-19,27,27],[-19,31,32],[-18,-33,-32],[-18,-18,-14],[-18,13,14],[-18,27,27],[-18,31,32],[-17,-33,-32],[-17,-18,-14],[-17,13,14],[-17,27,27],[-17,31,32],[-16,-33,-32],[-16,-18,-14],[-16,13,14],[-16,27,27],[-16,31,32],[-15,-33,-32],[-15,-18,-14],[-15,13,14],[-15,31,32],[-14,-33,-32],[-14,-18,-14],[-14,13,14],[-14,31,32],[-13,-33,-32],[-13,-18,-14],[-13,13,14],[-13,31,32],[-12,-33,-32],[-12,-18,-14],[-12,13,27],[-12,31,32],[-11,-33,-32],[-11,-18,-14],[-11,13,27],[-11,31,32],[-10,-33,-32],[-10,-18,-14],[-10,13,27],[-10,31,32],[-9,-33,-28],[-9,-23,-14],[-9,13,13],[-8,-33,-28],[-8,-23,-14],[-8,13,13],[-7,-33,-28],[-7,-23,-14],[-7,13,13],[-6,-33,-28],[-6,-23,-14],[-6,13,13],[-5,-33,-28],[-5,-23,-14],[-5,13,13],[-4,-33,-28],[-4,-23,-14],[-4,13,13],[-3,-33,-28],[-3,-23,-14],[-3,13,13],[-2,-33,-28],[-2,-23,-14],[-2,13,13],[-1,-33,-32],[-1,-14,-3],[-1,2,8],[-1,13,13],[0,-33,-32],[0,-14,-3],[0,2,8],[0,12,13],[1,-33,-32],[1,-14,-14],[1,13,13],[2,-33,-32],[2,-14,-14],[2,13,13],[3,-33,-32],[3,-14,-14],[3,13,13],[4,-33,-32],[4,-14,-14],[4,13,13],[5,-33,-32],[5,-14,-14],[5,13,13],[6,-33,-32],[6,-14,-14],[6,13,13],[7,-33,-32],[7,-14,-14],[8,-33,-32],[9,-33,-32],[10,-33,-32],[11,-33,-32],[11,13,23],[11,28,32],[12,-33,-32],[12,-14,-14],[12,13,20],[13,-33,-32],[13,-14,-14],[13,13,20],[14,-33,-32],[14,-14,-14],[14,13,20],[15,-33,-32],[15,-14,-14],[15,13,20],[16,-33,-32],[16,-14,-14],[16,13,20],[17,-33,-14],[17,13,20],[18,-33,-14],[18,13,20],[19,-33,-14],[19,13,20],[20,-33,-14],[20,13,20],[21,-33,-14],[21,13,20],[22,-33,-14],[22,13,20],[23,-33,-14],[23,13,20],[24,-33,-14],[24,13,20],[25,-33,-14],[25,13,32]],
     "site_prebuilt_lookingglass_garden": [[-30,-8,-5],[-30,-2,-2],[-29,-9,-2],[-28,-9,-4],[-27,-9,-4],[-26,-8,-7],[-26,-4,-4],[-25,-7,-7],[-25,-4,-4],[-24,-6,-4]],
-    "site_prebuilt_gobekli_tell": [[-13,38,40],[-13,59,61],[-12,40,40],[-12,59,59],[-11,59,59],[-10,38,38],[-10,59,61],[9,61,61],[11,59,59],[12,59,61]],
     "site_prebuilt_lookingglass_library": [[-28,-40,-25],[-28,-22,-20],[-28,-17,-14],[-28,-10,39],[-27,-40,-25],[-27,-21,-20],[-27,-17,-14],[-27,-9,39],[-26,-40,-25],[-26,-21,-20],[-26,-17,-13],[-26,-9,39],[-25,-40,-24],[-25,-21,-20],[-25,-17,-12],[-25,-8,39],[-24,-40,-36],[-24,-33,-24],[-24,-20,-20],[-24,-17,-12],[-24,-8,39],[-23,-40,-36],[-23,-31,-23],[-23,-20,-20],[-23,-17,-11],[-23,-7,39],[-22,-40,-36],[-22,-30,-23],[-22,-17,-11],[-22,-7,39],[-21,-40,-34],[-21,-28,-22],[-21,-17,-10],[-21,-6,39],[-20,-40,-33],[-20,-27,-22],[-20,-17,-10],[-20,-6,31],[-20,35,39],[-19,-40,-31],[-19,-25,-21],[-19,-17,-10],[-19,-5,31],[-19,35,39],[-18,-40,-30],[-18,-24,-21],[-18,-17,-9],[-18,-5,31],[-18,35,39],[-17,-40,-28],[-17,-22,-21],[-17,-17,-11],[-17,-4,30],[-17,34,39],[-16,-40,-27],[-16,-18,-14],[-16,-4,30],[-16,34,39],[-15,-40,-28],[-15,-7,-7],[-15,-3,30],[-15,33,39],[-14,-40,-28],[-14,-11,-7],[-14,-3,29],[-14,33,39],[-13,-40,-28],[-13,-16,-16],[-13,-12,-6],[-13,-2,29],[-13,33,39],[-12,-40,-28],[-12,-12,-6],[-12,-2,29],[-12,33,39],[-11,-40,-28],[-11,-13,-5],[-11,-1,28],[-11,32,39],[-10,-40,-28],[-10,-18,-18],[-10,-12,-5],[-10,-1,28],[-10,32,39],[-9,-40,-28],[-9,-19,-16],[-9,-10,-5],[-9,0,28],[-9,31,39],[-8,-40,-27],[-8,-20,-16],[-8,-9,-5],[-8,1,27],[-8,31,39],[-7,-40,-16],[-7,-7,-5],[-7,1,27],[-7,30,39],[-6,-40,-16],[-6,-6,-5],[-6,1,26],[-6,30,39],[-5,-40,-16],[-5,-2,-2],[-5,3,26],[-5,29,39],[-4,-40,-16],[-4,-9,-9],[-4,-2,-2],[-4,5,26],[-4,29,39],[-3,-40,-16],[-3,-9,-7],[-3,7,20],[-3,29,39],[-2,-40,-17],[-2,-10,-7],[-2,8,10],[-2,14,14],[-2,28,31],[-1,-40,-18],[-1,-10,-9],[-1,24,24],[-1,28,30],[0,-40,-19],[0,18,24],[1,-40,-21],[1,-13,-13],[1,14,17],[2,-40,-22],[2,-14,-13],[2,33,35],[3,-40,-23],[3,-15,-13],[3,-10,-9],[3,27,39],[4,-40,-24],[4,-15,-13],[4,-10,-10],[4,27,39],[5,-40,-25],[5,-20,-20],[5,-16,-13],[5,20,22],[5,26,39],[6,-40,-26],[6,-21,-21],[6,-17,-16],[6,16,16],[6,19,21],[6,25,39],[7,-40,-27],[7,16,16],[7,19,20],[7,25,39],[8,-40,-39],[8,-35,-30],[8,16,16],[8,19,20],[8,24,39],[9,-15,-14],[9,19,19],[9,23,39],[10,-21,-14],[10,10,12],[10,19,19],[10,23,39],[11,-29,-25],[11,-22,-14],[11,-9,-8],[11,11,14],[11,22,39],[12,-34,-25],[12,-22,-14],[12,-9,-8],[12,11,15],[12,21,39],[13,-40,-40],[13,-34,-25],[13,-21,-14],[13,-9,-8],[13,7,7],[13,11,17],[13,23,39],[14,-40,-38],[14,-34,-29],[14,-21,-14],[14,-8,-7],[14,-4,-4],[14,5,8],[14,12,18],[14,24,39],[15,-40,-37],[15,-21,-13],[15,-8,-3],[15,3,8],[15,13,20],[15,26,39],[16,-40,-40],[16,-26,-25],[16,-21,-13],[16,-8,-2],[16,2,9],[16,13,21],[16,27,39],[17,-40,-40],[17,-33,-24],[17,-21,-13],[17,-8,9],[17,14,23],[17,29,39],[18,-40,-24],[18,-21,-13],[18,-8,9],[18,14,24],[18,30,39],[19,-40,-24],[19,-21,-13],[19,-8,9],[19,15,26],[19,32,39],[20,-40,-24],[20,-21,-13],[20,-7,9],[20,15,27],[20,33,39],[21,-40,-24],[21,-20,-12],[21,-7,9],[21,12,12],[21,16,28],[21,35,39],[22,-40,-24],[22,-20,-12],[22,-7,9],[22,12,12],[22,16,30],[22,35,39],[23,-40,-24],[23,-20,-12],[23,-7,9],[23,12,12],[23,17,32],[23,35,39],[24,-40,-24],[24,-20,-12],[24,-9,9],[24,12,13],[24,17,39],[25,-40,-23],[25,-20,-12],[25,-9,9],[25,12,14],[25,18,39],[26,-40,-23],[26,-20,-12],[26,-9,9],[26,12,14],[26,18,39],[27,-40,-23],[27,-20,-12],[27,-9,14],[27,18,39]],
-    "site_prebuilt_northpole_village": [[-29,-36,-36],[-29,-13,-7],[-29,29,30],[-28,-36,-36],[-28,-13,-7],[-28,29,30],[-27,-36,-36],[-27,-13,-7],[-27,29,30],[-26,-36,-36],[-26,-13,-7],[-26,29,30],[-25,-36,-36],[-25,29,30],[-24,-36,-36],[-24,29,30],[-23,-36,-36],[-23,29,30],[-22,-36,-36],[-22,29,30],[-21,-36,-36],[-21,29,30],[-20,-36,-36],[-20,29,30],[-19,-36,-36],[-19,-13,-6],[-19,29,30],[-18,-36,-36],[-18,-13,-6],[-18,29,30],[-17,-36,-36],[-17,-13,-6],[-16,-36,-36],[-16,-13,-6],[-15,-36,-36],[-15,-13,-6],[-14,-36,-36],[-14,-13,-6],[-13,-36,-36],[-13,-13,-6],[-13,31,35],[-12,-36,-36],[-12,-13,-6],[-12,31,35],[-11,-11,-6],[-11,31,35],[-10,-11,-6],[-10,31,35],[-9,-11,-6],[-9,31,35],[-8,-11,-6],[-8,31,35],[-7,-11,-6],[-7,1,10],[-7,33,35],[-6,-11,-6],[-6,1,10],[-6,33,35],[-5,-11,-6],[-5,1,10],[-5,33,35],[-4,-11,-6],[-4,1,10],[-4,33,35],[-3,9,10],[-3,33,35],[-2,9,10],[-2,33,35],[-1,9,10],[-1,33,35],[0,9,10],[0,33,35],[1,15,16],[1,33,35],[2,15,16],[2,33,35],[3,33,35],[4,33,35],[5,33,35],[6,33,35],[7,9,10],[7,33,35],[8,9,10],[8,33,35],[9,9,10],[9,33,35],[10,9,10],[10,33,35],[11,-36,-30],[11,-23,-16],[11,33,35],[12,-36,-30],[12,-23,-16],[12,33,35],[13,-36,-30],[13,-23,-16],[13,33,35],[14,-36,-30],[14,-23,-16],[14,33,35],[15,-36,-30],[15,-5,-4],[15,3,4],[15,33,35],[16,-36,-30],[16,-5,-4],[16,3,4],[16,33,35],[17,-36,-30],[17,-5,-4],[17,3,12],[17,33,35],[18,-36,-30],[18,-5,-4],[18,3,12],[18,33,35],[19,-36,-30],[19,-5,-4],[19,3,12],[19,33,35],[20,-36,-30],[20,-5,-4],[20,3,12],[20,33,35],[21,-36,-30],[21,-5,-4],[21,3,12],[21,33,35],[22,-36,-30],[22,-5,-4],[22,3,12],[22,33,35],[23,-36,-24],[23,-5,-4],[23,3,12],[23,33,35],[24,-36,-24],[24,-5,-4],[24,3,12],[24,33,35],[25,-36,-24],[25,-5,-4],[25,3,35],[26,-36,-24],[26,-5,-4],[26,3,35],[27,-36,-4],[27,3,35],[28,-36,-4],[28,3,35]],
-    "site_prebuilt_olympus_summit": [[-29,-13,4],[-29,33,34],[-28,-13,4],[-28,33,34],[-27,-13,4],[-27,33,34],[-26,-13,4],[-26,33,34],[-25,33,34],[-24,33,34],[-23,33,34],[-22,33,34],[-21,11,12],[-21,33,34],[-20,11,12],[-20,33,34],[-19,11,12],[-19,33,34],[-18,11,12],[-18,33,34],[-17,-14,-14],[-17,33,34],[-16,-35,-24],[-16,-17,-14],[-16,33,34],[-15,-15,-14],[-15,33,34],[-14,-15,-15],[-14,33,34],[-13,33,34],[-12,33,34],[-11,33,34],[-10,33,34],[-9,33,34],[-8,33,34],[-7,33,34],[-6,33,34],[-5,33,34],[-4,33,34],[-3,33,34],[-2,33,34],[-1,33,34],[0,33,34],[1,33,34],[2,33,34],[3,33,34],[4,33,34],[5,-35,-28],[5,33,34],[6,-35,-28],[6,33,34],[7,-35,-28],[7,33,34],[8,-35,-28],[8,33,34],[9,-35,-28],[9,33,34],[10,-35,-28],[10,33,34],[11,-35,-28],[11,33,34],[12,-35,-28],[12,33,34],[13,33,34],[14,33,34],[15,-11,-4],[15,3,24],[15,31,34],[16,-11,-4],[16,3,24],[16,31,34],[17,-11,-4],[17,3,24],[17,31,34],[18,-11,-4],[18,3,24],[18,31,34],[19,-27,-24],[19,-17,-4],[19,3,24],[19,31,34],[20,-27,-24],[20,-17,-4],[20,3,24],[20,31,34],[21,-35,-34],[21,31,34],[22,-35,-35],[22,31,34],[23,-35,-35],[23,31,34],[24,-35,-35],[24,31,34],[25,-35,-35],[25,31,34],[26,-35,-35],[26,31,34],[27,-35,-35],[27,31,34],[28,-35,-34],[28,31,34]],
-    "site_prebuilt_technoticlan_templecity": [[-35,-41,-40],[-35,-25,-23],[-35,-2,-2],[-35,35,40],[-34,-41,-40],[-34,-25,-24],[-34,-2,-2],[-34,35,40],[-33,-41,-40],[-33,-25,-24],[-33,-2,-2],[-33,35,40],[-32,-41,-40],[-32,-25,-24],[-32,-2,-2],[-32,35,40],[-31,-41,-40],[-31,-25,-24],[-31,-2,-2],[-31,35,40],[-30,-41,-40],[-30,-2,-2],[-30,35,40],[-29,-41,-40],[-29,-2,-2],[-29,35,40],[-28,-41,-40],[-28,-4,-2],[-28,35,40],[-27,-41,-40],[-27,-4,-2],[-27,35,40],[-26,-41,-40],[-26,-4,-2],[-26,35,40],[-25,-41,-40],[-25,-25,-23],[-25,-4,-2],[-25,35,40],[-24,-41,-40],[-24,-25,-23],[-24,-4,-2],[-24,35,40],[-23,-41,-40],[-23,-25,-23],[-23,-4,-2],[-23,35,40],[-22,-41,-40],[-22,-25,-17],[-22,-11,-2],[-22,35,40],[-21,-41,-40],[-21,-3,-2],[-21,35,40],[-20,-41,-40],[-20,-3,-2],[-20,35,40],[-19,-41,-40],[-19,-3,-2],[-19,35,40],[-18,-41,-40],[-18,-3,-2],[-18,35,40],[-17,-41,-40],[-17,-3,-2],[-17,35,40],[-16,-41,-40],[-16,35,40],[-15,-41,-40],[-15,35,40],[-14,-41,-40],[-14,35,40],[-13,-41,-40],[-13,35,40],[-12,-41,-40],[-12,-3,-2],[-12,35,40],[-11,-41,-40],[-11,-3,-2],[-11,35,40],[-10,-41,-40],[-10,-3,-2],[-10,35,40],[-9,-41,-40],[-9,-3,-2],[-9,35,40],[-8,-41,-40],[-8,-3,-2],[-8,35,40],[-7,-41,-41],[-7,35,40],[-6,36,40],[-5,37,40],[-4,37,40],[-3,36,40],[-2,-41,-41],[-2,35,40],[-1,-41,-40],[-1,-3,-2],[-1,35,40],[0,-41,-40],[0,-3,-2],[0,35,40],[1,-41,-40],[1,-3,-2],[1,35,40],[2,-33,-33],[2,-27,-26],[2,-1,12],[2,19,29],[2,34,40],[3,-33,-33],[3,-27,-26],[3,-1,12],[3,19,29],[3,34,40],[4,-33,-33],[4,-27,-26],[4,-1,12],[4,19,29],[4,34,40],[5,-33,-33],[5,-27,-26],[5,-1,12],[5,19,29],[5,34,40],[6,-33,-33],[6,-27,-26],[6,19,29],[6,34,40],[7,-41,-33],[7,-27,-26],[7,19,29],[7,34,40],[8,-41,-33],[8,-27,-26],[8,19,29],[8,34,40],[9,-41,-33],[9,-27,-26],[9,19,29],[9,34,40],[10,-17,-8],[10,19,29],[10,34,40],[11,-17,-8],[11,19,21],[11,35,40],[12,-17,-8],[12,19,21],[12,35,40],[13,-17,-8],[13,19,21],[13,35,40],[14,-17,-8],[14,35,40],[15,-17,-8],[15,35,40],[16,-17,-4],[16,35,40],[17,-17,-4],[17,35,40],[18,-17,-4],[18,19,21],[18,35,40],[19,-17,-4],[19,19,21],[19,35,40],[20,-17,-4],[20,19,21],[20,35,40],[21,-17,-4],[21,19,21],[21,35,40],[22,-17,-4],[22,19,21],[22,35,40],[23,-17,-4],[23,19,28],[23,33,40],[24,-17,-4],[24,19,28],[24,33,40],[25,-17,-4],[25,19,28],[25,33,40],[26,-17,-4],[26,7,26],[26,39,40],[27,-17,-4],[27,7,26],[27,39,40],[28,-17,-4],[28,7,26],[28,39,40],[29,-17,-4],[29,7,26],[29,39,40],[30,-17,-4],[30,7,26],[30,39,40],[31,-41,-4],[31,7,26],[31,39,40],[32,-41,-4],[32,7,26],[32,39,40],[33,-41,-4],[33,3,26],[33,39,40],[34,-41,-4],[34,3,40]],
+    "site_prebuilt_northpole_village": [[1,15,16],[2,15,16]],
     "site_prebuilt_vatican_catacombs": [[-18,-10,-9],[-17,-10,-9],[-16,-10,-9],[-16,0,5],[-15,-10,-9],[-15,0,5],[-14,0,5],[-13,0,5],[-12,-10,-9],[-12,0,5],[-11,-10,-9],[-11,0,5],[-10,-10,-9],[-10,0,5],[-9,-10,-9],[-9,0,5],[-8,-10,-9],[-8,0,5],[-7,-10,-9],[-7,0,5],[-6,-22,-15],[-6,-12,-5],[-6,-2,5],[-5,-22,-15],[-5,-12,-5],[-5,-2,5],[-4,-22,-15],[-4,-12,-5],[-4,-2,7],[-4,12,17],[-4,20,21],[-3,-22,-15],[-3,-12,-5],[-3,-2,7],[-3,12,17],[-3,20,21],[-2,-22,-19],[-2,-12,-5],[-2,-2,7],[-2,12,17],[-2,20,21],[-1,-22,-19],[-1,-12,-5],[-1,-2,7],[-1,12,17],[-1,20,21],[0,-22,-21],[1,-22,-21],[2,-22,-21],[3,-22,-21],[4,-22,-19],[4,-14,-11],[4,-8,13],[5,-22,-19],[5,-14,-11],[5,-8,13],[6,-22,-19],[6,-14,-13],[6,-6,13],[7,-22,-19],[7,-14,-13],[7,-6,13],[8,-22,-19],[8,-14,-13],[8,-6,13],[8,18,18],[8,21,21],[9,-22,-19],[9,-14,-13],[9,-6,13],[9,18,21],[10,-22,-19],[10,-14,7],[10,18,21],[11,-22,-19],[11,-14,7],[11,18,21],[12,-14,-7],[12,6,7],[12,18,21],[13,-13,-7],[13,6,7],[13,18,21],[14,18,21],[15,18,21],[16,6,7],[16,18,21],[17,6,7],[17,18,21]],
 };
 /* </ROOM HOLES> */
@@ -55558,6 +55759,17 @@ function hqTerrainSealedSquares(room, roomId, o) {
     (info.texb || []).forEach(b => { const r = Math.hypot(b.w || 0, b.d || 0) / 2 + 0.3; disc(b.x, b.z, r); });
     (info.marksX || []).forEach(m => { if (m && m.x != null) disc(m.x, m.z, Math.max(0.6, ((+m.w || +m.r || 1) / 2) + 0.2)); });
     (info.boards || []).forEach(b => blockers.push({ x0: b.x0 - 0.3, x1: b.x0 + b.n * b.C + 0.3, z0: b.z0 - 0.3, z1: b.z0 + b.n * b.C + 0.3 }));
+    /* THE ARENA'S PLACE IS GROUND (2026-11-03, Göbekli Tepe): a room an arena is cut from at a set place (HQ_ARENA_RULES.within) keeps
+       every square of that place — the biggest board on its squares, plus the window's slack — however the walker reaches it: a nook
+       the walker never climbs into is a square the fight stands on (the terrace corners inside the bastions were baked as pits) */
+    try {
+        const AR = (typeof HQ_ARENA_RULES !== 'undefined') ? HQ_ARENA_RULES : null, WI = AR && AR.within;
+        Object.keys(WI || {}).forEach(site => {
+            const w = WI[site]; if (!w || w.room !== roomId || !(w.r < 50)) return;
+            const sqM = (AR.squareM && AR.squareM[site]) || AR.squareDefault || C, half = (HQ_FIELD_RULES.size || 12) * sqM / 2 + (+w.r || 0);
+            blockers.push({ x0: w.x - half, x1: w.x + half, z0: w.z - half, z1: w.z + half });
+        });
+    } catch (e) { /* no arena rules loaded */ }
     /* a wall the walker never meets (a pillar, a wall standing inside the sealed ground) keeps the floor it stands on */
     const inZone = (x, z) => { const i = Math.round((x - info.x0) / res), j = Math.round((z - info.z0) / res); return i >= 0 && j >= 0 && i < nx && j < nz && zone[j * nx + i] === 1; };
     (info.walls || []).forEach(w => {
@@ -55566,6 +55778,10 @@ function hqTerrainSealedSquares(room, roomId, o) {
         let meets = false;
         for (let k = 0; k <= n && !meets; k++) { const x = w.x0 + (w.x1 - w.x0) * k / n, z = w.z0 + (w.z1 - w.z0) * k / n; meets = inZone(x, z) || inZone(x + reach, z) || inZone(x - reach, z) || inZone(x, z + reach) || inZone(x, z - reach); }
         if (!meets) blockers.push({ x0: Math.min(w.x0, w.x1) - (w.t || 0.25) / 2 - 0.1, x1: Math.max(w.x0, w.x1) + (w.t || 0.25) / 2 + 0.1, z0: Math.min(w.z0, w.z1) - (w.t || 0.25) / 2 - 0.1, z1: Math.max(w.z0, w.z1) + (w.t || 0.25) / 2 + 0.1 });
+        /* A BLOCK IS GROUND (2026-11-03, Göbekli Tepe's arena): a wall row a whole square thick (a bastion, a bench, a pillar's stone)
+           is a top the fight stands on (a level), even where the walker cannot climb it — the squares under it are never a gap (the
+           bastions' corners were baked as pits in the 12 × 12) */
+        else if ((w.t || 0) >= C * 0.9) { const ht = w.t / 2 - 0.05; blockers.push({ x0: Math.min(w.x0, w.x1) - ht, x1: Math.max(w.x0, w.x1) + ht, z0: Math.min(w.z0, w.z1) - ht, z1: Math.max(w.z0, w.z1) + ht }); }
     });
     const out = o.keep ? hqHoleSet(hqRoomHoles(room, roomId)) : new Set();
     const iA = Math.ceil((-hw - GO.x) / C - 1e-6), iB = Math.floor((hw - GO.x) / C + 1e-6) - 1, jA = Math.ceil((-hd - GO.z) / C - 1e-6), jB = Math.floor((hd - GO.z) / C + 1e-6) - 1;
@@ -56290,7 +56506,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_vatican_library:     { tape: { x: -10.5, z: 6.0 } },
     site_prebuilt_vatican_courtyard:   { tape: { x: 15.0, z: 12.0 } },
     site_prebuilt_vatican_observatory: { tape: { x: 8.5, z: 7.5 } },
-    site_prebuilt_heaven_gate:       { tape: { x: 24, z: -16 } },
+    site_prebuilt_heaven_gate:       { tape: { x: 17.5, z: 3.5 } },   // THE NEW HEAVEN (2026-11-03): the east terrace
     /* D.U.M.B. (9.3 stage 8, 2026-09-17): the signal gantry, the tower, the dream tower, the vat stack, the projection booth, the safe stack, the beam dump — the door gun's seven */
     site_prebuilt_dumb_motorpool: { tape: { x: -16, z: 12 } },
     site_prebuilt_dumb_sublevel7: { tape: { x: 0.0, z: 0.0 } },
@@ -60669,8 +60885,9 @@ function hqFieldTerrainInfo(roomId, cellM) {
     const info = hqTerrainInfo(roomId); if (!info) return null;
     const TR = HQ_FIELD_RULES.terrain, C = (+cellM > 0) ? +cellM : TR.cell, R = info.rules || HQ_TERRAIN_RULES;
     const big = Math.abs(C - TR.cell) > 1e-9;
-    if (!big && room._fieldTerrain && room._fieldTerrain.src === info) return room._fieldTerrain;
-    if (big && room._fieldTerrainBy && room._fieldTerrainBy[C] && room._fieldTerrainBy[C].src === info) return room._fieldTerrainBy[C];
+    const chessK = hqLgChessKey(roomId);   // THE CHESS POSITIONS: the garden's lattice is read per position
+    if (!big && room._fieldTerrain && room._fieldTerrain.src === info && room._fieldTerrain.chess === chessK) return room._fieldTerrain;
+    if (big && room._fieldTerrainBy && room._fieldTerrainBy[C] && room._fieldTerrainBy[C].src === info && room._fieldTerrainBy[C].chess === chessK) return room._fieldTerrainBy[C];
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
     const known = (k) => !!(k && (!tid || tid[k]));
     const halfW = info.halfW - TR.margin, halfD = info.halfD - TR.margin, GO = hqFieldGridOffset(room, roomId, C);
@@ -60681,7 +60898,7 @@ function hqFieldTerrainInfo(roomId, cellM) {
     const floorKey = known(info.floor) ? info.floor : (known(room.shell && room.shell.floor) ? room.shell.floor : 'grass_2');
     const rockKey = known(info.cliff) ? info.cliff : 'rock_wall_1';
     const pathKey = known(info.path) ? info.path : floorKey;
-    const trees = (info.trees || []).concat(info.thicket || []);
+    const trees = (info.trees || []).filter(hqLgChessOn).concat(info.thicket || []);   // THE CHESS POSITIONS: only the current position's pieces
     const treeAt = (x, z) => { for (const t of trees) { const r = (t.r || R.treeR) + TR.treePad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; } return false; };
     const onPath = (x, z) => { for (const p of (info.paths || [])) if (_hqTPolyDist(x, z, p.pts).d <= p.w / 2) return true; return false; };
     const onBoard = (x, z) => { const sq = (info.boards && info.boards.length) ? hqTerrainBoardAt(info.boards, x, z) : null; return (sq && known(sq.key)) ? sq.key : null; };
@@ -60830,7 +61047,7 @@ function hqFieldTerrainInfo(roomId, cellM) {
         }
         cells.push(row);
     }
-    const out = { roomId, src: info, C, w, h, x0, z0, cells, floorKey, rockKey, pathKey, open: !!(room.shell && room.shell.open) };
+    const out = { roomId, src: info, C, w, h, x0, z0, cells, floorKey, rockKey, pathKey, open: !!(room.shell && room.shell.open), chess: chessK };
     if (big) {
         if (!room._fieldTerrainBy) Object.defineProperty(room, '_fieldTerrainBy', { value: {}, enumerable: false, configurable: true, writable: true });
         room._fieldTerrainBy[C] = out;
@@ -60862,7 +61079,7 @@ function _hqFieldRoofSamples(ti, src) {
 }
 function _hqFieldTreeAt(info, x, z) {
     const R = info.rules || HQ_TERRAIN_RULES, pad = HQ_FIELD_RULES.terrain.treePad || 0;
-    for (const t of (info.trees || []).concat(info.thicket || [])) { const r = (t.r || R.treeR) + pad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; }
+    for (const t of (info.trees || []).filter(hqLgChessOn).concat(info.thicket || [])) { const r = (t.r || R.treeR) + pad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; }
     return false;
 }
 /* the city lot (info.lots row) holding the most of these sample points, with the count */
@@ -60930,6 +61147,52 @@ function hqFieldRoofsApply(R) {
     }));
     return R;
 }
+/* ══ THE OPEN SKY (2026-11-03, mondo: "a flyer should absolutely be able to fly over a rock or a street sign. That wall fix was
+   probably intended for rooms that have a ceiling ... i shouldnt be able to just fly over the wall of a hallway, because it is implied
+   that the wall goes up to the ceiling. Where as an outdoor map like cyberpunk does not need that, bc it is outside and there is no
+   ceiling") ══ On a room with no ceiling (shell.open) a square that stays rock is only as tall as what is DRAWN there — a building's
+   edge (its lot's top), a wall's top, a solid piece's top, a rock's top — so its column is that tall (THE TIER RULE, uncapped like a
+   roof) and it is marked SKY: nobody stands, walks, climbs or lands on it (battle.js fieldCellRock, unchanged), an airborne flyer
+   crosses and hovers over it (map.js unitCanTraverse, battle.js fieldCellSky), a shot / a sight line goes over it when it clears that
+   height. A tree (no height known), a gap, the room's edge and every square of a room with a ceiling keep the tall column.
+   window.EW_NO_OPEN_SKY = the tall columns everywhere as before. */
+function hqFieldSkyOn() {
+    const W = (typeof window !== 'undefined') ? window : {};
+    return !W.EW_NO_OPEN_SKY;
+}
+/* the drawn top (room metres) of a rock square on an open room, or null (it keeps the tall column) */
+function hqFieldSkyTopOf(ti, c) {
+    if (!ti || !c || !c.rock || !c.src || c.src.hole) return null;
+    const info = ti.src, room = (DOOR_HQ.rooms || {})[ti.roomId], src = c.src;
+    if (!info || !room || !(room.shell && room.shell.open)) return null;   // a closed room's walls reach its ceiling
+    const gn = info.gen || {}, pts = _hqFieldRoofSamples(ti, src);
+    if (_hqFieldTreeAt(info, src.x, src.z) || pts.some(p => _hqFieldTreeAt(info, p[0], p[1]))) return null;   // a tree: its height is not known
+    const r3 = (v) => Math.round(v * 1000) / 1000;
+    /* the ground as drawn (a slope's crest, a rock lump, a kerb under a parked car), then what stands on it */
+    let top = -Infinity;
+    for (const p of pts) top = Math.max(top, hqTerrainHeight(info, p[0], p[1]));
+    if (c.solidTop != null && isFinite(+c.solidTop)) top = Math.max(top, +c.solidTop);   // a wall / a tall piece in the square (THE CUSTOM BATTLE MAPS)
+    if (gn.kind === 'city' && gn.solidMass) {
+        const L = _hqFieldLotUnder(info, pts);   // a building's edge: the lot's top, whatever share of the square it fills
+        if (L.lot && L.n > 0) { if (gn.prisms === false) return null; top = Math.max(top, hqTerrainSolidTop(info, L.lot.x, L.lot.z)); }
+    } else if (gn.solidMass) {
+        for (const p of pts) if (hqTerrainSolidAt(info, p[0], p[1], 0)) top = Math.max(top, hqTerrainSolidTop(info, p[0], p[1]));   // a wall's top
+    } else if (gn.look === 'trees' && info.maskD && hqTerrainMaskAt(info, src.x, src.z) < 0) return null;   // a tree bank: no height known
+    return isFinite(top) ? r3(top) : null;
+}
+/* after THE ROOFS: every rock square of an open terrain room with a drawn top stands that tall and is marked `sky` */
+function hqFieldSkyApply(R) {
+    if (!R || !R.cells || !R.terrain || R._skyApplied || !hqFieldSkyOn()) return R;
+    R._skyApplied = true;
+    const ref = (R.ref != null) ? R.ref : 0;
+    R.cells.forEach(row => row.forEach(c => {
+        if (!c || !c.rock) return;
+        let top = null; try { top = hqFieldSkyTopOf(R.info, c); } catch (err) { top = null; }
+        if (top == null) return;
+        c.sky = true; c.skyTop = top; c.tile = hqFieldRoofTier(top, ref);
+    }));
+    return R;
+}
 /* the window on the terrain lattice: OUT = rock in the cliff sheet (the room's edge, the plan's mass, a tree, a cliff the feet refuse),
    a HAZARD in its liquid, an IN cell at THE TIER of its top over the window's lowest IN top. `solid` = THE CUSTOM BATTLE MAPS' walls
    (hqFieldSolidCell / hqFieldSolidEdges): a square a wall stands in is OUT, a wall between two squares is an edge wall (R.walls) */
@@ -60947,7 +61210,7 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
             const src = (gx >= 0 && gy >= 0 && gx < ti.w && gy < ti.h) ? ti.cells[gy][gx] : null;
             const sol = (solidAt && src && src.in && !src.span) ? solidAt(src) : null;   // THE CUSTOM BATTLE MAPS: a wall / a tall piece in the square, or a low piece's top
             let cell;
-            if (!src || (!src.in && !src.hazard) || (sol && sol.out)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null };
+            if (!src || (!src.in && !src.hazard) || (sol && sol.out)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null, solidTop: (sol && sol.out && sol.top != null) ? sol.top : null };
             else if (src.hazard) cell = { x, y, gx, gy, in: false, rock: false, hazard: true, tile: null, key: src.key, fluid: src.fluid, under: null, src, seat: false, top: null, sheet: src.sheet };
             else { cell = { x, y, gx, gy, in: true, rock: false, hazard: false, tile: 0, key: src.key, fluid: src.fluid, under: null, src, seat: src.seat !== false, top: src.top, wall: !!src.wall, bridge: src.bridge | 0,
                             deck: src.deck ? { top: src.deck.top, layer: src.deck.layer, tile: 0, rails: src.deck.rails || '' } : null, span: !!src.span, rails: (src.span && src.rails) || '' };
@@ -61017,11 +61280,11 @@ function hqFieldSolidCell(ti) {
     return (src) => {
         const g = hqTerrainHeight(info, src.x, src.z);
         const w = src.wall ? hqTerrainWallAt(info, src.x, src.z, R.bodyR) : null;
-        if (w && !w.block && !w.tier && !w.plan && w.top - g >= G.tierMin) return { out: true };
+        if (w && !w.block && !w.tier && !w.plan && w.top - g >= G.tierMin) return { out: true, top: w.top };   // THE OPEN SKY: the wall's own top
         let top = null, key = null;
         for (const cv of covers) if (Math.abs(src.x - cv.x) <= cv.hw && Math.abs(src.z - cv.z) <= cv.hd && (top == null || g + cv.top > top)) { top = g + cv.top; key = cv.key; }
         if (top == null) return null;
-        if (top - g >= BX.high) return { out: true };
+        if (top - g >= BX.high) return { out: true, top, key };
         return (top > (+src.top || 0) + 0.05) ? { top, key } : null;
     };
 }
@@ -61446,6 +61709,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet, cell: opts.cell, solid: !!opts.solid }); if (!R) return null;
     if (typeof _mfNew !== 'function') return null;
     hqFieldRoofsApply(R);   // THE ROOFS: a building's / a rock's top is a square (the existing Jump and Climb reach it)
+    hqFieldSkyApply(R);     // THE OPEN SKY: an open room's rock square is as tall as what is drawn there
     const room = DOOR_HQ.rooms[roomId], site = hqRoomSite(roomId), RW = R.W, RH = R.H, S = Math.max(RW, RH), B = HQ_FIELD_RULES.base;
     const id = hqFieldId(roomId, R.ox, R.oz);
     const siteD = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[site + '_delta'] : null;
@@ -61497,6 +61761,11 @@ function hqFieldBuild(roomId, ox, oz, opts) {
                        three-renderer.js _hqLotStandY), else null; a square that stays rock: where its tile marks lie (room metres), else null */
                     roofLots: R.cells.map(row => row.map(c => (c.roofed && c.roofLot != null) ? c.roofLot : null)),
                     rockTops: R.cells.map(row => row.map(c => (c.rock && c.rockTop != null && isFinite(+c.rockTop)) ? Math.round(+c.rockTop * 1000) / 1000 : null)),
+                    /* THE OPEN SKY (2026-11-03): '1' = a rock square of an open room an airborne flyer crosses / hovers over (battle.js
+                       fieldCellSky); `skyTops` = what is drawn there (room metres) — the flyer hovers its clearance over it
+                       (three-renderer.js _fieldSurfaceY) */
+                    sky: R.cells.some(row => row.some(c => c.sky)) ? R.cells.map(row => row.map(c => (c.rock && c.sky) ? '1' : '0').join('')) : null,
+                    skyTops: R.cells.some(row => row.some(c => c.sky)) ? R.cells.map(row => row.map(c => (c.rock && c.sky && c.skyTop != null) ? c.skyTop : null)) : null,
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
                     fixed: hqFieldFixedCells(R),   // THE NO-DEFORM FLAG (delivery 9): the cells the engine may not dig / raise (null on a cave)
@@ -61587,9 +61856,17 @@ const HQ_ARENA_RULES = {
        board — every size of its arena is cut from that room, from windows centred within r m of (x, z) (bake-arenas.js). Göbekli Tepe:
        ENCLOSURE E in THE TELL (mondo 2026-10-05: its own board, never the ley lines) */
     within: {
-        prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 6 },
+        prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 2.5 },   // r 6 → 2.5 (2026-11-03): with the ring wall gone a wider window scored the open ledge over the designed board — the 12 × 12 stays on the pit (66.5..108.5), an odd size half a square off
         prebuilt_derelict: { room: 'site_prebuilt_derelict_deck', x: -7, z: 0, r: 3 },   // THE SHIP (2026-10-28): across the wings and the hull, the nexus on the hull, a team on each wing
-        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
+        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },
+        prebuilt_antarctica: { room: 'site_prebuilt_antarctica_station', x: 0, z: 31.5, r: 2.6 },   // THE OPEN ICE (2026-11-03): every size on THE STATION YARD
+        prebuilt_northpole: { room: 'site_prebuilt_northpole_village', x: -28, z: 14, r: 2.6 },   // THE OPEN VILLAGE (2026-11-03): every size between the workshop and the plaza, the two cottages either side
+        prebuilt_giza: { room: 'site_prebuilt_giza_plateau', x: 17.5, z: 77, r: 2.6 },   // THE OPEN PLATEAU (2026-11-03): every size on the sand in front of the sphinx, the causeway along its west side
+        prebuilt_babel: { room: 'site_prebuilt_babel_tower', x: 0, z: 70, r: 2.6 },   // THE OPEN TOWN (2026-11-03): every size on the square, its four brick houses
+        prebuilt_technoticlan: { room: 'site_prebuilt_technoticlan_templecity', x: -38.5, z: 38.5, r: 10 },   // THE OPEN TEMPLE CITY (2026-11-03): every size on the ball court
+        prebuilt_agartha: { room: 'site_prebuilt_agartha_crystalcity', x: 0, z: 14, r: 2.6 },   // THE OPEN CRYSTAL CITY (2026-11-03): every size on THE PLAZA
+        prebuilt_olympus: { room: 'site_prebuilt_olympus_summit', x: 0, z: 10.5, r: 2.6 },   // THE OPEN SUMMIT (2026-11-03): every size on THE COURT OF THE TWELVE (its two rows of columns either side)
+        prebuilt_heaven: { room: 'site_prebuilt_heaven_gate', x: 0, z: 0, r: 2 },   // THE NEW HEAVEN (2026-11-03): the 12×12 cut round the sun (the whole board; the 9/10/11 picks stand on the stair room)   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
     },
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
@@ -61611,33 +61888,33 @@ const HQ_ARENA_RULES = {
     picks: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010101010101010101010303012121212121212121010303012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121211523","sq":3.5},
-        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":3,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","deep_water","cloud_thick","water"],"cells":"010101010101111101010202010303010101010111110202010303010101012101011101353535010121012121010101353535020101012101350101353502020101010135353535353501010101110101353535354101010101011103353535020202111101011103350101020202020111110111010101020202010101010111111101010201010101010111110101","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":42,"oz":50,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"020211111111111111111126020211111111111111111411020212121111111111111111020211111111111111111111020211111111111112121111020211111111111111111111020211111111111111111111020212121111111111111111020211111111111111111111020211111111111112121111010411111111111111111111010111111111111111111111","sq":3.5},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":0,"oz":0,"base":"marble_light","open":1,"keys":["cloud_gap","marble_light","cloud_2"],"cells":"000000001111111100000000000011111111111111110000002121111111111111212100002100000021210000002100111111002111112100111111111111211111111121111111111111211111111121111111111111002111112100111111002100000021210000002100002121111111111111212100000011111111111111110000000000001111111100000000","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","sq":3.5,"pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160404161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":7,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101111101111111111111111111111101010101010101010101111101010101010101010101111101010101010101010101111101020111110101010101111101020202020201010101111101010101011101010101111101010101010101010101111101010101010101010101111101010101010111010101111101010101010101010101111101","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101","sq":3.5},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102020101010101020201010102020101010101010101010101010101010101010101010101010101010111111111010101010101011111111111010101010101011111040411010101010101011111040411010101010101011111111111010101010101010111111111010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010103010101010101010101010303","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":17,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"041111111121211111111104041111111121211111111104041111111121211111111104111111111121211111111111111111111121211111111111040404040421210404040404040404040421210404040404040404040421210404040404040404040421210404040404121212041121211111111111222222222121212121212121121212121111111111111111","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101010111111111030301010101010111111111030301010101010111110101010101010101010111110303010101010101010111110303020201010101010111110101010101010101010111110202030301010101010111110101030301010101011111110101010101010111111111010303010101010111110101010303110101010111110101010101","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"020201010111110101010101020204010111110101040101010101010111110101010101010104010111110101040101010101010111110101010101010104010111110101040101010104010111110101040101010101010111110101010101010104010111110101040101010101010111110101010101010104010111110101040202010101010111110101010202","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101150101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101150101010101010101010101150101010101010101010101151501010101010101010101151515010101010101010101151515010101010101010101011501010101010101010101010101010101010101151515010101010101010101","sq":3.5},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":5,"oz":2,"base":"dirt_4","open":1,"keys":["wasteland","dirt_4"],"cells":"060611111111111111110606060611111111111111110606060606131414131111110611060606131414131111111313111111121313131111110613111111121111111111110606111111111111111111110606111111111111111111110606111111111106111111110606111111111111111111111111111111111111111111111111111111111111111111111111","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":27,"oz":15,"base":"marble_light","open":1,"keys":["marble_light","ice_1","water"],"cells":"010101010101010101011515012121210101010101011515012121210101010101011515012121210101010101010115010101010101010103010115010101010101010102010101010101010101010102010101010101010101010102011515010101010101010101011515010101010101010101011515010101010101010101011515010101010101010101011515","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":14,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101020202010101010101010101010101010101010101030101010101020101010101030101010103010101010102010101010103010101010101010101010101010101010101020202010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101011111111101010112010101010101010111111112010101010101242411111112010101242401011101011111010101012424110101111111010101010101110111011111010101010101112411011111010101010101112411012411010101010101110124111111010101111101011101242401010111010111010111111111010111011101010101010124","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":18,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"011212010101011121212121011111010111111112020202111111111111011121212121111111110102340111212121110101010134340111012121010101010101010111010101010101010101010111111111010101010101010101010101010101010101010101010134010101010101010101340101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":4,"oz":4,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"010111010111110101110101010101110111110111010101010101110111110111010101010102110111110111010101010111010111110101110101010111010111110101110101010111010111110101110101010111010111110101110101010101110111110111020101010101110111110111010101010101110111110111010101010111010111110101110101","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111212121211121212111040411212121111111212121120411112121111111112121120411112121211111212111121211112121211111212121121111112121111122222222111111112121212122221222111111112121211112122222211111112121111112121222211111112121111111111204212111112121111111111104112121112121111111111111","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":4,"oz":2,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010202010101010101010101010101010101161601010101010101030101161601010101010101030401161616161601011616030301160101010101010101030401160101010303030301040101160101010303030302010101160101010303030302010101160101010303030301010101160101010101010101010101160101010101010101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010101141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010101010102010101010101010101010102141414010114141414141414141414010114141414141414140101010101010101010101140101010101010101010101","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":3,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010101010101010101010101011401020202020201010101011401020202020201010101010101020202020202020101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020202020202020101011401010101010101010101011401010101010101010101010101","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010301010101010101010101010101010101010101010202010103010101010101020101010101010101010101010102010101010101010101010101030101010101010101010201010201010101010101010103010101010101010101010101020101010101010101010101010102010101010101030101020201010101010101010101010101010101010101010301","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101","sq":3.5},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":10,"oz":9,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"030313010111111121212121030314010111111121212121130311010111111121212121140101010101010121212121010101010101010112121212010101011111010101012121111111011111010101010101111111010111111111110101010111111101011111111101010101010111010111111111110101010101010101111101111111110101010101010101","sq":3.5},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3","cloud_gap"],"cells":"030301010101010101011003030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010210030301010101010101011003","sq":3.5},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101040101020201010101010101010202020201040101010101010202020201010101010104010202020201010101010101010202010104010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":41,"oz":23,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"051111111111111111051305051111111111111111131313051111111111111111051305051111111111111111111211051111111111111111111211051111111111111111111211051111111111111111111111051112111111111111111111050512111111050511111111050512111111050511111111051313111111111111111111051313111111111111111111","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515010101010101010101010101030101010101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101010115010101010115151515151515010101010115151515150101010101010115151515150101010115010115010101010101010115010101010101010101010115","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101020101020101010101010101010101030101010101010101010101030302020101010101010101030101010101010101040404040404010101010101040404040404010101010101040404040404010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102010102010101010101010101","sq":3.5},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":9,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"000011111111111111110000000011111111111111111100000000121111111100001111000000111111111100001111111111111111111111111111111212111111111111121211111212111111111111121211111111111111111111111111000000111111111100001111000000121111111100001111000011111111111111111100000011111111111111110000","sq":3.5},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":11,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101","sq":3.5},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":11,"oz":14,"base":"grass_2","open":1,"keys":["grass_2","leaves_3","marble","marble_light"],"cells":"010101010101010101010101010101010101010101010101010114213121142131140101010114312131141414140101010114141421141431210101010121312131213121310101010131211421311431210101010114312131141414310101010114143121312114140101010114312131143114140101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":2,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101010114140101010101010101011111111101010101010101011111111101021414141414141414140111020202010101010101141411140202010101010101141411140202020101010101141411140101010101010111111111140101010101010101141411140101010101010101141411140101010101010101141411140101010101010101141411","sq":3.5},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212114010121212121212121211414010101010121212121212121212101010101010101212121212121212121212101010101212121212121212121010101212121212121212121212101212121212121212121212121212121212121212121212121212121212121212121212114211414212121212121211414","sq":3.5},
@@ -61653,32 +61930,32 @@ const HQ_ARENA_RULES = {
     picks9: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"011121210101212101341101212121210101011111012121212121010111012121212121340111210101010101010121010101010101011101010101010101211101010101010101111101010101010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":40,"oz":22,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"011111111111121101111111111111121211111111111111111212111111111111111212111111111111111212111111111111111212111111111111111212111111111111111212111111111111111212","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":51,"oz":38,"base":"desert","open":1,"keys":["desert"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"021111111111111111021212111111111111021111111111111111021111111111111212021111111111111111021111111111111111021212111111111111021111111111111111021111111111111212","sq":3.5},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_stair","ox":0,"oz":19,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light"],"cells":"041212111111111111041212111111110404111111111111040404041111111111110404042111111111110404042111111111110404112121212111110411111111111121212121111111111111041111","sq":3.5},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"010101010101010101010101010101011111010101010101011111010101010101010101010101010101242424010101010101242424010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":12,"oz":13,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"020202010101011111010111010101011111010101010101011111010101010101011111010101110101011111010101010101011111010101010101011111111111111111111111010101010101011111","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101","sq":3.5},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":11,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010101010101010101010101010101010111010101010101011111010101010101011111010101010101011111010101010101011111010101010101010111010101010101010101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":23,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101010101010101010101010111010101010101010111010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010104","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":9,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"010101010101011111010101010101011111240101010101011111242424010101011111020224010101011111020224010101011111020224010101011111020201010101011111020201010101011111","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":33,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101111111010101010101111101010101010101111103010101010101111103010101010101111101010101010101111102010101010101111101010101010111111101010101111111110103","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"010101111101010101040101111101010401010101111101010101040101111101010401040101111101010401010101111101010101040101111101010401010101111101010101040101111101010402","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":16,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"011401010101010101011401010101010101011401010101010101010101010101010101020101010101010101010101010101010101011401010101010101011401010101010101011414010101010101","sq":3.5},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":8,"oz":9,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"010101010101011414010114010101011414010101010101010101010101010101010101010101010101010101140101010101011401140101010101010101140101010101010101011414010101010101","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":16,"base":"marble_light","open":1,"keys":["water","marble_light"],"cells":"010101111111111111010101111111111111010101111111111111111111111111111311111111111111111211111111111111111211111111111111111211111111111111111111111111111111111111","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":15,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101020201010101010101010101010101010103010102010101010103010301010101010201010301010101010101010101010101010102010101010101010101","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":4,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101010111011101010101010111241101010101010111241101010101010111012411010111110101110124011101011101011111011101110101010101010101010101010101010124010101010101","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"041121211111111121111121211111111121111121211111212121212121212121211121212121212111110411212111111111040411111111111111111111111111111111111111111111111111111111","sq":3.5},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":7,"oz":3,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"010111110101110101010111110101110101110111110111010101110111110111010101110111110111010101010111110101110101010111110101110101010111110101110101010111110101110101","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":8,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111111212111041111111121212121041111212121211121040411212121111111120411112121111111120411112121211111121211112121211111121111112121111122111111112121212122","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":16,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111040404111111111111","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":7,"oz":24,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"020101010101140101020101010101010101020202010101010101010101010101010101010101010101010101010101010101010101010101010101010101020202010101140101010101010101140101","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":14,"oz":16,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010301010101010102010101010101010101010101010101010101010101010101010101020101010101010101010101010101010101010101010101010101010201010101010103020101010101010101","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101","sq":3.5},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":9,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"020212011111010101020311111111111111021111111111111111121111111101011111110101011101011111110101011111010101111111010101111101011111111111011111010111111111111111","sq":3.5},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010101010201010101010301010101010101010102010101010101010102010101010101010102010101010101010102030101010101020102010101010101010102010101010101010102","sq":3.5},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010101010201010101010401010101010101010102010401010101010102010101010101040102010101010101010102040101010101020102010101010101010102010101010101010102","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101040401010101010101040401010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":44,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101150315010101010101030303010101010101150315010101010101010201010101010101010201010101010101010201010101010101010101","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101010101010101010101030202010101011501010101010101011501010101010101011501010101010101011501","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101030202010101010101010101010101010104040401010101010104040401010101010104040401010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":2,"oz":0,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":9,"base":"aluminium","open":1,"keys":["aluminium","cloud_gap"],"cells":"010101010101010101100201010101101001100101010101101001010101010101010101020101010101010202020101010101010202010101010101010101100101010101101001100201010101101001","sq":3.5},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121","sq":3.5},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":18,"oz":13,"base":"grass_2","open":1,"keys":["marble","grass_2","leaves_3","marble_light"],"cells":"010101010101111111111111111101241111111111111101111111013124111101010101242424111101011124243101111101111124310131111101111111243101111101111111242431111101111111","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":21,"oz":0,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"050101111111050513010101111111111313110511111111110513110511111111111212110511111111111212110511111111121212010101111111111212010101111111111212110511010111111212","sq":3.5},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":7,"oz":20,"base":"moon_3","open":1,"keys":["obsidian","crystal","moon_3"],"cells":"040411112121212121111111111111112121040421211111111111040421212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121","sq":3.5},
@@ -61692,32 +61969,32 @@ const HQ_ARENA_RULES = {
     picks10: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":20,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010111111121111111111111111111010101010101010101013401010101010101010101010101010101343434010101010101010134343401010101340101010101010101010101010101010101010101010101111101010101010101011121","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":35,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101011111120202010101011111110101010101011111110101010101010111111101010101010111141101010101010101011401010101010101010101040101010101010101010401010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":38,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2","bricks_1"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010124010101111101010124","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111114021212111111111111110211111111111111111102111111111111121211021111111111111111110211111111111111111102121211111111111111021111111111111111110211111111111112121104111111111111111111","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":7,"oz":7,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"00111111111111111100111124111111112411111100000011110000001111110012111112001111111111111111111111111111111111111111111111110012111112001111110000001111000000111111241111111124111100111111111111111100","sq":3.5,"pits":"1000000001000000000001110011100010000100000000000000000000000010000100011100111000000000001000000001","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"01010101010101010101010101010101011111010101010101010111110101010101010101010101010101010101242424240101010101012424242401010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101030302011111010101010101020202020201010101010101010111010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101111111111111111111","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101","sq":3.5},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010202010101010101010101010101010101010101010101010101111111010101010101111111110101010101011111040401010101010111110404010101010101111111110101010101010111111101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":2,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":9,"oz":12,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"04121211111111212111111111111111112121111111111111111121211104111111111111212111040404111111112121111212041111111121211112120411111111212111121204111111112121111212111111111121211112121111111111212111","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":32,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"03010101010101111111030101010101011111010101010101010111110301010101010101111103020101010101011111010101010101010111110203010101010101111101030101010101111111010101010111111111010301010101111101010103","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02040101111101010401010101011111010101010104010111110101040101010101111101010101010401011111010104010104010111110101040101010101111101010101010401011111010104010101010111110101010101040101111101010402","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":16,"oz":12,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010101011501010101010101010115010101010101010101151501010101010101011515150101010101010115151501010101010101011501010101010101010101010101010101011501010101010101010115010101010101010101","sq":3.5},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":6,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"01010201010101010114010101010101010101140101010101010101011401010101140101010114010101010101010101010101010101010101010101010101010101010101141414010101010101140114140101010101010101011401010101010101","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":15,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010202010101010101010101010101010101010301010102010101010103010103010101010102010101030101010101010101010101010101010102020101010101010101010101010101010101010101","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":2,"oz":14,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010101112411010101010101011124110101010101010111012424010101111101011101240101110101110101112401011101110101010101010101010101010101010101012401010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"01020201010101110101010202010101011101010112120101010111012101121201010101112121011111010111111112021111111111110111212111111111010134011121110101010134340111010101010101010101110101010101010101011111","sq":3.5},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":9,"oz":1,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","water","rocks_5"],"cells":"01011111011111211234010111110111112112120101111101111121212101011111011111111111010111011111111111110101110111111111111101011101111111111111010111110111111111110101111101111111111101011111011111111111","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111121212121112121040411212121111111211204111121211111111112041111212121111121121211112121211111211211111121211111222211111111212121212222111111112121211112122111111121211111121221111111212111111111","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101141414010101010101011414140101010101010114141401010101010101141414010101010101010101010101010101010101010114140101141414141414141401011414141414140101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":6,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01010101010101010101010101010101010101010101010101010114010102020101010101140101020201010101010101010202020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":14,"oz":15,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010301010101010102010101010101010101010101010101010101010101010101010101010101020201010101010101010101010101010101010101010101010101010101010102010101010101030102010101010101010101","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101","sq":3.5},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":11,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03110101111111212121010101010101012121210101010101010112121201010111110101010121111101111101010101011111010111111111110101111111010111111111010101011101011111110101010101010101111111111101010101010101","sq":3.5},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101030102010101010101010102020101010101010101020201010101010101010202010101010101010102010301010101010201020101010101010101010202010101010101010102","sq":3.5},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101040102010101010101010102020104010101010101020201010101010104010202010101010101010102010401010101010201020101010101010101010202010101010101010102","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":15,"oz":10,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101141414141414141401011414141414141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":25,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101150315010101010101010102010101010101010101020101010101010101010201010101010101010101010201010101010101010102010101151501010101020101011515010101010301010101010101010103010101010101010101","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":2,"oz":10,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010303030101010101010103030303020201010101030303010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010302020101010101010101010101010101010404040401010101010104040404010101010101040404040101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020101010101010101020201010101010101010202010101010101010102020101020101020101020201010101010101010202010101010101010102","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":9,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111111000012111111110000110000111111111100001111111111111111111111121211111111111112121212111111111111121211111111111111111111000011111111110000110000121111111100001100111111111111111111","sq":3.5},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104","sq":3.5},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":16,"oz":5,"base":"grass_2","open":1,"keys":["leaves_3","grass_2","marble"],"cells":"04041111112121111111040411111121111111110411111121211111111104111111212112121212041111112111121212120411111121111212121221211111210412121212212111111121121212122121212121212121111111111111111111210411","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":24,"oz":18,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101020216010101010101010202160101010101010102021601010101010101020216010101010101010202160116041601010101011601040404010101010116011604160101010101160101010101010101011601010101010101010116","sq":3.5},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":20,"base":"moon_3","open":1,"keys":["crystal","moon_3","obsidian"],"cells":"01011111111111111111010101010111111111111111010101010101011111111111111111110101111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111111111242411111111111111","sq":3.5},
@@ -61731,29 +62008,31 @@ const HQ_ARENA_RULES = {
     picks11: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010101010101010101013434340101010101010101013434340101010101340101010101010101010101010101010101010101010101010111110101010101010101011121","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101010111110101010101010101011111010101010101010111111101010101010101111111010404010101010111111101010101010101111411010101010101010101140101010101010101010101040101010101010101010104010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":6,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"01011515010101010101010101151501010101010101010115150101010101010101011515010101010101010101010101010101010103012121212121212121010301211515010101212101010121151501010121210101012115150101012121010101211515010101212101010121151501010121212115","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111114110212121111111111111111021111111111111111111102111111111111121211110211111111111111111111021111111111111111111102121211111111111111110211111111111111111111021111111111111212111104111111111111111111110111111111111111111111","sq":3.5},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101011616160101010101010101161616160101010101160416161616010101010101010101010101010101010101210101010101010101010121010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010303020111110101010101010102020202020101010101010101010111010101010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101010101111111111111111111111101010101010101010101","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101","sq":3.5},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020201010101010202010102020101010101010101010101010101010101010101010101010101111111010101010101011111111101010101010101111104040101010101010111110404010101010101011111111101010101010101011111110101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"01010101010101011111110303010101010101111111030301010101010111110101010101010101011111030101010101010101111103020201010101010111110101010101010101011111020303010101010101111101030301010101011111110101010101011111111101030101010101111101010103","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02010101111101010101010204010111110101040101010101011111010101010101040101111101010401010101010111110101010101010401011111010104010101040101111101010401010101010111110101010101010401011111010104010101010101111101010101010104010111110101040202","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":6,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101020202030101010101010102020202010101010101011502020201010101010101010101020101010101010101010102010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011501010101010101010101","sq":3.5},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":7,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"01020101010101011515030101010101010101151515010101010101010115151501010115010101011515150101010101010101010101010101010101010101010101010101010101010101011515010101010101150101151501010101010101010101150101010101010101011501151501010101010101","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101010201010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":14,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101010101010101010102020201010101010101010101010101010101010301010101020101010101030101010301010101010201010101030101010101010101010101010101010101020201010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010111011101110101010101011124110111010101010101112411012401010101010111012411110101011111010111012424010111010111010111111101011101110101010101010101010101010101010101010101240101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01010202010101011101010101020201010101110101240112120101010111013101011212010101011131310101111101011111111202111111111111110111313111111111110101240111311111010101012424011101010101010101010101110101010101010101010111110101010101010101010101","sq":3.5},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":8,"oz":1,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","water","rocks_5"],"cells":"01111101011101012102340111110101110101210202011111010111010121212101111101011101010101010111110111010101010101011111011101010101010101111101110101010101010111110101110101010101011111010111010101010101111101011101010101010111110101110101010101","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04112121211111112121210411112121111111112121041111212121111121211112111121212111112121211111112121111122222222111111212121212222122211111121212111121222221111112121111112121222111111212111111111120421111121211111111111042121112121111111111111","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140114010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":6,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01010101010101010101010101010101010114010101020201010101011401010102020101010101010101010202020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102020202010101140101010101010101010114010101","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":13,"oz":15,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101020101030101010101010201010101010101010101010101010101010101010101010301010101010101010102010201010101010101010101010101010101010101010201010101010101010101010102010101010101030102020101010101010101010101010101010101010103","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101","sq":3.5},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":10,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03140101111111212121210311010111111121212121010101010101012121212101010101010101121212120101011111010101012121111101111101010101010111110101111111111101010111111101011111111101010101011101011111111101010101010101011111011111110101010101010101","sq":3.5},
-        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3","cloud_gap"],"cells":"03010101010101010110030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020101010101010101020202010101010101010102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010210","sq":3.5},
+        prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010401010201010101010101010202020104010101010101020202010101010101040102020201010101010101010202010401010101010201020201010101010101010102020201010101010101010203","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"06111111111111111111110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111111111111111111414111111111111111111141411110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":20,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05050505111111110505051111111111111111111111111111111111111111111111111111111111051305111111111111111113131311111111111111110513051111111111111111111211111111111111111111121111111111111111111112111111111111111111111111111211111111111111111111","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"03030202010101151515150101020101010115151515010101010101011515151515151515010115151515150101010101010101151515010101010101010115151501010101010101011515150101010101010101151515010101010101010101010103010101010101010101010303020201010101150101","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010201010101010101010101030101010101010101010103030202010101010101010301010101010101010404040404010101010101040404040401010101010104040404040101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201010101010101010202020101010101010101020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111100000011111111111111111100000012111111110000111100001111111111000011111111111111111111111111121211111111111112121112121111111111111212111111111111111111111111000011111111110000111100001211111111000011110011111111111111111100","sq":3.5},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":11,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124","sq":3.5},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":6,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","leaves_3","marble","marble_light"],"cells":"02020214210101012101210202020221212121212121020202022101010101010102020201210101010101010202020121010114213121020101012101011431213101010101210101141414210101012121010121312131212121212101013121142101141421210101143121311421212121010114143121","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101141401010101010101011111111101010101010101111111110114141414141414141401110202010101010101141411020201010101010114141102020201010101011414110101010101010111111111010101010101010114141101010101010101011414110101010101010101141411","sq":3.5},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101212121212121212114010101010121212121212121210101010101010121212121212121212121010101212121212121212121010121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212114142121212121212114","sq":3.5},
@@ -61906,6 +62185,7 @@ function hqArenaRoomChanged(roomId) {
     });
     return n;
 }
+let _hqArenaBuildN = 0;
 function hqArenaUpgrade(mapId, opts) {
     opts = opts || {};
     const id = String(mapId || '');
@@ -61943,11 +62223,12 @@ function hqArenaUpgrade(mapId, opts) {
             && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     hqFieldRoofsApply(R);   // THE ROOFS (2026-11-01): after the fit (the bake's view of the room is untouched), the roofs and rock tops are squares
+    hqFieldSkyApply(R);     // THE OPEN SKY (2026-11-03): an open room's rock square is as tall as what is drawn there
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
     const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : a.custom ? { house: a.custom, walls: R.walls || null } : null);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
-    next.field = Object.assign({}, built.field, { id, arena: true });
+    next.field = Object.assign({}, built.field, { id, arena: true, build: ++_hqArenaBuildN });   // build: every rebuild a new stamp (the renderer's room read keys on it — THE CHESS POSITIONS re-raster the same window)
     Object.keys(e).forEach(k => { delete e[k]; });
     Object.assign(e, next);   // in place: every holder of the entry (the thumbnails, GAME_MODES' source) sees the room's own board
     const sh = room.shell || {};
@@ -62156,9 +62437,7 @@ DOOR_HQ.rooms.clash_temple = {
     shell: hqAncientShell({ w: 192, d: 192, floor: 'grass_2', apron: 'grass_2', skirt: 'rocks_5', apronColor: 0xb8c0a4, floorColor: 0xb8c0a4, plate: { x: 0, z: -92, y: 4.4 },
                             mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0dc, ambient: 0.5 },
                             sky: { night: 0, tint: 0x8fb4dc, tintAmt: 0.34, stars: 0.9, nebula: 0.5, day: 1, clouds: 0.35,
-                                   fog: { color: 0xc6cfd8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none',
-                                   landmarks: [{ kind: 'peak', deg: 330, dist: 1.0, s: 1.2 }, { kind: 'peak', deg: 95, dist: 1.0, s: 0.9 },
-                                               { kind: 'peak', deg: 215, dist: 1.0, s: 1.05 }] },
+                                   fog: { color: 0xc6cfd8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none' },   // the three cone peaks removed 2026-11-03 (mondo: the cone mountains "look terrible")
                             look: HQ_ROOM_LOOKS.mountain }),
     /* THE GROUND: the valley floor is the room's 0; the summit a mesa 10 m up (rocks_5 cliffs); everything built stands on it. The board's
        squares sit on the battle lattice (edges at k · 3.5 from the room's centre): the court is x / z −17.5 .. 17.5.
@@ -62630,6 +62909,9 @@ const HQ_LIGHT_RULES = {
     fillColor: 0x9fb4d0,
     fill: 0.14,
     open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
+    /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too?"): an open room whose floor is a white sheet
+       (sprites.js TERRAIN_WHITE_SHEETS) wears its sky light (the hemisphere + the sun / moon key) × whiteDay; fixed per room, never read off the screen */
+    whiteDay: 0.75,
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
@@ -65256,14 +65538,17 @@ const EW_CREDITS = {
         { title: '3D MODELS & ANIMATION', rows: [
             { role: 'Universal Animation Library (UAL1, UAL2)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
-            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'CC0', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
+            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
+            { role: 'PSX prop packs', by: 'Elbolilloduro', what: 'Diner, 6TWELVE, Laundry, House, Trailer Park, Pizzeria, BurgerPiz, Gas station, Buildings, VHS Shop, Mine, Bus stop, Survival, Vegetation, Houses on the water, Abandoned House, PSX pack 3', license: 'CC0', source: 'https://elbolilloduro.itch.io' },
             { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
             { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
             { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },
             { role: 'Low-poly cars', by: 'GGBot', source: 'https://ggbot.net' },
+            { role: 'Castle and Fort Builder Pack (the castles, the ruins)', by: 'McSteeg', source: 'https://mcsteeg.itch.io/castle-and-fort-builder-pack' },
+            { role: 'Molten Maps SciFi Asset Pack (the cryo tube, the sleeper casket)', by: 'Moltenbolt', license: 'CC0', source: 'https://www.moltenbolt.com' },
         ] },
         { title: 'CHARACTER CREATOR', makehuman: true, rows: [
             { role: 'Bodies, faces, hair, clothes and skins', by: 'MakeHuman / MPFB2', license: 'CC0', source: 'http://www.makehumancommunity.org' },

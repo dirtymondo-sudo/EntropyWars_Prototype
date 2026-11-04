@@ -659,6 +659,8 @@ primitives keep their colours. Works on the board too (same rig). EXPORT DEFAULT
 normalized appearance) and bake-looks.js writes it into RACE_CREATOR_LOOKS (its log line counts the tinted pieces). Checked in the
 forge on the Cowboy (Chromium + swiftshader): hat original / black / red / brown / custom / original again, a pack striped shirt +
 ankle boots tinted green / red.
+2026-11-03 THE BAND TINT: a hat in sprites.js EW_WEAR_BANDS shows a second block under its colour row, "Band" (wearTint['<id>:band']);
+the band is its own primitive now and keeps its own colours unless picked. Notes: models-assets.md "THE SOLID PIECES".
 
 ## THE SECOND OUTER LAYER (2026-11-01)
 mondo: "i want to be able to add another outer layer in the character creator, it will only let me add another top layer but i want
@@ -767,6 +769,17 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
     (no twist at the wrist). MAL1 (Meshy-named, no finger bones) has no palm data, so the default Wide stance idle is unchanged.
     MPFB bodies + every race model untouched. Checked Pistol ready, Relaxed, Arms folded, default: shots
     /mnt/project-files/pistol-ready/classic_body_grip_before_after.jpg.
+- **Pass 5, THE WRAP (2026-11-03, mondo: "the pistol ready idle is still not quite right. Their left hand goes under their other
+  wrist and is holding nothing, it looks weird")**. Pass 3 kept the SOURCE clip's off-hand spot (a cup under the gun hand), which on
+  our bodies read as a hand under the gun wrist gripping nothing. three-renderer.js `_libSupportHand` now lays the off hand on the
+  gun hand in the GUN HAND'S OWN FRAME (`_libHandFrame`: along the hand, to the thumb, out of the palm, read from the hand's finger
+  bones on MPFB, else off its skin like THE GRIP ON A MESHY HAND, else the library mannequin's through the retarget offset):
+  off palm on the grip's open side over the gun hand's fingertips, off fingers tilted 38 deg down round the front of the gun
+  hand's fingers, the off forearm taking half the hand's roll. `SUPPORT_WRAP` holds the numbers in hand lengths. `SUPPORT_CURL`
+  closes the MPFB off fingers further (they wrap the gun hand now). Classic bodies (fingerless, modelled open): the off palm is
+  pressed flat on the handle's open side where `_gripFrameMesh` seats it (`SUPPORT_WRAP.flat`), fingers laid along the gun hand's;
+  their fingers cannot close. Skin read for the bake uses a throwaway userData (caching on the shared GLB root broke the gun seat:
+  clones copy userData as JSON). Shots: /mnt/project-files/pistol-ready/pistol_ready_wrap_before_after.jpg.
 
 ## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
 mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
@@ -1070,3 +1083,423 @@ and there as an option".
   every_mpfb_body.jpg). Probe = a stage mounted straight on window.EWCharViewer with the bind pose held (skeleton.pose(), mixer
   stopped, EW_DISABLE_FACE_IDLE) so every face is shot in the same head pose.
 
+## THE FACE PRESETS (2026-11-03, plan row 29b)
+- mondo: "can you point me to some resources or websites or asset packs where i can get makehuman face presets? Or download a few
+  yourself?" A MakeHuman face preset = a saved character (.mhm, MakeHuman 1.x / the community asset repository; or an MPFB human
+  preset .json). None ship in the 64 asset packs or in MPFB.
+- `bake-faces.js` (repo root): `node bake-faces.js <file.mhm|preset.json> [more…] [--label ..] [--gender male|female] [--author ..]
+  [--license CC0|CC-BY ..] [--source URL] [--dry-run]`, `--list`, `--remove <id>`. .mhm lines `modifier <group>/<neg>|<pos suffix>
+  <v>` become target weights; each FACE slider = the mean (over the pairs the file sets) of plus - minus weight / its SHAPE_GAIN end
+  (three-renderer.js, read live), clamped -1..1. FACE_TARGETS in the tool = bake-mpfb.py SHAPE_TARGETS face keys (keep in step).
+  Prints the body macros it could not carry and the face modifiers with no slider (dropped).
+- Writes sprites.js `EW_MPFB_FACE_PRESETS` (between the BEGIN / END markers): rows { id: 'mh_<label>', label, gender, author,
+  license, source, face }. party-builder.js FACE: one button per row after DEFAULT FACE / NEUTRAL FACE (♀ / ♂ = the character's
+  gender; a pick sets every face slider, the rest to 0). map.js credits, MakeHuman section: "Creator face presets" lists every row's
+  author · licence · source. EW_MPFB_DEFAULT_FACES is never touched.
+- After a bake: node --check sprites.js, bump ?v=, merge, sync zip.
+- THE FIRST PRESETS (2026-11-03, full-network thread): the MakeHuman community asset repository (makehumancommunity.org) was
+  OFFLINE ("Community services offline", only static.makehumancommunity.org up; no Wayback from the cloud). Free .mhm found:
+  - BAKED: Warrior ♀ (OpenGameArt "warrior-female-3d-model", DREAM_SEARCH_REPEAT, CC0, 11 sliders) and Gnome ♂ (OpenGameArt
+    "gnome-0", Cheb Gonaz, CC0, thin + aged face: faceFat -0.83, faceAge 0.33).
+  - SKIPPED (nothing to carry): Sam (frontlinestudios.itch.io/asset-sam, CC0): 0 face modifiers, his look is all body macros +
+    an expression; Syl (archive.org thingiverse-1657065, Micah Scott, CC0): 2 tiny sliders; Female Dwarf (OpenGameArt
+    "female-dwarf-0", CC0): MakeHuman 1.0 file (`face head-age-less-more` lines, no `modifier` lines), bake-faces.js reads 1.1+.
+  - FaReT (github.com/fsotoc/FaReT, model-database/identities: 12 male + 12 female + 3 averages) is GPL-3, not CC0/CC-BY. mondo
+    was told the GPL question (copied slider values may count as their work; he wants a paid game) and said "i'll take the risk"
+    (11-03): BAKED as FaReT F01-F12 ♀, M01-M12 ♂, Avg F ♀, Avg M ♂, Avg ♂ (19-48 sliders each), first with author "FaReT",
+    license GPL-3.0. Then (11-03, mondo: "take out the gpl3 credit, this game is NOT open source. i will take the risk of not
+    crediting"): renamed Face F01-F12 / M01-M12 / Avg F / Avg M / Avg (ids mh_face_*), author/license/source blank, so the
+    credits page does not list them. Don't re-add a FaReT credit. About 70 modifiers per file, the finer nose / eyelid / lip shapes + the macros drop, so each is a near copy.
+  - Most free .mhm files carry their look in the body macros (gender / age / ethnic mix), which our fixed MPFB bodies drop, so
+    a file with few `modifier <face group>` lines makes a near-default preset. Check with --dry-run before baking.
+  - Files + LICENSES.txt: project files mhm-faces/.
+
+## THE HIDDEN PICKS (2026-11-03, the creator's dev item hider; character-models-plan row 12m)
+mondo: "Can we also add a devtool that let's me remove models like certain clothes and hairstyles from the character creator? Like
+there are some hairstyles that are not as high quality as the others, and it would be easier for me to manually exclude them then
+tell you which ones they are".
+- **Turn on**: Settings > Developer > **Creator Item Hider: ON** (map.js `_toggleCreatorHider`; localStorage `ew_creator_hider` = '1').
+  Off by default, so players never see it. While on, the creator (forge GEAR > CHARACTER CREATOR and the mirror / intake, all one
+  CreatorControls) shows the purple **DEV · ITEM HIDER** bar under the name / locker.
+- **Hide**: every pick tile / button gets a corner mark: ✕ hides it, SHOW (green) brings it back; a hidden pick stays on its list dimmed
+  + struck through while the marks are on. Covered: Hair (classic + pack), Facial hair, every wear tile on every CLOTHES / ACCESSORIES
+  tab, the Outer layer + second outer picks (kind `outer`), Feet layer, Cape, Flapping wings, Idle pose, MPFB skins, eye colours,
+  brows, lashes. Not hideable: None / Clean / Bald / Body's own / Default (the "nothing" picks), bodies, fabrics, prints, colours.
+- **The bar**: MARKS: ON / OFF (PLAYER VIEW) = the lists as players see them; HIDDEN LIST (n) = every hidden pick (kind · name, "(baked)"
+  for a shipped one) with SHOW each + SHOW ALL (confirm); **⇩ EXPORT HIDDEN LIST** -> `Entropy_Wars_Creator_Hidden_<yyyymmdd-hhmm>.json`
+  = `{ kind: 'entropy-wars-creator-hidden', v: 1, made, hidden: { '<kind>:<id>': label } }` (the WHOLE list as his browser shows it).
+- **Never deletes**: the lists only leave a hidden pick out; normalizeCharacterAppearance never reads the list, so a saved / locker /
+  race / baked look wearing one loads + renders as before, and a WORN hidden pick keeps its tile (shown, pressed) so it can be seen +
+  taken off. RANDOM (randomCharacterAppearance) never rolls a hidden pick (`_ewHidPickable`).
+- **Data**: sprites.js THE HIDDEN PICKS: `EW_CREATOR_HIDDEN` (shipped, `{ key: label }`, between `// EW_CREATOR_HIDDEN:BEGIN` / `:END`,
+  written ONLY by bake-hidden.js) + this browser's `ew_creator_hidden_v1` = `{ hide: { key: label }, show: { key: label } }` (show =
+  a shipped one shown again here). `creatorHidden(kind, id)`, `setCreatorHidden(kind, id, hide, label)`, `creatorHiddenList()`,
+  `creatorHiddenShowAll()`, `creatorHiddenExport()`, `creatorHiderOn()` / `setCreatorHiderOn(on)`; a change fires window
+  'ew-creator-hidden' (the creator re-renders). party-builder.js CreatorControls: `keepPick` (the filter), `devTile` (the corner mark
+  wrapper `.pb-cc-devwrap`), `ccChoice(key, options, lookOf, hideKind)`, `ccDevBar`, `pbExportHidden`. CSS styles-base.css THE HIDDEN PICKS.
+- **Bake**: `node bake-hidden.js <Entropy_Wars_Creator_Hidden_….json> [--dry-run]` (or his SAVE EVERYTHING file: it reads that file's
+  `ew_creator_hidden_v1` on top of the shipped list), `--list`. Replaces the block with the export (later exports supersede: give the
+  newest one); unknown kind = refused, an id no catalogue has any more = dropped with a warning. Then node --check, bump ?v=, PR + zip.
+- **Online**: nothing relayed; the creator lists are local UI and every look still travels whole in the unit's appearance.
+- Shots: /mnt/project-files/creator-hider/.
+
+
+## THE RENAMED PICKS (2026-11-03; character-models-plan row 12o)
+mondo: "maybe somewhere in the ui maker, can i change the names of the models of the character creator? Or maybe in the same place
+where i can hide models in the creator? How do i get to that again?" then "there is no settings button in the character creator, i need
+to access it from the character creator obviously".
+- **Open it from the creator**: **F2** while the creator's controls are up (forge GEAR > CHARACTER CREATOR, the Mirror, the intake; on a
+  race slot after CREATE APPEARANCE) opens / closes the item hider (party-builder.js CreatorControls keydown; first creator answers,
+  `defaultPrevented` stops a second). No button for players. Settings > Developer > Creator Item Hider still flips the same setting.
+  The UI Maker (F4) only themes / lays out the creator (surface `forge`); it never edits its picks.
+- **Rename**: with the marks on, every pick the hider covers (same kinds + keys as THE HIDDEN PICKS) gets a ✎ on its top-left corner
+  (the ✕ stays top-right). ✎ opens a rename box under it, the whole row of the grid / flex row: its own name, the input (40 chars, Enter
+  = SAVE NAME, Esc = CANCEL, the key never reaches the creator), SAVE NAME / ORIGINAL NAME / CANCEL. A row button (Outer, Cape, Wings,
+  Idle) pads 26 px each side while marked so the marks never cover its words.
+- **The bar**: DEV · ITEM HIDER + NAMES, `n hidden · n renamed`; + ▸ RENAMED (n) = each `kind · own name → his name` with ✎ RENAME (the
+  box under the row) + ORIGINAL NAME, then ALL ORIGINAL NAMES (confirm); CLOSE (F2); ⇩ EXPORT HIDDEN + NAMES ->
+  `Entropy_Wars_Creator_Picks_<yyyymmdd-hhmm>.json` = `{ kind: 'entropy-wars-creator-hidden', v: 2, made, hidden, names: { key: name } }`
+  (both WHOLE lists as his browser shows them).
+- **Display only**: a tile shows `creatorName(kind, id, label)`; the catalogues keep their pack names, because rules read them (a skin's
+  men's / women's side, a beard's face camera, the "male" / "female" trim of a tile). A rename shows as typed (soft-wrapped, no trim).
+  Also the "Colours of the pieces you wear" heads and the HIDDEN LIST rows. Players see baked names; his browser shows his.
+- **Data**: sprites.js THE RENAMED PICKS: `EW_CREATOR_NAMES` (shipped `{ key: name }`, between `// EW_CREATOR_NAMES:BEGIN` / `:END`,
+  written ONLY by bake-hidden.js, each line commented with the pick's own name) + this browser's `ew_creator_names_v1` = `{ key: name }`
+  ('' = its own name again over a shipped one). `creatorName`, `creatorRenamed`, `setCreatorName(kind, id, name)` ('' / its own name =
+  original), `creatorNamesList()`, `creatorNamesReset()`, `creatorPickLabel(kind, id)` (the catalogue name); a change fires
+  'ew-creator-hidden'. SAVE EVERYTHING carries `ew_creator_names_v1` (any ew_* key).
+- **Bake**: `node bake-hidden.js <Entropy_Wars_Creator_Picks_….json>` bakes both blocks; a v 1 file (no `names`) leaves the shipped names;
+  a SAVE EVERYTHING file bakes its ew_creator_names_v1 on top of the shipped names. Same checks: unknown kind refused, a gone id dropped
+  with a warning, a name equal to the pick's own left out. `--list` prints both lists.
+- **Online**: nothing relayed; names never travel (a look stores ids).
+- Shots: /mnt/project-files/creator-rename/.
+
+## THE EYE PACK (2026-11-03, PR "eye pack")
+mondo uploaded the MakeHuman Eye Texture Pack (36 PNGs: 19 plain/bloodshot colours, 12 cat eyes, All black, 5 normal maps) to R2
+`Assets/Models/charactercreation/mpfb/looks/eyes/eyetextures/` + `MakeHumanEyeTexturePack.unitypackage` (not needed: the PNGs use
+MakeHuman's own eye layout, the two eyeball discs of the stock `*_eye.png`). "please add them to the character creator".
+- **Why not the sheet:** drawn into the hm08 skin sheet like the stock eye colours (bake-mpfb.py bake_looks) an iris is ~6 texels
+  across (the eyeball islands are 0.08 of the sheet and the iris is a small cap of them) and a cat eye's slit is gone. First tried
+  that (bake path reproduced in numpy, matched the shipped eyes_brown.png to <1/255) and dropped it.
+- **What ships:** FACE > EYES > "Eye textures" (31 tiles, same key `mhEyes`, ids `mhp_*`, sprites.js EW_MH_EYE_PACK =
+  [id, label, colour PNG, normal PNG]). On an MPFB body (classic MPFB too) three-renderer.js THE EYE PACK draws MakeHuman's
+  HIGH-POLY eye proxy (makehuman_system_assets eyes/high-poly, CC0, 1064 verts) as its own shell `EWCreator_eyes`, wearing the
+  pack PNG itself (1024 px) + its normal map (normalScale (1,-1): an OpenGL map on glTF's v-down UVs), roughness 0.3, alphaTest 0.5
+  (its cornea dome sits on the PNG's clear corner; opaque it hid the iris). The body's own eyeball triangles are left out while it
+  shows (rebuildGeometry `eyeTri`, shape key `+e`). Stock "Eye colour" picks are unchanged (still the sheet).
+- **The fit:** `charactercreation/mpfb/looks/eyes/eye_proxy.json` (bake-eyes.py, numpy only): per proxy vertex 3 hm08 vertices x
+  weights + an offset x the head scale (its .mhclo), the proxy UVs/triangles, the iris centres, every eyeball-helper UV. The hm08
+  vertices are named by UV (each MPFB GLB keeps hm08's sheet with build_body's eye-island blow-up), so ONE file fits all 10 MPFB
+  GLBs (`--check` matched 102/102 on each). Fitted from the rebuilt bind positions every geometry pass, so the face sliders move it;
+  the idle face's morphs are carried over (weighted ref deltas) and share the body's influences array (glances turn it).
+- **Iris colour** works on these: three-renderer.js _ccTintIris recolours the two irises of the PNG (EW_MH_EYE_PACK_IRIS: pupils at
+  (297,733) / (723,311), r 124 px, measured by bake-eyes.py), pupil + slit stay dark. Textures are cached per pick+tint, shared.
+- **Board:** the shell exists from the start so the board's Lambert swap covers it; setEyePack copies the body's emissive glow to it.
+  The Lambert copy drops the normal map if the swap happens after the pick loaded (cosmetic, battle distance).
+- **Online:** nothing new to relay; the pick travels in the unit's appearance like every look key.
+- New R2 file: `mpfb/looks/eyes/eye_proxy.json` (in the sync zip by hand). Shots: /mnt/project-files/creator-eye-pack/.
+
+## THE COAT HANG + THE HAIR AT THE NAPE (2026-11-03, character-models-plan row 9)
+mondo 11-03 on his Cowboy (open Blender long coat over pack jeans): "Still getting pants clipping through coats. Why is this so
+prevalent and hard for you to fix? Surely this is a known issue in the 3D model community ... it looks like the coat or the collar
+is making the hair stick up in the back."
+- **Why it kept coming back**: the coat's skirt and the trousers ride DIFFERENT bones. Pack trousers follow each thigh + shin
+  (MakeHuman weights); a Blender coat skirt is one sheet over both legs (bake-garment.py skin_weights: 90 % the thigh on its side,
+  the thigh all the way past the knee), so any stride / bent knee / wide stance moves the leg out through it. Every earlier pass
+  (THE COAT OVER THE CLOTHES, THE POSES AUDIT, THE CLOTHES UNDER THE CLOTHES) fixed the BIND pose only.
+- **The fix = the standard game one** (spring / dynamic bones + colliders: VRM spring bones, Unity Dynamic Bone, Kawaii skirts).
+  three-renderer.js THE COAT HANG: `coatHang` (buildWear) gives any Blender Outer pick whose skirt hangs >= `minDrop` below the hip
+  joints and has no sway chains of its own (capes, tailcoat keep theirs) 16 chains x 6 bones `ewhang_<c>_<j>` round the skirt,
+  rooted on Hips, each following the cloth's own drape; the skirt (below the hips, faded over `fade`) is reweighted onto the two
+  nearest chains (only the nearest across an open front). Each joint keeps the coat's OWN baked weights there (`C.t`: its follow
+  target). `hangFit` (after wearLayers, on every rebuild / setWear) fits a tapered capsule per thigh + shin to what is worn there
+  (skin + trousers + boots, 96th percentile, in the leg bone's bind frame), the rest allowance per chain sample (a capsule never
+  pushes further than the coat stood off the leg at bind, so at rest nothing moves) and which side of the leg each sample lies on
+  at bind (`C.side`). `hangTick` (rig tick, before the cape sway): the first bone of each chain springs toward the hips' hang, the
+  rest toward where the coat's baked weights would put the next joint (so the coat keeps its A-line + stride exactly as before), then
+  every sample along the bone is pushed out of every capsule on its bind side (front panel stays in front of the thigh, never wraps
+  behind it). wearLayers holds the trousers 1.2 cm (`gap`) inside a hanging coat near the hips (the seat rides the thighs, the coat
+  the pelvis).
+- **Tried + dropped** (each looked at in shaded shots, not only counted): hanging straight on from a pushed joint (`fall` 0: a bell
+  flare in the wide idle, a stiff board in a kneel / kick); falling toward the ground (`fall` 0.6: clean on the Cowboy but a boxy
+  barrel on the cowgirl's wide hips); aiming at the cloth's rest hang in the hips' frame (`drape`: pulled it back into the leg,
+  70 -> 1,000-1,800 px); pushing to the bone head's side (the front panel ended up behind a bent thigh); `maxRoot` 85 (the side
+  panels stood out in a ledge at the hip).
+- **Hair**: nape-length hair (hair003) rode the HEAD bone alone, so an idle that bows the head (the Cowboy's) swung the hair under
+  the skull back and up over the collar. `hairNape` (fitHair, after hairSkin) paints a gradient of the head weight onto the neck
+  behind the ears below ear level (`HAIR_NAPE`), as hand-made rigs do. The collar tuck (`HAIR_CLEAR.secs/neckR/tuck`) holds hair
+  that ends just under a collar inside the innermost garment; hair003 never reaches it.
+- **Measured** (harness: Playwright + swiftshader, flat ID colours, jeans pixels enclosed by coat pixels, 4 views; sims run 30
+  steps a frame so the chains settle at swiftshader's ~2 fps): mondo's Cowboy look (idle / walk / high kick / hit x 4 views)
+  785 -> 64 px of jeans showing through the coat; the baked telepath (leather coat) 1,260 -> 91. The priest's cassock and the cult
+  robe no longer shred at the hem in the hit / kick (shaded shots). The count is unreliable on OPEN coats (it also counts trousers
+  seen through the opening), so overcoat / lab coat / cowgirl duster were judged on shaded shots: same shape, fewer pokes. Hair
+  close-ups: the nape spikes in the idle are gone, the hit pose keeps a couple of tiny tips.
+- **Known**: a few specks remain in extreme poses (the cowgirl's wide idle at the open front); on curvy female bodies (lab coat)
+  the seat shows a soft crease where the skirt leaves the hips. Not on Meshy models, coded coats or the classic Meshy bases.
+- **Online**: cosmetic + local (each screen runs its own chains, like the cape sway); nothing relayed. `window.EW_DISABLE_SWAY = true`
+  keeps the coat on its baked weights.
+- Shots: /mnt/project-files/coat-hang/.
+
+
+## THE FLAPS FIX (2026-11-03, character-models-plan row 9 pass 2)
+mondo on his Cowboy (closed Blender coat, Wide stance idle): "all of the coats have these 2 parts sticking up and out of the
+sides ... when the coats are closed the legs still clip through, and there is a bunch of flickering between the coat and the leg".
+Also his rule from the same message: clothes are fitted to the MPFB bodies only from now on, not the MPFB classic bodies.
+- **Cause** (reproduced in the creator stage, Playwright + swiftshader, MPFB male, the pose frozen with mixer.setTime): THE COAT
+  HANG chains, not the coat. With `EW_DISABLE_SWAY` the baked coat had no flaps (only a jeans spot). Four things in the chains:
+  the first bone was held on the hips' hang while the coat's own weights carry that cloth with the thighs, so in any stance the
+  thighs came out through it and the leg push shoved it out from right under its root (a straight bone swung far = a flap); the
+  chains were rooted at the hip joints, but the bake blends the thigh in from ~10-15 cm higher (0.1 at +10 cm, 0.6 at the joint),
+  so the cloth over the root rode the thighs up while the chain under it hinged (a corner at the waist); the thigh capsule began
+  at the hip ball, which sweeps out where no flesh goes; gravity 0.6 sagged the skirt ~13 deg into the legs at rest so the push
+  always fought it, and the push left the cloth exactly on the jeans (the flicker).
+- **Fix** (three-renderer.js COAT_HANG + coatHang / hangFit / hangTick, runtime only, no GLB rebake): `rootFollow` (bone 0 aims at
+  the coat's own follow target like the rest); `rootUp` 0.25 / `rootW` 0.01 (the chain root `yR` = the top of the band over the hip
+  joints where the cloth's thigh weight is still >= 1 %; the skirt fade starts there); `thighTop` 0.25 + THE SEAT (an extra capsule
+  from the hip ball to a quarter down the thigh, `seat: true`, whose allowance is 0 for every chain sample in front of the hip
+  joints, so it only holds the back panel off the jeans' seat); `maxPush` [30, 40] (after the push, a bone never ends more than
+  that off the coat's own direction); `gravity` 0.2; `rad` 0.03 + `limExtra` 0.008 (clearance; the rest allowance may push 8 mm
+  past where the cloth stood at bind).
+- **Measured** (flat ID colours, jeans px enclosed by coat px, front / side / side / back): his closed greatcoat, Wide stance
+  1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7; walk (frozen at 0.25 s) 12 / 1 / 15 / 49 -> 3 / 0 / 0 / 0 and the big front flap gone;
+  duster 2,199 / 2,243 -> 15 / 0; cult robe 2,922 / 3,223 -> 619 / 3; female lab coat 832 / 2,420 -> 1 / 5; open long coat side
+  bulges gone. Upright (Idle_11): the two saddlebag bulges at the hips are gone (they showed in every idle).
+- **Tried + dropped**: `fade` 0.12 (a peak at the side); chain root at +5 cm (flaps stay); thighTop without the seat part (the
+  jeans' seat through the duster's back); thighTop 0 with rootUp (side-back shelves); maxPush 20 / 35 (a jeans spot at the front
+  pocket in the walk).
+- **Known**: a small jeans spot can still show at the back vent / under the hem in the wide stance (the vent opening itself);
+  the cult robe's wide hem still lets a shin through at the front in the Wide stance.
+- Shots: /mnt/project-files/coat-flaps/ (before / after: wide stance, upright, walk, duster, cult robe, female lab coat, open long coat).
+
+## THE TABS + THE BODY SLOTS (2026-11-03, character-models-plan row 12n)
+mondo: "In the character creator, can we have tabs instead of one long list where i have to scroll through everything. And I want the
+clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."
+- **The tabs** (party-builder.js CreatorControls): under the name + locker (+ the dev hider bar), one tab open at a time: BODY (bodies,
+  shape, jiggle, idle pose), FACE (face sliders / presets, eyes, brows, mouth, facial hair; the classic face's eye / lip / beard rows),
+  SKIN (skin colour, skins, chest; the classic Skin tone), HAIR, OUTFIT. Each tab's rows are the ones it had in the old list
+  (ccBodyTab / ccFaceTab / ccSkinTab / ccHairTab / ccOutfit). `.pb-cc-maintabs` is sticky, so the bar stays at the top while a tab
+  scrolls. The open tab / body part / kinds live in `_pbCcTab` / `_pbCcSlot` / `_pbCcKinds` (kept while the page lives). The FACE
+  CAMERA reads each tab's `data-cc-cam-own` (FACE, HAIR, OUTFIT > Head / Face = face; the rest = body). The old list was 7,721 px tall
+  in the forge; a tab is 800-2,700 px.
+- **The body slots** (sprites.js THE BODY SLOTS): `EW_WEAR_SLOTS` = Head, Face, Neck, Torso, Back, Left arm, Right arm, Waist, Legs,
+  Footwear; `EW_WEAR_GROUPS` = the kinds inside each (Head: Hats + helmets, Creature heads, Horns + antlers, Ears, Headsets / Face:
+  Glasses + goggles, Masks + hoods / Neck: Ties + neckwear, Pendants / Torso: Tops, Dresses, Suits + bodysuits, Coats + jackets (the
+  Outer layer + second outer + More coats), Underwear + swimwear, Armour + vests, Badges + straps / Back: Capes (the Cape layer),
+  Wings (flapping + costume), Back gear, Tails + fins / Right arm: In the hand, Weapons + tools, Bags, On the arm / Left arm: Weapons +
+  tools, Bags, On the arm / both arms: Gloves + claws, Nails, Arm sleeves, Shoulder + arm armour / Waist: Belts, On the hip / Legs:
+  Bottoms, Skirts, Socks + stockings, Holsters + greaves / Footwear: Shoes + boots (the Feet layer + More shoes), Hooves + claws,
+  Toenails). `wearGroupOf(id)` = the piece's kind: its shelf's (`EW_WEAR_GROUP_OF_SHELF`), the underwear split by name (arm
+  sleeves -> arms, stockings / socks / pantyhose / leg warmers -> legs), toenails -> feet, else `EW_WEAR_GROUP_MOVE` (gear, armour,
+  badges, belts, creature parts placed one by one). All 568 shelved pieces land in a kind; the 13 facial hairs stay under FACE.
+- **Left / right** = the side the piece sits on in the MPFB bind pose (GLB bounds, +x = the character's left): left = the pack's
+  "left hand" gun + kalistick, the wooden bow, the shopping bag, the arm band; right = the In the hand props, the pack's other
+  weapons + tools, the handbag / sling purse / suitcase, the grapple gauntlet. A pair (`slot 'arms'`) shows on both arm tabs under
+  BOTH ARMS with "A pair: worn on both arms".
+- **Rules kept**: a pick still follows its SHELF's one-at-a-time rule (`toggleWear(shelfOf(id), id)`: one hat, one top, one held prop;
+  several on the many shelves), EW_MH_WEAR categories untouched, every saved / locker / race / baked look loads as before. The MEN /
+  WOMEN switch shows only on a kind it lists by (clothes; accessories list everything). TAKE ALL OFF = the clothes shelves + Outer /
+  second outer / Cape / Feet, as before. The dev hider marks work on every tab. A dot on a tab / body part / kind = something worn there.
+- **Text**: tab + body-part labels never wrap mid-word; a word of 11+ letters in a tile (COLLABERATION, ORKIFYHEADTARGET,
+  HOUNDSTOOTH) gets a soft hyphen at its middle (`_pbSoftWrap`); name tiles 96 -> 112 px, fabric / print tiles 56 / 50 -> 84 px at
+  8 px (CHAINMAIL, PINSTRIPE broke mid-word before). Checked in the forge at 1600x900 + 1600x2000: no button overflows, no sideways scroll.
+- **Online**: nothing relayed; the creator is local UI and the look travels whole in the unit's appearance.
+- Shots: /mnt/project-files/creator-tabs/.
+
+## THE ASSIGNED LOOKS (2026-11-03)
+mondo: "if i go in and make created characters for a bunch of units, do i have to export them individually ... one button should be to
+assign the created character to the character (not the same as saving the character) and one button should be to export all newly
+assigned created characters so i can give to you to bake in". Before this, EXPORT RACE LOOK wrote ONE race + gender per file.
+- party-builder.js `AssignedLooks` box under the forge creator (every race but the DOOR Agent / human base; also on a slot with no look):
+  **⇨ ASSIGN TO <RACE> ♂/♀** files the look on the stage as that race + gender's look in localStorage `ew_assigned_looks`
+  (`{ v: 1, looks: { race: { gender: { appearance, at, exportedAt } } } }`, one per race + gender; a re-assign reads UPDATE and
+  replaces it; ✓ ASSIGNED when the stage equals it). **⇩ EXPORT ALL ASSIGNED (n)** writes every assigned look that is not already
+  the baked RACE_CREATOR_LOOKS row as ONE file `Entropy_Wars_Race_Looks_<n>_assigned_<stamp>.json`, the same
+  `entropy-wars-race-looks` shape (+ an `assigned` list), so `node bake-looks.js <file>` bakes them all at once.
+- Chips: NEW / EXPORTED / IN THE GAME (equal to the baked row, model key ignored; skipped by the export, nothing deleted); ✕ unassigns.
+- SAVE CHARACTER (the locker) and EXPORT RACE LOOK are unchanged. window._ewAssignedLooks = { list, assign, unassign, exportAll }.
+- A baked look is still a SAVED look (THE MESHY DEFAULT): the Meshy model stays the unit default until mondo says.
+- Proof: /mnt/project-files/assigned-looks/ (3 units assigned, exported file, bake-looks.js --dry-run read all 3).
+
+## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
+mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
+(static.makehumancommunity.org/assets/assetpacks), if we havent already, and implement them in the character creator?"
+- Packs: system_eye_materials01 (13, CC0), 02 (19, CC0), 03 (20, CC-BY), system_hair_materials01 (38, CC0, was already in
+  mhpacks but never wired) + 02 (29, CC0). All five zips in project files mhpacks/; ASSET_PACKS_CATALOGUE.json lists them.
+- EYES: sprites.js EW_MH_EYE_MATS rows [id mhm_<asset>, label, PNG, null, folder, group] are PUSHED onto EW_MH_EYE_PACK, so
+  they are THE EYE PACK in every way (same key mhEyes, same eye mesh, Iris colour, hider, renames, preload). row[4] = their
+  folder (mpfb/looks/eyes/materials/<asset>.png, 1024 px as shipped; the two maid-san ones 512). party-builder FACE > EYES:
+  "Eye textures" shows only the pack (rows without a group), then "Eye materials: human / non-human / various".
+  5 PNGs (anime navy, maid-san blue/red, snake, target) were opaque where the cornea dome samples, so the dome painted over
+  the iris (white / yellow eyes): their alpha there was copied from a stock eye PNG (alpha < 128 = the cornea).
+- HAIR: sprites.js EW_MH_HAIR_MATS [id mhh_<asset>, label, style id, PNG] (hair/mh/materials/<asset>.png, 2048 -> 1024).
+  appearance.hairMat ('own' | id, EW_APPEARANCE_ENUMS); getHairMaterial(a) = the material only while its style is worn.
+  three-renderer.js setHairMat (THE HAIR MATERIALS): the cards wear the PNG as painted (flipY etc. from the style's own
+  texture, white vertex colours: its OWN colours, no grey mask); 'own' puts h.ownMap back and paintHair tints again.
+  Called from setHair + buildHair (dropHair clears hairMatKey). The builder's HAIR tab: "Hair texture" row (Style's own +
+  the style's recolours) only on Bob 01/02, Braid 01, Long 01, Ponytail 01, Short 01/02/04; while one is worn the Hair
+  colour row is replaced by a note (it would do nothing to the hair).
+- CREDITS: mpfb/CREDITS.json creator_eye_materials + creator_hair_materials (author, licence, source per asset); the CREDITS
+  page groups them with the other MakeHuman authors (checked: Elvaerwyn's eye 03 assets, Hatshj, MargaretToigo show).
+- Hider kind 'hairMat' ("Hair texture"), bake-hidden.js knows it.
+- Proof: /mnt/project-files/creator-mh-materials/ (12 + 4 eyes, 19 hair textures, back to Style's own + colour, the panel).
+
+## THE FUR + THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28)
+mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make a new created character for the werewolf to put fur on it".
+- THE TOOL: `bake-fur.py` (repo root, offline Blender: `pip install bpy==5.2.3`, MPFB 2.0.18 clone). `python3 -I bake-fur.py --mpfb <mpfb2> [--haireditor <zip|dir>] [--only ewf_fur]`.
+  It installs the hair editor templates (files.makehumancommunity.org/functional/haireditor.zip, copy in project files mhpacks/haireditor.zip) into MPFB's data/hair/haireditor,
+  grows the editor's fur grooms on a FRESH unbaked male (grooms land wrong on a human whose targets were baked), then "Bake hair cards" BODY_SHELL = a copy of the skin faces
+  with the fur baked into a 1024 texture. The shell is anchored to the nearest SKIN vertex (helpers are masked) and written in the bake-mpfb.py wear layout
+  (5 bodies' offsets, top-4 bone weights) as `charactercreation/wear/ewf_fur.glb`, cat 'underwear' (under every garment), pack 'haireditor', extras fur:true. FUR_ALPHA 1.5.
+- Tried and DROPPED: the editor's CLUSTER_RIBBON tufts (cards) looked like flat dark flakes/squares on the body. Only the shell ships.
+- THE CREATOR: wear pick "Fur (whole body)" on the new shelf Fur (torso group), both genders (EW_WEAR_BOTH). Tint works like any wear.
+- THE ANIMAL HEAD: bake-mpfb.py ANIMAL_SHAPES fetches jaldmic's wolf head target (makehumancommunity.org/node/3009, CC-BY, CREDITS.json creator_animal) into mpfb_shapes.glb
+  as `wolfHead`; face slider group "Animal head" (0..1). More heads = one ANIMAL_SHAPES row + `--shapes --packs` rerun.
+- THE WEREWOLF LOOK: RACE_CREATOR_LOOKS werewolf male (heavy body, wolf head 1, pointed ears, bald, dark skin, fur + wolf tail + beast feet + hand claws), bake input
+  /mnt/project-files/werewolf-fur/Entropy_Wars_Race_Looks_werewolf_fur.json. A SAVED look: the Meshy werewolf stays the unit default (THE MESHY DEFAULT).
+- Honest state: a short-fur suit with a smooth outline, not the Meshy model's shaggy volume; shell flakes stand off the ears when the wolf head reshapes them;
+  the wolf head reads a bit feline. Next ideas: runtime stacked shell layers for volume, a better head target. Pictures: /mnt/project-files/werewolf-fur/.
+- ROUND 2 (2026-11-03, mondo: "add the werewolf head to the creature heads ... retexture all three in meshy so they all have a consistent
+  fur texture ... the tail is visibly disconnected"):
+  - THE SHAPED HEADS: the Animal head group is `inHeads` (sprites.js EW_SHAPE_HEADS): OUTFIT > Head > Creature heads shows "Wolf head" as a
+    pick (+ a strength slider while on); it is gone from the FACE tabs. One head at a time with the model heads (party-builder.js ccShapeHeads,
+    toggleWear). Same saved key wolfHead.
+  - THE WEREWOLF FUR SKINS: Meshy Retexture (meshy-6, enable_original_uv, remove_lighting) of the MPFB heavy body + Wolf head 1 (positions
+    from mpfb_heavy.glb + the wolfHead offsets, its own hm08 UVs) -> base colour 2048 -> mpfb/looks/skin_ew_werewolf_fur.jpg (A, text prompt)
+    + skin_ew_werewolf_fur_dark.jpg (B, image style = a render of the Meshy werewolf); EW_MH_LOOKS.skins.push after the generated block.
+    Sources + prompts' inputs: project files meshy/retexture/werewolf/. The hm08 sheet has the same orientation as the body GLB's own texture.
+  - Tail + feet to match: bake-meshy.py `tex=` (a Retexture base colour on the piece's own UVs in place of its Meshy one): ewm_wolftail_fura/b,
+    ewm_beastfeet_fura/b (Tails / Creature shelves).
+  - Fur shell in those colours: `bake-fur.py --from-skin <skin.jpg> --name ewf_fur_werewolf` (no Blender): each shell texel takes the skin
+    colour under its nearest body vertex, strand shading + alpha kept. Pick "Fur (whole body), werewolf colours".
+  - THE TAIL ROOT: bake-meshy.py taper=(frac, k0) narrows a tail's flat cut end toward its centre line, sink= sinks it deeper; the wolf tail
+    taper (0.25, 0.22), sink 0.05 (was a disc standing off the lower back). --views on a tail = root close-ups on every body.
+  - The saved werewolf look (bake-looks.js, input werewolf-fur/Entropy_Wars_Race_Looks_werewolf_meshy_fur.json): heavy, Wolf head, fur skin A,
+    tail + feet A, hand claws, no shell. Still a SAVED look; the Meshy werewolf stays the unit default.
+
+## THE PACK'S MIS-FILED PIECES + THE PACK FABRICS (2026-11-03, character-models-plan row 12p)
+mondo: "putting on the viking boots removed my viking pants, and vice versa. Also can we add the option to change the pants textures
+like cotton and leather and all that? Im not seeing that option anywhere in the pants section".
+- CAUSE: the MakeHuman pack files the viking boots / pants / tunic and the EMT uniform pants / jackets under `suits` (the winter coat
+  under `dresses`). THE SHELVES only moved their tab; normalizeWearList's one-per-category rule still took one off.
+- FIX (sprites.js): `EW_WEAR_KIND` = what such a piece is (`wearKindOf(id)`); normalizeWearList keys its one-pick rule by
+  `wearPickKindOf` (EW_WEAR_KIND, then 'outer' for EW_WEAR_PICK_AS_COAT, then the pack category). three-renderer.js buildWear reads
+  EW_WEAR_KIND before the GLB's own `ex.cat`, so the viking boots layer as shoes (trouser legs over them, zOf -500) and the pants as
+  bottoms. A new mis-filed separate = one EW_WEAR_KIND line. Every other boot / trouser is in its right category (Domsjeans1 under
+  Shoes is a shoe, 12 cm tall).
+- FABRICS: `appearance.wearFabric = { id: EW_FABRICS key }` (normalizeWearFabric; `wearFabricable` = tintable + kind bottoms, so
+  only pack trousers; Blender bottoms keep the Bottoms fabric row). The creator shows "<piece> fabric" (Original texture + the
+  Bottoms layer's fabric tiles, 'plain' left out) under the piece's colour block in ccWearTints. Renderer paintWear: the fabric
+  tile (as a canvas pattern) x the piece's grey mask (_ccPackHairTexture), the piece's alpha kept, cached in _ccWearFabricCache;
+  tiles per UV unit = the fabric's tiles per metre x the garment's metres per UV (wearUvMetres, from its triangle areas); colour =
+  wearTint or the texture's own average (wearOwnColour); fabric roughness / metalness, restored on Original texture. The tile's own
+  colour multiplies in (as on the coded layers): leather browns, denim blues.
+- Known: the viking boots' fur wraps show through TIGHT jeans at the shin (they are wider than the jeans' leg); fine with the
+  viking / EMT / loose trousers. Shots /mnt/project-files/pack-fabrics/.
+
+
+## THE LID LASHES (2026-11-03)
+mondo: "im not seeing lashes 1 -4 show up in the character creator/ they are there and i click them but i dont see any lashes".
+- CAUSE: MakeHuman's stock eyelashes01-04 (makehuman_system_assets) are fitted to hm08's eyelash HELPER (helper-l/r-eyelashes-1/2,
+  their own UV island at the top of the sheet). bake-mpfb.py cuts that helper from every MPFB body, and bake_looks drew the four lash
+  layers through the helper's UVs (box ~673,15): a patch of the sheet no visible triangle uses. Same for every body's OWN lashes (the
+  kits wear eyelashes01 / 02, baked into each GLB's stock sheet in the same dead spot). The pack's mindfront "Mesh lashes" are fitted to
+  the lid itself, so they always showed.
+- FIX: `bake-lashes.py` (numpy, no Blender: an mpfb2 clone's base.obj + the system eyelashes) drops each proxy vertex's rest point onto
+  the nearest point of the body's own skin round the eye and draws the lash there (bake_looks' rasteriser, alpha 0.8). New PNGs on R2
+  (same keys `mpfb/looks/eyelash_eyelashes0N.png`, ASSET_MANIFEST shas updated) + new boxes in sprites.js EW_MH_LOOKS.lashes
+  (~843-849, 475-482). `--check <eyelashes01_cc0>` re-draws the mindfront lashes and must print the boxes already in sprites.js (it
+  does: proves the tool's UVs are the game sheet's).
+- Body's own: sprites.js `getMhOwnLashLayer(body)` = the kit's lash layer; three-renderer.js setLook with every pick 'own' wears
+  `_ccOwnLashMap` = the stock sheet + that layer, ONE shared canvas texture per stock map (not per unit); the stock sheet until it is
+  ready / if it fails. getCharacterAppearanceAssets warms the PNG.
+- A re-run of `bake-mpfb.py --looks` writes the helper-drawn lash PNGs + boxes again: run bake-lashes.py after it.
+- Shots (MPFB male + female, every lash pick, close-up): /mnt/project-files/creator-lashes/.
+
+## THE PANTS IN THE BOOTS (2026-11-03, character-models-plan row 12q)
+mondo: "Can we make pants fit inside boots or have the option for them to be inside or outside?" (thread
+cmsg_01XWpxyTn3nnw98znVzKdFjsAX2ogSpgP9tAuNgyFenVtL). MPFB bodies only (pack + Blender clothes; not MPFB classic).
+- THE CHOICE: `appearance.pantsTuck` 'out' (default) / 'in' (sprites.js EW_APPEARANCE_ENUMS). The creator shows a "Pants + boots"
+  OUTSIDE / TUCKED IN row on OUTFIT > LEGS > Bottoms AND FOOTWEAR > Shoes + boots, only while `pantsBootsWorn(a)` finds a worn boot
+  whose shaft top is over the lowest worn trouser hem (+2 cm). party-builder.js ccPantsTuck.
+- THE TABLES (sprites.js): EW_BOOT_TOPS = 29 pack boots + the Blender bboots / bhighboots / bcowboy by the 90th-percentile height
+  of their male fit (m); EW_PANT_HEMS = 20 long trousers by the 1st-percentile hem height. Skirts, shorts, Scale leggings and
+  Football pants are left out (no hem over a boot). A new long trouser / boot = add its row (measure the fitted GLB).
+- THE FIT (three-renderer.js wearBootFit, run in wearLayers after THE TUCK; kill-switch `window.EW_DISABLE_BOOT_FIT = true`):
+  legFrame = each leg's centre per 1 cm slice from the skin; legGrid = a garment's radius per (leg, 2 cm row, 15 degrees) +
+  its top (morphologically opened so a cowboy pull tab is not the top) and its bottom.
+  - OUTSIDE: the trouser leg's last 6 cm flares out to clear the boot (max 2 cm), then the boot under the trouser leg is drawn in
+    4 mm inside it (above the ankle), and 3 cm under the hem its triangles leave the index (the viking fur no longer pokes
+    through jeans when posed).
+  - TUCKED IN: the trouser leg is drawn in 4 mm inside the shaft, never nearer than 1 cm to the skin (0.7 cm deep in the boot),
+    narrowing over 3 cm above the opening. Its bones there: the nearest boot vertex's (inside) / the skin's (over the opening,
+    fading over 5 cm) - on its own bones the idle's knee bend lifted the jeans 3 cm out of a cowboy boot. Triangles 2.5 cm under
+    the LOWEST top within +-2 angles leave the index (a 3 cm jeans triangle spans 2 angles; cut by its own angle's top it left a
+    hole to the shin over the cowboy boot's dips). THE LAYERS lay the boot over the trousers (`bootOver` = trousers' z + 0.5, so a
+    coat still goes over the boot) and never pull a tucked trouser leg along a boot again.
+  - TRIED + DROPPED: letting the boot's opening out round the trousers (per vertex it pushed a biker boot's lining through its
+    collar; per cell it flared every opening into a funnel); a whole-shaft push (sawtooth boots).
+- CHECKED (idle + walk, 4 angles, both modes): jeans x viking / ankle / Blender boots / high boots / cowboy, cargo x biker boots,
+  tight jeans x female knee boots, female trousers x riding boots, viking pants x viking boots, sweatpants x high boots; the real
+  creator clicks (OUTFIT > LEGS > Male classic jeans, FOOTWEAR > Viking boots, TUCKED IN). Shots: /mnt/project-files/pants-boots/.
+- KNOWN: a fleck of jeans can show at the cowboy boot's stitched band when posed; outside mode leaves a speck of viking fur at the
+  jeans' hem on one side; the white spots on the viking boot's foot are in the pack texture (there with the fit off).
+
+## THE SHAPED EARS (2026-11-03, plan row 28: cat ears)
+mondo: "Where are the cat ears in the editor? DO we not have any?" Before this the creator had NO cat ears: Ears (OUTFIT > Head) held
+only the Meshy Elf ears; the Catgirl's ears exist only inside her own Meshy model (one mesh, can't be lifted off). The MakeHuman packs
+already in project files mhpacks/ carried two cat-ear TARGETS nobody had baked:
+- `catEars` = titleknown_catgirl_ears (animal01, CC0): tall pointed ears. `felineEars` = jaldmic_feline_ears_v2 (animal02, CC-BY,
+  credited in CREDITS.json creator_animal, part "animal ears"): rounder ears. Both grow the body's OWN ears up the sides of the head
+  (~12 cm), so they wear the skin + skin colour and follow every slider (the plan's 4b guess that they would not reach the top was wrong).
+- Baked like the wolf head: two ANIMAL_SHAPES rows, `bake-mpfb.py --shapes --packs` (the shapes step needs no Blender: a stub `bpy`
+  module is enough). The new keys are appended, so the old 222109 offsets are byte-identical (the old file re-baked byte for byte
+  from MPFB 2.0.18 first). mpfb_shapes.glb 3114088 -> 3141064 bytes.
+- THE CREATOR: OUTFIT > Head > Ears shows "Cat ears" + "Cat ears, round" as picks (party-builder.js ccShapeEars, sprites.js
+  EW_SHAPE_EARS = the `inEars` face-slider group; not on the FACE tabs) + a strength slider while on. One pair of ears at a time: a cat-ear
+  pick takes the Elf ears off and the Elf ears take the cat ears off. MPFB bodies (and an MPFB classic body's MPFB head) only, like every
+  face slider.
+- Face resets keep the shaped picks: DEFAULT FACE / NEUTRAL FACE / a face preset / a body swap / RANDOM use sprites.js
+  EW_FACE_RESET_KEYS (every face key but the shaped heads + ears), so they no longer wipe the cat ears or the wolf head; RANDOM sets them 0.
+- THE HAIR STAYS OFF THEM (on-screen check, same day): the first build hid them. The hair's skull box + skull map (fitHair) were
+  measured with the grown ears in, so the hair scaled wider and was pushed out over the ears. three-renderer.js shapeBody now keeps
+  the ear offsets apart (part.earD) and the skull is measured without them. Checked in the real creator (catgirl slot, MPFB female,
+  OUTFIT > HEAD > EARS: both picks, both sliders, Elf ears swapping them off): /mnt/project-files/cat-ears/cat_ears_in_creator.jpg.
+- Known: a long / big hair style can still cover the ears (its cards hang there).
+  Proof (mesh render, front / 3/4 / side): /mnt/project-files/cat-ears/. More ears (bunny, canine, dropped) = one ANIMAL_SHAPES row each.
+
+## THE LAYERS 1 2 3 (2026-11-04, character-models-plan row 12r)
+mondo: "there really needs to be some sort of layer system in the character creator. Like layer 1, 2, and 3. I dont like how i can only
+add an outer layer of coats". Before this the torso had a Tops kind (one shirt), a Coats + jackets kind (the Outer layer, a hidden
+＋ ADD LAYER for the second outer, More coats) and nothing for a shirt over a shirt.
+- **The UI** (party-builder.js ccTorsoLayers): OUTFIT > TORSO opens on LAYERS 1 · 2 · 3 (sprites.js EW_WEAR_GROUPS row 'layers'; the
+  'tops' + 'coats' rows are gone, their pieces keep those groups and show inside the layers). Three tabs side by side, each with its
+  number, what it is for and what it holds now ("Nothing" in italics), then one line on the layer + ✕ TAKE LAYER n OFF:
+  - LAYER 1 · Shirt / top = the Tops shelf pick (pack + Blender), its Top fabric rows (a Blender one) and tints.
+  - LAYER 2 · Shirt, vest or jacket = one of: a second shirt / top over Layer 1 (`appearance.wear2`, the Layer 1 piece not offered
+    again), any Outer pick (`outer`, kinds Vests + jackets first: EW_OUTER_GROUPS split 'Coats + jackets' into 'Vests + jackets' and
+    'Coats', display only), or a pack coat ('coats' group). A pick takes the other two off. A Blender wear2 shirt has "Layer 2 shirt
+    fabric" + print + colour (the top2Fabric / top2Color / top2Pattern / top2Color2 keys of the retired coded second top; top2Color
+    default now slate #5e6f80), a pack one its own tint row.
+  - LAYER 3 · Coat = the second outer layer (`outer2`), Coats listed first.
+  - Text wraps in the tabs (overflow-wrap), never cut; grid of 3 at any width. Layer tab kept while the page lives (_pbCcLayer).
+- **The data** (sprites.js): `wear2` = a Tops piece id (wearPickKindOf 'tops') not in `wear`, else 'none' (normalizeWear2);
+  wearTint / wearFabric keep it; getCharacterAppearanceAssets warms it; TAKE ALL OFF clears it. Every old look loads unchanged
+  (Layer 1 = its top, Layer 2 = its outer, Layer 3 = its second outer). Online: nothing to relay, the look travels whole.
+- **The renderer** (three-renderer.js setWear): wear2 loads with the pack clothes; built after them with z = min(69, max(own z,
+  highest Layer 1 top z + 3)) so THE LAYERS fold every Layer 1 top in under it and it stays under the Blender coats (70) and the second
+  outer (200); a Blender one paints through the top2 shell (layer 'top2', paintMeshOuter / setFabric).
+- **The clipping found + fixed** (browser, MPFB male + female, posed idle + bind, 4 views each):
+  - Collared shirt (Blender) under a pack knitted sweater: blue specks along the sweater's sleeve seams + armpits. Cause: shirt points
+    there whose lines meet no sweater triangle grew 2-ring holes (the erosion in wearUnderCover). Now a point also counts as covered
+    when it sits on skin the garments over it delete (their del lists, `delUp`; inside a waistband only the non-trouser ones) or when
+    3+ of its 4 tilted lines (`lineHits`, LINE_TILT 0.55 rad) hit them (a crack between unwelded pieces).
+  - Hoodie / sweater under an OPEN Blender long coat (the old second outer too): the chest cut full of holes, skin showing. Cause:
+    wearUnderOuter2's opening rule (within 3 cm of an open edge and not 4 mm behind it) + the side rule caught everything in the
+    opening. Now a point whose outward line and tilted lines all miss the coat (it looks out through the opening) stays, unless it
+    stands more than 8 mm in front of the coat (OUTER2_HIDE.standOut: a duster's lapel through a police coat still goes).
+  - Rechecked: shirt + waistcoat + open duster, henley + duster + police uniform, henley + jacket + closed greatcoat, collared shirt +
+    open duster (no teeth at the lapels), tank + hoodie + long coat, tee + untucked shirt; female camisole + cardigan + trench,
+    camisole + lace-up blouse + long coat.
+- Known, not from the layers: an untucked Blender shirt shows a dark patch of the pack jeans' seat at the back (same when worn alone).
+- Shots: /mnt/project-files/creator-layers/.

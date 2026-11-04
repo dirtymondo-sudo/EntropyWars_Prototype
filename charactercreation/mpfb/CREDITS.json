@@ -5088,5 +5088,865 @@
    "license": "CC0",
    "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
   }
+ ],
+ "creator_eye_materials": [
+  {
+   "part": "eye material",
+   "asset": "bobby_03_diffuse_amber_eyes",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2340"
+  },
+  {
+   "part": "eye material",
+   "asset": "bobby_03_diffuse_blue_eyes",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2341"
+  },
+  {
+   "part": "eye material",
+   "asset": "bobby_03_diffuse_grey_eyes",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2342"
+  },
+  {
+   "part": "eye material",
+   "asset": "bobby_03_diffuse_hazel_eyes",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2305"
+  },
+  {
+   "part": "eye material",
+   "asset": "bobby_03_diffuse_sea_breeze_eyes",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2343"
+  },
+  {
+   "part": "eye material",
+   "asset": "mindfront_brown_eye_02",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/527"
+  },
+  {
+   "part": "eye material",
+   "asset": "nyloseth_sapphire_blue_eyes",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1887"
+  },
+  {
+   "part": "eye material",
+   "asset": "spamrakuen_sr_anime_eyes_navy",
+   "author": "spamrakuen",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3625"
+  },
+  {
+   "part": "eye material",
+   "asset": "spamrakuen_sr_anime_maid-san_blue_eyes",
+   "author": "spamrakuen",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3346"
+  },
+  {
+   "part": "eye material",
+   "asset": "spamrakuen_sr_anime_maid-san_red_eyes",
+   "author": "spamrakuen",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3427"
+  },
+  {
+   "part": "eye material",
+   "asset": "wojackowl_blue_eyes_toon",
+   "author": "WojackOWL",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3481"
+  },
+  {
+   "part": "eye material",
+   "asset": "wojackowl_brown_eyes_toon",
+   "author": "WojackOWL",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3480"
+  },
+  {
+   "part": "eye material",
+   "asset": "wojackowl_green_eyes_toon",
+   "author": "WojackOWL",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3482"
+  },
+  {
+   "part": "eye material",
+   "asset": "bobby_03_daz_dragon_eyes",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2443"
+  },
+  {
+   "part": "eye material",
+   "asset": "culturalibre_6_eyes",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3263"
+  },
+  {
+   "part": "eye material",
+   "asset": "culturalibre_hero_white_eyes",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2123"
+  },
+  {
+   "part": "eye material",
+   "asset": "culturalibre_hero_yellow_eyes",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3243"
+  },
+  {
+   "part": "eye material",
+   "asset": "culturalibre_zombie_eyes",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2531"
+  },
+  {
+   "part": "eye material",
+   "asset": "gpedroso_blank_eye",
+   "author": "gpedroso",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1066"
+  },
+  {
+   "part": "eye material",
+   "asset": "hatshj_alien_eye_2",
+   "author": "Hatshj",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/321"
+  },
+  {
+   "part": "eye material",
+   "asset": "hatshj_alien_eyes",
+   "author": "Hatshj",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/320"
+  },
+  {
+   "part": "eye material",
+   "asset": "hatshj_cross_eye",
+   "author": "Hatshj",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/322"
+  },
+  {
+   "part": "eye material",
+   "asset": "hatshj_facette_eye",
+   "author": "Hatshj",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/323"
+  },
+  {
+   "part": "eye material",
+   "asset": "hatshj_facette_eye_2",
+   "author": "Hatshj",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/324"
+  },
+  {
+   "part": "eye material",
+   "asset": "hatshj_reptile_eyes",
+   "author": "Hatshj",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/325"
+  },
+  {
+   "part": "eye material",
+   "asset": "nyloseth_bluecateyes",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1891"
+  },
+  {
+   "part": "eye material",
+   "asset": "nyloseth_brown_cat_eyes",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1892"
+  },
+  {
+   "part": "eye material",
+   "asset": "nyloseth_green_cat_eyes",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1911"
+  },
+  {
+   "part": "eye material",
+   "asset": "nyloseth_sapphire_cat_eyes",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1912"
+  },
+  {
+   "part": "eye material",
+   "asset": "nyloseth_yellow_cat_eyes",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1913"
+  },
+  {
+   "part": "eye material",
+   "asset": "sonntag78_orcifyhead_eye",
+   "author": "sonntag78",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/216"
+  },
+  {
+   "part": "eye material",
+   "asset": "titleknown_trans_eyes",
+   "author": "titleknown",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3156"
+  },
+  {
+   "part": "eye material",
+   "asset": "callharvey3d_harvey_eye1",
+   "author": "callharvey3d",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/489"
+  },
+  {
+   "part": "eye material",
+   "asset": "callharvey3d_harvey_eye2",
+   "author": "callharvey3d",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/490"
+  },
+  {
+   "part": "eye material",
+   "asset": "culturalibre_snake_eyes",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/3021"
+  },
+  {
+   "part": "eye material",
+   "asset": "culturalibre_target_eyes",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/3077"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_anime_eye_1",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1253"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_bads_hippy-cat_eye",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1051"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_bionic_eye_red",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1050"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_blurple_eye",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1347"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_catyellow_rainbow_eye",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1345"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_devilian_eye1",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1349"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_earth_moon_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1053"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_fruitcake_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1343"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_fushia_rainbow_eye",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1342"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_midnight_rainbow_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1346"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_rainbow_hueshift_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1086"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_santa_helpers_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1254"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_saphire_rainbow_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1344"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_sunspot_eyes",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1052"
+  },
+  {
+   "part": "eye material",
+   "asset": "elvs_zfashion_eye1",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1348"
+  },
+  {
+   "part": "eye material",
+   "asset": "mtknife_violet_eyes",
+   "author": "MTKnife",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/243"
+  }
+ ],
+ "creator_hair_materials": [
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_ash",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1175"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_black",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1176"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_fuchsia",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1177"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_ginger",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1178"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_golden",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1179"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_gray",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1180"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_red",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1181"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_strawberry",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1182"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_teal",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1183"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_braid01_violet",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1184"
+  },
+  {
+   "part": "hair material",
+   "asset": "joepal_long_01_blond",
+   "author": "Joel Palmius",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1747"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_ash",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1167"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_black",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1168"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_fuchsia",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1169"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_ginger",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1170"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_gray",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1171"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_red",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1172"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_teal",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1173"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_long_01_violet",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1174"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_black",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2678"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_brown",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2679"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_gold",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2677"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_green",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2676"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_pink",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2675"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_platinum",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2680"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_red",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2681"
+  },
+  {
+   "part": "hair material",
+   "asset": "dariush086_ponytail01_violet",
+   "author": "dariush086",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2674"
+  },
+  {
+   "part": "hair material",
+   "asset": "mtknife_ponytail01_deep_red",
+   "author": "MTKnife",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/886"
+  },
+  {
+   "part": "hair material",
+   "asset": "bogdan666_short_02_brown",
+   "author": "bogdan666",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1937"
+  },
+  {
+   "part": "hair material",
+   "asset": "bogdan666_short_02_gray",
+   "author": "bogdan666",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1941"
+  },
+  {
+   "part": "hair material",
+   "asset": "bogdan666_short_02_red",
+   "author": "bogdan666",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1939"
+  },
+  {
+   "part": "hair material",
+   "asset": "culturalibre_short_02_green",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3193"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_auburn",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1005"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_blonde",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1006"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_blue",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1007"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_brown",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1008"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_ginger",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1009"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_gray",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1010"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_blood_copper",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1294"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_dark_lime_gold",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1297"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_flat_black",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1295"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_gothic_brown",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1296"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_new_gold",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1298"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_old_gold",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1299"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_old_world_mermaid",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1300"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_01_veronika",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1301"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_50s_cherrybomb",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1285"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_candy_fushia",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1286"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_honey_blonde",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1287"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_platinum",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1288"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_pumpkin",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1289"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_retro_black",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1290"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_retro_grey",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1291"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_retro_oilslickster",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1292"
+  },
+  {
+   "part": "hair material",
+   "asset": "elvaerwyn_bob_02_tangerine",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1293"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_bob02_dark_blond",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1539"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_bob02_dark_ginger",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1542"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_bob02_ginger",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1541"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_bob02_light_ginger",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1540"
+  },
+  {
+   "part": "hair material",
+   "asset": "punkduck_blond_for_long01",
+   "author": "punkduck",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/512"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_short01_brown",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1511"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_short01_dark_ginger",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1513"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_short01_rustbrown",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1512"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_short02_blond",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1509"
+  },
+  {
+   "part": "hair material",
+   "asset": "jartur69_short02_blond_for_female",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1510"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_green",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1011"
+  },
+  {
+   "part": "hair material",
+   "asset": "toigo_short_04_violet",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1012"
+  }
+ ],
+ "creator_animal": [
+  {
+   "part": "animal head",
+   "asset": "jaldmic_wolf_headv3",
+   "author": "JALdMIC",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/3009"
+  },
+  {
+   "part": "animal ears",
+   "asset": "titleknown_catgirl_ears",
+   "author": "titleknown",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1153"
+  },
+  {
+   "part": "animal ears",
+   "asset": "jaldmic_feline_ears_v2",
+   "author": "JALdMIC",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2928"
+  }
  ]
 }
