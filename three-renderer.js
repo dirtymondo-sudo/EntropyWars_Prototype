@@ -59944,6 +59944,17 @@ const ThreeRenderer = (function () {
         windpump_tower: 'windpump_tower.glb', windpump_wheel: 'windpump_wheel.glb', grow_lamp: 'grow_lamp.glb', submarine: 'submarine.glb',
         lava_lamp_base: 'lava_lamp_base.glb', lava_lamp_cap: 'lava_lamp_cap.glb', lava_lamp_floor_base: 'lava_lamp_floor_base.glb', lava_lamp_floor_cap: 'lava_lamp_floor_cap.glb'
     };
+    /* THE PACK WEAR (2026-11-04, THE MESHY AUDIT, mondo: "You are supposed to document every single model and try to not use meshy
+       models"): the §10A stand-ins whose PACK piece was named in the 11-03 decor list (status `pack: …`) but never wired. Same
+       call as the Meshy decor (`_hqDecorWear(name, U, g, o)`: the proc's pieces hide, keep the collision, the model fits their
+       box), the file from R2 Assets/misc/ (one Elbolilloduro CC0 piece cut out in Blender by bake-pack-pieces.py, front at +Z).
+       MODEL_LIST.md §6 / §10A list them. Kill switch: window.EW_NO_DECOR_GLB (the code shapes again). */
+    var _HQ_PACK_WEAR_BASE = 'https://cdn.entropywars.net/Assets/misc/';
+    var _HQ_PACK_WEAR = {
+        metal_shelving: 'ebd_gasstation_metal_shelving.glb', washer: 'ebd_house_washer.glb', dryer: 'ebd_abandonedhouse_dryer.glb',
+        broom: 'ebd_house_broom.glb', toilet_paper: 'ebd_house_toilet_paper.glb', wall_shelf: 'ebd_house_wall_shelf.glb',
+        steel_table: 'ebd_dinerscene_steel_table.glb'
+    };
     function _hqDecorBox(into, list) {
         into.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(into.matrixWorld).invert(), rel = new THREE.Matrix4(), all = new THREE.Box3(), bx = new THREE.Box3();
@@ -59960,7 +59971,8 @@ const ThreeRenderer = (function () {
     function _hqDecorHide(m) { if (!m) return; if (m.visible !== false) m._ew_mcKeep = true; m.visible = false; }
     function _hqDecorWear(name, U, g, o) {
         o = o || {};
-        var file = _HQ_DECOR_GLB[name];
+        var file = _HQ_DECOR_GLB[name], base = _HQ_DECOR_BASE;
+        if (!file && _HQ_PACK_WEAR[name]) { file = _HQ_PACK_WEAR[name]; base = _HQ_PACK_WEAR_BASE; }   // THE PACK WEAR (2026-11-04)
         if (!file || typeof _miscModelInstance !== 'function' || typeof THREE.GLTFLoader !== 'function') return null;
         if (typeof window !== 'undefined' && window.EW_NO_DECOR_GLB) return null;
         var into = o.into || g;
@@ -59973,7 +59985,7 @@ const ThreeRenderer = (function () {
         if (o.at) outer.position.set(o.at[0] * U, o.at[1] * U, o.at[2] * U);
         else outer.position.set((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
         var cz = outer.position.z;
-        var inst = _miscModelInstance(_HQ_DECOR_BASE + file, true, H, {
+        var inst = _miscModelInstance(base + file, true, H, {
             fit: 'height', repeat: rep, matPick: (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined,
             onDone: function (grp, s, bb) {
                 var ex = (bb.max.x - bb.min.x) * s, ez = (bb.max.z - bb.min.z) * s;
@@ -66624,6 +66636,7 @@ const ThreeRenderer = (function () {
                 b2.position.set((-0.32 + i * 0.16) * U, (0.03 + hgt / 2) * U, (0.08 + (i % 2) * 0.07) * U);
                 g.add(b2);
             }
+            _hqDecorWear('wall_shelf', U, g, { wall: true });   // THE PACK WEAR (2026-11-04): House pack Shelf_01 (plank on two brackets)
             return g;
         },
         metal_shelving: function (U) {
@@ -66648,6 +66661,7 @@ const ThreeRenderer = (function () {
                     }
                 }
             });
+            _hqDecorWear('metal_shelving', U, g, { fit: 'stretch' });   // THE PACK WEAR (2026-11-04): Gas station pack Shelf_Metal (four steel shelves, empty; the pack's is 2.75 m wide: stretched into the 0.9 m bay)
             return g;
         },
         hook_rail: function (U) {
@@ -66667,6 +66681,7 @@ const ThreeRenderer = (function () {
             handle.position.y = 0.72 * U; g.add(handle);
             var head = _hqBox(0.26, 0.05, 0.05, _hqMat(null, 1, 1, { color: 0x6a4a30, shininess: 8 })); head.position.y = 0.14 * U; g.add(head);
             var bristle = _hqBox(0.26, 0.12, 0.06, _hqMat(null, 1, 1, { color: 0xc9a55a, shininess: 4 })); bristle.position.y = 0.06 * U; g.add(bristle);
+            _hqDecorWear('broom', U, g);   // THE PACK WEAR (2026-11-04): House pack Broom
             g.rotation.x = 0.1;   // leans back against the wall
             return g;
         },
@@ -66692,6 +66707,8 @@ const ThreeRenderer = (function () {
                 var hole = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.102 * U, 10), _hqMat(null, 1, 1, { color: 0x6a5a48, shininess: 2 }));
                 hole.position.copy(r.position); g.add(hole);
             });
+            /* THE PACK WEAR (2026-11-04): House pack Toilet_paper, one roll where each code roll stood */
+            [[-0.06, 0], [0.06, 0], [0, 0.1]].forEach(function (p) { _hqDecorWear('toilet_paper', U, g, { at: [p[0], p[1], 0], h: 0.1 }); });
             return g;
         },
         clipboard: function (U) {
@@ -66779,6 +66796,7 @@ const ThreeRenderer = (function () {
             var brace = _hqBox(W - 0.14, 0.04, 0.04, dark); brace.position.set(0, 0.22 * U, 0); g.add(brace);
             var ring = new THREE.Mesh(new THREE.TorusGeometry(0.045 * U, 0.008 * U, 8, 18), dark); ring.rotation.x = Math.PI / 2; ring.position.set(0, (H + 0.006) * U, 0); g.add(ring);
             var bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.02 * U, 10), dark); bolt.position.set(0, (H + 0.005) * U, 0); g.add(bolt);
+            _hqDecorWear('steel_table', U, g);   // THE PACK WEAR (2026-11-04): DINER pack Table_Metal (steel prep table, lower shelf)
             return g;
         },
         /* ROOM 42 · RECORDS + ROOM 1337 · IT (2026-09-13, plan 7.4). Three
@@ -67950,6 +67968,7 @@ const ThreeRenderer = (function () {
             var rim = new THREE.Mesh(new THREE.RingGeometry(0.24 * U, 0.29 * U, 24), _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 90 })); rim.position.set(0, 0.45 * U, 0.71 * U); g.add(rim);
             var panel = _hqBox(0.8, 0.12, 0.02, _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 40 })); panel.position.set(0, 0.86 * U, 0.71 * U); g.add(panel);
             var led = _hqBox(0.05, 0.03, 0.01, _hqBasic(dryer ? 0xff5030 : 0x40ff90)); led.position.set(0.3 * U, 0.86 * U, 0.725 * U); g.add(led);
+            _hqDecorWear(dryer ? 'dryer' : 'washer', U, g);   // THE PACK WEAR (2026-11-04): House pack Washing_machine / Abandoned House pack Secadora
             return g;
         },
         laundry_cart: function (U) {

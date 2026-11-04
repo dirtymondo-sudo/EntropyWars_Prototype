@@ -33,6 +33,9 @@ F = {
     'buildings':     'buildings/Buildings/Models/Buildings.fbx',
     'trailerscene':  'trailer-park/Trailer_Park/Models/Trailer_Park.fbx',
     'abandonedhouse': 'abandoned-house/Abandoned_House/Models/Abandoned_House.fbx',
+    'tacos':         'tacos/Tacos/Models/Tacos.fbx',
+    'metro':         'metro/Metro_PSX/Models/Metro.fbx',
+    'dinerscene':    'diner/DINER/Models/DINER.fbx',
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -65,6 +68,18 @@ TRAILER_KEEP = r'^(Home|railing|Frame_Windows|Mesh|Frame_Door|Door|Door_Mesh|air
 # abandoned_house `hover: -1`; the rim's `sink`), so a slope never shows stilts. Its front (the porch on its short side, +X in the file) turns to +Z.
 JOBS += [('house', 'abandonedhouse', ['Casa!', 'Ventanas', 'm', 'Columnas', 'Barandal', 'Barandal.003'], -90, {'cut': 2.5})]
 JOBS += [('trailer_%d' % i, 'trailerscene', [{'near': 'Home' if i == 0 else 'Home_%02d' % i, 'pad': 1.2, 'keep': TRAILER_KEEP}], 90) for i in range(6)]
+# THE MESHY AUDIT (2026-11-04, mondo: "You are supposed to document every single model and try to not use meshy models"): the
+# MODEL_LIST §10A stand-ins whose pack piece was named in 11-03's decor list (status `pack: …`) but never wired. Each proc WEARS its
+# piece (three-renderer.js _HQ_PACK_WEAR, Assets/misc/ebd_…), so its light / glow / collision stay. Front at +Z like the procs.
+AUDIT = [
+    ('metal_shelving', 'gasstation', ['Shelf_Metal'], 0), ('washer', 'house', ['Washing_machine', 'Washing_machine_d'], -90),
+    ('dryer', 'abandonedhouse', ['Secadora'], 0), ('broom', 'house', ['Broom'], 0), ('toilet_paper', 'house', ['Toilet_paper'], 0),
+    ('chalkboard', 'vhsshop', ['Blackboard'], 0), ('roller_shutter', 'tacos', ['doors_garage'], 0), ('bare_bulb', 'abandonedhouse', ['Foco'], 0),
+    ('turnstile', 'metro', ['automatic_ticket_gate'], 0), ('wall_shelf', 'house', ['Shelf_01'], 90), ('concrete_pillar', 'metro', ['Column'], 0),
+    ('steel_table', 'dinerscene', ['Table_Metal'], 90),
+]
+ROT = json.loads(arg('--rot') or '{}')   # {key: degrees} overrides while fitting the fronts
+JOBS += [(k, p, n, ROT.get(k, r)) for (k, p, n, r) in AUDIT]
 jobs = []
 for J in JOBS:
     k, p, nodes, rz = J[:4]
