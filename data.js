@@ -3089,7 +3089,7 @@ const RACE_PROFILES = {
         label: 'Bligblog',
         types: ['alien']
     },
-    /* THE CHESS PIECE (2026-10-29, mondo's chess set: Assets/chess/Low Poly Chess Set.fbx) — the Looking-Glass's own */
+    /* THE CHESS PIECE (2026-10-29, mondo's chess set: Assets/world/packs/chess/Low Poly Chess Set.fbx) — the Looking-Glass's own */
     'chess piece': {
         label: 'Chess Piece',
         types: ['anomaly']
@@ -27815,14 +27815,14 @@ if (typeof window !== 'undefined') {
    D.O.O.R. HEADQUARTERS — layout data (DOOR_HQ_BUILD_PLAN.md §3.2)
    The Central Egress as a polar layout table. three-renderer.js builds the
    procedural shell from `shell`, places the user's Meshy prop kit from
-   `props` (catalogue keys → R2 Assets/door/models/), and hangs the doors
+   `props` (catalogue keys → R2 Assets/world/hq/models/), and hangs the doors
    from `doors`. map.js owns the flow (what a door / counter does).
    Units: metres. `deg` = degrees CLOCKWISE from north (north = −Z, east =
    +X). `r` = metres from the hall centre. `level` 0 = the floor, 1 = the
    mezzanine. 1 m = DOOR_HQ.units world units (73 = BASE_TILE / 1.75).
    Validated headlessly by door-hq.test.js (load-data.js).
    ═══════════════════════════════════════════════════════════════════════ */
-const DOOR_HQ_ASSETS = 'https://cdn.entropywars.net/Assets/door/';
+const DOOR_HQ_ASSETS = 'https://cdn.entropywars.net/Assets/';   // + 'world/hq/models/' (R2 layout W4; was Assets/door/)
 /* ── THE WOODS' SHELL (HQ plan 9.3 stage 3, 2026-09-16) ─────────────────
    Every woods room is an OPEN box room (no ceiling, no walls: the tree border
    of its cave grid is the wall) under ONE sky — the Fairy Forest's dusk with
@@ -28575,9 +28575,9 @@ function hqUnthoughtShell(o) {
 }
 const DOOR_HQ = {
     units: 73,
-    assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
+    assets: { models: DOOR_HQ_ASSETS + 'world/hq/models/', textures: DOOR_HQ_ASSETS + 'world/hq/textures/' },
 
-    /* The eight tileables the user painted (R2 Assets/door/textures/). */
+    /* The eight tileables the user painted (R2 Assets/world/hq/textures/). */
     textures: {
         terrazzo: 'mid_century_terrazzo_floor.png',
         stone:    'seamless_speckled_hallway_stone.png',
@@ -28670,7 +28670,7 @@ const DOOR_HQ = {
            −X (y −0.15..0.37) — the OPPOSITE of the first gun (grip −X), so `HQ_PORTAL_RULES.gun.turn` 180
            pre-turns the model in every holder to put the barrel on +X (the ONE field if a future gun lands
            backward). `span` = its real length. The first gun (Meshy_AI_a_retro_gun_that_shoo_0916054449,
-           Assets/door/models/) stays in the bucket unreferenced. MODEL_INDEX §3b. */
+           Assets/world/hq/models/) stays in the bucket unreferenced. MODEL_INDEX §3b. */
         door_gun:          { file: 'Meshy_AI__0916054803_texture.glb',                                  base: 'misc', span: 0.62, foot: 0, gun: true },
         wall_clock:        { file: 'ebd_trailerpark_wall_clock.glb', base: 'misc',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
         /* 2026-09-12 from the SHARED misc bucket (`base: 'misc'` → Assets/misc/,
@@ -28699,7 +28699,7 @@ const DOOR_HQ = {
         greek_column:      { file: 'Meshy_AI_greek_column_0727195651_texture.glb',                 base: 'misc', h: 3.6, foot: 0.45, block: true },   // THE DIVINE STAIR (2026-09-17): the board's greekcol monument standing in heaven (the same file)
         campfire:          { file: 'ebd_survival_campfire.glb',              base: 'misc', span: 1.5, foot: 0.7, block: true, glow: { y: 0.45, size: 1.8, color: 0xff9a40 }, light: { color: 0xff9040, intensity: 0.9, dist: 9, y: 0.6 } },
         culvert_mouth:     { file: 'Meshy_AI_a_culvert_mouth_0916235929_texture.glb',              base: 'misc', h: 2.6, foot: 0, mount: 0 },
-        /* NO MESHY TREES (2026-10-04, mondo): the four Meshy trees are the retro pack's (base 'rt' = Assets/foilage/retrotreepack/GLB/);
+        /* NO MESHY TREES (2026-10-04, mondo): the four Meshy trees are the retro pack's (base 'rt' = Assets/world/nature/retrotreepack/GLB/);
            the hollow / dead tree WAYS keep their own trunk with the hole (three-renderer.js _hqTreeWay) */
         dead_snag:         { file: 'dead_tree_rt_2.glb', base: 'rt', h: 4.6, foot: 0.4, block: true },
         hollow_dead_tree:  { file: 'dead_tree_rt_1.glb', base: 'rt', h: 5.0, foot: 0.6, block: true, rot: 0 },
@@ -28746,7 +28746,7 @@ const DOOR_HQ = {
         italian_building_2: { file: 'Meshy_AI_Italian_building_2_0917035828_texture.glb',             base: 'misc', span: 12, foot: 4.5, block: true },
         holy_carpet:        { file: 'Meshy_AI_ornate_holy_carpet_0917035624_texture.glb',             base: 'misc', span: 6.0, foot: 0 },
         /* THE CASTLE AND FORT PACK (McSteeg, itch.io — "use this asset in your animation or game projects, both personally and commercially",
-           2026-11-03 for THE NEW HEAVEN's floating castles): pieces of the one file (Assets/misc/Castles_and_Forts.glb), each `node` a piece */
+           2026-11-03 for THE NEW HEAVEN's floating castles): pieces of the one file (Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb), each `node` a piece */
         castle_tower:       { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_Mid',   h: 2.0,  foot: 0 },
         castle_tower_top:   { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Tower_top_1', h: 2.16, foot: 0 },
         castle_cone:        { file: 'Castles_and_Forts.glb', base: 'misc', node: 'Roof_Cone',   h: 2.23, foot: 0 },
@@ -29122,7 +29122,7 @@ const DOOR_HQ = {
         warning_tape:    { proc: 'warning_tape',    h: 0.01, foot: 0 },                                                       // Room 4B: the striped line on the floor you do not cross
         lone_gun:        { proc: 'lone_gun',        h: 0.14, foot: 0 },                                                       // Room II: the gun on the table (tabletop: y = the table top)
         garbage_chute:   { proc: 'garbage_chute',   h: 0.9,  foot: 0,    wall: true, mount: 0.6, depth: 0.2 },                // Room II: the hatch in the wall      // HOME: a domestic flight that ends at the ceiling; foot at +z, climbs toward -z
-        /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/door/models/) ══
+        /* ══ THE 2026-09-10 BATCH (30 Meshy GLBs, R2 Assets/world/hq/models/) ══
            The user's cafeteria / office / mission kit. Four of them RETIRE a
            procedural prop (plan 2.7 said "replace any of them by giving the
            entry a `file`"): the coat rail, the vent, the floor drain and the
@@ -29173,7 +29173,7 @@ const DOOR_HQ = {
         mars_rover:        { file: 'Meshy_AI_mars_rover_realistic_0910054045_texture.glb',          span: 2.40, foot: 1.10 },
         lunar_lander:      { file: 'Meshy_AI_lunar_lander_realis_0910054105_texture.glb',           h: 3.20, foot: 1.50 },
         palm_tree:         { file: 'Meshy_AI_palm_tree_0910054114_texture.glb',                     h: 3.20, foot: 0.35 },
-        /* ── THE 2026-09-13 BATCH (R2 Assets/door/models/, uploaded with the
+        /* ── THE 2026-09-13 BATCH (R2 Assets/world/hq/models/, uploaded with the
            eight doors above): two computer chairs (16 MB each — the same
            model, blue / grey), a camera (`security_camera`: hung high on a
            wall, the lens toward the room), the street utility box (the
@@ -47566,13 +47566,13 @@ function hqRoomClock(roomId) {
     return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
 }
 /* THE PAINTED SKIES (2026-10-24, mondo painted 80s/90s anime watercolour skies): a zone's sky as his paintings on R2
-   (Assets/skies/<key>_day / _night / _silhouette .webp, a `_low` copy of each for the low-power setting). Day and night are
+   (Assets/world/sky/<key>_day / _night / _silhouette .webp, a `_low` copy of each for the low-power setting). Day and night are
    4096 × 1024 strips (360° round, the horizon at the bottom row, straight overhead at the top); the silhouette is a 4096 × 512
    transparent strip standing on the horizon (`silH` = its height as a share of the sky strip: 512 / 1024 = 45°). The dome
    (three-renderer.js THE PAINTED SKY) fades day to night with the clock / the round and keeps its sun, moon, stars, weather and
    celestial events over the painting. A row claims the outdoor rooms of its `sites` (a hub's interiors and the sewers stay
    unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true.
-   THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead"): his four sets on R2 Assets/skies/1024x512/<Name> Sky/
+   THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead"): his four sets on R2 Assets/world/sky/1024x512/<Name> Sky/
    (<Name>_Sky-Blue_0N / -Night_0N / -Sunset_0N -1024x512.png, N = 1..4). Each sheet is the same strip (horizon at the bottom
    row, straight overhead at the top) but 1024 px for 90° up, so it goes `rep` = 2 times round the horizon to keep the clouds
    as painted. A row with `set` draws that set in place of its own `<key>_day / _night` paintings (those stay on R2 and here:
@@ -47585,10 +47585,10 @@ function hqRoomClock(roomId) {
    clear day / night dome from before the paintings). The rows, the sets and his files on R2 stay: `on: true` brings them back. */
 const HQ_PAINTED_SKIES = {
     on: false,
-    base: 'https://cdn.entropywars.net/Assets/skies/',
+    base: 'https://cdn.entropywars.net/Assets/world/sky/',
     silH: 0.5,
     sets: {
-        base: 'https://cdn.entropywars.net/Assets/skies/1024x512/',
+        base: 'https://cdn.entropywars.net/Assets/world/sky/1024x512/',
         rep: 2, count: 4,
         names: { bumpy: 'Bumpy', cloudy: 'Cloudy', wispy: 'Wispy', fading: 'Fading' },
     },
@@ -51246,7 +51246,7 @@ if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanI
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
-   TREES = HQ_TREE_KINDS (the foliage OBJs in Assets/foilage/OBJ), DOORS = the leaves + DOOR_HQ.ways, LIGHTS = the catalogue
+   TREES = HQ_TREE_KINDS (the foliage OBJs in Assets/world/nature/OBJ), DOORS = the leaves + DOOR_HQ.ways, LIGHTS = the catalogue
    rows that carry a `light` or a `glow`, MARKERS = the spawn, a sign (a counter), a roster spot, an online spot. Every entry is
    { id, label, sub, group, list, row, thumb } — `row` the doc row it places (its x, z, face are the click's), `thumb` what its
    picture is drawn from. Nothing here is new art: every file below is one the game already loads somewhere (the same-thing
@@ -51254,7 +51254,7 @@ if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanI
 /* THE TREE KINDS: a `tree` row's `kind` → the foliage OBJ it draws (three-renderer.js _nrTree). tree … tree_6 are the board's six;
    tree_7 … tree_20 are the other fourteen models in the same folder, which nothing drew before E2. `dead` = a bare model (no
    canopy: the smaller default height, the branch stand-in while it loads). */
-/* THE RETRO TREE PACK (2026-10-04, mondo's upload): `rt:<file>` = Assets/foilage/retrotreepack/GLB/<file>.glb. The board's six
+/* THE RETRO TREE PACK (2026-10-04, mondo's upload): `rt:<file>` = Assets/world/nature/retrotreepack/GLB/<file>.glb. The board's six
    and `pine` draw the pack — tree a birch, tree_2 a spruce, tree_3 the broad oak, tree_4 the tall birch, tree_5 / tree_6 the
    bare ones, pine the small pine, pine_2 the sapling. tree_7 … tree_20 stay the old OBJs for the editor. */
 const HQ_TREE_KINDS = {
@@ -51274,7 +51274,7 @@ const HQ_TREE_KINDS = {
        _foliageUrl) — a blocker on the walk, a blocked square in a fight (a prop is only scenery on a terrain board) */
     fae_cap:     { model: 'misc:Meshy_AI_mushroom_0727200342_texture.glb', name: 'giant mushroom' },
     fae_cap_2:   { model: 'misc:Meshy_AI_mushroom_realistic_0727202046_texture.glb', name: 'toadstool' },
-    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): `xmas:<node>` = a tree cut out of R2 Assets/christmas/models/Christmas.dae
+    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): `xmas:<node>` = a tree cut out of R2 Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae
        (three-renderer.js _foliageIsXmas) — the snowy pines (Tree_N*: frosted low-poly cones) and the snow-laden pine cards (Trees_0*) */
     xmas_pine:   { model: 'xmas:Tree_N', name: 'snowy pine' },     xmas_pine_2: { model: 'xmas:Tree_N_P', name: 'tall snowy pine', tall: true },
     xmas_pine_3: { model: 'xmas:Tree_N_01', name: 'snowy fir' },
@@ -51376,7 +51376,7 @@ const HQ_CATALOGUE_WEAPONS = {
     /* THE SPEAR (2026-10-27, mondo's upload Assets/fx/spell_props/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
     spear:       { file: 'spear/Spear.fbx',                                           base: 'weapons', h: 2.0,     foot: 0 },
 };
-/* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
+/* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb holds the whole PSX metro kit in ONE file;
    a row names its piece(s) in `node` (the file's node names; a comma list is a composite that keeps the file's layout) and the
    renderer cuts it out of the one download (three-renderer.js _miscPiece). Every piece faces −Z in the file, so `turn: 180`
    stands its front to +Z like every catalogue model. Sizes are the file's own, measured (the car 23.4 file units long at 16.3 m). */
@@ -51410,9 +51410,9 @@ const HQ_CATALOGUE_METRO = {
 };
 /* THE CHRISTMAS PACK (2026-10-24, mondo's upload: "added this christmas pack to the bucket, can you utilize them for the north pole
    area and santa spells? Also see what from this pack could be used elsewhere in the game, like there is some food that could go in
-   the cafeteria"): R2 Assets/christmas/models/Christmas.dae holds the whole PSX kit in ONE COLLADA file (62 pieces; the .fbx beside it
+   the cafeteria"): R2 Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae holds the whole PSX kit in ONE COLLADA file (62 pieces; the .fbx beside it
    is the same kit, the SantaClaus*.fbx two rigged Santas, Roads.* snowy street tiles — unused); its sheets are loose in
-   Assets/christmas/textures/. A row names its node (`node`, a comma list = a composite that keeps the file's layout) and the renderer
+   Assets/world/packs/elbolilloduro_christmas/textures/. A row names its node (`node`, a comma list = a composite that keeps the file's layout) and the renderer
    cuts it out of the one download (three-renderer.js _asDae + _miscPiece). The file is in metres: the sizes below are its own,
    measured, except the food and the cookies, drawn down to table size (the file's cookies are a hand across). */
 const _XMAS_COOKIES = 'Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11';
@@ -51458,7 +51458,7 @@ const HQ_CATALOGUE_XMAS = {
     xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
 };
 /* THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their use. Lion for
-   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs (+ the elephant FBX, 10-27). A row with `base: 'animals'` loads through the misc loader, which hands the
+   ringmaster, etc"): R2 Assets/world/animals/, eleven rigged GLBs (+ the elephant FBX, 10-27). A row with `base: 'animals'` loads through the misc loader, which hands the
    file to the renderer's one animal cache (three-renderer.js THE ANIMALS): every placed animal is its own rig playing the file's own
    clips (idle by default; the cat, the chicken and the ladybug ship none and move procedurally), turned to face +Z like every catalogue
    model. Sizes are real-world metres (standing height, or `span` for the two insects — the ladybug drawn a little over life size so it
@@ -51476,7 +51476,7 @@ const HQ_CATALOGUE_ANIMALS = {
     rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
     butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
     ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
-    /* THE HORSES (2026-10-27, mondo: "Added some horses too"): Assets/animals/horses/Horse_glb.glb, saddled and bridled, in its
+    /* THE HORSES (2026-10-27, mondo: "Added some horses too"): Assets/world/animals/horses/Horse_glb.glb, saddled and bridled, in its
        three coats (`skin`: the file's own white, brown, black — the sheets in horses/textures/); 2.2 m to the ears, head up */
     horse:       { file: 'horses/Horse_glb.glb', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
     horse_brown: { file: 'horses/Horse_glb.glb', skin: 'brown', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
@@ -51484,11 +51484,11 @@ const HQ_CATALOGUE_ANIMALS = {
     /* THE EAGLE (2026-10-27, mondo's eagle, baked rigged: eagle_rigged.glb): a 2 m wingspan, soaring a 5 m circle 6 m up, gliding
        (`swim` = the ocean pack's ring; a row's `swim: false` holds it still in the air, its `hover` sets the height) */
     eagle:     { file: 'eagle_rigged.glb', base: 'animals', mesh: false, span: 2.0, foot: 0, hover: 6, swim: { r: 5, v: 4, bob: 0.5 } },
-    /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): Assets/animals/elephant/, an FBX
+    /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): Assets/world/animals/elephant/, an FBX
        with its own idle / walk / run; the Ringmaster's Elephant summon wears the same file */
     elephant:  { file: 'elephant/elephant-3d.fbx', base: 'animals', mesh: false, h: 2.7, foot: 0.9, rect: { hw: 0.75, hd: 1.7 }, block: true },
     /* THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and
-       nature spells"): Assets/animals/insects/, all nineteen files. Drawn well over life size (storybook size) so they read at all (`span` = the
+       nature spells"): Assets/world/animals/insects/, all nineteen files. Drawn well over life size (storybook size) so they read at all (`span` = the
        longest side across — wingtip to wingtip, or head to tail — metres); each moves about its own spot (the bees buzz, the butterflies and the luna moth
        flutter, the ants scurry, the grasshoppers hop). A flyer's `hover` is where it works; it never blocks the walker. */
     ant:               { file: 'insects/Ant_Worker.glb',            base: 'animals', mesh: false, span:   0.1, foot: 0 },
@@ -51514,7 +51514,7 @@ const HQ_CATALOGUE_ANIMALS = {
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
    areas and maps like the deep, atlantis, bermuda triangle, pirate ship, etc. ... Make them usable in the map editor. We are basically
-   using the editor as a catalgue of all models and textures in the game"): R2 Assets/oceanic/<Name>.fbx, one model per file — the sea
+   using the editor as a catalgue of all models and textures in the game"): R2 Assets/world/packs/ocean/<Name>.fbx, one model per file — the sea
    life rigged with its own clips, the coral, the rocks, the seaweed and the shells, flat colours (three-renderer.js _asFbx). EVERY file
    is a row here, so the editor's MODELS tab lists all 49 (group "Ocean"). Sizes are metres (the files are in their own units, fitted).
    A creature's `anim` = the clip it plays (its own name in the file), `swim` = { r, v, bob } metres: it swims a circle of radius r
@@ -51587,8 +51587,8 @@ const HQ_CATALOGUE_OCEAN = {
 };
 /* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
    and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
-   exploration areas as props. Add them to the editor"): R2 Assets/instruments/ (the guitar, the maracas, the tambourine) and
-   Assets/instruments/orchestral/ (the cello + its bow, the drum, the harp, the seed-pod shaker, the violin + its bow, the whistle),
+   exploration areas as props. Add them to the editor"): R2 Assets/world/packs/instruments/ (the guitar, the maracas, the tambourine) and
+   Assets/world/packs/instruments/orchestral/ (the cello + its bow, the drum, the harp, the seed-pod shaker, the violin + its bow, the whistle),
    one .glb each, the sheets inside the files. The renderer stands every file up the one way (three-renderer.js THE INSTRUMENTS:
    upright, its face to +Z); `lay` lays it on its back on the floor. Sizes are real-world metres. None of them blocks anybody
    (`foot: 0`, `mesh: false`): a prop to look at, never a wall. The same files play in the spells (three-vfx-effects.js THE INSTRUMENTS). */
@@ -51612,7 +51612,7 @@ const HQ_CATALOGUE_INSTRUMENTS = {
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 [HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
-/* THE BATS (2026-10-27, mondo's upload: R2 Assets/animals/bats/ bat_black / bat_brown / bat_grey .obj + their sheets): the editor's
+/* THE BATS (2026-10-27, mondo's upload: R2 Assets/world/animals/bats/ bat_black / bat_brown / bat_grey .obj + their sheets): the editor's
    catalogue rows for the three bats the vampire's bat form and the vampire spells fly (three-renderer.js "THE BATS" loads them and
    builds the prop: the file's own spread-wing pose, `span` metres wingtip to wingtip; the inspector's size overrides) */
 const HQ_CATALOGUE_BATS = {
@@ -51621,7 +51621,7 @@ const HQ_CATALOGUE_BATS = {
     bat_grey:  { proc: 'bat_grey',  span: 0.45, foot: 0 },
 };
 Object.keys(HQ_CATALOGUE_BATS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_BATS[k]); });
-/* THE TRAPS PACK (2026-10-27, mondo's upload: R2 Assets/traps/ — "added a traps folder, use the bear trap for the trap spell and there's
+/* THE TRAPS PACK (2026-10-27, mondo's upload: R2 Assets/world/packs/traps/ — "added a traps folder, use the bear trap for the trap spell and there's
    a tomb and sarcophogus tht can be used for mummy or anubis spells"): every one of his eighteen pieces is a row (`base: 'traps'`, the
    file as it is: three-renderer.js puts the pack's swatch sheet on at load), plus the sets put together from their pieces (`proc:
    'trap_<set>'`: the bear trap open / sprung, the iron maiden shut / open, the coffin and the sarcophagus shut / open, the dart hole
@@ -51661,7 +51661,7 @@ const HQ_CATALOGUE_TRAPS = {
     trap_trip_wire_broken:  { file: 'Trip_Wire_Broken.glb',       base: 'traps', span: 1.75, foot: 0, mesh: false },
 };
 Object.keys(HQ_CATALOGUE_TRAPS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_TRAPS[k]); });
-/* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess Set.fbx is
+/* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/world/packs/chess/Low Poly Chess Set.fbx is
    ONE file, the board and its 32 pieces (three-renderer.js "THE CHESS SET": one loader, its meshopt copy when the manifest lists it). A
    `base: 'chess'` row names its node(s) like the metro / Christmas rows: `chess_set_game` = the board with every piece on its square (a
    game on a table), `chess_board` = the board alone. 0.6 m across. The Looking-Glass's statues (HQ_TREE_KINDS chess_*) are the same
@@ -51673,10 +51673,10 @@ const HQ_CATALOGUE_CHESS = {
 Object.keys(HQ_CATALOGUE_CHESS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_CHESS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
-     pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
+     pack  — R2 Assets/world/packs/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
              labels are geometry too, never cut). Every piece is cut out of the one download by its BOX (file units) — three-renderer.js
              _spSoup — and the box is all a row needs to name it.
-     grate — R2 Assets/stairs/stairs.glb: one textured steel-grating flight with its handrails (metres).
+     grate — R2 Assets/world/packs/stairs/stairs.glb: one textured steel-grating flight with its handrails (metres).
      metro — the metro kit's own flight (Metro.glb, node Stairs_01; the metro pack's file).
    A FLIGHT is fitted to any rise, run and width (three-renderer.js _spFlightGeo): its steps are cut into three — the foot (the first
    few risers), one middle step and the head (the last few risers + the top lip) — and the middle step is repeated, so a 0.5 m kerb
@@ -51688,7 +51688,7 @@ Object.keys(HQ_CATALOGUE_CHESS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_H
    width's span across. A railing: `b` = its first post, `P` = one bay, `t` = its last post (along +X from box[0]), `top` = its rail's
    top (the grind height), `foot` = the ground line (a curb below it is sunk). */
 const HQ_STAIR_PACK = {
-    files: { pack: 'Assets/stairs/stairs_railings.glb', grate: 'Assets/stairs/stairs.glb', metro: 'Assets/Metro_PSX/Models/Metro.glb' },
+    files: { pack: 'Assets/world/packs/stairs/stairs_railings.glb', grate: 'Assets/world/packs/stairs/stairs.glb', metro: 'Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb' },
     unit: { pack: 0.3048, grate: 1, metro: 1 },
     flights: {
         /* the pack's straight flights (each family's single flight, rising toward −Z from its +Z end) */
@@ -51785,7 +51785,7 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/fx/spell_props/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', chess: 'Assets/chess/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/world/hq/models/', misc: 'Assets/misc/', weapons: 'Assets/fx/spell_props/', metro: 'Assets/world/packs/elbolilloduro_metro_psx/Models/', xmas: 'Assets/world/packs/elbolilloduro_christmas/models/', ocean: 'Assets/world/packs/ocean/', animals: 'Assets/world/animals/', instruments: 'Assets/world/packs/instruments/', traps: 'Assets/world/packs/traps/', chess: 'Assets/world/packs/chess/', foliage: 'Assets/world/nature/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)

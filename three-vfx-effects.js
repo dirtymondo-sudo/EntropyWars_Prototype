@@ -7557,27 +7557,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _getBoulderTexture() {
         if (_boulderTexCache) return _boulderTexCache;
-        _boulderTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/rock.png');
+        _boulderTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/world/terrain/rock.png');
         return _boulderTexCache;
     }
     function _getRocks4Texture() {
         if (_rocks4TexCache) return _rocks4TexCache;
-        _rocks4TexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/rocks_4.png');
+        _rocks4TexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/world/terrain/rocks_4.png');
         return _rocks4TexCache;
     }
     function _getIceTexture() {
         if (_iceTexCache) return _iceTexCache;
-        _iceTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/ice.png');
+        _iceTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/world/terrain/ice.png');
         return _iceTexCache;
     }
     function _getWoodTexture() {
         if (_woodTexCache) return _woodTexCache;
-        _woodTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/wood.png');
+        _woodTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/world/terrain/wood.png');
         return _woodTexCache;
     }
     function _getForestTexture() {
         if (_forestTexCache) return _forestTexCache;
-        _forestTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/Sprites/terrain/forest.png');
+        _forestTexCache = _loadCachedTex('https://cdn.entropywars.net/Assets/world/terrain/forest.png');
         return _forestTexCache;
     }
     function _getBulletTexture() {
@@ -9732,7 +9732,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_sigTerrainTexCache[key]) return _sigTerrainTexCache[key];
         var tex = _loadCachedTex(
-            'https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
+            'https://cdn.entropywars.net/Assets/world/terrain/' + file);
         tex.repeat.set(repX || 1, repY || 1);
         _sigTerrainTexCache[key] = tex;
         return tex;
@@ -11076,23 +11076,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            first hull in _sigBuildUFO, procedural saucer stays the fallback.
            axis 'flat': upright, sized by horizontal FOOTPRINT (it's a wide
            flat craft — height-normalizing would blow it up huge). */
-        ufo:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
+        ufo:         { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
                        axis: 'flat' },
         /* 2026-09-12: the pirate's Cannonball fires the user's iron cannon
            (Assets/misc, the same GLB the Flying Dutchman carries on her
            rails — see MODEL_INDEX.md). Measured: 1.0 long on X, 0.79 high,
            the MUZZLE is −X; the long-axis swing puts it on −Z, the baked ry
            flip on +Z where _sigCannonShot3D aims. */
-        cannon:      { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb',
+        cannon:      { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_iron_canon_0912231022_texture.glb',
                        axis: 'z', tweak: { ry: Math.PI } },
         /* 2026-09-18 THE FINISHER PASS — THE ROCKS: the D.O.O.R. kit's two
-           asteroids (R2 Assets/door/models/, MODEL_INDEX §3b) are every
+           asteroids (R2 Assets/world/hq/models/, MODEL_INDEX §3b) are every
            thrown / falling rock in the game now: the boulder projectile
            (Boulder Hurl, Stone Throw, Stonefall), the Meteor's body, the
            METEOR STORM and the moon's debris. axis 'y': a round rock, sized
            by height, centre-pivoted so it tumbles about itself. */
-        asteroid:    { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_1.glb', axis: 'y' },
-        asteroid2:   { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_2.glb', axis: 'y' },
+        asteroid:    { url: 'https://cdn.entropywars.net/Assets/world/hq/models/asteroid_1.glb', axis: 'y' },
+        asteroid2:   { url: 'https://cdn.entropywars.net/Assets/world/hq/models/asteroid_2.glb', axis: 'y' },
         /* THE SPEAR (2026-10-27, mondo's upload: Assets/fx/spell_props/spear/Spear.fbx, its sheets packed in): an FBX, read through the
            renderer's one cache entry for the file (assetGltf → _asFbx). 2 m long, the tip up (+Y) in the file — the long-axis
            swing puts it on +Z. Every spear in the spells: Valkyrie Spear, the Atlatl, the holy spears, the Joust's lance, the
@@ -11110,31 +11110,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         landmine:      { file: 'Meshy_AI_landmine_1027232145_texture.glb',       axis: 'flat' },
         shield:        { file: 'Meshy_AI_shield_1027232025_texture.glb',         axis: 'y' },
         throwingKnife: { file: 'Meshy_AI_throwing_knife_1027232048_texture.glb', axis: 'y' },
-        bible:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_bible_1027232251_texture.glb',          axis: 'flat' },
-        blackBlob:     { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb',     axis: 'y' },
-        sack:          { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb',    axis: 'y' },
-        crystalShard:  { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb',  axis: 'y' },
-        crystalShards: { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb', axis: 'flat' },
-        ejectionSeat:  { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_ejection_seat_1027232003_texture.glb',  axis: 'y' },
-        frog:          { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_frog_1027232151_texture.glb',           axis: 'flat' },
-        giantFoot:     { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_giant_foot_1027232131_texture.glb',     axis: 'z' },
-        mic:           { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_microphone_1027232053_texture.glb',     axis: 'y' },
-        rope:          { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_rope_1027232157_texture.glb',           axis: 'flat' },
-        sandbags:      { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb',       axis: 'flat' },
-        syringe:       { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_syringe_1027232304_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
-        teslaCoil:     { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb',     axis: 'y' },
-        tongs:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tongs_1027232138_texture.glb',          axis: 'z', tweak: { ry: Math.PI } },
-        trumpet:       { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
-        voodooDoll:    { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_voodoo_doll_1027232238_texture.glb',    axis: 'y' },
-        /* THE FANGS (2026-10-28, mondo's upload Assets/animals/top_fangs.glb): a top row of teeth and gums, 0.95 wide (X) × 0.72
+        bible:         { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_bible_1027232251_texture.glb',          axis: 'flat' },
+        blackBlob:     { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_black_blob_1027232032_texture.glb',     axis: 'y' },
+        sack:          { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_burlap_sack_1027232243_texture.glb',    axis: 'y' },
+        crystalShard:  { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_crystal_shard_1027232226_texture.glb',  axis: 'y' },
+        crystalShards: { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_crystal_shards_1027232219_texture.glb', axis: 'flat' },
+        ejectionSeat:  { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_ejection_seat_1027232003_texture.glb',  axis: 'y' },
+        frog:          { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_frog_1027232151_texture.glb',           axis: 'flat' },
+        giantFoot:     { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_giant_foot_1027232131_texture.glb',     axis: 'z' },
+        mic:           { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb',     axis: 'y' },
+        rope:          { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_rope_1027232157_texture.glb',           axis: 'flat' },
+        sandbags:      { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_sandbags_1027232011_texture.glb',       axis: 'flat' },
+        syringe:       { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_syringe_1027232304_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
+        teslaCoil:     { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_tesla_coil_1027232038_texture.glb',     axis: 'y' },
+        tongs:         { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_tongs_1027232138_texture.glb',          axis: 'z', tweak: { ry: Math.PI } },
+        trumpet:       { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_trumpet_1027232058_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
+        voodooDoll:    { url: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_voodoo_doll_1027232238_texture.glb',    axis: 'y' },
+        /* THE FANGS (2026-10-28, mondo's upload Assets/world/animals/top_fangs.glb): a top row of teeth and gums, 0.95 wide (X) × 0.72
            deep (Z) × 0.36 high, the front teeth on +Z, the teeth pointing down, metallic 1 over its bake (the matte rule). Every
            bite's jaws (_fangsMouth): the top set as he made it, the bottom set its mirror. */
-        fangs:         { url: 'https://cdn.entropywars.net/Assets/animals/top_fangs.glb',                                axis: 'flat', matte: true },
+        fangs:         { url: 'https://cdn.entropywars.net/Assets/world/animals/top_fangs.glb',                                axis: 'flat', matte: true },
     };
-    /* THE INSTRUMENTS (2026-10-27): mondo's eleven instrument files (R2 Assets/instruments/) — `instr` = stood up the renderer's one
+    /* THE INSTRUMENTS (2026-10-27): mondo's eleven instrument files (R2 Assets/world/packs/instruments/) — `instr` = stood up the renderer's one
        way when the file lands (ThreeRenderer.instrumentPrep: upright, its face to +Z), so axis 'y' sizes it by its standing height */
     (function () {
-        var B = 'https://cdn.entropywars.net/Assets/instruments/';
+        var B = 'https://cdn.entropywars.net/Assets/world/packs/instruments/';
         var F = { guitar: 'GuitarV1.glb', maracas: 'MaracasV1.glb', tambourine: 'TamburinV1.glb', cello: 'orchestral/Cello.glb', celloBow: 'orchestral/Cello_bow.glb',
                   violin: 'orchestral/Violin.glb', violinBow: 'orchestral/Violin_bow.glb', drum: 'orchestral/Drum.glb', harp: 'orchestral/Harp.glb',
                   seedPod: 'orchestral/SeedPod.glb', whistle: 'orchestral/Whistle.glb' };
@@ -11144,7 +11144,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
      'frog', 'giantFoot', 'mic', 'rope', 'sandbags', 'syringe', 'teslaCoil', 'tongs', 'trumpet', 'voodooDoll'].forEach(function (k) { _WPN_MODELS[k].matte = true; });
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
-    /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/animals/): a rigged animal through the renderer's one loader —
+    /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/world/animals/): a rigged animal through the renderer's one loader —
        { group, ctl } (the group faces +Z, feet on y = 0; ctl.play(slot, { once, then }), ctl.flap(on), ctl.has(slot)), or null
        while the file streams (the library warm loads the crow + the lion with the summons' dog + wolf) */
     function _animal(key, size, o) {
@@ -11343,7 +11343,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ═══ THE PROPS IN THE HAND (2026-11-03, docs/notes/character-models-plan.md row 24 + section 6b; mondo: "how do we put these
        models ... in the game for spells (like whip crack)") ═════════════════════════════════════════════════════════════════
-       The Meshy spell props (#47-60, R2 Assets/props/, optimize-assets.js'd) are _WPN_MODELS rows like every other prop, and a
+       The Meshy spell props (#47-60, R2 Assets/world/props/misc/, optimize-assets.js'd) are _WPN_MODELS rows like every other prop, and a
        spell that uses one HOLDS it in the caster's hand for the cast instead of conjuring it board-sized beside them (the
        finishers keep their big looks). _HELD_PROPS names the prop per spell: it appears in the hand on the cast's windup beat
        (ThreeRenderer.unitHoldProp: the hand bone, THE GRIP's seat — the fist closes round it on a creator body, it sits on the
@@ -11356,7 +11356,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        middle, `down` the way down the handle (toward the little finger), `barrel` the way the business end points (along the
        hand, out past the knuckles) — the same three THE GRIP seats the cowboy's revolver with. `m` = the prop's size in metres
        (its longest side). Kill switch: window.EW_NO_HELD_PROPS. ══════════════════════════════════════════════════════════ */
-    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/props/';
+    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/world/props/misc/';
     (function () {
         var P = { potionFlask: ['potion_flask.glb', 'y'], scalpel: ['scalpel.glb', 'z'], wrench: ['wrench.glb', 'z'], blowpipe: ['blowpipe.glb', 'z'],
                   phone: ['smartphone.glb', 'y'], handMirror: ['hand_mirror.glb', 'y'], camera: ['old_camera_flash.glb', 'y'],
@@ -11369,8 +11369,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     })();
     /* THE MESHY DECOR'S SPELL PROPS (2026-11-03, MODEL_LIST.md §10B S01/S02/S04; mondo: "put the 71 new meshy models in the
        game"): the piano Things That Go Bump throws, the sheep Counting Sheep hops over the fence, the tripod that walks the
-       heat-ray of Tripod Sweep. R2 Assets/decor/ (the room decor's folder, optimize-assets.js'd), upright, sized by height. */
-    var _DECOR_BASE = 'https://cdn.entropywars.net/Assets/decor/';
+       heat-ray of Tripod Sweep. R2 Assets/world/props/meshy_decor/ (the room decor's folder, optimize-assets.js'd), upright, sized by height. */
+    var _DECOR_BASE = 'https://cdn.entropywars.net/Assets/world/props/meshy_decor/';
     _WPN_MODELS.piano = { url: _DECOR_BASE + 'piano.glb', axis: 'y', matte: true };
     _WPN_MODELS.sheep = { url: _DECOR_BASE + 'sheep.glb', axis: 'y', matte: true };
     _WPN_MODELS.tripodMachine = { url: _DECOR_BASE + 'tripod_machine.glb', axis: 'y', matte: true };
@@ -11380,7 +11380,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        decor's Meshy floodlight mast (D04c flood_mast), were black code cylinders + a box truss */
     _WPN_MODELS.floodMast = { url: _DECOR_BASE + 'flood_mast.glb', axis: 'y', matte: true };
     /* THE ULTIMATE PROPS (2026-11-03, mondo's picks A A B A + the feather): Meshy pieces made by Claude through the Meshy API from
-       concepts he approved (project files meshy/ultimates/), R2 Assets/props/ (optimize-assets.js'd): Lockdown's sawhorse
+       concepts he approved (project files meshy/ultimates/), R2 Assets/world/props/misc/ (optimize-assets.js'd): Lockdown's sawhorse
        barricade (U01a, was code boxes), Flat Earth's disc (U03b, was a painted cylinder), Weigh the Heart's scales (U04a) and
        Ma'at's feather (U06a); the heart on the other pan is the Halloween pack's (THE SEVERED PARTS). */
     _WPN_MODELS.policeBarricade = { url: _PROPS_BASE + 'police_barricade.glb', axis: 'y', matte: true };
@@ -11953,7 +11953,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* THE HALLOWEEN COFFINS (2026-10-29, mondo: "There's a coffin_01 that can be used for mummy spells and coffin that can be used
        for a vampire spell animation (it has a cross on it). There's body and body_01 that are like wrapped up bodies that could be
-       used for mummy spells"): pieces of his Assets/halloween/models/halloween.fbx (ThreeRenderer.halloweenClone) — the pale wood
+       used for mummy spells"): pieces of his Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx (ThreeRenderer.halloweenClone) — the pale wood
        coffin and its plank lid for the mummy's Embalm (it stands up round the victim and the lid swings shut on them at the seal),
        the black coffin and its cross lid for the vampire's Mist Form (it comes up where she stood and the lid shuts on the mist she
        leaves), the two wrapped bodies for Curse of the Tomb (they lie by the opened tomb and sit bolt upright, each swapped for its
@@ -23276,7 +23276,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels,
        guitar and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells
        and exploration areas as props") ────────────────────────────────────────────────────────────────────────────────────────────
-       His eleven instrument models (R2 Assets/instruments/, the `ins_*` rows of _WPN_MODELS — stood up the renderer's one way, upright
+       His eleven instrument models (R2 Assets/world/packs/instruments/, the `ins_*` rows of _WPN_MODELS — stood up the renderer's one way, upright
        with the face to +Z, ThreeRenderer.instrumentPrep) play the musical casts. LOOKS ONLY: no sound, the hits / timing / rules are the
        spell's own. An instrument floats in beside the caster (on the camera's side, so the body never hides it), plays for the cast and
        fades; a few spells also put a small ensemble over the target on the hit.
@@ -30986,7 +30986,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            'menhir', 'trilithon', 'greek_column', 'cinder_block', 'stump', 'brazier', 'mushroom', 'mushroom2', 'fae_toadstool', 'fae_mushroom',
            'ancient_well', 'city_bin', 'dumpster', 'vault', 'potted_plant', 'fire_hydrant', 'traffic_cone', 'brick_arch', 'obelisk', 'sarsen',
            'earth', 'moon', 'wooden_bucket', 'ufo'].forEach(function (k) { _crCatKey(k, 'y'); }); } catch (e) {}
-    /* a solid in one of the game's own terrain sheets (Assets/Sprites/terrain/): one sheet per `unit` world units on every
+    /* a solid in one of the game's own terrain sheets (Assets/world/terrain/): one sheet per `unit` world units on every
        face (default one battle square), a single material (a script's .material.opacity fades keep working), the baked
        top-and-side light on it */
     function _finUvBox(w, h, d, unit) {
@@ -44602,7 +44602,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* EXCESSIVE MACHINE: the organ's pipes rise round the victim and light key by key.
        THE ORGAN PIPES (2026-11-03, mondo: "those gold rods ... should have shown up in the model list as needing to be
-       replaced"): each pipe is the Meshy organ pipe (MODEL_LIST §10B S05, R2 Assets/decor/), upright and sized by its
+       replaced"): each pipe is the Meshy organ pipe (MODEL_LIST §10B S05, R2 Assets/world/props/meshy_decor/), upright and sized by its
        height; the old code cylinders in the gold sheet are gone. No stand-in while the file loads (the spell warm loads it). */
     function _afOrgan3D(tx, ty) {
         if (_catOff('spells') || !_afOnce('sigExcessiveMachine:' + tx + ',' + ty, 2200)) return null;
@@ -44798,7 +44798,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
-       lunar lander in Assets/door/models/ — mondo: "i meant the lunar lander", not the Mars rover), warmed with the spell library (_SPELL_MISC_KEYS) and cloned through
+       lunar lander in Assets/world/hq/models/ — mondo: "i meant the lunar lander", not the Mars rover), warmed with the spell library (_SPELL_MISC_KEYS) and cloned through
        ThreeRenderer.getMiscModelClone. No file = no prop (NO STAND-INS). Measured in a browser: the satellite's panels run along
        X with the dish up (+Y); the shuttle stands on its tail, nose +Y, the orbiter's back to +Z; the station's truss runs along
        Z, flat; the lander's porch + hatch face +Z (it flies as a mount: three-renderer.js _MOUNT_VEHICLES).
@@ -56685,7 +56685,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ═════════════════════════════════════════════════════════════════════
        THE SEVERED PARTS (2026-10-29, mondo's Halloween pack: "There are severed body parts that i want to be used for gory
        spells and necromancer and zombie and undead and ghoul etc. Custom animations and blood for those."). The ten pieces of
-       Assets/halloween/models/halloween.fbx (ThreeRenderer.halloweenClone: two heads, an arm, a leg, a heart, a slab of meat,
+       Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx (ThreeRenderer.halloweenClone: two heads, an arm, a leg, a heart, a slab of meat,
        four lengths of gut — sheets Body_parts.png / Body_parts_01.png) fly in the gory spells of the dead:
          · THE TEAR — the bites and claws rip pieces out of the victim; they tumble away from the blow (THE GORE's rule),
            trailing blood, land with a splat, bounce, lie in their stain a while and sink into the floor.
@@ -60987,7 +60987,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* ══ THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and
        nature spells") ═══════════════════════════════════════════════════════════════════════════════════════════════════════
-       His insects (three-renderer.js THE INSECTS: Assets/animals/insects/, flat colours, the flyers beating their own wings) are the
+       His insects (three-renderer.js THE INSECTS: Assets/world/animals/insects/, flat colours, the flyers beating their own wings) are the
        bees of The Swarm, A Thousand Stings, the Brood drone and the bee queen's finisher; the ants of Overrun, The Colony and the
        tunnels; the butterflies of the fae and the green spells; the moths round the mothman; the grasshoppers out of the crops.
        Looks only — no rule is touched. The spells that had their own bodies (the bee dots, the ant columns, the mound) swap them for

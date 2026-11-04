@@ -2,7 +2,7 @@
 
 Claude made these on Meshy (concept image -> mondo's OK -> smart-topology model) for docs/notes/character-models-plan.md
 section 4a/6 (wearable gear + held spell props). Files: project files `meshy/models/` (GLB + preview). **Wired 2026-11-03:**
-the held spell props + whip + worn gear (PR #827, R2 `Assets/props/`) are in §7a / §7a-2; the creator fittings (PR #829,
+the held spell props + whip + worn gear (PR #827, R2 `Assets/world/props/misc/`) are in §7a / §7a-2; the creator fittings (PR #829,
 `charactercreation/wear/ewm_*`) are in §5e. #01 cowboy hat = mondo's own model; #58 playing cards dropped (mondo uses a pack); #49 whip =
 Meshy handle + a lash Claude built in Blender.
 
@@ -16,7 +16,7 @@ Meshy process (mondo's): concept image first -> mondo approves -> model in low-p
 Target tris are doubled per mondo (MPFB bodies ~30k). Concept rules: one object, plain background, no strings / chains / cords, screens and signs blank. Wiring a model into the
 game (giving the catalogue row a `file` and dropping its `proc`) is a separate step, only on mondo's say.
 **2026-11-03 mondo said wire them:** the 71 models Meshy made are in (rows marked WIRED). Each proc builder now WEARS its model
-(three-renderer.js THE MESHY DECOR, `_hqDecorWear`, files on R2 `Assets/decor/`): the catalogue rows are unchanged, the proc's
+(three-renderer.js THE MESHY DECOR, `_hqDecorWear`, files on R2 `Assets/world/props/meshy_decor/`): the catalogue rows are unchanged, the proc's
 own pieces hide (and keep the collision) and the model is fitted into their box. Rows not marked were not made on Meshy.
 
 ### 10A. Needs a NEW model (89) — stand-ins placed in rooms that no model in the game fits
@@ -127,7 +127,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | S02 | sheep | Counting Sheep (dreameater) — **WIRED 2026-11-03** | A fluffy white cartoonish-realistic sheep standing |
 | S03 | polaroid | Cryptid Vanish (loch ness monster) | An instant polaroid photograph showing a blurry photo of a lake, white frame |
 | S04 | tripod_machine | Tripod Sweep (martian) — **WIRED 2026-11-03** | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
-| S05 | organ_pipe | Excessive Machine (Barbarella) — **WIRED 2026-11-03** (`Assets/decor/organ_pipe_white.glb`; the 9 pipes that rise round the victim were code cylinders in the gold sheet; brass concept also made, project files gold-texture/) | A single tall pipe-organ pipe: a long cylinder with the flat lip mouth cut-out near the bottom and a short cone foot |
+| S05 | organ_pipe | Excessive Machine (Barbarella) — **WIRED 2026-11-03** (`Assets/world/props/meshy_decor/organ_pipe_white.glb`; the 9 pipes that rise round the victim were code cylinders in the gold sheet; brass concept also made, project files gold-texture/) | A single tall pipe-organ pipe: a long cylinder with the flat lip mouth cut-out near the bottom and a short cone foot |
 
 ### 10C. SWAPS TO MODELS ALREADY IN THE GAME — done 2026-11-03 (mondo: "go ahead and do the recommended replacements")
 
@@ -168,7 +168,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 
 ### 10F. MESHY → ELBOLILLODURO PACK SWAPS — done 2026-11-03 (mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
 
-Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recentred, turned to face the way the Meshy model faced, and uploaded as `Assets/misc/ebd_<pack>_<item>.glb`; the catalogue row keeps its size (h / span), so only the look changed. Side-by-side sheets: project files `asset-packs/meshy-swap/`. All 14 packs are CC0.
+Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recentred, turned to face the way the Meshy model faced, and uploaded as `Assets/world/packs/elbolilloduro/ebd_<pack>_<item>.glb`; the catalogue row keeps its size (h / span), so only the look changed. Side-by-side sheets: project files `asset-packs/meshy-swap/`. All 14 packs are CC0.
 
 | key | Meshy file it replaced | new file | pack |
 | --- | --- | --- | --- |
@@ -204,7 +204,7 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 ### 10G. THE GOLD-SHEET PIECES — code shapes that wore terrain/gold.png (2026-11-03, mondo: "I previously requested that that gold texture be removed from the game, and those rods should have shown up in the model list as needing to be replaced")
 
 The 2026-09-21 swap (TERRAIN_SPRITES `gold` = the aluminium sheet tinted gold) missed every spell / deployable piece that loaded
-`Assets/Sprites/terrain/gold.png` by file name. Since 2026-11-03 nothing loads that file (three-vfx-effects.js `_SIG_GOLD_TEX` +
+`Assets/world/terrain/gold.png` by file name. Since 2026-11-03 nothing loads that file (three-vfx-effects.js `_SIG_GOLD_TEX` +
 `_sigTerrainTex`, three-renderer.js `_getTeslaTex`): these pieces wear the tinted aluminium gilt until each gets a model. All are
 code shapes (cylinders / boxes / tori) and need a real model (pack or Meshy).
 **2026-11-04 audit:** the "needs" column names the model the game or a pack ALREADY has; only G05 bow, G10 gold record, G11 gavel and
@@ -237,7 +237,7 @@ G13 lipstick have none. Wiring any of them is mondo's call (spell looks).
 ### 10E. Old wishlist items with no stand-in yet (new dressing, by zone) — not concepted; ask mondo first
 
 **2026-11-04 audit — packs that ALREADY have these** (use them before Meshy): police barricade = the Meshy `policeBarricade` (§7a);
-fallen street lamp = `streetlamp` (Assets/misc/streetlamp, laid down); rooftop AC unit = 6twelve `Air_conditioners` / Molten
+fallen street lamp = `streetlamp` (Assets/world/props/meshy/streetlamp, laid down); rooftop AC unit = 6twelve `Air_conditioners` / Molten
 `Air_Con`; rail track section = the mine pack `Rails`; manhole ladder / pool ladder = House / Playground `Ladder`;
 castle wall with battlements + round tower = the castle pack `Wall_2x4` / `Tower_Mid` (Castles_and_Forts.glb); candelabra = the
 Halloween candles; broken column = the Meshy greek column or a castle `*_ruined` piece; brick stack / timber scaffold = check
@@ -265,7 +265,7 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | --- | --- | --- | --- |
 | 1 | castle / skycastle landmarks | **DONE 11-03 (round 2)**, code deleted | castle pack pieces placed one by one: Wall_2x4 / Wall_2x2 / Gate_2x4 curtain, Tower_Mid corner towers, a Tower_Doorway keep, Tower_top_1 + Roof_Cone caps (the sky castle keeps its clouds) |
 | 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
-| 3 | `_hzObelisk` | **DONE 11-03 (round 2)**, code deleted | new Meshy granite obelisk (`Assets/decor/obelisk.glb`, mondo: "needs a new meshy model") |
+| 3 | `_hzObelisk` | **DONE 11-03 (round 2)**, code deleted | new Meshy granite obelisk (`Assets/world/props/meshy_decor/obelisk.glb`, mondo: "needs a new meshy model") |
 | 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
 | 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
 | 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the NEW Meshy column (`greek_column.glb`) (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
@@ -277,8 +277,8 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | 12 | gateway / arch | **DONE 11-03 (round 2)**, code deleted | new Meshy curved stone arch (`stone_arch.glb`, mondo: "an arch is curved") |
 | 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
-| 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/misc/molten_cryo_tube.glb` |
-| 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/misc/molten_sleeper_casket.glb` |
+| 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/world/props/meshy/molten_cryo_tube.glb` |
+| 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/world/props/meshy/molten_sleeper_casket.glb` |
 | 17 | lava lamps | **DONE 11-03 (round 2)**, base + cap code deleted | Meshy chrome base + cap (table and floor, `lava_lamp_*.glb`); the glass + the moving wax stay drawn (Meshy can't make glass; mondo: the Molten lamp looks bad) |
 | 18 | grow_lamp | **DONE 11-03 (round 2)**, code deleted | Meshy LED panel (`grow_lamp.glb`), the purple glow + light kept |
 | 19 | submarine | **DONE 11-03 (round 2)**, code deleted | Meshy riveted yellow sub (`submarine.glb`; mondo: the PSX pack sub looked worse than the code one) |

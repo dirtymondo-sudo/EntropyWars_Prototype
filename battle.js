@@ -53343,7 +53343,7 @@
                     }
                 }
             } catch (_e) {}
-            const _lsTerrBase = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
+            const _lsTerrBase = 'https://cdn.entropywars.net/Assets/world/terrain/';
             [
                 // 3D trees / rock & crystal clusters / bone piles / flowers
                 'wood.png', 'leaves.png', 'rock.png', 'liquids/Liquid_Blue_05-128x128.png', 'enamel.png',   // crystal: the blue sheet (2026-11-02; the cones are the Meshy shards now)

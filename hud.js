@@ -13377,7 +13377,7 @@ _watchPhaseForHud();
 const KEY = 'ew_ui_maker';
 const K = 2;                       // canvas px per CSS px (crisp on hi-dpi)
 const MID = 64;                    // the stretchable middle of a baked skin (CSS px)
-const TEX = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
+const TEX = 'https://cdn.entropywars.net/Assets/world/terrain/';
 const ROLES = [
   ['panel', 'Panel', 'Windows, plates, cards'],
   ['head', 'Header', 'Title bars inside a window'],

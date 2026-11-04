@@ -134,12 +134,19 @@ function newKey(map, key) {
     return best ? best[1] + key.slice(best[0].length) : null;
 }
 async function waveRows(w) {
-    const map = waveMap(w), rows = await list(GAME);
+    /* a key belongs to the wave whose row wins over EVERY wave's rows (longest prefix): vehicles/Sound effects/ is W2's
+       (audio/sfx/vehicles/) even though W4 moves vehicles/ */
+    const mine = waveMap(w), all = JSON.parse(fs.readFileSync(path.join(__dirname, 'r2-layout.json'), 'utf8'));
+    const every = [].concat(...Object.keys(all).filter(k => !k.startsWith('_')).map(k => all[k]));
+    const mineSet = new Set(mine.map(r => r[0]));
+    const rows = await list(GAME);
     const have = new Map(rows.map(r => [r.key, r]));
     const out = [];
     for (const r of rows) {
         if (r.key.endsWith('/')) continue;                  // 0-byte folder markers don't move
-        const nk = newKey(map, r.key); if (!nk || nk === r.key) continue;
+        let win = null; for (const row of every) if (r.key.startsWith(row[0]) && (!win || row[0].length > win[0].length)) win = row;
+        if (!win || !mineSet.has(win[0])) continue;
+        const nk = win[1] + r.key.slice(win[0].length); if (nk === r.key) continue;
         out.push(Object.assign({}, r, { to: nk, dest: have.get(nk) || null }));
     }
     return out;
@@ -205,16 +212,27 @@ function rewriteMode() {
     forms.sort((a, b) => b[0].length - a[0].length);
     const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const re = new RegExp(forms.map(f => esc(f[0])).join('|'), 'g'), to = new Map(forms);
-    let total = 0;
+    let total = 0; const skipped = [];
+    const everything = JSON.parse(fs.readFileSync(path.join(__dirname, 'r2-layout.json'), 'utf8'));
+    const allOld = [].concat(...Object.keys(everything).filter(k => !k.startsWith('_')).map(k => everything[k].map(r => r[0])));
     for (const file of GAME_FILES) {
         const fp = path.join(__dirname, file); if (!fs.existsSync(fp)) continue;
         const src = fs.readFileSync(fp, 'utf8'); let n = 0;
         /* never the move table itself (sprites.js EW_ASSET_MOVES): its left column must keep the OLD prefixes */
         const a = src.indexOf('const EW_ASSET_MOVES = ['), b = a >= 0 ? src.indexOf('];', a) + 2 : -1;
-        const rw = (t) => t.replace(re, (m) => { n++; return to.get(m); });
+        /* a literal that IS a folder with moved sub-folders under it (a base constant like '.../Assets/misc/' when misc/ebd_ and
+           misc/wings/ go elsewhere) is left as written: the code adds the rest at run time, and sprites.js ewAsset moves the
+           whole URL correctly then. Reported, so it can be split by hand. */
+        const rw = (t) => t.replace(re, (m, off, str) => {
+            const rest = /^[^'"`\s)$?#{}<>,|]*/.exec(str.slice(off + m.length))[0];
+            let tok = m + rest; try { tok = decodeURIComponent(tok); } catch (e) {}
+            if (allOld.some(P => P.length > tok.length && P.startsWith(tok))) { skipped.push(file + ': ' + tok); return m; }
+            n++; return to.get(m);
+        });
         const out = a >= 0 && b > a ? rw(src.slice(0, a)) + src.slice(a, b) + rw(src.slice(b)) : rw(src);
         if (n) { total += n; console.log(`  ${file}: ${n}`); if (!DRY) fs.writeFileSync(fp, out); }
     }
+    [...new Set(skipped)].forEach(t => console.log('  LEFT AS WRITTEN (a folder with moved sub-folders; split by hand)  ' + t));
     console.log(`rewrote ${total} literal path(s) for ${waves.join(' + ')}${DRY ? ' (dry run)' : ''}`);
 }
 async function listMode() {
