@@ -1578,3 +1578,19 @@ the thread's zip adds `Assets/decor/` by hand.
 - **Round 3 (mondo 11-03: the thinned mast "still looks dumb", regenerate it):** new Meshy stadium floodlight `flood_mast.glb`
   (concept D04c picked by mondo: slim dark pole on a concrete footing, a crossbar of 8 floodlights facing +Z), same name, same
   `_hqDecorWear('flood_mast', U, g, { fit: 'height' })`. Concepts A/B/C in project files meshy/decor/concepts/D04_flood_mast_redo_A_B_C.jpg.
+
+## THE PACK WEAR + THE MESHY AUDIT (2026-11-04, mondo: "Why ... did you have me making meshy models for the stadium lights and other stuff when we already have non meshy versions??? You are supposed to document every single model and try to not use meshy models.")
+- **The floodlight was not a duplicate:** no downloaded pack has a stadium floodlight; the "Beach world props v4" sheet labelled
+  Meshy decor as "decor" without saying Meshy. MODEL_LIST.md §12 is the full audit write-up.
+- **THE PACK WEAR (three-renderer.js `_HQ_PACK_WEAR`, before `_hqDecorBox`):** name → `Assets/misc/ebd_<pack>_<key>.glb`. `_hqDecorWear`
+  looks a name up in `_HQ_DECOR_GLB` (Meshy, Assets/decor/) first, then here, so a proc wears a pack piece exactly like a Meshy model
+  (its pieces hide, keep collision, the piece fits their box). Wired: steel_table (DINER Table_Metal), metal_shelving (Gas Station
+  Shelf_Metal, `fit: 'stretch'`), wall_shelf (House Shelf_01, `wall`), toilet_paper (House Toilet_paper, three rolls `at`), broom
+  (House Broom), washer / dryer (House Washing_machine / Abandoned House Secadora, via `_laundry_machine`). Kill switch: EW_NO_DECOR_GLB.
+- **bake-pack-pieces.py AUDIT jobs** cut them (+ the candidates bare_bulb Foco, concrete_pillar Metro Column, roller_shutter Tacos
+  doors_garage, chalkboard VHS Shop Blackboard, turnstile Metro automatic_ticket_gate — cut, NOT wired, mondo's call). The rotations in
+  AUDIT are the shipped ones; `--rot '{"k":deg}'` overrides. Copies in project files asset-packs/meshy-swap/glb/.
+- **list-models.js:** the car pack rows list the GGBot OBJs (pool read off `_CAR_PACK_POOLS`) and the Meshy cars go under "fallback
+  only"; procWears follows `_hqProcBuilders._x(` / `_hqXxxBuild(` helpers and `_HQ_DECOR_GLB.x` / ternary names; §10A gets an AUTO
+  "in the game now" column; §13 lists every model file on R2 from `R2_MODEL_FILES.json` (`node list-models.js --r2` re-lists the
+  bucket — rerun after uploading models); THE PACK-FIRST RULE box at the top.

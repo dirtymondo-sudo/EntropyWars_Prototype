@@ -26,6 +26,27 @@ const ROOT = __dirname;
 const OUT = path.join(ROOT, 'MODEL_LIST.md');
 const EXTRA = path.join(ROOT, 'MODEL_LIST_EXTRA.md');
 const DRY = process.argv.includes('--dry-run');
+/* THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"): `--r2` lists the game bucket
+   (ewmusicsfx = cdn.entropywars.net) through the Cloudflare REST API (curl; the cloud proxy adds the token, never in a file)
+   and rewrites R2_MODEL_FILES.json; a plain run reads that snapshot, so §13 names every model file on R2, used or not. */
+const R2_SNAP = path.join(__dirname, 'R2_MODEL_FILES.json');
+const MODEL_EXT = /\.(glb|gltf|fbx|obj|dae|blend|3ds|stl|ply|c4d|max|ma|mb)$/i;
+if (process.argv.includes('--r2')) {
+    const { execFileSync } = require('child_process');
+    const acct = process.env.CLOUDFLARE_ACCOUNT_ID || 'b2608d464c04fdeec48ba91f04b8aeb7', bucket = process.env.EW_R2_BUCKET || 'ewmusicsfx';
+    const files = []; let cur = null;
+    for (;;) {
+        const u = 'https://api.cloudflare.com/client/v4/accounts/' + acct + '/r2/buckets/' + bucket + '/objects?per_page=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '');
+        const r = JSON.parse(execFileSync('curl', ['-sS', '--max-time', '120', u], { maxBuffer: 1 << 28 }).toString());
+        if (!r.success) { console.error('R2 listing refused: ' + JSON.stringify(r.errors || r).slice(0, 300)); process.exit(1); }
+        for (const o of r.result) if (MODEL_EXT.test(o.key)) files.push([o.key, o.size]);
+        const ri = r.result_info || {}; cur = ri.cursor;
+        if (!ri.is_truncated || !cur) break;
+    }
+    files.sort((a, b) => a[0].localeCompare(b[0]));
+    fs.writeFileSync(R2_SNAP, JSON.stringify({ bucket, listed: new Date().toISOString().slice(0, 10), files }, null, 0).replace(/\],\[/g, '],\n['));
+    console.log('R2 snapshot: ' + files.length + ' model files in ' + bucket);
+}
 const CDN = 'https://cdn.entropywars.net/';
 
 /* ── HOW EACH MODEL WAS MADE. `how` is one of the HOW keys; first matching row wins (tested on the bucket path). ── */
@@ -60,6 +81,7 @@ const SOURCES = [
     { re: /charactercreation\/Meshy_AI_/, how: 'MESHY_C', src: 'Meshy base body, rigged by Claude (character-rig.js bodies)' },
     // packs with a known author (the same rows as data.js EW_CREDITS)
     { re: /Assets\/foilage\/OBJ\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0' },
+    { re: /Assets\/foilage\/(FBX|Blends)\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ)' },
     { re: /Assets\/foilage\/retrotreepack\//, how: 'PACK', src: 'Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files)' },
     { re: /Assets\/Metro_PSX\//, how: 'PACK', src: 'Metro PSX · Elbolilloduro · CC0' },
     { re: /Assets\/halloween\//, how: 'PACK', src: 'Halloween pack · Elbolilloduro · CC0' },
@@ -69,6 +91,8 @@ const SOURCES = [
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_diner_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_trailerscene_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms)' },
+    { re: /Assets\/misc\/ebd_abandonedhouse_(?!house)/, how: 'PACK', src: 'Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender)' },
+    { re: /Assets\/misc\/ebd_dinerscene_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender)' },
     { re: /Assets\/misc\/ebd_abandonedhouse_/, how: 'PACK', src: 'Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds)' },
     { re: /Assets\/misc\/ebd_trailerpark_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_6twelve_/, how: 'PACK', src: '6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender)' },
@@ -94,6 +118,8 @@ const SOURCES = [
     { re: /Assets\/props\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827)' },
     { re: /Assets\/decor\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03)' },
     // Meshy exports (mondo's, made on meshy.ai) — before the folder rows so a Meshy file in a pack folder still reads Meshy
+    { re: /Assets\/misc\/wings\.glb$/, how: 'PACK_ANON', src: "Angel wings pair (mondo's upload, maker not recorded): retired 2026-10-27 for the single Meshy wings" },
+    { re: /(^|\/)MAL\d_Sniper\.glb$/, how: 'MESHY_C', src: "Meshy animations from the male sniper, consolidated by Claude (a stray copy at the bucket root)" },
     { re: /Assets\/misc\/wings\/Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (single wing, mirrored in code)' },
     { re: /_Character_output\.glb|_withSkin\.glb|Meshy_AI_\w+_Running\.glb/, how: 'MESHY', src: 'Meshy AI rigged character (mondo)' },
     { re: /Meshy_AI_/, how: 'MESHY', src: 'Meshy AI (mondo)' },
@@ -107,11 +133,13 @@ const SOURCES = [
     { re: /Assets\/animals\/elephant\//, how: 'PACK_ANON', src: "Elephant (mondo's upload, FBX)" },
     { re: /Assets\/animals\/crow_and_rabbit\//, how: 'PACK_ANON', src: "Crow + rabbit (mondo's upload)" },
     { re: /Assets\/animals\/top_fangs/, how: 'PACK_ANON', src: "Top fangs (mondo's upload)" },
+    { re: /Assets\/animals\/eagle\.(fbx|glb)$/, how: 'MESHY', src: "Meshy-style eagle export (mondo's upload): the unrigged original of eagle_rigged.glb" },
     { re: /Assets\/animals\//, how: 'PACK_ANON', src: "Farm / zoo animals (mondo's upload)" },
     { re: /Assets\/instruments\//, how: 'PACK_ANON', src: "Instruments + orchestral (mondo's upload)" },
     { re: /Assets\/traps\//, how: 'PACK_ANON', src: "Traps pack (mondo's upload)" },
     { re: /Assets\/chess\//, how: 'PACK_ANON', src: "Low Poly Chess Set (mondo's upload, FBX)" },
     { re: /Assets\/weapons\/spear\//, how: 'PACK_ANON', src: "Spear (mondo's upload, FBX)" },
+    { re: /Assets\/misc\/road\//, how: 'PACK_ANON', src: "Road piece (mondo's upload, author not recorded; .3ds / .blend / .dae / .fbx / .obj of one model)" },
     { re: /Assets\/misc\/(eyeball|streetlamp|Pyramid)\//, how: 'PACK_ANON', src: "Authored OBJ / GLB (mondo's upload, author not recorded)" },
     { re: /_cc0_clip_ready/, how: 'PACK_ANON', src: "CC0 'clip ready' prop (mondo's upload, author not recorded)" },
     { re: /Assets\/door\/models\/(computer_chair|asteroid_)/, how: 'PACK_ANON', src: "D.O.O.R. kit upload (mondo, author not recorded)" },
@@ -180,16 +208,51 @@ const METRO_URL = (R3.match(/_R2_METRO \+ '([^']+\.glb)'/) || [, 'Models/Metro.g
 const procRows = [];
 /* a proc builder that hangs a real model over its own pieces (THE ONE MODEL: _hqCatGlb / _hqOneModel, a race model, a retro
    tree) is not a stand-in — `procWears` names what it wears, read off the builder's body in three-renderer.js */
-function procWears(proc) {
+function procBody(proc) {
     const m = new RegExp('^\\s+' + proc + ':\\s*function', 'm').exec(R3);
-    if (!m) return null;
+    if (!m) return '';
     const rest = R3.slice(m.index + m[0].length);
     const nx = /^\s+[a-z_0-9]+:\s*function/m.exec(rest);
-    const body = nx ? rest.slice(0, nx.index) : rest.slice(0, 4000);
+    return nx ? rest.slice(0, nx.index) : rest.slice(0, 4000);
+}
+function fnBody(name) {   // a top-level `function _hqXxx(` helper a builder hands its work to
+    const i = R3.indexOf('function ' + name + '(');
+    if (i < 0) return '';
+    const rest = R3.slice(i + 9 + name.length);
+    const nx = /\n    (?:function |var |\/\*)/.exec(rest);
+    return nx ? rest.slice(0, nx.index) : rest.slice(0, 4000);
+}
+function procWears(proc) {
+    let body = procBody(proc);
+    if (!body) return null;
+    /* THE MESHY AUDIT (2026-11-04): a builder that hands its work on (`_hqProcBuilders._laundry_machine(...)`, `_hqLavaLampBuild(...)`)
+       is read through that helper too, and a model named straight off the decor tables (`_HQ_DECOR_GLB.grow_lamp`,
+       `_HQ_DECOR_GLB[floor ? 'lava_lamp_floor_base' : …]`) or by `_hqDecorWear(a ? 'dryer' : 'washer', …)` counts as worn */
+    for (const d of body.matchAll(/_hqProcBuilders\._(\w+)\(/g)) body += procBody('_' + d[1]);
+    for (const d of body.matchAll(/\b(_hq\w+Build)\(/g)) body += fnBody(d[1]);
     const hits = new Set();
+    for (const h of body.matchAll(/_HQ_DECOR_GLB\.(\w+)|_HQ_DECOR_GLB\[[^\]]*?'(\w+)'[^\]]*\]|_hqDecorWear\([^,']*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) [h[1], h[2], h[3], h[4]].forEach(x => x && hits.add(x));
     for (const h of body.matchAll(/\('([a-z_]+)', U|_hqSpellUrl\('(\w+)'\)|_hqMiscUrl\('(\w+)'\)|getRace3DModel\('([^']+)'|(_nrTree)\(|_hqProcBuilders\._(conveyor)\(/g)) hits.add(h[1] || h[2] || h[3] || h[4] || (h[5] && 'a retro-pack tree') || (h[6] && 'conveyor'));
     return hits.size ? [...hits].join(', ') : null;
 }
+/* THE MESHY AUDIT (2026-11-04): a catalogue row / a _VEHICLE_KIT row with a `pack` DRAWS mondo's car pack (GGBot OBJs,
+   three-renderer.js _CAR_PACK_POOLS); its Meshy file is only the fallback (window.EW_NO_CAR_PACK). Read the pools off the
+   renderer so the list names the cars actually drawn, and file the Meshy copy under "fallback only". */
+const carPool = {};
+for (const m of (block(R3, 'var _CAR_PACK_POOLS = {') || '').matchAll(/(\w+):\s*\{[^\n]*?rows:\s*\[(.*)\]\s*\}/g))
+    carPool[m[1]] = [...m[2].matchAll(/\[(\d), \[([^\]]*)\]\]/g)].map(x => [+x[1], x[2]]);
+for (let n = 1; n <= 8; n++) carPool['car0' + n] = carPool['car0' + n] || [[n, "''"]];
+function carPackFiles(pool) {
+    const out = [];
+    for (const [n, paints] of carPool[pool] || []) {
+        const dir = CDN + 'Assets/vehicles/Car 0' + n + '/', base = n === 1 ? 'Car.obj' : 'Car' + n + '.obj';
+        if (n === 5 && /'taxi'/.test(paints)) out.push(dir + 'Car5_Taxi.obj');
+        if (n === 5 && /'police/.test(paints)) out.push(dir + 'Car5_Police.obj');
+        if (paints.split(',').some(p => !/taxi|police/.test(p))) out.push(dir + base);
+    }
+    return [...new Set(out)];
+}
+const meshyFallback = [];   // [key, url, what draws instead]
 for (const k of Object.keys(H.catalogue)) {
     const r = H.catalogue[k];
     let url = null;
@@ -201,7 +264,11 @@ for (const k of Object.keys(H.catalogue)) {
     else if (r.file) url = KIT + r.file + (r.node ? '#' + r.node : '');
     else if (r.pack) url = CDN + 'Assets/vehicles/' + r.pack;
     if (url) {
-        if (r.pack && !r.file) { const n = +r.pack.replace(/\D/g, ''); add('props', k, CDN + 'Assets/vehicles/Car 0' + n + '/' + (n === 1 ? 'Car' : 'Car' + n) + '.obj'); }
+        if (r.pack) {
+            const files = carPackFiles(r.pack);
+            files.forEach((f, i) => add('props', k + (files.length > 1 ? ' (' + (i + 1) + ' of ' + files.length + ')' : ''), f, 'the car pack, pool `' + r.pack + '`'));
+            if (r.file) meshyFallback.push([k, url, 'car pack pool `' + r.pack + '`']);
+        }
         else add('props', k, url);
     } else if (r.proc && !/^(bat_|trap_)/.test(k)) procRows.push([k, r.proc, r.h || r.span || '', procWears(r.proc)]);
 }
@@ -236,6 +303,15 @@ function block(src, start) {
 }
 const misc = block(R3, 'var _MISC_GLB = {');
 for (const m of misc.matchAll(/^\s+(\w+):\s*'([^']+\.(?:glb|obj|fbx))'/gm)) add('misc', m[1], BASES.misc + m[2]);
+// the NPC traffic (_VEHICLE_KIT.<k>.pack = '<pool>'): those Meshy cars only draw when the car pack is off
+for (const m of R3.matchAll(/_VEHICLE_KIT\.(\w+)\.pack = '(\w+)'/g)) {
+    const id = [...rows.keys()].find(i => i.startsWith('misc|') && i.endsWith('|' + m[1]));
+    if (!id) continue;
+    meshyFallback.push([m[1] + ' (NPC traffic)', CDN + rows.get(id).path, 'car pack pool `' + m[2] + '`: ' + carPackFiles(m[2]).map(f => f.replace(CDN + 'Assets/vehicles/', '')).join(', ')]);
+    rows.delete(id);
+}
+// THE PACK WEAR (2026-11-04, THE MESHY AUDIT): pack pieces cut out in Blender that the procs wear (three-renderer.js _HQ_PACK_WEAR)
+for (const m of (block(R3, 'var _HQ_PACK_WEAR = {') || '').matchAll(/(\w+):\s*'([^']+\.glb)'/g)) add('packwear', m[1], BASES.misc + m[2]);
 const VFX = read('three-vfx-effects.js');
 const wpn = block(VFX, 'var _WPN_MODELS = {');
 for (const m of wpn.matchAll(/^\s+(\w+):\s*\{[^}]*?\b(file|url):\s*'([^']+)'/gm)) add('spell', m[1], m[2] === 'url' ? m[3] : BASES.weapons + m[3]);
@@ -251,6 +327,8 @@ const ULT_PROPS = { policeBarricade: 'Lockdown', flatEarth: 'Flat Earth', heartS
 for (const m of VFX.matchAll(/_WPN_MODELS\.(\w+) = \{ url: _PROPS_BASE \+ '([^']+)'/g)) add('spell', m[1] + (ULT_PROPS[m[1]] ? ' (' + ULT_PROPS[m[1]] + ' ultimate prop)' : ' (held in the hand)'), CDN + 'Assets/props/' + m[2]);
 const gearW = block(R3, 'var UNIT_GEAR_WEAR = {');
 for (const m of gearW.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+\.glb)'/gm)) add('gear', m[1], CDN + 'Assets/props/' + m[2]);
+// the bats the bat_ procs draw (`_BAT_BASE + 'bat_' + kind + '.obj'`, a name built at run time)
+for (const m of ((R3.match(/var _BAT_KINDS = \[([^\]]*)\]/) || [, ''])[1]).matchAll(/'(\w+)'/g)) add('animal', 'bat_' + m[1] + ' (the bat_ procs)', CDN + 'Assets/animals/bats/bat_' + m[1] + '.obj');
 const ani = block(R3, 'var _ANIMALS = {');
 for (const m of ani.matchAll(/^\s+(\w+):\s*\{\s*file:\s*'([^']+)'/gm)) add('animal', m[1], BASES.animals + m[2]);
 // THE PACK BUILDINGS (2026-11-03): the Buildings pack's shop blocks (data.js HQ_PACK_BUILDINGS: Disaster City's lots + the editor's Look list)
@@ -306,6 +384,12 @@ for (const f of wearFiles) {
 }
 
 /* ── write ── */
+// a Meshy file that only draws when the car pack is off is not counted as in the game (it is listed under "fallback only")
+const fallbackPaths = new Set(meshyFallback.map(f => bucketPath(f[1]).replace(/#.*$/, '')));
+for (const [id, r] of [...rows]) if ((r.section === 'props' || r.section === 'misc') && fallbackPaths.has(r.path.replace(/#.*$/, ''))) {
+    if (!meshyFallback.some(f => f[0] === r.key)) meshyFallback.push([r.key + ' (' + r.section + ' table)', CDN + r.path, 'the catalogue rows above (car pack)']);
+    rows.delete(id);
+}
 const all = [...rows.values()];
 const tally = {};
 function count(how, n) { tally[how] = (tally[how] || 0) + n; }
@@ -339,6 +423,12 @@ L.push('creator piece — is documented here in the SAME PR that wires it: add a
 L.push('a new folder / pack / maker, rerun `node list-models.js`, commit MODEL_LIST.md. Name the pack and its author when known.');
 L.push('Goal: keep the look consistent and track how far the game is from **all human-made models** (see the tally).');
 L.push('Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is WHAT exists and WHO / WHAT made it.');
+L.push('');
+L.push('> **THE PACK-FIRST RULE (mondo, 2026-11-04: "try to not use meshy models"):** before any Meshy prompt, concept or to-do');
+L.push('> row, look for a human-made model first, in this order: §6 / §7 here (already in the game), §13 (on R2, not wired), and');
+L.push('> project files `asset-packs/contents-lists/object_names_in_every_downloaded_pack.json` (every node of every downloaded pack).');
+L.push('> A pack piece is cut out with `bake-pack-pieces.py` and worn by the proc (§6 "pack pieces the procs wear"). Only when');
+L.push('> nothing fits does the row go to Meshy, and the to-do row says which packs were checked. See §12 for the 2026-11-04 audit.');
 L.push('');
 L.push('## 1. The tally');
 L.push('');
@@ -428,6 +518,22 @@ L.push('Made 2026-11-03 for the code-drawn stand-ins of §10A (D-IDs in project 
 L.push('calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) and the model is fitted into their box.');
 L.push('');
 L.push(table(sec('decor'), 'decor key'));
+L.push('');
+L.push('### Pack pieces the procs wear (three-renderer.js _HQ_PACK_WEAR, Assets/misc/) — human-made, preferred over Meshy (' + sec('packwear').length + ')');
+L.push('');
+L.push('THE MESHY AUDIT (2026-11-04): §10A rows a downloaded pack already had a piece for. `bake-pack-pieces.py` (its AUDIT jobs) cut the');
+L.push('node out of the pack scene; `_hqDecorWear(name, U, g)` wears it exactly like a Meshy decor model (a name in _HQ_DECOR_GLB wins).');
+L.push('');
+L.push(table(sec('packwear'), 'proc wear name'));
+L.push('');
+L.push('### Meshy files kept only as a FALLBACK — not drawn in the game (' + meshyFallback.length + ')');
+L.push('');
+L.push('These rows draw mondo\'s car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_PACK_POOLS`); the Meshy car only draws with');
+L.push('`window.EW_NO_CAR_PACK = true` or if the pack fails. Not counted in the tally.');
+L.push('');
+L.push('| row | Meshy file (R2 bucket path) | what draws instead |');
+L.push('| --- | --- | --- |');
+for (const f of meshyFallback.sort((a, b) => a[0].localeCompare(b[0]))) L.push('| ' + esc(f[0]) + ' | `' + esc(bucketPath(f[1])) + '` | ' + f[2] + ' |');
 L.push('');
 L.push('### Stairs pack (data.js HQ_STAIR_PACK — every stair flight, railing and escalator in the rooms)');
 L.push('');
@@ -602,7 +708,87 @@ L.push('three) were stacked three.js cones with a white cone for snow. Builders 
 L.push('pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif read as giant blobs.');
 L.push('**Wanted:** a real far mountain range model (one file, low poly) if mondo wants the weenies back.');
 L.push('');
-if (fs.existsSync(EXTRA)) { L.push(fs.readFileSync(EXTRA, 'utf8').trim()); L.push(''); }
+/* THE MESHY AUDIT (2026-11-04): §10A's to-do rows go stale the moment a thread wires one, so each row gets an AUTO column
+   read off the game tables: what that catalogue key draws today (a model file and its maker / the models its proc wears /
+   still code). A row that says "code" is the only kind still waiting on a model. */
+const procBy = new Map(procRows.map(r => [r[0], r]));
+const propBy = new Map();
+for (const r of all) if (r.section === 'props') propBy.set(r.key.replace(/ \(\d+ of \d+\)$/, ''), r);
+const wearMaker = new Map();
+for (const r of all) if (r.section === 'decor') wearMaker.set(r.key, 'Meshy decor');
+for (const r of all) if (r.section === 'packwear') wearMaker.set(r.key, 'pack piece');
+function liveStatus(key) {
+    const pr = propBy.get(key);
+    if (pr) return 'model file (' + (pr.src ? HOW[pr.src.how].label : '?') + ')';
+    const r = procBy.get(key);
+    if (!r) return H.catalogue[key] ? 'pack-backed proc' : 'not a catalogue key';
+    if (!r[3]) return '**code — still needs a model**';
+    return 'wears ' + r[3].split(', ').map(w => w + (wearMaker.has(w) ? ' (' + wearMaker.get(w) + ')' : '')).join(', ');
+}
+if (fs.existsSync(EXTRA)) {
+    let inA = false;
+    const ex = fs.readFileSync(EXTRA, 'utf8').trim().split('\n').map(line => {
+        if (/^### /.test(line)) inA = /^### 10A\./.test(line);
+        if (!inA || !/^\|/.test(line)) return line;
+        if (/^\| # \|/.test(line)) return line + ' in the game now (AUTO, list-models.js) |';
+        if (/^\| --- /.test(line)) return line + ' --- |';
+        const m = /^\| D\d+\w? \| `(\w+)`/.exec(line);
+        return m ? line + ' ' + liveStatus(m[1]) + ' |' : line;
+    });
+    L.push(ex.join('\n')); L.push('');
+}
+// ── 13. EVERY MODEL FILE ON R2 (the bucket snapshot R2_MODEL_FILES.json; `node list-models.js --r2` refreshes it)
+if (fs.existsSync(R2_SNAP)) {
+    const snap = JSON.parse(fs.readFileSync(R2_SNAP, 'utf8'));
+    const listed = new Set(all.map(r => r.path.replace(/#.*$/, '')));
+    for (const f of meshyFallback) listed.add(bucketPath(f[1]).replace(/#.*$/, ''));
+    ['Assets/halloween/models/halloween.fbx', 'Assets/misc/Castles_and_Forts.glb'].forEach(p => listed.add(p));   // cut up by node (§7e, §8b)
+    const stem = p => p.replace(/\.[^./]+$/, '').toLowerCase();
+    const listedStems = new Set([...listed].map(stem));
+    const listedBase = new Set([...listed].map(p => p.split('/').pop().replace(/\.[^.]+$/, '').toLowerCase()));
+    const groups = new Map();
+    let unlisted = 0;
+    for (const [key, size] of snap.files) {
+        if (listed.has(key)) continue;
+        unlisted++;
+        let status, made;
+        const src = sourceOf(key), base = key.split('/').pop();
+        if (/^Assets\/opt\//.test(key)) {
+            const orig = base.replace(/^[0-9a-f]{8}_/, '').replace(/\.(opt|lod\d)\.glb$/, '').toLowerCase();
+            status = /\.lod\d\.glb$/.test(base) ? 'far-off LOD copy (optimize-assets.js --lod)' : 'optimised copy the game loads in place of the original (optimize-assets.js)';
+            if (!listedBase.has(orig)) status += ' — its original is not in the tables above';
+            made = /meshy_ai/i.test(base) ? 'Meshy AI' : 'same maker as its original';
+        } else if (/_withSkin\.glb$|Meshy_AI_sniper_|_Animation_|\/MAL\d_|_Running\.glb$/.test(key)) {
+            status = 'animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate)';
+            made = src ? HOW[src.how].label : 'Meshy AI';
+        } else if (/charactercreation\//.test(key)) {
+            status = 'creator file not named by a table above (a per-body copy, a base mesh, or a retired pick)';
+            made = src ? HOW[src.how].label : /meshy_ai/i.test(base) ? 'Meshy AI' : 'see §5';
+        } else if (listedStems.has(stem(key))) {
+            status = 'another format of a model listed above (source file, the game loads the listed one)';
+            made = src ? HOW[src.how].label : 'same as the listed one';
+        } else {
+            status = 'on R2, the game does not load it';
+            made = src ? HOW[src.how].label : /meshy_ai/i.test(base) ? 'Meshy AI' : '**UNSORTED**';
+        }
+        const folder = key.indexOf('/') < 0 ? '(bucket root)' : key.replace(/\/[^/]*$/, '');
+        const gk = folder + '|' + status + '|' + made;
+        if (!groups.has(gk)) groups.set(gk, { folder, status, made, src: src ? src.src : '', files: [], bytes: 0 });
+        const g = groups.get(gk); g.files.push(base.replace(/^[0-9a-f]{8}_/, '')); g.bytes += size;
+    }
+    L.push('## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (' + unlisted + ' of ' + snap.files.length + ', bucket `' + snap.bucket + '`, listed ' + snap.listed + ')');
+    L.push('');
+    L.push('THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the');
+    L.push('game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into');
+    L.push('R2_MODEL_FILES.json; rerun it after uploading models. A folder with "the game does not load it" is a model we HAVE: check it');
+    L.push('before asking for a new one (THE PACK-FIRST RULE).');
+    L.push('');
+    L.push('| folder | why it is on R2 | made by | files | MB |');
+    L.push('| --- | --- | --- | --- | --- |');
+    for (const g of [...groups.values()].sort((a, b) => a.folder.localeCompare(b.folder) || a.status.localeCompare(b.status)))
+        L.push('| `' + esc(g.folder) + '` | ' + esc(g.status) + ' | ' + g.made + (g.src && g.made !== 'see §5' ? ' · ' + esc(g.src) : '') + ' | ' + g.files.length + ': ' + esc(g.files.sort().join(', ')) + ' | ' + (g.bytes / 1048576).toFixed(1) + ' |');
+    L.push('');
+}
 const uns = all.filter(r => !r.src);
 if (uns.length) {
     L.push('## UNSORTED — found in the game, no SOURCES row yet');
