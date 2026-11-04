@@ -30,6 +30,19 @@ const DRY = process.argv.includes('--dry-run');
    (ewmusicsfx = cdn.entropywars.net) through the Cloudflare REST API (curl; the cloud proxy adds the token, never in a file)
    and rewrites R2_MODEL_FILES.json; a plain run reads that snapshot, so §13 names every model file on R2, used or not. */
 const R2_SNAP = path.join(__dirname, 'R2_MODEL_FILES.json');
+/* THE ASSET PATH MAP (docs/notes/r2-layout-plan.md): sprites.js EW_ASSET_MOVES = the folders that moved. Every path this list
+   collects is shown at its NEW key (moved()); a SOURCES row may still name the old folder (it is tested on both); the R2 snapshot
+   skips the old keys a wave keeps on R2 until mondo has checked it. */
+const ASSET_MOVES = (() => {
+    try {
+        const src = fs.readFileSync(path.join(__dirname, 'sprites.js'), 'utf8');
+        const a = src.indexOf('const EW_ASSET_MOVES = ['), b = a >= 0 ? src.indexOf('];', a) : -1;
+        return a < 0 || b < a ? [] : [...src.slice(a, b).matchAll(/\[\s*'(Assets\/[^'<]+)'\s*,\s*'(Assets\/[^']+)'\s*\]/g)].map(m => [m[1], m[2]]).sort((x, y) => y[0].length - x[0].length);
+    } catch (e) { return []; }
+})();
+function moved(p) { for (const [o, n] of ASSET_MOVES) if (p.startsWith(o)) return n + p.slice(o.length); return p; }
+function unmoved(p) { let best = null; for (const [o, n] of ASSET_MOVES) if (p.startsWith(n) && (!best || n.length > best[1].length)) best = [o, n]; return best ? best[0] + p.slice(best[1].length) : p; }
+const isOldKey = (p) => ASSET_MOVES.some(([o]) => p.startsWith(o));
 const MODEL_EXT = /\.(glb|gltf|fbx|obj|dae|blend|3ds|stl|ply|c4d|max|ma|mb)$/i;
 if (process.argv.includes('--r2')) {
     const { execFileSync } = require('child_process');
@@ -39,7 +52,7 @@ if (process.argv.includes('--r2')) {
         const u = 'https://api.cloudflare.com/client/v4/accounts/' + acct + '/r2/buckets/' + bucket + '/objects?per_page=1000' + (cur ? '&cursor=' + encodeURIComponent(cur) : '');
         const r = JSON.parse(execFileSync('curl', ['-sS', '--max-time', '120', u], { maxBuffer: 1 << 28 }).toString());
         if (!r.success) { console.error('R2 listing refused: ' + JSON.stringify(r.errors || r).slice(0, 300)); process.exit(1); }
-        for (const o of r.result) if (MODEL_EXT.test(o.key)) files.push([o.key, o.size]);
+        for (const o of r.result) if (MODEL_EXT.test(o.key) && !isOldKey(o.key)) files.push([o.key, o.size]);
         const ri = r.result_info || {}; cur = ri.cursor;
         if (!ri.is_truncated || !cur) break;
     }
@@ -149,6 +162,8 @@ const SOURCES = [
 ];
 function sourceOf(p) {
     for (const s of SOURCES) if (s.re.test(p)) return s;
+    const o = unmoved(p);
+    if (o !== p) for (const s of SOURCES) if (s.re.test(o)) return s;
     return null;
 }
 
@@ -159,7 +174,7 @@ function bucketPath(u) {
     if (p.startsWith(CDN)) p = p.slice(CDN.length);
     p = p.replace(/\?.*$/, '');
     try { p = decodeURI(p); } catch (e) {}
-    return p;
+    return moved(p);
 }
 function add(section, key, url, note) {
     const p = bucketPath(url);
@@ -744,14 +759,14 @@ if (fs.existsSync(R2_SNAP)) {
     const snap = JSON.parse(fs.readFileSync(R2_SNAP, 'utf8'));
     const listed = new Set(all.map(r => r.path.replace(/#.*$/, '')));
     for (const f of meshyFallback) listed.add(bucketPath(f[1]).replace(/#.*$/, ''));
-    ['Assets/halloween/models/halloween.fbx', 'Assets/misc/Castles_and_Forts.glb'].forEach(p => listed.add(p));   // cut up by node (§7e, §8b)
+    ['Assets/halloween/models/halloween.fbx', 'Assets/misc/Castles_and_Forts.glb'].forEach(p => listed.add(moved(p)));   // cut up by node (§7e, §8b)
     const stem = p => p.replace(/\.[^./]+$/, '').toLowerCase();
     const listedStems = new Set([...listed].map(stem));
     const listedBase = new Set([...listed].map(p => p.split('/').pop().replace(/\.[^.]+$/, '').toLowerCase()));
     const groups = new Map();
     let unlisted = 0;
     for (const [key, size] of snap.files) {
-        if (listed.has(key)) continue;
+        if (listed.has(key) || isOldKey(key)) continue;
         unlisted++;
         let status, made;
         const src = sourceOf(key), base = key.split('/').pop();

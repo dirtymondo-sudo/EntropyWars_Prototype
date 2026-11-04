@@ -314,3 +314,21 @@ on the weak Chrome PC, so waves shouldn't land right before a session with him. 
 
 Nothing in this plan changes a game rule or how anything looks or plays. It only changes where files live and how the
 code finds them.
+
+---
+
+## 9. THE LOG (mondo 11-04 21:47: "sounds like a good plan, go ahead")
+
+- **W0 done 11-04 ~22:10.** 807 keys (124 MB) left the public bucket: 366 stray repo files at the root (server.js, d1.js,
+  bots, tests, .md docs, .sql, .yml, assets.js, the zip, the stale index.html), `docs/` (13) and THE LAND (427, incl. folder
+  markers). Each was copied to `dirtymondo:archive/2026-11/<same key>`, read back, sha256-matched, then removed from
+  `ewmusicsfx` (`node r2-layout.js --archive`). Nothing is deleted for good: copy a key back to undo.
+- **W1 (this PR):** sprites.js THE ASSET PATH MAP (`EW_ASSET_MOVES` empty, `ewAsset()` / `ewAssetKey()`, the safety net at
+  fetch / XHR / img / audio / source / setAttribute — only installed once a row exists), three-renderer.js `_asKey` reads
+  moved keys, sync-zip.js `--put` follows the moves, list-models.js shows moved paths (SOURCES rows match old or new),
+  `r2-layout.js` + `r2-layout.json` (the waves). No URL changes yet.
+- Wave rows (r2-layout.json): W2 audio + ui, W3 fx, W4 world, W5 characters. Race folders in W5 are lower-cased with the
+  spelling duplicates joined (`anunaki` → `annunaki`, `sherrif`/`sherriff` → `sheriff`); other race folder names stay as
+  they are (renaming them to race ids is W6, optional). `Assets/opt/` and the code files don't move.
+- Before archiving any OLD key of a flipped wave: mondo has played on it, and `window.EW_ASSET_MOVE_HITS` /
+  `EW_ASSET_MOVE_LOG` on his page show what still asks for the old paths.

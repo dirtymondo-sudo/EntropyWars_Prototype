@@ -1814,6 +1814,8 @@ const ThreeRenderer = (function () {
         var k = url.slice(base.length), q = k.search(/[?#]/);
         if (q >= 0) k = k.slice(0, q);
         try { k = decodeURIComponent(k); } catch (e) {}
+        /* THE ASSET PATH MAP (sprites.js EW_ASSET_MOVES): a moved folder's old path → the key ASSET_MANIFEST lists it under now */
+        if (typeof ewAssetKey === 'function') k = ewAssetKey(k);
         return k;
     }
     function _asManAdopt(j) {

@@ -108,6 +108,20 @@ function r2Put(key, buf) {
     return ok;
 }
 
+/* THE ASSET PATH MAP (docs/notes/r2-layout-plan.md): after a wave's flip, a --put to a folder that moved goes to the new folder
+   (sprites.js EW_ASSET_MOVES, longest prefix wins), so a thread still using the old path out of habit lands in the right place. */
+function movedKey(key) {
+    let rows = [];
+    try {
+        const src = fs.readFileSync(path.join(REPO_ROOT, 'sprites.js'), 'utf8');
+        const a = src.indexOf('const EW_ASSET_MOVES = ['), b = a >= 0 ? src.indexOf('];', a) : -1;
+        if (a >= 0 && b > a) rows = [...src.slice(a, b).matchAll(/\[\s*'([^']+)'\s*,\s*'([^']+)'\s*\]/g)].map(m => [m[1], m[2]]);
+    } catch (e) {}
+    rows.sort((x, y) => y[0].length - x[0].length);
+    for (const [o, n] of rows) if (key.startsWith(o)) { console.log(`  (moved folder) ${key} -> ${n + key.slice(o.length)}`); return n + key.slice(o.length); }
+    return key;
+}
+
 function putMode() {
     const i = args.indexOf('--put');
     const pairs = args.slice(i + 1);
@@ -116,7 +130,7 @@ function putMode() {
     for (let j = 0; j < pairs.length; j += 2) {
         if (!fs.existsSync(pairs[j])) { console.error('  missing local file ' + pairs[j]); bad++; continue; }
         if (DRY) { console.log(`  would upload ${pairs[j]} -> ${pairs[j + 1]}`); continue; }
-        if (!r2Put(pairs[j + 1].replace(/^\/+/, ''), fs.readFileSync(pairs[j]))) bad++;
+        if (!r2Put(movedKey(pairs[j + 1].replace(/^\/+/, '')), fs.readFileSync(pairs[j]))) bad++;
     }
     if (bad) fail(bad + ' file(s) not uploaded / not live');
     console.log('all files live on R2.');

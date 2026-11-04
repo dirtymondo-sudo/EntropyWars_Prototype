@@ -113,6 +113,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   Meshy rig; three-renderer.js THE SWAY swings them. Notes: models-assets.md "THE SWAY".
 - `bake-looks.js` (2026-11-01): `node bake-looks.js <Entropy_Wars_Race_Look_….json> [--dry-run] | --list | --remove race[:gender]` bakes a
   forge EXPORT DEFAULT LOOK into sprites.js RACE_CREATOR_LOOKS (a race's creator look replaces its Meshy model). Notes: character-creator.md "THE RACE LOOKS".
+- `r2-layout.js` (2026-11-04): THE R2 LAYOUT (docs/notes/r2-layout-plan.md): `--copy/--verify <wave>`, `--manifest`, `--archive`.
+  Moved folders = sprites.js EW_ASSET_MOVES (+ r2-layout.json); upload NEW files to the new folders.
 - `bake-faces.js` (2026-11-03): .mhm face -> creator FACE preset. Notes: character-creator.md "THE FACE PRESETS".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
