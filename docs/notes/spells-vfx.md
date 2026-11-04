@@ -3055,3 +3055,27 @@ Follow-up to THE DODGE READS. Looks and timing only, no rules.
 Capture gotcha: never re-run H.freeze on a frozen capture page (`globalThis.__frozen=false`): it empties the rAF shim's
 queue and the game's render loop dies (the picture freezes, no error).
 Proof: /mnt/project-files/videos/units/fixes/CATGIRL_TELEPORTS_GRAPPLE_RETURN_1080p30.mp4.
+## THE HIT STOP REV 2 + THE HIT BLINK + THE JUICE HIT (2026-11-04)
+mondo: "like pokemon or fire emblem where they flash all white a couple times", "im talking about the 3d models, i cant even
+tell if there is hit stop", "shouldnt p2 have the same freeze as p1?", "light attacks need one the same as any other spell",
+"make the hit stops impactful, add drama, and enhance the tactile feel of attacks". Looks only, no rule reads any of it.
+- **What was wrong:** the freeze was a 5% crawl of 0-150 ms (light spells and basic attacks under 30 damage got none); the hit
+  flash rode the same frozen clock, so the victim was never white DURING its own freeze; on models "white" was only the
+  texture × 1.6 (dark fur stayed dark); `VFX3D.juiceHit` (Phase 7's kill confirm / flinch / guest freeze) was called by
+  battle.js but never written, so Player 2 got no per-hit freeze at all.
+- **The table (battle.js THE JUICE PASS, `EW_JUICE`):** spells light 90 · standard 90 · heavy 130 · ultimate 180 ms; basic
+  attacks 60 (`basicWeak`) · 90 from 30 dmg · 115 from 50 · 140 from 80; crit +40, kill +80, cap 300. A hit within 300 ms of
+  the last stop (a multi-hit's rapid hits) freezes at 40% (`rapid`), so a nine-hit cast doesn't stall its own animation.
+- **A true stop:** `ThreeAnim.hitstop` = `setTimeWarp(0, ms)` (was 0.05; `setTimeWarp` used to read 0 as 1 via `|| 1`). The
+  same warp asked twice keeps the later end (the host's freeze + the juice call never cut each other short).
+- **THE HIT BLINK (three-renderer `hitBlink` / `ThreeAnim.hitBlink`):** REAL clock. Solid white for the whole freeze with a
+  side-to-side hit-lag jitter, then off 70 / on 60 twice more (a kill: three times). White = the material's emissive pushed
+  past 1 (emissive map × 60, or plain white emissive on an untextured material): every lit pixel clips white on WebGL and
+  WebGPU with no program change. Runs last in `_updateAnimations` (after the self glow). The old colour flash keeps its
+  burn/poison/stun/drown/heal/block colours; on a white hit it stays plain while the blink owns the body. Tune:
+  `EW_JUICE.blinkOn / blinkOff / blinks / blinkShake`.
+- **THE JUICE HIT (three-vfx-effects `juiceHit(tx, ty, w, freezeMs, kill, unitId)`):** the freeze + the blink + the screen
+  kick as time resumes (light/standard 'light', heavy 'normal', ultimate 'heavy'; a kill 'heavy'/'hard'). online.js relays it
+  as `vfx3d-x` (anchor = the victim's tile, fog-gated), so the guest gets the SAME freeze, blink and kick. The host skips the
+  blink/kick for a tile its own fog hides. Off: `window.EW_DISABLE_JUICE` (the old damage-band freeze, no blink).
+- Proof frame: /mnt/project-files/hit-stop/hit_blink_before_after.png (Bigfoot, brown fur → solid white during the freeze).

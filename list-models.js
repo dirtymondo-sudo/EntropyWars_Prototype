@@ -100,6 +100,8 @@ const SOURCES = [
     { re: /Assets\/misc\/ebd_laundry_/, how: 'PACK', src: 'Laundry · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_house_/, how: 'PACK', src: 'House · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_vhsshop_/, how: 'PACK', src: 'VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender)' },
+    { re: /Assets\/misc\/ebd_metro_/, how: 'PACK', src: 'Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
+    { re: /Assets\/misc\/ebd_tacos_/, how: 'PACK', src: 'Tacos · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_busstop_/, how: 'PACK', src: 'Bus stop · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_survival_/, how: 'PACK', src: 'Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_vegetation_/, how: 'PACK', src: 'Vegetation · Elbolilloduro · CC0 (piece cut out in Blender)' },

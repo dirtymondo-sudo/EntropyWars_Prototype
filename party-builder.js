@@ -1029,6 +1029,19 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 // (THE BODY SLOTS: a word of 11+ letters gets a soft hyphen at its middle, so a narrow tile breaks it there with a "-", never mid-cut)
 const _pbSoftWrap = (t) => String(t).replace(/[A-Za-z]{11,}/g, w => w.slice(0, Math.ceil(w.length / 2)) + '\u00ad' + w.slice(Math.ceil(w.length / 2)));
 let _pbCcTab = 'body', _pbCcSlot = 'head', _pbCcKinds = {}, _pbCcLayer = 1;   // (THE LAYERS 1 2 3: the torso layer open)
+/* THE CREATOR ICONS (2026-11-04, mondo: "i just want to add icons for the different tabs and wear to make it easier to navigate" + "try
+   to find icons from this asset pack" = SunGraphica's Minimal Game Icons Pack, his copy of the full pack). One white silhouette per
+   creator tab (BODY ... OUTFIT) and per OUTFIT body part (Head ... Footwear), on R2 Assets/Icons/creator/<key>.png (bake-creator-icons.py
+   cuts them from the pack: trimmed, square, 128 px). Drawn as a CSS mask filled with the button's own text colour, so a tab's icon
+   turns gold with its label and the UI Maker's colours carry over. A key missing here draws no icon (the button is text only).
+   Credit: data.js EW_CREDITS (SunGraphica). */
+const CC_ICON_BASE = 'https://cdn.entropywars.net/Assets/Icons/creator/';
+const CC_ICONS = {
+  body: 'tab_body', face: 'tab_face', skin: 'tab_skin', hair: 'tab_hair', outfit: 'tab_outfit',
+  'slot:head': 'slot_head', 'slot:face': 'slot_face', 'slot:neck': 'slot_neck', 'slot:torso': 'slot_torso', 'slot:back': 'slot_back',
+  'slot:larm': 'slot_larm', 'slot:rarm': 'slot_rarm', 'slot:waist': 'slot_waist', 'slot:legs': 'slot_legs', 'slot:feet': 'slot_feet',
+};
+const ccIcon = (key) => CC_ICONS[key] ? h('i', { className: 'pb-cc-icon', 'aria-hidden': true, style: { '--cc-icon': 'url(' + CC_ICON_BASE + CC_ICONS[key] + '.png)' } }) : null;
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
@@ -1555,9 +1568,12 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
       onClick: () => setKindBySlot(k => ({ ...k, [slot]: gr[1] })) }, gr[2].toUpperCase() + (groupWorn(gr) ? ' •' : ''));
     const own = gl.filter(gr => slotOfGroup(gr[1]) !== 'arms'), pairs = gl.filter(gr => slotOfGroup(gr[1]) === 'arms');
     return h(React.Fragment, null,
-      h('div', { className: 'pb-cc-slots', role: 'tablist', 'aria-label': 'Body part' },
-        shown.map(([s, label, cam]) => h('button', { key: s, role: 'tab', className: 'ms-tty-btn' + (slot === s ? ' primary' : ''), 'aria-selected': slot === s, 'aria-pressed': slot === s,
-          'data-cc-cam-own': cam, onClick: () => setSlotTab(s) }, label.toUpperCase() + (slotWorn(s) ? ' •' : '')))),
+      // THE CREATOR ICONS (2026-11-04): each body part an icon tile (its icon over its name, a gold dot = something worn there), in two
+      // even rows (Head ... Back over Left arm ... Footwear) so the tiles line up at any width
+      h('div', { className: 'pb-cc-slots', role: 'tablist', 'aria-label': 'Body part', style: { '--cc-cols': shown.length <= 6 ? shown.length : Math.ceil(shown.length / 2) } },
+        shown.map(([s, label, cam]) => { const n = slotWorn(s); return h('button', { key: s, role: 'tab', className: 'ms-tty-btn pb-cc-slot' + (slot === s ? ' primary' : ''), 'aria-selected': slot === s, 'aria-pressed': slot === s,
+          'data-cc-cam-own': cam, title: label + (n ? ': ' + n + ' worn here' : ': nothing worn here'), onClick: () => setSlotTab(s) },
+          ccIcon('slot:' + s), h('span', { className: 'pb-cc-slot-name' }, label.toUpperCase()), n ? h('span', { className: 'pb-cc-worn', 'aria-label': 'worn' }) : null); })),
       gl.length > 1 ? h('div', { className: 'pb-cc-kinds', role: 'tablist', 'aria-label': ((slots.find(s => s[0] === slot) || [])[1] || slot) + ' kind', 'data-cc-cam-own': slotCam(slot) },
         own.map(chip),
         arm && pairs.length ? h('span', { key: 'pair', className: 'pb-cc-kinds-head' }, 'Both arms') : null,
@@ -1806,7 +1822,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               devHider ? ccDevBar() : null,   // THE HIDDEN PICKS: the dev item hider's bar
               h('div', { className: 'pb-cc-maintabs', role: 'tablist', 'aria-label': 'Character creator' },
                 mainTabs.map(([t, label, cam]) => h('button', { key: t, role: 'tab', className: 'ms-tty-btn pb-cc-maintab' + (tab === t ? ' primary' : ''), 'aria-selected': tab === t, 'aria-pressed': tab === t,
-                  'data-cc-cam-own': t === 'outfit' ? slotCam(slots.some(s => s[0] === slotTab) ? slotTab : 'head') : cam, onClick: () => { _pbCcTab = t; setMainTab(t); } }, label))),
+                  'data-cc-cam-own': t === 'outfit' ? slotCam(slots.some(s => s[0] === slotTab) ? slotTab : 'head') : cam, onClick: () => { _pbCcTab = t; setMainTab(t); } },
+                  ccIcon(t), h('span', { className: 'pb-cc-maintab-name' }, label)))),   // (THE CREATOR ICONS: the tab's icon over its name)
               h('div', { key: tab, className: 'pb-cc-tabpanel', role: 'tabpanel', 'aria-label': (mainTabs.find(t => t[0] === tab) || [])[1], 'data-cc-cam-own': tab === 'outfit' ? null : tabCam },
                 tab === 'body' ? ccBodyTab() : tab === 'face' ? ccFaceTab() : tab === 'skin' ? ccSkinTab() : tab === 'hair' ? ccHairTab() : ccOutfit()),
               h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),

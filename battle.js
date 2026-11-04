@@ -13083,13 +13083,22 @@
            Kill-switch: window.EW_DISABLE_JUICE = true (the old damage-band
            freeze, no kill freeze, no flourish / flinch / punch). */
         const JUICE = (typeof window !== 'undefined') ? (window.EW_JUICE = window.EW_JUICE || {}) : {};
-        if (JUICE.light == null) JUICE.light = 0;
-        if (JUICE.standard == null) JUICE.standard = 40;
-        if (JUICE.heavy == null) JUICE.heavy = 90;
-        if (JUICE.ultimate == null) JUICE.ultimate = 150;
-        if (JUICE.kill == null) JUICE.kill = 60;
-        if (JUICE.crit == null) JUICE.crit = 20;
-        if (JUICE.cap == null) JUICE.cap = 230;
+        /* THE HIT STOP REV 2 (2026-11-04, mondo: "i cant even tell if there is hit stop" + "light attacks need one the same
+           as any other spell" + "you can give a small one to weak basic attacks"): a light spell freezes like a standard
+           one, every tier is longer, a weak basic attack gets a small stop (basic: 60 · 90 from 30 dmg · 115 from 50 ·
+           140 from 80), and the freeze is a TRUE stop with the victim held solid white (three-renderer THE HIT BLINK). A
+           hit that lands within 300 ms of the last stop (a multi-hit's rapid hits) freezes at 40%, so a nine-hit cast
+           doesn't stall its own animation. */
+        if (JUICE.light == null) JUICE.light = 90;
+        if (JUICE.standard == null) JUICE.standard = 90;
+        if (JUICE.heavy == null) JUICE.heavy = 130;
+        if (JUICE.ultimate == null) JUICE.ultimate = 180;
+        if (JUICE.kill == null) JUICE.kill = 80;
+        if (JUICE.crit == null) JUICE.crit = 40;
+        if (JUICE.cap == null) JUICE.cap = 300;
+        if (JUICE.basicWeak == null) JUICE.basicWeak = 60;
+        if (JUICE.rapid == null) JUICE.rapid = 0.4;
+        let _juiceLastStopAt = 0;
         const _JUICE_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
         const _JUICE_STATUS_CALLOUT = { burn: '🔥 IGNITED', frozen: '❄️ FROZEN', stun: '⚡ SHOCKED', poison: null, bleed: null };
         function _juiceOn() { return !(typeof window !== 'undefined' && window.EW_DISABLE_JUICE); }
@@ -13125,16 +13134,20 @@
             }
             let ms = (opts && opts.spellType)
                 ? (Number(JUICE[_JUICE_WEIGHTS[w]]) || 0)
-                : (dmg >= 30 ? (dmg >= 80 ? 110 : dmg >= 50 ? 85 : 60) : 0);
+                : (dmg >= 30 ? (dmg >= 80 ? 140 : dmg >= 50 ? 115 : 90) : (dmg > 0 ? (Number(JUICE.basicWeak) || 0) : 0));
             if (opts && opts.isCrit) ms += Number(JUICE.crit) || 0;
+            const now = performance.now();
+            if (now - _juiceLastStopAt < 300) ms *= Math.max(0, Math.min(1, Number(JUICE.rapid)));   // a multi-hit's rapid hits
             if (kill) ms += Number(JUICE.kill) || 0;
-            return Math.max(0, Math.min(Number(JUICE.cap) || 230, Math.round(ms)));
+            ms = Math.max(0, Math.min(Number(JUICE.cap) || 300, Math.round(ms)));
+            if (ms > 0) _juiceLastStopAt = now;
+            return ms;
         }
         function _juiceHitFx(target, w, hs, kill) {
             if (!_juiceOn() || !target) return;
             const V = (typeof window !== 'undefined') ? window.VFX3D : null;
             if (!V || typeof V.juiceHit !== 'function') return;
-            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0); } catch (e) {}
+            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id); } catch (e) {}
         }
 
         function triggerHitstop(durationMs) {
@@ -37098,10 +37111,10 @@
                 // hits skip the freeze (the death slow-mo owns that beat), and
                 // buffered end-of-round replays keep their own pacing.
                 /* THE JUICE PASS (SPELL_DIRECTOR_PLAN Phase 7): the hitstop
-                   TABLE. A spell hit freezes by its weight (light 0 ·
-                   standard 40 · heavy 90 · ultimate 150 ms); a basic attack
-                   keeps its damage bands (60 / 85 / 110 from 30 damage). A
-                   crit adds 20, a killing blow 60 (the death slow-mo now
+                   TABLE. A spell hit freezes by its weight (light 90 ·
+                   standard 90 · heavy 130 · ultimate 180 ms, rev 2 11-04); a basic
+                   attack by its damage (60 · 90 from 30 · 115 from 50 · 140 from 80). A
+                   crit adds 40, a killing blow 80 (the death slow-mo now
                    waits for the freeze instead of being swallowed by it —
                    three-renderer setTimeWarp). Capped at EW_JUICE.cap. */
                 const _juiceW = _juiceHitWeight(sourceUnit, opts, finalDamage);

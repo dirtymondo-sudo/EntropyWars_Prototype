@@ -1503,3 +1503,26 @@ add an outer layer of coats". Before this the torso had a Tops kind (one shirt),
     camisole + lace-up blouse + long coat.
 - Known, not from the layers: an untucked Blender shirt shows a dark patch of the pack jeans' seat at the back (same when worn alone).
 - Shots: /mnt/project-files/creator-layers/.
+
+## THE CREATOR ICONS (2026-11-04, character-models-plan row 12s)
+mondo: "i want to redesign the character creator a little bit, basically i just want to add icons for the different tabs and wear to
+make it easier to navigate" + "try to find icons from this asset pack" (https://sungraphica.itch.io/minimal-game-icons-pack). His three
+reference shots (an equipment screen with HEAD / UPPER BODY / LOWER BODY icon slots, a DS-style item tab bar) were for the layout only.
+- **The pack**: the free download is 90 menu icons (no clothes / body icons); mondo owns the full 600-icon pack and dropped its zip in
+  R2 (sha 9bd12d1c); it now lives ONLY in the private bucket dirtymondo `inbox/Minimal icons(1).zip` (moved out of the public
+  ewmusicsfx CDN bucket on his word, 11-04; not kept in project files). The free part's contact sheet:
+  /mnt/project-files/asset-packs/other/sungraphica_minimal-game-icons/free_90_icons_sheet.png. Licence: free for commercial use, editing allowed, no reselling / redistributing the
+  ORIGINAL files, "please credit SunGraphica" -> data.js EW_CREDITS section ICONS. The pack never goes in the repo.
+- **The icons** (`python3 -I bake-creator-icons.py <the zip> <out>`, its ICONS table): 15 PNGs, 128 px, white + alpha (an emoji's black
+  eyes / mouth become holes), on R2 `Assets/Icons/creator/<key>.png` (uploaded with `node sync-zip.js --put`). Tabs: BODY = Human,
+  FACE = the relax emoji, SKIN = Drop, HAIR = Head full (the pack has no comb / hair icon), OUTFIT = T shirt. Body parts: Head = Hat,
+  Face = mask 2 (a hood + eye mask), Neck = Necklece, Torso = Armor, Back = Bag (backpack), Left / Right arm = Glove (left mirrored),
+  Waist = Bag2 (a pouch; no belt icon in the pack), Legs = Pants, Footwear = Shoe_ (a boot).
+- **The look** (party-builder.js CC_ICONS / ccIcon, styles-base.css "THE CREATOR ICONS"): each icon is a CSS mask filled with the
+  button's text colour (`currentColor`), so it dims and lights gold with its label and follows the UI Maker's colours; the CDN sends
+  CORS (needed for a mask). The five tabs = icon over the name. OUTFIT's body parts = icon tiles in two even rows (Head, Face, Neck,
+  Torso, Back over Left arm, Right arm, Waist, Legs, Footwear: `--cc-cols` = half the parts shown), a gold dot in the corner = something
+  worn there (the old " •"; the tile's title says how many). The kinds chips, the LAYERS 1 · 2 · 3 tabs and every pick are unchanged.
+  A key missing from CC_ICONS draws no icon (text only), a missing file draws nothing.
+- **Checked in the browser** (Occam's mirror, 1600 x 900 and 600 x 900): no cut labels, no sideways scroll, OUTFIT > TORSO > LAYERS 1 · 2 · 3
+  switches layers as before, LEFT ARM / FOOTWEAR open their kinds. Shots: /mnt/project-files/creator-icons/.

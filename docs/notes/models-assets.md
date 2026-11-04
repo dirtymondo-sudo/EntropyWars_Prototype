@@ -1594,3 +1594,9 @@ the thread's zip adds `Assets/decor/` by hand.
   only"; procWears follows `_hqProcBuilders._x(` / `_hqXxxBuild(` helpers and `_HQ_DECOR_GLB.x` / ternary names; §10A gets an AUTO
   "in the game now" column; §13 lists every model file on R2 from `R2_MODEL_FILES.json` (`node list-models.js --r2` re-lists the
   bucket — rerun after uploading models); THE PACK-FIRST RULE box at the top.
+- **Round 2 (mondo 11-04: "keep the lava lamp with moving wax, and switch those on"):** the five candidates now wear their pack piece
+  too: bare_bulb (Foco, `h: 0.14, top`, the glow moved up to the bulb), concrete_pillar (Metro Column, `stretch`, the hazard band +
+  bay number kept), roller_shutter (Tacos doors_garage, a 2.6 × 2.7 × 0.1 `box`, `wall`), chalkboard (VHS Shop Blackboard turned
+  180 in the bake so the green face is +Z, `stretch`, the type-wheel text kept and set on its face in `onDone`), turnstile (Metro
+  automatic_ticket_gate, `fit: 'height'`; the code tripod is hidden so the gate no longer turns). The lava lamps keep the Meshy
+  base + cap and the drawn wax.

@@ -65556,6 +65556,12 @@ const EW_CREDITS = {
         { title: 'TEXTURES', rows: [
             { role: '140+ Liquid Textures', by: 'Screaming Brain Studios', license: 'CC0', source: 'https://opengameart.org/users/screaming-brain-studios' },
         ] },
+        /* THE CREATOR ICONS (2026-11-04): the creator's tab + body-part icons, cut from mondo's copy of the full pack (bake-creator-icons.py);
+           the pack's licence: free for commercial use, editing allowed, no reselling / redistributing the original files, "please credit
+           SunGraphica" */
+        { title: 'ICONS', rows: [
+            { role: 'Minimal Game Icons Pack (the character creator’s tab and body-part icons)', by: 'SunGraphica', license: 'SunGraphica licence (free for commercial use)', source: 'https://sungraphica.itch.io/minimal-game-icons-pack' },
+        ] },
         { title: 'FONTS', rows: [
             { role: 'Aida Serifa', by: 'Manfred Klein' },
             { role: 'Contra', by: 'Fredrick Nader \u00b7 Apostrophic Lab', source: 'http://www.apostrophiclab.com' },

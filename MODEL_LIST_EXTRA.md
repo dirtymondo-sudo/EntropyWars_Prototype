@@ -29,7 +29,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 
 | # | catalogue key | prop | uses | target tris | concept prompt |
 | --- | --- | --- | --- | --- | --- |
-| D01 | `bare_bulb` | Bare ceiling bulb — pack candidate: Abandoned House `Foco` (cut, not wired; ask mondo) | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord |
+| D01 | `bare_bulb` | Bare ceiling bulb — **PACK 2026-11-04** (Abandoned House `Foco`, mondo: "switch those on") | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord |
 | D02 | `cave_torch` | Standing torch — **WIRED 2026-11-03** | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood |
 | D03 | `steel_table` | Steel work table — **PACK 2026-11-04** (DINER Table_Metal) | 43 | 6000 | A stainless steel work table with a lower shelf and square legs, brushed metal |
 | D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** (regenerated: stadium light D04c) | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top |
@@ -53,15 +53,15 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | D22 | `boiler` | Basement boiler — **WIRED 2026-11-03** | 11 | 12000 | An old cast-iron basement boiler furnace with a round firebox door, a pressure gauge and pipes rising from the top |
 | D23 | `fountain` | Park fountain — **WIRED 2026-11-03** | 11 | 16000 | A classical stone park fountain with a round basin and a tiered central column with two smaller bowls, no water |
 | D24 | `banner` | Heraldic banner — **WIRED 2026-11-03** | 11 | 4000 | A medieval heraldic banner of red cloth with a gold lion emblem and a pointed bottom edge, hanging straight from a short wooden crossbar |
-| D25 | `lava_lamp` | Lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). DUPLICATE: Molten Maps `Lava_Lamp` (CC0, a whole lamp) fits; swap on mondo's go | 10 | 3000 | A 1970s lava lamp on a chrome cone base with orange wax blobs inside the glass |
-| D26 | `concrete_pillar` | Garage concrete pillar — pack candidate: Metro PSX `Column` (tiled; cut, not wired; ask mondo) | 9 | 2000 | A square reinforced concrete parking garage pillar with chipped corners and a yellow and black hazard stripe band near the base |
+| D25 | `lava_lamp` | Lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). Molten Maps `Lava_Lamp` exists; mondo 11-04 KEEPS this one (the moving wax) | 10 | 3000 | A 1970s lava lamp on a chrome cone base with orange wax blobs inside the glass |
+| D26 | `concrete_pillar` | Garage concrete pillar — **PACK 2026-11-04** (Metro PSX `Column`; the hazard band + bay number stay) | 9 | 2000 | A square reinforced concrete parking garage pillar with chipped corners and a yellow and black hazard stripe band near the base |
 | D27 | `stocks` | Medieval stocks — **WIRED 2026-11-03** | 9 | 6000 | Medieval wooden pillory stocks with holes for the head and hands, on two wooden posts |
 | D28 | `school_desk` | School desk — **WIRED 2026-11-03** | 9 | 6000 | An old school desk with an attached seat, a wooden top and a steel tube frame |
 | D29 | `toilet_paper` | Toilet paper roll — **PACK 2026-11-04** (House Toilet_paper) | 8 | 1000 | A single roll of white toilet paper |
 | D30 | `tulip_chair` | Tulip chair — **WIRED 2026-11-03** | 8 | 6000 | A white tulip chair with a red seat cushion on a single pedestal base |
 | D31 | `tulip_table` | Tulip table — **WIRED 2026-11-03** | 8 | 4000 | A white round tulip table on a single pedestal base |
 | D32 | `eeg_rack` | EEG machine trolley — **WIRED 2026-11-03** | 8 | 8000 | A medical trolley holding an EEG monitoring machine with a blank screen and knobs |
-| D33 | `lava_lamp_floor` | Floor lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). DUPLICATE: Molten Maps `Lava_Lamp` (CC0, a whole lamp) fits; swap on mondo's go | 7 | 4000 | A tall floor-standing 1970s lava lamp about 1.5 metres tall, chrome base, orange wax blobs in a tall glass column |
+| D33 | `lava_lamp_floor` | Floor lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). Molten Maps `Lava_Lamp` exists; mondo 11-04 KEEPS this one (the moving wax) | 7 | 4000 | A tall floor-standing 1970s lava lamp about 1.5 metres tall, chrome base, orange wax blobs in a tall glass column |
 | D34 | `disc_cluster` | Disc cluster ceiling lamp — **WIRED 2026-11-03** | 7 | 6000 | A 1970s ceiling lamp made of a cluster of white discs on rigid chrome rods from a chrome canopy |
 | D35 | `sputnik_lamp` | Sputnik chandelier — **WIRED 2026-11-03** | 6 | 6000 | A brass sputnik chandelier: a central sphere with radiating rods each ending in a small bulb |
 | D36 | `dream_eye` | Eye on a stalk (Astral) — **WIRED 2026-11-03** | 6 | 12000 | A surreal giant eyeball with eyelids on a thick fleshy stalk growing from the ground |
@@ -82,7 +82,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | D52 | `broom` | Broom — **PACK 2026-11-04** (House Broom) | 3 | 2000 | A traditional straw broom with a wooden handle |
 | D53 | `serving_line` | Cafeteria serving counter — pack candidate: BurgerPiz counter (part of the look only) | 3 | 10000 | A cafeteria serving counter with a glass sneeze guard shelf and empty steel food trays |
 | D54 | `pod_bed` | Capsule sleep pod — pack candidate: Molten bunk beds (not a pod) | 3 | 12000 | A futuristic capsule sleep pod bed with a curved canopy cover, white and grey |
-| D55 | `roller_shutter` | Roller shutter — pack candidate: Tacos `doors_garage` (cut, not wired: a garage door, not a shutter) | 3 | 4000 | A closed metal roller shutter shop door of corrugated grey steel with a box housing at the top |
+| D55 | `roller_shutter` | Roller shutter — **PACK 2026-11-04** (Tacos `doors_garage`, steel garage doors) | 3 | 4000 | A closed metal roller shutter shop door of corrugated grey steel with a box housing at the top |
 | D56 | `washer` | Washing machine — **PACK 2026-11-04** (House Washing_machine) | 3 | 6000 | A white front-loading washing machine |
 | D57 | `dryer` | Tumble dryer — **PACK 2026-11-04** (Abandoned House Secadora) | 3 | 6000 | A white front-loading tumble dryer |
 | D58 | `toilet_stall` | Toilet stall — **PACK 2026-11-03** (§10F swap; row was stale) | 3 | 8000 | A public restroom toilet stall with grey partition walls, an open door and a white toilet inside |
@@ -102,7 +102,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | D72 | `space_divider` | Space-age room divider — **WIRED 2026-11-03** | 2 | 6000 | A 1960s room divider screen, a white panel with a pattern of circular cut-outs |
 | D73 | `kitchen_range` | Commercial range — **PACK 2026-11-03** (§10F swap; row was stale) | 2 | 10000 | A commercial stainless steel kitchen range with six burners and an oven |
 | D74 | `range_hood` | Range hood — **PACK 2026-11-03** (§10F swap; row was stale) | 2 | 4000 | A stainless steel commercial kitchen range hood |
-| D75 | `chalkboard` | Chalkboard — pack candidate: VHS Shop `Blackboard` (cut, not wired: the proc carries the type-wheel text) | 2 | 2000 | A blank green school chalkboard in a wooden frame with a chalk tray |
+| D75 | `chalkboard` | Chalkboard — **PACK 2026-11-04** (VHS Shop `Blackboard`; the type-wheel text stays on its face) | 2 | 2000 | A blank green school chalkboard in a wooden frame with a chalk tray |
 | D76 | `door_furnace` | Incinerator furnace — **WIRED 2026-11-03** | 2 | 12000 | A large brick industrial incinerator furnace with a heavy iron door |
 | D77 | `carousel` | Carousel — **WIRED 2026-11-03** | 2 | 40000 | A vintage fairground carousel with painted horses on poles under a striped canopy |
 | D78 | `high_striker` | High striker — **WIRED 2026-11-03** | 2 | 8000 | A carnival high striker strength tester: a tall red and white tower with a bell at the top and a lever pad at the base |
@@ -325,13 +325,14 @@ D29 toilet_paper (House `Toilet_paper`), D52 broom (House `Broom`), D56 washer (
 House `Secadora`). These had no Meshy model yet, so nothing was deleted.
 
 **Meshy made although the decor list named a pack (11-03):** D25 / D33 lava lamps: the Molten Maps `Lava_Lamp` (CC0) is a whole
-lava lamp and fits — a real duplicate; swapping it in would drop the drawn moving wax, so it waits for mondo's go. D42 grow lamp:
+lava lamp and fits — a real duplicate, but mondo kept the Meshy lamp for its moving wax (2026-11-04). D42 grow lamp:
 the named Molten `Hydroponics_Lamp` is a desk lamp on a stand, not the ceiling panel the room needs, so the Meshy one stays. D81
 submarine: the BlenderVoyage PSX sub is a broken-open wreck, and mondo asked for a Meshy bathyscaphe (11-03), so it stays.
 
-**Pack candidates, cut but not wired (mondo's call, each changes a look):** D01 bare_bulb (Abandoned House `Foco`), D26
-concrete_pillar (Metro `Column`), D55 roller_shutter (Tacos `doors_garage`), D75 chalkboard (VHS Shop `Blackboard`), the
-turnstile (Metro `automatic_ticket_gate`; the proc animates its arms). Also D37 pool_umbrella (beach pack parasol, licence not
+**Switched on 2026-11-04 (mondo: "keep the lava lamp with moving wax, and switch those on"):** D01 bare_bulb (Abandoned House
+`Foco`), D26 concrete_pillar (Metro `Column`), D55 roller_shutter (Tacos `doors_garage`), D75 chalkboard (VHS Shop `Blackboard`),
+the turnstile (Metro `automatic_ticket_gate`; its tripod is part of the model, so it no longer turns). The lava lamps KEEP their
+Meshy base + cap and the drawn moving wax (mondo). **Still pack candidates (his call):** D37 pool_umbrella (beach pack parasol, licence not
 recorded), D53 serving_line (BurgerPiz counter, partial), D54 pod_bed (Molten bunk beds).
 
 **Meshy models in the game that a pack could replace (not swapped: mondo approved these Meshy models; his call):** candles ↔
