@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 163 |
+| Asset pack | yes | 168 |
 | Asset pack (author not recorded yet) | yes | 169 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -28,7 +28,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI | no | 604 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
-| Claude in code (three.js, no file) | no | 82 |
+| Claude in code (three.js, no file) | no | 77 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -1370,18 +1370,23 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 | windpump_tower | `Assets/decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | windpump_wheel | `Assets/decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 
-### Pack pieces the procs wear (three-renderer.js _HQ_PACK_WEAR, Assets/misc/) — human-made, preferred over Meshy (7)
+### Pack pieces the procs wear (three-renderer.js _HQ_PACK_WEAR, Assets/misc/) — human-made, preferred over Meshy (12)
 
 THE MESHY AUDIT (2026-11-04): §10A rows a downloaded pack already had a piece for. `bake-pack-pieces.py` (its AUDIT jobs) cut the
 node out of the pack scene; `_hqDecorWear(name, U, g)` wears it exactly like a Meshy decor model (a name in _HQ_DECOR_GLB wins).
 
 | proc wear name | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
+| bare_bulb | `Assets/misc/ebd_abandonedhouse_bare_bulb.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender) |
 | broom | `Assets/misc/ebd_house_broom.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| chalkboard | `Assets/misc/ebd_vhsshop_chalkboard.glb` | Asset pack | VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| concrete_pillar | `Assets/misc/ebd_metro_concrete_pillar.glb` | Asset pack | Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | dryer | `Assets/misc/ebd_abandonedhouse_dryer.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender) |
 | metal_shelving | `Assets/misc/ebd_gasstation_metal_shelving.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
+| roller_shutter | `Assets/misc/ebd_tacos_roller_shutter.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
 | steel_table | `Assets/misc/ebd_dinerscene_steel_table.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender) |
 | toilet_paper | `Assets/misc/ebd_house_toilet_paper.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| turnstile | `Assets/misc/ebd_metro_turnstile.glb` | Asset pack | Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | wall_shelf | `Assets/misc/ebd_house_wall_shelf.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 | washer | `Assets/misc/ebd_house_washer.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 
@@ -1754,17 +1759,17 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | Meshy_AI_one_angel_wing_1027074635_texture | `Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 | Meshy_AI_one_dragon_wing_1027074659_texture | `Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
 
-## 8. Made in code — procedural stand-ins still in the catalogue (82)
+## 8. Made in code — procedural stand-ins still in the catalogue (77)
 
 Catalogue rows with a `proc` and no file: Claude drew them from three.js primitives. These are the props that still
 want a real model; §10 ranks which ones are worth one. (Pack-backed procs — bats, traps — and the car pack are not here.)
 
-`barber_mirror`, `bare_bulb`, `bigtop`, `car_panel`, `cell_bars`, `chalkboard`, `clipboard`, `concrete_pillar`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `roller_shutter`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `track_bed`, `tube_map`, `turnstile`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
+`barber_mirror`, `bigtop`, `car_panel`, `cell_bars`, `clipboard`, `crib_mobile`, `crystal_cluster`, `curved_sofa`, `door_seal`, `door_stack`, `door_vine`, `door_xray`, `doormat`, `dream_screen`, `evac_button`, `false_window`, `festoon`, `find_pay`, `find_stash`, `fish_school`, `floating_orb`, `floor_panel`, `floor_stain`, `form_sheet`, `garage_ramp`, `garbage_chute`, `garden_ring`, `graffiti_wall`, `house_stairs`, `impossible_stair`, `infinity_pool`, `keypad`, `lap_pool`, `lesson_plaque`, `lesson_sign`, `light_shaft`, `lost_shelf`, `mobius_bar`, `monitor_stack`, `motto_plaque`, `now_serving`, `parking_bay`, `planter`, `platform_edge`, `pod_bed`, `pod_window`, `pool_umbrella`, `porthole`, `price_tag`, `quarter_pipe`, `radiation_sign`, `riser_1`, `riser_2`, `riser_3`, `ritual_circle`, `sale_banner`, `server_rack`, `serving_line`, `shaft_window`, `shag_rug`, `square_cubicle`, `stair_landing`, `stair_landing_sq`, `stair_step`, `stair_step_x`, `star_chart`, `star_dome`, `street_drain`, `sun_viewport`, `temple_dome`, `thoughtform`, `track_bed`, `tube_map`, `wall_padding`, `wall_plaques`, `warning_tape`, `world_clocks`
 
-**Procs that already wear a real model** (86: the builder hangs a model file over its own pieces, which only
+**Procs that already wear a real model** (91: the builder hangs a model file over its own pieces, which only
 show if the file fails) — counted under that model's maker, not as code:
 
-`anemone` (anemone), `armour_stand` (armour_plinth, armour_stand), `autopsy_table` (autopsy_table), `banner` (banner), `barber_chair` (barber_chair), `barber_pole` (barber_pole), `boiler` (boiler), `broom` (broom), `candle_ring` (candle), `card_catalogue` (card_catalogue), `carousel` (carousel_horse, carousel), `cave_torch` (cave_torch), `conveyor` (conveyor), `conveyor_z` (conveyor), `departures_board` (departures_board), `directory_board` (directory_board), `disc_cluster` (disc_cluster), `door_furnace` (door_furnace), `dream_eye` (dream_eye), `dryer` (dryer, washer), `eeg_rack` (eeg_rack), `egg_chair` (egg_chair), `exec_desk` (exec_desk), `ferris_wheel` (ferris_wheel, ferris_gondola, ferris_wheel_wheel), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `flood_mast` (flood_mast), `fortune_tent` (crystalBall, fortune_teller_tent), `fountain` (fountain), `garden_tree` (a retro-pack tree), `giant_clam` (giant_clam), `grow_lamp` (grow_lamp), `high_striker` (high_striker, high_striker_hammer), `laminator` (laminator), `laundry_cart` (laundry_cart), `lava_lamp` (lava_lamp_floor_base, lava_lamp_floor_cap), `lava_lamp_floor` (lava_lamp_floor_base, lava_lamp_floor_cap), `lifeguard_chair` (lifeguard_chair), `lighthouse` (lighthouse), `locker_bench` (city_bench), `lone_gun` (pistol), `meat_hook` (meat_hook), `metal_shelving` (metal_shelving), `mushroom_lamp` (mushroom_lamp), `music_box` (music_box, music_box_dancer), `nightmare_bloom` (nightmare_bloom), `notice_board` (notice_board), `park_bench` (city_bench), `parked_car` (honda civic), `pool_lounger` (pool_lounger), `popcorn_cart` (popcorn_cart), `pot_rack` (pot_rack), `punch_clock` (punch_clock), `retro_console` (retro_control_panel), `robot_arm` (robot_arm), `rocking_chair` (rocking_chair), `round_table` (round_table), `saucer_pendant` (saucer_pendant), `saucer_rig` (saucer_lg), `school_desk` (school_desk), `scoreboard` (scoreboard), `sea_buoy` (sea_buoy), `sea_vent` (sea_vent), `skiff` (skiff), `slot_machine` (slot_machine), `space_divider` (space_divider), `sputnik_lamp` (sputnik_lamp), `star_projector` (star_projector), `steel_table` (steel_table), `stocks` (stocks), `stone_altar` (stone_altar), `submarine` (submarine), `sword_stone` (sword), `t_pillar` (t_pillar), `tanker_desk` (tanker_desk), `tape_shelf` (vhs_player), `ticket_booth` (ticket_booth), `toilet_paper` (toilet_paper), `trophy_case` (trophy_case, trophy_cup), `tulip_chair` (tulip_chair), `tulip_table` (tulip_table), `umbrella_stand` (umbrella_stand, umbrella_closed), `wall_shelf` (wall_shelf), `wall_torch` (wall_torch_bracket), `washer` (dryer, washer)
+`anemone` (anemone), `armour_stand` (armour_plinth, armour_stand), `autopsy_table` (autopsy_table), `banner` (banner), `barber_chair` (barber_chair), `barber_pole` (barber_pole), `bare_bulb` (bare_bulb), `boiler` (boiler), `broom` (broom), `candle_ring` (candle), `card_catalogue` (card_catalogue), `carousel` (carousel_horse, carousel), `cave_torch` (cave_torch), `chalkboard` (chalkboard), `concrete_pillar` (concrete_pillar), `conveyor` (conveyor), `conveyor_z` (conveyor), `departures_board` (departures_board), `directory_board` (directory_board), `disc_cluster` (disc_cluster), `door_furnace` (door_furnace), `dream_eye` (dream_eye), `dryer` (dryer, washer), `eeg_rack` (eeg_rack), `egg_chair` (egg_chair), `exec_desk` (exec_desk), `ferris_wheel` (ferris_wheel, ferris_gondola, ferris_wheel_wheel), `find_deck` (skateboard), `find_tape` (vhs_tape), `flicker_tube` (fluorescent), `flood_mast` (flood_mast), `fortune_tent` (crystalBall, fortune_teller_tent), `fountain` (fountain), `garden_tree` (a retro-pack tree), `giant_clam` (giant_clam), `grow_lamp` (grow_lamp), `high_striker` (high_striker, high_striker_hammer), `laminator` (laminator), `laundry_cart` (laundry_cart), `lava_lamp` (lava_lamp_floor_base, lava_lamp_floor_cap), `lava_lamp_floor` (lava_lamp_floor_base, lava_lamp_floor_cap), `lifeguard_chair` (lifeguard_chair), `lighthouse` (lighthouse), `locker_bench` (city_bench), `lone_gun` (pistol), `meat_hook` (meat_hook), `metal_shelving` (metal_shelving), `mushroom_lamp` (mushroom_lamp), `music_box` (music_box, music_box_dancer), `nightmare_bloom` (nightmare_bloom), `notice_board` (notice_board), `park_bench` (city_bench), `parked_car` (honda civic), `pool_lounger` (pool_lounger), `popcorn_cart` (popcorn_cart), `pot_rack` (pot_rack), `punch_clock` (punch_clock), `retro_console` (retro_control_panel), `robot_arm` (robot_arm), `rocking_chair` (rocking_chair), `roller_shutter` (roller_shutter), `round_table` (round_table), `saucer_pendant` (saucer_pendant), `saucer_rig` (saucer_lg), `school_desk` (school_desk), `scoreboard` (scoreboard), `sea_buoy` (sea_buoy), `sea_vent` (sea_vent), `skiff` (skiff), `slot_machine` (slot_machine), `space_divider` (space_divider), `sputnik_lamp` (sputnik_lamp), `star_projector` (star_projector), `steel_table` (steel_table), `stocks` (stocks), `stone_altar` (stone_altar), `submarine` (submarine), `sword_stone` (sword), `t_pillar` (t_pillar), `tanker_desk` (tanker_desk), `tape_shelf` (vhs_player), `ticket_booth` (ticket_booth), `toilet_paper` (toilet_paper), `trophy_case` (trophy_case, trophy_cup), `tulip_chair` (tulip_chair), `tulip_table` (tulip_table), `turnstile` (turnstile), `umbrella_stand` (umbrella_stand, umbrella_closed), `wall_shelf` (wall_shelf), `wall_torch` (wall_torch_bracket), `washer` (dryer, washer)
 
 ## 8b. The horizon and the sky — everything drawn past the board, and what it is made of
 
@@ -2003,7 +2008,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 
 | # | catalogue key | prop | uses | target tris | concept prompt | in the game now (AUTO, list-models.js) |
 | --- | --- | --- | --- | --- | --- | --- |
-| D01 | `bare_bulb` | Bare ceiling bulb — pack candidate: Abandoned House `Foco` (cut, not wired; ask mondo) | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord | **code — still needs a model** |
+| D01 | `bare_bulb` | Bare ceiling bulb — **PACK 2026-11-04** (Abandoned House `Foco`, mondo: "switch those on") | 101 | 2000 | A bare incandescent light bulb in a plain black ceiling socket with a round ceiling plate, the bulb sitting right under the plate, no cord | wears bare_bulb (pack piece) |
 | D02 | `cave_torch` | Standing torch — **WIRED 2026-11-03** | 71 | 6000 | A standing wooden torch: a rough wooden pole on three short splayed wooden feet with an iron basket at the top holding charred unlit wood | wears cave_torch (Meshy decor) |
 | D03 | `steel_table` | Steel work table — **PACK 2026-11-04** (DINER Table_Metal) | 43 | 6000 | A stainless steel work table with a lower shelf and square legs, brushed metal | wears steel_table (pack piece) |
 | D04 | `flood_mast` | Floodlight mast — **WIRED 2026-11-03** (regenerated: stadium light D04c) | 42 | 16000 | A tall steel floodlight mast about 7 metres tall on a square lattice base with a bank of four rectangular stadium floodlights at the top | wears flood_mast (Meshy decor) |
@@ -2027,15 +2032,15 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | D22 | `boiler` | Basement boiler — **WIRED 2026-11-03** | 11 | 12000 | An old cast-iron basement boiler furnace with a round firebox door, a pressure gauge and pipes rising from the top | wears boiler (Meshy decor) |
 | D23 | `fountain` | Park fountain — **WIRED 2026-11-03** | 11 | 16000 | A classical stone park fountain with a round basin and a tiered central column with two smaller bowls, no water | wears fountain (Meshy decor) |
 | D24 | `banner` | Heraldic banner — **WIRED 2026-11-03** | 11 | 4000 | A medieval heraldic banner of red cloth with a gold lion emblem and a pointed bottom edge, hanging straight from a short wooden crossbar | wears banner (Meshy decor) |
-| D25 | `lava_lamp` | Lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). DUPLICATE: Molten Maps `Lava_Lamp` (CC0, a whole lamp) fits; swap on mondo's go | 10 | 3000 | A 1970s lava lamp on a chrome cone base with orange wax blobs inside the glass | wears lava_lamp_floor_base (Meshy decor), lava_lamp_floor_cap (Meshy decor) |
-| D26 | `concrete_pillar` | Garage concrete pillar — pack candidate: Metro PSX `Column` (tiled; cut, not wired; ask mondo) | 9 | 2000 | A square reinforced concrete parking garage pillar with chipped corners and a yellow and black hazard stripe band near the base | **code — still needs a model** |
+| D25 | `lava_lamp` | Lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). Molten Maps `Lava_Lamp` exists; mondo 11-04 KEEPS this one (the moving wax) | 10 | 3000 | A 1970s lava lamp on a chrome cone base with orange wax blobs inside the glass | wears lava_lamp_floor_base (Meshy decor), lava_lamp_floor_cap (Meshy decor) |
+| D26 | `concrete_pillar` | Garage concrete pillar — **PACK 2026-11-04** (Metro PSX `Column`; the hazard band + bay number stay) | 9 | 2000 | A square reinforced concrete parking garage pillar with chipped corners and a yellow and black hazard stripe band near the base | wears concrete_pillar (pack piece) |
 | D27 | `stocks` | Medieval stocks — **WIRED 2026-11-03** | 9 | 6000 | Medieval wooden pillory stocks with holes for the head and hands, on two wooden posts | wears stocks (Meshy decor) |
 | D28 | `school_desk` | School desk — **WIRED 2026-11-03** | 9 | 6000 | An old school desk with an attached seat, a wooden top and a steel tube frame | wears school_desk (Meshy decor) |
 | D29 | `toilet_paper` | Toilet paper roll — **PACK 2026-11-04** (House Toilet_paper) | 8 | 1000 | A single roll of white toilet paper | wears toilet_paper (pack piece) |
 | D30 | `tulip_chair` | Tulip chair — **WIRED 2026-11-03** | 8 | 6000 | A white tulip chair with a red seat cushion on a single pedestal base | wears tulip_chair (Meshy decor) |
 | D31 | `tulip_table` | Tulip table — **WIRED 2026-11-03** | 8 | 4000 | A white round tulip table on a single pedestal base | wears tulip_table (Meshy decor) |
 | D32 | `eeg_rack` | EEG machine trolley — **WIRED 2026-11-03** | 8 | 8000 | A medical trolley holding an EEG monitoring machine with a blank screen and knobs | wears eeg_rack (Meshy decor) |
-| D33 | `lava_lamp_floor` | Floor lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). DUPLICATE: Molten Maps `Lava_Lamp` (CC0, a whole lamp) fits; swap on mondo's go | 7 | 4000 | A tall floor-standing 1970s lava lamp about 1.5 metres tall, chrome base, orange wax blobs in a tall glass column | wears lava_lamp_floor_base (Meshy decor), lava_lamp_floor_cap (Meshy decor) |
+| D33 | `lava_lamp_floor` | Floor lava lamp — **WIRED 2026-11-03** (Meshy base + cap; row was stale). Molten Maps `Lava_Lamp` exists; mondo 11-04 KEEPS this one (the moving wax) | 7 | 4000 | A tall floor-standing 1970s lava lamp about 1.5 metres tall, chrome base, orange wax blobs in a tall glass column | wears lava_lamp_floor_base (Meshy decor), lava_lamp_floor_cap (Meshy decor) |
 | D34 | `disc_cluster` | Disc cluster ceiling lamp — **WIRED 2026-11-03** | 7 | 6000 | A 1970s ceiling lamp made of a cluster of white discs on rigid chrome rods from a chrome canopy | wears disc_cluster (Meshy decor) |
 | D35 | `sputnik_lamp` | Sputnik chandelier — **WIRED 2026-11-03** | 6 | 6000 | A brass sputnik chandelier: a central sphere with radiating rods each ending in a small bulb | wears sputnik_lamp (Meshy decor) |
 | D36 | `dream_eye` | Eye on a stalk (Astral) — **WIRED 2026-11-03** | 6 | 12000 | A surreal giant eyeball with eyelids on a thick fleshy stalk growing from the ground | wears dream_eye (Meshy decor) |
@@ -2056,7 +2061,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | D52 | `broom` | Broom — **PACK 2026-11-04** (House Broom) | 3 | 2000 | A traditional straw broom with a wooden handle | wears broom (pack piece) |
 | D53 | `serving_line` | Cafeteria serving counter — pack candidate: BurgerPiz counter (part of the look only) | 3 | 10000 | A cafeteria serving counter with a glass sneeze guard shelf and empty steel food trays | **code — still needs a model** |
 | D54 | `pod_bed` | Capsule sleep pod — pack candidate: Molten bunk beds (not a pod) | 3 | 12000 | A futuristic capsule sleep pod bed with a curved canopy cover, white and grey | **code — still needs a model** |
-| D55 | `roller_shutter` | Roller shutter — pack candidate: Tacos `doors_garage` (cut, not wired: a garage door, not a shutter) | 3 | 4000 | A closed metal roller shutter shop door of corrugated grey steel with a box housing at the top | **code — still needs a model** |
+| D55 | `roller_shutter` | Roller shutter — **PACK 2026-11-04** (Tacos `doors_garage`, steel garage doors) | 3 | 4000 | A closed metal roller shutter shop door of corrugated grey steel with a box housing at the top | wears roller_shutter (pack piece) |
 | D56 | `washer` | Washing machine — **PACK 2026-11-04** (House Washing_machine) | 3 | 6000 | A white front-loading washing machine | wears dryer (pack piece), washer (pack piece) |
 | D57 | `dryer` | Tumble dryer — **PACK 2026-11-04** (Abandoned House Secadora) | 3 | 6000 | A white front-loading tumble dryer | wears dryer (pack piece), washer (pack piece) |
 | D58 | `toilet_stall` | Toilet stall — **PACK 2026-11-03** (§10F swap; row was stale) | 3 | 8000 | A public restroom toilet stall with grey partition walls, an open door and a white toilet inside | model file (Asset pack) |
@@ -2076,7 +2081,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | D72 | `space_divider` | Space-age room divider — **WIRED 2026-11-03** | 2 | 6000 | A 1960s room divider screen, a white panel with a pattern of circular cut-outs | wears space_divider (Meshy decor) |
 | D73 | `kitchen_range` | Commercial range — **PACK 2026-11-03** (§10F swap; row was stale) | 2 | 10000 | A commercial stainless steel kitchen range with six burners and an oven | model file (Asset pack) |
 | D74 | `range_hood` | Range hood — **PACK 2026-11-03** (§10F swap; row was stale) | 2 | 4000 | A stainless steel commercial kitchen range hood | model file (Asset pack) |
-| D75 | `chalkboard` | Chalkboard — pack candidate: VHS Shop `Blackboard` (cut, not wired: the proc carries the type-wheel text) | 2 | 2000 | A blank green school chalkboard in a wooden frame with a chalk tray | **code — still needs a model** |
+| D75 | `chalkboard` | Chalkboard — **PACK 2026-11-04** (VHS Shop `Blackboard`; the type-wheel text stays on its face) | 2 | 2000 | A blank green school chalkboard in a wooden frame with a chalk tray | wears chalkboard (pack piece) |
 | D76 | `door_furnace` | Incinerator furnace — **WIRED 2026-11-03** | 2 | 12000 | A large brick industrial incinerator furnace with a heavy iron door | wears door_furnace (Meshy decor) |
 | D77 | `carousel` | Carousel — **WIRED 2026-11-03** | 2 | 40000 | A vintage fairground carousel with painted horses on poles under a striped canopy | wears carousel_horse (Meshy decor), carousel (Meshy decor) |
 | D78 | `high_striker` | High striker — **WIRED 2026-11-03** | 2 | 8000 | A carnival high striker strength tester: a tall red and white tower with a bell at the top and a lever pad at the base | wears high_striker (Meshy decor), high_striker_hammer (Meshy decor) |
@@ -2299,13 +2304,14 @@ D29 toilet_paper (House `Toilet_paper`), D52 broom (House `Broom`), D56 washer (
 House `Secadora`). These had no Meshy model yet, so nothing was deleted.
 
 **Meshy made although the decor list named a pack (11-03):** D25 / D33 lava lamps: the Molten Maps `Lava_Lamp` (CC0) is a whole
-lava lamp and fits — a real duplicate; swapping it in would drop the drawn moving wax, so it waits for mondo's go. D42 grow lamp:
+lava lamp and fits — a real duplicate, but mondo kept the Meshy lamp for its moving wax (2026-11-04). D42 grow lamp:
 the named Molten `Hydroponics_Lamp` is a desk lamp on a stand, not the ceiling panel the room needs, so the Meshy one stays. D81
 submarine: the BlenderVoyage PSX sub is a broken-open wreck, and mondo asked for a Meshy bathyscaphe (11-03), so it stays.
 
-**Pack candidates, cut but not wired (mondo's call, each changes a look):** D01 bare_bulb (Abandoned House `Foco`), D26
-concrete_pillar (Metro `Column`), D55 roller_shutter (Tacos `doors_garage`), D75 chalkboard (VHS Shop `Blackboard`), the
-turnstile (Metro `automatic_ticket_gate`; the proc animates its arms). Also D37 pool_umbrella (beach pack parasol, licence not
+**Switched on 2026-11-04 (mondo: "keep the lava lamp with moving wax, and switch those on"):** D01 bare_bulb (Abandoned House
+`Foco`), D26 concrete_pillar (Metro `Column`), D55 roller_shutter (Tacos `doors_garage`), D75 chalkboard (VHS Shop `Blackboard`),
+the turnstile (Metro `automatic_ticket_gate`; its tripod is part of the model, so it no longer turns). The lava lamps KEEP their
+Meshy base + cap and the drawn moving wax (mondo). **Still pack candidates (his call):** D37 pool_umbrella (beach pack parasol, licence not
 recorded), D53 serving_line (BurgerPiz counter, partial), D54 pod_bed (Molten bunk beds).
 
 **Meshy models in the game that a pack could replace (not swapped: mondo approved these Meshy models; his call):** candles ↔
@@ -2319,7 +2325,7 @@ Trailer `Fuse_box`; traffic cone ↔ exploration-objects `Cone`; city bench ↔ 
 radiation_sign, D17 planter); §10G G05 bow, G10 gold record, G11 gavel, G13 lipstick; the §10E items not named in its audit
 note; a far mountain range (§8b). Meshy only after mondo's OK on each, with the packs checked named on the to-do row.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (1718 of 2715, bucket `ewmusicsfx`, listed 2026-11-04)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (1718 of 2720, bucket `ewmusicsfx`, listed 2026-11-04)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
