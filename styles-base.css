@@ -5622,10 +5622,22 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-officer-controls .pb-cc-maintabs { top: -10px; }
 .pb-cc-maintabs .ms-tty-btn, .pb-cc-maintabs .ms-tty-btn.primary { flex: 1 1 0; min-width: 0; justify-content: center; padding: 9px 6px 8px; margin-bottom: -2px; font-size: 11px; letter-spacing: .14em; white-space: normal; text-align: center; border-bottom: 0; border-radius: 6px 6px 0 0; box-shadow: none; transform: none; }
 .pb-cc-maintabs .ms-tty-btn.primary { color: #f0cc83; border-color: #8e7951; background: #2a2418; border-bottom: 2px solid #2a2418; }
+/* THE CREATOR ICONS (2026-11-04, mondo: "add icons for the different tabs and wear to make it easier to navigate"): SunGraphica's Minimal
+   Game Icons (R2 Assets/Icons/creator/) drawn as a mask filled with the button's text colour, so an icon dims and lights with its label and
+   follows the UI Maker's colours. A tab = its icon over its name; a body part = an icon tile in two even rows, a gold dot = worn there. */
+.pb-cc-icon { display: block; flex: 0 0 auto; width: 24px; height: 24px; background-color: currentColor; -webkit-mask: var(--cc-icon) center / contain no-repeat; mask: var(--cc-icon) center / contain no-repeat; pointer-events: none; }
+.pb-cc-maintabs .ms-tty-btn, .pb-cc-maintabs .ms-tty-btn.primary { display: flex; flex-direction: column; align-items: center; gap: 5px; padding-top: 8px; }
+.pb-cc-maintabs .pb-cc-icon { width: 24px; height: 24px; opacity: .85; }
+.pb-cc-maintabs .ms-tty-btn.primary .pb-cc-icon { opacity: 1; }
+.pb-cc-maintab-name { display: block; max-width: 100%; overflow-wrap: anywhere; }
 .pb-cc-tabpanel { min-width: 0; }
-.pb-cc-slots { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 6px; padding: 8px; border: 1px solid #4b3f2a; border-radius: 8px; background: rgba(20, 17, 12, .6); }
-.pb-cc-slots .ms-tty-btn, .pb-cc-slots .ms-tty-btn.primary { flex: 1 1 auto; min-height: 32px; justify-content: center; padding: 6px 8px; font-size: 10px; letter-spacing: .1em; white-space: nowrap; text-align: center; box-shadow: none; transform: none; }
+.pb-cc-slots { display: grid; grid-template-columns: repeat(var(--cc-cols, 5), minmax(0, 1fr)); gap: 5px; margin: 10px 0 6px; padding: 8px; border: 1px solid #4b3f2a; border-radius: 8px; background: rgba(20, 17, 12, .6); }
+.pb-cc-slots .ms-tty-btn, .pb-cc-slots .ms-tty-btn.primary { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 58px; padding: 8px 4px 7px; font-size: 10px; letter-spacing: .1em; white-space: normal; text-align: center; box-shadow: none; transform: none; }
 .pb-cc-slots .ms-tty-btn.primary { color: #f0cc83; border-color: #f0cc83; background: rgba(240, 204, 131, .14); }
+.pb-cc-slots .pb-cc-icon { width: 30px; height: 30px; opacity: .8; }
+.pb-cc-slots .ms-tty-btn:hover .pb-cc-icon, .pb-cc-slots .ms-tty-btn.primary .pb-cc-icon { opacity: 1; }
+.pb-cc-slot-name { display: block; max-width: 100%; line-height: 1.2; overflow-wrap: anywhere; }
+.pb-cc-worn { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #f0cc83; box-shadow: 0 0 0 1px rgba(0, 0, 0, .6); }
 .pb-cc-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 6px 0 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(216, 201, 160, .22); }
 .pb-cc-kinds .ms-tty-btn, .pb-cc-kinds .ms-tty-btn.primary { min-width: 0; min-height: 28px; padding: 5px 9px; font-size: 9px; letter-spacing: .1em; white-space: normal; text-align: center; box-shadow: none; transform: none; }
 .pb-cc-kinds .ms-tty-btn.primary { display: inline-flex; color: #14110c; border-color: #f0cc83; background: #f0cc83; }
