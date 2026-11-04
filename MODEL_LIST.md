@@ -59,7 +59,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | bunny girl (female) | `Assets/Sprites/Races/bunnygirl/Meshy_AI_bunny_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | catgirl (female) | `Assets/Sprites/Races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chef — creator look also baked | `Assets/Sprites/Races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| chess piece | `Assets/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess piece | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | clown | `Assets/Sprites/Races/clown/Meshy_AI_evil_clown_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | conspiracy theorist — creator look also baked | `Assets/Sprites/Races/conspiracytheorist/Meshy_AI_radio_host_realisti_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | cosmic wraith | `Assets/Sprites/Races/cosmicwraith/male/Meshy_AI_cosmic_wraith_realis_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -88,7 +88,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | gangster — creator look also baked | `Assets/Sprites/Races/gangster/Meshy_AI_thug_gangster_reali_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | gargoyle (female) | `Assets/Sprites/Races/gargoyle/female/Meshy_AI_female_gargoyle_real_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | general | `Assets/Sprites/Races/general/Meshy_AI_military_general_rea_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| ghost | `Assets/halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| ghost | `Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
 | ghost (female) | `Assets/Sprites/Races/ghost/female/Meshy_AI_ghost_realistic_hot_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | ghoul | `Assets/Sprites/Races/ghoul/male/Meshy_AI_ghoul_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | giant | `Assets/Sprites/Races/Giant/male/Meshy_AI_ancient_giant_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -135,7 +135,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | necromancer (female) | `Assets/Sprites/Races/necromancer/female/Meshy_AI_hot_girl_necromancer_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | nephilim | `Assets/Sprites/Races/nephilim/male/Meshy_AI_nephilim_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | nordic | `Assets/Sprites/Races/Nordic/Male/Meshy_AI_nordic_alien_male_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| occulus | `Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
+| occulus | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | orb of light (female) | `Assets/Sprites/Races/orboflight/female/Meshy_AI_hot_girl_sentient_li_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | overlord | `Assets/Sprites/Races/overlord/Meshy_AI_underworld_overlord__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | pirate | `Assets/Sprites/Races/Homosapien/Male/pirate/Meshy_AI_dashingly_handsome_sw_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -179,7 +179,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | time cop | `Assets/Sprites/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | tree person | `Assets/Sprites/Races/treeperson/Meshy_AI_treeperson_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | undead | `Assets/Sprites/Races/undead/Meshy_AI_undead_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| unicorn | `Assets/animals/horses/Horse_glb.glb#unicorn` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) + Meshy unicorn horn + Meshy angel wing |
+| unicorn | `Assets/world/animals/horses/Horse_glb.glb#unicorn` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) + Meshy unicorn horn + Meshy angel wing |
 | valkraye (female) | `Assets/Sprites/Races/valkraye/Meshy_AI_hot_girl_valkraye__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | vampire (female) — creator look also baked | `Assets/Sprites/Races/vampire/female/Meshy_AI_beautiful_attractive__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | voidweaver | `Assets/Sprites/Races/voidweaver/male/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -581,693 +581,693 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| alien | `Assets/misc/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ancient_walkway | `Assets/misc/Meshy_AI_ancient_walkway_0917035609_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ancient_well | `Assets/misc/Meshy_AI_an_ancient_well_0922010024_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| angel_statue | `Assets/misc/Meshy_AI_angel_statue_0917035332_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| alien | `Assets/world/props/meshy/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ancient_walkway | `Assets/world/props/meshy/Meshy_AI_ancient_walkway_0917035609_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ancient_well | `Assets/world/props/meshy/Meshy_AI_an_ancient_well_0922010024_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| angel_statue | `Assets/world/props/meshy/Meshy_AI_angel_statue_0917035332_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | arrow | `Assets/fx/spell_props/Meshy_AI_arrow_0713025846_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| astronaut | `Assets/misc/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| babel_crane | `Assets/misc/Meshy_AI_a_scaffold_crane_0912231516_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| brass_telescope | `Assets/misc/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| brazier | `Assets/misc/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| breaker_panel | `Assets/door/models/Meshy_AI_a_breaker_panel_0903105436_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| brick_arch | `Assets/misc/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| astronaut | `Assets/world/props/meshy/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| babel_crane | `Assets/world/props/meshy/Meshy_AI_a_scaffold_crane_0912231516_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| brass_telescope | `Assets/world/props/meshy/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| brazier | `Assets/world/props/meshy/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| breaker_panel | `Assets/world/hq/models/Meshy_AI_a_breaker_panel_0903105436_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| brick_arch | `Assets/world/props/meshy/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | bullet | `Assets/fx/spell_props/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cafeteria_chair | `Assets/door/models/Meshy_AI_cafeteria_chair_0910054640_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cafeteria_chair | `Assets/world/hq/models/Meshy_AI_cafeteria_chair_0910054640_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candle | `Assets/fx/spell_props/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleLine | `Assets/fx/spell_props/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleRing | `Assets/fx/spell_props/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| car_ambulance | `Assets/misc/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| car_cyber | `Assets/misc/Meshy_AI_a_cyberpunk_car_0915195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| car_key | `Assets/door/models/Meshy_AI_car_key_0903110043_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cardboard_box | `Assets/door/models/Meshy_AI_a_cardboard_box_0903105957_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cardboard_boxes | `Assets/door/models/Meshy_AI_cardboard_boxes_0903105142_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| carnival_tent | `Assets/misc/Meshy_AI_a_carnival_tent_0922010243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| catacomb_wall | `Assets/misc/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| caterpillar | `Assets/misc/Meshy_AI_caterpillar_0912231445_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| catholic_pew | `Assets/misc/Meshy_AI_catholic_church_pew_0917035928_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| car_ambulance | `Assets/world/props/meshy/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| car_cyber | `Assets/world/props/meshy/Meshy_AI_a_cyberpunk_car_0915195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| car_key | `Assets/world/hq/models/Meshy_AI_car_key_0903110043_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cardboard_box | `Assets/world/hq/models/Meshy_AI_a_cardboard_box_0903105957_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cardboard_boxes | `Assets/world/hq/models/Meshy_AI_cardboard_boxes_0903105142_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| carnival_tent | `Assets/world/props/meshy/Meshy_AI_a_carnival_tent_0922010243_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| catacomb_wall | `Assets/world/props/meshy/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| caterpillar | `Assets/world/props/meshy/Meshy_AI_caterpillar_0912231445_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| catholic_pew | `Assets/world/props/meshy/Meshy_AI_catholic_church_pew_0917035928_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cauldron | `Assets/fx/spell_props/Meshy_AI_black_cauldron_0713025916_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cave_stone | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_building | `Assets/misc/Meshy_AI_catholic_church_building_0917035753_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_pew | `Assets/misc/Meshy_AI_church_pew_0917035915_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_podium | `Assets/misc/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_wall | `Assets/misc/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cinder_block | `Assets/misc/Meshy_AI_cinder_block_0917064959_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| city_bench | `Assets/misc/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| clipboard_flat | `Assets/door/models/Meshy_AI_office_clipboard_0910054838_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| clock | `Assets/misc/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| coffee_mug | `Assets/door/models/Meshy_AI_cup_0910054308_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| coffee_table | `Assets/door/models/Meshy_AI_a_round_office_coffee_table_0903092838_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| conference_table | `Assets/door/models/Meshy_AI_a_long_black_oval_conference_table_0903092858_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| confessional_booth | `Assets/misc/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cot | `Assets/door/models/Meshy_AI_a_cot_0903105358_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| couples_bed | `Assets/misc/Meshy_AI_a_couples_bed_0922010443_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cave_stone | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_building | `Assets/world/props/meshy/Meshy_AI_catholic_church_building_0917035753_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_pew | `Assets/world/props/meshy/Meshy_AI_church_pew_0917035915_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_podium | `Assets/world/props/meshy/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_wall | `Assets/world/props/meshy/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cinder_block | `Assets/world/props/meshy/Meshy_AI_cinder_block_0917064959_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| city_bench | `Assets/world/props/meshy/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| clipboard_flat | `Assets/world/hq/models/Meshy_AI_office_clipboard_0910054838_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| clock | `Assets/world/props/meshy/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| coffee_mug | `Assets/world/hq/models/Meshy_AI_cup_0910054308_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| coffee_table | `Assets/world/hq/models/Meshy_AI_a_round_office_coffee_table_0903092838_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| conference_table | `Assets/world/hq/models/Meshy_AI_a_long_black_oval_conference_table_0903092858_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| confessional_booth | `Assets/world/props/meshy/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cot | `Assets/world/hq/models/Meshy_AI_a_cot_0903105358_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| couples_bed | `Assets/world/props/meshy/Meshy_AI_a_couples_bed_0922010443_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cross | `Assets/fx/spell_props/Meshy_AI_wooden_cross_realist_0725070928_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| crt_terminal | `Assets/door/models/Meshy_AI_crt_terminal_0903101952_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| crt_terminal | `Assets/world/hq/models/Meshy_AI_crt_terminal_0903101952_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crystalBall | `Assets/fx/spell_props/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| culvert_mouth | `Assets/misc/Meshy_AI_a_culvert_mouth_0916235929_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| curved_couch | `Assets/door/models/Meshy_AI_a_curved_couch_0903105529_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| curved_office_couch | `Assets/door/models/Meshy_AI_a_curved_office_couch_0903105539_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| demon_statue | `Assets/misc/Meshy_AI_demon_statue_0917040101_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| desk_fan | `Assets/door/models/Meshy_AI_a_circular_desk_fan_0903105635_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| desk_wedge_a | `Assets/door/models/Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| desk_wedge_b | `Assets/door/models/Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dish | `Assets/misc/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dockring | `Assets/misc/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| door_gun | `Assets/misc/Meshy_AI__0916054803_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dorm_bed | `Assets/misc/Meshy_AI_a_dorm_bed_0922010217_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| drain_grate | `Assets/misc/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| earth | `Assets/misc/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| escalator | `Assets/misc/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| escapepod | `Assets/misc/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| exec_chair | `Assets/door/models/Meshy_AI_an_office_chair_0903105134_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| exit_sign | `Assets/door/models/Meshy_AI_an_exit_sign_0903110032_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fae_mushroom | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fae_toadstool | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| culvert_mouth | `Assets/world/props/meshy/Meshy_AI_a_culvert_mouth_0916235929_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| curved_couch | `Assets/world/hq/models/Meshy_AI_a_curved_couch_0903105529_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| curved_office_couch | `Assets/world/hq/models/Meshy_AI_a_curved_office_couch_0903105539_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| demon_statue | `Assets/world/props/meshy/Meshy_AI_demon_statue_0917040101_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| desk_fan | `Assets/world/hq/models/Meshy_AI_a_circular_desk_fan_0903105635_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| desk_wedge_a | `Assets/world/hq/models/Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| desk_wedge_b | `Assets/world/hq/models/Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dish | `Assets/world/props/meshy/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dockring | `Assets/world/props/meshy/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| door_gun | `Assets/world/props/meshy/Meshy_AI__0916054803_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dorm_bed | `Assets/world/props/meshy/Meshy_AI_a_dorm_bed_0922010217_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| drain_grate | `Assets/world/props/meshy/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| earth | `Assets/world/props/meshy/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| escalator | `Assets/world/props/meshy/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| escapepod | `Assets/world/props/meshy/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| exec_chair | `Assets/world/hq/models/Meshy_AI_an_office_chair_0903105134_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| exit_sign | `Assets/world/hq/models/Meshy_AI_an_exit_sign_0903110032_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fae_mushroom | `Assets/world/props/meshy/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fae_toadstool | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | femur | `Assets/fx/spell_props/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fern | `Assets/misc/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| field_goal_post | `Assets/misc/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fern | `Assets/world/props/meshy/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| field_goal_post | `Assets/world/props/meshy/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fighter_jet | `Assets/fx/spell_props/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fire_hydrant | `Assets/misc/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fire_truck | `Assets/misc/Meshy_AI_a_fire_truck_0915195407_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fire_hydrant | `Assets/world/props/meshy/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fire_truck | `Assets/world/props/meshy/Meshy_AI_a_fire_truck_0915195407_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fist | `Assets/fx/spell_props/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| flamingo | `Assets/misc/Meshy_AI_a_flamingo_0912231434_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| floor_drain | `Assets/door/models/Meshy_AI_water_drain_0910054212_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fluorescent | `Assets/door/models/Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| folding_chair | `Assets/door/models/Meshy_AI_a_folding_chair_0903105155_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| flamingo | `Assets/world/props/meshy/Meshy_AI_a_flamingo_0912231434_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| floor_drain | `Assets/world/hq/models/Meshy_AI_water_drain_0910054212_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fluorescent | `Assets/world/hq/models/Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| folding_chair | `Assets/world/hq/models/Meshy_AI_a_folding_chair_0903105155_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | football | `Assets/fx/spell_props/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| footbridge | `Assets/misc/Meshy_AI_a_plank_footbridge_0916235844_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fortune_teller_tent | `Assets/misc/Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| gclock | `Assets/misc/Meshy_AI_grandfather_clock_re_0727195306_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| globe_lamp | `Assets/door/models/Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| greek_column | `Assets/misc/Meshy_AI_greek_column_0727195651_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| holy_carpet | `Assets/misc/Meshy_AI_ornate_holy_carpet_0917035624_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| holy_tapestry | `Assets/misc/Meshy_AI_ornate_holy_carpet_0917035624_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hook_rail | `Assets/door/models/Meshy_AI_coat_hook_rail_0910054259_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hook_rail_long | `Assets/door/models/Meshy_AI_hook_rail_0910054853_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hospital_bed | `Assets/misc/Meshy_AI_a_hospital_bed_0922010451_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hot_dog_stand | `Assets/misc/Meshy_AI_a_hot_dog_stand_0922010432_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| house_key | `Assets/door/models/Meshy_AI_a_house_key_0903110053_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hullplate | `Assets/misc/Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| italian_building | `Assets/misc/Meshy_AI_Italian_building_0917035900_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| italian_building_2 | `Assets/misc/Meshy_AI_Italian_building_2_0917035828_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| jupiter | `Assets/misc/Meshy_AI_jupiter_realistic_0727195413_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| key | `Assets/door/models/Meshy_AI_a_key_0903110102_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_barn | `Assets/door/models/Meshy_AI_a_barn_door_0904015200_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_bathroom | `Assets/door/models/Meshy_AI_bathroom_door_0904015603_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_bulkhead | `Assets/door/models/Meshy_AI_submarine_bulkhead_0903105925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_cell | `Assets/door/models/Meshy_AI_cell_door_with_a_slot_0904015439_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_closet | `Assets/door/models/Meshy_AI_janitor_s_closet_door_0903105643_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_closet_alt | `Assets/door/models/Meshy_AI_a_janitor_s_closet_door_0903105815_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_closet_warped | `Assets/door/models/Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_exit | `Assets/door/models/Meshy_AI_an_exit_door_0903105826_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_frame_only | `Assets/door/models/Meshy_AI_a_door_frame_0903105906_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_frosted | `Assets/door/models/Meshy_AI_frosted_executive_glass_door_0903105709_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_frosted_single | `Assets/door/models/Meshy_AI_a_single_leaf_frosted_0904014832_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_futuristic | `Assets/door/models/Meshy_AI_futuristic_door_0903110023_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_glass | `Assets/door/models/Meshy_AI_glass_door_0904015552_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_glass_exec | `Assets/door/models/Meshy_AI_glass_executive_door_0904015541_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_hell_arch | `Assets/door/models/Meshy_AI_doorway_to_hell_0904015414_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_hollow_core | `Assets/door/models/Meshy_AI_cheap_hollow_core_door_0903105753_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_holographic | `Assets/door/models/Meshy_AI_holographic_door_0904015510_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_hospital | `Assets/door/models/Meshy_AI_hospital_room_door_wi_0904014956_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_hotel | `Assets/door/models/Meshy_AI_hotel_room_door_with__0904014945_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_motel | `Assets/door/models/Meshy_AI_motel_room_door_with__0904014925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_office | `Assets/door/models/Meshy_AI_an_office_door_0903105857_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_portcullis | `Assets/door/models/Meshy_AI_a_portcullis_0903105915_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_revolving | `Assets/door/models/Meshy_AI_a_revolving_door_0903105938_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_saloon | `Assets/door/models/Meshy_AI_a_saloon_door_0904015148_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_security | `Assets/door/models/Meshy_AI_security_door_0903110317_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_shabby_wood | `Assets/door/models/Meshy_AI_a_shabby_wooden_door_0903105805_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_stable | `Assets/door/models/Meshy_AI_a_stable_door_0904015237_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_stall | `Assets/door/models/Meshy_AI_bathroom_stall_door_0904015614_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_suburban | `Assets/door/models/Meshy_AI_a_suburban_door_0903105847_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_suburban_house | `Assets/door/models/Meshy_AI_a_suburban_house_door_0903105838_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_vault | `Assets/door/models/Meshy_AI_a_bank_vault_door_0903105653_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| leaf_wired_double | `Assets/door/models/Meshy_AI_institutional_wired_double_door_0903105727_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| lectern | `Assets/misc/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| library_shelf | `Assets/misc/Meshy_AI_a_library_shelf_0917035552_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| library_shelf_full | `Assets/misc/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| lunar_lander | `Assets/door/models/Meshy_AI_lunar_lander_realis_0910054105_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mall_bin | `Assets/misc/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| manila_folder | `Assets/door/models/Meshy_AI_tapered_manila_folder_0910054403_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| manila_folders | `Assets/door/models/Meshy_AI_office_manila_folders_0910054352_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mars_rover | `Assets/door/models/Meshy_AI_mars_rover_realistic_0910054045_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| meal_tray | `Assets/door/models/Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| meal_tray_empty | `Assets/door/models/Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| menhir | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| military_tank | `Assets/misc/Meshy_AI_a_military_tank_0922010101_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mini_fridge | `Assets/door/models/Meshy_AI_mini_fridge_0910054504_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| footbridge | `Assets/world/props/meshy/Meshy_AI_a_plank_footbridge_0916235844_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fortune_teller_tent | `Assets/world/props/meshy/Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| gclock | `Assets/world/props/meshy/Meshy_AI_grandfather_clock_re_0727195306_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| globe_lamp | `Assets/world/hq/models/Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| greek_column | `Assets/world/props/meshy/Meshy_AI_greek_column_0727195651_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| holy_carpet | `Assets/world/props/meshy/Meshy_AI_ornate_holy_carpet_0917035624_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| holy_tapestry | `Assets/world/props/meshy/Meshy_AI_ornate_holy_carpet_0917035624_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hook_rail | `Assets/world/hq/models/Meshy_AI_coat_hook_rail_0910054259_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hook_rail_long | `Assets/world/hq/models/Meshy_AI_hook_rail_0910054853_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hospital_bed | `Assets/world/props/meshy/Meshy_AI_a_hospital_bed_0922010451_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hot_dog_stand | `Assets/world/props/meshy/Meshy_AI_a_hot_dog_stand_0922010432_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| house_key | `Assets/world/hq/models/Meshy_AI_a_house_key_0903110053_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hullplate | `Assets/world/props/meshy/Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| italian_building | `Assets/world/props/meshy/Meshy_AI_Italian_building_0917035900_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| italian_building_2 | `Assets/world/props/meshy/Meshy_AI_Italian_building_2_0917035828_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| jupiter | `Assets/world/props/meshy/Meshy_AI_jupiter_realistic_0727195413_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| key | `Assets/world/hq/models/Meshy_AI_a_key_0903110102_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_barn | `Assets/world/hq/models/Meshy_AI_a_barn_door_0904015200_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_bathroom | `Assets/world/hq/models/Meshy_AI_bathroom_door_0904015603_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_bulkhead | `Assets/world/hq/models/Meshy_AI_submarine_bulkhead_0903105925_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_cell | `Assets/world/hq/models/Meshy_AI_cell_door_with_a_slot_0904015439_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_closet | `Assets/world/hq/models/Meshy_AI_janitor_s_closet_door_0903105643_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_closet_alt | `Assets/world/hq/models/Meshy_AI_a_janitor_s_closet_door_0903105815_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_closet_warped | `Assets/world/hq/models/Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_exit | `Assets/world/hq/models/Meshy_AI_an_exit_door_0903105826_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_frame_only | `Assets/world/hq/models/Meshy_AI_a_door_frame_0903105906_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_frosted | `Assets/world/hq/models/Meshy_AI_frosted_executive_glass_door_0903105709_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_frosted_single | `Assets/world/hq/models/Meshy_AI_a_single_leaf_frosted_0904014832_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_futuristic | `Assets/world/hq/models/Meshy_AI_futuristic_door_0903110023_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_glass | `Assets/world/hq/models/Meshy_AI_glass_door_0904015552_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_glass_exec | `Assets/world/hq/models/Meshy_AI_glass_executive_door_0904015541_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_hell_arch | `Assets/world/hq/models/Meshy_AI_doorway_to_hell_0904015414_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_hollow_core | `Assets/world/hq/models/Meshy_AI_cheap_hollow_core_door_0903105753_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_holographic | `Assets/world/hq/models/Meshy_AI_holographic_door_0904015510_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_hospital | `Assets/world/hq/models/Meshy_AI_hospital_room_door_wi_0904014956_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_hotel | `Assets/world/hq/models/Meshy_AI_hotel_room_door_with__0904014945_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_motel | `Assets/world/hq/models/Meshy_AI_motel_room_door_with__0904014925_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_office | `Assets/world/hq/models/Meshy_AI_an_office_door_0903105857_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_portcullis | `Assets/world/hq/models/Meshy_AI_a_portcullis_0903105915_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_revolving | `Assets/world/hq/models/Meshy_AI_a_revolving_door_0903105938_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_saloon | `Assets/world/hq/models/Meshy_AI_a_saloon_door_0904015148_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_security | `Assets/world/hq/models/Meshy_AI_security_door_0903110317_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_shabby_wood | `Assets/world/hq/models/Meshy_AI_a_shabby_wooden_door_0903105805_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_stable | `Assets/world/hq/models/Meshy_AI_a_stable_door_0904015237_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_stall | `Assets/world/hq/models/Meshy_AI_bathroom_stall_door_0904015614_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_suburban | `Assets/world/hq/models/Meshy_AI_a_suburban_door_0903105847_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_suburban_house | `Assets/world/hq/models/Meshy_AI_a_suburban_house_door_0903105838_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_vault | `Assets/world/hq/models/Meshy_AI_a_bank_vault_door_0903105653_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| leaf_wired_double | `Assets/world/hq/models/Meshy_AI_institutional_wired_double_door_0903105727_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| lectern | `Assets/world/props/meshy/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| library_shelf | `Assets/world/props/meshy/Meshy_AI_a_library_shelf_0917035552_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| library_shelf_full | `Assets/world/props/meshy/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| lunar_lander | `Assets/world/hq/models/Meshy_AI_lunar_lander_realis_0910054105_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mall_bin | `Assets/world/props/meshy/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| manila_folder | `Assets/world/hq/models/Meshy_AI_tapered_manila_folder_0910054403_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| manila_folders | `Assets/world/hq/models/Meshy_AI_office_manila_folders_0910054352_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mars_rover | `Assets/world/hq/models/Meshy_AI_mars_rover_realistic_0910054045_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| meal_tray | `Assets/world/hq/models/Meshy_AI_cafeteria_meal_tray_w_0910054631_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| meal_tray_empty | `Assets/world/hq/models/Meshy_AI_cafeteria_meal_tray_w_0910054659_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| menhir | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| military_tank | `Assets/world/props/meshy/Meshy_AI_a_military_tank_0922010101_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mini_fridge | `Assets/world/hq/models/Meshy_AI_mini_fridge_0910054504_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | missile | `Assets/fx/spell_props/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| molded_chair | `Assets/door/models/Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| moon | `Assets/misc/Meshy_AI_moon_realistic_0727195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mop_bucket | `Assets/door/models/Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mushroom | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mushroom2 | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| nacelle | `Assets/misc/Meshy_AI_an_engine_nacelle_0912231313_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| nameplate | `Assets/door/models/Meshy_AI_a_blank_office_nameplate_0903110218_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| notebook_paper | `Assets/door/models/Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| obelisk | `Assets/misc/Meshy_AI_obelisk_0727195707_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| observation_window | `Assets/door/models/Meshy_AI_a_round_observation_window_0903105519_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| office_chair | `Assets/door/models/Meshy_AI_an_office_chair_0903105134_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| office_locker | `Assets/door/models/Meshy_AI_an_office_locker_0903110307_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| office_plant | `Assets/door/models/Meshy_AI_an_office_plant_0903110228_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| palm_tree | `Assets/door/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| palmisle | `Assets/misc/Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| paper_sheet | `Assets/door/models/Meshy_AI_a_piece_of_office_paper_0903105947_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| papers_a | `Assets/door/models/Meshy_AI_a_stack_of_office_papers_0903110113_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| papers_b | `Assets/door/models/Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pearly_gate | `Assets/misc/Meshy_AI_pearly_gate_0917035350_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pen | `Assets/door/models/Meshy_AI_an_office_pen_0903110146_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pencil | `Assets/door/models/Meshy_AI_a_no_2_pencil_0903110156_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| picture_round_a | `Assets/door/models/Meshy_AI_round_empty_picture_f_0910054412_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| picture_round_b | `Assets/door/models/Meshy_AI_round_empty_picture_f_0910054431_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| picture_round_c | `Assets/door/models/Meshy_AI_round_empty_picture_f_0910054439_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pipe_run | `Assets/door/models/Meshy_AI_office_pipe_run_0903105348_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| molded_chair | `Assets/world/hq/models/Meshy_AI_a_molded_cafeteria_ch_0910054600_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| moon | `Assets/world/props/meshy/Meshy_AI_moon_realistic_0727195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mop_bucket | `Assets/world/hq/models/Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mushroom | `Assets/world/props/meshy/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mushroom2 | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| nacelle | `Assets/world/props/meshy/Meshy_AI_an_engine_nacelle_0912231313_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| nameplate | `Assets/world/hq/models/Meshy_AI_a_blank_office_nameplate_0903110218_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| notebook_paper | `Assets/world/hq/models/Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| obelisk | `Assets/world/props/meshy/Meshy_AI_obelisk_0727195707_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| observation_window | `Assets/world/hq/models/Meshy_AI_a_round_observation_window_0903105519_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| office_chair | `Assets/world/hq/models/Meshy_AI_an_office_chair_0903105134_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| office_locker | `Assets/world/hq/models/Meshy_AI_an_office_locker_0903110307_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| office_plant | `Assets/world/hq/models/Meshy_AI_an_office_plant_0903110228_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| palm_tree | `Assets/world/hq/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| palmisle | `Assets/world/props/meshy/Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| paper_sheet | `Assets/world/hq/models/Meshy_AI_a_piece_of_office_paper_0903105947_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| papers_a | `Assets/world/hq/models/Meshy_AI_a_stack_of_office_papers_0903110113_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| papers_b | `Assets/world/hq/models/Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pearly_gate | `Assets/world/props/meshy/Meshy_AI_pearly_gate_0917035350_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pen | `Assets/world/hq/models/Meshy_AI_an_office_pen_0903110146_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pencil | `Assets/world/hq/models/Meshy_AI_a_no_2_pencil_0903110156_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| picture_round_a | `Assets/world/hq/models/Meshy_AI_round_empty_picture_f_0910054412_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| picture_round_b | `Assets/world/hq/models/Meshy_AI_round_empty_picture_f_0910054431_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| picture_round_c | `Assets/world/hq/models/Meshy_AI_round_empty_picture_f_0910054439_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pipe_run | `Assets/world/hq/models/Meshy_AI_office_pipe_run_0903105348_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | pistol | `Assets/fx/spell_props/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | plasma | `Assets/fx/spell_props/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pocket_watch | `Assets/misc/Meshy_AI_a_pocket_watch_0912231541_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pocket_watch_hung | `Assets/misc/Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| potted_plant | `Assets/door/models/Meshy_AI_a_potted_plant_0903105322_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| railing_1m | `Assets/door/models/Meshy_AI_one_meter_of_railing_0903105339_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| reception_wedge | `Assets/door/models/Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| retro_control_panel | `Assets/misc/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| retro_speakers | `Assets/door/models/Meshy_AI_retro_speakers_0910054343_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pocket_watch | `Assets/world/props/meshy/Meshy_AI_a_pocket_watch_0912231541_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pocket_watch_hung | `Assets/world/props/meshy/Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| potted_plant | `Assets/world/hq/models/Meshy_AI_a_potted_plant_0903105322_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| railing_1m | `Assets/world/hq/models/Meshy_AI_one_meter_of_railing_0903105339_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| reception_wedge | `Assets/world/hq/models/Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| retro_control_panel | `Assets/world/props/meshy/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| retro_speakers | `Assets/world/hq/models/Meshy_AI_retro_speakers_0910054343_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | revolver | `Assets/fx/spell_props/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| road_straight | `Assets/misc/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| road_turn | `Assets/misc/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| round_cabinet | `Assets/door/models/Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| round_cubicle | `Assets/door/models/Meshy_AI_round_cubicle_0910054648_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| round_desk | `Assets/door/models/Meshy_AI_A_round_office_desk_0903092905_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| round_fridge | `Assets/door/models/Meshy_AI_round_fridge_0910054551_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| royal_bed | `Assets/misc/Meshy_AI_a_royal_bed_0922010438_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| royal_throne | `Assets/misc/Meshy_AI_royal_throne_0917035803_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rug_office | `Assets/door/models/Meshy_AI_a_round_office_rug_0903110253_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rug_round | `Assets/door/models/Meshy_AI_a_round_rug_0903110327_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sarcophagus | `Assets/misc/Meshy_AI_stone_sarcophagus_0917035255_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sarsen | `Assets/misc/Meshy_AI_a_standing_stone_0912231506_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| satellite | `Assets/misc/Meshy_AI_satellite_realistic_1027103629_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| saturn | `Assets/misc/Meshy_AI_saturn_realistic_0727200914_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| saucer_lg | `Assets/misc/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| school_bus | `Assets/misc/Meshy_AI_a_school_bus_0915195620_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sea_chest | `Assets/misc/Meshy_AI_pirate_treasure_chest_0912231220_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| shark | `Assets/misc/Meshy_AI_shark_0912231236_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ship_anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ship_cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ship_wreck | `Assets/misc/Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| road_straight | `Assets/world/props/meshy/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| road_turn | `Assets/world/props/meshy/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| round_cabinet | `Assets/world/hq/models/Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| round_cubicle | `Assets/world/hq/models/Meshy_AI_round_cubicle_0910054648_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| round_desk | `Assets/world/hq/models/Meshy_AI_A_round_office_desk_0903092905_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| round_fridge | `Assets/world/hq/models/Meshy_AI_round_fridge_0910054551_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| royal_bed | `Assets/world/props/meshy/Meshy_AI_a_royal_bed_0922010438_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| royal_throne | `Assets/world/props/meshy/Meshy_AI_royal_throne_0917035803_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| rug_office | `Assets/world/hq/models/Meshy_AI_a_round_office_rug_0903110253_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| rug_round | `Assets/world/hq/models/Meshy_AI_a_round_rug_0903110327_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sarcophagus | `Assets/world/props/meshy/Meshy_AI_stone_sarcophagus_0917035255_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sarsen | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0912231506_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| satellite | `Assets/world/props/meshy/Meshy_AI_satellite_realistic_1027103629_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| saturn | `Assets/world/props/meshy/Meshy_AI_saturn_realistic_0727200914_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| saucer_lg | `Assets/world/props/meshy/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| school_bus | `Assets/world/props/meshy/Meshy_AI_a_school_bus_0915195620_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sea_chest | `Assets/world/props/meshy/Meshy_AI_pirate_treasure_chest_0912231220_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| shark | `Assets/world/props/meshy/Meshy_AI_shark_0912231236_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ship_anchor | `Assets/world/props/meshy/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ship_cannon | `Assets/world/props/meshy/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ship_wreck | `Assets/world/props/meshy/Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | shotgun | `Assets/fx/spell_props/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| signpost | `Assets/misc/Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| skateboard | `Assets/misc/Meshy_AI_a_skateboard_0915212313_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| signpost | `Assets/world/props/meshy/Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| skateboard | `Assets/world/props/meshy/Meshy_AI_a_skateboard_0915212313_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull | `Assets/fx/spell_props/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| skull_pile | `Assets/misc/Meshy_AI_skull_pile_0917035243_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| skull_pile | `Assets/world/props/meshy/Meshy_AI_skull_pile_0917035243_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sleigh | `Assets/fx/spell_props/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sniper | `Assets/fx/spell_props/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| solar | `Assets/misc/Meshy_AI_solar_system_realist_0727195437_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| solo_cup | `Assets/door/models/Meshy_AI_red_solo_cup_0910054318_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| space_shuttle | `Assets/misc/Meshy_AI_space_shuttle_realis_1027103636_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| space_station | `Assets/misc/Meshy_AI_international_space_s_1027103646_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| spaceship | `Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| stained_glass | `Assets/misc/Meshy_AI_stained_glass_window_0917035453_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| stapler | `Assets/door/models/Meshy_AI_stapler_0910054326_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| star | `Assets/misc/Meshy_AI_star_realistic_0727195402_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| storefront | `Assets/misc/Meshy_AI_storefront_0917064551_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| storefront_unit | `Assets/misc/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| subway_cart | `Assets/misc/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| subway_front | `Assets/misc/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| solar | `Assets/world/props/meshy/Meshy_AI_solar_system_realist_0727195437_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| solo_cup | `Assets/world/hq/models/Meshy_AI_red_solo_cup_0910054318_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| space_shuttle | `Assets/world/props/meshy/Meshy_AI_space_shuttle_realis_1027103636_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| space_station | `Assets/world/props/meshy/Meshy_AI_international_space_s_1027103646_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| spaceship | `Assets/world/props/meshy/Meshy_AI_spaceship_0727195825_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| stained_glass | `Assets/world/props/meshy/Meshy_AI_stained_glass_window_0917035453_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| stapler | `Assets/world/hq/models/Meshy_AI_stapler_0910054326_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| star | `Assets/world/props/meshy/Meshy_AI_star_realistic_0727195402_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| storefront | `Assets/world/props/meshy/Meshy_AI_storefront_0917064551_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| storefront_unit | `Assets/world/props/meshy/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| subway_cart | `Assets/world/props/meshy/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| subway_front | `Assets/world/props/meshy/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sword | `Assets/fx/spell_props/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot2 | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarotDeck | `Assets/fx/spell_props/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| teacups | `Assets/misc/Meshy_AI_stacked_teacups_0912231425_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| teal_chair | `Assets/door/models/Meshy_AI_a_teal_office_chair_0903105124_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| teapot | `Assets/misc/Meshy_AI_teapot_0912231417_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| telescope | `Assets/misc/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tentacle | `Assets/misc/Meshy_AI_a_kraken_tentacle_0912231121_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tentacle2 | `Assets/misc/Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| time_machine | `Assets/misc/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| traffic_barrel | `Assets/misc/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| teacups | `Assets/world/props/meshy/Meshy_AI_stacked_teacups_0912231425_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| teal_chair | `Assets/world/hq/models/Meshy_AI_a_teal_office_chair_0903105124_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| teapot | `Assets/world/props/meshy/Meshy_AI_teapot_0912231417_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| telescope | `Assets/world/props/meshy/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tentacle | `Assets/world/props/meshy/Meshy_AI_a_kraken_tentacle_0912231121_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tentacle2 | `Assets/world/props/meshy/Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| time_machine | `Assets/world/props/meshy/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| traffic_barrel | `Assets/world/props/meshy/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| traffic_cone | `Assets/world/props/meshy/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| trilithon | `Assets/world/props/meshy/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ufo | `Assets/world/props/meshy/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/fx/spell_props/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vatican_dome | `Assets/misc/Meshy_AI_the_Vatican_dome_0917061915_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vault | `Assets/misc/Meshy_AI_a_bank_vault_0912231605_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vent_grille | `Assets/door/models/Meshy_AI_vent_0910054228_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vhs_player | `Assets/misc/Meshy_AI_a_vhs_player_0922010233_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vhs_tape | `Assets/misc/Meshy_AI_a_vhs_tape_0922010141_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wet_floor_sign | `Assets/door/models/Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wheel | `Assets/misc/Meshy_AI_a_ship_s_wheel_0912230950_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| white_cloud | `Assets/misc/Meshy_AI_white_cloud_0917035538_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wooden_bucket | `Assets/misc/Meshy_AI_wooden_bucket_0922011434_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wooden_cross | `Assets/misc/Meshy_AI_wooden_cross_0917035711_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| yellow_pole | `Assets/misc/Meshy_AI_a_yellow_pole_0922010159_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vatican_dome | `Assets/world/props/meshy/Meshy_AI_the_Vatican_dome_0917061915_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vault | `Assets/world/props/meshy/Meshy_AI_a_bank_vault_0912231605_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vent_grille | `Assets/world/hq/models/Meshy_AI_vent_0910054228_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vhs_player | `Assets/world/props/meshy/Meshy_AI_a_vhs_player_0922010233_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vhs_tape | `Assets/world/props/meshy/Meshy_AI_a_vhs_tape_0922010141_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wet_floor_sign | `Assets/world/hq/models/Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wheel | `Assets/world/props/meshy/Meshy_AI_a_ship_s_wheel_0912230950_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| white_cloud | `Assets/world/props/meshy/Meshy_AI_white_cloud_0917035538_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wooden_bucket | `Assets/world/props/meshy/Meshy_AI_wooden_bucket_0922011434_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wooden_cross | `Assets/world/props/meshy/Meshy_AI_wooden_cross_0917035711_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| yellow_pole | `Assets/world/props/meshy/Meshy_AI_a_yellow_pole_0922010159_texture.glb` | Meshy AI | Meshy AI (mondo) |
 
 ### Ocean pack (mondo's upload, 48 FBX) — Asset pack (author not recorded yet) (60)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| coral_brain | `Assets/oceanic/Coral.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| coral_fan | `Assets/oceanic/Coral1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| coral_tube | `Assets/oceanic/Coral2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| kelp | `Assets/oceanic/SeaWeed.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_anglerfish | `Assets/oceanic/Anglerfish_Lure_Lit.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_anglerfish_dim | `Assets/oceanic/Anglerfish_Lure_Dim.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_anglerfish_jaws | `Assets/oceanic/Anglerfish_Jaws_Open.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_bioluminescent_jelly | `Assets/oceanic/Jellyfish_Bioluminescent.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_box_jelly | `Assets/oceanic/Jellyfish_Box_Jelly.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_brown_fish | `Assets/oceanic/BrownFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_clownfish | `Assets/oceanic/ClownFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_conch | `Assets/oceanic/Shells.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral | `Assets/oceanic/Coral.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral_2 | `Assets/oceanic/Coral1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral_3 | `Assets/oceanic/Coral2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral_4 | `Assets/oceanic/Coral3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral_5 | `Assets/oceanic/Coral4.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral_6 | `Assets/oceanic/Coral5.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_coral_7 | `Assets/oceanic/Coral6.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_crab | `Assets/oceanic/Crab.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_dolphin | `Assets/oceanic/Dolphin.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_dory | `Assets/oceanic/DoryFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_eel | `Assets/oceanic/Eel.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_fish | `Assets/oceanic/Fish1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_fish_2 | `Assets/oceanic/Fish2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_fish_3 | `Assets/oceanic/Fish3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_hammerhead | `Assets/oceanic/Hammerhead.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_humpback | `Assets/oceanic/Whale2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_lobster | `Assets/oceanic/Lobster.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_manta | `Assets/oceanic/Manta ray.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_moon_jelly | `Assets/oceanic/Jellyfish_Moon_Jelly.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_moon_jelly_pulsing | `Assets/oceanic/Jellyfish_Pulsing_Frames.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_octopus | `Assets/oceanic/Octopus.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_penguin | `Assets/oceanic/Penguin.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock | `Assets/oceanic/Rock.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_10 | `Assets/oceanic/Rock9.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_11 | `Assets/oceanic/Rock10.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_2 | `Assets/oceanic/Rock1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_3 | `Assets/oceanic/Rock2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_4 | `Assets/oceanic/Rock3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_5 | `Assets/oceanic/Rock4.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_6 | `Assets/oceanic/Rock5.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_7 | `Assets/oceanic/Rock6.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_8 | `Assets/oceanic/Rock7.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_rock_9 | `Assets/oceanic/Rock8.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_sand_dollar | `Assets/oceanic/Shells1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_sand_dollar_2 | `Assets/oceanic/Shells2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_sand_dollar_3 | `Assets/oceanic/Shells3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_seal | `Assets/oceanic/Seal.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_seal_resting | `Assets/oceanic/Seal.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_seaweed | `Assets/oceanic/SeaWeed.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_seaweed_2 | `Assets/oceanic/SeaWeed1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_seaweed_3 | `Assets/oceanic/SeaWeed2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_shark | `Assets/oceanic/Shark.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_squid | `Assets/oceanic/Squid.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_starfish | `Assets/oceanic/StarFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_stingray | `Assets/oceanic/StingRay.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_tuna | `Assets/oceanic/TunaFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_turtle | `Assets/oceanic/Turtle.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
-| ocean_whale | `Assets/oceanic/Whale.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| coral_brain | `Assets/world/packs/ocean/Coral.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| coral_fan | `Assets/world/packs/ocean/Coral1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| coral_tube | `Assets/world/packs/ocean/Coral2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| kelp | `Assets/world/packs/ocean/SeaWeed.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_anglerfish | `Assets/world/packs/ocean/Anglerfish_Lure_Lit.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_anglerfish_dim | `Assets/world/packs/ocean/Anglerfish_Lure_Dim.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_anglerfish_jaws | `Assets/world/packs/ocean/Anglerfish_Jaws_Open.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_bioluminescent_jelly | `Assets/world/packs/ocean/Jellyfish_Bioluminescent.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_box_jelly | `Assets/world/packs/ocean/Jellyfish_Box_Jelly.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_brown_fish | `Assets/world/packs/ocean/BrownFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_clownfish | `Assets/world/packs/ocean/ClownFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_conch | `Assets/world/packs/ocean/Shells.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral | `Assets/world/packs/ocean/Coral.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral_2 | `Assets/world/packs/ocean/Coral1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral_3 | `Assets/world/packs/ocean/Coral2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral_4 | `Assets/world/packs/ocean/Coral3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral_5 | `Assets/world/packs/ocean/Coral4.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral_6 | `Assets/world/packs/ocean/Coral5.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_coral_7 | `Assets/world/packs/ocean/Coral6.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_crab | `Assets/world/packs/ocean/Crab.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_dolphin | `Assets/world/packs/ocean/Dolphin.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_dory | `Assets/world/packs/ocean/DoryFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_eel | `Assets/world/packs/ocean/Eel.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_fish | `Assets/world/packs/ocean/Fish1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_fish_2 | `Assets/world/packs/ocean/Fish2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_fish_3 | `Assets/world/packs/ocean/Fish3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_hammerhead | `Assets/world/packs/ocean/Hammerhead.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_humpback | `Assets/world/packs/ocean/Whale2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_lobster | `Assets/world/packs/ocean/Lobster.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_manta | `Assets/world/packs/ocean/Manta ray.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_moon_jelly | `Assets/world/packs/ocean/Jellyfish_Moon_Jelly.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_moon_jelly_pulsing | `Assets/world/packs/ocean/Jellyfish_Pulsing_Frames.glb` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_octopus | `Assets/world/packs/ocean/Octopus.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_penguin | `Assets/world/packs/ocean/Penguin.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock | `Assets/world/packs/ocean/Rock.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_10 | `Assets/world/packs/ocean/Rock9.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_11 | `Assets/world/packs/ocean/Rock10.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_2 | `Assets/world/packs/ocean/Rock1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_3 | `Assets/world/packs/ocean/Rock2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_4 | `Assets/world/packs/ocean/Rock3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_5 | `Assets/world/packs/ocean/Rock4.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_6 | `Assets/world/packs/ocean/Rock5.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_7 | `Assets/world/packs/ocean/Rock6.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_8 | `Assets/world/packs/ocean/Rock7.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_rock_9 | `Assets/world/packs/ocean/Rock8.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_sand_dollar | `Assets/world/packs/ocean/Shells1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_sand_dollar_2 | `Assets/world/packs/ocean/Shells2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_sand_dollar_3 | `Assets/world/packs/ocean/Shells3.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_seal | `Assets/world/packs/ocean/Seal.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_seal_resting | `Assets/world/packs/ocean/Seal.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_seaweed | `Assets/world/packs/ocean/SeaWeed.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_seaweed_2 | `Assets/world/packs/ocean/SeaWeed1.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_seaweed_3 | `Assets/world/packs/ocean/SeaWeed2.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_shark | `Assets/world/packs/ocean/Shark.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_squid | `Assets/world/packs/ocean/Squid.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_starfish | `Assets/world/packs/ocean/StarFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_stingray | `Assets/world/packs/ocean/StingRay.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_tuna | `Assets/world/packs/ocean/TunaFish.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_turtle | `Assets/world/packs/ocean/Turtle.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
+| ocean_whale | `Assets/world/packs/ocean/Whale.fbx` | Asset pack (author not recorded yet) | Ocean pack (mondo's upload, 48 FBX) |
 
 ### Christmas pack · Elbolilloduro — Asset pack (37)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| xmas_bake | `Assets/christmas/models/Christmas.dae#Christmas_food_02` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_baubles | `Assets/christmas/models/Christmas.dae#Christmas_sphere,Christmas_sphere_01,Christmas_sphere_02,Christmas_sphere_03,Christmas_sphere_04,Christmas_sphere_05,Christmas_sphere_06` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_carvery | `Assets/christmas/models/Christmas.dae#Christmas_food_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_champagne | `Assets/christmas/models/Christmas.dae#Champam` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_cocoa | `Assets/christmas/models/Christmas.dae#Cup_chocolate` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_cocoa_2 | `Assets/christmas/models/Christmas.dae#Cup_chocolate_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_cookies | `Assets/christmas/models/Christmas.dae#Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_flan | `Assets/christmas/models/Christmas.dae#Flan` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_foil_tray | `Assets/christmas/models/Christmas.dae#Aluminum_tray` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_garland | `Assets/christmas/models/Christmas.dae#Christmas_decoration` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_garland_2 | `Assets/christmas/models/Christmas.dae#Christmas_decoration_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_garland_3 | `Assets/christmas/models/Christmas.dae#Christmas_decoration_02` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_gift | `Assets/christmas/models/Christmas.dae#Gift` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_gift_2 | `Assets/christmas/models/Christmas.dae#Gift_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_gift_3 | `Assets/christmas/models/Christmas.dae#Gift_02` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_gift_4 | `Assets/christmas/models/Christmas.dae#Gift_03` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_gingerbread | `Assets/christmas/models/Christmas.dae#Christmas_cookie_07` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_hammer | `Assets/christmas/models/Christmas.dae#Hammer` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_hammer_2 | `Assets/christmas/models/Christmas.dae#Hammer_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_hat | `Assets/christmas/models/Christmas.dae#Christmas_hat` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_house | `Assets/christmas/models/Christmas.dae#House` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_punch | `Assets/christmas/models/Christmas.dae#Ponche` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_punch_2 | `Assets/christmas/models/Christmas.dae#Ponche_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_punch_3 | `Assets/christmas/models/Christmas.dae#Ponche_02` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_roast | `Assets/christmas/models/Christmas.dae#Christmas_food_03` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_santa | `Assets/christmas/models/Christmas.dae#SantaClaus` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_santa_2 | `Assets/christmas/models/Christmas.dae#SantaClaus_B` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_snowman | `Assets/christmas/models/Christmas.dae#Snowman` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_snowman_2 | `Assets/christmas/models/Christmas.dae#Snowman_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_snowman_3 | `Assets/christmas/models/Christmas.dae#Snowman_02` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_stocking | `Assets/christmas/models/Christmas.dae#Christmas_stocking` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_stocking_2 | `Assets/christmas/models/Christmas.dae#Christmas_stocking_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_tree | `Assets/christmas/models/Christmas.dae#Christmas_tree` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_tree_plain | `Assets/christmas/models/Christmas.dae#Christmas_tree_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_turkey | `Assets/christmas/models/Christmas.dae#Christmas_food` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_wreath | `Assets/christmas/models/Christmas.dae#Christmas_wreath` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_wreath_2 | `Assets/christmas/models/Christmas.dae#Christmas_wreath_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_bake | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_baubles | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_sphere,Christmas_sphere_01,Christmas_sphere_02,Christmas_sphere_03,Christmas_sphere_04,Christmas_sphere_05,Christmas_sphere_06` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_carvery | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_champagne | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Champam` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_cocoa | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Cup_chocolate` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_cocoa_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Cup_chocolate_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_cookies | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_flan | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Flan` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_foil_tray | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Aluminum_tray` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_garland | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_decoration` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_garland_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_decoration_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_garland_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_decoration_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_gift | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Gift` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_gift_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Gift_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_gift_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Gift_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_gift_4 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Gift_03` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_gingerbread | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_cookie_07` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_hammer | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Hammer` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_hammer_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Hammer_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_hat | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_hat` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_house | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#House` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_punch | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Ponche` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_punch_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Ponche_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_punch_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Ponche_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_roast | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food_03` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_santa | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#SantaClaus` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_santa_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#SantaClaus_B` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_snowman | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_snowman_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_snowman_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Snowman_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_stocking | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_stocking` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_stocking_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_stocking_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_tree | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_tree` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_tree_plain | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_tree_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_turkey | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_wreath | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_wreath_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath_01` | Asset pack | Christmas pack · Elbolilloduro |
 
 ### Low-poly cars · GGBot — Asset pack (20)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| car_cadillac (1 of 2) — the car pack, pool `sedan` | `Assets/vehicles/Car 02/Car2.obj` | Asset pack | Low-poly cars · GGBot |
-| car_cadillac (2 of 2) — the car pack, pool `sedan` | `Assets/vehicles/Car 05/Car5.obj` | Asset pack | Low-poly cars · GGBot |
-| car_cop — the car pack, pool `police` | `Assets/vehicles/Car 05/Car5_Police.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_1 — the car pack, pool `car01` | `Assets/vehicles/Car 01/Car.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_2 — the car pack, pool `car02` | `Assets/vehicles/Car 02/Car2.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_3 — the car pack, pool `car03` | `Assets/vehicles/Car 03/Car3.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_4 — the car pack, pool `car04` | `Assets/vehicles/Car 04/Car4.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_5 — the car pack, pool `car05` | `Assets/vehicles/Car 05/Car5.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_5_police — paint | `Assets/vehicles/Car 05/Car5_Police.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_5_taxi — paint | `Assets/vehicles/Car 05/Car5_Taxi.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_6 — the car pack, pool `car06` | `Assets/vehicles/Car 06/Car6.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_7 — the car pack, pool `car07` | `Assets/vehicles/Car 07/Car7.obj` | Asset pack | Low-poly cars · GGBot |
-| car_pack_8 — the car pack, pool `car08` | `Assets/vehicles/Car 08/Car8.obj` | Asset pack | Low-poly cars · GGBot |
-| car_suv (1 of 3) — the car pack, pool `suv` | `Assets/vehicles/Car 01/Car.obj` | Asset pack | Low-poly cars · GGBot |
-| car_suv (2 of 3) — the car pack, pool `suv` | `Assets/vehicles/Car 03/Car3.obj` | Asset pack | Low-poly cars · GGBot |
-| car_suv (3 of 3) — the car pack, pool `suv` | `Assets/vehicles/Car 04/Car4.obj` | Asset pack | Low-poly cars · GGBot |
-| car_taxi — the car pack, pool `taxi` | `Assets/vehicles/Car 05/Car5_Taxi.obj` | Asset pack | Low-poly cars · GGBot |
-| car_truck — the car pack, pool `van` | `Assets/vehicles/Car 08/Car8.obj` | Asset pack | Low-poly cars · GGBot |
-| crashed_car — the car pack, pool `wreck` | `Assets/vehicles/Car 06/Car6.obj` | Asset pack | Low-poly cars · GGBot |
-| crashed_car_2 — the car pack, pool `wreck` | `Assets/vehicles/Car 06/Car6.obj` | Asset pack | Low-poly cars · GGBot |
+| car_cadillac (1 of 2) — the car pack, pool `sedan` | `Assets/world/vehicles/Car 02/Car2.obj` | Asset pack | Low-poly cars · GGBot |
+| car_cadillac (2 of 2) — the car pack, pool `sedan` | `Assets/world/vehicles/Car 05/Car5.obj` | Asset pack | Low-poly cars · GGBot |
+| car_cop — the car pack, pool `police` | `Assets/world/vehicles/Car 05/Car5_Police.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_1 — the car pack, pool `car01` | `Assets/world/vehicles/Car 01/Car.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_2 — the car pack, pool `car02` | `Assets/world/vehicles/Car 02/Car2.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_3 — the car pack, pool `car03` | `Assets/world/vehicles/Car 03/Car3.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_4 — the car pack, pool `car04` | `Assets/world/vehicles/Car 04/Car4.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_5 — the car pack, pool `car05` | `Assets/world/vehicles/Car 05/Car5.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_5_police — paint | `Assets/world/vehicles/Car 05/Car5_Police.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_5_taxi — paint | `Assets/world/vehicles/Car 05/Car5_Taxi.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_6 — the car pack, pool `car06` | `Assets/world/vehicles/Car 06/Car6.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_7 — the car pack, pool `car07` | `Assets/world/vehicles/Car 07/Car7.obj` | Asset pack | Low-poly cars · GGBot |
+| car_pack_8 — the car pack, pool `car08` | `Assets/world/vehicles/Car 08/Car8.obj` | Asset pack | Low-poly cars · GGBot |
+| car_suv (1 of 3) — the car pack, pool `suv` | `Assets/world/vehicles/Car 01/Car.obj` | Asset pack | Low-poly cars · GGBot |
+| car_suv (2 of 3) — the car pack, pool `suv` | `Assets/world/vehicles/Car 03/Car3.obj` | Asset pack | Low-poly cars · GGBot |
+| car_suv (3 of 3) — the car pack, pool `suv` | `Assets/world/vehicles/Car 04/Car4.obj` | Asset pack | Low-poly cars · GGBot |
+| car_taxi — the car pack, pool `taxi` | `Assets/world/vehicles/Car 05/Car5_Taxi.obj` | Asset pack | Low-poly cars · GGBot |
+| car_truck — the car pack, pool `van` | `Assets/world/vehicles/Car 08/Car8.obj` | Asset pack | Low-poly cars · GGBot |
+| crashed_car — the car pack, pool `wreck` | `Assets/world/vehicles/Car 06/Car6.obj` | Asset pack | Low-poly cars · GGBot |
+| crashed_car_2 — the car pack, pool `wreck` | `Assets/world/vehicles/Car 06/Car6.obj` | Asset pack | Low-poly cars · GGBot |
 
 ### Metro PSX · Elbolilloduro · CC0 — Asset pack (20)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| metro_bench | `Assets/Metro_PSX/Models/Metro.glb#Chair` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_bin | `Assets/Metro_PSX/Models/Metro.glb#trash_can` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_car | `Assets/Metro_PSX/Models/Metro.glb#subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.002,Door.003,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_car_open | `Assets/Metro_PSX/Models/Metro.glb#subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_column | `Assets/Metro_PSX/Models/Metro.glb#Column` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_gate | `Assets/Metro_PSX/Models/Metro.glb#automatic_ticket_gate` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_light | `Assets/Metro_PSX/Models/Metro.glb#light` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_map | `Assets/Metro_PSX/Models/Metro.glb#metro_map` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_1 | `Assets/Metro_PSX/Models/Metro.glb#Poster_01` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_2 | `Assets/Metro_PSX/Models/Metro.glb#Poster_02` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_3 | `Assets/Metro_PSX/Models/Metro.glb#Poster_03` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_4 | `Assets/Metro_PSX/Models/Metro.glb#Poster_04` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_5 | `Assets/Metro_PSX/Models/Metro.glb#Poster_05` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_6 | `Assets/Metro_PSX/Models/Metro.glb#Poster_06` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_7 | `Assets/Metro_PSX/Models/Metro.glb#Poster_07` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_poster_8 | `Assets/Metro_PSX/Models/Metro.glb#Poster_08` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_stair_rail | `Assets/Metro_PSX/Models/Metro.glb#Railing` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_stairs | `Assets/Metro_PSX/Models/Metro.glb#Stairs_01` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_ticket_machine | `Assets/Metro_PSX/Models/Metro.glb#ticket_machine` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
-| metro_vending | `Assets/Metro_PSX/Models/Metro.glb#Vending_machine` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_bench | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Chair` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_bin | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#trash_can` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_car | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.002,Door.003,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_car_open | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_column | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Column` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_gate | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#automatic_ticket_gate` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_light | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#light` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_map | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#metro_map` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_1 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_01` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_2 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_02` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_3 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_03` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_4 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_04` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_5 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_05` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_6 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_06` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_7 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_07` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_poster_8 | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Poster_08` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_stair_rail | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Railing` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_stairs | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Stairs_01` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_ticket_machine | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#ticket_machine` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
+| metro_vending | `Assets/world/packs/elbolilloduro_metro_psx/Models/Metro.glb#Vending_machine` | Asset pack | Metro PSX · Elbolilloduro · CC0 |
 
 ### Insects pack (mondo's upload) — Asset pack (author not recorded yet) (19)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| ant | `Assets/animals/insects/Ant_Worker.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| ant_leaf | `Assets/animals/insects/Ant_Carrying_Leaf.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| ant_queen | `Assets/animals/insects/Ant_Queen.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| anthill | `Assets/animals/insects/Ant_Anthill.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| bee | `Assets/animals/insects/Bee_Honeybee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| bee_frames | `Assets/animals/insects/Bee_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| blue_morpho | `Assets/animals/insects/Butterfly_Blue_Morpho.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| bumblebee | `Assets/animals/insects/Bee_Bumblebee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| carpenter_bee | `Assets/animals/insects/Bee_Carpenter_Bee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| caterpillar_bug | `Assets/animals/insects/Butterfly_Caterpillar.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| chrysalis | `Assets/animals/insects/Butterfly_Chrysalis.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| grasshopper | `Assets/animals/insects/Grasshopper_Green.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| grasshopper_brown | `Assets/animals/insects/Grasshopper_Brown.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| grasshopper_jump | `Assets/animals/insects/Grasshopper_Mid_Jump.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| hawk_moth | `Assets/animals/insects/Moth_Hawk_Moth.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| luna_moth | `Assets/animals/insects/Moth_Luna.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| monarch | `Assets/animals/insects/Butterfly_Monarch.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| moth_frames | `Assets/animals/insects/Moth_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| swallowtail | `Assets/animals/insects/Butterfly_Swallowtail.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| ant | `Assets/world/animals/insects/Ant_Worker.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| ant_leaf | `Assets/world/animals/insects/Ant_Carrying_Leaf.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| ant_queen | `Assets/world/animals/insects/Ant_Queen.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| anthill | `Assets/world/animals/insects/Ant_Anthill.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| bee | `Assets/world/animals/insects/Bee_Honeybee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| bee_frames | `Assets/world/animals/insects/Bee_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| blue_morpho | `Assets/world/animals/insects/Butterfly_Blue_Morpho.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| bumblebee | `Assets/world/animals/insects/Bee_Bumblebee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| carpenter_bee | `Assets/world/animals/insects/Bee_Carpenter_Bee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| caterpillar_bug | `Assets/world/animals/insects/Butterfly_Caterpillar.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| chrysalis | `Assets/world/animals/insects/Butterfly_Chrysalis.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| grasshopper | `Assets/world/animals/insects/Grasshopper_Green.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| grasshopper_brown | `Assets/world/animals/insects/Grasshopper_Brown.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| grasshopper_jump | `Assets/world/animals/insects/Grasshopper_Mid_Jump.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| hawk_moth | `Assets/world/animals/insects/Moth_Hawk_Moth.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| luna_moth | `Assets/world/animals/insects/Moth_Luna.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| monarch | `Assets/world/animals/insects/Butterfly_Monarch.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| moth_frames | `Assets/world/animals/insects/Moth_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| swallowtail | `Assets/world/animals/insects/Butterfly_Swallowtail.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
 
 ### Traps pack (mondo's upload) — Asset pack (author not recorded yet) (19)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| trap_bear_base | `Assets/traps/Bear_Trap_Base.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_bear_jaw | `Assets/traps/Bear_Trap_Jaw.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_chain_draped | `Assets/traps/Chain_Draped.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_chain_straight | `Assets/traps/Chain_Straight.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_coffin_lid | `Assets/traps/Coffin_Wood_Lid.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_coffin_wood | `Assets/traps/Coffin_Wood.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_hole | `Assets/traps/Trap_Hole.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_hole_dart | `Assets/traps/Trap_Hole_Dart.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_hole_spear | `Assets/traps/Trap_Hole_Spike.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_iron_maiden_body | `Assets/traps/Iron_Maiden.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_iron_maiden_door_l | `Assets/traps/Iron_Maiden_Door_Left.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_iron_maiden_door_r | `Assets/traps/Iron_Maiden_Door_Right.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_pressure_plate | `Assets/traps/Pressure_Plate.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_sarcophagus_box | `Assets/traps/Sarcophagus.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_sarcophagus_lid | `Assets/traps/Sarcophagus_Lid.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_spike_pit | `Assets/traps/Pit_Trap_Spikes.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_trip_wire | `Assets/traps/Trip_Wire.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| trap_trip_wire_broken | `Assets/traps/Trip_Wire_Broken.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
-| wall_chains | `Assets/traps/Chain_Draped.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_bear_base | `Assets/world/packs/traps/Bear_Trap_Base.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_bear_jaw | `Assets/world/packs/traps/Bear_Trap_Jaw.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_chain_draped | `Assets/world/packs/traps/Chain_Draped.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_chain_straight | `Assets/world/packs/traps/Chain_Straight.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_coffin_lid | `Assets/world/packs/traps/Coffin_Wood_Lid.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_coffin_wood | `Assets/world/packs/traps/Coffin_Wood.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_hole | `Assets/world/packs/traps/Trap_Hole.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_hole_dart | `Assets/world/packs/traps/Trap_Hole_Dart.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_hole_spear | `Assets/world/packs/traps/Trap_Hole_Spike.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_iron_maiden_body | `Assets/world/packs/traps/Iron_Maiden.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_iron_maiden_door_l | `Assets/world/packs/traps/Iron_Maiden_Door_Left.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_iron_maiden_door_r | `Assets/world/packs/traps/Iron_Maiden_Door_Right.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_pressure_plate | `Assets/world/packs/traps/Pressure_Plate.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_sarcophagus_box | `Assets/world/packs/traps/Sarcophagus.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_sarcophagus_lid | `Assets/world/packs/traps/Sarcophagus_Lid.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_spike_pit | `Assets/world/packs/traps/Pit_Trap_Spikes.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_trip_wire | `Assets/world/packs/traps/Trip_Wire.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| trap_trip_wire_broken | `Assets/world/packs/traps/Trip_Wire_Broken.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+| wall_chains | `Assets/world/packs/traps/Chain_Draped.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
 
 ### Instruments + orchestral (mondo's upload) — Asset pack (author not recorded yet) (15)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| instrument_cello | `Assets/instruments/orchestral/Cello.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_cello_bow | `Assets/instruments/orchestral/Cello_bow.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_cello_lying | `Assets/instruments/orchestral/Cello.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_drum | `Assets/instruments/orchestral/Drum.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_guitar | `Assets/instruments/GuitarV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_guitar_lying | `Assets/instruments/GuitarV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_harp | `Assets/instruments/orchestral/Harp.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_maracas | `Assets/instruments/MaracasV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_seed_pod | `Assets/instruments/orchestral/SeedPod.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_tambourine | `Assets/instruments/TamburinV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_tambourine_up | `Assets/instruments/TamburinV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_violin | `Assets/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_violin_bow | `Assets/instruments/orchestral/Violin_bow.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_violin_lying | `Assets/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
-| instrument_whistle | `Assets/instruments/orchestral/Whistle.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_cello | `Assets/world/packs/instruments/orchestral/Cello.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_cello_bow | `Assets/world/packs/instruments/orchestral/Cello_bow.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_cello_lying | `Assets/world/packs/instruments/orchestral/Cello.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_drum | `Assets/world/packs/instruments/orchestral/Drum.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_guitar | `Assets/world/packs/instruments/GuitarV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_guitar_lying | `Assets/world/packs/instruments/GuitarV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_harp | `Assets/world/packs/instruments/orchestral/Harp.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_maracas | `Assets/world/packs/instruments/MaracasV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_seed_pod | `Assets/world/packs/instruments/orchestral/SeedPod.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_tambourine | `Assets/world/packs/instruments/TamburinV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_tambourine_up | `Assets/world/packs/instruments/TamburinV1.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_violin | `Assets/world/packs/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_violin_bow | `Assets/world/packs/instruments/orchestral/Violin_bow.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_violin_lying | `Assets/world/packs/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
+| instrument_whistle | `Assets/world/packs/instruments/orchestral/Whistle.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 
 ### Farm / zoo animals (mondo's upload) — Asset pack (author not recorded yet) (9)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| butterfly | `Assets/animals/butterfly.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| cat | `Assets/animals/cat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| chicken | `Assets/animals/chichen.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| cow | `Assets/animals/Cow.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| dog | `Assets/animals/dog.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| giraffe | `Assets/animals/girafe.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| ladybug | `Assets/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| lion | `Assets/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| wolf | `Assets/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| butterfly | `Assets/world/animals/butterfly.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| cat | `Assets/world/animals/cat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| chicken | `Assets/world/animals/chichen.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| cow | `Assets/world/animals/Cow.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| dog | `Assets/world/animals/dog.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| giraffe | `Assets/world/animals/girafe.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| ladybug | `Assets/world/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| lion | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 
 ### Door leaves (mondo's upload, author not recorded) — Asset pack (author not recorded yet) (9)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| leaf_beige_wood | `Assets/door/models/BEIGE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_birch_glass | `Assets/door/models/BIRCH DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_coffee | `Assets/door/models/Coffee door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_entrance | `Assets/door/models/ENTRANCE DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_orange_glass | `Assets/door/models/ORANGE DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_white_wood | `Assets/door/models/WHITE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_window_large | `Assets/door/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_window_medium | `Assets/door/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_wooden | `Assets/door/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_beige_wood | `Assets/world/hq/models/BEIGE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_birch_glass | `Assets/world/hq/models/BIRCH DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_coffee | `Assets/world/hq/models/Coffee door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_entrance | `Assets/world/hq/models/ENTRANCE DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_orange_glass | `Assets/world/hq/models/ORANGE DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_white_wood | `Assets/world/hq/models/WHITE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_window_large | `Assets/world/hq/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_window_medium | `Assets/world/hq/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_wooden | `Assets/world/hq/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 
 ### Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) — Asset pack (6)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| trailer_home_1 | `Assets/misc/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_2 | `Assets/misc/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_3 | `Assets/misc/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_4 | `Assets/misc/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_5 | `Assets/misc/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
-| trailer_home_6 | `Assets/misc/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_1 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_0.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_2 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_1.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_3 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_2.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_4 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_3.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_5 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_4.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
+| trailer_home_6 | `Assets/world/packs/elbolilloduro/ebd_trailerscene_trailer_5.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) |
 
 ### Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given — Asset pack (5)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| castle_cone | `Assets/misc/Castles_and_Forts.glb#Roof_Cone` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
-| castle_gate | `Assets/misc/Castles_and_Forts.glb#Gate_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
-| castle_tower | `Assets/misc/Castles_and_Forts.glb#Tower_Mid` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
-| castle_tower_top | `Assets/misc/Castles_and_Forts.glb#Tower_top_1` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
-| castle_wall | `Assets/misc/Castles_and_Forts.glb#Wall_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_cone | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Roof_Cone` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_gate | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Gate_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_tower | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Tower_Mid` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_tower_top | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Tower_top_1` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
+| castle_wall | `Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb#Wall_2x4` | Asset pack | Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given |
 
 ### DINER · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| dumpster | `Assets/misc/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-| hand_dryer | `Assets/misc/ebd_diner_hand_dryer.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-| kitchen_range | `Assets/misc/ebd_diner_kitchen_range.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-| range_hood | `Assets/misc/ebd_diner_range_hood.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-| sink_row | `Assets/misc/ebd_diner_sink_row.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| dumpster | `Assets/world/packs/elbolilloduro/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| hand_dryer | `Assets/world/packs/elbolilloduro/ebd_diner_hand_dryer.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| kitchen_range | `Assets/world/packs/elbolilloduro/ebd_diner_kitchen_range.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| range_hood | `Assets/world/packs/elbolilloduro/ebd_diner_range_hood.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| sink_row | `Assets/world/packs/elbolilloduro/ebd_diner_sink_row.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| retro_radio | `Assets/misc/ebd_trailerpark_retro_radio.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| table_lamp | `Assets/misc/ebd_trailerpark_table_lamp.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| trash_bin | `Assets/misc/ebd_trailerpark_trash_bin.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| tube_tv | `Assets/misc/ebd_trailerpark_tube_tv.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| wall_clock | `Assets/misc/ebd_trailerpark_wall_clock.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| retro_radio | `Assets/world/packs/elbolilloduro/ebd_trailerpark_retro_radio.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| table_lamp | `Assets/world/packs/elbolilloduro/ebd_trailerpark_table_lamp.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| trash_bin | `Assets/world/packs/elbolilloduro/ebd_trailerpark_trash_bin.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| tube_tv | `Assets/world/packs/elbolilloduro/ebd_trailerpark_tube_tv.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| wall_clock | `Assets/world/packs/elbolilloduro/ebd_trailerpark_wall_clock.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### D.O.O.R. kit upload (mondo, author not recorded) — Asset pack (author not recorded yet) (4)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| asteroid_a | `Assets/door/models/asteroid_1.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
-| asteroid_b | `Assets/door/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
-| computer_chair_blue | `Assets/door/models/computer_chair_blue.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
-| computer_chair_grey | `Assets/door/models/computer_chair_grey.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+| asteroid_a | `Assets/world/hq/models/asteroid_1.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+| asteroid_b | `Assets/world/hq/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+| computer_chair_blue | `Assets/world/hq/models/computer_chair_blue.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+| computer_chair_grey | `Assets/world/hq/models/computer_chair_grey.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 
 ### Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) — Asset pack (4)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| dead_snag | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| hollow_dead_tree | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| hollow_tree | `Assets/foilage/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| dead_snag | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| hollow_dead_tree | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| hollow_tree | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| pine | `Assets/world/nature/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 
 ### Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| campfire | `Assets/misc/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| camping_tent | `Assets/misc/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| ship_lantern | `Assets/misc/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| campfire | `Assets/world/packs/elbolilloduro/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| camping_tent | `Assets/world/packs/elbolilloduro/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| ship_lantern | `Assets/world/packs/elbolilloduro/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| desk_lamp | `Assets/misc/ebd_house_desk_lamp.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| mop | `Assets/misc/ebd_house_mop.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| shower_stall | `Assets/misc/ebd_house_shower_stall.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| desk_lamp | `Assets/world/packs/elbolilloduro/ebd_house_desk_lamp.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| mop | `Assets/world/packs/elbolilloduro/ebd_house_mop.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| shower_stall | `Assets/world/packs/elbolilloduro/ebd_house_shower_stall.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Laundry · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| filing_cabinet | `Assets/misc/ebd_laundry_filing_cabinet.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
-| vending_machine | `Assets/misc/ebd_laundry_vending_machine.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
-| water_cooler | `Assets/misc/ebd_laundry_water_cooler.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
+| filing_cabinet | `Assets/world/packs/elbolilloduro/ebd_laundry_filing_cabinet.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
+| vending_machine | `Assets/world/packs/elbolilloduro/ebd_laundry_vending_machine.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
+| water_cooler | `Assets/world/packs/elbolilloduro/ebd_laundry_water_cooler.glb` | Asset pack | Laundry · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Horse pack (mondo's upload) — Asset pack (author not recorded yet) (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| horse | `Assets/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
-| horse_black | `Assets/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
-| horse_brown | `Assets/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+| horse | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+| horse_black | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+| horse_brown | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 
 ### Low Poly Chess Set (mondo's upload, FBX) — Asset pack (author not recorded yet) (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| chess_board | `Assets/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_set_game | `Assets/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_board | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_set_game | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 
 ### 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| city_bin | `Assets/misc/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
-| fire_extinguisher | `Assets/misc/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+| city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+| fire_extinguisher | `Assets/world/packs/elbolilloduro/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| coffee_maker | `Assets/misc/ebd_psx3_coffee_maker.glb` | Asset pack | Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) |
-| microwave | `Assets/misc/ebd_psx3_microwave.glb` | Asset pack | Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) |
+| coffee_maker | `Assets/world/packs/elbolilloduro/ebd_psx3_coffee_maker.glb` | Asset pack | Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) |
+| microwave | `Assets/world/packs/elbolilloduro/ebd_psx3_microwave.glb` | Asset pack | Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Crow + rabbit (mondo's upload) — Asset pack (author not recorded yet) (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| crow | `Assets/animals/crow_and_rabbit/crow.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
-| rabbit | `Assets/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
+| crow | `Assets/world/animals/crow_and_rabbit/crow.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
+| rabbit | `Assets/world/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
 
 ### Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| fallen_log | `Assets/misc/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
-| stump | `Assets/misc/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
+| fallen_log | `Assets/world/packs/elbolilloduro/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
+| stump | `Assets/world/packs/elbolilloduro/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### CC0 'clip ready' prop (mondo's upload, author not recorded) — Asset pack (author not recorded yet) (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| security_camera | `Assets/door/models/camera_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
-| utility_box | `Assets/door/models/utility_box_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
+| security_camera | `Assets/world/hq/models/camera_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
+| utility_box | `Assets/world/hq/models/utility_box_01_cc0_clip_ready_v1.glb` | Asset pack (author not recorded yet) | CC0 'clip ready' prop (mondo's upload, author not recorded) |
 
 ### BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| sink | `Assets/misc/ebd_burgerpiz_sink.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
-| urinal | `Assets/misc/ebd_burgerpiz_urinal.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
+| sink | `Assets/world/packs/elbolilloduro/ebd_burgerpiz_sink.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
+| urinal | `Assets/world/packs/elbolilloduro/ebd_burgerpiz_urinal.glb` | Asset pack | BurgerPiz · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| abandoned_house | `Assets/misc/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
+| abandoned_house | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
 
 ### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| bus_shelter | `Assets/misc/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| cash_register | `Assets/misc/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| cash_register | `Assets/world/packs/elbolilloduro/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) — Meshy AI, reworked by Claude (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| eagle | `Assets/animals/eagle_rigged.glb` | Meshy AI, reworked by Claude | Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) |
+| eagle | `Assets/world/animals/eagle_rigged.glb` | Meshy AI, reworked by Claude | Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) |
 
 ### Elephant (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| elephant | `Assets/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
+| elephant | `Assets/world/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
 
 ### Molten Maps SciFi Asset Pack · Moltenbolt · CC0 — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| iso_tank | `Assets/misc/molten_sleeper_casket.glb` | Asset pack | Molten Maps SciFi Asset Pack · Moltenbolt · CC0 |
+| iso_tank | `Assets/world/props/meshy/molten_sleeper_casket.glb` | Asset pack | Molten Maps SciFi Asset Pack · Moltenbolt · CC0 |
 
 ### Mine · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| locker | `Assets/misc/ebd_mine_locker.glb` | Asset pack | Mine · Elbolilloduro · CC0 (piece cut out in Blender) |
+| locker | `Assets/world/packs/elbolilloduro/ebd_mine_locker.glb` | Asset pack | Mine · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| rotary_phone | `Assets/misc/ebd_vhsshop_rotary_phone.glb` | Asset pack | VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| rotary_phone | `Assets/world/packs/elbolilloduro/ebd_vhsshop_rotary_phone.glb` | Asset pack | VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| rowboat | `Assets/misc/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Spear (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
@@ -1279,7 +1279,7 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| toilet_stall | `Assets/misc/ebd_gasstation_toilet_stall.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
+| toilet_stall | `Assets/world/packs/elbolilloduro/ebd_gasstation_toilet_stall.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (81)
 
@@ -1288,87 +1288,87 @@ calls `_hqDecorWear(name, U, g)`: its own pieces hide (they keep the collision) 
 
 | decor key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| anemone | `Assets/decor/anemone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| armour_plinth | `Assets/decor/armour_plinth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| armour_stand | `Assets/decor/armour_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| autopsy_table | `Assets/decor/autopsy_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| banner | `Assets/decor/banner.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| barber_chair | `Assets/decor/barber_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| barber_pole | `Assets/decor/barber_pole.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| boiler | `Assets/decor/boiler.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| card_catalogue | `Assets/decor/card_catalogue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| carousel | `Assets/decor/carousel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| carousel_horse | `Assets/decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| cave_torch | `Assets/decor/cave_torch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| conveyor | `Assets/decor/conveyor.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| departures_board | `Assets/decor/departures_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| directory_board | `Assets/decor/directory_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| disc_cluster | `Assets/decor/disc_cluster.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| door_furnace | `Assets/decor/door_furnace.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| dream_eye | `Assets/decor/dream_eye.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| eeg_rack | `Assets/decor/eeg_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| effigy_bier | `Assets/decor/effigy_bier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| effigy_figure | `Assets/decor/effigy_figure.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| egg_chair | `Assets/decor/egg_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| exec_desk | `Assets/decor/exec_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| ferris_gondola | `Assets/decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| ferris_wheel | `Assets/decor/ferris_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| ferris_wheel_wheel | `Assets/decor/ferris_wheel_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| flood_mast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| fountain | `Assets/decor/fountain.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| giant_clam | `Assets/decor/giant_clam.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| greek_column | `Assets/decor/greek_column.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| grow_lamp | `Assets/decor/grow_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| high_striker | `Assets/decor/high_striker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| high_striker_hammer | `Assets/decor/high_striker_hammer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| laminator | `Assets/decor/laminator.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| laundry_cart | `Assets/decor/laundry_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| lava_lamp_base | `Assets/decor/lava_lamp_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| lava_lamp_cap | `Assets/decor/lava_lamp_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| lava_lamp_floor_base | `Assets/decor/lava_lamp_floor_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| lava_lamp_floor_cap | `Assets/decor/lava_lamp_floor_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| lifeguard_chair | `Assets/decor/lifeguard_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| lighthouse | `Assets/decor/lighthouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| meat_hook | `Assets/decor/meat_hook.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| mushroom_lamp | `Assets/decor/mushroom_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| music_box | `Assets/decor/music_box.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| music_box_dancer | `Assets/decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| nightmare_bloom | `Assets/decor/nightmare_bloom.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| notice_board | `Assets/decor/notice_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| obelisk | `Assets/decor/obelisk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| pool_lounger | `Assets/decor/pool_lounger.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| popcorn_cart | `Assets/decor/popcorn_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| pot_rack | `Assets/decor/pot_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| punch_clock | `Assets/decor/punch_clock.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| robot_arm | `Assets/decor/robot_arm.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| rocking_chair | `Assets/decor/rocking_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| round_table | `Assets/decor/round_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| saucer_pendant | `Assets/decor/saucer_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| school_desk | `Assets/decor/school_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| scoreboard | `Assets/decor/scoreboard.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| sea_buoy | `Assets/decor/sea_buoy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| sea_vent | `Assets/decor/sea_vent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| skiff | `Assets/decor/skiff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| slot_machine | `Assets/decor/slot_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| space_divider | `Assets/decor/space_divider.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| sputnik_lamp | `Assets/decor/sputnik_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| star_projector | `Assets/decor/star_projector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| stocks | `Assets/decor/stocks.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| stone_altar | `Assets/decor/stone_altar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| stone_arch | `Assets/decor/stone_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| submarine | `Assets/decor/submarine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| t_pillar | `Assets/decor/t_pillar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| tanker_desk | `Assets/decor/tanker_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| ticket_booth | `Assets/decor/ticket_booth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| trophy_case | `Assets/decor/trophy_case.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| trophy_cup | `Assets/decor/trophy_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| tulip_chair | `Assets/decor/tulip_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| tulip_table | `Assets/decor/tulip_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| umbrella_closed | `Assets/decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| umbrella_stand | `Assets/decor/umbrella_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| wall_torch_bracket | `Assets/decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| windpump_tower | `Assets/decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| windpump_wheel | `Assets/decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| anemone | `Assets/world/props/meshy_decor/anemone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| armour_plinth | `Assets/world/props/meshy_decor/armour_plinth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| armour_stand | `Assets/world/props/meshy_decor/armour_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| autopsy_table | `Assets/world/props/meshy_decor/autopsy_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| banner | `Assets/world/props/meshy_decor/banner.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| barber_chair | `Assets/world/props/meshy_decor/barber_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| barber_pole | `Assets/world/props/meshy_decor/barber_pole.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| boiler | `Assets/world/props/meshy_decor/boiler.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| card_catalogue | `Assets/world/props/meshy_decor/card_catalogue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| carousel | `Assets/world/props/meshy_decor/carousel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| carousel_horse | `Assets/world/props/meshy_decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| cave_torch | `Assets/world/props/meshy_decor/cave_torch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| conveyor | `Assets/world/props/meshy_decor/conveyor.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| departures_board | `Assets/world/props/meshy_decor/departures_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| directory_board | `Assets/world/props/meshy_decor/directory_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| disc_cluster | `Assets/world/props/meshy_decor/disc_cluster.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| door_furnace | `Assets/world/props/meshy_decor/door_furnace.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| dream_eye | `Assets/world/props/meshy_decor/dream_eye.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| eeg_rack | `Assets/world/props/meshy_decor/eeg_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| effigy_bier | `Assets/world/props/meshy_decor/effigy_bier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| effigy_figure | `Assets/world/props/meshy_decor/effigy_figure.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| egg_chair | `Assets/world/props/meshy_decor/egg_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| exec_desk | `Assets/world/props/meshy_decor/exec_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_gondola | `Assets/world/props/meshy_decor/ferris_gondola.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_wheel | `Assets/world/props/meshy_decor/ferris_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ferris_wheel_wheel | `Assets/world/props/meshy_decor/ferris_wheel_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| flood_mast | `Assets/world/props/meshy_decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| fountain | `Assets/world/props/meshy_decor/fountain.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| giant_clam | `Assets/world/props/meshy_decor/giant_clam.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| greek_column | `Assets/world/props/meshy_decor/greek_column.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| grow_lamp | `Assets/world/props/meshy_decor/grow_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| high_striker | `Assets/world/props/meshy_decor/high_striker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| high_striker_hammer | `Assets/world/props/meshy_decor/high_striker_hammer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| laminator | `Assets/world/props/meshy_decor/laminator.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| laundry_cart | `Assets/world/props/meshy_decor/laundry_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_base | `Assets/world/props/meshy_decor/lava_lamp_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_cap | `Assets/world/props/meshy_decor/lava_lamp_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_floor_base | `Assets/world/props/meshy_decor/lava_lamp_floor_base.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lava_lamp_floor_cap | `Assets/world/props/meshy_decor/lava_lamp_floor_cap.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lifeguard_chair | `Assets/world/props/meshy_decor/lifeguard_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| lighthouse | `Assets/world/props/meshy_decor/lighthouse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| meat_hook | `Assets/world/props/meshy_decor/meat_hook.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| mushroom_lamp | `Assets/world/props/meshy_decor/mushroom_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| music_box | `Assets/world/props/meshy_decor/music_box.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| music_box_dancer | `Assets/world/props/meshy_decor/music_box_dancer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| nightmare_bloom | `Assets/world/props/meshy_decor/nightmare_bloom.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| notice_board | `Assets/world/props/meshy_decor/notice_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| obelisk | `Assets/world/props/meshy_decor/obelisk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| pool_lounger | `Assets/world/props/meshy_decor/pool_lounger.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| popcorn_cart | `Assets/world/props/meshy_decor/popcorn_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| pot_rack | `Assets/world/props/meshy_decor/pot_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| punch_clock | `Assets/world/props/meshy_decor/punch_clock.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| robot_arm | `Assets/world/props/meshy_decor/robot_arm.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| rocking_chair | `Assets/world/props/meshy_decor/rocking_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| round_table | `Assets/world/props/meshy_decor/round_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| saucer_pendant | `Assets/world/props/meshy_decor/saucer_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| school_desk | `Assets/world/props/meshy_decor/school_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| scoreboard | `Assets/world/props/meshy_decor/scoreboard.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sea_buoy | `Assets/world/props/meshy_decor/sea_buoy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sea_vent | `Assets/world/props/meshy_decor/sea_vent.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| skiff | `Assets/world/props/meshy_decor/skiff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| slot_machine | `Assets/world/props/meshy_decor/slot_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| space_divider | `Assets/world/props/meshy_decor/space_divider.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| sputnik_lamp | `Assets/world/props/meshy_decor/sputnik_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| star_projector | `Assets/world/props/meshy_decor/star_projector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stocks | `Assets/world/props/meshy_decor/stocks.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stone_altar | `Assets/world/props/meshy_decor/stone_altar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| stone_arch | `Assets/world/props/meshy_decor/stone_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| submarine | `Assets/world/props/meshy_decor/submarine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| t_pillar | `Assets/world/props/meshy_decor/t_pillar.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tanker_desk | `Assets/world/props/meshy_decor/tanker_desk.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| ticket_booth | `Assets/world/props/meshy_decor/ticket_booth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trophy_case | `Assets/world/props/meshy_decor/trophy_case.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trophy_cup | `Assets/world/props/meshy_decor/trophy_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tulip_chair | `Assets/world/props/meshy_decor/tulip_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| tulip_table | `Assets/world/props/meshy_decor/tulip_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| umbrella_closed | `Assets/world/props/meshy_decor/umbrella_closed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| umbrella_stand | `Assets/world/props/meshy_decor/umbrella_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| wall_torch_bracket | `Assets/world/props/meshy_decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 
 ### Pack pieces the procs wear (three-renderer.js _HQ_PACK_WEAR, Assets/misc/) — human-made, preferred over Meshy (12)
 
@@ -1377,18 +1377,18 @@ node out of the pack scene; `_hqDecorWear(name, U, g)` wears it exactly like a M
 
 | proc wear name | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| bare_bulb | `Assets/misc/ebd_abandonedhouse_bare_bulb.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| broom | `Assets/misc/ebd_house_broom.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| chalkboard | `Assets/misc/ebd_vhsshop_chalkboard.glb` | Asset pack | VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) |
-| concrete_pillar | `Assets/misc/ebd_metro_concrete_pillar.glb` | Asset pack | Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| dryer | `Assets/misc/ebd_abandonedhouse_dryer.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| metal_shelving | `Assets/misc/ebd_gasstation_metal_shelving.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
-| roller_shutter | `Assets/misc/ebd_tacos_roller_shutter.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
-| steel_table | `Assets/misc/ebd_dinerscene_steel_table.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender) |
-| toilet_paper | `Assets/misc/ebd_house_toilet_paper.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| turnstile | `Assets/misc/ebd_metro_turnstile.glb` | Asset pack | Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| wall_shelf | `Assets/misc/ebd_house_wall_shelf.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
-| washer | `Assets/misc/ebd_house_washer.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| bare_bulb | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_bare_bulb.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| broom | `Assets/world/packs/elbolilloduro/ebd_house_broom.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| chalkboard | `Assets/world/packs/elbolilloduro/ebd_vhsshop_chalkboard.glb` | Asset pack | VHS Shop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| concrete_pillar | `Assets/world/packs/elbolilloduro/ebd_metro_concrete_pillar.glb` | Asset pack | Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| dryer | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_dryer.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| metal_shelving | `Assets/world/packs/elbolilloduro/ebd_gasstation_metal_shelving.glb` | Asset pack | Gas station · Elbolilloduro · CC0 (piece cut out in Blender) |
+| roller_shutter | `Assets/world/packs/elbolilloduro/ebd_tacos_roller_shutter.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
+| steel_table | `Assets/world/packs/elbolilloduro/ebd_dinerscene_steel_table.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender) |
+| toilet_paper | `Assets/world/packs/elbolilloduro/ebd_house_toilet_paper.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| turnstile | `Assets/world/packs/elbolilloduro/ebd_metro_turnstile.glb` | Asset pack | Metro PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| wall_shelf | `Assets/world/packs/elbolilloduro/ebd_house_wall_shelf.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
+| washer | `Assets/world/packs/elbolilloduro/ebd_house_washer.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Meshy files kept only as a FALLBACK — not drawn in the game (12)
 
@@ -1397,18 +1397,18 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 
 | row | Meshy file (R2 bucket path) | what draws instead |
 | --- | --- | --- |
-| cadillac (NPC traffic) | `Assets/misc/Meshy_AI_a_black_cadillac_0915195323_texture.glb` | car pack pool `sedan`: Car 02/Car2.obj, Car 05/Car5.obj |
-| car_cadillac | `Assets/misc/Meshy_AI_a_black_cadillac_0915195323_texture.glb` | car pack pool `sedan` |
-| car_cop | `Assets/misc/Meshy_AI_a_cop_car_0915195443_texture.glb` | car pack pool `police` |
-| car_suv | `Assets/misc/Meshy_AI_a_black_SUV_0915195508_texture.glb` | car pack pool `suv` |
-| car_taxi | `Assets/misc/Meshy_AI_a_city_taxi_0917065634_texture.glb` | car pack pool `taxi` |
-| car_truck | `Assets/misc/Meshy_AI_a_truck_0917065131_texture.glb` | car pack pool `van` |
-| copcar (NPC traffic) | `Assets/misc/Meshy_AI_a_cop_car_0915195443_texture.glb` | car pack pool `police`: Car 05/Car5_Police.obj |
-| crashed_car | `Assets/misc/Meshy_AI_a_crashed_car_0917065033_texture.glb` | car pack pool `wreck` |
-| crashed_car_2 | `Assets/misc/Meshy_AI_a_crashed_car_2_0917065052_texture.glb` | car pack pool `wreck` |
-| suv (NPC traffic) | `Assets/misc/Meshy_AI_a_black_SUV_0915195508_texture.glb` | car pack pool `suv`: Car 01/Car.obj, Car 03/Car3.obj, Car 04/Car4.obj |
-| taxi (NPC traffic) | `Assets/misc/Meshy_AI_a_city_taxi_0917065634_texture.glb` | car pack pool `taxi`: Car 05/Car5_Taxi.obj |
-| truck (NPC traffic) | `Assets/misc/Meshy_AI_a_truck_0917065131_texture.glb` | car pack pool `van`: Car 08/Car8.obj |
+| cadillac (NPC traffic) | `Assets/world/props/meshy/Meshy_AI_a_black_cadillac_0915195323_texture.glb` | car pack pool `sedan`: Car 02/Car2.obj, Car 05/Car5.obj |
+| car_cadillac | `Assets/world/props/meshy/Meshy_AI_a_black_cadillac_0915195323_texture.glb` | car pack pool `sedan` |
+| car_cop | `Assets/world/props/meshy/Meshy_AI_a_cop_car_0915195443_texture.glb` | car pack pool `police` |
+| car_suv | `Assets/world/props/meshy/Meshy_AI_a_black_SUV_0915195508_texture.glb` | car pack pool `suv` |
+| car_taxi | `Assets/world/props/meshy/Meshy_AI_a_city_taxi_0917065634_texture.glb` | car pack pool `taxi` |
+| car_truck | `Assets/world/props/meshy/Meshy_AI_a_truck_0917065131_texture.glb` | car pack pool `van` |
+| copcar (NPC traffic) | `Assets/world/props/meshy/Meshy_AI_a_cop_car_0915195443_texture.glb` | car pack pool `police`: Car 05/Car5_Police.obj |
+| crashed_car | `Assets/world/props/meshy/Meshy_AI_a_crashed_car_0917065033_texture.glb` | car pack pool `wreck` |
+| crashed_car_2 | `Assets/world/props/meshy/Meshy_AI_a_crashed_car_2_0917065052_texture.glb` | car pack pool `wreck` |
+| suv (NPC traffic) | `Assets/world/props/meshy/Meshy_AI_a_black_SUV_0915195508_texture.glb` | car pack pool `suv`: Car 01/Car.obj, Car 03/Car3.obj, Car 04/Car4.obj |
+| taxi (NPC traffic) | `Assets/world/props/meshy/Meshy_AI_a_city_taxi_0917065634_texture.glb` | car pack pool `taxi`: Car 05/Car5_Taxi.obj |
+| truck (NPC traffic) | `Assets/world/props/meshy/Meshy_AI_a_truck_0917065131_texture.glb` | car pack pool `van`: Car 08/Car8.obj |
 
 ### Stairs pack (data.js HQ_STAIR_PACK — every stair flight, railing and escalator in the rooms)
 
@@ -1422,323 +1422,323 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | arrow | `Assets/fx/spell_props/Meshy_AI_arrow_0713025846_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| asteroid | `Assets/door/models/asteroid_1.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
-| asteroid2 | `Assets/door/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
-| bible | `Assets/misc/Meshy_AI_bible_1027232251_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| blackBlob | `Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| blowpipe (held in the hand) | `Assets/props/blowpipe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| asteroid | `Assets/world/hq/models/asteroid_1.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+| asteroid2 | `Assets/world/hq/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+| bible | `Assets/world/props/meshy/Meshy_AI_bible_1027232251_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| blackBlob | `Assets/world/props/meshy/Meshy_AI_black_blob_1027232032_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| blowpipe (held in the hand) | `Assets/world/props/misc/blowpipe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | bullet | `Assets/fx/spell_props/Meshy_AI_bullet_realistic_0725070829_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| camera (held in the hand) | `Assets/props/old_camera_flash.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| camera (held in the hand) | `Assets/world/props/misc/old_camera_flash.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | candle | `Assets/fx/spell_props/Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleLine | `Assets/fx/spell_props/Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | candleRing | `Assets/fx/spell_props/Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cannon | `Assets/world/props/meshy/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cauldron | `Assets/fx/spell_props/Meshy_AI_black_cauldron_0713025916_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cross | `Assets/fx/spell_props/Meshy_AI_wooden_cross_realist_0725070928_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | crystalBall | `Assets/fx/spell_props/Meshy_AI_crystal_ball_0713025648_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| crystalShard | `Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| crystalShards | `Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cup (held in the hand) | `Assets/props/drinking_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| crystalShard | `Assets/world/props/meshy/Meshy_AI_crystal_shard_1027232226_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| crystalShards | `Assets/world/props/meshy/Meshy_AI_crystal_shards_1027232219_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cup (held in the hand) | `Assets/world/props/misc/drinking_cup.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | dynamite | `Assets/fx/spell_props/Meshy_AI_dynamite_1027232115_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ejectionSeat | `Assets/misc/Meshy_AI_ejection_seat_1027232003_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fangs | `Assets/animals/top_fangs.glb` | Asset pack (author not recorded yet) | Top fangs (mondo's upload) |
+| ejectionSeat | `Assets/world/props/meshy/Meshy_AI_ejection_seat_1027232003_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fangs | `Assets/world/animals/top_fangs.glb` | Asset pack (author not recorded yet) | Top fangs (mondo's upload) |
 | femur | `Assets/fx/spell_props/Meshy_AI_femur_bone_realistic_0725070208_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | fist | `Assets/fx/spell_props/Meshy_AI_closed_fist_realisti_0725070236_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| flatEarth (Flat Earth ultimate prop) | `Assets/props/flat_earth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
-| floodMast | `Assets/decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| flatEarth (Flat Earth ultimate prop) | `Assets/world/props/misc/flat_earth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
+| floodMast | `Assets/world/props/meshy_decor/flood_mast.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | football | `Assets/fx/spell_props/Meshy_AI_american_football_0713030210_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| frog | `Assets/misc/Meshy_AI_frog_1027232151_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| giantFoot | `Assets/misc/Meshy_AI_giant_foot_1027232131_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| frog | `Assets/world/props/meshy/Meshy_AI_frog_1027232151_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| giantFoot | `Assets/world/props/meshy/Meshy_AI_giant_foot_1027232131_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | grenade | `Assets/fx/spell_props/Meshy_AI_grenade_1027232043_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| halo (held in the hand) | `Assets/props/broken_halo.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| handMirror (held in the hand) | `Assets/props/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| heartScales (Weigh the Heart ultimate prop) | `Assets/props/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
+| halo (held in the hand) | `Assets/world/props/misc/broken_halo.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| handMirror (held in the hand) | `Assets/world/props/misc/hand_mirror.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| heartScales (Weigh the Heart ultimate prop) | `Assets/world/props/misc/heart_scales.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | jet | `Assets/fx/spell_props/Meshy_AI_f22_fighter_jett_0713025555_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | landmine | `Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| maatFeather (Weigh the Heart ultimate prop) | `Assets/props/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
-| mic | `Assets/misc/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| milkCookies (held in the hand) | `Assets/props/milk_and_cookies.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| maatFeather (Weigh the Heart ultimate prop) | `Assets/world/props/misc/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
+| mic | `Assets/world/props/meshy/Meshy_AI_microphone_1027232053_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| milkCookies (held in the hand) | `Assets/world/props/misc/milk_and_cookies.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | missile | `Assets/fx/spell_props/Meshy_AI_missle_0725070818_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| organPipe | `Assets/decor/organ_pipe_white.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| phone (held in the hand) | `Assets/props/smartphone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| piano | `Assets/decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| organPipe | `Assets/world/props/meshy_decor/organ_pipe_white.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| phone (held in the hand) | `Assets/world/props/misc/smartphone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| piano | `Assets/world/props/meshy_decor/piano.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | pistol | `Assets/fx/spell_props/Meshy_AI_pistol_0713030139_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | plasma | `Assets/fx/spell_props/Meshy_AI_plasma_gun_0713030043_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| policeBarricade (Lockdown ultimate prop) | `Assets/props/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
-| potionFlask (held in the hand) | `Assets/props/potion_flask.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| policeBarricade (Lockdown ultimate prop) | `Assets/world/props/misc/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
+| potionFlask (held in the hand) | `Assets/world/props/misc/potion_flask.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | revolver | `Assets/fx/spell_props/Meshy_AI_Revolver_0713030235_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rope | `Assets/misc/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sack | `Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sandbags | `Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| scalpel (held in the hand) | `Assets/props/scalpel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| sheep | `Assets/decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| rope | `Assets/world/props/meshy/Meshy_AI_rope_1027232157_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sack | `Assets/world/props/meshy/Meshy_AI_burlap_sack_1027232243_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sandbags | `Assets/world/props/meshy/Meshy_AI_sandbags_1027232011_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| scalpel (held in the hand) | `Assets/world/props/misc/scalpel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| sheep | `Assets/world/props/meshy_decor/sheep.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | shield | `Assets/fx/spell_props/Meshy_AI_shield_1027232025_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | shotgun | `Assets/fx/spell_props/Meshy_AI_shotgun_realistic_0725070540_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | skull | `Assets/fx/spell_props/Meshy_AI_skull_realistic_0725070330_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sleigh | `Assets/fx/spell_props/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | sniper | `Assets/fx/spell_props/Meshy_AI_sniper_rifle_realist_0725070547_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | spear | `Assets/fx/spell_props/spear/Spear.fbx` | Asset pack (author not recorded yet) | Spear (mondo's upload, FBX) |
-| staff (held in the hand) | `Assets/props/wizard_staff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| staff (held in the hand) | `Assets/world/props/misc/wizard_staff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | sword | `Assets/fx/spell_props/Meshy_AI_master_sword_0713025949_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| syringe | `Assets/misc/Meshy_AI_syringe_1027232304_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| syringe | `Assets/world/props/meshy/Meshy_AI_syringe_1027232304_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071149_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarot2 | `Assets/fx/spell_props/Meshy_AI_tarot_card_realistic_0725071340_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | tarotDeck | `Assets/fx/spell_props/Meshy_AI_tarot_card_deck_real_0725070146_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| teslaCoil | `Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| teslaCoil | `Assets/world/props/meshy/Meshy_AI_tesla_coil_1027232038_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | throwingKnife | `Assets/fx/spell_props/Meshy_AI_throwing_knife_1027232048_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tongs | `Assets/misc/Meshy_AI_tongs_1027232138_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tripodMachine | `Assets/decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
-| trumpet | `Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tongs | `Assets/world/props/meshy/Meshy_AI_tongs_1027232138_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tripodMachine | `Assets/world/props/meshy_decor/tripod_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| trumpet | `Assets/world/props/meshy/Meshy_AI_trumpet_1027232058_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ufo | `Assets/world/props/meshy/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | ulna | `Assets/fx/spell_props/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| voodooDoll | `Assets/misc/Meshy_AI_voodoo_doll_1027232238_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wand (held in the hand) | `Assets/props/magic_wand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| whip (held in the hand) | `Assets/props/bullwhip_rigged.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| wrench (held in the hand) | `Assets/props/wrench.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| voodooDoll | `Assets/world/props/meshy/Meshy_AI_voodoo_doll_1027232238_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wand (held in the hand) | `Assets/world/props/misc/magic_wand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| whip (held in the hand) | `Assets/world/props/misc/bullwhip_rigged.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| wrench (held in the hand) | `Assets/world/props/misc/wrench.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 
 ### 7a-2. Gear worn on the body (three-renderer.js UNIT_GEAR_WEAR, PR #827) — the equipment a unit carries, on its bones
 
 | equipment key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| binoculars | `Assets/props/binoculars.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| dowsing_rod | `Assets/props/dowsing_rod.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| echo_band | `Assets/props/arm_band.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| flair | `Assets/props/flare_gun.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| grapnel_gauntlet | `Assets/props/grapple_gauntlet.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| hagstone | `Assets/props/hagstone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| jetpack | `Assets/props/jetpack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| martyrs_talisman | `Assets/props/talisman_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| purity_censer | `Assets/props/censer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| telescope | `Assets/props/spyglass.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| walkie_talkie | `Assets/props/walkie_talkie.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
-| ward | `Assets/props/ward_totem.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| binoculars | `Assets/world/props/misc/binoculars.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| dowsing_rod | `Assets/world/props/misc/dowsing_rod.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| echo_band | `Assets/world/props/misc/arm_band.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| flair | `Assets/world/props/misc/flare_gun.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| grapnel_gauntlet | `Assets/world/props/misc/grapple_gauntlet.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| hagstone | `Assets/world/props/misc/hagstone.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| jetpack | `Assets/world/props/misc/jetpack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| martyrs_talisman | `Assets/world/props/misc/talisman_pendant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| purity_censer | `Assets/world/props/misc/censer.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| telescope | `Assets/world/props/misc/spyglass.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| walkie_talkie | `Assets/world/props/misc/walkie_talkie.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
+| ward | `Assets/world/props/misc/ward_totem.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 
 ### 7b. Settings, horizons, monuments (three-renderer.js _MISC_GLB)
 
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| alien | `Assets/misc/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ambulance | `Assets/misc/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| anchor | `Assets/misc/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ancient_walkway | `Assets/misc/Meshy_AI_ancient_walkway_0917035609_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ancient_well | `Assets/misc/Meshy_AI_an_ancient_well_0922010024_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| angel_statue | `Assets/misc/Meshy_AI_angel_statue_0917035332_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| astronaut | `Assets/misc/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| brazier | `Assets/misc/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| brick_arch | `Assets/misc/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| bus_shelter | `Assets/misc/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
-| campfire | `Assets/misc/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| camping_tent | `Assets/misc/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| cannon | `Assets/misc/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| carnival_tent | `Assets/misc/Meshy_AI_a_carnival_tent_0922010243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| catacomb_wall | `Assets/misc/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| caterpillar | `Assets/misc/Meshy_AI_caterpillar_0912231445_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| catholic_pew | `Assets/misc/Meshy_AI_catholic_church_pew_0917035928_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| chest | `Assets/misc/Meshy_AI_pirate_treasure_chest_0912231220_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_building | `Assets/misc/Meshy_AI_catholic_church_building_0917035753_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_pew | `Assets/misc/Meshy_AI_church_pew_0917035915_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_podium | `Assets/misc/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| church_wall | `Assets/misc/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cinder_block | `Assets/misc/Meshy_AI_cinder_block_0917064959_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| city_bench | `Assets/misc/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| city_bin | `Assets/misc/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
-| city_trash_bin | `Assets/misc/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| clock | `Assets/misc/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| confessional | `Assets/misc/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| couples_bed | `Assets/misc/Meshy_AI_a_couples_bed_0922010443_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| crane | `Assets/misc/Meshy_AI_a_scaffold_crane_0912231516_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| culvert | `Assets/misc/Meshy_AI_a_culvert_mouth_0916235929_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| cybercar | `Assets/misc/Meshy_AI_a_cyberpunk_car_0915195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| demon_statue | `Assets/misc/Meshy_AI_demon_statue_0917040101_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dish | `Assets/misc/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dockring | `Assets/misc/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dorm_bed | `Assets/misc/Meshy_AI_a_dorm_bed_0922010217_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| drain_grate | `Assets/misc/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| dumpster | `Assets/misc/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-| earth | `Assets/misc/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| escalator | `Assets/misc/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| escapepod | `Assets/misc/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fallen_log | `Assets/misc/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
-| fern | `Assets/misc/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| field_goal_post | `Assets/misc/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fire_hydrant | `Assets/misc/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| firetruck | `Assets/misc/Meshy_AI_a_fire_truck_0915195407_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| flamingo | `Assets/misc/Meshy_AI_a_flamingo_0912231434_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| footbridge | `Assets/misc/Meshy_AI_a_plank_footbridge_0916235844_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fortune_teller_tent | `Assets/misc/Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| gclock | `Assets/misc/Meshy_AI_grandfather_clock_re_0727195306_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| greekcol | `Assets/misc/Meshy_AI_greek_column_0727195651_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| holy_carpet | `Assets/misc/Meshy_AI_ornate_holy_carpet_0917035624_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hospital_bed | `Assets/misc/Meshy_AI_a_hospital_bed_0922010451_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hot_dog_stand | `Assets/misc/Meshy_AI_a_hot_dog_stand_0922010432_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| hullplate | `Assets/misc/Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| italian_building | `Assets/misc/Meshy_AI_Italian_building_0917035900_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| italian_building_2 | `Assets/misc/Meshy_AI_Italian_building_2_0917035828_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| jupiter | `Assets/misc/Meshy_AI_jupiter_realistic_0727195413_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| lantern | `Assets/misc/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
-| library_shelf | `Assets/misc/Meshy_AI_a_library_shelf_0917035552_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| library_shelf_full | `Assets/misc/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| menhir | `Assets/misc/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| military_tank | `Assets/misc/Meshy_AI_a_military_tank_0922010101_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| moon | `Assets/misc/Meshy_AI_moon_realistic_0727195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mushroom | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| mushroom2 | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| nacelle | `Assets/misc/Meshy_AI_an_engine_nacelle_0912231313_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| obelisk3d | `Assets/misc/Meshy_AI_obelisk_0727195707_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pack_bld_00 (a whole building) | `Assets/misc/ebd_buildings_bld_00.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_01 (a whole building) | `Assets/misc/ebd_buildings_bld_01.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_02 (a whole building) | `Assets/misc/ebd_buildings_bld_02.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_03 (a whole building) | `Assets/misc/ebd_buildings_bld_03.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_04 (a whole building) | `Assets/misc/ebd_buildings_bld_04.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_05 (a whole building) | `Assets/misc/ebd_buildings_bld_05.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_06 (a whole building) | `Assets/misc/ebd_buildings_bld_06.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_07 (a whole building) | `Assets/misc/ebd_buildings_bld_07.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_08 (a whole building) | `Assets/misc/ebd_buildings_bld_08.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| pack_bld_09 (a whole building) | `Assets/misc/ebd_buildings_bld_09.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
-| palmisle | `Assets/misc/Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pearly_gate | `Assets/misc/Meshy_AI_pearly_gate_0917035350_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| retro_control_panel | `Assets/misc/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| road_straight | `Assets/misc/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| road_turn | `Assets/misc/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| rowboat | `Assets/misc/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
-| royal_bed | `Assets/misc/Meshy_AI_a_royal_bed_0922010438_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| royal_throne | `Assets/misc/Meshy_AI_royal_throne_0917035803_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| sarcophagus | `Assets/misc/Meshy_AI_stone_sarcophagus_0917035255_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| satellite | `Assets/misc/Meshy_AI_satellite_realistic_1027103629_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| saturn | `Assets/misc/Meshy_AI_saturn_realistic_0727200914_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| saucer_lg | `Assets/misc/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| schoolbus | `Assets/misc/Meshy_AI_a_school_bus_0915195620_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| shark | `Assets/misc/Meshy_AI_shark_0912231236_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| signpost | `Assets/misc/Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| skateboard | `Assets/misc/Meshy_AI_a_skateboard_0915212313_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| skull_pile | `Assets/misc/Meshy_AI_skull_pile_0917035243_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| solar | `Assets/misc/Meshy_AI_solar_system_realist_0727195437_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| space_shuttle | `Assets/misc/Meshy_AI_space_shuttle_realis_1027103636_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| space_station | `Assets/misc/Meshy_AI_international_space_s_1027103646_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| spaceship | `Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| stained_glass | `Assets/misc/Meshy_AI_stained_glass_window_0917035453_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| standingstone | `Assets/misc/Meshy_AI_a_standing_stone_0912231506_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| star | `Assets/misc/Meshy_AI_star_realistic_0727195402_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| storefront | `Assets/misc/Meshy_AI_storefront_0917064551_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| storefront_unit | `Assets/misc/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| stump | `Assets/misc/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
-| subway_cart | `Assets/misc/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| subway_front | `Assets/misc/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| teacups | `Assets/misc/Meshy_AI_stacked_teacups_0912231425_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| teapot | `Assets/misc/Meshy_AI_teapot_0912231417_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| telescope | `Assets/misc/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tentacle | `Assets/misc/Meshy_AI_a_kraken_tentacle_0912231121_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| tentacle2 | `Assets/misc/Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| time_machine | `Assets/misc/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| traffic_barrel | `Assets/misc/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| traffic_cone | `Assets/misc/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| trilithon | `Assets/misc/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| ufo | `Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vatican_dome | `Assets/misc/Meshy_AI_the_Vatican_dome_0917061915_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vault | `Assets/misc/Meshy_AI_a_bank_vault_0912231605_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vhs_player | `Assets/misc/Meshy_AI_a_vhs_player_0922010233_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| vhs_tape | `Assets/misc/Meshy_AI_a_vhs_tape_0922010141_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| watch | `Assets/misc/Meshy_AI_a_pocket_watch_0912231541_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| watch_hang | `Assets/misc/Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wheel | `Assets/misc/Meshy_AI_a_ship_s_wheel_0912230950_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| white_cloud | `Assets/misc/Meshy_AI_white_cloud_0917035538_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wooden_bucket | `Assets/misc/Meshy_AI_wooden_bucket_0922011434_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wooden_cross | `Assets/misc/Meshy_AI_wooden_cross_0917035711_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| wreck | `Assets/misc/Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| yellow_pole | `Assets/misc/Meshy_AI_a_yellow_pole_0922010159_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| alien | `Assets/world/props/meshy/Meshy_AI_alien_planet_realis_0727195330_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ambulance | `Assets/world/props/meshy/Meshy_AI_an_ambulance_0915195334_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| anchor | `Assets/world/props/meshy/Meshy_AI_ship_anchor_0912231033_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ancient_walkway | `Assets/world/props/meshy/Meshy_AI_ancient_walkway_0917035609_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ancient_well | `Assets/world/props/meshy/Meshy_AI_an_ancient_well_0922010024_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| angel_statue | `Assets/world/props/meshy/Meshy_AI_angel_statue_0917035332_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| astronaut | `Assets/world/props/meshy/Meshy_AI_dead_astronaut_0912231349_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| brazier | `Assets/world/props/meshy/Meshy_AI_brazier_0917035429_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| brick_arch | `Assets/world/props/meshy/Meshy_AI_a_brick_arch_section_0916235939_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| campfire | `Assets/world/packs/elbolilloduro/ebd_survival_campfire.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| camping_tent | `Assets/world/packs/elbolilloduro/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| cannon | `Assets/world/props/meshy/Meshy_AI_iron_canon_0912231022_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| carnival_tent | `Assets/world/props/meshy/Meshy_AI_a_carnival_tent_0922010243_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| catacomb_wall | `Assets/world/props/meshy/Meshy_AI_catacomb_wall_0917035320_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| caterpillar | `Assets/world/props/meshy/Meshy_AI_caterpillar_0912231445_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| catholic_pew | `Assets/world/props/meshy/Meshy_AI_catholic_church_pew_0917035928_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| chest | `Assets/world/props/meshy/Meshy_AI_pirate_treasure_chest_0912231220_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_building | `Assets/world/props/meshy/Meshy_AI_catholic_church_building_0917035753_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_pew | `Assets/world/props/meshy/Meshy_AI_church_pew_0917035915_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_podium | `Assets/world/props/meshy/Meshy_AI_church_podium_0917035658_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| church_wall | `Assets/world/props/meshy/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cinder_block | `Assets/world/props/meshy/Meshy_AI_cinder_block_0917064959_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| city_bench | `Assets/world/props/meshy/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+| city_trash_bin | `Assets/world/props/meshy/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| clock | `Assets/world/props/meshy/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| confessional | `Assets/world/props/meshy/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| couples_bed | `Assets/world/props/meshy/Meshy_AI_a_couples_bed_0922010443_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| crane | `Assets/world/props/meshy/Meshy_AI_a_scaffold_crane_0912231516_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| culvert | `Assets/world/props/meshy/Meshy_AI_a_culvert_mouth_0916235929_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| cybercar | `Assets/world/props/meshy/Meshy_AI_a_cyberpunk_car_0915195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| demon_statue | `Assets/world/props/meshy/Meshy_AI_demon_statue_0917040101_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dish | `Assets/world/props/meshy/Meshy_AI_a_satellite_dish_0912231301_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dockring | `Assets/world/props/meshy/Meshy_AI_a_spaceship_docking_ring_0912231400_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dorm_bed | `Assets/world/props/meshy/Meshy_AI_a_dorm_bed_0922010217_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| drain_grate | `Assets/world/props/meshy/Meshy_AI_a_storm_drain_grate_0916235918_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| dumpster | `Assets/world/packs/elbolilloduro/ebd_diner_dumpster.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
+| earth | `Assets/world/props/meshy/Meshy_AI_planet_earth_realist_0727195349_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| escalator | `Assets/world/props/meshy/Meshy_AI_an_escalator_0917064623_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| escapepod | `Assets/world/props/meshy/Meshy_AI_an_escape_pod_0912231249_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fallen_log | `Assets/world/packs/elbolilloduro/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
+| fern | `Assets/world/props/meshy/Meshy_AI_a_fern_0916235806_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| field_goal_post | `Assets/world/props/meshy/Meshy_AI_a_yellow_field_goal_post_0922010209_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fire_hydrant | `Assets/world/props/meshy/Meshy_AI_fire_hydrant_0917064858_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| firetruck | `Assets/world/props/meshy/Meshy_AI_a_fire_truck_0915195407_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| flamingo | `Assets/world/props/meshy/Meshy_AI_a_flamingo_0912231434_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| footbridge | `Assets/world/props/meshy/Meshy_AI_a_plank_footbridge_0916235844_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fortune_teller_tent | `Assets/world/props/meshy/Meshy_AI_a_fortune_teller_tent_0922010255_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| gclock | `Assets/world/props/meshy/Meshy_AI_grandfather_clock_re_0727195306_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| greekcol | `Assets/world/props/meshy/Meshy_AI_greek_column_0727195651_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| holy_carpet | `Assets/world/props/meshy/Meshy_AI_ornate_holy_carpet_0917035624_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hospital_bed | `Assets/world/props/meshy/Meshy_AI_a_hospital_bed_0922010451_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hot_dog_stand | `Assets/world/props/meshy/Meshy_AI_a_hot_dog_stand_0922010432_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| hullplate | `Assets/world/props/meshy/Meshy_AI_a_torn_hull_plate_with_wiring_0912231409_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| italian_building | `Assets/world/props/meshy/Meshy_AI_Italian_building_0917035900_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| italian_building_2 | `Assets/world/props/meshy/Meshy_AI_Italian_building_2_0917035828_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| jupiter | `Assets/world/props/meshy/Meshy_AI_jupiter_realistic_0727195413_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| lantern | `Assets/world/packs/elbolilloduro/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| library_shelf | `Assets/world/props/meshy/Meshy_AI_a_library_shelf_0917035552_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| library_shelf_full | `Assets/world/props/meshy/Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| menhir | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0916235906_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| military_tank | `Assets/world/props/meshy/Meshy_AI_a_military_tank_0922010101_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| moon | `Assets/world/props/meshy/Meshy_AI_moon_realistic_0727195427_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mushroom | `Assets/world/props/meshy/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| mushroom2 | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| nacelle | `Assets/world/props/meshy/Meshy_AI_an_engine_nacelle_0912231313_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| obelisk3d | `Assets/world/props/meshy/Meshy_AI_obelisk_0727195707_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pack_bld_00 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_00.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_01 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_01.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_02 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_02.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_03 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_03.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_04 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_04.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_05 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_05.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_06 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_06.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_07 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_07.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_08 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_08.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| pack_bld_09 (a whole building) | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_09.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
+| palmisle | `Assets/world/props/meshy/Meshy_AI_a_tiny_island_with_palm_tree_0912231720_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pearly_gate | `Assets/world/props/meshy/Meshy_AI_pearly_gate_0917035350_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| retro_control_panel | `Assets/world/props/meshy/Meshy_AI_a_retro_control_panel_0922010114_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| road_straight | `Assets/world/props/meshy/Meshy_AI_a_straight_city_road_0917064651_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| road_turn | `Assets/world/props/meshy/Meshy_AI_a_road_turn_quarter_0917065230_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| rowboat | `Assets/world/packs/elbolilloduro/ebd_housesonwater_rowboat.glb` | Asset pack | Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) |
+| royal_bed | `Assets/world/props/meshy/Meshy_AI_a_royal_bed_0922010438_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| royal_throne | `Assets/world/props/meshy/Meshy_AI_royal_throne_0917035803_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| sarcophagus | `Assets/world/props/meshy/Meshy_AI_stone_sarcophagus_0917035255_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| satellite | `Assets/world/props/meshy/Meshy_AI_satellite_realistic_1027103629_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| saturn | `Assets/world/props/meshy/Meshy_AI_saturn_realistic_0727200914_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| saucer_lg | `Assets/world/props/meshy/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| schoolbus | `Assets/world/props/meshy/Meshy_AI_a_school_bus_0915195620_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| shark | `Assets/world/props/meshy/Meshy_AI_shark_0912231236_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| signpost | `Assets/world/props/meshy/Meshy_AI_a_blank_wooden_signpost_0916235832_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| skateboard | `Assets/world/props/meshy/Meshy_AI_a_skateboard_0915212313_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| skull_pile | `Assets/world/props/meshy/Meshy_AI_skull_pile_0917035243_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| solar | `Assets/world/props/meshy/Meshy_AI_solar_system_realist_0727195437_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| space_shuttle | `Assets/world/props/meshy/Meshy_AI_space_shuttle_realis_1027103636_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| space_station | `Assets/world/props/meshy/Meshy_AI_international_space_s_1027103646_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| spaceship | `Assets/world/props/meshy/Meshy_AI_spaceship_0727195825_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| stained_glass | `Assets/world/props/meshy/Meshy_AI_stained_glass_window_0917035453_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| standingstone | `Assets/world/props/meshy/Meshy_AI_a_standing_stone_0912231506_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| star | `Assets/world/props/meshy/Meshy_AI_star_realistic_0727195402_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| storefront | `Assets/world/props/meshy/Meshy_AI_storefront_0917064551_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| storefront_unit | `Assets/world/props/meshy/Meshy_AI_storefront_unit_0917064533_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| stump | `Assets/world/packs/elbolilloduro/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
+| subway_cart | `Assets/world/props/meshy/Meshy_AI_a_subway_train_cart_0915195417_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| subway_front | `Assets/world/props/meshy/Meshy_AI_a_subway_train_front_0915195457_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| teacups | `Assets/world/props/meshy/Meshy_AI_stacked_teacups_0912231425_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| teapot | `Assets/world/props/meshy/Meshy_AI_teapot_0912231417_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| telescope | `Assets/world/props/meshy/Meshy_AI_telescope_0917035520_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tentacle | `Assets/world/props/meshy/Meshy_AI_a_kraken_tentacle_0912231121_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| tentacle2 | `Assets/world/props/meshy/Meshy_AI_a_kraken_tentacle_2_0912231110_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| time_machine | `Assets/world/props/meshy/Meshy_AI_a_retro_time_machine_0917064610_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| traffic_barrel | `Assets/world/props/meshy/Meshy_AI_traffic_barrel_0917064936_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| traffic_cone | `Assets/world/props/meshy/Meshy_AI_traffic_cone_0917064925_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| trilithon | `Assets/world/props/meshy/Meshy_AI_trilithon_0912231457_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| ufo | `Assets/world/props/meshy/Meshy_AI_Triangle_UFO_0727195842_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vatican_dome | `Assets/world/props/meshy/Meshy_AI_the_Vatican_dome_0917061915_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vault | `Assets/world/props/meshy/Meshy_AI_a_bank_vault_0912231605_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vhs_player | `Assets/world/props/meshy/Meshy_AI_a_vhs_player_0922010233_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| vhs_tape | `Assets/world/props/meshy/Meshy_AI_a_vhs_tape_0922010141_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| watch | `Assets/world/props/meshy/Meshy_AI_a_pocket_watch_0912231541_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| watch_hang | `Assets/world/props/meshy/Meshy_AI_a_pocket_watch_hanging_0912231556_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wheel | `Assets/world/props/meshy/Meshy_AI_a_ship_s_wheel_0912230950_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| white_cloud | `Assets/world/props/meshy/Meshy_AI_white_cloud_0917035538_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wooden_bucket | `Assets/world/props/meshy/Meshy_AI_wooden_bucket_0922011434_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wooden_cross | `Assets/world/props/meshy/Meshy_AI_wooden_cross_0917035711_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| wreck | `Assets/world/props/meshy/Meshy_AI_a_ghost_ship_wreck_0912231131_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| yellow_pole | `Assets/world/props/meshy/Meshy_AI_a_yellow_pole_0922010159_texture.glb` | Meshy AI | Meshy AI (mondo) |
 
 ### 7c. Animals (three-renderer.js _ANIMALS)
 
 | key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| ant | `Assets/animals/insects/Ant_Worker.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| ant_leaf | `Assets/animals/insects/Ant_Carrying_Leaf.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| ant_queen | `Assets/animals/insects/Ant_Queen.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| anthill | `Assets/animals/insects/Ant_Anthill.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| bat_black (the bat_ procs) | `Assets/animals/bats/bat_black.obj` | Asset pack (author not recorded yet) | Bats (mondo's upload, OBJ) |
-| bat_brown (the bat_ procs) | `Assets/animals/bats/bat_brown.obj` | Asset pack (author not recorded yet) | Bats (mondo's upload, OBJ) |
-| bat_grey (the bat_ procs) | `Assets/animals/bats/bat_grey.obj` | Asset pack (author not recorded yet) | Bats (mondo's upload, OBJ) |
-| bee | `Assets/animals/insects/Bee_Honeybee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| bee_frames | `Assets/animals/insects/Bee_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| blue_morpho | `Assets/animals/insects/Butterfly_Blue_Morpho.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| bumblebee | `Assets/animals/insects/Bee_Bumblebee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| butterfly | `Assets/animals/butterfly.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| carpenter_bee | `Assets/animals/insects/Bee_Carpenter_Bee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| cat | `Assets/animals/cat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| caterpillar | `Assets/animals/insects/Butterfly_Caterpillar.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| chicken | `Assets/animals/chichen.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| chrysalis | `Assets/animals/insects/Butterfly_Chrysalis.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| cow | `Assets/animals/Cow.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| crow | `Assets/animals/crow_and_rabbit/crow.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
-| dog | `Assets/animals/dog.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| eagle | `Assets/animals/eagle_rigged.glb` | Meshy AI, reworked by Claude | Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) |
-| elephant | `Assets/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
-| giraffe | `Assets/animals/girafe.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| grasshopper | `Assets/animals/insects/Grasshopper_Green.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| grasshopper_brown | `Assets/animals/insects/Grasshopper_Brown.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| grasshopper_jump | `Assets/animals/insects/Grasshopper_Mid_Jump.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| hawk_moth | `Assets/animals/insects/Moth_Hawk_Moth.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| horse | `Assets/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
-| horse_black | `Assets/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
-| horse_brown | `Assets/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
-| ladybug | `Assets/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| lion | `Assets/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| luna_moth | `Assets/animals/insects/Moth_Luna.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| monarch | `Assets/animals/insects/Butterfly_Monarch.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| moth_frames | `Assets/animals/insects/Moth_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| rabbit | `Assets/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
-| swallowtail | `Assets/animals/insects/Butterfly_Swallowtail.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
-| wolf | `Assets/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| ant | `Assets/world/animals/insects/Ant_Worker.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| ant_leaf | `Assets/world/animals/insects/Ant_Carrying_Leaf.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| ant_queen | `Assets/world/animals/insects/Ant_Queen.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| anthill | `Assets/world/animals/insects/Ant_Anthill.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| bat_black (the bat_ procs) | `Assets/world/animals/bats/bat_black.obj` | Asset pack (author not recorded yet) | Bats (mondo's upload, OBJ) |
+| bat_brown (the bat_ procs) | `Assets/world/animals/bats/bat_brown.obj` | Asset pack (author not recorded yet) | Bats (mondo's upload, OBJ) |
+| bat_grey (the bat_ procs) | `Assets/world/animals/bats/bat_grey.obj` | Asset pack (author not recorded yet) | Bats (mondo's upload, OBJ) |
+| bee | `Assets/world/animals/insects/Bee_Honeybee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| bee_frames | `Assets/world/animals/insects/Bee_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| blue_morpho | `Assets/world/animals/insects/Butterfly_Blue_Morpho.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| bumblebee | `Assets/world/animals/insects/Bee_Bumblebee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| butterfly | `Assets/world/animals/butterfly.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| carpenter_bee | `Assets/world/animals/insects/Bee_Carpenter_Bee.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| cat | `Assets/world/animals/cat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| caterpillar | `Assets/world/animals/insects/Butterfly_Caterpillar.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| chicken | `Assets/world/animals/chichen.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| chrysalis | `Assets/world/animals/insects/Butterfly_Chrysalis.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| cow | `Assets/world/animals/Cow.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| crow | `Assets/world/animals/crow_and_rabbit/crow.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
+| dog | `Assets/world/animals/dog.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| eagle | `Assets/world/animals/eagle_rigged.glb` | Meshy AI, reworked by Claude | Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) |
+| elephant | `Assets/world/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
+| giraffe | `Assets/world/animals/girafe.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| grasshopper | `Assets/world/animals/insects/Grasshopper_Green.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| grasshopper_brown | `Assets/world/animals/insects/Grasshopper_Brown.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| grasshopper_jump | `Assets/world/animals/insects/Grasshopper_Mid_Jump.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| hawk_moth | `Assets/world/animals/insects/Moth_Hawk_Moth.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| horse | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+| horse_black | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+| horse_brown | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+| ladybug | `Assets/world/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| lion | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| luna_moth | `Assets/world/animals/insects/Moth_Luna.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| monarch | `Assets/world/animals/insects/Butterfly_Monarch.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| moth_frames | `Assets/world/animals/insects/Moth_Wing_Flap_Frames.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| rabbit | `Assets/world/animals/crow_and_rabbit/rabbit.glb` | Asset pack (author not recorded yet) | Crow + rabbit (mondo's upload) |
+| swallowtail | `Assets/world/animals/insects/Butterfly_Swallowtail.glb` | Asset pack (author not recorded yet) | Insects pack (mondo's upload) |
+| wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 
 ### 7d. Foliage (data.js HQ_TREE_KINDS + the renderer's tree keys)
 
 | tree key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
-| chess_bishop | `Assets/chess/Low Poly Chess Set.fbx#chess_bishop` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_bishop_dark | `Assets/chess/Low Poly Chess Set.fbx#chess_bishop_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_king | `Assets/chess/Low Poly Chess Set.fbx#chess_king` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_king_dark | `Assets/chess/Low Poly Chess Set.fbx#chess_king_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_knight | `Assets/chess/Low Poly Chess Set.fbx#chess_knight` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_knight_dark | `Assets/chess/Low Poly Chess Set.fbx#chess_knight_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_pawn | `Assets/chess/Low Poly Chess Set.fbx#chess_pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_pawn_dark | `Assets/chess/Low Poly Chess Set.fbx#chess_pawn_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_queen | `Assets/chess/Low Poly Chess Set.fbx#chess_queen` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_queen_dark | `Assets/chess/Low Poly Chess Set.fbx#chess_queen_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_rook | `Assets/chess/Low Poly Chess Set.fbx#chess_rook` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| chess_rook_dark | `Assets/chess/Low Poly Chess Set.fbx#chess_rook_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
-| fae_cap | `Assets/misc/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| fae_cap_2 | `Assets/misc/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| palm | `Assets/door/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| pine_2 | `Assets/foilage/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree | `Assets/foilage/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_10 | `Assets/foilage/OBJ/Tree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_11 | `Assets/foilage/OBJ/Tree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_12 | `Assets/foilage/OBJ/Tree_10.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_13 | `Assets/foilage/OBJ/DeadTree_1.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_14 | `Assets/foilage/OBJ/DeadTree_3.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_15 | `Assets/foilage/OBJ/DeadTree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_16 | `Assets/foilage/OBJ/DeadTree_6.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_17 | `Assets/foilage/OBJ/DeadTree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_18 | `Assets/foilage/OBJ/DeadTree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_19 | `Assets/foilage/OBJ/DeadTree_9.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_2 | `Assets/foilage/retrotreepack/GLB/tree_rt_3.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_20 | `Assets/foilage/OBJ/DeadTree_10.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_3 | `Assets/foilage/retrotreepack/GLB/tree_rt_4.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_4 | `Assets/foilage/retrotreepack/GLB/tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_5 | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_6 | `Assets/foilage/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_7 | `Assets/foilage/OBJ/Tree_2.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_8 | `Assets/foilage/OBJ/Tree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_9 | `Assets/foilage/OBJ/Tree_5.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
-| tree_pine | `Assets/foilage/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| tree_sapling | `Assets/foilage/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
-| xmas_pine | `Assets/christmas/models/Christmas.dae#Tree_N` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_pine_2 | `Assets/christmas/models/Christmas.dae#Tree_N_P` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_pine_3 | `Assets/christmas/models/Christmas.dae#Tree_N_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_snow_pine | `Assets/christmas/models/Christmas.dae#Trees_01` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_snow_pine_2 | `Assets/christmas/models/Christmas.dae#Trees_02` | Asset pack | Christmas pack · Elbolilloduro |
-| xmas_snow_pine_3 | `Assets/christmas/models/Christmas.dae#Trees_03` | Asset pack | Christmas pack · Elbolilloduro |
+| chess_bishop | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_bishop` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_bishop_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_bishop_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_king | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_king` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_king_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_king_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_knight | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_knight` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_knight_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_knight_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_pawn | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_pawn_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_pawn_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_queen | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_queen` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_queen_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_queen_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_rook | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| chess_rook_dark | `Assets/world/packs/chess/Low Poly Chess Set.fbx#chess_rook_dark` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
+| fae_cap | `Assets/world/props/meshy/Meshy_AI_mushroom_0727200342_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| fae_cap_2 | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| palm | `Assets/world/hq/models/Meshy_AI_palm_tree_0910054114_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| pine | `Assets/world/nature/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| pine_2 | `Assets/world/nature/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_10 | `Assets/world/nature/OBJ/Tree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_11 | `Assets/world/nature/OBJ/Tree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_12 | `Assets/world/nature/OBJ/Tree_10.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_13 | `Assets/world/nature/OBJ/DeadTree_1.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_14 | `Assets/world/nature/OBJ/DeadTree_3.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_15 | `Assets/world/nature/OBJ/DeadTree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_16 | `Assets/world/nature/OBJ/DeadTree_6.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_17 | `Assets/world/nature/OBJ/DeadTree_7.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_18 | `Assets/world/nature/OBJ/DeadTree_8.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_19 | `Assets/world/nature/OBJ/DeadTree_9.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_2 | `Assets/world/nature/retrotreepack/GLB/tree_rt_3.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_20 | `Assets/world/nature/OBJ/DeadTree_10.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_3 | `Assets/world/nature/retrotreepack/GLB/tree_rt_4.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_4 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_5 | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_6 | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_7 | `Assets/world/nature/OBJ/Tree_2.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_8 | `Assets/world/nature/OBJ/Tree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_9 | `Assets/world/nature/OBJ/Tree_5.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_pine | `Assets/world/nature/retrotreepack/GLB/tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_sapling | `Assets/world/nature/retrotreepack/GLB/small_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| xmas_pine | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Tree_N` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_pine_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Tree_N_P` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_pine_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Tree_N_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_snow_pine | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Trees_01` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_snow_pine_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Trees_02` | Asset pack | Christmas pack · Elbolilloduro |
+| xmas_snow_pine_3 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Trees_03` | Asset pack | Christmas pack · Elbolilloduro |
 
 ### 7e. Halloween pack pieces cut out by the spells (Assets/halloween/models/halloween.fbx · Elbolilloduro · CC0)
 
@@ -1750,14 +1750,14 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 
 | name | file (R2 bucket path) | made by | source | script |
 | --- | --- | --- | --- | --- |
-| Meshy_AI_unicorn_horn_1027075634_texture | `Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb` | Meshy AI | Meshy AI (mondo) | three-renderer.js |
-| eyeball | `Assets/misc/eyeball/eyeball.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
-| molten_cryo_tube | `Assets/misc/molten_cryo_tube.glb` | Asset pack | Molten Maps SciFi Asset Pack · Moltenbolt · CC0 | three-renderer.js |
-| Pyramid | `Assets/misc/Pyramid/Pyramid.glb` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
-| Street Lamp | `Assets/misc/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
-| UFO_Low_Poly | `Assets/misc/UFO_Low_Poly.fbx` | Asset pack | 3D Game Ready UFO Spaceship · FlexUnit · CC0 | sprites.js |
-| Meshy_AI_one_angel_wing_1027074635_texture | `Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
-| Meshy_AI_one_dragon_wing_1027074659_texture | `Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) | three-renderer.js |
+| Meshy_AI_one_angel_wing_1027074635_texture | `Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (mondo) | three-renderer.js |
+| Meshy_AI_one_dragon_wing_1027074659_texture | `Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (mondo) | three-renderer.js |
+| Meshy_AI_unicorn_horn_1027075634_texture | `Assets/world/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb` | Meshy AI | Meshy AI (mondo) | three-renderer.js |
+| eyeball | `Assets/world/props/meshy/eyeball/eyeball.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
+| molten_cryo_tube | `Assets/world/props/meshy/molten_cryo_tube.glb` | Asset pack | Molten Maps SciFi Asset Pack · Moltenbolt · CC0 | three-renderer.js |
+| Pyramid | `Assets/world/props/meshy/Pyramid/Pyramid.glb` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
+| Street Lamp | `Assets/world/props/meshy/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
+| UFO_Low_Poly | `Assets/world/props/meshy/UFO_Low_Poly.fbx` | Asset pack | 3D Game Ready UFO Spaceship · FlexUnit · CC0 | sprites.js |
 
 ## 8. Made in code — procedural stand-ins still in the catalogue (77)
 
@@ -1910,7 +1910,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `candycane` | three.js shapes (code) | — | Cylinder, Torus, glow sprites | _hzCandyCane |
 | `cargo` | three.js shapes (code) | — | Box, Sphere | _hzCargo |
 | `castle_wall` | three.js shapes (code) | — | Box | _hzCastleWallSeg |
-| `censer` | model files | `Assets/props/censer.glb` (Meshy AI) | glow sprites | _hzCenser |
+| `censer` | model files | `Assets/world/props/misc/censer.glb` | glow sprites | _hzCenser |
 | `chess_bishop` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_king` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
 | `chess_knight` | model files + three.js shapes | `Low Poly Chess Set` (mondo's upload, Assets/chess/) | Box, Cylinder, Lathe | _hzChessMon |
@@ -1981,7 +1981,7 @@ pack has a mountain, and the D.O.O.R. kit asteroid rocks stretched into a massif
 
 Claude made these on Meshy (concept image -> mondo's OK -> smart-topology model) for docs/notes/character-models-plan.md
 section 4a/6 (wearable gear + held spell props). Files: project files `meshy/models/` (GLB + preview). **Wired 2026-11-03:**
-the held spell props + whip + worn gear (PR #827, R2 `Assets/props/`) are in §7a / §7a-2; the creator fittings (PR #829,
+the held spell props + whip + worn gear (PR #827, R2 `Assets/world/props/misc/`) are in §7a / §7a-2; the creator fittings (PR #829,
 `charactercreation/wear/ewm_*`) are in §5e. #01 cowboy hat = mondo's own model; #58 playing cards dropped (mondo uses a pack); #49 whip =
 Meshy handle + a lash Claude built in Blender.
 
@@ -1995,7 +1995,7 @@ Meshy process (mondo's): concept image first -> mondo approves -> model in low-p
 Target tris are doubled per mondo (MPFB bodies ~30k). Concept rules: one object, plain background, no strings / chains / cords, screens and signs blank. Wiring a model into the
 game (giving the catalogue row a `file` and dropping its `proc`) is a separate step, only on mondo's say.
 **2026-11-03 mondo said wire them:** the 71 models Meshy made are in (rows marked WIRED). Each proc builder now WEARS its model
-(three-renderer.js THE MESHY DECOR, `_hqDecorWear`, files on R2 `Assets/decor/`): the catalogue rows are unchanged, the proc's
+(three-renderer.js THE MESHY DECOR, `_hqDecorWear`, files on R2 `Assets/world/props/meshy_decor/`): the catalogue rows are unchanged, the proc's
 own pieces hide (and keep the collision) and the model is fitted into their box. Rows not marked were not made on Meshy.
 
 ### 10A. Needs a NEW model (89) — stand-ins placed in rooms that no model in the game fits
@@ -2106,7 +2106,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 | S02 | sheep | Counting Sheep (dreameater) — **WIRED 2026-11-03** | A fluffy white cartoonish-realistic sheep standing |
 | S03 | polaroid | Cryptid Vanish (loch ness monster) | An instant polaroid photograph showing a blurry photo of a lake, white frame |
 | S04 | tripod_machine | Tripod Sweep (martian) — **WIRED 2026-11-03** | A towering three-legged alien tripod fighting machine with a domed head and a heat-ray arm, War of the Worlds style |
-| S05 | organ_pipe | Excessive Machine (Barbarella) — **WIRED 2026-11-03** (`Assets/decor/organ_pipe_white.glb`; the 9 pipes that rise round the victim were code cylinders in the gold sheet; brass concept also made, project files gold-texture/) | A single tall pipe-organ pipe: a long cylinder with the flat lip mouth cut-out near the bottom and a short cone foot |
+| S05 | organ_pipe | Excessive Machine (Barbarella) — **WIRED 2026-11-03** (`Assets/world/props/meshy_decor/organ_pipe_white.glb`; the 9 pipes that rise round the victim were code cylinders in the gold sheet; brass concept also made, project files gold-texture/) | A single tall pipe-organ pipe: a long cylinder with the flat lip mouth cut-out near the bottom and a short cone foot |
 
 ### 10C. SWAPS TO MODELS ALREADY IN THE GAME — done 2026-11-03 (mondo: "go ahead and do the recommended replacements")
 
@@ -2147,7 +2147,7 @@ The 2026-11-04 audit (§12) found 19 rows here that were already done or had a p
 
 ### 10F. MESHY → ELBOLILLODURO PACK SWAPS — done 2026-11-03 (mondo: "replace the meshy models in the game that it downloaded an asset pack for. Except for urban buildings")
 
-Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recentred, turned to face the way the Meshy model faced, and uploaded as `Assets/misc/ebd_<pack>_<item>.glb`; the catalogue row keeps its size (h / span), so only the look changed. Side-by-side sheets: project files `asset-packs/meshy-swap/`. All 14 packs are CC0.
+Each piece was cut out of its pack scene in Blender (bake-pack-pieces.py), recentred, turned to face the way the Meshy model faced, and uploaded as `Assets/world/packs/elbolilloduro/ebd_<pack>_<item>.glb`; the catalogue row keeps its size (h / span), so only the look changed. Side-by-side sheets: project files `asset-packs/meshy-swap/`. All 14 packs are CC0.
 
 | key | Meshy file it replaced | new file | pack |
 | --- | --- | --- | --- |
@@ -2183,7 +2183,7 @@ Not swapped (no pack piece matches): `school_bus` (the bus-stop pack's bus is a 
 ### 10G. THE GOLD-SHEET PIECES — code shapes that wore terrain/gold.png (2026-11-03, mondo: "I previously requested that that gold texture be removed from the game, and those rods should have shown up in the model list as needing to be replaced")
 
 The 2026-09-21 swap (TERRAIN_SPRITES `gold` = the aluminium sheet tinted gold) missed every spell / deployable piece that loaded
-`Assets/Sprites/terrain/gold.png` by file name. Since 2026-11-03 nothing loads that file (three-vfx-effects.js `_SIG_GOLD_TEX` +
+`Assets/world/terrain/gold.png` by file name. Since 2026-11-03 nothing loads that file (three-vfx-effects.js `_SIG_GOLD_TEX` +
 `_sigTerrainTex`, three-renderer.js `_getTeslaTex`): these pieces wear the tinted aluminium gilt until each gets a model. All are
 code shapes (cylinders / boxes / tori) and need a real model (pack or Meshy).
 **2026-11-04 audit:** the "needs" column names the model the game or a pack ALREADY has; only G05 bow, G10 gold record, G11 gavel and
@@ -2216,7 +2216,7 @@ G13 lipstick have none. Wiring any of them is mondo's call (spell looks).
 ### 10E. Old wishlist items with no stand-in yet (new dressing, by zone) — not concepted; ask mondo first
 
 **2026-11-04 audit — packs that ALREADY have these** (use them before Meshy): police barricade = the Meshy `policeBarricade` (§7a);
-fallen street lamp = `streetlamp` (Assets/misc/streetlamp, laid down); rooftop AC unit = 6twelve `Air_conditioners` / Molten
+fallen street lamp = `streetlamp` (Assets/world/props/meshy/streetlamp, laid down); rooftop AC unit = 6twelve `Air_conditioners` / Molten
 `Air_Con`; rail track section = the mine pack `Rails`; manhole ladder / pool ladder = House / Playground `Ladder`;
 castle wall with battlements + round tower = the castle pack `Wall_2x4` / `Tower_Mid` (Castles_and_Forts.glb); candelabra = the
 Halloween candles; broken column = the Meshy greek column or a castle `*_ruined` piece; brick stack / timber scaffold = check
@@ -2244,7 +2244,7 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | --- | --- | --- | --- |
 | 1 | castle / skycastle landmarks | **DONE 11-03 (round 2)**, code deleted | castle pack pieces placed one by one: Wall_2x4 / Wall_2x2 / Gate_2x4 curtain, Tower_Mid corner towers, a Tower_Doorway keep, Tower_top_1 + Roof_Cone caps (the sky castle keeps its clouds) |
 | 2 | iceberg ring `bergs` (cones) | **DONE 11-03**, code deleted | ocean pack rocks tinted ice white |
-| 3 | `_hzObelisk` | **DONE 11-03 (round 2)**, code deleted | new Meshy granite obelisk (`Assets/decor/obelisk.glb`, mondo: "needs a new meshy model") |
+| 3 | `_hzObelisk` | **DONE 11-03 (round 2)**, code deleted | new Meshy granite obelisk (`Assets/world/props/meshy_decor/obelisk.glb`, mondo: "needs a new meshy model") |
 | 4 | `_hzLighthouse` | **DONE 11-03**, code deleted | Meshy decor lighthouse |
 | 5 | sea stack / island | island **DONE 11-03** (code deleted, palm isle); sea stack kept (mondo: looks fine) | palm isle |
 | 6 | greek ruin + ruins rim | **DONE 11-03 (round 2)** | greek ruin: the standing columns are the NEW Meshy column (`greek_column.glb`) (the code shape kept, mondo likes it; the broken stubs are gone); ruins rim: ONE castle pack ruined piece per spot (Wall_2x4_ruined, Wall_2x2_ruined, Tower_mid_hollow_ruined), no clusters |
@@ -2256,8 +2256,8 @@ swells (`_nrMounds` of grass / sand / dirt / snow / rubble; the cloud banks stay
 | 12 | gateway / arch | **DONE 11-03 (round 2)**, code deleted | new Meshy curved stone arch (`stone_arch.glb`, mondo: "an arch is curved") |
 | 13 | brazier | **DONE 11-03**, code deleted | Meshy cave_torch + a glow |
 | 14 | rose window | pack swap | gothic pack Wall_Window_Rose (195 MB source: optimize first) |
-| 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/misc/molten_cryo_tube.glb` |
-| 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/misc/molten_sleeper_casket.glb` |
+| 15 | greytube | **DONE 11-03 (round 2)**, code deleted | Molten Maps sci-fi pack Cryo_Tube_ON (CC0), `Assets/world/props/meshy/molten_cryo_tube.glb` |
+| 16 | iso_tank | **DONE 11-03 (round 2)**, code deleted | Molten Maps sleeper casket (CC0), `Assets/world/props/meshy/molten_sleeper_casket.glb` |
 | 17 | lava lamps | **DONE 11-03 (round 2)**, base + cap code deleted | Meshy chrome base + cap (table and floor, `lava_lamp_*.glb`); the glass + the moving wax stay drawn (Meshy can't make glass; mondo: the Molten lamp looks bad) |
 | 18 | grow_lamp | **DONE 11-03 (round 2)**, code deleted | Meshy LED panel (`grow_lamp.glb`), the purple glow + light kept |
 | 19 | submarine | **DONE 11-03 (round 2)**, code deleted | Meshy riveted yellow sub (`submarine.glb`; mondo: the PSX pack sub looked worse than the code one) |
@@ -2334,24 +2334,6 @@ before asking for a new one (THE PACK-FIRST RULE).
 
 | folder | why it is on R2 | made by | files | MB |
 | --- | --- | --- | --- | --- |
-| `Assets/animals` | on R2, the game does not load it | Meshy AI · Meshy-style eagle export (mondo's upload): the unrigged original of eagle_rigged.glb | 2: eagle.fbx, eagle.glb | 78.3 |
-| `Assets/animals/horses` | on R2, the game does not load it | Asset pack (author not recorded yet) · Horse pack (mondo's upload) | 2: Horse.blend, Horse_fbx.fbx | 3.5 |
-| `Assets/christmas/models` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Christmas pack · Elbolilloduro | 1: Christmas.fbx | 0.7 |
-| `Assets/christmas/models` | on R2, the game does not load it | Asset pack · Christmas pack · Elbolilloduro | 4: Roads.dae, Roads.fbx, SantaClaus.fbx, SantaClaus_B.fbx | 1.1 |
-| `Assets/decor` | on R2, the game does not load it | Meshy AI · Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) | 2: armour_stand_post.glb, server_rack.glb | 0.7 |
-| `Assets/door/models` | on R2, the game does not load it | Meshy AI · Meshy AI (mondo) | 19: Meshy_AI_a_clock_0903110243_texture.glb, Meshy_AI_a_filing_cabinet_0903105233_texture.glb, Meshy_AI_a_fire_extinguisher_0903105310_texture.glb, Meshy_AI_a_lamp_0903110007_texture.glb, Meshy_AI_a_locker_0903105424_texture.glb, Meshy_AI_a_mop_0903105505_texture.glb, Meshy_AI_a_retro_gun_that_shoo_0916054449_texture.glb, Meshy_AI_a_round_vending_machine_0903105625_texture.glb, Meshy_AI_a_sink_0903105415_texture.glb, Meshy_AI_a_tube_tv_0903102007_texture.glb, Meshy_AI_a_water_cooler_0903105259_texture.glb, Meshy_AI_an_office_desk_lamp_0903110208_texture.glb, Meshy_AI_analog_phone_0910054719_texture.glb, Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb, Meshy_AI_beige_1980s_microwave_0910054901_texture.glb, Meshy_AI_coffee_maker_0910054513_texture.glb, Meshy_AI_one_meter_of_railing__0903105339_texture.glb, Meshy_AI_retro_radio_0910054335_texture.glb, Meshy_AI_trash_bin_0910054450_texture.glb | 92.2 |
-| `Assets/foilage/Blends` | on R2, the game does not load it | Asset pack · LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ) | 45: Birch_1.blend, Birch_10.blend, Birch_2.blend, Birch_3.blend, Birch_4.blend, Birch_5.blend, Birch_6.blend, Birch_7.blend, Birch_8.blend, Birch_9.blend, DeadBirch_1.blend, DeadBirch_10.blend, DeadBirch_2.blend, DeadBirch_3.blend, DeadBirch_4.blend, DeadBirch_5.blend, DeadBirch_6.blend, DeadBirch_7.blend, DeadBirch_8.blend, DeadBirch_9.blend, DeadTree_1.blend, DeadTree_10.blend, DeadTree_2.blend, DeadTree_3.blend, DeadTree_4.blend, DeadTree_5.blend, DeadTree_6.blend, DeadTree_7.blend, DeadTree_8.blend, DeadTree_9.blend, Pine_1.blend, Pine_2.blend, Pine_3.blend, Pine_4.blend, Pine_5.blend, Tree_1.blend, Tree_10.blend, Tree_2.blend, Tree_3.blend, Tree_4.blend, Tree_5.blend, Tree_6.blend, Tree_7.blend, Tree_8.blend, Tree_9.blend | 27.5 |
-| `Assets/foilage/FBX` | on R2, the game does not load it | Asset pack · LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ) | 45: Birch_1.fbx, Birch_10.fbx, Birch_2.fbx, Birch_3.fbx, Birch_4.fbx, Birch_5.fbx, Birch_6.fbx, Birch_7.fbx, Birch_8.fbx, Birch_9.fbx, DeadBirch_1.fbx, DeadBirch_10.fbx, DeadBirch_2.fbx, DeadBirch_3.fbx, DeadBirch_4.fbx, DeadBirch_5.fbx, DeadBirch_6.fbx, DeadBirch_7.fbx, DeadBirch_8.fbx, DeadBirch_9.fbx, DeadTree_1.fbx, DeadTree_10.fbx, DeadTree_2.fbx, DeadTree_3.fbx, DeadTree_4.fbx, DeadTree_5.fbx, DeadTree_6.fbx, DeadTree_7.fbx, DeadTree_8.fbx, DeadTree_9.fbx, Pine_1.fbx, Pine_2.fbx, Pine_3.fbx, Pine_4.fbx, Pine_5.fbx, Tree_1.fbx, Tree_10.fbx, Tree_2.fbx, Tree_3.fbx, Tree_4.fbx, Tree_5.fbx, Tree_6.fbx, Tree_7.fbx, Tree_8.fbx, Tree_9.fbx | 2.2 |
-| `Assets/foilage/OBJ` | on R2, the game does not load it | Asset pack · LowPoly nature · Quaternius · CC0 | 31: Birch_1.obj, Birch_10.obj, Birch_2.obj, Birch_3.obj, Birch_4.obj, Birch_5.obj, Birch_6.obj, Birch_7.obj, Birch_8.obj, Birch_9.obj, DeadBirch_1.obj, DeadBirch_10.obj, DeadBirch_2.obj, DeadBirch_3.obj, DeadBirch_4.obj, DeadBirch_5.obj, DeadBirch_6.obj, DeadBirch_7.obj, DeadBirch_8.obj, DeadBirch_9.obj, DeadTree_2.obj, DeadTree_5.obj, Pine_1.obj, Pine_2.obj, Pine_3.obj, Pine_4.obj, Pine_5.obj, Tree_1.obj, Tree_3.obj, Tree_6.obj, Tree_9.obj | 2.8 |
-| `Assets/halloween/characters` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Halloween pack · Elbolilloduro · CC0 | 1: Character_Ghost.fbx | 0.1 |
-| `Assets/halloween/characters` | on R2, the game does not load it | Asset pack · Halloween pack · Elbolilloduro · CC0 | 2: Character.fbx, Character_Witch.fbx | 0.5 |
-| `Assets/instruments` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Instruments + orchestral (mondo's upload) | 3: GuitarV1.fbx, MaracasV1.fbx, TamburinV1.fbx | 0.1 |
-| `Assets/Metro_PSX/Models` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Metro PSX · Elbolilloduro · CC0 | 2: Metro.dae, Metro.fbx | 2.9 |
-| `Assets/misc` | on R2, the game does not load it | Meshy AI · Meshy AI (mondo) | 15: Meshy_AI_a_campfire_ring_0916235856_texture.glb, Meshy_AI_a_camping_tent_0922010306_texture.glb, Meshy_AI_a_city_bin_0917065144_texture.glb, Meshy_AI_a_dead_snag_0916235650_texture.glb, Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb, Meshy_AI_a_fallen_log_0916235700_texture.glb, Meshy_AI_a_hanging_lantern_0912231043_texture.glb, Meshy_AI_a_pine_with_canopy_0916235640_texture.glb, Meshy_AI_a_round_street_drain__0917064638_texture.glb, Meshy_AI_a_rowboat_0912231059_texture.glb, Meshy_AI_a_stump_0916235717_texture.glb, Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb, Meshy_AI_bus_shelter_0917064913_texture.glb, Meshy_AI_dumpster_0727195512_texture.glb, Meshy_AI_one_meter_of_railing_0903105339_texture.glb | 95.2 |
-| `Assets/misc` | on R2, the game does not load it | Asset pack (author not recorded yet) · Angel wings pair (mondo's upload, maker not recorded): retired 2026-10-27 for the single Meshy wings | 1: wings.glb | 8.4 |
-| `Assets/misc/Pyramid` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Authored OBJ / GLB (mondo's upload, author not recorded) | 2: Pyramid.blend, Pyramid.gltf | 1.0 |
-| `Assets/misc/road` | on R2, the game does not load it | Asset pack (author not recorded yet) · Road piece (mondo's upload, author not recorded; .3ds / .blend / .dae / .fbx / .obj of one model) | 5: road.3ds, road.blend, road.dae, road.fbx, road.obj | 0.5 |
-| `Assets/misc/streetlamp` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Authored OBJ / GLB (mondo's upload, author not recorded) | 1: Street Lamp.c4d | 0.7 |
 | `Assets/Models` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 56: Meshy_AI_Animation_Back_Jump_withSkin.glb, Meshy_AI_Animation_Basic_Jump_withSkin.glb, Meshy_AI_Animation_Charged_Spell_Cast_withSkin.glb, Meshy_AI_Animation_Punch_Combo_1_withSkin.glb, Meshy_AI_Animation_Punch_Combo_5_withSkin.glb, Meshy_AI_Animation_Punch_Combo_withSkin.glb, Meshy_AI_sniper_Archery_Shot_2.glb, Meshy_AI_sniper_Archery_Shot_3.glb, Meshy_AI_sniper_BeHit_FlyUp.glb, Meshy_AI_sniper_Charged_Slash.glb, Meshy_AI_sniper_Charged_Upward_Slash.glb, Meshy_AI_sniper_Climb_Up_Rope.glb, Meshy_AI_sniper_Dive_Down_and_Land.glb, Meshy_AI_sniper_Fast_Ladder_Climb.glb, Meshy_AI_sniper_Gunshot_Reaction.glb, Meshy_AI_sniper_Headache_Relief.glb, Meshy_AI_sniper_Heavy_Hammer_Swing.glb, Meshy_AI_sniper_Jumping_Punch.glb, Meshy_AI_sniper_Kung_Fu_Punch.glb, Meshy_AI_sniper_Right_Hand_Sword_Slas.glb, Meshy_AI_sniper_Right_Jab_from_Guard.glb, Meshy_AI_sniper_Rising_Flying_Kick.glb, Meshy_AI_sniper_Roundhouse_Kick.glb, Meshy_AI_sniper_RunFast.glb, Meshy_AI_sniper_Shield_Push_Left.glb, Meshy_AI_sniper_Skill_01.glb, Meshy_AI_sniper_Skill_03.glb, Meshy_AI_sniper_Slap_Reaction.glb, Meshy_AI_sniper_Stand_Dodge.glb, Meshy_AI_sniper_Sweeping_Kick.glb, Meshy_AI_sniper_Sword_Judgment.glb, Meshy_AI_sniper_Sword_Shout.glb, Meshy_AI_sniper_Thrust_Slash.glb, Meshy_AI_sniper_biped_Animation_Archery_Shot_1_withSkin.glb, Meshy_AI_sniper_biped_Animation_Block3_withSkin.glb, Meshy_AI_sniper_biped_Animation_Charged_Ground_Slam_withSkin.glb, Meshy_AI_sniper_biped_Animation_Charged_Spell_Cast_withSkin.glb, Meshy_AI_sniper_biped_Animation_Cowboy_Quick_Draw_Shooting_withSkin.glb, Meshy_AI_sniper_biped_Animation_Dead_withSkin.glb, Meshy_AI_sniper_biped_Animation_Face_Punch_Reaction_withSkin.glb, Meshy_AI_sniper_biped_Animation_Fall3_withSkin.glb, Meshy_AI_sniper_biped_Animation_Hit_Reaction_1_withSkin.glb, Meshy_AI_sniper_biped_Animation_Idle_10_withSkin.glb, Meshy_AI_sniper_biped_Animation_Idle_11_withSkin.glb, Meshy_AI_sniper_biped_Animation_Regular_Jump_withSkin.glb, Meshy_AI_sniper_biped_Animation_Running_withSkin.glb, Meshy_AI_sniper_biped_Animation_Spartan_Kick_withSkin.glb, Meshy_AI_sniper_biped_Animation_Walking_Woman_withSkin.glb, Meshy_AI_sniper_biped_Animation_Walking_withSkin.glb, Meshy_AI_sniper_biped_Animation_mage_soell_cast_3_withSkin.glb, Meshy_AI_sniper_biped_Animation_mage_soell_cast_7_withSkin.glb, Meshy_AI_sniper_biped_Animation_mage_soell_cast_withSkin.glb, Meshy_AI_sniper_mage_soell_cast_1.glb, Meshy_AI_sniper_mage_soell_cast_2.glb, Meshy_AI_sniper_mage_soell_cast_4.glb, Meshy_AI_sniper_mage_soell_cast_6.glb | 431.8 |
 | `Assets/Models` | on R2, the game does not load it | Meshy AI · Meshy AI rigged character (mondo) | 4: Meshy_AI_human_body_base_mesh_female.glb, Meshy_AI_human_body_base_mesh_female_biped_Character_output.glb, Meshy_AI_human_body_base_mesh_male.glb, Meshy_AI_human_body_base_mesh_male_biped_Character_output.glb | 2.5 |
 | `Assets/Models/charactercreation` | creator file not named by a table above (a per-body copy, a base mesh, or a retired pick) | Meshy AI, reworked by Claude · Meshy base body, rigged by Claude (character-rig.js bodies) | 2: Meshy_AI_human_body_base_mesh_female.glb, Meshy_AI_human_body_base_mesh_male.glb | 1.5 |
@@ -2417,16 +2399,34 @@ before asking for a new one (THE PACK-FIRST RULE).
 | `Assets/Sprites/Races/vampire/female` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 9: Meshy_AI_beautiful_attractive__biped_Animation_Charged_Spell_Cast_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Dead_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Hit_Reaction_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Idle_6_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Knock_Down_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Regular_Jump_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Running_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_Walking_withSkin.glb, Meshy_AI_beautiful_attractive__biped_Animation_mage_soell_cast_1_withSkin.glb | 45.5 |
 | `Assets/Sprites/Races/voidweaver/male` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 1: Meshy_AI_giant_spider_realisti_quadruped_model_Animation_Walking_withSkin.glb | 7.3 |
 | `Assets/Sprites/Races/Werewolf/male` | animation clip file (the shared library replaced per-character clips; kept for the fallback / a re-consolidate) | Meshy AI · Meshy AI rigged character (mondo) | 9: Meshy_AI_werewolf_biped_Animation_Dead_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Face_Punch_Reaction_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Idle_10_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Idle_11_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Knock_Down_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Regular_Jump_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Right_Hand_Sword_Slash_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Running_withSkin.glb, Meshy_AI_werewolf_biped_Animation_Walking_withSkin.glb | 83.6 |
-| `Assets/stairs` | on R2, the game does not load it | Asset pack · Stairs & Railings · ATD-London · CC-BY 4.0 (credit required) | 2: stairs.glb, stairs_railings.glb | 32.0 |
-| `Assets/traps` | on R2, the game does not load it | Asset pack (author not recorded yet) · Traps pack (mondo's upload) | 4: Chain_Draped-colonly.glb, Coffin_Wood-colonly.glb, Coffin_Wood_Lid-convcolonly.glb, Iron_Maiden-colonly.glb | 0.0 |
-| `Assets/vehicles/Car 01` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car.blend | 0.8 |
-| `Assets/vehicles/Car 02` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car2.blend | 0.8 |
-| `Assets/vehicles/Car 03` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car3.blend | 0.8 |
-| `Assets/vehicles/Car 04` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car4.blend | 0.8 |
-| `Assets/vehicles/Car 05` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 3: Car5.blend, Car5_Police.blend, Car5_Taxi.blend | 2.4 |
-| `Assets/vehicles/Car 06` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car6.blend | 0.8 |
-| `Assets/vehicles/Car 07` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car7.blend | 0.8 |
-| `Assets/vehicles/Car 08` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car8.blend | 0.7 |
-| `Assets/vehicles/Shadow (3D)` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Car_Shadow.blend, Car_Shadow.obj | 0.7 |
-| `Assets/vehicles/Wheel` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Wheel.blend, Wheel.obj | 0.7 |
+| `Assets/world/animals` | on R2, the game does not load it | Meshy AI · Meshy-style eagle export (mondo's upload): the unrigged original of eagle_rigged.glb | 2: eagle.fbx, eagle.glb | 78.3 |
+| `Assets/world/animals/horses` | on R2, the game does not load it | Asset pack (author not recorded yet) · Horse pack (mondo's upload) | 2: Horse.blend, Horse_fbx.fbx | 3.5 |
+| `Assets/world/hq/models` | on R2, the game does not load it | Meshy AI · Meshy AI (mondo) | 19: Meshy_AI_a_clock_0903110243_texture.glb, Meshy_AI_a_filing_cabinet_0903105233_texture.glb, Meshy_AI_a_fire_extinguisher_0903105310_texture.glb, Meshy_AI_a_lamp_0903110007_texture.glb, Meshy_AI_a_locker_0903105424_texture.glb, Meshy_AI_a_mop_0903105505_texture.glb, Meshy_AI_a_retro_gun_that_shoo_0916054449_texture.glb, Meshy_AI_a_round_vending_machine_0903105625_texture.glb, Meshy_AI_a_sink_0903105415_texture.glb, Meshy_AI_a_tube_tv_0903102007_texture.glb, Meshy_AI_a_water_cooler_0903105259_texture.glb, Meshy_AI_an_office_desk_lamp_0903110208_texture.glb, Meshy_AI_analog_phone_0910054719_texture.glb, Meshy_AI_beige_1980s_cash_regi_0910054541_texture.glb, Meshy_AI_beige_1980s_microwave_0910054901_texture.glb, Meshy_AI_coffee_maker_0910054513_texture.glb, Meshy_AI_one_meter_of_railing__0903105339_texture.glb, Meshy_AI_retro_radio_0910054335_texture.glb, Meshy_AI_trash_bin_0910054450_texture.glb | 92.2 |
+| `Assets/world/nature/Blends` | on R2, the game does not load it | Asset pack · LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ) | 45: Birch_1.blend, Birch_10.blend, Birch_2.blend, Birch_3.blend, Birch_4.blend, Birch_5.blend, Birch_6.blend, Birch_7.blend, Birch_8.blend, Birch_9.blend, DeadBirch_1.blend, DeadBirch_10.blend, DeadBirch_2.blend, DeadBirch_3.blend, DeadBirch_4.blend, DeadBirch_5.blend, DeadBirch_6.blend, DeadBirch_7.blend, DeadBirch_8.blend, DeadBirch_9.blend, DeadTree_1.blend, DeadTree_10.blend, DeadTree_2.blend, DeadTree_3.blend, DeadTree_4.blend, DeadTree_5.blend, DeadTree_6.blend, DeadTree_7.blend, DeadTree_8.blend, DeadTree_9.blend, Pine_1.blend, Pine_2.blend, Pine_3.blend, Pine_4.blend, Pine_5.blend, Tree_1.blend, Tree_10.blend, Tree_2.blend, Tree_3.blend, Tree_4.blend, Tree_5.blend, Tree_6.blend, Tree_7.blend, Tree_8.blend, Tree_9.blend | 27.5 |
+| `Assets/world/nature/FBX` | on R2, the game does not load it | Asset pack · LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ) | 45: Birch_1.fbx, Birch_10.fbx, Birch_2.fbx, Birch_3.fbx, Birch_4.fbx, Birch_5.fbx, Birch_6.fbx, Birch_7.fbx, Birch_8.fbx, Birch_9.fbx, DeadBirch_1.fbx, DeadBirch_10.fbx, DeadBirch_2.fbx, DeadBirch_3.fbx, DeadBirch_4.fbx, DeadBirch_5.fbx, DeadBirch_6.fbx, DeadBirch_7.fbx, DeadBirch_8.fbx, DeadBirch_9.fbx, DeadTree_1.fbx, DeadTree_10.fbx, DeadTree_2.fbx, DeadTree_3.fbx, DeadTree_4.fbx, DeadTree_5.fbx, DeadTree_6.fbx, DeadTree_7.fbx, DeadTree_8.fbx, DeadTree_9.fbx, Pine_1.fbx, Pine_2.fbx, Pine_3.fbx, Pine_4.fbx, Pine_5.fbx, Tree_1.fbx, Tree_10.fbx, Tree_2.fbx, Tree_3.fbx, Tree_4.fbx, Tree_5.fbx, Tree_6.fbx, Tree_7.fbx, Tree_8.fbx, Tree_9.fbx | 2.2 |
+| `Assets/world/nature/OBJ` | on R2, the game does not load it | Asset pack · LowPoly nature · Quaternius · CC0 | 31: Birch_1.obj, Birch_10.obj, Birch_2.obj, Birch_3.obj, Birch_4.obj, Birch_5.obj, Birch_6.obj, Birch_7.obj, Birch_8.obj, Birch_9.obj, DeadBirch_1.obj, DeadBirch_10.obj, DeadBirch_2.obj, DeadBirch_3.obj, DeadBirch_4.obj, DeadBirch_5.obj, DeadBirch_6.obj, DeadBirch_7.obj, DeadBirch_8.obj, DeadBirch_9.obj, DeadTree_2.obj, DeadTree_5.obj, Pine_1.obj, Pine_2.obj, Pine_3.obj, Pine_4.obj, Pine_5.obj, Tree_1.obj, Tree_3.obj, Tree_6.obj, Tree_9.obj | 2.8 |
+| `Assets/world/packs/elbolilloduro_christmas/models` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Christmas pack · Elbolilloduro | 1: Christmas.fbx | 0.7 |
+| `Assets/world/packs/elbolilloduro_christmas/models` | on R2, the game does not load it | Asset pack · Christmas pack · Elbolilloduro | 4: Roads.dae, Roads.fbx, SantaClaus.fbx, SantaClaus_B.fbx | 1.1 |
+| `Assets/world/packs/elbolilloduro_halloween/characters` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Halloween pack · Elbolilloduro · CC0 | 1: Character_Ghost.fbx | 0.1 |
+| `Assets/world/packs/elbolilloduro_halloween/characters` | on R2, the game does not load it | Asset pack · Halloween pack · Elbolilloduro · CC0 | 2: Character.fbx, Character_Witch.fbx | 0.5 |
+| `Assets/world/packs/elbolilloduro_metro_psx/Models` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Metro PSX · Elbolilloduro · CC0 | 2: Metro.dae, Metro.fbx | 2.9 |
+| `Assets/world/packs/instruments` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Instruments + orchestral (mondo's upload) | 3: GuitarV1.fbx, MaracasV1.fbx, TamburinV1.fbx | 0.1 |
+| `Assets/world/packs/stairs` | on R2, the game does not load it | Asset pack · Stairs & Railings · ATD-London · CC-BY 4.0 (credit required) | 2: stairs.glb, stairs_railings.glb | 32.0 |
+| `Assets/world/packs/traps` | on R2, the game does not load it | Asset pack (author not recorded yet) · Traps pack (mondo's upload) | 4: Chain_Draped-colonly.glb, Coffin_Wood-colonly.glb, Coffin_Wood_Lid-convcolonly.glb, Iron_Maiden-colonly.glb | 0.0 |
+| `Assets/world/props/meshy` | on R2, the game does not load it | Meshy AI · Meshy AI (mondo) | 15: Meshy_AI_a_campfire_ring_0916235856_texture.glb, Meshy_AI_a_camping_tent_0922010306_texture.glb, Meshy_AI_a_city_bin_0917065144_texture.glb, Meshy_AI_a_dead_snag_0916235650_texture.glb, Meshy_AI_a_dead_tree_with_a_dark_hole_0916235739_texture.glb, Meshy_AI_a_fallen_log_0916235700_texture.glb, Meshy_AI_a_hanging_lantern_0912231043_texture.glb, Meshy_AI_a_pine_with_canopy_0916235640_texture.glb, Meshy_AI_a_round_street_drain__0917064638_texture.glb, Meshy_AI_a_rowboat_0912231059_texture.glb, Meshy_AI_a_stump_0916235717_texture.glb, Meshy_AI_a_tree_with_a_hole_0916235727_texture.glb, Meshy_AI_bus_shelter_0917064913_texture.glb, Meshy_AI_dumpster_0727195512_texture.glb, Meshy_AI_one_meter_of_railing_0903105339_texture.glb | 95.2 |
+| `Assets/world/props/meshy` | on R2, the game does not load it | Asset pack (author not recorded yet) · Angel wings pair (mondo's upload, maker not recorded): retired 2026-10-27 for the single Meshy wings | 1: wings.glb | 8.4 |
+| `Assets/world/props/meshy_decor` | on R2, the game does not load it | Meshy AI · Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) | 2: armour_stand_post.glb, server_rack.glb | 0.7 |
+| `Assets/world/props/meshy/Pyramid` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Authored OBJ / GLB (mondo's upload, author not recorded) | 2: Pyramid.blend, Pyramid.gltf | 1.0 |
+| `Assets/world/props/meshy/road` | on R2, the game does not load it | Asset pack (author not recorded yet) · Road piece (mondo's upload, author not recorded; .3ds / .blend / .dae / .fbx / .obj of one model) | 5: road.3ds, road.blend, road.dae, road.fbx, road.obj | 0.5 |
+| `Assets/world/props/meshy/streetlamp` | another format of a model listed above (source file, the game loads the listed one) | Asset pack (author not recorded yet) · Authored OBJ / GLB (mondo's upload, author not recorded) | 1: Street Lamp.c4d | 0.7 |
+| `Assets/world/vehicles/Car 01` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car.blend | 0.8 |
+| `Assets/world/vehicles/Car 02` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car2.blend | 0.8 |
+| `Assets/world/vehicles/Car 03` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car3.blend | 0.8 |
+| `Assets/world/vehicles/Car 04` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car4.blend | 0.8 |
+| `Assets/world/vehicles/Car 05` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 3: Car5.blend, Car5_Police.blend, Car5_Taxi.blend | 2.4 |
+| `Assets/world/vehicles/Car 06` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car6.blend | 0.8 |
+| `Assets/world/vehicles/Car 07` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car7.blend | 0.8 |
+| `Assets/world/vehicles/Car 08` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car8.blend | 0.7 |
+| `Assets/world/vehicles/Shadow (3D)` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Car_Shadow.blend, Car_Shadow.obj | 0.7 |
+| `Assets/world/vehicles/Wheel` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Wheel.blend, Wheel.obj | 0.7 |
 

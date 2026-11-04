@@ -53,6 +53,29 @@ const EW_ASSET_MOVES = [
   ['Assets/Sprites/Effects/', 'Assets/fx/flipbooks/'],
   ['Assets/Sprites/vfx/', 'Assets/fx/sprites/'],
   ['Assets/Sprites/projectiles/', 'Assets/fx/projectiles/'],
+  // W4 world (2026-11-04)
+  ['Assets/door/models/', 'Assets/world/hq/models/'],
+  ['Assets/door/textures/', 'Assets/world/hq/textures/'],
+  ['Assets/decor/', 'Assets/world/props/meshy_decor/'],
+  ['Assets/props/', 'Assets/world/props/misc/'],
+  ['Assets/misc/ebd_', 'Assets/world/packs/elbolilloduro/ebd_'],
+  ['Assets/misc/Castles_and', 'Assets/world/packs/mcsteeg_castles/Castles_and'],
+  ['Assets/misc/wings/', 'Assets/characters/gear/wings/'],
+  ['Assets/misc/', 'Assets/world/props/meshy/'],
+  ['Assets/christmas/', 'Assets/world/packs/elbolilloduro_christmas/'],
+  ['Assets/halloween/', 'Assets/world/packs/elbolilloduro_halloween/'],
+  ['Assets/Metro_PSX/', 'Assets/world/packs/elbolilloduro_metro_psx/'],
+  ['Assets/oceanic/', 'Assets/world/packs/ocean/'],
+  ['Assets/instruments/', 'Assets/world/packs/instruments/'],
+  ['Assets/traps/', 'Assets/world/packs/traps/'],
+  ['Assets/chess/', 'Assets/world/packs/chess/'],
+  ['Assets/stairs/', 'Assets/world/packs/stairs/'],
+  ['Assets/vehicles/', 'Assets/world/vehicles/'],
+  ['Assets/animals/', 'Assets/world/animals/'],
+  ['Assets/foilage/', 'Assets/world/nature/'],
+  ['Assets/skies/', 'Assets/world/sky/'],
+  ['Assets/Sprites/terrain/', 'Assets/world/terrain/'],
+  ['Assets/Sprites/night cities files/', 'Assets/world/sky/night_cities/'],
 ];
 const _ewMoves = (function () {
   const rows = EW_ASSET_MOVES.slice().sort((a, b) => b[0].length - a[0].length);
@@ -2539,7 +2562,7 @@ const RACE_MODELS_3D = {
     male: {
       // 2026-10-27 (mondo: "For the occulus, use these bat wings instead of angel wings"): his single bat wing,
       // doubled and mirrored by the procRig (three-renderer.js THE SINGLE WINGS)
-      model: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb',
       clips: {},
       procRig: 'occulusWings',
       heightRatio: 0.67,   // the bat pair stands ~3.85 tall at rest (the first wings ~4.9 at 0.85): the same eye size and wingspan as before
@@ -2551,14 +2574,14 @@ const RACE_MODELS_3D = {
   // Unicorn (2026-10-27, mondo: "use a white horse, the unicorn horn, and the
   // angel wings to make a new unicorn character with custom animations for it
   // spells") — THE HORSES' file with the tack off, his single angel wing on
-  // each side (Assets/misc/wings/, mirrored for the left) and the horn on the
+  // each side (Assets/characters/gear/wings/, mirrored for the left) and the horn on the
   // head: procRig 'unicornWings' (three-renderer.js THE PROCEDURAL RIGS) keeps
   // the horse's own Idle / Trot / Gallop under the wings and gives every cast
   // kind a pose of its own (_UNI_POSES). The '#unicorn' on the url keeps the
   // rig cache's assembly apart from the plain horses (mounts, rooms).
   'unicorn': (function () {
     const uni = {
-      model: 'https://cdn.entropywars.net/Assets/animals/horses/Horse_glb.glb#unicorn',
+      model: 'https://cdn.entropywars.net/Assets/world/animals/horses/Horse_glb.glb#unicorn',
       clips: {},
       procRig: 'unicornWings',
       heightRatio: 1.3,    // the box is the wing tips (above the ears): the horse stands ~1.15 tiles to the ears, a long body over its tile
@@ -2574,12 +2597,12 @@ const RACE_MODELS_3D = {
       heightRatio: 0.97,
       basicAttackKind: 'magic',
     }),
-    // 2026-10-29 — the Halloween pack's sheet ghost (R2 Assets/halloween/characters/Character_Ghost.fbx + textures/Ghost.png).
+    // 2026-10-29 — the Halloween pack's sheet ghost (R2 Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.fbx + textures/Ghost.png).
     // Rigged (20 bones, its own L_/R_ names, no hips bone, facing -Z), so it was baked offline into this GLB: the bones renamed
     // to the Meshy names the shared library retargets onto, a Hips root added under the spine, turned to face +Z, metres, the
     // sheet embedded. The library animates it like every other rig; ASSET_MANIFEST lists its KTX2/meshopt copy.
     male: _mkUAL('ghost/male', 'Character_Ghost', {
-      model: 'https://cdn.entropywars.net/Assets/halloween/characters/Character_Ghost.glb',
+      model: 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb',
       heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
@@ -4448,14 +4471,14 @@ const EW_GLASSES_STYLES = [
 // (`wingsColor`). Hung in three-renderer.js _createAppearanceRig (setWings).
 // 2026-10-27 (mondo: "I added angel wings with a much smaller poly count, can you use these wings instead for the
 // character creator"): his single angel wing, doubled and mirrored (three-renderer.js THE SINGLE WINGS).
-const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
+const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
 const EW_WINGS_STYLES = [
   { id: 'none',      label: 'None' },
   { id: 'feathered', label: 'Feathered', url: EW_WINGS_URL },
   /* 2026-11-02 (mondo: "there are indeed bat wing and dragon wing models that should be included in the same section as the feathered
      wings"): his single bat wing (the Occulus's) and dragon wing (Hoard, the dragon's finisher), doubled and mirrored the same way */
-  { id: 'bat',       label: 'Bat',       url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb' },
-  { id: 'dragon',    label: 'Dragon',    url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb' },
+  { id: 'bat',       label: 'Bat',       url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb' },
+  { id: 'dragon',    label: 'Dragon',    url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb' },
 ];
 /* THE RETIRED CLASSIC CLOTHES (2026-11-02, mondo: "Can we go ahead and get rid of any "classic" clothes and shoes, since you have
    replaced everything by making it new in blender ... I just want to get rid of the old stuff and make sure we have a replacement,
@@ -5368,7 +5391,7 @@ function getRace3DModel(race, gender, appearance) {
    the race's own sprite url back, and the renderer resolves overrideForms[url]. The keys are the race's own 2D
    sprite (the UFO under a #ufo fragment), so a failed model falls back to the alien's own sheet. */
 const UFO_FORM_3D = {
-  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
+  model: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
   clips: {},
   procRig: 'ufoCraft',
   heightRatio: 0.6,   // the floor under the hover counts: the hull is about a tile across, flying ~1/4 tile up
@@ -5384,14 +5407,14 @@ const UFO_FORM_3D = {
    grey flies the saucer mondo made for it (the one already on R2 has its landing gear in the same mesh). A race not
    listed flies the triangle. */
 const UFO_SHIP_3D = Object.assign({}, UFO_FORM_3D, {
-  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb#ufoship',
+  model: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_spaceship_0727195825_texture.glb#ufoship',
   procRig: 'shipCraft',
   heightRatio: 0.49,  // the hull is 0.4 tall to the triangle's 0.61: the same scale, so the same tile across
 });
-/* the grey's saucer: mondo's own (Assets/misc/UFO_Low_Poly.fbx, 2026-10-27), on procRig 'saucerCraft' — round, so no nose
+/* the grey's saucer: mondo's own (Assets/world/props/meshy/UFO_Low_Poly.fbx, 2026-10-27), on procRig 'saucerCraft' — round, so no nose
    turned, the hull spinning flat like the triangle's */
 const UFO_SAUCER_3D = Object.assign({}, UFO_FORM_3D, {
-  model: 'https://cdn.entropywars.net/Assets/misc/UFO_Low_Poly.fbx',
+  model: 'https://cdn.entropywars.net/Assets/world/props/meshy/UFO_Low_Poly.fbx',
   procRig: 'saucerCraft',
   heightRatio: 0.72,  // dome and all it is 0.84 tall to the triangle's 0.61 at the same width: the same scale
 });
@@ -5421,11 +5444,11 @@ function wireUfoForm(race) {
 }
 
 /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces depending
-   on the spell"): each look is one BLACK piece of his chess set (Assets/chess/Low Poly Chess Set.fbx — the set's one loader cuts the
+   on the spell"): each look is one BLACK piece of his chess set (Assets/world/packs/chess/Low Poly Chess Set.fbx — the set's one loader cuts the
    node out, three-renderer.js _asChessRig) on procRig 'chess<Piece>' (THE CHESS PIECE rig: a hinge at the base, a carved piece's
    moves). The pawn is the race's own def; the other five are its overrideForms, keyed by their glyph looks (CHESS_PIECE_LOOKS), so the
    piece a spell names is the piece on the board. Taller pieces stand taller, as on a real board. */
-const _CHESS_SET_URL = 'https://cdn.entropywars.net/Assets/chess/' + encodeURIComponent('Low Poly Chess Set.fbx') + '#';
+const _CHESS_SET_URL = 'https://cdn.entropywars.net/Assets/world/packs/chess/' + encodeURIComponent('Low Poly Chess Set.fbx') + '#';
 const _CHESS_HEIGHT = { pawn: 1.0, knight: 1.15, bishop: 1.25, rook: 1.1, queen: 1.35, king: 1.45 };
 const CHESS_PIECE_3D = {};
 CHESS_PIECE_NAMES.forEach(p => {
@@ -6093,7 +6116,7 @@ const ICON_GOLD = `${_S}/icon_gold.png`;
 const OBJ_INN = `${_S}/inn.png`;
 const OBJ_SHOP = `${_S}/itemshop.png`;
 
-const _T = 'https://cdn.entropywars.net/Assets/Sprites/terrain';
+const _T = 'https://cdn.entropywars.net/Assets/world/terrain';
 const _O = `${_T}/objects`;
 
 /* Inline SVG thumbnail for the lamp-post object (editor palette only — the real
@@ -6173,7 +6196,7 @@ const OBJECT_SPRITES = {
     stairs:       { url: `${_O}/stairs.png` },
     stairs_2:     { url: `${_T}/barrier_passage.png` },
     /* Lamp posts render in-game as the authored 3D street-lamp model
-       (Assets/misc/streetlamp/Street Lamp.obj) — see _buildLampPostObj in
+       (Assets/world/props/meshy/streetlamp/Street Lamp.obj) — see _buildLampPostObj in
        three-renderer.js. These url icons are only the editor palette thumbnails
        (inline SVG, so no extra asset upload is needed). */
     lamp_post:    { url: _LAMP_POST_ICON, model3d: true },
@@ -6193,8 +6216,8 @@ const OBJECT_SPRITES = {
     tree_5:       { url: `${_O}/tree_5.png` },
     tree_6:       { url: `${_O}/tree_6.png` },
     /* THE RETRO TREE PACK (2026-10-04): the pack's own card art (its Low Res folder) is the palette / 2D picture */
-    tree_pine:    { url: 'https://cdn.entropywars.net/Assets/foilage/retrotreepack/Low%20Res/tree_rt_1.png' },
-    tree_sapling: { url: 'https://cdn.entropywars.net/Assets/foilage/retrotreepack/Low%20Res/small_tree_rt_1.png' },
+    tree_pine:    { url: 'https://cdn.entropywars.net/Assets/world/nature/retrotreepack/Low%20Res/tree_rt_1.png' },
+    tree_sapling: { url: 'https://cdn.entropywars.net/Assets/world/nature/retrotreepack/Low%20Res/small_tree_rt_1.png' },
     tower_cube: { url: 'https://cdn.entropywars.net/Assets/Sprites/dragon-green.png' },
     /* Cosmetic grass tuft — rendered in-game as 3D billboard blades by
        _buildGrassTuft3D (three-renderer.js). The url is only the editor palette
@@ -6313,7 +6336,7 @@ const TERRAIN_SPRITES = {
     lava:           [`${_T}/lava.png`],
     scorched:       [`${_T}/scorched.png`],
     /* 🧪 THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as
-       is"): every liquid that isn't water or lava wears its own sheet from R2 Assets/Sprites/terrain/liquids/ (his 48-sheet
+       is"): every liquid that isn't water or lava wears its own sheet from R2 Assets/world/terrain/liquids/ (his 48-sheet
        upload, LIQUID_SHEETS below) in place of the tinted water / purple grass it borrowed. The 3D fluid tops read the same
        sheet (three-renderer.js _LIQUID_STYLES). poison = the toxic green, poison_bog = the olive bog, purple_bog = the
        purple, swamp (Black Ooze) = the dark slate goo, oil = the brown swirls (both darkened in 3D), blood = the deep red. */
@@ -6571,7 +6594,7 @@ if (typeof window !== 'undefined') window.TERRAIN_WHITE_SHEETS = TERRAIN_WHITE_S
 /* ═══════════════════════════════════════════════════════════════════════
    THE URBAN PACK (2026-09-17) — 320 tileables the user painted at the game's
    pixel density (128 px = one battle tile, 1.75 m), on R2 at
-   Assets/Sprites/terrain/urban/<Name>.png (the repo keeps them in textures/
+   Assets/world/terrain/urban/<Name>.png (the repo keeps them in textures/
    + the root). Concrete, plaster and stucco walls (a base band on the `2x`
    plasters, a cornice on the stuccos), painted corrugated metal (a concrete
    plinth in every tile — one tile = one storey's foot), glass curtain walls
@@ -6628,9 +6651,9 @@ const URBAN_TEX_FAMILIES = {
 };
 const URBAN_TEXTURES = {};
 Object.keys(URBAN_TEX_FAMILIES).forEach(fam => URBAN_TEX_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }));
-/* THE METRO PACK (2026-10-04, mondo's upload): the PSX metro sheets on R2 Assets/Metro_PSX/Textures/, worn as `urban:Metro<Name>`
+/* THE METRO PACK (2026-10-04, mondo's upload): the PSX metro sheets on R2 Assets/world/packs/elbolilloduro_metro_psx/Textures/, worn as `urban:Metro<Name>`
    by a shell / a prop like any urban sheet (their own family, MetroPSX, which no random city pick names) */
-const _TMETRO = 'https://cdn.entropywars.net/Assets/Metro_PSX/Textures';
+const _TMETRO = 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_metro_psx/Textures';
 Object.assign(URBAN_TEXTURES, {
     MetroTiles: `${_TMETRO}/Tiles.png`,             // dark grey square tiles (the platform's floor in the pack)
     MetroFloor: `${_TMETRO}/Floor.png`,             // dark flecked terrazzo
@@ -6642,7 +6665,7 @@ Object.assign(URBAN_TEXTURES, {
     MetroMetal: `${_TMETRO}/metal.jpg`,
 });
 URBAN_TEX_FAMILIES.MetroPSX = Object.keys(URBAN_TEXTURES).filter(n => /^Metro/.test(n));   // the editor's texture list shows them as one family
-/* THE LIQUIDS (2026-10-26, mondo's upload): all 48 sheets on R2 Assets/Sprites/terrain/liquids/ (Blue / Brown / Green / Purple /
+/* THE LIQUIDS (2026-10-26, mondo's upload): all 48 sheets on R2 Assets/world/terrain/liquids/ (Blue / Brown / Green / Purple /
    Red _01-_08, Yellow _1-_8 with no zero pad), worn as `urban:Liquid_<Colour>_<NN>` by a room's floor / pool / shell like any
    urban sheet, and listed as one family (Liquids, which no random city pick names) in the editor's texture picker. The
    liquid terrains themselves (poison, poison_bog, purple_bog, swamp, oil, blood) name theirs in TERRAIN_SPRITES. */
@@ -6747,7 +6770,7 @@ function _terrainSvg(inner) {
 
 const SEED_TILE_SPRITES = {
     heal: [ HEALING_SEED_SPRITE_URL ],
-    scorched: [ 'https://cdn.entropywars.net/Assets/Sprites/terrain/scorched.png' ],
+    scorched: [ 'https://cdn.entropywars.net/Assets/world/terrain/scorched.png' ],
     poison: [ POISON_SEED_SPRITE_URL ],
     leech: [ LEECH_SEED_SPRITE_URL ],
     warp: [

@@ -337,3 +337,12 @@ code finds them.
   styles-animations.css projectiles, data.js status/icons/projectiles, the spell props), audio.js `${_R2_BASE}/audio/...`,
   three-vfx.js flipbooks and the two UI cursors by hand; ASSET_MANIFEST.json rewritten (30 entries); MODEL_LIST rerun.
   Old keys kept.
+- **W4 flipped 11-04:** copied 1,841 keys (2.3 GB, sha256-checked live). 22 rows; `--rewrite W4` rewrote 200 literal paths;
+  by hand: sprites.js `_T`, data.js `DOOR_HQ_ASSETS` + `DOOR_HQ.assets`, the crow/rabbit atlas URL modifier and
+  `_instrStem` regexes in three-renderer.js. LEFT AS WRITTEN on purpose (the code adds a name that may land in a sub-row):
+  the `Assets/misc/` bases (`_R2_MISC`, `_HQ_PACK_WEAR_BASE`, data.js `folders.misc`, editor.js pack buildings,
+  three-vfx-effects.js `base === 'misc'`) and `Assets/vehicles/` (`_CAR_PACK_BASE`, data.js `folders`): sprites.js
+  `ewAsset` moves each full URL at fetch time, so **the W4 rows must stay in EW_ASSET_MOVES for good** (they are the alias
+  table for those bases). ASSET_MANIFEST.json 426 entries rewritten; MODEL_LIST + MODEL_LIST_EXTRA paths updated.
+  r2-layout.js fix: a key belongs to the wave whose row wins over ALL waves (15 stray `world/vehicles/Sound effects/`
+  copies made before the fix were deleted; those files are W2's `audio/sfx/vehicles/`).

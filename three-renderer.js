@@ -2212,8 +2212,8 @@ const ThreeRenderer = (function () {
         if (_asGltfMgrObj || typeof THREE === 'undefined' || typeof THREE.LoadingManager !== 'function') return _asGltfMgrObj || undefined;
         _asGltfMgrObj = new THREE.LoadingManager();
         _asGltfMgrObj.setURLModifier(function (u) {
-            return /\/Assets\/animals\/textures\/atlas\.png(?:[?#]|$)/.test(String(u))
-                ? String(u).replace(/\/Assets\/animals\/textures\/atlas\.png/, '/Assets/animals/crow_and_rabbit/atlas.png') : u;
+            return /\/Assets\/(?:world\/)?animals\/textures\/atlas\.png(?:[?#]|$)/.test(String(u))
+                ? String(u).replace(/\/Assets\/(?:world\/)?animals\/textures\/atlas\.png/, '/Assets/world/animals/crow_and_rabbit/atlas.png') : u;
         });
         return _asGltfMgrObj;
     }
@@ -2305,7 +2305,7 @@ const ThreeRenderer = (function () {
             done(src);
         }).catch(function (e) { if (onError) onError(e); });
     }
-    /* THE HALLOWEEN PACK (2026-10-29): the kit's sheets (loose in Assets/halloween/textures/; the file names them by C:\ paths) are
+    /* THE HALLOWEEN PACK (2026-10-29): the kit's sheets (loose in Assets/world/packs/elbolilloduro_halloween/textures/; the file names them by C:\ paths) are
        NOT fetched when the file parses — 40-odd sheets for a spell that shows two. Each texture the file names starts empty and
        remembers its sheet (userData._hwSheet); a piece cut from the kit fetches only its own (_hwSheetsLoad) and lands once they have. */
     function _hwSheetManager(base) {
@@ -2369,7 +2369,7 @@ const ThreeRenderer = (function () {
         });
         one();
     }
-    /* THE ELEPHANT (2026-10-27, mondo's upload Assets/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
+    /* THE ELEPHANT (2026-10-27, mondo's upload Assets/world/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
        as it is (no bake), in a GLTF's shape ({ scene, animations }); its own lights and cameras out. Its sheet (elephant-3d.png beside it,
        the file's RelativeFilename) is the loader's own fetch. */
     function _asFbxRig(url, onLoad, onError, o) {
@@ -3818,7 +3818,7 @@ const ThreeRenderer = (function () {
         var ck = fluidKey + '_l' + layerNum;
         if (_fluidTextures[ck]) return _fluidTextures[ck];
 
-        var base = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
+        var base = 'https://cdn.entropywars.net/Assets/world/terrain/';
         var url = (layerNum === 1)
             ? base + fluidKey + '.png'
             : base + 'waves_1.png';
@@ -6539,7 +6539,7 @@ const ThreeRenderer = (function () {
     /* THE NEW PROPS (2026-10-28): the Blob (Mitosis) as mondo's black blob — an empty group at once (NO STAND-INS), filled when the
        file lands. It has no rig, so it moves on its own body: it breathes (a slow squash), hops across the gap when it moved (the board's
        state, like the animals' run, so both screens see it), lunges when it bites (`_bites`) and squashes flat when it is hurt. */
-    var _NP_BLOB_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb';
+    var _NP_BLOB_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_black_blob_1027232032_texture.glb';
     function _summonBlob3D(turret, ts, topY) {
         var g = new THREE.Group();
         g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
@@ -6829,7 +6829,7 @@ const ThreeRenderer = (function () {
     var _treeWoodTex = null, _treeForestTex = null;
     function _getTreeWoodTex() {
         if (_treeWoodTex) return _treeWoodTex;
-        _treeWoodTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/wood.png');
+        _treeWoodTex = getTexture('https://cdn.entropywars.net/Assets/world/terrain/wood.png');
         if (_treeWoodTex) {
             _treeWoodTex.wrapS = THREE.RepeatWrapping;
             _treeWoodTex.wrapT = THREE.RepeatWrapping;
@@ -6841,7 +6841,7 @@ const ThreeRenderer = (function () {
         if (_treeForestTex) return _treeForestTex;
         /* Tree canopies/tops are textured with the dedicated leaves.png sprite
            (was forest.png — the old grass/forest tile). */
-        _treeForestTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/leaves.png');
+        _treeForestTex = getTexture('https://cdn.entropywars.net/Assets/world/terrain/leaves.png');
         if (_treeForestTex) {
             _treeForestTex.wrapS = THREE.RepeatWrapping;
             _treeForestTex.wrapT = THREE.RepeatWrapping;
@@ -6854,7 +6854,7 @@ const ThreeRenderer = (function () {
     var _rockClusterTex = null;
     function _getBoulderTexture() {
         if (_rockClusterTex) return _rockClusterTex;
-        _rockClusterTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/rock.png');
+        _rockClusterTex = getTexture('https://cdn.entropywars.net/Assets/world/terrain/rock.png');
         if (_rockClusterTex) {
             _rockClusterTex.wrapS = THREE.RepeatWrapping;
             _rockClusterTex.wrapT = THREE.RepeatWrapping;
@@ -6943,7 +6943,7 @@ const ThreeRenderer = (function () {
         if (file === 'gold.png') file = 'gilt.png';
         var key = file + '|' + (repX || 1) + '|' + (repY || 1);
         if (_teslaTexCache[key]) return _teslaTexCache[key];
-        var t = textureLoader.load('https://cdn.entropywars.net/Assets/Sprites/terrain/' + file);
+        var t = textureLoader.load('https://cdn.entropywars.net/Assets/world/terrain/' + file);
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.NearestFilter;
@@ -7028,13 +7028,13 @@ const ThreeRenderer = (function () {
        async load flips _objectsDirty so the real meshes swap in once ready; until
        then each tile falls back to the procedural tree.
        ────────────────────────────────────────────────────────────────────── */
-    var _R2_FOLIAGE        = 'https://cdn.entropywars.net/Assets/foilage/';
+    var _R2_FOLIAGE        = 'https://cdn.entropywars.net/Assets/world/nature/';
     var _FOLIAGE_OBJ_BASE  = _R2_FOLIAGE + 'OBJ/';
-    var _FOLIAGE_TERRAIN_TEX = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
+    var _FOLIAGE_TERRAIN_TEX = 'https://cdn.entropywars.net/Assets/world/terrain/';
 
     /* Map the 6 logical tree keys onto distinct bucket models so a forest reads
        as a varied mix of full-canopy and bare trees. Tweak to experiment.
-       THE RETRO TREE PACK (2026-10-04, mondo's upload): a name `rt:<file>` is a GLB in Assets/foilage/retrotreepack/GLB/
+       THE RETRO TREE PACK (2026-10-04, mondo's upload): a name `rt:<file>` is a GLB in Assets/world/nature/retrotreepack/GLB/
        (crossed alpha-cut cards on a trunk, ~100 tris, the textures inside the file); the six board keys and `pine` draw
        them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
     var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
@@ -7060,7 +7060,7 @@ const ThreeRenderer = (function () {
     function _foliageUrl(name) {
         if (_foliageIsXmas(name)) return _xmasUrl(name.slice(5));
         if (_foliageIsMisc(name)) return (_R2_MISC || 'https://cdn.entropywars.net/Assets/misc/') + encodeURIComponent(name.slice(5));
-        if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/door/models/'; return KB + encodeURIComponent(name.slice(4)); }
+        if (_foliageIsKit(name)) { var KB = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.assets && DOOR_HQ.assets.models) || 'https://cdn.entropywars.net/Assets/world/hq/models/'; return KB + encodeURIComponent(name.slice(4)); }
         return _foliageIsGlb(name) ? _FOLIAGE_RT_BASE + name.slice(3) + '.glb' : _FOLIAGE_OBJ_BASE + name + '.obj';
     }
     /* THE PALETTE (EDITOR_PLAN E2, 2026-09-29): data.js HQ_TREE_KINDS names the other fourteen OBJs in the folder (tree_7 …
@@ -7343,7 +7343,7 @@ const ThreeRenderer = (function () {
     }
 
     /* Lamp posts placed from the map editor render as the SAME authored 3D model
-       used by the cosmetic Entropy-Vale street lamps (Assets/misc/streetlamp/
+       used by the cosmetic Entropy-Vale street lamps (Assets/world/props/meshy/streetlamp/
        Street Lamp.obj): a dark metal post with a self-lit warm lantern and a
        soft glow head. Honors an editor-authored rotation (entry.rot). */
     function _buildLampPostObj(objKey, x, y) {
@@ -8893,8 +8893,8 @@ const ThreeRenderer = (function () {
        shadows (the board's decorations), o.matPick = the room's material pick (default the lit horizon pick). The group
        fills when the file lands, no stand-in. ── */
     var _CRYSTAL_MODEL_URLS = {
-        shard:  'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb',
-        shards: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb'
+        shard:  'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_crystal_shard_1027232226_texture.glb',
+        shards: 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_crystal_shards_1027232219_texture.glb'
     };
     function _crystalModel(kind, h, o) {
         o = o || {};
@@ -9860,7 +9860,7 @@ const ThreeRenderer = (function () {
     var _boneTex = null;
     function _getBoneTexture() {
         if (_boneTex) return _boneTex;
-        _boneTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/enamel.png');
+        _boneTex = getTexture('https://cdn.entropywars.net/Assets/world/terrain/enamel.png');
         if (_boneTex) {
             _boneTex.wrapS = THREE.RepeatWrapping;
             _boneTex.wrapT = THREE.RepeatWrapping;
@@ -9868,10 +9868,10 @@ const ThreeRenderer = (function () {
         return _boneTex;
     }
     var _GRAVE_FLOWER_URLS = [
-        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower.png',
-        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower_2.png',
-        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower_3.png',
-        'https://cdn.entropywars.net/Assets/Sprites/terrain/objects/flower_4.png',
+        'https://cdn.entropywars.net/Assets/world/terrain/objects/flower.png',
+        'https://cdn.entropywars.net/Assets/world/terrain/objects/flower_2.png',
+        'https://cdn.entropywars.net/Assets/world/terrain/objects/flower_3.png',
+        'https://cdn.entropywars.net/Assets/world/terrain/objects/flower_4.png',
     ];
 
     /* Deterministic per-corpse randomness (unit id → seed) so a grave's layout
@@ -10358,7 +10358,7 @@ const ThreeRenderer = (function () {
        the spells draw) — the cached root cloned, its base on the floor, `h` tiles tall (or `w` tiles across), the materials flagged
        shared so the rebuild's disposer leaves the cache alone. null while the file streams (the load starts; its landing rebuilds
        the deployables) — the caller keeps its own build until then. */
-    var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb';
+    var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/Meshy_AI_tesla_coil_1027232038_texture.glb';
     var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb';
     function _npDeployProp(url, x, y, o) {
         if (window.EW_DISABLE_WEAPON_GLB) return null;
@@ -13429,10 +13429,10 @@ const ThreeRenderer = (function () {
         _lastUnitSerial = _computeUnitSerial();
     }
 
-    /* ── THE BATS (2026-10-27, mondo's upload: "added these 3 bat models in /Assets/animals/bats, use them for the vampire
+    /* ── THE BATS (2026-10-27, mondo's upload: "added these 3 bat models in /Assets/world/animals/bats, use them for the vampire
        and vampire spells (replace the sprite bats and make custom animations for these bats and the vampire spells,
        similar to what you did for the seraphim, unless these files already have animations too, then use both)").
-       R2 Assets/animals/bats/ holds bat_black / bat_brown / bat_grey .obj (one 181-face mesh each: no rig and no clips,
+       R2 Assets/world/animals/bats/ holds bat_black / bat_brown / bat_grey .obj (one 181-face mesh each: no rig and no clips,
        an OBJ carries none) + an .mtl naming its materials (body, wing, detail1, detail2; the grey has three) WITHOUT
        texture paths: each material's sheet is `<material>_texture.png` beside it (batbrownbody → batbrown_texture.png).
        The kit loads the three files once, packs their sheets into ONE atlas (a row per bat, a cell per material) so a bat
@@ -13443,7 +13443,7 @@ const ThreeRenderer = (function () {
        Bat Swarm / The Drain / Predator Drop (three-vfx-effects.js, through ThreeRenderer.batFlock), the editor's
        bat_black / bat_brown / bat_grey rows (the file's own spread-wing pose). A kit that fails leaves every user on its
        old look (the sprite bats). Kill-switch: window.EW_NO_3D_BATS. */
-    var _BAT_BASE = 'https://cdn.entropywars.net/Assets/animals/bats/';
+    var _BAT_BASE = 'https://cdn.entropywars.net/Assets/world/animals/bats/';
     var _BAT_KINDS = ['black', 'brown', 'grey'];
     var BAT_FLAP_FRAMES = 8;
     var _BAT_CELL = 256;   // atlas: 4 cells across (a bat's materials) × 4 rows (the bats; the last row spare) = 1024²
@@ -14293,7 +14293,7 @@ const ThreeRenderer = (function () {
     }
     /* ══ THE PROPS IN THE HAND + THE GEAR ON THE BODY (2026-11-03, docs/notes/character-models-plan.md row 24; mondo: "how do we
        put these models ... in the game for spells (like whip crack)") ══
-       The Meshy pieces #47-72 (R2 Assets/props/, optimize-assets.js'd: meshopt + WebP 512) on any rigged body, pinned to the
+       The Meshy pieces #47-72 (R2 Assets/world/props/misc/, optimize-assets.js'd: meshopt + WebP 512) on any rigged body, pinned to the
        shared Meshy bone names every model carries.
        - unitHoldProp(uid, obj, { grip, bones, open }): a spell's prop (three-vfx-effects.js THE PROPS IN THE HAND builds it in
          world units) in the caster's hand bone for the cast. `grip` is THE GRIP's handle frame ({ c, down, barrel } in obj's own
@@ -14303,7 +14303,7 @@ const ThreeRenderer = (function () {
        - UNIT_GEAR_WEAR: the twelve worn gear pieces (EQUIP_DEFS keys) on the body while the unit carries them
          (unit.equipment.accessory1 / 2), placed off the bone's own skin (the back of the chest, the front of the hip, round the
          upper arm...) in the bind pose and riding that bone from then on. The holder rides the rig cache like the door gun. */
-    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/props/';
+    var _PROPS_BASE = 'https://cdn.entropywars.net/Assets/world/props/misc/';
     /* the creator body's fingers curled for a held prop, and a function that opens them again (null: no finger bones, or the
        hand already holds the def's own prop for good) */
     function _gripHandTemp(m, handName) {
@@ -15035,15 +15035,15 @@ const ThreeRenderer = (function () {
         }]
     };
     /* THE SINGLE WINGS (2026-10-27, mondo: "All of them are a single wing so you'll have to duplciate and mirror but
-       you'll have more control over the animations"). Assets/misc/wings/ holds one Meshy wing per file. `root` says
+       you'll have more control over the animations"). Assets/characters/gear/wings/ holds one Meshy wing per file. `root` says
        which x end of the file the shoulder sits on. _ewWingPair turns a loaded one into a pair in one frame: the LEFT
        wing with its shoulder on the origin, reaching out along +X, EW_WING_LEN long; the RIGHT wing its mirror (reaching
        −X, its triangles re-wound so it lights like the left). The pair is kept on the source root, so the Occulus, the
        creator and the spells share two geometries a file. */
     var EW_WING_FILES = {
-        angel:  { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb', root: 1 },    // the creator's Wings part
-        bat:    { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb', root: 1 },      // the Occulus
-        dragon: { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb', root: -1 }   // Hoard (the dragon's finisher)
+        angel:  { url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb', root: 1 },    // the creator's Wings part
+        bat:    { url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb', root: 1 },      // the Occulus
+        dragon: { url: 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb', root: -1 }   // Hoard (the dragon's finisher)
     };
     var EW_WING_LEN = 4.3;   // the first wings.glb's own wing length: the Occulus clips and the creator's scale are in it
     function _ewWingRewind(g) {
@@ -15256,21 +15256,21 @@ const ThreeRenderer = (function () {
         try { holder.add(_ufoBeamMesh((holder.userData && holder.userData.beamLen) || UFO_HOVER)); } catch (e) {}
     }
     /* THE UNICORN (2026-10-27, mondo: "use a white horse, the unicorn horn, and the angel wings to make a new unicorn
-       character with custom animations for it spells"). The body is THE HORSES' file (Assets/animals/horses/Horse_glb.glb,
+       character with custom animations for it spells"). The body is THE HORSES' file (Assets/world/animals/horses/Horse_glb.glb,
        a 29-bone rig, nose at +Z, its own Idle / Trot / Gallop clips) with the saddle and the bridle taken off; mondo's
-       single angel wing (Assets/misc/wings/…one_angel_wing…glb, one wing, the shoulder at +X, the tip out to −X) rides
+       single angel wing (Assets/characters/gear/wings/…one_angel_wing…glb, one wing, the shoulder at +X, the tip out to −X) rides
        the withers twice — as it is on the right, mirrored on the left — each on its own hinge; the horn sits on the
        forehead (the head bone). The def's url carries '#unicorn', so the rig cache keeps this assembly apart from the
        plain horses the mounts and the rooms draw. Idle / walk / run are the horse's own clips with the wings folded
        and breathing over them; every cast kind is a pose of its own (_UNI_POSES: rears, horn thrusts, the buck, the
        blessing under spread wings, the stomp), sampled into keyframes on the bones and the two wing hinges.
        Units: the horse's own (2.65 to the ears). */
-    var UNI_WING_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
+    var UNI_WING_URL = 'https://cdn.entropywars.net/Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
     var UNI_WING_ROOT = [0.40, 0.17, 0.07];   // the wing file's shoulder (its own units)
     var UNI_WING_H = 1.7;                    // the wing's height on the horse
     var UNI_WING_AT = [-0.2, 1.86, 0.12];    // the RIGHT shoulder on the withers (model frame); the left is its mirror
-    /* the horn (mondo's Assets/animals/horses/…unicorn_horn…glb: one straight horn, base at −Y, tip at +Y) */
-    var UNI_HORN_URL = 'https://cdn.entropywars.net/Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb';
+    /* the horn (mondo's Assets/world/animals/horses/…unicorn_horn…glb: one straight horn, base at −Y, tip at +Y) */
+    var UNI_HORN_URL = 'https://cdn.entropywars.net/Assets/world/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb';
     var UNI_HORN_LEN = 0.55;                 // the horn's length on the horse
     var UNI_HORN_AT = [0, 2.5, 1.45];        // the base, on the forehead between the eyes (model frame)
     var UNI_HORN_TILT = 0.9;                 // tipped forward off the vertical (radians), out along the face
@@ -15772,7 +15772,7 @@ const ThreeRenderer = (function () {
             clips.castUltimate = clips.castAOE;
             return clips;
         },
-        /* THE OCCULUS (2026-10-27, mondo: "Assets/misc/wings.glb ... combine them with the eyeball to make the 3d
+        /* THE OCCULUS (2026-10-27, mondo: "Assets/world/props/meshy/wings.glb ... combine them with the eyeball to make the 3d
            occulus with custom animations ... It is 2 wings together in the file but they are separated so hopefully you
            can still flap them"). His file is two static feathered wings (Wing_L on +X, Wing_R on −X, each pivoting on
            its own origin at the shoulder) under one AngelWings node. Each wing goes on its own hinge (ewOccWingL /
@@ -15843,7 +15843,7 @@ const ThreeRenderer = (function () {
            spaceship"): the game's spaceship (Assets/misc, the space decor's), the same hinges and moves as the triangle;
            its nose is the narrow end on −X, and its spins are barrel rolls round the nose */
         shipCraft: function (root) { return _ufoBuild(root, Math.PI / 2, true); },
-        /* THE GREY'S SAUCER (2026-10-27, mondo's upload Assets/misc/UFO_Low_Poly.fbx: "a saucer for the grey"): round, so no
+        /* THE GREY'S SAUCER (2026-10-27, mondo's upload Assets/world/props/meshy/UFO_Low_Poly.fbx: "a saucer for the grey"): round, so no
            nose to turn; its hull spins flat like the triangle's */
         saucerCraft: function (root) { return _ufoBuild(root, 0); },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
@@ -32384,7 +32384,7 @@ const ThreeRenderer = (function () {
     }
 
     /* ── THE PAINTED SKIES (2026-10-24, mondo: "water color backgrounds for the sky ... inspired by old 80s and 90s anime") ──
-       data.js hqPaintedSky(id) names the place's paintings (R2 Assets/skies/); the dome draws them (_envDomeFS THE PAINTED SKY,
+       data.js hqPaintedSky(id) names the place's paintings (R2 Assets/world/sky/); the dome draws them (_envDomeFS THE PAINTED SKY,
        and its TSL twin). _paintSkyTick(id, snap) runs every frame from the walk's _hqTickSky (the room) and the battle's
        _updateEnvironment (activeGameMode): it asks for the three sheets through the game's own texture loader (the load card
        and the battle gate wait for them), puts them on the dome's uniforms and eases uPaintAmt in once day and night have
@@ -33956,19 +33956,19 @@ const ThreeRenderer = (function () {
        benches, the gates, the machines, the posters, the station shells). A catalogue row with `base: 'metro'` names its
        pieces in `node` ('Chair', or a comma list for a composite like the car) and loads `<file>#<nodes>` through the misc
        loader, which fetches the file ONCE and cuts each piece out of it (_miscPiece). Kill-switch: window.EW_NO_METRO_PACK. */
-    var _R2_METRO = 'https://cdn.entropywars.net/Assets/Metro_PSX/';
+    var _R2_METRO = 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_metro_psx/';
     function _metroPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_METRO_PACK); }
-    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): R2 Assets/christmas/models/Christmas.dae is ONE COLLADA file of PSX props (the
+    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): R2 Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae is ONE COLLADA file of PSX props (the
        trees, the snowmen, the gifts, the food, the cookies, the wreaths, the stockings, the garlands, the hammers, the house, two
-       Santas), its sheets loose in Assets/christmas/textures/. Same rule as the metro pack: a catalogue row with `base: 'xmas'` names
+       Santas), its sheets loose in Assets/world/packs/elbolilloduro_christmas/textures/. Same rule as the metro pack: a catalogue row with `base: 'xmas'` names
        its node and loads `<file>#<node>` through the misc loader, which fetches + parses the file ONCE (_asDae) and cuts the piece
        out (_miscPiece); a tree kind `xmas:<node>` is the same piece baked as foliage; the spells clone pieces (_xmasClone).
        Kill-switch: window.EW_NO_XMAS_PACK (the rows draw nothing, the spells keep their own build). */
-    var _R2_XMAS = 'https://cdn.entropywars.net/Assets/christmas/';
+    var _R2_XMAS = 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_christmas/';
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
-    /* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess
+    /* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/world/packs/chess/Low Poly Chess
        Set.fbx is ONE file — the board (Low_Poly_Chessboard, 0.6 file units across) and the 32 pieces (Low_Poly_<White|Black>_<Pawn|Rook|
        Knight|Bishop|Queen|King>[001…]), flat colours, no sheets, Z-up, each piece standing on its own square (white at +Z, facing −Z).
        ONE loader for every use (the Looking-Glass's pieces, the chess player's spells): the misc loader fetches the file once (_asChess:
@@ -33980,7 +33980,7 @@ const ThreeRenderer = (function () {
        Both: base on y 0, centred, `target` tall (o.fit 'span' = across), every piece's front turned to +Z (white turned 180°: the
        knight looks the way the caller faces it). Geometry + materials are shared (o.ownMats = cloned materials, for a tint / fade).
        Kill-switch: window.EW_NO_CHESS_SET (every user keeps its own build — the marble lathe). */
-    var _R2_CHESS = 'https://cdn.entropywars.net/Assets/chess/';
+    var _R2_CHESS = 'https://cdn.entropywars.net/Assets/world/packs/chess/';
     var _CHESS_FILE = 'Low Poly Chess Set.fbx';
     var _CHESS_PIECES = { pawn: 'Pawn', rook: 'Rook', knight: 'Knight', bishop: 'Bishop', queen: 'Queen', king: 'King' };
     function _chessSetOn() { return !(typeof window !== 'undefined' && window.EW_NO_CHESS_SET) && typeof THREE !== 'undefined' && (typeof THREE.FBXLoader === 'function' || typeof THREE.GLTFLoader === 'function'); }
@@ -34071,22 +34071,22 @@ const ThreeRenderer = (function () {
     /* the whole set warmed behind the scene (a loading card, the chess player's team) */
     function _warmChessSet() { if (_chessSetOn()) _loadMiscModel(_chessUrl(null), true, function () {}, { bg: true }); }
     /* THE HALLOWEEN PACK (2026-10-29, mondo's upload: "Uploaded this halloween asset pack, i want to utilize them across the game"):
-       R2 Assets/halloween/models/halloween.fbx is ONE binary FBX kit of PSX props in centimetres (the candy bowl + its heap of sweets
+       R2 Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx is ONE binary FBX kit of PSX props in centimetres (the candy bowl + its heap of sweets
        `Candy_Bowl` > `Candy_Bowl_S`, the trick-or-treat buckets `Candy_Container` (the pumpkin pail) / `_01` (black) / `_02` (pink),
        the loose sweets `Sweets` … `Sweets_22`, the pumpkins, the coffins + lids, the wrapped bodies, the body parts, the headstones
-       `Stone*`, the shovel, the scarecrows, the candles, the trees, the fences, the walls), its sheets loose in Assets/halloween/
-       textures/; the rigged characters sit apart in Assets/halloween/characters/. Same rule as the Christmas pack: a catalogue row
+       `Stone*`, the shovel, the scarecrows, the candles, the trees, the fences, the walls), its sheets loose in Assets/world/packs/elbolilloduro_halloween/
+       textures/; the rigged characters sit apart in Assets/world/packs/elbolilloduro_halloween/characters/. Same rule as the Christmas pack: a catalogue row
        with `base: 'halloween'` names its node and loads `<file>#<node>` through the misc loader, which fetches + parses the file ONCE
        (_asFbx) and cuts the piece out (_miscPiece); a piece lands once ITS sheets have (_hwSheetsLoad); the spells clone pieces
        (_hwClone). Kill-switch: window.EW_NO_HALLOWEEN_PACK (the rows draw nothing, the spells keep their own build). */
-    var _R2_HW = 'https://cdn.entropywars.net/Assets/halloween/';
+    var _R2_HW = 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_halloween/';
     var _HW_FILE = 'halloween.fbx';
     function _hwPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_HALLOWEEN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
     function _hwUrl(node) { return _R2_HW + 'models/' + _HW_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
     function _isHwUrl(url) { return String(url || '').indexOf(_R2_HW + 'models/') === 0; }
     /* ══ THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their
        use. Lion for ringmaster, etc") ═════════════════════════════════════════════════════════════════════════════════════
-       R2 Assets/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
+       R2 Assets/world/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
        is the dog, the ringmaster's and the shaman's wolves are the wolf, the ringmaster's hawk flies as the crow), the spells
        (ThreeRenderer.animalClone → three-vfx-effects.js: the crows of Crow Storm, Scare Off, A Murder and the headstone, the
        ringmaster's lion on Crack the Whip), the rooms' decor and the editor's catalogue (`base: 'animals'` rows: the misc
@@ -34096,11 +34096,11 @@ const ThreeRenderer = (function () {
        only while it is drawn (the first mesh's onBeforeRender). An instance is built
          outer (the caller places + turns it) → body (the procedural motion, pivot at the feet) → fit (the size, feet on y = 0,
          centred) → orient (`yaw` / `rx`: the file turned to face +Z, the front of every catalogue model and of lookAt) → rig.
-       `clips` maps the game's slots onto the file's names. The crow and the rabbit load from Assets/animals/crow_and_rabbit/
+       `clips` maps the game's slots onto the file's names. The crow and the rabbit load from Assets/world/animals/crow_and_rabbit/
        (mondo's upload, 2026-10-27: the two files beside their shared atlas.png). The files still name ../textures/atlas.png, so
        `atlas` is the sheet the renderer puts on them itself (the file's own sampler: nearest); `bare` = their colour without it.
        Kill-switch: window.EW_NO_ANIMALS (the summons fall back to their box build, the spells to theirs, the rows draw nothing). */
-    var _R2_ANIMALS = 'https://cdn.entropywars.net/Assets/animals/';
+    var _R2_ANIMALS = 'https://cdn.entropywars.net/Assets/world/animals/';
     var _ANIMALS = {
         cow:       { file: 'Cow.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', jump: 'jump' } },
         lion:      { file: 'PSX_lion.glb',  yaw: Math.PI / 2, clips: { idle: 'idle', walk: 'walking', run: 'walking' } },
@@ -34114,7 +34114,7 @@ const ThreeRenderer = (function () {
         ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
         rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e },
         /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
-           makes sense"): Assets/animals/horses/Horse_glb.glb — one rigged horse (saddle, bridle, mane) with Gallop / Trot / Idle /
+           makes sense"): Assets/world/animals/horses/Horse_glb.glb — one rigged horse (saddle, bridle, mane) with Gallop / Trot / Idle /
            Idle_2 clips, its nose at +Z. The file wears the white coat; `skin` = the coat a row / a url's '#<skin>' names, `tex` = the
            sheets from horses/textures/ that replace the file's own on its materials (White_Horse = the coat, Mane = the mane + tail) */
         horse:       { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' } },
@@ -34134,7 +34134,7 @@ const ThreeRenderer = (function () {
            rears up on its hind legs and stamps down (procedural, in the body group) */
         elephant:  { file: 'elephant/elephant-3d.fbx', yaw: 0, clips: { idle: 'IDLE', walk: 'WALK', run: 'RUN' }, rear: true },
         /* THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy
-           and nature spells"): Assets/animals/insects/, nineteen small GLBs in flat colours (no sheets), head at +X. The flyers' wings
+           and nature spells"): Assets/world/animals/insects/, nineteen small GLBs in flat colours (no sheets), head at +X. The flyers' wings
            are their own nodes and every flyer ships one clip, '<File>_Flap' (the idle + fly slot; `speed` = its rate — a bee's beat
            is a blur); the ants, the grasshoppers, the caterpillar, the chrysalis and the anthill ship none. `lift` = an emissive share of
            the flat colour (they read on a dark board); `proc` = the motion about
@@ -34195,7 +34195,7 @@ const ThreeRenderer = (function () {
     }
     /* the file's own material as a lit Lambert (the game's linear output, like the room props); shared + cached per source */
     var _animalAtlasTex = {};
-    function _animalAtlas(A) {   // the sheet a file names by a path the bucket does not have (`atlas`, bucket path under Assets/animals/)
+    function _animalAtlas(A) {   // the sheet a file names by a path the bucket does not have (`atlas`, bucket path under Assets/world/animals/)
         if (!A || !A.atlas || typeof THREE.TextureLoader !== 'function') return null;
         var u = _R2_ANIMALS + A.atlas, t = _animalAtlasTex[u];
         if (t) return t;
@@ -34400,10 +34400,10 @@ const ThreeRenderer = (function () {
         };
         return ctl;
     }
-    /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/oceanic/<Name>.fbx, one model per file (the loader: _asFbx). A catalogue
+    /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/world/packs/ocean/<Name>.fbx, one model per file (the loader: _asFbx). A catalogue
        row with `base: 'ocean'` names its file; the spells clone by name (_oceanClone). Kill-switch: window.EW_NO_OCEAN_PACK (the rows
        draw nothing, the procs keep their own build, the spells keep their looks without the creatures). */
-    var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/oceanic/';
+    var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/world/packs/ocean/';
     function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
     function _oceanUrl(name) { var n = String(name || ''); return _R2_OCEAN + encodeURIComponent(/\.glb$/i.test(n) ? n : n.replace(/\.fbx$/i, '') + '.fbx'); }
     /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
@@ -34427,15 +34427,15 @@ const ThreeRenderer = (function () {
     }
     /* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
        and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
-       exploration areas as props. Add them to the editor"): R2 Assets/instruments/ GuitarV1 / MaracasV1 / TamburinV1 and
-       Assets/instruments/orchestral/ Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle — one model per .glb, the
+       exploration areas as props. Add them to the editor"): R2 Assets/world/packs/instruments/ GuitarV1 / MaracasV1 / TamburinV1 and
+       Assets/world/packs/instruments/orchestral/ Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle — one model per .glb, the
        sheets inside the files. The orchestral files keep the pose of the showroom they were exported from (each tipped and moved
        off its origin), so every instrument is STOOD UP the same way wherever it lands (_instrPrep: the file's node pose cleared, then
        the turns below, in order, about the world axes): upright, its face to +Z — the catalogue rows, the spells (three-vfx-effects.js
        THE INSTRUMENTS, through ThreeRenderer.instrumentPrep) and the editor's thumbnails all get the same instrument. `lay` on a row
        lays it on its back. Measured by rendering each file (the guitar lies along x, headstock −x; the cello / violin / bows / seed pod /
        whistle lie along z; the tambourine lies flat; the drum, the maracas and the harp already stand). */
-    var _R2_INSTRUMENTS = 'https://cdn.entropywars.net/Assets/instruments/';
+    var _R2_INSTRUMENTS = 'https://cdn.entropywars.net/Assets/world/packs/instruments/';
     var _INSTR_POSE = {
         GuitarV1:   [['z', -90]],               // headstock up, the soundhole to +Z
         MaracasV1:  [],
@@ -34449,7 +34449,7 @@ const ThreeRenderer = (function () {
         SeedPod:    [['x', -90]],               // the pod up, the handle down
         Whistle:    [['x', -90], ['y', 180]]    // the mouthpiece up, the finger holes to +Z
     };
-    function _instrStem(url) { var m = /\/Assets\/instruments\/(?:[^?#]*\/)?([^\/?#]+)\.glb/i.exec(String(url || '')); return m ? decodeURIComponent(m[1]) : null; }
+    function _instrStem(url) { var m = /\/Assets\/(?:world\/packs\/)?instruments\/(?:[^?#]*\/)?([^\/?#]+)\.glb/i.exec(String(url || '')); return m ? decodeURIComponent(m[1]) : null; }
     function _instrPrep(root, url) {
         var stem = _instrStem(url); if (!root || !stem || !_INSTR_POSE[stem] || root._ew_instr) return root;
         root._ew_instr = stem;
@@ -34462,7 +34462,7 @@ const ThreeRenderer = (function () {
     }
     /* THE TRAPS PACK (2026-10-27, mondo's upload: "added a traps folder, use the bear trap for the trap spell and there's a tomb and
        sarcophogus tht can be used for mummy or anubis spells. idk if there's a spike trap spell but there is that too"): R2
-       Assets/traps/<Name>.glb, eighteen low-poly pieces — the bear trap's base and its jaw (one jaw: the trap wears two, the second
+       Assets/world/packs/traps/<Name>.glb, eighteen low-poly pieces — the bear trap's base and its jaw (one jaw: the trap wears two, the second
        turned half round), the draped and the straight chain, the wooden coffin + its lid, the iron maiden + its two doors, the spike
        pit, the pressure plate, the stone sarcophagus + its lid, the trap hole + its dart and its spear, the trip wire whole and snapped.
        The pack's Readme: every piece wears ONE material, its albedo color_swatches_purple.png (a 256² sheet of swatches the UVs pick
@@ -34474,7 +34474,7 @@ const ThreeRenderer = (function () {
        group "Traps"), the dungeon rooms, Spring Snare's laid trap, Snare's sigil, both snaps, the mummy's and Anubis's spells and Boot
        Hill (three-vfx-effects.js "THE TRAPS PACK"). Kill-switch: window.EW_NO_TRAPS_PACK (the rows draw nothing, every spell and the
        Spring Snare keep their own build). */
-    var _R2_TRAPS = 'https://cdn.entropywars.net/Assets/traps/';
+    var _R2_TRAPS = 'https://cdn.entropywars.net/Assets/world/packs/traps/';
     var _TRAPS_SHEET = 'color_swatches_purple.png';
     function _trapsPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_TRAPS_PACK) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
     function _trapsUrl(name) { return _R2_TRAPS + encodeURIComponent(String(name || '').replace(/\.glb$/i, '') + '.glb'); }
@@ -35681,7 +35681,7 @@ const ThreeRenderer = (function () {
        car 5 in its own taxi / police paint, the delivery truck car 8 (the step van) */
     _VEHICLE_KIT.suv.pack = 'suv'; _VEHICLE_KIT.cadillac.pack = 'sedan'; _VEHICLE_KIT.taxi.pack = 'taxi'; _VEHICLE_KIT.copcar.pack = 'police'; _VEHICLE_KIT.truck.pack = 'van';
     /* ── THE CAR PACK (2026-10-04) ─────────────────────────────────────────
-       mondo's pack on R2 Assets/vehicles/Car 01 … Car 08: one OBJ each (one mesh, one material, the wheels painted into the
+       mondo's pack on R2 Assets/world/vehicles/Car 01 … Car 08: one OBJ each (one mesh, one material, the wheels painted into the
        body — the pack's separate Wheel.obj is not needed) + a 128 px texture per paint. MEASURED (the OBJs parsed and drawn
        in the sandbox): every car is centred, Y up, its NOSE AT +Z (no pre-turn), about 6 units long. `L` / `W` = the OBJ's
        length / width in its own units (the blob shadow is sized off them before the file lands), `m` = the real length in
@@ -35835,7 +35835,7 @@ const ThreeRenderer = (function () {
         return g;
     }
     // ── The D.O.O.R. kit on the board (2026-09-11) ─────────────────────────
-    // A DOOR_HQ.catalogue prop (R2 Assets/door/models/ — the user's Meshy
+    // A DOOR_HQ.catalogue prop (R2 Assets/world/hq/models/ — the user's Meshy
     // kit) as a lit board prop: the mars rover, the lunar lander, the palm
     // tree. Fitted like the building fits it (the catalogue's `span` /
     // `h`, in metres — `metres` overrides; ts = one 1.75 m tile). The group
@@ -35904,17 +35904,17 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    /* the Vatican censer (mondo 2026-11-03: "censer - replace"): the Meshy censer (R2 Assets/props/, Purity's held one) stood on the
+    /* the Vatican censer (mondo 2026-11-03: "censer - replace"): the Meshy censer (R2 Assets/world/props/misc/, Purity's held one) stood on the
        ground at a tile and a bit, its ember glowing inside; the gold tripod and the smoke ball are gone */
     function _hzCenser(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 1.25;
-        g.add(_hzMiscKit('censer', { url: 'https://cdn.entropywars.net/Assets/props/censer.glb', tiles: H, rng: rng }));
+        g.add(_hzMiscKit('censer', { url: 'https://cdn.entropywars.net/Assets/world/props/misc/censer.glb', tiles: H, rng: rng }));
         var gc = _hzGlowCore(ts * 0.18, 0xffb060, 0xff7020); gc.position.y = ts * H * 0.55; g.add(gc);
         return g;
     }
 
     /* the brazier (mondo 2026-11-03: "brazier - yes replace ... id prefer the cave torch"): the Meshy standing torch (the cave_torch
-       decor, R2 Assets/decor/) two tiles tall, its fire a glow over the iron basket; the obsidian legs and the cone flame are gone */
+       decor, R2 Assets/world/props/meshy_decor/) two tiles tall, its fire a glow over the iron basket; the obsidian legs and the cone flame are gone */
     function _hzBrazier(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 2.0;
         g.add(_hzMiscKit('cave_torch', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.cave_torch, tiles: H, rng: rng }));
@@ -35923,7 +35923,7 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    /* the lighthouse (mondo 2026-11-03: "lighthouse - replace"): the Meshy lighthouse (the decor's, R2 Assets/decor/) with its lamp lit;
+    /* the lighthouse (mondo 2026-11-03: "lighthouse - replace"): the Meshy lighthouse (the decor's, R2 Assets/world/props/meshy_decor/) with its lamp lit;
        the banded cylinders are gone. The cone island it sometimes stood on is gone too ("sea island - replace with the palm isle"):
        the sea's islands are the Meshy palm isle (_hzPalmIsleFar) */
     function _hzLighthouse(rng) {
@@ -36068,7 +36068,7 @@ const ThreeRenderer = (function () {
     /* NO STAND-INS (2026-10-05): the spells' misc models, loaded on the loading card (three-vfx-effects.js warmSpellLibrary)
        and HELD for the match — each is pinned like a weapon file (`_ewOneFile`: the memory budget never drops it, a cast
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
-    /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/door/models/:
+    /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/world/hq/models/:
        the lunar lander, which the Lunar Lander flies; the Mars rover): the room's own url, so a room that places it and a cast share one cache entry */
     var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1 };
     function _spellCatUrl(key) {
@@ -36426,14 +36426,14 @@ const ThreeRenderer = (function () {
         g.rotation.x = (rng() - 0.5) * 0.06;
         return g;
     }
-    /* A free-standing stone arch to nowhere (mondo 2026-11-03: "an arch is curved"): the Meshy stone arch (Assets/decor/stone_arch.glb),
+    /* A free-standing stone arch to nowhere (mondo 2026-11-03: "an arch is curved"): the Meshy stone arch (Assets/world/props/meshy_decor/stone_arch.glb),
        5.5-9.5 tiles tall; the box piers, the lintel and the broken-pier variant are gone */
     function _hzGateway(rng) {
         var h = 5.5 + rng() * 4; rng(); rng(); rng();
         return _hzMiscKit('stone_arch', { url: _HQ_DECOR_BASE + _HQ_DECOR_GLB.stone_arch, tiles: h, rng: rng });
     }
 
-    /* An obelisk (mondo 2026-11-03: "obelisk - Needs a new meshy model"): the Meshy granite obelisk (Assets/decor/obelisk.glb), 7-13 tiles
+    /* An obelisk (mondo 2026-11-03: "obelisk - Needs a new meshy model"): the Meshy granite obelisk (Assets/world/props/meshy_decor/obelisk.glb), 7-13 tiles
        tall, the ember glow kept on its point; the code shaft and the cone are gone */
     function _hzObelisk(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
@@ -37040,7 +37040,7 @@ const ThreeRenderer = (function () {
     }
 
     /* ── Skinwalker Ranch: the windpump that turns with no wind (THE CODED SHAPES OUT 2026-11-03): the Meshy windpump tower and, on
-       its own, the Meshy wheel (Assets/decor/windpump_*.glb), the wheel turning slowly on the head's axle (a _horizonFloaters spinX
+       its own, the Meshy wheel (Assets/world/props/meshy_decor/windpump_*.glb), the wheel turning slowly on the head's axle (a _horizonFloaters spinX
        entry); the wooden legs, the box head, the eight boxes and the box vane are gone ── */
     function _hzWindmill(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), H = 4.8;
@@ -37168,7 +37168,7 @@ const ThreeRenderer = (function () {
 
 
     /* ── Bohemian Grove: the wrapped effigy on its bier (THE CODED SHAPES OUT 2026-11-03): the Meshy bier and, on it, the Meshy
-       wrapped figure (Assets/decor/effigy_*.glb), two models each placed on its own; the box bier, the cylinder body and the ring
+       wrapped figure (Assets/world/props/meshy_decor/effigy_*.glb), two models each placed on its own; the box bier, the cylinder body and the ring
        bindings are gone ── */
     function _hzEffigy(rng) {
         var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group();
@@ -37203,7 +37203,7 @@ const ThreeRenderer = (function () {
 
     // ── D.U.M.B.: specimen tank ──
     /* THE CODED SHAPES OUT (mondo 2026-11-03: "grey tube - yes replace"): the Molten Maps sci-fi pack cryo tube (CC0, R2
-       Assets/misc/molten_cryo_tube.glb), lit; the steel caps, the see-through fluid and the code grey inside are gone. The
+       Assets/world/props/meshy/molten_cryo_tube.glb), lit; the steel caps, the see-through fluid and the code grey inside are gone. The
        monument fit stretches it toward its 3-tile stamp as it did the code tank. */
     function _hzGreyTube(rng) {
         return _hzMiscKit('molten_cryo_tube', { url: _R2_MISC + 'molten_cryo_tube.glb', tiles: 2.4, rng: rng });
@@ -49488,7 +49488,7 @@ const ThreeRenderer = (function () {
         };
         function _reg(m) { m.transparent = true; m._ew_introOp = m.opacity; _introFadeMats.push(m); return m; }
         /* DOOR-issue frame: the headquarters' teal metal trim + hallway stone
-           (R2 Assets/door/textures/), plain lit colour when the data is absent */
+           (R2 Assets/world/hq/textures/), plain lit colour when the data is absent */
         var frameMat = _reg(hqOk ? _hqMat('teal', 0.6, 2.2, { color: 0xc9d3d1, shininess: 30, specular: 0x555555 }) : _hzLit(null, 0x2f6b66));
         var sillMat  = _reg(hqOk ? _hqMat('stone', 1.5, 1.5, { color: 0xd8d4cc }) : _hzLit(null, 0x8a8a88));
         var plateMat = _reg(_hzLit(null, 0x101114));
@@ -59528,8 +59528,8 @@ const ThreeRenderer = (function () {
      *    • the shell (floor, inlaid bands, walls, dado, trim, mezzanine slab
      *      + railing, two curved stairs, ceiling cone + light strips, the
      *      hanging black cube, the round dispatch desk) is PROCEDURAL,
-     *      wrapped in the user's tileables (R2 Assets/door/textures/);
-     *    • props are the user's Meshy kit (R2 Assets/door/models/) through
+     *      wrapped in the user's tileables (R2 Assets/world/hq/textures/);
+     *    • props are the user's Meshy kit (R2 Assets/world/hq/models/) through
      *      the misc-model loader, auto-normalised to the catalogue's target
      *      size (Meshy exports are unit-scaled — never trust their scale);
      *    • doors = procedural frame panel + lamp + CSS2D nameplate, with the
@@ -60084,7 +60084,7 @@ const ThreeRenderer = (function () {
     /* ═══ THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game") ═══════════════════════════════════
        The decor models Claude made on Meshy for the code-drawn stand-ins (concept → mondo's OK → smart-topology model; the list
        is MODEL_LIST.md §10A, the sources project files meshy/decor/) dress the procs they were made for. Files: R2
-       Assets/decor/<name>.glb (optimize-assets.js: meshopt + WebP 1024; Meshy's unit box, Y up, the front on +Z).
+       Assets/world/props/meshy_decor/<name>.glb (optimize-assets.js: meshopt + WebP 1024; Meshy's unit box, Y up, the front on +Z).
        A builder calls _hqDecorWear(name, U, g, o) where its stand-in pieces are built: those pieces hide at once (NO
        STAND-INS) but keep the prop's collision (_ew_mcKeep: the walker meets the same shape as before), and the model is
        fitted into THEIR box, so it stands where the proc stood at the proc's size. What the builder adds after the call (a
@@ -60095,7 +60095,7 @@ const ThreeRenderer = (function () {
           from the box's top) · h (the fitted height, metres) · at ([x, y, z] metres: the base centre) · repeat (n side by
           side) · onDone(inst, { w, h, d } metres as fitted).
        Kill switch: window.EW_NO_DECOR_GLB = true (every proc draws its code shape again). */
-    var _HQ_DECOR_BASE = 'https://cdn.entropywars.net/Assets/decor/';
+    var _HQ_DECOR_BASE = 'https://cdn.entropywars.net/Assets/world/props/meshy_decor/';
     var _HQ_DECOR_GLB = {
         anemone: 'anemone.glb', armour_plinth: 'armour_plinth.glb', armour_stand: 'armour_stand.glb', autopsy_table: 'autopsy_table.glb',
         banner: 'banner.glb', barber_chair: 'barber_chair.glb', barber_pole: 'barber_pole.glb', boiler: 'boiler.glb',
@@ -61220,7 +61220,7 @@ const ThreeRenderer = (function () {
         [a0, a1].forEach(function (a) { var e = _hqBox(w, y1 - y0, 0.02, mat); e.position.set(Math.sin(a) * R * U, (y0 + y1) / 2 * U, Math.cos(a) * R * U); e.rotation.y = a; g.add(e); });
         return g;
     }
-    /* THE LAVA LAMPS (THE CODED SHAPES OUT 2026-11-03): the chrome base and the chrome cap are Meshy models (Assets/decor/lava_lamp_*.glb;
+    /* THE LAVA LAMPS (THE CODED SHAPES OUT 2026-11-03): the chrome base and the chrome cap are Meshy models (Assets/world/props/meshy_decor/lava_lamp_*.glb;
        the floor lamp K > 2 has its own tall base + cap); the glass and the wax stay drawn (Meshy can't make glass, and the wax moves). The
        brass lathe base and the cylinder cap are gone. Table: base 0.135, glass to 0.445, cap to 0.485 (× K). Floor: base 0.6 m, a straight
        glass tube to 1.43 m, the cap to 1.56 m. */
@@ -66401,7 +66401,7 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* THE CASTLE (mondo 2026-11-03: "castle - im assuming you would make the entire castle using assets from the castle pack?"):
-           built piece by piece from the Castle and Fort pack (McSteeg, R2 Assets/misc/Castles_and_Forts.glb — one node per piece,
+           built piece by piece from the Castle and Fort pack (McSteeg, R2 Assets/world/packs/mcsteeg_castles/Castles_and_Forts.glb — one node per piece,
            a 2 m grid: walls 4 or 2 long × 2 tall, tower storeys 2 × 2 × 2), every piece its own model. The curtain wall at ×6 (a
            12 m wall, the old height): two 4-long walls a side, the front a gate between two 2-long walls; a round tower (a storey,
            the crenellated top, the pack's cone roof) on each corner; the keep a taller round tower at ×7 in the ward. The boxes,
@@ -69084,7 +69084,7 @@ const ThreeRenderer = (function () {
             });
             return g;
         },
-        /* ROOM ½: the grow lamp (THE CODED SHAPES OUT 2026-11-03): the Meshy LED panel (Assets/decor/grow_lamp.glb) 0.7 m across, its
+        /* ROOM ½: the grow lamp (THE CODED SHAPES OUT 2026-11-03): the Meshy LED panel (Assets/world/props/meshy_decor/grow_lamp.glb) 0.7 m across, its
            brackets flush with the ceiling (the catalogue `h` is the panel's height), the purple glow + light under it; the code hood,
            chain and disc are gone */
         grow_lamp: function (U) {
@@ -77183,7 +77183,7 @@ const ThreeRenderer = (function () {
             return g;
         },
         /* THE BATHYSCAPHE (THE CODED SHAPES OUT 2026-11-03, mondo: "the coded one looks better, so it needs a meshy replacement"): the
-           Meshy riveted yellow sub (Assets/decor/submarine.glb, its nose turned to +z) 7 m long, its two headlamps kept as glows; the
+           Meshy riveted yellow sub (Assets/world/props/meshy_decor/submarine.glb, its nose turned to +z) 7 m long, its two headlamps kept as glows; the
            code hull, tower, skids, fins and screw are gone (the screw is the model's own, it no longer turns) */
         submarine: function (U) {
             var g = new THREE.Group(), pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
@@ -86034,7 +86034,7 @@ const ThreeRenderer = (function () {
         },
         /* THE REAL BODIES (2026-10-28): the unit as drawn, as a finisher's body double — see _unitDouble */
         unitDouble: function (uid, o) { try { return _unitDouble(uid, o); } catch (e) { return null; } },
-        /* THE REAL BODIES (2026-10-28): the great pyramid (Assets/misc/Pyramid, its sandstone bake) `h` world units tall, base on the
+        /* THE REAL BODIES (2026-10-28): the great pyramid (Assets/world/props/meshy/Pyramid, its sandstone bake) `h` world units tall, base on the
            origin, for an effect — an empty group that fills when the file lands (lit when o.color is given; no ember cap unless o.cap) */
         pyramidReady: function () { var e = _miscModelCache[_R2_MISC + 'Pyramid/Pyramid.glb']; if (!e || !e.root) { try { _hzModelPyramid(Math.random, { h: 1, cap: false }); } catch (x) {} return false; } return true; },
         pyramidModel: function (h, o) { try { o = o || {}; return _hzModelPyramid(Math.random, { h: h / (CONFIG.tileSize || BASE_TILE), color: o.color, lift: o.lift, cap: !!o.cap }); } catch (e) { return null; } },
