@@ -15,6 +15,11 @@
         EW_ASSET_MOVES (the bytes don't change, so no re-hash) and check every rewritten key is on R2. Run it in each flip PR:
         a manifest still keyed by the old paths silently stops every .opt.glb swap and ?h= bust.
 
+   node r2-layout.js --rewrite <wave> [<wave> ...] [--dry-run]
+        rewrite every literal 'Assets/<old prefix>' (as written, %20-encoded or encodeURIComponent-encoded) to its new prefix in
+        the game files index.html loads + the CSS; prints what it changed. Paths built from a base constant (`${_S}/Status/`,
+        `_R2 + 'vfx/'`) are not caught: fix those by hand (the safety net in sprites.js covers them meanwhile).
+
    Options: --jobs N (parallel transfers, default 8), --tmp <dir>.
    r2-layout.json (repo root) holds the waves: { "<wave>": [["old/prefix/", "new/prefix/"], ...] }. The game's own copy of the
    flipped prefixes is sprites.js EW_ASSET_MOVES; a wave's flip PR adds its rows there. */
@@ -187,6 +192,31 @@ async function manifestMode() {
     fs.writeFileSync(f, JSON.stringify(man));
     console.log('wrote ' + f);
 }
+const GAME_FILES = ['index.html', 'ai.js', 'audio.js', 'battle.js', 'data.js', 'editor.js', 'hud.js', 'map.js', 'match-select.js',
+    'online.js', 'party-builder.js', 'profile.js', 'sprites.js', 'state.js', 'three-camera.js', 'three-lightning.js', 'three-post.js',
+    'three-renderer.js', 'three-vfx.js', 'three-vfx-effects.js', 'ui.js', 'styles-animations.css', 'styles-base.css',
+    'styles-cinematic.css', 'styles-editor.css', 'styles-hud.css'];
+function rewriteMode() {
+    const i = args.indexOf('--rewrite'), waves = args.slice(i + 1).filter(a => !a.startsWith('--'));
+    const rows = [].concat(...waves.map(waveMap));
+    const forms = [];   // [text as written in code, replacement]
+    const encSpace = (t) => t.replace(/ /g, '%20'), encFull = (t) => t.split('/').map(encodeURIComponent).join('/');
+    for (const [o, n] of rows) for (const f of new Set([o, encSpace(o), encFull(o)])) forms.push([f, n]);
+    forms.sort((a, b) => b[0].length - a[0].length);
+    const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(forms.map(f => esc(f[0])).join('|'), 'g'), to = new Map(forms);
+    let total = 0;
+    for (const file of GAME_FILES) {
+        const fp = path.join(__dirname, file); if (!fs.existsSync(fp)) continue;
+        const src = fs.readFileSync(fp, 'utf8'); let n = 0;
+        /* never the move table itself (sprites.js EW_ASSET_MOVES): its left column must keep the OLD prefixes */
+        const a = src.indexOf('const EW_ASSET_MOVES = ['), b = a >= 0 ? src.indexOf('];', a) + 2 : -1;
+        const rw = (t) => t.replace(re, (m) => { n++; return to.get(m); });
+        const out = a >= 0 && b > a ? rw(src.slice(0, a)) + src.slice(a, b) + rw(src.slice(b)) : rw(src);
+        if (n) { total += n; console.log(`  ${file}: ${n}`); if (!DRY) fs.writeFileSync(fp, out); }
+    }
+    console.log(`rewrote ${total} literal path(s) for ${waves.join(' + ')}${DRY ? ' (dry run)' : ''}`);
+}
 async function listMode() {
     const b = opt('--list') || GAME, rows = await list(b);
     const f = path.join(TMP, 'r2-layout-' + b + '.json'); fs.writeFileSync(f, JSON.stringify(rows));
@@ -199,5 +229,6 @@ async function listMode() {
     if (args.includes('--verify')) return verifyMode();
     if (args.includes('--list')) return listMode();
     if (args.includes('--manifest')) return manifestMode();
+    if (args.includes('--rewrite')) return rewriteMode();
     console.log(fs.readFileSync(__filename, 'utf8').split('*/')[0]);
 })().catch(e => { console.error('r2-layout: ' + e.message); process.exit(1); });

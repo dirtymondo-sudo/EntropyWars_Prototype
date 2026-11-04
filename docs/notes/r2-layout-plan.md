@@ -332,3 +332,8 @@ code finds them.
   they are (renaming them to race ids is W6, optional). `Assets/opt/` and the code files don't move.
 - Before archiving any OLD key of a flipped wave: mondo has played on it, and `window.EW_ASSET_MOVE_HITS` /
   `EW_ASSET_MOVE_LOG` on his page show what still asks for the old paths.
+- **W2 + W3 flipped 11-04 (PR after #895):** copied 262 + 197 keys (446 MB, each sha256-checked live), sprites.js
+  EW_ASSET_MOVES got the 14 rows, `node r2-layout.js --rewrite W2 W3` rewrote 172 literal paths (index.html fonts/logos,
+  styles-animations.css projectiles, data.js status/icons/projectiles, the spell props), audio.js `${_R2_BASE}/audio/...`,
+  three-vfx.js flipbooks and the two UI cursors by hand; ASSET_MANIFEST.json rewritten (30 entries); MODEL_LIST rerun.
+  Old keys kept.

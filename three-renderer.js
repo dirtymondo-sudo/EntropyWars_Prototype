@@ -3234,7 +3234,7 @@ const ThreeRenderer = (function () {
     var _projIdCounter = 0;
     var PROJ_SIZE = 32;
 
-    var _R2_PROJ = 'https://cdn.entropywars.net/Assets/Sprites/projectiles/';
+    var _R2_PROJ = 'https://cdn.entropywars.net/Assets/fx/projectiles/';
     var _PROJ_SPRITES = {
         'attack':           { url: _R2_PROJ + 'proj_human.png',        glow: 0xeec040 },
         'damage':           { url: _R2_PROJ + 'proj_tech.png',         glow: 0xdd7755 },
@@ -3282,7 +3282,7 @@ const ThreeRenderer = (function () {
        Kill-switch: window.EW_DISABLE_WEAPON_GLB = true. */
     var _PROJ_MODELS = {
         'proj-football': {
-            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb',
+            url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_american_football_0713030210_texture.glb',
             /* FX-1 look fix (2026-10-26): 0.42 tiles was ~0.75 m, near half a person — the audit read the Hail Mary /
                Long Bomb ball as "about the size of a person" in the bullet cam. A real ball is ~0.28 m; 0.22 tiles
                keeps it a touch big so it still reads across the board. */
@@ -3291,22 +3291,22 @@ const ThreeRenderer = (function () {
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
            (rifling roll around the flight axis). Sprite = loading fallback. */
         'proj-bullet': {
-            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb',
+            url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_bullet_realistic_0725070829_texture.glb',
             lenTiles: 0.30, spin: 22.0,
         },
         /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
            over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
            lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
         'proj-knife': {
-            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb',
+            url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_throwing_knife_1027232048_texture.glb',
             lenTiles: 0.34, tumble: 16.0,
         },
         'proj-dynamite': {
-            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb',
+            url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_dynamite_1027232115_texture.glb',
             lenTiles: 0.34, tumble: 8.0,
         },
         'proj-handgrenade': {
-            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb',
+            url: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_grenade_1027232043_texture.glb',
             lenTiles: 0.2, tumble: 9.0,
         },
     };
@@ -3563,7 +3563,7 @@ const ThreeRenderer = (function () {
     var _hitFxIdCounter = 0;
     var HIT_FX_SIZE = 48;
 
-    var _R2_FX = 'https://cdn.entropywars.net/Assets/Sprites/Effects/';
+    var _R2_FX = 'https://cdn.entropywars.net/Assets/fx/flipbooks/';
 
     var _HIT_FX_SHEETS = {
         'hit04':        { url: _R2_FX + 'hit04.png',        cols: 5, rows: 2, frames: 10 },
@@ -9897,9 +9897,9 @@ const ThreeRenderer = (function () {
        misc-model cache; the procedural builds stay as the cold-cache
        fallback (a rebuild upgrades the prop once the GLB lands). */
     var _BONE_GLB_URLS = {
-        femur: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_femur_bone_realistic_0725070208_texture.glb',
-        ulna:  'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb',
-        skull: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb',
+        femur: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_femur_bone_realistic_0725070208_texture.glb',
+        ulna:  'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb',
+        skull: 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_skull_realistic_0725070330_texture.glb',
     };
     /* the bone GLBs are no longer warmed at boot (2026-09-20, the loading pass — 27 MB behind the
        title screen): _boneGlbClone kicks the load on the first grave and stands the procedural bone
@@ -10359,7 +10359,7 @@ const ThreeRenderer = (function () {
        shared so the rebuild's disposer leaves the cache alone. null while the file streams (the load starts; its landing rebuilds
        the deployables) — the caller keeps its own build until then. */
     var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb';
-    var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb';
+    var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_landmine_1027232145_texture.glb';
     function _npDeployProp(url, x, y, o) {
         if (window.EW_DISABLE_WEAPON_GLB) return null;
         var e = _miscModelCache[url];
@@ -14277,7 +14277,7 @@ const ThreeRenderer = (function () {
         if (hold.grip && !hold.open) { try { seat = _gripFrame(m, bone, hold); } catch (_sf) { seat = null; console.warn('[3D] grip seat failed', _sf); } }   // THE GRIP, THE SEAT
         if (seat) { inner.quaternion.copy(seat.q); inner.position.copy(seat.p); }
         var target = ((hold.h != null ? hold.h : hold.span != null ? hold.span : (cat.h || cat.span)) || 1) * pxm;   // (the door gun: HQ_PORTAL_RULES.gun.span — the board read the catalogue's 0.62 before 2026-11-02)
-        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/weapons/)
+        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/fx/spell_props/)
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g, sc, bb) {
                 g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
@@ -33951,7 +33951,7 @@ const ThreeRenderer = (function () {
     // builder returns an (initially empty) Group and registers a callback that
     // fills it once the mesh arrives, flipping _objectsDirty to re-render.
     var _R2_MISC = 'https://cdn.entropywars.net/Assets/misc/';
-    var _R2_WEAPONS = 'https://cdn.entropywars.net/Assets/weapons/';   // 2026-09-22: a catalogue row with `base: 'weapons'` reads the spell-prop bucket (the F22 on the flight line — the same file the Air Support spell flies)
+    var _R2_WEAPONS = 'https://cdn.entropywars.net/Assets/fx/spell_props/';   // 2026-09-22: a catalogue row with `base: 'weapons'` reads the spell-prop bucket (the F22 on the flight line — the same file the Air Support spell flies)
     /* THE METRO PACK (2026-10-04, mondo's upload): ONE GLB holds the whole PSX metro kit (the car, its seats and doors, the
        benches, the gates, the machines, the posters, the station shells). A catalogue row with `base: 'metro'` names its
        pieces in `node` ('Chair', or a comma list for a composite like the car) and loads `<file>#<nodes>` through the misc
@@ -34630,7 +34630,7 @@ const ThreeRenderer = (function () {
         return { group: g, set: B.set };
     }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
-    /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/weapons/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
+    /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/fx/spell_props/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
        needed for spells and such"): one FBX, its sheets packed in, the tip up (+Y) in the file. ONE cache entry under this url for
        the spells (three-vfx-effects.js _WPN_MODELS.spear reads it through assetGltf), the catalogue's `spear` row and the lance a
        rider couches (_updateUnitMount). _spearClone(len) = a clone `len` long, the tip on +Z, its middle at the origin, its own
@@ -35964,7 +35964,7 @@ const ThreeRenderer = (function () {
         _hzAt(g, stone, 0, ts * 0.6, 0);
         // the blade itself: the Meshy master-sword model, point sunk into the stone
         var sword = _miscModelInstance(
-            'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb',
+            'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_master_sword_0713025949_texture.glb',
             true, ts * 2.6, { matPick: _hzPropLitPick });
         sword.position.y = ts * 0.55;          // hide the point inside the rock
         sword.rotation.z = 0.06;               // the slight lean every legend draws
@@ -35980,7 +35980,7 @@ const ThreeRenderer = (function () {
     function _hzSleigh(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         return _miscModelInstance(
-            'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb',
+            'https://cdn.entropywars.net/Assets/fx/spell_props/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb',
             true, ts * 1.5, { matPick: _hzPropLitPick });
     }
 
@@ -60017,7 +60017,7 @@ const ThreeRenderer = (function () {
        and hide the moment it lands — the telescope's rule (_hqCatGlb), for files that are not catalogue rows. The weapon
        files load through the misc cache, which the spells' `_wpnLoad` now shares per URL (_oneFileGltf): one download,
        one parse, one root for Excalibur's rock and Judgment's sword alike (MODEL_INDEX §9). */
-    var _HQ_SPELL_FILES = {   // Assets/weapons/ — the SAME files three-vfx-effects.js _WPN_MODELS names (a renamed upload is fixed in both)
+    var _HQ_SPELL_FILES = {   // Assets/fx/spell_props/ — the SAME files three-vfx-effects.js _WPN_MODELS names (a renamed upload is fixed in both)
         sword:       'Meshy_AI_master_sword_0713025949_texture.glb',                 // authored tip-DOWN (the spells bake an rx flip; a stone wants it as authored)
         candle:      'Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb',  // 1.23 w × 1.91 h, the flame included
         crystalBall: 'Meshy_AI_crystal_ball_0713025648_texture.glb',

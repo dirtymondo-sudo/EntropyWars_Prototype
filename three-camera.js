@@ -1453,7 +1453,7 @@ const ThreeCamera = (function () {
        the nameplates); the stills and the video read the canvas alone, so they never carry a panel either way.
      PHOTO (P): the frame as a PNG at the canvas's own size. MAP SHOT (M): a 1600×900 JPEG named after the site
        (<site>.jpg) — kept in this browser (IndexedDB `ew_mapshots`, so the map select shows it at once) and downloaded
-       for R2 Assets/MapShots/, where every player's map select finds it (match-select.js).
+       for R2 Assets/ui/mapshots/, where every player's map select finds it (match-select.js).
      VIDEO (R): MediaRecorder on a 2D mirror of the canvas (copied right after each draw, so WebGL and WebGPU both
        record, Firefox included), capped at 1920 px on the long side, silent; MP4 where the browser records it, else WebM.
      THE PATH: + KEY (K) files the eye (position in metres, yaw, pitch, lens, the seconds to the next key); PLAY (ENTER)
@@ -1518,7 +1518,7 @@ var EWCine = (function () {
         return shotGet(site).then(function (blob) {
             if (blob) return (_urls[site] = URL.createObjectURL(blob));
             var tok = window._EW_BUILD_TOKEN ? '?v=' + window._EW_BUILD_TOKEN : '';
-            var url = 'https://cdn.entropywars.net/Assets/MapShots/' + encodeURIComponent(site) + '.jpg' + tok;
+            var url = 'https://cdn.entropywars.net/Assets/ui/mapshots/' + encodeURIComponent(site) + '.jpg' + tok;
             return new Promise(function (ok) {
                 var im = new Image();
                 im.onload = function () { ok(_urls[site] = url); };
@@ -1773,7 +1773,7 @@ var EWCine = (function () {
                     delete _urls[site];
                     shotPut(site, b).catch(function () {});
                     download(b, safeName(site) + '.jpg');
-                    toast('MAP SHOT · ' + safeName(site) + '.jpg · R2 Assets/MapShots/');
+                    toast('MAP SHOT · ' + safeName(site) + '.jpg · R2 Assets/ui/mapshots/');
                 }, 'image/jpeg', 0.88);
             } catch (e) { toast('THE MAP SHOT FAILED'); }
         }
