@@ -60126,7 +60126,10 @@ const ThreeRenderer = (function () {
     var _HQ_PACK_WEAR = {
         metal_shelving: 'ebd_gasstation_metal_shelving.glb', washer: 'ebd_house_washer.glb', dryer: 'ebd_abandonedhouse_dryer.glb',
         broom: 'ebd_house_broom.glb', toilet_paper: 'ebd_house_toilet_paper.glb', wall_shelf: 'ebd_house_wall_shelf.glb',
-        steel_table: 'ebd_dinerscene_steel_table.glb'
+        steel_table: 'ebd_dinerscene_steel_table.glb',
+        /* mondo 2026-11-04 ("switch those on"): the five cut pack candidates */
+        bare_bulb: 'ebd_abandonedhouse_bare_bulb.glb', concrete_pillar: 'ebd_metro_concrete_pillar.glb', roller_shutter: 'ebd_tacos_roller_shutter.glb',
+        chalkboard: 'ebd_vhsshop_chalkboard.glb', turnstile: 'ebd_metro_turnstile.glb'
     };
     function _hqDecorBox(into, list) {
         into.updateMatrixWorld(true);
@@ -68019,6 +68022,7 @@ const ThreeRenderer = (function () {
             var band = _hqBox(0.74, 0.12, 0.74, _hqBasic(0xd9b23a)); band.position.y = 1.2 * U; g.add(band);   // the hazard band at car-door height
             var num = _hzTextTex('hq_pillar_' + ((_hqProcSeed++) % 8), ['P1'], { w: 128, h: 64, color: '#f2e6c8' });
             if (num) { var lb = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * U, 0.2 * U), new THREE.MeshBasicMaterial({ map: num, transparent: true })); lb.position.set(0, 1.7 * U, 0.36 * U); g.add(lb); }
+            _hqDecorWear('concrete_pillar', U, g, { hide: [p], fit: 'stretch' });   // THE PACK WEAR (2026-11-04): the Metro PSX tiled column; the band + the number stay
             return g;
         },
         parking_bay: function (U) {
@@ -68108,6 +68112,7 @@ const ThreeRenderer = (function () {
             var slat = _hqMat(null, 1, 1, { color: 0x5a6268, shininess: 20 });
             for (var i = 0; i < 12; i++) { var s = _hqBox(2.4, 0.02, 0.02, slat); s.position.set(0, (0.1 + i * 0.2) * U, 0.07 * U); g.add(s); }
             var box = _hqBox(2.6, 0.3, 0.3, slat); box.position.set(0, 2.55 * U, 0.15 * U); g.add(box);
+            _hqDecorWear('roller_shutter', U, g, { box: [-1.3, 0, 0, 1.3, 2.7, 0.1], wall: true, fit: 'stretch' });   // THE PACK WEAR (2026-11-04): the Tacos pack's steel garage doors
             return g;
         },
         pot_rack: function (U) {
@@ -68182,6 +68187,9 @@ const ThreeRenderer = (function () {
             var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.025 * U, 0.04 * U, 10), _hqMat(null, 1, 1, { color: 0x8a8480, shininess: 40 })); cap.position.y = -0.22 * U; g.add(cap);
             var bulb = new THREE.Mesh(new THREE.SphereGeometry(0.045 * U, 12, 10), _hqBasic(0xffe6b0)); bulb.position.y = -0.29 * U; g.add(bulb);
             var glow = _hzGlowSprite(0.9 * U, 0xffd9a0, 0.4, 0.06, 0.03, 0.6); glow.position.y = -0.3 * U; g.add(glow);
+            /* THE PACK WEAR (2026-11-04): the Abandoned House bulb in its ceiling socket (no cord), 0.14 m, its plate on the ceiling; the glow
+               follows the bulb up */
+            _hqDecorWear('bare_bulb', U, g, { h: 0.14, top: true, onDone: function (grp, d) { glow.position.y = (d.y + d.h * 0.35) * U; } });
             return g;
         },
         boiler: function (U) {
@@ -68464,7 +68472,12 @@ const ThreeRenderer = (function () {
                 if (TC) Object.keys(TC).forEach(function (k) { var w = (TC[k].weakVs || []).join(' / ').toUpperCase(); lines.push(k.toUpperCase() + '  ·  weak to  ' + (w || '—')); });
             } catch (e) {}
             var tx = _hzTextTex('hq_chalkboard_' + lines.length, lines, { w: 1024, h: 416, color: '#e8e4d0', weight: 'normal', font: '"Comic Sans MS", "Segoe Print", cursive', pad: 0.08 });
-            if (tx) { var m = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.2) * U, (H - 0.1) * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); m.position.set(0, (H / 2) * U, 0.035 * U); g.add(m); }
+            var txt = null;
+            if (tx) { txt = new THREE.Mesh(new THREE.PlaneGeometry((W - 0.2) * U, (H - 0.1) * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); txt.position.set(0, (H / 2) * U, 0.035 * U); g.add(txt); }
+            /* THE PACK WEAR (2026-11-04): the VHS Shop pack's green chalkboard in its wood frame, stretched to the 3.2 × 1.3 board; the type
+               wheel stays chalked on its face */
+            _hqDecorWear('chalkboard', U, g, { hide: g.children.filter(function (n) { return n !== txt; }), wall: true, fit: 'stretch',
+                onDone: function (grp, d) { if (txt) txt.position.z = (d.z + d.d / 2 + 0.004) * U; } });
             return g;
         },
         lectern: function (U) {
@@ -69662,6 +69675,8 @@ const ThreeRenderer = (function () {
                 turn += (target - turn) * Math.min(1, dt * 6);
                 tri.rotation.x = turn;
             });
+            /* THE PACK WEAR (2026-11-04): the Metro PSX ticket gate (its tripod is part of the model, so it no longer turns), at the gate's 1 m */
+            _hqDecorWear('turnstile', U, g, { fit: 'height' });
             return g;
         },
     });

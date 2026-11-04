@@ -74,7 +74,7 @@ JOBS += [('trailer_%d' % i, 'trailerscene', [{'near': 'Home' if i == 0 else 'Hom
 AUDIT = [
     ('metal_shelving', 'gasstation', ['Shelf_Metal'], 0), ('washer', 'house', ['Washing_machine', 'Washing_machine_d'], -90),
     ('dryer', 'abandonedhouse', ['Secadora'], 0), ('broom', 'house', ['Broom'], 0), ('toilet_paper', 'house', ['Toilet_paper'], 0),
-    ('chalkboard', 'vhsshop', ['Blackboard'], 0), ('roller_shutter', 'tacos', ['doors_garage'], 0), ('bare_bulb', 'abandonedhouse', ['Foco'], 0),
+    ('chalkboard', 'vhsshop', ['Blackboard'], 180), ('roller_shutter', 'tacos', ['doors_garage'], 0), ('bare_bulb', 'abandonedhouse', ['Foco'], 0),
     ('turnstile', 'metro', ['automatic_ticket_gate'], 0), ('wall_shelf', 'house', ['Shelf_01'], 90), ('concrete_pillar', 'metro', ['Column'], 0),
     ('steel_table', 'dinerscene', ['Table_Metal'], 90),
 ]
