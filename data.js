@@ -65516,7 +65516,7 @@ if (typeof window !== 'undefined') {
    Mondo to the credits for music/soundtrack and SFX") ═══════════════════════════════════════════════════════════════════
    The main menu's CREDITS page (index.html #creditsPage, map.js _renderCredits) reads this table top to bottom. One section =
    { title, rows }; one row = { role, by, what?, license?, source? } (`source` = a link). The section with `makehuman: true`
-   holds no rows here: the page fills it from Assets/Models/charactercreation/mpfb/CREDITS.json (bake-mpfb.py writes it; the
+   holds no rows here: the page fills it from Assets/characters/creator/mpfb/CREDITS.json (bake-mpfb.py writes it; the
    same list the character creator showed before), every community author with their licence, CC-BY first.
    Who made what was read off the files themselves (licence files beside the packs, the authors baked into the GLB / FBX /
    OBJ / font files on R2) and the packs' own pages. A pack used in the game whose author is not known yet is NOT listed:

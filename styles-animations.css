@@ -250,7 +250,7 @@
             width: 64px;
             height: 64px;
             background-size: 64px 64px;
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spider_1.png');
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/loose_sprites/spider_1.png');
             box-shadow: 0 0 5px rgba(60, 220, 200, 0.6);
             image-rendering: pixelated;
         }
@@ -260,7 +260,7 @@
             width: 80px;
             height: 80px;
             background-size: 80px 80px;
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/spiderweb_1.png');
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/loose_sprites/spiderweb_1.png');
             box-shadow: 0 0 8px rgba(180, 180, 220, 0.7);
             image-rendering: pixelated;
             animation: projectileFly var(--projectile-ms, .52s) linear forwards,
@@ -323,11 +323,11 @@
             will-change: width, transform, opacity;
         }
         .tether-rope {
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/rope.png');
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/loose_sprites/rope.png');
             box-shadow: 0 0 3px rgba(160, 130, 80, 0.6);
         }
         .tether-vine {
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/vine.png');
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/loose_sprites/vine.png');
             box-shadow: 0 0 4px rgba(60, 180, 60, 0.6);
         }
 
@@ -360,7 +360,7 @@
             width: 20px;
             height: 20px;
             background-size: 20px 20px;
-            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/football.png');
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/loose_sprites/football.png');
             image-rendering: pixelated;
             box-shadow: 0 0 4px rgba(139, 94, 60, 0.8);
             animation: bulletFly var(--projectile-ms, .52s) linear forwards;

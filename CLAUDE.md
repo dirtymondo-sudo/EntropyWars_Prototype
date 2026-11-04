@@ -227,7 +227,7 @@ the anti-"start over" memory; keep it updated when you learn something new.
 
 ## Wiring up a 3D character (frequent request)
 Units can render as rigged Meshy GLB models instead of sprites. Since
-2026-07-10 animations come from SHARED libraries on R2 (`Assets/Models/`):
+2026-07-10 animations come from SHARED libraries on R2 (`Assets/characters/animations/`, was `Assets/Models/`):
 Quaternius `UAL1_Standard.glb` + `UAL2_Standard.glb` (non-root-motion), and
 since 2026-07-11 `MAL1_Sniper.glb` — the 20 Meshy animations exported ONCE
 from the male sniper, consolidated offline into a 1.4MB animation-only GLB.
@@ -241,7 +241,7 @@ keeps each character's OWN rest posture (hunched beasts stay hunched; only
 arm bind angles are standardized), and per-character clip flavor is one
 `lib: {slot: {clip, lib, ts}}` opt (see UAL_SLOTS + PLAYTEST_NOTES). Recipe:
 1. The user uploads the rigged model `..._Character_output.glb` (or any
-   `_withSkin` export) to the race's R2 sprite folder. The
+   `_withSkin` export) to the race's R2 folder (`Assets/characters/races/<race>/<gender>/`). The
    `_generate`/`_texture` stage GLBs are BONELESS — never use them.
 2. Add ONE line in sprites.js RACE_MODELS_3D:
    `'<race>': { male: _mkUAL('<folder>', '<meshy file prefix>', { heightRatio: 1.0 }) }`

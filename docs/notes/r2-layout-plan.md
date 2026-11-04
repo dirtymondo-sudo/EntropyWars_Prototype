@@ -99,7 +99,8 @@ ewmusicsfx  (public, cdn.entropywars.net)
     │   ├── creator/                            = Models/charactercreation/ moved whole, inner layout unchanged
     │   │                                       (bodies in mpfb/, wear/, hair/, looks/, clothingtextures/)
     │   ├── gear/                               worn gear + wings (UNIT_GEAR_WEAR, misc/wings/)
-    │   ├── portraits/  sprites/                2D portraits, 64x64 + paper-doll equipment sprites
+    │   ├── portraits/  sprites/                2D portraits, 64x64 + character sprites
+    ├── loose_sprites/                          the loose files of the old Sprites/ root (mixed: sort in W6)
     ├── world/
     │   ├── hq/{models,textures}/               DOOR HQ kit (was door/)
     │   ├── props/meshy/                        Meshy props (was misc/Meshy_AI_*)
@@ -346,3 +347,25 @@ code finds them.
   table for those bases). ASSET_MANIFEST.json 426 entries rewritten; MODEL_LIST + MODEL_LIST_EXTRA paths updated.
   r2-layout.js fix: a key belongs to the wave whose row wins over ALL waves (15 stray `world/vehicles/Sound effects/`
   copies made before the fix were deleted; those files are W2's `audio/sfx/vehicles/`).
+- **W5 flipped 11-04:** copied 2,408 keys (5.4 GB, sha256-checked live). 140 rows: every race folder lower-cased
+  (`Homosapien/Female/` → `characters/races/homosapien/female/`, `anunaki` → `annunaki`, `sherrif`/`sherriff` → `sheriff`),
+  `Models/charactercreation/` → `characters/creator/` (inner layout unchanged; the repo folder is still `charactercreation/`),
+  `Models/` → `characters/animations/`, portraits / 64x64 / character_sprites → `characters/...`. The 214 loose files at
+  the old `Sprites/` root (paper-doll pieces, icons, rings, rope, f22 ...) went to **`Assets/loose_sprites/`**, not
+  "equipment" as §2 first said: they are mixed, sorting them is W6. By hand: `EW_CHARACTER_ASSET_BASE`, `_R2_TETHER`,
+  hud.js FACE_AIMS lookup (`_faceAimFor`, old or moved path). LEFT AS WRITTEN: `_S` (`.../Assets/Sprites`) and everything
+  built on it (`_mk3d`/`_mkUAL`, RACE_PATH_RULES with its capitalised genders, the 2D sprite tables), three-vfx.js `_R2`:
+  the W5 rows are their permanent alias table. The safety net now also rewrites inline style backgrounds.
+  ASSET_MANIFEST.json 1,100 entries rewritten; MODEL_LIST tally unchanged.
+
+### What is left
+- **Old keys:** every moved file still exists at its old key too (~8.5 GB). They are NOT needed by the game any more (the
+  code and the alias rows ask for the new keys), but they stay until mondo has played on the new layout. Then, with his
+  OK: `--archive` the old keys wave by wave (copy to `dirtymondo:archive/`, then remove), after a trace
+  (`performance.getEntriesByType('resource')`) shows nothing still fetching an old path — the one thing the safety net
+  can't catch is an innerHTML string with `style="background:url(<old path>)"`.
+- The orphan groups of §5 other than W0 (unused Meshy clips, MODEL_LIST §13 "not loaded" models, opt copies of unused
+  files, SOURCE files) were copied to their new homes like everything else; archiving them waits for the same OK.
+- **The EW_ASSET_MOVES rows stay for good** (they are the alias table for base constants like `_S` and `_R2_MISC`).
+  New files go straight to the new folders (sync-zip.js `--put` moves an old-folder key itself).
+- W6 (optional): sort `loose_sprites/`, split `world/props/meshy/` by use, rename the 276 broken file names.

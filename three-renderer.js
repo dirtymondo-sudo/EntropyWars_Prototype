@@ -3267,11 +3267,11 @@ const ThreeRenderer = (function () {
         'proj-bane-anomaly':{ url: _R2_PROJ + 'proj_anomaly_bane.png', glow: 0xdc3c82 },
         'proj-bane-alien':  { url: _R2_PROJ + 'proj_alien_bane.png',   glow: 0x32aa50 },
 
-        'proj-spider':      { url: 'https://cdn.entropywars.net/Assets/Sprites/spider_1.png',    glow: 0x3cdcc8 },
-        'proj-spiderweb':   { url: 'https://cdn.entropywars.net/Assets/Sprites/spiderweb_1.png', glow: 0xb4b4dc },
+        'proj-spider':      { url: 'https://cdn.entropywars.net/Assets/loose_sprites/spider_1.png',    glow: 0x3cdcc8 },
+        'proj-spiderweb':   { url: 'https://cdn.entropywars.net/Assets/loose_sprites/spiderweb_1.png', glow: 0xb4b4dc },
         'proj-knife':       { url: _R2_PROJ + 'proj_knife.png',         glow: 0xc0c0cc },
 
-        'proj-football':    { url: 'https://cdn.entropywars.net/Assets/Sprites/football.png',    glow: 0x8b5e3c },
+        'proj-football':    { url: 'https://cdn.entropywars.net/Assets/loose_sprites/football.png',    glow: 0x8b5e3c },
     };
 
     /* Real 3D models for select projectiles — Meshy GLBs on R2
@@ -7602,7 +7602,7 @@ const ThreeRenderer = (function () {
     var _fractalTex = null;
     function _getFractalTex() {
         if (_fractalTex) return _fractalTex;
-        _fractalTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/fractal.png');
+        _fractalTex = getTexture('https://cdn.entropywars.net/Assets/loose_sprites/fractal.png');
         if (_fractalTex) {
             _fractalTex.wrapS = THREE.RepeatWrapping;
             _fractalTex.wrapT = THREE.RepeatWrapping;
@@ -8023,7 +8023,7 @@ const ThreeRenderer = (function () {
         if (_torchRopeTex) return _torchRopeTex;
         var url = (typeof ROPE_SPRITE_URL !== 'undefined')
             ? ROPE_SPRITE_URL
-            : 'https://cdn.entropywars.net/Assets/Sprites/rope.png';
+            : 'https://cdn.entropywars.net/Assets/loose_sprites/rope.png';
         var t = textureLoader.load(url, function () { _objectsDirty = true; });
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
@@ -29710,7 +29710,7 @@ const ThreeRenderer = (function () {
     var _tetherTweens = [];
     var _tetherIdCounter = 0;
 
-    var _R2_TETHER = 'https://cdn.entropywars.net/Assets/Sprites/';
+    var _R2_TETHER = 'https://cdn.entropywars.net/Assets/loose_sprites/';
     var _TETHER_SPRITES = {
         'rope': { url: _R2_TETHER + 'rope.png', glow: 0xa08250 },
         'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c },
@@ -46013,7 +46013,7 @@ const ThreeRenderer = (function () {
         if (!_spiderwebZoneTex) {
             var webUrl = (typeof SPIDERWEB_SPRITE !== 'undefined')
                 ? SPIDERWEB_SPRITE
-                : 'https://cdn.entropywars.net/Assets/Sprites/spiderweb_1.png';
+                : 'https://cdn.entropywars.net/Assets/loose_sprites/spiderweb_1.png';
             _spiderwebZoneTex = getTexture(webUrl);
         }
         for (var i = 0; i < tiles.length; i++) {
@@ -68041,7 +68041,7 @@ const ThreeRenderer = (function () {
             var def = null, url = null, yawOff = Math.PI / 2;
             try { def = (typeof getRace3DModel === 'function') ? getRace3DModel('honda civic', 'male') : null; } catch (e) {}
             if (def && def.model) { url = def.model; if (def.yawOffset != null) yawOff = def.yawOffset; }
-            if (!url) url = 'https://cdn.entropywars.net/Assets/Sprites/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
+            if (!url) url = 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
             if (typeof THREE.GLTFLoader !== 'function') { var box = _hqBox(1.8, 1.4, 4.2, _hqMat(null, 1, 1, { color: 0x6a7a88, shininess: 40 })); box.position.y = 0.7 * U; g.add(box); return g; }
             var tint = [0x9aa4b0, 0x6a3a34, 0x2c3a4a, 0xb8b0a0, 0x3a4a3a][(_hqProcSeed++) % 5];
             var car = _miscModelInstance(url, true, 1.42 * U, {
@@ -77496,7 +77496,7 @@ const ThreeRenderer = (function () {
         var def = null, url = null, yawOff = Math.PI / 2;
         try { def = (typeof getRace3DModel === 'function') ? getRace3DModel('honda civic', 'male') : null; } catch (e) {}
         if (def && def.model) { url = def.model; if (def.yawOffset != null) yawOff = def.yawOffset; }
-        if (!url) url = 'https://cdn.entropywars.net/Assets/Sprites/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
+        if (!url) url = 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
         return { url: url, yaw: yawOff };
     }
     function _spellSedan(o) {
@@ -85337,7 +85337,7 @@ const ThreeRenderer = (function () {
         var def = null, url = null, yawOff = Math.PI / 2;
         try { def = (typeof getRace3DModel === 'function') ? getRace3DModel('honda civic', 'male') : null; } catch (e) {}
         if (def && def.model) { url = def.model; if (def.yawOffset != null) yawOff = def.yawOffset; }
-        if (!url) url = 'https://cdn.entropywars.net/Assets/Sprites/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
+        if (!url) url = 'https://cdn.entropywars.net/Assets/characters/races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
         if (typeof THREE.GLTFLoader !== 'function') return;
         var g = _miscModelInstance(url, true, 1.42 * U, {
             fit: 'height',

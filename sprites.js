@@ -30,8 +30,9 @@ window._ewCorsBust = _ewCorsBust;
      ewAssetKey(key)   a bucket key → its moved key (ASSET_MANIFEST lookups).
    THE SAFETY NET: every URL the page asks for goes through ewAsset at the browser's own doors — fetch, XHR, an <img>/<audio>/
    <video>/<source> src (property or setAttribute) — so a path a flip PR missed, one in a save file (editor rooms, UI Maker,
-   creator looks) or one in another thread's in-flight PR still finds its file. CSS url() and inline style backgrounds can't
-   be caught here: flip PRs edit those literally. Old keys stay on R2 until mondo has checked the wave.
+   creator looks) or one in another thread's in-flight PR still finds its file. Inline style backgrounds (style.backgroundImage /
+   background / cssText / setProperty / a style attribute) are rewritten too. Stylesheet url()s and HTML strings with
+   style="..." in innerHTML can't be caught: flip PRs edit those literally. Old keys stay on R2 until mondo has checked the wave.
    window.EW_ASSET_MOVE_HITS counts the URLs the net rewrote, per old prefix (and EW_ASSET_MOVE_LOG keeps the first 200) —
    after a flip, anything listed there is a literal still to update. Kill-switch: ?ew_no_asset_moves=1 or
    window.EW_NO_ASSET_MOVES = true before load (then every URL is exactly as written; only useful while old keys exist). */
@@ -76,6 +77,147 @@ const EW_ASSET_MOVES = [
   ['Assets/skies/', 'Assets/world/sky/'],
   ['Assets/Sprites/terrain/', 'Assets/world/terrain/'],
   ['Assets/Sprites/night cities files/', 'Assets/world/sky/night_cities/'],
+  // W5 characters (2026-11-04): race folders lower-cased, anunaki -> annunaki, sherrif/sherriff -> sheriff
+  ['Assets/Models/charactercreation/', 'Assets/characters/creator/'],
+  ['Assets/Models/', 'Assets/characters/animations/'],
+  ['Assets/Sprites/Races/animations/', 'Assets/characters/animations/legacy/'],
+  ['Assets/Sprites/character_portraits/', 'Assets/characters/portraits/'],
+  ['Assets/Sprites/character_sprites/', 'Assets/characters/sprites/'],
+  ['Assets/Sprites/64x64/', 'Assets/characters/sprites/64x64/'],
+  ['Assets/Sprites/Monsters/', 'Assets/characters/sprites/monsters/'],
+  ['Assets/Sprites/Races/Demon/Female/', 'Assets/characters/races/demon/female/'],
+  ['Assets/Sprites/Races/Demon/Male/', 'Assets/characters/races/demon/male/'],
+  ['Assets/Sprites/Races/Demon/', 'Assets/characters/races/demon/'],
+  ['Assets/Sprites/Races/Fairy/', 'Assets/characters/races/fairy/'],
+  ['Assets/Sprites/Races/Giant/', 'Assets/characters/races/giant/'],
+  ['Assets/Sprites/Races/Homosapien/Female/', 'Assets/characters/races/homosapien/female/'],
+  ['Assets/Sprites/Races/Homosapien/Male/', 'Assets/characters/races/homosapien/male/'],
+  ['Assets/Sprites/Races/Homosapien/', 'Assets/characters/races/homosapien/'],
+  ['Assets/Sprites/Races/Nordic/Female/', 'Assets/characters/races/nordic/female/'],
+  ['Assets/Sprites/Races/Nordic/Male/', 'Assets/characters/races/nordic/male/'],
+  ['Assets/Sprites/Races/Nordic/', 'Assets/characters/races/nordic/'],
+  ['Assets/Sprites/Races/Werewolf/', 'Assets/characters/races/werewolf/'],
+  ['Assets/Sprites/Races/ai/', 'Assets/characters/races/ai/'],
+  ['Assets/Sprites/Races/android/', 'Assets/characters/races/android/'],
+  ['Assets/Sprites/Races/angel/', 'Assets/characters/races/angel/'],
+  ['Assets/Sprites/Races/annunaki/', 'Assets/characters/races/annunaki/'],
+  ['Assets/Sprites/Races/antihero/', 'Assets/characters/races/antihero/'],
+  ['Assets/Sprites/Races/antperson/', 'Assets/characters/races/antperson/'],
+  ['Assets/Sprites/Races/anubis/', 'Assets/characters/races/anubis/'],
+  ['Assets/Sprites/Races/anunaki/', 'Assets/characters/races/annunaki/'],
+  ['Assets/Sprites/Races/astronaut/', 'Assets/characters/races/astronaut/'],
+  ['Assets/Sprites/Races/atlantean/', 'Assets/characters/races/atlantean/'],
+  ['Assets/Sprites/Races/aztec/', 'Assets/characters/races/aztec/'],
+  ['Assets/Sprites/Races/barbarella/', 'Assets/characters/races/barbarella/'],
+  ['Assets/Sprites/Races/beequeen/', 'Assets/characters/races/beequeen/'],
+  ['Assets/Sprites/Races/bigfoot/', 'Assets/characters/races/bigfoot/'],
+  ['Assets/Sprites/Races/blackgoo/', 'Assets/characters/races/blackgoo/'],
+  ['Assets/Sprites/Races/bligblog/', 'Assets/characters/races/bligblog/'],
+  ['Assets/Sprites/Races/bunnygirl/', 'Assets/characters/races/bunnygirl/'],
+  ['Assets/Sprites/Races/catgirl/', 'Assets/characters/races/catgirl/'],
+  ['Assets/Sprites/Races/chef/', 'Assets/characters/races/chef/'],
+  ['Assets/Sprites/Races/clown/', 'Assets/characters/races/clown/'],
+  ['Assets/Sprites/Races/conspiracytheorist/', 'Assets/characters/races/conspiracytheorist/'],
+  ['Assets/Sprites/Races/cosmicwraith/', 'Assets/characters/races/cosmicwraith/'],
+  ['Assets/Sprites/Races/crystalguardian/', 'Assets/characters/races/crystalguardian/'],
+  ['Assets/Sprites/Races/cultleader/', 'Assets/characters/races/cultleader/'],
+  ['Assets/Sprites/Races/cultmember/', 'Assets/characters/races/cultmember/'],
+  ['Assets/Sprites/Races/cyborg/', 'Assets/characters/races/cyborg/'],
+  ['Assets/Sprites/Races/cyclops/', 'Assets/characters/races/cyclops/'],
+  ['Assets/Sprites/Races/deepseafish/', 'Assets/characters/races/deepseafish/'],
+  ['Assets/Sprites/Races/demonprince/', 'Assets/characters/races/demonprince/'],
+  ['Assets/Sprites/Races/demonprincess/', 'Assets/characters/races/demonprincess/'],
+  ['Assets/Sprites/Races/dinosaur/', 'Assets/characters/races/dinosaur/'],
+  ['Assets/Sprites/Races/djinn/', 'Assets/characters/races/djinn/'],
+  ['Assets/Sprites/Races/dragon/', 'Assets/characters/races/dragon/'],
+  ['Assets/Sprites/Races/dreameater/', 'Assets/characters/races/dreameater/'],
+  ['Assets/Sprites/Races/eagleman/', 'Assets/characters/races/eagleman/'],
+  ['Assets/Sprites/Races/fallenangel/', 'Assets/characters/races/fallenangel/'],
+  ['Assets/Sprites/Races/firefighter/', 'Assets/characters/races/firefighter/'],
+  ['Assets/Sprites/Races/flesheater/', 'Assets/characters/races/flesheater/'],
+  ['Assets/Sprites/Races/gangster/', 'Assets/characters/races/gangster/'],
+  ['Assets/Sprites/Races/gargoyle/', 'Assets/characters/races/gargoyle/'],
+  ['Assets/Sprites/Races/general/', 'Assets/characters/races/general/'],
+  ['Assets/Sprites/Races/ghost/', 'Assets/characters/races/ghost/'],
+  ['Assets/Sprites/Races/ghoul/', 'Assets/characters/races/ghoul/'],
+  ['Assets/Sprites/Races/glitch/', 'Assets/characters/races/glitch/'],
+  ['Assets/Sprites/Races/gnome/', 'Assets/characters/races/gnome/'],
+  ['Assets/Sprites/Races/goatman/', 'Assets/characters/races/goatman/'],
+  ['Assets/Sprites/Races/goblin/', 'Assets/characters/races/goblin/'],
+  ['Assets/Sprites/Races/golem/', 'Assets/characters/races/golem/'],
+  ['Assets/Sprites/Races/grey/', 'Assets/characters/races/grey/'],
+  ['Assets/Sprites/Races/halfdemon/', 'Assets/characters/races/halfdemon/'],
+  ['Assets/Sprites/Races/hippie/', 'Assets/characters/races/hippie/'],
+  ['Assets/Sprites/Races/hondacivic/', 'Assets/characters/races/hondacivic/'],
+  ['Assets/Sprites/Races/icequeen/', 'Assets/characters/races/icequeen/'],
+  ['Assets/Sprites/Races/jackolantern/', 'Assets/characters/races/jackolantern/'],
+  ['Assets/Sprites/Races/jellyfish/', 'Assets/characters/races/jellyfish/'],
+  ['Assets/Sprites/Races/juggernaut/', 'Assets/characters/races/juggernaut/'],
+  ['Assets/Sprites/Races/kaiju/', 'Assets/characters/races/kaiju/'],
+  ['Assets/Sprites/Races/kifighter/', 'Assets/characters/races/kifighter/'],
+  ['Assets/Sprites/Races/king/', 'Assets/characters/races/king/'],
+  ['Assets/Sprites/Races/kingkong/', 'Assets/characters/races/kingkong/'],
+  ['Assets/Sprites/Races/kraken/', 'Assets/characters/races/kraken/'],
+  ['Assets/Sprites/Races/krampus/', 'Assets/characters/races/krampus/'],
+  ['Assets/Sprites/Races/lochnessmonster/', 'Assets/characters/races/lochnessmonster/'],
+  ['Assets/Sprites/Races/luchador/', 'Assets/characters/races/luchador/'],
+  ['Assets/Sprites/Races/machineelves/', 'Assets/characters/races/machineelves/'],
+  ['Assets/Sprites/Races/maincharacters/', 'Assets/characters/races/maincharacters/'],
+  ['Assets/Sprites/Races/mantid/', 'Assets/characters/races/mantid/'],
+  ['Assets/Sprites/Races/martian/', 'Assets/characters/races/martian/'],
+  ['Assets/Sprites/Races/mech/', 'Assets/characters/races/mech/'],
+  ['Assets/Sprites/Races/mermaid/', 'Assets/characters/races/mermaid/'],
+  ['Assets/Sprites/Races/mime/', 'Assets/characters/races/mime/'],
+  ['Assets/Sprites/Races/minotaur/', 'Assets/characters/races/minotaur/'],
+  ['Assets/Sprites/Races/mothman/', 'Assets/characters/races/mothman/'],
+  ['Assets/Sprites/Races/mummy/', 'Assets/characters/races/mummy/'],
+  ['Assets/Sprites/Races/mushroomgirl/', 'Assets/characters/races/mushroomgirl/'],
+  ['Assets/Sprites/Races/necromancer/', 'Assets/characters/races/necromancer/'],
+  ['Assets/Sprites/Races/nephilim/', 'Assets/characters/races/nephilim/'],
+  ['Assets/Sprites/Races/occulus/', 'Assets/characters/races/occulus/'],
+  ['Assets/Sprites/Races/orboflight/', 'Assets/characters/races/orboflight/'],
+  ['Assets/Sprites/Races/overlord/', 'Assets/characters/races/overlord/'],
+  ['Assets/Sprites/Races/police/', 'Assets/characters/races/police/'],
+  ['Assets/Sprites/Races/politician/', 'Assets/characters/races/politician/'],
+  ['Assets/Sprites/Races/popstar/', 'Assets/characters/races/popstar/'],
+  ['Assets/Sprites/Races/priest/', 'Assets/characters/races/priest/'],
+  ['Assets/Sprites/Races/professor/', 'Assets/characters/races/professor/'],
+  ['Assets/Sprites/Races/quarterback/', 'Assets/characters/races/quarterback/'],
+  ['Assets/Sprites/Races/rabbit/', 'Assets/characters/races/rabbit/'],
+  ['Assets/Sprites/Races/reptilian/', 'Assets/characters/races/reptilian/'],
+  ['Assets/Sprites/Races/ringleader/', 'Assets/characters/races/ringleader/'],
+  ['Assets/Sprites/Races/robinhood/', 'Assets/characters/races/robinhood/'],
+  ['Assets/Sprites/Races/robot/', 'Assets/characters/races/robot/'],
+  ['Assets/Sprites/Races/santaclause/', 'Assets/characters/races/santaclause/'],
+  ['Assets/Sprites/Races/scarecrow/', 'Assets/characters/races/scarecrow/'],
+  ['Assets/Sprites/Races/sentai/', 'Assets/characters/races/sentai/'],
+  ['Assets/Sprites/Races/seraphim/', 'Assets/characters/races/seraphim/'],
+  ['Assets/Sprites/Races/shadowentity/', 'Assets/characters/races/shadowentity/'],
+  ['Assets/Sprites/Races/sharkman/', 'Assets/characters/races/sharkman/'],
+  ['Assets/Sprites/Races/sherrif/', 'Assets/characters/races/sheriff/'],
+  ['Assets/Sprites/Races/sherriff/', 'Assets/characters/races/sheriff/'],
+  ['Assets/Sprites/Races/sidekick/', 'Assets/characters/races/sidekick/'],
+  ['Assets/Sprites/Races/siren/', 'Assets/characters/races/siren/'],
+  ['Assets/Sprites/Races/skeleton/', 'Assets/characters/races/skeleton/'],
+  ['Assets/Sprites/Races/skinwalker/', 'Assets/characters/races/skinwalker/'],
+  ['Assets/Sprites/Races/spy/', 'Assets/characters/races/spy/'],
+  ['Assets/Sprites/Races/starfish/', 'Assets/characters/races/starfish/'],
+  ['Assets/Sprites/Races/succubus/', 'Assets/characters/races/succubus/'],
+  ['Assets/Sprites/Races/superhero/', 'Assets/characters/races/superhero/'],
+  ['Assets/Sprites/Races/swampmonster/', 'Assets/characters/races/swampmonster/'],
+  ['Assets/Sprites/Races/swordfighter/', 'Assets/characters/races/swordfighter/'],
+  ['Assets/Sprites/Races/symbiote/', 'Assets/characters/races/symbiote/'],
+  ['Assets/Sprites/Races/treeperson/', 'Assets/characters/races/treeperson/'],
+  ['Assets/Sprites/Races/undead/', 'Assets/characters/races/undead/'],
+  ['Assets/Sprites/Races/unicorn/', 'Assets/characters/races/unicorn/'],
+  ['Assets/Sprites/Races/valkraye/', 'Assets/characters/races/valkraye/'],
+  ['Assets/Sprites/Races/vampire/', 'Assets/characters/races/vampire/'],
+  ['Assets/Sprites/Races/voidweaver/', 'Assets/characters/races/voidweaver/'],
+  ['Assets/Sprites/Races/watcher/', 'Assets/characters/races/watcher/'],
+  ['Assets/Sprites/Races/yeti/', 'Assets/characters/races/yeti/'],
+  ['Assets/Sprites/Races/zombie/', 'Assets/characters/races/zombie/'],
+  ['Assets/Sprites/Races/', 'Assets/characters/races/'],
+  ['Assets/Sprites/', 'Assets/loose_sprites/'],   // the loose 2D sprites at the old Sprites/ root (race paper-dolls, icons, rings, rope ...): sort in W6
 ];
 const _ewMoves = (function () {
   const rows = EW_ASSET_MOVES.slice().sort((a, b) => b[0].length - a[0].length);
@@ -143,10 +285,24 @@ window.ewAssetKey = ewAssetKey;
   wrapSrc(window.HTMLImageElement, 'src');
   wrapSrc(window.HTMLMediaElement, 'src');
   wrapSrc(window.HTMLSourceElement, 'src');
+  /* inline style backgrounds (portraits, sprites, terrain swatches set as background-image by React or by hand) */
+  const cssUrls = (v) => (typeof v === 'string' && v.indexOf('cdn.entropywars.net') !== -1)
+    ? v.replace(/url\((['"]?)([^'")]+)\1\)/g, (m, q, u) => 'url(' + q + ewAsset(u) + q + ')') : v;
+  try {
+    const protos = [window.CSSStyleDeclaration && CSSStyleDeclaration.prototype, window.CSS2Properties && CSS2Properties.prototype].filter(Boolean);
+    for (const P of protos) for (const prop of ['backgroundImage', 'background', 'cssText', 'content', 'listStyleImage', 'borderImage', 'maskImage']) {
+      const d = Object.getOwnPropertyDescriptor(P, prop);
+      if (!d || !d.set || !d.configurable) continue;
+      Object.defineProperty(P, prop, Object.assign({}, d, { set: function (v) { return d.set.call(this, cssUrls(v)); } }));
+    }
+    const sp0 = CSSStyleDeclaration.prototype.setProperty;
+    CSSStyleDeclaration.prototype.setProperty = function (n, v, pr) { return sp0.call(this, n, cssUrls(v), pr); };
+  } catch (e) {}
   try {
     const s0 = Element.prototype.setAttribute;
     Element.prototype.setAttribute = function (n, v) {
       if (typeof v === 'string' && (n === 'src' || n === 'href' || n === 'xlink:href') && v.indexOf('cdn.entropywars.net') !== -1) v = ewAsset(v);
+      else if (n === 'style') v = cssUrls(v);
       return s0.call(this, n, v);
     };
   } catch (e) {}
@@ -396,7 +552,7 @@ const _HERO_RACE_SPRITES = {
   'politician': `${_S}/Races/maincharacters/president.png`,
 };
 
-// 2026-10-04 — mondo's own 2D sprites (single-frame, 128px tall) in Assets/Sprites/character_sprites/.
+// 2026-10-04 — mondo's own 2D sprites (single-frame, 128px tall) in Assets/characters/sprites/.
 // One file per race; hippie has one per gender. These win over every older/borrowed sheet.
 /* ♟ THE CHESS PIECE (2026-10-29): there is no 2D art of mondo's chess set, so the piece's flat look (the roster tile, the portrait,
    the 2D board) is the piece's own chess glyph — ♟ ♞ ♝ ♜ ♛ ♚, the black set, in the set's near-black with a pale rim and a red glow —
@@ -1069,7 +1225,7 @@ function classifySpellAnimKind(spell, opts) {
 //     NON-root-motion exports). Board tweens move the unit group; root motion
 //     would double the travel.
 //   lib 2 — MAL1_Sniper.glb: the 20 Meshy animations exported ONCE from the
-//     male sniper (Assets/Models/Meshy_AI_sniper_biped_Animation_*_withSkin
+//     male sniper (Assets/characters/animations/Meshy_AI_sniper_biped_Animation_*_withSkin
 //     .glb, 2026-07-11), consolidated offline into one 1.4MB animation-only
 //     GLB (skeleton + clips, meshes/textures stripped; clip names = the R2
 //     file stems). The retargeter treats a Meshy-named source rig exactly
@@ -1084,25 +1240,25 @@ function classifySpellAnimKind(spell, opts) {
 //     renderer silently loads the per-character clips exactly as before.
 //   • Kill-switches: window.EW_DISABLE_ANIM_LIB = true (console) forces the
 //     Meshy-clip fallback globally; per character pass { noAnimLib: true }.
-// The library files live OUTSIDE the sprites folder at Assets/Models/.
+// The library files live OUTSIDE the sprites folder at Assets/characters/animations/.
 // A slot's `lib` index picks the file.
 const EW_ANIM_LIB_URLS = [
-  'https://cdn.entropywars.net/Assets/Models/UAL1_Standard.glb',
-  'https://cdn.entropywars.net/Assets/Models/UAL2_Standard.glb',
-  'https://cdn.entropywars.net/Assets/Models/MAL1_Sniper.glb',
+  'https://cdn.entropywars.net/Assets/characters/animations/UAL1_Standard.glb',
+  'https://cdn.entropywars.net/Assets/characters/animations/UAL2_Standard.glb',
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL1_Sniper.glb',
   // lib 3 — MAL2_Sniper.glb (2026-08-12): second consolidated Meshy batch
   // (Back_Jump / Basic_Jump / Punch_Combo×3), built the same way as MAL1
   // from the 8MB withSkin exports. Until this file is uploaded to R2 the
   // bake skips lib-3 slots and every fallback chain covers them — wiring is
   // safe to ship ahead of the asset.
-  'https://cdn.entropywars.net/Assets/Models/MAL2_Sniper.glb',
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL2_Sniper.glb',
   // lib 4 — MAL3_Sniper.glb (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8 THE NEW
   // CLIPS): mondo's third Meshy batch (31 exports named
   // Meshy_AI_sniper_<Clip>.glb — no `_biped_Animation_` / `_withSkin`),
   // consolidated with build_mal2.js. Clip names are the file stems, typos
   // kept (mage_soell_cast_*, Right_Hand_Sword_Slas). Until the file is on R2
   // the lib-4 slots skip and every chain falls back as before.
-  'https://cdn.entropywars.net/Assets/Models/MAL3_Sniper.glb',
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL3_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -1863,7 +2019,7 @@ const RACE_MODELS_3D = {
   // race: 'marksman' has sat in ACCT_STARTER_UNITS behind the 3D-only gate.
   'marksman': {
     male: _mkUAL('marksman/male', 'sniper', {
-      model: 'https://cdn.entropywars.net/Assets/Models/Meshy_AI_sniper_biped_Animation_Idle_5_withSkin.glb',
+      model: 'https://cdn.entropywars.net/Assets/characters/animations/Meshy_AI_sniper_biped_Animation_Idle_5_withSkin.glb',
       heightRatio: 1.02,     // long-coat rifleman, a hair over the anchor
     }),
     // Female sniper (2026-07-11d batch) — lives in the race's SPRITE folder
@@ -2899,7 +3055,7 @@ if (typeof window !== 'undefined') {
 // Versioned, bounded and allowlisted before use (presets, saves, remote party
 // data all pass through normalizeCharacterAppearance). No user asset URLs —
 // every asset is picked by ID from the catalogues below and resolved to a
-// fixed R2 path (Assets/Models/charactercreation/, the user's 2026-09-11
+// fixed R2 path (Assets/characters/creator/, the user's 2026-09-11
 // upload) with a same-origin fallback served by server.js.
 //
 // ASSETS (what the renderer builds from):
@@ -2917,7 +3073,7 @@ if (typeof window !== 'undefined') {
 //  • FACE: painted at runtime into a per-instance skin texture (eyes,
 //    brows, lips, facial hair) — there is no authored face art yet.
 // ═══════════════════════════════════════════════════════════════════════════
-const EW_CHARACTER_ASSET_BASE = 'https://cdn.entropywars.net/Assets/Models/charactercreation';
+const EW_CHARACTER_ASSET_BASE = 'https://cdn.entropywars.net/Assets/characters/creator';   // R2 layout W5 (was Assets/characters/animations/charactercreation; the repo folder is still charactercreation/)
 // Builder order. Labels are provisional (named from the mesh silhouettes) —
 // rename freely; the id is what saves carry.
 const EW_HAIR_STYLES = [
@@ -2938,7 +3094,7 @@ const EW_HAIR_STYLES = [
 ];
 /* THE PACK HAIR (2026-11-01, mondo: "the clothes and hair in the asset packs ... I want those in the character creator
    too"): every MakeHuman community hair (makehuman_system_assets + hair01 / hair02 / hair03), baked by bake-mpfb.py
-   --hair-styles onto the MPFB male (charactercreation/hair/mh/<id>.glb -> R2 Assets/Models/charactercreation/hair/mh/).
+   --hair-styles onto the MPFB male (charactercreation/hair/mh/<id>.glb -> R2 Assets/characters/creator/hair/mh/).
    Worn and tinted like the pack above; each carries its own skull box (extras.ewHairRef). Labels = the asset names.
    Authors + licences: charactercreation/hair/mh/hair_styles.json (the credits list; 35 are CC-BY).
    `accent: true` (2026-11-01, THE SECOND HAIR COLOUR): the style has a separate piece painted in its own colour (a band, a
@@ -4553,7 +4709,7 @@ function retireClassicClothes(value) {
 }
 // numeric fields: [min, max, default]
 /* THE MPFB BODIES (2026-11-01, mondo: MakeHuman bodies via MPFB2, not Quaternius). Built by bake-mpfb.py
-   (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/Models/charactercreation/mpfb/): stock MakeHuman skin, face,
+   (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/characters/creator/mpfb/): stock MakeHuman skin, face,
    brows, eyes and hair baked in, Meshy bone names so the shared animation library plays on them, ARKit + viseme
    face shapes. A creator look with body:'mpfb_<id>' is dressed by the same creator rig as the classic bases
    (clothes, layers, hair, accessories, body sliders; creatorBase) but keeps its stock skin + face (no skin tint,
@@ -5474,7 +5630,7 @@ RACE_MODELS_3D['chess piece'] = { male: CHESS_PIECE_3D.pawn };
 // The cast are NOT races: they never appear on the roster, in the Shop or on
 // the board, so they live in their own registry instead of RACE_MODELS_3D.
 // Every model is a rigged Meshy `..._Character_output.glb` in
-// R2 Assets/Sprites/Races/maincharacters/ (all 15 HEAD-verified and
+// R2 Assets/characters/races/maincharacters/ (all 15 HEAD-verified and
 // rig-checked 2026-09-06: 1 skin, 24 joints, Hips root, 1.70 m normalised —
 // so heightRatio below is the ONLY size signal, exactly like the roster).
 // Animation comes from the shared library like everything else; the extra
@@ -5747,7 +5903,7 @@ if (typeof window !== 'undefined') { window.RACE_MODEL_SKINS = RACE_MODEL_SKINS;
 // model/sheet registries; units without an entry fall back to their map
 // sprite wherever portraits render.
 //
-// Art lives in the shared folder Assets/Sprites/character_portraits/
+// Art lives in the shared folder Assets/characters/portraits/
 // <male|female>/<name>.png. Some file names are slang/gendered variants of
 // the race ("glowie" = female men in black, "cowgirl", "witch", …) — every
 // URL below was HEAD-verified live on R2 2026-07-07. To add one: upload a
@@ -6218,7 +6374,7 @@ const OBJECT_SPRITES = {
     /* THE RETRO TREE PACK (2026-10-04): the pack's own card art (its Low Res folder) is the palette / 2D picture */
     tree_pine:    { url: 'https://cdn.entropywars.net/Assets/world/nature/retrotreepack/Low%20Res/tree_rt_1.png' },
     tree_sapling: { url: 'https://cdn.entropywars.net/Assets/world/nature/retrotreepack/Low%20Res/small_tree_rt_1.png' },
-    tower_cube: { url: 'https://cdn.entropywars.net/Assets/Sprites/dragon-green.png' },
+    tower_cube: { url: 'https://cdn.entropywars.net/Assets/loose_sprites/dragon-green.png' },
     /* Cosmetic grass tuft — rendered in-game as 3D billboard blades by
        _buildGrassTuft3D (three-renderer.js). The url is only the editor palette
        thumbnail; we reuse the grass_2 terrain sprite the blades are textured with. */
@@ -6758,8 +6914,8 @@ const FOG_CLOUD_SPRITES = [
 ];
 
 const WEATHER_SPRITES = {
-    thunderstorm: 'https://cdn.entropywars.net/Assets/Sprites/object_thundercloud.png',
-    bloodRain: typeof ICON_BLOOD_RAIN !== 'undefined' ? ICON_BLOOD_RAIN : 'https://cdn.entropywars.net/Assets/Sprites/weather_bloodrain.png'
+    thunderstorm: 'https://cdn.entropywars.net/Assets/loose_sprites/object_thundercloud.png',
+    bloodRain: typeof ICON_BLOOD_RAIN !== 'undefined' ? ICON_BLOOD_RAIN : 'https://cdn.entropywars.net/Assets/loose_sprites/weather_bloodrain.png'
 };
 
 function _terrainSvg(inner) {
@@ -6882,13 +7038,13 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
             _terrainSvg('<rect width="64" height="64" fill="rgba(175,215,238,0.22)"/><path d="M0 30 Q20 24 40 32 Q56 38 64 28" fill="none" stroke="rgba(215,238,252,0.38)" stroke-width="1.5"/><circle cx="34" cy="18" r="5" fill="rgba(235,248,255,0.15)"/>'),
         ],
         well: [
-            'https://cdn.entropywars.net/Assets/Sprites/object_well.png'
+            'https://cdn.entropywars.net/Assets/loose_sprites/object_well.png'
         ],
         beanstalk: [
-            'https://cdn.entropywars.net/Assets/Sprites/object_beanstalk.png'
+            'https://cdn.entropywars.net/Assets/loose_sprites/object_beanstalk.png'
         ],
         cave_entrance: [
-            'https://cdn.entropywars.net/Assets/Sprites/object_caveentrance .png'
+            'https://cdn.entropywars.net/Assets/loose_sprites/object_caveentrance .png'
         ],
         tower_base: [
             _terrainSvg('<rect width="64" height="64" fill="rgba(90,85,100,0.12)"/><rect x="4" y="4" width="56" height="56" rx="2" fill="rgba(100,95,110,0.08)" stroke="rgba(120,115,130,0.12)" stroke-width="0.5"/>')
