@@ -1509,8 +1509,9 @@ mondo: "i want to redesign the character creator a little bit, basically i just 
 make it easier to navigate" + "try to find icons from this asset pack" (https://sungraphica.itch.io/minimal-game-icons-pack). His three
 reference shots (an equipment screen with HEAD / UPPER BODY / LOWER BODY icon slots, a DS-style item tab bar) were for the layout only.
 - **The pack**: the free download is 90 menu icons (no clothes / body icons); mondo owns the full 600-icon pack and dropped its zip in
-  R2 (ewmusicsfx `inbox/Minimal icons(1).zip`, sha 9bd12d1c). Copies: /mnt/project-files/asset-packs/other/sungraphica_minimal-game-icons/
-  (FREE.zip, the full zip, the free contact sheet). Licence: free for commercial use, editing allowed, no reselling / redistributing the
+  R2 (sha 9bd12d1c); it now lives ONLY in the private bucket dirtymondo `inbox/Minimal icons(1).zip` (moved out of the public
+  ewmusicsfx CDN bucket on his word, 11-04; not kept in project files). The free part's contact sheet:
+  /mnt/project-files/asset-packs/other/sungraphica_minimal-game-icons/free_90_icons_sheet.png. Licence: free for commercial use, editing allowed, no reselling / redistributing the
   ORIGINAL files, "please credit SunGraphica" -> data.js EW_CREDITS section ICONS. The pack never goes in the repo.
 - **The icons** (`python3 -I bake-creator-icons.py <the zip> <out>`, its ICONS table): 15 PNGs, 128 px, white + alpha (an emoji's black
   eyes / mouth become holes), on R2 `Assets/Icons/creator/<key>.png` (uploaded with `node sync-zip.js --put`). Tabs: BODY = Human,
