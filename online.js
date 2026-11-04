@@ -3009,6 +3009,10 @@
                    host-only before. Args (spellId, tx, ty, r, extra) — the
                    trailing bag keeps its primitive fields (fromX / fromY). */
                 fireGeometry:       [[1, 2]],
+                /* THE JUICE HIT (2026-11-04, mondo: "shouldnt p2 have the same freeze as p1?"): the impact freeze, the white
+                   blink and the screen kick of every hit — (tx, ty, weight, freezeMs, kill, unitId), the victim's tile is the
+                   fog anchor. Before this the guest got no per-hit freeze at all. */
+                juiceHit:           [[0, 1]],
             };
             Object.keys(window._VFXX_ANCHORS).forEach(function(fnName) {
                 var _origSib = VFX3D[fnName];
