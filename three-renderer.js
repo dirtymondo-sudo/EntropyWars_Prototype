@@ -58031,9 +58031,20 @@ const ThreeRenderer = (function () {
         }
         cnv.addEventListener('pointerup', _endDrag);
         cnv.addEventListener('pointercancel', _endDrag);
+        /* THE ZOOM PATH (2026-11-05, mondo: "in the character creator, make zooming in always zoom in on the character's face,
+           and zooming out centered on their full body, from both views"): the wheel moves the camera's DISTANCE along one path,
+           the full body (dist0) at one end, the face close-up (faceD, set by the frame loop) at the other; the frame loop slides
+           the look point, height and tilt from the body's middle to the face by where the distance sits between them. So from
+           either view, in = toward the face, out = back to the whole body, centered. Limits: faceD / 2.8 in, dist0 / 0.55 out
+           (the old per-view limits). Line / page wheel steps (deltaMode 1 / 2) count as 16 / 400 px. */
         cnv.addEventListener('wheel', function (e) {
             e.preventDefault();
-            _cv.zoom = Math.max(0.55, Math.min(2.8, _cv.zoom * Math.exp(-e.deltaY * 0.0012)));
+            var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+            var faceD = _cv.faceD > 0 ? _cv.faceD : _cv.dist0 / 2.8;
+            var base = _cv.focusHead ? faceD : _cv.dist0;
+            var d = base / Math.max(0.05, _cv.zoom) * Math.exp(dy * 0.0012);
+            d = Math.max(faceD / 2.8, Math.min(_cv.dist0 / 0.55, d));
+            _cv.zoom = base / d;
         }, { passive: false });
         cnv.addEventListener('dblclick', function () {
             _cv.yaw = 0; _cv.polar = _cv.focusHead ? CV_FACE_POLAR : 0; _cv.polarTo = null; _cv.zoom = 1;   // the face close-up keeps its upward look
@@ -58137,28 +58148,36 @@ const ThreeRenderer = (function () {
         /* THE FACE CAMERA: while the face is framed (and no beat holds the frame) the camera's height, look point and
            distance follow the Head bone; everything eases, so the move in and the move out are one smooth glide */
         var face = !!v.focusHead && !v.frameTo;
-        var hp = face ? _cvHeadPoint(v) : null;
-        var wantCy = cy, wantLy = cy * 0.96, wantLz = 0;
-        if (face) {
-            wantCy = (hp ? hp.y : v.h * 0.9) - v.h * CV_FACE_LIFT;
-            wantLy = wantCy;
-            wantLz = hp ? hp.z : 0;
-        }
-        // THE FRAME: the camera's rest distance is dist0 / zoom on the +Z
+        var hp = v.frameTo ? null : _cvHeadPoint(v);
+        // the close-up's distance: CV_FACE_FRAME of the height fills the canvas (the wider of the two axes' needs)
+        var tanVh = Math.tan((v.cam.fov * Math.PI / 180) / 2), tanHh = tanVh * (v.cam.aspect || 1);
+        var fH = v.h * CV_FACE_FRAME;
+        var faceD = Math.max(fH * 0.5 / Math.max(0.05, tanVh), fH * 0.42 / Math.max(0.05, tanHh));
+        v.faceD = faceD;
+        // THE FRAME: the camera's rest distance is dist0 / zoom (the face close-up: faceD / zoom) on the +Z
         // axis looking at the hero; while a beat runs `frameTo` names the
         // extent (world units) the whole move + VFX covers and the camera
         // pulls out (and slides its look-x) far enough to hold all of it,
         // then eases home. The player's wheel zoom stays the floor.
-        var restDist = v.dist0 / v.zoom;
-        var wantLx = 0;
-        if (face) {
-            // the close-up's distance: CV_FACE_FRAME of the height fills the canvas (the wider of the two axes' needs);
-            // the wheel zoom still works on top of it (zoom is 1 on entry)
-            var tanVh = Math.tan((v.cam.fov * Math.PI / 180) / 2), tanHh = tanVh * (v.cam.aspect || 1);
-            var fH = v.h * CV_FACE_FRAME;
-            restDist = Math.max(fH * 0.5 / Math.max(0.05, tanVh), fH * 0.42 / Math.max(0.05, tanHh)) / Math.max(0.05, v.zoom);
-            if (hp) wantLx = hp.x;
+        var restDist = (face ? faceD : v.dist0) / Math.max(0.05, v.zoom);
+        /* THE ZOOM PATH (2026-11-05): `s` = how far the distance sits from the full body (0) to the face close-up (1), on a
+           log scale (each wheel step moves the same share); the look point, the camera height and the upward face tilt
+           follow it, so wheeling in from the full body closes on the face and wheeling out of the close-up ends centered on
+           the whole body. A beat's frame (frameTo) keeps the body framing. */
+        var s = 0;
+        if (!v.frameTo && v.dist0 > faceD * 1.05) {
+            s = Math.max(0, Math.min(1, Math.log(v.dist0 / restDist) / Math.log(v.dist0 / faceD)));
+            s = s * s * (3 - 2 * s);
         }
+        var faceCy = (hp ? hp.y : v.h * 0.9) - v.h * CV_FACE_LIFT;
+        var wantCy = cy + (faceCy - cy) * s, wantLy = cy * 0.96 + (faceCy - cy * 0.96) * s, wantLz = (hp ? hp.z : 0) * s;
+        var wantLx = (hp ? hp.x : 0) * s;
+        // the tilt: v.polar is the player's own tilt relative to the view's home tilt (the close-up's look up, the body's
+        // level); the path adds the share of the look up that `s` calls for (eased like the rest)
+        var wantPo = CV_FACE_POLAR * s - (face ? CV_FACE_POLAR : 0);
+        if (v.camPo == null || v.camDist === 0) v.camPo = wantPo;
+        v.camPo += (wantPo - v.camPo) * Math.min(1, dt * 4.5);
+        pol = Math.max(-0.6, Math.min(1.25, pol + v.camPo));
         var wantDist = restDist;
         var F = v.frameTo;
         if (F) {
