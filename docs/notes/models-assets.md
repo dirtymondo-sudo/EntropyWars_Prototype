@@ -1745,3 +1745,18 @@ permutation, so numbers only move / flip sign as text (no precision change). Che
 `models-backup/Christmas_ZUP_original_20261105.dae`. three-renderer.js `_asDae` hides the parser's "File version" debug line, and its
 no-store path now fetches `?h=<sha>` too. ASSET_MANIFEST.json lists the .dae (manifest-assets.js KINDS takes `dae`) so the in-place
 replacement reaches every browser and the edge.
+
+## THE FOUR WEIGHTS (2026-11-05, mondo's console: "THREE.FBXLoader: Vertex has more than 4 skinning weights … Deleting additional weights")
+- Cause: 21 rigged FBX files carried vertices with 5-12 bone weights: the ocean pack's BrownFish, ClownFish, Crab, Dolphin,
+  DoryFish, Fish2, Hammerhead, Lobster, Manta ray, Octopus, Penguin, SeaWeed, SeaWeed1, SeaWeed2, Seal, Squid, StarFish,
+  TunaFish, Whale, Whale2 (Assets/world/packs/ocean/) and the elephant (Assets/world/animals/elephant/elephant-3d.fbx).
+  The other ocean files, the chess set, the Halloween kit, the spear and the UFO were already clean.
+- Fix at the source: `python3 -I bake-fbx-weights.py <in.fbx> <out.fbx>` (repo root) keeps each vertex's 4 largest weights,
+  scales them back to its original total, and rewrites only the cluster Indexes/Weights arrays (every other byte as it was).
+  FBXLoader did the same cut at load, so the game draws the same thing (checked in node with three 0.186.1: mesh, UVs,
+  normals, clip names identical; posed vertices match to < 0.004 % of the model's size) and the warning is gone.
+- The fixed files replaced the originals under the SAME R2 keys (bucket ewmusicsfx); the originals are kept in bucket
+  dirtymondo `archive/2026-11/fbx-weights-originals/world/...`. ASSET_MANIFEST.json lists the 21 new files (so the edge and
+  the store fetch them by `?h=<sha>`, not a cached old copy). Ghost FBX (characters/Character_Ghost.fbx) also has 5-weight
+  vertices but the game loads its GLB, so it was left alone.
+- A NEW FBX upload: run it through bake-fbx-weights.py first if the console shows that warning.
