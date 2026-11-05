@@ -1365,6 +1365,10 @@ assigned created characters so i can give to you to bake in". Before this, EXPOR
   this slot when it is that race; else the team's slot of that race (selected); else that race goes on THIS slot (pickRace(race, g,
   stay) = the roster pick without the jump to ABILITIES, so the creator stays open). Gender follows the look. The store is untouched.
   The chip of the look on the stage is outlined gold with ON THE STAGE. Proof: /mnt/project-files/assigned-looks/load_*.png.
+- **BAKED 2026-11-05 (export 10:33, `Entropy_Wars_Race_Looks_4_assigned_20261105-1033.json`)**: `node bake-looks.js` on mondo's file,
+  values exactly as exported (normalize changed nothing): Santa Clause ♂ + Cowboy ♂ rows REPLACED, Catgirl ♀ + Demon ♀ ADDED; every
+  other row untouched (Cowboy ♀ too). Still saved looks (EW_RACE_LOOKS_ARE_DEFAULT false). Proof: the forge's USE THE SAVED <RACE>
+  LOOK on all four, /mnt/project-files/assigned-looks-1033/.
 
 ## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
 mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
