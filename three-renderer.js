@@ -50993,9 +50993,9 @@ const ThreeRenderer = (function () {
        collision: once per frame AFTER the mixer (the rig's tick), each hand's skin (sample points in the hand's own frame) is tested
        against both thighs (the thigh skin's radius along the UpLeg -> knee axis, measured from the body's own vertices, again whenever
        the body's shape changes: the Weight / Muscle sliders); a hand inside a thigh (+ CLR_MARGIN for the cloth) turns its upper arm
-       out from the body just enough to clear it. The turn rises at once and eases back (CLR_EASE), so the swing stays smooth. Bodies
+       out from the body just enough to clear it. The turn rises fast (CLR_RISE) and eases back (CLR_EASE), the thigh radius blends between its bins, so the swing stays smooth. Bodies
        whose rig has no LeftArm / LeftUpLeg / LeftHand bones skip it. Kill-switch: window.EW_NO_ARM_CLEAR = true. */
-    var CLR_MARGIN = 0.012, CLR_EASE = 6, CLR_BINS = 8, CLR_HAND_PTS = 48, CLR_MAX = 0.6;
+    var CLR_MARGIN = 0.014, CLR_EASE = 5, CLR_RISE = 12, CLR_BINS = 8, CLR_HAND_PTS = 48, CLR_MAX = 0.3, CLR_T0 = 0.15;
     function _ccArmClearMeasure(root, st) {
         var B = {};
         root.traverse(function (o) { if (o.isBone && !B[o.name]) B[o.name] = o; });
@@ -51073,9 +51073,10 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < S.pts.length; i++) {
                     P.copy(S.pts[i]).applyMatrix4(wm);
                     d.subVectors(P, A); var along = d.dot(ax), t = along / wl;
-                    if (t < 0.04 || t > 1) continue;
+                    if (t < CLR_T0 || t > 1) continue;   // (not the hip end: a hand resting at the hip / in a pocket is the clip's own)
                     var rad = Math.sqrt(Math.max(0, d.lengthSq() - along * along));
-                    var pen = T.prof[Math.min(CLR_BINS - 1, Math.floor(t * CLR_BINS))] * sc + CLR_MARGIN * wl / 0.42 - rad;   // (the margin in this rig's units: a thigh ~0.42 m)
+                    var fb = Math.max(0, Math.min(CLR_BINS - 1.0001, t * CLR_BINS - 0.5)), b0 = Math.floor(fb), fr = fb - b0;   // the radius between bin centres (no step when a point crosses a bin)
+                    var pen = (T.prof[b0] * (1 - fr) + T.prof[b0 + 1] * fr) * sc + CLR_MARGIN * wl / 0.42 - rad;   // (the margin in this rig's units: a thigh ~0.42 m)
                     if (pen > m) { m = pen; if (deep) deep.copy(P); }
                 }
             }
@@ -51092,15 +51093,16 @@ const ThreeRenderer = (function () {
             if (out.lengthSq() < 1e-8) return; out.normalize();
             S.arm.getWorldPosition(Sh);
             var need = 0;
-            for (var it = 0; it < 4; it++) {
-                var pen = depth(S, deepP); if (pen <= 1e-4) break;
+            for (var it = 0; it < 8; it++) {   // to within ~0.3 mm (a loose solve wobbles frame to frame)
+                var pen = depth(S, deepP); if (pen <= 3e-4) break;
                 d.subVectors(deepP, Sh); var arm = d.length(); if (arm < 1e-3) break;
                 need += Math.min(0.2, pen / arm);
-                if (need > CLR_MAX) { need = CLR_MAX; break; }
+                if (need > CLR_MAX) { need = 0; break; }   // the clip means it (a hand on the leg): no pop out and back
                 applyTurn(S, need);
             }
-            // rises at once, eases back (no snap when the hand swings off the thigh)
-            S.ang = need >= S.ang ? need : Math.max(need, S.ang - S.ang * Math.min(1, CLR_EASE * (sdt || 0)));
+            // rises fast (CLR_RISE), eases back slower (CLR_EASE): no snap when the hand swings off the thigh, no shiver on a still pose
+            var k = need >= S.ang ? CLR_RISE : CLR_EASE;
+            S.ang = (S.ang || 0) + (need - (S.ang || 0)) * Math.min(1, k * (sdt || 0));
             applyTurn(S, S.ang);
             if (S.ang > 1e-4) S.q1 = S.arm.quaternion.clone();
         });
