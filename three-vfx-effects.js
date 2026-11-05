@@ -63006,7 +63006,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var R = r != null ? r : 1;
                 if (_pzSeen(tx, ty)) {
                     var F = _nrvFrame(tx, ty), ts = F.ts;
-                    _fbSim(F, 'mblast', { y: 0, size: ts * (2.8 + R * 1.0), ml: 2500, back: ts * 0.3, grow: 1.06 });
+                    _fbSim(F, 'mblast', { y: 0, size: ts * (3.4 + R * 1.2), ml: 2600, back: ts * 0.3, grow: 1.06 });
                 }
                 var tiles = [];
                 for (var dx = -R; dx <= R; dx++) for (var dy = -R; dy <= R; dy++) if ((dx || dy) && _pzSeen(tx + dx, ty + dy)) tiles.push({ x: tx + dx, y: ty + dy });

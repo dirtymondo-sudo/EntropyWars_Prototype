@@ -460,7 +460,7 @@ const ThreeVFX = (function () {
            fb_explosion.png (the 11-03 pilot) stays on R2, unused. */
         'fb-fbhit-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbhit_smoke.png?r=1',  cols: 6, frames: 36, cell: 128, blend: 'nrm', lift: 0.22 },
         'fb-fbhit-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbhit_glow.png?r=1',   cols: 6, frames: 36, cell: 128, blend: 'add', lift: 0.22 },
-        'fb-mblast-smoke': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_smoke.png?r=1', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.35 },
+        'fb-mblast-smoke': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_smoke.png?r=2', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.35 },
         'fb-mblast-glow':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_glow.png?r=1',  cols: 8, frames: 60, cell: 128, blend: 'add', lift: 0.35 },
         'fb-fbfly-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbfly_smoke.png?r=1',  cols: 6, frames: 24, cell: 128, blend: 'nrm', head: 0.73 },
         'fb-fbfly-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbfly_glow.png?r=1',   cols: 6, frames: 24, cell: 128, blend: 'add', head: 0.73 },
