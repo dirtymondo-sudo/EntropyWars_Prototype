@@ -2253,8 +2253,9 @@ const ThreeRenderer = (function () {
     }
     /* THE CHRISTMAS PACK: a COLLADA file through the store → ColladaLoader.parse; else the loader's own network path. The file names
        its sheets by the author's own disk paths (C:/Users/…/Textures/Gift.png), so every image it asks for is read from the pack's
-       textures/ folder by its file name. The result is the scene in a plain group: the loader turns a Z-up file upright with a
-       rotation on its scene, and a piece cut from the group (_miscPiece) keeps that turn baked in. */
+       textures/ folder by its file name. The result is the scene in a plain group, a piece cut from it by _miscPiece. The file is Y-up
+       since 2026-11-05 (its vertices + node matrices turned once offline, the same world placement to 5e-15): the Z-up original made
+       the loader warn and only rotate its scene. The parser's "File version" debug line is kept out of the console. */
     function _isDaeUrl(url) { return /\.dae(?:[?#]|$)/i.test(String(url || '')); }
     function _asDae(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.ColladaLoader !== 'function') { if (onError) onError(new Error('no ColladaLoader')); return; }
@@ -2272,12 +2273,15 @@ const ThreeRenderer = (function () {
             _xmasPackMats(wrap);
             if (onLoad) onLoad(wrap);
         };
-        if (!_asAvailable()) { new THREE.ColladaLoader(mgr).load(url, done, undefined, onError); return; }
-        _asFetch(url, o).then(function (res) { return res.text(); }).then(function (text) {
-            var c = null;
-            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { if (onError) onError(e); return; }
+        var parse = function (text) {
+            var c = null, dbg = console.debug;
+            console.debug = function (m) { if (typeof m === 'string' && m.indexOf('THREE.ColladaLoader: File version') === 0) return; return dbg.apply(console, arguments); };
+            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { console.debug = dbg; if (onError) onError(e); return; }
+            console.debug = dbg;
             done(c);
-        }).catch(function (e) { if (onError) onError(e); });
+        };
+        var got = _asAvailable() ? _asFetch(url, o) : fetch(_asNetUrl(url), { mode: 'cors', credentials: 'omit' });
+        got.then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url); return res.text(); }).then(parse).catch(function (e) { if (onError) onError(e); });
     }
     /* the pack's sheets in the game's terms: no sRGB decode (the game's linear output, like every prop sheet), the alpha cut at 0.5
        (the tree's branch cards, the ribbon, the star, the snowy pine cards; an opaque sheet is untouched by it), the card sheets

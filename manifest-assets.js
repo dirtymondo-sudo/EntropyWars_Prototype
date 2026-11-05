@@ -36,7 +36,7 @@ const REPO_ROOT = __dirname;
 const OUT_DEFAULT = path.join(REPO_ROOT, 'ASSET_MANIFEST.json');
 const BASE = 'https://cdn.entropywars.net/';
 /* the kinds the game's loaders fetch through the store (models, sheets, sounds, the few JSON / binary side files) */
-const KINDS = /\.(glb|gltf|bin|obj|mtl|png|jpe?g|webp|ktx2|gif|mp3|ogg|wav|m4a|json)$/i;
+const KINDS = /\.(glb|gltf|dae|bin|obj|mtl|png|jpe?g|webp|ktx2|gif|mp3|ogg|wav|m4a|json)$/i;
 
 function walk(dir, rel, out) {
     for (const n of fs.readdirSync(dir).sort()) {
