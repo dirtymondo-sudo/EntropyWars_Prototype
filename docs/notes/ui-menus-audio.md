@@ -2242,7 +2242,7 @@ the next refresh. Now:
 - Proof probe (scratchpad, not committed): changes every control on the battle pause menu's Audio / Video / Game / Controls
   sheets, reloads, starts a battle again and compares each control.
 
-## THE PAUSE MENU STAYS PUT + KEEPS ITS PLACE — 2026-11-05 (token 20261105-pauseplace-01-cors)
+## THE PAUSE MENU STAYS PUT + KEEPS ITS PLACE — 2026-11-05 (token 20261105-pauseplace-02-cors)
 mondo: "in the pause menu, when i change a setting it will close and reopen the menu again ... if i change a video setting
 ... i want the menu to open back up to the same spot i was after i close it".
 - **Cause (seen in a browser):** the battle pause menu (ui.js `_renderPauseMenu`) rebuilt the WHOLE window through
