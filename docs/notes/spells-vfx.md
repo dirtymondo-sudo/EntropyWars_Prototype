@@ -2914,6 +2914,18 @@ found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He p
   vignette (`_edge_fade`, full inside 0.6 of the half-width) instead of the square edge fade, so a puff that reached the
   sim box thins into a soft round rim. `_opAt` gives shared-kind particles (`p._fbSoft`) a smoothstep fade, flat at both
   ends. The sheet URLs carry `?r=2`: R2 asset URLs have no ?v= token, so bump r on every re-bake.
+- **THE SMOKE DISSIPATES (2026-11-05; mondo: the Blender smoke "cuts off abruptly at the end", "start all over"):** the
+  real pop was the Fireball / Meteor BLAST (`_fbBlast`), which #830 never touched: fb_explosion's last frames are still a
+  solid cloud and the blast was let go at 85 % (Meteor 70 %) opacity right there; fb_smoke's last frame is also still
+  217/255. No re-bake (the Fireball/Meteor thread owns new explosion sheets): three-vfx.js now gives a flipbook particle a
+  TAIL (`opts.fbTail` = share of the life after the sheet; `_FB_TAIL_KIND` 'fb-smoke' 0.35 for the shared kinds; `_fbBlast`
+  `o.tail` 0.45). The sheet plays over the life before it; in the tail the last frame reached steps through 8 dissolve
+  textures (`_fbDisKey` 'fb-x#N~L', made from that frame's pixels + a fixed 3-octave value noise: the fringe and thin wisps
+  go first, holes open, the core goes last, a growing blur), it rises (`opts.fbRise`) and its opacity eases to exactly 0.
+  `_FB_DIS_WARM` builds the usual end frames' steps after the sheet is cut (one per 30 ms). Sheet def `feather` (fb-explosion
+  0.1) softens the cell border so a cloud that touched the render box has no straight edge. `_fbBlast`'s o.ml / o.grow /
+  o.op1 still describe the sheet's part (same speed, size and opacity at the sheet's end); the tail is added on top
+  (Meteor's big blast 2.1 s -> 3.8 s). Before/after strips: /mnt/project-files/smoke-fade/.
 - Next (only on mondo's say): flame, explosion-orange, element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise
   for the burning-tile raymarch.
 

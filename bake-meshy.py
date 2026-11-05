@@ -137,8 +137,9 @@ piece('elfears', '32_elf-ear', 'Elf ears', 'bodyparts', 57, mode='side', size=0.
 piece('neckbolts', '31_neck-bolt', 'Neck bolts', 'bodyparts', 57, mode='side', size=0.045, anchor='neck', bone='neck_01', rot=[['y', 90]], pair=True, shelf='creature')
 piece('hooves', '45_hoof', 'Hooves', 'bodyparts', 47, mode='foot', size=0.24, pair=True, shelf='creature')
 piece('beastfeet', '46_clawed-beast-foot', 'Clawed beast feet', 'bodyparts', 47, mode='foot', size=0.20, pair=True, shelf='creature')
-piece('lizardtail', '41_lizard-tail', 'Lizard tail', 'bodyparts', 62, mode='tail', size=1.0, droop=38, chains=7)
-piece('sharktail', '42a_shark-tail', 'Shark tail', 'bodyparts', 62, mode='tail', size=0.62, droop=20, rot=[['x', -90], ['y', 90]], chains=5)
+# (2026-11-05, mondo "yes" to the lizard + shark tails getting the wolf tail's fix): the flat root narrowed + sunk into the lower back
+piece('lizardtail', '41_lizard-tail', 'Lizard tail', 'bodyparts', 62, mode='tail', size=1.0, droop=38, chains=7, taper=(0.18, 0.3), sink=0.05)
+piece('sharktail', '42a_shark-tail', 'Shark tail', 'bodyparts', 62, mode='tail', size=0.62, droop=20, rot=[['x', -90], ['y', 90]], chains=5, taper=(0.2, 0.25), sink=0.05)
 # (2026-11-03, mondo: "the tail is visibly disconnected from his body ... the tail has a flat cut off"): the root narrowed + sunk deeper
 piece('wolftail', '44_wolf-tail', 'Wolf tail', 'bodyparts', 62, mode='tail', size=0.55, droop=12, rot=[['z', 90]], chains=5, taper=(0.25, 0.22), sink=0.05)
 # THE WEREWOLF FUR (2026-11-03, mondo: "retexture all three in meshy so they all have a consistent fur texture"): the same Meshy pieces

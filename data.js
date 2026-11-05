@@ -18350,8 +18350,8 @@ const HQ_ROOM_LOOKS = {
 // THE WORLD (2026-09-13): `env.world` on a row = how the setting continues to the horizon and how
 // ENTROPY takes it apart (three-renderer.js THE WORLD block): { kind: plain | cavern | void | room,
 //   ground (terrain key; default = the apron's sheet), groundColor, sea (the moat's liquid runs to the
-//   horizon), bank / bankColor (the shore's face), rim: [{ kind: peaks | spires (the rest deleted
-//   2026-11-03: only the kept voxel boards still draw a rim), d (tiles from the centre), n, h, tex, color, … }],
+//   horizon), bank / bankColor (the shore's face), (the `rim` is DELETED,
+//   2026-11-03 + 11-05, mondo: "delete the rims"),
 //   wall: { tex, color, r, h, fade } (a cavern), root: false (a hull under the board), rootTex /
 //   rootColor / rootDepth, r (the ground's radius, 56), fogTop / fogBand (the sky's haze while
 //   grounded) }. `void` never grounds (the cloud islands, the ships); `room` is inert (the facilities).
@@ -18360,7 +18360,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_shasta', label: 'Mount Shasta', w: 20, h: 20, teamSize: 6, tier: 1, base: 'grass_2',
       biomes: ['forest', 'inner_earth'], deltaPad: 'grass_2', near: 'shasta',
       desc: '20×20 prebuilt, 6v6 — the sacred volcano: snow-crown vantage, switchback terraces, pine woods, twin cold lakes & the Lemurian gate',
-      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', snow: 'marble_light', d: 26, n: 12, h: 7 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x9fc4e8, tintAmt: 0.30, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.35, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_stonehenge', label: 'Stonehenge', w: 16, h: 16, teamSize: 6, tier: 1, base: 'grass_2',
       biomes: ['ancient', 'arthurian'], deltaPad: 'grass_2', near: 'stonehenge',
@@ -18382,7 +18382,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_hell', label: 'Hell', w: 20, h: 20, teamSize: 6, tier: 1, base: 'scorched',
       biomes: ['infernal'], deltaPad: 'scorched', near: 'hell',
       desc: '20×20 prebuilt, 6v6 — the mirror of Heaven: a lava river, obsidian altar, basalt spike cover & the fallen columns',
-      env: { look: HQ_ROOM_LOOKS.hell, world: { kind: 'cavern', sea: true, rim: [{ kind: 'spires', tex: 'obsidian', color: 0x5a4058, d: 14, n: 22, h: 9 }, { kind: 'peaks', tex: 'obsidian', color: 0x4a3048, d: 28, n: 12, h: 8, ranks: 1 }], wall: { tex: 'obsidian', color: 0x3a2838, r: 40, h: 40 }, fogTop: 0.45, rootTex: 'obsidian', rootColor: 0x584058 },
+      env: { look: HQ_ROOM_LOOKS.hell, world: { kind: 'cavern', sea: true, wall: { tex: 'obsidian', color: 0x3a2838, r: 40, h: 40 }, fogTop: 0.45, rootTex: 'obsidian', rootColor: 0x584058 },
              tint: 0x3a0505, tintAmt: 0.50, stars: 0.25, nebula: 0.55, fog: { color: 0x5a0f08, amount: 0.65, top: 0.08, band: 0.6 }, scenery: 'infernal',
              motion: { kind: 'rise', dir: -1, speed: 1.6, ramp: 0.4, max: 6.0, sky: 0.8 } } },   // MOVING MAPS rev 2: the board SINKS — a circle deeper every round, the infernal roster rising past
     { id: 'prebuilt_cyberpunk', label: 'Cyberpunk City', w: 24, h: 24, teamSize: 8, tier: 1, base: 'urban_wall', streetLamps: true,
@@ -18415,18 +18415,17 @@ const EW_MAP_META = [
     { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
       biomes: ['divine', 'ancient'], deltaPad: 'marble_light', near: 'olympus',
       desc: '24×24 prebuilt, 8v8 — the marble acropolis over the cloud sea: temple terraces, stair ascents, storm lanes & void rifts',
-      env: { world: { kind: 'plain', ground: 'cloud_2', groundColor: 0xf4f6ff, rim: [{ kind: 'peaks', tex: 'mountain', snow: 'marble_light', d: 26, n: 10, h: 12, p: 0.6 }], rootTex: 'mountain' },
+      env: { world: { kind: 'plain', ground: 'cloud_2', groundColor: 0xf4f6ff, rootTex: 'mountain' },
              tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, day: 1, clouds: 0.55, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine' } },
     { id: 'prebuilt_mars', label: 'Mars', w: 20, h: 20, teamSize: 6, tier: 2, base: 'moon_2',
       biomes: ['space', 'desert'], deltaPad: 'moon_2', near: 'mars',
       desc: '20×20 prebuilt, 6v6 — red regolith: mesa cover, twin dead rovers & crater dust bowls',
-      env: { world: { kind: 'planet', ground: 'moon_2', groundColor: 0xc88a5a, curve: 7, swell: 0.12, craters: { n: 18, r: [1.4, 5.5], d0: 12, depth: 0.26, rim: 0.09 },
-                      rim: [{ kind: 'peaks', tex: 'mars_2', color: 0xa86048, d: 30, n: 14, h: 7, ranks: 1 }], rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
+      env: { world: { kind: 'planet', ground: 'moon_2', groundColor: 0xc88a5a, curve: 7, swell: 0.12, craters: { n: 18, r: [1.4, 5.5], d0: 12, depth: 0.26, rim: 0.09 }, rootTex: 'mars_2', rootColor: 0xa86048 },   // THE PLANET (2026-09-16): the ground is one curved regolith with the craters carved in
              tint: 0x8a3a1a, tintAmt: 0.45, stars: 0.8, nebula: 0.4, fog: { color: 0xc88a5a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'space' } },
     { id: 'prebuilt_area51', label: 'Area 51', w: 20, h: 20, teamSize: 6, tier: 2, base: 'wasteland',
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4', near: 'area51',
       desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
-      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'wasteland', color: 0xb89878, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs',
              motion: { kind: 'wheel', speed: 4.0, ramp: 0.35, max: 5.0, sky: 0.6 } } },   // MOVING MAPS rev 2: the orbs and the craft circle the base — a wheel of lights, quicker every round
     { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
@@ -18437,12 +18436,12 @@ const EW_MAP_META = [
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
       biomes: ['ranch', 'clandestine'], deltaPad: 'grass_rocky', near: 'skinwalker',
       desc: '20×20 prebuilt, 6v6 — the ranch: barn & corral, twin observation mesas, the mutilation site & a crop-circle anomaly',
-      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 32, n: 12, h: 6, ranks: 1 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x2a1638, tintAmt: 0.50, stars: 1.2, nebula: 1.1, fog: { color: 0x453058, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'eyes' } },
     { id: 'prebuilt_hollow_earth', label: 'Hollow Earth', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor', near: 'hollow_earth',
       desc: '20×20 prebuilt, 6v6 — the world above and its petrified mirror below, joined by two great gates under a darkness veil',
-      env: { look: HQ_ROOM_LOOKS.cave, world: { kind: 'cavern', rim: [{ kind: 'spires', tex: 'cave_wall', color: 0x7a6a8c, d: 14, n: 26, h: 9 }], wall: { tex: 'cave_wall', color: 0x6a5a7c, r: 34, h: 36 }, fogTop: 0.55 },
+      env: { look: HQ_ROOM_LOOKS.cave, world: { kind: 'cavern', wall: { tex: 'cave_wall', color: 0x6a5a7c, r: 34, h: 36 }, fogTop: 0.55 },
              tint: 0x1c1428, tintAmt: 0.45, stars: 0.9, nebula: 1.0, fog: { color: 0x2a2038, amount: 0.55, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_fairy_forest', label: 'Fairy Forest', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
       biomes: ['forest', 'astral'], deltaPad: 'grass_2', near: 'fairy_forest',
@@ -18463,7 +18462,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_agartha', label: 'Agartha', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cave_floor',
       biomes: ['inner_earth', 'ancient'], deltaPad: 'marble_light', near: 'agartha',
       desc: '24×24 prebuilt, 8v8 — the inner-earth capital: jade terraces under the sun-shaft, crystal spires, glowing rivers & mushroom groves',
-      env: { world: { kind: 'cavern', rim: [{ kind: 'spires', tex: 'rocks_dark_fantasy', color: 0x8a9a88, d: 15, n: 24, h: 9 }], wall: { tex: 'rocks_dark_fantasy', color: 0x7a8a78, r: 36, h: 38 }, fogTop: 0.5 },
+      env: { world: { kind: 'cavern', wall: { tex: 'rocks_dark_fantasy', color: 0x7a8a78, r: 36, h: 38 }, fogTop: 0.5 },
              tint: 0x2a1f0d, tintAmt: 0.40, stars: 0.3, nebula: 0.9, fog: { color: 0x8a6f3a, amount: 0.5, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_vatican', label: 'Vatican City', w: 20, h: 20, teamSize: 6, tier: 3, base: 'cobblestone',
       biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble_light', near: 'vatican',
@@ -18473,12 +18472,12 @@ const EW_MAP_META = [
     { id: 'prebuilt_bohemian_grove', label: 'Bohemian Grove', w: 20, h: 20, teamSize: 6, tier: 3, base: 'grass_2',
       biomes: ['forest', 'clandestine'], deltaPad: 'dirt', near: 'bohemian_grove',
       desc: '20×20 prebuilt, 6v6 — old-growth redwoods around the ritual clearing: the Owl, the altar fire, lantern trails & the creek',
-      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', d: 30, n: 12, h: 9, ranks: 1 }] },
+      env: { world: { kind: 'plain' },
              tint: 0x0d1810, tintAmt: 0.55, stars: 0.8, nebula: 0.7, fog: { color: 0x16281a, amount: 0.65, top: 0.09, band: 0.6 }, scenery: 'eyes', density: 0.6 } },
     { id: 'prebuilt_gobekli', label: 'Göbekli Tepe', w: 16, h: 16, teamSize: 6, tier: 3, base: 'dirt_3',
       biomes: ['ancient', 'desert'], deltaPad: 'dirt_3', near: 'gobekli',
       desc: '16×16 prebuilt, 6v6 — the first temple: concentric ring walls, T-pillar sentinels, excavation trenches & the twin great pillars',
-      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'mountain', color: 0xc8b090, d: 30, n: 12, h: 7, ranks: 1 }] },
+      env: { world: { kind: 'plain' },
              tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'ruins' } },
     { id: 'prebuilt_dumb', label: 'D.U.M.B.', w: 16, h: 16, teamSize: 6, tier: 3, base: 'tilefloor',
       biomes: ['underground_base', 'clandestine'], deltaPad: 'tilefloor', near: 'dumb',
@@ -18550,7 +18549,7 @@ const EW_MAP_META = [
     { id: 'prebuilt_strip', label: 'The Strip', w: 16, h: 16, teamSize: 6, tier: 2, base: 'concrete_floor',
       biomes: ['urban', 'neon_city'], deltaPad: 'urban_street', near: 'strip',
       desc: '16×16 prebuilt, 6v6 — the boulevard at night: the Strip down the middle with its median and sidewalks, fountain plazas, the wedding chapel and the storefronts (roof-walkable), palms, the marquees, the Luxor\'s obelisk',
-      env: { world: { kind: 'plain', rim: [{ kind: 'peaks', tex: 'wasteland', color: 0xb08868, mesa: true, d: 34, n: 12, h: 6, ranks: 1 }], fogTop: 0.16 },
+      env: { world: { kind: 'plain', fogTop: 0.16 },
              tint: 0x10131c, tintAmt: 0.5, stars: 0.25, nebula: 0, fog: { color: 0x262a34, amount: 0.4, top: 0.09, band: 0.5 }, scenery: 'city', ambience: 'ambNight' } },   // NO PURPLE (mondo 2026-10-05)
     { id: 'prebuilt_downtown', label: 'Downtown', w: 16, h: 16, teamSize: 6, tier: 1, base: 'concrete_floor',
       biomes: ['urban', 'stadium'], deltaPad: 'urban_street', near: 'downtown',
@@ -28807,6 +28806,12 @@ const DOOR_HQ = {
         trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
         trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
         abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
+        /* THE BABEL HOUSES (2026-11-05, mondo OK'd the Meshy mud-brick concepts B1-B4; the town rim they replace is deleted): one
+           Meshy model per house, real size (`span` = the long side), the door side +Z (the row's `face`), along the Babel room's roads */
+        babel_house_small: { file: 'meshy_babel_house_small.glb', base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 3.5, hd: 2.5 }, block: true },
+        babel_house_stair: { file: 'meshy_babel_house_stair.glb', base: 'misc', span: 7.0, foot: 2.8, rect: { hw: 3.0, hd: 3.5 }, block: true },
+        babel_house_yard:  { file: 'meshy_babel_house_yard.glb', base: 'misc', span: 8.5, foot: 3.0, rect: { hw: 3.35, hd: 4.25 }, block: true },
+        babel_house_row:   { file: 'meshy_babel_house_row.glb', base: 'misc', span: 12.4, foot: 2.5, rect: { hw: 6.2, hd: 2.55 }, block: true },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -43655,6 +43660,12 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -26.25, z: -99.75 }, { key: 'brazier', x: -12.25, z: -99.75 },
                 { key: 'railing_1m',     x: 0, z: 40.8, face: 0 },
                 { key: 'sea_chest',      x: 100, z: 32, face: 300 },
+                /* THE MUD-BRICK HOUSES (2026-11-05, mondo OK'd the Meshy concepts; the town rim is deleted): one house per spot along the
+                   roads, doors to the road, clear of every arena size, the doors and the natives */
+                { key: 'babel_house_stair', x: -16, z: -90, face: 0 }, { key: 'babel_house_small', x: 24, z: -84, face: 0 },
+                { key: 'babel_house_row', x: 14, z: -104, face: 180 }, { key: 'babel_house_yard', x: 78, z: -100, face: 270 },
+                { key: 'babel_house_small', x: -58, z: 54, face: 270 }, { key: 'babel_house_row', x: -44, z: 78, face: 180 },
+                { key: 'babel_house_yard', x: -40, z: 98, face: 0 }, { key: 'babel_house_stair', x: -78, z: 90, face: 90 },
             ],
             agents: [],
             npcSpots: [

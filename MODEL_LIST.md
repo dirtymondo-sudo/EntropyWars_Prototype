@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 604 |
+| Meshy AI | no | 608 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -34,7 +34,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
 "Claude in code" = procedural stand-ins drawn from three.js primitives — the props still waiting for a real model (§8, ranked in §10).
-Not in the count: the horizon. **61 of the 165 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
+Not in the count: the horizon. **61 of the 163 builders drawn past the board** (far rosters, near settings, rims, room weenies, board
 monuments) are three.js shapes with no model file — §8b lists them, §11 says which look bad and what could replace them.
 
 ## 2. Units — the playable races (sprites.js RACE_MODELS_3D)
@@ -1127,6 +1127,15 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | computer_chair_blue | `Assets/world/hq/models/computer_chair_blue.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | computer_chair_grey | `Assets/world/hq/models/computer_chair_grey.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 
+### Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) — Meshy AI (4)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| babel_house_row | `Assets/world/props/meshy/meshy_babel_house_row.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_small | `Assets/world/props/meshy/meshy_babel_house_small.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_stair | `Assets/world/props/meshy/meshy_babel_house_stair.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_yard | `Assets/world/props/meshy/meshy_babel_house_yard.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+
 ### Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) — Asset pack (4)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1877,13 +1886,6 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `vatican` | model files + three.js shapes | `greekcol` (Meshy AI), `obelisk3d` (Meshy AI) | Box, Circle, Cone, Cylinder, Plane, glow sprites |
 | `vatican_roof` | three.js shapes (code) | — | Box, Circle, Cylinder, Plane, custom mesh, glow sprites |
 
-### 8b-C. THE WORLD's rim — the rings of land past a planet / plain board (`_WD_RIM`) (2)
-
-| key | made with | model files | three.js shapes |
-| --- | --- | --- | --- |
-| `peaks` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
-| `spires` | model files | `asteroid_a` (Asset pack (author not recorded yet)), `asteroid_b` (Asset pack (author not recorded yet)), `standingstone` (Meshy AI) | — |
-
 ### 8b-D. The room weenies — the fixed landmarks on an open room's horizon (`_hqLandmarkBuilders`, data.js `shell.sky.landmarks`) (9)
 
 | key | made with | model files | three.js shapes |
@@ -1971,7 +1973,7 @@ snow mountains drawn in its shader), the sky dome, stars, clouds and the lenticu
 | `ziggurat` | three.js shapes (code) | — | Box | _hzZiggurat |
 | `ziggurat_block` | three.js shapes (code) | — | Box | _hzZigguratBlock |
 
-**61 of these 165 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
+**61 of these 163 rows are code only (three.js shapes / glow sprites, no model file); the monuments reuse many roster builders, so a builder can count twice.**
 
 **The cone mountains are gone** (2026-11-03, mondo: "they look terrible"): the rooms' far weenies `peak` / `mountain`
 (Mount Shasta over the woods and the ranch, the Range over Area 51, the Transantarctics, Olympus Mons, the Clash temple's
