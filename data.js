@@ -65577,6 +65577,7 @@ const EW_CREDITS = {
         ] },
         { title: 'FONTS', rows: [
             { role: 'Aida Serifa', by: 'Manfred Klein' },
+            { role: 'Nosifer', by: 'Typomondo', license: 'SIL OFL 1.1', source: 'https://fonts.google.com/specimen/Nosifer' },
             { role: 'Contra', by: 'Fredrick Nader \u00b7 Apostrophic Lab', source: 'http://www.apostrophiclab.com' },
             { role: 'Ghiya Strokes', by: 'Cundrawan (cove703)' },
             { role: 'Indira K', by: 'CAT Fonts' },
