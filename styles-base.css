@@ -5603,7 +5603,12 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-assigned .pb-looks-note, .pb-assigned .pb-looks-empty { line-height: 1.5; overflow-wrap: anywhere; }
 .pb-assigned .pb-creator-options { margin: 8px 0 0; }
 .pb-assigned .pb-creator-options .ms-tty-btn { white-space: normal; text-align: center; padding: 6px 12px; }
-.pb-assigned-chip .pb-look-load { cursor: default; max-width: none; flex-wrap: wrap; }
+.pb-assigned-chip .pb-look-load { cursor: pointer; max-width: none; flex-wrap: wrap; text-align: left; }
+.pb-assigned-chip .pb-look-load:hover:not(:disabled) { background: rgba(240, 204, 131, .08); }
+.pb-assigned-chip .pb-look-load:disabled { cursor: default; }
+/* THE ASSIGNED LOOKS, LOADED (2026-11-05): a chip is a button that loads its look; the look on the stage is outlined gold */
+.pb-assigned-chip.on { border-color: #f0cc83; box-shadow: 0 0 0 1px #f0cc83 inset; }
+.pb-assigned-tag.pb-assigned-here { color: #f0cc83 !important; border-color: #f0cc83; }
 .pb-assigned-chip .pb-look-load span { overflow: visible; white-space: normal; }
 .pb-assigned-tag { font-size: 9px !important; letter-spacing: .08em; padding: 1px 5px; border: 1px solid #6f5d3d; border-radius: 6px; color: #66ff8a !important; }
 .pb-assigned-chip.baked { opacity: .7; }
