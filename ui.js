@@ -4829,6 +4829,14 @@
                 if (state._quickAoeStage === 'confirm') {
                     playSfx('uiBack');
                     state._quickAoeStage = 'place';
+                    /* THE CONFIRM FRAME: the CONFIRM step framed only the cast (battle.js _frameQuickAoeConfirm);
+                       placing it yourself frames the whole reach again */
+                    if (typeof window._frameQuickAoePlace === 'function') {
+                        const _qpU = getSelectedUnit();
+                        const _qpSp = _qpU ? ((_qpU.spells || []).find(s => s && s.name === state.selectedTool)
+                            || (_qpU._raceAbilities || []).find(s => s && s.name === state.selectedTool)) : null;
+                        try { if (_qpSp) window._frameQuickAoePlace(_qpU, _qpSp); } catch (e) { /* camera only */ }
+                    }
                     renderBattleSelectionUI();
                     return;
                 }
