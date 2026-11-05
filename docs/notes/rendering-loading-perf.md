@@ -1382,3 +1382,19 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   stops the same-character path flipping it to ready early); the board / HQ walk (`_attachUnitModel`) hides the model and keeps
   the sprite stand-in until dressed (`_unitRevealDressed`; the rig-cache fast path leaves the stand-in to it); the team room's
   `show()` and the unit dock wait too. Later picks on a live body are not hidden (the old garment stays until the new one is in).
+
+## THE CACHED LANDING + THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo on the Singularity Arena, WebGPU: "these crystals are not pixelating, or it looks like they are flickering on and off of being pixelated")
+- Cause (measured in the cloud browser, WebGPU and the WebGPU renderer's WebGL2 backend): on a board with crystal tiles,
+  `rebuildObjects` ran EVERY frame (7 rebuilds in 7 frames). `rebuildObjects` clears `_objectsDirty`, then calls
+  `rebuildTerrainDecorations`; each crystal tile's cluster is `_gemCluster` → `_crystalModel` → `_miscModelInstance`, and a
+  model already in `_miscModelCache` lands synchronously inside that call, whose callback set `_objectsDirty = true` again.
+  So every board object and every crystal was a new mesh each frame. ThreePost's models-only pixelate mask only tags meshes
+  (`_ew_pixelate` → camera layer 8) in a scan every PIX_SCAN_MS (400 ms), so at 30 fps the crystals were in the mask about
+  one frame in twelve: the flicker, smooth most of the time.
+- Fix 1 (three-renderer.js `_miscModelInstance`, THE CACHED LANDING): a landing inside the call only sets `_shadowsDirty`;
+  a file that lands later still sets `_objectsDirty` as before. Board objects + decorations now rebuild only when something
+  really changes (also a CPU win on every crystal board since PR #788/#792).
+- Fix 2 (three-post.js THE MASK SEES NEW MODELS AT ONCE): `THREE.Object3D.prototype.add` bumps a counter (`_pixHookAdd`),
+  and `_renderPixelMask` re-scans on the first frame after any add, so a rebuilt board, a new instance-pass batch or a
+  spell prop clone is pixelated on the first frame it draws. The 400 ms timed scan stays for a flag set after the add.
+- Online: looks only, both seats run their own renderer; nothing relayed.

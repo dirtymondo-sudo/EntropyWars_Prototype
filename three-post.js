@@ -1305,6 +1305,23 @@ const ThreePost = (function () {
     var PIX_SCAN_MS = 400;      // re-tag newly spawned models a few times a second
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
+    /* THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo: "these crystals are not pixelating, or it looks like they are
+       flickering on and off of being pixelated", the Singularity Arena on WebGPU): a mesh only reached the mask once the
+       scan above tagged it, and the scan ran every PIX_SCAN_MS. The board's crystal clusters are rebuilt whenever the
+       terrain or the heights change (three-renderer.js rebuildTerrainDecorations: every crystal a new mesh), the fight's
+       instance pass makes new batches as files land, a spell's prop is a fresh clone per cast — and each of them drew
+       smooth for up to 400 ms (a dozen frames at 30 fps) before the mask picked it up: the flicker. Every Object3D.add now
+       bumps a counter (one increment, nothing else), and the mask re-scans on the first frame after anything was added,
+       so a new model is pixelated on the frame it first draws. The timed scan stays for a flag set after the add. */
+    var _pixAddN = 0, _pixScanN = -1;
+    function _pixHookAdd() {
+        if (typeof THREE === 'undefined' || !THREE.Object3D) return;
+        var P = THREE.Object3D.prototype;
+        if (P._ew_pixAddHook) return;
+        var add = P.add;
+        P.add = function () { _pixAddN++; return add.apply(this, arguments); };
+        P._ew_pixAddHook = true;
+    }
 
     function _scanPixelMaskTargets() {
         if (!_scene) return;
@@ -1332,7 +1349,8 @@ const ThreePost = (function () {
         if (!_renderer || !sc || !cam || typeof THREE === 'undefined') return false;
         try {
             var now = performance.now();
-            if (now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _scanPixelMaskTargets(); }
+            _pixHookAdd();
+            if (_pixScanN !== _pixAddN || now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _pixScanN = _pixAddN; _scanPixelMaskTargets(); }
 
             if (!_maskVec) _maskVec = new THREE.Vector2();
             _renderer.getDrawingBufferSize(_maskVec);
