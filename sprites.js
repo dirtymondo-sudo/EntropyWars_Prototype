@@ -4949,7 +4949,6 @@ const EW_IDLE_POSES = [
   { id: 'Crouch_Idle_Loop',       label: 'Crouch',          clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
   { id: 'Zombie_Idle_Loop',       label: 'Zombie',          clip: 'Zombie_Idle_Loop',       lib: 1, ts: 1.0 },
   /* THE MOCAP LIBRARY (2026-11-05, rev 2): the motion-capture idles (lib 5, MOC1_CMU.glb, bake-mocap.py + mocap-clips.json) */
-  { id: 'MOC_Heroic_Idle',        label: 'Heroic stance',   clip: 'MOC_Heroic_Idle',        lib: 5, ts: 1.0 },
   { id: 'MOC_Calm_Idle',          label: 'Calm',            clip: 'MOC_Calm_Idle',          lib: 5, ts: 1.0 },
   { id: 'MOC_ShiftWeight_Idle',   label: 'Weight shift',    clip: 'MOC_ShiftWeight_Idle',   lib: 5, ts: 1.0 },
   { id: 'MOC_Fidget_Idle',        label: 'Fidget',          clip: 'MOC_Fidget_Idle',        lib: 5, ts: 1.0 },
@@ -4965,12 +4964,15 @@ const EW_WALK_STYLES = [
   { id: 'default',             label: 'Default' },
   { id: 'MOC_Normal_Walk',     label: 'Normal',      clip: 'MOC_Normal_Walk',     lib: 5, ts: 2.37 },
   { id: 'MOC_Confident_Walk',  label: 'Confident',   clip: 'MOC_Confident_Walk',  lib: 5, ts: 2.63 },
-  { id: 'MOC_Macho_Walk',      label: 'Macho',       clip: 'MOC_Macho_Walk',      lib: 5, ts: 3.27 },
   { id: 'MOC_Strong_Walk',     label: 'Strongman',   clip: 'MOC_Strong_Walk',     lib: 5, ts: 3.52 },
   { id: 'MOC_Heavy_Walk',      label: 'Heavyset',    clip: 'MOC_Heavy_Walk',      lib: 5, ts: 3.21 },
   { id: 'MOC_Cool_Walk',       label: 'Cool',        clip: 'MOC_Cool_Walk',       lib: 5, ts: 2.63 },
   { id: 'MOC_Slow_Walk',       label: 'Slow',        clip: 'MOC_Slow_Walk',       lib: 5, ts: 3.65 },
-  { id: 'MOC_LegsApart_Walk',  label: 'Bow-legged',  clip: 'MOC_LegsApart_Walk',  lib: 5, ts: 3.02 },
+  // the walks the game already had (mondo 11-05: "Are there not other walk animations from the ual 1 or 2?"): UAL1 Walk_Loop +
+  // Walk_Formal_Loop (Quaternius), MAL1 Walking_Woman (the Meshy batch; MAL1 Walking is Default)
+  { id: 'UAL_Walk_Loop',       label: 'UAL walk',    clip: 'Walk_Loop',           lib: 0, ts: 2.56 },
+  { id: 'UAL_Walk_Formal',     label: 'UAL formal',  clip: 'Walk_Formal_Loop',    lib: 0, ts: 2.56 },
+  { id: 'MAL_Walking_Woman',   label: 'Meshy woman', clip: 'Walking_Woman',       lib: 2, ts: 1.92 },
 ];
 const EW_APPEARANCE_ENUMS = {
   idle: EW_IDLE_POSES.map(o => o.id),   // THE IDLE POSE ('default' first = the body's own idle)

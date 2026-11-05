@@ -2926,6 +2926,27 @@ found every smoke/fire/dust/explosion particle is ONE canvas-painted still. He p
   0.1) softens the cell border so a cloud that touched the render box has no straight edge. `_fbBlast`'s o.ml / o.grow /
   o.op1 still describe the sheet's part (same speed, size and opacity at the sheet's end); the tail is added on top
   (Meteor's big blast 2.1 s -> 3.8 s). Before/after strips: /mnt/project-files/smoke-fade/.
+- **THE SPELL SIMS (2026-11-05; mondo 11-03: "we're using the same fire flipbook for a fireball and a meteor? ... make new
+  blender vfx for fireball and meteor"):** the 11-03 thread that started this lost everything with its machine (nothing was
+  pushed); redone from scratch, know-how in docs/BLENDER_VFX_GUIDE.md. Four sims of their own (`bake-vfx.py sim`, presets
+  `fbhit` `mblast` `fbfly` `mtail`), each rendered in TWO passes of one cached sim: `-smoke` (lit smoke, normal blend) and
+  `-glow` (the fire's emission on black, brightness -> alpha, ADDITIVE, a hair nearer the lens). `sheet2` cuts them; the
+  one-shots END EMPTY (short log dissolve in the sim + an alpha ease over the last quarter; it prints the last cell's max
+  alpha, 0), so they play to the end with `fbTail: 0`. Sheets on R2 `Assets/fx/sprites/fb_<sim>_{smoke,glow}.png` (repo
+  copies Assets/Sprites/vfx/), three-vfx.js `_FLIPBOOKS` `fb-<sim>-<pass>`; `ThreeVFX.flipbookFrame(key, i)` hands one cut
+  frame to a sprite. three-vfx-effects.js THE FLIPBOOK PILOT: `_fbSim(F, key, o)` (one blast, both passes), `_fbTrail`
+  (a looping sim on two sprites riding a body: `center` = the sheet's `head`, `material.rotation` = the flight's direction
+  on screen, eased), `_fbMeteorTail`.
+  - Fireball (fire1): FLIGHT = `fbfly` (a flame ball in a head wind, flames licking back) replaces the halo + the painted
+    grass-fire stream + the flame particles (the white heart stays, smaller; fewer smoke puffs). HIT = `fbhit` (a lumpy
+    yellow-orange ball that balloons, licks out and rolls up into light grey smoke) in place of fb-explosion.
+  - Meteor: the falling rock gets the `mtail` tail (a burning rock in a strong wind: red flames + thick dark smoke,
+    ~4.6 tiles long, pointing back up its path); the landing = `mblast` (a wide red dome on the floor, a brown dust ring
+    rolling out along the ground, a fire stem rising into a column) at the centre + up to 4 smaller ones on seen tiles.
+  - fb_explosion.png (the pilot sheet) is no longer loaded; the file stays on R2. `_fbBlast` + its tail stay for any
+    future caller. Online: all of it runs inside the relayed fire() intents (`_pzSeen` keeps fogged tiles empty).
+  - Two traps found baking: changing the domain's materials after a REPLAY bake frees the cache (passes switch the view
+    layer's `material_override`); Mantaflow's `color` grid renders near-black in Cycles 5.2 (one smoke colour per sim).
 - Next (only on mondo's say): flame, explosion-orange, element noise set for `_sigEnergyMat`, VFX mesh kit, baked noise
   for the burning-tile raymarch.
 
