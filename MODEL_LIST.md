@@ -29,7 +29,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
-| Motion capture (real actors), cut into loops by Claude | yes (motion) | 1 |
+| Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -58,7 +58,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | black goo | `Assets/characters/races/blackgoo/Meshy_AI_black_goo_with_one_ey_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bligblog | `Assets/characters/races/bligblog/Meshy_AI_bligblog_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | bunny girl (female) | `Assets/characters/races/bunnygirl/Meshy_AI_bunny_girl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| catgirl (female) | `Assets/characters/races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| catgirl (female) — creator look also baked | `Assets/characters/races/catgirl/female/Meshy_AI_catgirl_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chef — creator look also baked | `Assets/characters/races/chef/male/Meshy_AI_chef_male_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | chess piece | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Black_Pawn` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | clown | `Assets/characters/races/clown/Meshy_AI_evil_clown_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -70,8 +70,8 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | cult leader — creator look also baked | `Assets/characters/races/cultleader/Meshy_AI_cult_leader_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | cyborg (female) | `Assets/characters/races/cyborg/female/Meshy_AI_hot_girl_futuristic__biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | deep sea fish | `Assets/characters/races/deepseafish/Meshy_AI_alien_fish_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| demon | `Assets/characters/races/demon/male/Meshy_AI_red_demon_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
-| demon (female) | `Assets/characters/races/demon/female/Meshy_AI_demon_female_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| demon — creator look also baked | `Assets/characters/races/demon/male/Meshy_AI_red_demon_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
+| demon (female) — creator look also baked | `Assets/characters/races/demon/female/Meshy_AI_demon_female_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | demon princess (female) | `Assets/characters/races/demonprincess/female/Meshy_AI_hot_girl_hell_princ_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | dinosaur | `Assets/characters/races/dinosaur/male/Meshy_AI_dinosaur_realistic_biped_Character_output.glb` | Meshy AI | Meshy AI rigged character (mondo) |
 | djinn | `Assets/characters/races/djinn/male/Meshy_AI_a_djinn_Running.glb` | Meshy AI | Meshy AI rigged character (mondo) |
@@ -224,6 +224,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | MAL2_Sniper | `Assets/characters/animations/MAL2_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js) |
 | MAL3_Sniper | `Assets/characters/animations/MAL3_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js) |
 | MOC1_CMU | `Assets/characters/animations/MOC1_CMU.glb` | Motion capture (real actors), cut into loops by Claude | CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py |
+| MOC2_100STYLE | `Assets/characters/animations/MOC2_100STYLE.glb` | Motion capture (real actors), cut into loops by Claude | The 100STYLE Dataset (Ian Mason, CC BY 4.0), converted by mocap-100style.py, in-place loops by bake-mocap.py |
 | UAL1_Standard | `Assets/characters/animations/UAL1_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |
 | UAL2_Standard | `Assets/characters/animations/UAL2_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |
 
