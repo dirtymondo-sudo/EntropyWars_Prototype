@@ -1365,6 +1365,10 @@ assigned created characters so i can give to you to bake in". Before this, EXPOR
   this slot when it is that race; else the team's slot of that race (selected); else that race goes on THIS slot (pickRace(race, g,
   stay) = the roster pick without the jump to ABILITIES, so the creator stays open). Gender follows the look. The store is untouched.
   The chip of the look on the stage is outlined gold with ON THE STAGE. Proof: /mnt/project-files/assigned-looks/load_*.png.
+- **BAKED 2026-11-05 (export 10:33, `Entropy_Wars_Race_Looks_4_assigned_20261105-1033.json`)**: `node bake-looks.js` on mondo's file,
+  values exactly as exported (normalize changed nothing): Santa Clause ♂ + Cowboy ♂ rows REPLACED, Catgirl ♀ + Demon ♀ ADDED; every
+  other row untouched (Cowboy ♀ too). Still saved looks (EW_RACE_LOOKS_ARE_DEFAULT false). Proof: the forge's USE THE SAVED <RACE>
+  LOOK on all four, /mnt/project-files/assigned-looks-1033/.
 
 ## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
 mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
@@ -1652,3 +1656,48 @@ three-renderer.js `wearCoatFit` (right after the first wearFollow in wearLayers0
 Checked in a real browser (idle pose + rest): his Santa, the same coat on plain MPFB male, his cowboy (greatcoat looks as before),
 demon, catgirl. Shots: /mnt/project-files/santa-coat/. Known: small skin specks through the pack trousers at the heavy shins
 just over the boot (there with OUTSIDE too, and before this change).
+
+## THE CLOTH COLLISION (2026-11-05, plan row 12w)
+mondo: "Can you not just add collision to all the mpfb bodies and clothes?" (thread cmsg_01XWpxyTn3nnw98znVzKdFjsRJYzgHjRXtmeoBaW2t94T1).
+Before this, every fit-time system (skin cover, coat fit, coat hang, layer push) only fixed the REST shape; once posed, cloth and body ride
+different bone weights and drift into each other. THE CLOTH COLLISION is a per-vertex body collision in the vertex shader:
+- FIT (rig `collideFit(part)`, after `update()`, garment loads (`part.colDirty`) and jiggle re-weights; throttled 150 ms in tick; slider drags
+  defer it): for every cloth vertex of every visible garment (`collideList`: coded shells incl. lathe pieces via `mesh._ewColBase`, pack /
+  Blender wear, accents; not solid / grip / hideHead) find the nearest skin vertex on the CURRENT body (sliders + jiggle weights in),
+  store it as the anchor (position, smoothed normal, body bone indices packed j1 + 256*j2, weights) + its rest stand-off c0. The band is
+  [c0 - min(1.5 mm, half the gap to the layer below), c0 + min(4 mm, half the gap to the layer above)], gaps from 2 cm anchor cells of the
+  other garments. Fades out for c0 3-5 cm (loose cloth hangs free) and when the vertex slides 3-6 cm off its anchor. A SECOND ANCHOR (the
+  nearest skin vertex of another bone within 4 cm) only pushes outward and is gated off when its posed normal faces the first one (a crease:
+  pushing off one skin would push into the other). Attributes: ewColA/N/J/W (+ ewColA2/N2/W2). `collideGuard` drops stale ones.
+- FRAME (GLSL `_ewColPatch` after `#include <skinning_vertex>` under `EW_COL`; node twin `_ewNodeCol` via `_ewNodeDress` when `m.ewCol==='on'`):
+  skin the anchor with the body's own bone matrices (every garment skeleton starts with the body's bones), push the cloth along the anchor
+  normal back into its band, at most 3 cm. Uniform `_EW_COL` = window.EW_CLOTH_COLLIDE {x on, y/z slide fade, w cap}.
+- LAYER ORDER: garments ranked by median c0; `_ewColMark` gives rank r a polygonOffset (factor -min(3, 0.5r), units -2r) so the outer
+  layer wins the depth test where two layers touch = no flicker.
+- Board / team room / spell doubles keep it: `_ewColMark(lm, n)` on the Lambert swaps (unit build, `_trLookMats`, `_raceActor` lit).
+- Cost: fit 5-43 ms per clothes change (22k cloth points); frame time unchanged within noise (cowboy 127 vs 129 ms/frame, Santa 120 vs 123 on
+  swiftshader). Node renderer: checked on ?ew_gpu=webgl2 (same TSL; headless WebGPU loads no models even on main): 20 materials dressed, no errors.
+- Measured (cloth points inside the posed skin, off -> on, same frame): cowboy pockets idle 213 -> 136, Santa pockets 139 -> 121, Santa tough
+  89 -> 78, vampire 18 -> 7, coded sword swing 233 -> 162, cowboy crouch 602 -> 589. Tight creases (sitting seat, folded inner elbow) don't
+  improve: a fold can't be cleared by pushing. Probe: Playwright + EWCharViewer.mount, freeze the clip, toggle EW_CLOTH_COLLIDE.x in one frame,
+  CPU replica of the push to count points (scratch only). Kill-switch: EW_DISABLE_CLOTH_COLLIDE / ?ew_collide=0.
+## THE HAIR SHADER + THE HAIR TEXTURES (2026-11-05, character-models-plan row 29e)
+mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves. Are they missing textures or something?"
+- **Textures:** bake-mpfb.py --hair-styles wrote the 70 pack styles with the diffuse cut to 512 px (HAIR_STYLE_PX; the packs ship
+  1024-3600 px) and no normal map (30 styles ship one). `python3 -I bake-hair-tex.py --packs <unzipped mhpacks>` re-packs every
+  charactercreation/hair/mh/*.glb with the pack's own diffuse at up to 1024 px (PNG, alpha) and its normal map (JPEG,
+  material.normalTexture); mesh, UVs, extras untouched. 47 -> 95 MB on R2 (listed in ASSET_MANIFEST.json, so ?h= refetches them).
+  buildHair keeps the loader's normalScale sign (was a fixed +0.6, the green ran the wrong way).
+- **Material (three-renderer.js THE HAIR SHADER, hairMaterial + _ccHairHook):** a MeshPhysicalMaterial (CC_HAIR_LOOK: roughness 0.42,
+  anisotropy 0.82, specularIntensity 0.38, highlight tinted 85 % to the hair colour) whose anisotropic highlight runs along each
+  vertex's strand direction (from the crown, part.skull, leaning down; skinned with the hair so it follows the sway chains) instead
+  of the UV tangent; alpha-to-coverage on the cards. The old MeshStandard 0.55 gave every style the same round plastic highlight and
+  took the stage's lilac rim light as a sheen.
+- **The flat shells:** Hair 05 / 06 / 11 / 12 / 13 / 14, Bobcut hair, Wavy bob (+ Anime hair at 0.7) are one sculpted mesh painted a
+  flat colour with collapsed / overlapping UVs, so no texture can draw strands on them. sprites.js EW_HAIR_STYLES `strands: <depth>`
+  draws strands in 3D from the bind-pose position round the crown (periodic value noise in the angle, 5 octaves, each faded where a
+  pixel would alias it): darker gaps in the albedo + a bump across them. Add `strands` to any other style that reads as a helmet.
+- Classic WebGL only (the creator stage's own renderer). The board / team room keep their Lambert copy (map only), unchanged.
+- Debug: `window.EW_CC_DEBUG_UNLIT` still swaps hair to unlit. Probe: a page mounting EWCharViewer on a fixed div with
+  `{appearance:{body:'mpfb_female', hair:<id>, model:'creator'}}`, frameCreator('face'), screenshot the stage (shots in
+  /mnt/project-files/hair-look/).

@@ -29,7 +29,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
-| Motion capture (real actors), cut into loops by Claude | yes (motion) | 1 |
+| Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -224,6 +224,7 @@ Every race in the game. "creator look also baked" = a character-creator build of
 | MAL2_Sniper | `Assets/characters/animations/MAL2_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js) |
 | MAL3_Sniper | `Assets/characters/animations/MAL3_Sniper.glb` | Meshy AI, reworked by Claude | Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js) |
 | MOC1_CMU | `Assets/characters/animations/MOC1_CMU.glb` | Motion capture (real actors), cut into loops by Claude | CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py |
+| MOC2_100STYLE | `Assets/characters/animations/MOC2_100STYLE.glb` | Motion capture (real actors), cut into loops by Claude | The 100STYLE Dataset (Ian Mason, CC BY 4.0), converted by mocap-100style.py, in-place loops by bake-mocap.py |
 | UAL1_Standard | `Assets/characters/animations/UAL1_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |
 | UAL2_Standard | `Assets/characters/animations/UAL2_Standard.glb` | Asset pack | Universal Animation Library · Quaternius · CC0 |
 
