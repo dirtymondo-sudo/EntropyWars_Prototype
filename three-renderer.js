@@ -2217,9 +2217,15 @@ const ThreeRenderer = (function () {
     function _asGltfMgr() {
         if (_asGltfMgrObj || typeof THREE === 'undefined' || typeof THREE.LoadingManager !== 'function') return _asGltfMgrObj || undefined;
         _asGltfMgrObj = new THREE.LoadingManager();
+        /* (2026-11-05: the loader hands the modifier path + uri UNRESOLVED, ".../animals/crow_and_rabbit/../textures/atlas.png",
+           which the old test never matched, so the browser still asked for animals/textures/atlas.png and got a 404; the url is
+           resolved first) */
+        var _ATLAS_RE = /\/Assets\/(?:world\/)?animals\/textures\/atlas\.png(?=[?#]|$)/;
         _asGltfMgrObj.setURLModifier(function (u) {
-            return /\/Assets\/(?:world\/)?animals\/textures\/atlas\.png(?:[?#]|$)/.test(String(u))
-                ? String(u).replace(/\/Assets\/(?:world\/)?animals\/textures\/atlas\.png/, '/Assets/world/animals/crow_and_rabbit/atlas.png') : u;
+            var s = String(u);
+            if (s.indexOf('atlas.png') < 0) return u;
+            if (s.indexOf('/../') >= 0 || s.indexOf('/./') >= 0) { try { s = new URL(s, location.href).href; } catch (e) {} }
+            return _ATLAS_RE.test(s) ? s.replace(_ATLAS_RE, '/Assets/world/animals/crow_and_rabbit/atlas.png') : u;
         });
         return _asGltfMgrObj;
     }
@@ -51128,9 +51134,9 @@ const ThreeRenderer = (function () {
        collision: once per frame AFTER the mixer (the rig's tick), each hand's skin (sample points in the hand's own frame) is tested
        against both thighs (the thigh skin's radius along the UpLeg -> knee axis, measured from the body's own vertices, again whenever
        the body's shape changes: the Weight / Muscle sliders); a hand inside a thigh (+ CLR_MARGIN for the cloth) turns its upper arm
-       out from the body just enough to clear it. The turn rises at once and eases back (CLR_EASE), so the swing stays smooth. Bodies
+       out from the body just enough to clear it. The turn rises fast (CLR_RISE) and eases back (CLR_EASE), the thigh radius blends between its bins, so the swing stays smooth. Bodies
        whose rig has no LeftArm / LeftUpLeg / LeftHand bones skip it. Kill-switch: window.EW_NO_ARM_CLEAR = true. */
-    var CLR_MARGIN = 0.012, CLR_EASE = 6, CLR_BINS = 8, CLR_HAND_PTS = 48, CLR_MAX = 0.6;
+    var CLR_MARGIN = 0.014, CLR_EASE = 5, CLR_RISE = 12, CLR_BINS = 8, CLR_HAND_PTS = 48, CLR_MAX = 0.3, CLR_T0 = 0.15;
     function _ccArmClearMeasure(root, st) {
         var B = {};
         root.traverse(function (o) { if (o.isBone && !B[o.name]) B[o.name] = o; });
@@ -51208,9 +51214,10 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < S.pts.length; i++) {
                     P.copy(S.pts[i]).applyMatrix4(wm);
                     d.subVectors(P, A); var along = d.dot(ax), t = along / wl;
-                    if (t < 0.04 || t > 1) continue;
+                    if (t < CLR_T0 || t > 1) continue;   // (not the hip end: a hand resting at the hip / in a pocket is the clip's own)
                     var rad = Math.sqrt(Math.max(0, d.lengthSq() - along * along));
-                    var pen = T.prof[Math.min(CLR_BINS - 1, Math.floor(t * CLR_BINS))] * sc + CLR_MARGIN * wl / 0.42 - rad;   // (the margin in this rig's units: a thigh ~0.42 m)
+                    var fb = Math.max(0, Math.min(CLR_BINS - 1.0001, t * CLR_BINS - 0.5)), b0 = Math.floor(fb), fr = fb - b0;   // the radius between bin centres (no step when a point crosses a bin)
+                    var pen = (T.prof[b0] * (1 - fr) + T.prof[b0 + 1] * fr) * sc + CLR_MARGIN * wl / 0.42 - rad;   // (the margin in this rig's units: a thigh ~0.42 m)
                     if (pen > m) { m = pen; if (deep) deep.copy(P); }
                 }
             }
@@ -51227,15 +51234,16 @@ const ThreeRenderer = (function () {
             if (out.lengthSq() < 1e-8) return; out.normalize();
             S.arm.getWorldPosition(Sh);
             var need = 0;
-            for (var it = 0; it < 4; it++) {
-                var pen = depth(S, deepP); if (pen <= 1e-4) break;
+            for (var it = 0; it < 8; it++) {   // to within ~0.3 mm (a loose solve wobbles frame to frame)
+                var pen = depth(S, deepP); if (pen <= 3e-4) break;
                 d.subVectors(deepP, Sh); var arm = d.length(); if (arm < 1e-3) break;
                 need += Math.min(0.2, pen / arm);
-                if (need > CLR_MAX) { need = CLR_MAX; break; }
+                if (need > CLR_MAX) { need = 0; break; }   // the clip means it (a hand on the leg): no pop out and back
                 applyTurn(S, need);
             }
-            // rises at once, eases back (no snap when the hand swings off the thigh)
-            S.ang = need >= S.ang ? need : Math.max(need, S.ang - S.ang * Math.min(1, CLR_EASE * (sdt || 0)));
+            // rises fast (CLR_RISE), eases back slower (CLR_EASE): no snap when the hand swings off the thigh, no shiver on a still pose
+            var k = need >= S.ang ? CLR_RISE : CLR_EASE;
+            S.ang = (S.ang || 0) + (need - (S.ang || 0)) * Math.min(1, k * (sdt || 0));
             applyTurn(S, S.ang);
             if (S.ang > 1e-4) S.q1 = S.arm.quaternion.clone();
         });
@@ -51292,6 +51300,36 @@ const ThreeRenderer = (function () {
                 m = new THREE.MeshBasicMaterial(o);
             } else m = new THREE.MeshStandardMaterial(o);
             ownedMaterials.push(m); return m;
+        }
+        /* THE COLOURS ON THE VERTICES (2026-11-05, mondo: "tinted clothes appear white" on the Select Your Team room): a worn
+           piece's colour (its wear tint, its layer colour, its beard colour, its own base colour) rides its VERTEX COLOURS (x its
+           baked shade, mesh.userData._ewShade), never its material's colour: every stage that shows a unit (the team room, the
+           board, the walk, the race actors) swaps the rig's materials for its own Lambert copy and sets that copy's colour to its
+           light level (and the AP-spent grey, the hit flash), so a colour kept on the material came out white there. The coded
+           shells and the hair cards already carry theirs this way (paintGarments, setHair); the swap keeps vertexColors and
+           tints the glow with them (_ewVColorEmissiveHook). c = a THREE.Color (null = white). */
+        function wearVC(mesh, c) {
+            var geo = mesh && mesh.geometry, pa = geo && geo.attributes && geo.attributes.position; if (!pa) return;
+            var n = pa.count, at = geo.attributes.color, S = mesh.userData._ewShade || null;
+            var r = c ? c.r : 1, gg = c ? c.g : 1, b = c ? c.b : 1, key = r + ',' + gg + ',' + b;
+            if (!at || at.count !== n || at.itemSize !== 3) { at = new THREE.BufferAttribute(new Float32Array(n * 3), 3); geo.setAttribute('color', at); key = null; }
+            if (key === null || geo.userData._ewVcKey !== key) {
+                var A = at.array;
+                if (S && S.length === n * 3) for (var j = 0; j < n * 3; j += 3) { A[j] = r * S[j]; A[j + 1] = gg * S[j + 1]; A[j + 2] = b * S[j + 2]; }   // (a shade of its own colours: the wing file's)
+                else for (var i = 0; i < n; i++) { var s = S ? S[i] : 1; A[i * 3] = r * s; A[i * 3 + 1] = gg * s; A[i * 3 + 2] = b * s; }
+                at.needsUpdate = true;
+                geo.userData._ewVcKey = r + ',' + gg + ',' + b;
+            }
+            var m = mesh.material;   // the CURRENT material: the stage may have swapped ours for its Lambert copy (its colour is its own)
+            if (m && !m.vertexColors) { m.vertexColors = true; m.needsUpdate = true; }
+            if (m && m.color && ownedMaterials.indexOf(m) >= 0) m.color.setRGB(1, 1, 1);
+        }
+        /* a piece's map (+ the stage copy's glow map, which is the same texture: _attachUnitModel / the team room) */
+        function wearMap(m, map) {
+            if (!m || m.map === map) return;
+            m.map = map;
+            if (m.emissiveMap) m.emissiveMap = map;
+            m.needsUpdate = true;
         }
         function geometry() {
             var g = new THREE.BufferGeometry(); g._ew_shared = true;
@@ -54675,11 +54713,10 @@ const ThreeRenderer = (function () {
                 var m = w.mesh.material, src = holder && holder.material, keys = LAYER_KEYS[w.layer], def = _ccFabricDef(a[keys[0]]);
                 if (!m) return;
                 var map = (src && src.map) || null;
-                if (!w.own && m.map !== map) { m.map = map; m.needsUpdate = true; }
+                if (!w.own) wearMap(m, map);
                 var tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]]), lift = def.file ? 1.18 : 1;
-                if (m.color) m.color.setRGB(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift));
+                wearVC(w.mesh, new THREE.Color(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift)));   // THE COLOURS ON THE VERTICES (x the coat's baked shade)
                 if (m.isMeshStandardMaterial) { m.roughness = def.rough != null ? def.rough : 0.9; m.metalness = def.metal || 0; }
-                if (!m.vertexColors && w.mesh.geometry.attributes.color) { m.vertexColors = true; m.needsUpdate = true; }
             });
         }
         function setFabric(part, which, a, preview) {
@@ -55735,6 +55772,8 @@ const ThreeRenderer = (function () {
         var CC_WING_LIFT = { angel: CC_ANGEL_LIFT, bat: 0.15, dragon: -0.75 };   // 2026-11-02: per wing file (the bat / dragon files sit flatter)
         function dropWings(part) {
             if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
+            /* (only its colour attribute is its own: the file's attributes + index come off first, so dispose frees that alone) */
+            if (part.wings && part.wings.geos) part.wings.geos.forEach(function (wg) { Object.keys(wg.attributes).forEach(function (an) { if (an !== 'color') wg.deleteAttribute(an); }); wg.setIndex(null); wg.dispose(); });
             part.wings = null;
         }
         function chestBone(part) {
@@ -55766,23 +55805,34 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
             g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
             var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
-            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: !!(wl.geometry && wl.geometry.attributes.color) });
+            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: true });
             if (src && src.map) mat.map = src.map;
             if (src && src.normalMap) mat.normalMap = src.normalMap;
+            var geos = [];
             var hinges = [wl, wr].map(function (w, k) {
                 var hinge = new THREE.Group(); hinge.name = k ? 'EWCreator_wingR' : 'EWCreator_wingL';
-                var m = new THREE.Mesh(w.geometry, mat);   // the cached GLB's geometry (_ew_shared): never disposed here
+                /* THE COLOURS ON THE VERTICES: the wing colour rides a colour attribute of this rig's own copy of the wing (the
+                   cached GLB's geometry is shared, never written), x the file's own vertex colours when it has them */
+                var wg = new THREE.BufferGeometry(), ca = w.geometry.attributes.color, sh = null, v;
+                Object.keys(w.geometry.attributes).forEach(function (an) { if (an !== 'color') wg.setAttribute(an, w.geometry.attributes[an]); });
+                if (w.geometry.index) wg.setIndex(w.geometry.index);
+                if (w.geometry.boundingSphere) wg.boundingSphere = w.geometry.boundingSphere.clone();
+                if (ca) { sh = new Float32Array(ca.count * 3); for (v = 0; v < ca.count; v++) { sh[v * 3] = ca.getX(v); sh[v * 3 + 1] = ca.getY(v); sh[v * 3 + 2] = ca.getZ(v); } }
+                wg._ew_shared = true; geos.push(wg);   // (its attributes are the cached file's: only the colour is its own; dropWings frees it)
+                var m = new THREE.Mesh(wg, mat);
+                m.userData._ewShade = sh;
                 m.name = 'EWCreator_wing'; m.quaternion.copy(w.quaternion); m.castShadow = true; m.receiveShadow = true;
                 m._ew_noTwin = true; m._ew_creatorWing = true;
                 hinge.add(m); g.add(hinge); return hinge;
             });
             part.bones[bi].add(g);
-            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat };
+            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat, geos: geos };
             paintWings(part, a); poseWings(part);
         }
         function paintWings(part, a) {
             if (!part.wings) return;
-            part.wings.mat.color.copy(color((a && a.wingsColor) || '#f2f2f2'));
+            var c = color((a && a.wingsColor) || '#f2f2f2');
+            [part.wings.L, part.wings.R].forEach(function (h) { if (h.children[0]) wearVC(h.children[0], c); });   // THE COLOURS ON THE VERTICES
         }
         var _wingE = null;
         function poseWings(part) {
@@ -55924,8 +55974,20 @@ const ThreeRenderer = (function () {
            rest it sagged the skirt 13 degrees into the legs, so the push was always fighting), `rad` 1.2 -> 3 cm + `limExtra` 0.8 cm
            (the pushed cloth sat ON the jeans: the flicker). Measured (jeans px through the coat, front / side / side / back): his
            Cowboy closed greatcoat wide stance 1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7, duster 2,199 / 2,243 -> 15 / 0, cult robe
-           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/.
+           THE BUMPS FIX (2026-11-05, mondo: "all of the coats still have these 2 weird bumps on the side. Some have the 2 bumps on the
+           back side"): the two bumps were the leg push, not the coats (EW_DISABLE_SWAY / no push: none). The flaps fix's clearance
+           (`limExtra` 8 mm past the bind distance + `rad` 3 cm off the leg) was applied in full at every sample along a chain bone, and a
+           straight bone hinged at its head has to swing 1 / t as far at its tail to move the sample at t: 6 mm at the sample 0.15 down
+           the bone stood its tail ~4 cm out, at every chain round the hips, even in the bind pose (the saddlebags at the sides, the two
+           lobes over the seat). Now (1) `limT`: the extra past the bind distance grows along the bone (x t), so a tail never stands out
+           more than limExtra; (2) `poseA` [15, 35] deg: the 3 cm off the leg is x t too while the leg is within 15 deg of where it lies
+           at bind in the Hips' frame (the upright idles: 10-18 deg), and in full from 35 deg (the Wide stance ~40, a walk's stride),
+           so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
+           the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
+           Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -56071,8 +56133,14 @@ const ThreeRenderer = (function () {
                 var rAt = function (t) { var r = rad[0] + (rad[1] - rad[0]) * (t - ctr[0].t) / (ctr[1].t - ctr[0].t); return Math.max(Math.min(rad[0], rad[1]), Math.min(Math.max(rad[0], rad[1]), r)); };
                 var ms = S.M.getMaxScaleOnAxis();   // mesh metres -> the bone's frame
                 var t0 = S.a === bi('LeftUpLeg') || S.a === bi('RightUpLeg') ? O.thighTop : 0;   // (the thigh from a little under the hip joint: its top merges into the seat, and a ball there stood the coat's side out in a shelf)
-                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M });
-                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
+                var hb = bi('Hips'), dH = null;
+                if (hb >= 0 && sk.boneInverses[hb]) {   // THE BUMPS FIX: the leg bone's bind direction in the Hips' frame (how far a pose has turned the leg off it)
+                    var BMi0 = new THREE.Matrix4().copy(BM).invert(), qa = hangBonePos(sk, S.a, BMi0), qb = hangBonePos(sk, S.b, BMi0);
+                    dH = qb.sub(qa).transformDirection(BM).transformDirection(sk.boneInverses[hb]);
+                }
+                var kb = { leg: bones[S.b], hips: hb >= 0 ? bones[hb] : null, dH: dH };
+                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M, kb: kb });
+                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true, kb: kb });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
             });
             if (!caps.length) return;
             /* the rest allowance: per chain bone, per sample along it, per capsule, how far (in the capsule's frame) the cloth stood
@@ -56090,7 +56158,7 @@ const ThreeRenderer = (function () {
                             cp.set(px, py, pz).applyMatrix4(K.M);
                             seg.subVectors(K.pb, K.pa); var sl = seg.lengthSq(), u = sl > 0 ? Math.max(0, Math.min(1, cl.subVectors(cp, K.pa).dot(seg) / sl)) : 0;
                             cl.copy(K.pa).addScaledVector(seg, u);
-                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) + ((O.limExtra || 0) - 0.002) * Hm);
+                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) - 0.002 * Hm);
                             cl.subVectors(cp, cl); var o3 = ((s * NS + q2) * caps.length + ki) * 3; C.side[o3] = cl.x; C.side[o3 + 1] = cl.y; C.side[o3 + 2] = cl.z;   // (which side of the leg the cloth lies on, in the leg's own frame)
                         });
                     }
@@ -56124,19 +56192,31 @@ const ThreeRenderer = (function () {
             for (var ci = 0; ci < NK; ci++) {
                 var K = caps[ci], mw = K.a.matrixWorld;
                 W[ci].a.copy(K.pa).applyMatrix4(mw); W[ci].b.copy(K.pb).applyMatrix4(mw); W[ci].s = _hgS.setFromMatrixScale(mw).x;
+                var kf = 1, kb = K.kb;
+                if (O.poseA && kb && kb.dH && kb.hips && kb.leg) {
+                    _hgP.setFromMatrixPosition(kb.leg.matrixWorld).sub(_hgS.setFromMatrixPosition(mw));
+                    if (_hgP.lengthSq() > 1e-12) {
+                        _hgP.normalize(); _hgS.copy(kb.dH).transformDirection(kb.hips.matrixWorld);
+                        var la = Math.acos(Math.max(-1, Math.min(1, _hgP.dot(_hgS)))) * 180 / Math.PI;
+                        kf = Math.max(0, Math.min(1, (la - O.poseA[0]) / (O.poseA[1] - O.poseA[0])));
+                    }
+                }
+                W[ci].k = kf;
             }
             /* out of every capsule (radius: the fitted one + the coat's clearance, never past the rest allowance), on the side of the
                leg that piece of cloth lies on in the bind pose (front panel in front of the thigh, side panel at its side): pushed
                straight out from the axis, a point that had gone past the middle of the leg came out on the far side and the cloth
                wrapped behind it */
             var _hd = R.hd || (R.hd = new THREE.Vector3());
-            var push = function (p, lim, side, so) {
+            var push = function (p, lim, side, so, ct) {
                 for (var k = 0; k < NK; k++) {
                     var K = caps[k], Wk = W[k];
                     _hgE.subVectors(Wk.b, Wk.a); var L2 = _hgE.lengthSq();
                     var u = L2 > 0 ? Math.max(0, Math.min(1, _hgF.subVectors(p, Wk.a).dot(_hgE) / L2)) : 0;
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad, lim[k]) * Wk.s;
+                    var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
+                    if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
@@ -56178,7 +56258,7 @@ const ThreeRenderer = (function () {
                         var t = O.samples[q], L0 = C.lim ? (i * NS + q) * NK : -1;
                         _hgP.subVectors(_hgC, B.head).multiplyScalar(t).add(B.head);
                         var px = _hgP.x, py = _hgP.y, pz = _hgP.z;
-                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3);
+                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3, t);
                         if (_hgP.x !== px || _hgP.y !== py || _hgP.z !== pz) _hgC.copy(_hgP).sub(B.head).setLength(wl).add(B.head);
                     }
                     if (O.maxPush) {   // (the legs push the cloth out, but never stand it out further than maxPush off where the coat's own weights carry it: a straight bone swung far out from near its root stood up in a flap)
@@ -56287,7 +56367,8 @@ const ThreeRenderer = (function () {
             if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array, ex.uv === 'm' ? function (u) { return u * CC_MESH_UV; } : undefined), 2));
             /* THE BLENDER COAT: its shade (ambient occlusion x each piece's own: buttons, buckle, facings) as vertex colour */
             var Gs = sg.attributes._g;
-            if (Gs) { var GC = new Float32Array(count * 3); for (i = 0; i < count; i++) GC[i * 3] = GC[i * 3 + 1] = GC[i * 3 + 2] = Gs.array[i] / 255; g.setAttribute('color', new THREE.BufferAttribute(GC, 3)); }
+            var shadeG = null;   // (wearVC writes the colour attribute: the shade x the piece's colour)
+            if (Gs) { shadeG = new Float32Array(count); for (i = 0; i < count; i++) shadeG[i] = Gs.array[i] / 255; }
             var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
             for (var v = 0; v < count; v++) {
                 var tot = 0;
@@ -56325,11 +56406,13 @@ const ThreeRenderer = (function () {
             var wearMesh = function (src, geo, nm) {
                 var srcMat = Array.isArray(src.material) ? src.material[0] : src.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
                 if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); texs.push(tex); }
-                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: !!Gs });
-                if (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) mat.color.copy(srcMat.color);   // (an accent keeps its colour over its tile)
+                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: true });
+                var base = (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) ? srcMat.color.clone() : null;   // (an accent keeps its colour over its tile)
                 var mh = part.shell(nm, mat);
                 mh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mh.geometry), 1);
                 mh.geometry = geo;
+                mh.userData._ewShade = shadeG; mh.userData._ewBase = base;   // THE COLOURS ON THE VERTICES (wearVC)
+                wearVC(mh, base);
                 if (swayRig) mh.bind(swayRig.skel, part.body.bindMatrix);
                 else if (hangRig) mh.bind(hangRig.skel, part.body.bindMatrix);   // THE COAT HANG
                 mh.castShadow = true; mh.receiveShadow = true;
@@ -56341,7 +56424,7 @@ const ThreeRenderer = (function () {
             var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
-                ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
+                ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });   // (its own colour attribute: wearVC)
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
                 var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
@@ -56357,7 +56440,7 @@ const ThreeRenderer = (function () {
             /* THE WEAR TINT (2026-11-01): a pack piece that keeps its own texture (not a layer-coloured Blender piece, not facial
                hair) can wear a colour instead (appearance.wearTint, paintWear): its texture's grey levels x the colour */
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
-            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
+            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.userData._ewBase || null } : null;
             if (hangRig) part.hangRun = null;
             /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
                appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
@@ -56657,6 +56740,12 @@ const ThreeRenderer = (function () {
                 }
                 done[r] = cv; rs[r] = ps; cov[i] = cv; push[i] = ps;
             }
+            (part.wear || []).forEach(function (w) {   // (THE COAT TRIMS: the skin under the cloth hidden under a coat's trims)
+                if (!w.trimSkin || !w.mesh || !w.mesh.visible) return;
+                var TS = w.trimSkin, rc = weld ? new Uint8Array(part.repCount || N) : null;
+                if (rc) { for (i = 0; i < N; i++) if (TS[i]) rc[weld[i]] = 1; }
+                for (i = 0; i < N; i++) if (rc ? rc[weld[i]] : TS[i]) { cov[i] = 1; }
+            });
             return { cov: cov, push: push };
         }
         function wearCovers(w) { return !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
@@ -56791,6 +56880,7 @@ const ThreeRenderer = (function () {
            the full one), as under the second outer layer. Below the hips nothing is left out: coat tails and skirts swing open. */
         function wearUnderCover(part) {
             try { wearBootHide(part); } catch (e) { console.warn('[ThreeRenderer] pants + boots hide failed', e); }   // THE PANTS IN THE BOOTS (after THE SECOND OUTER LAYER put the full index back)
+            try { wearTrimHide(part); } catch (e) { console.warn('[ThreeRenderer] coat trim hide failed', e); }   // THE CLOTH UNDER THE TRIMS
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && w.layer !== 'cape' && (w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });
             if (L.length < 2) return;
             var zOf = function (w) { return w.layer === 'outer2' ? 1000 : w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };
@@ -56882,6 +56972,310 @@ const ThreeRenderer = (function () {
             };
             girth.binOf = binOf;
             return girth;
+        }
+        /* THE COAT TRIMS + THE COLLAR (2026-11-05, mondo on his Santa Clause, MPFB heavy + weight 0.6 + belly 0.8: "His coat is all
+           fucked up, the head opening is wayyyyy too wide and there is red clipping through the belt"). The faults of a Blender coat
+           on a body the sliders reshape (runtime only, no GLB rebake; kill-switch window.EW_DISABLE_COAT_FIT = true), wearCoatFit:
+           - THE SKIN FLOOR: a cloth vertex with nothing of the coat over it (straight out from the skin, as fitted) stays `floorGap`
+             outside the skin (the heavy body's shoulder tips stood out of the notch where the body piece meets the sleeve cap).
+           - THE SLEEVES UNDER THE BODY: the coat's pieces (welded; the body = the most triangles, sleeves = big pieces off the middle):
+             a sleeve vertex that lies under the body piece stays under it (as the trims below, eroded a ring for the hide).
+           - THE TRIMS: a coat's accents (the Santa coat's white fur bands, its belt + buckle) are thin sheets / boxes 3-12 mm over the
+             cloth (the cloth runs INSIDE the belt's box), and every vertex rides the sliders by the skin it averages (nearSet, 5 cm):
+             where the belly grows the dense cloth bulged out past the sparse band's flat faces (red through the belt, red streaks
+             across the white hem + front band). Per cloth vertex under an accent on the coat as fitted (w.base: along its outward
+             normal, else straight out from the skin, within `under`), the cloth is held `gap` (at most its fitted depth) behind
+             each accent as it now lies (pulled in, at most `max`, smoothed round it and topped up), takes the bones of the nearest
+             accent vertex (with the belly's own bones it slid out through the belt once posed), and a cloth triangle wholly under
+             the trims leaves the drawn index (wearTrimHide), the skin under it too (skinCover: a cream strip beside the band).
+           - THE COLLAR: the coats' necklines were baked off a hull of the shoulders (the Santa coat's stand collar is ~2.4x the neck's
+             width on every body, a funnel, and the sliders spread it further). Over the coat's top `h` (faded in over `fade`), per
+             angle + 1 cm round the neck's axis, the coat's innermost radius is brought to `neck` off the outermost skin there
+             (the neck, the jaw, the trapezius: the collar comes in until it would touch the skin, never into it) and off the
+             garments worn under it (a shirt's collar under the greatcoat's stand), every layer by the same amount (the trim stays
+             over the cloth); there the collar takes the skin's bones (faded with the pull), so a bowed head does not push the neck
+             out through it, and its normals are rebuilt from its new slope. */
+        var COAT_FIT = { gap: 0.003, under: 0.015, lo: 0.03, max: 0.03, smooth: 0.02, neck: 0.012, h: 0.1, fade: 0.06, rLim: 0.4, floorGap: 0.004, floorMax: 0.03, floorLo: 0.004, floorReach: 0.06 };
+        function coatTriCast(A, idxs, C, nearest) {   // a grid of the triangles `idxs` over the points A; cast(o, n, lo, hi) = the farthest crossing along n in [lo, hi] (-Infinity = none; `nearest`: the nearest, Infinity = none)
+            var grid = new Map(), T = [];
+            idxs.forEach(function (I) {
+                for (var t = 0; t + 2 < I.length; t += 3) {
+                    var a = I[t] * 3, b = I[t + 1] * 3, c = I[t + 2] * 3, id = T.length;
+                    T.push(a, b, c);
+                    var x0 = Math.floor(Math.min(A[a], A[b], A[c]) / C), x1 = Math.floor(Math.max(A[a], A[b], A[c]) / C);
+                    var y0 = Math.floor(Math.min(A[a + 1], A[b + 1], A[c + 1]) / C), y1 = Math.floor(Math.max(A[a + 1], A[b + 1], A[c + 1]) / C);
+                    var z0 = Math.floor(Math.min(A[a + 2], A[b + 2], A[c + 2]) / C), z1 = Math.floor(Math.max(A[a + 2], A[b + 2], A[c + 2]) / C);
+                    if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > 64) continue;
+                    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) for (var gz = z0; gz <= z1; gz++) { var k = gx + ',' + gy + ',' + gz, l = grid.get(k); if (l) l.push(id); else grid.set(k, [id]); }
+                }
+            });
+            var stamp = new Int32Array(T.length + 1), st = 0, step = C * 0.5;
+            return function (ox, oy, oz, nx, ny, nz, lo, hi) {
+                var best = nearest ? Infinity : -Infinity; st++;
+                for (var s0 = lo; s0 <= hi + step; s0 += step) {
+                    var l = grid.get(Math.floor((ox + nx * s0) / C) + ',' + Math.floor((oy + ny * s0) / C) + ',' + Math.floor((oz + nz * s0) / C)); if (!l) continue;
+                    for (var q = 0; q < l.length; q++) {
+                        var tid = l[q]; if (stamp[tid] === st) continue; stamp[tid] = st;
+                        var a = T[tid], b = T[tid + 1], c = T[tid + 2];
+                        var e1x = A[b] - A[a], e1y = A[b + 1] - A[a + 1], e1z = A[b + 2] - A[a + 2], e2x = A[c] - A[a], e2y = A[c + 1] - A[a + 1], e2z = A[c + 2] - A[a + 2];
+                        var px = ny * e2z - nz * e2y, py = nz * e2x - nx * e2z, pz = nx * e2y - ny * e2x, det = e1x * px + e1y * py + e1z * pz;
+                        if (Math.abs(det) < 1e-12) continue;
+                        var inv = 1 / det, tx = ox - A[a], ty = oy - A[a + 1], tz = oz - A[a + 2], u = (tx * px + ty * py + tz * pz) * inv;
+                        if (u < -0.01 || u > 1.01) continue;
+                        var qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, vv = (nx * qx + ny * qy + nz * qz) * inv;
+                        if (vv < -0.01 || u + vv > 1.02) continue;
+                        var d = (e2x * qx + e2y * qy + e2z * qz) * inv;
+                        if (d >= lo && d <= hi && (nearest ? d < best : d > best)) best = d;
+                    }
+                }
+                return best;
+            };
+        }
+        function isAccOf(w) {   // a vertex flag: used by one of the garment's accents (trims, belt, buckle)
+            var n = w.mesh.geometry.attributes.position.count, f = new Uint8Array(n);
+            (w.accents || []).forEach(function (mh) { var I = mh._ewIx0 || (mh.geometry.index ? mh.geometry.index.array : null); if (I) for (var t = 0; t < I.length; t++) f[I[t]] = 1; });
+            return f;
+        }
+        /* THE SLEEVES UNDER THE BODY (wearCoatFit), once per garment on its fitted shape B: the cloth's pieces (welded by position), the
+           body (the most triangles) and the sleeves (pieces of >= 100 triangles off the middle, each tucked 5-10 cm up under the body's
+           armhole): { bodyIx: the body's triangles, sleeveV: a flag per sleeve vertex } or null */
+        function coatPieces(part, B, clothIx, isAcc) {
+            var n = B.length / 3, v, t, W = new Int32Array(n), wk = new Map();
+            for (v = 0; v < n; v++) { var pk = Math.round(B[v * 3] * 1e4) + ',' + Math.round(B[v * 3 + 1] * 1e4) + ',' + Math.round(B[v * 3 + 2] * 1e4), wi = wk.get(pk); if (wi === undefined) { wi = v; wk.set(pk, v); } W[v] = wi; }
+            var par = new Int32Array(n); for (v = 0; v < n; v++) par[v] = v;
+            var find = function (x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+            for (t = 0; t + 2 < clothIx.length; t += 3) { if (isAcc[clothIx[t]]) continue; var a = W[clothIx[t]], b = W[clothIx[t + 1]], c = W[clothIx[t + 2]]; par[find(a)] = find(b); par[find(c)] = find(b); }
+            var tris = new Map(), cxs = new Map();
+            for (t = 0; t + 2 < clothIx.length; t += 3) { if (isAcc[clothIx[t]]) continue; var r = find(W[clothIx[t]]); tris.set(r, (tris.get(r) || 0) + 1); var cxa = cxs.get(r) || [0, 0]; cxa[0] += B[clothIx[t] * 3]; cxa[1]++; cxs.set(r, cxa); }
+            var body = -1, bt = 0; tris.forEach(function (cnt, r) { if (cnt > bt) { bt = cnt; body = r; } });
+            var midX = 0; for (v = 0; v < n; v++) midX += B[v * 3]; midX /= Math.max(1, n);
+            var sleeves = {}, anyS = false; tris.forEach(function (cnt, r) { var cxa = cxs.get(r); if (r !== body && cnt >= 100 && Math.abs(cxa[0] / cxa[1] - midX) > 0.06 * part.height) { sleeves[r] = 1; anyS = true; } });
+            if (!anyS) return null;
+            var BI = [], SV = new Uint8Array(n);
+            for (t = 0; t + 2 < clothIx.length; t += 3) {
+                if (isAcc[clothIx[t]]) continue; var rr = find(W[clothIx[t]]);
+                if (rr === body) BI.push(clothIx[t], clothIx[t + 1], clothIx[t + 2]);
+                else if (sleeves[rr]) { SV[clothIx[t]] = 1; SV[clothIx[t + 1]] = 1; SV[clothIx[t + 2]] = 1; }
+            }
+            return { bodyIx: Uint32Array.from(BI), sleeveV: SV };
+        }
+        function wearCoatFit(part) {
+            (part.wear || []).forEach(function (w) {
+                if (!w.outer || !w.mesh) return;
+                var ga = w.mesh.geometry.attributes;
+                if (w.cfSi0) { ga.skinIndex.array.set(w.cfSi0); ga.skinWeight.array.set(w.cfSw0); ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true; }   // (its own bones back first)
+                if (w.cfN0) { ga.normal.array.set(w.cfN0); ga.normal.needsUpdate = true; }   // (and its baked normals)
+                if (typeof window !== 'undefined' && window.EW_DISABLE_COAT_FIT) return;
+                var A = ga.position.array, Nn = ga.normal.array, n = A.length / 3, B = w.base, nb = w.nb, Hm = part.height / 1.7, v, k;
+                var SP = part.src.attributes.position.array, SD = part.shapeD, D = new Float32Array(n * 3), any = false;
+                /* THE TRIMS + THE SLEEVES UNDER THE BODY: `under` = the vertices that may lie under the pieces `over` (a list of triangle
+                   sets). As fitted (B), each such vertex that has one of them over it (along its outward normal, else straight out from the
+                   skin under it, within `under` cm) is held, as it now lies, `gap` (at most its fitted depth) behind each of them along that
+                   same line (pulled in, at most `max`; smoothed over the moved vertices, topped up), takes the bones of the vertex of `over`
+                   nearest it, and (its flags eroded `erode` rings) leaves the drawn index when its triangle lies wholly under (wearTrimHide) */
+                var clothIx = w.mesh._ewIx0 || (w.mesh.geometry.index ? w.mesh.geometry.index.array : null);
+                var accIx = (w.accents || []).map(function (mh) { return mh._ewIx0 || (mh.geometry.index ? mh.geometry.index.array : null); }).filter(Boolean);
+                var isAcc = isAccOf(w), hideAll = null;
+                var SI0c = null, SW0c = null;
+                if (ga.skinIndex && ga.skinWeight) { if (!w.cfSi0) { w.cfSi0 = Uint16Array.from(ga.skinIndex.array); w.cfSw0 = Float32Array.from(ga.skinWeight.array); } SI0c = w.cfSi0; SW0c = w.cfSw0; }
+                var dirOf = function (P, v, sd, kind, o) {   // kind 0: the baked normal turned away from the skin; 1: straight out from the skin vertex nearest it
+                    var s3 = nb[v] * 3, rx = P[v * 3] - SP[s3] - (sd ? sd[s3] : 0), ry = P[v * 3 + 1] - SP[s3 + 1] - (sd ? sd[s3 + 1] : 0), rz = P[v * 3 + 2] - SP[s3 + 2] - (sd ? sd[s3 + 2] : 0);
+                    if (kind === 1) { var rl = Math.hypot(rx, ry, rz); if (rl < 1e-6) return null; o[0] = rx / rl; o[1] = ry / rl; o[2] = rz / rl; return o; }
+                    var f = rx * Nn[v * 3] + ry * Nn[v * 3 + 1] + rz * Nn[v * 3 + 2] < 0 ? -1 : 1;
+                    o[0] = Nn[v * 3] * f; o[1] = Nn[v * 3 + 1] * f; o[2] = Nn[v * 3 + 2] * f; return o;
+                };
+                var coverFit = function (key, under, over, erode) {
+                    var cache = (w.cover = w.cover || {})[key], nn = [0, 0, 0];
+                    if (!cache) {
+                        var castsB = over.map(function (I) { return coatTriCast(B, [I], 0.02); }), kind = new Int8Array(n).fill(-1), refs = over.map(function () { return new Float32Array(n).fill(NaN); });
+                        for (v = 0; v < n; v++) {
+                            if (!under[v]) continue;
+                            for (var kd = 0; kd < 2 && kind[v] < 0; kd++) {
+                                if (!dirOf(B, v, null, kd, nn)) continue;
+                                for (var oi = 0; oi < over.length; oi++) { var d0 = castsB[oi](B[v * 3], B[v * 3 + 1], B[v * 3 + 2], nn[0], nn[1], nn[2], -COAT_FIT.gap * Hm, COAT_FIT.under * Hm); if (d0 > -Infinity) { refs[oi][v] = d0; kind[v] = kd; } }
+                            }
+                        }
+                        var tg = new Map(), TC = 0.02, near = new Int32Array(n).fill(-1);
+                        over.forEach(function (I) { for (var t = 0; t < I.length; t++) { var tv = I[t], kk = Math.floor(B[tv * 3] / TC) + ',' + Math.floor(B[tv * 3 + 1] / TC) + ',' + Math.floor(B[tv * 3 + 2] / TC), l = tg.get(kk); if (!l) tg.set(kk, l = []); if (l.indexOf(tv) < 0) l.push(tv); } });
+                        for (v = 0; v < n; v++) {
+                            if (kind[v] < 0) continue;
+                            var bx = Math.floor(B[v * 3] / TC), by = Math.floor(B[v * 3 + 1] / TC), bz = Math.floor(B[v * 3 + 2] / TC), bd = Infinity;
+                            for (var ia = -2; ia <= 2; ia++) for (var ib = -2; ib <= 2; ib++) for (var ic = -2; ic <= 2; ic++) {
+                                var l2 = tg.get((bx + ia) + ',' + (by + ib) + ',' + (bz + ic)); if (!l2) continue;
+                                for (var q2 = 0; q2 < l2.length; q2++) { var u2 = l2[q2], dd = (B[u2 * 3] - B[v * 3]) * (B[u2 * 3] - B[v * 3]) + (B[u2 * 3 + 1] - B[v * 3 + 1]) * (B[u2 * 3 + 1] - B[v * 3 + 1]) + (B[u2 * 3 + 2] - B[v * 3 + 2]) * (B[u2 * 3 + 2] - B[v * 3 + 2]); if (dd < bd) { bd = dd; near[v] = u2; } }
+                            }
+                        }
+                        /* the hide flags, eroded `erode` rings (welded): seen at an angle past the body's armhole, the sleeve just under it shows, not the skin */
+                        var Wd = new Int32Array(n), wkd = new Map(), hw = new Uint8Array(n);
+                        for (v = 0; v < n; v++) { var pkd = Math.round(B[v * 3] * 1e4) + ',' + Math.round(B[v * 3 + 1] * 1e4) + ',' + Math.round(B[v * 3 + 2] * 1e4), wd = wkd.get(pkd); if (wd === undefined) { wd = v; wkd.set(pkd, v); } Wd[v] = wd; }
+                        for (v = 0; v < n; v++) if (kind[v] >= 0) hw[Wd[v]] = 1;
+                        for (v = 0; v < n; v++) if (under[v] && kind[v] < 0) hw[Wd[v]] = 0;
+                        var hn = hw;
+                        for (var er = 0; er < erode; er++) {
+                            hn = hw.slice();
+                            for (var te = 0; te + 2 < clothIx.length; te += 3) { var ea = Wd[clothIx[te]], eb = Wd[clothIx[te + 1]], ec2 = Wd[clothIx[te + 2]]; if (!(hw[ea] && hw[eb] && hw[ec2])) { hn[ea] = 0; hn[eb] = 0; hn[ec2] = 0; } }
+                            hw = hn;
+                        }
+                        var hide = new Uint8Array(n), anyH = false; for (v = 0; v < n; v++) if (under[v] && hn[Wd[v]]) { hide[v] = 1; anyH = true; }
+                        cache = w.cover[key] = { kind: kind, refs: refs, near: near, hide: anyH ? hide : null };
+                    }
+                    if (cache.hide) { if (!hideAll) hideAll = new Uint8Array(n); for (v = 0; v < n; v++) if (cache.hide[v]) hideAll[v] = 1; }
+                    var PC = new Float32Array(A.length); for (v = 0; v < A.length; v++) PC[v] = A[v] + D[v];
+                    var need = new Float32Array(n), DD = new Float32Array(n * 3), anyD = false, gapT = COAT_FIT.gap * Hm, mx = COAT_FIT.max * Hm;
+                    over.forEach(function (I, oi) {   // (each piece on its own: under the buckle the cloth must stay behind the belt too)
+                        var ref = cache.refs[oi], cast = coatTriCast(PC, [I], 0.02);
+                        for (v = 0; v < n; v++) {
+                            if (!(ref[v] === ref[v]) || !dirOf(PC, v, SD, cache.kind[v], nn)) continue;
+                            var d1 = cast(PC[v * 3], PC[v * 3 + 1], PC[v * 3 + 2], nn[0], nn[1], nn[2], -COAT_FIT.lo * Hm, COAT_FIT.under * Hm + COAT_FIT.lo * Hm);
+                            if (d1 === -Infinity) continue;
+                            var pull = Math.min(gapT, ref[v]) - d1; if (!(pull > need[v])) continue;
+                            pull = Math.min(pull, mx); need[v] = pull;
+                            DD[v * 3] = -nn[0] * pull; DD[v * 3 + 1] = -nn[1] * pull; DD[v * 3 + 2] = -nn[2] * pull; anyD = true;
+                        }
+                    });
+                    if (anyD) {   // (smoothed over the vertices that may move - `over` keeps still - then topped up to each one's own need)
+                        var ci = []; for (v = 0; v < n; v++) if (under[v]) ci.push(v);
+                        var CP = new Float32Array(ci.length * 3), CD = new Float32Array(ci.length * 3);
+                        ci.forEach(function (vv, j) { for (k = 0; k < 3; k++) { CP[j * 3 + k] = PC[vv * 3 + k]; CD[j * 3 + k] = DD[vv * 3 + k]; } });
+                        spaceSmooth(CP, 2, COAT_FIT.smooth * Hm).run(CD);
+                        ci.forEach(function (vv, j) { var sl = Math.hypot(CD[j * 3], CD[j * 3 + 1], CD[j * 3 + 2]); if (sl > need[vv]) for (k = 0; k < 3; k++) DD[vv * 3 + k] = CD[j * 3 + k]; });
+                        for (v = 0; v < DD.length; v++) D[v] += DD[v];
+                        any = true;
+                    }
+                    if (SI0c) {   // (the bones of the piece over it, as fitted: on its own - the belly's weights vs the belt's - it slid out through it once posed)
+                        var gi0 = ga.skinIndex.array, gw0 = ga.skinWeight.array, chg = false;
+                        for (v = 0; v < n; v++) { var tn = cache.near[v]; if (tn < 0) continue; for (k = 0; k < 4; k++) { gi0[v * 4 + k] = SI0c[tn * 4 + k]; gw0[v * 4 + k] = SW0c[tn * 4 + k]; } chg = true; }
+                        if (chg) { ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true; }
+                    }
+                };
+                /* THE SKIN FLOOR: a cloth vertex with no cloth of this coat (nor a trim) over it, straight out from the skin under it, as
+                   fitted, is held at least `floorGap` outside that skin (pushed out along the skin's normal, at most `floorMax`; smoothed
+                   over the cloth, topped up). The heavy body's shoulder tips stood out past the corner where the body piece meets the
+                   sleeve's cap: the skin showed in a notch on top of each shoulder. A part under other cloth (a sleeve's top tucked
+                   inside the body, the body's side inside the sleeve) stays where the fit put it */
+                var skinFloorFit = function () {
+                    var SN = part.src.attributes.normal && part.src.attributes.normal.array; if (!SN) return;
+                    if (!w.floorFree) {
+                        var castAll = coatTriCast(B, [clothIx].concat(accIx), 0.02), free = new Uint8Array(n), nn = [0, 0, 0];
+                        for (v = 0; v < n; v++) {
+                            if (isAcc[v] || !dirOf(B, v, null, 1, nn)) continue;
+                            if (castAll(B[v * 3], B[v * 3 + 1], B[v * 3 + 2], nn[0], nn[1], nn[2], COAT_FIT.floorLo * Hm, COAT_FIT.floorReach * Hm) === -Infinity) free[v] = 1;
+                        }
+                        w.floorFree = free;
+                    }
+                    var FR = w.floorFree, need = new Float32Array(n), DD = new Float32Array(n * 3), anyD = false, g = COAT_FIT.floorGap * Hm, mx = COAT_FIT.floorMax * Hm;
+                    for (v = 0; v < n; v++) {
+                        if (!FR[v]) continue;
+                        var s3 = nb[v] * 3, sx = SN[s3], sy = SN[s3 + 1], sz = SN[s3 + 2], sl = Math.hypot(sx, sy, sz); if (sl < 1e-6) continue;
+                        sx /= sl; sy /= sl; sz /= sl;
+                        var dd = (A[v * 3] + D[v * 3] - SP[s3] - (SD ? SD[s3] : 0)) * sx + (A[v * 3 + 1] + D[v * 3 + 1] - SP[s3 + 1] - (SD ? SD[s3 + 1] : 0)) * sy + (A[v * 3 + 2] + D[v * 3 + 2] - SP[s3 + 2] - (SD ? SD[s3 + 2] : 0)) * sz;
+                        if (!(dd < g)) continue;
+                        var p = Math.min(mx, g - dd); need[v] = p; DD[v * 3] = sx * p; DD[v * 3 + 1] = sy * p; DD[v * 3 + 2] = sz * p; anyD = true;
+                    }
+                    if (!anyD) return;
+                    var ci = []; for (v = 0; v < n; v++) if (!isAcc[v]) ci.push(v);
+                    var CP = new Float32Array(ci.length * 3), CD = new Float32Array(ci.length * 3);
+                    ci.forEach(function (vv, j) { for (k = 0; k < 3; k++) { CP[j * 3 + k] = A[vv * 3 + k] + D[vv * 3 + k]; CD[j * 3 + k] = DD[vv * 3 + k]; } });
+                    spaceSmooth(CP, 2, COAT_FIT.smooth * Hm).run(CD);
+                    ci.forEach(function (vv, j) { var l2 = Math.hypot(CD[j * 3], CD[j * 3 + 1], CD[j * 3 + 2]); if (l2 > need[vv]) for (k = 0; k < 3; k++) DD[vv * 3 + k] = CD[j * 3 + k]; });
+                    for (v = 0; v < DD.length; v++) D[v] += DD[v];
+                    any = true;
+                };
+                if (clothIx && nb) {
+                    /* THE SKIN FLOOR */
+                    skinFloorFit();
+                    var clothV = new Uint8Array(n); for (var ti = 0; ti < clothIx.length; ti++) if (!isAcc[clothIx[ti]]) clothV[clothIx[ti]] = 1;
+                    /* THE SLEEVES UNDER THE BODY: the top of each sleeve stays under the body's armhole (on the shoulder's bones it came
+                       out as an open rim at the top of each shoulder, the shoulder showing inside it) */
+                    if (w.pieces === undefined) { try { w.pieces = coatPieces(part, B, clothIx, isAcc); } catch (e) { w.pieces = null; } }
+                    if (w.pieces) coverFit('sleeves', w.pieces.sleeveV, [w.pieces.bodyIx], 1);
+                    if (accIx.length) coverFit('trims', clothV, accIx, 0);   // (not eroded: the cloth a ring in from a trim's edge, drawn, came out through the belt + the front band once posed)
+                }
+                w.trimHide = hideAll;
+                /* the skin under that hidden cloth is hidden too (skinCover): seen at an angle past the front band's edge it showed as a
+                   cream strip beside it */
+                w.trimSkin = null;
+                if (hideAll && nb) { w.trimSkin = new Uint8Array(part.count); for (v = 0; v < n; v++) if (hideAll[v] && nb[v] < part.count) w.trimSkin[nb[v]] = 1; }
+                /* THE COLLAR */
+                var Q = part.Q, F = part.landmarks && part.landmarks.F || CC_FACE, N = part.count, cx = 0, cz = 0, cn = 0, yTop = -Infinity;
+                for (v = 0; v < n; v++) if (A[v * 3 + 1] + D[v * 3 + 1] > yTop) yTop = A[v * 3 + 1] + D[v * 3 + 1];
+                if (Q) for (var i = 0; i < N; i++) { var tq = Q[i * 3 + 1]; if (tq > F.neckT - 0.06 && tq < F.neckT - 0.01) { cx += SP[i * 3] + (SD ? SD[i * 3] : 0); cz += SP[i * 3 + 2] + (SD ? SD[i * 3 + 2] : 0); cn++; } }
+                var hC = COAT_FIT.h * Hm, y0 = yTop - hC, yF = y0 + COAT_FIT.fade * Hm, wC = null;
+                if (cn) {
+                    cx /= cn; cz /= cn;
+                    var PA = new Float32Array(A.length); for (v = 0; v < A.length; v++) PA[v] = A[v] + D[v];
+                    var skin = girthGrid(SP, SD, N, part.height, cx, cz, y0 - 0.02 * Hm, yTop + 0.03 * Hm, COAT_FIT.rLim * Hm);
+                    var coatIn = girthGrid(PA, null, n, part.height, cx, cz, y0 - 0.02 * Hm, yTop + 0.01 * Hm, COAT_FIT.rLim * Hm, true);
+                    var gN = COAT_FIT.neck * Hm;
+                    /* (and never inside the garments worn under it: a shirt's collar came out through the greatcoat's stand) */
+                    var ups = [], nU = 0;
+                    (part.wear || []).forEach(function (u) {
+                        if (u === w || !u.mesh || u.facial || u.outer || u.layer === 'cape' || !WEAR_LAYER.cats[u.cat] || u.cat === 'shoes' || u.cat === 'gloves') return;
+                        if (u.mesh.visible === false) return;
+                        var UA = u.mesh.geometry.attributes.position.array; ups.push(UA); nU += UA.length / 3;
+                    });
+                    var under = null;
+                    if (nU) {
+                        var UP = new Float32Array(nU * 3), o3 = 0; ups.forEach(function (UA) { UP.set(UA, o3); o3 += UA.length; });
+                        under = girthGrid(UP, null, nU, part.height, cx, cz, y0 - 0.02 * Hm, yTop + 0.01 * Hm, COAT_FIT.rLim * Hm);
+                    }
+                    wC = new Float32Array(n);
+                    for (v = 0; v < n; v++) {
+                        var y = PA[v * 3 + 1]; if (y < y0) continue;
+                        var dx = PA[v * 3] - cx, dz = PA[v * 3 + 2] - cz, r = Math.hypot(dx, dz); if (r < 1e-4) continue;
+                        var rS = skin(dx, dz, y), rI = coatIn(dx, dz, y); if (!(rS > 0) || !(rI > 0)) continue;
+                        var rU = under ? under(dx, dz, y) : -1, fl = rS + gN; if (rU > 0 && rU + gN > fl) fl = rU + gN;
+                        var p = rI - fl; if (!(p > 0)) continue;
+                        var wy = bootSmooth(y0, yF, y); p *= wy; if (p > r - 1e-3) p = r - 1e-3;
+                        D[v * 3] -= dx / r * p; D[v * 3 + 2] -= dz / r * p; wC[v] = wy; any = true;
+                    }
+                }
+                if (!any) return;
+                /* the collar's bones: the skin's where it now lies (as THE BELT HEIGHT does) */
+                if (wC && part.siW && ga.skinIndex && ga.skinWeight) {
+                    if (!w.cfSi0) { w.cfSi0 = Uint16Array.from(ga.skinIndex.array); w.cfSw0 = Float32Array.from(ga.skinWeight.array); }
+                    var SI0 = Uint16Array.from(ga.skinIndex.array), SW0 = Float32Array.from(ga.skinWeight.array);   // (as THE TRIMS left them)
+                    var PP = new Float32Array(A.length); for (v = 0; v < A.length; v++) PP[v] = A[v] + D[v];
+                    var nsC = nearSet(part, PP, 0.02 * Hm), SIW = part.siW, SWW = part.swW, gi = ga.skinIndex.array, gw = ga.skinWeight.array, chg = false;
+                    for (v = 0; v < n; v++) {
+                        var fk = wC[v]; if (!(fk > 0)) continue;
+                        var acc = {}, bi, k4;
+                        for (k4 = 0; k4 < 4; k4++) { bi = SI0[v * 4 + k4]; acc[bi] = (acc[bi] || 0) + SW0[v * 4 + k4] * (1 - fk); }
+                        for (var e = nsC.s[v]; e < nsC.s[v + 1]; e++) { var sv = nsC.j[e], f2 = nsC.w[e] * fk; for (k4 = 0; k4 < 4; k4++) { bi = SIW[sv * 4 + k4]; acc[bi] = (acc[bi] || 0) + SWW[sv * 4 + k4] * f2; } }
+                        var top = Object.keys(acc).map(function (kb) { return [+kb, acc[kb]]; }).sort(function (p1, p2) { return p2[1] - p1[1]; }).slice(0, 4), tot = 0;
+                        top.forEach(function (tb) { tot += tb[1]; });
+                        for (k4 = 0; k4 < 4; k4++) { gi[v * 4 + k4] = top[k4] ? top[k4][0] : top[0][0]; gw[v * 4 + k4] = top[k4] && tot > 0 ? top[k4][1] / tot : 0; }
+                        chg = true;
+                    }
+                    if (chg) { ga.skinIndex.needsUpdate = true; ga.skinWeight.needsUpdate = true; }
+                }
+                /* the collar's normals: the pull turned its stand into a slope, lit by the baked (upright) normals it shaded grey; they
+                   are rebuilt there from its surface as it now lies (faded with the pull, kept facing the way the baked ones did) */
+                if (wC) {
+                    var N0 = w.cfN0 || (w.cfN0 = Float32Array.from(Nn)), NC = new Float32Array(A.length), PN = new Float32Array(A.length);
+                    for (v = 0; v < A.length; v++) PN[v] = A[v] + D[v];
+                    [clothIx].concat(accIx).forEach(function (I) {
+                        if (!I) return;
+                        for (var t = 0; t + 2 < I.length; t += 3) {
+                            var a3 = I[t] * 3, b3 = I[t + 1] * 3, c3 = I[t + 2] * 3;
+                            var ux = PN[b3] - PN[a3], uy = PN[b3 + 1] - PN[a3 + 1], uz = PN[b3 + 2] - PN[a3 + 2], vx = PN[c3] - PN[a3], vy = PN[c3 + 1] - PN[a3 + 1], vz = PN[c3 + 2] - PN[a3 + 2];
+                            var fx = uy * vz - uz * vy, fy = uz * vx - ux * vz, fz = ux * vy - uy * vx;
+                            [a3, b3, c3].forEach(function (o) { NC[o] += fx; NC[o + 1] += fy; NC[o + 2] += fz; });
+                        }
+                    });
+                    for (v = 0; v < n; v++) {
+                        if (!(wC[v] > 0)) continue;
+                        var cxn = NC[v * 3], cyn = NC[v * 3 + 1], czn = NC[v * 3 + 2], cl2 = Math.hypot(cxn, cyn, czn); if (cl2 < 1e-12) continue;
+                        cxn /= cl2; cyn /= cl2; czn /= cl2;
+                        if (cxn * N0[v * 3] + cyn * N0[v * 3 + 1] + czn * N0[v * 3 + 2] < 0) { cxn = -cxn; cyn = -cyn; czn = -czn; }
+                        var f3 = wC[v], mx3 = N0[v * 3] + (cxn - N0[v * 3]) * f3, my3 = N0[v * 3 + 1] + (cyn - N0[v * 3 + 1]) * f3, mz3 = N0[v * 3 + 2] + (czn - N0[v * 3 + 2]) * f3, ml = Math.hypot(mx3, my3, mz3) || 1;
+                        Nn[v * 3] = mx3 / ml; Nn[v * 3 + 1] = my3 / ml; Nn[v * 3 + 2] = mz3 / ml;
+                    }
+                    ga.normal.needsUpdate = true;
+                }
+                if (w.lay) { for (v = 0; v < D.length; v++) w.lay[v] += D[v]; } else w.lay = D;
+                for (v = 0; v < A.length; v++) A[v] += D[v];
+            });
         }
         function wearBeltLift(part) {
             var k = +part.beltH || 0, belts = (part.wear || []).filter(function (w) { return w.mesh && w.layer === 'belt'; });
@@ -57140,7 +57534,7 @@ const ThreeRenderer = (function () {
            Low shoes, skirts, shorts: untouched. Runs in THE LAYERS (wearLayers) before the layers fold; the triangles leave the drawn
            index in wearBootHide (the start of wearUnderCover, after THE SECOND OUTER LAYER put the full index back).
            window.EW_DISABLE_BOOT_FIT = true: each as it was fitted. */
-        var BOOT_FIT = { bins: 24, row: 2, cell: 0.01, legTop: 0.4, ankle: 0.07, ankleFade: 0.02, gap: 0.004, blend: 0.03, flare: 0.06, maxPush: 0.02, edge: 0.012, deep: 0.03, inDeep: 0.025, hemOver: 0.01, onSkin: 0.01, wFade: 0.05, onSkinIn: 0.007 };
+        var BOOT_FIT = { bins: 24, row: 2, cell: 0.01, legTop: 0.4, ankle: 0.07, ankleFade: 0.02, gap: 0.004, blend: 0.03, flare: 0.06, maxPush: 0.02, edge: 0.012, deep: 0.03, inDeep: 0.025, hemOver: 0.01, onSkin: 0.01, wFade: 0.05, onSkinIn: 0.007, onSkinTight: 0.002, tightDeep: 0.02 };
         function wearIsBoot(w) {
             if (!w.mesh || typeof EW_BOOT_TOPS === 'undefined' || !(w.cat === 'shoes' || w.layer === 'feet')) return false;
             var id = String(w.id || ''); return EW_BOOT_TOPS[id] != null || (id.indexOf('feet_') === 0 && EW_BOOT_TOPS[id.slice(5)] != null);
@@ -57319,13 +57713,24 @@ const ThreeRenderer = (function () {
                     return LF.at(SPs[o] + (SDs ? SDs[o] : 0), SPs[o + 1] + (SDs ? SDs[o + 1] : 0), SPs[o + 2] + (SDs ? SDs[o + 2] : 0), qs) ? qs[5] : -1;
                 };
                 var curW = null;   // (the garment bootMove is moving: skinR reads its nb)
+                /* the nearest the trouser leg comes to the skin (rs) here: `onSkin` over the boot, `onSkinIn` deep in it. THE TIGHT BOOT
+                   (2026-11-05, mondo's Santa: "the pants are still clipping through the boots"): a boot whose shaft hugs the ankle (the
+                   medieval boots: their inside 0-5 mm off the skin all round) left no room for that stand-off, so the trouser leg stayed
+                   out through the shaft's sides. Where the boot's inside (rin) is nearer the skin than that, the floor comes down to
+                   `onSkinTight` at its rim and, `tightDeep` under it (where only the boot shows), to just inside the boot (the shin may
+                   come through the trouser leg there, under the boot) */
+                var skinFloor = function (rs, rin, y, top) {
+                    var fl = rs + onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, y));   // (deep in the boot, where only the boot shows, closer)
+                    if (!(y <= top) || !(rin > 0) || rin - gap >= fl) return fl;
+                    var tight = rs + BOOT_FIT.onSkinTight * Hm, deepT = Math.min(tight, rin - gap);
+                    return Math.min(fl, tight + (deepT - tight) * bootSmooth(0, BOOT_FIT.tightDeep * Hm, top - y));
+                };
                 var inTarget = function (q, y, v) {
                     var L = q[0], fb = q[2], top = BG.top(L, fb), hem = PG0.bottom(L, fb);
                     if (!(top > hem + BOOT_FIT.hemOver * Hm) || y > top + blend) return -1;   // (a hem over the boot's top: not in it)
                     var yq = Math.min(y, top - LF.C), rin = BG.rMin(L, (yq - LF.y0) / LF.C, fb); if (rin < 0) return -1;
                     var rt = rin - gap;
-                    var oS = onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, y));   // (deep in the boot, where only the boot shows, closer)
-                    var rs = skinR(curW, v); if (rs > 0 && rt < rs + oS) rt = rs + oS;   // (everywhere: a 3 cm triangle from a row deep in the boot to one over a dip's rim went in under the shin)
+                    var rs = skinR(curW, v), fl = rs > 0 ? skinFloor(rs, rin, y, top) : -1; if (fl > 0 && rt < fl) rt = fl;   // (everywhere: a 3 cm triangle from a row deep in the boot to one over a dip's rim went in under the shin)
                     if (y <= top) return rt;
                     return rt + (q[5] - rt) * bootSmooth(top, top + blend, y);   // (bloused: narrowing into the opening)
                 };
@@ -57334,7 +57739,7 @@ const ThreeRenderer = (function () {
                     var PA = p.mesh.geometry.attributes.position.array, qf = [0, 0, 0, 0, 0, 0];
                     bootMove(part, LF, p, inTarget, true, function (v) {
                         var rs = skinR(p, v); if (!(rs > 0) || !LF.at(PA[v * 3], PA[v * 3 + 1], PA[v * 3 + 2], qf)) return -1;
-                        var top = BG.top(qf[0], qf[2]); return rs + onSkin + (onSkinIn - onSkin) * (1 - bootSmooth(top - 3 * LF.C, top - LF.C, PA[v * 3 + 1]));
+                        var top = BG.top(qf[0], qf[2]), yf = PA[v * 3 + 1], rinF = BG.rMin(qf[0], (Math.min(yf, top - LF.C) - LF.y0) / LF.C, qf[2]); return skinFloor(rs, rinF, yf, top);
                     });
                     /* its bones: inside the boot (and over its opening, fading out over `blend`) the trouser leg takes the bones of the
                        skin under it, the ones the boot rides: on its own (the thigh in them) the knee bent in the idle lifted it 3 cm out of
@@ -57405,6 +57810,18 @@ const ThreeRenderer = (function () {
             });
         }
         /* the part of a boot / trouser leg wearBootFit found deep under / inside the other leaves the drawn index (all 3 corners) */
+        /* THE CLOTH UNDER THE TRIMS (wearCoatFit): a coat's cloth triangles with all 3 corners under one of its trims leave the drawn
+           index (`_ewIx0` keeps the full one; THE SECOND OUTER LAYER puts it back on every rebuild) */
+        function wearTrimHide(part) {
+            (part.wear || []).forEach(function (w) {
+                if (!w.trimHide || !w.mesh || !w.outer || (typeof window !== 'undefined' && window.EW_DISABLE_COAT_FIT)) return;
+                var F = w.trimHide, g = w.mesh.geometry; if (!g.index) return;
+                if (!w.mesh._ewIx0) w.mesh._ewIx0 = Uint32Array.from(g.index.array);
+                var I = g.index.array, keep = [];
+                for (var t = 0; t + 2 < I.length; t += 3) if (!(F[I[t]] && F[I[t + 1]] && F[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                if (keep.length !== I.length) g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
+            });
+        }
         function wearBootHide(part) {
             (part.wear || []).forEach(function (w) {
                 if (!w.bootDeep) return;
@@ -57422,6 +57839,7 @@ const ThreeRenderer = (function () {
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
             (part.wear || []).forEach(function (w) { w.lay = null; w.tuckW = null; });
             wearFollow(part);
+            try { wearCoatFit(part); } catch (e) { console.warn('[ThreeRenderer] coat trims + collar fit failed', e); }   // THE COAT TRIMS + THE COLLAR
             try { wearBeltLift(part); } catch (e) { console.warn('[ThreeRenderer] belt height failed', e); }   // THE BELT HEIGHT
             try { wearTuckIn(part); } catch (e) { console.warn('[ThreeRenderer] tuck failed', e); }   // THE TUCK
             try { wearBootFit(part); } catch (e) { (part.wear || []).forEach(function (w) { w.bootDeep = null; w.bootOver = false; }); console.warn('[ThreeRenderer] pants + boots fit failed', e); }   // THE PANTS IN THE BOOTS
@@ -57943,13 +58361,15 @@ const ThreeRenderer = (function () {
             var mh = w.cordMesh;
             if (!mh) {
                 var col = WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color;
-                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ color: col, roughness: 0.82, metalness: 0 }));
+                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ roughness: 0.82, metalness: 0, vertexColors: true }));
+                mh.userData._ewBase = new THREE.Color(col);   // THE COLOURS ON THE VERTICES (wearVC: the stage copies keep it)
                 var g0i = ownedGeometries.indexOf(mh.geometry); if (g0i >= 0) ownedGeometries.splice(g0i, 1);
                 mh.castShadow = true; mh.receiveShadow = true; mh._ew_creatorWear = true; mh._ew_cord = true;
                 mh.renderOrder = w.mesh.renderOrder; mh.visible = w.mesh.visible;
                 (w.accents = w.accents || []).push(mh);
             }
             mh.geometry.dispose(); mh.geometry = g;
+            wearVC(mh, mh.userData._ewBase);
             w.cordPts = X;   // (probes)
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
@@ -57995,8 +58415,8 @@ const ThreeRenderer = (function () {
                     var t = color(mode === 'pick' ? a.beardColor : a.hairColor), k = map === F.own ? 1 : 1.22;
                     r = Math.min(1, t.r * k); g = Math.min(1, t.g * k); b = Math.min(1, t.b * k);
                 }
-                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
-                if (m.color) m.color.setRGB(r, g, b);
+                wearMap(m, map);
+                wearVC(w.mesh, new THREE.Color(r, g, b));   // THE COLOURS ON THE VERTICES
             });
         }
         /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
@@ -58066,7 +58486,7 @@ const ThreeRenderer = (function () {
         function paintWear(part, a) {
             if (!a) return;
             var T = a.wearTint || {}, FB = a.wearFabric || {};
-            var paint = function (P, m, want, fab) {   // its texture's grey levels x the colour (x a fabric), or its own texture
+            var paint = function (P, m, want, fab, mesh) {   // its texture's grey levels x the colour (x a fabric), or its own texture
                 var map = P.own, tile = null, def = null;
                 if (fab && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fab)) {
                     var sync = true;
@@ -58075,23 +58495,24 @@ const ThreeRenderer = (function () {
                     var fm = tile ? wearFabricMap(P, fab, tile) : null;
                     if (fm) { map = fm; def = _ccFabricDef(fab); want = want || wearOwnColour(P); }
                 }
+                var vc = P.c0 || null;
                 if (want) {
                     var grey = def ? null : (P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null), t = color(want), k = def ? 1.22 * 1.18 : grey ? 1.22 : 1;
                     if (grey) map = grey;
-                    m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
-                } else if (P.c0) m.color.copy(P.c0);
-                else m.color.setRGB(1, 1, 1);
+                    vc = new THREE.Color(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
+                }
+                wearVC(mesh, vc);   // THE COLOURS ON THE VERTICES
                 if (m.isMeshStandardMaterial) {
                     if (P.r0 === undefined) { P.r0 = m.roughness; P.m0 = m.metalness; }
                     m.roughness = def ? (def.rough != null ? def.rough : 0.9) : P.r0; m.metalness = def ? (def.metal || 0) : P.m0;
                 }
-                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+                wearMap(m, map);
             };
             (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                paint(P, m, T[w.id], FB[w.id]);
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id], FB[w.id], w.mesh);
                 var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
-                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
+                if (bm) paint(B, bm, T[w.id + ':band'], null, B.mesh);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
@@ -86382,7 +86803,20 @@ const ThreeRenderer = (function () {
        rig AND its idle are in (no stand-in, no T-pose). No fog; bloom only if the player turned it on (setSceneLook null).
        Tunables: TR_ROOM (metres), TR_PROPS (catalogue keys + where they stand), TR_SPOTS (where the team stands). */
     var _tr = null, _trLive = false;
-    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera
+    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7, wallTone: 0.78 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera; `wallTone` = THE WHITE ROOM's drywall (below)
+    /* THE WHITE ROOM (2026-11-05, mondo on the Select Your Team room: "this room looks like it didnt get the fix that clouds and
+       marble terrain got where they are too white and the light is making it too bright, it looks ugly af"). The fix the white
+       maps got on 11-03 (rendering-loading-perf.md "THE WHITE SHEETS" + "THE WHITE DAYLIGHT"), made for this room:
+       - the light: the room's own rig (hemisphere, the ceiling lamp, the key, the rim, the fill) × HQ_LIGHT_RULES.whiteDay (0.75), the
+         number the white rooms wear. Measured: the back wall took about 1.8× light (key 0.61 + fill 0.44 + hemisphere 0.52 + the
+         ceiling lamp 0.24 head-on), so the beige drywall sheet (mean 0.69) went past 100% and stored as one flat white before the
+         tone map. The desk lamp keeps its own light (a lamp is not the room's light, as in the white rooms).
+       - the sheet: the drywall wears colour × TR_ROOM.wallTone (0.78) in this room only. It is under TERRAIN_WHITE_SHEETS' 0.8 bar,
+         so the global darkening never caught it, and the light alone still left it cream-white; the building's other drywall rooms
+         keep theirs. Fixed, nothing reads the screen. */
+    function _trWhiteK() {
+        try { var LR = _hqLightRules(), k = LR && +LR.whiteDay; return (k > 0 && k <= 1) ? k : 1; } catch (e) { return 1; }
+    }
     var TR_HUMAN_M = 1.75;   // heightRatio 1.0 (the fortune teller) in metres
     /* the props: catalogue key, x / z (metres), yaw (rad, the model's +Z front turned by it), `on` = stands on that prop's top */
     var TR_PROPS = [
@@ -86416,7 +86850,8 @@ const ThreeRenderer = (function () {
     function _trWall(T, len, cx, cz, yaw) {
         var U = T.U, R = TR_ROOM, g = new THREE.Group();
         var upH = R.h - R.dado;
-        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4 }));
+        var tone = (R.wallTone > 0 && R.wallTone <= 1) ? R.wallTone : 1;   // THE WHITE ROOM: the drywall toned down in this room
+        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4, color: new THREE.Color(tone, tone, tone) }));
         up.position.y = (R.dado + upH / 2) * U; g.add(up);
         var lo = new THREE.Mesh(new THREE.PlaneGeometry(len * U, R.dado * U), _hqMat('oxblood', len / R.tile, R.dado / R.tile, { shininess: 6 }));
         lo.position.y = (R.dado / 2) * U; g.add(lo);
@@ -86438,14 +86873,15 @@ const ThreeRenderer = (function () {
         var sc = T.scene;
         sc.background = new THREE.Color(0x0b0911);
         /* light: a warm hemisphere, the ceiling lamp over the team, a key from the camera's right, a fill from the camera, a cool rim from behind */
-        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7));   // a light ground colour: the ceiling reads
-        var ceil = new THREE.PointLight(0xfff1d6, 0.42, 9 * U, 1);
+        var wk = _trWhiteK();   // THE WHITE ROOM: the whole rig × whiteDay (0.75)
+        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7 * wk));   // a light ground colour: the ceiling reads
+        var ceil = new THREE.PointLight(0xfff1d6, 0.42 * wk, 9 * U, 1);
         ceil.position.set(0, (R.h - 0.6) * U, 1.0 * U); sc.add(ceil);
-        var key = new THREE.DirectionalLight(0xfff0dc, 0.75);
+        var key = new THREE.DirectionalLight(0xfff0dc, 0.75 * wk);
         key.position.set(3 * U, 4 * U, 7 * U); sc.add(key);
-        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28);
+        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28 * wk);
         rim.position.set(-3 * U, 3 * U, -4 * U); sc.add(rim);
-        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45);   // from the camera: the team's faces
+        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45 * wk);   // from the camera: the team's faces
         fill.position.set(-1 * U, 1.6 * U, 8 * U); sc.add(fill);
         /* the room: floor, ceiling, back + side walls (the open side is the camera's) */
         /* the floor, the ceiling and the side walls run on past the camera (a tall team pulls it back) */
@@ -86504,6 +86940,41 @@ const ThreeRenderer = (function () {
         }
         T.members = [];
     }
+    /* the room's look on every mesh of a member that does not wear it yet (its material is not one of mem.mats): run when the
+       member lands, and again every half second while it stands (_trFrameBody) - THE LATE PIECES (2026-11-05, mondo:
+       "tinted clothes appear white"): a creator look's garments, hair and wings load after the body (their GLBs land
+       later) and kept the creator's own material, lit unlike the body they stand on */
+    function _trLookMats(mem, m) {
+        var diff = _modelDiffuseScale();
+        m.traverse(function (n) {
+            if (!n.isMesh || n._ew_silhouette) return;
+            var src = Array.isArray(n.material) ? n.material : [n.material];
+            if (src.every(function (sm) { return sm && sm._ewTrMat; })) return;
+            n.frustumCulled = false;
+            var out = src.map(function (sm) {
+                if (sm && sm._ewTrMat) return sm;
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(diff, diff, diff);
+                if (sm) {
+                    if (sm.side != null) lm.side = sm.side;
+                    if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
+                    if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
+                    if (sm.depthWrite === false) lm.depthWrite = false;
+                }
+                if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
+                if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                _ewColMark(lm, n);   // THE CLOTH COLLISION
+                _ewPopUnitMat(lm);   // THE UNIT POP
+                lm._ewTrMat = true;
+                mem.mats.push(lm);
+                return lm;
+            });
+            n.material = Array.isArray(n.material) ? out : out[0];
+        });
+    }
     function _trAddMember(T, slot, spot, tok) {
         var res = _cvResolveDef(slot.race || 'door agent', slot.gender || 'male', slot.appearance);
         if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
@@ -86522,33 +86993,9 @@ const ThreeRenderer = (function () {
             m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
             if (def.creatorBase) { try { mem.rig = _createAppearanceRig(m, def.raceLook || slot.appearance, true); } catch (e) { mem.rig = null; } }
             /* the board's look: the bake on a Lambert with its own self-glow (the game's linear pipeline) */
-            var diff = _modelDiffuseScale(), hasSkin = false;
-            m.traverse(function (n) {
-                if (!n.isMesh) return;
-                if (n.isSkinnedMesh) hasSkin = true;
-                n.frustumCulled = false;
-                var src = Array.isArray(n.material) ? n.material : [n.material];
-                var out = src.map(function (sm) {
-                    var tex = (sm && sm.map) ? sm.map : null;
-                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
-                    var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
-                    if (n.isSkinnedMesh) lm.skinning = true;
-                    lm.color.setRGB(diff, diff, diff);
-                    if (sm) {
-                        if (sm.side != null) lm.side = sm.side;
-                        if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
-                        if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
-                        if (sm.depthWrite === false) lm.depthWrite = false;
-                    }
-                    if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
-                    if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
-                    _ewColMark(lm, n);   // THE CLOTH COLLISION
-                    _ewPopUnitMat(lm);   // THE UNIT POP
-                    mem.mats.push(lm);
-                    return lm;
-                });
-                n.material = Array.isArray(n.material) ? out : out[0];
-            });
+            var hasSkin = false;
+            m.traverse(function (n) { if (n.isMesh && n.isSkinnedMesh) hasSkin = true; });
+            _trLookMats(mem, m);
             var inner = new THREE.Group();
             inner.rotation.y = def.yawOffset || 0;
             inner.add(m);
@@ -86684,6 +87131,7 @@ const ThreeRenderer = (function () {
             if (m.mixer) m.mixer.update(dt);
             if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
             if (m.model) _swayAuto(m.model, dt);   // THE SWAY
+            if (m.model && m.rig && !(now < (m.lookAt || 0))) { m.lookAt = now + 500; _trLookMats(m, m.model); }   // THE LATE PIECES
         }
         _trTickPoses(T, now);
         /* the camera eases to its framing and drifts a hand's width side to side */

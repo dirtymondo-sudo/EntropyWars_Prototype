@@ -290,11 +290,15 @@ window.ewAssetKey = ewAssetKey;
   const cssUrls = (v) => (typeof v === 'string' && v.indexOf('cdn.entropywars.net') !== -1)
     ? v.replace(/url\((['"]?)([^'")]+)\1\)/g, (m, q, u) => 'url(' + q + ewAsset(u) + q + ')') : v;
   try {
-    const protos = [window.CSSStyleDeclaration && CSSStyleDeclaration.prototype, window.CSS2Properties && CSS2Properties.prototype].filter(Boolean);
+    /* CSSStyleProperties = the new name of CSS2Properties (newer Firefox). Chrome has no accessors to wrap at all: the observer
+       below covers it (2026-11-05). */
+    const protos = [window.CSSStyleDeclaration && CSSStyleDeclaration.prototype, window.CSS2Properties && CSS2Properties.prototype,
+                    window.CSSStyleProperties && CSSStyleProperties.prototype].filter(Boolean);
     for (const P of protos) for (const prop of ['backgroundImage', 'background', 'cssText', 'content', 'listStyleImage', 'borderImage', 'maskImage']) {
       const d = Object.getOwnPropertyDescriptor(P, prop);
       if (!d || !d.set || !d.configurable) continue;
       Object.defineProperty(P, prop, Object.assign({}, d, { set: function (v) { return d.set.call(this, cssUrls(v)); } }));
+      if (prop === 'backgroundImage') window._ewStyleNetWrapped = true;
     }
     const sp0 = CSSStyleDeclaration.prototype.setProperty;
     CSSStyleDeclaration.prototype.setProperty = function (n, v, pr) { return sp0.call(this, n, cssUrls(v), pr); };
@@ -329,6 +333,33 @@ window.ewAssetKey = ewAssetKey;
     if (d && d.set && d.configurable) Object.defineProperty(Node.prototype, 'textContent', Object.assign({}, d, {
       set: function (v) { return d.set.call(this, this.nodeName === 'STYLE' ? cssUrls(v) : v); }
     }));
+  } catch (e) {}
+  /* THE STYLE OBSERVER (2026-11-05): where style.backgroundImage = ... can't be wrapped (Chrome; see the protos above), an
+     element whose inline style names an old cdn path gets it rewritten as soon as it enters the page, in the microtask before
+     the browser resolves its styles, so the old URL is never fetched. Only nodes being added are looked at (a cheap substring
+     check on the style attribute), never every style change, so nameplates moving each frame cost nothing. */
+  try {
+    if (!window._ewStyleNetWrapped && typeof MutationObserver === 'function') {
+      const sa = Element.prototype.setAttribute;   // the wrapped one: it runs cssUrls on a style value
+      const fix = (el) => {
+        const s = el.getAttribute('style');
+        if (s && s.indexOf('cdn.entropywars.net/Assets/') !== -1) { const n = cssUrls(s); if (n !== s) sa.call(el, 'style', n); }
+      };
+      const SEL = '[style*="cdn.entropywars.net/Assets/"]';
+      const mo = new MutationObserver((recs) => {
+        for (let i = 0; i < recs.length; i++) {
+          const added = recs[i].addedNodes;
+          for (let j = 0; j < added.length; j++) {
+            const n = added[j];
+            if (n.nodeType !== 1) continue;
+            fix(n);
+            if (n.firstElementChild) { const list = n.querySelectorAll(SEL); for (let k = 0; k < list.length; k++) fix(list[k]); }
+          }
+        }
+      });
+      const start = () => mo.observe(document.documentElement, { childList: true, subtree: true });
+      if (document.documentElement) start(); else document.addEventListener('DOMContentLoaded', start);
+    }
   } catch (e) {}
   /* new Audio(url) hands the URL to the element inside the constructor, past the src setter */
   try {
@@ -1298,6 +1329,10 @@ const EW_ANIM_LIB_URLS = [
   // (mondo 11-05: "dont give them default idles and walks, just add them to the character creator"): EW_IDLE_POSES +
   // EW_WALK_STYLES; no race's own default plays them.
   'https://cdn.entropywars.net/Assets/characters/animations/MOC1_CMU.glb',
+  // lib 6 — MOC2_100STYLE.glb (2026-11-05): plain idles + walks from the 100STYLE dataset (Ian Mason, CC BY 4.0, credited in
+  // data.js EW_CREDITS; Xsens capture, 60 fps), renamed to the CMU joint names (tools: mocap-100style.py) and cut into in-place
+  // seamless loops by bake-mocap.py (clip list mocap-clips-100style.json). Clip names S100_<style>_<Idle|Walk>. CREATOR PICKS ONLY.
+  'https://cdn.entropywars.net/Assets/characters/animations/MOC2_100STYLE.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -4949,11 +4984,13 @@ const EW_IDLE_POSES = [
   { id: 'Crouch_Idle_Loop',       label: 'Crouch',          clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
   { id: 'Zombie_Idle_Loop',       label: 'Zombie',          clip: 'Zombie_Idle_Loop',       lib: 1, ts: 1.0 },
   /* THE MOCAP LIBRARY (2026-11-05, rev 2): the motion-capture idles (lib 5, MOC1_CMU.glb, bake-mocap.py + mocap-clips.json) */
-  { id: 'MOC_Calm_Idle',          label: 'Calm',            clip: 'MOC_Calm_Idle',          lib: 5, ts: 1.0 },
   { id: 'MOC_ShiftWeight_Idle',   label: 'Weight shift',    clip: 'MOC_ShiftWeight_Idle',   lib: 5, ts: 1.0 },
-  { id: 'MOC_Fidget_Idle',        label: 'Fidget',          clip: 'MOC_Fidget_Idle',        lib: 5, ts: 1.0 },
-  { id: 'MOC_Tough_Idle',         label: 'Tough stance',    clip: 'MOC_Tough_Idle',         lib: 5, ts: 1.0 },
-  { id: 'MOC_Pockets_Idle',       label: 'Hands in pockets', clip: 'MOC_Pockets_Idle',      lib: 5, ts: 1.0 },
+  // THE PLAIN MOCAP (2026-11-05, mondo: "Are there not any simple or subtle ones?"): lib 6 MOC2_100STYLE.glb, the 100STYLE dataset
+  // (Ian Mason, CC BY 4.0) idles, each watched over full loops front + side on the default and a heavy body
+  { id: 'S100_Neutral_Idle',      label: 'Neutral',         clip: 'S100_Neutral_Idle',        lib: 6, ts: 1.0 },
+  { id: 'S100_ArmsBehindBack_Idle', label: 'Hands behind back', clip: 'S100_ArmsBehindBack_Idle', lib: 6, ts: 1.0 },
+  { id: 'S100_ArmsFolded_Idle',   label: 'Arms crossed',    clip: 'S100_ArmsFolded_Idle',     lib: 6, ts: 1.0 },
+  { id: 'S100_Proud_Idle',        label: 'Proud',           clip: 'S100_Proud_Idle',          lib: 6, ts: 1.0 },
 ];
 /* THE WALK STYLE (2026-11-05, mondo: "add the walk animations to the character creator just like the idle animations so i can see
    those too"): appearance.walk = a row id ('default' = the body's / race's own walk). Works like THE IDLE POSE: getCharacterAppearanceModel
@@ -4968,6 +5005,11 @@ const EW_WALK_STYLES = [
   { id: 'MOC_Heavy_Walk',      label: 'Heavyset',    clip: 'MOC_Heavy_Walk',      lib: 5, ts: 3.21 },
   { id: 'MOC_Cool_Walk',       label: 'Cool',        clip: 'MOC_Cool_Walk',       lib: 5, ts: 2.63 },
   { id: 'MOC_Slow_Walk',       label: 'Slow',        clip: 'MOC_Slow_Walk',       lib: 5, ts: 3.65 },
+  // THE PLAIN MOCAP: the 100STYLE walks (lib 6), same looks as the idles above
+  { id: 'S100_Neutral_Walk',        label: 'Neutral',           clip: 'S100_Neutral_Walk',        lib: 6, ts: 2.69 },
+  { id: 'S100_ArmsBehindBack_Walk', label: 'Hands behind back', clip: 'S100_ArmsBehindBack_Walk', lib: 6, ts: 2.75 },
+  { id: 'S100_ArmsFolded_Walk',     label: 'Arms crossed',      clip: 'S100_ArmsFolded_Walk',     lib: 6, ts: 2.69 },
+  { id: 'S100_Proud_Walk',          label: 'Proud',             clip: 'S100_Proud_Walk',          lib: 6, ts: 2.37 },
   // the walks the game already had (mondo 11-05: "Are there not other walk animations from the ual 1 or 2?"): UAL1 Walk_Loop +
   // Walk_Formal_Loop (Quaternius), MAL1 Walking_Woman (the Meshy batch; MAL1 Walking is Default)
   { id: 'UAL_Walk_Loop',       label: 'UAL walk',    clip: 'Walk_Loop',           lib: 0, ts: 2.56 },
@@ -7152,4 +7194,43 @@ if (typeof TERRAIN_SPRITES !== 'undefined') {
     for (const [k, v] of Object.entries(_legacySprites)) {
         if (!TERRAIN_SPRITES[k] || TERRAIN_SPRITES[k].length === 0) TERRAIN_SPRITES[k] = v;
     }
+}
+
+/* ── THE MOVED 2D ART, AT THE SOURCE (2026-11-05, mondo's Firefox console: "A resource is blocked by OpaqueResponseBlocking" for
+   every portrait / race sprite in the party builder, the team select and the HUD) ─────────────────────────────────────────────
+   The tables above still build the OLD Sprites/ paths from _S (permanent aliases, see EW_ASSET_MOVES), and the safety net was
+   meant to rewrite them when a page shows them. But an inline background set as a style PROPERTY (React's
+   style={{ backgroundImage }}, el.style.backgroundImage = ...) has no setter to wrap in Chrome (CSS properties are not
+   accessors on its CSSStyleDeclaration prototype) nor in a Firefox that renamed CSS2Properties to CSSStyleProperties, so those
+   URLs went out as written: a 404 text/html from R2 since the old keys were archived, which the browser blocks as ORB.
+   So every 2D image table here is moved to the new keys once, at load, and the getters that build a path return the moved one:
+   the first request is already the right file. (The net still catches anything built elsewhere: see the observer below.) */
+(function _ewMoveArtTables() {
+  if (typeof ewAsset !== 'function') return;
+  const seen = new Set();
+  const walk = (o, depth) => {
+    if (!o || typeof o !== 'object' || depth > 6 || seen.has(o)) return;
+    seen.add(o);
+    for (const k of Object.keys(o)) {
+      const v = o[k];
+      if (typeof v === 'string') { if (v.startsWith(EW_CDN)) { const n = ewAsset(v); if (n !== v) { try { o[k] = n; } catch (e) {} } } }
+      else if (v && typeof v === 'object') walk(v, depth + 1);
+    }
+  };
+  [_HERO_RACE_SPRITES, _CHARACTER_SPRITES, _CHARACTER_SPRITES_GENDERED, HONDA_CIVIC_SPRITES, TIME_COP_LOOKS, SENTAI_SPRITES,
+   RACE_SPRITE_ANIMATIONS, RACE_PORTRAITS, RACE_SPRITES, EQUIP_SPRITES, OBJECT_SPRITES, BOSS_SPRITES, DRAGON_SPRITES,
+   WEATHER_SPRITES, SEED_TILE_SPRITES, TRAP_TILE_SPRITES].forEach(t => { try { walk(t, 0); } catch (e) {} });
+})();
+{
+  const _r2Sprite0 = getR2RaceSpriteUrl, _mapSprite0 = getBattleMapSpriteUrl, _portrait0 = getUnitPortraitUrl, _portraitArt0 = getUnitPortraitArtUrl;
+  getR2RaceSpriteUrl = function (race, gender, cls) { return ewAsset(_r2Sprite0(race, gender, cls)); };
+  getBattleMapSpriteUrl = function (unit) { return ewAsset(_mapSprite0(unit)); };
+  getUnitPortraitArtUrl = function (unit) { return ewAsset(_portraitArt0(unit)); };
+  getUnitPortraitUrl = function (unit) { return ewAsset(_portrait0(unit)); };
+  try {
+    for (const [n, f] of [['getR2RaceSpriteUrl', getR2RaceSpriteUrl], ['getBattleMapSpriteUrl', getBattleMapSpriteUrl],
+                          ['getUnitPortraitArtUrl', getUnitPortraitArtUrl], ['getUnitPortraitUrl', getUnitPortraitUrl]]) {
+      if (window[n] !== f) window[n] = f;
+    }
+  } catch (e) {}
 }

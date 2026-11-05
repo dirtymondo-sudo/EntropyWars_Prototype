@@ -1454,6 +1454,19 @@ right half to two thirds of the screen".
   menu (not mid-action) and refits a fitted frame for it. With a sub menu up the frame slides only CLEAR_FRAME_SHIFT
   (0.55) of the way to the free part's middle, keeping its size (Football Stadium 1440x900, Abilities open: cx 0.42 →
   0.23 NDC, the unit ~62% across instead of ~71%). Too far / not far enough: tune CLEAR_FRAME_SHIFT.
+- THE NEAR FRAME (2026-11-05, mondo, Hell arena: a tile's quick menu put "my character and tile ... far far too much over
+  to the right"; his hand-framed shot had the unit + the clicked thing just clear of the menu). The CLEAR_FRAME_SHIFT slide
+  was fixed whatever was on screen, so a sub menu with no fit of its own (board-click quick list, Abilities) pushed the
+  unit to ~2/3 across. Now `_ewMenuSlide` returns `_clearSubjectSlide(fa)` unless a fit owns the frame
+  (`camera._clearFit` / `camera._menuShot`, which keep the old `fa.cx` they were solved for): the SMALLEST slide that
+  puts the selected unit + the clicked thing (`state._enemyActionTargetId` or `state._tileActionTarget`) CLEAR_POI_MARGIN
+  (0.06 NDC) clear of the menu edge (`fa.l` / `fa.r`, new on the free area with `fa.mid`), 0 when already clear, the free
+  middle when they can't sit side by side; capped 0..fa.mid. Solved on the camera's DESTINATION pose (`_tx/_ty/_tz/_tt/
+  _tyaw`), latched per (cover, `camera._moveGen` bumped in moveTo, bodies) and held through hand pans/orbits. The menu
+  two-shot's aim (`_menuCamSolve`) also stops at the menu edge + MENU_CAM_CLEAR (0.04) for a pair narrower than the free
+  part (never past the old fa.cx). Browser: Football Stadium 1280x720, tile quick menu: unit 814 px → 735 px with the menu
+  edge at 656 (sheet /mnt/project-files/menu-camera/near_frame_before_after.jpg). Enemy two-shot not clicked (no enemy on
+  screen at turn start). Too close / far from the menu: tune CLEAR_POI_MARGIN.
 
 ## THE CLICK FACE + THE ATTACK HOLD (2026-10-18)
 mondo: "whenever i click on an enemy or a unit, my unit should turn to face them. if all i do is basic attack them ...

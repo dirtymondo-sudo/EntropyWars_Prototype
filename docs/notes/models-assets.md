@@ -1256,6 +1256,23 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   it as `got['@cape']`, the layer's tile lives on `part.capeHold` (no coded shell), paintMeshOuter paints any
   `w.layer`. Online: appearance already syncs; nothing new.
 
+- **THE DRAPE (2026-11-05, mondo: "fix all of the capes too, they are all fucked up and dont connect to the body properly,
+  they are way too wide"):** every cape rebaked (`--only king,overlord,hero,sea,knight,hooded,leaf,fur`). Causes, all in
+  `cape_sheet` / `Field`: (1) each top row was the convex hull of a 2-4 cm SLAB, and at the cape's fixed top heights
+  (1.535-1.585 m) that slab already held the shoulder tops (the MPFB male's shoulder rises from the tip at 1.54 to the neck
+  at 1.58 in 4 cm), so off the back centre the neckline lay out on the shoulder tips with a gap all round the neck;
+  (2) `armx` 0.22 left the deltoid out, the cape cut through it and the shirt's shoulder came out through the cape (even
+  standing still); (3) the cape over the shoulder rode only the collarbone / spine, so the shirt (on the arm) came through
+  it when the arms came down from the bind pose; (4) the hang fell straight down from the shoulder tips (a box). Fixes:
+  `drape` = above the hang height a row is the hull of EVERYTHING above it (thin bands, accumulated from the top: cloth laid
+  over the body), so the rows lie on the shoulder slope; THE NECKLINE (`neck`, default on) = each column starts where that
+  drape first stands `neck_gap` (2 cm) off the bare neck (the field's top row), never lower than the old `top` curve (the
+  back of the neck falls straight into the back), capped at `top` + `neck_up`; `armx` 0.30 above `arm_z` 1.44 (the whole
+  shoulder cap), `sh_ease` +3 mm over the shoulders, `round_sh` only below `sh_top` 1.50; `side_in` 0.25 m/m = below the
+  shoulders the sides fall in toward the body (the back keeps its flare); THE SHOULDER CAP in `cape_weights` = above
+  1.42-1.48 m the cloth takes the skin's own weights there, the upper arm's share included. The coats are untouched.
+  Shots: /mnt/project-files/capes-fit/.
+
 ## THE BLENDER COATS — 4d batch 2: the long coats (2026-11-01, character-models-plan row 12)
 
 - **Tool:** the same `bake-clothes.py` (COATS catalogue; `--only duster,tailcoat`). Each coat = the pilot's sheet with the
@@ -1695,3 +1712,25 @@ back to what they were".
   enough (+12 mm for the cloth), rising at once and easing back. After: 0-5 mm on every walk, default and Weight-max bodies.
   Any clip, any rig that has the UAL-named bones; board units with a creator look get it too. Kill-switch window.EW_NO_ARM_CLEAR.
   The cloth side (garments out of the body) belongs to the "Add collision between bodies and clothes" thread, which keeps off the arm bones.
+- REV 2.3 (same day, mondo: Calm "shaking back and forth really fast subtly", Tough stance "looking at their arm like they have a
+  watch", Fidget "a weird dance"): all three out of EW_IDLE_POSES (clips stay in MOC1_CMU.glb). Mocap idles left: Weight shift only
+  (Hands in pockets also out: on the front/side sheet it is the hands-on-hips pose he rejected in rev 1). Calm's shake is the CMU marker noise on a near-still pose (the hand jitters the same with the arm clearance off), so
+  CMU is a poor source for subtle idles; its takes are acted prompts ("walk like ..."), exaggerated by design.
+- THE ARM CLEARANCE rev 2: it pushed Hands in pockets' elbows out ~20 deg (the hand sits at the hip on purpose) and popped on poses it
+  could not clear. Now: thigh points above CLR_T0 (0.15 of the thigh from the hip) are not tested, a solve that needs more than
+  CLR_MAX (0.3 rad) gives up (the clip means it), the radius blends between bins, the turn eases in (CLR_RISE 12/s) and out
+  (CLR_EASE 5/s). Real-time check: walks 25-52 mm in -> 0-6 mm; Pockets / Weight shift jitter the same as with it off.
+- REV 2.4 (same day, mondo: "Are there not any simple or subtle ones? ... Are there other better resources or libraries?", then
+  "okay whatever, use any of them"): THE 100STYLE LIBRARY. Source: The 100STYLE Dataset (Ian Mason, CC BY 4.0, Zenodo record 8127870,
+  100STYLE.zip 1.47 GB; credit row in data.js EW_CREDITS). One actor walking 100 styles on a treadmill-free stage, Xsens 60 fps, each
+  style has an ID (idle) take and walks. Only the needed BVHs were pulled from the zip by HTTP range (no full download).
+  mocap-100style.py renames the Xsens joints to CMU names + rescales cm -> CMU units, so bake-mocap.py (same tool as MOC1) cuts the
+  seamless in-place loops; the spec is mocap-clips-100style.json (take numbers 901-910 = the styles listed in mocap-100style.py).
+  Output: Assets/characters/animations/MOC2_100STYLE.glb = lib 6 in sprites.js EW_ANIM_LIB_URLS (254 KB, in ASSET_MANIFEST.json).
+  Creator picks added (never unit defaults): idles S100_Neutral_Idle "Neutral", S100_ArmsBehindBack_Idle "Hands behind back",
+  S100_ArmsFolded_Idle "Arms crossed", S100_Proud_Idle "Proud"; walks S100_Neutral_Walk, S100_ArmsBehindBack_Walk,
+  S100_ArmsFolded_Walk, S100_Proud_Walk. Checks per clip: loop seam <= the 90th-percentile frame step, idles move < 0.5 mm/frame (no
+  shake), real-time hand-in-thigh 0-5 mm on the default and Weight-max bodies with the arm clearance on. Hands behind back gets
+  pose LeftArm/RightArm +14 deg (the heavy body's hands sank into the seat). Rejected after looking: Heavyset + HandsInPockets
+  (elbows out, reads as hands on hips), Old (hunched), Strutting (arms flail), Stiff + ArmsBySide (same as Neutral).
+  Review sheets: /mnt/project-files/mocap-rev2/s100_*.png.
