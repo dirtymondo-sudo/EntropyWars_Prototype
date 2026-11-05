@@ -7117,6 +7117,7 @@
         let _pauseTab = 'party';        // party · match · library · settings
         let _pauseSet = 'audio';        // the SETTINGS page: audio · video · game · controls
         let _pauseCursor = 0;
+        let _pauseLastPlace = null;     // { key, snap }: the page's scroll + folds when the menu last closed (THE MENU KEEPS ITS PLACE)
         const _PAUSE_SETS = [
             { id: 'audio', label: 'AUDIO' },
             { id: 'video', label: 'VIDEO' },
@@ -7168,8 +7169,8 @@
                 _pauseOverlay.addEventListener('keydown', _pauseKeydown);
                 (document.getElementById("game-viewport") || document.body).appendChild(_pauseOverlay);
             }
+            _pauseOverlay.classList.remove('hidden');   // shown before the render: a filed scroll only lands on a laid-out page
             _renderPauseMenu();
-            _pauseOverlay.classList.remove('hidden');
             document.addEventListener('focusin', _pauseFocusGuard);
             _pauseFocusRestore(null);
             requestAnimationFrame(() => { if (_gamePaused) _pauseOverlay.classList.add('active'); });
@@ -7231,26 +7232,49 @@
                     + `<div class="bp-settings">${_pauseSet === 'audio' ? _buildPauseMusic() : _pauseSet === 'video' ? _buildPauseVideo() : _pauseSet === 'game' ? _buildPauseGame() : _buildPauseControls()}</div>`;
             }
 
-            /* a re-render of the same page (a settings toggle) keeps its scroll and folds; a new page opens at the top */
+            /* a re-render of the same page (a settings toggle) keeps its scroll and folds; a new page opens at the top.
+               THE MENU KEEPS ITS PLACE (mondo 11-05: "i want the menu to open back up to the same spot i was after i close it"):
+               closePauseMenu files the page's scroll + folds in _pauseLastPlace; the next open of the same page puts them back
+               (a closed overlay is display:none, so its own scroll reads 0 by then) */
             const placeKey = _pauseTab + '/' + (_pauseTab === 'settings' ? _pauseSet : '');
-            const place = _pauseOverlay._ewPlaceKey === placeKey && window._ewMenuPlaceSnap ? window._ewMenuPlaceSnap(_pauseOverlay) : null;
+            let place = _pauseOverlay._ewPlaceKey === placeKey && window._ewMenuPlaceSnap ? window._ewMenuPlaceSnap(_pauseOverlay) : null;
+            if (_pauseLastPlace && _gamePaused) { if (_pauseLastPlace.key === placeKey) place = _pauseLastPlace.snap; _pauseLastPlace = null; }
             _pauseOverlay._ewPlaceKey = placeKey;
 
             const nav = cmds.map((c, i) => `<button class="hq-pause-cmd${_pauseTab === c.id ? ' sel' : ''}${i === _pauseCursor ? ' cur' : ''}${c.danger ? ' danger' : ''}" data-pause-cmd="${c.id}" role="menuitem"><b>${c.label}</b><span>${c.sub}</span></button>`).join('');
+            const headHtml = `<div class="hq-pause-title"><div><b>${_pauseOnline ? 'MENU' : 'PAUSED'}</b><span>${_inEditor ? 'THE MAP EDITOR' : _pauseOnline ? _pauseEsc(modeLabel) + ' · ONLINE · THE MATCH KEEPS GOING' : _pauseEsc(modeLabel)}</span></div></div>
+                    ${vitals}`;
+            const footHtml = `<span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${_pauseTab === 'settings' ? '<span>← → PAGE</span>' : ''}<span>ESC / P RESUME</span>`;
 
-            _pauseOverlay.innerHTML = `
+            /* THE FRAME STAYS UP (mondo 11-05: "when i change a setting it will close and reopen the menu"): every setting
+               re-renders the menu, and rebuilding the whole window replayed the UI Maker's window-open motion (hud.js: the
+               theme's pop / stretch / unroll on the pause screen's panel role, .pause-card.bp-frame) — the window snapped
+               shut and opened again on each click. The window is built once; a re-render refills its head, commands, page
+               and foot inside it. Opening the menu still plays the motion (the overlay comes back from display:none). */
+            const card = _pauseOverlay.querySelector(':scope > .pause-card.bp-frame');
+            const headEl = card && card.querySelector(':scope > .hq-pause-head'), navEl = card && card.querySelector(':scope > .hq-pause-main > .hq-pause-nav');
+            const bodyEl = card && card.querySelector(':scope > .hq-pause-main > .hq-pause-body'), footEl = card && card.querySelector(':scope > .hq-pause-foot');
+            if (headEl && navEl && bodyEl && footEl) {
+                headEl.innerHTML = headHtml;
+                navEl.innerHTML = nav;
+                bodyEl.setAttribute('data-view', _pauseTab);
+                bodyEl.innerHTML = body;
+                footEl.innerHTML = footHtml;
+                if (!place) bodyEl.scrollTop = 0;
+            } else {
+                _pauseOverlay.innerHTML = `
             <div class="pause-card bp-frame">
                 <div class="hq-pause-head bp-head">
-                    <div class="hq-pause-title"><div><b>${_pauseOnline ? 'MENU' : 'PAUSED'}</b><span>${_inEditor ? 'THE MAP EDITOR' : _pauseOnline ? _pauseEsc(modeLabel) + ' · ONLINE · THE MATCH KEEPS GOING' : _pauseEsc(modeLabel)}</span></div></div>
-                    ${vitals}
+                    ${headHtml}
                 </div>
                 <div class="hq-pause-main bp-main">
                     <nav class="hq-pause-nav bp-nav" role="menu">${nav}</nav>
                     <section class="hq-pause-body bp-body" data-view="${_pauseTab}">${body}</section>
                 </div>
-                <div class="hq-pause-foot bp-foot"><span>↑ ↓ COMMAND</span><span>ENTER SELECT</span>${_pauseTab === 'settings' ? '<span>← → PAGE</span>' : ''}<span>ESC / P RESUME</span></div>
+                <div class="hq-pause-foot bp-foot">${footHtml}</div>
             </div>
             `;
+            }
             if (place) window._ewMenuPlaceRestore(_pauseOverlay, place);
             _pauseFocusRestore(focusSnapshot);
         }
@@ -8420,6 +8444,10 @@
             const wasOpen = _gamePaused;
             _gamePaused = false;
             document.removeEventListener('focusin', _pauseFocusGuard);
+            /* THE MENU KEEPS ITS PLACE: the page's scroll + folds, filed before the overlay hides (_renderPauseMenu reads it) */
+            if (wasOpen && _pauseOverlay && _pauseOverlay._ewPlaceKey && window._ewMenuPlaceSnap) {
+                try { _pauseLastPlace = { key: _pauseOverlay._ewPlaceKey, snap: window._ewMenuPlaceSnap(_pauseOverlay) }; } catch (e) { _pauseLastPlace = null; }
+            }
             if (_pauseOverlay) {
                 _pauseOverlay.classList.remove('active');
                 _pauseOverlay.classList.add('hidden');

@@ -2366,6 +2366,7 @@
            Viewer-local, nothing on `state`, nothing relayed (RULE #2).
            ══════════════════════════════════════════════════════════════════ */
         let _hqPause = null;   // { cmd, cursor, member, units } while the menu is up
+        let _hqPauseLast = null;   // { cmd, member, bagTab, snap }: where the menu stood when it last closed (THE MENU KEEPS ITS PLACE)
         const _HQ_PAUSE_CMDS = [
             { id: 'resume',    label: 'RESUME',    sub: 'BACK TO THE BUILDING' },
             { id: 'party',     label: 'PARTY',     sub: 'TWO SHIFTS · FIELD MEDICINE' },
@@ -2395,13 +2396,24 @@
             try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
             const fresh = !_hqPause;
             if (fresh) _hqPause = { cmd: 'party', cursor: 1, member: null, units: {}, arm: null, msg: null, circuit: null, socket: null, sockQ: '', bagTab: 'all' };
-            if (cmd) { _hqPause.cmd = cmd; _hqPause.member = null; _hqPause.arm = null; }
+            /* THE MENU KEEPS ITS PLACE (mondo 11-05: "if i change a video setting that means i useually want to test and see
+               how it looks real quick, so i want the menu to open back up to the same spot i was after i close it"): a fresh
+               open goes back to the page it closed on (the command, the member sheet, the bag tab) and, once drawn, to that
+               page's scroll and folds (_hqPauseDrop files them; the overlay is display:none in between, so its scroll reads 0) */
+            const back = (fresh && _hqPauseLast && (!cmd || cmd === _hqPauseLast.cmd)) ? _hqPauseLast : null;
+            if (fresh) _hqPauseLast = null;
+            if (back) {
+                _hqPause.cmd = back.cmd; _hqPause.bagTab = back.bagTab || 'all';
+                if (back.member != null) { let rec = null; try { rec = _hqParty(); } catch (e) {} if (rec && rec.members && rec.members.some(m => m.id === back.member)) _hqPause.member = back.member; }
+            }
+            if (cmd && !back) { _hqPause.cmd = cmd; _hqPause.member = null; _hqPause.arm = null; }
             _hqPause.cursor = Math.max(0, _HQ_PAUSE_CMDS.findIndex(c => c.id === _hqPause.cmd));
             el.style.display = '';
             el.setAttribute('aria-hidden', 'false');
             requestAnimationFrame(() => { if (_hqPause) el.classList.add('on'); });
             if (fresh) { document.addEventListener('keydown', _hqPauseKey); try { playSfx('uiButtonConfirm'); } catch (e) {} }
             _hqPauseRender();
+            if (back && back.snap && window._ewMenuPlaceRestore) { try { window._ewMenuPlaceRestore(_hqEl('hqPauseBody'), back.snap); } catch (e) {} }
             return true;
         };
         /* the gear's old name — ESC used to mean Settings (plan D6); it is the menu now */
@@ -2409,6 +2421,11 @@
         /* take the overlay down without touching the walk (leave / enter / a return from a screen) */
         function _hqPauseDrop() {
             if (!_hqPause) return;
+            /* THE MENU KEEPS ITS PLACE: file the page, its scroll and its folds before the overlay hides */
+            try {
+                const P = _hqPause, pb = _hqEl('hqPauseBody');
+                _hqPauseLast = { cmd: P.cmd, member: P.member, bagTab: P.bagTab, snap: (pb && window._ewMenuPlaceSnap) ? window._ewMenuPlaceSnap(pb) : null };
+            } catch (e) { _hqPauseLast = null; }
             const el = _hqEl('hqPause');
             if (el) { el.classList.remove('on'); el.style.display = 'none'; el.setAttribute('aria-hidden', 'true'); }
             window._hqPauseSettingsBody = null;
