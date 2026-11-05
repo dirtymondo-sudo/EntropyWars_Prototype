@@ -1351,6 +1351,8 @@ until he OKs Meshy concepts for it.
   match: Göbekli's world mats 10); trees / town / city / bergs / ruins / pyramids / craters builders, _HZ_TOWN_MODELS and
   _wdCraterLathe deleted, and every data.js EW_MAP_META `rim` entry of those kinds (25 entries; an emptied `rim` key goes). The planet
   world's carved craters (`world.craters`) are not the rim and stay. Asked him whether peaks + spires go too.
+- 11-05, mondo: "delete the rims": peaks + spires gone too (Hell Δ · voxel and Göbekli Tepe Δ · voxel lose their rock rings; their
+  ground, root, wall and haze stay). three-renderer.js has no _WD_RIM / _wdRing any more; data.js has no `rim` on any map row.
 
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these

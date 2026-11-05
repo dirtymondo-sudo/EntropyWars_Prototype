@@ -630,7 +630,7 @@ const HZ = (function () {
         for (const k of Object.keys(out)) FN[name + '.' + k] = out[k];
         return out;
     }
-    const WD = tableFns('_WD_RIM'), LM = tableFns('_hqLandmarkBuilders'), NRB = tableFns('_NR_BUILDERS');
+    const LM = tableFns('_hqLandmarkBuilders'), NRB = tableFns('_NR_BUILDERS');
     const miscKeys = new Map(all.filter(r => r.section === 'misc').map(r => [r.key, r]));
     const doorKeys = new Map(all.filter(r => r.section === 'props').map(r => [r.key, r]));
     const animalKeys = new Map(all.filter(r => r.section === 'animal').map(r => [r.key, r]));
@@ -691,7 +691,7 @@ const HZ = (function () {
     fams.push({ id: 'B', title: 'The near settings — the landscape right round a battle board, per map (`_NR_BUILDERS`)', rows: nr.sort((a, b) => a.key.localeCompare(b.key)) });
     // C. THE WORLD's rim (_WD_RIM.<kind>) and D. the room weenies (_hqLandmarkBuilders.<kind>)
     const objRows = T => Object.keys(T).sort().map(k => Object.assign({ key: k, extra: '' }, describe(T[k])));
-    fams.push({ id: 'C', title: 'THE WORLD\'s rim — the rings of land past a planet / plain board (`_WD_RIM`)', rows: objRows(WD) });
+    // C. THE WORLD's rim (_WD_RIM) was DELETED 2026-11-05 (mondo: "delete the rims")
     fams.push({ id: 'D', title: 'The room weenies — the fixed landmarks on an open room\'s horizon (`_hqLandmarkBuilders`, data.js `shell.sky.landmarks`)', rows: objRows(LM) });
     // E. the board monuments (_monBuilders: on-board cover a map names, the same _hz builders)
     const mon = (function () { const i = src.indexOf('if (!_MON_BUILDERS) _MON_BUILDERS = {'); return i < 0 ? '' : body(i + 30); })(), mrows = [];

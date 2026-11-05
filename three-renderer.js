@@ -41126,10 +41126,7 @@ const ThreeRenderer = (function () {
     //      and below the horizon line (uFogAmount → 1, uFogTop → the row's
     //      `fogTop`, band = top) — the ground's far edge and the sky's haze
     //      are then one colour, so there is no rim at any zoom.
-    //    • THE RIM — silhouettes on the ground 14–40 tiles out that close the
-    //      horizon (`rim`: peaks / spires — _WD_RIM; the rest were deleted
-    //      2026-11-03, nothing drew them), fogged
-    //      like the ground. Skipped under EW_PERF_LOW.
+    //    • THE RIM — DELETED (2026-11-03 + 11-05, mondo: "delete the rims").
     //    • THE WALL — `kind: 'cavern'` + `wall` = a rock cylinder round the
     //      whole world rising into the haze (Hollow Earth, Agartha, Hell).
     //    • THE ROOT — the rock the island hangs from once the world lets go:
@@ -41260,52 +41257,10 @@ const ThreeRenderer = (function () {
         var t = Math.max(0, Math.min(1, (g - 0.12) / (0.96 - 0.12)));
         return 1 - t * t * (3 - 2 * t);
     }
-    /* n stops on a circle rTiles out, jittered along the ring and in depth */
-    function _wdRing(K, rTiles, n, fn) {
-        var rng = K.rng, ts = K.ts;
-        for (var i = 0; i < n; i++) {
-            var a = (i + 0.5) / n * Math.PI * 2 + (rng() - 0.5) * (Math.PI * 2 / n) * 0.9;
-            var r = Math.max(rTiles, K._wdMinD || 0) * ts * (0.92 + rng() * 0.16);
-            fn(K.CX + Math.cos(a) * r, K.CZ + Math.sin(a) * r, a, i, r);
-        }
-    }
-    /* THE RIM — each builder: (K, spec, c) with c = { y: the ground level, shore, R, sea } */
-    var _WD_RIM = {
-        /* a mountain range in ranks; `mesa` = flat tops (the desert); `snow` = a cap sheet */
-        peaks: function (K, s, c) {
-            var ts = K.ts, rng = K.rng, snow = s.snow ? K.mat(s.snow, 0xffffff, { lift: 0.3 }) : null;
-            for (var k = 0; k < (s.ranks || 2); k++) {
-                var hh = (s.h || 7) * (1 + k * 0.3);
-                _wdRing(K, (s.d || 24) * (1 + k * 0.32), Math.round((s.n || 12) * (1 + k * 0.25)), function (x, z, a, i, rr) {
-                    if (rng() > (s.p == null ? 0.8 : s.p)) return;
-                    var h = ts * hh * (0.6 + rng() * 0.8), r = h * (0.32 + rng() * 0.25), flat = s.mesa ? 0.55 : 0;   // steep and slim: a range, not a carpet
-                    r = Math.min(r, rr - ((K._wdMinD || 0) + 1.5) * ts, rr * 0.16);   // the foot never reaches back over the shore, and never two ring-widths
-                    if (r < ts * 0.8) return;
-                    var gy = c.yAt ? c.yAt(x, z) : c.y;   // THE PLANET: on the curve
-                    /* THE ROCKS (2026-09-16): a crag / boulder GLB in the map's tint — a mesa is the same rock squashed flat */
-                    var m = _hzRock(K, { kind: flat ? 'boulder' : (rng() < 0.65 ? 'crag' : 'boulder'), span: r * 2 * (1 + rng() * 0.6), h: flat ? h * 0.6 : h, tex: s.tex || 'mountain', color: s.color, lift: 0.28, snow: (snow && !flat) ? snow : null, rng: rng });
-                    m.position.set(x, gy - ts * 0.2, z); K.add(m);
-                });
-            }
-        },
-        /* NO SWELLS (mondo 2026-11-03: "no map should be using the dune swells or hill swells, they look bad" — hills and dunes
-           are made with the map editor by raising the height): the squashed-sphere `hills` and `dunes` rims are gone */
-        /* stalagmites and rock spires — the floor of a cavern */
-        spires: function (K, s, c) {
-            var ts = K.ts, rng = K.rng;
-            for (var k = 0; k < (s.ranks || 2); k++) _wdRing(K, (s.d || 14) * (1 + k * 0.4), Math.round((s.n || 26) * (1 + k * 0.3)), function (x, z) {
-                if (rng() > (s.p == null ? 0.8 : s.p)) return;
-                var h = ts * (s.h || 8) * (0.4 + rng() * 1.1), r = ts * (s.r || 1.6) * (0.6 + rng() * 0.9);
-                /* THE ROCKS (2026-09-16): a standing stone / a crag in the cavern's tint, never a cone */
-                var m = _hzRock(K, { kind: rng() < 0.55 ? 'stone' : 'crag', span: r * 2, h: h, tex: s.tex || 'cave_wall', color: s.color, lift: 0.24, tilt: 0.25, rng: rng });
-                m.position.set(x, (c.yAt ? c.yAt(x, z) : c.y) - ts * 0.25, z); K.add(m);
-            });
-        },
-        /* THE RIMS OUT (2026-11-03, mondo: "Yes please delete the rim code since nothing is using it"): the trees, town, city, bergs,
-           ruins, pyramids and craters rims are gone — every board that wore one is a site arena (nothing round it); the town's pack
-           houses stand in the site rooms (DOOR_HQ.catalogue trailer_home_N / abandoned_house). Peaks + spires stay for the kept voxel
-           boards (Hell Δ · voxel, Göbekli Tepe Δ · voxel). */
-    };
+    /* THE RIMS OUT (2026-11-03 + 2026-11-05, mondo: "Yes please delete the rim code since nothing is using it" — "delete the rims"):
+       the world's rim (_WD_RIM: peaks, spires, trees, town, city, bergs, ruins, pyramids, craters, hills, dunes) is gone; the ground,
+       the root, the wall and the haze stay. The town's pack houses stand in the site rooms (DOOR_HQ.catalogue trailer_home_N /
+       abandoned_house). */
     /* THE WALL — a cavern's rock round the whole world, fading up into the haze */
     function _wdBuildWall(K, w, o) {
         var ts = K.ts, r = (w.r || 32) * ts, h = (w.h || 36) * ts;
@@ -41599,17 +41554,9 @@ const ThreeRenderer = (function () {
                     _wdInject(bm, { r0: fogR0, r1: fogR1 }); g.add(K.lit(bank));
                 }
             }
-            var c = { y: sea ? ly + 2 : groundY, shore: shore, R: R, sea: sea, moat: moat, planet: planet, yAt: planetInfo ? planetInfo.yAt : null };
-            K._wdMinD = sea ? 0 : shore / ts + 2;      // a rim never stands in the lake (nor on the island)
             K._wdFog = { r0: fogR0, r1: fogR1 };        // for the pieces that land LATER (foliage swaps, trimmed prisms): _nrInjectWorld
-            var lowPerf = (typeof window !== 'undefined' && window.EW_PERF_LOW);
-            var rims = row.rim ? (Array.isArray(row.rim) ? row.rim : [row.rim]) : [];
-            if (!lowPerf) rims.forEach(function (spec) {
-                var b = spec && _WD_RIM[spec.kind]; if (!b) return;
-                try { b(K, spec, c); } catch (e) { console.warn('[world] rim failed', spec.kind, e); }
-            });
             if (row.wall) _wdBuildWall(K, row.wall, { y: groundY, R: R });
-            /* every lit material the rim builders made joins the haze + the dissolve */
+            /* every lit material the world made (the wall) joins the haze + the dissolve */
             g.traverse(function (o) {
                 if (!o.material || !o.isMesh) return;
                 var ms = Array.isArray(o.material) ? o.material : [o.material];
