@@ -1075,3 +1075,18 @@ The first pass kept the room's last picture up over the fight's build (cap raise
     inside the shadow pass, which can't be warmed from outside) and late-arriving pieces. llvmpipe pays about 0.3-1.5 s for
     every first use, so this is far worse than real GPUs.
 
+
+## THE CRATER UNDER THE PAINT (2026-11-05, three-renderer.js)
+mondo: "in the training room, i used meteor but the floor does not deform and the units are underneath the floor now".
+- Cause: a room's PAINT (`_hqBuildMarks`: `terrain.marks`, the `board` feature's squares, a kit's `marksX`) is its own flat mesh
+  1.5 cm over the field. A dig bent only the field (`_fieldDeformApply` → `_fieldFloorMeshes`: `_ew_hqTerrain` / floor parts), so
+  the Training Room's 8×8 mats stayed flat over the crater and the units stood in it under them (their x-ray outlines through the
+  mats). Same on the Stadium (the chalk floated over the bowl) and every room with paint on its board.
+- Fix: every mark mesh carries the field's lattice (`_ew_hqMarks = { x0, z0, res, U }`) and is now one of the floor meshes. On the
+  first dig `_fieldMarksCut` cuts each mark triangle along the field's lattice lines and cell diagonals (the field's quads are
+  a, c, b / b, c, d), and `_fieldDeformMarks` gives each piece's corners the drop of the field's own nodes, mixed like the field's
+  triangle — the paint lies the same 1.5 cm over the bowl everywhere. Paint on a DUG square is dropped (its blocks went; the
+  square shows its dug ground / THE SKINS' sheet); the paint on the squares beside bends down the bowl's wall. Restored with the
+  field (`_fieldDeformRestoreMesh`). Kill-switch `window.EW_NO_MARKS_DEFORM` (the old flat paint).
+- Arenas only become their room after `hqArenaUpgrade` (VS CPU's gate, the labs): a harness that calls `applyGameMode` alone plays
+  the voxel board, which never had this bug. Shots: /mnt/project-files/meteor-crater-floor/.

@@ -1382,6 +1382,11 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   stops the same-character path flipping it to ready early); the board / HQ walk (`_attachUnitModel`) hides the model and keeps
   the sprite stand-in until dressed (`_unitRevealDressed`; the rig-cache fast path leaves the stand-in to it); the team room's
   `show()` and the unit dock wait too. Later picks on a live body are not hidden (the old garment stays until the new one is in).
+  Rev 2 (same day, mondo: "i still see the naked flash briefly"): the creator stage hid only its CANVAS (CSS opacity, a 0.5 s
+  fade). On a body swap with the new body GLB already cached, the new body was added while the canvas was still fading out
+  of the last character, so the bare body drew at up to full opacity for ~9 frames (caught by a per-render frame capture on
+  Cowboy -> Demon). The stage now also hides the body itself (`wrap.visible = false` until whenDressed); the beat cancel's
+  "never leave the hero gone" reset respects `v.dressWait`. Frame capture before / after: /mnt/project-files/dressed-reveal/flash-frames/.
 
 ## THE CACHED LANDING + THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo on the Singularity Arena, WebGPU: "these crystals are not pixelating, or it looks like they are flickering on and off of being pixelated")
 - Cause (measured in the cloud browser, WebGPU and the WebGPU renderer's WebGL2 backend): on a board with crystal tiles,
@@ -1399,6 +1404,24 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   spell prop clone is pixelated on the first frame it draws. The 400 ms timed scan stays for a flag set after the add.
 - Online: looks only, both seats run their own renderer; nothing relayed.
 
+## THE CORE ADAPTER (2026-11-05)
+mondo's Firefox console (M1, ?ew_gpu=webgpu) warned: `User requested a WebGPU adapter with featureLevel: "compatibility", which is
+not yet supported` (three.webgpu.js; bugzilla 1905951). three 0.186.1 WebGPUBackend.init() always asks for featureLevel
+'compatibility' and requests the device with requiredLimits {}. three-renderer.js `_ewGpuCoreShim` (called in _ewMakeBoardRenderer,
+mode webgpu only) wraps navigator.gpu.requestAdapter: on Firefox it drops featureLevel (core, the default; same adapter, no warning),
+Chrome/Safari keep three's ask; on every browser the device asks for the adapter's maxVertexBuffers when above 8 (Dawn caps at 8, so
+Chrome is unchanged). The adapter + device vertex limits print on the `board renderer:` console line and in gpuStatus()/?ewdiag=1.
+Off: ?ew_gpucore=0. Meshes over 8 vertex buffers are still fixed at the mesh (cloth-collision attributes interleaved, team-select thread).
+
+## THE CDN PROBE READS ITS ANSWER (2026-11-05)
+index.html "THE CDN CORS PROBE" fetches `Assets/world/terrain/scorched.png` (moved there in R2 layout W4, PR #898 era; the old
+`Assets/Sprites/terrain/` key is archived and answers 404). The probe used to throw on any non-OK status, so a moved probe
+file showed a false "CDN BLOCKED" banner. Now any READABLE response (R2 sends Access-Control-Allow-Origin on its 404s too)
+counts as "CORS fine": `_ewCdnCorsBlocked = false`, and a non-OK status only console.warns that the probe key needs updating.
+The banner shows only when the fetch itself fails (the real CORS block, or no network). Checked in Chromium: localhost:3000
+(allowed origin) no banner; probe rerouted to the archived 404 key, no banner + the warning; 127.0.0.1:3000 (not in the
+bucket's CORS list) banner shows. Bucket CORS origins: entropywars.net, www.entropywars.net, entropywars-prototype.onrender.com,
+localhost:3000.
 ## THE PER-FRAME AUDIT: THE STILL BATCHES + THE LANDING REBUILDS ONLY THE OBJECTS + THE STILL STAGE (2026-11-05, mondo after PR #939: "what other random items in the game are rebuilding every object on every frame ... fix any bullshit")
 - Method (cloud browser, classic WebGL + swiftshader, no input): `instr.js`-style page hooks counted, per frame, every
   `Object3D.add/remove/clone`, `BufferGeometry.setAttribute/dispose`, `Material/Texture.dispose`, every `needsUpdate` on a

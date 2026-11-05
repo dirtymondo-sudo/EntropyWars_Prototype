@@ -2253,8 +2253,9 @@ const ThreeRenderer = (function () {
     }
     /* THE CHRISTMAS PACK: a COLLADA file through the store → ColladaLoader.parse; else the loader's own network path. The file names
        its sheets by the author's own disk paths (C:/Users/…/Textures/Gift.png), so every image it asks for is read from the pack's
-       textures/ folder by its file name. The result is the scene in a plain group: the loader turns a Z-up file upright with a
-       rotation on its scene, and a piece cut from the group (_miscPiece) keeps that turn baked in. */
+       textures/ folder by its file name. The result is the scene in a plain group, a piece cut from it by _miscPiece. The file is Y-up
+       since 2026-11-05 (its vertices + node matrices turned once offline, the same world placement to 5e-15): the Z-up original made
+       the loader warn and only rotate its scene. The parser's "File version" debug line is kept out of the console. */
     function _isDaeUrl(url) { return /\.dae(?:[?#]|$)/i.test(String(url || '')); }
     function _asDae(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.ColladaLoader !== 'function') { if (onError) onError(new Error('no ColladaLoader')); return; }
@@ -2272,12 +2273,15 @@ const ThreeRenderer = (function () {
             _xmasPackMats(wrap);
             if (onLoad) onLoad(wrap);
         };
-        if (!_asAvailable()) { new THREE.ColladaLoader(mgr).load(url, done, undefined, onError); return; }
-        _asFetch(url, o).then(function (res) { return res.text(); }).then(function (text) {
-            var c = null;
-            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { if (onError) onError(e); return; }
+        var parse = function (text) {
+            var c = null, dbg = console.debug;
+            console.debug = function (m) { if (typeof m === 'string' && m.indexOf('THREE.ColladaLoader: File version') === 0) return; return dbg.apply(console, arguments); };
+            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { console.debug = dbg; if (onError) onError(e); return; }
+            console.debug = dbg;
             done(c);
-        }).catch(function (e) { if (onError) onError(e); });
+        };
+        var got = _asAvailable() ? _asFetch(url, o) : fetch(_asNetUrl(url), { mode: 'cors', credentials: 'omit' });
+        got.then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url); return res.text(); }).then(parse).catch(function (e) { if (onError) onError(e); });
     }
     /* the pack's sheets in the game's terms: no sRGB decode (the game's linear output, like every prop sheet), the alpha cut at 0.5
        (the tree's branch cards, the ribbon, the star, the snowy pine cards; an opaque sheet is untouched by it), the card sheets
@@ -42425,6 +42429,7 @@ const ThreeRenderer = (function () {
         var s = _ewGpuBackendName();
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
+        if (_ewGpu === 'webgpu' && _ewGpuInfo.limits) s += ' · ' + _ewGpuInfo.limits;
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
@@ -43511,7 +43516,7 @@ const ThreeRenderer = (function () {
        positionLocal here is the skinned cloth vertex; the anchor is skinned with the BODY's weights off the same bone matrices
        (by reference, the way three's own skinning reads them). A skeleton too big for a uniform buffer (three then reads its
        bones from a texture) keeps the plain skinning. */
-    var _ewNodeColWarned = false;
+    var _ewNodeColWarned = false, _ewNodeColLimWarned = false;
     function _ewNodeCol(nm) {
         var U = _ewNodeU, T = U.T;
         if (!U.col) (function () {
@@ -43528,9 +43533,22 @@ const ThreeRenderer = (function () {
             }
             var BM = T.referenceBuffer('skeleton.boneMatrices', 'mat4', sk.bones.length);
             var bind = T.reference('bindMatrix', 'mat4'), bindI = T.reference('bindMatrixInverse', 'mat4');
-            var A = T.attribute('ewColA', 'vec4'), Nn = T.attribute('ewColN', 'vec4'), Jp = T.attribute('ewColJ', 'uvec4'), W = T.attribute('ewColW', 'vec4');
+            /* THE ONE BUFFER: never more vertex buffers than the device draws from (WebGPU: 8). The anchors are one buffer; a
+               garment that already fills the rest keeps the plain skinning rather than not drawing at all */
+            var geo = builder.geometry, lim = 16, nb = 1, seenB = [];
+            try { var dvc = builder.renderer && builder.renderer.backend && builder.renderer.backend.device; if (dvc && dvc.limits && dvc.limits.maxVertexBuffers) lim = dvc.limits.maxVertexBuffers; } catch (e) {}
+            if (geo && geo.attributes) for (var ak in geo.attributes) {
+                if (/^ewCol/.test(ak)) continue;
+                var ga = geo.attributes[ak], gb = ga && ga.isInterleavedBufferAttribute ? ga.data : ga;
+                if (gb && seenB.indexOf(gb) < 0) { seenB.push(gb); nb++; }
+            }
+            if (nb > lim) {
+                if (!_ewNodeColLimWarned) { _ewNodeColLimWarned = true; console.warn('[ThreeRenderer] cloth collision: ' + nb + ' vertex buffers is over the device\'s ' + lim + ', plain skinning'); }
+                return P;
+            }
+            var A = T.attribute('ewColA', 'vec4'), Nn = T.attribute('ewColN', 'vec4'), Jf = T.attribute('ewColJ', 'vec4'), W = T.attribute('ewColW', 'vec4');
             var A2 = T.attribute('ewColA2', 'vec4'), N2 = T.attribute('ewColN2', 'vec4'), W2 = T.attribute('ewColW2', 'vec4');
-            var J = Jp.bitAnd(T.uvec4(255)), J2 = Jp.shiftRight(T.uvec4(8));
+            var J = T.uvec4(T.mod(Jf, 256)), J2 = T.uvec4(T.floor(Jf.div(256)));   // (the bone slots ride the float buffer: j1 + 256 j2)
             var out = T.vec3(P).toVar(), k = T.length(Nn.xyz);
             T.If(K.x.greaterThan(0.5).and(k.greaterThan(0.01)), function () {
                 var M = T.add(BM.element(J.x).mul(W.x), BM.element(J.y).mul(W.y), BM.element(J.z).mul(W.z), BM.element(J.w).mul(W.w));
@@ -44864,6 +44882,45 @@ const ThreeRenderer = (function () {
         }
         catch (e) { console.warn('[ThreeRenderer] node program: kept the stand-in', e); return null; }
     }
+    /* THE CORE ADAPTER (2026-11-05, mondo's Firefox console: 'User requested a WebGPU adapter with featureLevel:
+       "compatibility", which is not yet supported; returning a "core"-defaulting adapter for now' from three.webgpu.js).
+       three 0.186.1's WebGPUBackend.init() always asks navigator.gpu.requestAdapter for featureLevel 'compatibility' (it then
+       turns core on by asking for every feature the adapter has). Firefox has no compatibility mode (bugzilla 1905951), hands
+       back a core adapter anyway and warns. Nothing in the game needs compatibility mode, so on Firefox the ask drops
+       featureLevel (the WebGPU default, core): the same adapter, no warning. Chrome / Safari keep three's ask unchanged.
+       While the adapter passes through: its vertex limits are kept for ?ewdiag=1 / gpuStatus(), and the device asks for the
+       adapter's own maxVertexBuffers when that is above WebGPU's default 8 (three asks for no limits, so the device got 8
+       even where the GPU has more; mondo's log: 'The number of vertex buffers 13 exceeds the limit 8'). Chrome's Dawn tops
+       out at 8, so there it changes nothing. A wrapper on navigator.gpu, not a patch of the vendored three (it loads from
+       jsdelivr). Off: ?ew_gpucore=0 (reload). */
+    function _ewGpuCoreShim() {
+        var gpu = (typeof navigator !== 'undefined') ? navigator.gpu : null;
+        if (!gpu || typeof gpu.requestAdapter !== 'function' || gpu._ewCoreShim) return;
+        try { if (/[?&]ew_gpucore=0\b/.test(location.search)) return; } catch (e) {}
+        var ff = /Firefox\//.test(navigator.userAgent || ''), ra = gpu.requestAdapter;
+        gpu._ewCoreShim = true;
+        gpu.requestAdapter = function (o) {
+            if (ff && o && o.featureLevel === 'compatibility') { o = Object.assign({}, o); delete o.featureLevel; }
+            return ra.call(this, o).then(function (a) {
+                if (!a || a._ewCoreShim || typeof a.requestDevice !== 'function') return a;
+                a._ewCoreShim = true;
+                var L = a.limits || {}, mvb = L.maxVertexBuffers | 0, rd = a.requestDevice;
+                _ewGpuInfo.limits = 'adapter maxVertexBuffers ' + mvb + ', maxVertexAttributes ' + (L.maxVertexAttributes | 0) +
+                    (ff ? ' (featureLevel core)' : '');
+                a.requestDevice = function (d) {
+                    d = Object.assign({}, d || {});
+                    var rl = Object.assign({}, d.requiredLimits || {});
+                    if (mvb > 8 && !(rl.maxVertexBuffers >= mvb)) rl.maxVertexBuffers = mvb;
+                    d.requiredLimits = rl;
+                    return rd.call(this, d).then(function (dev) {
+                        try { _ewGpuInfo.limits += '; device maxVertexBuffers ' + (dev.limits.maxVertexBuffers | 0); } catch (e) {}
+                        return dev;
+                    });
+                };
+                return a;
+            });
+        };
+    }
     /* the board renderer: the node renderer when asked for and loaded, else the classic one */
     function _ewMakeBoardRenderer(cnv) {
         var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
@@ -44877,6 +44934,7 @@ const ThreeRenderer = (function () {
                     var lensUser = false;
                     try { lensUser = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) {}
                     if (!ff && lensUser) opts.trackTimestamp = true;   // Firefox's wgpu invalidates the device on timestampWrites
+                    if (mode === 'webgpu') _ewGpuCoreShim();
                     var r = new G.WebGPURenderer(opts);
                     _ewGpu = mode;
                     _ewGpuCompat(r, G);
@@ -45446,7 +45504,7 @@ const ThreeRenderer = (function () {
                     if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = String(ev && ev.error && ev.error.message || ev).slice(0, 160);
                 });
             } catch (e) {}
-            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName());
+            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}
         }, function (e) {
@@ -50634,7 +50692,7 @@ const ThreeRenderer = (function () {
         if (!src || !src.image || src.isCompressedTexture) return null;
         var img = src.image, w = img.width || img.naturalWidth || 512, h = img.height || img.naturalHeight || 512, cnv = _ccCanvas(w, h);
         if (!cnv) return null;
-        try { var g = cnv.getContext('2d'); g.drawImage(img, 0, 0, w, h); return { w: w, h: h, cnv: cnv, g: g, id: g.getImageData(0, 0, w, h) }; } catch (ex) { return null; }
+        try { var g = cnv.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h); return { w: w, h: h, cnv: cnv, g: g, id: g.getImageData(0, 0, w, h) }; } catch (ex) { return null; }   // (THE QUICK PICKS: a CPU canvas - read back off a GPU one, a style's first pick stalled seconds)
     }
     function _ccLab(r, g, b) {   // 0..255 sRGB → CIE Lab
         var f = function (u) { u /= 255; return u > 0.04045 ? Math.pow((u + 0.055) / 1.055, 2.4) : u / 12.92; };
@@ -50700,7 +50758,7 @@ const ThreeRenderer = (function () {
            seam of hair colour round a band). The levels come from the USED texels only: a braid's unused black backdrop
            (Braid 01: 90% of its file) or Hair 13's red square round its bow must not set the range. 'lighter' = one path per
            triangle adds up (a single shared path's winding would cancel flipped triangles out) */
-        var mc = _ccCanvas(W, H), mg = mc && mc.getContext('2d');
+        var mc = _ccCanvas(W, H), mg = mc && mc.getContext('2d', { willReadFrequently: true });
         if (mg) {
             var ua = sg.attributes.uv.array, ix = sg.index ? sg.index.array : null, tc = ix ? ix.length : sg.attributes.position.count, fy = !!src.flipY;
             mg.globalCompositeOperation = 'lighter'; mg.lineWidth = 2; mg.lineJoin = 'round';
@@ -51395,6 +51453,23 @@ const ThreeRenderer = (function () {
             S.arm.updateMatrixWorld(true);
         }
     }
+    /* THE QUICK PICKS (2026-11-05, mondo: "i click one item or piece of clothing and the game freezes ... like 5 seconds"): the
+       rig's spatial grids (nearest skin, the coat's averaged offsets, THE LAYERS, THE HAIR UNDER THE HAT, ...) keyed their cells by
+       "x,y,z" strings, built thousands of times per garment vertex. A cell is one number now: integer cell coords within
+       +-65536 cells (1.3 km at 2 cm) packed in 51 bits, collision-free, the same cells as before. */
+    function _ccK(x, y, z) { return ((x + 65536) * 131072 + (y + 65536)) * 131072 + (z + 65536); }
+    /* the cells round a point's cell ring by ring (Chebyshev distance 0, 1, ... rc): a nearest-point search walks them in this order
+       and stops at the ring whose closest possible point, (r - 1) cells off, is no nearer than the best found - the same nearest */
+    var _ccRingCache = {};
+    function _ccRings(rc) {
+        if (_ccRingCache[rc]) return _ccRingCache[rc];
+        var o = [], s = [0];
+        for (var r = 0; r <= rc; r++) {
+            for (var a = -r; a <= r; a++) for (var b = -r; b <= r; b++) for (var c = -r; c <= r; c++) if (Math.max(Math.abs(a), Math.abs(b), Math.abs(c)) === r) o.push(a, b, c);
+            s.push(o.length);
+        }
+        return (_ccRingCache[rc] = { o: Int32Array.from(o), s: Int32Array.from(s) });
+    }
     /* THE DRESSED REVEAL (2026-11-05, mondo: "the mpfb bodies load naked before the clothes come on. Wtf is the point of the
        manifesting loading symbol if youre just gonna flash a god damn naked body"): the shared loaders, kept here so the rig
        below can count every load it starts (its own loaders of the same names wrap these). */
@@ -51402,6 +51477,18 @@ const ThreeRenderer = (function () {
     var CC_DRESS_MAX_MS = 20000;   // a load that never answers still lets the body show after this
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
+        /* THE QUICK PICKS: a dropped garment's / hair's material is kept (its textures let go), not disposed: disposing it freed its
+           shader program (three keeps one while any material holds it), so the next frame compiled the very same program again for
+           the garment built to replace it, or for the boots picked back a moment later (1-2 s a pick in WebGL, a pipeline build in
+           WebGPU). The last RETIRED_MAX are kept (a handful of programs between them); older ones and all at dispose() go. */
+        var RETIRED_MAX = 48, retired = [];
+        function flushLater(all) {
+            while (retired.length > (all ? 0 : RETIRED_MAX)) { var o = retired.shift(); try { o.dispose(); } catch (_e) {} }
+        }
+        function disposeLater(m) {
+            ['map', 'normalMap', 'alphaMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap'].forEach(function (k) { if (m[k]) m[k] = null; });   // (never drawn again: no recompile)
+            retired.push(m); flushLater(false);
+        }
         /* THE DRESSED REVEAL: every async load this rig starts (a garment / hair / wings GLB, a look / fabric picture, the eye pack,
            the body's own lashes) is counted while in flight; whenDressed(cb) fires once none is left - the callback that finished
            the last one has already put its piece on the body, and a load it starts in turn is counted before it returns. Each
@@ -52586,10 +52673,8 @@ const ThreeRenderer = (function () {
             part.shapeD = shD;
             part.beltH = a.beltHeight || 0;   // THE BELT HEIGHT
             part.bootIn = a.pantsTuck === 'in';   // THE PANTS IN THE BOOTS
-            wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
-            try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
-            try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
-            try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+            var fitTw = !!(part.fitLater || part.fitTwice); part.fitTwice = false;   // (a garment set built for this rebuild: THE QUICK PICKS)
+            wearFits(part, true, fitTw);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it) + the coat hang + the hides
             part.pokeHide = null; part.skinCov = null;   // THE SKIN UNDER THE CLOTHES: skinCover, once the normals are smoothed (before THE LAYERS below)
             var PS = P;   // THE SHAPED EARS: the skull as if the ears were not grown (the hair keeps its own size and stays off them)
             if (part.earD) { PS = new Float32Array(N * 3); for (i = 0; i < N * 3; i++) PS[i] = P[i] - part.earD[i]; }
@@ -54927,7 +55012,7 @@ const ThreeRenderer = (function () {
             part.hair.forEach(function (h) {
                 if (h.mesh.parent) h.mesh.parent.remove(h.mesh);
                 h.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(h.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
-                if (h.mesh.material && !h.mesh.material._ew_shared) { h.mesh.material.dispose(); var mi = ownedMaterials.indexOf(h.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
+                if (h.mesh.material && !h.mesh.material._ew_shared) { disposeLater(h.mesh.material); var mi = ownedMaterials.indexOf(h.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
             });
             part.hair = []; part.hairRoot = null;
             part.hairMatKey = null; part.hairMatOn = false;   // THE HAIR MATERIALS (the next build applies it again)
@@ -55165,16 +55250,21 @@ const ThreeRenderer = (function () {
                     }
                     if ((x - sm.cx) * Nn[v * 3] + (y - sm.cy) * Nn[v * 3 + 1] + (z - sm.cz) * Nn[v * 3 + 2] <= 0) continue;   // (the inner shell / the brim's top)
                     var id = HV.length; HV.push(w, v);
-                    var key = Math.floor(x / C) + ',' + Math.floor(y / C) + ',' + Math.floor(z / C), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]);
+                    var key = _ccK(Math.floor(x / C), Math.floor(y / C), Math.floor(z / C)), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]);
                 }
             });
             if (!HV.length) return;
+            /* (THE QUICK PICKS: the hat points' box, `reach` wider - a hair point outside it has no hat point within reach) */
+            var hb = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+            for (k = 0; k < HV.length; k += 2) { var hA = HV[k].mesh.geometry.attributes.position.array, hv = HV[k + 1] * 3; for (var hd = 0; hd < 3; hd++) { if (hA[hv + hd] < hb[hd]) hb[hd] = hA[hv + hd]; if (hA[hv + hd] > hb[hd + 3]) hb[hd + 3] = hA[hv + hd]; } }
+            for (k = 0; k < 3; k++) { hb[k] -= reach; hb[k + 3] += reach; }
             var nearest = function (x, y, z) {   // -> [id, d2] of the nearest outer hat vertex within reach
-                var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
-                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l) continue;
+                if (x < hb[0] || y < hb[1] || z < hb[2] || x > hb[3] || y > hb[4] || z > hb[5]) return null;
+                var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach, RO = _ccRings(rc);
+                for (var rr = 0; rr <= rc; rr++) { if (rr > 1 && (rr - 1) * (rr - 1) * C * C >= bd) break; for (var rk = RO.s[rr]; rk < RO.s[rr + 1]; rk += 3) {   // (THE QUICK PICKS: ring by ring)
+                    var l = grid.get(_ccK(cx + RO.o[rk], cy + RO.o[rk + 1], cz + RO.o[rk + 2])); if (!l) continue;
                     for (var q = 0; q < l.length; q++) { var w = HV[l[q]], v = HV[l[q] + 1], A = w.mesh.geometry.attributes.position.array, d = (A[v * 3] - x) * (A[v * 3] - x) + (A[v * 3 + 1] - y) * (A[v * 3 + 1] - y) + (A[v * 3 + 2] - z) * (A[v * 3 + 2] - z); if (d < bd) { bd = d; best = l[q]; } }
-                }
+                } }
                 return best < 0 ? null : [best, bd];
             };
             var need = function (x, y, z, out) {   // the pull that puts this point `gap` under the hat (0 = not under it / already under)
@@ -55276,7 +55366,7 @@ const ThreeRenderer = (function () {
                 var got = cache.get(j); if (got !== undefined) return got;
                 var x = SP[j * 3], y = SP[j * 3 + 1], z = SP[j * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = thick[j];
                 if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var q = 0; q < l2.length; q++) { var jj = l2[q]; if (thick[jj] <= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thick[jj]; }
                 }
                 cache.set(j, best); return best;
@@ -55313,7 +55403,7 @@ const ThreeRenderer = (function () {
                 var got = thinCache.get(j); if (got !== undefined) return got;
                 var x = SP[j * 3], y = SP[j * 3 + 1], z = SP[j * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = thin[j] || Infinity;
                 if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var q = 0; q < l2.length; q++) { var jj = l2[q]; if (!thin[jj] || thin[jj] >= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thin[jj]; }
                 }
                 thinCache.set(j, best); return best;
@@ -55380,13 +55470,13 @@ const ThreeRenderer = (function () {
                 for (var v = 0; v < n; v++) {
                     var y = A[v * 3 + 1]; if (y < yMin - gR || y > yMax + gR) continue;
                     var id = GW.length; GW.push(v, gi, gw, A);
-                    var key = Math.floor(A[v * 3] / gC) + ',' + Math.floor(y / gC) + ',' + Math.floor(A[v * 3 + 2] / gC), l = ggrid.get(key); if (l) l.push(id); else ggrid.set(key, [id]);
+                    var key = _ccK(Math.floor(A[v * 3] / gC), Math.floor(y / gC), Math.floor(A[v * 3 + 2] / gC)), l = ggrid.get(key); if (l) l.push(id); else ggrid.set(key, [id]);
                 }
             });
             var garmentW = function (k2, out) {
                 var x = HN.P[k2 * 3], y = HN.P[k2 * 3 + 1], z = HN.P[k2 * 3 + 2], cx = Math.floor(x / gC), cy = Math.floor(y / gC), cz = Math.floor(z / gC), tot = 0;
                 for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
-                    var l = ggrid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l) continue;
+                    var l = ggrid.get(_ccK(cx + a, cy + b, cz + c)); if (!l) continue;
                     for (var q2 = 0; q2 < l.length; q2++) {
                         var id = l[q2], v = GW[id], A = GW[id + 3], d = Math.hypot(A[v * 3] - x, A[v * 3 + 1] - y, A[v * 3 + 2] - z);
                         if (d >= gR) continue;
@@ -56081,7 +56171,7 @@ const ThreeRenderer = (function () {
                 [w.mesh].concat(w.accents || []).forEach(function (mh) {
                     if (mh.parent) mh.parent.remove(mh);
                     mh.geometry.dispose(); var gi = ownedGeometries.indexOf(mh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
-                    if (mh.material) { mh.material.dispose(); var mi = ownedMaterials.indexOf(mh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
+                    if (mh.material) { disposeLater(mh.material); var mi = ownedMaterials.indexOf(mh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
                 });
                 (w.texs || [w.tex]).forEach(function (t) { if (t) { t.dispose(); var ti = ownedTextures.indexOf(t); if (ti >= 0) ownedTextures.splice(ti, 1); } });
                 if (w.sway) w.sway.bones.forEach(function (b) { if (b.parent) b.parent.remove(b); });   // THE BLENDER CAPES
@@ -56167,8 +56257,28 @@ const ThreeRenderer = (function () {
            so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
            the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
            Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
-           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/.
+           THE BAKED SHAPE (2026-11-05 pass 2, mondo on the after shots: "the pointy side of the coat are still literally in every after
+           shot, every body ... all the wide stances cause these weird horizontal lines on the lower half of the coat", + a hole at the
+           back of the female heavy cassock). He was right: pass 1 only fixed the upright idles. Three causes, each fixed:
+           - the LINES: each chain bone aimed from wherever its joint had got to back at where the coat's own weights carry the next
+             joint; a joint a little off (pushed, or short of a stretched bake) turned the bone below back toward the bake, so the chain
+             zig-zagged and the skirt shaded in bands. `tdir` 1: each bone now lies along the coat's own baked segment (joint -> next
+             joint, both as the weights carry them), so with the legs out of the way the chain IS the bake (with no hang the coat is a
+             clean A-line in the Wide stance, only the thighs come through it).
+           - the POINT under the belt at the hips: the top bone pivots at the waist ~15 cm over the hip joints the thighs turn on, so
+             swung fully onto the thighs' carry the cloth at the hip stood out past the leg in a corner. `follow` [0.5] + `followSide`:
+             the side and back chains' top bone goes half way (the front panels keep the full follow: half let a thigh lifting forward out
+             through the front pocket). And the push clearance is `rad` x t now in every pose (`poseA` null: the full 3 cm at the top
+             sample, kept for the Wide stance in pass 1, swung the hip out 1/t as far - with the baked shape the legs no longer need it).
+           - the SLAB at the side of the duster / long coat that the baked shape showed: the sleeve cuffs hang by the hips and were
+             counted in as skirt (THE SLEEVES OUT below), pulling the side chains' joints out to the hands.
+           `jsym` + `jblend` 0.5: the cloth either side of a joint shares the two bones, so a bend shades round. Tried + dropped: chains
+           rooted at the hip joints with the cloth over them on the pelvis (a shelf at the hips + jeans through), a per-direction leg
+           radius (no change), follow 0.3 (jeans at the front pocket), "never tuck in under the widest point" on the lower bones (no
+           change to the cassock's seat, more jeans through on the lab coat), a longer fade from the coat's weights onto the chains (no
+           change). Measured: see docs/notes/character-creator.md "THE BAKED SHAPE". */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: null, tdir: 1, follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -56199,7 +56309,11 @@ const ThreeRenderer = (function () {
             var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };
             var adiff = function (a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };   // signed, -PI..PI
             var sec = []; for (c = 0; c < NC; c++) sec.push([]);
-            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
+            /* THE SLEEVES OUT (2026-11-05): the cuffs hang down by the hips - they are no skirt (counted in, they pulled the side chains'
+               joints out to the hands and the panel there stood out in a slab, and the fade below gave the cuffs to the skirt chains) */
+            var armRx = /(Arm|Hand|Shoulder)/, isArm = new Uint8Array(count);
+            for (i = 0; i < count; i++) { var aw = 0; for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0 && bones[si[i * 4 + k]] && armRx.test(bones[si[i * 4 + k]].name)) aw += sw[i * 4 + k]; if (aw > 0.3) isArm[i] = 1; }
+            for (i = 0; i < count; i++) { if (isArm[i] || P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
             var chains = [];
             for (c = 0; c < NC; c++) {
                 var L = sec[c]; if (L.length < 24) continue;   // (the opening of an open coat: no cloth there)
@@ -56233,6 +56347,7 @@ const ThreeRenderer = (function () {
             // the skirt's weights: faded from its own onto the two chains either side of it (one, across an open front) by height
             var fade = COAT_HANG.fade * Hm, acc = {}, b4;
             for (i = 0; i < count; i++) {
+                if (isArm[i]) continue;
                 var y = P[i * 3 + 1], t = (yR - y) / fade; if (!(t > 0)) continue;
                 t = t > 1 ? 1 : t; var f = t * t * (3 - 2 * t), av = ang(P[i * 3], P[i * 3 + 2]);
                 var c0 = -1, c1 = -1, d0 = Infinity, d1 = Infinity;
@@ -56245,9 +56360,11 @@ const ThreeRenderer = (function () {
                 picks.forEach(function (pk) {
                     var C = chains[pk[0]], Jy = C.j, s = 0;
                     while (s < JN - 2 && y < Jy[s + 1][1]) s++;
-                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, wP = s > 0 && u < 0.25 ? 0.5 * (0.25 - u) / 0.25 : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
-                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP);
+                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, jb = COAT_HANG.jblend || 0.25, wP = s > 0 && u < jb ? 0.5 * (jb - u) / jb : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
+                    var wN = COAT_HANG.jsym && s < JN - 2 && u > 1 - jb ? 0.5 * (u - 1 + jb) / jb : 0;   // THE SMOOTH BENDS: and a little of the bone below just above the next joint (the bend shades round, not in a line)
+                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP - wN);
                     if (wP > 0) acc[C.idx0 + s - 1] = (acc[C.idx0 + s - 1] || 0) + pk[1] * f * wP;
+                    if (wN > 0) acc[C.idx0 + s + 1] = (acc[C.idx0 + s + 1] || 0) + pk[1] * f * wN;
                 });
                 var top = Object.keys(acc).map(function (bk) { return [+bk, acc[bk]]; }).sort(function (x, y2) { return y2[1] - x[1]; }).slice(0, 4), tt = 0;
                 top.forEach(function (tp) { tt += tp[1]; });
@@ -56261,7 +56378,7 @@ const ThreeRenderer = (function () {
                     return W4.filter(function (x) { return sk.boneInverses[x[0]] && bones[x[0]]; }).map(function (x) { return { b: bones[x[0]], w: tw > 0 ? x[1] / tw : 0, L: new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(sk.boneInverses[x[0]]) }; });
                 });
             });
-            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
+            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t, a: C.a }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
         }
         /* the leg capsules (THE COAT HANG): per thigh (UpLeg -> Leg) and shin (Leg -> Foot), in that bone's own bind frame, the
            axis + radius (tapered: one at each end) of everything worn on it under the hanging coat - the skin, the trousers, the
@@ -56397,8 +56514,9 @@ const ThreeRenderer = (function () {
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
                     var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
                     if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
+                    var rc = K.rad * (O.poseA ? ct + (1 - ct) * kf : O.limT ? ct : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + rc, lk) * Wk.s;
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
                     _hd.addScaledVector(_hgE, -_hd.dot(_hgE) / (L2 || 1));        // (across the axis only)
@@ -56422,7 +56540,17 @@ const ThreeRenderer = (function () {
                     if (Tn && Tn.length) {   // toward where the cloth's own weights would carry its next joint (the coat as baked, following the thighs)
                         _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
                         _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
+                        var T0 = O.tdir > 0 && C.t[i];
+                        if (T0 && T0.length) {   // THE BAKED SHAPE: along the coat's own baked segment (joint -> next joint as its weights carry them), not from wherever this joint got to: aimed from a joint already off its baked place, each bone turned back toward the bake and the chain zig-zagged into bands across the skirt
+                            _hgS.set(0, 0, 0); for (tq = 0; tq < T0.length; tq++) _hgS.addScaledVector(_hgP.copy(T0[tq].L).applyMatrix4(T0[tq].b.matrixWorld), T0[tq].w);
+                            _hgF.set(0, 0, 0); for (tq = 0; tq < Tn.length; tq++) _hgF.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
+                            _hgF.sub(_hgS);
+                            if (_hgF.lengthSq() > 1e-10) { _hgF.normalize(); _hgB.multiplyScalar(1 - O.tdir).addScaledVector(_hgF, O.tdir); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgF); }
+                        }
                     } else _hgB.copy(_hgG);
+                    var fo = O.follow && O.follow[i] != null ? O.follow[i] : 1;
+                    if (fo < 1 && O.followSide && C.a != null) fo = 1 - (1 - fo) * (1 - Math.max(0, Math.cos(C.a)));   // (the sides + back only: the front panels must keep up with a thigh lifting into them)
+                    if (fo < 1) { _hgB.multiplyScalar(fo).addScaledVector(_hgG, 1 - fo); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG); }   // THE HIP HANG: the top bone only part way to the thighs' carry
                     if (i && O.fall > 0) _hgB.multiplyScalar(1 - O.fall).y -= O.fall, _hgB.normalize();   // (below the first joint the cloth falls toward the ground: straight on from a pushed joint the skirt flared out like a bell / stood out stiff as a board in a kneel or kick. NOT back toward its rest hang: that pulled it back into the leg)
                     _hgA.copy(B.head).addScaledVector(_hgB, wl);
                     if (fresh || B.cur.distanceTo(B.head) > wl * 4) { B.cur.copy(_hgA); B.prev.copy(_hgA); }
@@ -56487,8 +56615,14 @@ const ThreeRenderer = (function () {
                (mesh extras ewFit.from), each garment vertex moved by the reshape offset (_fit_d) of the body vertex nearest it */
             var fitFrom = part.fit ? part.fit.from : part.body.userData && part.body.userData.ewFit && part.body.userData.ewFit.from, FD = part.fit ? part.fit.FD : fitFrom && part.src.attributes._fit_d;   // (THE CLASSIC FIT: a classic base wears the MPFB classic body's fit)
             var own = fitFrom || String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
-            if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
-            if (FD) {
+            /* THE QUICK PICKS: a garment's fit onto this body (the _d_ offsets + THE CLASSIC FIT's averaged reshape) and its nearest
+               skin (nb / ns / ss below) depend only on the garment file and the body, never on a slider: worked out once per rig
+               and garment (part.wearPre, by the cached geometry), every later pick reuses them */
+            var preM = part.wearPre || (part.wearPre = new Map()), pre = preM.get(sg) || null;
+            if (pre && (pre.FD !== FD || pre.count !== count || pre.fitBase !== part.fitBase)) pre = null;
+            if (pre) P.set(pre.Pfit);
+            else if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
+            if (FD && !pre) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
                 if (ex.outer || ex.uv === 'm') {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together (2026-11-02: every Blender piece, so a shirt and the coat over it take the same reshape)
                     var nsF = nearSet(part.fitBase, P, CLASSIC_COAT_R), fof = [0, 0, 0], dO = new Float32Array(P.length);
@@ -56530,6 +56664,11 @@ const ThreeRenderer = (function () {
                     }
                     for (i = 0; i < P.length; i++) P[i] += dF[i];
                 }
+            }
+            if (!pre) {
+                pre = { FD: FD, count: count, fitBase: part.fitBase, Pfit: Float32Array.from(P), Pfin: null, nb: null, ns: null, ss: null };
+                if (preM.size >= 24) preM.delete(preM.keys().next().value);
+                preM.set(sg, pre);
             }
             if (ex.sway && !(typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) {   // THE BLENDER CAPES: the chains, where this body wears the cape
                 try { swayRig = wearChains(part, ex, P); } catch (e) { swayRig = null; console.warn('[ThreeRenderer] cape sway failed', e); }
@@ -56626,11 +56765,14 @@ const ThreeRenderer = (function () {
             /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
                appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
             var bandTint = (tint && bandMade && bandMade.tex) ? { mesh: bandMade.mesh, src: tint.src, sg: sg, own: bandMade.tex } : null;
+            /* THE QUICK PICKS: the nearest skin as last time when the garment lies where it lay then (the chains / the coat hang leave it) */
+            var near = pre.Pfin && pre.Pfin.length === P.length && pre.Pfin.every(function (x, k) { return x === P[k]; }) ? pre : null;
+            if (!near) { pre.Pfin = Float32Array.from(P); pre.nb = nearestBody(part, P); pre.ns = ex.outer ? nearSet(part, P, 0.05) : null; pre.ss = ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null; near = pre; }
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, hang: hangRig, facial: facial, tint: tint, bandTint: bandTint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ((typeof EW_WEAR_KIND !== 'undefined' && EW_WEAR_KIND[id]) || ex.cat) || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z; sprites.js EW_WEAR_KIND: a pack piece mis-filed under Suits reads what it is)
                       tuck: !!ex.tuck || (/(^|_)tucked/.test(id) && !/untucked/.test(id)),   // THE TUCK: a tucked top (bake-clothes.py _TUCK, a pack "tucked" shirt)
                       solid: !!ex.solid, hideHead: !!ex.hideHead, hideLegs: !!ex.hideLegs, grip: ex.grip || null,   // THE MESHY PIECES (bake-meshy.py)
-                      del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
+                      del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: near.nb, ns: near.ns, ss: near.ss, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }
@@ -56640,14 +56782,14 @@ const ThreeRenderer = (function () {
             var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
             if (!grid) {
                 grid = part.nbGrid = new Map();
-                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+                for (i = 0; i < N; i++) { var key = _ccK(Math.floor(P[i * 3] / C), Math.floor(P[i * 3 + 1] / C), Math.floor(P[i * 3 + 2] / C)), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
             }
             var n = G.length / 3, out = new Int32Array(n);
             for (var v = 0; v < n; v++) {
                 var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = Infinity;
                 for (var r = 0; r <= 4 && best < 0; r++) for (var a = -r; a <= r; a++) for (var b = -r; b <= r; b++) for (var c = -r; c <= r; c++) {
                     if (Math.max(Math.abs(a), Math.abs(b), Math.abs(c)) !== r) continue;
-                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var k = 0; k < l2.length; k++) { var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
                 }
                 if (best < 0) for (i = 0; i < N; i += 7) { var ex = P[i * 3] - x, ey = P[i * 3 + 1] - y, ez = P[i * 3 + 2] - z, e = ex * ex + ey * ey + ez * ez; if (e < bd) { bd = e; best = i; } }
@@ -56663,7 +56805,7 @@ const ThreeRenderer = (function () {
             var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
             if (!grid) {
                 grid = part.nbGrid = new Map();
-                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+                for (i = 0; i < N; i++) { var key = _ccK(Math.floor(P[i * 3] / C), Math.floor(P[i * 3 + 1] / C), Math.floor(P[i * 3 + 2] / C)), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
             }
             /* THE SKIN UNDER THE CLOTHES (2026-11-02): the skin within R of the NEAREST skin distance (dmin + R), not within R of
                the vertex - a garment vertex standing more than R off the skin (a shirt's turned-down collar, a coat's lapel) fell
@@ -56674,7 +56816,7 @@ const ThreeRenderer = (function () {
                 var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), st = J.length, tot = 0;
                 var o1 = one[v] * 3, d0 = Math.sqrt((P[o1] - x) * (P[o1] - x) + (P[o1 + 1] - y) * (P[o1 + 1] - y) + (P[o1 + 2] - z) * (P[o1 + 2] - z)), Rv = d0 + R, rc = Math.min(6, Math.ceil(Rv / C)), R2 = Rv * Rv;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var k = 0; k < l2.length; k++) {
                         var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
                         if (d2 >= R2) continue;
@@ -56692,7 +56834,7 @@ const ThreeRenderer = (function () {
            offset field over the garment's OWN vertices within R (any layer), `passes` times: the layers move as one. */
         function spaceSmooth(P, passes, R) {
             var n = P.length / 3, grid = new Map(), i, k;
-            var key = function (x, y, z) { return x + ',' + y + ',' + z; };
+            var key = function (x, y, z) { return _ccK(x, y, z); };
             for (i = 0; i < n; i++) { var kk = key(Math.floor(P[i * 3] / R), Math.floor(P[i * 3 + 1] / R), Math.floor(P[i * 3 + 2] / R)), l = grid.get(kk); if (l) l.push(i); else grid.set(kk, [i]); }
             var s = new Int32Array(n + 1), J = [], W = [];
             for (i = 0; i < n; i++) {
@@ -56789,14 +56931,14 @@ const ThreeRenderer = (function () {
                     N2[v * 3] = Nn[v * 3] * f; N2[v * 3 + 1] = Nn[v * 3 + 1] * f; N2[v * 3 + 2] = Nn[v * 3 + 2] * f;
                     var lv = SPn.open[v] ? lat : Math.max(lat, Math.min(0.75 * SPn.sp[v], SKIN_POKE.latMax * Hm));
                     var id = GV.length; GV.push(A, N2, v, w.cat === 'hats' ? SKIN_POKE.hatGap * Hm : gap, lv * lv);
-                    var key = Math.floor(A[v * 3] / C) + ',' + Math.floor(A[v * 3 + 1] / C) + ',' + Math.floor(A[v * 3 + 2] / C), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]);
+                    var key = _ccK(Math.floor(A[v * 3] / C), Math.floor(A[v * 3 + 1] / C), Math.floor(A[v * 3 + 2] / C)), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]);
                 }
             });
             var m = new Uint8Array(N), any = false;
             for (var i = 0; i < N; i++) {
                 var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var q = 0; q < l2.length; q++) { var A2 = GV[l2[q]], v2 = GV[l2[q] + 2], d = (A2[v2 * 3] - x) * (A2[v2 * 3] - x) + (A2[v2 * 3 + 1] - y) * (A2[v2 * 3 + 1] - y) + (A2[v2 * 3 + 2] - z) * (A2[v2 * 3 + 2] - z); if (d < bd) { bd = d; best = l2[q]; } }
                 }
                 if (best < 0) continue;
@@ -56852,7 +56994,7 @@ const ThreeRenderer = (function () {
                     var z0 = Math.floor(Math.min(A[a + 2], A[b + 2], A[c + 2]) / C), z1 = Math.floor(Math.max(A[a + 2], A[b + 2], A[c + 2]) / C);
                     if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > 64) continue;   // (a stray long triangle)
                     TA.push(A); TI.push(a, b, c); TR.push(rr); TN.push(-rn); TU.push(UVa); TAl.push(UVa ? al : null);
-                    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) for (var gz = z0; gz <= z1; gz++) { var key = gx + ',' + gy + ',' + gz, l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]); }
+                    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) for (var gz = z0; gz <= z1; gz++) { var key = _ccK(gx, gy, gz), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]); }
                 }
             });
             if (!TA.length) return null;
@@ -56860,7 +57002,7 @@ const ThreeRenderer = (function () {
             return function (ox, oy, oz, nx, ny, nz, lo, hi) {
                 var best = Infinity; st++;
                 for (var s0 = lo; s0 <= hi + step; s0 += step) {
-                    var l = grid.get(Math.floor((ox + nx * s0) / C) + ',' + Math.floor((oy + ny * s0) / C) + ',' + Math.floor((oz + nz * s0) / C));
+                    var l = grid.get(_ccK(Math.floor((ox + nx * s0) / C), Math.floor((oy + ny * s0) / C), Math.floor((oz + nz * s0) / C)));
                     if (!l) continue;
                     for (var q = 0; q < l.length; q++) {
                         var tid = l[q], ti = tid * 3; if (stamp[tid] === st) continue; stamp[tid] = st;
@@ -57187,14 +57329,14 @@ const ThreeRenderer = (function () {
                     var y0 = Math.floor(Math.min(A[a + 1], A[b + 1], A[c + 1]) / C), y1 = Math.floor(Math.max(A[a + 1], A[b + 1], A[c + 1]) / C);
                     var z0 = Math.floor(Math.min(A[a + 2], A[b + 2], A[c + 2]) / C), z1 = Math.floor(Math.max(A[a + 2], A[b + 2], A[c + 2]) / C);
                     if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > 64) continue;
-                    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) for (var gz = z0; gz <= z1; gz++) { var k = gx + ',' + gy + ',' + gz, l = grid.get(k); if (l) l.push(id); else grid.set(k, [id]); }
+                    for (var gx = x0; gx <= x1; gx++) for (var gy = y0; gy <= y1; gy++) for (var gz = z0; gz <= z1; gz++) { var k = _ccK(gx, gy, gz), l = grid.get(k); if (l) l.push(id); else grid.set(k, [id]); }
                 }
             });
             var stamp = new Int32Array(T.length + 1), st = 0, step = C * 0.5;
             return function (ox, oy, oz, nx, ny, nz, lo, hi) {
                 var best = nearest ? Infinity : -Infinity; st++;
                 for (var s0 = lo; s0 <= hi + step; s0 += step) {
-                    var l = grid.get(Math.floor((ox + nx * s0) / C) + ',' + Math.floor((oy + ny * s0) / C) + ',' + Math.floor((oz + nz * s0) / C)); if (!l) continue;
+                    var l = grid.get(_ccK(Math.floor((ox + nx * s0) / C), Math.floor((oy + ny * s0) / C), Math.floor((oz + nz * s0) / C))); if (!l) continue;
                     for (var q = 0; q < l.length; q++) {
                         var tid = l[q]; if (stamp[tid] === st) continue; stamp[tid] = st;
                         var a = T[tid], b = T[tid + 1], c = T[tid + 2];
@@ -57277,12 +57419,12 @@ const ThreeRenderer = (function () {
                             }
                         }
                         var tg = new Map(), TC = 0.02, near = new Int32Array(n).fill(-1);
-                        over.forEach(function (I) { for (var t = 0; t < I.length; t++) { var tv = I[t], kk = Math.floor(B[tv * 3] / TC) + ',' + Math.floor(B[tv * 3 + 1] / TC) + ',' + Math.floor(B[tv * 3 + 2] / TC), l = tg.get(kk); if (!l) tg.set(kk, l = []); if (l.indexOf(tv) < 0) l.push(tv); } });
+                        over.forEach(function (I) { for (var t = 0; t < I.length; t++) { var tv = I[t], kk = _ccK(Math.floor(B[tv * 3] / TC), Math.floor(B[tv * 3 + 1] / TC), Math.floor(B[tv * 3 + 2] / TC)), l = tg.get(kk); if (!l) tg.set(kk, l = []); if (l.indexOf(tv) < 0) l.push(tv); } });
                         for (v = 0; v < n; v++) {
                             if (kind[v] < 0) continue;
                             var bx = Math.floor(B[v * 3] / TC), by = Math.floor(B[v * 3 + 1] / TC), bz = Math.floor(B[v * 3 + 2] / TC), bd = Infinity;
                             for (var ia = -2; ia <= 2; ia++) for (var ib = -2; ib <= 2; ib++) for (var ic = -2; ic <= 2; ic++) {
-                                var l2 = tg.get((bx + ia) + ',' + (by + ib) + ',' + (bz + ic)); if (!l2) continue;
+                                var l2 = tg.get(_ccK(bx + ia, by + ib, bz + ic)); if (!l2) continue;
                                 for (var q2 = 0; q2 < l2.length; q2++) { var u2 = l2[q2], dd = (B[u2 * 3] - B[v * 3]) * (B[u2 * 3] - B[v * 3]) + (B[u2 * 3 + 1] - B[v * 3 + 1]) * (B[u2 * 3 + 1] - B[v * 3 + 1]) + (B[u2 * 3 + 2] - B[v * 3 + 2]) * (B[u2 * 3 + 2] - B[v * 3 + 2]); if (dd < bd) { bd = dd; near[v] = u2; } }
                             }
                         }
@@ -57416,13 +57558,16 @@ const ThreeRenderer = (function () {
                 if (wC && part.siW && ga.skinIndex && ga.skinWeight) {
                     if (!w.cfSi0) { w.cfSi0 = Uint16Array.from(ga.skinIndex.array); w.cfSw0 = Float32Array.from(ga.skinWeight.array); }
                     var SI0 = Uint16Array.from(ga.skinIndex.array), SW0 = Float32Array.from(ga.skinWeight.array);   // (as THE TRIMS left them)
-                    var PP = new Float32Array(A.length); for (v = 0; v < A.length; v++) PP[v] = A[v] + D[v];
+                    /* (THE QUICK PICKS: the averaged skin of the collar's vertices only - nearSet over the whole coat was most of a pick) */
+                    var cIx = []; for (v = 0; v < n; v++) if (wC[v] > 0) cIx.push(v);
+                    var PP = new Float32Array(cIx.length * 3); cIx.forEach(function (cv, ci) { for (var c3 = 0; c3 < 3; c3++) PP[ci * 3 + c3] = A[cv * 3 + c3] + D[cv * 3 + c3]; });
                     var nsC = nearSet(part, PP, 0.02 * Hm), SIW = part.siW, SWW = part.swW, gi = ga.skinIndex.array, gw = ga.skinWeight.array, chg = false;
-                    for (v = 0; v < n; v++) {
+                    for (var cj = 0; cj < cIx.length; cj++) {
+                        v = cIx[cj];
                         var fk = wC[v]; if (!(fk > 0)) continue;
                         var acc = {}, bi, k4;
                         for (k4 = 0; k4 < 4; k4++) { bi = SI0[v * 4 + k4]; acc[bi] = (acc[bi] || 0) + SW0[v * 4 + k4] * (1 - fk); }
-                        for (var e = nsC.s[v]; e < nsC.s[v + 1]; e++) { var sv = nsC.j[e], f2 = nsC.w[e] * fk; for (k4 = 0; k4 < 4; k4++) { bi = SIW[sv * 4 + k4]; acc[bi] = (acc[bi] || 0) + SWW[sv * 4 + k4] * f2; } }
+                        for (var e = nsC.s[cj]; e < nsC.s[cj + 1]; e++) { var sv = nsC.j[e], f2 = nsC.w[e] * fk; for (k4 = 0; k4 < 4; k4++) { bi = SIW[sv * 4 + k4]; acc[bi] = (acc[bi] || 0) + SWW[sv * 4 + k4] * f2; } }
                         var top = Object.keys(acc).map(function (kb) { return [+kb, acc[kb]]; }).sort(function (p1, p2) { return p2[1] - p1[1]; }).slice(0, 4), tot = 0;
                         top.forEach(function (tb) { tot += tb[1]; });
                         for (k4 = 0; k4 < 4; k4++) { gi[v * 4 + k4] = top[k4] ? top[k4][0] : top[0][0]; gw[v * 4 + k4] = top[k4] && tot > 0 ? top[k4][1] / tot : 0; }
@@ -57935,12 +58080,12 @@ const ThreeRenderer = (function () {
                         boots.forEach(function (b) {
                             var bg = b.mesh.geometry.attributes; if (!bg.skinIndex || !bg.skinWeight || b.mesh.skeleton !== p.mesh.skeleton) return;
                             var BA = bg.position.array;
-                            for (var bv = 0; bv < BA.length / 3; bv++) { var key = Math.floor(BA[bv * 3] / BCs) + ',' + Math.floor(BA[bv * 3 + 1] / BCs) + ',' + Math.floor(BA[bv * 3 + 2] / BCs), bl = bGrid.get(key); if (bl) bl.push(b, bv); else bGrid.set(key, [b, bv]); }
+                            for (var bv = 0; bv < BA.length / 3; bv++) { var key = _ccK(Math.floor(BA[bv * 3] / BCs), Math.floor(BA[bv * 3 + 1] / BCs), Math.floor(BA[bv * 3 + 2] / BCs)), bl = bGrid.get(key); if (bl) bl.push(b, bv); else bGrid.set(key, [b, bv]); }
                         });
                         var nearBoot = function (x, y, z) {   // [boot, vertex] nearest within bReach, or null
                             var cx = Math.floor(x / BCs), cy = Math.floor(y / BCs), cz = Math.floor(z / BCs), rr = Math.ceil(bReach / BCs), bd = bReach * bReach, best = null;
                             for (var ia = -rr; ia <= rr; ia++) for (var ib = -rr; ib <= rr; ib++) for (var ic = -rr; ic <= rr; ic++) {
-                                var bl = bGrid.get((cx + ia) + ',' + (cy + ib) + ',' + (cz + ic)); if (!bl) continue;
+                                var bl = bGrid.get(_ccK(cx + ia, cy + ib, cz + ic)); if (!bl) continue;
                                 for (var m = 0; m < bl.length; m += 2) { var BA = bl[m].mesh.geometry.attributes.position.array, o = bl[m + 1] * 3, d = (BA[o] - x) * (BA[o] - x) + (BA[o + 1] - y) * (BA[o + 1] - y) + (BA[o + 2] - z) * (BA[o + 2] - z); if (d < bd) { bd = d; best = [bl[m], bl[m + 1]]; } }
                             }
                             return best;
@@ -58049,14 +58194,14 @@ const ThreeRenderer = (function () {
                 ups.forEach(function (u) {
                     var UA = u.mesh.geometry.attributes.position.array, un = UA.length / 3;
                     var USp = wearSpan(u);
-                    for (var v = 0; v < un; v++) { var lv = USp.open[v] ? latW : Math.max(latW, Math.min(0.75 * USp.sp[v], WEAR_LAYER.latMax * Hm)), id = UV.length; UV.push(u, v, lv * lv); var key = Math.floor(UA[v * 3] / C) + ',' + Math.floor(UA[v * 3 + 1] / C) + ',' + Math.floor(UA[v * 3 + 2] / C), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]); }
+                    for (var v = 0; v < un; v++) { var lv = USp.open[v] ? latW : Math.max(latW, Math.min(0.75 * USp.sp[v], WEAR_LAYER.latMax * Hm)), id = UV.length; UV.push(u, v, lv * lv); var key = _ccK(Math.floor(UA[v * 3] / C), Math.floor(UA[v * 3 + 1] / C), Math.floor(UA[v * 3 + 2] / C)), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]); }
                 });
                 var need = function (x, y, z, out) {   // the pull that puts this point `gap` inside the garment over it (-1 = not under one)
-                    var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
-                    for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                        var l = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l) continue;
+                    var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach, RO = _ccRings(rc);
+                    for (var rr = 0; rr <= rc; rr++) { if (rr > 1 && (rr - 1) * (rr - 1) * C * C >= bd) break; for (var rk = RO.s[rr]; rk < RO.s[rr + 1]; rk += 3) {   // (THE QUICK PICKS: ring by ring)
+                        var l = grid.get(_ccK(cx + RO.o[rk], cy + RO.o[rk + 1], cz + RO.o[rk + 2])); if (!l) continue;
                         for (var q = 0; q < l.length; q++) { var UA = UV[l[q]].mesh.geometry.attributes.position.array, uv = UV[l[q] + 1], d = (UA[uv * 3] - x) * (UA[uv * 3] - x) + (UA[uv * 3 + 1] - y) * (UA[uv * 3 + 1] - y) + (UA[uv * 3 + 2] - z) * (UA[uv * 3 + 2] - z); if (d < bd) { bd = d; best = l[q]; } }
-                    }
+                    } }
                     out[0] = out[1] = out[2] = 0;
                     if (best < 0) return -1;
                     var u = UV[best], v = UV[best + 1], UA2 = u.mesh.geometry.attributes.position.array, N2 = normalsOut(u);
@@ -58190,10 +58335,16 @@ const ThreeRenderer = (function () {
             var ranks = [];
             L.forEach(function (e, gi) {
                 var n = e.pa.count, g0 = e.meshes[0].geometry;
-                var reuse = g0.attributes.ewColA && g0.attributes.ewColA.count === n && g0.attributes.ewColA2 && g0.attributes.ewColA2.count === n;
-                var AA = reuse ? g0.attributes.ewColA.array : new Float32Array(n * 4), AN = reuse ? g0.attributes.ewColN.array : new Float32Array(n * 4);
-                var AJ = reuse ? g0.attributes.ewColJ.array : new Uint16Array(n * 4), AW = reuse ? g0.attributes.ewColW.array : new Float32Array(n * 4);
-                var AA2 = reuse ? g0.attributes.ewColA2.array : new Float32Array(n * 4), AN2 = reuse ? g0.attributes.ewColN2.array : new Float32Array(n * 4), AW2 = reuse ? g0.attributes.ewColW2.array : new Float32Array(n * 4);
+                /* THE ONE BUFFER (2026-11-05, mondo: the created characters torn to skin patches on Select Your Team): the seven
+                   anchor streams ride ONE interleaved buffer (28 floats a vertex). As seven buffers a garment drew from 13 vertex
+                   buffers (position, normal, uv, skinIndex, skinWeight, color + 7) and WebGPU allows 8: the pipeline failed and
+                   every collided garment vanished on WebGPU (WebGL's 16 attributes hid it), leaving the body's skin with the
+                   pieces under the clothes cut away. The bone slots are floats here (j1 + 256 j2 <= 65535: exact). */
+                var ib0 = g0.attributes.ewColA && g0.attributes.ewColA.isInterleavedBufferAttribute ? g0.attributes.ewColA.data : null;
+                var reuse = !!(ib0 && ib0.count === n && ib0.stride === 28);
+                var AA = new Float32Array(n * 4), AN = new Float32Array(n * 4);
+                var AJ = new Float32Array(n * 4), AW = new Float32Array(n * 4);
+                var AA2 = new Float32Array(n * 4), AN2 = new Float32Array(n * 4), AW2 = new Float32Array(n * 4);
                 var samp = [];
                 for (v = 0; v < n; v++) {
                     var b = e.anc[v], o4 = v * 4;
@@ -58230,13 +58381,14 @@ const ThreeRenderer = (function () {
                     }
                     if ((v & 7) === 0) samp.push(c);
                 }
+                var ib = reuse ? ib0 : new THREE.InterleavedBuffer(new Float32Array(n * 28), 28), IA = ib.array, srcs = [AA, AN, AJ, AW, AA2, AN2, AW2];
+                for (v = 0; v < n; v++) for (k = 0; k < 7; k++) { var so = v * 4, d0 = v * 28 + k * 4, sa = srcs[k]; IA[d0] = sa[so]; IA[d0 + 1] = sa[so + 1]; IA[d0 + 2] = sa[so + 2]; IA[d0 + 3] = sa[so + 3]; }
+                if (reuse) ib.needsUpdate = true;
+                else COL_ATTRS.forEach(function (k2, ki) { g0.setAttribute(k2, new THREE.InterleavedBufferAttribute(ib, 4, ki * 4)); });
                 e.meshes.forEach(function (mh) {
                     var g = mh.geometry;
-                    if (reuse && g.attributes.ewColA && g.attributes.ewColA.array === AA) { COL_ATTRS.forEach(function (k2) { g.attributes[k2].needsUpdate = true; }); return; }
-                    if (!reuse && mh === e.meshes[0]) {
-                        var arr = { ewColA: AA, ewColN: AN, ewColJ: AJ, ewColW: AW, ewColA2: AA2, ewColN2: AN2, ewColW2: AW2 };
-                        COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, new THREE.BufferAttribute(arr[k2], 4)); });
-                    } else COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, g0.attributes[k2]); });
+                    if (g === g0 || (g.attributes.ewColA && g.attributes.ewColA.data === ib)) return;
+                    COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, g0.attributes[k2]); });   // (an accent: the garment's own buffer)
                 });
                 samp.sort(function (x, y) { return x - y; });
                 ranks.push({ e: e, m: samp.length ? samp[samp.length >> 1] : 0 });
@@ -58285,7 +58437,7 @@ const ThreeRenderer = (function () {
             for (v = 0; v < pn; v++) if (PA[v * 3 + 1] > top - 0.004 * Hm) { B[0] += PA[v * 3]; B[1] += PA[v * 3 + 1]; B[2] += PA[v * 3 + 2]; nB++; }
             B[0] /= nB; B[1] /= nB; B[2] /= nB;
             var yLo = B[1] - 0.12 * Hm, yHi = HD.y + 0.06 * Hm, xC = NK.x, xR = 0.24 * Hm;
-            var C = 0.02 * Hm, key = function (x, y, z) { return Math.floor(x / C) + ',' + Math.floor(y / C) + ',' + Math.floor(z / C); };
+            var C = 0.02 * Hm, key = function (x, y, z) { return _ccK(Math.floor(x / C), Math.floor(y / C), Math.floor(z / C)); };
             // the skin round the neck + the top of the chest, as the sliders shaped it
             var S = new Float32Array(N * 3), grid = new Map();
             for (v = 0; v < N; v++) {
@@ -58297,7 +58449,7 @@ const ThreeRenderer = (function () {
             var nearSkin = function (x, y, z, rc) {   // (the nearest skin vertex: its weights)
                 var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = Infinity;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var q = 0; q < l2.length; q++) { var j = l2[q], dx = S[j * 3] - x, dy = S[j * 3 + 1] - y, dz = S[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
                 }
                 return best;
@@ -58313,7 +58465,7 @@ const ThreeRenderer = (function () {
                     if (mxy < yLo || mny > yHi || mnx > xC + xR || mxx < xC - xR) continue;
                     var mnz = Math.min(A[a + 2], A[b + 2], A[c + 2]) - mg, mxz = Math.max(A[a + 2], A[b + 2], A[c + 2]) + mg;
                     for (var gx = Math.floor(mnx / C); gx <= Math.floor(mxx / C); gx++) for (var gy = Math.floor(mny / C); gy <= Math.floor(mxy / C); gy++) for (var gz = Math.floor(mnz / C); gz <= Math.floor(mxz / C); gz++) {
-                        var ck = gx + ',' + gy + ',' + gz, cl = cells.get(ck); if (cl) cl.push(t); else cells.set(ck, [t]);
+                        var ck = _ccK(gx, gy, gz), cl = cells.get(ck); if (cl) cl.push(t); else cells.set(ck, [t]);
                     }
                 }
                 var out = { s: 0, n: [0, 0, 0], edge: false, t: 0, b0: 0, b1: 0, b2: 0, I: I };
@@ -58731,6 +58883,21 @@ const ThreeRenderer = (function () {
                 if (part.fit && state.last) { part.wearKey = null; state.shapeKey = null; if (!state.inUpdate) update(state.last); }
             });
         }
+        /* the fit passes over the worn garments as they now lie on the shaped skin: THE LAYERS (the coat fit, the tuck, the boots, the
+           cords), THE COAT HANG's leg capsules, THE SECOND OUTER LAYER, THE CLOTHES UNDER THE CLOTHES (rebuildGeometry, a garment set) */
+        function wearFits(part, strict, twice) {
+            part.fitLater = false;
+            if (strict) wearLayers(part);
+            else { try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); } }
+            for (var pass = 0; pass < (twice ? 2 : 1); pass++) {
+                /* (a new garment set settled twice, as it always was: the cords, the hang and the hides read what the first round left -
+                   the second round without THE LAYERS, which come out the same, keeps every garment exactly where it always lay) */
+                if (pass) { try { wearCords(part); } catch (e) { console.warn('[ThreeRenderer] pendant cord failed', e); } }
+                try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
+                try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
+                try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+            }
+        }
         function setWear(part, a) {
             if (!part.stock && !part.fit) {   // (a classic base: through THE CLASSIC FIT, once it has loaded - at once when it is cached)
                 var anyW = (a.wear || []).concat(a.wear2 && a.wear2 !== 'none' ? [a.wear2] : []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
@@ -58792,13 +58959,16 @@ const ThreeRenderer = (function () {
                 paintWear(part, state.last || a);   // THE WEAR TINT
                 part.beltH = (state.last || a).beltHeight || 0;   // THE BELT HEIGHT
                 part.bootIn = (state.last || a).pantsTuck === 'in';   // THE PANTS IN THE BOOTS
-                try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
-                try { hangFit(part); } catch (e) { part.hangCaps = null; console.warn('[ThreeRenderer] coat hang fit failed', e); }   // THE COAT HANG: the leg capsules
-                try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
-                try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
-            try { wearUnderCover(part); } catch (e) { console.warn('[ThreeRenderer] wear under cover failed', e); }   // THE CLOTHES UNDER THE CLOTHES
+                /* THE QUICK PICKS: the fit passes run ONCE per pick. Inside update() (a cached garment builds at once) the body rebuild
+                   right after runs them (rebuildGeometry), else update() runs them itself (fitLater); out of it (a garment that just
+                   loaded) a new set of garments rebuilds the body below (update(state.last)), which runs them - here they only run
+                   when nothing else will. Before, a pick ran every pass two or three times over (the coat fit, the layers, ...). */
+                var mk = part.wear.map(function (w) { return w.id; }).join('|');
+                if (state.inUpdate) part.fitLater = true;
+                else if (!(part.wearHideKey !== mk && state.last)) wearFits(part);
+                else part.fitTwice = true;
                 try { headOff(part); wearGrip(part); } catch (e) { console.warn("[ThreeRenderer] creature head / grip failed", e); }   // THE MESHY PIECES
-                var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
+                var m = wearMask(part);
                 part.wearHide = m;
                 part.solidHide = wearMask(part, function (w) { return w.solid; });   // THE MESHY PIECES: always hidden, whatever covers the rest
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
@@ -59024,6 +59194,7 @@ const ThreeRenderer = (function () {
             var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight, a.pantsTuck].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
+            parts.forEach(function (p) { if (p.fitLater) wearFits(p); });   // THE QUICK PICKS: a garment set built in this update, no body rebuild after it
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
             if (paintKey !== state.paintKey || (state.paintPreview && !preview)) { state.paintKey = paintKey; state.paintPreview = preview; parts.forEach(function (p) { paintSkin(p, a, preview); }); }
             parts.forEach(function (p) {
@@ -59085,6 +59256,7 @@ const ThreeRenderer = (function () {
                 parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
                 stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
+                flushLater(true);   // THE QUICK PICKS: the retired materials
                 parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];
             }
         };
@@ -59781,13 +59953,18 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            /* THE DRESSED REVEAL: the canvas stays clear and MANIFESTING spins until every piece of the look is on the body */
+            /* THE DRESSED REVEAL: MANIFESTING spins and the BODY ITSELF stays hidden until every piece of the look is on it. The
+               canvas fade alone was not enough (mondo 11-05 "i still see the naked flash briefly"): on a body swap with the body
+               GLB cached, the new body was added while the canvas was still fading out of the last character (0.5 s CSS), so the
+               bare body drew on a canvas that was still showing. */
             var dRig = v.appearanceRig;
             if (dRig && !dRig.dressed()) {
                 v.dressWait = tok;
+                wrap.visible = false;
                 dRig.whenDressed(function () {
                     if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
                     v.dressWait = 0;
+                    wrap.visible = true;
                     _cvHostState(v.host, 'ready');
                 });
             } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
@@ -60140,7 +60317,7 @@ const ThreeRenderer = (function () {
         var b = v.beat;
         v.beat = null;
         if (b) for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
-        if (v.model) v.model.visible = true;               // a blink cut short never leaves the hero gone
+        if (v.model) v.model.visible = !(v.dressWait && v.dressWait === _cvToken);   // (THE DRESSED REVEAL: a body still dressing stays hidden)              // a blink cut short never leaves the hero gone
         v.frameTo = null;                                  // the camera eases home
         if (!b) return;
         if (silent) { v.moveTween = null; v.heroX = 0; v.heroY = 0; }
@@ -65547,6 +65724,9 @@ const ThreeRenderer = (function () {
        — `y` = the surface (else the ground under the mark), `rot` degrees clockwise. Drawn only: 1.5 cm proud, no depth write fight. */
     function _hqBuildMarks(room, info, G, U) {
         var marks = ((room.terrain && room.terrain.marks) || []).concat(info.marksX || []); if (!marks.length) return 0;   // + a kit's / a prefab's paint (E1)
+        /* THE CRATER UNDER THE PAINT (2026-11-05): every mark carries the field's lattice (room metres, the field's x0 / z0 / res, the
+           units) — a dig in the battle sinks the paint on the field's own grid with it (_fieldDeformMarks) */
+        var lat = { x0: info.x0, z0: info.z0, res: info.res, U: U };
         var matCache = {};
         var matOf = function (col, a, tex) {
             var k = col + '|' + (a || 1) + '|' + (tex || '');
@@ -65562,7 +65742,7 @@ const ThreeRenderer = (function () {
         var yAt = function (m, x, z) { return (typeof m.y === 'number') ? m.y + 0.025 : hqTerrainHeight(info, x, z); };
         var quad = function (cx, cz, w, d, yaw, y, mat) {
             var g = new THREE.PlaneGeometry(w * U, d * U); g.rotateX(-Math.PI / 2);
-            var mesh = new THREE.Mesh(g, mat); mesh.rotation.y = yaw; mesh.position.set(cx * U, (y + 0.015) * U + 0.3, cz * U); mesh.renderOrder = 2; G.add(mesh); return mesh;
+            var mesh = new THREE.Mesh(g, mat); mesh.rotation.y = yaw; mesh.position.set(cx * U, (y + 0.015) * U + 0.3, cz * U); mesh.renderOrder = 2; mesh._ew_hqMarks = lat; G.add(mesh); return mesh;
         };
         /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
         var bufs = {};
@@ -65580,7 +65760,7 @@ const ThreeRenderer = (function () {
                 else if (m.k === 'ring') {
                     var a0 = (m.a0 != null) ? m.a0 : 0, a1 = (m.a1 != null) ? m.a1 : 360, segs = Math.max(8, Math.ceil((a1 - a0) / 3)), rg = new THREE.RingGeometry((m.r - (m.w || 0.12) / 2) * U, (m.r + (m.w || 0.12) / 2) * U, segs, 1, 0, (a1 - a0) * Math.PI / 180);
                     rg.rotateX(-Math.PI / 2);
-                    var rm = new THREE.Mesh(rg, matOf(col, m.a)); rm.rotation.y = Math.PI / 2 - a1 * Math.PI / 180; rm.position.set(m.x * U, (yAt(m, m.x, m.z) + 0.015) * U + 0.3, m.z * U); rm.renderOrder = 2; G.add(rm); n++;
+                    var rm = new THREE.Mesh(rg, matOf(col, m.a)); rm.rotation.y = Math.PI / 2 - a1 * Math.PI / 180; rm.position.set(m.x * U, (yAt(m, m.x, m.z) + 0.015) * U + 0.3, m.z * U); rm.renderOrder = 2; rm._ew_hqMarks = lat; G.add(rm); n++;
                 }
                 else if (m.k === 'text' && typeof document !== 'undefined') {
                     var cv = document.createElement('canvas'), txt = String(m.text || ''); cv.width = 64 * Math.max(1, txt.length); cv.height = 96;
@@ -65596,7 +65776,7 @@ const ThreeRenderer = (function () {
             var B = bufs[ck], parts = ck.split('|'), geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(B.P, 3)); geo.setIndex(B.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1)); geo.computeVertexNormals();
             if (parts[2]) geo.setAttribute('uv', new THREE.Float32BufferAttribute(B.T, 2));
-            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1], parts[2] || null)); mesh.renderOrder = 2; mesh._ew_hqMarks = true; G.add(mesh);
+            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1], parts[2] || null)); mesh.renderOrder = 2; mesh._ew_hqMarks = lat; G.add(mesh);
         });
         return n;
     }
@@ -82478,7 +82658,7 @@ const ThreeRenderer = (function () {
         _facilityNearGroup.traverse(function (o) {
             if (!o.isMesh || !o.geometry || !o.geometry.attributes || !o.geometry.attributes.position) return;
             if (o._ew_fieldStrata || o._ew_hqOuter || o._ew_hqGround || o._ew_hqBackdrop) return;
-            if (o._ew_hqTerrain || o._ew_hqPart === 'floor') list.push(o);
+            if (o._ew_hqTerrain || o._ew_hqPart === 'floor' || o._ew_hqMarks) list.push(o);   // + THE CRATER UNDER THE PAINT: the marks on it
         });
         return list;
     }
@@ -82532,6 +82712,121 @@ const ThreeRenderer = (function () {
         m._ew_fieldDeformed = moved > 0 || !!m._ew_fieldOrigGeo;
         return moved > 0;
     }
+    /* ══ THE CRATER UNDER THE PAINT (2026-11-05, mondo: "in the training room, i used meteor but the floor does not deform and the
+       units are underneath the floor now") ══ A room's paint (THE PAINT, _hqBuildMarks: the Training Room's 8 × 8 mats, the chess
+       court's squares, a field's chalk, the rings and the words) is its own flat sheet 1.5 cm over the field, and the dig only bent
+       the field: the mats stayed flat over the crater and the units stood in it under them (their x-ray outlines through the mats).
+       The paint now sinks with the field, on the field's OWN grid: on the first dig each mark triangle is cut along the field's
+       lattice lines and its cells' diagonals (the field's quads are a, c, b / b, c, d), and every piece's corner takes the drop the
+       field's own nodes take, mixed the way the field's triangle mixes them — so the paint lies the same 1.5 cm over the bowl
+       everywhere, never under a wall of it. Put back with the field (_fieldDeformRestoreMesh). Off: window.EW_NO_MARKS_DEFORM. */
+    var _fmV = null, _fmM = null;
+    function _fieldMarksCut(m, ts) {
+        var L = m._ew_hqMarks; if (!L || !(L.res > 0) || !m.parent) return null;
+        var src = m.geometry, pos = src.attributes.position; if (!pos) return null;
+        var nor = src.attributes.normal || null, uv = src.attributes.uv || null, ix = src.index ? src.index.array : null;
+        _fmV = _fmV || new THREE.Vector3(); _fmM = _fmM || new THREE.Matrix4();
+        m.updateMatrix(); m.updateWorldMatrix(true, false);
+        var G = _fieldGround(); if (!G) return null;
+        var pad = (FIELD_DEFORM_BAND + 0.5) * ts, bx0 = -pad, bx1 = G.W * ts + pad, bz0 = -pad, bz1 = G.H * ts + pad;
+        var nT = ix ? ix.length : pos.count, P = [], N = [], T = [], W = [], I = [], v = _fmV, mw = m.matrixWorld, ml = m.matrix;
+        var lu = function (k) { v.fromBufferAttribute(pos, k).applyMatrix4(ml); return [(v.x / L.U - L.x0) / L.res, (v.z / L.U - L.z0) / L.res]; };
+        var inBoard = function (k) { v.fromBufferAttribute(pos, k).applyMatrix4(mw); return v.x >= bx0 && v.x <= bx1 && v.z >= bz0 && v.z <= bz1; };
+        var pw0 = m.parent.matrixWorld, TT = [];   // TT: each triangle's battle square (-1 = off the board)
+        var tileOf = function (u, w) { v.set((L.x0 + u * L.res) * L.U, 0, (L.z0 + w * L.res) * L.U).applyMatrix4(pw0); return [Math.floor(v.x / ts), Math.floor(v.z / ts)]; };
+        var emit = function (k3, b, cell) {   // a vertex: b = its weights on the triangle's corners k3, cell = [i, j, half, fx, fz] or null
+            var o = P.length / 3, c;
+            for (c = 0; c < 3; c++) P.push(b[0] * pos.getComponent(k3[0], c) + b[1] * pos.getComponent(k3[1], c) + b[2] * pos.getComponent(k3[2], c));
+            if (nor) for (c = 0; c < 3; c++) N.push(b[0] * nor.getComponent(k3[0], c) + b[1] * nor.getComponent(k3[1], c) + b[2] * nor.getComponent(k3[2], c));
+            if (uv) for (c = 0; c < 2; c++) T.push(b[0] * uv.getComponent(k3[0], c) + b[1] * uv.getComponent(k3[1], c) + b[2] * uv.getComponent(k3[2], c));
+            if (cell) W.push(cell[0], cell[1], cell[2], cell[3], cell[4]); else W.push(NaN, 0, 0, 0, 0);
+            return o;
+        };
+        /* Sutherland–Hodgman: keep the side f(vertex) ≥ 0; a vertex is [u, v, b0, b1, b2] */
+        var clip = function (poly, f) {
+            var out = [];
+            for (var q = 0; q < poly.length; q++) {
+                var A = poly[q], B = poly[(q + 1) % poly.length], fa = f(A), fb = f(B);
+                if (fa >= 0) out.push(A);
+                if ((fa >= 0) !== (fb >= 0)) { var t = fa / (fa - fb), X = []; for (var e = 0; e < 5; e++) X.push(A[e] + (B[e] - A[e]) * t); out.push(X); }
+            }
+            return out;
+        };
+        for (var t = 0; t < nT; t += 3) {
+            var k3 = ix ? [ix[t], ix[t + 1], ix[t + 2]] : [t, t + 1, t + 2];
+            if (!inBoard(k3[0]) && !inBoard(k3[1]) && !inBoard(k3[2])) {   // off the board: kept as it is
+                I.push(emit(k3, [1, 0, 0], null), emit(k3, [0, 1, 0], null), emit(k3, [0, 0, 1], null)); TT.push(-1, -1); continue;
+            }
+            var a = lu(k3[0]), b = lu(k3[1]), c = lu(k3[2]);
+            var tri = [[a[0], a[1], 1, 0, 0], [b[0], b[1], 0, 1, 0], [c[0], c[1], 0, 0, 1]];
+            var i0 = Math.floor(Math.min(a[0], b[0], c[0])), i1 = Math.floor(Math.max(a[0], b[0], c[0])), j0 = Math.floor(Math.min(a[1], b[1], c[1])), j1 = Math.floor(Math.max(a[1], b[1], c[1]));
+            if ((i1 - i0 + 1) * (j1 - j0 + 1) > 40000) { I.push(emit(k3, [1, 0, 0], null), emit(k3, [0, 1, 0], null), emit(k3, [0, 0, 1], null)); TT.push(-1, -1); continue; }
+            for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+                var cellP = clip(clip(tri, function (V) { return V[0] - i; }), function (V) { return (i + 1) - V[0]; });
+                cellP = clip(clip(cellP, function (V) { return V[1] - j; }), function (V) { return (j + 1) - V[1]; });
+                if (cellP.length < 3) continue;
+                for (var half = 0; half < 2; half++) {
+                    var hp = clip(cellP, half ? function (V) { return (V[0] - i) + (V[1] - j) - 1; } : function (V) { return 1 - (V[0] - i) - (V[1] - j); });
+                    if (hp.length < 3) continue;
+                    var ids = hp.map(function (V) { return emit(k3, [V[2], V[3], V[4]], [i, j, half, V[0] - i, V[1] - j]); });
+                    var cu = 0, cw = 0; hp.forEach(function (V) { cu += V[0]; cw += V[1]; }); var tq = tileOf(cu / hp.length, cw / hp.length);
+                    for (var q = 1; q + 1 < ids.length; q++) { I.push(ids[0], ids[q], ids[q + 1]); TT.push(tq[0], tq[1]); }
+                }
+            }
+        }
+        if (!I.length) return null;
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+        if (nor) g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+        if (uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(T, 2));
+        g.setIndex(P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(I, 1) : new THREE.Uint16BufferAttribute(I, 1));
+        g._ew_marksW = new Float32Array(W); g._ew_marksI = I; g._ew_marksT = new Int32Array(TT);
+        return g;
+    }
+    function _fieldDeformMarks(m, ts, plan) {
+        if (typeof THREE === 'undefined') return false;
+        if (typeof window !== 'undefined' && window.EW_NO_MARKS_DEFORM) { _fieldDeformRestoreMesh(m); return false; }   // the switch: the paint stays flat (the old look)
+        var L = m._ew_hqMarks;
+        if (!m._ew_fieldOrigGeo) { var cut = _fieldMarksCut(m, ts); if (!cut) return false; m._ew_fieldOrigGeo = m.geometry; m.geometry = cut; m._ew_fieldOrig = new Float32Array(cut.attributes.position.array); }
+        var geo = m.geometry, pos = geo.attributes.position, Wt = geo._ew_marksW, o = m._ew_fieldOrig; if (!Wt || !o) return false;
+        _fmV = _fmV || new THREE.Vector3(); _fdInv = _fdInv || new THREE.Matrix4();
+        m.updateWorldMatrix(true, false);
+        var mw = m.matrixWorld, pw = m.parent.matrixWorld, v = _fmV, G = _fieldGround(); if (!G) return false;
+        _fdInv.copy(mw).invert();
+        var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.W * ts + pad, z0 = -pad, z1 = G.H * ts + pad, moved = 0, nodeDy = {};
+        /* the drop the field takes at its node (i, j) — the same read _fieldDeformMesh makes at that vertex */
+        var dyNode = function (i, j) {
+            var k = i + ',' + j, d = nodeDy[k]; if (d !== undefined) return d;
+            v.set((L.x0 + i * L.res) * L.U, 0, (L.z0 + j * L.res) * L.U).applyMatrix4(pw);
+            d = (v.x < x0 || v.x > x1 || v.z < z0 || v.z > z1) ? 0 : (plan.dyAt(v.x / ts, v.z / ts) || 0);
+            nodeDy[k] = d; return d;
+        };
+        for (var n = 0, nv = pos.count; n < nv; n++) {
+            var ox = o[n * 3], oy = o[n * 3 + 1], oz = o[n * 3 + 2], ci = Wt[n * 5];
+            if (ci !== ci) { pos.setXYZ(n, ox, oy, oz); continue; }   // NaN: off the board
+            var cj = Wt[n * 5 + 1], hf = Wt[n * 5 + 2], fx = Wt[n * 5 + 3], fz = Wt[n * 5 + 4], dy;
+            if (!hf) dy = (1 - fx - fz) * dyNode(ci, cj) + fx * dyNode(ci + 1, cj) + fz * dyNode(ci, cj + 1);            // a, b, c
+            else dy = (1 - fz) * dyNode(ci + 1, cj) + (1 - fx) * dyNode(ci, cj + 1) + (fx + fz - 1) * dyNode(ci + 1, cj + 1);   // b, c, d
+            if (!dy) { pos.setXYZ(n, ox, oy, oz); continue; }
+            v.set(ox, oy, oz).applyMatrix4(mw); v.y += dy; v.applyMatrix4(_fdInv); pos.setXYZ(n, v.x, v.y, v.z); moved++;
+        }
+        pos.needsUpdate = true;
+        /* the paint on a DUG square went with its blocks: the square shows its own dug ground (the bed, THE SKINS' sheet) — only the
+           paint on the squares beside it bends down the bowl's wall */
+        var I0 = geo._ew_marksI, TQ = geo._ew_marksT;
+        if (I0 && TQ) {
+            var keep = [], dugK = {};
+            for (var t = 0, tn = I0.length / 3; t < tn; t++) {
+                var qx = TQ[t * 2], qy = TQ[t * 2 + 1];
+                if (qx >= 0 && qy >= 0 && qx < G.W && qy < G.H) { var dk = qx + ',' + qy, dg = dugK[dk]; if (dg === undefined) dg = dugK[dk] = (G.deltaAt(qx, qy) < 0); if (dg) continue; }
+                keep.push(I0[t * 3], I0[t * 3 + 1], I0[t * 3 + 2]);
+            }
+            geo.setIndex(pos.count > 65535 ? new THREE.Uint32BufferAttribute(keep, 1) : new THREE.Uint16BufferAttribute(keep, 1));
+        }
+        try { geo.computeVertexNormals(); geo.computeBoundingSphere(); geo.computeBoundingBox(); } catch (e) {}
+        m._ew_fieldDeformed = true;
+        return moved > 0;
+    }
     function _fieldDeformRestoreMesh(m) {
         if (!m || !m._ew_fieldDeformed) return;
         if (m._ew_fieldOrigGeo) { var sub = m.geometry; m.geometry = m._ew_fieldOrigGeo; m._ew_fieldOrigGeo = null; try { sub.dispose(); } catch (e) {} m._ew_fieldOrig = null; }
@@ -82544,7 +82839,7 @@ const ThreeRenderer = (function () {
         var on = !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_DEFORM);
         meshes.forEach(function (m) {
             if (!on || !plan || !plan.dug.length) { _fieldDeformRestoreMesh(m); return; }
-            try { if (_fieldDeformMesh(m, ts, plan)) hit++; } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
+            try { if (m._ew_hqMarks ? _fieldDeformMarks(m, ts, plan) : _fieldDeformMesh(m, ts, plan)) hit++; } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
         });
         try { _fieldSinkProps(on ? plan : null, ts); } catch (e) { console.warn('[HQ→battle] the sink failed', e); }   // THE SINK: the small props on the dug cells
         if (hit) _shadowsDirty = true;
