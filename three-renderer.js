@@ -2217,9 +2217,15 @@ const ThreeRenderer = (function () {
     function _asGltfMgr() {
         if (_asGltfMgrObj || typeof THREE === 'undefined' || typeof THREE.LoadingManager !== 'function') return _asGltfMgrObj || undefined;
         _asGltfMgrObj = new THREE.LoadingManager();
+        /* (2026-11-05: the loader hands the modifier path + uri UNRESOLVED, ".../animals/crow_and_rabbit/../textures/atlas.png",
+           which the old test never matched, so the browser still asked for animals/textures/atlas.png and got a 404; the url is
+           resolved first) */
+        var _ATLAS_RE = /\/Assets\/(?:world\/)?animals\/textures\/atlas\.png(?=[?#]|$)/;
         _asGltfMgrObj.setURLModifier(function (u) {
-            return /\/Assets\/(?:world\/)?animals\/textures\/atlas\.png(?:[?#]|$)/.test(String(u))
-                ? String(u).replace(/\/Assets\/(?:world\/)?animals\/textures\/atlas\.png/, '/Assets/world/animals/crow_and_rabbit/atlas.png') : u;
+            var s = String(u);
+            if (s.indexOf('atlas.png') < 0) return u;
+            if (s.indexOf('/../') >= 0 || s.indexOf('/./') >= 0) { try { s = new URL(s, location.href).href; } catch (e) {} }
+            return _ATLAS_RE.test(s) ? s.replace(_ATLAS_RE, '/Assets/world/animals/crow_and_rabbit/atlas.png') : u;
         });
         return _asGltfMgrObj;
     }
