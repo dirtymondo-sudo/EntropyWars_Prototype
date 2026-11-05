@@ -24763,13 +24763,16 @@
 
                     this._computedElevZ = elevZ;
 
-                    boardStageEl.style.transform =
+                    /* THE STILL STAGE (2026-11-05): written only when it changes — the same string every frame of a still
+                       camera still dirtied the board stage's inline style (a style recalc of its subtree each frame) */
+                    const _stageTf =
                         `translate(${screenCX}px, ${screenCY}px) ` +
                         `scale(${this._smoothZoom}) ` +
                         `perspective(${effCamZ}px) ` +
                         `rotateX(${tiltDeg}deg) ` +
                         `rotateZ(${yawDeg}deg) ` +
                         `translate3d(${-cx}px, ${-cy}px, ${-elevZ}px)`;
+                    if (boardStageEl._ewStageTf !== _stageTf || boardStageEl._ewStageTfOut !== boardStageEl.style.transform) { boardStageEl.style.transform = _stageTf; boardStageEl._ewStageTf = _stageTf; boardStageEl._ewStageTfOut = boardStageEl.style.transform; }   // another writer (the 2D pan) is caught by the read-back
 
                     const _cssTilt = `${tiltDeg}deg`;
                     const _cssYaw = `${yawDeg}deg`;
@@ -42703,9 +42706,9 @@
                     textEl.innerHTML = html;
                     _lastDialogueHtml = html;
                 }
-                bar.classList.add('visible');
+                if (!bar.classList.contains('visible')) bar.classList.add('visible');   // THE STILL STAGE: no class write a frame
             } else {
-                bar.classList.remove('visible');
+                if (bar.classList.contains('visible')) bar.classList.remove('visible');
                 _lastDialogueHtml = '';
             }
         }
