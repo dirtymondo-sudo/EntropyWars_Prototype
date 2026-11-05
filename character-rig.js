@@ -18,7 +18,7 @@
       (POSITION / NORMAL / TEXCOORD_0 / JOINTS_0 / WEIGHTS_0) in the donor's
       metre-scale bind frame → the renderer treats it exactly like the old
       rigged export. Output: charactercreation/Meshy_AI_human_body_base_mesh_
-      <gender>_rigged.glb (upload to R2 Assets/Models/charactercreation/).
+      <gender>_rigged.glb (upload to R2 Assets/characters/creator/).
 
    2. `hair`    — splits charactercreation/hair-pack-part-1/source/HairPackPT1.glb
       (15.9 MB, 14 styles, each on its own physics armature) into ONE static GLB

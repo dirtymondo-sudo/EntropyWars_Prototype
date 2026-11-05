@@ -31,8 +31,9 @@ window._ewCorsBust = _ewCorsBust;
    THE SAFETY NET: every URL the page asks for goes through ewAsset at the browser's own doors — fetch, XHR, an <img>/<audio>/
    <video>/<source> src (property or setAttribute) — so a path a flip PR missed, one in a save file (editor rooms, UI Maker,
    creator looks) or one in another thread's in-flight PR still finds its file. Inline style backgrounds (style.backgroundImage /
-   background / cssText / setProperty / a style attribute) are rewritten too. Stylesheet url()s and HTML strings with
-   style="..." in innerHTML can't be caught: flip PRs edit those literally. Old keys stay on R2 until mondo has checked the wave.
+   background / cssText / setProperty / a style attribute) are rewritten too, and so are HTML strings (innerHTML / outerHTML /
+   insertAdjacentHTML), <style> textContent and new Audio(url) (2026-11-05). Only the static .css files can't be caught: flip
+   PRs edit those literally. The old keys were archived to the private bucket once mondo had played on the new layout.
    window.EW_ASSET_MOVE_HITS counts the URLs the net rewrote, per old prefix (and EW_ASSET_MOVE_LOG keeps the first 200) —
    after a flip, anything listed there is a literal still to update. Kill-switch: ?ew_no_asset_moves=1 or
    window.EW_NO_ASSET_MOVES = true before load (then every URL is exactly as written; only useful while old keys exist). */
@@ -305,6 +306,38 @@ window.ewAssetKey = ewAssetKey;
       else if (n === 'style') v = cssUrls(v);
       return s0.call(this, n, v);
     };
+  } catch (e) {}
+  /* HTML strings (2026-11-05, before the old keys were archived): an <img src>, a style="url(...)" or a <link href> written into
+     innerHTML / outerHTML / insertAdjacentHTML is parsed straight to the network, past every door above (ui.js unit sprites,
+     the editor's thumbnails, the UI Maker slices). Every cdn Assets/ URL in the string goes through ewAsset first. A URL ends at a
+     quote, a bracket, < > & (so &quot; / &amp; stay as written), a backtick or a line break; spaces stay inside (old folder names
+     like "vehicles/Sound effects/" have them). Only strings holding the cdn host pay for the regex. */
+  const htmlUrls = (v) => (typeof v === 'string' && v.indexOf('cdn.entropywars.net/Assets/') !== -1)
+    ? v.replace(/https:\/\/cdn\.entropywars\.net\/Assets\/[^"'()<>&`\\\n\r\t]+/g, (u) => ewAsset(u)) : v;
+  try {
+    for (const prop of ['innerHTML', 'outerHTML']) {
+      const d = Object.getOwnPropertyDescriptor(Element.prototype, prop);
+      if (!d || !d.set || !d.configurable) continue;
+      Object.defineProperty(Element.prototype, prop, Object.assign({}, d, { set: function (v) { return d.set.call(this, htmlUrls(v)); } }));
+    }
+    const ia0 = Element.prototype.insertAdjacentHTML;
+    if (ia0) Element.prototype.insertAdjacentHTML = function (pos, html) { return ia0.call(this, pos, htmlUrls(html)); };
+  } catch (e) {}
+  /* <style> text built at run time (the UI Maker sheet, the HUD skins): url()s in it */
+  try {
+    const d = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+    if (d && d.set && d.configurable) Object.defineProperty(Node.prototype, 'textContent', Object.assign({}, d, {
+      set: function (v) { return d.set.call(this, this.nodeName === 'STYLE' ? cssUrls(v) : v); }
+    }));
+  } catch (e) {}
+  /* new Audio(url) hands the URL to the element inside the constructor, past the src setter */
+  try {
+    const A0 = window.Audio;
+    if (typeof A0 === 'function') {
+      const A = function Audio(src) { return arguments.length ? new A0(typeof src === 'string' ? ewAsset(src) : src) : new A0(); };
+      A.prototype = A0.prototype;
+      window.Audio = A;
+    }
   } catch (e) {}
 })();
 

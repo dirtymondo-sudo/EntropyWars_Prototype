@@ -2,7 +2,7 @@
 
 A real fire + smoke simulation (Blender Mantaflow) rendered by Cycles to transparent frames, then cut into one sheet
 (8 x 8 cells of 128 px) that three-vfx.js THE FLIPBOOKS plays over a particle's life. Output used by the game:
-Assets/Sprites/vfx/fb_explosion.png (R2: Assets/Sprites/vfx/). Notes: docs/notes/spells-vfx.md "THE FLIPBOOKS".
+Assets/fx/sprites/fb_explosion.png (R2: Assets/fx/sprites/). Notes: docs/notes/spells-vfx.md "THE FLIPBOOKS".
 
   1. sim + render (needs the FULL Blender build: pip's `bpy` module crashes in Mantaflow):
        curl -O https://download.blender.org/release/Blender5.2/blender-5.2.3-linux-x64.tar.xz && tar xf ...
@@ -10,7 +10,7 @@ Assets/Sprites/vfx/fb_explosion.png (R2: Assets/Sprites/vfx/). Notes: docs/notes
          blender-5.2.3-linux-x64/blender -b --factory-startup -P bake-vfx.py -- render /tmp/boom
      (~3 min sim + ~2 min render on 4 cores; writes /tmp/boom/frames/f001..f064.png and boom.blend)
      PRESET=smoke (a grey puff) / PRESET=fire (a steady flame) bake the shared smoke/dust and ember sheets the same way.
-  2. sheet (plain python3 + Pillow): python3 bake-vfx.py sheet /tmp/boom/frames Assets/Sprites/vfx/fb_explosion.png
+  2. sheet (plain python3 + Pillow): python3 bake-vfx.py sheet /tmp/boom/frames Assets/fx/sprites/fb_explosion.png
      [first n cols cell step]: smoke = 2 16 4 128 3 -> fb_smoke.png (SHEET=whiten; to frame 47 so the sheet ends on the sim's own dissolve), fire = 40 16 4 64 1 -> fb_ember.png (SHEET=glow)
      (drops the first 4 near-identical frames, keeps 60; the blast centre lands 0.82 down each cell = `lift` 0.32)
 """

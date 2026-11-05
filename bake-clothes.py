@@ -32,7 +32,7 @@ Usage:
   pip install bpy==5.2.3 scipy ; git clone --depth 1 https://github.com/makehumancommunity/mpfb2 /tmp/mpfb2
   python3 -I bake-clothes.py --mpfb /tmp/mpfb2 [--only bcape_king,...] [--out charactercreation/wear] [--views DIR] [--tiles DIR]
   (--tiles: a folder holding the R2 terrain tiles fur.png / leaves.png ... ; default: fetched from cdn.entropywars.net)
-Output: <out>/ewb_<name>.glb (R2 Assets/Models/charactercreation/wear/). Notes: docs/notes/models-assets.md "THE BLENDER CLOTHES".
+Output: <out>/ewb_<name>.glb (R2 Assets/characters/creator/wear/). Notes: docs/notes/models-assets.md "THE BLENDER CLOTHES".
 """
 import argparse, importlib.util, io, json, math, os, struct, sys, urllib.request
 
@@ -53,7 +53,7 @@ from mathutils.kdtree import KDTree  # noqa: E402
 smoothstep, dirv, hull2d, minkowski, ray_poly = PG.smoothstep, PG.dirv, PG.hull2d, PG.minkowski, PG.ray_poly
 TORSO_B, LEG_B = PG.TORSO_B, PG.LEG_B
 TAU = 2 * math.pi
-R2_TILES = 'https://cdn.entropywars.net/Assets/Sprites/terrain/'
+R2_TILES = 'https://cdn.entropywars.net/Assets/world/terrain/'
 
 
 # ═══════════════════════════════ THE FIELD: the body's eased hull round a hanging axis ═══════════════════════════════
@@ -3795,16 +3795,16 @@ def write_view(path, f, V, F, G, A, accent_mats):
 R2_BASE = 'https://cdn.entropywars.net/'
 SOLIDS = {
     'cowboyhat': {'label': 'Cowboy hat', 'cat': 'hats', 'z': 56, 'px': 1024, 'rough': 0.85,
-                  'blend': 'Assets/Models/charactercreation/wear/cowboyhat/Cowboy-Hat.blend', 'obj': 'Cowboy-Hat',
-                  'tex': 'Assets/Models/charactercreation/wear/cowboyhat/textures/Cowboy-Hat_base.png',
-                  'occ': 'Assets/Models/charactercreation/wear/cowboyhat/textures/Cowboy-Hat_occ.png',
+                  'blend': 'Assets/characters/creator/wear/cowboyhat/Cowboy-Hat.blend', 'obj': 'Cowboy-Hat',
+                  'tex': 'Assets/characters/creator/wear/cowboyhat/textures/Cowboy-Hat_base.png',
+                  'occ': 'Assets/characters/creator/wear/cowboyhat/textures/Cowboy-Hat_occ.png',
                   'band_mat': 1, 'line_k': 0.42, 'ease': 0.014, 'thick': 0.004, 'tilt': 8, 'band_tint': True},
 }
 # THE WORN HATS (2026-11-03, mondo: "make it look more realistic/weathered/worn/textured. Like look at the cowboy meshy model and his
 # hat"): his same hat (mesh, UVs, fit) wearing a Meshy Retexture base colour painted on HIS UVs (enable_original_uv; Meshy's own
 # re-exported mesh is never used). F = text prompt "realistic weathered dark charcoal felt ... frayed brown leather band" on meshy-7,
 # H = "realistic weathered sand tan felt ... cracked brown leather band" on meshy-6 (remove_lighting). Shading is painted in: no occ.
-_HAT_TEX = 'Assets/Models/charactercreation/wear/cowboyhat/textures/'
+_HAT_TEX = 'Assets/characters/creator/wear/cowboyhat/textures/'
 SOLIDS['cowboyhat_worn'] = dict(SOLIDS['cowboyhat'], label='Cowboy hat (worn dark)', tex=_HAT_TEX + 'Cowboy-Hat_meshy_worn_dark.png', occ=None)
 SOLIDS['cowboyhat_worntan'] = dict(SOLIDS['cowboyhat'], label='Cowboy hat (worn tan)', tex=_HAT_TEX + 'Cowboy-Hat_meshy_worn_tan.png', occ=None)
 

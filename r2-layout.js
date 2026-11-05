@@ -7,6 +7,9 @@
    node r2-layout.js --archive <keys.json> [--dry-run]
         each key: copy ewmusicsfx/<key> → dirtymondo/archive/2026-11/<key>, read it back + compare sha256,
         THEN delete it from ewmusicsfx. Only for the orphan lists mondo OK'd (plan §5).
+   node r2-layout.js --archive-moved <wave> [--dry-run]
+        the same for the OLD keys of a moved wave, but only those whose new key holds the same bytes (mondo 11-05 OK'd it
+        after playing on the new layout: "yeah everything seems to be working").
    node r2-layout.js --copy <wave> [--dry-run]    copy every ewmusicsfx key under the wave's old prefixes to its new key
         (r2-layout.json waves), verified live through cdn.entropywars.net with a random query. Idempotent: a new key that
         already holds the same bytes (etag = md5) is skipped. OLD KEYS ARE NEVER TOUCHED by --copy.
@@ -97,8 +100,8 @@ async function pool(items, fn) {
 }
 let seq = 0; const tmpf = () => path.join(TMP, 'f' + (seq++));
 
-async function archiveMode() {
-    const keys = JSON.parse(fs.readFileSync(opt('--archive'), 'utf8'));
+async function archiveMode(given) {
+    const keys = given || JSON.parse(fs.readFileSync(opt('--archive'), 'utf8'));
     const rows = new Map((await list(GAME)).map(r => [r.key, r]));
     const todo = keys.map(k => rows.get(k) || { key: k, missing: true });
     console.log(`archive: ${todo.length} keys, ${(todo.reduce((s, r) => s + (r.size || 0), 0) / 1e6).toFixed(1)} MB → ${PRIVATE}/${ARCHIVE}`);
@@ -169,6 +172,15 @@ async function copyMode() {
     });
     console.log(`copied ${todo.length - bad}, failed ${bad}.`);
     if (bad) process.exit(1);
+}
+async function archiveMovedMode() {
+    /* the old key of every moved file whose new key holds the same bytes → archiveMode. An old key whose new copy is missing
+       or different (someone uploaded to the old folder after the flip) is NOT touched: it is listed, to copy by hand first. */
+    const w = opt('--archive-moved'), rows = await waveRows(w);
+    const ok = rows.filter(r => same(r, r.dest)), held = rows.filter(r => !same(r, r.dest));
+    held.forEach(r => console.log('  HELD (new copy missing/different)  ' + r.key + '  →  ' + r.to));
+    console.log(`wave ${w}: ${ok.length} old keys to archive, ${held.length} held`);
+    return archiveMode(ok.map(r => r.key));
 }
 async function verifyMode() {
     const w = opt('--verify'), rows = await waveRows(w);
@@ -242,6 +254,7 @@ async function listMode() {
 }
 
 (async () => {
+    if (args.includes('--archive-moved')) return archiveMovedMode();
     if (args.includes('--archive')) return archiveMode();
     if (args.includes('--copy')) return copyMode();
     if (args.includes('--verify')) return verifyMode();

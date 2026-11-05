@@ -33,7 +33,7 @@ Usage:
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --looks charactercreation/mpfb/looks
   (the creator's skin / eye / brow / lash picks as layers of the shared hm08 sheet + looks.json; see bake_looks)
 
-Output: <out>/mpfb_<body>.glb (upload to R2 Assets/Models/charactercreation/mpfb/). Notes:
+Output: <out>/mpfb_<body>.glb (upload to R2 Assets/characters/creator/mpfb/). Notes:
 docs/notes/models-assets.md "THE MPFB BODIES".
 """
 import argparse, math, os, shutil, sys, importlib

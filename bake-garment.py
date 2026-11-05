@@ -31,7 +31,7 @@ around the MPFB bodies (git clone https://github.com/makehumancommunity/mpfb2), 
 Output: <out>/ewb_trench.glb in the pack clothes' COMPACT LAYOUT (bake-mpfb.py write_wear_glb: POSITION = the male build,
 _D_<BODY> the other four, _N, _J/_W into extras.ewWear.bones, uint16 indices) + _G; UVs in metres (the game scales them to
 the outer layer's fabric). No texture: the creator's outer layer fabric / tint / print paints it (three-renderer.js THE
-BLENDER COAT). R2: Assets/Models/charactercreation/wear/ewb_trench.glb.
+BLENDER COAT). R2: Assets/characters/creator/wear/ewb_trench.glb.
 
 Usage: pip install bpy==5.2.3 ; git clone --depth 1 https://github.com/makehumancommunity/mpfb2 /tmp/mpfb2
        python3 -I bake-garment.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--views <dir>]   (~2 min)

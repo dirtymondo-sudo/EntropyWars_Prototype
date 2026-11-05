@@ -38,7 +38,7 @@ factors. The creator tints any of them (THE WEAR TINT: the texture's grey levels
 
 Usage: pip install bpy==5.2.3 scipy ; git clone --depth 1 https://github.com/makehumancommunity/mpfb2 /tmp/mpfb2
        python3 -I bake-meshy.py --mpfb /tmp/mpfb2 [--src /mnt/project-files/meshy/models] [--only ewm_beret,...] [--views DIR]
-Output: charactercreation/wear/ewm_<key>.glb (R2 Assets/Models/charactercreation/wear/) + the EW_MH_WEAR rows to paste
+Output: charactercreation/wear/ewm_<key>.glb (R2 Assets/characters/creator/wear/) + the EW_MH_WEAR rows to paste
 (printed). --views writes a front / side / back sheet per piece on the five bodies. Notes: docs/notes/models-assets.md
 "THE MESHY PIECES".
 """

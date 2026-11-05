@@ -2,7 +2,7 @@
 // manifest-assets.js — OPEN_WORLD_PLAN §6.2 / Phase 9 (2026-09-27): ASSET_MANIFEST.json, the file list the game reads.
 //
 //     npm run manifest -- <bucket-mirror>                  # a local folder laid out like the R2 bucket (holds Assets/…)
-//     npm run manifest -- <folder> --prefix Assets/misc/   # a folder that is ONE bucket folder
+//     npm run manifest -- <folder> --prefix Assets/world/props/meshy/   # a folder that is ONE bucket folder
 //     npm run manifest -- <folder> --prefix Assets/ --merge   # add to / refresh the existing manifest instead of replacing it
 //
 // Writes ASSET_MANIFEST.json at the repo root: { v, made, base, files: { "<bucket path>": [bytes, sha] } }.

@@ -1,5 +1,5 @@
 # bake-pack-pieces.py — THE MESHY SWAP (2026-11-03): cuts single props out of Elbolilloduro PSX pack scenes into small GLBs
-# for R2 Assets/misc/ (ebd_<pack>_<item>.glb). Repo-only dev tooling, never loaded by the game. Notes: docs/notes/models-assets.md
+# for R2 Assets/world/packs/elbolilloduro/ (ebd_<pack>_<item>.glb). Repo-only dev tooling, never loaded by the game. Notes: docs/notes/models-assets.md
 # "THE MESHY SWAP"; the list of swaps: MODEL_LIST.md 10F.
 #
 #   blender -b -P bake-pack-pieces.py -- --packs <dir with the unzipped packs, one folder per itch slug> --out <dir> [--only key,key]
@@ -70,7 +70,7 @@ JOBS += [('house', 'abandonedhouse', ['Casa!', 'Ventanas', 'm', 'Columnas', 'Bar
 JOBS += [('trailer_%d' % i, 'trailerscene', [{'near': 'Home' if i == 0 else 'Home_%02d' % i, 'pad': 1.2, 'keep': TRAILER_KEEP}], 90) for i in range(6)]
 # THE MESHY AUDIT (2026-11-04, mondo: "You are supposed to document every single model and try to not use meshy models"): the
 # MODEL_LIST §10A stand-ins whose pack piece was named in 11-03's decor list (status `pack: …`) but never wired. Each proc WEARS its
-# piece (three-renderer.js _HQ_PACK_WEAR, Assets/misc/ebd_…), so its light / glow / collision stay. Front at +Z like the procs.
+# piece (three-renderer.js _HQ_PACK_WEAR, Assets/world/packs/elbolilloduro/ebd_…), so its light / glow / collision stay. Front at +Z like the procs.
 AUDIT = [
     ('metal_shelving', 'gasstation', ['Shelf_Metal'], 0), ('washer', 'house', ['Washing_machine', 'Washing_machine_d'], -90),
     ('dryer', 'abandonedhouse', ['Secadora'], 0), ('broom', 'house', ['Broom'], 0), ('toilet_paper', 'house', ['Toilet_paper'], 0),

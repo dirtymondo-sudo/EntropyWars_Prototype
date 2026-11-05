@@ -358,14 +358,21 @@ code finds them.
   the W5 rows are their permanent alias table. The safety net now also rewrites inline style backgrounds.
   ASSET_MANIFEST.json 1,100 entries rewritten; MODEL_LIST tally unchanged.
 
+- **Old keys archived 11-05** (mondo after playing on the new layout: "yeah everything seems to be working"). First
+  `--verify W2..W5`: all 4,708 new keys byte-identical. A static sweep found HTML strings still handing OLD paths straight
+  to the parser, past every door of the net: ui.js unit sprites (`<img src="${src}">` built on `_S`), the editor's pack
+  thumbnails (`Assets/misc/`), UI Maker slices. So the net grew (sprites.js `_ewAssetNet`): innerHTML / outerHTML /
+  insertAdjacentHTML strings, `<style>` textContent and `new Audio(url)` now go through `ewAsset` too. Repo tooling
+  (bake-*.py, character-rig.js, playtest_creator/city.js, manifest-assets.js) names the new folders. Then
+  `node r2-layout.js --archive-moved <wave>` per wave: each old key whose new key holds the same bytes is copied to
+  `dirtymondo:archive/2026-11/<old key>`, read back + sha256-compared, THEN removed from ewmusicsfx (an old key with a
+  missing/different new copy is held, not touched). 0-byte folder markers were left.
+
 ### What is left
-- **Old keys:** every moved file still exists at its old key too (~8.5 GB). They are NOT needed by the game any more (the
-  code and the alias rows ask for the new keys), but they stay until mondo has played on the new layout. Then, with his
-  OK: `--archive` the old keys wave by wave (copy to `dirtymondo:archive/`, then remove), after a trace
-  (`performance.getEntriesByType('resource')`) shows nothing still fetching an old path — the one thing the safety net
-  can't catch is an innerHTML string with `style="background:url(<old path>)"`.
+- **Restore** (if a path ever 404s): the old file is in `dirtymondo:archive/2026-11/<old key>`; the fix is the code path
+  (find it with `window.EW_ASSET_MOVE_LOG`), or GET it back from the archive and PUT it to its NEW key.
 - The orphan groups of §5 other than W0 (unused Meshy clips, MODEL_LIST §13 "not loaded" models, opt copies of unused
-  files, SOURCE files) were copied to their new homes like everything else; archiving them waits for the same OK.
-- **The EW_ASSET_MOVES rows stay for good** (they are the alias table for base constants like `_S` and `_R2_MISC`).
-  New files go straight to the new folders (sync-zip.js `--put` moves an old-folder key itself).
+  files, SOURCE files) now live in their new folders; archiving those needs mondo's OK on the exact list.
+- **The EW_ASSET_MOVES rows stay for good** (they are the alias table for base constants like `_S` and `_R2_MISC`, and for
+  paths in his saves). New files go straight to the new folders (sync-zip.js `--put` moves an old-folder key itself).
 - W6 (optional): sort `loose_sprites/`, split `world/props/meshy/` by use, rename the 276 broken file names.
