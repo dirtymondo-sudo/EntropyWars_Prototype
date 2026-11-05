@@ -55648,8 +55648,20 @@ const ThreeRenderer = (function () {
            rest it sagged the skirt 13 degrees into the legs, so the push was always fighting), `rad` 1.2 -> 3 cm + `limExtra` 0.8 cm
            (the pushed cloth sat ON the jeans: the flicker). Measured (jeans px through the coat, front / side / side / back): his
            Cowboy closed greatcoat wide stance 1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7, duster 2,199 / 2,243 -> 15 / 0, cult robe
-           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/.
+           THE BUMPS FIX (2026-11-05, mondo: "all of the coats still have these 2 weird bumps on the side. Some have the 2 bumps on the
+           back side"): the two bumps were the leg push, not the coats (EW_DISABLE_SWAY / no push: none). The flaps fix's clearance
+           (`limExtra` 8 mm past the bind distance + `rad` 3 cm off the leg) was applied in full at every sample along a chain bone, and a
+           straight bone hinged at its head has to swing 1 / t as far at its tail to move the sample at t: 6 mm at the sample 0.15 down
+           the bone stood its tail ~4 cm out, at every chain round the hips, even in the bind pose (the saddlebags at the sides, the two
+           lobes over the seat). Now (1) `limT`: the extra past the bind distance grows along the bone (x t), so a tail never stands out
+           more than limExtra; (2) `poseA` [15, 35] deg: the 3 cm off the leg is x t too while the leg is within 15 deg of where it lies
+           at bind in the Hips' frame (the upright idles: 10-18 deg), and in full from 35 deg (the Wide stance ~40, a walk's stride),
+           so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
+           the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
+           Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -55795,8 +55807,14 @@ const ThreeRenderer = (function () {
                 var rAt = function (t) { var r = rad[0] + (rad[1] - rad[0]) * (t - ctr[0].t) / (ctr[1].t - ctr[0].t); return Math.max(Math.min(rad[0], rad[1]), Math.min(Math.max(rad[0], rad[1]), r)); };
                 var ms = S.M.getMaxScaleOnAxis();   // mesh metres -> the bone's frame
                 var t0 = S.a === bi('LeftUpLeg') || S.a === bi('RightUpLeg') ? O.thighTop : 0;   // (the thigh from a little under the hip joint: its top merges into the seat, and a ball there stood the coat's side out in a shelf)
-                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M });
-                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
+                var hb = bi('Hips'), dH = null;
+                if (hb >= 0 && sk.boneInverses[hb]) {   // THE BUMPS FIX: the leg bone's bind direction in the Hips' frame (how far a pose has turned the leg off it)
+                    var BMi0 = new THREE.Matrix4().copy(BM).invert(), qa = hangBonePos(sk, S.a, BMi0), qb = hangBonePos(sk, S.b, BMi0);
+                    dH = qb.sub(qa).transformDirection(BM).transformDirection(sk.boneInverses[hb]);
+                }
+                var kb = { leg: bones[S.b], hips: hb >= 0 ? bones[hb] : null, dH: dH };
+                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M, kb: kb });
+                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true, kb: kb });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
             });
             if (!caps.length) return;
             /* the rest allowance: per chain bone, per sample along it, per capsule, how far (in the capsule's frame) the cloth stood
@@ -55814,7 +55832,7 @@ const ThreeRenderer = (function () {
                             cp.set(px, py, pz).applyMatrix4(K.M);
                             seg.subVectors(K.pb, K.pa); var sl = seg.lengthSq(), u = sl > 0 ? Math.max(0, Math.min(1, cl.subVectors(cp, K.pa).dot(seg) / sl)) : 0;
                             cl.copy(K.pa).addScaledVector(seg, u);
-                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) + ((O.limExtra || 0) - 0.002) * Hm);
+                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) - 0.002 * Hm);
                             cl.subVectors(cp, cl); var o3 = ((s * NS + q2) * caps.length + ki) * 3; C.side[o3] = cl.x; C.side[o3 + 1] = cl.y; C.side[o3 + 2] = cl.z;   // (which side of the leg the cloth lies on, in the leg's own frame)
                         });
                     }
@@ -55848,19 +55866,31 @@ const ThreeRenderer = (function () {
             for (var ci = 0; ci < NK; ci++) {
                 var K = caps[ci], mw = K.a.matrixWorld;
                 W[ci].a.copy(K.pa).applyMatrix4(mw); W[ci].b.copy(K.pb).applyMatrix4(mw); W[ci].s = _hgS.setFromMatrixScale(mw).x;
+                var kf = 1, kb = K.kb;
+                if (O.poseA && kb && kb.dH && kb.hips && kb.leg) {
+                    _hgP.setFromMatrixPosition(kb.leg.matrixWorld).sub(_hgS.setFromMatrixPosition(mw));
+                    if (_hgP.lengthSq() > 1e-12) {
+                        _hgP.normalize(); _hgS.copy(kb.dH).transformDirection(kb.hips.matrixWorld);
+                        var la = Math.acos(Math.max(-1, Math.min(1, _hgP.dot(_hgS)))) * 180 / Math.PI;
+                        kf = Math.max(0, Math.min(1, (la - O.poseA[0]) / (O.poseA[1] - O.poseA[0])));
+                    }
+                }
+                W[ci].k = kf;
             }
             /* out of every capsule (radius: the fitted one + the coat's clearance, never past the rest allowance), on the side of the
                leg that piece of cloth lies on in the bind pose (front panel in front of the thigh, side panel at its side): pushed
                straight out from the axis, a point that had gone past the middle of the leg came out on the far side and the cloth
                wrapped behind it */
             var _hd = R.hd || (R.hd = new THREE.Vector3());
-            var push = function (p, lim, side, so) {
+            var push = function (p, lim, side, so, ct) {
                 for (var k = 0; k < NK; k++) {
                     var K = caps[k], Wk = W[k];
                     _hgE.subVectors(Wk.b, Wk.a); var L2 = _hgE.lengthSq();
                     var u = L2 > 0 ? Math.max(0, Math.min(1, _hgF.subVectors(p, Wk.a).dot(_hgE) / L2)) : 0;
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad, lim[k]) * Wk.s;
+                    var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
+                    if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
@@ -55902,7 +55932,7 @@ const ThreeRenderer = (function () {
                         var t = O.samples[q], L0 = C.lim ? (i * NS + q) * NK : -1;
                         _hgP.subVectors(_hgC, B.head).multiplyScalar(t).add(B.head);
                         var px = _hgP.x, py = _hgP.y, pz = _hgP.z;
-                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3);
+                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3, t);
                         if (_hgP.x !== px || _hgP.y !== py || _hgP.z !== pz) _hgC.copy(_hgP).sub(B.head).setLength(wl).add(B.head);
                     }
                     if (O.maxPush) {   // (the legs push the cloth out, but never stand it out further than maxPush off where the coat's own weights carry it: a straight bone swung far out from near its root stood up in a flap)
