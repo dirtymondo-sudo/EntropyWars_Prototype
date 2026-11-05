@@ -2253,8 +2253,9 @@ const ThreeRenderer = (function () {
     }
     /* THE CHRISTMAS PACK: a COLLADA file through the store → ColladaLoader.parse; else the loader's own network path. The file names
        its sheets by the author's own disk paths (C:/Users/…/Textures/Gift.png), so every image it asks for is read from the pack's
-       textures/ folder by its file name. The result is the scene in a plain group: the loader turns a Z-up file upright with a
-       rotation on its scene, and a piece cut from the group (_miscPiece) keeps that turn baked in. */
+       textures/ folder by its file name. The result is the scene in a plain group, a piece cut from it by _miscPiece. The file is Y-up
+       since 2026-11-05 (its vertices + node matrices turned once offline, the same world placement to 5e-15): the Z-up original made
+       the loader warn and only rotate its scene. The parser's "File version" debug line is kept out of the console. */
     function _isDaeUrl(url) { return /\.dae(?:[?#]|$)/i.test(String(url || '')); }
     function _asDae(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.ColladaLoader !== 'function') { if (onError) onError(new Error('no ColladaLoader')); return; }
@@ -2272,12 +2273,15 @@ const ThreeRenderer = (function () {
             _xmasPackMats(wrap);
             if (onLoad) onLoad(wrap);
         };
-        if (!_asAvailable()) { new THREE.ColladaLoader(mgr).load(url, done, undefined, onError); return; }
-        _asFetch(url, o).then(function (res) { return res.text(); }).then(function (text) {
-            var c = null;
-            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { if (onError) onError(e); return; }
+        var parse = function (text) {
+            var c = null, dbg = console.debug;
+            console.debug = function (m) { if (typeof m === 'string' && m.indexOf('THREE.ColladaLoader: File version') === 0) return; return dbg.apply(console, arguments); };
+            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { console.debug = dbg; if (onError) onError(e); return; }
+            console.debug = dbg;
             done(c);
-        }).catch(function (e) { if (onError) onError(e); });
+        };
+        var got = _asAvailable() ? _asFetch(url, o) : fetch(_asNetUrl(url), { mode: 'cors', credentials: 'omit' });
+        got.then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url); return res.text(); }).then(parse).catch(function (e) { if (onError) onError(e); });
     }
     /* the pack's sheets in the game's terms: no sRGB decode (the game's linear output, like every prop sheet), the alpha cut at 0.5
        (the tree's branch cards, the ribbon, the star, the snowy pine cards; an opaque sheet is untouched by it), the card sheets
@@ -17256,6 +17260,19 @@ const ThreeRenderer = (function () {
 
     /* Swap out the flat sprite placeholder (front plane + shell + shadow
        proxy + x-ray silhouette) once the rigged model is live. */
+    /* THE DRESSED REVEAL (2026-11-05): a creator body on the board stays hidden, its sprite stand-in up, until its rig has every
+       piece of the look on (rig.whenDressed); then the body shows and the stand-in of whatever entry the unit has by then goes */
+    function _unitRevealDressed(entry, unitId, m, rig) {
+        if (!rig || rig.dressed()) { m.visible = true; _removeUnitSpritePlaceholder(entry); return; }
+        m.visible = false;
+        rig.whenDressed(function () {
+            m.visible = true;
+            _removeUnitSpritePlaceholder(entry);
+            var cur = _getUnitEntry(unitId);
+            var wr = m.parent && m.parent.parent;   // the model's inner -> the wrap -> the entry's group
+            if (cur && cur !== entry && cur.group && wr && wr.parent === cur.group) _removeUnitSpritePlaceholder(cur);
+        });
+    }
     function _removeUnitSpritePlaceholder(entry) {
         var g = entry.group;
         if (!g) return;
@@ -17395,7 +17412,7 @@ const ThreeRenderer = (function () {
                 entry.modelMats[_ri].color.setRGB(_rg, _rg, _rg);
                 if (entry.modelMats[_ri].emissiveMap) entry.modelMats[_ri].emissiveIntensity = glow;
             }
-            _removeUnitSpritePlaceholder(entry);
+            if (!(_rig.appearanceRig && !_rig.appearanceRig.dressed())) _removeUnitSpritePlaceholder(entry);   // THE DRESSED REVEAL: a rig still dressing drops the stand-in itself (_unitRevealDressed)
             return;
         }
 
@@ -17421,6 +17438,7 @@ const ThreeRenderer = (function () {
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
             var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || unit.appearance, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
+            if (appearanceRig && !appearanceRig.dressed()) m.visible = false;   // THE DRESSED REVEAL: shown (and the stand-in dropped) once the look is on (_unitRevealDressed)
             inner.add(m);
             wrap.add(inner);
             /* THE DOOR GUN IN BATTLE (2026-09-16): a def's `hold` (sprites.js — the Door Agent's
@@ -17564,7 +17582,7 @@ const ThreeRenderer = (function () {
             if (res.procClips) entry._ew_procEye = _rigRec.procEye = _procRigAttachEye(m);   // THE PROCEDURAL RIGS: the core eye (after the twins: it gets no x-ray/outline)
             if (!hasSkin && !res.procClips) {
                 console.warn('[ThreeRenderer] unit model has no rig (skin/bones) — clips skipped, rendering static:', def.model);
-                _removeUnitSpritePlaceholder(entry);
+                _unitRevealDressed(entry, unit.id, m, appearanceRig);
                 return;
             }
             var mixer = new THREE.AnimationMixer(m);
@@ -17669,7 +17687,7 @@ const ThreeRenderer = (function () {
                 _loadMeshyClips();
             }
 
-            _removeUnitSpritePlaceholder(entry);
+            _unitRevealDressed(entry, unit.id, m, appearanceRig);   // THE DRESSED REVEAL
         });
     }
 
@@ -23012,6 +23030,7 @@ const ThreeRenderer = (function () {
                 var hasSkin = _cvOwnBakes(m, ownMats, ownTex);
                 if (def.creatorBase && typeof _createAppearanceRig === 'function') {
                     try { rig = _createAppearanceRig(m, def.raceLook || (typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance)); rigRoot = m; } catch (e) { rig = null; }
+                    if (rig && !rig.dressed()) { m.visible = false; rig.whenDressed(function () { m.visible = true; }); }   // THE DRESSED REVEAL
                 }
                 var inner = new THREE.Group();
                 inner.rotation.y = def.yawOffset || 0;
@@ -35303,6 +35322,15 @@ const ThreeRenderer = (function () {
            the turn that puts its nose at +Z. Both tick on the room's tickers — captured now: a file that lands after the room changed
            ticks nowhere. No room tickers, EW_PERF_LOW or the room's rig budget spent → the static copy, holding still. */
         var tickers = (opts.anim || opts.swim) && typeof _hq !== 'undefined' && _hq && _hq.tickers ? _hq.tickers : null;
+        /* THE CACHED LANDING (2026-11-05, mondo: the Singularity Arena's crystals "flickering on and off of being pixelated"):
+           a file already in the cache lands INSIDE this call, while the caller is still building. It flagged _objectsDirty
+           all the same, and rebuildObjects builds the board's crystal clusters (rebuildTerrainDecorations) after it clears
+           that flag, so every board with crystal tiles rebuilt all of its objects and crystals EVERY frame: new meshes each
+           frame, which the pixelate mask (ThreePost, re-tagged a few times a second) only caught now and then. A landing in
+           the call is already part of what the caller builds: it only asks for a shadow pass. A file that lands later still
+           flags the board as before. */
+        var inCall = true;
+        var landed = function () { if (inCall) _shadowsDirty = true; else _objectsDirty = true; };
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
@@ -35312,7 +35340,7 @@ const ThreeRenderer = (function () {
                 /* THE EAGLE: a row's `swim` circles it about its spot on the room's tickers (the eagle soars there, gliding) */
                 g.add(tickers && opts.swim ? _oceanSwimRing(an.group, opts.swim, opts.nose, tickers) : an.group);
                 if (opts.onDone) opts.onDone(g, an.group.children[0].children[0].scale.x, root._ew_bbox);
-                _objectsDirty = true;
+                landed();
                 return;
             }
             var bb = root._ew_bbox;
@@ -35350,8 +35378,9 @@ const ThreeRenderer = (function () {
                 g.add(m);
             }
             if (opts.onDone) opts.onDone(g, s, bb);
-            _objectsDirty = true;
+            landed();
         });
+        inCall = false;
         return g;
     }
 
@@ -42383,6 +42412,7 @@ const ThreeRenderer = (function () {
         var s = _ewGpuBackendName();
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
+        if (_ewGpu === 'webgpu' && _ewGpuInfo.limits) s += ' · ' + _ewGpuInfo.limits;
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
@@ -44822,6 +44852,45 @@ const ThreeRenderer = (function () {
         }
         catch (e) { console.warn('[ThreeRenderer] node program: kept the stand-in', e); return null; }
     }
+    /* THE CORE ADAPTER (2026-11-05, mondo's Firefox console: 'User requested a WebGPU adapter with featureLevel:
+       "compatibility", which is not yet supported; returning a "core"-defaulting adapter for now' from three.webgpu.js).
+       three 0.186.1's WebGPUBackend.init() always asks navigator.gpu.requestAdapter for featureLevel 'compatibility' (it then
+       turns core on by asking for every feature the adapter has). Firefox has no compatibility mode (bugzilla 1905951), hands
+       back a core adapter anyway and warns. Nothing in the game needs compatibility mode, so on Firefox the ask drops
+       featureLevel (the WebGPU default, core): the same adapter, no warning. Chrome / Safari keep three's ask unchanged.
+       While the adapter passes through: its vertex limits are kept for ?ewdiag=1 / gpuStatus(), and the device asks for the
+       adapter's own maxVertexBuffers when that is above WebGPU's default 8 (three asks for no limits, so the device got 8
+       even where the GPU has more; mondo's log: 'The number of vertex buffers 13 exceeds the limit 8'). Chrome's Dawn tops
+       out at 8, so there it changes nothing. A wrapper on navigator.gpu, not a patch of the vendored three (it loads from
+       jsdelivr). Off: ?ew_gpucore=0 (reload). */
+    function _ewGpuCoreShim() {
+        var gpu = (typeof navigator !== 'undefined') ? navigator.gpu : null;
+        if (!gpu || typeof gpu.requestAdapter !== 'function' || gpu._ewCoreShim) return;
+        try { if (/[?&]ew_gpucore=0\b/.test(location.search)) return; } catch (e) {}
+        var ff = /Firefox\//.test(navigator.userAgent || ''), ra = gpu.requestAdapter;
+        gpu._ewCoreShim = true;
+        gpu.requestAdapter = function (o) {
+            if (ff && o && o.featureLevel === 'compatibility') { o = Object.assign({}, o); delete o.featureLevel; }
+            return ra.call(this, o).then(function (a) {
+                if (!a || a._ewCoreShim || typeof a.requestDevice !== 'function') return a;
+                a._ewCoreShim = true;
+                var L = a.limits || {}, mvb = L.maxVertexBuffers | 0, rd = a.requestDevice;
+                _ewGpuInfo.limits = 'adapter maxVertexBuffers ' + mvb + ', maxVertexAttributes ' + (L.maxVertexAttributes | 0) +
+                    (ff ? ' (featureLevel core)' : '');
+                a.requestDevice = function (d) {
+                    d = Object.assign({}, d || {});
+                    var rl = Object.assign({}, d.requiredLimits || {});
+                    if (mvb > 8 && !(rl.maxVertexBuffers >= mvb)) rl.maxVertexBuffers = mvb;
+                    d.requiredLimits = rl;
+                    return rd.call(this, d).then(function (dev) {
+                        try { _ewGpuInfo.limits += '; device maxVertexBuffers ' + (dev.limits.maxVertexBuffers | 0); } catch (e) {}
+                        return dev;
+                    });
+                };
+                return a;
+            });
+        };
+    }
     /* the board renderer: the node renderer when asked for and loaded, else the classic one */
     function _ewMakeBoardRenderer(cnv) {
         var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
@@ -44835,6 +44904,7 @@ const ThreeRenderer = (function () {
                     var lensUser = false;
                     try { lensUser = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) {}
                     if (!ff && lensUser) opts.trackTimestamp = true;   // Firefox's wgpu invalidates the device on timestampWrites
+                    if (mode === 'webgpu') _ewGpuCoreShim();
                     var r = new G.WebGPURenderer(opts);
                     _ewGpu = mode;
                     _ewGpuCompat(r, G);
@@ -45404,7 +45474,7 @@ const ThreeRenderer = (function () {
                     if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = String(ev && ev.error && ev.error.message || ev).slice(0, 160);
                 });
             } catch (e) {}
-            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName());
+            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}
         }, function (e) {
@@ -50718,6 +50788,94 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* THE HAIR SHADER (2026-11-05, mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves").
+       The creator's hair wore one MeshStandardMaterial (roughness 0.55): under the stage's key light every style got the same
+       round plastic highlight, and the dozen styles that are one sculpted shell painted a flat colour (Hair 05 / 06 / 11 / 12 /
+       13 / 14 ...; their UVs are collapsed, so no texture can ever draw strands on them) read as a rubber helmet. Hair is lit
+       ALONG its strands: here a MeshPhysicalMaterial whose anisotropic highlight runs along each vertex's strand direction (the
+       line from the crown over the skull and down: _ccHairFlow, skinned with the hair so it follows the sway chains) instead of
+       the UV tangent, and (strands > 0, the flat shells: sprites.js EW_HAIR_STYLES `strands`) fine strands drawn in 3D round the
+       crown from the bind-pose position (no UVs needed): the albedo darkens in the gaps, the normal ripples across them, the
+       finest strands fade out where a pixel would alias them. Classic WebGL only (the creator stage's own renderer); the board
+       and the team room wear their own Lambert copy as before. uniforms: m.userData.ewHair = { crown: Vector3, strands, bump, k }. */
+    var _CC_HAIR_GLSL_V = [
+        'uniform vec3 ewCrown;',
+        'varying vec3 vEwP;',
+        'varying vec3 vEwFlow;'
+    ].join('\n');
+    var _CC_HAIR_GLSL_F = [
+        'uniform vec3 ewCrown;',
+        'uniform float ewStrand;',
+        'uniform float ewBumpK;',
+        'uniform float ewScale;',
+        'varying vec3 vEwP;',
+        'varying vec3 vEwFlow;',
+        'float ewHash(float n) { return fract(sin(n * 91.3458) * 47453.5453); }',
+        'float ewVN(float x, float K) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(ewHash(mod(i, K)), ewHash(mod(i + 1.0, K)), f); }',
+        // the strands round the crown: t = the angle round the crown (0..1), each octave periodic in t (no seam at the back)
+        'float ewStrands(vec3 p) {',
+        '    float t = atan(p.x, p.z) * 0.15915494 + 0.5;',
+        '    float t2 = atan(-p.x, -p.z) * 0.15915494 + 0.5;',
+        '    float fw = min(fwidth(t), fwidth(t2));',
+        '    float L = length(p) / ewScale;',
+        '    t += 0.0025 * sin(L * 70.0 + sin(t * 43.982) * 3.0);',
+        '    float h = 0.0;',
+        '    h += 0.16 * (1.0 - smoothstep(0.3, 0.7, 26.0 * fw)) * (ewVN(t * 26.0, 26.0) - 0.5);',
+        '    h += 0.30 * (1.0 - smoothstep(0.3, 0.7, 130.0 * fw)) * (ewVN(t * 130.0 + 7.0, 130.0) - 0.5);',
+        '    h += 0.34 * (1.0 - smoothstep(0.3, 0.7, 360.0 * fw)) * (ewVN(t * 360.0 + 3.0, 360.0) - 0.5);',
+        '    h += 0.30 * (1.0 - smoothstep(0.3, 0.7, 900.0 * fw)) * (ewVN(t * 900.0 + 11.0, 900.0) - 0.5);',
+        '    h += 0.24 * (1.0 - smoothstep(0.3, 0.7, 2200.0 * fw)) * (ewVN(t * 2200.0 + 5.0, 2200.0) - 0.5);',
+        '    return h;',
+        '}',
+        'vec3 ewBump(vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDir) {',
+        '    vec3 vSigmaX = normalize(dFdx(surf_pos.xyz));',
+        '    vec3 vSigmaY = normalize(dFdy(surf_pos.xyz));',
+        '    vec3 R1 = cross(vSigmaY, surf_norm);',
+        '    vec3 R2 = cross(surf_norm, vSigmaX);',
+        '    float fDet = dot(vSigmaX, R1) * faceDir;',
+        '    vec3 vGrad = sign(fDet) * (dHdxy.x * R1 + dHdxy.y * R2);',
+        '    return normalize(abs(fDet) * surf_norm - vGrad);',
+        '}'
+    ].join('\n');
+    function _ccHairHook(shader) {
+        var m = this, U = (m && m.userData && m.userData.ewHair) || null;
+        shader.uniforms.ewCrown = { value: U ? U.crown : new THREE.Vector3() };
+        shader.uniforms.ewStrand = U ? U.uStrand : { value: 0 };
+        shader.uniforms.ewBumpK = U ? U.uBump : { value: 0 };
+        shader.uniforms.ewScale = U ? U.uScale : { value: 1.7 };
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', '#include <common>\n' + _CC_HAIR_GLSL_V)
+            .replace('#include <skinnormal_vertex>', [
+                '#include <skinnormal_vertex>',
+                'vec3 ewR = position - ewCrown;',
+                'vEwP = ewR;',
+                'vec3 ewF = normalize(ewR + vec3(0.0, -0.45 * length(ewR), 0.0));',   // from the crown, leaning down (the hair falls)
+                '#ifdef USE_SKINNING',
+                'ewF = (skinMatrix * vec4(ewF, 0.0)).xyz;',
+                '#endif',
+                'vEwFlow = (modelViewMatrix * vec4(ewF, 0.0)).xyz;'
+            ].join('\n'));
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', '#include <common>\n' + _CC_HAIR_GLSL_F)
+            .replace('#include <map_fragment>', [
+                '#include <map_fragment>',
+                'float ewH = 0.0;',
+                'if (ewStrand > 0.0) { ewH = ewStrands(vEwP); diffuseColor.rgb *= clamp(1.0 + ewStrand * 2.2 * ewH, 0.3, 1.5); }',
+                'vec2 ewDH = vec2(dFdx(ewH), dFdy(ewH)) * ewBumpK;'
+            ].join('\n'))
+            .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nif (ewStrand > 0.0) normal = ewBump(-vViewPosition, normal, ewDH, faceDirection);')
+            .replace('#include <lights_physical_fragment>', THREE.ShaderChunk.lights_physical_fragment.replace(
+                /material\.anisotropyT = [^;]*;\s*material\.anisotropyB = [^;]*;/,
+                'vec3 ewT = vEwFlow - dot(vEwFlow, normal) * normal; float ewTl = length(ewT);\n' +
+                'ewT = ewTl > 1e-5 ? ewT / ewTl : normalize(tbn[0]);\n' +
+                'material.anisotropyT = ewT;\nmaterial.anisotropyB = cross(normal, ewT);') +
+                '\nmaterial.specularColor *= mix(vec3(1.0), diffuseColor.rgb / max(1e-3, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))), ' + CC_HAIR_LOOK.tint.toFixed(2) + ');' +
+                '\nmaterial.specularF90 *= ' + CC_HAIR_LOOK.f90.toFixed(2) + ';');   // the grazing sheen (untinted: it took the stage's lilac rim)
+    }
+    /* the hair's look on the creator stage (THE HAIR SHADER): roughness across the strands, the stretch along them, the
+       highlight's strength (a hair's sheen is dimmer than a plastic's), the strands' depth on the flat shells */
+    var CC_HAIR_LOOK = { rough: 0.42, aniso: 0.82, spec: 0.38, tint: 0.85, f90: 0.3, strand: 1, bump: 1.3 };
+
     /* A hair style GLB through the unit-model cache (same-origin retry, done
        hooks). cb(root | null) — fires on failure too. */
     function _ccLoadHair(url, cb) {
@@ -51281,6 +51439,11 @@ const ThreeRenderer = (function () {
         }
         return (_ccRingCache[rc] = { o: Int32Array.from(o), s: Int32Array.from(s) });
     }
+    /* THE DRESSED REVEAL (2026-11-05, mondo: "the mpfb bodies load naked before the clothes come on. Wtf is the point of the
+       manifesting loading symbol if youre just gonna flash a god damn naked body"): the shared loaders, kept here so the rig
+       below can count every load it starts (its own loaders of the same names wrap these). */
+    var _ccShared = { wear: _ccLoadWear, hair: _ccLoadHair, wings: _ccLoadWings, image: _ccLoadImage, fabric: _ccLoadFabric, eye: _ccLoadEyeProxy, lash: _ccOwnLashMap };
+    var CC_DRESS_MAX_MS = 20000;   // a load that never answers still lets the body show after this
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
         /* THE QUICK PICKS: a dropped garment's / hair's material is kept (its textures let go), not disposed: disposing it freed its
@@ -51295,6 +51458,32 @@ const ThreeRenderer = (function () {
             ['map', 'normalMap', 'alphaMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap'].forEach(function (k) { if (m[k]) m[k] = null; });   // (never drawn again: no recompile)
             retired.push(m); flushLater(false);
         }
+        /* THE DRESSED REVEAL: every async load this rig starts (a garment / hair / wings GLB, a look / fabric picture, the eye pack,
+           the body's own lashes) is counted while in flight; whenDressed(cb) fires once none is left - the callback that finished
+           the last one has already put its piece on the body, and a load it starts in turn is counted before it returns. Each
+           stage (the creator stage, the board, the team room, the dock) keeps the body hidden behind its loading sign until
+           then, so the whole look appears at once. These shadow the shared loaders for this rig only. */
+        var dressQ = { n: 0, cbs: [] };
+        function dressFlush() {
+            if (dressQ.n > 0 || !dressQ.cbs.length) return;
+            var c = dressQ.cbs; dressQ.cbs = [];
+            for (var i = 0; i < c.length; i++) { try { c[i](); } catch (e) { console.warn('[ThreeRenderer] dressed reveal failed', e); } }
+        }
+        function dressHold(cb) {
+            dressQ.n++;
+            var settled = false;
+            return function () {
+                try { return cb.apply(this, arguments); }
+                finally { if (!settled) { settled = true; dressQ.n = Math.max(0, dressQ.n - 1); dressFlush(); } }
+            };
+        }
+        function _ccLoadWear(url, cb) { return _ccShared.wear(url, dressHold(cb)); }
+        function _ccLoadHair(url, cb) { return _ccShared.hair(url, dressHold(cb)); }
+        function _ccLoadWings(url, cb) { return _ccShared.wings(url, dressHold(cb)); }
+        function _ccLoadImage(url, cb) { return _ccShared.image(url, dressHold(cb)); }
+        function _ccLoadFabric(url, unmanaged, cb) { return _ccShared.fabric(url, unmanaged, dressHold(cb)); }
+        function _ccLoadEyeProxy(url, cb) { return _ccShared.eye(url, dressHold(cb)); }
+        function _ccOwnLashMap(S, lash, cb) { return _ccShared.lash(S, lash, dressHold(cb)); }
         var targets = [];
         /* THE MPFB BODIES (2026-11-01, mondo: "base the character creator around these models"): an MPFB body (bake-mpfb.py,
            mesh `mpfb_<body>`) is dressed by this same rig — same bone names, same garments, same hair. Its STOCK skin (the
@@ -51321,6 +51510,17 @@ const ThreeRenderer = (function () {
         root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) { if (/^mpfb_.*_hair$/.test(n.name)) stockHair.push(n); else targets.push(n); } });
         stockHair.forEach(function (n) { n.visible = false; });
         var alive = true;
+        /* THE HAIR SHADER: a creator hair card / shell (alphaTest: its cut; strands: 0, or the strand depth of a flat shell) */
+        function hairMaterial(alphaTest, strands) {
+            if (typeof window !== 'undefined' && window.EW_CC_DEBUG_UNLIT) return material({ vertexColors: true, alphaTest: alphaTest });
+            var L = CC_HAIR_LOOK;
+            var m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: L.rough, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
+                alphaTest: alphaTest, transparent: false, depthWrite: true, anisotropy: L.aniso, specularIntensity: L.spec });
+            m.alphaToCoverage = alphaTest > 0;   // soft strand tips on the multisampled stage (a hard cut where there is no MSAA)
+            m.userData.ewHair = { crown: new THREE.Vector3(), uStrand: { value: strands ? L.strand * strands : 0 }, uBump: { value: L.bump }, uScale: { value: 1.7 } };
+            m.onBeforeCompile = _ccHairHook;
+            ownedMaterials.push(m); return m;
+        }
         function material(opts) {
             var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }, opts || {});
             var m;
@@ -54810,8 +55010,8 @@ const ThreeRenderer = (function () {
                 var kind = (n.userData && n.userData.ewPart) || n.name || 'hair';
                 var srcMat = Array.isArray(n.material) ? n.material[0] : n.material;
                 var isTie = /tie/i.test(kind) && !pack;   // (a pack style's name says "bow tie" — its mesh is hair)
-                var mat = material({ roughness: isTie ? 0.7 : 0.55, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
-                    alphaTest: isTie ? 0 : (/scalp/i.test(kind) ? 0.35 : 0.5), transparent: false, depthWrite: true });
+                var mat = isTie ? material({ roughness: 0.7, metalness: 0, side: THREE.DoubleSide, vertexColors: true, alphaTest: 0, transparent: false, depthWrite: true })
+                    : hairMaterial(/scalp/i.test(kind) ? 0.35 : 0.5, pack && styleRow && styleRow.strands ? (+styleRow.strands || 1) : 0);   // THE HAIR SHADER
                 var accent = null, packTex = null;
                 if (srcMat) {
                     var grey = null;
@@ -54825,7 +55025,9 @@ const ThreeRenderer = (function () {
                     }
                     if (!grey && !isTie) grey = _ccHairTexture(srcMat.map, unmanagedColor);
                     mat.map = grey || srcMat.map || null;
-                    if (srcMat.normalMap) { mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.6, 0.6); }
+                    /* the pack's own normal map (THE HAIR TEXTURES, bake-hair-tex.py): keep the loader's sign (glTF's green runs the
+                       other way: GLTFLoader flips normalScale.y on a mesh with no tangents) */
+                    if (srcMat.normalMap) { var ns = srcMat.normalScale; mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.8 * (ns && ns.x < 0 ? -1 : 1), 0.8 * (ns && ns.y < 0 ? -1 : 1)); }
                 }
                 var g = geometry(), sg = n.geometry;
                 var count = sg.attributes.position.count;
@@ -54890,6 +55092,12 @@ const ThreeRenderer = (function () {
                 var g = h.mesh.geometry;
                 g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
                 g.computeBoundingBox(); g.computeBoundingSphere();
+            });
+            /* THE HAIR SHADER: the crown the strands grow from (a little behind the top of the skull, where the whorl sits) */
+            var czS = (S.zMin + S.zMax) / 2, dzS = (S.zMax - S.zMin) / 2;
+            part.hair.forEach(function (h) {
+                var U = h.mesh.material && h.mesh.material.userData && h.mesh.material.userData.ewHair;
+                if (U) { U.crown.set(S.cx, S.topY - 0.012 * H, czS - 0.3 * dzS); U.uScale.value = H; }
             });
             part.hairNear = null;
             part.hair.forEach(function (h) {   // (every fit starts from the head's weights: hairRide blends onto them once)
@@ -56018,8 +56226,28 @@ const ThreeRenderer = (function () {
            so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
            the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
            Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
-           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/.
+           THE BAKED SHAPE (2026-11-05 pass 2, mondo on the after shots: "the pointy side of the coat are still literally in every after
+           shot, every body ... all the wide stances cause these weird horizontal lines on the lower half of the coat", + a hole at the
+           back of the female heavy cassock). He was right: pass 1 only fixed the upright idles. Three causes, each fixed:
+           - the LINES: each chain bone aimed from wherever its joint had got to back at where the coat's own weights carry the next
+             joint; a joint a little off (pushed, or short of a stretched bake) turned the bone below back toward the bake, so the chain
+             zig-zagged and the skirt shaded in bands. `tdir` 1: each bone now lies along the coat's own baked segment (joint -> next
+             joint, both as the weights carry them), so with the legs out of the way the chain IS the bake (with no hang the coat is a
+             clean A-line in the Wide stance, only the thighs come through it).
+           - the POINT under the belt at the hips: the top bone pivots at the waist ~15 cm over the hip joints the thighs turn on, so
+             swung fully onto the thighs' carry the cloth at the hip stood out past the leg in a corner. `follow` [0.5] + `followSide`:
+             the side and back chains' top bone goes half way (the front panels keep the full follow: half let a thigh lifting forward out
+             through the front pocket). And the push clearance is `rad` x t now in every pose (`poseA` null: the full 3 cm at the top
+             sample, kept for the Wide stance in pass 1, swung the hip out 1/t as far - with the baked shape the legs no longer need it).
+           - the SLAB at the side of the duster / long coat that the baked shape showed: the sleeve cuffs hang by the hips and were
+             counted in as skirt (THE SLEEVES OUT below), pulling the side chains' joints out to the hands.
+           `jsym` + `jblend` 0.5: the cloth either side of a joint shares the two bones, so a bend shades round. Tried + dropped: chains
+           rooted at the hip joints with the cloth over them on the pelvis (a shelf at the hips + jeans through), a per-direction leg
+           radius (no change), follow 0.3 (jeans at the front pocket), "never tuck in under the widest point" on the lower bones (no
+           change to the cassock's seat, more jeans through on the lab coat), a longer fade from the coat's weights onto the chains (no
+           change). Measured: see docs/notes/character-creator.md "THE BAKED SHAPE". */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: null, tdir: 1, follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -56050,7 +56278,11 @@ const ThreeRenderer = (function () {
             var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };
             var adiff = function (a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };   // signed, -PI..PI
             var sec = []; for (c = 0; c < NC; c++) sec.push([]);
-            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
+            /* THE SLEEVES OUT (2026-11-05): the cuffs hang down by the hips - they are no skirt (counted in, they pulled the side chains'
+               joints out to the hands and the panel there stood out in a slab, and the fade below gave the cuffs to the skirt chains) */
+            var armRx = /(Arm|Hand|Shoulder)/, isArm = new Uint8Array(count);
+            for (i = 0; i < count; i++) { var aw = 0; for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0 && bones[si[i * 4 + k]] && armRx.test(bones[si[i * 4 + k]].name)) aw += sw[i * 4 + k]; if (aw > 0.3) isArm[i] = 1; }
+            for (i = 0; i < count; i++) { if (isArm[i] || P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
             var chains = [];
             for (c = 0; c < NC; c++) {
                 var L = sec[c]; if (L.length < 24) continue;   // (the opening of an open coat: no cloth there)
@@ -56084,6 +56316,7 @@ const ThreeRenderer = (function () {
             // the skirt's weights: faded from its own onto the two chains either side of it (one, across an open front) by height
             var fade = COAT_HANG.fade * Hm, acc = {}, b4;
             for (i = 0; i < count; i++) {
+                if (isArm[i]) continue;
                 var y = P[i * 3 + 1], t = (yR - y) / fade; if (!(t > 0)) continue;
                 t = t > 1 ? 1 : t; var f = t * t * (3 - 2 * t), av = ang(P[i * 3], P[i * 3 + 2]);
                 var c0 = -1, c1 = -1, d0 = Infinity, d1 = Infinity;
@@ -56096,9 +56329,11 @@ const ThreeRenderer = (function () {
                 picks.forEach(function (pk) {
                     var C = chains[pk[0]], Jy = C.j, s = 0;
                     while (s < JN - 2 && y < Jy[s + 1][1]) s++;
-                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, wP = s > 0 && u < 0.25 ? 0.5 * (0.25 - u) / 0.25 : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
-                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP);
+                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, jb = COAT_HANG.jblend || 0.25, wP = s > 0 && u < jb ? 0.5 * (jb - u) / jb : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
+                    var wN = COAT_HANG.jsym && s < JN - 2 && u > 1 - jb ? 0.5 * (u - 1 + jb) / jb : 0;   // THE SMOOTH BENDS: and a little of the bone below just above the next joint (the bend shades round, not in a line)
+                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP - wN);
                     if (wP > 0) acc[C.idx0 + s - 1] = (acc[C.idx0 + s - 1] || 0) + pk[1] * f * wP;
+                    if (wN > 0) acc[C.idx0 + s + 1] = (acc[C.idx0 + s + 1] || 0) + pk[1] * f * wN;
                 });
                 var top = Object.keys(acc).map(function (bk) { return [+bk, acc[bk]]; }).sort(function (x, y2) { return y2[1] - x[1]; }).slice(0, 4), tt = 0;
                 top.forEach(function (tp) { tt += tp[1]; });
@@ -56112,7 +56347,7 @@ const ThreeRenderer = (function () {
                     return W4.filter(function (x) { return sk.boneInverses[x[0]] && bones[x[0]]; }).map(function (x) { return { b: bones[x[0]], w: tw > 0 ? x[1] / tw : 0, L: new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(sk.boneInverses[x[0]]) }; });
                 });
             });
-            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
+            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t, a: C.a }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
         }
         /* the leg capsules (THE COAT HANG): per thigh (UpLeg -> Leg) and shin (Leg -> Foot), in that bone's own bind frame, the
            axis + radius (tapered: one at each end) of everything worn on it under the hanging coat - the skin, the trousers, the
@@ -56248,8 +56483,9 @@ const ThreeRenderer = (function () {
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
                     var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
                     if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
+                    var rc = K.rad * (O.poseA ? ct + (1 - ct) * kf : O.limT ? ct : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + rc, lk) * Wk.s;
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
                     _hd.addScaledVector(_hgE, -_hd.dot(_hgE) / (L2 || 1));        // (across the axis only)
@@ -56273,7 +56509,17 @@ const ThreeRenderer = (function () {
                     if (Tn && Tn.length) {   // toward where the cloth's own weights would carry its next joint (the coat as baked, following the thighs)
                         _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
                         _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
+                        var T0 = O.tdir > 0 && C.t[i];
+                        if (T0 && T0.length) {   // THE BAKED SHAPE: along the coat's own baked segment (joint -> next joint as its weights carry them), not from wherever this joint got to: aimed from a joint already off its baked place, each bone turned back toward the bake and the chain zig-zagged into bands across the skirt
+                            _hgS.set(0, 0, 0); for (tq = 0; tq < T0.length; tq++) _hgS.addScaledVector(_hgP.copy(T0[tq].L).applyMatrix4(T0[tq].b.matrixWorld), T0[tq].w);
+                            _hgF.set(0, 0, 0); for (tq = 0; tq < Tn.length; tq++) _hgF.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
+                            _hgF.sub(_hgS);
+                            if (_hgF.lengthSq() > 1e-10) { _hgF.normalize(); _hgB.multiplyScalar(1 - O.tdir).addScaledVector(_hgF, O.tdir); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgF); }
+                        }
                     } else _hgB.copy(_hgG);
+                    var fo = O.follow && O.follow[i] != null ? O.follow[i] : 1;
+                    if (fo < 1 && O.followSide && C.a != null) fo = 1 - (1 - fo) * (1 - Math.max(0, Math.cos(C.a)));   // (the sides + back only: the front panels must keep up with a thigh lifting into them)
+                    if (fo < 1) { _hgB.multiplyScalar(fo).addScaledVector(_hgG, 1 - fo); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG); }   // THE HIP HANG: the top bone only part way to the thighs' carry
                     if (i && O.fall > 0) _hgB.multiplyScalar(1 - O.fall).y -= O.fall, _hgB.normalize();   // (below the first joint the cloth falls toward the ground: straight on from a pushed joint the skirt flared out like a bell / stood out stiff as a board in a kneel or kick. NOT back toward its rest hang: that pulled it back into the leg)
                     _hgA.copy(B.head).addScaledVector(_hgB, wl);
                     if (fresh || B.cur.distanceTo(B.head) > wl * 4) { B.cur.copy(_hgA); B.prev.copy(_hgA); }
@@ -58934,6 +59180,16 @@ const ThreeRenderer = (function () {
         return {
             update: update,
             appearance: function () { return state.last; },
+            /* THE DRESSED REVEAL: dressed() = nothing of the look still loading; whenDressed(cb) = cb() once that is so (at once when
+               it already is; after CC_DRESS_MAX_MS at the latest, so a load that never answers cannot hide the unit for good) */
+            dressed: function () { return dressQ.n <= 0; },
+            whenDressed: function (cb) {
+                if (typeof cb !== 'function') return;
+                var fired = false, once = function () { if (fired) return; fired = true; if (alive) cb(); };
+                if (dressQ.n <= 0) { once(); return; }
+                dressQ.cbs.push(once);
+                setTimeout(function () { if (!fired) { console.warn('[ThreeRenderer] dressed reveal: a piece of the look is still loading; showing the body'); once(); } }, CC_DRESS_MAX_MS);
+            },
             /* dev (2026-11-05): the parts, for probes (THE CLOTH COLLISION's colStats; never used by the game) */
             devParts: function () { return parts; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
@@ -58958,6 +59214,7 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
+                dressQ.cbs = [];   // THE DRESSED REVEAL: a reveal still waiting dies with the rig
                 parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
                 stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
@@ -59529,7 +59786,7 @@ const ThreeRenderer = (function () {
                 }
             }
             _cvSwapIdle(v, def);   // THE IDLE POSE: a new pick on the same body crossfades in
-            _cvHostState(host, 'ready');
+            if (!(v.dressWait && v.dressWait === _cvToken)) _cvHostState(host, 'ready');   // THE DRESSED REVEAL: a first look still dressing keeps MANIFESTING up
             return true;
         }
         _cvClearModel();
@@ -59658,7 +59915,21 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            _cvHostState(v.host, 'ready');
+            /* THE DRESSED REVEAL: MANIFESTING spins and the BODY ITSELF stays hidden until every piece of the look is on it. The
+               canvas fade alone was not enough (mondo 11-05 "i still see the naked flash briefly"): on a body swap with the body
+               GLB cached, the new body was added while the canvas was still fading out of the last character (0.5 s CSS), so the
+               bare body drew on a canvas that was still showing. */
+            var dRig = v.appearanceRig;
+            if (dRig && !dRig.dressed()) {
+                v.dressWait = tok;
+                wrap.visible = false;
+                dRig.whenDressed(function () {
+                    if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
+                    v.dressWait = 0;
+                    wrap.visible = true;
+                    _cvHostState(v.host, 'ready');
+                });
+            } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
             if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
         });
         // a failed base GLB never fires the success cb — watch the cache entry
@@ -60008,7 +60279,7 @@ const ThreeRenderer = (function () {
         var b = v.beat;
         v.beat = null;
         if (b) for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
-        if (v.model) v.model.visible = true;               // a blink cut short never leaves the hero gone
+        if (v.model) v.model.visible = !(v.dressWait && v.dressWait === _cvToken);   // (THE DRESSED REVEAL: a body still dressing stays hidden)              // a blink cut short never leaves the hero gone
         v.frameTo = null;                                  // the camera eases home
         if (!b) return;
         if (silent) { v.moveTween = null; v.heroX = 0; v.heroY = 0; }
@@ -87074,7 +87345,11 @@ const ThreeRenderer = (function () {
             mem.blob.rotation.x = -Math.PI / 2; mem.blob.position.y = 0.006 * U;
             mem.wrap.add(mem.blob);
             mem.model = m;
-            function show() { if (_tr === T && T.tok === tok) { mem.shown = true; mem.wrap.visible = true; } }
+            function show(dressed) {
+                if (_tr !== T || T.tok !== tok) return;
+                if (!dressed && mem.rig && !mem.rig.dressed()) { mem.rig.whenDressed(function () { show(true); }); return; }   // THE DRESSED REVEAL: the whole look at once
+                mem.shown = true; mem.wrap.visible = true;
+            }
             if (!hasSkin) { show(); return; }
             var mixer = mem.mixer = new THREE.AnimationMixer(m);
             mixer.addEventListener('finished', function (ev) {

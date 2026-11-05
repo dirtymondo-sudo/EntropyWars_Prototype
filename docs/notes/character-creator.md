@@ -1311,6 +1311,35 @@ trying to get the clothes to fit to the mpfb + classic body? ... Weren't the clo
   (the vent top) shows on the greatcoat / long coat with or without the chains.
 - Shots: /mnt/project-files/coat-bumps/.
 
+### THE BAKED SHAPE (2026-11-05, pass 2 of THE BUMPS FIX)
+mondo on the first after shots: "do you not see these parts of the coat awkwardly sticking out? The before and after literally look
+the exact same ... all the wide stances cause these weird horizontal lines on the lower half of the coat ... the pointy side of the
+coat are still literally in every after shot, every body"; "why is there a hole in the back of the coat" (female heavy cassock).
+- **He was right**: pass 1 only fixed the upright idles. With the hang off (EW_DISABLE_SWAY) the coat is a clean A-line in the Wide
+  stance with only the thighs coming through, so the bands and points were all the hang's doing.
+- **The lines**: each chain bone aimed from wherever its joint had got to back at where the coat's weights carry the next joint, so a
+  joint a little off turned the next bone back and the chain zig-zagged. Fix `tdir` 1: each bone lies along the coat's own baked
+  segment (both joints carried by the coat's weights), so the chain reproduces the bake and the legs only push it out.
+- **The point at the hips**: the top bone pivots at the waist, ~15 cm over the hip joints, so swung fully onto the thighs it stood the
+  cloth out in a corner under the belt. Fix `follow` [0.5] + `followSide` (side / back chains' top bone half way, the front panels
+  full: half there let a thigh lifting forward out through the front pocket) and `poseA` null (push clearance `rad` x t in every pose;
+  the full 3 cm at the top sample kept for the Wide stance in pass 1 swung the hip out 1/t as far).
+- **The slab** the baked shape showed at the side of the duster / long coat: THE SLEEVES OUT - the sleeve cuffs hang by the hips and
+  were counted in as skirt (pulled the side chains' joints out to the hands; the fade then gave the cuffs skirt weights). Vertices
+  with > 0.3 arm / hand / shoulder weight are now left out of the chains and the fade.
+- `jsym` + `jblend` 0.5: the cloth either side of a joint shares both bones.
+- **Tried + dropped**: chains rooted at the hip joints with the cloth over them on the pelvis (a shelf + jeans through); a per-direction
+  leg radius (no change); follow 0.3 (jeans at the front pocket); a "never tuck in under the widest point" rule on the lower bones (no
+  change to the cassock seat, more jeans through on the lab coat); a longer fade onto the chains (no change); tdir faded by how far a
+  joint is off its baked place (it switched itself off in the Wide stance; the slab was the sleeves).
+- **Measured** (jeans px through, red coat, 4 views, live PR #921 -> this): male greatcoat Wide 358 -> 144 (the 130 left = the jeans
+  seen under the front hem between the legs, not through), walk 19 -> 1, Upright 0 -> 0; female lab coat Wide 174 -> 26; heavy duster
+  Wide 1015 -> 115; thin long coat Upright 35 -> 0; female heavy cassock Upright 41 -> 0 (the seat hole). Sheets
+  /mnt/project-files/coat-bumps/coats_pass2_C..F.jpg.
+- **Known**: a soft shadow under the seat at the back of the heavy cassock / greatcoat (the coat's own bake has that fold there); the
+  MPFB female lab coat still shows a little of the jeans' seat in the Wide stance back view; the thin long coat shows a bit of the tee at
+  the waist side (above the skirt, its own fit, same as before).
+
 ## THE TABS + THE BODY SLOTS (2026-11-03, character-models-plan row 12n)
 mondo: "In the character creator, can we have tabs instead of one long list where i have to scroll through everything. And I want the
 clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."
@@ -1365,6 +1394,10 @@ assigned created characters so i can give to you to bake in". Before this, EXPOR
   this slot when it is that race; else the team's slot of that race (selected); else that race goes on THIS slot (pickRace(race, g,
   stay) = the roster pick without the jump to ABILITIES, so the creator stays open). Gender follows the look. The store is untouched.
   The chip of the look on the stage is outlined gold with ON THE STAGE. Proof: /mnt/project-files/assigned-looks/load_*.png.
+- **BAKED 2026-11-05 (export 10:33, `Entropy_Wars_Race_Looks_4_assigned_20261105-1033.json`)**: `node bake-looks.js` on mondo's file,
+  values exactly as exported (normalize changed nothing): Santa Clause ♂ + Cowboy ♂ rows REPLACED, Catgirl ♀ + Demon ♀ ADDED; every
+  other row untouched (Cowboy ♀ too). Still saved looks (EW_RACE_LOOKS_ARE_DEFAULT false). Proof: the forge's USE THE SAVED <RACE>
+  LOOK on all four, /mnt/project-files/assigned-looks-1033/.
 
 ## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
 mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
@@ -1677,3 +1710,23 @@ different bone weights and drift into each other. THE CLOTH COLLISION is a per-v
   89 -> 78, vampire 18 -> 7, coded sword swing 233 -> 162, cowboy crouch 602 -> 589. Tight creases (sitting seat, folded inner elbow) don't
   improve: a fold can't be cleared by pushing. Probe: Playwright + EWCharViewer.mount, freeze the clip, toggle EW_CLOTH_COLLIDE.x in one frame,
   CPU replica of the push to count points (scratch only). Kill-switch: EW_DISABLE_CLOTH_COLLIDE / ?ew_collide=0.
+## THE HAIR SHADER + THE HAIR TEXTURES (2026-11-05, character-models-plan row 29e)
+mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves. Are they missing textures or something?"
+- **Textures:** bake-mpfb.py --hair-styles wrote the 70 pack styles with the diffuse cut to 512 px (HAIR_STYLE_PX; the packs ship
+  1024-3600 px) and no normal map (30 styles ship one). `python3 -I bake-hair-tex.py --packs <unzipped mhpacks>` re-packs every
+  charactercreation/hair/mh/*.glb with the pack's own diffuse at up to 1024 px (PNG, alpha) and its normal map (JPEG,
+  material.normalTexture); mesh, UVs, extras untouched. 47 -> 95 MB on R2 (listed in ASSET_MANIFEST.json, so ?h= refetches them).
+  buildHair keeps the loader's normalScale sign (was a fixed +0.6, the green ran the wrong way).
+- **Material (three-renderer.js THE HAIR SHADER, hairMaterial + _ccHairHook):** a MeshPhysicalMaterial (CC_HAIR_LOOK: roughness 0.42,
+  anisotropy 0.82, specularIntensity 0.38, highlight tinted 85 % to the hair colour) whose anisotropic highlight runs along each
+  vertex's strand direction (from the crown, part.skull, leaning down; skinned with the hair so it follows the sway chains) instead
+  of the UV tangent; alpha-to-coverage on the cards. The old MeshStandard 0.55 gave every style the same round plastic highlight and
+  took the stage's lilac rim light as a sheen.
+- **The flat shells:** Hair 05 / 06 / 11 / 12 / 13 / 14, Bobcut hair, Wavy bob (+ Anime hair at 0.7) are one sculpted mesh painted a
+  flat colour with collapsed / overlapping UVs, so no texture can draw strands on them. sprites.js EW_HAIR_STYLES `strands: <depth>`
+  draws strands in 3D from the bind-pose position round the crown (periodic value noise in the angle, 5 octaves, each faded where a
+  pixel would alias it): darker gaps in the albedo + a bump across them. Add `strands` to any other style that reads as a helmet.
+- Classic WebGL only (the creator stage's own renderer). The board / team room keep their Lambert copy (map only), unchanged.
+- Debug: `window.EW_CC_DEBUG_UNLIT` still swaps hair to unlit. Probe: a page mounting EWCharViewer on a fixed div with
+  `{appearance:{body:'mpfb_female', hair:<id>, model:'creator'}}`, frameCreator('face'), screenshot the stage (shots in
+  /mnt/project-files/hair-look/).
