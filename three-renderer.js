@@ -57142,7 +57142,7 @@ const ThreeRenderer = (function () {
                 });
             });
         }
-        function wearLayers(part) {
+        function wearLayers0(part) {
             var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
             (part.wear || []).forEach(function (w) { w.lay = null; w.tuckW = null; });
             wearFollow(part);
@@ -57207,6 +57207,315 @@ const ThreeRenderer = (function () {
                 for (v = 0; v < A.length; v++) A[v] += D[v];
             });
             wearFollow(part);
+        }
+        function wearLayers(part) {
+            wearLayers0(part);
+            try { wearCords(part); } catch (e) { console.warn('[ThreeRenderer] pendant cord failed', e); }   // THE PENDANT CORDS
+        }
+        /* THE PENDANT CORDS (2026-11-05, mondo: "all of the pendants in the character creator need strings attached to them that hang
+           around the character's neck, make the string yourself"). Every piece on OUTFIT > Neck > Pendants (sprites.js wearGroupOf ->
+           'pendants': the cross, the talisman, the hagstone, and any pendant added there later) wears a cord made here in code, no
+           model file: a rope of WEAR_CORD.nodes points pinned at the pendant's bail (its top), started as a loop round the neck
+           (WEAR_CORD.ring of the way from the neck bone to the head bone) and let fall (WEAR_CORD.fall a step) until it rests on the
+           neck + shoulders, never longer than it began (a cord doesn't stretch), each step pushed out of the skin (the nearest skin
+           vertex's normal, the body as the sliders shaped it) and out of every garment the pendant hangs OVER (a shirt: the cord
+           goes over its collar; a closed coat the pendant is under: the cord stays under it too). Drawn as a thin tube (radius
+           WEAR_CORD.r x the body's size) along a smooth curve through the rope, skinned like the skin it lies on (the nearest skin
+           vertex's weights), blending into the pendant's own bone near the bail so the two never part when the body moves. It is
+           one of the pendant's accents (comes off with it, hidden with it). Rebuilt with THE LAYERS (every wear change and every
+           slider move: the cord follows the neck it lies on). Colour per pendant (WEAR_CORD.colors), else WEAR_CORD.color. */
+        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07,
+                          colors: { ewm_crosspendant: 0x16130f, ewm_talisman: 0x4a2e1a, ewm_hagstone: 0x8a7656 }, color: 0x2a2018 };
+        function wearCordOf(w) {
+            return !!(w && w.mesh && w.solid && typeof wearGroupOf === 'function' && wearGroupOf(w.id) === 'pendants');
+        }
+        function wearCords(part) {
+            (part.wear || []).forEach(function (w) { if (wearCordOf(w)) wearCord(part, w); });
+        }
+        function wearCord(part, w) {
+            var Hm = part.height / 1.7, SP = part.src.attributes.position.array, SD = part.shapeD, NS = part.nrmSrc, N = part.count;
+            var sk = part.body.skeleton; if (!sk || !NS) return;
+            var bones = sk.bones, inv = sk.boneInverses;
+            var headOf = function (re) {
+                var bi = bones.findIndex(function (b) { return re.test(b.name); });
+                if (bi < 0 || !inv || !inv[bi]) return null;
+                var m = new THREE.Matrix4().copy(inv[bi]); if (m.invert) m.invert(); else m.getInverse(inv[bi]);
+                return new THREE.Vector3().applyMatrix4(m);
+            };
+            var NK = headOf(/^neck(_01)?$/i), HD = headOf(/^head$/i);
+            if (!NK || !HD) return;
+            // the bail: the pendant's top (its vertices within 4 mm of its highest point), the cord's two ends a little inside it
+            var PA = w.mesh.geometry.attributes.position.array, pn = PA.length / 3, top = -Infinity, v, i, k;
+            for (v = 0; v < pn; v++) if (PA[v * 3 + 1] > top) top = PA[v * 3 + 1];
+            var B = [0, 0, 0], nB = 0;
+            for (v = 0; v < pn; v++) if (PA[v * 3 + 1] > top - 0.004 * Hm) { B[0] += PA[v * 3]; B[1] += PA[v * 3 + 1]; B[2] += PA[v * 3 + 2]; nB++; }
+            B[0] /= nB; B[1] /= nB; B[2] /= nB;
+            var yLo = B[1] - 0.12 * Hm, yHi = HD.y + 0.06 * Hm, xC = NK.x, xR = 0.24 * Hm;
+            var C = 0.02 * Hm, key = function (x, y, z) { return Math.floor(x / C) + ',' + Math.floor(y / C) + ',' + Math.floor(z / C); };
+            // the skin round the neck + the top of the chest, as the sliders shaped it
+            var S = new Float32Array(N * 3), grid = new Map();
+            for (v = 0; v < N; v++) {
+                var sx = SP[v * 3] + (SD ? SD[v * 3] : 0), sy = SP[v * 3 + 1] + (SD ? SD[v * 3 + 1] : 0), sz = SP[v * 3 + 2] + (SD ? SD[v * 3 + 2] : 0);
+                S[v * 3] = sx; S[v * 3 + 1] = sy; S[v * 3 + 2] = sz;
+                if (sy < yLo || sy > yHi || Math.abs(sx - xC) > xR) continue;
+                var kk = key(sx, sy, sz), l = grid.get(kk); if (l) l.push(v); else grid.set(kk, [v]);
+            }
+            var nearSkin = function (x, y, z, rc) {   // (the nearest skin vertex: its weights)
+                var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = Infinity;
+                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var q = 0; q < l2.length; q++) { var j = l2[q], dx = S[j * 3] - x, dy = S[j * 3 + 1] - y, dz = S[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
+                }
+                return best;
+            };
+            /* a surface's nearest point (its triangles in the region, on a grid of 2 cm cells, each triangle in every cell within
+               `mg` of it): q(x, y, z) -> { s: how far outside it (+) or inside (-) along its face's outward side, n: that side,
+               edge: the nearest point is on an open edge (a hem, a collar's rim) and off to the side of it } or null */
+            var triField = function (A, I, NO, open, mg) {
+                var cells = new Map(), t, a, b, c;
+                for (t = 0; t + 2 < I.length; t += 3) {
+                    a = I[t] * 3; b = I[t + 1] * 3; c = I[t + 2] * 3;
+                    var mnx = Math.min(A[a], A[b], A[c]) - mg, mxx = Math.max(A[a], A[b], A[c]) + mg, mny = Math.min(A[a + 1], A[b + 1], A[c + 1]) - mg, mxy = Math.max(A[a + 1], A[b + 1], A[c + 1]) + mg;
+                    if (mxy < yLo || mny > yHi || mnx > xC + xR || mxx < xC - xR) continue;
+                    var mnz = Math.min(A[a + 2], A[b + 2], A[c + 2]) - mg, mxz = Math.max(A[a + 2], A[b + 2], A[c + 2]) + mg;
+                    for (var gx = Math.floor(mnx / C); gx <= Math.floor(mxx / C); gx++) for (var gy = Math.floor(mny / C); gy <= Math.floor(mxy / C); gy++) for (var gz = Math.floor(mnz / C); gz <= Math.floor(mxz / C); gz++) {
+                        var ck = gx + ',' + gy + ',' + gz, cl = cells.get(ck); if (cl) cl.push(t); else cells.set(ck, [t]);
+                    }
+                }
+                var out = { s: 0, n: [0, 0, 0], edge: false, t: 0, b0: 0, b1: 0, b2: 0, I: I };
+                return function (x, y, z) {
+                    var cl = cells.get(key(x, y, z)); if (!cl) return null;
+                    var bd = Infinity, bt = -1, bu = 0, bv = 0, bw = 0;
+                    for (var q = 0; q < cl.length; q++) {
+                        var tq = cl[q], ia = I[tq] * 3, ib = I[tq + 1] * 3, ic = I[tq + 2] * 3;
+                        // (the closest point on a triangle, Ericson 5.1.5: as barycentric u v w)
+                        var abx = A[ib] - A[ia], aby = A[ib + 1] - A[ia + 1], abz = A[ib + 2] - A[ia + 2], acx = A[ic] - A[ia], acy = A[ic + 1] - A[ia + 1], acz = A[ic + 2] - A[ia + 2];
+                        var apx = x - A[ia], apy = y - A[ia + 1], apz = z - A[ia + 2];
+                        var d1 = abx * apx + aby * apy + abz * apz, d2 = acx * apx + acy * apy + acz * apz, u, vv, ww;
+                        if (d1 <= 0 && d2 <= 0) { u = 1; vv = 0; ww = 0; }
+                        else {
+                            var bpx = x - A[ib], bpy = y - A[ib + 1], bpz = z - A[ib + 2], d3 = abx * bpx + aby * bpy + abz * bpz, d4 = acx * bpx + acy * bpy + acz * bpz;
+                            if (d3 >= 0 && d4 <= d3) { u = 0; vv = 1; ww = 0; }
+                            else {
+                                var vc = d1 * d4 - d3 * d2;
+                                if (vc <= 0 && d1 >= 0 && d3 <= 0) { var f1 = d1 / (d1 - d3); u = 1 - f1; vv = f1; ww = 0; }
+                                else {
+                                    var cpx = x - A[ic], cpy = y - A[ic + 1], cpz = z - A[ic + 2], d5 = abx * cpx + aby * cpy + abz * cpz, d6 = acx * cpx + acy * cpy + acz * cpz;
+                                    if (d6 >= 0 && d5 <= d6) { u = 0; vv = 0; ww = 1; }
+                                    else {
+                                        var vb = d5 * d2 - d1 * d6;
+                                        if (vb <= 0 && d2 >= 0 && d6 <= 0) { var f2 = d2 / (d2 - d6); u = 1 - f2; vv = 0; ww = f2; }
+                                        else {
+                                            var va = d3 * d6 - d5 * d4;
+                                            if (va <= 0 && (d4 - d3) >= 0 && (d5 - d6) >= 0) { var f3 = (d4 - d3) / ((d4 - d3) + (d5 - d6)); u = 0; vv = 1 - f3; ww = f3; }
+                                            else { var dn = 1 / (va + vb + vc); vv = vb * dn; ww = vc * dn; u = 1 - vv - ww; }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        var px = u * A[ia] + vv * A[ib] + ww * A[ic], py = u * A[ia + 1] + vv * A[ib + 1] + ww * A[ic + 1], pz = u * A[ia + 2] + vv * A[ib + 2] + ww * A[ic + 2];
+                        var dd = (x - px) * (x - px) + (y - py) * (y - py) + (z - pz) * (z - pz);
+                        if (dd < bd) { bd = dd; bt = tq; bu = u; bv = vv; bw = ww; }
+                    }
+                    if (bt < 0) return null;
+                    var ja = I[bt] * 3, jb = I[bt + 1] * 3, jc = I[bt + 2] * 3;
+                    var ex1 = A[jb] - A[ja], ey1 = A[jb + 1] - A[ja + 1], ez1 = A[jb + 2] - A[ja + 2], ex2 = A[jc] - A[ja], ey2 = A[jc + 1] - A[ja + 1], ez2 = A[jc + 2] - A[ja + 2];
+                    var fx = ey1 * ez2 - ez1 * ey2, fy = ez1 * ex2 - ex1 * ez2, fz = ex1 * ey2 - ey1 * ex2, fl = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1;
+                    fx /= fl; fy /= fl; fz /= fl;
+                    var nix = bu * NO[ja] + bv * NO[jb] + bw * NO[jc], niy = bu * NO[ja + 1] + bv * NO[jb + 1] + bw * NO[jc + 1], niz = bu * NO[ja + 2] + bv * NO[jb + 2] + bw * NO[jc + 2];
+                    if (fx * nix + fy * niy + fz * niz < 0) { fx = -fx; fy = -fy; fz = -fz; }
+                    var qx = bu * A[ja] + bv * A[jb] + bw * A[jc], qy = bu * A[ja + 1] + bv * A[jb + 1] + bw * A[jc + 1], qz = bu * A[ja + 2] + bv * A[jb + 2] + bw * A[jc + 2];
+                    out.s = (x - qx) * fx + (y - qy) * fy + (z - qz) * fz; out.n[0] = fx; out.n[1] = fy; out.n[2] = fz;
+                    out.t = bt; out.b0 = bu; out.b1 = bv; out.b2 = bw;
+                    out.edge = false;
+                    if (open && bd - out.s * out.s > 1e-6) {   // (on an edge or a corner, off to its side: past a hem when that edge is open)
+                        var oa = open[I[bt]], ob = open[I[bt + 1]], oc = open[I[bt + 2]];
+                        out.edge = bu === 0 ? !!(ob && oc) : bv === 0 ? !!(oa && oc) : bw === 0 ? !!(oa && ob) : false;
+                        if (bu === 1) out.edge = !!oa; else if (bv === 1) out.edge = !!ob; else if (bw === 1) out.edge = !!oc;
+                    }
+                    return out;
+                };
+            };
+            var skinF = triField(S, part.ids, NS, null, 0.02 * Hm);
+            /* the garments it may lie on: worn round the neck / chest, the pendant hanging over them (the bail outside them or past
+               their rim); their normals turned to face away from the skin (as THE LAYERS read them) */
+            var cloths = [];
+            (part.wear || []).forEach(function (u) {
+                if (u === w || !u.mesh || u.facial || u.solid || !(u.outer || u.layer || WEAR_LAYER.cats[u.cat]) || !u.mesh.visible) return;
+                var ug = u.mesh.geometry, UA = ug.attributes.position.array, UN = ug.attributes.normal ? ug.attributes.normal.array : null, un = UA.length / 3;
+                var UI = ug.index ? ug.index.array : null;
+                if (!UN || !u.nb || !UI) return;
+                var on = new Float32Array(un * 3);
+                for (var uv = 0; uv < un; uv++) {
+                    var o = u.nb[uv] * 3, rx = UA[uv * 3] - S[o], ry = UA[uv * 3 + 1] - S[o + 1], rz = UA[uv * 3 + 2] - S[o + 2];
+                    var f = (rx * rx + ry * ry + rz * rz > 1e-6 && rx * UN[uv * 3] + ry * UN[uv * 3 + 1] + rz * UN[uv * 3 + 2] < 0) ? -1 : 1;
+                    on[uv * 3] = UN[uv * 3] * f; on[uv * 3 + 1] = UN[uv * 3 + 1] * f; on[uv * 3 + 2] = UN[uv * 3 + 2] * f;
+                }
+                var F = triField(UA, UI, on, wearSpan(u).open, 0.03 * Hm), atB = F(B[0], B[1], B[2]);
+                if (atB && !atB.edge && atB.s < -0.004 * Hm) return;   // (the pendant is under it: so is the cord)
+                var usi = ug.attributes.skinIndex, usw = ug.attributes.skinWeight;
+                F.SI = !u.sway && !u.hang && usi && usw ? usi.array : null; F.SW = F.SI ? usw.array : null;   // (a cape's / a hung coat's weights name their own chains)
+                cloths.push(F);
+            });
+            var rS = (WEAR_CORD.r + WEAR_CORD.skin) * Hm, rG = (WEAR_CORD.r + WEAR_CORD.cloth) * Hm;
+            var collide = function (p, passes) {
+                for (var pass = 0; pass < passes; pass++) {
+                    var d = skinF(p[0], p[1], p[2]);
+                    if (d && d.s < rS) { var e = rS - d.s; p[0] += d.n[0] * e; p[1] += d.n[1] * e; p[2] += d.n[2] * e; }
+                    for (var ci = 0; ci < cloths.length; ci++) {
+                        var dd = cloths[ci](p[0], p[1], p[2]);
+                        if (dd && !dd.edge && dd.s < rG && dd.s > -0.03 * Hm) { var e2 = rG - dd.s; p[0] += dd.n[0] * e2; p[1] += dd.n[1] * e2; p[2] += dd.n[2] * e2; }
+                    }
+                }
+            };
+            // the start: a loop round the neck, its two ends straight down to the bail
+            var c0 = NK.clone().lerp(HD, WEAR_CORD.ring), R0 = 0;
+            for (v = 0; v < N; v++) {
+                if (Math.abs(S[v * 3 + 1] - c0.y) > 0.01 * Hm) continue;
+                var ddx = S[v * 3] - c0.x, ddz = S[v * 3 + 2] - c0.z, dr = Math.sqrt(ddx * ddx + ddz * ddz);
+                if (dr < 0.11 * Hm && dr > R0) R0 = dr;
+            }
+            if (!(R0 > 0)) R0 = 0.06 * Hm;
+            R0 += 0.012 * Hm;
+            var eL = [B[0] + 0.0015 * Hm, B[1] - 0.003 * Hm, B[2]], eR = [B[0] - 0.0015 * Hm, B[1] - 0.003 * Hm, B[2]];
+            var guide = [eL], a0 = 40 * Math.PI / 180;
+            for (i = 0; i <= 24; i++) { var ph = a0 + (2 * Math.PI - 2 * a0) * i / 24; guide.push([c0.x + R0 * Math.sin(ph), c0.y, c0.z + R0 * Math.cos(ph)]); }
+            guide.push(eR);
+            /* the pull: a cord drawn tight between its two ends at the bail. Each step its points move toward the middle of their
+               two neighbours (the tension: it straightens + evens out), a little down (its weight), then out of the skin + the
+               clothes; so the loop slides down the neck until the shoulders hold it, and every span lies on what is under it.
+               Coarse to fine (12, 24, 48 ... points: a fine rope alone takes thousands of steps to come tight) */
+            var resample = function (G, M) {
+                var gl = [0], tot = 0, out = [], q, k = 1;
+                for (q = 1; q < G.length; q++) { tot += Math.hypot(G[q][0] - G[q - 1][0], G[q][1] - G[q - 1][1], G[q][2] - G[q - 1][2]); gl.push(tot); }
+                for (q = 0; q <= M; q++) {
+                    var t = tot * q / M; while (k < G.length - 1 && gl[k] < t) k++;
+                    var f0 = (t - gl[k - 1]) / Math.max(1e-9, gl[k] - gl[k - 1]), g0 = G[k - 1], g1 = G[k];
+                    out.push([g0[0] + (g1[0] - g0[0]) * f0, g0[1] + (g1[1] - g0[1]) * f0, g0[2] + (g1[2] - g0[2]) * f0]);
+                }
+                out[0] = G[0].slice(); out[M] = G[G.length - 1].slice();
+                return out;
+            };
+            /* (a slider move: the last cord, each point carried by the skin under it as the slider moved it, pulled tight again in
+               WEAR_CORD.warm steps - a whole solve each drag tick made the sliders stutter) */
+            var X = guide, M = 0, cap = WEAR_CORD.step * Hm, WM = WEAR_CORD.levels[WEAR_CORD.levels.length - 1], warm = w.cordWarm;
+            var relax = function (its) {
+                var T = X.map(function (p) { return p.slice(); });
+                for (var it = 0; it < its; it++) {
+                    var fall = it < its - WEAR_CORD.settle ? WEAR_CORD.fall * Hm : 0;
+                    for (var i2 = 1; i2 < M; i2++) for (var k2 = 0; k2 < 3; k2++) T[i2][k2] = WEAR_CORD.pull * (X[i2 - 1][k2] + X[i2 + 1][k2] - 2 * X[i2][k2]);
+                    for (i2 = 1; i2 < M; i2++) {
+                        T[i2][1] -= fall;
+                        var mv = Math.sqrt(T[i2][0] * T[i2][0] + T[i2][1] * T[i2][1] + T[i2][2] * T[i2][2]), sc = mv > cap ? cap / mv : 1;   // (never more than a step: a point that jumped deep into a thin neck found no skin near it and fell through)
+                        X[i2][0] += T[i2][0] * sc; X[i2][1] += T[i2][1] * sc; X[i2][2] += T[i2][2] * sc; collide(X[i2], 1);
+                    }
+                }
+            };
+            if (warm && warm.body === part.body && warm.X.length === WM + 1) {
+                M = WM; X = warm.X.map(function (p, wi) { var j = warm.J[wi]; return j < 0 ? p.slice() : [p[0] + S[j * 3] - warm.S[wi * 3], p[1] + S[j * 3 + 1] - warm.S[wi * 3 + 1], p[2] + S[j * 3 + 2] - warm.S[wi * 3 + 2]]; });
+                X[0] = eL.slice(); X[M] = eR.slice();
+                for (i = 1; i < M; i++) collide(X[i], 2);
+                relax(WEAR_CORD.warm);
+            } else WEAR_CORD.levels.forEach(function (Ml, li) {
+                X = resample(X, Ml); M = Ml;
+                for (var q = 1; q < M; q++) collide(X[q], 2);
+                relax(WEAR_CORD.iters[li]);
+            });
+            /* the finish: each push out of a triangle leaves a point a hair off its neighbours' line (the cord wavered along the
+               skin): evened out along the cord, then out of the skin + clothes once more, WEAR_CORD.finish times */
+            for (var fz = 0; fz < WEAR_CORD.finish; fz++) {
+                var Y = X.map(function (p) { return p.slice(); });
+                for (i = 1; i < M; i++) for (k = 0; k < 3; k++) X[i][k] = 0.25 * Y[i - 1][k] + 0.5 * Y[i][k] + 0.25 * Y[i + 1][k];
+                for (i = 1; i < M; i++) collide(X[i], 2);
+            }
+            var WJ = X.map(function (p) { return nearSkin(p[0], p[1], p[2], 2); });
+            w.cordWarm = { body: part.body, X: X.map(function (p) { return p.slice(); }), J: WJ, S: Float32Array.from(WJ.flatMap(function (j) { return j < 0 ? [0, 0, 0] : [S[j * 3], S[j * 3 + 1], S[j * 3 + 2]]; })) };
+            /* the weights: each point rides the surface it lies on (the skin's or the garment's triangle under it, its corners'
+               weights blended), so the cord moves with the collar it is laid over; evened out along the cord (no jump where it
+               crosses from one to the other), and near the bail the pendant's own bone (the two never part) */
+            var pSi = w.mesh.geometry.attributes.skinIndex, pBone = pSi ? pSi.array[0] : 0, siW = part.siW, swW = part.swW;
+            var triW = function (m, d, SI, SW) {
+                var bb = [d.b0, d.b1, d.b2];
+                for (var c3 = 0; c3 < 3; c3++) { var vi = d.I[d.t + c3]; for (var q = 0; q < 4; q++) { var wq = SW[vi * 4 + q] * bb[c3]; if (wq > 0) m[SI[vi * 4 + q]] = (m[SI[vi * 4 + q]] || 0) + wq; } }
+            };
+            var NW = X.map(function (p) {
+                var m = {}, best = null, bs = Infinity, bF = null;
+                for (var ci = 0; ci < cloths.length; ci++) {
+                    if (!cloths[ci].SI) continue;
+                    var dd = cloths[ci](p[0], p[1], p[2]);
+                    if (dd && !dd.edge && dd.s > -0.002 * Hm && dd.s < 0.012 * Hm && dd.s < bs) { bs = dd.s; bF = cloths[ci]; best = { I: dd.I, t: dd.t, b0: dd.b0, b1: dd.b1, b2: dd.b2 }; }
+                }
+                if (best) triW(m, best, bF.SI, bF.SW);
+                else {
+                    var ds = skinF(p[0], p[1], p[2]);
+                    if (ds && siW) triW(m, ds, siW, swW);
+                    else { var j = nearSkin(p[0], p[1], p[2], 2); if (j >= 0 && siW) for (var q = 0; q < 4; q++) { var wq = swW[j * 4 + q]; if (wq > 0) m[siW[j * 4 + q]] = (m[siW[j * 4 + q]] || 0) + wq; } }
+                }
+                if (!Object.keys(m).length) m[pBone] = 1;
+                return m;
+            });
+            for (var sm = 0; sm < 4; sm++) {
+                NW = NW.map(function (m, ni) {
+                    var o = {}, add = function (src, f) { Object.keys(src).forEach(function (bk) { o[bk] = (o[bk] || 0) + src[bk] * f; }); };
+                    add(m, 0.5); add(NW[Math.max(0, ni - 1)], 0.25); add(NW[Math.min(NW.length - 1, ni + 1)], 0.25);
+                    return o;
+                });
+            }
+            NW = NW.map(function (m, ni) {
+                var p = X[ni], dB = Math.hypot(p[0] - B[0], p[1] - B[1], p[2] - B[2]), fb = Math.max(0, Math.min(1, 1 - dB / (WEAR_CORD.bone * Hm))), tot0 = 0;
+                Object.keys(m).forEach(function (bk) { tot0 += m[bk]; });
+                Object.keys(m).forEach(function (bk) { m[bk] *= (1 - fb) / (tot0 || 1); }); m[pBone] = (m[pBone] || 0) + fb;
+                var ks = Object.keys(m).sort(function (x, y) { return m[y] - m[x]; }).slice(0, 4), sum = 0;
+                ks.forEach(function (bk) { sum += m[bk]; });
+                return ks.map(function (bk) { return [+bk, m[bk] / (sum || 1)]; });
+            });
+            // the tube: a Catmull-Rom curve through the rope, a ring of WEAR_CORD.sides round it (parallel-transported frames)
+            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm, SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
+            for (i = 0; i <= NSm; i++) {
+                var u = i / NSm * M, s0 = Math.min(M - 1, Math.floor(u)), tt = u - s0;
+                var p0 = X[Math.max(0, s0 - 1)], p1 = X[s0], p2 = X[s0 + 1], p3 = X[Math.min(M, s0 + 2)], t2 = tt * tt, t3 = t2 * tt;
+                var pt = [0, 0, 0];
+                for (k = 0; k < 3; k++) pt[k] = 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * tt + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
+                var mw = {};   // (the weights eased from one rope point to the next: switched halfway, the cord kinked there when posed)
+                NW[s0].forEach(function (e) { mw[e[0]] = (mw[e[0]] || 0) + e[1] * (1 - tt); }); NW[s0 + 1].forEach(function (e) { mw[e[0]] = (mw[e[0]] || 0) + e[1] * tt; });
+                var mk = Object.keys(mw).sort(function (x, y) { return mw[y] - mw[x]; }).slice(0, 4), ms = 0; mk.forEach(function (bk) { ms += mw[bk]; });
+                Cv.push(pt); Cw.push(mk.map(function (bk) { return [+bk, mw[bk] / (ms || 1)]; }));
+            }
+            var nv = (NSm + 1) * SIDES, pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), sI = new Uint16Array(nv * 4), sW = new Float32Array(nv * 4), idx = [];
+            var tg = new THREE.Vector3(), n1 = new THREE.Vector3(), b1 = new THREE.Vector3(), tPrev = new THREE.Vector3(), qq = new THREE.Quaternion();
+            for (i = 0; i <= NSm; i++) {
+                var pa = Cv[Math.max(0, i - 1)], pb = Cv[Math.min(NSm, i + 1)];
+                tg.set(pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]).normalize();
+                if (i === 0) { n1.set(0, 0, 1); if (Math.abs(tg.z) > 0.9) n1.set(1, 0, 0); n1.addScaledVector(tg, -n1.dot(tg)).normalize(); }
+                else { qq.setFromUnitVectors(tPrev, tg); n1.applyQuaternion(qq); n1.addScaledVector(tg, -n1.dot(tg)).normalize(); }
+                tPrev.copy(tg); b1.crossVectors(tg, n1);
+                for (k = 0; k < SIDES; k++) {
+                    var an = k / SIDES * Math.PI * 2, ca = Math.cos(an), sa = Math.sin(an), o3 = (i * SIDES + k) * 3, o4 = (i * SIDES + k) * 4;
+                    var nx = n1.x * ca + b1.x * sa, ny = n1.y * ca + b1.y * sa, nz = n1.z * ca + b1.z * sa;
+                    pos[o3] = Cv[i][0] + nx * Rt; pos[o3 + 1] = Cv[i][1] + ny * Rt; pos[o3 + 2] = Cv[i][2] + nz * Rt;
+                    nrm[o3] = nx; nrm[o3 + 1] = ny; nrm[o3 + 2] = nz;
+                    for (var q4 = 0; q4 < 4; q4++) { var e4 = Cw[i][q4]; sI[o4 + q4] = e4 ? e4[0] : 0; sW[o4 + q4] = e4 ? e4[1] : 0; }
+                    if (i < NSm) { var a1 = i * SIDES + k, a2 = i * SIDES + (k + 1) % SIDES, a3 = a1 + SIDES, a4 = a2 + SIDES; idx.push(a1, a3, a2, a2, a3, a4); }
+                }
+            }
+            var g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(sI, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(sW, 4));
+            g.setIndex(idx); g.computeBoundingSphere();
+            var mh = w.cordMesh;
+            if (!mh) {
+                var col = WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color;
+                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ color: col, roughness: 0.82, metalness: 0 }));
+                var g0i = ownedGeometries.indexOf(mh.geometry); if (g0i >= 0) ownedGeometries.splice(g0i, 1);
+                mh.castShadow = true; mh.receiveShadow = true; mh._ew_creatorWear = true; mh._ew_cord = true;
+                mh.renderOrder = w.mesh.renderOrder; mh.visible = w.mesh.visible;
+                (w.accents = w.accents || []).push(mh);
+            }
+            mh.geometry.dispose(); mh.geometry = g;
+            w.cordPts = X;   // (probes)
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
         function wearMask(part, only) {
