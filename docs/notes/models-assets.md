@@ -1734,3 +1734,29 @@ back to what they were".
   pose LeftArm/RightArm +14 deg (the heavy body's hands sank into the seat). Rejected after looking: Heavyset + HandsInPockets
   (elbows out, reads as hands on hips), Old (hunched), Strutting (arms flail), Stiff + ArmsBySide (same as Neutral).
   Review sheets: /mnt/project-files/mocap-rev2/s100_*.png.
+
+## THE CHRISTMAS PACK IS Y-UP (2026-11-05)
+mondo's console showed `THREE.ColladaLoader: You are loading an asset with a Z-UP coordinate system ... see #24289` (and the parser's
+`File version 1.4.1` debug line) on every load. The only COLLADA file in the game is the Christmas pack
+(`Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae`, same R2 key). It was turned to Y-up ONCE offline: every POSITION
+and NORMAL array (x,y,z) -> (x,z,-y) and every node matrix M -> R M R^T with R = Rx(-90 deg), `<up_axis>Y_UP`. R is a signed
+permutation, so numbers only move / flip sign as text (no precision change). Checked in a browser with three 0.186.1: same 69 meshes,
+41556 vertices, world positions + normals equal to 5e-15, no warning. The Z-up original is kept in project files
+`models-backup/Christmas_ZUP_original_20261105.dae`. three-renderer.js `_asDae` hides the parser's "File version" debug line, and its
+no-store path now fetches `?h=<sha>` too. ASSET_MANIFEST.json lists the .dae (manifest-assets.js KINDS takes `dae`) so the in-place
+replacement reaches every browser and the edge.
+
+## THE FOUR WEIGHTS (2026-11-05, mondo's console: "THREE.FBXLoader: Vertex has more than 4 skinning weights … Deleting additional weights")
+- Cause: 21 rigged FBX files carried vertices with 5-12 bone weights: the ocean pack's BrownFish, ClownFish, Crab, Dolphin,
+  DoryFish, Fish2, Hammerhead, Lobster, Manta ray, Octopus, Penguin, SeaWeed, SeaWeed1, SeaWeed2, Seal, Squid, StarFish,
+  TunaFish, Whale, Whale2 (Assets/world/packs/ocean/) and the elephant (Assets/world/animals/elephant/elephant-3d.fbx).
+  The other ocean files, the chess set, the Halloween kit, the spear and the UFO were already clean.
+- Fix at the source: `python3 -I bake-fbx-weights.py <in.fbx> <out.fbx>` (repo root) keeps each vertex's 4 largest weights,
+  scales them back to its original total, and rewrites only the cluster Indexes/Weights arrays (every other byte as it was).
+  FBXLoader did the same cut at load, so the game draws the same thing (checked in node with three 0.186.1: mesh, UVs,
+  normals, clip names identical; posed vertices match to < 0.004 % of the model's size) and the warning is gone.
+- The fixed files replaced the originals under the SAME R2 keys (bucket ewmusicsfx); the originals are kept in bucket
+  dirtymondo `archive/2026-11/fbx-weights-originals/world/...`. ASSET_MANIFEST.json lists the 21 new files (so the edge and
+  the store fetch them by `?h=<sha>`, not a cached old copy). Ghost FBX (characters/Character_Ghost.fbx) also has 5-weight
+  vertices but the game loads its GLB, so it was left alone.
+- A NEW FBX upload: run it through bake-fbx-weights.py first if the console shows that warning.
