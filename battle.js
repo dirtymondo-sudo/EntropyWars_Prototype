@@ -53447,7 +53447,7 @@
             const _lsTerrBase = 'https://cdn.entropywars.net/Assets/world/terrain/';
             [
                 // 3D trees / rock & crystal clusters / bone piles / flowers
-                'wood.png', 'leaves.png', 'rock.png', 'liquids/Liquid_Blue_05-128x128.png', 'enamel.png',   // crystal: the blue sheet (2026-11-02; the cones are the Meshy shards now)
+                'wood.png', 'leaves.png', 'rock.png', 'crystal_blue.png', 'enamel.png',   // crystal: the blue sheet (2026-11-02; the cones are the Meshy shards now), baked crisp 2026-11-05
                 'objects/flower.png', 'objects/flower_2.png', 'objects/flower_3.png', 'objects/flower_4.png',
                 // tesla coil + signature-object cladding
                 'gunmetal.png', 'copper.png', 'aluminium.png', 'gilt.png', 'metal.png',   // gold.png is out (2026-11-03): the gold is gilt.png (Metal007)
