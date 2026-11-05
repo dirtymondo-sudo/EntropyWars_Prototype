@@ -548,6 +548,14 @@ forge GEAR panel and Occam's mirror) calls `EWCharViewer.frameCreator('face' | '
   their face in clear view"): the close-up is tighter (`CV_FACE_FRAME` 26% of the height) and sits BELOW the face looking up
   (`CV_FACE_POLAR` -0.34 rad), so a bowed idle head and a hat brim no longer hide the face. The tilt eases in and out
   (`polarTo`); dragging takes over at once; a double-click on the face close-up returns to the upward look.
+- **THE ZOOM PATH** (2026-11-05, mondo: "in the character creator, make zooming in always zoom in on the character's face, and
+  zooming out centered on their full body, from both views (full body and face closeup)"): the wheel now moves one DISTANCE between
+  the full body (`dist0`) and the face close-up (`faceD`, the frame loop's CV_FACE_FRAME distance, kept on `v.faceD`). `_cvFrame`
+  reads `s` = where that distance sits between them (log scale, smoothstepped) and slides the look point, camera height, depth and
+  side from the body's middle (s 0) to `_cvHeadPoint` (s 1), plus the close-up's upward tilt (`camPo`, eased; `v.polar` stays the
+  player's drag on top of the view's home tilt). So from the full body, in = onto the face; from the close-up, out = back to the
+  whole body, level and centered. Limits: `faceD / 2.8` in, `dist0 / 0.55` out (the old ones). A beat's frame (frameTo) keeps the body
+  framing. Firefox line-mode wheel steps (deltaMode 1/2) count as 16 / 400 px. Shots: project files creator-zoom/zoom_path_body_and_face.jpg.
 - **THE SEAT** (2026-11-01, mondo: "fix the positioning of the revolver ... make his hand wrap around the handle"): a hold's
   `grip` = the prop GLB's handle in its own coordinates (`c` its centre, `down` the way down the handle, `barrel`), measured
   from the file (the Meshy revolver: c [0.657, -0.215, 0], down [0.404, -0.915, 0], barrel -X). three-renderer.js
