@@ -30267,11 +30267,111 @@
             _cfSlide = { key, cx: s };
             return s;
         }
+        /* ══ THE CENTRED CAST (2026-11-05) ══
+           mondo (Wizard's Meteor on a Chess Piece, Training Room): "the framing stays right for the spell animation, that
+           is completely unacceptable. All of the menus and submenus and horologe are hidden for the spell animation, so
+           there is no reason for the subjects on screen to ever not be centered." The slide used to HOLD the menu's
+           framing through the action a pick started (the confirm state's cx ~0.37 NDC: the Meteor landed ~2/3 across and
+           high). Now, the moment the menus hide for an action the viewer's pick started, the slide becomes the one that
+           CENTRES the action's subjects on the whole screen, both ways: the caster, the unit / tile it aimed at (+ the
+           blast's corner tiles for an area spell) and every unit the spell hits (THE FRAME GUARD's list). It can go
+           negative too, so the action menu's plain two-shot shift (MENU_CAM_SHIFT_H/V) is undone as well. Solved on the
+           camera's destination pose every frame (eased by three-camera.js, so it glides over); a hand pan / orbit during
+           the action holds what the view has; cinematic shots and third-person rigs own their composition (no slide). */
+        let _castSubj = null;               // { casterId, targetId, tile: {x, y}, r } latched while a menu is up
+        let _castCentred = false;           // the running action came from the viewer's menu
+        function _castSubjLatch() {
+            const u = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
+            if (!u || u.dead) return;
+            const tile = state._tileActionTarget || state.pendingTarget || null;
+            let r = 0;
+            if (tile && state.actionMode === 'spell' && state.selectedTool && Array.isArray(u.spells)) {
+                const sp = u.spells.find(s => s && s.name === state.selectedTool);
+                if (sp && sp.kind === 'aoe') r = Math.max(0, Math.min(4, sp.aoeRadius | 0));
+            }
+            const c = _castSubj;
+            if (c && c.casterId === u.id && c.targetId === state._enemyActionTargetId && c.r === r
+                && (c.tile ? (tile && c.tile.x === tile.x && c.tile.y === tile.y) : !tile)) return;
+            _castSubj = { casterId: u.id, targetId: state._enemyActionTargetId ?? null,
+                tile: (tile && Number.isFinite(tile.x) && Number.isFinite(tile.y)) ? { x: tile.x, y: tile.y } : null, r };
+        }
+        const _castOut = { cx: 0, cy: 0 };
+        function _castCentreSlide() {
+            const cs = _castSubj;
+            if (!cs) return null;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
+            const units = state.units || [];
+            const live = id => { const v = id != null ? units.find(w => w.id === id) : null; return (v && (!v.dead || v._dying)) ? v : null; };
+            const subj = [];
+            const seen = new Set();
+            const addU = v => { if (v && !seen.has(v.id) && (typeof _cineActorVisible !== 'function' || _cineActorVisible(v))) { seen.add(v.id); subj.push(v); } };
+            addU(live(cs.casterId));
+            addU(live(cs.targetId));
+            const G = _cineGuard;
+            if (G && !G.cine && _cineGuardLive(G)) G.hit.forEach(id => addU(live(id)));
+            if (cs.tile) {
+                const W = (typeof bw === 'function') ? bw() : Infinity, H = (typeof bh === 'function') ? bh() : Infinity;
+                const r = cs.r | 0;
+                for (const [dx, dy] of r > 0 ? [[0, 0], [-r, -r], [r, -r], [-r, r], [r, r]] : [[0, 0]]) {
+                    const x = Math.max(0, Math.min(W - 1, cs.tile.x + dx)), y = Math.max(0, Math.min(H - 1, cs.tile.y + dy));
+                    subj.push({ x, y });
+                }
+            }
+            if (!subj.length) return null;
+            const bd = ThreeCamera.getBaseDist();
+            const zoom = Number.isFinite(camera._tz) && camera._tz > 0 ? camera._tz : camera.zoom;
+            if (!(bd > 0) || !(zoom > 0)) return null;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+            const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+            const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
+            const dist = bd / zoom;
+            const tilt = Number.isFinite(camera._tt) ? camera._tt : camera.tilt;
+            const yaw = Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0);
+            const t = tilt * Math.PI / 180, yw = yaw * Math.PI / 180;
+            const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
+            const g = [-sT * sY, -cT, -sT * cY], up = [-cT * sY, sT, -cT * cY], rt = [cY, 0, -sY];
+            const fxT = Number.isFinite(camera._tx) ? camera._tx : camera.x, fyT = Number.isFinite(camera._ty) ? camera._ty : camera.y;
+            let fh = camera._tElev;
+            if (!(fh >= 0)) fh = (typeof camera._naturalElevAt === 'function') ? (camera._naturalElevAt(fxT, fyT) || 0) : 0;
+            const F = [fxT * ts + ts / 2, fh, fyT * ts + ts / 2];
+            const half = ts * 0.38;
+            // each point at screen (sx, sy) with no slide, depth d: a slide (cx, cy) moves it by (cx, cy)·dist/d
+            const P = [];
+            for (const o of subj) {
+                const b = _menuCamBody(o);
+                for (const side of [-1, 1]) for (const h of [b.foot, b.top]) {
+                    const r0 = b.x + rt[0] * half * side - F[0], r1 = h - F[1], r2 = b.z + rt[2] * half * side - F[2];
+                    const depth = dist + r0 * g[0] + r1 * g[1] + r2 * g[2];
+                    if (!(depth > ts * 0.3)) continue;
+                    P.push([(r0 * rt[0] + r2 * rt[2]) / (depth * tanH), (r0 * up[0] + r1 * up[1] + r2 * up[2]) / (depth * tanV), dist / depth]);
+                }
+            }
+            if (!P.length) return null;
+            // the slide that puts the box's middle on the screen's middle (depths differ: bisect, the middle grows with s)
+            const solve = (ax) => {
+                let lo = -1.5, hi = 1.5;
+                for (let it = 0; it < 28; it++) {
+                    const s = (lo + hi) / 2;
+                    let mn = Infinity, mx = -Infinity;
+                    for (const p of P) { const v = p[ax] + s * p[2]; if (v < mn) mn = v; if (v > mx) mx = v; }
+                    if (mn + mx > 0) hi = s; else lo = s;
+                }
+                return (lo + hi) / 2;
+            };
+            _castOut.cx = solve(0);
+            _castOut.cy = Math.max(-0.6, Math.min(0.6, solve(1)));
+            return _castOut;
+        }
         /* the slide ThreeCamera.sync puts the board rig through this frame ({ cx, cy } NDC) */
         window._ewMenuSlide = function () {
-            if (state.phase !== 'battle' || state.cameraDisabled || state._fullMapOverview) { _cfHeld = null; return _CLEAR_FULL; }
+            if (state.phase !== 'battle' || state.cameraDisabled || state._fullMapOverview) { _cfHeld = null; _castCentred = false; return _CLEAR_FULL; }
             const fa = _menuFreeArea();
             const now = performance.now();
+            // THE CENTRED CAST: what the viewer's menu is aiming at, kept for the action it starts
+            // (not once the action runs: the menu lingers a few frames after the confirm while the pick's target is cleared)
+            if ((fa.menu || fa.cmd) && !state._actionExecuting) { _castSubjLatch(); _castCentred = true; }
             if (fa.menu) {
                 const fresh = !_cfHeld;
                 _cfHeld = fa; _cfSeenAt = now;
@@ -30293,11 +30393,21 @@
                 _clearFrameRefit(fa, now);
                 return _CLEAR_FULL;
             }
-            // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → keep the frame;
-            // a brief gap (one unit's menu handing over to the next) too; else back to the middle
+            // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → THE CENTRED CAST:
+            // its subjects in the middle of the whole screen (a hand pan / orbit holds what the view has)
+            if (state._actionExecuting && _castCentred && !fa.cmd && camera._cineShotId == null && !camera._cineTps) {
+                _cfHeld = null;
+                if (state._userPanning || state._userOrbiting) return _cfOut;
+                const c = _castCentreSlide();
+                if (c) { _cfOut.cx = c.cx; _cfOut.cy = c.cy; return _cfOut; }
+                return _CLEAR_FULL;
+            }
+            // the action menu still up mid-action, or a brief gap (one unit's menu handing over to the next) keeps the
+            // frame; else back to the middle
             if (_cfHeld && camera._cineShotId == null && !camera._cineTps
                 && (state._actionExecuting || now - _cfSeenAt < CLEAR_FRAME_HOLD_MS)) return _cfOut;
             _cfHeld = null;
+            if (!state._actionExecuting) _castCentred = false;
             return _CLEAR_FULL;
         };
         /* camera._clearFit = { area, fit() } — the frame a fit last solved (the menu two-shot, the range fit). Any other

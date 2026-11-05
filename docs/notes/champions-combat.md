@@ -1477,6 +1477,18 @@ right half to two thirds of the screen".
   edge at 656 (sheet /mnt/project-files/menu-camera/near_frame_before_after.jpg). Enemy two-shot not clicked (no enemy on
   screen at turn start). Too close / far from the menu: tune CLEAR_POI_MARGIN.
 
+- THE CENTRED CAST (2026-11-05, mondo, Wizard's Meteor on a Chess Piece in the Training Room: "the framing stays right for
+  the spell animation, that is completely unacceptable. All of the menus and submenus and horologe are hidden for the spell
+  animation, so there is no reason for the subjects on screen to ever not be centered"). `_ewMenuSlide` used to HOLD the
+  confirm state's slide (cx ~0.37-0.40, cy ~0.13 NDC) through the action a pick started. Now, while a menu is up,
+  `_castSubjLatch` keeps what it aims at (selected unit, `_enemyActionTargetId`, `_tileActionTarget` / `pendingTarget`, the
+  aoe spell's `aoeRadius`); once the menus hide and `_actionExecuting` is on (`_castCentred`, no cine shot, no TPS),
+  `_castCentreSlide` returns the slide that puts the middle of the box of caster + target + blast corner tiles + every unit
+  the tactical frame guard lists as hit on the middle of the screen, both axes (bisected per axis on the destination pose;
+  can go negative, so the root menu's plain two-shot shift is undone too). Hand pan / orbit mid-action holds the view. The
+  root action menu still up mid-action keeps the old hold. Viewer-local; the guest's `_actionExecuting` is local (skip
+  list), so its slide drops to 0 and the relayed midpoint pan centres it. Applies to basic attacks from the menu too.
+
 ## THE CLICK FACE + THE ATTACK HOLD (2026-10-18)
 mondo: "whenever i click on an enemy or a unit, my unit should turn to face them. if all i do is basic attack them ...
 the camera should sort of stay the way it already is ... and just show that view of the unit attacking the target,
