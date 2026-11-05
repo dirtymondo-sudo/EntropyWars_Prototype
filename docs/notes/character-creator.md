@@ -1526,3 +1526,14 @@ reference shots (an equipment screen with HEAD / UPPER BODY / LOWER BODY icon sl
   A key missing from CC_ICONS draws no icon (text only), a missing file draws nothing.
 - **Checked in the browser** (Occam's mirror, 1600 x 900 and 600 x 900): no cut labels, no sideways scroll, OUTFIT > TORSO > LAYERS 1 · 2 · 3
   switches layers as before, LEFT ARM / FOOTWEAR open their kinds. Shots: /mnt/project-files/creator-icons/.
+
+## THE TAKE ALL OFF SPLIT (2026-11-05)
+mondo: "the button that says "take all off", can it only take off the category of clothes you have selected? And there should be
+another button that says "Clear All" and it should be red and that should do what take all off does now".
+- OUTFIT row (beside MEN / WOMEN): TAKE ALL OFF now takes off only what is worn in the OPEN KIND (the chip under the body part:
+  Hats + helmets, Layers 1 · 2 · 3, Bottoms, Capes, Wings ...), the same pieces that kind's gold dot counts (party-builder.js
+  `kindOff`): its pack pieces + its layer key (layers = Layer 1 tops, pack coats, wear2, outer, outer2; cape; wings; feet; shaped
+  heads / ears). Shown only while that kind has something on.
+- CLEAR ALL (red, `.pb-cc-clearall`) = the old TAKE ALL OFF: every piece of clothing on every body part off (facial hair + accessories stay).
+- Checked by clicking in Chromium: hat + jeans + tee on, TORSO > TAKE ALL OFF took only the tee, CLEAR ALL took the rest. Shot
+  /mnt/project-files/creator-take-off/two_buttons.png.

@@ -5612,7 +5612,10 @@ body.diorama-3d .tile-underpass.jump::before {
 /* THE SHELVES (2026-11-02): the MEN / WOMEN switch row, the sub-heads inside a tab (Men's / Fits anyone / Costume wings ...) */
 .pb-cc-side { align-items: center; margin-bottom: 4px; }
 .pb-cc-side .pb-creator-colorlabel { margin: 0; min-width: 0; }
-.pb-cc-side .pb-cc-alloff { margin-left: auto; }
+.pb-cc-side .pb-cc-alloff { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+/* THE TAKE ALL OFF SPLIT (2026-11-05): CLEAR ALL = the red button (every piece of clothing off) */
+.pb-cc-side .ms-tty-btn.pb-cc-clearall { color: #fff1ec; background: #8f1f17; border-color: #ff6a5c; text-shadow: 0 1px 0 #3a0703; }
+.pb-cc-side .ms-tty-btn.pb-cc-clearall:hover:not(:disabled) { color: #fff; background: #b3271c; border-color: #ff9a8f; }
 .pb-cc-shelves { margin-top: 4px; }
 .pb-cc-shelf-sub { font-size: 10px; color: #a89a74; border-bottom: 1px solid rgba(216, 201, 160, .22); padding-bottom: 2px; margin-top: 10px; }
 /* THE TABS + THE BODY SLOTS (2026-11-03, mondo: "tabs instead of one long list" + "clothes+accessories organized by body part like a typical
