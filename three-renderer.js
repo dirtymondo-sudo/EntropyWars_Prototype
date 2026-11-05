@@ -3130,6 +3130,18 @@ const ThreeRenderer = (function () {
 
     var objectMeshes = new Map();
     var _lastObjectSerial = 0, _objectsDirty = true;
+    /* THE LANDING REBUILDS ONLY THE OBJECTS (2026-11-05, mondo: "what other random items in the game are rebuilding every object on
+       every frame"): every run of rebuildObjects used to throw away and rebuild EVERY unit as well (its body, its name plate's DOM
+       and canvas, the unit lights) and every terrain decoration (the grass, the rock and crystal clusters), whatever made it run.
+       Most runs are a file landing (a tree, a prop, a rock sheet: a loader's callback), and the board streams hundreds of them
+       while a fight opens: measured on the Fairy Forest arena in the cloud browser, a unit rebuild of 15-50 ms and a decoration
+       rebuild of 15-100 ms on frame after frame of the load, for units and ground that had not changed. A landing now sets
+       _objectsLanded: the frame rebuilds the objects as before (the landed model swaps in), keeps the decorations (they read the
+       terrain, the heights and the object state, never a landed file; the frame's own terrain serial still rebuilds them) and
+       keeps the units, unless the battle room's ground read moved (a drawn roof that landed: _fieldGroundCache.key), where they
+       stand again. Everything else (an object change, the ground rebuilt, a reset, the editor, a building's hit tint) still
+       sets _objectsDirty or calls rebuildObjects(): the full rebuild, units and decorations too, exactly as before. */
+    var _objectsLanded = false, _objGroundKeySeen = null;
 
     var turretMeshes = new Map();
     var _lastTurretSerial = '';
@@ -7200,7 +7212,7 @@ const ThreeRenderer = (function () {
        to wrap onto the foliage geometry — matches the rest of the board's look. */
     function _getFoliagePixelTex(file, repeat) {
         if (_foliageTexCache[file]) return _foliageTexCache[file];
-        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + file, function() { _objectsDirty = true; });
+        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + file, function() { _objectsLanded = true; });
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.NearestFilter;
@@ -7262,7 +7274,7 @@ const ThreeRenderer = (function () {
                 var root = _foliageBakeGlb(piece);
                 _normalizeFoliageModel(root);
                 xe.obj = root; xe.loading = false;
-                _objectsDirty = true;
+                _objectsLanded = true;
             });
             var xm = _miscModelCache[xu];
             if (!xm || xm.failed) { entry.loading = false; entry.failed = true; }
@@ -7280,7 +7292,7 @@ const ThreeRenderer = (function () {
                         if (glb) root = _foliageBakeGlb(root.scene || (root.scenes && root.scenes[0]));
                         _normalizeFoliageModel(root);
                         entry.obj = root; entry.loading = false;
-                        _objectsDirty = true;   /* re-render so the model swaps in */
+                        _objectsLanded = true;   /* re-render so the model swaps in */
                         rec.settle(true);
                     },
                     function() {
@@ -7525,7 +7537,7 @@ const ThreeRenderer = (function () {
         var base = getTexture(url);
         if (!base) return null;
         if (!base.image || !base.image.complete) {
-            getTexture(url, function () { _objectsDirty = true; });
+            getTexture(url, function () { _objectsLanded = true; });
         }
         var tex = base.clone();
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
@@ -8027,7 +8039,7 @@ const ThreeRenderer = (function () {
     var _rockObjTexCache = {};
     function _getRockObjTexture(file) {
         if (_rockObjTexCache[file]) return _rockObjTexCache[file];
-        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + file + '.png', function() { _objectsDirty = true; });
+        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + file + '.png', function() { _objectsLanded = true; });
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.NearestFilter;
@@ -8114,7 +8126,7 @@ const ThreeRenderer = (function () {
     var _torchWoodTex = null, _torchRopeTex = null, _torchFlameTexObj = null;
     function _getTorchWoodTex() {
         if (_torchWoodTex) return _torchWoodTex;
-        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + 'wood.png', function () { _objectsDirty = true; });
+        var t = textureLoader.load(_FOLIAGE_TERRAIN_TEX + 'wood.png', function () { _objectsLanded = true; });
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.NearestFilter;
@@ -8129,7 +8141,7 @@ const ThreeRenderer = (function () {
         var url = (typeof ROPE_SPRITE_URL !== 'undefined')
             ? ROPE_SPRITE_URL
             : 'https://cdn.entropywars.net/Assets/loose_sprites/rope.png';
-        var t = textureLoader.load(url, function () { _objectsDirty = true; });
+        var t = textureLoader.load(url, function () { _objectsLanded = true; });
         t.wrapS = THREE.RepeatWrapping;
         t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.NearestFilter;
@@ -9491,8 +9503,9 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    function rebuildObjects() {
+    function rebuildObjects(soft) {
         if (!objectGroup) return;
+        soft = soft === true;   // THE LANDING REBUILDS ONLY THE OBJECTS: true = only files landed since the last run
         /* THE VANISHING DEPLOYABLES (2026-09-15): this pass used to strip EVERY
            child of objectGroup but the turrets — the wards, mirrors, doors,
            seeds, bombs, decoys and gates too — while deployableMeshes kept
@@ -9612,15 +9625,19 @@ const ThreeRenderer = (function () {
             }
         }
 
-        _lastObjectSerial = _computeObjectSerial(); _objectsDirty = false;
+        _lastObjectSerial = _computeObjectSerial(); _objectsDirty = false; _objectsLanded = false;
+        var _gk = null; try { _fieldGround(); _gk = _fieldGroundCache.key; } catch (e) {}
+        var _gkMoved = _gk !== _objGroundKeySeen; _objGroundKeySeen = _gk;
         _treeHoverMats = null; _treeHoverKey = null;   // THE TREE HOVER: the old meshes are gone; relight on the new one
         if (_lastHoverX >= 0 && _lastHoverY >= 0) _treeHoverApply(_lastHoverX, _lastHoverY);
 
-        _lastUnitSerial = '';
-        _lastStructuralSerial = '';
+        if (!soft || _gkMoved) {   // THE LANDING REBUILDS ONLY THE OBJECTS: a landing keeps the units (unless their ground moved)
+            _lastUnitSerial = '';
+            _lastStructuralSerial = '';
+        }
 
-        /* Rebuild terrain decorations if needed */
-        rebuildTerrainDecorations();
+        /* Rebuild terrain decorations if needed (a landing keeps them: they never read a landed file) */
+        if (!soft || !_terrainDecoGroup) rebuildTerrainDecorations();
     }
     function rebuildTurrets() {
         if (!objectGroup) return;
@@ -10118,7 +10135,7 @@ const ThreeRenderer = (function () {
         var url = _hwUrl(node), e = _miscModelCache[url];
         if (!e || !e.root || !e.root._ew_bbox) {
             if (e && e.failed) return false;
-            try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; _objectsDirty = true; }); } catch (e2) { return false; }
+            try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; _objectsLanded = true; }); } catch (e2) { return false; }
             var e3 = _miscModelCache[url], eF = _miscModelCache[_hwUrl('')];
             return ((e3 && e3.failed) || (eF && eF.failed)) ? false : null;   // the file failed: the old stone
         }
@@ -10945,7 +10962,7 @@ const ThreeRenderer = (function () {
                     grp.scale.z = Math.min(1, grp.scale.x);
                     grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
                     if (mode === 'none') { jL.visible = false; jR.visible = false; lin.visible = false; }
-                    _objectsDirty = true;
+                    _objectsLanded = true;
                 }
             });
             /* the authored front faces the twin (+z), where the walker comes from */
@@ -13568,7 +13585,7 @@ const ThreeRenderer = (function () {
             var cbs = _batKit.cbs.splice(0);
             for (var i = 0; i < cbs.length; i++) { try { cbs[i](ok); } catch (e) {} }
             try { invalidateUnits(); } catch (e) {}   // a bat-form vampire built while the kit streamed swaps its swarm in
-            _objectsDirty = true;
+            _objectsLanded = true;
         }
         function fail(why) { if (dead) return; dead = true; console.warn('[BATS] the bat kit failed:', why); settle(false); }
         _BAT_KINDS.forEach(function (kind) {
@@ -13743,7 +13760,7 @@ const ThreeRenderer = (function () {
             var m = new THREE.Mesh(_batKit.rest[kind], _batKit.mat);
             m.scale.setScalar(span * U); m._ew_pixelate = true;
             g.add(m);
-            _objectsDirty = true;
+            _objectsLanded = true;
         });
         return g;
     }
@@ -34387,7 +34404,7 @@ const ThreeRenderer = (function () {
         if (!A || !A.atlas || typeof THREE.TextureLoader !== 'function') return null;
         var u = _R2_ANIMALS + A.atlas, t = _animalAtlasTex[u];
         if (t) return t;
-        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsDirty = true; });
+        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsLanded = true; });
         t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapNearestFilter;
         return t;
     }
@@ -34395,7 +34412,7 @@ const ThreeRenderer = (function () {
     function _animalSheet(rel) {
         var u = _R2_ANIMALS + rel, t = _animalAtlasTex[u];
         if (t) return t;
-        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsDirty = true; });
+        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsLanded = true; });
         t.flipY = false;
         return t;
     }
@@ -34670,7 +34687,7 @@ const ThreeRenderer = (function () {
     var _trapsSheetMat = null;
     function _trapsMat() {
         if (_trapsSheetMat) return _trapsSheetMat;
-        var t = new THREE.TextureLoader().load(_R2_TRAPS + _TRAPS_SHEET, function () { _objectsDirty = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
+        var t = new THREE.TextureLoader().load(_R2_TRAPS + _TRAPS_SHEET, function () { _objectsLanded = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
         t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
         _trapsSheetMat = new THREE.MeshLambertMaterial({ map: t, color: 0xffffff });
         _trapsSheetMat.emissive = new THREE.Color(0xffffff); _trapsSheetMat.emissiveMap = t; _trapsSheetMat.emissiveIntensity = 0.3;   // the sheet's dark rust/iron went black in a torch-lit cell: a small self-lift (the ocean pack's flat colours have one too)
@@ -34784,7 +34801,7 @@ const ThreeRenderer = (function () {
             if (!B) return false;
             B.group.scale.setScalar(s * U);
             g.add(B.group);
-            _objectsDirty = true;
+            _objectsLanded = true;
             if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
             return true;
         };
@@ -34848,7 +34865,7 @@ const ThreeRenderer = (function () {
     // so the eye/road textures don't buzz the way NearestFilter would far away.
     function _miscTex(url, onLoad) {
         if (_miscTexCache[url]) { if (onLoad) onLoad(_miscTexCache[url]); return _miscTexCache[url]; }
-        var t = textureLoader.load(url, function (tex) { _objectsDirty = true; if (onLoad) onLoad(tex); });
+        var t = textureLoader.load(url, function (tex) { _objectsLanded = true; if (onLoad) onLoad(tex); });
         t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
         t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
         t.generateMipmaps = true;
@@ -34983,7 +35000,7 @@ const ThreeRenderer = (function () {
                     pe.loading = false; pe.root = piece; pe.at = Date.now(); pe.fcbs = null;
                     var cbs = pe.cbs.splice(0);
                     for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
-                    _objectsDirty = true;
+                    _objectsLanded = true;
                 };
                 if (_isHwUrl(baseUrl)) _hwSheetsLoad(piece, land);   // THE HALLOWEEN PACK: the piece's own sheets first
                 else land();
@@ -35008,7 +35025,7 @@ const ThreeRenderer = (function () {
             e.cbs.length = 0;
             rec.settle(true);
             if (isGLB && !_isDaeUrl(url) && !_isFbxUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
-            _objectsDirty = true;
+            _objectsLanded = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
         function _forgetPieces(fail) { (e.pieces || []).forEach(function (pu) { var p = _miscModelCache[pu]; if (p && !p.root) { delete _miscModelCache[pu]; if (fail) _miscFailNotify(p); } }); e.pieces = null; }   // THE METRO PACK
@@ -35104,7 +35121,7 @@ const ThreeRenderer = (function () {
                     var cbs = e.cbs.splice(0);
                     for (var i = 0; i < cbs.length; i++) { try { cbs[i](root); } catch (_e) {} }
                     e.xcbs.length = 0;
-                    _objectsDirty = true;
+                    _objectsLanded = true;
                 } catch (ex) { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; }
             } else if (!root && _miscModelCache[url] === e) { delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; _oneFileNotify(e, true); }
             onLoad(gltf);
@@ -35396,7 +35413,7 @@ const ThreeRenderer = (function () {
            the call is already part of what the caller builds: it only asks for a shadow pass. A file that lands later still
            flags the board as before. */
         var inCall = true;
-        var landed = function () { if (inCall) _shadowsDirty = true; else _objectsDirty = true; };
+        var landed = function () { if (inCall) _shadowsDirty = true; else _objectsLanded = true; };
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
@@ -38672,7 +38689,7 @@ const ThreeRenderer = (function () {
             model.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
             model.rotation.y = K.rng() * Math.PI * 2;
             _nrInjectWorld(K, model);   // a world-rim tree (K._wdFog) joins the haze + the dissolve
-            g.add(model); _objectsDirty = true;
+            g.add(model); _objectsLanded = true;
         };
         var src = _loadFoliageModel(name);
         if (src && src._ew_bbox) fill(src);
@@ -40805,7 +40822,7 @@ const ThreeRenderer = (function () {
         var put = function (p, w) {
             p.position.y = y0 || 0;
             if (each) p.traverse(function (o) { if (o.isMesh) each(o); });
-            g.add(p); _objectsDirty = true;
+            g.add(p); _objectsLanded = true;
             if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
             if (done) done(p, w);
         };
@@ -48576,6 +48593,7 @@ const ThreeRenderer = (function () {
         if (tdSer !== _lastTerrainDecoSerial) { rebuildTerrainDecorations(); _shadowsDirty = true; }
         var _objDirty = false;
         if (_objectsDirty || _computeObjectSerial() !== _lastObjectSerial) { rebuildObjects(); _objDirty = true; }
+        else if (_objectsLanded) { rebuildObjects(true); _objDirty = true; }   // THE LANDING REBUILDS ONLY THE OBJECTS
         var tSer = _computeTurretSerial();
         if (tSer !== _lastTurretSerial) { rebuildTurrets(); _objDirty = true; }
         var dSer = _computeDeployableSerial();
@@ -49812,7 +49830,7 @@ const ThreeRenderer = (function () {
         var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? DOOR_TEXT.LOGO.onDark : null;
         if (sealUrl && typeof textureLoader !== 'undefined') {
             if (!_introSealTex) {
-                _introSealTex = textureLoader.load(sealUrl, function () { _objectsDirty = true; });
+                _introSealTex = textureLoader.load(sealUrl, function () { _objectsLanded = true; });
                 _introSealTex.minFilter = THREE.LinearMipmapLinearFilter; _introSealTex.magFilter = THREE.LinearFilter; _introSealTex.generateMipmaps = true;
             }
             var sealMat = new THREE.MeshBasicMaterial({ map: _introSealTex, transparent: true, depthWrite: false, fog: false });
@@ -49892,7 +49910,7 @@ const ThreeRenderer = (function () {
                     if (ph) ph.visible = false;
                     /* a bare frame IS the door: the GLB replaces the procedural jambs */
                     if (mo.mode === 'none') { jL.visible = false; jR.visible = false; lin.visible = false; }
-                    _objectsDirty = true;
+                    _objectsLanded = true;
                 }
             });
             /* the leaf's authored front faces the board (where the line arrives) */
@@ -64289,7 +64307,7 @@ const ThreeRenderer = (function () {
                     }, function (rk) { return kOf[rk] || texK; }, U, B);
                 });
                 _spFlush(B, G, function (rk) { return rk === 'glass' ? (mats.glass || (mats.glass = _spGlass())) : mats[rk]; }, '_ew_hqStairs');
-                _objectsDirty = true;
+                _objectsLanded = true;
             }, G);
         });
     }
@@ -64326,7 +64344,7 @@ const ThreeRenderer = (function () {
                     if (rk === 'glass') return mats.glass || (mats.glass = _spGlass());
                     return mats.body || (mats.body = _spSheet(spec.look === 'wood' ? 'wood' : spec.look === 'stone' ? 'concrete' : null, spec.look));
                 }, '_ew_hqRailing');
-                _objectsDirty = true;
+                _objectsLanded = true;
             }, G);
         });
     }
@@ -64361,7 +64379,7 @@ const ThreeRenderer = (function () {
                     if (rk === 'glass') return mats.glass || (mats.glass = _spGlass());
                     return mats[rk] || (mats[rk] = _spSheet('metal', 'steel', rk === 'tread' ? 0xb0b0b4 : null));
                 }, '_ew_hqEscalator');
-                _objectsDirty = true;
+                _objectsLanded = true;
             }, G);
         });
     }
@@ -65446,7 +65464,7 @@ const ThreeRenderer = (function () {
                 G.add(im);
             });
             if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
-            _objectsDirty = true;
+            _objectsLanded = true;
         });
     }
     function _vrRoofCity(G, o) {
@@ -81630,7 +81648,7 @@ const ThreeRenderer = (function () {
                 if (m0.customDistanceMaterial) im.customDistanceMaterial = m0.customDistanceMaterial;
                 im._ew_pixelate = !!m0._ew_pixelate; im._ew_shadowFlagged = true; im._ew_hqInst = true; im._ew_occSkip = true; im._ew_instSrc = m0;   // _ew_instSrc: THE PERF LENS files a batch under its copies' kind
                 var rec = { im: im, copies: list, mat: m0.material, geoC: geo.boundingSphere.center.clone(), geoR: Math.max(geo.boundingSphere.radius || 0, 1e-3),
-                            inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float32Array(list.length * 16), rel: new Uint8Array(list.length) };
+                            inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float64Array(list.length * 16), rel: new Uint8Array(list.length) };   // Float64: see THE STILL BATCHES in _hqInstSync
                 _hqInstFit(rec);
                 list.forEach(function (o) { o.visible = false; o._ew_instHidden = true; if (o.geometry._ew_lodBase) { o.geometry = o.geometry._ew_lodBase; o._ew_lodL = 0; } });   // a hidden original keeps its full mesh (the seat ray, the gun)
                 I.group.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
@@ -81640,7 +81658,12 @@ const ThreeRenderer = (function () {
         if (added) _hqInstSync(H, true);
         return added;
     }
-    /* per frame (once — the reflectors and the pixel mask render the same scene): the copies' matrices, read back */
+    /* per frame (once — the reflectors and the pixel mask render the same scene): the copies' matrices, read back
+       THE STILL BATCHES (2026-11-05, mondo: "what other random items in the game are rebuilding every object on every frame"): the
+       compare cache was a Float32Array, the matrices it was compared with are doubles, so a stored value never equalled the next
+       frame's (0.2290346920490265 against 0.22903468738956553): every copy of every batch was rewritten and every batch
+       re-uploaded to the GPU on every frame with nothing moving (81 batches a frame in the HQ lobby, measured; the battle's room
+       batches the same way). The cache is now a Float64Array, so a batch uploads only on the frame a copy really moved. */
     function _hqInstSync(H, force) {
         var I = H.inst; if (!I || (!H.field && _hq !== H)) return;   // H.field: THE PERF PASS's battle record (_fieldInst*)
         if (!force && I.stamp === _hqInstStamp) return;
@@ -85041,6 +85064,17 @@ const ThreeRenderer = (function () {
         var sc = H.scene;
         W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
                    _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
+        /* THE WARM-UP ON THE NODE RENDERER (2026-11-05, found by the per-frame audit): there renderer.compile is compileAsync, which
+           calls the scene's onBeforeRender and walks object.children / object.layers, none of which this stand-in scene had: every
+           warmed object threw (asynchronously, so the catch below never saw it), 600+ uncaught errors each time a room or part
+           built on ?ew_gpu=webgpu, and nothing was warmed. The stand-in now carries what compileAsync reads: no-op hooks, every
+           layer, and the object + the warm's lamps as its children (the lamps are how the node path collects its lights). */
+        if (renderer && renderer.isWebGPURenderer) {
+            var lay = new THREE.Layers(); lay.enableAll();
+            W.fake.visible = true; W.fake.layers = lay; W.fake.matrixWorldAutoUpdate = false;
+            W.fake.onBeforeRender = function () {}; W.fake.onAfterRender = function () {};
+            Object.defineProperty(W.fake, 'children', { get: function () { return this._list.concat(W.lights); } });
+        }
         return W;
     }
     /* the sheets a material samples (the maps; a shader's texture uniforms) */
@@ -85064,7 +85098,7 @@ const ThreeRenderer = (function () {
                 /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
                 var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
                 if (_wt) renderer.setRenderTarget(_wt);
-                try { renderer.compile(W.fake, H.camera); } finally { if (_wt) renderer.setRenderTarget(_wp); }
+                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.catch === 'function') _wpr.catch(function () {}); } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
                 if (_alNow() >= end) break;
             }
