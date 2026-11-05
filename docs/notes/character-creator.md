@@ -1052,6 +1052,12 @@ tab? ... there is no color picker?? Everything that can possibly have one needs 
 - "MakeHuman hair" row renamed "More hair styles". Every other colourable piece already had a picker (hair, second hair colour,
   facial hair, clothes layers + "Colours of the pieces you wear", wings, accessories once worn).
 - Every tab shot: /mnt/project-files/creator-usability/.
+- THE BACK STRIP FIX (2026-11-05, mondo: "what is this random white spot down this person's back?? It's just a normal mpfb body that
+  i made the skin red"): EW_MH_SKIN_KEEP was two boxes ([0,360,170,120] + [760,870,200,154]) put back untinted after the tint. The
+  first box also held the torso island's left edge (x 145-170, y 360-480 = one side of the spine seam, mid back to waist) and the
+  second the right hand's fingertips, so under any picked colour those stayed the stock skin. Now 3 outlines (2 cheek pieces +
+  tongue, traced off mpfb_female/mpfb_male UVs, 2 px out, checked: no other UV triangle inside); tintSheet clips to them and
+  draws the pre-tint copy back. Before/after (red, from behind): /mnt/project-files/skin-colour-back-strip/.
 
 ## THE MESHY DEFAULT + THE CREATOR ON EVERY UNIT (2026-11-03, character-models-plan row 20b)
 mondo 11-03: "Let the character creator be available to all units so i can make custom models for them. Don't get rid of the
@@ -1552,3 +1558,28 @@ another button that says "Clear All" and it should be red and that should do wha
 - CLEAR ALL (red, `.pb-cc-clearall`) = the old TAKE ALL OFF: every piece of clothing on every body part off (facial hair + accessories stay).
 - Checked by clicking in Chromium: hat + jeans + tee on, TORSO > TAKE ALL OFF took only the tee, CLEAR ALL took the rest. Shot
   /mnt/project-files/creator-take-off/two_buttons.png.
+
+## THE PENDANT CORDS (2026-11-05, plan row 12u)
+mondo 11-05: "all of the pendants in teh character creator need strings in attached to them that hang around the character's
+neck, make the string yourself". three-renderer.js `wearCords` / `wearCord`, run at the end of `wearLayers` (renamed body:
+`wearLayers0`), so the cord is rebuilt on every wear change and every slider move.
+- WHICH: every worn solid piece whose `wearGroupOf(id) === 'pendants'` (OUTFIT > Neck > Pendants: ewm_crosspendant,
+  ewm_talisman, ewm_hagstone). A pendant added to that group later gets a cord with no code change. Colours: WEAR_CORD.colors
+  (cross black, talisman brown leather, hagstone twine), else WEAR_CORD.color.
+- NO MODEL FILE: the cord is a tube (radius WEAR_CORD.r x height/1.7, 7 sides) one of the pendant's accents (`w.cordMesh`,
+  mesh `EWCreator_wear_<id>_cord`), so it comes off / hides with the pendant. MODEL_LIST §5e says so (list-models.js).
+- THE SOLVE (in the bind pose, on the body as the sliders shaped it = src + shapeD): a rope pinned at the bail (the pendant's
+  top 4 mm), started as a loop round the neck (WEAR_CORD.ring of neck -> Head bone) + two lines down to the bail; each step the
+  points move toward their neighbours' middle (tension, `pull`), a little down (`fall`), then out of the skin and the garments
+  (nearest TRIANGLE via `triField`, Ericson closest point; skin clearance WEAR_CORD.skin, cloth WEAR_CORD.cloth). Coarse to fine
+  (`levels` 12/24/48/72), then `finish` passes of [1 2 1] smoothing + collide (the cord wavered on bare skin without it).
+- CLOTHES: a garment is a collider only when the pendant hangs OVER it (the bail is outside it or past its rim): the cord then
+  goes over a tee's collar. Under a closed coat the pendant is under too, so the cord stays under it. A point past an OPEN edge
+  (a collar rim, wearSpan open) is not pushed (a push off the rim's normal made steps where the cord crossed the collar).
+- WEIGHTS: each point takes the weights of the triangle it lies on (the garment's, or the skin's welded siW/swW), so posed it
+  moves with the collar under it (nearest-skin-vertex weights left kinks at the collar in the idle); evened along the cord
+  (4 passes) and blended into the pendant's own bone within WEAR_CORD.bone of the bail. Capes / hung coats (own chain
+  skeletons) never lend weights.
+- Checked on screen (Chromium, Playwright EWCharViewer.mount, front / 3-4 / back at the bust): mpfb male / female / heavy / thin /
+  short / female heavy / female thin, weight + muscle + neck sliders both ways, bare chest, a tee, a closed leather jacket, an
+  open blazer. Shots /mnt/project-files/pendant-cords/.

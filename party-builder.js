@@ -1066,6 +1066,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   React.useEffect(() => { _pbCcKinds = kindBySlot; }, [kindBySlot]);
   const [layerTab, setLayerTab] = React.useState(() => _pbCcLayer);   // THE LAYERS 1 2 3: the torso layer open (1, 2 or 3)
   React.useEffect(() => { _pbCcLayer = layerTab; }, [layerTab]);
+  /* THE WALK STYLE rev 2 (2026-11-05, mondo: "clicking on a walk animation should make the animation play automatically ... the preview
+     walk button ... should obviously be right by the walk animations"): the stage's walk state (three-renderer.js 'ew-cv-state') for the
+     WALK / STOP WALK button on the Walk row */
+  const [ccWalking, setCcWalking] = React.useState(() => !!(window.EWCharViewer && window.EWCharViewer.isWalking && window.EWCharViewer.isWalking()));
+  React.useEffect(() => {
+    const f = (e) => setCcWalking(!!(e && e.detail && e.detail.playing === 'walk'));
+    window.addEventListener('ew-cv-state', f);
+    return () => window.removeEventListener('ew-cv-state', f);
+  }, []);
   const [faceCat, setFaceCat] = React.useState('eyes');   // THE FACE SLIDERS: the FACE tab open (MPFB heads)
   const [wearFor, setWearFor] = React.useState(null);   // THE SHELVES: MEN / WOMEN (null = the body's own)
   /* THE HIDDEN PICKS (2026-11-03): the dev item hider (sprites.js creatorHidden; on while Settings > Developer > Creator Item Hider is
@@ -1177,8 +1186,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
       h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
       h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => queueChange({ [key]: e.target.value }) }), h('i', null, '+'))));
-  const ccChoice = (key, options, lookOf, hideKind) => h('div', { className: 'pb-creator-options', role: 'group' }, options.filter(([id]) => keepPick(hideKind, id, appearance[key] === id)).map(([id, label]) =>
-    devTile(hideKind, id, label, h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance(Object.assign({ [key]: id }, lookOf && appearance[key] !== id ? lookOf(id) : {})) }, shownName(hideKind, id, label)))));   // (THE HIDDEN PICKS: hideKind = the pick's kind; THE RENAMED PICKS: his name)
+  const ccChoice = (key, options, lookOf, hideKind, onPick) => h('div', { className: 'pb-creator-options', role: 'group' }, options.filter(([id]) => keepPick(hideKind, id, appearance[key] === id)).map(([id, label]) =>
+    devTile(hideKind, id, label, h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => { const same = appearance[key] === id; changeAppearance(Object.assign({ [key]: id }, lookOf && !same ? lookOf(id) : {})); if (onPick) onPick(id, same); } }, shownName(hideKind, id, label)))));   // (THE HIDDEN PICKS: hideKind = the pick's kind; THE RENAMED PICKS: his name; onPick(id, same): after the pick, THE WALK STYLE)
   // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
   /* THE RETIRED CLASSIC CLOTHES (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a
      replacement"): a catalogue without the retired coded picks (sprites.js EW_RETIRED_CLOTHES; a look wearing one is moved to
@@ -1714,7 +1723,25 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                  Saved in the look (appearance.idle), so EXPORT DEFAULT LOOK / bake-looks.js carry it and the board plays it. */
               (window.EW_IDLE_POSES || []).length > 1 ? h(React.Fragment, null,
                 h('div', { className: 'pb-creator-colorlabel' }, 'Idle pose'),
-                ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]), null, 'idle')) : null,
+                ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]), null, 'idle', (id, same) => {   // the picked idle shows at once (a walk stops)
+                  const cv = window.EWCharViewer; if (same && cv && cv.isWalking && cv.isWalking()) cv.stopPreview();
+                })) : null,
+              /* THE WALK STYLE (2026-11-05, mondo: "add the walk animations to the character creator just like the idle animations so i
+                 can see those too"): the motion-capture walks (sprites.js EW_WALK_STYLES); a pick walks on the stage at once, looping,
+                 and is saved in the look like the idle (the board plays it) */
+              (window.EW_WALK_STYLES || []).length > 1 ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel pb-cc-walkhead', style: { display: 'flex', alignItems: 'center', gap: 10 } }, h('span', null, 'Walk'),
+                  h('button', { type: 'button', className: 'ms-tty-btn' + (ccWalking ? ' primary' : ''), style: { padding: '3px 12px' }, onClick: () => {   // loops until pressed again
+                    const cv = window.EWCharViewer; if (!cv) return;
+                    if (cv.isWalking && cv.isWalking()) { cv.stopPreview(); return; }
+                    if (cv.resetView) cv.resetView();
+                    if (cv.walk) cv.walk(); else cv.play('walk', { full: true, loop: true, name: 'Walk' });
+                  } }, ccWalking ? '\u25a0 STOP WALK' : '\u25b6 PLAY WALK')),
+                ccChoice('walk', window.EW_WALK_STYLES.map(o => [o.id, o.label]), null, 'walk', (id, same) => {   // a click walks at once (a new pick walks from the stage's swap)
+                  const cv = window.EWCharViewer; if (!cv) return;
+                  if (cv.resetView) cv.resetView();
+                  if (same && cv.walk) cv.walk();
+                })) : null,
     null);
   const ccFaceTab = () => h(React.Fragment, null,
               /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of
@@ -4921,12 +4948,7 @@ function PartyBuilder(props) {
                 (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance, disabled: isWaitingOnline, onNote: pbNote, onLoad: loadAssignedLook }) : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
-              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
-              h('button', { className: 'ms-tty-btn', onClick: () => {
-                window.EWCharViewer?.resetView();
-                const ms = window.EWCharViewer?.play('walk', { full: true, name: 'Walk' });
-                if (!ms) pbNote('Animation is still loading. Try again shortly.');
-              } }, 'PREVIEW WALK')))));
+              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP')))));   // (THE WALK STYLE rev 2: PLAY WALK / STOP WALK sits on the Walk row, CreatorControls)
 
   const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? (creatorOpen ? creatorPanel : gearPanel) : dossierPanel;
   const body = h('div', { className: 'pb-body', 'data-tab': pbTab, 'data-panel': hasPanel ? '1' : '0' },
@@ -5228,6 +5250,13 @@ function OfficerCreator() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+  // THE WALK STYLE (2026-11-05): the WALK button reads STOP WALK while the stage's walk loops
+  const [mirrorWalking, setMirrorWalking] = React.useState(false);
+  React.useEffect(() => {
+    const cv = window.EWCharViewer;
+    if (cv && typeof cv.onState === 'function') cv.onState((ps) => setMirrorWalking(!!(ps && ps.playing === 'walk')));
+    return () => { if (cv && typeof cv.onState === 'function') cv.onState(null); };
+  }, []);
   const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('door agent', gender));
   return h('div', { className: 'pb-officer' + (intake ? ' intake' : ''), role: 'dialog', 'aria-label': intake ? 'The intake — create your agent' : 'Character creator' },
     h('div', { className: 'pb-officer-head' },
@@ -5236,7 +5265,11 @@ function OfficerCreator() {
       h('div', { className: 'pb-creator-options', style: { margin: 0 } },
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
-        h('button', { className: 'ms-tty-btn', onClick: () => { window.EWCharViewer?.resetView(); window.EWCharViewer?.play('walk', { full: true, name: 'Walk' }); } }, 'WALK'),
+        h('button', { className: 'ms-tty-btn' + (mirrorWalking ? ' primary' : ''), onClick: () => {   // THE WALK STYLE: loops until pressed again
+          const cv = window.EWCharViewer;
+          if (cv?.isWalking?.()) { cv.stopPreview(); return; }
+          cv?.resetView(); cv?.walk ? cv.walk() : cv?.play('walk', { full: true, loop: true, name: 'Walk' });
+        } }, mirrorWalking ? 'STOP WALK' : 'WALK'),
         h('button', { className: 'ms-tty-btn' + (intake ? ' ew-back' : ''), onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },

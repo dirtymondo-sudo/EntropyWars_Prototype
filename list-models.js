@@ -105,6 +105,7 @@ const SOURCES = [
     { re: /Assets\/misc\/ebd_buildings_/, how: 'PACK', src: 'Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS)' },
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_diner_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out in Blender)' },
+    { re: /Assets\/misc\/meshy_babel_house_/, how: 'MESHY', src: 'Meshy image-to-3D from Claude\'s concept, mondo OK\'d 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room)' },
     { re: /Assets\/misc\/ebd_trailerscene_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms)' },
     { re: /Assets\/misc\/ebd_abandonedhouse_(?!house)/, how: 'PACK', src: 'Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_dinerscene_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender)' },
@@ -517,6 +518,8 @@ L.push('### 5e. Meshy pieces in the creator (' + sec('meshywear').length + ' fil
 L.push('');
 L.push('Made 2026-11-03 on Meshy through the API (concept image -> mondo\'s OK -> model) and fitted on the MPFB bodies in Blender');
 L.push('(bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator\'s own id · label (tab).');
+L.push('The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a CORD round the neck that is made in code');
+L.push('(three-renderer.js THE PENDANT CORDS, 2026-11-05): a tube built at run time on the body it is worn on; no model file.');
 L.push('');
 L.push(table(sec('meshywear'), 'piece'));
 L.push('');

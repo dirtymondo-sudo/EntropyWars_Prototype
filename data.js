@@ -28806,6 +28806,12 @@ const DOOR_HQ = {
         trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
         trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
         abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
+        /* THE BABEL HOUSES (2026-11-05, mondo OK'd the Meshy mud-brick concepts B1-B4; the town rim they replace is deleted): one
+           Meshy model per house, real size (`span` = the long side), the door side +Z (the row's `face`), along the Babel room's roads */
+        babel_house_small: { file: 'meshy_babel_house_small.glb', base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 3.5, hd: 2.5 }, block: true },
+        babel_house_stair: { file: 'meshy_babel_house_stair.glb', base: 'misc', span: 7.0, foot: 2.8, rect: { hw: 3.0, hd: 3.5 }, block: true },
+        babel_house_yard:  { file: 'meshy_babel_house_yard.glb', base: 'misc', span: 8.5, foot: 3.0, rect: { hw: 3.35, hd: 4.25 }, block: true },
+        babel_house_row:   { file: 'meshy_babel_house_row.glb', base: 'misc', span: 12.4, foot: 2.5, rect: { hw: 6.2, hd: 2.55 }, block: true },
         cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
@@ -43654,6 +43660,12 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -26.25, z: -99.75 }, { key: 'brazier', x: -12.25, z: -99.75 },
                 { key: 'railing_1m',     x: 0, z: 40.8, face: 0 },
                 { key: 'sea_chest',      x: 100, z: 32, face: 300 },
+                /* THE MUD-BRICK HOUSES (2026-11-05, mondo OK'd the Meshy concepts; the town rim is deleted): one house per spot along the
+                   roads, doors to the road, clear of every arena size, the doors and the natives */
+                { key: 'babel_house_stair', x: -16, z: -90, face: 0 }, { key: 'babel_house_small', x: 24, z: -84, face: 0 },
+                { key: 'babel_house_row', x: 14, z: -104, face: 180 }, { key: 'babel_house_yard', x: 78, z: -100, face: 270 },
+                { key: 'babel_house_small', x: -58, z: 54, face: 270 }, { key: 'babel_house_row', x: -44, z: 78, face: 180 },
+                { key: 'babel_house_yard', x: -40, z: 98, face: 0 }, { key: 'babel_house_stair', x: -78, z: 90, face: 90 },
             ],
             agents: [],
             npcSpots: [
