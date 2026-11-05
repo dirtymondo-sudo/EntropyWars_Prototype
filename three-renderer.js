@@ -17029,19 +17029,21 @@ const ThreeRenderer = (function () {
        caller as its `idle`, so every rig built off the def (the board, the forge stage, exploration, the party line-up) stands
        in it while another look on the same body keeps its own. The libraries are resident once a bake has settled, so the
        on-demand bake is synchronous; if it is not, the def's own idle plays. */
-    function _libIdlePickClip(def, modelEntry) {
-        var p = def && def.idlePick;
+    function _libIdlePickClip(def, modelEntry, pick) {
+        var p = pick || (def && def.idlePick);   // (THE WALK STYLE: def.walkPick goes through here too)
         if (!p || !p.clip || !modelEntry) return null;
         var slot = 'clip:' + p.clip, got = (modelEntry._libBaked && modelEntry._libBaked[slot]) || null;
         if (!got) _libBakeSlotNow(modelEntry, def, slot, function (c) { got = c; }, { lib: p.lib });
         return got;
     }
+    /* THE WALK STYLE (2026-11-05): a look's picked walk (sprites.js EW_WALK_STYLES -> def.walkPick) the same way, as THIS caller's `walk` */
     function _animLibBakeForModel(def, modelEntry, cb) {
-        if (def && def.idlePick) {
+        if (def && (def.idlePick || def.walkPick)) {
             var cb0 = cb;
             cb = function (baked) {
-                var ic = baked ? _libIdlePickClip(def, modelEntry) : null;
-                if (ic) { baked = Object.assign({}, baked); baked.idle = ic; }
+                var ic = (baked && def.idlePick) ? _libIdlePickClip(def, modelEntry) : null;
+                var wc = (baked && def.walkPick) ? _libIdlePickClip(def, modelEntry, def.walkPick) : null;
+                if (ic || wc) { baked = Object.assign({}, baked); if (ic) baked.idle = ic; if (wc) baked.walk = wc; }
                 cb0(baked);
             };
         }
@@ -58225,14 +58227,28 @@ const ThreeRenderer = (function () {
     }
 
     /* THE IDLE POSE (2026-11-01): the creator's idle pick changed on the stage's body. The model stays; the new idle (the
-       pick's on-demand bake, else the body's own) is wired and crossfaded in, or left for the running MOVE PREVIEW to hand
-       back to (_cvPreviewEnd plays v.idleAct). */
+       pick's on-demand bake, else the body's own) is wired and crossfaded in. A running MOVE PREVIEW (a walk) ends, so the
+       pick is what the stage shows (2026-11-05: an idle pick made while a walk looped never showed).
+       THE WALK STYLE (2026-11-05): a new walk pick re-wires the stage's `walk` (the cached preview action is dropped) and
+       plays it at once, looping, so the pick is seen walking (_cvWalkLoop). */
     function _cvIdleKey(def) { return (def && def.idlePick) ? def.idlePick.lib + ':' + def.idlePick.clip : ''; }
+    function _cvWalkKey(def) { return (def && def.walkPick) ? def.walkPick.lib + ':' + def.walkPick.clip : ''; }
     function _cvSwapIdle(v, def) {
-        var key = _cvIdleKey(def);
-        if (!v || !v.mixer || v.idleKey === key) return;
+        if (!v || !v.mixer) return;
         var me = _unitGlbCache[def.model];
         if (!me || !me._libBaked || !_animLibActive(def)) return;
+        var wkey = _cvWalkKey(def);
+        if (v.walkKey !== wkey) {
+            var wc = def.walkPick ? _libIdlePickClip(def, me, def.walkPick) : me._libBaked.walk;
+            if (wc) {
+                v.walkKey = wkey; v.def = def;
+                v.clips = Object.assign({}, v.clips || {}, { walk: wc });
+                if (v.actions) delete v.actions.walk;
+                _cvWalkLoop();   // the pick (Default too) is seen walking at once
+            }
+        }
+        var key = _cvIdleKey(def);
+        if (v.idleKey === key) return;
         var clip = def.idlePick ? _libIdlePickClip(def, me) : me._libBaked.idle;
         if (!clip) return;
         v.idleKey = key; v.def = def;
@@ -58241,9 +58257,16 @@ const ThreeRenderer = (function () {
         act.setLoop(THREE.LoopRepeat, Infinity);
         act.timeScale = (def.libTimeScales && def.libTimeScales.idle) || 1;
         v.idleAct = act; if (v.actions) v.actions.idle = act;
-        if (v.preview) return;
+        if (v.preview) { _cvPreviewEnd(false); if (old && old !== act) { try { old.stop(); } catch (_e) {} } return; }   // the preview hands back to THIS idle
         act.enabled = true; act.reset(); act.play();
         if (old) { try { act.crossFadeFrom(old, 0.25, false); } catch (_e) { old.stop(); } }
+    }
+    /* the creator's walk preview: the stage's walk LOOPS until stopped (or another preview / pick), at the clip's recorded
+       speed (mondo 11-05: "The walk preview just plays like one walk cycle and stops so i cant actually see them walking").
+       The board still plays a walk at its own ts, matched to how fast a unit crosses a square. */
+    function _cvWalkLoop() {
+        if (!_cv) return 0;
+        return _cvPlay('walk', { loop: true, full: true, name: 'Walk', ts: 1 });
     }
     function _cvSetCharacter(race, gender, opts) {
         var v = _cvEnsure();
@@ -58397,7 +58420,7 @@ const ThreeRenderer = (function () {
             if (v.staged) _cvFitStage();                   // a new vessel = a new tile scale (§5.3)
             // idle animation: retargeted library bake first, per-character
             // Meshy clip GLB as the fallback — same chain as the board.
-            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null; v.idleKey = _cvIdleKey(def);
+            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null; v.idleKey = _cvIdleKey(def); v.walkKey = _cvWalkKey(def);
             if (hasSkin) {
                 var mixer = new THREE.AnimationMixer(m);
                 v.mixer = mixer;
@@ -58554,6 +58577,8 @@ const ThreeRenderer = (function () {
             var clip = act.getClip();
             var scale = Math.abs(act.timeScale) || 1;
             var ms = (clip.duration / scale) * 1000;
+            if (opts.ts > 0) { act.timeScale = opts.ts; scale = opts.ts; ms = (clip.duration / scale) * 1000; }   // (the creator's walk: its recorded speed)
+            else if (opts.loop && v.def) act.timeScale = _cvSlotScale(v.def, slot, !!(v.clips && v.clips[slot]));
             if (!opts.full) ms = Math.min(ms, 1400);   // the board's cap
             if (opts.ms > 0) ms = opts.ms;              // a fixed length (a run held for the charge)
             else if (opts.loop) ms = 60000;             // THE LOOK: a looped preview runs until stopPreview()
@@ -58563,8 +58588,9 @@ const ThreeRenderer = (function () {
             var prev = (handoff && handoff !== act) ? handoff : v.idleAct;
             act.enabled = true; act.reset(); act.play();
             if (prev && prev !== act) act.crossFadeFrom(prev, 0.12, false);
-            v.preview = { act: act, name: slot, label: label };
-            _cvPreviewTimer = setTimeout(function () { _cvPreviewTimer = 0; if (_cv && _cv.preview && _cv.preview.act === act) _cvPreviewEnd(false); }, ms + 40);
+            v.preview = { act: act, name: slot, label: label, loop: !!opts.loop };
+            if (!(opts.loop && !(opts.ms > 0)))   // a looped preview has no timer: it runs until stopPreview() or the next play (THE WALK STYLE)
+                _cvPreviewTimer = setTimeout(function () { _cvPreviewTimer = 0; if (_cv && _cv.preview && _cv.preview.act === act) _cvPreviewEnd(false); }, ms + 40);
             started = ms;
             _cvEmitState(slot, ms, label);
         });
@@ -59262,6 +59288,9 @@ const ThreeRenderer = (function () {
         slotInfo: function (slot) { return _cvSlotInfo(slot); },
         libClips: function (cb) { return devLibClips(cb); },
         stopPreview: function () { _cvPreviewEnd(false); },
+        /* THE WALK STYLE (2026-11-05): walk() loops the stage's walk at its recorded speed until stopPreview(); isWalking() */
+        walk: function () { return _cvWalkLoop(); },
+        isWalking: function () { return !!(_cv && _cv.preview && _cv.preview.name === 'walk'); },
         isPlaying: function () { return !!(_cv && _cv.preview); },
         onState: function (fn) { var v = _cv || _cvEnsure(); if (v) v.onState = (typeof fn === 'function') ? fn : null; },
         hasClips: function () { return !!(_cv && _cv.mixer && (_cv.clips || _cv.clipUrls)); },
