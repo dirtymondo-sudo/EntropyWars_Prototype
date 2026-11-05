@@ -86156,7 +86156,20 @@ const ThreeRenderer = (function () {
        rig AND its idle are in (no stand-in, no T-pose). No fog; bloom only if the player turned it on (setSceneLook null).
        Tunables: TR_ROOM (metres), TR_PROPS (catalogue keys + where they stand), TR_SPOTS (where the team stands). */
     var _tr = null, _trLive = false;
-    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera
+    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7, wallTone: 0.78 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera; `wallTone` = THE WHITE ROOM's drywall (below)
+    /* THE WHITE ROOM (2026-11-05, mondo on the Select Your Team room: "this room looks like it didnt get the fix that clouds and
+       marble terrain got where they are too white and the light is making it too bright, it looks ugly af"). The fix the white
+       maps got on 11-03 (rendering-loading-perf.md "THE WHITE SHEETS" + "THE WHITE DAYLIGHT"), made for this room:
+       - the light: the room's own rig (hemisphere, the ceiling lamp, the key, the rim, the fill) × HQ_LIGHT_RULES.whiteDay (0.75), the
+         number the white rooms wear. Measured: the back wall took about 1.8× light (key 0.61 + fill 0.44 + hemisphere 0.52 + the
+         ceiling lamp 0.24 head-on), so the beige drywall sheet (mean 0.69) went past 100% and stored as one flat white before the
+         tone map. The desk lamp keeps its own light (a lamp is not the room's light, as in the white rooms).
+       - the sheet: the drywall wears colour × TR_ROOM.wallTone (0.78) in this room only. It is under TERRAIN_WHITE_SHEETS' 0.8 bar,
+         so the global darkening never caught it, and the light alone still left it cream-white; the building's other drywall rooms
+         keep theirs. Fixed, nothing reads the screen. */
+    function _trWhiteK() {
+        try { var LR = _hqLightRules(), k = LR && +LR.whiteDay; return (k > 0 && k <= 1) ? k : 1; } catch (e) { return 1; }
+    }
     var TR_HUMAN_M = 1.75;   // heightRatio 1.0 (the fortune teller) in metres
     /* the props: catalogue key, x / z (metres), yaw (rad, the model's +Z front turned by it), `on` = stands on that prop's top */
     var TR_PROPS = [
@@ -86190,7 +86203,8 @@ const ThreeRenderer = (function () {
     function _trWall(T, len, cx, cz, yaw) {
         var U = T.U, R = TR_ROOM, g = new THREE.Group();
         var upH = R.h - R.dado;
-        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4 }));
+        var tone = (R.wallTone > 0 && R.wallTone <= 1) ? R.wallTone : 1;   // THE WHITE ROOM: the drywall toned down in this room
+        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4, color: new THREE.Color(tone, tone, tone) }));
         up.position.y = (R.dado + upH / 2) * U; g.add(up);
         var lo = new THREE.Mesh(new THREE.PlaneGeometry(len * U, R.dado * U), _hqMat('oxblood', len / R.tile, R.dado / R.tile, { shininess: 6 }));
         lo.position.y = (R.dado / 2) * U; g.add(lo);
@@ -86212,14 +86226,15 @@ const ThreeRenderer = (function () {
         var sc = T.scene;
         sc.background = new THREE.Color(0x0b0911);
         /* light: a warm hemisphere, the ceiling lamp over the team, a key from the camera's right, a fill from the camera, a cool rim from behind */
-        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7));   // a light ground colour: the ceiling reads
-        var ceil = new THREE.PointLight(0xfff1d6, 0.42, 9 * U, 1);
+        var wk = _trWhiteK();   // THE WHITE ROOM: the whole rig × whiteDay (0.75)
+        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7 * wk));   // a light ground colour: the ceiling reads
+        var ceil = new THREE.PointLight(0xfff1d6, 0.42 * wk, 9 * U, 1);
         ceil.position.set(0, (R.h - 0.6) * U, 1.0 * U); sc.add(ceil);
-        var key = new THREE.DirectionalLight(0xfff0dc, 0.75);
+        var key = new THREE.DirectionalLight(0xfff0dc, 0.75 * wk);
         key.position.set(3 * U, 4 * U, 7 * U); sc.add(key);
-        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28);
+        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28 * wk);
         rim.position.set(-3 * U, 3 * U, -4 * U); sc.add(rim);
-        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45);   // from the camera: the team's faces
+        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45 * wk);   // from the camera: the team's faces
         fill.position.set(-1 * U, 1.6 * U, 8 * U); sc.add(fill);
         /* the room: floor, ceiling, back + side walls (the open side is the camera's) */
         /* the floor, the ceiling and the side walls run on past the camera (a tall team pulls it back) */
