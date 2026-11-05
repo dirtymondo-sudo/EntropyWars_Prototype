@@ -1382,3 +1382,33 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   stops the same-character path flipping it to ready early); the board / HQ walk (`_attachUnitModel`) hides the model and keeps
   the sprite stand-in until dressed (`_unitRevealDressed`; the rig-cache fast path leaves the stand-in to it); the team room's
   `show()` and the unit dock wait too. Later picks on a live body are not hidden (the old garment stays until the new one is in).
+  Rev 2 (same day, mondo: "i still see the naked flash briefly"): the creator stage hid only its CANVAS (CSS opacity, a 0.5 s
+  fade). On a body swap with the new body GLB already cached, the new body was added while the canvas was still fading out
+  of the last character, so the bare body drew at up to full opacity for ~9 frames (caught by a per-render frame capture on
+  Cowboy -> Demon). The stage now also hides the body itself (`wrap.visible = false` until whenDressed); the beat cancel's
+  "never leave the hero gone" reset respects `v.dressWait`. Frame capture before / after: /mnt/project-files/dressed-reveal/flash-frames/.
+
+## THE CACHED LANDING + THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo on the Singularity Arena, WebGPU: "these crystals are not pixelating, or it looks like they are flickering on and off of being pixelated")
+- Cause (measured in the cloud browser, WebGPU and the WebGPU renderer's WebGL2 backend): on a board with crystal tiles,
+  `rebuildObjects` ran EVERY frame (7 rebuilds in 7 frames). `rebuildObjects` clears `_objectsDirty`, then calls
+  `rebuildTerrainDecorations`; each crystal tile's cluster is `_gemCluster` → `_crystalModel` → `_miscModelInstance`, and a
+  model already in `_miscModelCache` lands synchronously inside that call, whose callback set `_objectsDirty = true` again.
+  So every board object and every crystal was a new mesh each frame. ThreePost's models-only pixelate mask only tags meshes
+  (`_ew_pixelate` → camera layer 8) in a scan every PIX_SCAN_MS (400 ms), so at 30 fps the crystals were in the mask about
+  one frame in twelve: the flicker, smooth most of the time.
+- Fix 1 (three-renderer.js `_miscModelInstance`, THE CACHED LANDING): a landing inside the call only sets `_shadowsDirty`;
+  a file that lands later still sets `_objectsDirty` as before. Board objects + decorations now rebuild only when something
+  really changes (also a CPU win on every crystal board since PR #788/#792).
+- Fix 2 (three-post.js THE MASK SEES NEW MODELS AT ONCE): `THREE.Object3D.prototype.add` bumps a counter (`_pixHookAdd`),
+  and `_renderPixelMask` re-scans on the first frame after any add, so a rebuilt board, a new instance-pass batch or a
+  spell prop clone is pixelated on the first frame it draws. The 400 ms timed scan stays for a flag set after the add.
+- Online: looks only, both seats run their own renderer; nothing relayed.
+
+## THE CORE ADAPTER (2026-11-05)
+mondo's Firefox console (M1, ?ew_gpu=webgpu) warned: `User requested a WebGPU adapter with featureLevel: "compatibility", which is
+not yet supported` (three.webgpu.js; bugzilla 1905951). three 0.186.1 WebGPUBackend.init() always asks for featureLevel
+'compatibility' and requests the device with requiredLimits {}. three-renderer.js `_ewGpuCoreShim` (called in _ewMakeBoardRenderer,
+mode webgpu only) wraps navigator.gpu.requestAdapter: on Firefox it drops featureLevel (core, the default; same adapter, no warning),
+Chrome/Safari keep three's ask; on every browser the device asks for the adapter's maxVertexBuffers when above 8 (Dawn caps at 8, so
+Chrome is unchanged). The adapter + device vertex limits print on the `board renderer:` console line and in gpuStatus()/?ewdiag=1.
+Off: ?ew_gpucore=0. Meshes over 8 vertex buffers are still fixed at the mesh (cloth-collision attributes interleaved, team-select thread).
