@@ -194,9 +194,9 @@ def sheet(src, out, first=4, n=60, cols=8, cell=128, step=1):
 SIMS = {
     # NF frames, domain (loc, scale), camera (ortho, z, tilt deg), res, dissolve frames
     'fbhit':  dict(NF=44, dom=((0, 0, 1.5), (3.4, 3.4, 3.6)), cam=(3.2, 1.45, 0), res=128, dis=16),
-    'mblast': dict(NF=64, dom=((0, 0, 2.0), (6.4, 6.4, 4.0)), cam=(6.2, 1.9, 14), res=144, dis=26),
-    'fbfly':  dict(NF=80, dom=((-0.9, 0, 0.0), (3.4, 1.8, 1.8)), cam=(3.2, 0.0, 0), res=112, dis=10),
-    'mtail':  dict(NF=80, dom=((-1.5, 0, 0.0), (5.0, 2.4, 2.4)), cam=(4.8, 0.0, 0), res=128, dis=18),
+    'mblast': dict(NF=64, dom=((0, 0, 2.4), (6.4, 6.4, 4.8)), cam=(6.4, 2.25, 12), res=144, dis=22),
+    'fbfly':  dict(NF=80, dom=((-0.6, 0, 0.0), (2.6, 1.6, 1.6)), cam=(2.6, 0.0, 0), res=112, dis=10),
+    'mtail':  dict(NF=80, dom=((-1.3, 0, 0.0), (4.4, 2.2, 2.2)), cam=(4.4, 0.0, 0), res=128, dis=14),
 }
 
 def sim(OUT):
@@ -248,18 +248,34 @@ def sim(OUT):
     if P == 'fbhit':
         em = lumps(7, 0.22, 0.12, 0.2, (0, 0, 0.75))
         balloon(em, 0.35, 1.9, 1, 8)
-        flow(em, 'BOTH', fuel=2.6, temp=2.2, dens=0.9, col=(0.42, 0.40, 0.38), vel=1.5, on=(1, 7))
+        flow(em, 'BOTH', fuel=2.6, temp=2.2, dens=0.9, col=(0.6, 0.57, 0.54), vel=1.5, on=(1, 7))
         field('TURBULENCE', (0, 0, 1.3), 2.5, 0.32)
     elif P == 'mblast':
         core = lumps(9, 0.4, 0.18, 0.32, (0, 0, 0.32), flat=0.45)
         balloon(core, 0.4, 2.3, 1, 7)
-        flow(core, 'BOTH', fuel=3.2, temp=3.0, dens=2.2, col=(0.17, 0.15, 0.14), vel=1.0, on=(1, 7))
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.7, minor_radius=0.16, location=(0, 0, 0.12))
-        ring = bpy.context.active_object; ring.hide_render = True
+        flow(core, 'BOTH', fuel=3.5, temp=3.5, dens=1.6, col=(0.45, 0.4, 0.37), vel=1.0, on=(1, 7))
+        # the stem: a fire ball that rides up out of the blast and feeds the rising column / cap
+        stem = lumps(4, 0.12, 0.14, 0.22, (0, 0, 0))
+        stem.location = (0, 0, 0.4); stem.keyframe_insert('location', frame=4)
+        stem.location = (0, 0, 2.3); stem.keyframe_insert('location', frame=22)
+        flow(stem, 'BOTH', fuel=1.8, temp=3.0, dens=1.0, col=(0.4, 0.35, 0.32), on=(4, 20))
+        # the dust ring: lumps on a circle at the floor; scaling the joined mesh from the centre rolls them outward
+        objs = []
+        for i in range(12):
+            a_ = i * 6.283 / 12 + random.uniform(-0.2, 0.2); r_ = random.uniform(0.55, 0.75)
+            bpy.ops.mesh.primitive_ico_sphere_add(radius=random.uniform(0.12, 0.2), subdivisions=2,
+                                                  location=(math.cos(a_) * r_, math.sin(a_) * r_, 0.15))
+            objs.append(bpy.context.active_object)
+        bpy.ops.object.select_all(action='DESELECT')
+        for o_ in objs: o_.select_set(True)
+        bpy.context.view_layer.objects.active = objs[0]; bpy.ops.object.join()
+        ring = bpy.context.view_layer.objects.active; ring.hide_render = True
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
         ring.scale = (0.6, 0.6, 1.0); ring.keyframe_insert('scale', frame=2)
-        ring.scale = (4.0, 4.0, 1.4); ring.keyframe_insert('scale', frame=16)
-        flow(ring, 'SMOKE', dens=1.6, col=(0.46, 0.36, 0.26), temp=0.2, on=(2, 15), sd=0.4)
-        field('TURBULENCE', (0, 0, 1.5), 3.0, 0.45)
+        ring.scale = (3.4, 3.4, 1.6); ring.keyframe_insert('scale', frame=16)
+        flow(ring, 'SMOKE', dens=0.8, col=(0.62, 0.5, 0.38), temp=0.15, on=(2, 15), sd=0.4)
+        field('TURBULENCE', (0, 0, 0.4), 4.0, 0.3)
+        field('TURBULENCE', (0, 0, 2.2), 3.0, 0.45)
     elif P in ('fbfly', 'mtail'):
         big = P == 'mtail'
         if big:
@@ -267,11 +283,11 @@ def sim(OUT):
             em = bpy.context.active_object; em.hide_render = True
             for v in em.data.vertices: v.co *= random.uniform(0.82, 1.15)
         else:
-            em = lumps(4, 0.06, 0.12, 0.16, (0, 0, 0))
+            em = lumps(5, 0.08, 0.13, 0.19, (0, 0, 0))
         flow(em, 'BOTH', fuel=2.2 if big else 2.0, temp=2.5, dens=1.6 if big else 0.25,
              col=(0.14, 0.12, 0.11) if big else (0.4, 0.38, 0.36), sd=0.5)
-        field('WIND', (0.6, 0, 0), 9.0 if big else 7.0, rot=(0, math.radians(-90), 0))   # the head wind blows toward -X
-        field('TURBULENCE', (-0.8, 0, 0), 3.5 if big else 2.5, 0.3)
+        field('WIND', (0.6, 0, 0), 3.5 if big else 2.2, rot=(0, math.radians(-90), 0))   # the head wind blows toward -X
+        field('TURBULENCE', (-0.5, 0, 0), 5.0 if big else 4.0, 0.3 if big else 0.2)
     # ---- the domain
     me = bpy.data.meshes.new('dom'); import bmesh
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0); bm.to_mesh(me); bm.free()
@@ -283,8 +299,8 @@ def sim(OUT):
     ds.burning_rate = 0.75; ds.flame_smoke = 1.0; ds.flame_vorticity = 0.5; ds.flame_ignition = 1.25; ds.flame_max_temp = 1.75
     ds.use_dissolve_smoke = True; ds.dissolve_speed = S['dis']; ds.use_dissolve_smoke_log = True
     if P == 'fbhit': ds.alpha = 0.05; ds.beta = 1.6
-    if P == 'mblast': ds.alpha = 0.35; ds.beta = 1.6; ds.flame_smoke = 1.6; ds.burning_rate = 0.6
-    if P in ('fbfly', 'mtail'): ds.alpha = 0.0; ds.beta = 0.0; ds.flame_vorticity = 0.9; ds.burning_rate = 1.1 if P == 'fbfly' else 0.9
+    if P == 'mblast': ds.alpha = 0.2; ds.beta = 2.2; ds.flame_smoke = 1.4; ds.burning_rate = 0.6
+    if P in ('fbfly', 'mtail'): ds.alpha = 0.0; ds.beta = 0.0; ds.flame_vorticity = 1.2; ds.burning_rate = 1.4 if P == 'fbfly' else 1.0
     if P == 'fbfly': ds.flame_smoke = 0.25
     if not os.environ.get('NOBORDER'):
       for side in ('front', 'back', 'right', 'left', 'top'): setattr(ds, 'use_collision_border_' + side, False)
@@ -327,8 +343,11 @@ def sim(OUT):
         pv = nt.nodes.new('ShaderNodeVolumePrincipled'); nt.links.new(pv.outputs['Volume'], out.inputs['Volume'])
         ca = nt.nodes.new('ShaderNodeAttribute'); ca.attribute_name = 'color'
         if kind == 'smoke':   # lit smoke, a faint warm under-glow from the fire inside it
-            nt.links.new(ca.outputs['Color'], pv.inputs['Color'])
-            pv.inputs['Density'].default_value = float(os.environ.get('DEN', '14'))
+            # one smoke colour per sim: Mantaflow's 'color' grid renders near-black in Cycles 5.2 (tested), so no attribute
+            pv.inputs['Color Attribute'].default_value = ''
+            pv.inputs['Color'].default_value = {'fbhit': (0.62, 0.6, 0.58), 'mblast': (0.52, 0.45, 0.39),
+                                                'fbfly': (0.6, 0.58, 0.55), 'mtail': (0.36, 0.32, 0.29)}[P] + (1,)
+            pv.inputs['Density'].default_value = float(os.environ.get('DEN', {'fbhit': 8, 'mblast': 7, 'fbfly': 6, 'mtail': 9}[P]))
             pv.inputs['Blackbody Intensity'].default_value = 0.0
             mul.inputs[1].default_value = EMI * 0.06
             nt.links.new(rp.outputs['Color'], pv.inputs['Emission Color']); nt.links.new(mul.outputs[0], pv.inputs['Emission Strength'])
@@ -351,7 +370,7 @@ def sim(OUT):
         # the pass swaps the VIEW LAYER's material override: editing the domain's own materials would free the replay cache
         sc.view_layers[0].material_override = mats[kind]
         r.film_transparent = kind == 'smoke'
-        w.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.15 if kind == 'smoke' else 0.0
+        w.node_tree.nodes['Background'].inputs['Strength'].default_value = float(os.environ.get('SKY', '0.7')) if kind == 'smoke' else 0.0
         t0 = time.time()
         step = 4 if quick else 1
         for fr in range(1, NF + 1, step):
