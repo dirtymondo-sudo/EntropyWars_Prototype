@@ -25208,6 +25208,7 @@
                 // THE CLEAR FRAME: a fitted frame is solved again when the menus' cover changes — only while it is
                 // still the camera's last move (the fit itself re-arms it after its own move)
                 this._clearFit = null;
+                this._moveGen = (this._moveGen | 0) + 1;   // THE NEAR FRAME: solve the menu slide again for this move
                 /* THE MENU CAMERA: the first camera move after a menu two-shot that
                    is not itself a menu shot leaves it — whatever it doesn't name
                    (tilt, yaw, zoom) comes back from the tactical view the shot left,
@@ -29957,6 +29958,7 @@
         const MENU_CAM_SHIFT_H = 0.14;      // pair rides right of centre (menu bottom-left)
         const MENU_CAM_SHIFT_V = 0.08;      // and a touch high (description bar at the bottom)
         const MENU_CAM_MIN_DIST = 3.0;      // tiles — never closer than this to the frame centre
+        const MENU_CAM_CLEAR = 0.04;        // NDC the two-shot's box keeps clear of the menu's edge (THE NEAR FRAME)
         /* ══ THE CLEAR FRAME (2026-10-20) ══
            mondo: "for framing the battle with the camera, a lot of times the action menu is open with another sub menu,
            which takes up like 1 third of the left side of the screen. so how the camera moves with the menu, make sure
@@ -30051,10 +30053,92 @@
                 _cfArea = {
                     cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * CLEAR_FRAME_SHIFT,
                     cy: Math.max(-0.2, Math.min(0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
-                    hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true
+                    hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
+                    // THE NEAR FRAME: the free part's own edges and middle, in NDC
+                    l: (x0 - midX) / (cv.width / 2), r: (x1 - midX) / (cv.width / 2),
+                    mid: ((x0 + x1) / 2 - midX) / (cv.width / 2)
                 };
             } catch (e) { _cfArea = _CLEAR_FULL; }
             return _cfArea;
+        }
+        /* ══ THE NEAR FRAME (2026-11-05) ══
+           mondo (a tile's quick menu on the Hell arena): "it changes the framing of my character and tile to be too far
+           right ... this is far far too much over to the right", with a shot he framed by hand: the unit and the point of
+           interest (whatever he clicked: an enemy, a tile, a tree, a turret, the Cube) together, just clear of the menu.
+           The slide was a fixed share of the way to the free part's middle (CLEAR_FRAME_SHIFT), whatever was on screen,
+           so a sub menu with no fit of its own (a board click's quick list, Abilities) shoved the unit to ~63% across.
+           Now, when no fit owns the frame (camera._clearFit / a menu two-shot solve their own frame for the old slide and
+           keep it), the slide is the SMALLEST one that puts the unit and the clicked thing (state._tileActionTarget /
+           _enemyActionTargetId) CLEAR_POI_MARGIN clear of the menu's edge, both inside the free part; none when they
+           already are; the free part's middle when they don't fit side by side. It is solved for the camera's
+           destination pose (a pan still gliding lands right), once per camera move / clicked thing / menu cover, and
+           held while the player pans or orbits by hand (the view never fights the drag). */
+        const CLEAR_POI_MARGIN = 0.06;      // NDC (3% of the screen width) between the menu's edge and the bodies
+        const _cfOut = { cx: 0, cy: 0 };
+        let _cfSlide = null;                // { key, cx } the latched near-frame slide
+        function _clearSubjects() {
+            const u = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
+            if (!u || u.dead) return null;
+            const out = [u];
+            if (state._enemyActionTargetId != null) {
+                const t = (state.units || []).find(v => v.id === state._enemyActionTargetId && !v.dead);
+                if (t && t.id !== u.id) out.push(t);
+            } else if (state._tileActionTarget && Number.isFinite(state._tileActionTarget.x)) {
+                out.push({ x: state._tileActionTarget.x, y: state._tileActionTarget.y });
+            }
+            return out;
+        }
+        /* what the latched slide was solved for: the menu's cover, the camera's last programmed move, the bodies */
+        function _clearSubjectKey(fa, subj) {
+            return fa.l.toFixed(2) + ',' + fa.r.toFixed(2) + ';' + (camera._moveGen | 0) + ';'
+                + subj.map(o => (o.id != null ? o.id : '') + '@' + o.x + ',' + o.y + ',' + (o.z || 0)).join('|');
+        }
+        function _clearSubjectSlide(fa) {
+            const subj = _clearSubjects();
+            if (!subj || !Number.isFinite(fa.l)) return fa.cx;
+            const key = _clearSubjectKey(fa, subj);
+            if (_cfSlide && _cfSlide.key === key) return _cfSlide.cx;
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return fa.cx;
+            const bd = ThreeCamera.getBaseDist();
+            const zoom = Number.isFinite(camera._tz) && camera._tz > 0 ? camera._tz : camera.zoom;
+            if (!(bd > 0) || !(zoom > 0)) return fa.cx;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+            const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+            const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
+            const dist = bd / zoom;
+            const tilt = Number.isFinite(camera._tt) ? camera._tt : camera.tilt;
+            const yaw = Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0);
+            const t = tilt * Math.PI / 180, yw = yaw * Math.PI / 180;
+            const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
+            const g = [-sT * sY, -cT, -sT * cY], rt = [cY, 0, -sY];
+            const fxT = Number.isFinite(camera._tx) ? camera._tx : camera.x, fyT = Number.isFinite(camera._ty) ? camera._ty : camera.y;
+            let fh = camera._tElev;
+            if (!(fh >= 0)) fh = (typeof camera._naturalElevAt === 'function') ? (camera._naturalElevAt(fxT, fyT) || 0) : 0;
+            const F = [fxT * ts + ts / 2, fh, fyT * ts + ts / 2];
+            const half = ts * 0.38;
+            // each body point at screen x sx (no slide) and depth d moves sx' = sx + s·dist/d under a slide s
+            let lo = -Infinity, hi = Infinity;
+            for (const o of subj) {
+                const b = _menuCamBody(o);
+                for (const side of [-1, 1]) for (const h of [b.foot, b.top]) {
+                    const r0 = b.x + rt[0] * half * side - F[0], r1 = h - F[1], r2 = b.z + rt[2] * half * side - F[2];
+                    const depth = dist + r0 * g[0] + r1 * g[1] + r2 * g[2];
+                    if (!(depth > ts * 0.3)) continue;
+                    const sx = (r0 * rt[0] + r2 * rt[2]) / (depth * tanH);
+                    lo = Math.max(lo, (fa.l + CLEAR_POI_MARGIN - sx) * depth / dist);
+                    hi = Math.min(hi, (fa.r - CLEAR_POI_MARGIN - sx) * depth / dist);
+                }
+            }
+            let s;
+            if (!Number.isFinite(lo) || !Number.isFinite(hi)) s = fa.cx;
+            else if (lo > hi) s = fa.mid;                         // too wide to sit side by side: the free part's middle
+            else s = Math.min(hi, Math.max(lo, 0));               // the smallest slide that clears the menu
+            // never toward the menu, never past the free part's middle
+            s = fa.mid >= 0 ? Math.max(0, Math.min(fa.mid, s)) : Math.min(0, Math.max(fa.mid, s));
+            _cfSlide = { key, cx: s };
+            return s;
         }
         /* the slide ThreeCamera.sync puts the board rig through this frame ({ cx, cy } NDC) */
         window._ewMenuSlide = function () {
@@ -30062,9 +30146,18 @@
             const fa = _menuFreeArea();
             const now = performance.now();
             if (fa.menu) {
+                const fresh = !_cfHeld;
                 _cfHeld = fa; _cfSeenAt = now;
                 _clearFrameRefit(fa, now);
-                return fa;
+                if (!fresh && (state._userPanning || state._userOrbiting)) {
+                    // a hand pan / orbit: hold the slide the view had (and latch it, so letting go keeps it)
+                    const subj = _clearSubjects();
+                    if (subj && Number.isFinite(fa.l)) _cfSlide = { key: _clearSubjectKey(fa, subj), cx: _cfOut.cx };
+                } else {
+                    _cfOut.cx = (camera._clearFit || camera._menuShot) ? fa.cx : _clearSubjectSlide(fa);
+                }
+                _cfOut.cy = fa.cy;
+                return _cfOut;
             }
             // the action menu alone (a sub menu closed back to it): the plain framing, a frame fitted beside the sub
             // menu solved again for it
@@ -30076,7 +30169,7 @@
             // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → keep the frame;
             // a brief gap (one unit's menu handing over to the next) too; else back to the middle
             if (_cfHeld && camera._cineShotId == null && !camera._cineTps
-                && (state._actionExecuting || now - _cfSeenAt < CLEAR_FRAME_HOLD_MS)) return _cfHeld;
+                && (state._actionExecuting || now - _cfSeenAt < CLEAR_FRAME_HOLD_MS)) return _cfOut;
             _cfHeld = null;
             return _CLEAR_FULL;
         };
@@ -30155,7 +30248,8 @@
             let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
             // THE SUB MENU RULE: no sub menu up → the plain framing (centre right of the middle, the old margins)
             const plain = !fa.menu;
-            const aimX = plain ? MENU_CAM_SHIFT_H : fa.cx, aimY = plain ? MENU_CAM_SHIFT_V : fa.cy;
+            let aimX = plain ? MENU_CAM_SHIFT_H : fa.cx;
+            const aimY = plain ? MENU_CAM_SHIFT_V : fa.cy;
             const mH = plain ? MENU_CAM_PLAIN_H : MENU_CAM_MARGIN_H * fa.hw, mV = plain ? MENU_CAM_PLAIN_V : MENU_CAM_MARGIN_V * fa.hh;
             // fixed-point: centre the projected box on the middle of the free frame (THE CLEAR FRAME), then scale the
             // boom so the box fills its margins (perspective-true). The board rig's slide (ThreeCamera.sync) shifts the
@@ -30175,6 +30269,13 @@
                 if (tooNear) { dist *= 1.35; continue; }
                 const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2;
                 const k = Math.max((xMax - xMin) / 2 / mH, (yMax - yMin) / 2 / mV);
+                /* THE NEAR FRAME (2026-11-05): a pair that does not fill the free part's width sits only as far over as
+                   it takes to clear the menu's edge, not out at the old shift (fa.cx stays the most it goes) */
+                if (!plain && Number.isFinite(fa.l)) {
+                    const hb = (xMax - xMin) / 2 / Math.max(0.6, Math.min(1.6, k));
+                    aimX = fa.cx >= 0 ? Math.min(fa.cx, Math.max(0, fa.l + MENU_CAM_CLEAR + hb))
+                        : Math.max(fa.cx, Math.min(0, fa.r - MENU_CAM_CLEAR - hb));
+                }
                 // slide the focal so the box centre lands on the free frame's middle (the plain shift with no sub menu)
                 const ox = (cx - aimX) * dist * tanH, oy = (cy - aimY) * dist * tanV;
                 F[0] += rt[0] * ox + up[0] * oy; F[1] += up[1] * oy; F[2] += rt[2] * ox + up[2] * oy;
