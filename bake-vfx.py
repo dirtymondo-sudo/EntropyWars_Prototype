@@ -328,7 +328,7 @@ def sim(OUT):
                 'fbfly': [(0, (0, 0, 0)), (0.18, (0.6, 0.08, 0.0)), (0.45, (1.0, 0.45, 0.05)), (0.75, (1.0, 0.8, 0.3)), (1, (1, 0.97, 0.88))],
                 'mblast': [(0, (0, 0, 0)), (0.2, (0.45, 0.03, 0.0)), (0.5, (0.95, 0.2, 0.02)), (0.8, (1.0, 0.55, 0.12)), (1, (1, 0.92, 0.8))],
                 'mtail': [(0, (0, 0, 0)), (0.2, (0.45, 0.03, 0.0)), (0.5, (0.95, 0.22, 0.02)), (0.8, (1.0, 0.6, 0.15)), (1, (1, 0.93, 0.8))]}[P]
-    EMI = float(os.environ.get('EMI', {'fbhit': 10, 'mblast': 9, 'fbfly': 10, 'mtail': 9}[P]))
+    EMI = float(os.environ.get('EMI', {'fbhit': 3, 'mblast': 3, 'fbfly': 3.5, 'mtail': 3}[P]))
     def mat(kind):
         m = bpy.data.materials.new(kind); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
         out = nt.nodes.new('ShaderNodeOutputMaterial')
