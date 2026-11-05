@@ -65549,6 +65549,7 @@ const EW_CREDITS = {
         { title: '3D MODELS & ANIMATION', rows: [
             { role: 'Universal Animation Library (UAL1, UAL2)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'Motion capture (the MOC1 animation library)', by: 'CMU Graphics Lab Motion Capture Database', what: 'Created with funding from NSF EIA-0196217. BVH conversion by Bruce Hahne', license: 'Free to use', source: 'http://mocap.cs.cmu.edu' },
+            { role: 'Motion capture (the MOC2 animation library: plain idles + walks)', by: 'The 100STYLE Dataset - Ian Mason', what: 'Real-Time Style Modelling of Human Locomotion via Feature-Wise Transformations and Local Motion Phases (Mason, Starke, Komura 2022)', license: 'CC BY 4.0', source: 'https://www.ianxmason.com/100style' },
             { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
