@@ -366,7 +366,10 @@ code finds them.
   (bake-*.py, character-rig.js, playtest_creator/city.js, manifest-assets.js) names the new folders. Then
   `node r2-layout.js --archive-moved <wave>` per wave: each old key whose new key holds the same bytes is copied to
   `dirtymondo:archive/2026-11/<old key>`, read back + sha256-compared, THEN removed from ewmusicsfx (an old key with a
-  missing/different new copy is held, not touched). 0-byte folder markers were left.
+  missing/different new copy is held, not touched). 0-byte folder markers were left. **Done 11-05:** W2 262, W3 197,
+  W4 1,841, W5 2,408 = 4,708 old keys (8.2 GB) archived, 0 held, 0 failed (the first W4/W5 pass at --jobs 6 hit rate
+  limits on 401 keys; a --jobs 2 rerun archived them). ewmusicsfx is now 5,391 keys / 9.25 GB. Afterwards every static
+  asset URL in data.js + sprites.js (1,208) resolves to a key on R2, except the 7 that were already missing (§5).
 
 ### What is left
 - **Restore** (if a path ever 404s): the old file is in `dirtymondo:archive/2026-11/<old key>`; the fix is the code path
