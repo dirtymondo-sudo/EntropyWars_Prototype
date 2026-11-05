@@ -59213,7 +59213,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, k = big ? 1.4 : 1, y = ts * 0.5;
         _pzP(F, 0, y, 0, { sprite: 'flash', tint: pal.light, ml: 130, size0: 40 * k, size1: 10, opacity0: 0.75 });
         /* THE FLIPBOOK PILOT (fb): the Blender fire burst takes the painted fireball blobs' and smoke puffs' place */
-        if (fb) _fbSim(F, 'fbhit', { y: y, size: ts * 2.4 * k, ml: 1300, back: ts * 0.3, grow: 1.08 });
+        if (fb) _fbSim(F, 'fbhit', { y: y, size: ts * 3.0 * k, ml: 1400, back: ts * 0.3, grow: 1.08 });
         for (var i = 0; i < 18 * k; i++) {
             if (fb && !(i % 3)) continue;
             var a = rn(0, 6.28), e = rn(-0.4, 1), v = rn(120, 230) * k;

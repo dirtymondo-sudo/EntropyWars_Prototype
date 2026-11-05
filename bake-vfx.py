@@ -196,7 +196,7 @@ SIMS = {
     'fbhit':  dict(NF=44, dom=((0, 0, 1.5), (3.4, 3.4, 3.6)), cam=(3.2, 1.45, 0), res=128, dis=16),
     'mblast': dict(NF=64, dom=((0, 0, 2.4), (6.4, 6.4, 4.8)), cam=(6.4, 2.25, 12), res=144, dis=22),
     'fbfly':  dict(NF=80, dom=((-0.6, 0, 0.0), (2.6, 1.6, 1.6)), cam=(2.6, 0.0, 0), res=112, dis=10),
-    'mtail':  dict(NF=80, dom=((-1.3, 0, 0.0), (4.4, 2.2, 2.2)), cam=(4.4, 0.0, 0), res=128, dis=14),
+    'mtail':  dict(NF=80, dom=((-1.3, 0, 0.0), (4.4, 3.0, 3.0)), cam=(4.4, 0.0, 0), res=128, dis=22),
 }
 
 def sim(OUT):
@@ -286,8 +286,9 @@ def sim(OUT):
             em = lumps(5, 0.08, 0.13, 0.19, (0, 0, 0))
         flow(em, 'BOTH', fuel=2.2 if big else 2.0, temp=2.5, dens=1.6 if big else 0.25,
              col=(0.14, 0.12, 0.11) if big else (0.4, 0.38, 0.36), sd=0.5)
-        field('WIND', (0.6, 0, 0), 3.5 if big else 2.2, rot=(0, math.radians(-90), 0))   # the head wind blows toward -X
-        field('TURBULENCE', (-0.5, 0, 0), 5.0 if big else 4.0, 0.3 if big else 0.2)
+        field('WIND', (0.6, 0, 0), 3.0 if big else 2.2, rot=(0, math.radians(-90), 0))   # the head wind blows toward -X
+        field('TURBULENCE', (-0.5, 0, 0), 4.0, 0.2)
+        if big: field('TURBULENCE', (-2.0, 0, 0), 7.0, 0.5)   # the meteor's smoke billows out wide behind the flames
     # ---- the domain
     me = bpy.data.meshes.new('dom'); import bmesh
     bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0); bm.to_mesh(me); bm.free()
@@ -302,6 +303,7 @@ def sim(OUT):
     if P == 'mblast': ds.alpha = 0.2; ds.beta = 2.2; ds.flame_smoke = 1.4; ds.burning_rate = 0.6
     if P in ('fbfly', 'mtail'): ds.alpha = 0.0; ds.beta = 0.0; ds.flame_vorticity = 1.2; ds.burning_rate = 1.4 if P == 'fbfly' else 1.0
     if P == 'fbfly': ds.flame_smoke = 0.25
+    if P == 'mtail': ds.burning_rate = 1.7; ds.flame_smoke = 2.2; ds.vorticity = 0.5   # short flames at the rock, a lot of dark smoke
     if not os.environ.get('NOBORDER'):
       for side in ('front', 'back', 'right', 'left', 'top'): setattr(ds, 'use_collision_border_' + side, False)
     ds.use_collision_border_bottom = P == 'mblast'
@@ -349,7 +351,7 @@ def sim(OUT):
                                                 'fbfly': (0.6, 0.58, 0.55), 'mtail': (0.36, 0.32, 0.29)}[P] + (1,)
             pv.inputs['Density'].default_value = float(os.environ.get('DEN', {'fbhit': 8, 'mblast': 7, 'fbfly': 6, 'mtail': 9}[P]))
             pv.inputs['Blackbody Intensity'].default_value = 0.0
-            mul.inputs[1].default_value = EMI * 0.06
+            mul.inputs[1].default_value = EMI * (0.015 if P == 'mtail' else 0.06)
             nt.links.new(rp.outputs['Color'], pv.inputs['Emission Color']); nt.links.new(mul.outputs[0], pv.inputs['Emission Strength'])
         else:   # the glow: emission only, the smoke in front absorbs a little of it (depth), rendered on black
             pv.inputs['Color'].default_value = (0, 0, 0, 1)
