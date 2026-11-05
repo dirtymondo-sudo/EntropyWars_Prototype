@@ -30054,6 +30054,8 @@
            of the way to the free part's middle (CLEAR_FRAME_SHIFT), the frame keeping its size. */
         const CLEAR_FRAME_MIN_HW = 0.42;    // the free part never counts as narrower than 42% of the screen
         const CLEAR_FRAME_SHIFT = 0.55;     // share of the way to the free part's middle the frame slides (sub menu up)
+        const CLEAR_LOW_PANEL_MIN_H = 0.45; // THE LOW PANEL: the band above a short panel must be this share of the screen tall
+        const CLEAR_LOW_PANEL_MAX_CY = 0.3; // and the frame rises at most this much (NDC) over it
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
@@ -30088,14 +30090,18 @@
                     rg.querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
                         + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => menuEls.push(el));
                 }
+                let lowTop = Infinity;   // THE LOW PANEL: the highest top of the side menus that are not a faded backdrop
                 menuEls.forEach(el => {
                     const r = boxOf(el);
                     if (!r) return;
                     menu = true;
                     if (r.width > cv.width * 0.6) {
                         if ((r.top + r.bottom) / 2 > midY) y1 = Math.min(y1, r.top); else y0 = Math.max(y0, r.bottom);
-                    } else if ((r.left + r.right) / 2 < midX) x0 = Math.max(x0, r.right);
+                        return;
+                    }
+                    if ((r.left + r.right) / 2 < midX) x0 = Math.max(x0, r.right);
                     else x1 = Math.min(x1, r.left);
+                    if (!el.closest('.hrlg-panel.bg')) lowTop = Math.min(lowTop, r.top);
                 });
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
@@ -30114,6 +30120,21 @@
                     const r = boxOf(el);
                     if (r && r.bottom > cv.bottom - cv.height * 0.25) y1 = Math.min(y1, r.top);
                 });
+                /* THE LOW PANEL (2026-11-05, mondo on a quick-menu Meteor's CONFIRM: "why is my character and the enemy i am
+                   targeting ... and the aoe all shifted over to the right?? This sub menu is no where as big as the other
+                   ones and doesnt take up half the screen, so you have room to center the shot"): a short panel low on the
+                   screen (the CONFIRM / BACK / CANCEL step) leaves the whole width ABOVE it free. The faded backdrop list
+                   behind it (.hrlg-panel.bg, see-through) does not count. When that band above is tall enough and bigger
+                   than the strip beside the menus, it is the free part: full width (no sideways slide), the frame raised
+                   over the panel. Tall menus (Abilities, the attack list, a quick list) keep the strip beside them. */
+                let above = false;
+                if (Number.isFinite(lowTop)) {
+                    const ay1 = Math.min(y1, lowTop);
+                    if (ay1 - y0 >= cv.height * CLEAR_LOW_PANEL_MIN_H
+                        && (cv.right - cv.left) * (ay1 - y0) > (x1 - x0) * (y1 - y0)) {
+                        above = true; x0 = cv.left; x1 = cv.right; y1 = ay1;
+                    }
+                }
                 const minW = cv.width * CLEAR_FRAME_MIN_HW;
                 if (x1 - x0 < minW) {   // menus over most of the screen: keep a workable frame on the open side
                     if (x0 - cv.left > cv.right - x1) x0 = Math.max(cv.left, x1 - minW);
@@ -30122,7 +30143,7 @@
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
                     cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * CLEAR_FRAME_SHIFT,
-                    cy: Math.max(-0.2, Math.min(0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
+                    cy: Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
                     hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
                     // THE NEAR FRAME: the free part's own edges and middle, in NDC
                     l: (x0 - midX) / (cv.width / 2), r: (x1 - midX) / (cv.width / 2),

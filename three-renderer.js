@@ -43499,7 +43499,7 @@ const ThreeRenderer = (function () {
        positionLocal here is the skinned cloth vertex; the anchor is skinned with the BODY's weights off the same bone matrices
        (by reference, the way three's own skinning reads them). A skeleton too big for a uniform buffer (three then reads its
        bones from a texture) keeps the plain skinning. */
-    var _ewNodeColWarned = false;
+    var _ewNodeColWarned = false, _ewNodeColLimWarned = false;
     function _ewNodeCol(nm) {
         var U = _ewNodeU, T = U.T;
         if (!U.col) (function () {
@@ -43516,9 +43516,22 @@ const ThreeRenderer = (function () {
             }
             var BM = T.referenceBuffer('skeleton.boneMatrices', 'mat4', sk.bones.length);
             var bind = T.reference('bindMatrix', 'mat4'), bindI = T.reference('bindMatrixInverse', 'mat4');
-            var A = T.attribute('ewColA', 'vec4'), Nn = T.attribute('ewColN', 'vec4'), Jp = T.attribute('ewColJ', 'uvec4'), W = T.attribute('ewColW', 'vec4');
+            /* THE ONE BUFFER: never more vertex buffers than the device draws from (WebGPU: 8). The anchors are one buffer; a
+               garment that already fills the rest keeps the plain skinning rather than not drawing at all */
+            var geo = builder.geometry, lim = 16, nb = 1, seenB = [];
+            try { var dvc = builder.renderer && builder.renderer.backend && builder.renderer.backend.device; if (dvc && dvc.limits && dvc.limits.maxVertexBuffers) lim = dvc.limits.maxVertexBuffers; } catch (e) {}
+            if (geo && geo.attributes) for (var ak in geo.attributes) {
+                if (/^ewCol/.test(ak)) continue;
+                var ga = geo.attributes[ak], gb = ga && ga.isInterleavedBufferAttribute ? ga.data : ga;
+                if (gb && seenB.indexOf(gb) < 0) { seenB.push(gb); nb++; }
+            }
+            if (nb > lim) {
+                if (!_ewNodeColLimWarned) { _ewNodeColLimWarned = true; console.warn('[ThreeRenderer] cloth collision: ' + nb + ' vertex buffers is over the device\'s ' + lim + ', plain skinning'); }
+                return P;
+            }
+            var A = T.attribute('ewColA', 'vec4'), Nn = T.attribute('ewColN', 'vec4'), Jf = T.attribute('ewColJ', 'vec4'), W = T.attribute('ewColW', 'vec4');
             var A2 = T.attribute('ewColA2', 'vec4'), N2 = T.attribute('ewColN2', 'vec4'), W2 = T.attribute('ewColW2', 'vec4');
-            var J = Jp.bitAnd(T.uvec4(255)), J2 = Jp.shiftRight(T.uvec4(8));
+            var J = T.uvec4(T.mod(Jf, 256)), J2 = T.uvec4(T.floor(Jf.div(256)));   // (the bone slots ride the float buffer: j1 + 256 j2)
             var out = T.vec3(P).toVar(), k = T.length(Nn.xyz);
             T.If(K.x.greaterThan(0.5).and(k.greaterThan(0.01)), function () {
                 var M = T.add(BM.element(J.x).mul(W.x), BM.element(J.y).mul(W.y), BM.element(J.z).mul(W.z), BM.element(J.w).mul(W.w));
@@ -58255,10 +58268,16 @@ const ThreeRenderer = (function () {
             var ranks = [];
             L.forEach(function (e, gi) {
                 var n = e.pa.count, g0 = e.meshes[0].geometry;
-                var reuse = g0.attributes.ewColA && g0.attributes.ewColA.count === n && g0.attributes.ewColA2 && g0.attributes.ewColA2.count === n;
-                var AA = reuse ? g0.attributes.ewColA.array : new Float32Array(n * 4), AN = reuse ? g0.attributes.ewColN.array : new Float32Array(n * 4);
-                var AJ = reuse ? g0.attributes.ewColJ.array : new Uint16Array(n * 4), AW = reuse ? g0.attributes.ewColW.array : new Float32Array(n * 4);
-                var AA2 = reuse ? g0.attributes.ewColA2.array : new Float32Array(n * 4), AN2 = reuse ? g0.attributes.ewColN2.array : new Float32Array(n * 4), AW2 = reuse ? g0.attributes.ewColW2.array : new Float32Array(n * 4);
+                /* THE ONE BUFFER (2026-11-05, mondo: the created characters torn to skin patches on Select Your Team): the seven
+                   anchor streams ride ONE interleaved buffer (28 floats a vertex). As seven buffers a garment drew from 13 vertex
+                   buffers (position, normal, uv, skinIndex, skinWeight, color + 7) and WebGPU allows 8: the pipeline failed and
+                   every collided garment vanished on WebGPU (WebGL's 16 attributes hid it), leaving the body's skin with the
+                   pieces under the clothes cut away. The bone slots are floats here (j1 + 256 j2 <= 65535: exact). */
+                var ib0 = g0.attributes.ewColA && g0.attributes.ewColA.isInterleavedBufferAttribute ? g0.attributes.ewColA.data : null;
+                var reuse = !!(ib0 && ib0.count === n && ib0.stride === 28);
+                var AA = new Float32Array(n * 4), AN = new Float32Array(n * 4);
+                var AJ = new Float32Array(n * 4), AW = new Float32Array(n * 4);
+                var AA2 = new Float32Array(n * 4), AN2 = new Float32Array(n * 4), AW2 = new Float32Array(n * 4);
                 var samp = [];
                 for (v = 0; v < n; v++) {
                     var b = e.anc[v], o4 = v * 4;
@@ -58295,13 +58314,14 @@ const ThreeRenderer = (function () {
                     }
                     if ((v & 7) === 0) samp.push(c);
                 }
+                var ib = reuse ? ib0 : new THREE.InterleavedBuffer(new Float32Array(n * 28), 28), IA = ib.array, srcs = [AA, AN, AJ, AW, AA2, AN2, AW2];
+                for (v = 0; v < n; v++) for (k = 0; k < 7; k++) { var so = v * 4, d0 = v * 28 + k * 4, sa = srcs[k]; IA[d0] = sa[so]; IA[d0 + 1] = sa[so + 1]; IA[d0 + 2] = sa[so + 2]; IA[d0 + 3] = sa[so + 3]; }
+                if (reuse) ib.needsUpdate = true;
+                else COL_ATTRS.forEach(function (k2, ki) { g0.setAttribute(k2, new THREE.InterleavedBufferAttribute(ib, 4, ki * 4)); });
                 e.meshes.forEach(function (mh) {
                     var g = mh.geometry;
-                    if (reuse && g.attributes.ewColA && g.attributes.ewColA.array === AA) { COL_ATTRS.forEach(function (k2) { g.attributes[k2].needsUpdate = true; }); return; }
-                    if (!reuse && mh === e.meshes[0]) {
-                        var arr = { ewColA: AA, ewColN: AN, ewColJ: AJ, ewColW: AW, ewColA2: AA2, ewColN2: AN2, ewColW2: AW2 };
-                        COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, new THREE.BufferAttribute(arr[k2], 4)); });
-                    } else COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, g0.attributes[k2]); });
+                    if (g === g0 || (g.attributes.ewColA && g.attributes.ewColA.data === ib)) return;
+                    COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, g0.attributes[k2]); });   // (an accent: the garment's own buffer)
                 });
                 samp.sort(function (x, y) { return x - y; });
                 ranks.push({ e: e, m: samp.length ? samp[samp.length >> 1] : 0 });
