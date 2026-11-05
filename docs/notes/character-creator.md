@@ -1608,3 +1608,21 @@ neck, make the string yourself". three-renderer.js `wearCords` / `wearCord`, run
 - Checked on screen (Chromium, Playwright EWCharViewer.mount, front / 3-4 / back at the bust): mpfb male / female / heavy / thin /
   short / female heavy / female thin, weight + muscle + neck sliders both ways, bare chest, a tee, a closed leather jacket, an
   open blazer. Shots /mnt/project-files/pendant-cords/.
+
+## THE COLOURS ON THE VERTICES (2026-11-05)
+mondo: "tinted clothes appear white" on Select Your Team (his assigned Demon / Cowboy / Santa Clause / Catgirl looks).
+- Cause: every stage that shows a unit (the team room `_trAddMember`, the board `_attachUnitModel`, the race actors) swaps
+  the rig's materials for its own Lambert copy whose colour is the light level (+ the AP-spent grey / hit flash, reset every
+  frame on the board). The rig kept the wear tint (paintWear), the Blender coat / layer colour (paintMeshOuter), the beard
+  colour (paintFacial), the wings colour (paintWings), a piece's own base colour and the pendant cord's colour on the MATERIAL colour, so all of them came
+  out white wherever the swap ran. It ran on them when the garment GLBs were already cached (after the creator / a team
+  swap); on a cold load the garments landed after the swap and kept the creator material (tinted, but lit unlike the body).
+- Fix (three-renderer.js rig `wearVC` / `wearMap`): every worn piece's colour rides its own vertex-colour attribute (x its
+  baked shade `_g`, kept in mesh.userData._ewShade), its material colour stays white; accents get their own colour attribute
+  (no longer shared with the main piece); the wings get a colour attribute on a rig-owned wrapper of the cached wing file's
+  attributes (x the file's own vertex colours). The swaps already keep vertexColors and tint the glow with them
+  (_ewVColorEmissiveHook), so the colour survives on every stage. wearMap moves the stage copy's glow map with its map.
+- The team room sweeps each member every half second for meshes still on a creator material (`_trLookMats`: THE LATE
+  PIECES), so a garment that lands after the body is lit like the body.
+- Checked in Chromium (team room, his 4 assigned looks, cold + cached garments): before/after shots in
+  /mnt/project-files/team-room-tints/.
