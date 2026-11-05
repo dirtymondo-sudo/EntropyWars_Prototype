@@ -1699,3 +1699,16 @@ back to what they were".
   Clicking a walk walks at once (also the one already picked); clicking the picked idle during a walk stops the walk.
 - Seams on the real rig (bone world positions sampled over the loop point, MPFB male): every walk + idle seam step is at or under
   the clip's 90th-percentile frame step (walks 6-17 mm vs 17-27 mm, idles 0.1-7 mm vs 0.6-11 mm).
+- REV 2.2 (same day, mondo: "there is nothing heroic about the heroic stance idle, it looks like they have to pee" + "Almost all of the
+  walk animations you added, their hands clip through their thighs as they swing ... Do the mpfb bodies not have like bones and
+  collision"). Heroic stance is out of EW_IDLE_POSES; Macho + Bow-legged are out of EW_WALK_STYLES (on the front/side sheets the
+  Macho walk staggers and dips a shoulder, Bow-legged swings the arms wide); the clips stay in MOC1_CMU.glb. Added the walks the game
+  already had: UAL1 Walk_Loop ("UAL walk"), UAL1 Walk_Formal_Loop ("UAL formal"), MAL1 Walking_Woman ("Meshy woman").
+- THE ARM CLEARANCE (three-renderer.js _ccArmClear / _ccArmClearMeasure, called first in _createAppearanceRig's tick(), before the
+  coat hang / sway / jiggle / cloth): a clip is bone rotations only, so nothing stopped a hand going through a thigh on the wider MPFB
+  body. Measured on the skin (every vertex, every frame): 7 of the 8 mocap walks went 9-52 mm into the thigh, UAL Walk_Loop 22 mm,
+  Walk_Formal 27 mm, idles Calm 13 / Fidget 63 / Pockets 32 mm; MAL1 Walking (Default) 0. Each frame the hand's skin points are tested
+  against both thighs' measured radius (re-measured when the body shape changes) and the upper arm turns out from the body just
+  enough (+12 mm for the cloth), rising at once and easing back. After: 0-5 mm on every walk, default and Weight-max bodies.
+  Any clip, any rig that has the UAL-named bones; board units with a creator look get it too. Kill-switch window.EW_NO_ARM_CLEAR.
+  The cloth side (garments out of the body) belongs to the "Add collision between bodies and clothes" thread, which keeps off the arm bones.

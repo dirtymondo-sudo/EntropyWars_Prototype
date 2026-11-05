@@ -449,7 +449,23 @@ const ThreeVFX = (function () {
     var _FLIPBOOKS = {
         /* 60 frames of 128 px, 8 per row: a fireball that rolls, darkens to embers in smoke and rises. The blast's
            centre sits 0.82 down the frame (the smoke climbs into the rest), so callers lift the sprite by `lift`. */
-        'fb-explosion': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_explosion.png', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.32, feather: 0.1 },
+        /* THE SPELL SIMS (2026-11-05, mondo: "new blender vfx for fireball and meteor", not one shared sheet): four
+           sims of their own, each in TWO passes of one sim (bake-vfx.py sim + sheet2): `-smoke` the lit smoke (normal
+           blend) and `-glow` the fire's own light (additive, drawn over it). The one-shot sheets END EMPTY (the sim's
+           own dissolve + a fade over the last quarter: last cell max alpha 0), so they play to the end with no tail.
+           fbhit = Fireball's hit (a yellow-orange ball that balloons and rolls up into grey smoke, 36 frames);
+           mblast = Meteor's ground blast (a red dome, a dust ring rolling out along the floor, a rising column, 60);
+           fbfly / mtail = LOOPS (24 frames, seamless) for the fireball in flight and the meteor's burning tail:
+           the trail runs to the cell's left, the head sits `head` across the cell (sprite centre there). The old
+           fb_explosion.png (the 11-03 pilot) stays on R2, unused. */
+        'fb-fbhit-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbhit_smoke.png?r=1',  cols: 6, frames: 36, cell: 128, blend: 'nrm', lift: 0.22 },
+        'fb-fbhit-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbhit_glow.png?r=1',   cols: 6, frames: 36, cell: 128, blend: 'add', lift: 0.22 },
+        'fb-mblast-smoke': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_smoke.png?r=2', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.35 },
+        'fb-mblast-glow':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_glow.png?r=1',  cols: 8, frames: 60, cell: 128, blend: 'add', lift: 0.35 },
+        'fb-fbfly-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbfly_smoke.png?r=1',  cols: 6, frames: 24, cell: 128, blend: 'nrm', head: 0.73 },
+        'fb-fbfly-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbfly_glow.png?r=1',   cols: 6, frames: 24, cell: 128, blend: 'add', head: 0.73 },
+        'fb-mtail-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mtail_smoke.png?r=1',  cols: 6, frames: 24, cell: 192, blend: 'nrm', head: 0.795 },
+        'fb-mtail-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mtail_glow.png?r=1',   cols: 6, frames: 24, cell: 192, blend: 'add', head: 0.795 },
         /* THE SHARED KINDS (2026-11-03, mondo: "give them the same treatment"): a Mantaflow smoke puff (16 frames, lit
            side baked to white so the kind's own colour tints it) and a Mantaflow flame flicker (16 frames, additive) */
         /* ?r=N: these URLs carry no ?v= token, so bump r whenever a sheet is re-baked (players + the edge cache keep the old one) */
@@ -544,6 +560,12 @@ const ThreeVFX = (function () {
     function _fbOff() { return typeof window !== 'undefined' && !!window.EW_NO_FLIPBOOKS; }
     function flipbookReady(key) { return !_fbOff() && !!_fbState[key] && _fbState[key] === 'ready'; }
     function flipbookInfo(key) { return _FLIPBOOKS[key] || null; }
+    /* one cut frame's texture (a looping sheet on a sprite that flies with a body: THE SPELL SIMS' fbfly / mtail) */
+    function flipbookFrame(key, i) {
+        var def = _FLIPBOOKS[key];
+        if (!def || !flipbookReady(key)) return null;
+        return _hiResTextures[key + '#' + (((i | 0) % def.frames) + def.frames) % def.frames] || null;
+    }
     function _fbLoadAll() {
         if (_fbOff()) return;
         Object.keys(_FLIPBOOKS).forEach(function (key) {
@@ -4264,7 +4286,7 @@ const ThreeVFX = (function () {
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, flashLight: flashLight,
              fxStats: fxStats, quarksBurst: quarksBurst, _diag: _diag, _getScene: _getScene,
-             worldToVfx: worldToVfx, flipbookReady: flipbookReady, flipbookInfo: flipbookInfo };
+             worldToVfx: worldToVfx, flipbookReady: flipbookReady, flipbookInfo: flipbookInfo, flipbookFrame: flipbookFrame };
 })();
 
 window.ThreeVFX = ThreeVFX;
