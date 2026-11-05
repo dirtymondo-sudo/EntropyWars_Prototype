@@ -1412,3 +1412,13 @@ mode webgpu only) wraps navigator.gpu.requestAdapter: on Firefox it drops featur
 Chrome/Safari keep three's ask; on every browser the device asks for the adapter's maxVertexBuffers when above 8 (Dawn caps at 8, so
 Chrome is unchanged). The adapter + device vertex limits print on the `board renderer:` console line and in gpuStatus()/?ewdiag=1.
 Off: ?ew_gpucore=0. Meshes over 8 vertex buffers are still fixed at the mesh (cloth-collision attributes interleaved, team-select thread).
+
+## THE CDN PROBE READS ITS ANSWER (2026-11-05)
+index.html "THE CDN CORS PROBE" fetches `Assets/world/terrain/scorched.png` (moved there in R2 layout W4, PR #898 era; the old
+`Assets/Sprites/terrain/` key is archived and answers 404). The probe used to throw on any non-OK status, so a moved probe
+file showed a false "CDN BLOCKED" banner. Now any READABLE response (R2 sends Access-Control-Allow-Origin on its 404s too)
+counts as "CORS fine": `_ewCdnCorsBlocked = false`, and a non-OK status only console.warns that the probe key needs updating.
+The banner shows only when the fetch itself fails (the real CORS block, or no network). Checked in Chromium: localhost:3000
+(allowed origin) no banner; probe rerouted to the archived 404 key, no banner + the warning; 127.0.0.1:3000 (not in the
+bucket's CORS list) banner shows. Bucket CORS origins: entropywars.net, www.entropywars.net, entropywars-prototype.onrender.com,
+localhost:3000.

@@ -381,7 +381,7 @@
             window.addEventListener('orientationchange', function () { setTimeout(apply, 60); setTimeout(apply, 400); });
             try { window.matchMedia('(orientation: landscape)').addEventListener('change', function () { apply(); }); } catch (e) {}
         })();
-        /* THE CDN CORS PROBE (2026-09-20): every WebGL texture and every GLB is a crossOrigin fetch of
+        /* THE CDN CORS PROBE (2026-09-20, readable-404 fix 2026-11-05): every WebGL texture and every GLB is a crossOrigin fetch of
            cdn.entropywars.net, and the bucket's CORS policy answers only for the origins it names — from any
            other host the browser blocks them all and the whole building renders BLACK with nothing in the
            console but per-file lines. One tiny cors fetch at boot names the problem on screen instead. */
@@ -389,9 +389,12 @@
             try {
                 if (!window.fetch || location.protocol === 'file:') return;
                 var probeUrl = 'https://cdn.entropywars.net/Assets/world/terrain/scorched.png?ewcors=1&ewprobe=' + Date.now();
+                /* A response the page can READ (any status, even a 404) proves the bucket's CORS answered for this
+                   origin, so the CDN is NOT blocked: a missing probe file (the R2 reorg moved it once, 2026-11-05) only
+                   warns in the console. Only an unreadable answer (the CORS block itself, or no network) shows the banner. */
                 fetch(probeUrl, { mode: 'cors', cache: 'no-store' }).then(function (r) {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
                     window._ewCdnCorsBlocked = false;
+                    if (!r.ok) { try { console.warn('[EntropyWars] CDN probe file answered HTTP ' + r.status + ' (CORS is fine; the probe key ' + probeUrl.split('?')[0] + ' needs updating)'); } catch (e) {} }
                 }).catch(function (err) {
                     window._ewCdnCorsBlocked = true;
                     var msg = 'CDN BLOCKED: cdn.entropywars.net does not allow cross-origin loads from ' + location.origin +
