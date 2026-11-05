@@ -1052,6 +1052,12 @@ tab? ... there is no color picker?? Everything that can possibly have one needs 
 - "MakeHuman hair" row renamed "More hair styles". Every other colourable piece already had a picker (hair, second hair colour,
   facial hair, clothes layers + "Colours of the pieces you wear", wings, accessories once worn).
 - Every tab shot: /mnt/project-files/creator-usability/.
+- THE BACK STRIP FIX (2026-11-05, mondo: "what is this random white spot down this person's back?? It's just a normal mpfb body that
+  i made the skin red"): EW_MH_SKIN_KEEP was two boxes ([0,360,170,120] + [760,870,200,154]) put back untinted after the tint. The
+  first box also held the torso island's left edge (x 145-170, y 360-480 = one side of the spine seam, mid back to waist) and the
+  second the right hand's fingertips, so under any picked colour those stayed the stock skin. Now 3 outlines (2 cheek pieces +
+  tongue, traced off mpfb_female/mpfb_male UVs, 2 px out, checked: no other UV triangle inside); tintSheet clips to them and
+  draws the pre-tint copy back. Before/after (red, from behind): /mnt/project-files/skin-colour-back-strip/.
 
 ## THE MESHY DEFAULT + THE CREATOR ON EVERY UNIT (2026-11-03, character-models-plan row 20b)
 mondo 11-03: "Let the character creator be available to all units so i can make custom models for them. Don't get rid of the
