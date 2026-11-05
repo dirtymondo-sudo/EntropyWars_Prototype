@@ -154,6 +154,85 @@
             } catch (e) { out.push('webgpu probe failed: ' + e.message); }
             return out;
         };
+        /* THE FREEZE TRAIL (2026-11-05, mondo: "whole thing just froze and i dont remember what i clicked last"; Firefox
+           WebGPU, a battle, no JS error in the console). A page that hangs can't report anything, so the trail is written
+           BEFORE: the last 40 clicks / keys (what was under the pointer), the last 20 console warnings / errors, the
+           battle's phase / round / acting unit / armed action, and the longest stalls between two frames (a stall the page
+           came back from), saved to localStorage `ew_freeze_trail` once a second. After a freeze, reload with ?ewdiag=1:
+           the report's PREVIOUS SESSION section is the trail as it stood the last second the page was alive. ES5 only, every
+           step in try/catch, ~1 small JSON write a second. Off: localStorage ew_no_freeze_trail = '1'. */
+        (function () {
+            var KEY = 'ew_freeze_trail', prev = null;
+            try { prev = localStorage.getItem(KEY); } catch (e) {}
+            diag.prevTrail = prev;
+            try { if (localStorage.getItem('ew_no_freeze_trail') === '1') return; } catch (e) { return; }
+            var T = { started: new Date().toISOString(), build: '', inputs: [], logs: [], stalls: [] };
+            var t0 = Date.now(), lastFrame = 0, frames = 0;
+            function stamp() { return ((Date.now() - t0) / 1000).toFixed(1) + 's'; }
+            function push(arr, v, cap) { arr.push(v); if (arr.length > cap) arr.shift(); }
+            function label(el) {
+                var out = [];
+                for (var i = 0; el && el.nodeType === 1 && i < 4; i++, el = el.parentNode) {
+                    var s = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') +
+                        (typeof el.className === 'string' && el.className ? '.' + el.className.split(/\s+/).slice(0, 2).join('.') : '');
+                    var tx = (el.textContent || '').replace(/\s+/g, ' ').trim();
+                    if (tx && tx.length < 120) { out.push(s + ' "' + tx.slice(0, 50) + '"'); break; }
+                    out.push(s);
+                }
+                return out.join(' < ');
+            }
+            function game() {
+                try {
+                    var s = window.GAME && window.GAME.state; if (!s) return '';
+                    var u = null, us = s.units || [];
+                    for (var i = 0; i < us.length; i++) if (us[i].id === s._blitzActiveUnitId) { u = us[i]; break; }
+                    return 'phase ' + s.phase + ' r' + (s.round || 0) + (u ? ' ' + (u.name || u.race) + ' p' + u.player + ' @' + u.x + ',' + u.y : '') +
+                        (s.actionMode ? ' mode ' + s.actionMode : '') + (s.selectedTool ? ' tool ' + s.selectedTool : '') +
+                        (s._actionExecuting ? ' EXECUTING' : '');
+                } catch (e) { return ''; }
+            }
+            window.addEventListener('pointerdown', function (e) {
+                try { push(T.inputs, stamp() + ' click ' + (e.button === 2 ? 'R ' : '') + Math.round(e.clientX) + ',' + Math.round(e.clientY) + ' ' + label(e.target) + ' | ' + game(), 40); } catch (x) {}
+            }, true);
+            window.addEventListener('keydown', function (e) {
+                try { if (!e.repeat) push(T.inputs, stamp() + ' key ' + e.key + ' | ' + game(), 40); } catch (x) {}
+            }, true);
+            ['warn', 'error'].forEach(function (k) {
+                var o = console[k];
+                console[k] = function () {
+                    try {
+                        var s = Array.prototype.map.call(arguments, function (a) { return (a && a.message) ? a.message : String(a); }).join(' ');
+                        s = k + ' ' + s.slice(0, 240);
+                        var L = T.logs[T.logs.length - 1];
+                        if (L && L.slice(L.indexOf(' ') + 1) === s) return o.apply(console, arguments);   // (a repeat of the line before)
+                        push(T.logs, stamp() + ' ' + s, 20);
+                    } catch (x) {}
+                    return o.apply(console, arguments);
+                };
+            });
+            function tick(now) {
+                if (lastFrame) {
+                    var gap = now - lastFrame;
+                    if (gap > 1500 && !document.hidden) {
+                        T.stalls.push({ ms: Math.round(gap), at: stamp(), game: game(), last: T.inputs[T.inputs.length - 1] || '' });
+                        T.stalls.sort(function (a, b) { return b.ms - a.ms; });
+                        if (T.stalls.length > 8) T.stalls.length = 8;
+                    }
+                }
+                lastFrame = now; frames++;
+                requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+            document.addEventListener('visibilitychange', function () { lastFrame = 0; });
+            setInterval(function () {
+                try {
+                    T.build = window._EW_BUILD_TOKEN || '';
+                    T.saved = new Date().toISOString(); T.up = stamp(); T.frames = frames; T.game = game();
+                    T.lastFrameAgo = lastFrame ? Math.round(performance.now() - lastFrame) + 'ms' : '?';
+                    localStorage.setItem(KEY, JSON.stringify(T));
+                } catch (e) {}
+            }, 1000);
+        })();
         window.EW_SHOW_DIAG = function () {
             var boot = window._ewBoot || { failed: [] };
             var lines = ['ENTROPY WARS DIAGNOSTIC — ' + new Date().toISOString(),
@@ -168,6 +247,19 @@
             section('FAILED DOWNLOADS', boot.failed || []);
             section('JS ERRORS', diag.jsErrors);
             section('THREE / RENDERER ERRORS', diag.three);
+            /* THE FREEZE TRAIL: the session before this one, as it stood its last live second */
+            try {
+                var P = diag.prevTrail ? JSON.parse(diag.prevTrail) : null;
+                lines.push('');
+                if (!P) lines.push('PREVIOUS SESSION: no trail');
+                else {
+                    lines.push('PREVIOUS SESSION (started ' + P.started + ', last saved ' + P.saved + ' after ' + P.up + ', build ' + P.build + '):');
+                    lines.push('  state at the last save: ' + (P.game || '?') + '  frames ' + P.frames + '  last frame ' + P.lastFrameAgo + ' before it');
+                    section('  LONGEST STALLS (ms, when, state, last input)', (P.stalls || []).map(function (s) { return s.ms + ' at ' + s.at + ' | ' + s.game + ' | ' + s.last; }));
+                    section('  LAST INPUTS', P.inputs || []);
+                    section('  LAST WARNINGS / ERRORS', P.logs || []);
+                }
+            } catch (e) { lines.push('PREVIOUS SESSION: unreadable (' + e.message + ')'); }
             var report = lines.join('\n');
             var old = document.getElementById('ew-diag-overlay');
             if (old && old.parentNode) old.parentNode.removeChild(old);
