@@ -1328,6 +1328,12 @@ assigned created characters so i can give to you to bake in". Before this, EXPOR
 - SAVE CHARACTER (the locker) and EXPORT RACE LOOK are unchanged. window._ewAssignedLooks = { list, assign, unassign, exportAll }.
 - A baked look is still a SAVED look (THE MESHY DEFAULT): the Meshy model stays the unit default until mondo says.
 - Proof: /mnt/project-files/assigned-looks/ (3 units assigned, exported file, bake-looks.js --dry-run read all 3).
+- **THE ASSIGNED LOOKS, LOADED (2026-11-05)**, mondo: "there's no way for me to select the assigned looks i have made ... I need the
+  buttons at the bottom that have the assigned looks to switch to that look when i press them". The chips were plain labels. Now each
+  chip's name is a button (`data-load-assigned="race:gender"`) and the forge's `loadAssignedLook` puts that whole look (no merge) on:
+  this slot when it is that race; else the team's slot of that race (selected); else that race goes on THIS slot (pickRace(race, g,
+  stay) = the roster pick without the jump to ABILITIES, so the creator stays open). Gender follows the look. The store is untouched.
+  The chip of the look on the stage is outlined gold with ON THE STAGE. Proof: /mnt/project-files/assigned-looks/load_*.png.
 
 ## THE EYE + HAIR MATERIALS (2026-11-03, PR "MakeHuman eye and hair materials")
 mondo: "can we download the system_eyes_materials 1 through 3 and system_hair_materials 1 and 2 from this page
@@ -1382,6 +1388,7 @@ mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make
     colour under its nearest body vertex, strand shading + alpha kept. Pick "Fur (whole body), werewolf colours".
   - THE TAIL ROOT: bake-meshy.py taper=(frac, k0) narrows a tail's flat cut end toward its centre line, sink= sinks it deeper; the wolf tail
     taper (0.25, 0.22), sink 0.05 (was a disc standing off the lower back). --views on a tail = root close-ups on every body.
+    2026-11-05 (mondo: "yes"): the lizard tail taper (0.18, 0.3) + shark tail taper (0.2, 0.25), both sink 0.05. Pictures werewolf-fur/06.
   - The saved werewolf look (bake-looks.js, input werewolf-fur/Entropy_Wars_Race_Looks_werewolf_meshy_fur.json): heavy, Wolf head, fur skin A,
     tail + feet A, hand claws, no shell. Still a SAVED look; the Meshy werewolf stays the unit default.
 

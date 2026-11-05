@@ -62903,13 +62903,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        Online: both run inside the relayed fire() intents, so the guest draws the same blasts; _pzSeen keeps fogged
        tiles empty. The blast stands a little BEHIND the body from the lens, so the victim still draws over it. */
     /* one blast in a frame F: o.y the blast's centre height, o.size the billboard, o.back how far behind the body */
+    /* THE SMOKE DISSIPATES (2026-11-05, mondo: the smoke "cuts off abruptly at the end"): the sheet ends on a thick cloud,
+       and the blast used to be let go at 70-85 % opacity right there, so it popped. Now o.ml / o.grow / o.op1 still
+       describe the sheet's part (same speed, same size and opacity where the sheet ends), and a TAIL is added after it
+       (`tail`, 0.45 of the new life by default): the last frame dissolves (three-vfx.js THE SMOKE DISSIPATES: the fringe
+       and wisps go first, the core last), keeps spreading, drifts up and eases to exactly 0. */
     function _fbBlast(F, o) {
         var info = window.ThreeVFX && window.ThreeVFX.flipbookInfo ? window.ThreeVFX.flipbookInfo('fb-explosion') : null;
         if (!info || !_fbReady('fb-explosion')) return;
         var cd = _nbCamDir(F), back = o.back || 0, sz = o.size;
+        var tail = o.tail != null ? o.tail : 0.45, tf = 1 - tail, grow = o.grow || 1.08;
         _pzP(F, -cd.x * back + (o.dx || 0), o.y + sz * info.lift, -cd.z * back + (o.dz || 0), {
-            sprite: 'fb-explosion', ml: o.ml, size0: sz, size1: sz * (o.grow || 1.08),
+            sprite: 'fb-explosion', ml: o.ml / tf, size0: sz, size1: sz * (1 + (grow - 1) / tf) * (1 + tail * 0.5),
             fbFrom: o.fbFrom || 0, fbTo: o.fbTo != null ? o.fbTo : 1, opacity0: 1, opacity1: o.op1 != null ? o.op1 : 0.85,
+            fbTail: tail, fbRise: (F.ts || 1) * 0.3,
             spriteRot: 0, spriteSpin: 0, keep: true });
     }
     /* METEOR: one big blast where it lands, smaller ones on a few tiles of the strike (seen tiles only), and the
