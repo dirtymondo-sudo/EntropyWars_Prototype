@@ -76,7 +76,8 @@ class Field:
     below `z_hang` every angle hangs from the widest row above (+ `flare` metres per metre of drop)"""
     NA = 360
 
-    def __init__(self, co, dom, inbody, z0, z1, ease, z_hang=None, flare=0.0, z_axis=1.36, dz=0.006, armx=0.24, legs=True, hang_lift=None, round_sh=0):
+    def __init__(self, co, dom, inbody, z0, z1, ease, z_hang=None, flare=0.0, z_axis=1.36, dz=0.006, armx=0.24, legs=True, hang_lift=None, round_sh=0,
+                 drape=None, side_in=0.0, sh_top=1.62, arm_z=1.40):
         torso = np.array([inbody[i] and dom[i] in TORSO_B for i in range(len(co))])
         leg = np.array([inbody[i] and dom[i] in LEG_B for i in range(len(co))])
         armtop = np.array([inbody[i] and dom[i] is not None and dom[i].startswith('upperarm') for i in range(len(co))]) & (np.abs(co[:, 0]) < armx)
@@ -90,7 +91,7 @@ class Field:
         for r, z in enumerate(zs):
             band = 0.02 if z > 1.42 else 0.014
             sel = ((torso | leg) if (z < 1.3 and legs) else torso) & (np.abs(co[:, 2] - z) < band)
-            if z > 1.40:
+            if z > arm_z:
                 sel |= armtop & (np.abs(co[:, 2] - z) < band)
             if z > 1.62:
                 sel |= head & (np.abs(co[:, 2] - z) < band)
@@ -99,6 +100,22 @@ class Field:
                 P2 = np.array([[0.05 * math.cos(a), 0.05 * math.sin(a)] for a in np.linspace(0, TAU, 8, endpoint=False)])
             hulls.append(hull2d(P2))
             cen[r] = [0.0, 0.5 * (P2[:, 1].min() + P2[:, 1].max())]
+        # THE DRAPE (2026-11-05, mondo: "the capes ... dont connect to the body properly, they are way too wide"): above `drape`
+        # a row is not the hull of a 2-4 cm slab (at the neckline that slab already holds the shoulder tops, so the cape's top
+        # sat out on the shoulder tips with a gap all round the neck) but the hull of EVERYTHING above it: cloth laid over the
+        # body from above, so the top row hugs the neck and the rows under it lie on the shoulder slope down to the tips
+        if drape is not None:
+            cum = None
+            for r in range(len(zs) - 1, -1, -1):
+                z = zs[r]
+                if z < drape:
+                    break
+                thin = (torso | (armtop if z > arm_z else False)) & (co[:, 2] >= z - 0.003) & (co[:, 2] < z + dz + 0.003)
+                Pn = co[thin][:, :2]
+                cum = Pn if cum is None else np.vstack([cum, Pn])
+                if len(cum) >= 3:
+                    cum = hull2d(cum)
+                    hulls[r] = cum
         for _ in range(8):
             cen[1:-1, 1] = 0.25 * cen[:-2, 1] + 0.5 * cen[1:-1, 1] + 0.25 * cen[2:, 1]
         ia = int(np.argmin(np.abs(zs - z_axis)))
@@ -115,14 +132,16 @@ class Field:
         for _ in range(2):                                         # round the angles a touch (no hull corners)
             rad = np.maximum(0.25 * np.roll(rad, 1, 1) + 0.5 * rad + 0.25 * np.roll(rad, -1, 1), radh + 0.008)
         # THE SHOULDER ROLL: cloth over the shoulder tip rounds it (no square corner where the shoulder line meets the hang)
-        sh = (zs > 1.30) & (zs < 1.62)
+        sh = (zs > 1.30) & (zs < sh_top)
         for _ in range(round_sh):
             sm = rad.copy(); sm[1:-1] = 0.25 * rad[:-2] + 0.5 * rad[1:-1] + 0.25 * rad[2:]
             rad[sh] = np.maximum(sm[sh], radh[sh] + 0.01)
         if z_hang is not None:
             ih = int(np.argmin(np.abs(zs - z_hang)))
+            # (THE DRAPE: `side_in` metres per metre - the sides hang in toward the body as they fall, the back keeps its flare)
+            fl = flare - side_in * np.sin(ang) ** 2
             for r in range(ih - 1, -1, -1):
-                rad[r] = np.maximum(rad[r], rad[r + 1] + flare * (zs[r + 1] - zs[r]))
+                rad[r] = np.maximum(rad[r], rad[r + 1] + fl * (zs[r + 1] - zs[r]))
         self.rad = rad
 
     def r(self, z, phi):
@@ -191,8 +210,15 @@ def cape_sheet(G, co, dom, inbody, o):
     """the cape: columns across the back from the left front edge (phi = e) round to the right one (phi = 2pi - e),
     rows from the neckline over the shoulders down to the hem; returns the grid + the field"""
     z_top, hem = o['top'], o['hem']
-    F = Field(co, dom, inbody, max(0.02, hem - 0.15), z_top + 0.04, o.get('ease', 0.026), z_hang=o.get('hang', 1.42),
-              flare=o.get('flare', 0.07), z_axis=1.38, legs=True, round_sh=o.get('round_sh', 14), armx=o.get('armx', 0.22))
+    # THE DRAPE (2026-11-05): the whole shoulder cap counts (armx 0.30 above arm_z: held to 0.22 the cape cut through the deltoid
+    # and the shirt's shoulder came out through it), the cloth stands a little further off over the shoulders (sh_ease: a
+    # shirt's shoulder seam sits proud of the skin there), and below the shoulders the sides fall in toward the body
+    # (side_in) instead of hanging straight down from the shoulder tips like a box
+    e0, she = o.get('ease', 0.026), o.get('sh_ease', 0.003)
+    ease = lambda z: e0 + she * float(smoothstep(1.38, 1.46, z) * (1 - smoothstep(1.56, 1.60, z)))
+    F = Field(co, dom, inbody, max(0.02, hem - 0.15), z_top + 0.04, ease, z_hang=o.get('hang', 1.42),
+              flare=o.get('flare', 0.07), z_axis=1.38, legs=True, round_sh=o.get('round_sh', 14), armx=o.get('armx', 0.30),
+              drape=o.get('drape', o.get('hang', 1.42)), side_in=o.get('side_in', 0.25), sh_top=o.get('sh_top', 1.50), arm_z=o.get('arm_z', 1.44))
     C, R = o.get('cols', 48), o.get('rows', 44)
     e_top, e_bot = o.get('e_top', 0.55), o.get('e_bot', 1.25)
     z_arm = 1.36
@@ -202,6 +228,18 @@ def cape_sheet(G, co, dom, inbody, o):
         # the column, densely: z from its top down to its hem
         frac0 = abs(s[c] - 0.5) * 2                                        # 0 = the back centre, 1 = a front edge
         zt = z_top - o.get('top_drop', 0.05) * frac0 ** 2
+        if o.get('neck', True):
+            # THE NECKLINE (2026-11-05): the column starts where the cloth laid over the body first stands `neck_gap` off the
+            # neck (the field's top row is the bare neck + ease), so the cape's top edge rings the base of the neck on every
+            # body instead of a fixed height that, off the back centre, already lay out on the shoulder tops
+            ph0 = e_top + (TAU - 2 * e_top) * s[c]
+            zq = np.arange(F.zs[-1], z_top - 0.12, -0.002)
+            rq = F.r(zq, np.full_like(zq, ph0))
+            over = np.nonzero(rq > rq[0] + o.get('neck_gap', 0.02))[0]
+            zn = float(zq[max(0, over[0] - 1)]) if len(over) else float(zq[-1])
+            zt = min(max(zn, zt), z_top + o.get('neck_up', 0.03))   # (the back of the neck falls straight into the back: there the old height holds)
+            if os.environ.get('EW_CAPE_DEBUG') and c % 6 == 0:
+                print('  neck col %2d phi %.2f zt %.3f r %.3f' % (c, ph0, zt, float(F.r(np.array(zt), np.array(ph0)))))
         zh = hem + o.get('hem_rise', 0.10) * frac0 ** 2.2
         if o.get('ragged'):
             zh += o['ragged'] * (0.5 + 0.5 * math.cos(c * 2.0943951)) * (0.4 + 0.6 * ((c * 7919) % 13) / 12.0)
@@ -1862,6 +1900,15 @@ def cape_weights(f, G, V):
     for i in pool:
         kd.insert(Vector(co[i]), i)
     kd.balance()
+    # THE SHOULDER CAP (2026-11-05): the cloth lying on the top of the shoulder takes the skin's own weights there, the upper
+    # arm's share too (the shirt under it follows the arm: held on the collarbone alone, the cape stayed put while the arm
+    # came down from the bind pose and the shirt's shoulder came out through it), fading back to the torso pool under it
+    pool2 = [i for i in range(len(co)) if inbody[i] and dom[i] in ('spine_03', 'clavicle_l', 'clavicle_r', 'neck_01', 'upperarm_l', 'upperarm_r')]
+    kd2 = KDTree(len(pool2))
+    for i in pool2:
+        kd2.insert(Vector(co[i]), i)
+    kd2.balance()
+    sh_lo, sh_hi = G.__dict__.get('cap_lo', 1.42), G.__dict__.get('cap_hi', 1.48)
     sc = (f['K'][3] - f['K'][1]) / (1.6 - 0.52)
     za = G.anchor_z
     # chain geometry: each chain's phi + its joints' z (on this body, from the vertices)
@@ -1876,6 +1923,15 @@ def cape_weights(f, G, V):
                 acc[b] = acc.get(b, 0) + w * k
         tot = sum(acc.values()) or 1
         acc = {b: w / tot for b, w in acc.items()}
+        tc = float(smoothstep(sh_lo, sh_hi, V[i][2]))
+        if tc > 0:
+            a2 = {}
+            for (p, j, d) in kd2.find_n(Vector(V[i]), 6):
+                k = 1.0 / max(1e-4, d) ** 2
+                for b, w in bw[j].items():
+                    a2[b] = a2.get(b, 0) + w * k
+            t2 = sum(a2.values()) or 1
+            acc = {b: acc.get(b, 0) * (1 - tc) + a2.get(b, 0) / t2 * tc for b in set(acc) | set(a2)}
         part, phi, gain, grp = G.T[i]
         z = V[i][2]
         if grp == 'cape' and not math.isnan(phi) and z < za:

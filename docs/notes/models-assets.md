@@ -1256,6 +1256,23 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   it as `got['@cape']`, the layer's tile lives on `part.capeHold` (no coded shell), paintMeshOuter paints any
   `w.layer`. Online: appearance already syncs; nothing new.
 
+- **THE DRAPE (2026-11-05, mondo: "fix all of the capes too, they are all fucked up and dont connect to the body properly,
+  they are way too wide"):** every cape rebaked (`--only king,overlord,hero,sea,knight,hooded,leaf,fur`). Causes, all in
+  `cape_sheet` / `Field`: (1) each top row was the convex hull of a 2-4 cm SLAB, and at the cape's fixed top heights
+  (1.535-1.585 m) that slab already held the shoulder tops (the MPFB male's shoulder rises from the tip at 1.54 to the neck
+  at 1.58 in 4 cm), so off the back centre the neckline lay out on the shoulder tips with a gap all round the neck;
+  (2) `armx` 0.22 left the deltoid out, the cape cut through it and the shirt's shoulder came out through the cape (even
+  standing still); (3) the cape over the shoulder rode only the collarbone / spine, so the shirt (on the arm) came through
+  it when the arms came down from the bind pose; (4) the hang fell straight down from the shoulder tips (a box). Fixes:
+  `drape` = above the hang height a row is the hull of EVERYTHING above it (thin bands, accumulated from the top: cloth laid
+  over the body), so the rows lie on the shoulder slope; THE NECKLINE (`neck`, default on) = each column starts where that
+  drape first stands `neck_gap` (2 cm) off the bare neck (the field's top row), never lower than the old `top` curve (the
+  back of the neck falls straight into the back), capped at `top` + `neck_up`; `armx` 0.30 above `arm_z` 1.44 (the whole
+  shoulder cap), `sh_ease` +3 mm over the shoulders, `round_sh` only below `sh_top` 1.50; `side_in` 0.25 m/m = below the
+  shoulders the sides fall in toward the body (the back keeps its flare); THE SHOULDER CAP in `cape_weights` = above
+  1.42-1.48 m the cloth takes the skin's own weights there, the upper arm's share included. The coats are untouched.
+  Shots: /mnt/project-files/capes-fit/.
+
 ## THE BLENDER COATS — 4d batch 2: the long coats (2026-11-01, character-models-plan row 12)
 
 - **Tool:** the same `bake-clothes.py` (COATS catalogue; `--only duster,tailcoat`). Each coat = the pilot's sheet with the
