@@ -1750,5 +1750,6 @@ mondo: "i click one item or piece of clothing and the game freezes and takes lik
 - A pack hair's first pick read its texture back off a GPU canvas (3 s): those canvases are `willReadFrequently`.
 Before -> after on the same box (click to the piece on screen; longest frame): coat (cached) 5.6 s -> 0.9 s, boots (cached) 5.2 -> 0.9-1.2 s,
 pendant (cached) 5.8 -> 1.1-1.5 s, hair (cached) 0.9 -> 0.3 s, new hair 4.4 -> 1.2-1.6 s, new boots 6.5 -> 1.3 s, new coat 7.8 -> 2.5-3 s
-(download included). What is left is one body rebuild + one fit per pick. Probe (scratch only): Playwright, EWCharViewer.mount, a
+(download included). Re-measured on main after PR #944's coat fit (picks there had grown to 6.8-7.9 s): coat 7.5 -> 1.0 s, boots 6.8 -> 0.85 s,
+pendant 7.9 -> 1.2 s, hair 2.2 -> 0.36 s, identical fingerprints again. What is left is one body rebuild + one fit per pick. Probe (scratch only): Playwright, EWCharViewer.mount, a
 `__rig` accessor patched into a copy, PerformanceObserver longtask + CDP Profiler.
