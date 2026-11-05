@@ -1398,3 +1398,8 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   and `_renderPixelMask` re-scans on the first frame after any add, so a rebuilt board, a new instance-pass batch or a
   spell prop clone is pixelated on the first frame it draws. The 400 ms timed scan stays for a flag set after the add.
 - Online: looks only, both seats run their own renderer; nothing relayed.
+  Rev 2 (same day, mondo: "i still see the naked flash briefly"): the creator stage hid only its CANVAS (CSS opacity, a 0.5 s
+  fade). On a body swap with the new body GLB already cached, the new body was added while the canvas was still fading out
+  of the last character, so the bare body drew at up to full opacity for ~9 frames (caught by a per-render frame capture on
+  Cowboy -> Demon). The stage now also hides the body itself (`wrap.visible = false` until whenDressed); the beat cancel's
+  "never leave the hero gone" reset respects `v.dressWait`. Frame capture before / after: /mnt/project-files/dressed-reveal/flash-frames/.
