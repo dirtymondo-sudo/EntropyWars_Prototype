@@ -2133,16 +2133,22 @@ const ThreeRenderer = (function () {
     function _asTouch(url, size, sha) {
         var ix = _asIndexLoad(), prev = ix[url], e = _asManEntry(url);
         if (prev) _asBytes -= prev[1];
-        var b = size || (prev ? prev[1] : 0) || (e ? +e[0] || 0 : 0), h = sha || (prev && prev[2]) || (e && e[1]) || '';
+        /* (2026-11-05, mondo's creator walks + idles: a hit never takes the manifest's sha for itself. A copy stored while the
+           manifest did not list its file (MOC1_CMU.glb rev 1) took the rev 2 sha on its first hit and played the old clips for good) */
+        var b = size || (prev ? prev[1] : 0) || (e ? +e[0] || 0 : 0), h = sha || (prev && prev[2]) || '';
         ix[url] = h ? [Date.now(), b, h] : [Date.now(), b];
         _asBytes += b;
         _asIndexSave();
     }
-    /* a stored copy is stale when the manifest names a different sha than the one it was stored under */
+    /* a stored copy is stale when the manifest names a different sha than the one it was stored under, or the copy was stored
+       with no sha (the manifest did not list it then), or the store lost its row, or its size is not the manifest's (a copy an
+       earlier build stamped with the new sha on a hit: MOC1_CMU.glb rev 1 kept playing after rev 2 went up, 2026-11-05).
+       A listed file is stored under the manifest's bytes, so a good copy never refetches. */
     function _asStale(url) {
         var e = _asManEntry(url); if (!e || !e[1]) return false;
         var row = _asIndexLoad()[url];
-        return !!(row && row[2] && row[2] !== e[1]);
+        if (!row || !row[2] || row[2] !== e[1]) return true;
+        return +e[0] > 0 && +row[1] > 0 && +row[1] !== +e[0];
     }
     function _asForget(url) { var ix = _asIndexLoad(); if (ix[url]) { _asBytes -= ix[url][1]; delete ix[url]; _asIndexSave(); } }
     /* evict the least recently used until the store is under the cap (or the index is under its row cap) */
@@ -2192,7 +2198,7 @@ const ThreeRenderer = (function () {
                         var me = _asManEntry(url);
                         var size = +(net.headers && net.headers.get && net.headers.get('content-length')) || (me ? +me[0] || 0 : 0);
                         try {
-                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, size, me && me[1]); _asEvict(c); }, function (err) {
+                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, (me && +me[0]) || size, me && me[1]); _asEvict(c); }, function (err) {
                                 /* the quota (or a cache that refuses the response): make room and carry on — the file still lands from `net` */
                                 try { _asEvict(c); } catch (e) {}
                             });
@@ -58748,6 +58754,8 @@ const ThreeRenderer = (function () {
        `v.onState({ playing, ms, name })` reports every start / end. */
     var _cvPreviewTimer = 0;
     function _cvEmitState(playing, ms, name) {
+        /* (THE WALK STYLE rev 2: every listener hears it too — the creator's Walk row reads PLAY WALK / STOP WALK off it) */
+        try { if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('ew-cv-state', { detail: { playing: playing || null, ms: ms || 0, name: name || null } })); } catch (_e) {}
         if (!_cv || typeof _cv.onState !== 'function') return;
         try { _cv.onState({ playing: playing || null, ms: ms || 0, name: name || null }); } catch (_e) {}
     }
