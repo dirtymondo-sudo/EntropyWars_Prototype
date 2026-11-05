@@ -1286,6 +1286,31 @@ Also his rule from the same message: clothes are fitted to the MPFB bodies only 
   the cult robe's wide hem still lets a shin through at the front in the Wide stance.
 - Shots: /mnt/project-files/coat-flaps/ (before / after: wide stance, upright, walk, duster, cult robe, female lab coat, open long coat).
 
+## THE BUMPS FIX (2026-11-05, character-models-plan row 9 pass 3)
+mondo: "all of the coats still have these 2 weird bumbs on the side. Some have the 2 bumps on the back side ... Is this bc we were
+trying to get the clothes to fit to the mpfb + classic body? ... Weren't the clothes made for mpfb? How are they messing up?"
+- **Cause** (reproduced in the creator stage, Playwright + swiftshader, MPFB male greatcoat in Upright): THE COAT HANG leg push, not
+  the coats and not the classic fit. With `EW_DISABLE_SWAY`, or the chains kept but the push off, no bumps. The flaps fix's clearance
+  (`limExtra` 8 mm past where the cloth stood at bind, `rad` 3 cm off the fitted leg) was applied in full at every sample along a chain
+  bone; a straight bone hinged at its head must swing 1 / t as far at its tail to clear the sample at t, so 6 mm at the sample 0.15 down
+  bone 0 stood its tail ~4 cm out, on every chain round the hips, even in the bind pose: the two saddlebags at the sides, the two lobes
+  over the seat (where the seat capsule pushes). The upright idles turn the thighs 10-18 deg off their bind direction, so the 3 cm
+  clearance pushed the same way.
+- **Fix** (three-renderer.js COAT_HANG / hangFit / hangTick, runtime only): `limT` (the extra past the bind distance x t along the bone:
+  the tail never stands out more than limExtra; C.lim now holds the bind distance alone, the extra is added in `push`); `poseA` [15, 35]:
+  per capsule, the angle of the leg bone off its bind direction carried by the Hips (`K.kb`, measured: Upright 10-18, Wide stance ~40);
+  the 3 cm clearance is x (t + (1 - t) k), k = 0 under 15 deg, 1 from 35 deg, so it is full in the Wide stance / a stride and only at
+  the bone tails in a standing pose. The non-penetration push (the fitted leg + the bind distance) is unchanged.
+- **Tried + dropped**: rad x t always (the seat jeans came through in the Wide stance, 262 -> 967 px); a 0.5 floor on it (same);
+  gravity 0 (bigger lobes: gravity is what holds them in); maxBend 20 / 30 (no change: the shape comes from the push, not the bend).
+- **Measured** (jeans px through the coat, front / side / back / side, red coat): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280,
+  walk (frozen at 0.6 s) 27 -> 18; MPFB female greatcoat walk 248 -> 73.
+- **Known**: mid-stride in the walk the swinging thigh still stands one side of the seat out a little (clearance is full there; 9 / 12
+  joints per chain were tried and let 2-3x the jeans through). MPFB short: the lab coat's back still shows the jeans' seat in Upright and the push stands the sides out in a shelf; it is
+  there with the push off too (the coat's own fit on that body), not from this fix. A small dark gap at the centre back of the seat
+  (the vent top) shows on the greatcoat / long coat with or without the chains.
+- Shots: /mnt/project-files/coat-bumps/.
+
 ## THE TABS + THE BODY SLOTS (2026-11-03, character-models-plan row 12n)
 mondo: "In the character creator, can we have tabs instead of one long list where i have to scroll through everything. And I want the
 clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."
@@ -1583,6 +1608,24 @@ neck, make the string yourself". three-renderer.js `wearCords` / `wearCord`, run
 - Checked on screen (Chromium, Playwright EWCharViewer.mount, front / 3-4 / back at the bust): mpfb male / female / heavy / thin /
   short / female heavy / female thin, weight + muscle + neck sliders both ways, bare chest, a tee, a closed leather jacket, an
   open blazer. Shots /mnt/project-files/pendant-cords/.
+
+## THE COLOURS ON THE VERTICES (2026-11-05)
+mondo: "tinted clothes appear white" on Select Your Team (his assigned Demon / Cowboy / Santa Clause / Catgirl looks).
+- Cause: every stage that shows a unit (the team room `_trAddMember`, the board `_attachUnitModel`, the race actors) swaps
+  the rig's materials for its own Lambert copy whose colour is the light level (+ the AP-spent grey / hit flash, reset every
+  frame on the board). The rig kept the wear tint (paintWear), the Blender coat / layer colour (paintMeshOuter), the beard
+  colour (paintFacial), the wings colour (paintWings), a piece's own base colour and the pendant cord's colour on the MATERIAL colour, so all of them came
+  out white wherever the swap ran. It ran on them when the garment GLBs were already cached (after the creator / a team
+  swap); on a cold load the garments landed after the swap and kept the creator material (tinted, but lit unlike the body).
+- Fix (three-renderer.js rig `wearVC` / `wearMap`): every worn piece's colour rides its own vertex-colour attribute (x its
+  baked shade `_g`, kept in mesh.userData._ewShade), its material colour stays white; accents get their own colour attribute
+  (no longer shared with the main piece); the wings get a colour attribute on a rig-owned wrapper of the cached wing file's
+  attributes (x the file's own vertex colours). The swaps already keep vertexColors and tint the glow with them
+  (_ewVColorEmissiveHook), so the colour survives on every stage. wearMap moves the stage copy's glow map with its map.
+- The team room sweeps each member every half second for meshes still on a creator material (`_trLookMats`: THE LATE
+  PIECES), so a garment that lands after the body is lit like the body.
+- Checked in Chromium (team room, his 4 assigned looks, cold + cached garments): before/after shots in
+  /mnt/project-files/team-room-tints/.
 
 ## THE COAT TRIMS + THE COLLAR (2026-11-05, character-models-plan row 12v)
 mondo's Santa Clause race look (MPFB heavy, weight 0.6, belly 0.8, width 1.13; outer `bsanta`; pack trousers TUCKED IN medieval

@@ -50987,6 +50987,142 @@ const ThreeRenderer = (function () {
     var FACE_IDLE_KEYS = ['eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight',
         'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight',
         'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
+    /* THE ARM CLEARANCE (2026-11-05, mondo: "Almost all of the walk animations you added, their hands clip through their thighs as they
+       swing ... Do the mpfb bodies not have like bones and collision and stuff to prevent this?"). A clip is bone ROTATIONS only, recorded
+       on (or keyed for) a slimmer body, and nothing in a skinned rig stops a hand from passing through a thigh. This pass is that
+       collision: once per frame AFTER the mixer (the rig's tick), each hand's skin (sample points in the hand's own frame) is tested
+       against both thighs (the thigh skin's radius along the UpLeg -> knee axis, measured from the body's own vertices, again whenever
+       the body's shape changes: the Weight / Muscle sliders); a hand inside a thigh (+ CLR_MARGIN for the cloth) turns its upper arm
+       out from the body just enough to clear it. The turn rises fast (CLR_RISE) and eases back (CLR_EASE), the thigh radius blends between its bins, so the swing stays smooth. Bodies
+       whose rig has no LeftArm / LeftUpLeg / LeftHand bones skip it. Kill-switch: window.EW_NO_ARM_CLEAR = true. */
+    var CLR_MARGIN = 0.014, CLR_EASE = 5, CLR_RISE = 12, CLR_BINS = 8, CLR_HAND_PTS = 48, CLR_MAX = 0.3, CLR_T0 = 0.15;
+    function _ccArmClearMeasure(root, st) {
+        var B = {};
+        root.traverse(function (o) { if (o.isBone && !B[o.name]) B[o.name] = o; });
+        var need = ['Hips', 'LeftArm', 'LeftHand', 'LeftUpLeg', 'LeftLeg', 'RightArm', 'RightHand', 'RightUpLeg', 'RightLeg'];
+        for (var i = 0; i < need.length; i++) if (!B[need[i]]) return { off: true };
+        var body = null, bodyN = 0;
+        root.traverse(function (o) {
+            if (!o.isSkinnedMesh || !o.skeleton || !o.geometry || !o.geometry.attributes.skinIndex || typeof o.getVertexPosition !== 'function') return;
+            if (o.skeleton.bones.indexOf(B.LeftUpLeg) < 0) return;
+            var n = o.geometry.attributes.position.count; if (n > bodyN) { body = o; bodyN = n; }
+        });
+        if (!body || bodyN < 1000) return { off: true };
+        var bones = body.skeleton.bones, si = body.geometry.attributes.skinIndex, sw = body.geometry.attributes.skinWeight;
+        var role = bones.map(function (b) {
+            var n = b.name;
+            if (n === 'LeftUpLeg') return 'tL'; if (n === 'RightUpLeg') return 'tR';
+            if (n === 'LeftHand' || /_0[123]_l$/.test(n)) return 'hL'; if (n === 'RightHand' || /_0[123]_r$/.test(n)) return 'hR';
+            return null;
+        });
+        var V = new THREE.Vector3(), inv = new THREE.Matrix4(), out = { off: false, B: B, side: {} };
+        body.updateMatrixWorld(true);
+        ['L', 'R'].forEach(function (sd) {
+            var up = B[sd === 'L' ? 'LeftUpLeg' : 'RightUpLeg'], knee = B[sd === 'L' ? 'LeftLeg' : 'RightLeg'], hand = B[sd === 'L' ? 'LeftHand' : 'RightHand'];
+            up.updateMatrixWorld(true);
+            var axis = knee.position.clone(), len = axis.length(); if (len < 1e-4) return; axis.multiplyScalar(1 / len);   // the knee in the thigh's own frame
+            var bins = []; for (var k = 0; k < CLR_BINS; k++) bins.push([]);
+            var hpts = [];
+            var invUp = inv.copy(up.matrixWorld).invert().clone(), invHand = new THREE.Matrix4().copy(hand.matrixWorld).invert();
+            for (var vi = 0; vi < bodyN; vi++) {
+                var bw = 0, bb = -1;
+                for (var c = 0; c < 4; c++) { var w = sw.getComponent(vi, c); if (w > bw) { bw = w; bb = si.getComponent(vi, c); } }
+                if (bb < 0 || bw < 0.6) continue;
+                var r = role[bb];
+                if (r === 't' + sd) {
+                    body.getVertexPosition(vi, V); V.applyMatrix4(body.matrixWorld).applyMatrix4(invUp);
+                    var t = V.dot(axis) / len; if (t < 0 || t > 1) continue;
+                    var rad = Math.sqrt(Math.max(0, V.lengthSq() - Math.pow(V.dot(axis), 2)));
+                    bins[Math.min(CLR_BINS - 1, Math.floor(t * CLR_BINS))].push(rad);
+                } else if (r === 'h' + sd && (vi % 3) === 0) {
+                    body.getVertexPosition(vi, V); V.applyMatrix4(body.matrixWorld).applyMatrix4(invHand);
+                    hpts.push(V.clone());
+                }
+            }
+            var prof = bins.map(function (a) { if (!a.length) return 0; a.sort(function (x, y) { return x - y; }); return a[Math.floor(a.length * 0.85)]; });
+            // keep the hand's outermost points (the knuckles, the fingertips, the palm's edges): every k-th by distance from the wrist
+            hpts.sort(function (a, b) { return b.lengthSq() - a.lengthSq(); });
+            var step = Math.max(1, Math.floor(hpts.length / CLR_HAND_PTS)), keep = [];
+            for (var hi = 0; hi < hpts.length && keep.length < CLR_HAND_PTS; hi += step) keep.push(hpts[hi]);
+            out.side[sd] = { up: up, axisLocal: axis, len: len, prof: prof, hand: hand, arm: B[sd === 'L' ? 'LeftArm' : 'RightArm'], pts: keep, ang: 0, q0: null, q1: null };
+        });
+        return out;
+    }
+    function _ccArmClear(root, st, sdt, shapeKey) {
+        if (typeof window !== 'undefined' && window.EW_NO_ARM_CLEAR) return;
+        if (!st.armClr || st.armClrKey !== shapeKey) {
+            // the bones have to be in this frame's clip pose; the old corrections come off first (a re-measure keeps nothing)
+            if (st.armClr && st.armClr.side) ['L', 'R'].forEach(function (sd) { var S = st.armClr.side[sd]; if (S && S.q1 && S.arm.quaternion.equals(S.q1)) S.arm.quaternion.copy(S.q0); });
+            st.armClrKey = shapeKey;
+            root.updateMatrixWorld(true);
+            st.armClr = _ccArmClearMeasure(root, st);
+        }
+        var C = st.armClr; if (!C || C.off) return;
+        var hips = C.B.Hips, Hp = new THREE.Vector3(), A = new THREE.Vector3(), K = new THREE.Vector3(), ax = new THREE.Vector3(), P = new THREE.Vector3(), d = new THREE.Vector3();
+        var Sh = new THREE.Vector3(), out = new THREE.Vector3(), rotAx = new THREE.Vector3(), q = new THREE.Quaternion(), pq = new THREE.Quaternion(), wq = new THREE.Quaternion();
+        hips.getWorldPosition(Hp);
+        var thighs = ['L', 'R'].map(function (sd) { return C.side[sd]; }).filter(Boolean);
+        function depth(S, deep) {   // the deepest hand point inside either thigh (+ the margin); deep = that point (world)
+            var m = 0, wm = S.hand.matrixWorld;
+            for (var ti = 0; ti < thighs.length; ti++) {
+                var T = thighs[ti];
+                T.up.getWorldPosition(A);
+                ax.copy(T.axisLocal).transformDirection(T.up.matrixWorld);
+                var wl = T.len * T.up.matrixWorld.getMaxScaleOnAxis();
+                var sc = T.up.matrixWorld.getMaxScaleOnAxis();
+                for (var i = 0; i < S.pts.length; i++) {
+                    P.copy(S.pts[i]).applyMatrix4(wm);
+                    d.subVectors(P, A); var along = d.dot(ax), t = along / wl;
+                    if (t < CLR_T0 || t > 1) continue;   // (not the hip end: a hand resting at the hip / in a pocket is the clip's own)
+                    var rad = Math.sqrt(Math.max(0, d.lengthSq() - along * along));
+                    var fb = Math.max(0, Math.min(CLR_BINS - 1.0001, t * CLR_BINS - 0.5)), b0 = Math.floor(fb), fr = fb - b0;   // the radius between bin centres (no step when a point crosses a bin)
+                    var pen = (T.prof[b0] * (1 - fr) + T.prof[b0 + 1] * fr) * sc + CLR_MARGIN * wl / 0.42 - rad;   // (the margin in this rig's units: a thigh ~0.42 m)
+                    if (pen > m) { m = pen; if (deep) deep.copy(P); }
+                }
+            }
+            return m;
+        }
+        var deepP = new THREE.Vector3();
+        ['L', 'R'].forEach(function (sd) {
+            var S = C.side[sd]; if (!S) return;
+            if (S.q1 && S.arm.quaternion.equals(S.q1)) S.arm.quaternion.copy(S.q0);   // the mixer did not write this frame: start from the clip's pose again
+            S.q0 = S.arm.quaternion.clone(); S.q1 = null;
+            S.arm.updateMatrixWorld(true);
+            // what this frame needs: turn the arm out (away from the body's middle, level) until the hand clears
+            S.up.getWorldPosition(K); out.subVectors(K, Hp); out.y = 0;
+            if (out.lengthSq() < 1e-8) return; out.normalize();
+            S.arm.getWorldPosition(Sh);
+            var need = 0;
+            for (var it = 0; it < 8; it++) {   // to within ~0.3 mm (a loose solve wobbles frame to frame)
+                var pen = depth(S, deepP); if (pen <= 3e-4) break;
+                d.subVectors(deepP, Sh); var arm = d.length(); if (arm < 1e-3) break;
+                need += Math.min(0.2, pen / arm);
+                if (need > CLR_MAX) { need = 0; break; }   // the clip means it (a hand on the leg): no pop out and back
+                applyTurn(S, need);
+            }
+            // rises fast (CLR_RISE), eases back slower (CLR_EASE): no snap when the hand swings off the thigh, no shiver on a still pose
+            var k = need >= S.ang ? CLR_RISE : CLR_EASE;
+            S.ang = (S.ang || 0) + (need - (S.ang || 0)) * Math.min(1, k * (sdt || 0));
+            applyTurn(S, S.ang);
+            if (S.ang > 1e-4) S.q1 = S.arm.quaternion.clone();
+        });
+        function applyTurn(S, ang) {
+            S.arm.quaternion.copy(S.q0);
+            if (ang > 1e-5) {
+                S.arm.updateMatrixWorld(true);
+                S.hand.getWorldPosition(P); S.arm.getWorldPosition(Sh);
+                d.subVectors(P, Sh); rotAx.crossVectors(d, out);
+                if (rotAx.lengthSq() < 1e-10) return;
+                rotAx.normalize();
+                q.setFromAxisAngle(rotAx, ang);
+                S.arm.parent.getWorldQuaternion(pq);
+                S.arm.getWorldQuaternion(wq);
+                wq.premultiply(q);                       // the turn, in the world
+                S.arm.quaternion.copy(pq.invert().multiply(wq));
+            }
+            S.arm.updateMatrixWorld(true);
+        }
+    }
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
         var targets = [];
@@ -51023,6 +51159,36 @@ const ThreeRenderer = (function () {
                 m = new THREE.MeshBasicMaterial(o);
             } else m = new THREE.MeshStandardMaterial(o);
             ownedMaterials.push(m); return m;
+        }
+        /* THE COLOURS ON THE VERTICES (2026-11-05, mondo: "tinted clothes appear white" on the Select Your Team room): a worn
+           piece's colour (its wear tint, its layer colour, its beard colour, its own base colour) rides its VERTEX COLOURS (x its
+           baked shade, mesh.userData._ewShade), never its material's colour: every stage that shows a unit (the team room, the
+           board, the walk, the race actors) swaps the rig's materials for its own Lambert copy and sets that copy's colour to its
+           light level (and the AP-spent grey, the hit flash), so a colour kept on the material came out white there. The coded
+           shells and the hair cards already carry theirs this way (paintGarments, setHair); the swap keeps vertexColors and
+           tints the glow with them (_ewVColorEmissiveHook). c = a THREE.Color (null = white). */
+        function wearVC(mesh, c) {
+            var geo = mesh && mesh.geometry, pa = geo && geo.attributes && geo.attributes.position; if (!pa) return;
+            var n = pa.count, at = geo.attributes.color, S = mesh.userData._ewShade || null;
+            var r = c ? c.r : 1, gg = c ? c.g : 1, b = c ? c.b : 1, key = r + ',' + gg + ',' + b;
+            if (!at || at.count !== n || at.itemSize !== 3) { at = new THREE.BufferAttribute(new Float32Array(n * 3), 3); geo.setAttribute('color', at); key = null; }
+            if (key === null || geo.userData._ewVcKey !== key) {
+                var A = at.array;
+                if (S && S.length === n * 3) for (var j = 0; j < n * 3; j += 3) { A[j] = r * S[j]; A[j + 1] = gg * S[j + 1]; A[j + 2] = b * S[j + 2]; }   // (a shade of its own colours: the wing file's)
+                else for (var i = 0; i < n; i++) { var s = S ? S[i] : 1; A[i * 3] = r * s; A[i * 3 + 1] = gg * s; A[i * 3 + 2] = b * s; }
+                at.needsUpdate = true;
+                geo.userData._ewVcKey = r + ',' + gg + ',' + b;
+            }
+            var m = mesh.material;   // the CURRENT material: the stage may have swapped ours for its Lambert copy (its colour is its own)
+            if (m && !m.vertexColors) { m.vertexColors = true; m.needsUpdate = true; }
+            if (m && m.color && ownedMaterials.indexOf(m) >= 0) m.color.setRGB(1, 1, 1);
+        }
+        /* a piece's map (+ the stage copy's glow map, which is the same texture: _attachUnitModel / the team room) */
+        function wearMap(m, map) {
+            if (!m || m.map === map) return;
+            m.map = map;
+            if (m.emissiveMap) m.emissiveMap = map;
+            m.needsUpdate = true;
         }
         function geometry() {
             var g = new THREE.BufferGeometry(); g._ew_shared = true;
@@ -54405,11 +54571,10 @@ const ThreeRenderer = (function () {
                 var m = w.mesh.material, src = holder && holder.material, keys = LAYER_KEYS[w.layer], def = _ccFabricDef(a[keys[0]]);
                 if (!m) return;
                 var map = (src && src.map) || null;
-                if (!w.own && m.map !== map) { m.map = map; m.needsUpdate = true; }
+                if (!w.own) wearMap(m, map);
                 var tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]]), lift = def.file ? 1.18 : 1;
-                if (m.color) m.color.setRGB(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift));
+                wearVC(w.mesh, new THREE.Color(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift)));   // THE COLOURS ON THE VERTICES (x the coat's baked shade)
                 if (m.isMeshStandardMaterial) { m.roughness = def.rough != null ? def.rough : 0.9; m.metalness = def.metal || 0; }
-                if (!m.vertexColors && w.mesh.geometry.attributes.color) { m.vertexColors = true; m.needsUpdate = true; }
             });
         }
         function setFabric(part, which, a, preview) {
@@ -55465,6 +55630,8 @@ const ThreeRenderer = (function () {
         var CC_WING_LIFT = { angel: CC_ANGEL_LIFT, bat: 0.15, dragon: -0.75 };   // 2026-11-02: per wing file (the bat / dragon files sit flatter)
         function dropWings(part) {
             if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
+            /* (only its colour attribute is its own: the file's attributes + index come off first, so dispose frees that alone) */
+            if (part.wings && part.wings.geos) part.wings.geos.forEach(function (wg) { Object.keys(wg.attributes).forEach(function (an) { if (an !== 'color') wg.deleteAttribute(an); }); wg.setIndex(null); wg.dispose(); });
             part.wings = null;
         }
         function chestBone(part) {
@@ -55496,23 +55663,34 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
             g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
             var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
-            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: !!(wl.geometry && wl.geometry.attributes.color) });
+            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: true });
             if (src && src.map) mat.map = src.map;
             if (src && src.normalMap) mat.normalMap = src.normalMap;
+            var geos = [];
             var hinges = [wl, wr].map(function (w, k) {
                 var hinge = new THREE.Group(); hinge.name = k ? 'EWCreator_wingR' : 'EWCreator_wingL';
-                var m = new THREE.Mesh(w.geometry, mat);   // the cached GLB's geometry (_ew_shared): never disposed here
+                /* THE COLOURS ON THE VERTICES: the wing colour rides a colour attribute of this rig's own copy of the wing (the
+                   cached GLB's geometry is shared, never written), x the file's own vertex colours when it has them */
+                var wg = new THREE.BufferGeometry(), ca = w.geometry.attributes.color, sh = null, v;
+                Object.keys(w.geometry.attributes).forEach(function (an) { if (an !== 'color') wg.setAttribute(an, w.geometry.attributes[an]); });
+                if (w.geometry.index) wg.setIndex(w.geometry.index);
+                if (w.geometry.boundingSphere) wg.boundingSphere = w.geometry.boundingSphere.clone();
+                if (ca) { sh = new Float32Array(ca.count * 3); for (v = 0; v < ca.count; v++) { sh[v * 3] = ca.getX(v); sh[v * 3 + 1] = ca.getY(v); sh[v * 3 + 2] = ca.getZ(v); } }
+                wg._ew_shared = true; geos.push(wg);   // (its attributes are the cached file's: only the colour is its own; dropWings frees it)
+                var m = new THREE.Mesh(wg, mat);
+                m.userData._ewShade = sh;
                 m.name = 'EWCreator_wing'; m.quaternion.copy(w.quaternion); m.castShadow = true; m.receiveShadow = true;
                 m._ew_noTwin = true; m._ew_creatorWing = true;
                 hinge.add(m); g.add(hinge); return hinge;
             });
             part.bones[bi].add(g);
-            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat };
+            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat, geos: geos };
             paintWings(part, a); poseWings(part);
         }
         function paintWings(part, a) {
             if (!part.wings) return;
-            part.wings.mat.color.copy(color((a && a.wingsColor) || '#f2f2f2'));
+            var c = color((a && a.wingsColor) || '#f2f2f2');
+            [part.wings.L, part.wings.R].forEach(function (h) { if (h.children[0]) wearVC(h.children[0], c); });   // THE COLOURS ON THE VERTICES
         }
         var _wingE = null;
         function poseWings(part) {
@@ -55654,8 +55832,20 @@ const ThreeRenderer = (function () {
            rest it sagged the skirt 13 degrees into the legs, so the push was always fighting), `rad` 1.2 -> 3 cm + `limExtra` 0.8 cm
            (the pushed cloth sat ON the jeans: the flicker). Measured (jeans px through the coat, front / side / side / back): his
            Cowboy closed greatcoat wide stance 1,325 / 1,834 / 83 / 557 -> 54 / 0 / 1 / 7, duster 2,199 / 2,243 -> 15 / 0, cult robe
-           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           2,922 / 3,223 -> 619 / 3, female lab coat 832 / 2,420 -> 1 / 5; shots /mnt/project-files/coat-flaps/.
+           THE BUMPS FIX (2026-11-05, mondo: "all of the coats still have these 2 weird bumps on the side. Some have the 2 bumps on the
+           back side"): the two bumps were the leg push, not the coats (EW_DISABLE_SWAY / no push: none). The flaps fix's clearance
+           (`limExtra` 8 mm past the bind distance + `rad` 3 cm off the leg) was applied in full at every sample along a chain bone, and a
+           straight bone hinged at its head has to swing 1 / t as far at its tail to move the sample at t: 6 mm at the sample 0.15 down
+           the bone stood its tail ~4 cm out, at every chain round the hips, even in the bind pose (the saddlebags at the sides, the two
+           lobes over the seat). Now (1) `limT`: the extra past the bind distance grows along the bone (x t), so a tail never stands out
+           more than limExtra; (2) `poseA` [15, 35] deg: the 3 cm off the leg is x t too while the leg is within 15 deg of where it lies
+           at bind in the Hips' frame (the upright idles: 10-18 deg), and in full from 35 deg (the Wide stance ~40, a walk's stride),
+           so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
+           the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
+           Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -55801,8 +55991,14 @@ const ThreeRenderer = (function () {
                 var rAt = function (t) { var r = rad[0] + (rad[1] - rad[0]) * (t - ctr[0].t) / (ctr[1].t - ctr[0].t); return Math.max(Math.min(rad[0], rad[1]), Math.min(Math.max(rad[0], rad[1]), r)); };
                 var ms = S.M.getMaxScaleOnAxis();   // mesh metres -> the bone's frame
                 var t0 = S.a === bi('LeftUpLeg') || S.a === bi('RightUpLeg') ? O.thighTop : 0;   // (the thigh from a little under the hip joint: its top merges into the seat, and a ball there stood the coat's side out in a shelf)
-                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M });
-                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
+                var hb = bi('Hips'), dH = null;
+                if (hb >= 0 && sk.boneInverses[hb]) {   // THE BUMPS FIX: the leg bone's bind direction in the Hips' frame (how far a pose has turned the leg off it)
+                    var BMi0 = new THREE.Matrix4().copy(BM).invert(), qa = hangBonePos(sk, S.a, BMi0), qb = hangBonePos(sk, S.b, BMi0);
+                    dH = qb.sub(qa).transformDirection(BM).transformDirection(sk.boneInverses[hb]);
+                }
+                var kb = { leg: bones[S.b], hips: hb >= 0 ? bones[hb] : null, dH: dH };
+                caps.push({ a: bones[S.a], pa: at(t0), pb: at(1), ra: rAt(t0), rb: rAt(1), rad: O.rad * Hm * ms, M: S.M, kb: kb });
+                if (t0 > 0) caps.push({ a: bones[S.a], pa: at(0), pb: at(t0), ra: rAt(0), rb: rAt(t0), rad: O.rad * Hm * ms, M: S.M, seat: true, kb: kb });   // THE SEAT: the hip end of the thigh, for the cloth behind it only
             });
             if (!caps.length) return;
             /* the rest allowance: per chain bone, per sample along it, per capsule, how far (in the capsule's frame) the cloth stood
@@ -55820,7 +56016,7 @@ const ThreeRenderer = (function () {
                             cp.set(px, py, pz).applyMatrix4(K.M);
                             seg.subVectors(K.pb, K.pa); var sl = seg.lengthSq(), u = sl > 0 ? Math.max(0, Math.min(1, cl.subVectors(cp, K.pa).dot(seg) / sl)) : 0;
                             cl.copy(K.pa).addScaledVector(seg, u);
-                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) + ((O.limExtra || 0) - 0.002) * Hm);
+                            C.lim[(s * NS + q2) * caps.length + ki] = K.seat && !(pz < zSeat) ? 0 : Math.max(0, cp.distanceTo(cl) - 0.002 * Hm);
                             cl.subVectors(cp, cl); var o3 = ((s * NS + q2) * caps.length + ki) * 3; C.side[o3] = cl.x; C.side[o3 + 1] = cl.y; C.side[o3 + 2] = cl.z;   // (which side of the leg the cloth lies on, in the leg's own frame)
                         });
                     }
@@ -55854,19 +56050,31 @@ const ThreeRenderer = (function () {
             for (var ci = 0; ci < NK; ci++) {
                 var K = caps[ci], mw = K.a.matrixWorld;
                 W[ci].a.copy(K.pa).applyMatrix4(mw); W[ci].b.copy(K.pb).applyMatrix4(mw); W[ci].s = _hgS.setFromMatrixScale(mw).x;
+                var kf = 1, kb = K.kb;
+                if (O.poseA && kb && kb.dH && kb.hips && kb.leg) {
+                    _hgP.setFromMatrixPosition(kb.leg.matrixWorld).sub(_hgS.setFromMatrixPosition(mw));
+                    if (_hgP.lengthSq() > 1e-12) {
+                        _hgP.normalize(); _hgS.copy(kb.dH).transformDirection(kb.hips.matrixWorld);
+                        var la = Math.acos(Math.max(-1, Math.min(1, _hgP.dot(_hgS)))) * 180 / Math.PI;
+                        kf = Math.max(0, Math.min(1, (la - O.poseA[0]) / (O.poseA[1] - O.poseA[0])));
+                    }
+                }
+                W[ci].k = kf;
             }
             /* out of every capsule (radius: the fitted one + the coat's clearance, never past the rest allowance), on the side of the
                leg that piece of cloth lies on in the bind pose (front panel in front of the thigh, side panel at its side): pushed
                straight out from the axis, a point that had gone past the middle of the leg came out on the far side and the cloth
                wrapped behind it */
             var _hd = R.hd || (R.hd = new THREE.Vector3());
-            var push = function (p, lim, side, so) {
+            var push = function (p, lim, side, so, ct) {
                 for (var k = 0; k < NK; k++) {
                     var K = caps[k], Wk = W[k];
                     _hgE.subVectors(Wk.b, Wk.a); var L2 = _hgE.lengthSq();
                     var u = L2 > 0 ? Math.max(0, Math.min(1, _hgF.subVectors(p, Wk.a).dot(_hgE) / L2)) : 0;
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad, lim[k]) * Wk.s;
+                    var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
+                    if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
@@ -55908,7 +56116,7 @@ const ThreeRenderer = (function () {
                         var t = O.samples[q], L0 = C.lim ? (i * NS + q) * NK : -1;
                         _hgP.subVectors(_hgC, B.head).multiplyScalar(t).add(B.head);
                         var px = _hgP.x, py = _hgP.y, pz = _hgP.z;
-                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3);
+                        push(_hgP, L0 >= 0 ? C.lim.subarray(L0, L0 + NK) : W.map(function () { return Infinity; }), L0 >= 0 ? C.side : null, L0 * 3, t);
                         if (_hgP.x !== px || _hgP.y !== py || _hgP.z !== pz) _hgC.copy(_hgP).sub(B.head).setLength(wl).add(B.head);
                     }
                     if (O.maxPush) {   // (the legs push the cloth out, but never stand it out further than maxPush off where the coat's own weights carry it: a straight bone swung far out from near its root stood up in a flap)
@@ -56017,7 +56225,8 @@ const ThreeRenderer = (function () {
             if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array, ex.uv === 'm' ? function (u) { return u * CC_MESH_UV; } : undefined), 2));
             /* THE BLENDER COAT: its shade (ambient occlusion x each piece's own: buttons, buckle, facings) as vertex colour */
             var Gs = sg.attributes._g;
-            if (Gs) { var GC = new Float32Array(count * 3); for (i = 0; i < count; i++) GC[i * 3] = GC[i * 3 + 1] = GC[i * 3 + 2] = Gs.array[i] / 255; g.setAttribute('color', new THREE.BufferAttribute(GC, 3)); }
+            var shadeG = null;   // (wearVC writes the colour attribute: the shade x the piece's colour)
+            if (Gs) { shadeG = new Float32Array(count); for (i = 0; i < count; i++) shadeG[i] = Gs.array[i] / 255; }
             var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
             for (var v = 0; v < count; v++) {
                 var tot = 0;
@@ -56055,11 +56264,13 @@ const ThreeRenderer = (function () {
             var wearMesh = function (src, geo, nm) {
                 var srcMat = Array.isArray(src.material) ? src.material[0] : src.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
                 if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); texs.push(tex); }
-                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: !!Gs });
-                if (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) mat.color.copy(srcMat.color);   // (an accent keeps its colour over its tile)
+                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: true });
+                var base = (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) ? srcMat.color.clone() : null;   // (an accent keeps its colour over its tile)
                 var mh = part.shell(nm, mat);
                 mh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mh.geometry), 1);
                 mh.geometry = geo;
+                mh.userData._ewShade = shadeG; mh.userData._ewBase = base;   // THE COLOURS ON THE VERTICES (wearVC)
+                wearVC(mh, base);
                 if (swayRig) mh.bind(swayRig.skel, part.body.bindMatrix);
                 else if (hangRig) mh.bind(hangRig.skel, part.body.bindMatrix);   // THE COAT HANG
                 mh.castShadow = true; mh.receiveShadow = true;
@@ -56071,7 +56282,7 @@ const ThreeRenderer = (function () {
             var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
-                ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
+                ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });   // (its own colour attribute: wearVC)
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
                 var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
@@ -56087,7 +56298,7 @@ const ThreeRenderer = (function () {
             /* THE WEAR TINT (2026-11-01): a pack piece that keeps its own texture (not a layer-coloured Blender piece, not facial
                hair) can wear a colour instead (appearance.wearTint, paintWear): its texture's grey levels x the colour */
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
-            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
+            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.userData._ewBase || null } : null;
             if (hangRig) part.hangRun = null;
             /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
                appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
@@ -57849,13 +58060,15 @@ const ThreeRenderer = (function () {
             var mh = w.cordMesh;
             if (!mh) {
                 var col = WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color;
-                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ color: col, roughness: 0.82, metalness: 0 }));
+                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ roughness: 0.82, metalness: 0, vertexColors: true }));
+                mh.userData._ewBase = new THREE.Color(col);   // THE COLOURS ON THE VERTICES (wearVC: the stage copies keep it)
                 var g0i = ownedGeometries.indexOf(mh.geometry); if (g0i >= 0) ownedGeometries.splice(g0i, 1);
                 mh.castShadow = true; mh.receiveShadow = true; mh._ew_creatorWear = true; mh._ew_cord = true;
                 mh.renderOrder = w.mesh.renderOrder; mh.visible = w.mesh.visible;
                 (w.accents = w.accents || []).push(mh);
             }
             mh.geometry.dispose(); mh.geometry = g;
+            wearVC(mh, mh.userData._ewBase);
             w.cordPts = X;   // (probes)
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
@@ -57901,8 +58114,8 @@ const ThreeRenderer = (function () {
                     var t = color(mode === 'pick' ? a.beardColor : a.hairColor), k = map === F.own ? 1 : 1.22;
                     r = Math.min(1, t.r * k); g = Math.min(1, t.g * k); b = Math.min(1, t.b * k);
                 }
-                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
-                if (m.color) m.color.setRGB(r, g, b);
+                wearMap(m, map);
+                wearVC(w.mesh, new THREE.Color(r, g, b));   // THE COLOURS ON THE VERTICES
             });
         }
         /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
@@ -57972,7 +58185,7 @@ const ThreeRenderer = (function () {
         function paintWear(part, a) {
             if (!a) return;
             var T = a.wearTint || {}, FB = a.wearFabric || {};
-            var paint = function (P, m, want, fab) {   // its texture's grey levels x the colour (x a fabric), or its own texture
+            var paint = function (P, m, want, fab, mesh) {   // its texture's grey levels x the colour (x a fabric), or its own texture
                 var map = P.own, tile = null, def = null;
                 if (fab && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fab)) {
                     var sync = true;
@@ -57981,23 +58194,24 @@ const ThreeRenderer = (function () {
                     var fm = tile ? wearFabricMap(P, fab, tile) : null;
                     if (fm) { map = fm; def = _ccFabricDef(fab); want = want || wearOwnColour(P); }
                 }
+                var vc = P.c0 || null;
                 if (want) {
                     var grey = def ? null : (P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null), t = color(want), k = def ? 1.22 * 1.18 : grey ? 1.22 : 1;
                     if (grey) map = grey;
-                    m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
-                } else if (P.c0) m.color.copy(P.c0);
-                else m.color.setRGB(1, 1, 1);
+                    vc = new THREE.Color(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
+                }
+                wearVC(mesh, vc);   // THE COLOURS ON THE VERTICES
                 if (m.isMeshStandardMaterial) {
                     if (P.r0 === undefined) { P.r0 = m.roughness; P.m0 = m.metalness; }
                     m.roughness = def ? (def.rough != null ? def.rough : 0.9) : P.r0; m.metalness = def ? (def.metal || 0) : P.m0;
                 }
-                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+                wearMap(m, map);
             };
             (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                paint(P, m, T[w.id], FB[w.id]);
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id], FB[w.id], w.mesh);
                 var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
-                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
+                if (bm) paint(B, bm, T[w.id + ':band'], null, B.mesh);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
@@ -58351,6 +58565,7 @@ const ThreeRenderer = (function () {
                 /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
+                try { _ccArmClear(root, state, Math.min(0.1, sdt), state.shapeKey); } catch (e) { if (!state.clrWarned) { state.clrWarned = true; console.warn('[ThreeRenderer] arm clearance failed', e); } }   // THE ARM CLEARANCE (before the cloth reads the pose)
                 if (parts.some(function (p) { return p.hangCaps; })) {   // THE COAT HANG: the long coat's skirt off the legs (before anything reads the pose)
                     root.updateWorldMatrix(true, true);
                     for (var hi = 0; hi < parts.length; hi++) if (parts[hi].hangCaps) { try { hangTick(parts[hi], sdt); } catch (e) { if (!state.hangWarned) { state.hangWarned = true; console.warn('[ThreeRenderer] coat hang failed', e); } } }
@@ -86278,7 +86493,20 @@ const ThreeRenderer = (function () {
        rig AND its idle are in (no stand-in, no T-pose). No fog; bloom only if the player turned it on (setSceneLook null).
        Tunables: TR_ROOM (metres), TR_PROPS (catalogue keys + where they stand), TR_SPOTS (where the team stands). */
     var _tr = null, _trLive = false;
-    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera
+    var TR_ROOM = { w: 8.4, d: 6.4, h: 2.7, back: -2.6, dado: 1.0, tile: 2.0, front: 7, wallTone: 0.78 };   // metres; the back wall's z; one sheet per `tile` metres; `front` = how far floor / ceiling / side walls run on toward the camera; `wallTone` = THE WHITE ROOM's drywall (below)
+    /* THE WHITE ROOM (2026-11-05, mondo on the Select Your Team room: "this room looks like it didnt get the fix that clouds and
+       marble terrain got where they are too white and the light is making it too bright, it looks ugly af"). The fix the white
+       maps got on 11-03 (rendering-loading-perf.md "THE WHITE SHEETS" + "THE WHITE DAYLIGHT"), made for this room:
+       - the light: the room's own rig (hemisphere, the ceiling lamp, the key, the rim, the fill) × HQ_LIGHT_RULES.whiteDay (0.75), the
+         number the white rooms wear. Measured: the back wall took about 1.8× light (key 0.61 + fill 0.44 + hemisphere 0.52 + the
+         ceiling lamp 0.24 head-on), so the beige drywall sheet (mean 0.69) went past 100% and stored as one flat white before the
+         tone map. The desk lamp keeps its own light (a lamp is not the room's light, as in the white rooms).
+       - the sheet: the drywall wears colour × TR_ROOM.wallTone (0.78) in this room only. It is under TERRAIN_WHITE_SHEETS' 0.8 bar,
+         so the global darkening never caught it, and the light alone still left it cream-white; the building's other drywall rooms
+         keep theirs. Fixed, nothing reads the screen. */
+    function _trWhiteK() {
+        try { var LR = _hqLightRules(), k = LR && +LR.whiteDay; return (k > 0 && k <= 1) ? k : 1; } catch (e) { return 1; }
+    }
     var TR_HUMAN_M = 1.75;   // heightRatio 1.0 (the fortune teller) in metres
     /* the props: catalogue key, x / z (metres), yaw (rad, the model's +Z front turned by it), `on` = stands on that prop's top */
     var TR_PROPS = [
@@ -86312,7 +86540,8 @@ const ThreeRenderer = (function () {
     function _trWall(T, len, cx, cz, yaw) {
         var U = T.U, R = TR_ROOM, g = new THREE.Group();
         var upH = R.h - R.dado;
-        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4 }));
+        var tone = (R.wallTone > 0 && R.wallTone <= 1) ? R.wallTone : 1;   // THE WHITE ROOM: the drywall toned down in this room
+        var up = new THREE.Mesh(new THREE.PlaneGeometry(len * U, upH * U), _hqMat('drywall', len / R.tile, upH / R.tile, { shininess: 4, color: new THREE.Color(tone, tone, tone) }));
         up.position.y = (R.dado + upH / 2) * U; g.add(up);
         var lo = new THREE.Mesh(new THREE.PlaneGeometry(len * U, R.dado * U), _hqMat('oxblood', len / R.tile, R.dado / R.tile, { shininess: 6 }));
         lo.position.y = (R.dado / 2) * U; g.add(lo);
@@ -86334,14 +86563,15 @@ const ThreeRenderer = (function () {
         var sc = T.scene;
         sc.background = new THREE.Color(0x0b0911);
         /* light: a warm hemisphere, the ceiling lamp over the team, a key from the camera's right, a fill from the camera, a cool rim from behind */
-        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7));   // a light ground colour: the ceiling reads
-        var ceil = new THREE.PointLight(0xfff1d6, 0.42, 9 * U, 1);
+        var wk = _trWhiteK();   // THE WHITE ROOM: the whole rig × whiteDay (0.75)
+        sc.add(new THREE.HemisphereLight(0xfff2e0, 0x8a7c6c, 0.7 * wk));   // a light ground colour: the ceiling reads
+        var ceil = new THREE.PointLight(0xfff1d6, 0.42 * wk, 9 * U, 1);
         ceil.position.set(0, (R.h - 0.6) * U, 1.0 * U); sc.add(ceil);
-        var key = new THREE.DirectionalLight(0xfff0dc, 0.75);
+        var key = new THREE.DirectionalLight(0xfff0dc, 0.75 * wk);
         key.position.set(3 * U, 4 * U, 7 * U); sc.add(key);
-        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28);
+        var rim = new THREE.DirectionalLight(0x9fb8ff, 0.28 * wk);
         rim.position.set(-3 * U, 3 * U, -4 * U); sc.add(rim);
-        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45);   // from the camera: the team's faces
+        var fill = new THREE.DirectionalLight(0xffe8d0, 0.45 * wk);   // from the camera: the team's faces
         fill.position.set(-1 * U, 1.6 * U, 8 * U); sc.add(fill);
         /* the room: floor, ceiling, back + side walls (the open side is the camera's) */
         /* the floor, the ceiling and the side walls run on past the camera (a tall team pulls it back) */
@@ -86400,6 +86630,40 @@ const ThreeRenderer = (function () {
         }
         T.members = [];
     }
+    /* the room's look on every mesh of a member that does not wear it yet (its material is not one of mem.mats): run when the
+       member lands, and again every half second while it stands (_trFrameBody) - THE LATE PIECES (2026-11-05, mondo:
+       "tinted clothes appear white"): a creator look's garments, hair and wings load after the body (their GLBs land
+       later) and kept the creator's own material, lit unlike the body they stand on */
+    function _trLookMats(mem, m) {
+        var diff = _modelDiffuseScale();
+        m.traverse(function (n) {
+            if (!n.isMesh || n._ew_silhouette) return;
+            var src = Array.isArray(n.material) ? n.material : [n.material];
+            if (src.every(function (sm) { return sm && sm._ewTrMat; })) return;
+            n.frustumCulled = false;
+            var out = src.map(function (sm) {
+                if (sm && sm._ewTrMat) return sm;
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(diff, diff, diff);
+                if (sm) {
+                    if (sm.side != null) lm.side = sm.side;
+                    if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
+                    if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
+                    if (sm.depthWrite === false) lm.depthWrite = false;
+                }
+                if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
+                if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                _ewPopUnitMat(lm);   // THE UNIT POP
+                lm._ewTrMat = true;
+                mem.mats.push(lm);
+                return lm;
+            });
+            n.material = Array.isArray(n.material) ? out : out[0];
+        });
+    }
     function _trAddMember(T, slot, spot, tok) {
         var res = _cvResolveDef(slot.race || 'door agent', slot.gender || 'male', slot.appearance);
         if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
@@ -86418,32 +86682,9 @@ const ThreeRenderer = (function () {
             m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
             if (def.creatorBase) { try { mem.rig = _createAppearanceRig(m, def.raceLook || slot.appearance, true); } catch (e) { mem.rig = null; } }
             /* the board's look: the bake on a Lambert with its own self-glow (the game's linear pipeline) */
-            var diff = _modelDiffuseScale(), hasSkin = false;
-            m.traverse(function (n) {
-                if (!n.isMesh) return;
-                if (n.isSkinnedMesh) hasSkin = true;
-                n.frustumCulled = false;
-                var src = Array.isArray(n.material) ? n.material : [n.material];
-                var out = src.map(function (sm) {
-                    var tex = (sm && sm.map) ? sm.map : null;
-                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
-                    var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
-                    if (n.isSkinnedMesh) lm.skinning = true;
-                    lm.color.setRGB(diff, diff, diff);
-                    if (sm) {
-                        if (sm.side != null) lm.side = sm.side;
-                        if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
-                        if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
-                        if (sm.depthWrite === false) lm.depthWrite = false;
-                    }
-                    if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
-                    if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
-                    _ewPopUnitMat(lm);   // THE UNIT POP
-                    mem.mats.push(lm);
-                    return lm;
-                });
-                n.material = Array.isArray(n.material) ? out : out[0];
-            });
+            var hasSkin = false;
+            m.traverse(function (n) { if (n.isMesh && n.isSkinnedMesh) hasSkin = true; });
+            _trLookMats(mem, m);
             var inner = new THREE.Group();
             inner.rotation.y = def.yawOffset || 0;
             inner.add(m);
@@ -86579,6 +86820,7 @@ const ThreeRenderer = (function () {
             if (m.mixer) m.mixer.update(dt);
             if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
             if (m.model) _swayAuto(m.model, dt);   // THE SWAY
+            if (m.model && m.rig && !(now < (m.lookAt || 0))) { m.lookAt = now + 500; _trLookMats(m, m.model); }   // THE LATE PIECES
         }
         _trTickPoses(T, now);
         /* the camera eases to its framing and drifts a hand's width side to side */
