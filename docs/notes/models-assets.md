@@ -1720,3 +1720,17 @@ back to what they were".
   could not clear. Now: thigh points above CLR_T0 (0.15 of the thigh from the hip) are not tested, a solve that needs more than
   CLR_MAX (0.3 rad) gives up (the clip means it), the radius blends between bins, the turn eases in (CLR_RISE 12/s) and out
   (CLR_EASE 5/s). Real-time check: walks 25-52 mm in -> 0-6 mm; Pockets / Weight shift jitter the same as with it off.
+- REV 2.4 (same day, mondo: "Are there not any simple or subtle ones? ... Are there other better resources or libraries?", then
+  "okay whatever, use any of them"): THE 100STYLE LIBRARY. Source: The 100STYLE Dataset (Ian Mason, CC BY 4.0, Zenodo record 8127870,
+  100STYLE.zip 1.47 GB; credit row in data.js EW_CREDITS). One actor walking 100 styles on a treadmill-free stage, Xsens 60 fps, each
+  style has an ID (idle) take and walks. Only the needed BVHs were pulled from the zip by HTTP range (no full download).
+  mocap-100style.py renames the Xsens joints to CMU names + rescales cm -> CMU units, so bake-mocap.py (same tool as MOC1) cuts the
+  seamless in-place loops; the spec is mocap-clips-100style.json (take numbers 901-910 = the styles listed in mocap-100style.py).
+  Output: Assets/characters/animations/MOC2_100STYLE.glb = lib 6 in sprites.js EW_ANIM_LIB_URLS (254 KB, in ASSET_MANIFEST.json).
+  Creator picks added (never unit defaults): idles S100_Neutral_Idle "Neutral", S100_ArmsBehindBack_Idle "Hands behind back",
+  S100_ArmsFolded_Idle "Arms crossed", S100_Proud_Idle "Proud"; walks S100_Neutral_Walk, S100_ArmsBehindBack_Walk,
+  S100_ArmsFolded_Walk, S100_Proud_Walk. Checks per clip: loop seam <= the 90th-percentile frame step, idles move < 0.5 mm/frame (no
+  shake), real-time hand-in-thigh 0-5 mm on the default and Weight-max bodies with the arm clearance on. Hands behind back gets
+  pose LeftArm/RightArm +14 deg (the heavy body's hands sank into the seat). Rejected after looking: Heavyset + HandsInPockets
+  (elbows out, reads as hands on hips), Old (hunched), Strutting (arms flail), Stiff + ArmsBySide (same as Neutral).
+  Review sheets: /mnt/project-files/mocap-rev2/s100_*.png.
