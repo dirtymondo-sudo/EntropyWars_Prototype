@@ -6325,6 +6325,7 @@ const ThreeRenderer = (function () {
                     if (mt && mt.vertexColors) { c.vertexColors = true; c.onBeforeCompile = _ewVColorEmissiveHook; }   // a creator look's garments
                     _ewColMark(c, n);   // THE CLOTH COLLISION
                     _ewPopUnitMat(c);
+                    c = _ccHairUnitMat(c, mt, n);   // THE HAIR EVERYWHERE
                 } else c = mt.clone();
                 c.transparent = true; c.userData._ewRaOp = c.opacity; c.userData._ewRaCol = c.color ? c.color.clone() : null; mats.push(c); return c;
             };
@@ -17308,6 +17309,50 @@ const ThreeRenderer = (function () {
             '#include <emissivemap_fragment>\n' +
             '#if defined( USE_COLOR_ALPHA ) || defined( USE_COLOR )\n totalEmissiveRadiance *= vColor.rgb;\n#endif\n');
     }
+    /* THE HAIR EVERYWHERE (2026-11-05, mondo: "why the fuck woudlnt you fix it on the board too? fix it everywhere in the entire
+       fucking game"): every stage that shows a unit (the board, the HQ walk, the team room, the race actors) swaps the rig's
+       materials for its own Lambert copy, so creator hair was a flat Lambert card there whatever the creator wore. A creator hair
+       mesh's copy is now THE HAIR SHADER's material too (a MeshPhysicalMaterial: the highlight along the strands, the strands on
+       the flat shells, the pack's normal map) carrying everything the stage set on its Lambert (colour = the stage's light
+       level, the glow + its map, stencil, the unit pop + cloth defines, alpha cut, side), with the glow tinted by the vertex
+       colours as before. No alpha-to-coverage (the board draws without MSAA). WebGPU: _ewNodeDress → _ewNodeHair. */
+    /* a hair material's copy (Material.clone: a finisher's body double, a mount, a fade, the intro) keeps the hair shader:
+       three's copy drops onBeforeCompile + the defines and JSON-copies userData (the crown would stop following the fit) */
+    function _ccHairKeepOnClone(mat) {
+        mat.clone = function () {
+            var c = Object.getPrototypeOf(this).clone.call(this);
+            c.onBeforeCompile = this.onBeforeCompile;
+            c.defines = Object.assign({}, this.defines || {});
+            c.userData.ewHair = this.userData.ewHair;
+            if (this.ewCol !== undefined) c.ewCol = this.ewCol;
+            if (this.ewPop !== undefined) c.ewPop = this.ewPop;
+            if (this._ewHairUnit) c._ewHairUnit = true;
+            c.clone = this.clone;
+            return c;
+        };
+        return mat;
+    }
+    function _ccHairUnitHook(shader) { _ccHairHook.call(this, shader); _ewVColorEmissiveHook(shader); }
+    function _ccHairUnitMat(lm, sm, n) {
+        var U = n && n._ew_creatorHair && sm && sm.userData ? sm.userData.ewHair : null;
+        if (!U || !lm || !lm.isMeshLambertMaterial) return lm;
+        var L = CC_HAIR_LOOK;
+        var hm = new THREE.MeshPhysicalMaterial({ roughness: L.rough, metalness: 0, anisotropy: L.aniso, specularIntensity: L.spec });
+        hm.color.copy(lm.color); hm.map = lm.map; hm.vertexColors = lm.vertexColors;
+        hm.emissive.copy(lm.emissive); hm.emissiveMap = lm.emissiveMap; hm.emissiveIntensity = lm.emissiveIntensity;
+        if (sm.normalMap) { hm.normalMap = sm.normalMap; hm.normalScale.copy(sm.normalScale); }
+        ['side', 'alphaTest', 'transparent', 'opacity', 'depthWrite', 'depthTest', 'stencilWrite', 'stencilRef', 'stencilFunc', 'stencilFuncMask', 'stencilWriteMask',
+            'stencilFail', 'stencilZFail', 'stencilZPass', 'polygonOffset', 'polygonOffsetFactor', 'polygonOffsetUnits', 'ewCol', 'ewPop', 'skinning'].forEach(function (k) { if (lm[k] !== undefined) hm[k] = lm[k]; });
+        hm.defines = Object.assign({}, lm.defines || {});
+        Object.keys(lm).forEach(function (k) { if (/^_ew/.test(k)) hm[k] = lm[k]; });
+        hm.userData.ewHair = U;
+        hm.onBeforeCompile = _ccHairUnitHook;
+        hm._ewHairUnit = true;
+        _ccHairKeepOnClone(hm);
+        hm.name = lm.name;
+        lm.dispose();
+        return hm;
+    }
 
     function _attachUnitModel(entry, unit, def, ts) {
         var wrap = new THREE.Group();
@@ -17450,6 +17495,48 @@ const ThreeRenderer = (function () {
             var hasSkin = false;
             var _stRef = _unitStencilRef(unit.id);
             var _mdiff = _modelDiffuseScale() * (apSpent ? 0.5 : 1);
+            /* one source material -> the board's copy (map, the stage light level, the glow, stencil, cloth, pop; creator hair = THE HAIR EVERYWHERE) */
+            var _unitSwapMat = function (n, sm) {
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) {
+                    // Renderer output is linear like every other texture in
+                    // the game — drop the glTF sRGB decode so the bake isn't
+                    // darkened.
+                    tex.needsUpdate = true;
+                }
+                var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(_mdiff, _mdiff, _mdiff);
+                // Carry the source's surface flags: the CHARACTER CREATOR's hair
+                // cards are alpha-cut + double-sided and its shells double-sided
+                // (Meshy exports are plain opaque FrontSide, so this is a no-op
+                // for every other model).
+                if (sm) {
+                    if (sm.side != null) lm.side = sm.side;
+                    if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
+                    if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
+                    if (sm.depthWrite === false) lm.depthWrite = false;
+                }
+                // Body pixels stamp this unit's stencil ref so the team-
+                // outline hull (below) can mask itself down to the true
+                // screen-space perimeter.
+                lm.stencilWrite = true;
+                lm.stencilRef = _stRef;
+                lm.stencilZPass = THREE.ReplaceStencilOp;
+                if (tex) {
+                    lm.emissive = new THREE.Color(0xffffff);
+                    lm.emissiveMap = tex;
+                    lm.emissiveIntensity = glow;
+                }
+                // the creator's vertex-coloured layers: the glow wears the garment's colour (see the hook)
+                if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                _ewColMark(lm, n);   // THE CLOTH COLLISION: a creator garment keeps its push + layer order
+                _ewPopUnitMat(lm);   // THE UNIT POP: the unit lift, not the world fade
+                lm._ew_shared = true;   // owned by the rig cache, not _disposeR
+                lm = _ccHairUnitMat(lm, sm, n);   // THE HAIR EVERYWHERE
+                entry.modelMats.push(lm);
+                return lm;
+            };
             m.traverse(function (n) {
                 if (!n.isMesh) return;
                 if (n.isSkinnedMesh) hasSkin = true;
@@ -17464,48 +17551,26 @@ const ThreeRenderer = (function () {
                 // props sit at renderOrder ≤ 0, so 2 keeps units above them too.
                 n.renderOrder = 2;
                 var src = Array.isArray(n.material) ? n.material : [n.material];
-                var out = src.map(function (sm) {
-                    var tex = (sm && sm.map) ? sm.map : null;
-                    if (_ewTexSetSRGB(tex, false)) {
-                        // Renderer output is linear like every other texture in
-                        // the game — drop the glTF sRGB decode so the bake isn't
-                        // darkened.
-                        tex.needsUpdate = true;
-                    }
-                    var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
-                    if (n.isSkinnedMesh) lm.skinning = true;
-                    lm.color.setRGB(_mdiff, _mdiff, _mdiff);
-                    // Carry the source's surface flags: the CHARACTER CREATOR's hair
-                    // cards are alpha-cut + double-sided and its shells double-sided
-                    // (Meshy exports are plain opaque FrontSide, so this is a no-op
-                    // for every other model).
-                    if (sm) {
-                        if (sm.side != null) lm.side = sm.side;
-                        if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
-                        if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
-                        if (sm.depthWrite === false) lm.depthWrite = false;
-                    }
-                    // Body pixels stamp this unit's stencil ref so the team-
-                    // outline hull (below) can mask itself down to the true
-                    // screen-space perimeter.
-                    lm.stencilWrite = true;
-                    lm.stencilRef = _stRef;
-                    lm.stencilZPass = THREE.ReplaceStencilOp;
-                    if (tex) {
-                        lm.emissive = new THREE.Color(0xffffff);
-                        lm.emissiveMap = tex;
-                        lm.emissiveIntensity = glow;
-                    }
-                    // the creator's vertex-coloured layers: the glow wears the garment's colour (see the hook)
-                    if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
-                    _ewColMark(lm, n);   // THE CLOTH COLLISION: a creator garment keeps its push + layer order
-                    _ewPopUnitMat(lm);   // THE UNIT POP: the unit lift, not the world fade
-                    lm._ew_shared = true;   // owned by the rig cache, not _disposeR
-                    entry.modelMats.push(lm);
-                    return lm;
-                });
+                var out = src.map(function (sm) { return _unitSwapMat(n, sm); });
                 n.material = Array.isArray(n.material) ? out : out[0];
             });
+            /* THE HAIR EVERYWHERE, the late hair: a creator hair GLB that lands after this swap (not in the cache yet, or after the
+               reveal gave up waiting on a slow line) kept the creator stage's own material, without the board's light level, glow,
+               stencil or unit pop - swapped once the look is on, and by a half-second sweep from the frame tick after that
+               (the rig record's hairSweep, so it rides the rig carry-over; ticked by the board's and the walk's clip loops) */
+            if (appearanceRig) {
+                var _hairSwap = function () {
+                    m.traverse(function (n) {
+                        if (!n.isMesh || !n._ew_creatorHair || n._ew_modelSkin || n._ew_silhouette) return;
+                        n.frustumCulled = false; n.castShadow = true; n.receiveShadow = false; n._ew_shadowFlagged = true; n._ew_modelSkin = true; n.renderOrder = 2;
+                        var src = Array.isArray(n.material) ? n.material : [n.material];
+                        var out = src.map(function (sm) { return _unitSwapMat(n, sm); });
+                        n.material = Array.isArray(n.material) ? out : out[0];
+                    });
+                };
+                appearanceRig.whenDressed(_hairSwap);
+                var _hairSweep = function () { var t = performance.now(); if (t < (m._ewHairAt || 0)) return; m._ewHairAt = t + 500; _hairSwap(); };
+            }
 
             // Hologram x-ray twins — the 3D equivalent of the sprite
             // silhouette: same geometry + same skeleton with the GreaterDepth
@@ -17567,7 +17632,7 @@ const ThreeRenderer = (function () {
             // (they stay null for unrigged static models).
             var _rigRec = {
                 url: def.model, ts: ts, inner: inner, mixer: null, actions: null,
-                appearanceKey: appearanceKey, appearanceRig: appearanceRig, sway: entry._ew_sway || null,
+                appearanceKey: appearanceKey, appearanceRig: appearanceRig, sway: entry._ew_sway || null, hairSweep: appearanceRig ? _hairSweep : null,
                 modelMats: entry.modelMats, silMats: entry.modelSilMats,
                 outlineMats: entry.modelOutlineMats
             };
@@ -18316,6 +18381,7 @@ const ThreeRenderer = (function () {
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
+            var _hsR = _unitModelRigs.get(uid); if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
             if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
@@ -22199,7 +22265,7 @@ const ThreeRenderer = (function () {
                 gclone.traverse(function (n) {
                     if (!n.isMesh) return;
                     var sm = Array.isArray(n.material) ? n.material[0] : n.material;
-                    if (!sm || !sm.isMeshLambertMaterial) { _drop.push(n); return; }
+                    if (!sm || !(sm.isMeshLambertMaterial || sm._ewHairUnit)) { _drop.push(n); return; }   // (THE HAIR EVERYWHERE: a creator hair copy is kept too)
                     var gm = new THREE.MeshBasicMaterial({
                         map: sm.map || null, color: _tcM,
                         transparent: true, opacity: baseOpacity, depthWrite: false
@@ -43355,6 +43421,52 @@ const ThreeRenderer = (function () {
         var base = Object.getPrototypeOf(nm).setupDiffuseColor;
         nm.setupDiffuseColor = function (builder) { base.call(this, builder); _ewNodeU.T.diffuseColor.rgb.mulAssign(factorFn()); };
     }
+    /* THE HAIR SHADER on the node renderer (the GLSL is _ccHairHook): the strands round the crown from the geometry's own
+       (bind-pose) position, the highlight along the strand direction (the crown -> down line, through the model's view
+       matrix), tinted by the hair colour, the grazing sheen cut. U = the material's userData.ewHair */
+    function _ewNodeHair(nm, m) {
+        var T = _ewNodeU.T, U = m.userData && m.userData.ewHair, L = CC_HAIR_LOOK;
+        if (!U || !U.crown) return;
+        var crownV = U.crown.isVector3 ? U.crown : new THREE.Vector3(U.crown.x || 0, U.crown.y || 0, U.crown.z || 0);
+        var crown = T.uniform(crownV), strand = +(U.uStrand && U.uStrand.value) || 0, scale = +(U.uScale && U.uScale.value) || 1.7, bump = +(U.uBump && U.uBump.value) || 0;
+        var hNode = null;
+        var strandsH = function () {   // once per build (both setups read the same node)
+            if (hNode) return hNode;
+            var p = T.positionGeometry.sub(crown);
+            var hash = function (x) { return T.fract(T.sin(x.mul(91.3458)).mul(47453.5453)); };
+            var vn = function (x, K) { var i = T.floor(x), f = T.fract(x); f = f.mul(f).mul(f.mul(-2).add(3)); return T.mix(hash(T.mod(i, K)), hash(T.mod(i.add(1), K)), f); };
+            var t = T.atan(p.x, p.z).mul(0.15915494).add(0.5), t2 = T.atan(p.x.negate(), p.z.negate()).mul(0.15915494).add(0.5);
+            var fw = T.min(T.fwidth(t), T.fwidth(t2)), Ln = T.length(p).div(scale);
+            var tt = t.add(T.sin(Ln.mul(70).add(T.sin(t.mul(43.982)).mul(3))).mul(0.0025));
+            var oct = [[26, 0.16, 0], [130, 0.30, 7], [360, 0.34, 3], [900, 0.30, 11], [2200, 0.24, 5]], h = T.float(0);
+            oct.forEach(function (o) { h = h.add(T.float(1).sub(T.smoothstep(0.3, 0.7, fw.mul(o[0]))).mul(o[1]).mul(vn(tt.mul(o[0]).add(o[2]), o[0]).sub(0.5))); });
+            hNode = h;
+            return hNode;
+        };
+        if (strand > 0) {
+            _ewNodeDiffuseMul(nm, function () { return T.clamp(strandsH().mul(2.2 * strand).add(1), 0.3, 1.5); });
+            nm.normalNode = T.Fn(function () {
+                var h = strandsH().mul(bump), pos = T.positionView, nv = T.normalize(T.materialNormal);   // the pack's normal map kept (the GLSL bumps after normal_fragment_maps)
+                var sx = T.normalize(T.dFdx(pos)), sy = T.normalize(T.dFdy(pos)), R1 = T.cross(sy, nv), R2 = T.cross(nv, sx);
+                var det = T.dot(sx, R1).mul(T.faceDirection);
+                var g = T.sign(det).mul(R1.mul(T.dFdx(h)).add(R2.mul(T.dFdy(h))));
+                return T.normalize(T.abs(det).mul(nv).sub(g));
+            })();
+        }
+        var baseV = nm.setupVariants;
+        nm.setupVariants = function (builder) {
+            baseV.call(this, builder);
+            var p = T.positionGeometry.sub(crown), dirL = T.normalize(p.add(T.vec3(0, T.length(p).mul(-0.45), 0)));
+            var flow = T.modelViewMatrix.mul(T.vec4(dirL, 0)).xyz, nrm = T.normalView;
+            var tv = flow.sub(nrm.mul(T.dot(flow, nrm))).toVar();
+            tv.assign(T.normalize(tv.add(T.vec3(1e-6, 0, 0))));
+            if (this.useAnisotropy) { T.anisotropyT.assign(tv); T.anisotropyB.assign(T.cross(nrm, tv)); }
+            var dc = T.diffuseColor.rgb, tint = T.mix(T.vec3(1), dc.div(T.max(T.max(dc.r, T.max(dc.g, dc.b)), 0.001)), L.tint);
+            T.specularColor.assign(T.specularColor.mul(tint));
+            if (T.specularColorBlended) T.specularColorBlended.assign(T.specularColorBlended.mul(tint));
+            T.specularF90.assign(T.specularF90.mul(L.f90));
+        };
+    }
     /* THE ROOM-BOX AO (_hqAoHook) */
     var _ewNodeAoFn = null;
     function _ewNodeAo() {
@@ -43665,6 +43777,11 @@ const ThreeRenderer = (function () {
         if (kk) C[kk] = (C[kk] || 0) + 1;
         if (h === _hqAoHook) _ewNodeDiffuseMul(nm, _ewNodeAo());
         else if (h === _ewVColorEmissiveHook) { if (m.vertexColors) nm.emissiveNode = _ewNodeU.T.materialEmissive.mul(_ewNodeU.T.vertexColor().rgb); }
+        else if (h === _ccHairHook || h === _ccHairUnitHook) {   // THE HAIR SHADER / THE HAIR EVERYWHERE
+            C.hair = (C.hair || 0) + 1;
+            _ewNodeHair(nm, m);
+            if (h === _ccHairUnitHook && m.vertexColors) nm.emissiveNode = _ewNodeU.T.materialEmissive.mul(_ewNodeU.T.vertexColor().rgb);
+        }
         else if (D && D.k === 'terrain') _ewNodeTerrain(nm, m, D);
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
@@ -51532,6 +51649,7 @@ const ThreeRenderer = (function () {
             m.alphaToCoverage = alphaTest > 0;   // soft strand tips on the multisampled stage (a hard cut where there is no MSAA)
             m.userData.ewHair = { crown: new THREE.Vector3(), uStrand: { value: strands ? L.strand * strands : 0 }, uBump: { value: L.bump }, uScale: { value: 1.7 } };
             m.onBeforeCompile = _ccHairHook;
+            _ccHairKeepOnClone(m);
             ownedMaterials.push(m); return m;
         }
         function material(opts) {
@@ -80008,6 +80126,7 @@ const ThreeRenderer = (function () {
             e.mixer.update(mdt);
             _swayAuto(e.model, mdt);   // THE SWAY: a caped cast member's cape swings in the building too
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
+            var _hsR = e.unit ? _unitModelRigs.get(e.unit.id) : null; if (_hsR && _hsR.hairSweep) _hsR.hairSweep();   // THE HAIR EVERYWHERE: the late hair
         }
     }
     function _hqTickCamera(dt) {
@@ -87447,6 +87566,7 @@ const ThreeRenderer = (function () {
                 _ewColMark(lm, n);   // THE CLOTH COLLISION
                 _ewPopUnitMat(lm);   // THE UNIT POP
                 lm._ewTrMat = true;
+                lm = _ccHairUnitMat(lm, sm, n);   // THE HAIR EVERYWHERE
                 mem.mats.push(lm);
                 return lm;
             });

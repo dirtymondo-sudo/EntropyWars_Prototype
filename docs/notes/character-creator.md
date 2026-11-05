@@ -1737,7 +1737,16 @@ mondo: "why do so many of the hairstyles look like shit? They look like shiny ru
   flat colour with collapsed / overlapping UVs, so no texture can draw strands on them. sprites.js EW_HAIR_STYLES `strands: <depth>`
   draws strands in 3D from the bind-pose position round the crown (periodic value noise in the angle, 5 octaves, each faded where a
   pixel would alias it): darker gaps in the albedo + a bump across them. Add `strands` to any other style that reads as a helmet.
-- Classic WebGL only (the creator stage's own renderer). The board / team room keep their Lambert copy (map only), unchanged.
+- **THE HAIR EVERYWHERE (2026-11-05, mondo: "why the fuck woudlnt you fix it on the board too? fix it everywhere"):** every stage
+  that swaps a unit's materials for its own Lambert copy (the board + the HQ walk `_attachUnitModel` -> `_unitSwapMat`, the team
+  room `_trLookMats`, the finisher actors `_raceActor` lit) runs `_ccHairUnitMat(lm, sm, n)`: a creator hair mesh's copy becomes a
+  MeshPhysicalMaterial with CC_HAIR_LOOK carrying the stage's colour (light level), glow + map, stencil, alpha, side, cloth +
+  pop defines, the pack normal map, sharing the source's `userData.ewHair` (crown, strands). Hook `_ccHairUnitHook` = the hair
+  shader + the vertex-tinted glow. Hair that lands after the swap (not cached / after the reveal gave up on a slow line) is swapped
+  by `whenDressed` and a half-second sweep (rig record `hairSweep`, ticked by the board's and the walk's clip loops). Hologram
+  clones keep it (`_ewHairUnit`), and `_ccHairKeepOnClone` makes Material.clone (body doubles, mounts, fades) keep the hook,
+  defines and the shared crown. WebGPU / node: `_ewNodeDress` -> `_ewNodeHair` (TSL twin: strands from positionGeometry round
+  the crown, bump over materialNormal, anisotropyT/B along the crown->down flow in setupVariants, spec tinted, F90 x 0.3).
 - Debug: `window.EW_CC_DEBUG_UNLIT` still swaps hair to unlit. Probe: a page mounting EWCharViewer on a fixed div with
   `{appearance:{body:'mpfb_female', hair:<id>, model:'creator'}}`, frameCreator('face'), screenshot the stage (shots in
   /mnt/project-files/hair-look/).
