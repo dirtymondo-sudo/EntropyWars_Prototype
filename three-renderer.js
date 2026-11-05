@@ -17256,6 +17256,19 @@ const ThreeRenderer = (function () {
 
     /* Swap out the flat sprite placeholder (front plane + shell + shadow
        proxy + x-ray silhouette) once the rigged model is live. */
+    /* THE DRESSED REVEAL (2026-11-05): a creator body on the board stays hidden, its sprite stand-in up, until its rig has every
+       piece of the look on (rig.whenDressed); then the body shows and the stand-in of whatever entry the unit has by then goes */
+    function _unitRevealDressed(entry, unitId, m, rig) {
+        if (!rig || rig.dressed()) { m.visible = true; _removeUnitSpritePlaceholder(entry); return; }
+        m.visible = false;
+        rig.whenDressed(function () {
+            m.visible = true;
+            _removeUnitSpritePlaceholder(entry);
+            var cur = _getUnitEntry(unitId);
+            var wr = m.parent && m.parent.parent;   // the model's inner -> the wrap -> the entry's group
+            if (cur && cur !== entry && cur.group && wr && wr.parent === cur.group) _removeUnitSpritePlaceholder(cur);
+        });
+    }
     function _removeUnitSpritePlaceholder(entry) {
         var g = entry.group;
         if (!g) return;
@@ -17395,7 +17408,7 @@ const ThreeRenderer = (function () {
                 entry.modelMats[_ri].color.setRGB(_rg, _rg, _rg);
                 if (entry.modelMats[_ri].emissiveMap) entry.modelMats[_ri].emissiveIntensity = glow;
             }
-            _removeUnitSpritePlaceholder(entry);
+            if (!(_rig.appearanceRig && !_rig.appearanceRig.dressed())) _removeUnitSpritePlaceholder(entry);   // THE DRESSED REVEAL: a rig still dressing drops the stand-in itself (_unitRevealDressed)
             return;
         }
 
@@ -17421,6 +17434,7 @@ const ThreeRenderer = (function () {
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
             var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || unit.appearance, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
+            if (appearanceRig && !appearanceRig.dressed()) m.visible = false;   // THE DRESSED REVEAL: shown (and the stand-in dropped) once the look is on (_unitRevealDressed)
             inner.add(m);
             wrap.add(inner);
             /* THE DOOR GUN IN BATTLE (2026-09-16): a def's `hold` (sprites.js — the Door Agent's
@@ -17564,7 +17578,7 @@ const ThreeRenderer = (function () {
             if (res.procClips) entry._ew_procEye = _rigRec.procEye = _procRigAttachEye(m);   // THE PROCEDURAL RIGS: the core eye (after the twins: it gets no x-ray/outline)
             if (!hasSkin && !res.procClips) {
                 console.warn('[ThreeRenderer] unit model has no rig (skin/bones) — clips skipped, rendering static:', def.model);
-                _removeUnitSpritePlaceholder(entry);
+                _unitRevealDressed(entry, unit.id, m, appearanceRig);
                 return;
             }
             var mixer = new THREE.AnimationMixer(m);
@@ -17669,7 +17683,7 @@ const ThreeRenderer = (function () {
                 _loadMeshyClips();
             }
 
-            _removeUnitSpritePlaceholder(entry);
+            _unitRevealDressed(entry, unit.id, m, appearanceRig);   // THE DRESSED REVEAL
         });
     }
 
@@ -23012,6 +23026,7 @@ const ThreeRenderer = (function () {
                 var hasSkin = _cvOwnBakes(m, ownMats, ownTex);
                 if (def.creatorBase && typeof _createAppearanceRig === 'function') {
                     try { rig = _createAppearanceRig(m, def.raceLook || (typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance)); rigRoot = m; } catch (e) { rig = null; }
+                    if (rig && !rig.dressed()) { m.visible = false; rig.whenDressed(function () { m.visible = true; }); }   // THE DRESSED REVEAL
                 }
                 var inner = new THREE.Group();
                 inner.rotation.y = def.yawOffset || 0;
@@ -50718,6 +50733,94 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* THE HAIR SHADER (2026-11-05, mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves").
+       The creator's hair wore one MeshStandardMaterial (roughness 0.55): under the stage's key light every style got the same
+       round plastic highlight, and the dozen styles that are one sculpted shell painted a flat colour (Hair 05 / 06 / 11 / 12 /
+       13 / 14 ...; their UVs are collapsed, so no texture can ever draw strands on them) read as a rubber helmet. Hair is lit
+       ALONG its strands: here a MeshPhysicalMaterial whose anisotropic highlight runs along each vertex's strand direction (the
+       line from the crown over the skull and down: _ccHairFlow, skinned with the hair so it follows the sway chains) instead of
+       the UV tangent, and (strands > 0, the flat shells: sprites.js EW_HAIR_STYLES `strands`) fine strands drawn in 3D round the
+       crown from the bind-pose position (no UVs needed): the albedo darkens in the gaps, the normal ripples across them, the
+       finest strands fade out where a pixel would alias them. Classic WebGL only (the creator stage's own renderer); the board
+       and the team room wear their own Lambert copy as before. uniforms: m.userData.ewHair = { crown: Vector3, strands, bump, k }. */
+    var _CC_HAIR_GLSL_V = [
+        'uniform vec3 ewCrown;',
+        'varying vec3 vEwP;',
+        'varying vec3 vEwFlow;'
+    ].join('\n');
+    var _CC_HAIR_GLSL_F = [
+        'uniform vec3 ewCrown;',
+        'uniform float ewStrand;',
+        'uniform float ewBumpK;',
+        'uniform float ewScale;',
+        'varying vec3 vEwP;',
+        'varying vec3 vEwFlow;',
+        'float ewHash(float n) { return fract(sin(n * 91.3458) * 47453.5453); }',
+        'float ewVN(float x, float K) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(ewHash(mod(i, K)), ewHash(mod(i + 1.0, K)), f); }',
+        // the strands round the crown: t = the angle round the crown (0..1), each octave periodic in t (no seam at the back)
+        'float ewStrands(vec3 p) {',
+        '    float t = atan(p.x, p.z) * 0.15915494 + 0.5;',
+        '    float t2 = atan(-p.x, -p.z) * 0.15915494 + 0.5;',
+        '    float fw = min(fwidth(t), fwidth(t2));',
+        '    float L = length(p) / ewScale;',
+        '    t += 0.0025 * sin(L * 70.0 + sin(t * 43.982) * 3.0);',
+        '    float h = 0.0;',
+        '    h += 0.16 * (1.0 - smoothstep(0.3, 0.7, 26.0 * fw)) * (ewVN(t * 26.0, 26.0) - 0.5);',
+        '    h += 0.30 * (1.0 - smoothstep(0.3, 0.7, 130.0 * fw)) * (ewVN(t * 130.0 + 7.0, 130.0) - 0.5);',
+        '    h += 0.34 * (1.0 - smoothstep(0.3, 0.7, 360.0 * fw)) * (ewVN(t * 360.0 + 3.0, 360.0) - 0.5);',
+        '    h += 0.30 * (1.0 - smoothstep(0.3, 0.7, 900.0 * fw)) * (ewVN(t * 900.0 + 11.0, 900.0) - 0.5);',
+        '    h += 0.24 * (1.0 - smoothstep(0.3, 0.7, 2200.0 * fw)) * (ewVN(t * 2200.0 + 5.0, 2200.0) - 0.5);',
+        '    return h;',
+        '}',
+        'vec3 ewBump(vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDir) {',
+        '    vec3 vSigmaX = normalize(dFdx(surf_pos.xyz));',
+        '    vec3 vSigmaY = normalize(dFdy(surf_pos.xyz));',
+        '    vec3 R1 = cross(vSigmaY, surf_norm);',
+        '    vec3 R2 = cross(surf_norm, vSigmaX);',
+        '    float fDet = dot(vSigmaX, R1) * faceDir;',
+        '    vec3 vGrad = sign(fDet) * (dHdxy.x * R1 + dHdxy.y * R2);',
+        '    return normalize(abs(fDet) * surf_norm - vGrad);',
+        '}'
+    ].join('\n');
+    function _ccHairHook(shader) {
+        var m = this, U = (m && m.userData && m.userData.ewHair) || null;
+        shader.uniforms.ewCrown = { value: U ? U.crown : new THREE.Vector3() };
+        shader.uniforms.ewStrand = U ? U.uStrand : { value: 0 };
+        shader.uniforms.ewBumpK = U ? U.uBump : { value: 0 };
+        shader.uniforms.ewScale = U ? U.uScale : { value: 1.7 };
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', '#include <common>\n' + _CC_HAIR_GLSL_V)
+            .replace('#include <skinnormal_vertex>', [
+                '#include <skinnormal_vertex>',
+                'vec3 ewR = position - ewCrown;',
+                'vEwP = ewR;',
+                'vec3 ewF = normalize(ewR + vec3(0.0, -0.45 * length(ewR), 0.0));',   // from the crown, leaning down (the hair falls)
+                '#ifdef USE_SKINNING',
+                'ewF = (skinMatrix * vec4(ewF, 0.0)).xyz;',
+                '#endif',
+                'vEwFlow = (modelViewMatrix * vec4(ewF, 0.0)).xyz;'
+            ].join('\n'));
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', '#include <common>\n' + _CC_HAIR_GLSL_F)
+            .replace('#include <map_fragment>', [
+                '#include <map_fragment>',
+                'float ewH = 0.0;',
+                'if (ewStrand > 0.0) { ewH = ewStrands(vEwP); diffuseColor.rgb *= clamp(1.0 + ewStrand * 2.2 * ewH, 0.3, 1.5); }',
+                'vec2 ewDH = vec2(dFdx(ewH), dFdy(ewH)) * ewBumpK;'
+            ].join('\n'))
+            .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nif (ewStrand > 0.0) normal = ewBump(-vViewPosition, normal, ewDH, faceDirection);')
+            .replace('#include <lights_physical_fragment>', THREE.ShaderChunk.lights_physical_fragment.replace(
+                /material\.anisotropyT = [^;]*;\s*material\.anisotropyB = [^;]*;/,
+                'vec3 ewT = vEwFlow - dot(vEwFlow, normal) * normal; float ewTl = length(ewT);\n' +
+                'ewT = ewTl > 1e-5 ? ewT / ewTl : normalize(tbn[0]);\n' +
+                'material.anisotropyT = ewT;\nmaterial.anisotropyB = cross(normal, ewT);') +
+                '\nmaterial.specularColor *= mix(vec3(1.0), diffuseColor.rgb / max(1e-3, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))), ' + CC_HAIR_LOOK.tint.toFixed(2) + ');' +
+                '\nmaterial.specularF90 *= ' + CC_HAIR_LOOK.f90.toFixed(2) + ';');   // the grazing sheen (untinted: it took the stage's lilac rim)
+    }
+    /* the hair's look on the creator stage (THE HAIR SHADER): roughness across the strands, the stretch along them, the
+       highlight's strength (a hair's sheen is dimmer than a plastic's), the strands' depth on the flat shells */
+    var CC_HAIR_LOOK = { rough: 0.42, aniso: 0.82, spec: 0.38, tint: 0.85, f90: 0.3, strand: 1, bump: 1.3 };
+
     /* A hair style GLB through the unit-model cache (same-origin retry, done
        hooks). cb(root | null) — fires on failure too. */
     function _ccLoadHair(url, cb) {
@@ -51264,8 +51367,39 @@ const ThreeRenderer = (function () {
             S.arm.updateMatrixWorld(true);
         }
     }
+    /* THE DRESSED REVEAL (2026-11-05, mondo: "the mpfb bodies load naked before the clothes come on. Wtf is the point of the
+       manifesting loading symbol if youre just gonna flash a god damn naked body"): the shared loaders, kept here so the rig
+       below can count every load it starts (its own loaders of the same names wrap these). */
+    var _ccShared = { wear: _ccLoadWear, hair: _ccLoadHair, wings: _ccLoadWings, image: _ccLoadImage, fabric: _ccLoadFabric, eye: _ccLoadEyeProxy, lash: _ccOwnLashMap };
+    var CC_DRESS_MAX_MS = 20000;   // a load that never answers still lets the body show after this
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
+        /* THE DRESSED REVEAL: every async load this rig starts (a garment / hair / wings GLB, a look / fabric picture, the eye pack,
+           the body's own lashes) is counted while in flight; whenDressed(cb) fires once none is left - the callback that finished
+           the last one has already put its piece on the body, and a load it starts in turn is counted before it returns. Each
+           stage (the creator stage, the board, the team room, the dock) keeps the body hidden behind its loading sign until
+           then, so the whole look appears at once. These shadow the shared loaders for this rig only. */
+        var dressQ = { n: 0, cbs: [] };
+        function dressFlush() {
+            if (dressQ.n > 0 || !dressQ.cbs.length) return;
+            var c = dressQ.cbs; dressQ.cbs = [];
+            for (var i = 0; i < c.length; i++) { try { c[i](); } catch (e) { console.warn('[ThreeRenderer] dressed reveal failed', e); } }
+        }
+        function dressHold(cb) {
+            dressQ.n++;
+            var settled = false;
+            return function () {
+                try { return cb.apply(this, arguments); }
+                finally { if (!settled) { settled = true; dressQ.n = Math.max(0, dressQ.n - 1); dressFlush(); } }
+            };
+        }
+        function _ccLoadWear(url, cb) { return _ccShared.wear(url, dressHold(cb)); }
+        function _ccLoadHair(url, cb) { return _ccShared.hair(url, dressHold(cb)); }
+        function _ccLoadWings(url, cb) { return _ccShared.wings(url, dressHold(cb)); }
+        function _ccLoadImage(url, cb) { return _ccShared.image(url, dressHold(cb)); }
+        function _ccLoadFabric(url, unmanaged, cb) { return _ccShared.fabric(url, unmanaged, dressHold(cb)); }
+        function _ccLoadEyeProxy(url, cb) { return _ccShared.eye(url, dressHold(cb)); }
+        function _ccOwnLashMap(S, lash, cb) { return _ccShared.lash(S, lash, dressHold(cb)); }
         var targets = [];
         /* THE MPFB BODIES (2026-11-01, mondo: "base the character creator around these models"): an MPFB body (bake-mpfb.py,
            mesh `mpfb_<body>`) is dressed by this same rig — same bone names, same garments, same hair. Its STOCK skin (the
@@ -51292,6 +51426,17 @@ const ThreeRenderer = (function () {
         root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) { if (/^mpfb_.*_hair$/.test(n.name)) stockHair.push(n); else targets.push(n); } });
         stockHair.forEach(function (n) { n.visible = false; });
         var alive = true;
+        /* THE HAIR SHADER: a creator hair card / shell (alphaTest: its cut; strands: 0, or the strand depth of a flat shell) */
+        function hairMaterial(alphaTest, strands) {
+            if (typeof window !== 'undefined' && window.EW_CC_DEBUG_UNLIT) return material({ vertexColors: true, alphaTest: alphaTest });
+            var L = CC_HAIR_LOOK;
+            var m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: L.rough, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
+                alphaTest: alphaTest, transparent: false, depthWrite: true, anisotropy: L.aniso, specularIntensity: L.spec });
+            m.alphaToCoverage = alphaTest > 0;   // soft strand tips on the multisampled stage (a hard cut where there is no MSAA)
+            m.userData.ewHair = { crown: new THREE.Vector3(), uStrand: { value: strands ? L.strand * strands : 0 }, uBump: { value: L.bump }, uScale: { value: 1.7 } };
+            m.onBeforeCompile = _ccHairHook;
+            ownedMaterials.push(m); return m;
+        }
         function material(opts) {
             var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }, opts || {});
             var m;
@@ -54783,8 +54928,8 @@ const ThreeRenderer = (function () {
                 var kind = (n.userData && n.userData.ewPart) || n.name || 'hair';
                 var srcMat = Array.isArray(n.material) ? n.material[0] : n.material;
                 var isTie = /tie/i.test(kind) && !pack;   // (a pack style's name says "bow tie" — its mesh is hair)
-                var mat = material({ roughness: isTie ? 0.7 : 0.55, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
-                    alphaTest: isTie ? 0 : (/scalp/i.test(kind) ? 0.35 : 0.5), transparent: false, depthWrite: true });
+                var mat = isTie ? material({ roughness: 0.7, metalness: 0, side: THREE.DoubleSide, vertexColors: true, alphaTest: 0, transparent: false, depthWrite: true })
+                    : hairMaterial(/scalp/i.test(kind) ? 0.35 : 0.5, pack && styleRow && styleRow.strands ? (+styleRow.strands || 1) : 0);   // THE HAIR SHADER
                 var accent = null, packTex = null;
                 if (srcMat) {
                     var grey = null;
@@ -54798,7 +54943,9 @@ const ThreeRenderer = (function () {
                     }
                     if (!grey && !isTie) grey = _ccHairTexture(srcMat.map, unmanagedColor);
                     mat.map = grey || srcMat.map || null;
-                    if (srcMat.normalMap) { mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.6, 0.6); }
+                    /* the pack's own normal map (THE HAIR TEXTURES, bake-hair-tex.py): keep the loader's sign (glTF's green runs the
+                       other way: GLTFLoader flips normalScale.y on a mesh with no tangents) */
+                    if (srcMat.normalMap) { var ns = srcMat.normalScale; mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.8 * (ns && ns.x < 0 ? -1 : 1), 0.8 * (ns && ns.y < 0 ? -1 : 1)); }
                 }
                 var g = geometry(), sg = n.geometry;
                 var count = sg.attributes.position.count;
@@ -54863,6 +55010,12 @@ const ThreeRenderer = (function () {
                 var g = h.mesh.geometry;
                 g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
                 g.computeBoundingBox(); g.computeBoundingSphere();
+            });
+            /* THE HAIR SHADER: the crown the strands grow from (a little behind the top of the skull, where the whorl sits) */
+            var czS = (S.zMin + S.zMax) / 2, dzS = (S.zMax - S.zMin) / 2;
+            part.hair.forEach(function (h) {
+                var U = h.mesh.material && h.mesh.material.userData && h.mesh.material.userData.ewHair;
+                if (U) { U.crown.set(S.cx, S.topY - 0.012 * H, czS - 0.3 * dzS); U.uScale.value = H; }
             });
             part.hairNear = null;
             part.hair.forEach(function (h) {   // (every fit starts from the head's weights: hairRide blends onto them once)
@@ -58866,6 +59019,16 @@ const ThreeRenderer = (function () {
         return {
             update: update,
             appearance: function () { return state.last; },
+            /* THE DRESSED REVEAL: dressed() = nothing of the look still loading; whenDressed(cb) = cb() once that is so (at once when
+               it already is; after CC_DRESS_MAX_MS at the latest, so a load that never answers cannot hide the unit for good) */
+            dressed: function () { return dressQ.n <= 0; },
+            whenDressed: function (cb) {
+                if (typeof cb !== 'function') return;
+                var fired = false, once = function () { if (fired) return; fired = true; if (alive) cb(); };
+                if (dressQ.n <= 0) { once(); return; }
+                dressQ.cbs.push(once);
+                setTimeout(function () { if (!fired) { console.warn('[ThreeRenderer] dressed reveal: a piece of the look is still loading; showing the body'); once(); } }, CC_DRESS_MAX_MS);
+            },
             /* dev (2026-11-05): the parts, for probes (THE CLOTH COLLISION's colStats; never used by the game) */
             devParts: function () { return parts; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
@@ -58890,6 +59053,7 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
+                dressQ.cbs = [];   // THE DRESSED REVEAL: a reveal still waiting dies with the rig
                 parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
                 stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
@@ -59460,7 +59624,7 @@ const ThreeRenderer = (function () {
                 }
             }
             _cvSwapIdle(v, def);   // THE IDLE POSE: a new pick on the same body crossfades in
-            _cvHostState(host, 'ready');
+            if (!(v.dressWait && v.dressWait === _cvToken)) _cvHostState(host, 'ready');   // THE DRESSED REVEAL: a first look still dressing keeps MANIFESTING up
             return true;
         }
         _cvClearModel();
@@ -59589,7 +59753,16 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            _cvHostState(v.host, 'ready');
+            /* THE DRESSED REVEAL: the canvas stays clear and MANIFESTING spins until every piece of the look is on the body */
+            var dRig = v.appearanceRig;
+            if (dRig && !dRig.dressed()) {
+                v.dressWait = tok;
+                dRig.whenDressed(function () {
+                    if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
+                    v.dressWait = 0;
+                    _cvHostState(v.host, 'ready');
+                });
+            } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
             if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
         });
         // a failed base GLB never fires the success cb — watch the cache entry
@@ -87005,7 +87178,11 @@ const ThreeRenderer = (function () {
             mem.blob.rotation.x = -Math.PI / 2; mem.blob.position.y = 0.006 * U;
             mem.wrap.add(mem.blob);
             mem.model = m;
-            function show() { if (_tr === T && T.tok === tok) { mem.shown = true; mem.wrap.visible = true; } }
+            function show(dressed) {
+                if (_tr !== T || T.tok !== tok) return;
+                if (!dressed && mem.rig && !mem.rig.dressed()) { mem.rig.whenDressed(function () { show(true); }); return; }   // THE DRESSED REVEAL: the whole look at once
+                mem.shown = true; mem.wrap.visible = true;
+            }
             if (!hasSkin) { show(); return; }
             var mixer = mem.mixer = new THREE.AnimationMixer(m);
             mixer.addEventListener('finished', function (ev) {

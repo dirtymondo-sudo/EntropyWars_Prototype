@@ -2104,11 +2104,20 @@ function _listDescDodge() {
       return;
     }
     const r = l.getBoundingClientRect();
+    /* THE STILL CURSOR (mondo 2026-11-05: "hovering over sprint in the action list causes a shit ton of flickering and
+       its cycling through the other 2 spells around it"): the bar is as tall as the CURSOR ROW's description, so this
+       lift changed with every row the mouse landed on, and it moved the rows: it was measured in screen px (the rig is
+       scaled, --ew-ui-scale) but written as CSS px, so the max-height missed the list and the margin pushed the whole
+       panel up. The row under a still mouse changed, that row's description moved the list back, and round it went.
+       Now the sizes are CSS px (the panel really keeps its size and place, the rows stay put), and while one list stays
+       open its lift only grows: a shorter description never hands the room back, so the list can't swing to and fro. */
+    const k = (l.offsetHeight > 0 && r.height > 0) ? r.height / l.offsetHeight : 1;   // screen px per CSS px
     const overX = r.right > br.left + 4 && r.left < br.right - 4;
-    const baseBot = r.bottom + cur, baseH = r.height + cur;
-    let need = overX ? Math.ceil(baseBot - (br.top - 6)) : 0;
+    const baseBot = r.bottom + cur * k, baseH = l.offsetHeight + cur;
+    let need = overX ? Math.ceil((baseBot - (br.top - 6)) / k) : 0;
     if (need < 0) need = 0;
     if (need > baseH - 60) need = Math.max(0, baseH - 60);   // never shrinks a list to nothing
+    if (need < cur) need = cur;
     if (Math.abs(need - cur) <= 1) return;
     if (!need) { l.style.removeProperty('margin-bottom'); l.style.removeProperty('max-height'); delete l.dataset.ewDescLift; return; }
     l.style.setProperty('max-height', Math.round(baseH - need) + 'px', 'important');
@@ -2144,7 +2153,11 @@ function _listRoom() {
     L.classList.toggle('ew-fits', fits);
     let rx = 0, rt = 0, rb = 0;
     if (!fits) {
-      const sel = L.querySelector(':scope > .hrlg-blade.sel') || first, h0 = sel.offsetHeight || 40;
+      /* room for the TALLEST row grown, not the cursor row: the room (the first row's top margin) changed with the row the
+         mouse was on and nudged every row under a still mouse (THE STILL CURSOR, 2026-11-05) */
+      let h0 = 0;
+      for (const row of rows) h0 = Math.max(h0, row.offsetHeight || 0);
+      h0 = h0 || 40;
       const W = L.clientWidth - pL - pR, p = Math.min(pL, pR);
       /* the widest row whose grown (tilted, slanted) shape still lands inside the box, centred where the rows are */
       const w = Math.max(40, ((W + 2 * p) / g - h0 * Math.sin(t) - h0 * Math.tan(sk)) / Math.cos(t));
@@ -3148,6 +3161,19 @@ function _hrlgHitPct(attacker, target, from) {
   if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
   try { return Math.round(getAttackHitChance(attacker, target, from || null) * 100); } catch (e) { return null; }
 }
+/* THE STILL CURSOR (see the .hrlg-blade > .hrlg-body rule): a row's drawn body takes no mouse, so the tooltip of the
+   chip under the cursor (ENDS TURN, the hit chance, the green / red !, a badge, the icon) is put on the row itself */
+function _hrlgRowTip(e) {
+  const row = e.currentTarget;
+  if (!row || !row.querySelectorAll) return;
+  let tip = '';
+  row.querySelectorAll('.hrlg-body [title]').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.width && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) tip = el.getAttribute('title') || tip;
+  });
+  if ((row.getAttribute('title') || '') !== tip) { if (tip) row.setAttribute('title', tip); else row.removeAttribute('title'); }
+}
+
 function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, confirmBtn }) {
   const dead = !b.available && !b.forceLive;         // truly inert
   const ghost = !b.available;                        // greyed look (may still be clickable)
@@ -3350,6 +3376,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     onClick: (dead && !muted) ? undefined : (e) => onFire(b, e),
     onMouseEnter: muted ? undefined : (e) => onHover(b, true, e),
     onMouseLeave: muted ? undefined : (e) => onHover(b, false, e),
+    onMouseMove: _hrlgRowTip,
   },
     h('div', { className: 'hrlg-body' + (b.danger ? ' danger' : '') },
       // the classic yellow JRPG hand-cursor leading the selected row
@@ -3885,7 +3912,10 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   }, [_camCtx]);
 
   // keep the cursor row in view when the keyboard/wheel drives a long list
+  // (THE STILL CURSOR, 2026-11-05: never for a mouse hover — scrolling the list
+  // slid another row under a mouse that wasn't moving, and that row took the cursor)
   useEffect(() => {
+    if (camSrc.current === 'hover') return;
     const root = listRef.current;
     const el = root && root.querySelector('.hrlg-blade.sel');
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
@@ -12165,6 +12195,14 @@ function _hudHideCss() {
     /* the armed (✓) row grows a CONFIRM seal — drop the dist chip there so
        the name + HP bar never get crowded out */
     .hrlg-blade.trow.pend .hrlg-meta { display: none; }
+    /* THE STILL CURSOR (mondo 2026-11-05: "hovering over sprint in the action list causes a shit ton of flickering and
+       its cycling through the other 2 spells around it ... 2 spells selected at the same time", every game, any unit):
+       the hovered / selected row's BODY leans and grows (the UI Maker's row tilt, selected tilt + grow, slant), so its
+       edge moved off a cursor that sat near it, the row under the cursor changed, that row leaned, the first came back
+       under the cursor ... a loop with the mouse held still. Only the row's own slot in the list (the blade, which never
+       moves) takes the mouse now; the drawn body is looks only. The CONFIRM seal and the DROP chip keep their own clicks
+       (they set pointer-events: auto themselves); the chips' tooltips ride the blade (_hrlgRowTip). */
+    .hrlg-blade > .hrlg-body { pointer-events: none; }
     .hrlg-body {
       position: relative; height: 100%; flex: 1; min-width: 0;
       display: flex; align-items: center; gap: 8px; padding: 0 12px;

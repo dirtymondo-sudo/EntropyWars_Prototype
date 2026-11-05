@@ -1681,3 +1681,23 @@ different bone weights and drift into each other. THE CLOTH COLLISION is a per-v
   89 -> 78, vampire 18 -> 7, coded sword swing 233 -> 162, cowboy crouch 602 -> 589. Tight creases (sitting seat, folded inner elbow) don't
   improve: a fold can't be cleared by pushing. Probe: Playwright + EWCharViewer.mount, freeze the clip, toggle EW_CLOTH_COLLIDE.x in one frame,
   CPU replica of the push to count points (scratch only). Kill-switch: EW_DISABLE_CLOTH_COLLIDE / ?ew_collide=0.
+## THE HAIR SHADER + THE HAIR TEXTURES (2026-11-05, character-models-plan row 29e)
+mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves. Are they missing textures or something?"
+- **Textures:** bake-mpfb.py --hair-styles wrote the 70 pack styles with the diffuse cut to 512 px (HAIR_STYLE_PX; the packs ship
+  1024-3600 px) and no normal map (30 styles ship one). `python3 -I bake-hair-tex.py --packs <unzipped mhpacks>` re-packs every
+  charactercreation/hair/mh/*.glb with the pack's own diffuse at up to 1024 px (PNG, alpha) and its normal map (JPEG,
+  material.normalTexture); mesh, UVs, extras untouched. 47 -> 95 MB on R2 (listed in ASSET_MANIFEST.json, so ?h= refetches them).
+  buildHair keeps the loader's normalScale sign (was a fixed +0.6, the green ran the wrong way).
+- **Material (three-renderer.js THE HAIR SHADER, hairMaterial + _ccHairHook):** a MeshPhysicalMaterial (CC_HAIR_LOOK: roughness 0.42,
+  anisotropy 0.82, specularIntensity 0.38, highlight tinted 85 % to the hair colour) whose anisotropic highlight runs along each
+  vertex's strand direction (from the crown, part.skull, leaning down; skinned with the hair so it follows the sway chains) instead
+  of the UV tangent; alpha-to-coverage on the cards. The old MeshStandard 0.55 gave every style the same round plastic highlight and
+  took the stage's lilac rim light as a sheen.
+- **The flat shells:** Hair 05 / 06 / 11 / 12 / 13 / 14, Bobcut hair, Wavy bob (+ Anime hair at 0.7) are one sculpted mesh painted a
+  flat colour with collapsed / overlapping UVs, so no texture can draw strands on them. sprites.js EW_HAIR_STYLES `strands: <depth>`
+  draws strands in 3D from the bind-pose position round the crown (periodic value noise in the angle, 5 octaves, each faded where a
+  pixel would alias it): darker gaps in the albedo + a bump across them. Add `strands` to any other style that reads as a helmet.
+- Classic WebGL only (the creator stage's own renderer). The board / team room keep their Lambert copy (map only), unchanged.
+- Debug: `window.EW_CC_DEBUG_UNLIT` still swaps hair to unlit. Probe: a page mounting EWCharViewer on a fixed div with
+  `{appearance:{body:'mpfb_female', hair:<id>, model:'creator'}}`, frameCreator('face'), screenshot the stage (shots in
+  /mnt/project-files/hair-look/).
