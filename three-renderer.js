@@ -42412,6 +42412,7 @@ const ThreeRenderer = (function () {
         var s = _ewGpuBackendName();
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
+        if (_ewGpu === 'webgpu' && _ewGpuInfo.limits) s += ' · ' + _ewGpuInfo.limits;
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
@@ -44851,6 +44852,45 @@ const ThreeRenderer = (function () {
         }
         catch (e) { console.warn('[ThreeRenderer] node program: kept the stand-in', e); return null; }
     }
+    /* THE CORE ADAPTER (2026-11-05, mondo's Firefox console: 'User requested a WebGPU adapter with featureLevel:
+       "compatibility", which is not yet supported; returning a "core"-defaulting adapter for now' from three.webgpu.js).
+       three 0.186.1's WebGPUBackend.init() always asks navigator.gpu.requestAdapter for featureLevel 'compatibility' (it then
+       turns core on by asking for every feature the adapter has). Firefox has no compatibility mode (bugzilla 1905951), hands
+       back a core adapter anyway and warns. Nothing in the game needs compatibility mode, so on Firefox the ask drops
+       featureLevel (the WebGPU default, core): the same adapter, no warning. Chrome / Safari keep three's ask unchanged.
+       While the adapter passes through: its vertex limits are kept for ?ewdiag=1 / gpuStatus(), and the device asks for the
+       adapter's own maxVertexBuffers when that is above WebGPU's default 8 (three asks for no limits, so the device got 8
+       even where the GPU has more; mondo's log: 'The number of vertex buffers 13 exceeds the limit 8'). Chrome's Dawn tops
+       out at 8, so there it changes nothing. A wrapper on navigator.gpu, not a patch of the vendored three (it loads from
+       jsdelivr). Off: ?ew_gpucore=0 (reload). */
+    function _ewGpuCoreShim() {
+        var gpu = (typeof navigator !== 'undefined') ? navigator.gpu : null;
+        if (!gpu || typeof gpu.requestAdapter !== 'function' || gpu._ewCoreShim) return;
+        try { if (/[?&]ew_gpucore=0\b/.test(location.search)) return; } catch (e) {}
+        var ff = /Firefox\//.test(navigator.userAgent || ''), ra = gpu.requestAdapter;
+        gpu._ewCoreShim = true;
+        gpu.requestAdapter = function (o) {
+            if (ff && o && o.featureLevel === 'compatibility') { o = Object.assign({}, o); delete o.featureLevel; }
+            return ra.call(this, o).then(function (a) {
+                if (!a || a._ewCoreShim || typeof a.requestDevice !== 'function') return a;
+                a._ewCoreShim = true;
+                var L = a.limits || {}, mvb = L.maxVertexBuffers | 0, rd = a.requestDevice;
+                _ewGpuInfo.limits = 'adapter maxVertexBuffers ' + mvb + ', maxVertexAttributes ' + (L.maxVertexAttributes | 0) +
+                    (ff ? ' (featureLevel core)' : '');
+                a.requestDevice = function (d) {
+                    d = Object.assign({}, d || {});
+                    var rl = Object.assign({}, d.requiredLimits || {});
+                    if (mvb > 8 && !(rl.maxVertexBuffers >= mvb)) rl.maxVertexBuffers = mvb;
+                    d.requiredLimits = rl;
+                    return rd.call(this, d).then(function (dev) {
+                        try { _ewGpuInfo.limits += '; device maxVertexBuffers ' + (dev.limits.maxVertexBuffers | 0); } catch (e) {}
+                        return dev;
+                    });
+                };
+                return a;
+            });
+        };
+    }
     /* the board renderer: the node renderer when asked for and loaded, else the classic one */
     function _ewMakeBoardRenderer(cnv) {
         var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
@@ -44864,6 +44904,7 @@ const ThreeRenderer = (function () {
                     var lensUser = false;
                     try { lensUser = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) {}
                     if (!ff && lensUser) opts.trackTimestamp = true;   // Firefox's wgpu invalidates the device on timestampWrites
+                    if (mode === 'webgpu') _ewGpuCoreShim();
                     var r = new G.WebGPURenderer(opts);
                     _ewGpu = mode;
                     _ewGpuCompat(r, G);
@@ -45433,7 +45474,7 @@ const ThreeRenderer = (function () {
                     if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = String(ev && ev.error && ev.error.message || ev).slice(0, 160);
                 });
             } catch (e) {}
-            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName());
+            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}
         }, function (e) {
