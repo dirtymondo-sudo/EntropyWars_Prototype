@@ -1382,6 +1382,11 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   stops the same-character path flipping it to ready early); the board / HQ walk (`_attachUnitModel`) hides the model and keeps
   the sprite stand-in until dressed (`_unitRevealDressed`; the rig-cache fast path leaves the stand-in to it); the team room's
   `show()` and the unit dock wait too. Later picks on a live body are not hidden (the old garment stays until the new one is in).
+  Rev 2 (same day, mondo: "i still see the naked flash briefly"): the creator stage hid only its CANVAS (CSS opacity, a 0.5 s
+  fade). On a body swap with the new body GLB already cached, the new body was added while the canvas was still fading out
+  of the last character, so the bare body drew at up to full opacity for ~9 frames (caught by a per-render frame capture on
+  Cowboy -> Demon). The stage now also hides the body itself (`wrap.visible = false` until whenDressed); the beat cancel's
+  "never leave the hero gone" reset respects `v.dressWait`. Frame capture before / after: /mnt/project-files/dressed-reveal/flash-frames/.
 
 ## THE CACHED LANDING + THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo on the Singularity Arena, WebGPU: "these crystals are not pixelating, or it looks like they are flickering on and off of being pixelated")
 - Cause (measured in the cloud browser, WebGPU and the WebGPU renderer's WebGL2 backend): on a board with crystal tiles,

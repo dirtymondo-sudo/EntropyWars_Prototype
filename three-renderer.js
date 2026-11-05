@@ -59808,13 +59808,18 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            /* THE DRESSED REVEAL: the canvas stays clear and MANIFESTING spins until every piece of the look is on the body */
+            /* THE DRESSED REVEAL: MANIFESTING spins and the BODY ITSELF stays hidden until every piece of the look is on it. The
+               canvas fade alone was not enough (mondo 11-05 "i still see the naked flash briefly"): on a body swap with the body
+               GLB cached, the new body was added while the canvas was still fading out of the last character (0.5 s CSS), so the
+               bare body drew on a canvas that was still showing. */
             var dRig = v.appearanceRig;
             if (dRig && !dRig.dressed()) {
                 v.dressWait = tok;
+                wrap.visible = false;
                 dRig.whenDressed(function () {
                     if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
                     v.dressWait = 0;
+                    wrap.visible = true;
                     _cvHostState(v.host, 'ready');
                 });
             } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
@@ -60167,7 +60172,7 @@ const ThreeRenderer = (function () {
         var b = v.beat;
         v.beat = null;
         if (b) for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
-        if (v.model) v.model.visible = true;               // a blink cut short never leaves the hero gone
+        if (v.model) v.model.visible = !(v.dressWait && v.dressWait === _cvToken);   // (THE DRESSED REVEAL: a body still dressing stays hidden)              // a blink cut short never leaves the hero gone
         v.frameTo = null;                                  // the camera eases home
         if (!b) return;
         if (silent) { v.moveTween = null; v.heroX = 0; v.heroY = 0; }
