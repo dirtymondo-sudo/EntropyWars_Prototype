@@ -57496,7 +57496,7 @@ const ThreeRenderer = (function () {
                     pos[o3] = Cv[i][0] + nx * Rt; pos[o3 + 1] = Cv[i][1] + ny * Rt; pos[o3 + 2] = Cv[i][2] + nz * Rt;
                     nrm[o3] = nx; nrm[o3 + 1] = ny; nrm[o3 + 2] = nz;
                     for (var q4 = 0; q4 < 4; q4++) { var e4 = Cw[i][q4]; sI[o4 + q4] = e4 ? e4[0] : 0; sW[o4 + q4] = e4 ? e4[1] : 0; }
-                    if (i < NSm) { var a1 = i * SIDES + k, a2 = i * SIDES + (k + 1) % SIDES, a3 = a1 + SIDES, a4 = a2 + SIDES; idx.push(a1, a3, a2, a2, a3, a4); }
+                    if (i < NSm) { var a1 = i * SIDES + k, a2 = i * SIDES + (k + 1) % SIDES, a3 = a1 + SIDES, a4 = a2 + SIDES; idx.push(a1, a2, a3, a2, a4, a3); }   // (wound outward, the way its normals face)
                 }
             }
             var g = new THREE.BufferGeometry();
