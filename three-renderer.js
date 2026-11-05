@@ -55843,7 +55843,7 @@ const ThreeRenderer = (function () {
            the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
            Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
            joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -55920,9 +55920,11 @@ const ThreeRenderer = (function () {
                 picks.forEach(function (pk) {
                     var C = chains[pk[0]], Jy = C.j, s = 0;
                     while (s < JN - 2 && y < Jy[s + 1][1]) s++;
-                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, wP = s > 0 && u < 0.25 ? 0.5 * (0.25 - u) / 0.25 : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
-                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP);
+                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, jb = COAT_HANG.jblend || 0.25, wP = s > 0 && u < jb ? 0.5 * (jb - u) / jb : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
+                    var wN = COAT_HANG.jsym && s < JN - 2 && u > 1 - jb ? 0.5 * (u - 1 + jb) / jb : 0;   // THE SMOOTH BENDS: and a little of the bone below just above the next joint (the bend shades round, not in a line)
+                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP - wN);
                     if (wP > 0) acc[C.idx0 + s - 1] = (acc[C.idx0 + s - 1] || 0) + pk[1] * f * wP;
+                    if (wN > 0) acc[C.idx0 + s + 1] = (acc[C.idx0 + s + 1] || 0) + pk[1] * f * wN;
                 });
                 var top = Object.keys(acc).map(function (bk) { return [+bk, acc[bk]]; }).sort(function (x, y2) { return y2[1] - x[1]; }).slice(0, 4), tt = 0;
                 top.forEach(function (tp) { tt += tp[1]; });
@@ -55936,7 +55938,7 @@ const ThreeRenderer = (function () {
                     return W4.filter(function (x) { return sk.boneInverses[x[0]] && bones[x[0]]; }).map(function (x) { return { b: bones[x[0]], w: tw > 0 ? x[1] / tw : 0, L: new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(sk.boneInverses[x[0]]) }; });
                 });
             });
-            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
+            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t, a: C.a }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
         }
         /* the leg capsules (THE COAT HANG): per thigh (UpLeg -> Leg) and shin (Leg -> Foot), in that bone's own bind frame, the
            axis + radius (tapered: one at each end) of everything worn on it under the hanging coat - the skin, the trousers, the
@@ -56072,8 +56074,9 @@ const ThreeRenderer = (function () {
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
                     var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
                     if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
+                    var rc = K.rad * (O.poseA ? ct + (1 - ct) * kf : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + rc, lk) * Wk.s;
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
                     _hd.addScaledVector(_hgE, -_hd.dot(_hgE) / (L2 || 1));        // (across the axis only)
@@ -56098,6 +56101,9 @@ const ThreeRenderer = (function () {
                         _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
                         _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
                     } else _hgB.copy(_hgG);
+                    var fo = O.follow && O.follow[i] != null ? O.follow[i] : 1;
+                    if (fo < 1 && O.followSide && C.a != null) fo = 1 - (1 - fo) * (1 - Math.max(0, Math.cos(C.a)));   // (the sides + back only: the front panels must keep up with a thigh lifting into them)
+                    if (fo < 1) { _hgB.multiplyScalar(fo).addScaledVector(_hgG, 1 - fo); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG); }   // THE HIP HANG: the top bone only part way to the thighs' carry
                     if (i && O.fall > 0) _hgB.multiplyScalar(1 - O.fall).y -= O.fall, _hgB.normalize();   // (below the first joint the cloth falls toward the ground: straight on from a pushed joint the skirt flared out like a bell / stood out stiff as a board in a kneel or kick. NOT back toward its rest hang: that pulled it back into the leg)
                     _hgA.copy(B.head).addScaledVector(_hgB, wl);
                     if (fresh || B.cur.distanceTo(B.head) > wl * 4) { B.cur.copy(_hgA); B.prev.copy(_hgA); }
