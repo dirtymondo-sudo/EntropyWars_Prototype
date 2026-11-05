@@ -1537,6 +1537,19 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     + (gr[4] === 'cape' && capeOn ? 1 : 0) + (gr[4] === 'wings' && appearance.wings && appearance.wings !== 'none' ? 1 : 0)
     + (gr[4] === 'feet' && appearance.feet && appearance.feet !== 'none' ? 1 : 0);
   const slotWorn = (slot) => slotGroups(slot).reduce((n, gr) => n + groupWorn(gr), 0);
+  // THE TAKE ALL OFF SPLIT: what TAKE ALL OFF takes off for one kind (the same pieces its gold dot counts)
+  const kindOff = (gr) => {
+    const g = gr[1], L = gr[4], drop = L === 'layers' ? ['tops', 'coats'] : [g];
+    const patch = { wear: worn.filter(id => !(shelfOf(id) && drop.includes(groupOf(id)))) };
+    if (L === 'layers') Object.assign(patch, { wear2: 'none', outer: 'none', outer2: 'none' });
+    if (L === 'outer') Object.assign(patch, { outer: 'none', outer2: 'none' });
+    if (L === 'cape') patch.cape = 'none';
+    if (L === 'wings') patch.wings = 'none';
+    if (L === 'feet') patch.feet = 'none';
+    if (g === 'heads') shapeHeads.forEach(([k]) => { if (shapeHeadOn(k)) patch[k] = 0; });
+    if (g === 'ears') shapeEars.forEach(([k]) => { if (shapeHeadOn(k)) patch[k] = 0; });
+    return patch;
+  };
   const slotCam = (slot) => ((slots.find(s => s[0] === slot) || [])[2]) || 'body';
   // one kind open: its layer rows first (the coded / Blender picks), then the pack pieces, their fabric rows and their colours
   const ccGroup = (slot, gr) => {
@@ -1567,6 +1580,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     const chip = (gr) => h('button', { key: gr[1], role: 'tab', className: 'ms-tty-btn sm' + (cur === gr ? ' primary' : ''), 'aria-selected': cur === gr, 'aria-pressed': cur === gr,
       onClick: () => setKindBySlot(k => ({ ...k, [slot]: gr[1] })) }, gr[2].toUpperCase() + (groupWorn(gr) ? ' •' : ''));
     const own = gl.filter(gr => slotOfGroup(gr[1]) !== 'arms'), pairs = gl.filter(gr => slotOfGroup(gr[1]) === 'arms');
+    const kindN = cur ? groupWorn(cur) : 0;
     return h(React.Fragment, null,
       // THE CREATOR ICONS (2026-11-04): each body part an icon tile (its icon over its name, a gold dot = something worn there), in two
       // even rows (Head ... Back over Left arm ... Footwear) so the tiles line up at any width
@@ -1579,12 +1593,19 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
         arm && pairs.length ? h('span', { key: 'pair', className: 'pb-cc-kinds-head' }, 'Both arms') : null,
         pairs.map(chip)) : null,
       // (the MEN / WOMEN switch only on a kind it lists by; a kind of accessories lists every piece)
-      (cur && cur[3]) || clothesWorn ? h('div', { className: 'pb-creator-options pb-cc-side', role: 'group', 'aria-label': 'Clothes for' },
+      (cur && cur[3]) || kindN || clothesWorn ? h('div', { className: 'pb-creator-options pb-cc-side', role: 'group', 'aria-label': 'Clothes for' },
         cur && cur[3] ? h('span', { className: 'pb-creator-colorlabel' }, 'Made for') : null,
         (cur && cur[3] ? [['male', 'MEN'], ['female', 'WOMEN']] : []).map(([g, txt]) => h('button', { key: g, className: 'ms-tty-btn' + (sideNow === g ? ' primary' : ''), 'aria-pressed': sideNow === g,
           title: 'List the clothes made for ' + (g === 'female' ? 'women' : 'men') + ' (+ the ones that fit anyone). Any piece fits any body.', onClick: () => setWearFor(g) }, txt)),
-        clothesWorn ? h('button', { key: 'off', className: 'ms-tty-btn pb-cc-alloff', title: 'Take off every piece of clothing (the facial hair and the accessories stay)',
-          onClick: () => changeAppearance({ wear: worn.filter(id => !clothesShelves.includes(shelfOf(id))), wear2: 'none', outer: 'none', outer2: 'none', cape: 'none', feet: 'none' }) }, 'TAKE ALL OFF') : null) : null,
+        // THE TAKE ALL OFF SPLIT (2026-11-05, mondo: "the button that says "take all off", can it only take off the category of clothes you
+        // have selected? And there should be another button that says "Clear All" and it should be red and that should do what take all
+        // off does now"): TAKE ALL OFF = everything worn in the open kind (Hats + helmets, Layers 1 2 3, Capes ...); CLEAR ALL (red) = every
+        // piece of clothing on every body part (the facial hair and the accessories stay), as TAKE ALL OFF did before
+        kindN || clothesWorn ? h('span', { key: 'off', className: 'pb-cc-alloff' },
+          kindN ? h('button', { key: 'kind', className: 'ms-tty-btn', title: 'Take off everything worn under ' + ((slots.find(s => s[0] === slot) || [])[1] || slot) + ' > ' + cur[2] + ' (the other kinds stay on)',
+            onClick: () => changeAppearance(kindOff(cur)) }, 'TAKE ALL OFF') : null,
+          clothesWorn ? h('button', { key: 'all', className: 'ms-tty-btn pb-cc-clearall', title: 'Take off every piece of clothing on every body part (the facial hair and the accessories stay)',
+            onClick: () => changeAppearance({ wear: worn.filter(id => !clothesShelves.includes(shelfOf(id))), wear2: 'none', outer: 'none', outer2: 'none', cape: 'none', feet: 'none' }) }, 'CLEAR ALL') : null) : null) : null,
       cur ? h('div', { key: slot + ':' + cur[1], className: 'pb-cc-slotpanel', role: 'tabpanel', 'data-cc-cam-own': slotCam(slot) },
         arm && slotOfGroup(cur[1]) === 'arms' ? h('p', { className: 'pb-creator-note' }, 'A pair: worn on both arms (the same pick shows on LEFT ARM and RIGHT ARM).') : null,
         ccGroup(slot, cur)) : null);
