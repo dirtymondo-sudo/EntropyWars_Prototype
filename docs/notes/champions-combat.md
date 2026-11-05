@@ -1454,6 +1454,15 @@ right half to two thirds of the screen".
   menu (not mid-action) and refits a fitted frame for it. With a sub menu up the frame slides only CLEAR_FRAME_SHIFT
   (0.55) of the way to the free part's middle, keeping its size (Football Stadium 1440x900, Abilities open: cx 0.42 →
   0.23 NDC, the unit ~62% across instead of ~71%). Too far / not far enough: tune CLEAR_FRAME_SHIFT.
+- THE LOW PANEL (2026-11-05, mondo, Training Room, a quick-menu Meteor's CONFIRM: caster, target and AOE "all shifted
+  over to the right ... This sub menu is no where as big as the other ones"). `_menuFreeArea` only ever cut a strip BESIDE
+  the menus, and counted the faded backdrop list (`.hrlg-panel.bg`, the Abilities list behind CONFIRM) as cover, so the
+  small CONFIRM / BACK / CANCEL step slid the frame 0.31 NDC right. Now it also measures the band ABOVE the side menus
+  that are not a faded backdrop (`lowTop`); when that band is >= CLEAR_LOW_PANEL_MIN_H (0.45) of the screen tall and
+  bigger than the side strip, it is the free part: full width (cx 0, l -1, r 1), raised over the panel (cy capped at
+  CLEAR_LOW_PANEL_MAX_CY 0.3). Tall panels (Abilities, attack list, quick lists) keep the side strip. Seen in a real
+  browser: /mnt/project-files/menu-camera/confirm_panel_before_after.jpg. The confirm zoom and the cast-time centring
+  were split to their own threads the same day.
 - THE NEAR FRAME (2026-11-05, mondo, Hell arena: a tile's quick menu put "my character and tile ... far far too much over
   to the right"; his hand-framed shot had the unit + the clicked thing just clear of the menu). The CLEAR_FRAME_SHIFT slide
   was fixed whatever was on screen, so a sub menu with no fit of its own (board-click quick list, Abilities) pushed the

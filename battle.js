@@ -24956,6 +24956,8 @@
             // to the previous actor.
             _armLevelSettle(delayMs, opts) {
                 if (this._autoSettleTimer) clearTimeout(this._autoSettleTimer);
+                // THE IMPACT HOLD: the settle home never fires while the shot is still showing its impact
+                { const _ih = _cineImpactHoldLeft(); if (_ih > 0) delayMs = Math.max(delayMs || 0, _ih + 30); }
                 const _pull = !!(opts && opts.pullBack);
                 const _px = opts ? opts.x : undefined;
                 const _py = opts ? opts.y : undefined;
@@ -25312,6 +25314,19 @@
                 }
             },
             restore(opts = {}) {
+                /* THE IMPACT HOLD: a finisher / sequence's own return waits out the last hit's aftermath too */
+                const _ihLeft = _cineImpactHoldLeft();
+                if (_ihLeft > 16 && !opts._afterImpactHold && state.phase === 'battle' && this._savedState) {
+                    const _ihSerial = this._impactShotSerial;
+                    if (this._impactHoldTimer) clearTimeout(this._impactHoldTimer);
+                    this._impactHoldTimer = setTimeout(() => {
+                        this._impactHoldTimer = null;
+                        if (this._impactShotSerial !== _ihSerial || state.phase !== 'battle' || state.winner) return;
+                        if (state._actionExecuting || _walkAnimActive || state.actionMode) return;   // the player already moved on (acting, walking, picking a target): that owns the camera
+                        this.restore({ ...opts, _afterImpactHold: true });
+                    }, _ihLeft);
+                    return;
+                }
                 const s = this._savedState;
                 this._savedState = null;
                 if (!s) return;
@@ -25341,7 +25356,8 @@
                 }, dur);
             },
 
-            isBusy() { return this._busy || this._duration > 0; },
+            // THE IMPACT HOLD: an action shot still showing its impact counts as busy (the turn loop waits it out)
+            isBusy() { return this._busy || this._duration > 0 || _cineImpactHoldLeft() > 0; },
 
             reset(immediate) {
                 if (!boardStageEl) return;
@@ -25399,6 +25415,21 @@
 
             softResetToUnit(targetUnit, opts = {}) {
                 if (!boardStageEl || state.cameraDisabled) { this.reset(); this._savedState = null; return; }
+                /* THE IMPACT HOLD (mondo 2026-11-05): the return home waits until the shot's impact has played —
+                   the crater, the flash, the numbers. A new action shot in the meantime owns the camera and drops
+                   this return (its own finish brings the camera home). */
+                const _ihLeft = _cineImpactHoldLeft();
+                if (_ihLeft > 16 && !opts._afterImpactHold && state.phase === 'battle') {
+                    const _ihSerial = this._impactShotSerial;
+                    if (this._impactHoldTimer) clearTimeout(this._impactHoldTimer);
+                    this._impactHoldTimer = setTimeout(() => {
+                        this._impactHoldTimer = null;
+                        if (this._impactShotSerial !== _ihSerial || state.phase !== 'battle' || state.winner) return;
+                        if (state._actionExecuting || _walkAnimActive || state.actionMode) return;   // the player already moved on (acting, walking, picking a target): that owns the camera
+                        this.softResetToUnit(targetUnit, { ...opts, _afterImpactHold: true });
+                    }, _ihLeft);
+                    return;
+                }
 
                 // Auto-controlled side (AI / auto / remote): keep the action
                 // framing — the next action (or the next unit's activation pan)
@@ -29484,6 +29515,45 @@
             };
         }
 
+        /* THE IMPACT HOLD (mondo 2026-11-05: "the action camera for meteor cuts back to my character right as the
+           meteor is hitting and i dont even get to see the impact ... Fix this for all spells"). The shot's length was
+           sourceHold + travel + targetHold + reset, and only the travel was the payload's: a descent (Meteor and every
+           sky drop: telegraph 800 + fall 700) lands ~1.5 s after launch, so the shot ran out ON the impact and the cast's
+           finish (cam.totalMs + 120) brought the camera home with the crater, the flash and the numbers still to come.
+           Now every action shot lasts at least CINE_IMPACT_AFTERMATH_MS past its real impact, and the camera holds
+           (camera._impactHoldUntil) that long after every hit that lands while a shot is live, however late the
+           spell's own clock lands it: camera.isBusy() stays true (the turn loop waits), softResetToUnit and the
+           settle wait it out. Kill switch: window.EW_NO_IMPACT_HOLD. */
+        const CINE_IMPACT_AFTERMATH_MS = 1200;
+        function _cineShotImpactMs(timings, opts) {
+            const dc = opts && opts.descentCam;
+            return dc
+                ? timings.sourceHold + actionMs(Math.max(120, dc.telegraphMs || 800) + Math.max(180, dc.descentMs || 700))
+                : timings.sourceHold + timings.travelMs + actionMs(60);
+        }
+        /* stretch a shot's target beat so it ends no sooner than the aftermath past its impact (mutates timings) */
+        function _cineHoldShotToImpact(timings, opts) {
+            if (window.EW_NO_IMPACT_HOLD || _skipVisuals()) return timings;
+            const want = _cineShotImpactMs(timings, opts) + actionMs(CINE_IMPACT_AFTERMATH_MS);
+            if (want > timings.totalMs) {
+                const more = want - timings.totalMs;
+                timings.targetHold += more;
+                timings.totalMs += more;
+            }
+            return timings;
+        }
+        function _cineImpactHoldLeft() {
+            if (window.EW_NO_IMPACT_HOLD) return 0;
+            return Math.max(0, (camera._impactHoldUntil || 0) - performance.now());
+        }
+        /* keep the camera on the shot for `ms` from now (never shortens a longer hold) */
+        function _cineHoldImpactFor(ms) {
+            if (window.EW_NO_IMPACT_HOLD || !(ms > 0)) return;
+            const until = performance.now() + ms;
+            if (until > (camera._impactHoldUntil || 0)) camera._impactHoldUntil = until;
+        }
+        window._cineImpactHoldLeft = _cineImpactHoldLeft;
+
         function _unitElevZ(unit) {
             if (!unit) return 0;
             // Real units: derive the height LEVEL from the same px anchor the
@@ -29984,6 +30054,8 @@
            of the way to the free part's middle (CLEAR_FRAME_SHIFT), the frame keeping its size. */
         const CLEAR_FRAME_MIN_HW = 0.42;    // the free part never counts as narrower than 42% of the screen
         const CLEAR_FRAME_SHIFT = 0.55;     // share of the way to the free part's middle the frame slides (sub menu up)
+        const CLEAR_LOW_PANEL_MIN_H = 0.45; // THE LOW PANEL: the band above a short panel must be this share of the screen tall
+        const CLEAR_LOW_PANEL_MAX_CY = 0.3; // and the frame rises at most this much (NDC) over it
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
@@ -30018,14 +30090,18 @@
                     rg.querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
                         + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => menuEls.push(el));
                 }
+                let lowTop = Infinity;   // THE LOW PANEL: the highest top of the side menus that are not a faded backdrop
                 menuEls.forEach(el => {
                     const r = boxOf(el);
                     if (!r) return;
                     menu = true;
                     if (r.width > cv.width * 0.6) {
                         if ((r.top + r.bottom) / 2 > midY) y1 = Math.min(y1, r.top); else y0 = Math.max(y0, r.bottom);
-                    } else if ((r.left + r.right) / 2 < midX) x0 = Math.max(x0, r.right);
+                        return;
+                    }
+                    if ((r.left + r.right) / 2 < midX) x0 = Math.max(x0, r.right);
                     else x1 = Math.min(x1, r.left);
+                    if (!el.closest('.hrlg-panel.bg')) lowTop = Math.min(lowTop, r.top);
                 });
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
@@ -30044,6 +30120,21 @@
                     const r = boxOf(el);
                     if (r && r.bottom > cv.bottom - cv.height * 0.25) y1 = Math.min(y1, r.top);
                 });
+                /* THE LOW PANEL (2026-11-05, mondo on a quick-menu Meteor's CONFIRM: "why is my character and the enemy i am
+                   targeting ... and the aoe all shifted over to the right?? This sub menu is no where as big as the other
+                   ones and doesnt take up half the screen, so you have room to center the shot"): a short panel low on the
+                   screen (the CONFIRM / BACK / CANCEL step) leaves the whole width ABOVE it free. The faded backdrop list
+                   behind it (.hrlg-panel.bg, see-through) does not count. When that band above is tall enough and bigger
+                   than the strip beside the menus, it is the free part: full width (no sideways slide), the frame raised
+                   over the panel. Tall menus (Abilities, the attack list, a quick list) keep the strip beside them. */
+                let above = false;
+                if (Number.isFinite(lowTop)) {
+                    const ay1 = Math.min(y1, lowTop);
+                    if (ay1 - y0 >= cv.height * CLEAR_LOW_PANEL_MIN_H
+                        && (cv.right - cv.left) * (ay1 - y0) > (x1 - x0) * (y1 - y0)) {
+                        above = true; x0 = cv.left; x1 = cv.right; y1 = ay1;
+                    }
+                }
                 const minW = cv.width * CLEAR_FRAME_MIN_HW;
                 if (x1 - x0 < minW) {   // menus over most of the screen: keep a workable frame on the open side
                     if (x0 - cv.left > cv.right - x1) x0 = Math.max(cv.left, x1 - minW);
@@ -30052,7 +30143,7 @@
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
                     cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * CLEAR_FRAME_SHIFT,
-                    cy: Math.max(-0.2, Math.min(0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
+                    cy: Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
                     hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
                     // THE NEAR FRAME: the free part's own edges and middle, in NDC
                     l: (x0 - midX) / (cv.width / 2), r: (x1 - midX) / (cv.width / 2),
@@ -36039,7 +36130,12 @@
                     }
                     scheduleBoardRender();
                     const sequenceId = ++boardCameraSequenceId;
-                    const holdMs = actionMs(1600);
+                    /* THE IMPACT HOLD: the parked look at the victim lasts until the hit has landed and played */
+                    const _fogT = _cineHoldShotToImpact(getOffensiveCameraTimings(sourceUnit, target, opts), opts);
+                    const holdMs = Math.max(actionMs(1600),
+                        window.EW_NO_IMPACT_HOLD ? 0 : _cineShotImpactMs(_fogT, opts) + actionMs(CINE_IMPACT_AFTERMATH_MS));
+                    camera._impactHoldUntil = window.EW_NO_IMPACT_HOLD ? 0 : performance.now() + holdMs;
+                    camera._impactShotSerial = (camera._impactShotSerial || 0) + 1;
                     const _fogTgtZ = _unitElevZ(target);
                     const _fogElevZ = (_fogTgtZ > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(_fogTgtZ) : -1;
                     camera.moveTo({ x: target.x, y: target.y, zoom: 2.2,
@@ -36092,6 +36188,8 @@
             const _fogPassthrough = isAiFogTurn;
             const sequenceId = ++boardCameraSequenceId;
             const timings = getOffensiveCameraTimings(sourceUnit, target, opts);
+            camera._impactShotSerial = (camera._impactShotSerial || 0) + 1;
+            camera._impactHoldUntil = 0;
             camera._stop();
             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
 
@@ -36123,6 +36221,12 @@
             camera._releaseCineSubject(actionMs(500));
 
             if (_cineEligible) {
+                /* THE IMPACT HOLD: the shot (and so the cast's finish, which waits for cam.totalMs) runs to the
+                   aftermath past the real impact, and the camera holds there whatever moves it home. */
+                _cineHoldShotToImpact(timings, opts);
+                if (!window.EW_NO_IMPACT_HOLD && !_skipVisuals()) {
+                    camera._impactHoldUntil = performance.now() + _cineShotImpactMs(timings, opts) + actionMs(CINE_IMPACT_AFTERMATH_MS);
+                }
                 // Cinematic chrome: letterbox + spell name + TOTAL DMG readout.
                 showActionCamChrome({ name: opts.attackName || '',
                     heavy: true, totalMs: timings.totalMs, casterId: sourceUnit ? sourceUnit.id : null });
@@ -37273,6 +37377,11 @@
                    world flinch, the guest's own freeze) — relayed by online.js */
                 if (damageType !== 'dot' && !_skipVisuals() && !_bufferingRoundEvents) {
                     _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit);
+                    /* THE IMPACT HOLD: a hit that lands while an action shot is live keeps the camera on it through
+                       the flash and the number, however late the spell's own clock landed it */
+                    if (camera._cineShotId != null || _cineImpactHoldLeft() > 0) {
+                        _cineHoldImpactFor((_impactFreezeMs || 0) + actionMs(CINE_IMPACT_AFTERMATH_MS));
+                    }
                 }
                 if (_impactFreezeMs > 0) {
                     triggerHitstop(_impactFreezeMs);

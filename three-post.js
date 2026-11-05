@@ -3543,6 +3543,16 @@ const ThreePost = (function () {
            lights hot ("the whole scene is too dark", 2026-10-04). renderDirect's panes do draw to the canvas there: _ngDirect
            keeps _ngTone. */
         var col = P.sceneTex, lit = col;
+        /* THE LDR FRAME (2026-11-05, mondo: "the hit flash is causing these long streaks of light"): the classic chain's scene
+           target is 8-bit, so every pass after it (AO mix, bloom, SMAA, the tilt-shift DoF, the rays) reads light clamped
+           at 1. This chain's scene target is half float and nothing clamped it before the frame's 0..16, so THE HIT BLINK's
+           white (emissive × 60 on a textured body) reached the DoF at ~60: its far taps carry 1/60 of the weight, still a
+           full white each, and the two blur passes laid long stripes of the body across the screen (and the rays /
+           bloom smeared it the same way). The chain reads the light the classic one reads: 0..1, a broken pixel as black. */
+        var ldrIn = function (v) {
+            var sum = v.r.add(v.g).add(v.b);
+            return T.select(sum.equal(sum), T.clamp(v, T.vec4(0), T.vec4(1)), T.vec4(0, 0, 0, 1));
+        };
         if (o.ao !== 'off') {
             var aoT = P.aoTex;
             if (o.ao === 'gtao') {
@@ -3555,11 +3565,11 @@ const ThreePost = (function () {
             passes++;
         }
         if (o.bloom) {
-            var bl = P.mods.bloom.bloom(col, P.bS, P.bR, P.bT); made.push(bl);
+            var bl = P.mods.bloom.bloom(ldrIn(col), P.bS, P.bR, P.bT); made.push(bl);
             lit = T.vec4(lit.rgb.add(bl.rgb), lit.a);
             passes += 11;
         }
-        var ldr = lit;
+        var ldr = ldrIn(lit);
         if (o.aa === 'smaa') { ldr = P.mods.smaa.smaa(ldr); made.push(ldr); passes += 4; }
         else if (o.aa === 'fxaa') { ldr = P.mods.fxaa.fxaa(ldr); made.push(ldr); passes += 2; }
         if (o.dof) {
