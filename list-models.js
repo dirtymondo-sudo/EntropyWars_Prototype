@@ -517,6 +517,8 @@ L.push('### 5e. Meshy pieces in the creator (' + sec('meshywear').length + ' fil
 L.push('');
 L.push('Made 2026-11-03 on Meshy through the API (concept image -> mondo\'s OK -> model) and fitted on the MPFB bodies in Blender');
 L.push('(bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator\'s own id · label (tab).');
+L.push('The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a CORD round the neck that is made in code');
+L.push('(three-renderer.js THE PENDANT CORDS, 2026-11-05): a tube built at run time on the body it is worn on; no model file.');
 L.push('');
 L.push(table(sec('meshywear'), 'piece'));
 L.push('');
