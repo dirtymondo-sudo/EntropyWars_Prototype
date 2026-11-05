@@ -105,6 +105,7 @@ const SOURCES = [
     { re: /Assets\/misc\/ebd_buildings_/, how: 'PACK', src: 'Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS)' },
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_diner_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out in Blender)' },
+    { re: /Assets\/misc\/meshy_babel_house_/, how: 'MESHY', src: 'Meshy image-to-3D from Claude\'s concept, mondo OK\'d 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room)' },
     { re: /Assets\/misc\/ebd_trailerscene_/, how: 'PACK', src: 'Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms)' },
     { re: /Assets\/misc\/ebd_abandonedhouse_(?!house)/, how: 'PACK', src: 'Abandoned House · Elbolilloduro · CC0 (piece cut out in Blender)' },
     { re: /Assets\/misc\/ebd_dinerscene_/, how: 'PACK', src: 'DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender)' },
