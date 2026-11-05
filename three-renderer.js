@@ -55850,8 +55850,28 @@ const ThreeRenderer = (function () {
            so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
            the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
            Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
-           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/.
+           THE BAKED SHAPE (2026-11-05 pass 2, mondo on the after shots: "the pointy side of the coat are still literally in every after
+           shot, every body ... all the wide stances cause these weird horizontal lines on the lower half of the coat", + a hole at the
+           back of the female heavy cassock). He was right: pass 1 only fixed the upright idles. Three causes, each fixed:
+           - the LINES: each chain bone aimed from wherever its joint had got to back at where the coat's own weights carry the next
+             joint; a joint a little off (pushed, or short of a stretched bake) turned the bone below back toward the bake, so the chain
+             zig-zagged and the skirt shaded in bands. `tdir` 1: each bone now lies along the coat's own baked segment (joint -> next
+             joint, both as the weights carry them), so with the legs out of the way the chain IS the bake (with no hang the coat is a
+             clean A-line in the Wide stance, only the thighs come through it).
+           - the POINT under the belt at the hips: the top bone pivots at the waist ~15 cm over the hip joints the thighs turn on, so
+             swung fully onto the thighs' carry the cloth at the hip stood out past the leg in a corner. `follow` [0.5] + `followSide`:
+             the side and back chains' top bone goes half way (the front panels keep the full follow: half let a thigh lifting forward out
+             through the front pocket). And the push clearance is `rad` x t now in every pose (`poseA` null: the full 3 cm at the top
+             sample, kept for the Wide stance in pass 1, swung the hip out 1/t as far - with the baked shape the legs no longer need it).
+           - the SLAB at the side of the duster / long coat that the baked shape showed: the sleeve cuffs hang by the hips and were
+             counted in as skirt (THE SLEEVES OUT below), pulling the side chains' joints out to the hands.
+           `jsym` + `jblend` 0.5: the cloth either side of a joint shares the two bones, so a bend shades round. Tried + dropped: chains
+           rooted at the hip joints with the cloth over them on the pelvis (a shelf at the hips + jeans through), a per-direction leg
+           radius (no change), follow 0.3 (jeans at the front pocket), "never tuck in under the widest point" on the lower bones (no
+           change to the cassock's seat, more jeans through on the lab coat), a longer fade from the coat's weights onto the chains (no
+           change). Measured: see docs/notes/character-creator.md "THE BAKED SHAPE". */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: null, tdir: 1, follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -55882,7 +55902,11 @@ const ThreeRenderer = (function () {
             var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };
             var adiff = function (a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };   // signed, -PI..PI
             var sec = []; for (c = 0; c < NC; c++) sec.push([]);
-            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
+            /* THE SLEEVES OUT (2026-11-05): the cuffs hang down by the hips - they are no skirt (counted in, they pulled the side chains'
+               joints out to the hands and the panel there stood out in a slab, and the fade below gave the cuffs to the skirt chains) */
+            var armRx = /(Arm|Hand|Shoulder)/, isArm = new Uint8Array(count);
+            for (i = 0; i < count; i++) { var aw = 0; for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0 && bones[si[i * 4 + k]] && armRx.test(bones[si[i * 4 + k]].name)) aw += sw[i * 4 + k]; if (aw > 0.3) isArm[i] = 1; }
+            for (i = 0; i < count; i++) { if (isArm[i] || P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
             var chains = [];
             for (c = 0; c < NC; c++) {
                 var L = sec[c]; if (L.length < 24) continue;   // (the opening of an open coat: no cloth there)
@@ -55916,6 +55940,7 @@ const ThreeRenderer = (function () {
             // the skirt's weights: faded from its own onto the two chains either side of it (one, across an open front) by height
             var fade = COAT_HANG.fade * Hm, acc = {}, b4;
             for (i = 0; i < count; i++) {
+                if (isArm[i]) continue;
                 var y = P[i * 3 + 1], t = (yR - y) / fade; if (!(t > 0)) continue;
                 t = t > 1 ? 1 : t; var f = t * t * (3 - 2 * t), av = ang(P[i * 3], P[i * 3 + 2]);
                 var c0 = -1, c1 = -1, d0 = Infinity, d1 = Infinity;
@@ -56083,7 +56108,7 @@ const ThreeRenderer = (function () {
                     var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
                     if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
-                    var rc = K.rad * (O.poseA ? ct + (1 - ct) * kf : 1);
+                    var rc = K.rad * (O.poseA ? ct + (1 - ct) * kf : O.limT ? ct : 1);
                     var r = Math.min(K.ra + (K.rb - K.ra) * u + rc, lk) * Wk.s;
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
@@ -56108,6 +56133,13 @@ const ThreeRenderer = (function () {
                     if (Tn && Tn.length) {   // toward where the cloth's own weights would carry its next joint (the coat as baked, following the thighs)
                         _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
                         _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
+                        var T0 = O.tdir > 0 && C.t[i];
+                        if (T0 && T0.length) {   // THE BAKED SHAPE: along the coat's own baked segment (joint -> next joint as its weights carry them), not from wherever this joint got to: aimed from a joint already off its baked place, each bone turned back toward the bake and the chain zig-zagged into bands across the skirt
+                            _hgS.set(0, 0, 0); for (tq = 0; tq < T0.length; tq++) _hgS.addScaledVector(_hgP.copy(T0[tq].L).applyMatrix4(T0[tq].b.matrixWorld), T0[tq].w);
+                            _hgF.set(0, 0, 0); for (tq = 0; tq < Tn.length; tq++) _hgF.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
+                            _hgF.sub(_hgS);
+                            if (_hgF.lengthSq() > 1e-10) { _hgF.normalize(); _hgB.multiplyScalar(1 - O.tdir).addScaledVector(_hgF, O.tdir); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgF); }
+                        }
                     } else _hgB.copy(_hgG);
                     var fo = O.follow && O.follow[i] != null ? O.follow[i] : 1;
                     if (fo < 1 && O.followSide && C.a != null) fo = 1 - (1 - fo) * (1 - Math.max(0, Math.cos(C.a)));   // (the sides + back only: the front panels must keep up with a thigh lifting into them)
