@@ -917,6 +917,8 @@
             audition(channel, key) {
                 try {
                     state.audioUnlocked = true;
+                    /* the 🏷 TAGS tab lists the songs: its ▶ is a music audition (it passed 'tags' and played nothing) */
+                    if (channel === 'tags') channel = 'music';
                     if (channel === 'music') {
                         if (!audioTracks[key]) return false;
                         if (MusicTags.has(key, 'battle')) { state.currentBattleTrackKey = key; state.lastBattleTrackKey = key; }
@@ -1168,7 +1170,7 @@
                     const t = ev.target.closest('button');
                     if (!t) { if (ev.target === root) AudioMixer.close(); return; }
                     if (t.dataset.ch) { _mixUi.ch = t.dataset.ch; _mixRenderList(); return; }
-                    if (t.dataset.play) { AudioMixer.audition(_mixUi.ch, t.dataset.play); _mixStatus('▶ ' + _mixName(_mixUi.ch, t.dataset.play) + ' @ ' + Math.round(AudioMixer.get(_mixUi.ch, t.dataset.play) * 100) + '%'); return; }
+                    if (t.dataset.play) { const pch = _mixUi.ch === 'tags' ? 'music' : _mixUi.ch; const ok = AudioMixer.audition(pch, t.dataset.play); _mixStatus((ok === false ? '✕ could not play ' : '▶ ') + _mixName(pch, t.dataset.play) + ' @ ' + Math.round(AudioMixer.get(pch, t.dataset.play) * 100) + '%'); if (_mixUi.ch === 'tags') root.querySelectorAll('.amx-trow').forEach(r => r.classList.toggle('now', r.dataset.key === state.currentMusic)); return; }
                     if (t.dataset.tagKey) { MusicTags.toggle(t.dataset.tagKey, t.dataset.tag); _mixRenderList(); return; }
                     if (t.dataset.tagReset) { MusicTags.reset(t.dataset.tagReset); _mixRenderList(); return; }
                     if (t.dataset.ctxPlay) { const k = _musicDraw(t.dataset.ctxPlay, null, [state.currentMusic]); if (k) { state.audioUnlocked = true; _musicCtx.id = t.dataset.ctxPlay; _musicCtx.moods = null; playMusic(k); _mixStatus('▶ ' + _mixName('music', k) + ' — a draw from ' + t.dataset.ctxPlay); } else _mixStatus('that pool is empty'); return; }
