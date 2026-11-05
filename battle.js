@@ -26122,8 +26122,9 @@
         const TILE_PICK_PLAIN_H = 0.80;    // no sub menu up (THE SUB MENU RULE): fraction of the half-frame sideways
         const TILE_PICK_PLAIN_V = 0.86;    // and up/down (HUD strips top and bottom)
         const TILE_PICK_MIN_HALF = 3;      // never frame tighter than ±3 tiles round the centre
-        function _tilePickFrame(unit, tiles, fa) {
+        function _tilePickFrame(unit, tiles, fa, opts) {
             if (!unit) return null;
+            opts = opts || null;
             fa = fa || _menuFreeArea(true);
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
@@ -26176,8 +26177,8 @@
                 fz += mx * rZ + (-cY) * (my / cT);
                 const camX = (fx - ts / 2) / ts, camY = (fz - ts / 2) / ts;
                 const fy = (typeof camera._naturalElevAt === 'function') ? (camera._naturalElevAt(camX, camY) || 0) : 0;
-                // minimum frame: ±TILE_PICK_MIN_HALF tiles round the focal
-                const mh = TILE_PICK_MIN_HALF * ts;
+                // minimum frame: ±TILE_PICK_MIN_HALF tiles round the focal (THE CONFIRM FRAME passes its own)
+                const mh = ((opts && Number.isFinite(opts.minHalf)) ? opts.minHalf : TILE_PICK_MIN_HALF) * ts;
                 pts.push([fx - mh, fy, fz], [fx + mh, fy, fz], [fx, fy, fz - mh], [fx, fy, fz + mh]);
                 // eye = focal − dist·gaze; a point at r = P − F sits at depth dist + r·gaze. THE CLEAR FRAME's slide
                 // moves the eye by (cx·dist·tanH, cy·dist·tanV) sideways / up, so the point lands at
@@ -26194,7 +26195,7 @@
                     dist = Math.max(dist, sx / (tanH * mH) - along, sy / (tanV * mV) - along);
                 }
                 if (!(dist > 0)) return null;
-                return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa };
+                return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa, opts };
             } catch (e) { return null; }
         }
         /* THE CLEAR FRAME: a range fit just moved the camera — when the menus' cover moves under it (the armed spell's
@@ -26206,7 +26207,7 @@
                 area: fr.fa,
                 fit() {
                     const u = (state.units || []).find(v => v.id === uid && !v.dead);
-                    const f2 = u ? _tilePickFrame(u, tiles) : null;
+                    const f2 = u ? _tilePickFrame(u, tiles, null, fr.opts) : null;
                     if (!f2) return;
                     camera.moveTo({ x: f2.x, y: f2.y, zoom: f2.zoom, tilt: TILE_PICK_TILT, duration: 360, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
@@ -26218,12 +26219,12 @@
            nothing more (THE RANGE FIT, _tilePickFrame): centred on the range, zoomed in OR out to it, computed for the
            DESTINATION pitch (this same move pitches to TILE_PICK_TILT). No 3D lens → the old square fit of `range`.
            setTool's free aim and THE DROP PICK (_dropPickCamCheck) both frame through here. */
-        function _frameSpellTilePick(unit, tiles, range) {
+        function _frameSpellTilePick(unit, tiles, range, opts) {
             camera._tpsHold = false;
             camera._preCineView = null;
             camera._cineShotId = null;
             camera._releaseCineSubject(420);
-            const _fr = _tilePickFrame(unit, tiles);
+            const _fr = _tilePickFrame(unit, tiles, null, opts);
             const _fitZ = _fr ? _fr.zoom : _tilePickFitZoom((range || 3) + 1.5);
             const zoom = _fr ? _fitZ : Math.min(camera.zoom || _fitZ, _fitZ);
             camera.moveTo({
@@ -26235,6 +26236,41 @@
             });
             _tilePickArmRefit(unit, tiles, _fr);
         }
+        /* THE CONFIRM FRAME (2026-11-05, mondo, Wizard's Meteor on a Chess Piece from its quick menu, CONFIRM / BACK /
+           CANCEL up: "it zooms too far out"). The quick-menu AoE's CONFIRM step (hud.js _hrlgArmAoePlacement) kept
+           setTool's range fit, and a long reach (Meteor's 4 + the walk) framed most of the board. The CONFIRM step frames
+           only what the cast is about: the caster, the footprint where it lands and the unit it was picked for, bodies
+           included, in the same tactical over-the-board view (TILE_PICK_TILT) and the free part of the screen the menus
+           leave (_tilePickFrame / THE CLEAR FRAME). Right-click back to free placement re-frames the reach
+           (_frameQuickAoePlace). Viewer-local camera: the guest arms its own quick menu, nothing relayed. */
+        const CONFIRM_FRAME_BODY = 1.2;   // a body's height in tile levels above its tile, kept in the frame
+        const CONFIRM_FRAME_MIN_HALF = 1.5;   // the range fit never frames tighter than ±3 tiles: the CONFIRM step ±1.5
+        function _frameQuickAoeConfirm(unit, spell, x, y, fromId) {
+            if (!unit || !spell || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return false;
+            const tgt = fromId != null ? (state.units || []).find(u => u.id === fromId && !u.dead) : null;
+            if (!_fogCamAllSeen(unit, ...(tgt ? [tgt] : []))) return false;
+            const hAt = (tx, ty) => (typeof getHeightAt === 'function') ? (getHeightAt(tx, ty) || 0) : 0;
+            let tiles = [];
+            try { tiles = (getSpellAoeFootprint(spell, x, y, unit) || []).filter(t => t && isInside(t.x, t.y)); } catch (e) { tiles = []; }
+            tiles.push({ x, y });
+            for (const b of [unit, tgt]) {
+                if (!b) continue;
+                const lv = Number.isFinite(b.z) ? b.z : hAt(b.x, b.y);
+                tiles.push({ x: b.x, y: b.y, z: lv }, { x: b.x, y: b.y, z: lv + CONFIRM_FRAME_BODY });
+            }
+            _frameSpellTilePick(unit, tiles, spell.range || 3, { minHalf: CONFIRM_FRAME_MIN_HALF });
+            return true;
+        }
+        function _frameQuickAoePlace(unit, spell) {
+            if (!unit || !spell) return false;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return false;
+            if (!_fogCamAllSeen(unit)) return false;
+            _frameSpellTilePick(unit, _tilePickTiles(unit, 'spell', spell), spell.range || 3);
+            return true;
+        }
+        window._frameQuickAoeConfirm = _frameQuickAoeConfirm;
+        window._frameQuickAoePlace = _frameQuickAoePlace;
         /* the reach of a tile-pick mode as tiles (what the board lights) */
         function _tilePickTiles(unit, mode, spell) {
             let tiles = [];

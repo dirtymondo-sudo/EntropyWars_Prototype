@@ -8800,6 +8800,11 @@ function _hrlgArmAoePlacement(actingUnit, spell, x, y, fromId) {
   if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
   if (typeof renderIfDirty === 'function') renderIfDirty();
   if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+  /* THE CONFIRM FRAME (battle.js _frameQuickAoeConfirm, mondo 2026-11-05 "it zooms too far out"): the CONFIRM step
+     frames the caster, the footprint and the unit it was picked for, not setTool's whole reach */
+  if (typeof window._frameQuickAoeConfirm === 'function') {
+    try { window._frameQuickAoeConfirm(actingUnit, spell, x, y, fromId); } catch (e) { /* camera only */ }
+  }
   return true;
 }
 
