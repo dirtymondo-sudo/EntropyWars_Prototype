@@ -1710,6 +1710,17 @@ different bone weights and drift into each other. THE CLOTH COLLISION is a per-v
   89 -> 78, vampire 18 -> 7, coded sword swing 233 -> 162, cowboy crouch 602 -> 589. Tight creases (sitting seat, folded inner elbow) don't
   improve: a fold can't be cleared by pushing. Probe: Playwright + EWCharViewer.mount, freeze the clip, toggle EW_CLOTH_COLLIDE.x in one frame,
   CPU replica of the push to count points (scratch only). Kill-switch: EW_DISABLE_CLOTH_COLLIDE / ?ew_collide=0.
+### THE ONE BUFFER (2026-11-05, token 20261105-onebuffer-01-cors)
+mondo (Firefox WebGPU): his created characters on Select Your Team were torn into skin patches with no clothes. His console:
+"Render pipeline creation failed ... The number of vertex buffers 13 exceeds the limit 8". The seven anchor streams were seven
+BufferAttributes, so a garment drew from 13 vertex buffers (position, normal, uv, color, skinIndex, skinWeight + 7). WebGPU
+allows 8 (three requests the default limits), so every collided garment failed to draw on WebGPU and left the body with its
+under-clothes pieces cut away. WebGL (16 attributes) and ?ew_gpu=webgl2 were fine, which is why PR #932's checks missed it.
+Fix: collideFit writes ONE InterleavedBuffer (28 floats a vertex; ewColJ = j1 + 256 j2 as a float), and the node twin reads it
+as vec4 -> uvec4. _ewNodeCol also falls back to plain skinning if a garment would still pass device.limits.maxVertexBuffers.
+Measured on the node renderer: every garment draws from 7 buffers or fewer (was 13 / 12). **Rule: a new per-vertex stream
+on a skinned creator mesh joins an existing buffer. Never add a separate attribute, because WebGPU stops at 8.**
+
 ## THE HAIR SHADER + THE HAIR TEXTURES (2026-11-05, character-models-plan row 29e)
 mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves. Are they missing textures or something?"
 - **Textures:** bake-mpfb.py --hair-styles wrote the 70 pack styles with the diffuse cut to 512 px (HAIR_STYLE_PX; the packs ship
