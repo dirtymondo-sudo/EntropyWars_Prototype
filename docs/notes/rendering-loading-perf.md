@@ -1422,3 +1422,36 @@ The banner shows only when the fetch itself fails (the real CORS block, or no ne
 (allowed origin) no banner; probe rerouted to the archived 404 key, no banner + the warning; 127.0.0.1:3000 (not in the
 bucket's CORS list) banner shows. Bucket CORS origins: entropywars.net, www.entropywars.net, entropywars-prototype.onrender.com,
 localhost:3000.
+## THE PER-FRAME AUDIT: THE STILL BATCHES + THE LANDING REBUILDS ONLY THE OBJECTS + THE STILL STAGE (2026-11-05, mondo after PR #939: "what other random items in the game are rebuilding every object on every frame ... fix any bullshit")
+- Method (cloud browser, classic WebGL + swiftshader, no input): `instr.js`-style page hooks counted, per frame, every
+  `Object3D.add/remove/clone`, `BufferGeometry.setAttribute/dispose`, `Material/Texture.dispose`, every `needsUpdate` on a
+  texture / material / buffer attribute (= a GPU re-upload or a program re-check), new Object3D / geometry / material / texture
+  ids (one probe instance of each before and after a window), `renderer.info.memory`, DOM mutations (MutationObserver) and
+  `createElement`, each with its call site; plus a timing wrapper on every `rebuild*` (a served copy of three-renderer.js,
+  never shipped). Scenes: Singularity Arena + Fairy Forest boards (VS CPU, HUD up), the HQ lobby, the Squad Desk team room
+  with a random team, the creator stage, the post chain (N8AO + SMAA = 12 renders a frame, all from the settings).
+- Clean once loaded (0 new objects / geometries / materials / textures a frame): both boards, the HQ, the team room, the
+  creator stage. PR #939's crystal loop is gone (0 rebuilds in 45 frames on the Singularity Arena).
+- THE STILL BATCHES (`_hqInstSync`): the instance pass's compare cache was a Float32Array, compared with double matrices, so it
+  never matched (0.2290346920490265 vs 0.22903468738956553): every copy of every batch was rewritten and every batch's
+  instanceMatrix re-uploaded EVERY frame with nothing moving. Measured 81 batch uploads a frame in the HQ lobby, 25 on the Fairy
+  Forest board (the battle's room batches through the same code). Now a Float64Array: 0 uploads a frame when still.
+- THE LANDING REBUILDS ONLY THE OBJECTS (`rebuildObjects(soft)`, `_objectsLanded`): every object rebuild also reset the unit
+  serials (a full `rebuildUnits`: bodies, name plates' DOM + canvas repaint, unit lights) and rebuilt every terrain decoration,
+  whatever triggered it, and most triggers are a file landing while a fight opens. Measured on the Fairy Forest load: ~45 unit
+  rebuilds of 15-50 ms in 150 s, then decorations at 15-100 ms each. The 28 loader callbacks now set `_objectsLanded`; the frame
+  runs `rebuildObjects(true)`: objects rebuilt (the landed model swaps in), decorations kept, units kept unless the battle room's
+  ground read moved (`_fieldGroundCache.key`, e.g. a drawn roof landed). Every other trigger (`_objectsDirty`: the object
+  serial, rebuildTerrain, resets, the memory budget; any external `ThreeRenderer.rebuildObjects()`) is the full rebuild as before.
+  After: 1 unit rebuild in the same 150 s.
+- THE STILL STAGE (battle.js): the camera wrote the same `#boardStage` transform string every frame (an inline-style change =
+  a style recalc of the stage each frame) and `_renderDialogueBox` re-added/removed the subtitle bar's `visible` class every
+  frame; both now write only on a change (the stage reads its style back, so the 2D pan's own writes are still caught).
+- THE WARM-UP ON THE NODE RENDERER (`_hqWarmBegin` / `_hqWarmRun`): on ?ew_gpu=webgpu / webgl2 `renderer.compile` is
+  compileAsync, which calls the scene's `onBeforeRender` and walks `children` / `layers`; the warm-up's stand-in scene had
+  none of them, so every warmed object threw asynchronously (the try/catch never saw it): 600+ uncaught "sceneRef.onBeforeRender
+  is not a function" errors each time an HQ room / part built, and nothing warmed. The stand-in now has no-op hooks, every
+  layer, and `children` = the object + the warm's lamps; the promise is caught. Measured on the WebGL2 backend: 0 errors.
+- Left as is (by design, not waste): three's own two-pass draw of double-sided transparent materials (2 `material.needsUpdate`
+  per such mesh per frame inside WebGLRenderer), bone textures of skinned units, CSS2DRenderer's per-frame transform on the
+  two CSS2D plates, video / skeleton textures.
