@@ -1447,6 +1447,11 @@ localhost:3000.
 - THE STILL STAGE (battle.js): the camera wrote the same `#boardStage` transform string every frame (an inline-style change =
   a style recalc of the stage each frame) and `_renderDialogueBox` re-added/removed the subtitle bar's `visible` class every
   frame; both now write only on a change (the stage reads its style back, so the 2D pan's own writes are still caught).
+- THE WARM-UP ON THE NODE RENDERER (`_hqWarmBegin` / `_hqWarmRun`): on ?ew_gpu=webgpu / webgl2 `renderer.compile` is
+  compileAsync, which calls the scene's `onBeforeRender` and walks `children` / `layers`; the warm-up's stand-in scene had
+  none of them, so every warmed object threw asynchronously (the try/catch never saw it): 600+ uncaught "sceneRef.onBeforeRender
+  is not a function" errors each time an HQ room / part built, and nothing warmed. The stand-in now has no-op hooks, every
+  layer, and `children` = the object + the warm's lamps; the promise is caught. Measured on the WebGL2 backend: 0 errors.
 - Left as is (by design, not waste): three's own two-pass draw of double-sided transparent materials (2 `material.needsUpdate`
   per such mesh per frame inside WebGLRenderer), bone textures of skinned units, CSS2DRenderer's per-frame transform on the
   two CSS2D plates, video / skeleton textures.
