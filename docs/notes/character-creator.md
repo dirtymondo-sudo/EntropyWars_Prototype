@@ -1653,6 +1653,30 @@ Checked in a real browser (idle pose + rest): his Santa, the same coat on plain 
 demon, catgirl. Shots: /mnt/project-files/santa-coat/. Known: small skin specks through the pack trousers at the heavy shins
 just over the boot (there with OUTSIDE too, and before this change).
 
+## THE CLOTH COLLISION (2026-11-05, plan row 12w)
+mondo: "Can you not just add collision to all the mpfb bodies and clothes?" (thread cmsg_01XWpxyTn3nnw98znVzKdFjsRJYzgHjRXtmeoBaW2t94T1).
+Before this, every fit-time system (skin cover, coat fit, coat hang, layer push) only fixed the REST shape; once posed, cloth and body ride
+different bone weights and drift into each other. THE CLOTH COLLISION is a per-vertex body collision in the vertex shader:
+- FIT (rig `collideFit(part)`, after `update()`, garment loads (`part.colDirty`) and jiggle re-weights; throttled 150 ms in tick; slider drags
+  defer it): for every cloth vertex of every visible garment (`collideList`: coded shells incl. lathe pieces via `mesh._ewColBase`, pack /
+  Blender wear, accents; not solid / grip / hideHead) find the nearest skin vertex on the CURRENT body (sliders + jiggle weights in),
+  store it as the anchor (position, smoothed normal, body bone indices packed j1 + 256*j2, weights) + its rest stand-off c0. The band is
+  [c0 - min(1.5 mm, half the gap to the layer below), c0 + min(4 mm, half the gap to the layer above)], gaps from 2 cm anchor cells of the
+  other garments. Fades out for c0 3-5 cm (loose cloth hangs free) and when the vertex slides 3-6 cm off its anchor. A SECOND ANCHOR (the
+  nearest skin vertex of another bone within 4 cm) only pushes outward and is gated off when its posed normal faces the first one (a crease:
+  pushing off one skin would push into the other). Attributes: ewColA/N/J/W (+ ewColA2/N2/W2). `collideGuard` drops stale ones.
+- FRAME (GLSL `_ewColPatch` after `#include <skinning_vertex>` under `EW_COL`; node twin `_ewNodeCol` via `_ewNodeDress` when `m.ewCol==='on'`):
+  skin the anchor with the body's own bone matrices (every garment skeleton starts with the body's bones), push the cloth along the anchor
+  normal back into its band, at most 3 cm. Uniform `_EW_COL` = window.EW_CLOTH_COLLIDE {x on, y/z slide fade, w cap}.
+- LAYER ORDER: garments ranked by median c0; `_ewColMark` gives rank r a polygonOffset (factor -min(3, 0.5r), units -2r) so the outer
+  layer wins the depth test where two layers touch = no flicker.
+- Board / team room / spell doubles keep it: `_ewColMark(lm, n)` on the Lambert swaps (unit build, `_trLookMats`, `_raceActor` lit).
+- Cost: fit 5-43 ms per clothes change (22k cloth points); frame time unchanged within noise (cowboy 127 vs 129 ms/frame, Santa 120 vs 123 on
+  swiftshader). Node renderer: checked on ?ew_gpu=webgl2 (same TSL; headless WebGPU loads no models even on main): 20 materials dressed, no errors.
+- Measured (cloth points inside the posed skin, off -> on, same frame): cowboy pockets idle 213 -> 136, Santa pockets 139 -> 121, Santa tough
+  89 -> 78, vampire 18 -> 7, coded sword swing 233 -> 162, cowboy crouch 602 -> 589. Tight creases (sitting seat, folded inner elbow) don't
+  improve: a fold can't be cleared by pushing. Probe: Playwright + EWCharViewer.mount, freeze the clip, toggle EW_CLOTH_COLLIDE.x in one frame,
+  CPU replica of the push to count points (scratch only). Kill-switch: EW_DISABLE_CLOTH_COLLIDE / ?ew_collide=0.
 ## THE HAIR SHADER + THE HAIR TEXTURES (2026-11-05, character-models-plan row 29e)
 mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves. Are they missing textures or something?"
 - **Textures:** bake-mpfb.py --hair-styles wrote the 70 pack styles with the diffuse cut to 512 px (HAIR_STYLE_PX; the packs ship

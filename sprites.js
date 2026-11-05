@@ -1329,6 +1329,10 @@ const EW_ANIM_LIB_URLS = [
   // (mondo 11-05: "dont give them default idles and walks, just add them to the character creator"): EW_IDLE_POSES +
   // EW_WALK_STYLES; no race's own default plays them.
   'https://cdn.entropywars.net/Assets/characters/animations/MOC1_CMU.glb',
+  // lib 6 — MOC2_100STYLE.glb (2026-11-05): plain idles + walks from the 100STYLE dataset (Ian Mason, CC BY 4.0, credited in
+  // data.js EW_CREDITS; Xsens capture, 60 fps), renamed to the CMU joint names (tools: mocap-100style.py) and cut into in-place
+  // seamless loops by bake-mocap.py (clip list mocap-clips-100style.json). Clip names S100_<style>_<Idle|Walk>. CREATOR PICKS ONLY.
+  'https://cdn.entropywars.net/Assets/characters/animations/MOC2_100STYLE.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -4981,6 +4985,12 @@ const EW_IDLE_POSES = [
   { id: 'Zombie_Idle_Loop',       label: 'Zombie',          clip: 'Zombie_Idle_Loop',       lib: 1, ts: 1.0 },
   /* THE MOCAP LIBRARY (2026-11-05, rev 2): the motion-capture idles (lib 5, MOC1_CMU.glb, bake-mocap.py + mocap-clips.json) */
   { id: 'MOC_ShiftWeight_Idle',   label: 'Weight shift',    clip: 'MOC_ShiftWeight_Idle',   lib: 5, ts: 1.0 },
+  // THE PLAIN MOCAP (2026-11-05, mondo: "Are there not any simple or subtle ones?"): lib 6 MOC2_100STYLE.glb, the 100STYLE dataset
+  // (Ian Mason, CC BY 4.0) idles, each watched over full loops front + side on the default and a heavy body
+  { id: 'S100_Neutral_Idle',      label: 'Neutral',         clip: 'S100_Neutral_Idle',        lib: 6, ts: 1.0 },
+  { id: 'S100_ArmsBehindBack_Idle', label: 'Hands behind back', clip: 'S100_ArmsBehindBack_Idle', lib: 6, ts: 1.0 },
+  { id: 'S100_ArmsFolded_Idle',   label: 'Arms crossed',    clip: 'S100_ArmsFolded_Idle',     lib: 6, ts: 1.0 },
+  { id: 'S100_Proud_Idle',        label: 'Proud',           clip: 'S100_Proud_Idle',          lib: 6, ts: 1.0 },
 ];
 /* THE WALK STYLE (2026-11-05, mondo: "add the walk animations to the character creator just like the idle animations so i can see
    those too"): appearance.walk = a row id ('default' = the body's / race's own walk). Works like THE IDLE POSE: getCharacterAppearanceModel
@@ -4995,6 +5005,11 @@ const EW_WALK_STYLES = [
   { id: 'MOC_Heavy_Walk',      label: 'Heavyset',    clip: 'MOC_Heavy_Walk',      lib: 5, ts: 3.21 },
   { id: 'MOC_Cool_Walk',       label: 'Cool',        clip: 'MOC_Cool_Walk',       lib: 5, ts: 2.63 },
   { id: 'MOC_Slow_Walk',       label: 'Slow',        clip: 'MOC_Slow_Walk',       lib: 5, ts: 3.65 },
+  // THE PLAIN MOCAP: the 100STYLE walks (lib 6), same looks as the idles above
+  { id: 'S100_Neutral_Walk',        label: 'Neutral',           clip: 'S100_Neutral_Walk',        lib: 6, ts: 2.69 },
+  { id: 'S100_ArmsBehindBack_Walk', label: 'Hands behind back', clip: 'S100_ArmsBehindBack_Walk', lib: 6, ts: 2.75 },
+  { id: 'S100_ArmsFolded_Walk',     label: 'Arms crossed',      clip: 'S100_ArmsFolded_Walk',     lib: 6, ts: 2.69 },
+  { id: 'S100_Proud_Walk',          label: 'Proud',             clip: 'S100_Proud_Walk',          lib: 6, ts: 2.37 },
   // the walks the game already had (mondo 11-05: "Are there not other walk animations from the ual 1 or 2?"): UAL1 Walk_Loop +
   // Walk_Formal_Loop (Quaternius), MAL1 Walking_Woman (the Meshy batch; MAL1 Walking is Default)
   { id: 'UAL_Walk_Loop',       label: 'UAL walk',    clip: 'Walk_Loop',           lib: 0, ts: 2.56 },
@@ -6629,8 +6644,13 @@ const TERRAIN_SPRITES = {
        liquids with a noise layer, just as solid textures". The Crystal Formation wears Liquid_Blue_05 (the periwinkle
        glassy sheet) as a plain solid tile: crystal is not in _LIQUID_STYLES, so no flow / waves / caustics. Every prop
        that reads the `crystal` key (_hzTex / K.mat: the shard clusters, the toadstool, the armillary core, the editor
-       swatches) follows this row. crystal.png stays in the bucket, unreferenced. Rules untouched. */
-    crystal:        [`${_T}/liquids/Liquid_Blue_05-128x128.png`],
+       swatches) follows this row. crystal.png stays in the bucket, unreferenced. Rules untouched.
+       THE CRISP CRYSTAL SHEET (2026-11-05, mondo: "why the blue liquid texture ... is so blurry. All pixel sprite 128x128
+       terrain tiles are supposed to have the same pixel density"): the liquid sheet is 128 px like the rest but a smooth
+       painting (6,314 colours; the pixel tiles have 24), so it read as a smear beside them. crystal_blue.png is the SAME
+       sheet baked by bake-pixel-sheet.py (wrap-safe sharpen + 24-colour palette, no dither): same picture, crisp texels.
+       The liquid sheet itself is untouched (the liquids still wear it). */
+    crystal:        [`${_T}/crystal_blue.png`],
     obsidian:       [`${_T}/obsidian.png`],
     stone:          [`${_T}/rocks_5.png`],   // 🪨 water + lava (map.js lavaWaterMixOf): the cliffs' rock sheet
     healing_spring: [`${_T}/healing_spring.png`],
