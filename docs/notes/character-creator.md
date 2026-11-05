@@ -1710,6 +1710,17 @@ different bone weights and drift into each other. THE CLOTH COLLISION is a per-v
   89 -> 78, vampire 18 -> 7, coded sword swing 233 -> 162, cowboy crouch 602 -> 589. Tight creases (sitting seat, folded inner elbow) don't
   improve: a fold can't be cleared by pushing. Probe: Playwright + EWCharViewer.mount, freeze the clip, toggle EW_CLOTH_COLLIDE.x in one frame,
   CPU replica of the push to count points (scratch only). Kill-switch: EW_DISABLE_CLOTH_COLLIDE / ?ew_collide=0.
+### THE ONE BUFFER (2026-11-05, token 20261105-onebuffer-01-cors)
+mondo (Firefox WebGPU): his created characters on Select Your Team were torn into skin patches with no clothes. His console:
+"Render pipeline creation failed ... The number of vertex buffers 13 exceeds the limit 8". The seven anchor streams were seven
+BufferAttributes, so a garment drew from 13 vertex buffers (position, normal, uv, color, skinIndex, skinWeight + 7). WebGPU
+allows 8 (three requests the default limits), so every collided garment failed to draw on WebGPU and left the body with its
+under-clothes pieces cut away. WebGL (16 attributes) and ?ew_gpu=webgl2 were fine, which is why PR #932's checks missed it.
+Fix: collideFit writes ONE InterleavedBuffer (28 floats a vertex; ewColJ = j1 + 256 j2 as a float), and the node twin reads it
+as vec4 -> uvec4. _ewNodeCol also falls back to plain skinning if a garment would still pass device.limits.maxVertexBuffers.
+Measured on the node renderer: every garment draws from 7 buffers or fewer (was 13 / 12). **Rule: a new per-vertex stream
+on a skinned creator mesh joins an existing buffer. Never add a separate attribute, because WebGPU stops at 8.**
+
 ## THE HAIR SHADER + THE HAIR TEXTURES (2026-11-05, character-models-plan row 29e)
 mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves. Are they missing textures or something?"
 - **Textures:** bake-mpfb.py --hair-styles wrote the 70 pack styles with the diffuse cut to 512 px (HAIR_STYLE_PX; the packs ship
@@ -1730,3 +1741,26 @@ mondo: "why do so many of the hairstyles look like shit? They look like shiny ru
 - Debug: `window.EW_CC_DEBUG_UNLIT` still swaps hair to unlit. Probe: a page mounting EWCharViewer on a fixed div with
   `{appearance:{body:'mpfb_female', hair:<id>, model:'creator'}}`, frameCreator('face'), screenshot the stage (shots in
   /mnt/project-files/hair-look/).
+
+## THE QUICK PICKS (2026-11-05)
+mondo: "i click one item or piece of clothing and the game freezes and takes like 5 seconds to unfreeze". Measured in headless Chromium
+(swiftshader, cowboy race look on mpfb_classic_male, EWCharViewer.mount + the same setCharacter the creator calls): every pick held ONE
+5-6 s main-thread task, even for a garment already loaded. Causes (CPU profile) and fixes, all in three-renderer.js `_createAppearanceRig`:
+- Spatial grids keyed by "x,y,z" strings (nearestBody / nearSet / spaceSmooth / THE LAYERS / THE HAIR UNDER THE HAT / coat fit ...):
+  now one integer per cell (`_ccK`, same cells). Nearest-point searches walk the cells ring by ring and stop early (`_ccRings`), the hair
+  under a hat skips points outside the hat's box. Same nearest every time.
+- Every fit pass ran 2-3x per pick (setWear's apply, then rebuildGeometry, then again). `wearFits(part, strict, twice)`: apply defers
+  (`part.fitLater` / `part.fitTwice`) to the rebuild / update. A NEW garment set still settles twice the cheap way (THE LAYERS once, the
+  cords + hang + hides twice) because the old double run is what every look has always looked like: fingerprints of every garment /
+  body / hair (positions, index, weights, normals, collision anchors) are IDENTICAL before vs after (cowboy male: coat, hair, boots,
+  pendant picks; female body: coat, hair, Blender boots, pendant, cape), with THE JIGGLE off (it re-weights by timing).
+- buildWear's per-garment fit (the _d_ offsets, THE CLASSIC FIT's averaged reshape, nearestBody / nearSet / spaceSmooth) is cached per
+  rig + garment geometry (`part.wearPre`, 24 kept); the coat collar's nearSet runs on the collar vertices only.
+- dropWear / dropHair disposed every material, freeing its shader program, so the next frame recompiled the same programs (1-2 s in
+  WebGL; WebGPU pipelines too). Dropped materials are now kept (textures let go) - the last 48 - and disposed with the rig.
+- A pack hair's first pick read its texture back off a GPU canvas (3 s): those canvases are `willReadFrequently`.
+Before -> after on the same box (click to the piece on screen; longest frame): coat (cached) 5.6 s -> 0.9 s, boots (cached) 5.2 -> 0.9-1.2 s,
+pendant (cached) 5.8 -> 1.1-1.5 s, hair (cached) 0.9 -> 0.3 s, new hair 4.4 -> 1.2-1.6 s, new boots 6.5 -> 1.3 s, new coat 7.8 -> 2.5-3 s
+(download included). Re-measured on main after PR #944's coat fit (picks there had grown to 6.8-7.9 s): coat 7.5 -> 1.0 s, boots 6.8 -> 0.85 s,
+pendant 7.9 -> 1.2 s, hair 2.2 -> 0.36 s, identical fingerprints again. What is left is one body rebuild + one fit per pick. Probe (scratch only): Playwright, EWCharViewer.mount, a
+`__rig` accessor patched into a copy, PerformanceObserver longtask + CDP Profiler.
