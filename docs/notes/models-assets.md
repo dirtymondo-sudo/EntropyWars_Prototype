@@ -1600,3 +1600,35 @@ the thread's zip adds `Assets/decor/` by hand.
   180 in the bake so the green face is +Z, `stretch`, the type-wheel text kept and set on its face in `onDone`), turnstile (Metro
   automatic_ticket_gate, `fit: 'height'`; the code tripod is hidden so the gate no longer turns). The lava lamps keep the Meshy
   base + cap and the drawn wax.
+
+## THE MOCAP LIBRARY (2026-11-05) — real motion capture as lib 5 (MOC1_CMU.glb)
+mondo (11-05, thread "Add mocap animations for 5 races", from the Blender/AAA gap doc https://claude.ai/artifact/AJ51krxhmmE93EMbWEkLkh
+row 1): give races their own motion from free mocap; pilot on 5 races that already have a creator look.
+- SOURCE: the CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, free for games, credit in data.js EW_CREDITS), the
+  Motionbuilder-friendly BVH conversion by B. Hahne: `git clone --depth 1 --filter=blob:none --no-checkout
+  https://github.com/una-dinosauria/cmu-mocap.git` then `git checkout HEAD -- data/<subject>` per subject (608 MB for 11
+  subjects; the index is cmu-mocap-index-text.txt). 120 Hz, frame 1 = a T-pose facing +Z, left = +X (same as UAL1/MAL1).
+- TOOL: `python3 -I bake-mocap.py --cmu <repo>/data --clips <clips.json> --out MOC1_CMU.glb [--sheet dir] [--base 137_28]`.
+  Pure numpy, no Blender needed: the GAME retargets (three-renderer.js _libEnsureSrc / _libRetargetSetup / _libBakeClips), so
+  the file is just a UAL-NAMED skeleton (pelvis, spine_01-03, neck_01, Head, upperarm/lowerarm/hand, thigh/calf/foot/ball) +
+  clips; unmapped CMU joints ride along as cmu_*. Shoulders are left unmapped (the CMU shoulder sits on the spine, its rest
+  direction would shrug every target). Per clip spec {name, take, a, b, fade, steady, head}: 30 Hz, mean facing turned to +Z,
+  hips XZ detrended (in place), last `fade` s slerped into the frames before `a` (seamless), every take's T-pose re-based onto
+  the --base take's (one rest for the file), THE LEVEL HEAD (a take's T-pose head is often pitched: subject 137 looked up
+  20-30 deg; the stretch's median head pitch becomes level, + `head` deg), THE STEADY BODY (`steady` k takes k of the hips'
+  turn off the mean facing; idles use 0.7 because the actors pivot 15-30 deg on the spot).
+- THE CLIPS (sprites.js `_MOC`, lib 5): MOC_HandsOnHips_Idle (54_16 29.9-31.55, ts 0.75), MOC_Calm_Idle (77_02 3.5-7.0),
+  MOC_ShiftWeight_Idle (139_02 3.5-7.0), MOC_Fidget_Idle (137_19 19.3-21.8), MOC_Tough_Idle (137_41 19.7-23.47),
+  MOC_Macho_Walk (91_33 15.37-17.07, ts 3.3), MOC_Slow_Walk (91_10 8.34-10.21, ts 3.6), MOC_LegsApart_Walk (132_53
+  21.44-22.87, ts 2.7), MOC_Rushed_Walk (142_14 5.24-6.57, ts 2.5), MOC_Cool_Walk (91_23 15.71-17.11, ts 2.7). The clip spec
+  list is kept in the clip's glTF extras (cmuTake/from/to). Walk ts = cycle / 0.52 s (the library Walking's played cycle):
+  matching the board's stride speed instead would need 3.4-5.9x and looked frantic, so a slow walk slides a little.
+- WIRED (sprites.js `lib:` rows; THE RACE LOOKS copy them onto the creator looks): superhero M hands on hips + macho walk, F
+  hands on hips; priest M+F calm + slow walk; cowboy M weight shift + bow-legged walk, F weight shift (no gun in the idle:
+  THE IDLE RULE); mad scientist M+F fidget + rushed walk; gangster tough stance + cool walk. The five idles are also EW_IDLE_POSES
+  picks (creator OUTFIT > idle pose) for any look.
+- CHECKED in a plain three.js page with the game's own retarget functions copied out of three-renderer.js (no game,
+  no playtest): every clip on its race's Meshy model + the MPFB male, front + side sheets. Kill-switch for the lot:
+  remove the lib rows, or `window.EW_DISABLE_ANIM_LIB` (all libraries).
+- NEXT (not built): more races; signature casts/attacks from the same set (CMU has boxing 13_17/14_01, kicks 86_*, a gun pull
+  139_05, laughs 13_14); a mirror option for left/right-handed takes.

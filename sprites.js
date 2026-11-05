@@ -1292,6 +1292,13 @@ const EW_ANIM_LIB_URLS = [
   // kept (mage_soell_cast_*, Right_Hand_Sword_Slas). Until the file is on R2
   // the lib-4 slots skip and every chain falls back as before.
   'https://cdn.entropywars.net/Assets/characters/animations/MAL3_Sniper.glb',
+  // lib 5 — MOC1_CMU.glb (2026-11-05, THE MOCAP LIBRARY): real motion capture from the CMU Graphics Lab Motion Capture
+  // Database (mocap.cs.cmu.edu, credited in data.js EW_CREDITS), cut into in-place seamless loops by bake-mocap.py on a
+  // UAL-named skeleton, so the retarget treats it like UAL1/2. Clip names MOC_<what>_<Idle|Walk>. First five races:
+  // superhero, priest, cowboy, mad scientist, gangster (their `lib:` rows below; the creator looks inherit them).
+  // Walk ts = the clip's cycle / 0.52 s (the library Walking's played cycle). Until the file is on R2 these slots skip
+  // and the defaults play.
+  'https://cdn.entropywars.net/Assets/characters/animations/MOC1_CMU.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -1705,6 +1712,22 @@ function _mkUAL(folder, prefix, opts) {
 // Full uploaded-clip inventory per character lives in PLAYTEST_NOTES.md
 // ("Rigged 3D unit models"). Slots not listed for a character below simply
 // don't exist in its R2 folder yet — fallback chains cover them.
+// THE MOCAP LIBRARY (2026-11-05): lib 5 clips (MOC1_CMU.glb, bake-mocap.py). A walk's ts plays its cycle in 0.52 s like
+// the library Walking. The idle poses picker (EW_IDLE_POSES) offers the five idles to every creator look too.
+const _MOC = {
+  handsOnHips:   { clip: 'MOC_HandsOnHips_Idle', lib: 5, ts: 0.75 },
+  calm:          { clip: 'MOC_Calm_Idle',        lib: 5, ts: 1.0 },
+  shiftWeight:   { clip: 'MOC_ShiftWeight_Idle', lib: 5, ts: 1.0 },
+  fidget:        { clip: 'MOC_Fidget_Idle',      lib: 5, ts: 1.0 },
+  tough:         { clip: 'MOC_Tough_Idle',       lib: 5, ts: 1.0 },
+  machoWalk:     { clip: 'MOC_Macho_Walk',       lib: 5, ts: 3.3 },
+  slowWalk:      { clip: 'MOC_Slow_Walk',        lib: 5, ts: 3.6 },
+  legsApartWalk: { clip: 'MOC_LegsApart_Walk',   lib: 5, ts: 2.7 },
+  rushedWalk:    { clip: 'MOC_Rushed_Walk',      lib: 5, ts: 2.5 },
+  coolWalk:      { clip: 'MOC_Cool_Walk',        lib: 5, ts: 2.7 },
+};
+const _MOC_PRIEST = { idle: _MOC.calm, walk: _MOC.slowWalk };
+const _MOC_MADSCI = { idle: _MOC.fidget, walk: _MOC.rushedWalk };
 const _PSY_3D = `${_S}/Races/Homosapien/Female/psychic`;
 const _VOID_3D = `${_S}/Races/voidweaver/male`;
 const RACE_MODELS_3D = {
@@ -1801,11 +1824,13 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/engineer', 'female_hot_asian_scie', {
       idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.93 }),
+    }, { castTimeScale: 5.0, heightRatio: 0.93,
+         lib: _MOC_MADSCI }),   // THE MOCAP LIBRARY: the fidget + the rushed walk
     male: _mk3d('Homosapien/Male/engineer', 'mad_scientist', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.0 }),
+    }, { castTimeScale: 5.0, heightRatio: 1.0,
+         lib: _MOC_MADSCI }),
   },
   // Gunslingers — the high-noon quick-draw (MAL lib 2) is their gun action,
   // per the 2026-07-11 slot spec ("Cowboy/Cowgirl/High Noon Shoot Gun").
@@ -1814,12 +1839,14 @@ const RACE_MODELS_3D = {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
     }, { castTimeScale: 5.0, heightRatio: 0.95,
-         lib: { castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 } }, }),
+         lib: { castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 },
+                idle: _MOC.shiftWeight }, }),   // THE MOCAP LIBRARY: the weight shift (no gun in the idle: THE IDLE RULE)
     male: _mk3d('Homosapien/Male/gunslinger', 'gunslinger_cowboy', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
     }, { castTimeScale: 5.0, heightRatio: 1.0,
-         lib: { castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 } }, }),
+         lib: { castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 },
+                idle: _MOC.shiftWeight, walk: _MOC.legsApartWalk }, }),   // + the bow-legged walk
   },
   // Female Knight — Thrust_Slash is the basic strike, Triple_Combo_Attack
   // the bigger generic cast flourish (spare alt idle on R2: Idle_8).
@@ -2199,10 +2226,12 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/priest/Meshy_AI_priest_Running.glb`,
       heightRatio: 1.0,
       basicAttackKind: 'magic',
+      lib: _MOC_PRIEST,   // THE MOCAP LIBRARY: the calm stance + the slow walk
     }),
     female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
       heightRatio: 0.94,
       basicAttackKind: 'magic',
+      lib: _MOC_PRIEST,
     }),
   },
   // The GANGSTER (Gunslinger, Shank) — his rigged model landed 2026-09-10 in
@@ -2216,7 +2245,8 @@ const RACE_MODELS_3D = {
   'gangster': {
     male: _mkUAL('gangster', 'thug_gangster_reali', {
       heightRatio: 1.02,
-      lib: { castMelee: { clip: 'Punch_Cross', lib: 0, ts: 1.2, strikeAt: 0.25 } },
+      lib: { castMelee: { clip: 'Punch_Cross', lib: 0, ts: 1.2, strikeAt: 0.25 },
+             idle: _MOC.tough, walk: _MOC.coolWalk },   // THE MOCAP LIBRARY: the tough stance + the cool walk
     }),
   },
   /* ── THE 2026-09-21 BATCH — three races on the user's Meshy "Running" exports. Meshy stopped shipping a
@@ -2621,6 +2651,7 @@ const RACE_MODELS_3D = {
     female: _mkUAL('superhero/female', 'hot_girl_superhero_', {
       heightRatio: 0.97,
       basicAttackKind: 'punch',
+      lib: { idle: _MOC.handsOnHips },   // THE MOCAP LIBRARY: hands on hips
     }),
     // Male (2026-09-22 batch) — "a_superhero" Running export (Races/superhero/male/), the base per the rig rule.
     // THE SWAY (2026-11-01, the first spring-bone test): the same export with 5 chains of cape bones baked in
@@ -2630,6 +2661,7 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/superhero/male/Meshy_AI_a_superhero_Running_sway.glb`,
       heightRatio: 1.05,
       basicAttackKind: 'punch',
+      lib: { idle: _MOC.handsOnHips, walk: _MOC.machoWalk },   // THE MOCAP LIBRARY: hands on hips + the macho walk
     }),
   },
   // Demon Princess (flying hex-caster) — royal cruelty, magic zaps.
@@ -4937,6 +4969,12 @@ const EW_IDLE_POSES = [
   { id: 'Spell_Simple_Idle_Loop', label: 'Spell ready',     clip: 'Spell_Simple_Idle_Loop', lib: 0, ts: 1.0 },
   { id: 'Crouch_Idle_Loop',       label: 'Crouch',          clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
   { id: 'Zombie_Idle_Loop',       label: 'Zombie',          clip: 'Zombie_Idle_Loop',       lib: 1, ts: 1.0 },
+  /* THE MOCAP LIBRARY (2026-11-05): the motion-capture idles (lib 5, MOC1_CMU.glb) */
+  { id: 'MOC_HandsOnHips_Idle',   label: 'Hands on hips',   clip: 'MOC_HandsOnHips_Idle',   lib: 5, ts: 0.75 },
+  { id: 'MOC_Calm_Idle',          label: 'Calm',            clip: 'MOC_Calm_Idle',          lib: 5, ts: 1.0 },
+  { id: 'MOC_ShiftWeight_Idle',   label: 'Weight shift',    clip: 'MOC_ShiftWeight_Idle',   lib: 5, ts: 1.0 },
+  { id: 'MOC_Fidget_Idle',        label: 'Fidget',          clip: 'MOC_Fidget_Idle',        lib: 5, ts: 1.0 },
+  { id: 'MOC_Tough_Idle',         label: 'Tough stance',    clip: 'MOC_Tough_Idle',         lib: 5, ts: 1.0 },
 ];
 const EW_APPEARANCE_ENUMS = {
   idle: EW_IDLE_POSES.map(o => o.id),   // THE IDLE POSE ('default' first = the body's own idle)
