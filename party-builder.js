@@ -1715,6 +1715,12 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               (window.EW_IDLE_POSES || []).length > 1 ? h(React.Fragment, null,
                 h('div', { className: 'pb-creator-colorlabel' }, 'Idle pose'),
                 ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]), null, 'idle')) : null,
+              /* THE WALK STYLE (2026-11-05, mondo: "add the walk animations to the character creator just like the idle animations so i
+                 can see those too"): the motion-capture walks (sprites.js EW_WALK_STYLES); a pick walks on the stage at once, looping,
+                 and is saved in the look like the idle (the board plays it) */
+              (window.EW_WALK_STYLES || []).length > 1 ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'Walk'),
+                ccChoice('walk', window.EW_WALK_STYLES.map(o => [o.id, o.label]), null, 'walk')) : null,
     null);
   const ccFaceTab = () => h(React.Fragment, null,
               /* THE FACE SLIDERS (2026-11-02, mondo: "a standard AAA video game character creator where you can control the size of
@@ -4922,11 +4928,15 @@ function PartyBuilder(props) {
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
-              h('button', { className: 'ms-tty-btn', onClick: () => {
-                window.EWCharViewer?.resetView();
-                const ms = window.EWCharViewer?.play('walk', { full: true, name: 'Walk' });
+              /* THE WALK STYLE (2026-11-05, mondo: "The walk preview just plays like one walk cycle and stops"): the walk LOOPS until
+                 pressed again (EWCharViewer.walk, at the clip's recorded speed) */
+              h('button', { className: 'ms-tty-btn' + (previewState && previewState.playing === 'walk' ? ' primary' : ''), onClick: () => {
+                const cv = window.EWCharViewer;
+                if (cv?.isWalking?.()) { cv.stopPreview(); return; }
+                cv?.resetView();
+                const ms = cv?.walk ? cv.walk() : cv?.play('walk', { full: true, loop: true, name: 'Walk' });
                 if (!ms) pbNote('Animation is still loading. Try again shortly.');
-              } }, 'PREVIEW WALK')))));
+              } }, previewState && previewState.playing === 'walk' ? 'STOP WALK' : 'PREVIEW WALK')))));
 
   const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? (creatorOpen ? creatorPanel : gearPanel) : dossierPanel;
   const body = h('div', { className: 'pb-body', 'data-tab': pbTab, 'data-panel': hasPanel ? '1' : '0' },
@@ -5228,6 +5238,13 @@ function OfficerCreator() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+  // THE WALK STYLE (2026-11-05): the WALK button reads STOP WALK while the stage's walk loops
+  const [mirrorWalking, setMirrorWalking] = React.useState(false);
+  React.useEffect(() => {
+    const cv = window.EWCharViewer;
+    if (cv && typeof cv.onState === 'function') cv.onState((ps) => setMirrorWalking(!!(ps && ps.playing === 'walk')));
+    return () => { if (cv && typeof cv.onState === 'function') cv.onState(null); };
+  }, []);
   const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('door agent', gender));
   return h('div', { className: 'pb-officer' + (intake ? ' intake' : ''), role: 'dialog', 'aria-label': intake ? 'The intake — create your agent' : 'Character creator' },
     h('div', { className: 'pb-officer-head' },
@@ -5236,7 +5253,11 @@ function OfficerCreator() {
       h('div', { className: 'pb-creator-options', style: { margin: 0 } },
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
-        h('button', { className: 'ms-tty-btn', onClick: () => { window.EWCharViewer?.resetView(); window.EWCharViewer?.play('walk', { full: true, name: 'Walk' }); } }, 'WALK'),
+        h('button', { className: 'ms-tty-btn' + (mirrorWalking ? ' primary' : ''), onClick: () => {   // THE WALK STYLE: loops until pressed again
+          const cv = window.EWCharViewer;
+          if (cv?.isWalking?.()) { cv.stopPreview(); return; }
+          cv?.resetView(); cv?.walk ? cv.walk() : cv?.play('walk', { full: true, loop: true, name: 'Walk' });
+        } }, mirrorWalking ? 'STOP WALK' : 'WALK'),
         h('button', { className: 'ms-tty-btn' + (intake ? ' ew-back' : ''), onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },

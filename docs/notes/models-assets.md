@@ -1632,3 +1632,39 @@ row 1): give races their own motion from free mocap; pilot on 5 races that alrea
   remove the lib rows, or `window.EW_DISABLE_ANIM_LIB` (all libraries).
 - NEXT (not built): more races; signature casts/attacks from the same set (CMU has boxing 13_17/14_01, kicks 86_*, a gun pull
   139_05, laughs 13_14); a mirror option for left/right-handed takes.
+
+## THE MOCAP LIBRARY rev 2 (2026-11-05, same day) — creator picks only, the converter redone
+mondo (thread "Redo pilot race idles and walks"): "fidget doesnt loop. Hands on hips looks [bad] and the ankle is all twisted and
+distorted. the buttons are bugged and calm is doing the fidget animations and hands on hip animations and weight shift is doing hands
+on hips ... add the walk animations to the character creator just like the idle animations ... The walk preview just plays like one
+walk cycle and stops", then "dont give them default idles and walks, just add them to the character creator ... Put their defaults
+back to what they were".
+- DEFAULTS BACK: superhero, priest, cowboy, mad scientist, gangster lose their `lib:` idle/walk rows (sprites.js exactly as before
+  PR #902; `_MOC` table gone). Nothing plays lib 5 unless a look picks it.
+- WHY "CALM = WEIGHT SHIFT": the CMU BVH set ships 77_02 ("standing") and 139_02 ("shifting weight") as the SAME FILE, byte for
+  byte. The buttons were wired right; the two clips were one motion. Judge a take by its motion, never its label.
+- bake-mocap.py rev 2 (see its docstring): THE CLEAN REST (zero pose, legs straightened, feet straight ahead; rev 1 used the
+  actor's frame-1 T-pose, whose turned-out toes / rolled ankles played backwards on our bodies = the twisted ankle), THE FLAT FEET
+  (per take, the planted frames give each foot's true standing turn: subject 54's toe markers point the foot 45 deg up), THE LOOP
+  POINTS (start AND end searched for the best pose + speed match, the leftover spread over the whole clip, then THE SEAM EASE: a
+  +-4 frame circular average at the wrap; no blend window = no rewind), NO PIVOT (rev 1 "steady" turned planted feet), THE FLOOR
+  (feet on the rest pose's floor; the hips path in the file's leg lengths), THE STRAIGHT PATH (a walk is turned frame by frame
+  by its heading of travel: CMU walks curve), THE QUIET WRISTS (35 % of the noisy CMU hand turn), THE POSTURE LAYER (spec `pose`:
+  constant joint turns over the actor's motion; the Heroic stance = 111_28 standing still + chest up, arms and legs a little out).
+  `--scan <take>` shows a whole take (hips speed per second + a stick sheet) to find stretches. Seam check: every clip's wrap step
+  is at or under its own 90th-percentile frame step.
+- THE CLIPS (mocap-clips.json): idles MOC_Heroic_Idle (111_28), MOC_Calm_Idle (82_08), MOC_ShiftWeight_Idle (139_02),
+  MOC_Fidget_Idle (137_19), MOC_Tough_Idle (137_41), MOC_Pockets_Idle (137_28); walks MOC_Normal_Walk (91_29), MOC_Confident_Walk
+  (82_09), MOC_Macho_Walk (91_33), MOC_Strong_Walk (137_42), MOC_Heavy_Walk (17_08), MOC_Cool_Walk (91_23), MOC_Slow_Walk (91_10),
+  MOC_LegsApart_Walk (132_53). Dropped: hands on hips (54_16), the rushed walk (142_14: erratic data). Rejected after rendering on a
+  creator body: 54_16/55_22 superhero (hands on hips, broken foot markers), 113_21 (head lolls), 40_10 (looks up), 140_07 / 77_03
+  (crouched), 76_04 (no loop), 137_19 37 s (turns round).
+- THE WALK STYLE: sprites.js EW_WALK_STYLES + EW_APPEARANCE_ENUMS.walk (appearance.walk, saved in the look like the idle);
+  getCharacterAppearanceModel -> def.walkPick; three-renderer.js _animLibBakeForModel swaps the caller's `walk` like the idle pick.
+  Row `ts` = the board speed (one stride cycle in 0.52 s, like the library Walking at 2.05). Creator: OUTFIT/BODY "Walk" row under
+  "Idle pose"; a pick (Default too) walks on the stage at once, LOOPING, at the clip's recorded speed (EWCharViewer.walk()); the
+  PREVIEW WALK / WALK buttons now loop until pressed again (STOP WALK). A looped MOVE PREVIEW has no timer any more (ran 60 s).
+  An idle pick made while the walk loops ends the walk and shows the idle.
+- ASSET_MANIFEST.json lists MOC1_CMU.glb (sha a83dab3d347b), so a browser that stored rev 1 in the asset store fetches rev 2.
+- CHECKED in the real game page (local scripts, Playwright): every idle + walk button plays its own clip; the walk still loops
+  after 6 s; idle during a walk; WALK -> STOP WALK. Videos of every clip over 2-3 loops on the MPFB male + the superhero model.
