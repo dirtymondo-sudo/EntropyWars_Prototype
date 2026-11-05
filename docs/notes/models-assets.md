@@ -1665,5 +1665,6 @@ back to what they were".
   "Idle pose"; a pick (Default too) walks on the stage at once, LOOPING, at the clip's recorded speed (EWCharViewer.walk()); the
   PREVIEW WALK / WALK buttons now loop until pressed again (STOP WALK). A looped MOVE PREVIEW has no timer any more (ran 60 s).
   An idle pick made while the walk loops ends the walk and shows the idle.
+- ASSET_MANIFEST.json lists MOC1_CMU.glb (sha a83dab3d347b), so a browser that stored rev 1 in the asset store fetches rev 2.
 - CHECKED in the real game page (local scripts, Playwright): every idle + walk button plays its own clip; the walk still loops
   after 6 s; idle during a walk; WALK -> STOP WALK. Videos of every clip over 2-3 loops on the MPFB male + the superhero model.
