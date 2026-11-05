@@ -1667,4 +1667,18 @@ back to what they were".
   An idle pick made while the walk loops ends the walk and shows the idle.
 - ASSET_MANIFEST.json lists MOC1_CMU.glb (sha a83dab3d347b), so a browser that stored rev 1 in the asset store fetches rev 2.
 - CHECKED in the real game page (local scripts, Playwright): every idle + walk button plays its own clip; the walk still loops
-  after 6 s; idle during a walk; WALK -> STOP WALK. Videos of every clip over 2-3 loops on the MPFB male + the superhero model.
+  after 6 s; idle during a walk; WALK -> STOP WALK.
+- REV 2.1 (same day, mondo tested live: "I pick one walk animation and then like the next 2 or 3 i click are broken", walks slide,
+  idles still broken). THE CAUSE was the ASSET STORE, not the buttons: his browser had stored rev 1 of MOC1_CMU.glb while the
+  manifest did not list it (row stored with no sha); on the first hit after the manifest listed rev 2, three-renderer.js
+  _asTouch stamped the MANIFEST's sha on that old row, so _asStale never fired and rev 1 played for good. Every clip that only
+  exists in rev 2 (Heroic, Pockets, Normal, Confident, Strongman, Heavyset) baked to nothing = a dead button, and the rev 1 walks
+  are the sliding ones. Reproduced in Playwright by seeding the store with rev 1 (/tmp harness t6.js): old code = his exact
+  symptoms, new code = every button plays its clip. FIX (three-renderer.js THE ASSET STORE): a hit never takes the manifest's sha;
+  a listed file is stale when its row has no sha, no row, a different sha, or a size that is not the manifest's; a fresh copy of a
+  listed file is stored under the manifest's bytes. So any file changed in place + listed in the manifest now really refetches.
+- REV 2.1 UI: the Walk row carries its own PLAY WALK / STOP WALK (party-builder.js CreatorControls, reads three-renderer.js's
+  'ew-cv-state' window event that _cvEmitState now dispatches); the party builder's bottom PREVIEW WALK is gone (moved up).
+  Clicking a walk walks at once (also the one already picked); clicking the picked idle during a walk stops the walk.
+- Seams on the real rig (bone world positions sampled over the loop point, MPFB male): every walk + idle seam step is at or under
+  the clip's 90th-percentile frame step (walks 6-17 mm vs 17-27 mm, idles 0.1-7 mm vs 0.6-11 mm).
