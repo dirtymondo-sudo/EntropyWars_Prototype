@@ -84945,6 +84945,17 @@ const ThreeRenderer = (function () {
         var sc = H.scene;
         W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
                    _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
+        /* THE WARM-UP ON THE NODE RENDERER (2026-11-05, found by the per-frame audit): there renderer.compile is compileAsync, which
+           calls the scene's onBeforeRender and walks object.children / object.layers, none of which this stand-in scene had: every
+           warmed object threw (asynchronously, so the catch below never saw it), 600+ uncaught errors each time a room or part
+           built on ?ew_gpu=webgpu, and nothing was warmed. The stand-in now carries what compileAsync reads: no-op hooks, every
+           layer, and the object + the warm's lamps as its children (the lamps are how the node path collects its lights). */
+        if (renderer && renderer.isWebGPURenderer) {
+            var lay = new THREE.Layers(); lay.enableAll();
+            W.fake.visible = true; W.fake.layers = lay; W.fake.matrixWorldAutoUpdate = false;
+            W.fake.onBeforeRender = function () {}; W.fake.onAfterRender = function () {};
+            Object.defineProperty(W.fake, 'children', { get: function () { return this._list.concat(W.lights); } });
+        }
         return W;
     }
     /* the sheets a material samples (the maps; a shader's texture uniforms) */
@@ -84968,7 +84979,7 @@ const ThreeRenderer = (function () {
                 /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
                 var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
                 if (_wt) renderer.setRenderTarget(_wt);
-                try { renderer.compile(W.fake, H.camera); } finally { if (_wt) renderer.setRenderTarget(_wp); }
+                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.catch === 'function') _wpr.catch(function () {}); } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
                 if (_alNow() >= end) break;
             }
