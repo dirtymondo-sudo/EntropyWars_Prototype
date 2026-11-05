@@ -1002,6 +1002,20 @@ crystal-vein detonation) are untouched.
 Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untextured phong), the craftShards 'crystal' kind
 (untextured), the per-map `tints.crystal` colours, the Meshy crystal shard/ball GLBs.
 
+## THE CRISP CRYSTAL SHEET (2026-11-05, mondo: "figure out why the blue liquid texture you replaced the crystal texture with (crystal terrain, not the crystals) is so blurry. All pixel sprite 128x128 terrain tiles are supposed to have the same pixel density")
+
+- **Cause**: not the sampling. The crystal tile goes through the same getTexture path as every board tile (NearestFilter, one
+  sheet per 3.5 m square). Liquid_Blue_05 is 128x128 too, but it is a smooth painting: 6,314 colours and soft gradients
+  (mean neighbour step 7) where the pixel tiles (moon, moon_3, grass, rocks_5, ice) are 24 colours with hard texel edges
+  (step 18-22). Same pixel count, but its detail is wider than one texel, so it read as a smear next to them.
+- **Fix**: `terrain/crystal_blue.png` (R2, sha 778e51e8) = Liquid_Blue_05 baked by `bake-pixel-sheet.py` (repo tooling):
+  unsharp on a 3x3 wrap (stays seamless) + 24-colour median-cut palette, no dither. Same picture, same 128 px grid, crisp
+  texels. sprites.js TERRAIN_SPRITES.crystal + battle.js loading-screen preload point at it; every `crystal` _hzTex user
+  follows the key. Liquid_Blue_05 itself is untouched (LIQUID_SHEETS / editor still wear it).
+- Not touched: the other 47 liquid sheets are just as soft, but they are liquids (flow + noise layer). dirt.png, lava.png and
+  obsidian.png on R2 are 1024x1024 photo sheets, not 128 px pixel tiles. Both are open questions for mondo.
+- Proof: /mnt/project-files/crystal-crisp/.
+
 ## THE STREET FURNITURE — the city props on their lines (2026-11-02, mondo: "in disaster city and the strip and cyberpunk city etc, there are a lot of street lamps and signs and poles etc that are just placed really wrong or in the middle of a street ... BENCHES (another one that is really misplaced) ... Remember that every map was rebuilt to make sense on the square grid" + "really define the difference between the road and the sidewalks")
 Token 20261102-streetfurn-03-cors. R2: data.js, three-renderer.js. Shots: /mnt/project-files/street-furniture/.
 - **The cause**: a city room's `scatter` rows (bins, hydrants, signposts, benches, plants, cones, barrels, manholes, machines) fell on a
