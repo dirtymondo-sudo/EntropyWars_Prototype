@@ -1388,6 +1388,7 @@ mondo: "go ahead and get it [the MPFB hair editor] and try on the werewolf, make
     colour under its nearest body vertex, strand shading + alpha kept. Pick "Fur (whole body), werewolf colours".
   - THE TAIL ROOT: bake-meshy.py taper=(frac, k0) narrows a tail's flat cut end toward its centre line, sink= sinks it deeper; the wolf tail
     taper (0.25, 0.22), sink 0.05 (was a disc standing off the lower back). --views on a tail = root close-ups on every body.
+    2026-11-05 (mondo: "yes"): the lizard tail taper (0.18, 0.3) + shark tail taper (0.2, 0.25), both sink 0.05. Pictures werewolf-fur/06.
   - The saved werewolf look (bake-looks.js, input werewolf-fur/Entropy_Wars_Race_Looks_werewolf_meshy_fur.json): heavy, Wolf head, fur skin A,
     tail + feet A, hand claws, no shell. Still a SAVED look; the Meshy werewolf stays the unit default.
 
