@@ -51024,6 +51024,36 @@ const ThreeRenderer = (function () {
             } else m = new THREE.MeshStandardMaterial(o);
             ownedMaterials.push(m); return m;
         }
+        /* THE COLOURS ON THE VERTICES (2026-11-05, mondo: "tinted clothes appear white" on the Select Your Team room): a worn
+           piece's colour (its wear tint, its layer colour, its beard colour, its own base colour) rides its VERTEX COLOURS (x its
+           baked shade, mesh.userData._ewShade), never its material's colour: every stage that shows a unit (the team room, the
+           board, the walk, the race actors) swaps the rig's materials for its own Lambert copy and sets that copy's colour to its
+           light level (and the AP-spent grey, the hit flash), so a colour kept on the material came out white there. The coded
+           shells and the hair cards already carry theirs this way (paintGarments, setHair); the swap keeps vertexColors and
+           tints the glow with them (_ewVColorEmissiveHook). c = a THREE.Color (null = white). */
+        function wearVC(mesh, c) {
+            var geo = mesh && mesh.geometry, pa = geo && geo.attributes && geo.attributes.position; if (!pa) return;
+            var n = pa.count, at = geo.attributes.color, S = mesh.userData._ewShade || null;
+            var r = c ? c.r : 1, gg = c ? c.g : 1, b = c ? c.b : 1, key = r + ',' + gg + ',' + b;
+            if (!at || at.count !== n || at.itemSize !== 3) { at = new THREE.BufferAttribute(new Float32Array(n * 3), 3); geo.setAttribute('color', at); key = null; }
+            if (key === null || geo.userData._ewVcKey !== key) {
+                var A = at.array;
+                if (S && S.length === n * 3) for (var j = 0; j < n * 3; j += 3) { A[j] = r * S[j]; A[j + 1] = gg * S[j + 1]; A[j + 2] = b * S[j + 2]; }   // (a shade of its own colours: the wing file's)
+                else for (var i = 0; i < n; i++) { var s = S ? S[i] : 1; A[i * 3] = r * s; A[i * 3 + 1] = gg * s; A[i * 3 + 2] = b * s; }
+                at.needsUpdate = true;
+                geo.userData._ewVcKey = r + ',' + gg + ',' + b;
+            }
+            var m = mesh.material;   // the CURRENT material: the stage may have swapped ours for its Lambert copy (its colour is its own)
+            if (m && !m.vertexColors) { m.vertexColors = true; m.needsUpdate = true; }
+            if (m && m.color && ownedMaterials.indexOf(m) >= 0) m.color.setRGB(1, 1, 1);
+        }
+        /* a piece's map (+ the stage copy's glow map, which is the same texture: _attachUnitModel / the team room) */
+        function wearMap(m, map) {
+            if (!m || m.map === map) return;
+            m.map = map;
+            if (m.emissiveMap) m.emissiveMap = map;
+            m.needsUpdate = true;
+        }
         function geometry() {
             var g = new THREE.BufferGeometry(); g._ew_shared = true;
             ownedGeometries.push(g); return g;
@@ -54405,11 +54435,10 @@ const ThreeRenderer = (function () {
                 var m = w.mesh.material, src = holder && holder.material, keys = LAYER_KEYS[w.layer], def = _ccFabricDef(a[keys[0]]);
                 if (!m) return;
                 var map = (src && src.map) || null;
-                if (!w.own && m.map !== map) { m.map = map; m.needsUpdate = true; }
+                if (!w.own) wearMap(m, map);
                 var tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]]), lift = def.file ? 1.18 : 1;
-                if (m.color) m.color.setRGB(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift));
+                wearVC(w.mesh, new THREE.Color(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift)));   // THE COLOURS ON THE VERTICES (x the coat's baked shade)
                 if (m.isMeshStandardMaterial) { m.roughness = def.rough != null ? def.rough : 0.9; m.metalness = def.metal || 0; }
-                if (!m.vertexColors && w.mesh.geometry.attributes.color) { m.vertexColors = true; m.needsUpdate = true; }
             });
         }
         function setFabric(part, which, a, preview) {
@@ -55465,6 +55494,8 @@ const ThreeRenderer = (function () {
         var CC_WING_LIFT = { angel: CC_ANGEL_LIFT, bat: 0.15, dragon: -0.75 };   // 2026-11-02: per wing file (the bat / dragon files sit flatter)
         function dropWings(part) {
             if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
+            /* (only its colour attribute is its own: the file's attributes + index come off first, so dispose frees that alone) */
+            if (part.wings && part.wings.geos) part.wings.geos.forEach(function (wg) { Object.keys(wg.attributes).forEach(function (an) { if (an !== 'color') wg.deleteAttribute(an); }); wg.setIndex(null); wg.dispose(); });
             part.wings = null;
         }
         function chestBone(part) {
@@ -55496,23 +55527,34 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
             g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
             var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
-            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: !!(wl.geometry && wl.geometry.attributes.color) });
+            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: true });
             if (src && src.map) mat.map = src.map;
             if (src && src.normalMap) mat.normalMap = src.normalMap;
+            var geos = [];
             var hinges = [wl, wr].map(function (w, k) {
                 var hinge = new THREE.Group(); hinge.name = k ? 'EWCreator_wingR' : 'EWCreator_wingL';
-                var m = new THREE.Mesh(w.geometry, mat);   // the cached GLB's geometry (_ew_shared): never disposed here
+                /* THE COLOURS ON THE VERTICES: the wing colour rides a colour attribute of this rig's own copy of the wing (the
+                   cached GLB's geometry is shared, never written), x the file's own vertex colours when it has them */
+                var wg = new THREE.BufferGeometry(), ca = w.geometry.attributes.color, sh = null, v;
+                Object.keys(w.geometry.attributes).forEach(function (an) { if (an !== 'color') wg.setAttribute(an, w.geometry.attributes[an]); });
+                if (w.geometry.index) wg.setIndex(w.geometry.index);
+                if (w.geometry.boundingSphere) wg.boundingSphere = w.geometry.boundingSphere.clone();
+                if (ca) { sh = new Float32Array(ca.count * 3); for (v = 0; v < ca.count; v++) { sh[v * 3] = ca.getX(v); sh[v * 3 + 1] = ca.getY(v); sh[v * 3 + 2] = ca.getZ(v); } }
+                wg._ew_shared = true; geos.push(wg);   // (its attributes are the cached file's: only the colour is its own; dropWings frees it)
+                var m = new THREE.Mesh(wg, mat);
+                m.userData._ewShade = sh;
                 m.name = 'EWCreator_wing'; m.quaternion.copy(w.quaternion); m.castShadow = true; m.receiveShadow = true;
                 m._ew_noTwin = true; m._ew_creatorWing = true;
                 hinge.add(m); g.add(hinge); return hinge;
             });
             part.bones[bi].add(g);
-            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat };
+            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat, geos: geos };
             paintWings(part, a); poseWings(part);
         }
         function paintWings(part, a) {
             if (!part.wings) return;
-            part.wings.mat.color.copy(color((a && a.wingsColor) || '#f2f2f2'));
+            var c = color((a && a.wingsColor) || '#f2f2f2');
+            [part.wings.L, part.wings.R].forEach(function (h) { if (h.children[0]) wearVC(h.children[0], c); });   // THE COLOURS ON THE VERTICES
         }
         var _wingE = null;
         function poseWings(part) {
@@ -56017,7 +56059,8 @@ const ThreeRenderer = (function () {
             if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array, ex.uv === 'm' ? function (u) { return u * CC_MESH_UV; } : undefined), 2));
             /* THE BLENDER COAT: its shade (ambient occlusion x each piece's own: buttons, buckle, facings) as vertex colour */
             var Gs = sg.attributes._g;
-            if (Gs) { var GC = new Float32Array(count * 3); for (i = 0; i < count; i++) GC[i * 3] = GC[i * 3 + 1] = GC[i * 3 + 2] = Gs.array[i] / 255; g.setAttribute('color', new THREE.BufferAttribute(GC, 3)); }
+            var shadeG = null;   // (wearVC writes the colour attribute: the shade x the piece's colour)
+            if (Gs) { shadeG = new Float32Array(count); for (i = 0; i < count; i++) shadeG[i] = Gs.array[i] / 255; }
             var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
             for (var v = 0; v < count; v++) {
                 var tot = 0;
@@ -56055,11 +56098,13 @@ const ThreeRenderer = (function () {
             var wearMesh = function (src, geo, nm) {
                 var srcMat = Array.isArray(src.material) ? src.material[0] : src.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
                 if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); texs.push(tex); }
-                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: !!Gs });
-                if (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) mat.color.copy(srcMat.color);   // (an accent keeps its colour over its tile)
+                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: true });
+                var base = (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) ? srcMat.color.clone() : null;   // (an accent keeps its colour over its tile)
                 var mh = part.shell(nm, mat);
                 mh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mh.geometry), 1);
                 mh.geometry = geo;
+                mh.userData._ewShade = shadeG; mh.userData._ewBase = base;   // THE COLOURS ON THE VERTICES (wearVC)
+                wearVC(mh, base);
                 if (swayRig) mh.bind(swayRig.skel, part.body.bindMatrix);
                 else if (hangRig) mh.bind(hangRig.skel, part.body.bindMatrix);   // THE COAT HANG
                 mh.castShadow = true; mh.receiveShadow = true;
@@ -56071,7 +56116,7 @@ const ThreeRenderer = (function () {
             var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [], bandMade = null;
             for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
                 var ga = geometry();
-                ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
+                ['position', 'normal', 'uv', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });   // (its own colour attribute: wearVC)
                 if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
                 ga.computeBoundingSphere();
                 var madeA = wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai);
@@ -56087,7 +56132,7 @@ const ThreeRenderer = (function () {
             /* THE WEAR TINT (2026-11-01): a pack piece that keeps its own texture (not a layer-coloured Blender piece, not facial
                hair) can wear a colour instead (appearance.wearTint, paintWear): its texture's grey levels x the colour */
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
-            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
+            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.userData._ewBase || null } : null;
             if (hangRig) part.hangRun = null;
             /* THE BAND TINT (2026-11-03, mondo: "change the color of the band and the hat separately"): the band primitive wears
                appearance.wearTint['<id>:band'] the way the hat wears wearTint[id] (paintWear); none = its own texture */
@@ -57514,13 +57559,15 @@ const ThreeRenderer = (function () {
             var mh = w.cordMesh;
             if (!mh) {
                 var col = WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color;
-                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ color: col, roughness: 0.82, metalness: 0 }));
+                mh = w.cordMesh = part.shell('wear_' + w.id + '_cord', material({ roughness: 0.82, metalness: 0, vertexColors: true }));
+                mh.userData._ewBase = new THREE.Color(col);   // THE COLOURS ON THE VERTICES (wearVC: the stage copies keep it)
                 var g0i = ownedGeometries.indexOf(mh.geometry); if (g0i >= 0) ownedGeometries.splice(g0i, 1);
                 mh.castShadow = true; mh.receiveShadow = true; mh._ew_creatorWear = true; mh._ew_cord = true;
                 mh.renderOrder = w.mesh.renderOrder; mh.visible = w.mesh.visible;
                 (w.accents = w.accents || []).push(mh);
             }
             mh.geometry.dispose(); mh.geometry = g;
+            wearVC(mh, mh.userData._ewBase);
             w.cordPts = X;   // (probes)
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
@@ -57566,8 +57613,8 @@ const ThreeRenderer = (function () {
                     var t = color(mode === 'pick' ? a.beardColor : a.hairColor), k = map === F.own ? 1 : 1.22;
                     r = Math.min(1, t.r * k); g = Math.min(1, t.g * k); b = Math.min(1, t.b * k);
                 }
-                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
-                if (m.color) m.color.setRGB(r, g, b);
+                wearMap(m, map);
+                wearVC(w.mesh, new THREE.Color(r, g, b));   // THE COLOURS ON THE VERTICES
             });
         }
         /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
@@ -57637,7 +57684,7 @@ const ThreeRenderer = (function () {
         function paintWear(part, a) {
             if (!a) return;
             var T = a.wearTint || {}, FB = a.wearFabric || {};
-            var paint = function (P, m, want, fab) {   // its texture's grey levels x the colour (x a fabric), or its own texture
+            var paint = function (P, m, want, fab, mesh) {   // its texture's grey levels x the colour (x a fabric), or its own texture
                 var map = P.own, tile = null, def = null;
                 if (fab && typeof getFabricTextureUrl === 'function' && getFabricTextureUrl(fab)) {
                     var sync = true;
@@ -57646,23 +57693,24 @@ const ThreeRenderer = (function () {
                     var fm = tile ? wearFabricMap(P, fab, tile) : null;
                     if (fm) { map = fm; def = _ccFabricDef(fab); want = want || wearOwnColour(P); }
                 }
+                var vc = P.c0 || null;
                 if (want) {
                     var grey = def ? null : (P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null), t = color(want), k = def ? 1.22 * 1.18 : grey ? 1.22 : 1;
                     if (grey) map = grey;
-                    m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
-                } else if (P.c0) m.color.copy(P.c0);
-                else m.color.setRGB(1, 1, 1);
+                    vc = new THREE.Color(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
+                }
+                wearVC(mesh, vc);   // THE COLOURS ON THE VERTICES
                 if (m.isMeshStandardMaterial) {
                     if (P.r0 === undefined) { P.r0 = m.roughness; P.m0 = m.metalness; }
                     m.roughness = def ? (def.rough != null ? def.rough : 0.9) : P.r0; m.metalness = def ? (def.metal || 0) : P.m0;
                 }
-                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+                wearMap(m, map);
             };
             (part.wear || []).forEach(function (w) {
-                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
-                paint(P, m, T[w.id], FB[w.id]);
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                paint(P, m, T[w.id], FB[w.id], w.mesh);
                 var B = w.bandTint, bm = B && B.mesh && B.mesh.material;   // THE BAND TINT
-                if (bm && bm.color) paint(B, bm, T[w.id + ':band']);
+                if (bm) paint(B, bm, T[w.id + ':band'], null, B.mesh);
             });
         }
         /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
@@ -86065,6 +86113,40 @@ const ThreeRenderer = (function () {
         }
         T.members = [];
     }
+    /* the room's look on every mesh of a member that does not wear it yet (its material is not one of mem.mats): run when the
+       member lands, and again every half second while it stands (_trFrameBody) - THE LATE PIECES (2026-11-05, mondo:
+       "tinted clothes appear white"): a creator look's garments, hair and wings load after the body (their GLBs land
+       later) and kept the creator's own material, lit unlike the body they stand on */
+    function _trLookMats(mem, m) {
+        var diff = _modelDiffuseScale();
+        m.traverse(function (n) {
+            if (!n.isMesh || n._ew_silhouette) return;
+            var src = Array.isArray(n.material) ? n.material : [n.material];
+            if (src.every(function (sm) { return sm && sm._ewTrMat; })) return;
+            n.frustumCulled = false;
+            var out = src.map(function (sm) {
+                if (sm && sm._ewTrMat) return sm;
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(diff, diff, diff);
+                if (sm) {
+                    if (sm.side != null) lm.side = sm.side;
+                    if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
+                    if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
+                    if (sm.depthWrite === false) lm.depthWrite = false;
+                }
+                if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
+                if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                _ewPopUnitMat(lm);   // THE UNIT POP
+                lm._ewTrMat = true;
+                mem.mats.push(lm);
+                return lm;
+            });
+            n.material = Array.isArray(n.material) ? out : out[0];
+        });
+    }
     function _trAddMember(T, slot, spot, tok) {
         var res = _cvResolveDef(slot.race || 'door agent', slot.gender || 'male', slot.appearance);
         if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
@@ -86083,32 +86165,9 @@ const ThreeRenderer = (function () {
             m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
             if (def.creatorBase) { try { mem.rig = _createAppearanceRig(m, def.raceLook || slot.appearance, true); } catch (e) { mem.rig = null; } }
             /* the board's look: the bake on a Lambert with its own self-glow (the game's linear pipeline) */
-            var diff = _modelDiffuseScale(), hasSkin = false;
-            m.traverse(function (n) {
-                if (!n.isMesh) return;
-                if (n.isSkinnedMesh) hasSkin = true;
-                n.frustumCulled = false;
-                var src = Array.isArray(n.material) ? n.material : [n.material];
-                var out = src.map(function (sm) {
-                    var tex = (sm && sm.map) ? sm.map : null;
-                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
-                    var lm = new THREE.MeshLambertMaterial({ map: tex, vertexColors: !!(sm && sm.vertexColors) });
-                    if (n.isSkinnedMesh) lm.skinning = true;
-                    lm.color.setRGB(diff, diff, diff);
-                    if (sm) {
-                        if (sm.side != null) lm.side = sm.side;
-                        if (sm.alphaTest) lm.alphaTest = sm.alphaTest;
-                        if (sm.transparent) { lm.transparent = true; lm.opacity = sm.opacity; }
-                        if (sm.depthWrite === false) lm.depthWrite = false;
-                    }
-                    if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
-                    if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
-                    _ewPopUnitMat(lm);   // THE UNIT POP
-                    mem.mats.push(lm);
-                    return lm;
-                });
-                n.material = Array.isArray(n.material) ? out : out[0];
-            });
+            var hasSkin = false;
+            m.traverse(function (n) { if (n.isMesh && n.isSkinnedMesh) hasSkin = true; });
+            _trLookMats(mem, m);
             var inner = new THREE.Group();
             inner.rotation.y = def.yawOffset || 0;
             inner.add(m);
@@ -86244,6 +86303,7 @@ const ThreeRenderer = (function () {
             if (m.mixer) m.mixer.update(dt);
             if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
             if (m.model) _swayAuto(m.model, dt);   // THE SWAY
+            if (m.model && m.rig && !(now < (m.lookAt || 0))) { m.lookAt = now + 500; _trLookMats(m, m.model); }   // THE LATE PIECES
         }
         _trTickPoses(T, now);
         /* the camera eases to its framing and drifts a hand's width side to side */
