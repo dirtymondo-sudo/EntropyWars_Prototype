@@ -74,10 +74,12 @@ const HOW = {
     MESHY_C:   { label: 'Meshy AI, reworked by Claude', human: 'no' },
     BLENDER:   { label: 'Claude in Blender', human: 'no' },
     CODE:      { label: 'Claude in code (three.js, no file)', human: 'no' },
+    MOCAP:     { label: 'Motion capture (real actors), cut into loops by Claude', human: 'yes (motion)' },
 };
 const SOURCES = [
     // the shared animation libraries
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
+    { re: /(Assets\/Models|characters\/animations)\/MOC\d/, how: 'MOCAP', src: 'CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py' },
     { re: /Assets\/Models\/MAL\d/, how: 'MESHY_C', src: "Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js)" },
     // character creator
     { re: /charactercreation\/wear\/ewf_/, how: 'MH_BLEND', src: 'MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py)' },

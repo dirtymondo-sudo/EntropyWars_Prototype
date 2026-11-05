@@ -1,0 +1,77 @@
+[
+ {
+  "name": "MOC_HandsOnHips_Idle",
+  "take": "54_16",
+  "a": 29.9,
+  "b": 31.55,
+  "fade": 0.35,
+  "steady": 0.7
+ },
+ {
+  "name": "MOC_Macho_Walk",
+  "take": "91_33",
+  "a": 15.37,
+  "b": 17.07,
+  "fade": 0.2
+ },
+ {
+  "name": "MOC_Calm_Idle",
+  "take": "77_02",
+  "a": 3.5,
+  "b": 7.0,
+  "fade": 0.5,
+  "steady": 0.7
+ },
+ {
+  "name": "MOC_Slow_Walk",
+  "take": "91_10",
+  "a": 8.34,
+  "b": 10.21,
+  "fade": 0.2
+ },
+ {
+  "name": "MOC_ShiftWeight_Idle",
+  "take": "139_02",
+  "a": 3.5,
+  "b": 7.0,
+  "fade": 0.5,
+  "steady": 0.7
+ },
+ {
+  "name": "MOC_LegsApart_Walk",
+  "take": "132_53",
+  "a": 21.44,
+  "b": 22.87,
+  "fade": 0.2
+ },
+ {
+  "name": "MOC_Fidget_Idle",
+  "take": "137_19",
+  "a": 19.3,
+  "b": 21.8,
+  "fade": 0.6,
+  "steady": 0.7
+ },
+ {
+  "name": "MOC_Rushed_Walk",
+  "take": "142_14",
+  "a": 5.24,
+  "b": 6.57,
+  "fade": 0.2
+ },
+ {
+  "name": "MOC_Tough_Idle",
+  "take": "137_41",
+  "a": 19.7,
+  "b": 23.47,
+  "fade": 0.6,
+  "steady": 0.7
+ },
+ {
+  "name": "MOC_Cool_Walk",
+  "take": "91_23",
+  "a": 15.71,
+  "b": 17.11,
+  "fade": 0.2
+ }
+]
