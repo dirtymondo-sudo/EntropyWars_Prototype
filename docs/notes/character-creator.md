@@ -1775,3 +1775,33 @@ pendant (cached) 5.8 -> 1.1-1.5 s, hair (cached) 0.9 -> 0.3 s, new hair 4.4 -> 1
 (download included). Re-measured on main after PR #944's coat fit (picks there had grown to 6.8-7.9 s): coat 7.5 -> 1.0 s, boots 6.8 -> 0.85 s,
 pendant 7.9 -> 1.2 s, hair 2.2 -> 0.36 s, identical fingerprints again. What is left is one body rebuild + one fit per pick. Probe (scratch only): Playwright, EWCharViewer.mount, a
 `__rig` accessor patched into a copy, PerformanceObserver longtask + CDP Profiler.
+
+## THE QUICK TEAM ROOM (2026-11-05)
+mondo: "switching to my team with all created characters still freezes the game for a moment ... 4 seconds ... everyone shares the
+same 3 or 4 base mpfb bodies. Shouldnt this be much easier on the performance?" Measured in headless Chromium (swiftshader, the
+real Select Your Team room, ThreeRenderer.teamRoom.setTeam with baked race looks): every switch to a created team rebuilt all four
+rigs from scratch in ONE main-thread task (8.1-10.5 s here for cowboy / santa / catgirl / chef; the Meshy team back in 0.03 s,
+its GLB is parsed once and cloned). CPU profile of that task: 45 % the look sheet (setLook's tints read the canvas back off the
+GPU: getImageData), 25 % the garment fits (nearSet / spaceSmooth / nearestBody, Map grids keyed per cell), the rest the layers,
+hair under hats, cloth collision. Fixes (three-renderer.js):
+- THE SHARED SHEETS: a look's put-together skin sheet is made once per look key and kept (`_ccLookSheets`, 24), every rig of that
+  look wears it at once. The tint canvases (setLook's sheet, tintLayer, tintLips) and the other creator canvases that are read back
+  (fabric normalise, hair grey mask, pattern tile, own-lash tint) are `willReadFrequently` CPU canvases. The first visit of a
+  session spent 13.3 s in getImageData here (image loads -> fabric / hair / look sheets), now 0.4 s.
+- THE SHARED FITS: nearestBody / nearSet / spaceSmooth answers are kept for every rig, keyed by the content of the body's and the
+  garment's points (64-bit hash + length; `_ccFitMemo`, 160 MB): the same garment on the same body is fitted once per session
+  whoever wears it. `window.EW_NO_FIT_MEMO = true` = off.
+- THE DENSE GRID (`_ccDenseGrid`): the body grid (`bodyGrid(part)`, nearestBody, nearSet, the hair clearance's thickAt / thinAt) and
+  spaceSmooth's grid are flat CSR arrays over the points' box, points in ascending order per cell (the old Map lists' order), so
+  every search returns the same nearest, ties included.
+- THE BENCH (team room): a member who stood in the room is kept dressed and idling when the team changes (`T.bench`, 16, keyed by
+  race + gender + look) and steps back on at once. THE ONE AT A TIME: a created member not on the bench is dressed on the frame
+  loop, one per frame (`T.buildQ`, run in _trFrameBody), so the room keeps moving and each one appears as ready.
+Same box, same sequence, old -> new: back to a created team 8.1 s frozen -> 0.03 s (Meshy 0.03 s); a second created team back
+3.0 s -> 0.03 s; first visit of a session (all four shown) 24.8 s -> 16.9 s; a second created team's first visit 17.8 s -> 11.1 s,
+longest stop 6.8 s -> 3.0 s. Fingerprints (every attribute + index of every mesh of 13 looks: the 12 above + professor, men in black,
+mad scientist F, telepath F, demon F, conspiracy theorist, cult leader, gangster) identical old vs new, cold and warm memo (THE JIGGLE
+off); the skin sheet differs by at most 2/255 on most pixels (CPU vs GPU canvas rounding), 6/255 on 68 pixels of one look.
+What is left on a first visit: one build per look not seen this session (the layers / hair / collision fits, ~0.3-1 s each here),
+and the session's first MPFB body (GLB parse, animation bake, shader compiles: the Meshy team's first visit pays the same kind).
+Probe (scratch only): Playwright + a `__tr` / `__clear` accessor patched into a served copy, longtask observer, CDP Profiler.
