@@ -2917,6 +2917,93 @@ const ThreeRenderer = (function () {
         } catch (e) { console.warn('[ThreeRenderer] the unit pop patch failed', e); return false; }
     }
     _ewPopPatch();
+    /* ══ THE CLOTH COLLISION (2026-11-05, mondo: "Can you not just add collision to all the mpfb bodies and clothes?") ══════════
+       A skinned body and the clothes over it are separate meshes, each bent by the same bones on its own weights; nothing ever
+       checked that one stayed outside the other, so wherever a pose bends the skin and the cloth differently (a deep knee, a bent
+       elbow, the jiggle, a mocap stride) the body came through the cloth, a shirt through the coat over it, and two layers lying
+       a millimetre apart crossed and flickered. Now every creator garment (coded, pack, Blender) is collided against the body's
+       OWN skinned surface on the graphics card, every frame:
+         · each garment vertex carries an anchor (collideFit in _createAppearanceRig): the skin vertex nearest it in the bind pose,
+           that vertex's normal and its four bone weights (ewColA.xyz / ewColN.xyz / ewColJ / ewColW), plus a band (ewColA.w = lo,
+           ewColN.w = hi) round the vertex's own stand-off from the skin at rest (c0);
+         · in the vertex shader, right after three's skinning, the anchor is skinned with the BODY's weights (the same bone
+           matrices), and the cloth vertex is pushed back along the anchor's skinned normal until its stand-off is inside the band:
+           never closer to the skin than at rest (less 1.5 mm, or half the gap to the layer under it), and, where another garment
+           lies over it at rest, never further out than half the gap to that one. So the skin stays under layer 1, layer 1 under
+           layer 2, layer 2 under the coat, in any pose of any clip, on any body the sliders make;
+         · far off the skin (a coat's skirt, a cape: stand-off over 3..5 cm) the push fades out (those hang on their own chains
+           and capsules: THE COAT HANG, THE BLENDER CAPES), and a vertex that slid more than 3..6 cm across its anchor fades out.
+       Plus THE LAYER ORDER: every garment's material gets a polygon offset by its rank (body 0, then each garment by its median
+       stand-off), so where two layers still meet the outer one always wins the depth test instead of both flickering.
+       Cost: per garment vertex, four extra bone-matrix reads and two matrix products (the body itself is untouched); the fit is
+       a grid search once per clothes / slider change. Off live: window.EW_CLOTH_COLLIDE.x = 0 (or EW_DISABLE_CLOTH_COLLIDE at
+       load). Live tune: EW_CLOTH_COLLIDE = { x on, y slide fade start, z slide fade end, w the largest push } (metres).
+         · WebGL: patched into three's ShaderLib (lambert / phong / standard / physical / basic) after <skinning_vertex>, only for a
+           material with the EW_COL define (_ewColMark: set by collideFit on each garment's material and by the board's unit
+           material swaps when the geometry carries the anchors);
+         · WebGPU: _ewNodeCol (the node layer) sets the node material's positionNode (three applies it after the skinning) to the
+           same push, reading the skeleton's bone matrices by reference. */
+    var _EW_COL = { x: 1, y: 0.03, z: 0.06, w: 0.03 };
+    try { if (window.EW_DISABLE_CLOTH_COLLIDE || /[?&]ew_collide=0\b/.test(location.search)) _EW_COL.x = 0; window.EW_CLOTH_COLLIDE = _EW_COL; } catch (e) {}
+    var _ewColPatched = false;
+    function _ewColPatch() {
+        if (_ewColPatched || typeof THREE === 'undefined' || !THREE.ShaderLib) return false;
+        _ewColPatched = true;
+        try {
+            var lib = THREE.ShaderLib, keys = ['basic', 'lambert', 'phong', 'standard', 'physical'], n = 0;
+            var decl = '#ifdef EW_COL\nattribute vec4 ewColA;\nattribute vec4 ewColN;\nattribute vec4 ewColJ;\nattribute vec4 ewColW;\nattribute vec4 ewColA2;\nattribute vec4 ewColN2;\nattribute vec4 ewColW2;\nuniform vec4 uEwCol;\n#endif\n';
+            var code = '#include <skinning_vertex>\n#if defined( USE_SKINNING ) && defined( EW_COL )\n\t{\n' +
+                '\t\tfloat ewK = length( ewColN.xyz );\n' +
+                '\t\tif ( uEwCol.x > 0.5 && ewK > 0.01 ) {\n' +
+                '\t\t\tvec4 ewJ1 = mod( ewColJ, 256.0 ), ewJ2 = floor( ewColJ / 256.0 );\n' +
+                '\t\t\tmat4 ewM = getBoneMatrix( ewJ1.x ) * ewColW.x + getBoneMatrix( ewJ1.y ) * ewColW.y + getBoneMatrix( ewJ1.z ) * ewColW.z + getBoneMatrix( ewJ1.w ) * ewColW.w;\n' +
+                '\t\t\tewM = bindMatrixInverse * ewM * bindMatrix;\n' +
+                '\t\t\tvec3 ewP = ( ewM * vec4( ewColA.xyz, 1.0 ) ).xyz;\n' +
+                '\t\t\tvec3 ewN = normalize( ( ewM * vec4( ewColN.xyz, 0.0 ) ).xyz );\n' +
+                '\t\t\tvec3 ewD = transformed - ewP;\n' +
+                '\t\t\tfloat ewS = dot( ewD, ewN );\n' +
+                '\t\t\tfloat ewT = length( ewD - ewN * ewS );\n' +
+                '\t\t\tfloat ewPush = max( ewColA.w - ewS, 0.0 ) - max( ewS - ewColN.w, 0.0 );\n' +
+                '\t\t\tewPush = clamp( ewPush, -uEwCol.w, uEwCol.w ) * min( ewK, 1.0 ) * ( 1.0 - smoothstep( uEwCol.y, uEwCol.z, ewT ) );\n' +
+                '\t\t\ttransformed += ewN * ewPush;\n' +
+                '\t\t\tfloat ewK2 = length( ewColN2.xyz );\n' +   // the second anchor (a joint): only ever out of the skin
+                '\t\t\tif ( ewK2 > 0.01 ) {\n' +
+                '\t\t\t\tmat4 ewM2 = getBoneMatrix( ewJ2.x ) * ewColW2.x + getBoneMatrix( ewJ2.y ) * ewColW2.y + getBoneMatrix( ewJ2.z ) * ewColW2.z + getBoneMatrix( ewJ2.w ) * ewColW2.w;\n' +
+                '\t\t\t\tewM2 = bindMatrixInverse * ewM2 * bindMatrix;\n' +
+                '\t\t\t\tvec3 ewP2 = ( ewM2 * vec4( ewColA2.xyz, 1.0 ) ).xyz;\n' +
+                '\t\t\t\tvec3 ewN2 = normalize( ( ewM2 * vec4( ewColN2.xyz, 0.0 ) ).xyz );\n' +
+                '\t\t\t\tvec3 ewD2 = transformed - ewP2;\n' +
+                '\t\t\t\tfloat ewS2 = dot( ewD2, ewN2 );\n' +
+                '\t\t\t\tfloat ewT2 = length( ewD2 - ewN2 * ewS2 );\n' +
+                '\t\t\t\ttransformed += ewN2 * ( clamp( ewColA2.w - ewS2, 0.0, uEwCol.w ) * min( ewK2, 1.0 ) * ( 1.0 - smoothstep( uEwCol.y, uEwCol.z, ewT2 ) ) * smoothstep( -0.2, 0.3, dot( ewN, ewN2 ) ) );\n' +   // (a crease: the two skins face each other, pushing off one goes into the other)
+                '\t\t\t}\n' +
+                '\t\t}\n\t}\n#endif';
+            for (var i = 0; i < keys.length; i++) {
+                var S = lib[keys[i]];
+                if (!S || !S.vertexShader || S.vertexShader.indexOf('ewColA') >= 0 || S.vertexShader.indexOf('#include <skinning_vertex>') < 0) continue;
+                S.vertexShader = decl + S.vertexShader.replace('#include <skinning_vertex>', code);
+                S.uniforms.uEwCol = { value: _EW_COL };
+                n++;
+            }
+            if (!n) console.warn('[ThreeRenderer] the cloth collision patch found no anchor in three.js ' + THREE.REVISION);
+            return n > 0;
+        } catch (e) { console.warn('[ThreeRenderer] the cloth collision patch failed', e); return false; }
+    }
+    _ewColPatch();
+    /* a creator garment's material (or the board's swap of it): the collision define + its layer order, once the mesh's
+       geometry carries the anchors (collideFit) */
+    function _ewColMark(mat, mesh) {
+        if (!mat || !mesh || !mesh.isSkinnedMesh || !mesh.geometry || !mesh.geometry.attributes.ewColN) return mat;
+        if (Array.isArray(mat)) { mat.forEach(function (m) { _ewColMark(m, mesh); }); return mat; }
+        if (!mat.defines || mat.defines.EW_COL === undefined) { mat.defines = Object.assign({}, mat.defines || {}, { EW_COL: '' }); mat.ewCol = 'on'; mat.needsUpdate = true; }
+        var r = mesh._ewColRank || 0;
+        if (r > 0 && mat._ewColRank !== r) {
+            mat._ewColRank = r; mat.polygonOffset = true;
+            mat.polygonOffsetFactor = -Math.min(3, 0.5 * r); mat.polygonOffsetUnits = -2 * r;
+            mat.needsUpdate = true;
+        }
+        return mat;
+    }
     /* marks a unit's lit material for the unit lift (both renderers); returns it */
     function _ewPopUnitMat(m) {
         if (!m) return m;
@@ -6232,6 +6319,7 @@ const ThreeRenderer = (function () {
                     if (!tex && mt && mt.color) c.color.copy(mt.color).multiplyScalar(diff);
                     if (tex) { c.emissive = new THREE.Color(0xffffff); c.emissiveMap = tex; c.emissiveIntensity = glow; }
                     if (mt && mt.vertexColors) { c.vertexColors = true; c.onBeforeCompile = _ewVColorEmissiveHook; }   // a creator look's garments
+                    _ewColMark(c, n);   // THE CLOTH COLLISION
                     _ewPopUnitMat(c);
                 } else c = mt.clone();
                 c.transparent = true; c.userData._ewRaOp = c.opacity; c.userData._ewRaCol = c.color ? c.color.clone() : null; mats.push(c); return c;
@@ -17392,6 +17480,7 @@ const ThreeRenderer = (function () {
                     }
                     // the creator's vertex-coloured layers: the glow wears the garment's colour (see the hook)
                     if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                    _ewColMark(lm, n);   // THE CLOTH COLLISION: a creator garment keeps its push + layer order
                     _ewPopUnitMat(lm);   // THE UNIT POP: the unit lift, not the world fade
                     lm._ew_shared = true;   // owned by the rig cache, not _disposeR
                     entry.modelMats.push(lm);
@@ -43376,6 +43465,51 @@ const ThreeRenderer = (function () {
             })();
         }
     }
+    /* THE CLOTH COLLISION (see _ewColPatch): the node twin of the GLSL push. three applies positionNode after the skinning, so
+       positionLocal here is the skinned cloth vertex; the anchor is skinned with the BODY's weights off the same bone matrices
+       (by reference, the way three's own skinning reads them). A skeleton too big for a uniform buffer (three then reads its
+       bones from a texture) keeps the plain skinning. */
+    var _ewNodeColWarned = false;
+    function _ewNodeCol(nm) {
+        var U = _ewNodeU, T = U.T;
+        if (!U.col) (function () {
+            var cv = new THREE.Vector4();
+            U.col = T.uniform(cv).setGroup(T.renderGroup).onRenderUpdate(function () { return cv.set(_EW_COL.x, _EW_COL.y, _EW_COL.z, _EW_COL.w); });
+        })();
+        var K = U.col;
+        nm.positionNode = T.Fn(function (inputs, builder) {
+            var P = T.positionLocal, obj = builder && builder.object, sk = obj && obj.skeleton;
+            if (!obj || !obj.isSkinnedMesh || !sk || !sk.bones || !builder.hasGeometryAttribute('ewColN') || !builder.hasGeometryAttribute('ewColJ')) return P;
+            if (sk.bones.length * 64 > builder.getUniformBufferLimit()) {
+                if (!_ewNodeColWarned) { _ewNodeColWarned = true; console.warn('[ThreeRenderer] cloth collision: ' + sk.bones.length + ' bones is over the uniform buffer, plain skinning'); }
+                return P;
+            }
+            var BM = T.referenceBuffer('skeleton.boneMatrices', 'mat4', sk.bones.length);
+            var bind = T.reference('bindMatrix', 'mat4'), bindI = T.reference('bindMatrixInverse', 'mat4');
+            var A = T.attribute('ewColA', 'vec4'), Nn = T.attribute('ewColN', 'vec4'), Jp = T.attribute('ewColJ', 'uvec4'), W = T.attribute('ewColW', 'vec4');
+            var A2 = T.attribute('ewColA2', 'vec4'), N2 = T.attribute('ewColN2', 'vec4'), W2 = T.attribute('ewColW2', 'vec4');
+            var J = Jp.bitAnd(T.uvec4(255)), J2 = Jp.shiftRight(T.uvec4(8));
+            var out = T.vec3(P).toVar(), k = T.length(Nn.xyz);
+            T.If(K.x.greaterThan(0.5).and(k.greaterThan(0.01)), function () {
+                var M = T.add(BM.element(J.x).mul(W.x), BM.element(J.y).mul(W.y), BM.element(J.z).mul(W.z), BM.element(J.w).mul(W.w));
+                var M2 = bindI.mul(M).mul(bind);
+                var aP = M2.mul(T.vec4(A.xyz, 1)).xyz, aN = T.normalize(M2.mul(T.vec4(Nn.xyz, 0)).xyz).toVar();
+                var dv = out.sub(aP).toVar(), s = T.dot(dv, aN).toVar(), tg = T.length(dv.sub(aN.mul(s)));
+                var push = T.max(A.w.sub(s), 0).sub(T.max(s.sub(Nn.w), 0));
+                push = T.clamp(push, K.w.negate(), K.w).mul(T.min(k, 1)).mul(T.smoothstep(K.y, K.z, tg).oneMinus());
+                out.addAssign(aN.mul(push));
+                var k2 = T.length(N2.xyz);
+                T.If(k2.greaterThan(0.01), function () {   // the second anchor (a joint): only ever out of the skin
+                    var Mb = T.add(BM.element(J2.x).mul(W2.x), BM.element(J2.y).mul(W2.y), BM.element(J2.z).mul(W2.z), BM.element(J2.w).mul(W2.w));
+                    var Mb2 = bindI.mul(Mb).mul(bind);
+                    var bP = Mb2.mul(T.vec4(A2.xyz, 1)).xyz, bN = T.normalize(Mb2.mul(T.vec4(N2.xyz, 0)).xyz).toVar();
+                    var dv2 = out.sub(bP).toVar(), s2 = T.dot(dv2, bN).toVar(), tg2 = T.length(dv2.sub(bN.mul(s2)));
+                    out.addAssign(bN.mul(T.clamp(A2.w.sub(s2), 0, K.w).mul(T.min(k2, 1)).mul(T.smoothstep(K.y, K.z, tg2).oneMinus()).mul(T.smoothstep(-0.2, 0.3, T.dot(aN, bN)))));
+                });
+            });
+            return out;
+        })();
+    }
     /* THE OUTPUT LAYERS (after three's fog, like the GLSL after <dithering_fragment>): the backdrop's horizon band, the world dissolve */
     var _ewNodeNoise = null;
     function _ewNodeFbm() {
@@ -43492,6 +43626,7 @@ const ThreeRenderer = (function () {
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
+        if (m.ewCol === 'on') { C.ewcol = (C.ewcol || 0) + 1; _ewNodeCol(nm); }   // THE CLOTH COLLISION (after the skinning)
         for (var i = layers.length - 1; i >= 0; i--) _ewNodeOutLayer(nm, layers[i]);
         if (m.clippingPlanes && m.clippingPlanes.length) { C.clip = (C.clip || 0) + 1; _ewNodeClip(nm, m); }
     }
@@ -54254,6 +54389,7 @@ const ThreeRenderer = (function () {
             LAYERS.forEach(function (L, index) {
                 var mesh = index === 0 ? part.body : part.shells[L.name], b = buffers[index], n = L.base;
                 writeGeometry(mesh.geometry, b, n, L.uv || (L.fr || FR0).uv, si, sw);
+                mesh._ewColBase = n;   // THE CLOTH COLLISION: vertex i < n is skin vertex i stood off
                 if (index === 0 && part.faceMorph) faceMorphWrite(mesh, part.faceMorph, n, b.xCount);   // THE IDLE FACE
                 mesh.visible = b.index.length > 0;
             });
@@ -57770,6 +57906,165 @@ const ThreeRenderer = (function () {
             wearLayers0(part);
             try { wearCords(part); } catch (e) { console.warn('[ThreeRenderer] pendant cord failed', e); }   // THE PENDANT CORDS
         }
+        /* THE CLOTH COLLISION (2026-11-05, see _ewColPatch): the anchors + bands every garment's vertex shader pushes by. Run once the
+           clothes are where every fit pass put them (the end of update / a garment's load, and again after THE JIGGLE re-weights the
+           skin: the anchors carry the skin's weights as they are). The skin is the body as drawn (its first part.count vertices,
+           the sliders' shape), its normals the smoothed ones the coded layers hang on (part.collN). A coded layer's first part.count
+           vertices ARE the skin's (its vertex i is skin vertex i stood off); everything else finds its nearest skin vertex on a
+           grid. A garment's attributes are rewritten in place when its vertex count is the same (no new program, no new buffers). */
+        var CLOTH_COL = { second: 0.04, cell: 0.025, near: 0.03, far: 0.05, deep: 0.02, slide: 0.03, tolLo: 0.0015, tolHi: 0.004, eps: 0.0005, band: 0.02,
+                          shells: ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'top2', 'bottom2', 'outer2', 'glasses'] };
+        function collideList(part) {
+            var L = [], seen = [];
+            var add = function (mesh, coded) {
+                if (!mesh || !mesh.isSkinnedMesh || !mesh.geometry || !mesh.geometry.attributes.position) return;
+                var pa = mesh.geometry.attributes.position, e = null;
+                for (var i = 0; i < seen.length; i++) if (seen[i].pa === pa) { e = seen[i]; break; }
+                if (e) { e.meshes.push(mesh); return; }   // (a garment's accents share its attributes)
+                e = { pa: pa, meshes: [mesh], base: coded ? Math.min(part.count, mesh._ewColBase || 0) : 0 };   // (a cut layer's first `base` vertices are the skin's own; a lathe's none)
+                seen.push(e); L.push(e);
+            };
+            CLOTH_COL.shells.forEach(function (nm) { var sh = part.shells && part.shells[nm]; if (sh && sh.visible) add(sh, true); });
+            (part.wear || []).forEach(function (w) {
+                if (!w.mesh || w.solid || w.grip || w.hideHead) return;   // (THE MESHY PIECES: a helmet, a staff: rigid, never bent)
+                [w.mesh].concat(w.accents || []).forEach(function (mh) { add(mh, false); });
+            });
+            return L;
+        }
+        var COL_ATTRS = ['ewColA', 'ewColN', 'ewColJ', 'ewColW', 'ewColA2', 'ewColN2', 'ewColW2'];
+        function collideDrop(part) {   // (off: every garment back to its plain skinning)
+            collideList(part).forEach(function (e) { e.meshes.forEach(function (mh) { COL_ATTRS.forEach(function (k) { if (mh.geometry.attributes[k]) mh.geometry.deleteAttribute(k); }); }); });
+        }
+        /* a rebuilt geometry (writeGeometry: a new vertex count) must never draw with the old anchors (a short buffer draws
+           nothing): any garment whose anchors no longer match its vertices loses them until the next fit */
+        function collideGuard(part) {
+            collideList(part).forEach(function (e) {
+                e.meshes.forEach(function (mh) { var g = mh.geometry, a = g.attributes.ewColA; if (a && a.count !== g.attributes.position.count) COL_ATTRS.forEach(function (k) { if (g.attributes[k]) g.deleteAttribute(k); }); });
+            });
+        }
+        function collideFit(part) {
+            part.colDirty = false; part.colAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            if (typeof window !== 'undefined' && window.EW_DISABLE_CLOTH_COLLIDE) { collideDrop(part); return; }
+            var body = part.body, bg = body && body.geometry; if (!bg || !bg.attributes.skinIndex || !bg.attributes.skinWeight) return;
+            var N = part.count, BP = bg.attributes.position.array, BJ = bg.attributes.skinIndex.array, BW = bg.attributes.skinWeight.array;
+            if (BP.length < N * 3) return;
+            var BN = part.collN && part.collN.length === N * 3 ? part.collN : (bg.attributes.normal ? bg.attributes.normal.array : null); if (!BN) return;
+            var O = CLOTH_COL, Hm = part.height / 1.7, C = O.cell * Hm, near = O.near * Hm, far = O.far * Hm, deep = O.deep * Hm, slide = O.slide * Hm;
+            var tolLo = O.tolLo * Hm, tolHi = O.tolHi * Hm, eps = O.eps * Hm, C2 = O.band * Hm, v, i, k;
+            var key = function (x, y, z, c) { return ((Math.floor(x / c) + 512) * 1024 + (Math.floor(y / c) + 512)) * 1024 + (Math.floor(z / c) + 512); };
+            var grid = new Map();
+            for (i = 0; i < N; i++) { var gk = key(BP[i * 3], BP[i * 3 + 1], BP[i * 3 + 2], C), gl = grid.get(gk); if (gl) gl.push(i); else grid.set(gk, [i]); }
+            /* each skin vertex's heaviest bone: the second anchor is the nearest skin that another bone carries (a joint: the thigh
+               and the shin round a knee, the torso and the arm at the armpit, the two thighs at the crotch) */
+            var dom = new Int32Array(N);
+            for (i = 0; i < N; i++) { var bw = -1, bj = 0; for (k = 0; k < 4; k++) if (BW[i * 4 + k] > bw) { bw = BW[i * 4 + k]; bj = BJ[i * 4 + k]; } dom[i] = bj; }
+            var nearest = function (x, y, z, notBone, R2) {
+                var cx = Math.floor(x / C) + 512, cy = Math.floor(y / C) + 512, cz = Math.floor(z / C) + 512, best = -1, bd = R2 || Infinity;
+                for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
+                    var l = grid.get(((cx + a) * 1024 + (cy + b)) * 1024 + (cz + c)); if (!l) continue;
+                    for (var q = 0; q < l.length; q++) { if (notBone >= 0 && dom[l[q]] === notBone) continue; var o = l[q] * 3, dx = BP[o] - x, dy = BP[o + 1] - y, dz = BP[o + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = l[q]; } }
+                }
+                return best;
+            };
+            var R2nd = O.second * Hm * O.second * Hm;
+            var L = collideList(part);
+            /* pass 1: each vertex's anchor + its stand-off at rest (c0) + whether it takes part */
+            L.forEach(function (e) {
+                var A = e.pa.array, n = e.pa.count, anc = new Int32Array(n), c0 = new Float32Array(n), on = new Uint8Array(n), anc2 = new Int32Array(n).fill(-1), c02 = new Float32Array(n);
+                for (v = 0; v < n; v++) {
+                    var x = A[v * 3], y = A[v * 3 + 1], z = A[v * 3 + 2];
+                    var b = v < e.base ? v : nearest(x, y, z, -1, 0);
+                    anc[v] = b; if (b < 0) continue;
+                    var o = b * 3, nx = BN[o], ny = BN[o + 1], nz = BN[o + 2], nl = Math.sqrt(nx * nx + ny * ny + nz * nz); if (!(nl > 0.5)) continue;
+                    nx /= nl; ny /= nl; nz /= nl;
+                    var dx = x - BP[o], dy = y - BP[o + 1], dz = z - BP[o + 2], s = dx * nx + dy * ny + dz * nz;
+                    var tx = dx - nx * s, ty = dy - ny * s, tz = dz - nz * s;
+                    c0[v] = s;
+                    if (s > far || s < -deep || tx * tx + ty * ty + tz * tz > slide * slide) continue;   // (far off the skin, tucked deep inside it, or off to the side of it: not this pass's)
+                    on[v] = 1;
+                    /* the second anchor (a joint): the nearest skin another bone carries, within 4 cm, the cloth on its outside at rest */
+                    var b2 = nearest(x, y, z, dom[b], R2nd);
+                    if (b2 >= 0) {
+                        var o2 = b2 * 3, mx = BN[o2], my = BN[o2 + 1], mz = BN[o2 + 2], ml = Math.sqrt(mx * mx + my * my + mz * mz);
+                        var s2 = ml > 0.5 ? ((x - BP[o2]) * mx + (y - BP[o2 + 1]) * my + (z - BP[o2 + 2]) * mz) / ml : -1;
+                        if (s2 > -0.002 * Hm && s2 < far) { anc2[v] = b2; c02[v] = s2; }
+                    }
+                }
+                e.anc = anc; e.c0 = c0; e.on = on; e.anc2 = anc2; e.c02 = c02;
+            });
+            /* the layers at each spot of skin: per 2 cm cell of the ANCHOR, each garment's lowest + highest stand-off there */
+            var cells = new Map();
+            L.forEach(function (e, gi) {
+                for (v = 0; v < e.pa.count; v++) {
+                    if (!e.on[v]) continue;
+                    var o = e.anc[v] * 3, ck = key(BP[o], BP[o + 1], BP[o + 2], C2), cl = cells.get(ck), en = null;
+                    if (!cl) cells.set(ck, cl = []);
+                    for (k = 0; k < cl.length; k++) if (cl[k].g === gi) { en = cl[k]; break; }
+                    if (!en) cl.push(en = { g: gi, lo: Infinity, hi: -Infinity });
+                    if (e.c0[v] < en.lo) en.lo = e.c0[v]; if (e.c0[v] > en.hi) en.hi = e.c0[v];
+                }
+            });
+            var NB6 = [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+            /* pass 2: the band + the attributes; the layer order from each garment's median stand-off */
+            var ranks = [];
+            L.forEach(function (e, gi) {
+                var n = e.pa.count, g0 = e.meshes[0].geometry;
+                var reuse = g0.attributes.ewColA && g0.attributes.ewColA.count === n && g0.attributes.ewColA2 && g0.attributes.ewColA2.count === n;
+                var AA = reuse ? g0.attributes.ewColA.array : new Float32Array(n * 4), AN = reuse ? g0.attributes.ewColN.array : new Float32Array(n * 4);
+                var AJ = reuse ? g0.attributes.ewColJ.array : new Uint16Array(n * 4), AW = reuse ? g0.attributes.ewColW.array : new Float32Array(n * 4);
+                var AA2 = reuse ? g0.attributes.ewColA2.array : new Float32Array(n * 4), AN2 = reuse ? g0.attributes.ewColN2.array : new Float32Array(n * 4), AW2 = reuse ? g0.attributes.ewColW2.array : new Float32Array(n * 4);
+                var samp = [];
+                for (v = 0; v < n; v++) {
+                    var b = e.anc[v], o4 = v * 4;
+                    AA2[o4] = AA2[o4 + 1] = AA2[o4 + 2] = AA2[o4 + 3] = 0; AN2[o4] = AN2[o4 + 1] = AN2[o4 + 2] = AN2[o4 + 3] = 0; AW2[o4] = 1; AW2[o4 + 1] = AW2[o4 + 2] = AW2[o4 + 3] = 0;
+                    if (!e.on[v]) { AA[o4] = AA[o4 + 1] = AA[o4 + 2] = AA[o4 + 3] = 0; AN[o4] = AN[o4 + 1] = AN[o4 + 2] = 0; AN[o4 + 3] = 1e3; AJ[o4] = AJ[o4 + 1] = AJ[o4 + 2] = AJ[o4 + 3] = 0; AW[o4] = 1; AW[o4 + 1] = AW[o4 + 2] = AW[o4 + 3] = 0; continue; }
+                    var o = b * 3, c = e.c0[v], below = c > eps ? 0 : -Infinity, above = Infinity;
+                    var cx = Math.floor(BP[o] / C2), cy = Math.floor(BP[o + 1] / C2), cz = Math.floor(BP[o + 2] / C2);
+                    for (k = 0; k < NB6.length; k++) {
+                        var cl = cells.get(((cx + NB6[k][0] + 512) * 1024 + (cy + NB6[k][1] + 512)) * 1024 + (cz + NB6[k][2] + 512)); if (!cl) continue;
+                        for (var q = 0; q < cl.length; q++) {
+                            var en = cl[q]; if (en.g === gi) continue;
+                            if (en.hi < c - eps) { if (en.hi > below) below = en.hi; }
+                            else if (en.lo > c + eps) { if (en.lo < above) above = en.lo; }
+                        }
+                    }
+                    var lo = below > -Infinity ? c - Math.min(tolLo, (c - below) * 0.5) : c - tolLo;
+                    var hi = above < Infinity ? c + Math.min(tolHi, (above - c) * 0.5) : 1e3;
+                    var nx = BN[o], ny = BN[o + 1], nz = BN[o + 2], nl = Math.sqrt(nx * nx + ny * ny + nz * nz), ac = Math.abs(c);
+                    var fade = ac <= near ? 1 : ac >= far ? 0.02 : 1 - (ac - near) / (far - near) * 0.98;
+                    nl = fade / nl;
+                    AA[o4] = BP[o]; AA[o4 + 1] = BP[o + 1]; AA[o4 + 2] = BP[o + 2]; AA[o4 + 3] = lo;
+                    AN[o4] = nx * nl; AN[o4 + 1] = ny * nl; AN[o4 + 2] = nz * nl; AN[o4 + 3] = hi;
+                    var b4 = b * 4, b2 = e.anc2[v], two = b2 >= 0;
+                    /* the bone slots carry both anchors' bones (first + 256 x second): an index past 255 (a rig with very many chain
+                       bones) drops the second anchor there */
+                    if (two) for (k = 0; k < 4; k++) if (BJ[b4 + k] > 255 || BJ[b2 * 4 + k] > 255) two = false;
+                    for (k = 0; k < 4; k++) { AJ[o4 + k] = BJ[b4 + k] + (two ? 256 * BJ[b2 * 4 + k] : 0); AW[o4 + k] = BW[b4 + k]; }
+                    if (two) {
+                        var p2 = b2 * 3, mx = BN[p2], my = BN[p2 + 1], mz = BN[p2 + 2], ml = Math.sqrt(mx * mx + my * my + mz * mz), c2 = e.c02[v];
+                        ml = fade / ml;
+                        AA2[o4] = BP[p2]; AA2[o4 + 1] = BP[p2 + 1]; AA2[o4 + 2] = BP[p2 + 2]; AA2[o4 + 3] = c2 - (c - lo);   // (the same give as the first anchor's)
+                        AN2[o4] = mx * ml; AN2[o4 + 1] = my * ml; AN2[o4 + 2] = mz * ml; AN2[o4 + 3] = 1;
+                        for (k = 0; k < 4; k++) AW2[o4 + k] = BW[b2 * 4 + k];
+                    }
+                    if ((v & 7) === 0) samp.push(c);
+                }
+                e.meshes.forEach(function (mh) {
+                    var g = mh.geometry;
+                    if (reuse && g.attributes.ewColA && g.attributes.ewColA.array === AA) { COL_ATTRS.forEach(function (k2) { g.attributes[k2].needsUpdate = true; }); return; }
+                    if (!reuse && mh === e.meshes[0]) {
+                        var arr = { ewColA: AA, ewColN: AN, ewColJ: AJ, ewColW: AW, ewColA2: AA2, ewColN2: AN2, ewColW2: AW2 };
+                        COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, new THREE.BufferAttribute(arr[k2], 4)); });
+                    } else COL_ATTRS.forEach(function (k2) { g.setAttribute(k2, g0.attributes[k2]); });
+                });
+                samp.sort(function (x, y) { return x - y; });
+                ranks.push({ e: e, m: samp.length ? samp[samp.length >> 1] : 0 });
+            });
+            ranks.sort(function (x, y) { return x.m - y.m; });
+            ranks.forEach(function (r, ri) { r.e.meshes.forEach(function (mh) { mh._ewColRank = ri + 1; _ewColMark(mh.material, mh); }); });
+            part.colStats = { garments: L.length, verts: L.reduce(function (s0, e) { return s0 + e.pa.count; }, 0), on: L.reduce(function (s0, e) { var c1 = 0; for (var u = 0; u < e.on.length; u++) c1 += e.on[u]; return s0 + c1; }, 0),
+                              ms: Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - part.colAt) * 10) / 10 };
+        }
         /* THE PENDANT CORDS (2026-11-05, mondo: "all of the pendants in the character creator need strings attached to them that hang
            around the character's neck, make the string yourself"). Every piece on OUTFIT > Neck > Pendants (sprites.js wearGroupOf ->
            'pendants': the cross, the talisman, the hagstone, and any pendant added there later) wears a cord made here in code, no
@@ -58327,6 +58622,7 @@ const ThreeRenderer = (function () {
                 part.solidHide = wearMask(part, function (w) { return w.solid; });   // THE MESHY PIECES: always hidden, whatever covers the rest
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
                 if (part.jig) part.jig.dirty = true;   // THE JIGGLE: the new clothes follow the soft spots
+                part.colDirty = true; try { collideGuard(part); } catch (e) {}   // THE CLOTH COLLISION: the anchors again (next tick)
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
             if (mw2) pending++;
@@ -58560,11 +58856,18 @@ const ThreeRenderer = (function () {
                 setWings(p, a);
                 if (p.jig) p.jig.dirty = true;   // THE JIGGLE: the weights again on whatever was rebuilt (jigWeights, next tick)
             });
+            /* THE CLOTH COLLISION: the anchors on the clothes as they now lie - at once (the board swaps the materials right after the
+               rig is made, and marks only a garment that carries them), or on the next tick while a slider is being dragged */
+            parts.forEach(function (p) {
+                try { collideGuard(p); if (preview) p.colDirty = true; else collideFit(p); } catch (e) { if (!state.colWarned) { state.colWarned = true; console.warn('[ThreeRenderer] cloth collision fit failed', e); } }
+            });
         }
         update(initial);
         return {
             update: update,
             appearance: function () { return state.last; },
+            /* dev (2026-11-05): the parts, for probes (THE CLOTH COLLISION's colStats; never used by the game) */
+            devParts: function () { return parts; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
             tick: function () {
                 if (!alive) return;
@@ -58581,7 +58884,8 @@ const ThreeRenderer = (function () {
                     try { _swayTick(root, sdt, state.capeSway, true); } catch (e) { if (!state.capeWarned) { state.capeWarned = true; console.warn('[ThreeRenderer] cape sway failed', e); } }
                 }
                 if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
-                for (var ji = 0; ji < parts.length; ji++) if (parts[ji].jig) { try { jigTick(parts[ji], sdt, state.last); } catch (e) { if (!state.jigWarned) { state.jigWarned = true; console.warn('[ThreeRenderer] jiggle failed', e); } } }   // THE JIGGLE
+                for (var ji = 0; ji < parts.length; ji++) if (parts[ji].jig) { var jd = parts[ji].jig.dirty; try { jigTick(parts[ji], sdt, state.last); } catch (e) { if (!state.jigWarned) { state.jigWarned = true; console.warn('[ThreeRenderer] jiggle failed', e); } } if (jd && !parts[ji].jig.dirty) parts[ji].colDirty = true; }   // THE JIGGLE (re-weighted skin: THE CLOTH COLLISION's anchors again)
+                for (var ci = 0; ci < parts.length; ci++) if (parts[ci].colDirty && !(now * 1000 - (parts[ci].colAt || 0) < 150)) { try { collideFit(parts[ci]); } catch (e) { parts[ci].colDirty = false; if (!state.colWarned) { state.colWarned = true; console.warn('[ThreeRenderer] cloth collision fit failed', e); } } }   // THE CLOTH COLLISION (at most every 150 ms while a slider moves)
                 for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
@@ -86662,6 +86966,7 @@ const ThreeRenderer = (function () {
                 }
                 if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = UNIT_SELFGLOW_DAY; }
                 if (lm.vertexColors || n._ew_creatorHair || /^EWCreator_/.test(n.name || '')) lm.onBeforeCompile = _ewVColorEmissiveHook;
+                _ewColMark(lm, n);   // THE CLOTH COLLISION
                 _ewPopUnitMat(lm);   // THE UNIT POP
                 lm._ewTrMat = true;
                 mem.mats.push(lm);

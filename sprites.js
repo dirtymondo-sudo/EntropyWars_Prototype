@@ -6644,8 +6644,13 @@ const TERRAIN_SPRITES = {
        liquids with a noise layer, just as solid textures". The Crystal Formation wears Liquid_Blue_05 (the periwinkle
        glassy sheet) as a plain solid tile: crystal is not in _LIQUID_STYLES, so no flow / waves / caustics. Every prop
        that reads the `crystal` key (_hzTex / K.mat: the shard clusters, the toadstool, the armillary core, the editor
-       swatches) follows this row. crystal.png stays in the bucket, unreferenced. Rules untouched. */
-    crystal:        [`${_T}/liquids/Liquid_Blue_05-128x128.png`],
+       swatches) follows this row. crystal.png stays in the bucket, unreferenced. Rules untouched.
+       THE CRISP CRYSTAL SHEET (2026-11-05, mondo: "why the blue liquid texture ... is so blurry. All pixel sprite 128x128
+       terrain tiles are supposed to have the same pixel density"): the liquid sheet is 128 px like the rest but a smooth
+       painting (6,314 colours; the pixel tiles have 24), so it read as a smear beside them. crystal_blue.png is the SAME
+       sheet baked by bake-pixel-sheet.py (wrap-safe sharpen + 24-colour palette, no dither): same picture, crisp texels.
+       The liquid sheet itself is untouched (the liquids still wear it). */
+    crystal:        [`${_T}/crystal_blue.png`],
     obsidian:       [`${_T}/obsidian.png`],
     stone:          [`${_T}/rocks_5.png`],   // 🪨 water + lava (map.js lavaWaterMixOf): the cliffs' rock sheet
     healing_spring: [`${_T}/healing_spring.png`],
