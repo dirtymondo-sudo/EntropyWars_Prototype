@@ -1455,3 +1455,13 @@ localhost:3000.
 - Left as is (by design, not waste): three's own two-pass draw of double-sided transparent materials (2 `material.needsUpdate`
   per such mesh per frame inside WebGLRenderer), bone textures of skinned units, CSS2DRenderer's per-frame transform on the
   two CSS2D plates, video / skeleton textures.
+
+## THE TWIN MORPHS (2026-11-05)
+Classic WebGL threw `Cannot read properties of undefined (reading 'length')` from three's morph update every frame once a creator
+body's eyes got their face shapes (blink/glance): the x-ray + team-outline twins (`_attachUnitModel`) are built on the parent
+mesh's own geometry BEFORE rebuildGeometry writes morphAttributes onto it, so the twin had no morphTargetInfluences. 4 creator
+units = the board stopped drawing. Fix (three-renderer.js): every twin's `onBeforeRender = _twinFollowParent` takes the parent's
+influences + dictionary each draw (and follows a swapped parent geometry); `_cloneUnitModel` gives every skinned mesh of a clone
+(hologram, finisher double, race actor, team room) `_morphListGuard`, which rebuilds a missing / wrong-length list before the draw
+(Object3D.copy drops onBeforeRender). The node renderer never threw. Probe: /mnt/project-files/twin-morphs/ (classic WebGL,
+EW_RACE_LOOKS_ARE_DEFAULT=true, cowboy/santa/demon/catgirl x2 on a TDM board): before = hundreds of errors and a blank board, after = 0.

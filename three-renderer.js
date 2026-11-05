@@ -1441,6 +1441,29 @@ const ThreeRenderer = (function () {
         '}'
     ].join('\n');
 
+    /* THE TWIN MORPHS (2026-11-05): an x-ray / team-outline twin is built on its parent mesh's OWN geometry, once, when the
+       unit is placed. A creator body's eyes get their face shapes (blink, glance) later - rebuildGeometry writes
+       morphAttributes onto that same geometry - so the twin was left with no morphTargetInfluences, and the classic WebGL
+       renderer threw "Cannot read properties of undefined (reading 'length')" from its morph update on every draw (4 creator
+       units = the board stopped drawing). The twin now takes the parent's influences + dictionary (and its geometry, if the
+       parent's was swapped) right before each draw, so it can never hold a stale or missing list; a list that still does
+       not match the geometry it is drawn with is rebuilt on the spot. WebGL + WebGPU (both call onBeforeRender). */
+    function _twinFollowParent(r, sc, cam, geometry) {
+        var p = this.parent, g = geometry || this.geometry, swap = p && p.isMesh && p.geometry && p.geometry !== g;
+        if (p && p.isMesh && p.geometry === g) { this.morphTargetInfluences = p.morphTargetInfluences; this.morphTargetDictionary = p.morphTargetDictionary; }
+        _morphListGuard.call(this, r, sc, cam, g);
+        if (swap) this.geometry = p.geometry;   // the parent's new geometry, taken on the next draw
+    }
+    /* the guard alone, for a CLONE of a unit model (the hologram, a finisher double, a race actor): a clone copies the
+       influences list as it was at clone time (none, if the face shapes had not landed yet) but shares the geometry, so
+       face shapes written later would throw the same way; a missing or wrong-length list is rebuilt before the draw */
+    function _morphListGuard(r, sc, cam, geometry) {
+        var g = geometry || this.geometry, mp = g && g.morphAttributes && g.morphAttributes.position;
+        if (!mp || !mp.length) return;
+        var I = this.morphTargetInfluences;
+        if (!I || I.length !== mp.length) { var keep = this.geometry; this.geometry = g; this.updateMorphTargets(); this.geometry = keep; }
+    }
+
     function _makeModelSilhouetteMaterial(color, skinned) {
         var mat = new THREE.ShaderMaterial({
             uniforms: {
@@ -17268,12 +17291,21 @@ const ThreeRenderer = (function () {
 
     function _cloneUnitModel(root) {
         if (typeof THREE.SkeletonUtils !== 'undefined' && typeof THREE.SkeletonUtils.clone === 'function') {
-            return THREE.SkeletonUtils.clone(root);
+            return _cloneMorphGuard(THREE.SkeletonUtils.clone(root));
         }
         // Plain clone shares the skeleton across instances — correct for a
         // single unit of the race, wrong poses when several share the board.
         console.warn('[ThreeRenderer] THREE.SkeletonUtils missing — skinned unit clones will share bones');
-        return root.clone(true);
+        return _cloneMorphGuard(root.clone(true));
+    }
+    /* THE TWIN MORPHS: a clone keeps no per-draw hooks (Object3D.copy skips onBeforeRender): every skinned mesh of a clone that
+       has none gets the morph-list guard (a twin in the clone gets the full parent follow) */
+    function _cloneMorphGuard(c) {
+        if (c) c.traverse(function (n) {
+            if (!n.isSkinnedMesh || n.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return;
+            n.onBeforeRender = (n.parent && n.parent.isMesh && n.parent.geometry === n.geometry) ? _twinFollowParent : _morphListGuard;
+        });
+        return c;
     }
 
     /* Swap out the flat sprite placeholder (front plane + shell + shadow
@@ -17611,6 +17643,7 @@ const ThreeRenderer = (function () {
                     sil = new THREE.Mesh(n.geometry, silMat);
                 }
                 sil.frustumCulled = false;
+                sil.onBeforeRender = _twinFollowParent;   // THE TWIN MORPHS: the parent's face shapes, every draw
                 sil.renderOrder = 1;        // after terrain/props (≤0), before the model (2)
                 sil.raycast = function () {};   // never block unit picking
                 sil._ew_silhouette = true;      // skipped by shadow flags / dispose sweeps
@@ -17636,6 +17669,7 @@ const ThreeRenderer = (function () {
                     ol = new THREE.Mesh(n.geometry, olMat);
                 }
                 ol.frustumCulled = false;
+                ol.onBeforeRender = _twinFollowParent;    // THE TWIN MORPHS
                 ol.renderOrder = 3;             // AFTER every body (2) — the stencil
                                                 // stamps must all be down before the
                                                 // rim tests against them
