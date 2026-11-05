@@ -57912,8 +57912,11 @@ const ThreeRenderer = (function () {
            possibly have one needs a tint/color picker"). SKIN: every pixel of the skin sheet times (picked / the torso's average), per
            channel, so the picked colour becomes the skin's average and its pores, freckles, veins and lips keep their contrast. */
         function tintSheet(x, px, color, sample, keep) {
-            var kept = (keep || []).map(function (q) { var k0 = px / 1024; return [q.map(function (v) { return Math.round(v * k0); }), x.getImageData(Math.round(q[0] * k0), Math.round(q[1] * k0), Math.round(q[2] * k0), Math.round(q[3] * k0))]; });
-            var img = x.getImageData(0, 0, px, px), D = img.data, k = px / 1024, S = sample || [200, 150, 360, 300];
+            /* the kept pieces (sprites.js EW_MH_SKIN_KEEP: outlines [x, y, x, y, ...] in 1024 px) go back in their own colours after the
+               tint, cut exactly round each piece (two boxes held the torso's back edge = a pale strip down the spine, 2026-11-05) */
+            var k = px / 1024, polys = (keep || []).filter(function (q) { return q && q.length >= 6; }), snap = null;
+            if (polys.length) { snap = _ccCanvas(px, px); if (snap) snap.getContext('2d').drawImage(x.canvas, 0, 0); }
+            var img = x.getImageData(0, 0, px, px), D = img.data, S = sample || [200, 150, 360, 300];
             var sx = Math.floor(S[0] * k), sy = Math.floor(S[1] * k), sw = Math.floor(S[2] * k), sh = Math.floor(S[3] * k), r = 0, g = 0, bl = 0, n = 0;
             for (var yy = sy; yy < sy + sh; yy += 2) for (var xx = sx; xx < sx + sw; xx += 2) { var o = (yy * px + xx) * 4; r += D[o]; g += D[o + 1]; bl += D[o + 2]; n++; }
             if (!n) return;
@@ -57924,7 +57927,10 @@ const ThreeRenderer = (function () {
                 D[i] = R > 255 ? 255 : R; D[i + 1] = G > 255 ? 255 : G; D[i + 2] = B > 255 ? 255 : B;
             }
             x.putImageData(img, 0, 0);
-            kept.forEach(function (q) { x.putImageData(q[1], q[0][0], q[0][1]); });
+            if (!snap) return;
+            x.save(); x.beginPath();
+            polys.forEach(function (q) { for (var j = 0; j < q.length; j += 2) { if (j) x.lineTo(q[j] * k, q[j + 1] * k); else x.moveTo(q[j] * k, q[j + 1] * k); } x.closePath(); });
+            x.clip(); x.drawImage(snap, 0, 0); x.restore();
         }
         /* THE LOOK COLOURS: a brows / lashes / eyes picture recoloured on its own canvas. Brows + lashes: every hair takes the picked
            colour at its own brightness against the picture's average (alpha kept). Eyes: only the two irises (sprites.js EW_MH_IRIS,
