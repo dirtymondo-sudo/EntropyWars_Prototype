@@ -1583,3 +1583,29 @@ neck, make the string yourself". three-renderer.js `wearCords` / `wearCord`, run
 - Checked on screen (Chromium, Playwright EWCharViewer.mount, front / 3-4 / back at the bust): mpfb male / female / heavy / thin /
   short / female heavy / female thin, weight + muscle + neck sliders both ways, bare chest, a tee, a closed leather jacket, an
   open blazer. Shots /mnt/project-files/pendant-cords/.
+
+## THE COAT TRIMS + THE COLLAR (2026-11-05, character-models-plan row 12v)
+mondo's Santa Clause race look (MPFB heavy, weight 0.6, belly 0.8, width 1.13; outer `bsanta`; pack trousers TUCKED IN medieval
+boots): "His coat is all fucked up, the head opening is wayyyyy too wide and there is red clipping through the belt. I have pants
+tucked in toggles but the pants are still clipping through the boots." Runtime only (no GLB rebake), every Blender coat, MPFB bodies.
+three-renderer.js `wearCoatFit` (right after the first wearFollow in wearLayers0; kill-switch `window.EW_DISABLE_COAT_FIT = true`):
+- **THE SKIN FLOOR**: a coat vertex with nothing of the coat (cloth or trim) over it, straight out from the skin as fitted
+  (`w.floorFree`), stays `floorGap` outside the skin (skin normal, at most `floorMax`, smoothed). The heavy body's shoulder tips
+  stood out through the notch where the body piece meets the sleeve cap (it is there on the bind pose too, not a weights thing).
+- **THE SLEEVES UNDER THE BODY** (`coatPieces`: welded pieces, body = most triangles, sleeves = >= 100 tris off the middle): a
+  sleeve vertex the body piece lies over stays behind it (the cover mechanism below, hide eroded 1 ring).
+- **THE TRIMS** (`coverFit('trims', cloth, accents, 0)`): per cloth vertex under an accent as fitted (outward normal, else straight
+  out from the skin, within `under`), held `gap` behind EACH accent separately (the cloth runs inside the belt box, the buckle sits
+  on the belt) as it now lies; takes the bones of the nearest accent vertex (with the belly's own bones it slid out through the
+  belt + front band once posed); a cloth triangle wholly under trims leaves the drawn index (`wearTrimHide`, in wearUnderCover) and
+  the skin under it is hidden too (`w.trimSkin` -> skinCover; it showed as a cream strip beside the band at an angle). NOT eroded:
+  one drawn ring under the band came out through the belt + band when posed (tried, worse).
+- **THE COLLAR**: over the coat's top `h`, per angle round the neck axis, the coat's innermost radius comes to `neck` off the
+  outermost skin AND off the garments worn under it (girthGrid of their points; the cowboy's shirt collar came out through the
+  greatcoat's stand), every layer by the same amount; the pulled collar takes the skin's bones and rebuilt normals (it shaded grey).
+- **THE TIGHT BOOT** (wearBootFit, TUCKED IN): inside a boot whose inside hugs the skin (the medieval boot: 0-5 mm, sometimes inside
+  the skin), the trouser's floor drops from the usual stand-off to `BOOT_FIT.onSkinTight` over `tightDeep` below the boot top, never
+  deeper than the boot's own inside; trouser points outside the boot went 36 / 85 -> 0 (plain male) and 4 tiny ones at the rim (Santa).
+Checked in a real browser (idle pose + rest): his Santa, the same coat on plain MPFB male, his cowboy (greatcoat looks as before),
+demon, catgirl. Shots: /mnt/project-files/santa-coat/. Known: small skin specks through the pack trousers at the heavy shins
+just over the boot (there with OUTSIDE too, and before this change).
