@@ -1,77 +1,18 @@
 [
- {
-  "name": "MOC_HandsOnHips_Idle",
-  "take": "54_16",
-  "a": 29.9,
-  "b": 31.55,
-  "fade": 0.35,
-  "steady": 0.7
- },
- {
-  "name": "MOC_Macho_Walk",
-  "take": "91_33",
-  "a": 15.37,
-  "b": 17.07,
-  "fade": 0.2
- },
- {
-  "name": "MOC_Calm_Idle",
-  "take": "77_02",
-  "a": 3.5,
-  "b": 7.0,
-  "fade": 0.5,
-  "steady": 0.7
- },
- {
-  "name": "MOC_Slow_Walk",
-  "take": "91_10",
-  "a": 8.34,
-  "b": 10.21,
-  "fade": 0.2
- },
- {
-  "name": "MOC_ShiftWeight_Idle",
-  "take": "139_02",
-  "a": 3.5,
-  "b": 7.0,
-  "fade": 0.5,
-  "steady": 0.7
- },
- {
-  "name": "MOC_LegsApart_Walk",
-  "take": "132_53",
-  "a": 21.44,
-  "b": 22.87,
-  "fade": 0.2
- },
- {
-  "name": "MOC_Fidget_Idle",
-  "take": "137_19",
-  "a": 19.3,
-  "b": 21.8,
-  "fade": 0.6,
-  "steady": 0.7
- },
- {
-  "name": "MOC_Rushed_Walk",
-  "take": "142_14",
-  "a": 5.24,
-  "b": 6.57,
-  "fade": 0.2
- },
- {
-  "name": "MOC_Tough_Idle",
-  "take": "137_41",
-  "a": 19.7,
-  "b": 23.47,
-  "fade": 0.6,
-  "steady": 0.7
- },
- {
-  "name": "MOC_Cool_Walk",
-  "take": "91_23",
-  "a": 15.71,
-  "b": 17.11,
-  "fade": 0.2
- }
+ {"name": "MOC_Heroic_Idle", "take": "111_28", "a": [0.2, 1.0], "len": [2.0, 3.2], "head": -3,
+  "pose": {"Spine": [-3, 0, 0], "Spine1": [-6, 0, 0], "LeftArm": [0, 0, 8], "RightArm": [0, 0, -8],
+           "LeftUpLeg": [0, 0, 6], "RightUpLeg": [0, 0, -6], "LeftFoot": [0, 0, -6], "RightFoot": [0, 0, 6]}},
+ {"name": "MOC_Calm_Idle", "take": "82_08", "a": [0.3, 2.5], "len": [2.0, 3.5], "head": 3},
+ {"name": "MOC_ShiftWeight_Idle", "take": "139_02", "a": [1.0, 3.5], "len": [2.5, 4.0]},
+ {"name": "MOC_Fidget_Idle", "take": "137_19", "a": [15, 30], "len": [2.0, 4.0]},
+ {"name": "MOC_Tough_Idle", "take": "137_41", "a": [3, 15], "len": [3.0, 5.0]},
+ {"name": "MOC_Pockets_Idle", "take": "137_28", "a": [19, 21], "len": [2.0, 4.0]},
+ {"name": "MOC_Normal_Walk", "take": "91_29", "a": [4, 7], "len": [0.9, 2.6], "kind": "walk"},
+ {"name": "MOC_Confident_Walk", "take": "82_09", "a": [6.5, 8.5], "len": [0.9, 2.0], "kind": "walk"},
+ {"name": "MOC_Macho_Walk", "take": "91_33", "a": [14, 16.5], "len": [0.9, 2.6], "kind": "walk"},
+ {"name": "MOC_Strong_Walk", "take": "137_42", "a": [3, 12], "len": [0.9, 2.6], "kind": "walk"},
+ {"name": "MOC_Heavy_Walk", "take": "17_08", "a": [1, 10], "len": [0.9, 2.6], "kind": "walk"},
+ {"name": "MOC_Cool_Walk", "take": "91_23", "a": [4, 7], "len": [0.9, 2.6], "kind": "walk"},
+ {"name": "MOC_Slow_Walk", "take": "91_10", "a": [5, 9], "len": [0.9, 2.6], "kind": "walk"},
+ {"name": "MOC_LegsApart_Walk", "take": "132_53", "a": [3, 5.5], "len": [0.9, 2.6], "kind": "walk"}
 ]
