@@ -3112,3 +3112,24 @@ tell if there is hit stop", "shouldnt p2 have the same freeze as p1?", "light at
   as `vfx3d-x` (anchor = the victim's tile, fog-gated), so the guest gets the SAME freeze, blink and kick. The host skips the
   blink/kick for a tile its own fog hides. Off: `window.EW_DISABLE_JUICE` (the old damage-band freeze, no blink).
 - Proof frame: /mnt/project-files/hit-stop/hit_blink_before_after.png (Bigfoot, brown fur → solid white during the freeze).
+
+## THE IMPACT HOLD — the camera stays on the hit (2026-11-05)
+mondo: "the action camera for meteor cuts back to my character right as the meteor is hitting and i dont even get to see
+the impact, what the actual fuck. Fix this for all spells."
+- Cause: an action shot lasted sourceHold + travel + targetHold + reset, and only the travel stood for the payload. A
+  descent (Meteor, every sky drop: telegraph 800 + fall 700) lands ~1.5 s after launch, so for Meteor the shot ended ON the
+  impact (2612 vs 2600 ms) and the cast's finish (`max(impact + 200, cam.totalMs + 120)`) brought the camera home 0.2 s
+  after the rock landed: the crater god shot, the flash and the numbers played off screen. Same for the hidden-caster fog
+  shot (a fixed 1.6 s look at the victim, shorter than any heavy cast's impact).
+- Fix (battle.js, all camera, no rules): `CINE_IMPACT_AFTERMATH_MS` = 1200. `_cineHoldShotToImpact` stretches every
+  cinematic shot's target beat so it ends no sooner than 1.2 s past its real impact (`_cineShotImpactMs`: the descent clock,
+  else launch + travel); every caller that waits on `cam.totalMs` (the aoe setup, the travel handlers) finishes later with
+  it. `camera._impactHoldUntil` holds the camera that long after the shot's impact AND after every non-DoT hit that lands
+  while a shot is live (applyDamageToUnit, after `_juiceHitFx`; covers spells whose own clock lands the hit later than
+  the shot thought). While it holds: `camera.isBusy()` is true (the turn loop / the next activation wait), and
+  `softResetToUnit`, `restore` and `_armLevelSettle` wait it out (a new action shot, an executing action, a walk or an
+  armed target pick drops the waiting return).
+- Effect: Meteor's cast now finishes at 3.9 s (was 2.8 s); Fireball +50 ms; a light spell at most +250 ms. Kill switch:
+  `window.EW_NO_IMPACT_HOLD = true`. Probe: `window._cineImpactHoldLeft()`.
+- Online: the guest re-runs playOffensiveActionCamera with the same opts (descentCam relayed), so its shot stretches the
+  same way; the host's return (and its relayed settle) waits for the hold.
