@@ -65617,6 +65617,9 @@ const ThreeRenderer = (function () {
        — `y` = the surface (else the ground under the mark), `rot` degrees clockwise. Drawn only: 1.5 cm proud, no depth write fight. */
     function _hqBuildMarks(room, info, G, U) {
         var marks = ((room.terrain && room.terrain.marks) || []).concat(info.marksX || []); if (!marks.length) return 0;   // + a kit's / a prefab's paint (E1)
+        /* THE CRATER UNDER THE PAINT (2026-11-05): every mark carries the field's lattice (room metres, the field's x0 / z0 / res, the
+           units) — a dig in the battle sinks the paint on the field's own grid with it (_fieldDeformMarks) */
+        var lat = { x0: info.x0, z0: info.z0, res: info.res, U: U };
         var matCache = {};
         var matOf = function (col, a, tex) {
             var k = col + '|' + (a || 1) + '|' + (tex || '');
@@ -65632,7 +65635,7 @@ const ThreeRenderer = (function () {
         var yAt = function (m, x, z) { return (typeof m.y === 'number') ? m.y + 0.025 : hqTerrainHeight(info, x, z); };
         var quad = function (cx, cz, w, d, yaw, y, mat) {
             var g = new THREE.PlaneGeometry(w * U, d * U); g.rotateX(-Math.PI / 2);
-            var mesh = new THREE.Mesh(g, mat); mesh.rotation.y = yaw; mesh.position.set(cx * U, (y + 0.015) * U + 0.3, cz * U); mesh.renderOrder = 2; G.add(mesh); return mesh;
+            var mesh = new THREE.Mesh(g, mat); mesh.rotation.y = yaw; mesh.position.set(cx * U, (y + 0.015) * U + 0.3, cz * U); mesh.renderOrder = 2; mesh._ew_hqMarks = lat; G.add(mesh); return mesh;
         };
         /* the chalk is hundreds of strips (a hash every yard): a flat rect / line goes into ONE buffer per colour, a draw call per colour */
         var bufs = {};
@@ -65650,7 +65653,7 @@ const ThreeRenderer = (function () {
                 else if (m.k === 'ring') {
                     var a0 = (m.a0 != null) ? m.a0 : 0, a1 = (m.a1 != null) ? m.a1 : 360, segs = Math.max(8, Math.ceil((a1 - a0) / 3)), rg = new THREE.RingGeometry((m.r - (m.w || 0.12) / 2) * U, (m.r + (m.w || 0.12) / 2) * U, segs, 1, 0, (a1 - a0) * Math.PI / 180);
                     rg.rotateX(-Math.PI / 2);
-                    var rm = new THREE.Mesh(rg, matOf(col, m.a)); rm.rotation.y = Math.PI / 2 - a1 * Math.PI / 180; rm.position.set(m.x * U, (yAt(m, m.x, m.z) + 0.015) * U + 0.3, m.z * U); rm.renderOrder = 2; G.add(rm); n++;
+                    var rm = new THREE.Mesh(rg, matOf(col, m.a)); rm.rotation.y = Math.PI / 2 - a1 * Math.PI / 180; rm.position.set(m.x * U, (yAt(m, m.x, m.z) + 0.015) * U + 0.3, m.z * U); rm.renderOrder = 2; rm._ew_hqMarks = lat; G.add(rm); n++;
                 }
                 else if (m.k === 'text' && typeof document !== 'undefined') {
                     var cv = document.createElement('canvas'), txt = String(m.text || ''); cv.width = 64 * Math.max(1, txt.length); cv.height = 96;
@@ -65666,7 +65669,7 @@ const ThreeRenderer = (function () {
             var B = bufs[ck], parts = ck.split('|'), geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(B.P, 3)); geo.setIndex(B.P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1)); geo.computeVertexNormals();
             if (parts[2]) geo.setAttribute('uv', new THREE.Float32BufferAttribute(B.T, 2));
-            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1], parts[2] || null)); mesh.renderOrder = 2; mesh._ew_hqMarks = true; G.add(mesh);
+            var mesh = new THREE.Mesh(geo, matOf(+parts[0], +parts[1], parts[2] || null)); mesh.renderOrder = 2; mesh._ew_hqMarks = lat; G.add(mesh);
         });
         return n;
     }
@@ -82543,7 +82546,7 @@ const ThreeRenderer = (function () {
         _facilityNearGroup.traverse(function (o) {
             if (!o.isMesh || !o.geometry || !o.geometry.attributes || !o.geometry.attributes.position) return;
             if (o._ew_fieldStrata || o._ew_hqOuter || o._ew_hqGround || o._ew_hqBackdrop) return;
-            if (o._ew_hqTerrain || o._ew_hqPart === 'floor') list.push(o);
+            if (o._ew_hqTerrain || o._ew_hqPart === 'floor' || o._ew_hqMarks) list.push(o);   // + THE CRATER UNDER THE PAINT: the marks on it
         });
         return list;
     }
@@ -82597,6 +82600,121 @@ const ThreeRenderer = (function () {
         m._ew_fieldDeformed = moved > 0 || !!m._ew_fieldOrigGeo;
         return moved > 0;
     }
+    /* ══ THE CRATER UNDER THE PAINT (2026-11-05, mondo: "in the training room, i used meteor but the floor does not deform and the
+       units are underneath the floor now") ══ A room's paint (THE PAINT, _hqBuildMarks: the Training Room's 8 × 8 mats, the chess
+       court's squares, a field's chalk, the rings and the words) is its own flat sheet 1.5 cm over the field, and the dig only bent
+       the field: the mats stayed flat over the crater and the units stood in it under them (their x-ray outlines through the mats).
+       The paint now sinks with the field, on the field's OWN grid: on the first dig each mark triangle is cut along the field's
+       lattice lines and its cells' diagonals (the field's quads are a, c, b / b, c, d), and every piece's corner takes the drop the
+       field's own nodes take, mixed the way the field's triangle mixes them — so the paint lies the same 1.5 cm over the bowl
+       everywhere, never under a wall of it. Put back with the field (_fieldDeformRestoreMesh). Off: window.EW_NO_MARKS_DEFORM. */
+    var _fmV = null, _fmM = null;
+    function _fieldMarksCut(m, ts) {
+        var L = m._ew_hqMarks; if (!L || !(L.res > 0) || !m.parent) return null;
+        var src = m.geometry, pos = src.attributes.position; if (!pos) return null;
+        var nor = src.attributes.normal || null, uv = src.attributes.uv || null, ix = src.index ? src.index.array : null;
+        _fmV = _fmV || new THREE.Vector3(); _fmM = _fmM || new THREE.Matrix4();
+        m.updateMatrix(); m.updateWorldMatrix(true, false);
+        var G = _fieldGround(); if (!G) return null;
+        var pad = (FIELD_DEFORM_BAND + 0.5) * ts, bx0 = -pad, bx1 = G.W * ts + pad, bz0 = -pad, bz1 = G.H * ts + pad;
+        var nT = ix ? ix.length : pos.count, P = [], N = [], T = [], W = [], I = [], v = _fmV, mw = m.matrixWorld, ml = m.matrix;
+        var lu = function (k) { v.fromBufferAttribute(pos, k).applyMatrix4(ml); return [(v.x / L.U - L.x0) / L.res, (v.z / L.U - L.z0) / L.res]; };
+        var inBoard = function (k) { v.fromBufferAttribute(pos, k).applyMatrix4(mw); return v.x >= bx0 && v.x <= bx1 && v.z >= bz0 && v.z <= bz1; };
+        var pw0 = m.parent.matrixWorld, TT = [];   // TT: each triangle's battle square (-1 = off the board)
+        var tileOf = function (u, w) { v.set((L.x0 + u * L.res) * L.U, 0, (L.z0 + w * L.res) * L.U).applyMatrix4(pw0); return [Math.floor(v.x / ts), Math.floor(v.z / ts)]; };
+        var emit = function (k3, b, cell) {   // a vertex: b = its weights on the triangle's corners k3, cell = [i, j, half, fx, fz] or null
+            var o = P.length / 3, c;
+            for (c = 0; c < 3; c++) P.push(b[0] * pos.getComponent(k3[0], c) + b[1] * pos.getComponent(k3[1], c) + b[2] * pos.getComponent(k3[2], c));
+            if (nor) for (c = 0; c < 3; c++) N.push(b[0] * nor.getComponent(k3[0], c) + b[1] * nor.getComponent(k3[1], c) + b[2] * nor.getComponent(k3[2], c));
+            if (uv) for (c = 0; c < 2; c++) T.push(b[0] * uv.getComponent(k3[0], c) + b[1] * uv.getComponent(k3[1], c) + b[2] * uv.getComponent(k3[2], c));
+            if (cell) W.push(cell[0], cell[1], cell[2], cell[3], cell[4]); else W.push(NaN, 0, 0, 0, 0);
+            return o;
+        };
+        /* Sutherland–Hodgman: keep the side f(vertex) ≥ 0; a vertex is [u, v, b0, b1, b2] */
+        var clip = function (poly, f) {
+            var out = [];
+            for (var q = 0; q < poly.length; q++) {
+                var A = poly[q], B = poly[(q + 1) % poly.length], fa = f(A), fb = f(B);
+                if (fa >= 0) out.push(A);
+                if ((fa >= 0) !== (fb >= 0)) { var t = fa / (fa - fb), X = []; for (var e = 0; e < 5; e++) X.push(A[e] + (B[e] - A[e]) * t); out.push(X); }
+            }
+            return out;
+        };
+        for (var t = 0; t < nT; t += 3) {
+            var k3 = ix ? [ix[t], ix[t + 1], ix[t + 2]] : [t, t + 1, t + 2];
+            if (!inBoard(k3[0]) && !inBoard(k3[1]) && !inBoard(k3[2])) {   // off the board: kept as it is
+                I.push(emit(k3, [1, 0, 0], null), emit(k3, [0, 1, 0], null), emit(k3, [0, 0, 1], null)); TT.push(-1, -1); continue;
+            }
+            var a = lu(k3[0]), b = lu(k3[1]), c = lu(k3[2]);
+            var tri = [[a[0], a[1], 1, 0, 0], [b[0], b[1], 0, 1, 0], [c[0], c[1], 0, 0, 1]];
+            var i0 = Math.floor(Math.min(a[0], b[0], c[0])), i1 = Math.floor(Math.max(a[0], b[0], c[0])), j0 = Math.floor(Math.min(a[1], b[1], c[1])), j1 = Math.floor(Math.max(a[1], b[1], c[1]));
+            if ((i1 - i0 + 1) * (j1 - j0 + 1) > 40000) { I.push(emit(k3, [1, 0, 0], null), emit(k3, [0, 1, 0], null), emit(k3, [0, 0, 1], null)); TT.push(-1, -1); continue; }
+            for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+                var cellP = clip(clip(tri, function (V) { return V[0] - i; }), function (V) { return (i + 1) - V[0]; });
+                cellP = clip(clip(cellP, function (V) { return V[1] - j; }), function (V) { return (j + 1) - V[1]; });
+                if (cellP.length < 3) continue;
+                for (var half = 0; half < 2; half++) {
+                    var hp = clip(cellP, half ? function (V) { return (V[0] - i) + (V[1] - j) - 1; } : function (V) { return 1 - (V[0] - i) - (V[1] - j); });
+                    if (hp.length < 3) continue;
+                    var ids = hp.map(function (V) { return emit(k3, [V[2], V[3], V[4]], [i, j, half, V[0] - i, V[1] - j]); });
+                    var cu = 0, cw = 0; hp.forEach(function (V) { cu += V[0]; cw += V[1]; }); var tq = tileOf(cu / hp.length, cw / hp.length);
+                    for (var q = 1; q + 1 < ids.length; q++) { I.push(ids[0], ids[q], ids[q + 1]); TT.push(tq[0], tq[1]); }
+                }
+            }
+        }
+        if (!I.length) return null;
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+        if (nor) g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+        if (uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(T, 2));
+        g.setIndex(P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(I, 1) : new THREE.Uint16BufferAttribute(I, 1));
+        g._ew_marksW = new Float32Array(W); g._ew_marksI = I; g._ew_marksT = new Int32Array(TT);
+        return g;
+    }
+    function _fieldDeformMarks(m, ts, plan) {
+        if (typeof THREE === 'undefined') return false;
+        if (typeof window !== 'undefined' && window.EW_NO_MARKS_DEFORM) { _fieldDeformRestoreMesh(m); return false; }   // the switch: the paint stays flat (the old look)
+        var L = m._ew_hqMarks;
+        if (!m._ew_fieldOrigGeo) { var cut = _fieldMarksCut(m, ts); if (!cut) return false; m._ew_fieldOrigGeo = m.geometry; m.geometry = cut; m._ew_fieldOrig = new Float32Array(cut.attributes.position.array); }
+        var geo = m.geometry, pos = geo.attributes.position, Wt = geo._ew_marksW, o = m._ew_fieldOrig; if (!Wt || !o) return false;
+        _fmV = _fmV || new THREE.Vector3(); _fdInv = _fdInv || new THREE.Matrix4();
+        m.updateWorldMatrix(true, false);
+        var mw = m.matrixWorld, pw = m.parent.matrixWorld, v = _fmV, G = _fieldGround(); if (!G) return false;
+        _fdInv.copy(mw).invert();
+        var pad = (plan.band + 0.05) * ts, x0 = -pad, x1 = G.W * ts + pad, z0 = -pad, z1 = G.H * ts + pad, moved = 0, nodeDy = {};
+        /* the drop the field takes at its node (i, j) — the same read _fieldDeformMesh makes at that vertex */
+        var dyNode = function (i, j) {
+            var k = i + ',' + j, d = nodeDy[k]; if (d !== undefined) return d;
+            v.set((L.x0 + i * L.res) * L.U, 0, (L.z0 + j * L.res) * L.U).applyMatrix4(pw);
+            d = (v.x < x0 || v.x > x1 || v.z < z0 || v.z > z1) ? 0 : (plan.dyAt(v.x / ts, v.z / ts) || 0);
+            nodeDy[k] = d; return d;
+        };
+        for (var n = 0, nv = pos.count; n < nv; n++) {
+            var ox = o[n * 3], oy = o[n * 3 + 1], oz = o[n * 3 + 2], ci = Wt[n * 5];
+            if (ci !== ci) { pos.setXYZ(n, ox, oy, oz); continue; }   // NaN: off the board
+            var cj = Wt[n * 5 + 1], hf = Wt[n * 5 + 2], fx = Wt[n * 5 + 3], fz = Wt[n * 5 + 4], dy;
+            if (!hf) dy = (1 - fx - fz) * dyNode(ci, cj) + fx * dyNode(ci + 1, cj) + fz * dyNode(ci, cj + 1);            // a, b, c
+            else dy = (1 - fz) * dyNode(ci + 1, cj) + (1 - fx) * dyNode(ci, cj + 1) + (fx + fz - 1) * dyNode(ci + 1, cj + 1);   // b, c, d
+            if (!dy) { pos.setXYZ(n, ox, oy, oz); continue; }
+            v.set(ox, oy, oz).applyMatrix4(mw); v.y += dy; v.applyMatrix4(_fdInv); pos.setXYZ(n, v.x, v.y, v.z); moved++;
+        }
+        pos.needsUpdate = true;
+        /* the paint on a DUG square went with its blocks: the square shows its own dug ground (the bed, THE SKINS' sheet) — only the
+           paint on the squares beside it bends down the bowl's wall */
+        var I0 = geo._ew_marksI, TQ = geo._ew_marksT;
+        if (I0 && TQ) {
+            var keep = [], dugK = {};
+            for (var t = 0, tn = I0.length / 3; t < tn; t++) {
+                var qx = TQ[t * 2], qy = TQ[t * 2 + 1];
+                if (qx >= 0 && qy >= 0 && qx < G.W && qy < G.H) { var dk = qx + ',' + qy, dg = dugK[dk]; if (dg === undefined) dg = dugK[dk] = (G.deltaAt(qx, qy) < 0); if (dg) continue; }
+                keep.push(I0[t * 3], I0[t * 3 + 1], I0[t * 3 + 2]);
+            }
+            geo.setIndex(pos.count > 65535 ? new THREE.Uint32BufferAttribute(keep, 1) : new THREE.Uint16BufferAttribute(keep, 1));
+        }
+        try { geo.computeVertexNormals(); geo.computeBoundingSphere(); geo.computeBoundingBox(); } catch (e) {}
+        m._ew_fieldDeformed = true;
+        return moved > 0;
+    }
     function _fieldDeformRestoreMesh(m) {
         if (!m || !m._ew_fieldDeformed) return;
         if (m._ew_fieldOrigGeo) { var sub = m.geometry; m.geometry = m._ew_fieldOrigGeo; m._ew_fieldOrigGeo = null; try { sub.dispose(); } catch (e) {} m._ew_fieldOrig = null; }
@@ -82609,7 +82727,7 @@ const ThreeRenderer = (function () {
         var on = !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_DEFORM);
         meshes.forEach(function (m) {
             if (!on || !plan || !plan.dug.length) { _fieldDeformRestoreMesh(m); return; }
-            try { if (_fieldDeformMesh(m, ts, plan)) hit++; } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
+            try { if (m._ew_hqMarks ? _fieldDeformMarks(m, ts, plan) : _fieldDeformMesh(m, ts, plan)) hit++; } catch (e) { console.warn('[HQ→battle] the deform failed', e); }
         });
         try { _fieldSinkProps(on ? plan : null, ts); } catch (e) { console.warn('[HQ→battle] the sink failed', e); }   // THE SINK: the small props on the dug cells
         if (hit) _shadowsDirty = true;
