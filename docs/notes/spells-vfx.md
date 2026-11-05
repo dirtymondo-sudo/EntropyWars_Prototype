@@ -3113,6 +3113,15 @@ tell if there is hit stop", "shouldnt p2 have the same freeze as p1?", "light at
   blink/kick for a tile its own fog hides. Off: `window.EW_DISABLE_JUICE` (the old damage-band freeze, no blink).
 - Proof frame: /mnt/project-files/hit-stop/hit_blink_before_after.png (Bigfoot, brown fur → solid white during the freeze).
 
+### THE HIT BLINK STREAKS FIX (2026-11-05, mondo: "the hit flash is causing these long streaks of light")
+- Cause: the node renderer's post chain (?ew_gpu=webgpu / webgl2, three-post.js `_ngBuild`) renders the scene into a HALF FLOAT
+  target and nothing clamped it before the frame's 0..16. THE HIT BLINK's white (emissive x 60 on a textured body) reached the
+  tilt-shift DoF at ~60, so even the 1.6%-weight far taps were full white and the H + V blur passes smeared the body into long
+  stripes (bloom / rays would too). The classic chain's scene target is 8-bit, so it never streaked.
+- Fix: `ldrIn` in `_ngBuild` clamps the light to 0..1 (a NaN pixel = black) before SMAA / DoF / frame and on the bloom input,
+  the same light the classic chain reads. The blink itself is unchanged (still x 60, still solid white).
+- Proof: /mnt/project-files/hit-flash-streaks/hit_flash_streaks_before_after.jpg (same seeded match, ?ew_gpu=webgl2). PR: see git log.
+
 ## THE IMPACT HOLD — the camera stays on the hit (2026-11-05)
 mondo: "the action camera for meteor cuts back to my character right as the meteor is hitting and i dont even get to see
 the impact, what the actual fuck. Fix this for all spells."
