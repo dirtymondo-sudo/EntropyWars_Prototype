@@ -1667,4 +1667,31 @@ back to what they were".
   An idle pick made while the walk loops ends the walk and shows the idle.
 - ASSET_MANIFEST.json lists MOC1_CMU.glb (sha a83dab3d347b), so a browser that stored rev 1 in the asset store fetches rev 2.
 - CHECKED in the real game page (local scripts, Playwright): every idle + walk button plays its own clip; the walk still loops
-  after 6 s; idle during a walk; WALK -> STOP WALK. Videos of every clip over 2-3 loops on the MPFB male + the superhero model.
+  after 6 s; idle during a walk; WALK -> STOP WALK.
+- REV 2.1 (same day, mondo tested live: "I pick one walk animation and then like the next 2 or 3 i click are broken", walks slide,
+  idles still broken). THE CAUSE was the ASSET STORE, not the buttons: his browser had stored rev 1 of MOC1_CMU.glb while the
+  manifest did not list it (row stored with no sha); on the first hit after the manifest listed rev 2, three-renderer.js
+  _asTouch stamped the MANIFEST's sha on that old row, so _asStale never fired and rev 1 played for good. Every clip that only
+  exists in rev 2 (Heroic, Pockets, Normal, Confident, Strongman, Heavyset) baked to nothing = a dead button, and the rev 1 walks
+  are the sliding ones. Reproduced in Playwright by seeding the store with rev 1 (/tmp harness t6.js): old code = his exact
+  symptoms, new code = every button plays its clip. FIX (three-renderer.js THE ASSET STORE): a hit never takes the manifest's sha;
+  a listed file is stale when its row has no sha, no row, a different sha, or a size that is not the manifest's; a fresh copy of a
+  listed file is stored under the manifest's bytes. So any file changed in place + listed in the manifest now really refetches.
+- REV 2.1 UI: the Walk row carries its own PLAY WALK / STOP WALK (party-builder.js CreatorControls, reads three-renderer.js's
+  'ew-cv-state' window event that _cvEmitState now dispatches); the party builder's bottom PREVIEW WALK is gone (moved up).
+  Clicking a walk walks at once (also the one already picked); clicking the picked idle during a walk stops the walk.
+- Seams on the real rig (bone world positions sampled over the loop point, MPFB male): every walk + idle seam step is at or under
+  the clip's 90th-percentile frame step (walks 6-17 mm vs 17-27 mm, idles 0.1-7 mm vs 0.6-11 mm).
+- REV 2.2 (same day, mondo: "there is nothing heroic about the heroic stance idle, it looks like they have to pee" + "Almost all of the
+  walk animations you added, their hands clip through their thighs as they swing ... Do the mpfb bodies not have like bones and
+  collision"). Heroic stance is out of EW_IDLE_POSES; Macho + Bow-legged are out of EW_WALK_STYLES (on the front/side sheets the
+  Macho walk staggers and dips a shoulder, Bow-legged swings the arms wide); the clips stay in MOC1_CMU.glb. Added the walks the game
+  already had: UAL1 Walk_Loop ("UAL walk"), UAL1 Walk_Formal_Loop ("UAL formal"), MAL1 Walking_Woman ("Meshy woman").
+- THE ARM CLEARANCE (three-renderer.js _ccArmClear / _ccArmClearMeasure, called first in _createAppearanceRig's tick(), before the
+  coat hang / sway / jiggle / cloth): a clip is bone rotations only, so nothing stopped a hand going through a thigh on the wider MPFB
+  body. Measured on the skin (every vertex, every frame): 7 of the 8 mocap walks went 9-52 mm into the thigh, UAL Walk_Loop 22 mm,
+  Walk_Formal 27 mm, idles Calm 13 / Fidget 63 / Pockets 32 mm; MAL1 Walking (Default) 0. Each frame the hand's skin points are tested
+  against both thighs' measured radius (re-measured when the body shape changes) and the upper arm turns out from the body just
+  enough (+12 mm for the cloth), rising at once and easing back. After: 0-5 mm on every walk, default and Weight-max bodies.
+  Any clip, any rig that has the UAL-named bones; board units with a creator look get it too. Kill-switch window.EW_NO_ARM_CLEAR.
+  The cloth side (garments out of the body) belongs to the "Add collision between bodies and clothes" thread, which keeps off the arm bones.

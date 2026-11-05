@@ -2133,16 +2133,22 @@ const ThreeRenderer = (function () {
     function _asTouch(url, size, sha) {
         var ix = _asIndexLoad(), prev = ix[url], e = _asManEntry(url);
         if (prev) _asBytes -= prev[1];
-        var b = size || (prev ? prev[1] : 0) || (e ? +e[0] || 0 : 0), h = sha || (prev && prev[2]) || (e && e[1]) || '';
+        /* (2026-11-05, mondo's creator walks + idles: a hit never takes the manifest's sha for itself. A copy stored while the
+           manifest did not list its file (MOC1_CMU.glb rev 1) took the rev 2 sha on its first hit and played the old clips for good) */
+        var b = size || (prev ? prev[1] : 0) || (e ? +e[0] || 0 : 0), h = sha || (prev && prev[2]) || '';
         ix[url] = h ? [Date.now(), b, h] : [Date.now(), b];
         _asBytes += b;
         _asIndexSave();
     }
-    /* a stored copy is stale when the manifest names a different sha than the one it was stored under */
+    /* a stored copy is stale when the manifest names a different sha than the one it was stored under, or the copy was stored
+       with no sha (the manifest did not list it then), or the store lost its row, or its size is not the manifest's (a copy an
+       earlier build stamped with the new sha on a hit: MOC1_CMU.glb rev 1 kept playing after rev 2 went up, 2026-11-05).
+       A listed file is stored under the manifest's bytes, so a good copy never refetches. */
     function _asStale(url) {
         var e = _asManEntry(url); if (!e || !e[1]) return false;
         var row = _asIndexLoad()[url];
-        return !!(row && row[2] && row[2] !== e[1]);
+        if (!row || !row[2] || row[2] !== e[1]) return true;
+        return +e[0] > 0 && +row[1] > 0 && +row[1] !== +e[0];
     }
     function _asForget(url) { var ix = _asIndexLoad(); if (ix[url]) { _asBytes -= ix[url][1]; delete ix[url]; _asIndexSave(); } }
     /* evict the least recently used until the store is under the cap (or the index is under its row cap) */
@@ -2192,7 +2198,7 @@ const ThreeRenderer = (function () {
                         var me = _asManEntry(url);
                         var size = +(net.headers && net.headers.get && net.headers.get('content-length')) || (me ? +me[0] || 0 : 0);
                         try {
-                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, size, me && me[1]); _asEvict(c); }, function (err) {
+                            c.put(url, net.clone()).then(function () { _asPuts++; _asTouch(url, (me && +me[0]) || size, me && me[1]); _asEvict(c); }, function (err) {
                                 /* the quota (or a cache that refuses the response): make room and carry on — the file still lands from `net` */
                                 try { _asEvict(c); } catch (e) {}
                             });
@@ -50981,6 +50987,140 @@ const ThreeRenderer = (function () {
     var FACE_IDLE_KEYS = ['eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight',
         'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight',
         'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
+    /* THE ARM CLEARANCE (2026-11-05, mondo: "Almost all of the walk animations you added, their hands clip through their thighs as they
+       swing ... Do the mpfb bodies not have like bones and collision and stuff to prevent this?"). A clip is bone ROTATIONS only, recorded
+       on (or keyed for) a slimmer body, and nothing in a skinned rig stops a hand from passing through a thigh. This pass is that
+       collision: once per frame AFTER the mixer (the rig's tick), each hand's skin (sample points in the hand's own frame) is tested
+       against both thighs (the thigh skin's radius along the UpLeg -> knee axis, measured from the body's own vertices, again whenever
+       the body's shape changes: the Weight / Muscle sliders); a hand inside a thigh (+ CLR_MARGIN for the cloth) turns its upper arm
+       out from the body just enough to clear it. The turn rises at once and eases back (CLR_EASE), so the swing stays smooth. Bodies
+       whose rig has no LeftArm / LeftUpLeg / LeftHand bones skip it. Kill-switch: window.EW_NO_ARM_CLEAR = true. */
+    var CLR_MARGIN = 0.012, CLR_EASE = 6, CLR_BINS = 8, CLR_HAND_PTS = 48, CLR_MAX = 0.6;
+    function _ccArmClearMeasure(root, st) {
+        var B = {};
+        root.traverse(function (o) { if (o.isBone && !B[o.name]) B[o.name] = o; });
+        var need = ['Hips', 'LeftArm', 'LeftHand', 'LeftUpLeg', 'LeftLeg', 'RightArm', 'RightHand', 'RightUpLeg', 'RightLeg'];
+        for (var i = 0; i < need.length; i++) if (!B[need[i]]) return { off: true };
+        var body = null, bodyN = 0;
+        root.traverse(function (o) {
+            if (!o.isSkinnedMesh || !o.skeleton || !o.geometry || !o.geometry.attributes.skinIndex || typeof o.getVertexPosition !== 'function') return;
+            if (o.skeleton.bones.indexOf(B.LeftUpLeg) < 0) return;
+            var n = o.geometry.attributes.position.count; if (n > bodyN) { body = o; bodyN = n; }
+        });
+        if (!body || bodyN < 1000) return { off: true };
+        var bones = body.skeleton.bones, si = body.geometry.attributes.skinIndex, sw = body.geometry.attributes.skinWeight;
+        var role = bones.map(function (b) {
+            var n = b.name;
+            if (n === 'LeftUpLeg') return 'tL'; if (n === 'RightUpLeg') return 'tR';
+            if (n === 'LeftHand' || /_0[123]_l$/.test(n)) return 'hL'; if (n === 'RightHand' || /_0[123]_r$/.test(n)) return 'hR';
+            return null;
+        });
+        var V = new THREE.Vector3(), inv = new THREE.Matrix4(), out = { off: false, B: B, side: {} };
+        body.updateMatrixWorld(true);
+        ['L', 'R'].forEach(function (sd) {
+            var up = B[sd === 'L' ? 'LeftUpLeg' : 'RightUpLeg'], knee = B[sd === 'L' ? 'LeftLeg' : 'RightLeg'], hand = B[sd === 'L' ? 'LeftHand' : 'RightHand'];
+            up.updateMatrixWorld(true);
+            var axis = knee.position.clone(), len = axis.length(); if (len < 1e-4) return; axis.multiplyScalar(1 / len);   // the knee in the thigh's own frame
+            var bins = []; for (var k = 0; k < CLR_BINS; k++) bins.push([]);
+            var hpts = [];
+            var invUp = inv.copy(up.matrixWorld).invert().clone(), invHand = new THREE.Matrix4().copy(hand.matrixWorld).invert();
+            for (var vi = 0; vi < bodyN; vi++) {
+                var bw = 0, bb = -1;
+                for (var c = 0; c < 4; c++) { var w = sw.getComponent(vi, c); if (w > bw) { bw = w; bb = si.getComponent(vi, c); } }
+                if (bb < 0 || bw < 0.6) continue;
+                var r = role[bb];
+                if (r === 't' + sd) {
+                    body.getVertexPosition(vi, V); V.applyMatrix4(body.matrixWorld).applyMatrix4(invUp);
+                    var t = V.dot(axis) / len; if (t < 0 || t > 1) continue;
+                    var rad = Math.sqrt(Math.max(0, V.lengthSq() - Math.pow(V.dot(axis), 2)));
+                    bins[Math.min(CLR_BINS - 1, Math.floor(t * CLR_BINS))].push(rad);
+                } else if (r === 'h' + sd && (vi % 3) === 0) {
+                    body.getVertexPosition(vi, V); V.applyMatrix4(body.matrixWorld).applyMatrix4(invHand);
+                    hpts.push(V.clone());
+                }
+            }
+            var prof = bins.map(function (a) { if (!a.length) return 0; a.sort(function (x, y) { return x - y; }); return a[Math.floor(a.length * 0.85)]; });
+            // keep the hand's outermost points (the knuckles, the fingertips, the palm's edges): every k-th by distance from the wrist
+            hpts.sort(function (a, b) { return b.lengthSq() - a.lengthSq(); });
+            var step = Math.max(1, Math.floor(hpts.length / CLR_HAND_PTS)), keep = [];
+            for (var hi = 0; hi < hpts.length && keep.length < CLR_HAND_PTS; hi += step) keep.push(hpts[hi]);
+            out.side[sd] = { up: up, axisLocal: axis, len: len, prof: prof, hand: hand, arm: B[sd === 'L' ? 'LeftArm' : 'RightArm'], pts: keep, ang: 0, q0: null, q1: null };
+        });
+        return out;
+    }
+    function _ccArmClear(root, st, sdt, shapeKey) {
+        if (typeof window !== 'undefined' && window.EW_NO_ARM_CLEAR) return;
+        if (!st.armClr || st.armClrKey !== shapeKey) {
+            // the bones have to be in this frame's clip pose; the old corrections come off first (a re-measure keeps nothing)
+            if (st.armClr && st.armClr.side) ['L', 'R'].forEach(function (sd) { var S = st.armClr.side[sd]; if (S && S.q1 && S.arm.quaternion.equals(S.q1)) S.arm.quaternion.copy(S.q0); });
+            st.armClrKey = shapeKey;
+            root.updateMatrixWorld(true);
+            st.armClr = _ccArmClearMeasure(root, st);
+        }
+        var C = st.armClr; if (!C || C.off) return;
+        var hips = C.B.Hips, Hp = new THREE.Vector3(), A = new THREE.Vector3(), K = new THREE.Vector3(), ax = new THREE.Vector3(), P = new THREE.Vector3(), d = new THREE.Vector3();
+        var Sh = new THREE.Vector3(), out = new THREE.Vector3(), rotAx = new THREE.Vector3(), q = new THREE.Quaternion(), pq = new THREE.Quaternion(), wq = new THREE.Quaternion();
+        hips.getWorldPosition(Hp);
+        var thighs = ['L', 'R'].map(function (sd) { return C.side[sd]; }).filter(Boolean);
+        function depth(S, deep) {   // the deepest hand point inside either thigh (+ the margin); deep = that point (world)
+            var m = 0, wm = S.hand.matrixWorld;
+            for (var ti = 0; ti < thighs.length; ti++) {
+                var T = thighs[ti];
+                T.up.getWorldPosition(A);
+                ax.copy(T.axisLocal).transformDirection(T.up.matrixWorld);
+                var wl = T.len * T.up.matrixWorld.getMaxScaleOnAxis();
+                var sc = T.up.matrixWorld.getMaxScaleOnAxis();
+                for (var i = 0; i < S.pts.length; i++) {
+                    P.copy(S.pts[i]).applyMatrix4(wm);
+                    d.subVectors(P, A); var along = d.dot(ax), t = along / wl;
+                    if (t < 0.04 || t > 1) continue;
+                    var rad = Math.sqrt(Math.max(0, d.lengthSq() - along * along));
+                    var pen = T.prof[Math.min(CLR_BINS - 1, Math.floor(t * CLR_BINS))] * sc + CLR_MARGIN * wl / 0.42 - rad;   // (the margin in this rig's units: a thigh ~0.42 m)
+                    if (pen > m) { m = pen; if (deep) deep.copy(P); }
+                }
+            }
+            return m;
+        }
+        var deepP = new THREE.Vector3();
+        ['L', 'R'].forEach(function (sd) {
+            var S = C.side[sd]; if (!S) return;
+            if (S.q1 && S.arm.quaternion.equals(S.q1)) S.arm.quaternion.copy(S.q0);   // the mixer did not write this frame: start from the clip's pose again
+            S.q0 = S.arm.quaternion.clone(); S.q1 = null;
+            S.arm.updateMatrixWorld(true);
+            // what this frame needs: turn the arm out (away from the body's middle, level) until the hand clears
+            S.up.getWorldPosition(K); out.subVectors(K, Hp); out.y = 0;
+            if (out.lengthSq() < 1e-8) return; out.normalize();
+            S.arm.getWorldPosition(Sh);
+            var need = 0;
+            for (var it = 0; it < 4; it++) {
+                var pen = depth(S, deepP); if (pen <= 1e-4) break;
+                d.subVectors(deepP, Sh); var arm = d.length(); if (arm < 1e-3) break;
+                need += Math.min(0.2, pen / arm);
+                if (need > CLR_MAX) { need = CLR_MAX; break; }
+                applyTurn(S, need);
+            }
+            // rises at once, eases back (no snap when the hand swings off the thigh)
+            S.ang = need >= S.ang ? need : Math.max(need, S.ang - S.ang * Math.min(1, CLR_EASE * (sdt || 0)));
+            applyTurn(S, S.ang);
+            if (S.ang > 1e-4) S.q1 = S.arm.quaternion.clone();
+        });
+        function applyTurn(S, ang) {
+            S.arm.quaternion.copy(S.q0);
+            if (ang > 1e-5) {
+                S.arm.updateMatrixWorld(true);
+                S.hand.getWorldPosition(P); S.arm.getWorldPosition(Sh);
+                d.subVectors(P, Sh); rotAx.crossVectors(d, out);
+                if (rotAx.lengthSq() < 1e-10) return;
+                rotAx.normalize();
+                q.setFromAxisAngle(rotAx, ang);
+                S.arm.parent.getWorldQuaternion(pq);
+                S.arm.getWorldQuaternion(wq);
+                wq.premultiply(q);                       // the turn, in the world
+                S.arm.quaternion.copy(pq.invert().multiply(wq));
+            }
+            S.arm.updateMatrixWorld(true);
+        }
+    }
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
         var targets = [];
@@ -57942,8 +58082,11 @@ const ThreeRenderer = (function () {
            possibly have one needs a tint/color picker"). SKIN: every pixel of the skin sheet times (picked / the torso's average), per
            channel, so the picked colour becomes the skin's average and its pores, freckles, veins and lips keep their contrast. */
         function tintSheet(x, px, color, sample, keep) {
-            var kept = (keep || []).map(function (q) { var k0 = px / 1024; return [q.map(function (v) { return Math.round(v * k0); }), x.getImageData(Math.round(q[0] * k0), Math.round(q[1] * k0), Math.round(q[2] * k0), Math.round(q[3] * k0))]; });
-            var img = x.getImageData(0, 0, px, px), D = img.data, k = px / 1024, S = sample || [200, 150, 360, 300];
+            /* the kept pieces (sprites.js EW_MH_SKIN_KEEP: outlines [x, y, x, y, ...] in 1024 px) go back in their own colours after the
+               tint, cut exactly round each piece (two boxes held the torso's back edge = a pale strip down the spine, 2026-11-05) */
+            var k = px / 1024, polys = (keep || []).filter(function (q) { return q && q.length >= 6; }), snap = null;
+            if (polys.length) { snap = _ccCanvas(px, px); if (snap) snap.getContext('2d').drawImage(x.canvas, 0, 0); }
+            var img = x.getImageData(0, 0, px, px), D = img.data, S = sample || [200, 150, 360, 300];
             var sx = Math.floor(S[0] * k), sy = Math.floor(S[1] * k), sw = Math.floor(S[2] * k), sh = Math.floor(S[3] * k), r = 0, g = 0, bl = 0, n = 0;
             for (var yy = sy; yy < sy + sh; yy += 2) for (var xx = sx; xx < sx + sw; xx += 2) { var o = (yy * px + xx) * 4; r += D[o]; g += D[o + 1]; bl += D[o + 2]; n++; }
             if (!n) return;
@@ -57954,7 +58097,10 @@ const ThreeRenderer = (function () {
                 D[i] = R > 255 ? 255 : R; D[i + 1] = G > 255 ? 255 : G; D[i + 2] = B > 255 ? 255 : B;
             }
             x.putImageData(img, 0, 0);
-            kept.forEach(function (q) { x.putImageData(q[1], q[0][0], q[0][1]); });
+            if (!snap) return;
+            x.save(); x.beginPath();
+            polys.forEach(function (q) { for (var j = 0; j < q.length; j += 2) { if (j) x.lineTo(q[j] * k, q[j + 1] * k); else x.moveTo(q[j] * k, q[j + 1] * k); } x.closePath(); });
+            x.clip(); x.drawImage(snap, 0, 0); x.restore();
         }
         /* THE LOOK COLOURS: a brows / lashes / eyes picture recoloured on its own canvas. Brows + lashes: every hair takes the picked
            colour at its own brightness against the picture's average (alpha kept). Eyes: only the two irises (sprites.js EW_MH_IRIS,
@@ -58034,6 +58180,7 @@ const ThreeRenderer = (function () {
                 /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
+                try { _ccArmClear(root, state, Math.min(0.1, sdt), state.shapeKey); } catch (e) { if (!state.clrWarned) { state.clrWarned = true; console.warn('[ThreeRenderer] arm clearance failed', e); } }   // THE ARM CLEARANCE (before the cloth reads the pose)
                 if (parts.some(function (p) { return p.hangCaps; })) {   // THE COAT HANG: the long coat's skirt off the legs (before anything reads the pose)
                     root.updateWorldMatrix(true, true);
                     for (var hi = 0; hi < parts.length; hi++) if (parts[hi].hangCaps) { try { hangTick(parts[hi], sdt); } catch (e) { if (!state.hangWarned) { state.hangWarned = true; console.warn('[ThreeRenderer] coat hang failed', e); } } }
@@ -58778,6 +58925,8 @@ const ThreeRenderer = (function () {
        `v.onState({ playing, ms, name })` reports every start / end. */
     var _cvPreviewTimer = 0;
     function _cvEmitState(playing, ms, name) {
+        /* (THE WALK STYLE rev 2: every listener hears it too — the creator's Walk row reads PLAY WALK / STOP WALK off it) */
+        try { if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('ew-cv-state', { detail: { playing: playing || null, ms: ms || 0, name: name || null } })); } catch (_e) {}
         if (!_cv || typeof _cv.onState !== 'function') return;
         try { _cv.onState({ playing: playing || null, ms: ms || 0, name: name || null }); } catch (_e) {}
     }

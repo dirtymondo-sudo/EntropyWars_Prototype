@@ -4789,7 +4789,12 @@ const EW_MH_CHEST = { band: { female: [118, 226, 546, 164] }, spots: [[332, 308]
    9 eye pictures differ), and the torso patch of the hm08 sheet whose average a picked skin colour replaces */
 const EW_MH_IRIS = { centres: [[20.6, 20.7], [149.4, 20.7]], r: 3.8 };
 const EW_MH_SKIN_SAMPLE = [200, 150, 360, 300];
-const EW_MH_SKIN_KEEP = [[0, 360, 170, 120], [760, 870, 200, 154]];   // the mouth's inside (tongue, gums) keeps its own red under a picked skin
+/* the mouth's inside (the two cheek pieces + the tongue) keeps its own red under a picked skin: each piece's outline on the hm08
+   sheet (1024 px, 2 px out into its padding), traced off the MPFB bodies' own UVs (2026-11-05, mondo: "what is this random white spot
+   down this person's back??"). These were two boxes before, and the first box also held the torso's back edge (x 145-170, y 360-480:
+   the spine seam, half the back meets there) and the second the right hand's fingertips, so that strip stayed the stock skin colour
+   under every picked colour. No other piece of any MPFB body falls inside these outlines. */
+const EW_MH_SKIN_KEEP = [[40,373,34,376,27,379,23,382,21,385,18,388,16,391,15,394,13,397,13,400,12,403,12,406,12,409,11,412,11,415,10,418,10,421,10,424,10,427,10,430,10,433,10,436,10,439,10,442,11,445,12,448,14,451,17,454,20,457,25,460,34,463,52,463,61,460,63,457,65,454,67,451,69,448,70,445,71,442,71,439,72,436,72,433,74,430,76,427,77,424,78,421,79,418,80,415,81,412,81,409,81,406,80,403,80,400,80,397,79,394,79,391,76,388,73,385,71,382,68,379,65,376,45,373],[121,373,102,376,99,379,96,382,94,385,91,388,88,391,88,394,87,397,87,400,87,403,86,406,86,409,86,412,87,415,88,418,89,421,90,424,91,427,93,430,94,433,95,436,96,439,96,442,97,445,98,448,100,451,102,454,104,457,106,460,115,463,133,463,142,460,147,457,150,454,153,451,155,448,156,445,157,442,157,439,157,436,157,433,157,430,157,427,157,424,157,421,156,418,156,415,156,412,155,409,155,406,155,403,154,400,153,397,151,394,150,391,148,388,146,385,144,382,140,379,133,376,126,373],[844,882,838,885,799,888,797,891,795,894,792,897,790,900,788,903,786,906,785,909,783,912,781,915,779,918,778,921,777,924,777,927,776,930,775,933,774,936,774,939,774,942,774,945,773,948,773,951,773,954,773,957,773,960,773,963,774,966,775,969,775,972,776,975,777,978,777,981,779,984,780,987,781,990,782,993,783,996,785,999,786,1002,788,1005,791,1008,793,1011,929,1011,931,1008,933,1005,935,1002,937,999,939,996,940,993,941,990,942,987,943,984,945,981,945,978,946,975,946,972,947,969,947,966,948,963,948,960,948,957,948,954,948,951,948,948,948,945,948,942,948,939,948,936,947,933,946,930,945,927,944,924,943,921,942,918,940,915,939,912,937,909,935,906,934,903,932,900,929,897,927,894,924,891,922,888,884,885,877,882]];
 const EW_MH_LIPS = { poly: [931,503,928,504.5,924,507.5,921,510.5,917,513.5,916,516.5,915,519.5,914,522.5,914,525.5,915,528.5,915,531.5,914,534.5,915,537.5,916,540.5,917,543.5,919,546.5,922,549.5,925,552.5,929,554.5,931,555,933,554.5,936,552.5,941,549.5,942,546.5,945,543.5,946,540.5,947,537.5,948,534.5,948,531.5,948,528.5,948,525.5,948,522.5,948,519.5,946,516.5,944,513.5,941,510.5,939,507.5,934,504.5], box: [906, 495, 52, 68], feather: 1.6 };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
@@ -4944,7 +4949,6 @@ const EW_IDLE_POSES = [
   { id: 'Crouch_Idle_Loop',       label: 'Crouch',          clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
   { id: 'Zombie_Idle_Loop',       label: 'Zombie',          clip: 'Zombie_Idle_Loop',       lib: 1, ts: 1.0 },
   /* THE MOCAP LIBRARY (2026-11-05, rev 2): the motion-capture idles (lib 5, MOC1_CMU.glb, bake-mocap.py + mocap-clips.json) */
-  { id: 'MOC_Heroic_Idle',        label: 'Heroic stance',   clip: 'MOC_Heroic_Idle',        lib: 5, ts: 1.0 },
   { id: 'MOC_Calm_Idle',          label: 'Calm',            clip: 'MOC_Calm_Idle',          lib: 5, ts: 1.0 },
   { id: 'MOC_ShiftWeight_Idle',   label: 'Weight shift',    clip: 'MOC_ShiftWeight_Idle',   lib: 5, ts: 1.0 },
   { id: 'MOC_Fidget_Idle',        label: 'Fidget',          clip: 'MOC_Fidget_Idle',        lib: 5, ts: 1.0 },
@@ -4960,12 +4964,15 @@ const EW_WALK_STYLES = [
   { id: 'default',             label: 'Default' },
   { id: 'MOC_Normal_Walk',     label: 'Normal',      clip: 'MOC_Normal_Walk',     lib: 5, ts: 2.37 },
   { id: 'MOC_Confident_Walk',  label: 'Confident',   clip: 'MOC_Confident_Walk',  lib: 5, ts: 2.63 },
-  { id: 'MOC_Macho_Walk',      label: 'Macho',       clip: 'MOC_Macho_Walk',      lib: 5, ts: 3.27 },
   { id: 'MOC_Strong_Walk',     label: 'Strongman',   clip: 'MOC_Strong_Walk',     lib: 5, ts: 3.52 },
   { id: 'MOC_Heavy_Walk',      label: 'Heavyset',    clip: 'MOC_Heavy_Walk',      lib: 5, ts: 3.21 },
   { id: 'MOC_Cool_Walk',       label: 'Cool',        clip: 'MOC_Cool_Walk',       lib: 5, ts: 2.63 },
   { id: 'MOC_Slow_Walk',       label: 'Slow',        clip: 'MOC_Slow_Walk',       lib: 5, ts: 3.65 },
-  { id: 'MOC_LegsApart_Walk',  label: 'Bow-legged',  clip: 'MOC_LegsApart_Walk',  lib: 5, ts: 3.02 },
+  // the walks the game already had (mondo 11-05: "Are there not other walk animations from the ual 1 or 2?"): UAL1 Walk_Loop +
+  // Walk_Formal_Loop (Quaternius), MAL1 Walking_Woman (the Meshy batch; MAL1 Walking is Default)
+  { id: 'UAL_Walk_Loop',       label: 'UAL walk',    clip: 'Walk_Loop',           lib: 0, ts: 2.56 },
+  { id: 'UAL_Walk_Formal',     label: 'UAL formal',  clip: 'Walk_Formal_Loop',    lib: 0, ts: 2.56 },
+  { id: 'MAL_Walking_Woman',   label: 'Meshy woman', clip: 'Walking_Woman',       lib: 2, ts: 1.92 },
 ];
 const EW_APPEARANCE_ENUMS = {
   idle: EW_IDLE_POSES.map(o => o.id),   // THE IDLE POSE ('default' first = the body's own idle)
