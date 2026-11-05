@@ -59238,7 +59238,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var CV = _fpVolMesh({ x: 0, y: 0, z: ts0 * 0.14, h: ts0 * 0.95, w: ts0 * 0.5, rx: -Math.PI / 2 + 0.35, d: -200, life: ms + 400, ph: rn(0, 9) }, ball, pal);
         var lastS = 0, lastF = 0;
         /* THE SPELL SIMS: Fireball (fire1) flies the Blender flame ball (fbfly) in place of the halo + painted flames */
-        var SIM = id === 'fire1' ? _fbTrail(ball, 'fbfly', ts0 * 2.4, fx, fy, tx, ty) : null;
+        var SIM = id === 'fire1' ? _fbTrail(ball, 'fbfly', ts0 * 2.4, fx, fy, tx, ty, 0.5) : null;
         if (SIM) { halo.visible = false; CV.m.visible = false; heart.scale.setScalar(ts0 * 0.18); }
         _pzFly(fx, fy, tx, ty, ball, { ms: ms, arc: 0.12, h0: ts0 * 0.62, h1: ts0 * 0.55, hideOnLand: true,
             spin: function (el, obj, t) {
@@ -62942,7 +62942,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* a LOOPING sim flown with a body (fbfly / mtail): two sprites whose centre is the sheet's head, the trail turned on
        screen to point back along the flight. Returns { tick(el, obj, t), sprites } or null (sheets not ready). */
-    function _fbTrail(parent, key, size, fx, fy, tx, ty) {
+    function _fbTrail(parent, key, size, fx, fy, tx, ty, smokeOp) {
         if (!_fbSimReady(key) || !window.ThreeVFX.flipbookFrame) return null;
         var info = window.ThreeVFX.flipbookInfo('fb-' + key + '-smoke'), head = info.head || 0.75, sp = [];
         ['smoke', 'glow'].forEach(function (pass, i) {
@@ -62964,7 +62964,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < 2; i++) {
                 var tex = window.ThreeVFX.flipbookFrame('fb-' + key + '-' + (i ? 'glow' : 'smoke'), fi);
                 if (tex && sp[i].material.map !== tex) { sp[i].material.map = tex; sp[i].material.needsUpdate = true; }
-                sp[i].material.opacity = (i ? 1 : 0.9) * Math.min(1, el / 90) * (fade != null ? fade : 1) * (t >= 1 ? 0 : 1);
+                sp[i].material.opacity = (i ? 1 : (smokeOp != null ? smokeOp : 0.9)) * Math.min(1, el / 90) * (fade != null ? fade : 1) * (t >= 1 ? 0 : 1);
             }
             /* the flight's direction on screen: from the last frame's world position (or the from -> to line) */
             var wp = new THREE.Vector3(); obj.getWorldPosition(wp);
