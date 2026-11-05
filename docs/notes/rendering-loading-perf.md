@@ -1361,3 +1361,12 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   fight's `_fieldGroundDress`) and the Key Light (`_hqKeyLampTick` on the walk, `_fieldKeyLampTick` via st.keyWhite in a
   fight). The fill and the room's own lamps keep theirs. Rooms it hits: vatican_basilica, atlantis_temple and the DOOR HQ tiled
   rooms (kitchen, coldroom, laundry, bathroom, locker, natatorium, autopsy, tank).
+- THE WHITE ROOM (2026-11-05, mondo on the Select Your Team room: "this room looks like it didnt get the fix that clouds and
+  marble terrain got where they are too white and the light is making it too bright, it looks ugly af"). The Squad Desk's team
+  room (three-renderer.js `_trBuild`, THE TEAM ROOM) has its own light rig outside HQ_LIGHT_RULES, so neither rule above reached
+  it. Measured: the back wall took about 1.8× light (key 0.61 + fill 0.44 + hemisphere 0.52 + the ceiling lamp 0.24, all
+  head-on), so the beige drywall (aged_beige_office_drywall.png, mean 0.69; under the 0.8 bar of TERRAIN_WHITE_SHEETS) stored as
+  flat white. Now: the room's five lights × HQ_LIGHT_RULES.whiteDay (`_trWhiteK`, 0.75; the desk lamp keeps its own), and the
+  room's drywall wears colour × `TR_ROOM.wallTone` (0.78), in this room only (the building's other drywall rooms keep theirs).
+  The light alone (0.75) still left the back wall cream-white; the sheet tone is what brings the paint back. Proof:
+  /mnt/project-files/white-glare/team_room_before_after*.jpg.
