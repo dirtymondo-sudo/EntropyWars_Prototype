@@ -1712,3 +1712,11 @@ back to what they were".
   enough (+12 mm for the cloth), rising at once and easing back. After: 0-5 mm on every walk, default and Weight-max bodies.
   Any clip, any rig that has the UAL-named bones; board units with a creator look get it too. Kill-switch window.EW_NO_ARM_CLEAR.
   The cloth side (garments out of the body) belongs to the "Add collision between bodies and clothes" thread, which keeps off the arm bones.
+- REV 2.3 (same day, mondo: Calm "shaking back and forth really fast subtly", Tough stance "looking at their arm like they have a
+  watch", Fidget "a weird dance"): all three out of EW_IDLE_POSES (clips stay in MOC1_CMU.glb). Mocap idles left: Weight shift only
+  (Hands in pockets also out: on the front/side sheet it is the hands-on-hips pose he rejected in rev 1). Calm's shake is the CMU marker noise on a near-still pose (the hand jitters the same with the arm clearance off), so
+  CMU is a poor source for subtle idles; its takes are acted prompts ("walk like ..."), exaggerated by design.
+- THE ARM CLEARANCE rev 2: it pushed Hands in pockets' elbows out ~20 deg (the hand sits at the hip on purpose) and popped on poses it
+  could not clear. Now: thigh points above CLR_T0 (0.15 of the thigh from the hip) are not tested, a solve that needs more than
+  CLR_MAX (0.3 rad) gives up (the clip means it), the radius blends between bins, the turn eases in (CLR_RISE 12/s) and out
+  (CLR_EASE 5/s). Real-time check: walks 25-52 mm in -> 0-6 mm; Pockets / Weight shift jitter the same as with it off.
