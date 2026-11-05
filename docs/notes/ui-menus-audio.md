@@ -2241,3 +2241,22 @@ the next refresh. Now:
   touched the toggle now starts with Action Cam OFF. Rebake / drop the key if new players should start with it ON.
 - Proof probe (scratchpad, not committed): changes every control on the battle pause menu's Audio / Video / Game / Controls
   sheets, reloads, starts a battle again and compares each control.
+
+## THE PAUSE MENU STAYS PUT + KEEPS ITS PLACE — 2026-11-05 (token 20261105-pauseplace-02-cors)
+mondo: "in the pause menu, when i change a setting it will close and reopen the menu again ... if i change a video setting
+... i want the menu to open back up to the same spot i was after i close it".
+- **Cause (seen in a browser):** the battle pause menu (ui.js `_renderPauseMenu`) rebuilt the WHOLE window through
+  `_pauseOverlay.innerHTML` on every setting. The UI Maker's window-open motion sits on the pause screen's panel role
+  (hud.js screen `pause`, `.pause-card.bp-frame`; the shipped theme = `uim-stretch`), and a new element replays its
+  animation: every click snapped the window shut and stretched it open again.
+- **Fix:** the window is built once; a re-render refills `.hq-pause-head` / `-nav` / `-body` (+ `data-view`) / `-foot`
+  inside it. A new page still opens at the top (`bodyEl.scrollTop = 0` when there is no place to keep). Opening the menu
+  still plays the motion (the overlay comes back from display:none; `openPauseMenu` now unhides BEFORE the render).
+- **The place on reopen:** battle — `closePauseMenu` files `_pauseLastPlace = { key: tab/settings-page, snap }`
+  (`_ewMenuPlaceSnap`: scroll + folds) before the overlay hides; the next render of that page while paused restores it.
+  The tab + settings page were already module vars. Building (map.js) — `_hqPauseDrop` files `_hqPauseLast = { cmd,
+  member, bagTab, snap of #hqPauseBody }`; a fresh `_hqOpenPause()` (no cmd, or the same cmd) goes back to it, the member
+  sheet only if that member is still in the party, then restores the scroll + folds after `_hqPauseRender`. An explicit
+  different cmd (`_hqOpenPause('settings')` from elsewhere) opens that page fresh. Memory only (not saved across reloads).
+- The building's menu never rebuilt its frame (`.hq-pause-frame` is static in index.html; settings re-render in place via
+  `_openMainMenuSettings`), so only its reopen spot changed.
