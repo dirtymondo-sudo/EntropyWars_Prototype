@@ -50718,6 +50718,94 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* THE HAIR SHADER (2026-11-05, mondo: "why do so many of the hairstyles look like shit? They look like shiny rubber gloves").
+       The creator's hair wore one MeshStandardMaterial (roughness 0.55): under the stage's key light every style got the same
+       round plastic highlight, and the dozen styles that are one sculpted shell painted a flat colour (Hair 05 / 06 / 11 / 12 /
+       13 / 14 ...; their UVs are collapsed, so no texture can ever draw strands on them) read as a rubber helmet. Hair is lit
+       ALONG its strands: here a MeshPhysicalMaterial whose anisotropic highlight runs along each vertex's strand direction (the
+       line from the crown over the skull and down: _ccHairFlow, skinned with the hair so it follows the sway chains) instead of
+       the UV tangent, and (strands > 0, the flat shells: sprites.js EW_HAIR_STYLES `strands`) fine strands drawn in 3D round the
+       crown from the bind-pose position (no UVs needed): the albedo darkens in the gaps, the normal ripples across them, the
+       finest strands fade out where a pixel would alias them. Classic WebGL only (the creator stage's own renderer); the board
+       and the team room wear their own Lambert copy as before. uniforms: m.userData.ewHair = { crown: Vector3, strands, bump, k }. */
+    var _CC_HAIR_GLSL_V = [
+        'uniform vec3 ewCrown;',
+        'varying vec3 vEwP;',
+        'varying vec3 vEwFlow;'
+    ].join('\n');
+    var _CC_HAIR_GLSL_F = [
+        'uniform vec3 ewCrown;',
+        'uniform float ewStrand;',
+        'uniform float ewBumpK;',
+        'uniform float ewScale;',
+        'varying vec3 vEwP;',
+        'varying vec3 vEwFlow;',
+        'float ewHash(float n) { return fract(sin(n * 91.3458) * 47453.5453); }',
+        'float ewVN(float x, float K) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(ewHash(mod(i, K)), ewHash(mod(i + 1.0, K)), f); }',
+        // the strands round the crown: t = the angle round the crown (0..1), each octave periodic in t (no seam at the back)
+        'float ewStrands(vec3 p) {',
+        '    float t = atan(p.x, p.z) * 0.15915494 + 0.5;',
+        '    float t2 = atan(-p.x, -p.z) * 0.15915494 + 0.5;',
+        '    float fw = min(fwidth(t), fwidth(t2));',
+        '    float L = length(p) / ewScale;',
+        '    t += 0.0025 * sin(L * 70.0 + sin(t * 43.982) * 3.0);',
+        '    float h = 0.0;',
+        '    h += 0.16 * (1.0 - smoothstep(0.3, 0.7, 26.0 * fw)) * (ewVN(t * 26.0, 26.0) - 0.5);',
+        '    h += 0.30 * (1.0 - smoothstep(0.3, 0.7, 130.0 * fw)) * (ewVN(t * 130.0 + 7.0, 130.0) - 0.5);',
+        '    h += 0.34 * (1.0 - smoothstep(0.3, 0.7, 360.0 * fw)) * (ewVN(t * 360.0 + 3.0, 360.0) - 0.5);',
+        '    h += 0.30 * (1.0 - smoothstep(0.3, 0.7, 900.0 * fw)) * (ewVN(t * 900.0 + 11.0, 900.0) - 0.5);',
+        '    h += 0.24 * (1.0 - smoothstep(0.3, 0.7, 2200.0 * fw)) * (ewVN(t * 2200.0 + 5.0, 2200.0) - 0.5);',
+        '    return h;',
+        '}',
+        'vec3 ewBump(vec3 surf_pos, vec3 surf_norm, vec2 dHdxy, float faceDir) {',
+        '    vec3 vSigmaX = normalize(dFdx(surf_pos.xyz));',
+        '    vec3 vSigmaY = normalize(dFdy(surf_pos.xyz));',
+        '    vec3 R1 = cross(vSigmaY, surf_norm);',
+        '    vec3 R2 = cross(surf_norm, vSigmaX);',
+        '    float fDet = dot(vSigmaX, R1) * faceDir;',
+        '    vec3 vGrad = sign(fDet) * (dHdxy.x * R1 + dHdxy.y * R2);',
+        '    return normalize(abs(fDet) * surf_norm - vGrad);',
+        '}'
+    ].join('\n');
+    function _ccHairHook(shader) {
+        var m = this, U = (m && m.userData && m.userData.ewHair) || null;
+        shader.uniforms.ewCrown = { value: U ? U.crown : new THREE.Vector3() };
+        shader.uniforms.ewStrand = U ? U.uStrand : { value: 0 };
+        shader.uniforms.ewBumpK = U ? U.uBump : { value: 0 };
+        shader.uniforms.ewScale = U ? U.uScale : { value: 1.7 };
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', '#include <common>\n' + _CC_HAIR_GLSL_V)
+            .replace('#include <skinnormal_vertex>', [
+                '#include <skinnormal_vertex>',
+                'vec3 ewR = position - ewCrown;',
+                'vEwP = ewR;',
+                'vec3 ewF = normalize(ewR + vec3(0.0, -0.45 * length(ewR), 0.0));',   // from the crown, leaning down (the hair falls)
+                '#ifdef USE_SKINNING',
+                'ewF = (skinMatrix * vec4(ewF, 0.0)).xyz;',
+                '#endif',
+                'vEwFlow = (modelViewMatrix * vec4(ewF, 0.0)).xyz;'
+            ].join('\n'));
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', '#include <common>\n' + _CC_HAIR_GLSL_F)
+            .replace('#include <map_fragment>', [
+                '#include <map_fragment>',
+                'float ewH = 0.0;',
+                'if (ewStrand > 0.0) { ewH = ewStrands(vEwP); diffuseColor.rgb *= clamp(1.0 + ewStrand * 2.2 * ewH, 0.3, 1.5); }',
+                'vec2 ewDH = vec2(dFdx(ewH), dFdy(ewH)) * ewBumpK;'
+            ].join('\n'))
+            .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nif (ewStrand > 0.0) normal = ewBump(-vViewPosition, normal, ewDH, faceDirection);')
+            .replace('#include <lights_physical_fragment>', THREE.ShaderChunk.lights_physical_fragment.replace(
+                /material\.anisotropyT = [^;]*;\s*material\.anisotropyB = [^;]*;/,
+                'vec3 ewT = vEwFlow - dot(vEwFlow, normal) * normal; float ewTl = length(ewT);\n' +
+                'ewT = ewTl > 1e-5 ? ewT / ewTl : normalize(tbn[0]);\n' +
+                'material.anisotropyT = ewT;\nmaterial.anisotropyB = cross(normal, ewT);') +
+                '\nmaterial.specularColor *= mix(vec3(1.0), diffuseColor.rgb / max(1e-3, max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b))), ' + CC_HAIR_LOOK.tint.toFixed(2) + ');' +
+                '\nmaterial.specularF90 *= ' + CC_HAIR_LOOK.f90.toFixed(2) + ';');   // the grazing sheen (untinted: it took the stage's lilac rim)
+    }
+    /* the hair's look on the creator stage (THE HAIR SHADER): roughness across the strands, the stretch along them, the
+       highlight's strength (a hair's sheen is dimmer than a plastic's), the strands' depth on the flat shells */
+    var CC_HAIR_LOOK = { rough: 0.42, aniso: 0.82, spec: 0.38, tint: 0.85, f90: 0.3, strand: 1, bump: 1.3 };
+
     /* A hair style GLB through the unit-model cache (same-origin retry, done
        hooks). cb(root | null) — fires on failure too. */
     function _ccLoadHair(url, cb) {
@@ -51292,6 +51380,17 @@ const ThreeRenderer = (function () {
         root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) { if (/^mpfb_.*_hair$/.test(n.name)) stockHair.push(n); else targets.push(n); } });
         stockHair.forEach(function (n) { n.visible = false; });
         var alive = true;
+        /* THE HAIR SHADER: a creator hair card / shell (alphaTest: its cut; strands: 0, or the strand depth of a flat shell) */
+        function hairMaterial(alphaTest, strands) {
+            if (typeof window !== 'undefined' && window.EW_CC_DEBUG_UNLIT) return material({ vertexColors: true, alphaTest: alphaTest });
+            var L = CC_HAIR_LOOK;
+            var m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: L.rough, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
+                alphaTest: alphaTest, transparent: false, depthWrite: true, anisotropy: L.aniso, specularIntensity: L.spec });
+            m.alphaToCoverage = alphaTest > 0;   // soft strand tips on the multisampled stage (a hard cut where there is no MSAA)
+            m.userData.ewHair = { crown: new THREE.Vector3(), uStrand: { value: strands ? L.strand * strands : 0 }, uBump: { value: L.bump }, uScale: { value: 1.7 } };
+            m.onBeforeCompile = _ccHairHook;
+            ownedMaterials.push(m); return m;
+        }
         function material(opts) {
             var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }, opts || {});
             var m;
@@ -54783,8 +54882,8 @@ const ThreeRenderer = (function () {
                 var kind = (n.userData && n.userData.ewPart) || n.name || 'hair';
                 var srcMat = Array.isArray(n.material) ? n.material[0] : n.material;
                 var isTie = /tie/i.test(kind) && !pack;   // (a pack style's name says "bow tie" — its mesh is hair)
-                var mat = material({ roughness: isTie ? 0.7 : 0.55, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
-                    alphaTest: isTie ? 0 : (/scalp/i.test(kind) ? 0.35 : 0.5), transparent: false, depthWrite: true });
+                var mat = isTie ? material({ roughness: 0.7, metalness: 0, side: THREE.DoubleSide, vertexColors: true, alphaTest: 0, transparent: false, depthWrite: true })
+                    : hairMaterial(/scalp/i.test(kind) ? 0.35 : 0.5, pack && styleRow && styleRow.strands ? (+styleRow.strands || 1) : 0);   // THE HAIR SHADER
                 var accent = null, packTex = null;
                 if (srcMat) {
                     var grey = null;
@@ -54798,7 +54897,9 @@ const ThreeRenderer = (function () {
                     }
                     if (!grey && !isTie) grey = _ccHairTexture(srcMat.map, unmanagedColor);
                     mat.map = grey || srcMat.map || null;
-                    if (srcMat.normalMap) { mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.6, 0.6); }
+                    /* the pack's own normal map (THE HAIR TEXTURES, bake-hair-tex.py): keep the loader's sign (glTF's green runs the
+                       other way: GLTFLoader flips normalScale.y on a mesh with no tangents) */
+                    if (srcMat.normalMap) { var ns = srcMat.normalScale; mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.8 * (ns && ns.x < 0 ? -1 : 1), 0.8 * (ns && ns.y < 0 ? -1 : 1)); }
                 }
                 var g = geometry(), sg = n.geometry;
                 var count = sg.attributes.position.count;
@@ -54863,6 +54964,12 @@ const ThreeRenderer = (function () {
                 var g = h.mesh.geometry;
                 g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
                 g.computeBoundingBox(); g.computeBoundingSphere();
+            });
+            /* THE HAIR SHADER: the crown the strands grow from (a little behind the top of the skull, where the whorl sits) */
+            var czS = (S.zMin + S.zMax) / 2, dzS = (S.zMax - S.zMin) / 2;
+            part.hair.forEach(function (h) {
+                var U = h.mesh.material && h.mesh.material.userData && h.mesh.material.userData.ewHair;
+                if (U) { U.crown.set(S.cx, S.topY - 0.012 * H, czS - 0.3 * dzS); U.uScale.value = H; }
             });
             part.hairNear = null;
             part.hair.forEach(function (h) {   // (every fit starts from the head's weights: hairRide blends onto them once)
