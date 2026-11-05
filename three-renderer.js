@@ -50323,6 +50323,10 @@ const ThreeRenderer = (function () {
         if (typeof document === 'undefined') return null;
         var c = document.createElement('canvas'); c.width = w; c.height = h; return c;
     }
+    /* THE SHARED SHEETS: a look's put-together skin sheet, one per look (setLook), the last CC_LOOK_SHEETS_MAX kept (4 MB each) */
+    var _ccLookSheets = new Map(), CC_LOOK_SHEETS_MAX = 24;
+    function _ccLookSheetGet(k) { var c = _ccLookSheets.get(k); if (c) { _ccLookSheets.delete(k); _ccLookSheets.set(k, c); } return c || null; }
+    function _ccLookSheetPut(k, c) { _ccLookSheets.delete(k); _ccLookSheets.set(k, c); while (_ccLookSheets.size > CC_LOOK_SHEETS_MAX) _ccLookSheets.delete(_ccLookSheets.keys().next().value); }
 
     /* THE EYE PACK (2026-11-03): MakeHuman's high-poly eye mesh (eye_proxy.json, bake-eyes.py), loaded once. cb(data | null).
        The table names the body's vertices by UV (every MPFB GLB keeps hm08's sheet), so one file fits all the MPFB bodies. */
@@ -50391,7 +50395,7 @@ const ThreeRenderer = (function () {
        the whites, the veins and a cat eye's slit untouched outside / kept dark inside), feathered over 6 px at the rim */
     function _ccTintIris(img, color, iris) {
         var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
-        var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        var x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
         var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
         var C = (iris && iris.centres) || [], R = ((iris && iris.r) || 124) * w / 1024, F = 6 * w / 1024, m = 0, mw = 0, i, xx, yy, q, W = new Float32Array(w * hh);
         for (q = 0; q < C.length; q++) {
@@ -50462,7 +50466,7 @@ const ThreeRenderer = (function () {
             var cnv = _ccCanvas(CC_FABRIC_TEX, CC_FABRIC_TEX);
             if (!cnv) { settle(null); return; }
             try {
-                var g = cnv.getContext('2d');
+                var g = cnv.getContext('2d', { willReadFrequently: true });
                 g.drawImage(img, 0, 0, CC_FABRIC_TEX, CC_FABRIC_TEX);
                 var id = g.getImageData(0, 0, CC_FABRIC_TEX, CC_FABRIC_TEX), d = id.data, sum = 0, n = d.length / 4;
                 for (var i = 0; i < d.length; i += 4) sum += d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
@@ -50593,7 +50597,7 @@ const ThreeRenderer = (function () {
     function _ccPatternTexture(fabTex, pat, c1, c2, def, unmanaged, size, cellsMul) {
         var S = size || CC_FABRIC_TEX, cnv = _ccCanvas(S, S);
         if (!cnv) return null;
-        var g = cnv.getContext('2d'), id = null;
+        var g = cnv.getContext('2d', { willReadFrequently: true }), id = null;
         if (fabTex && fabTex.image) { try { g.drawImage(fabTex.image, 0, 0, S, S); id = g.getImageData(0, 0, S, S); } catch (ex) { id = null; console.warn('[ThreeRenderer] pattern over a tainted fabric — plain ground'); } }
         if (!id) { id = g.createImageData ? g.createImageData(S, S) : g.getImageData(0, 0, S, S); id.data.fill(255); }   // (the headless stub canvas has no createImageData)
         _ccPatternBytes(id.data, S, pat, c1, c2, (_CC_PATTERN_CELLS[pat] || 1) * (cellsMul || 1));   // rev 10: the feet / gloves / belt print at 2× (a 12 cm stripe pair swallowed a boot)
@@ -50808,7 +50812,7 @@ const ThreeRenderer = (function () {
         var cnv = _ccCanvas(w, h);
         if (!cnv) return null;
         try {
-            var g = cnv.getContext('2d');
+            var g = cnv.getContext('2d', { willReadFrequently: true });
             g.drawImage(img, 0, 0, w, h);
             var id = g.getImageData(0, 0, w, h), d = id.data, sum = 0, wsum = 0;
             for (var i = 0; i < d.length; i += 4) { var a = d[i + 3] / 255, l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114; sum += l * a; wsum += a; }
@@ -51248,7 +51252,7 @@ const ThreeRenderer = (function () {
     function _ccBakeSkin(part, a, unmanaged, size) {
         var W = size || _ccFaceTexSize(), HT = W >> 1, cnv = _ccCanvas(W, HT);
         if (!cnv) return null;
-        var g = cnv.getContext('2d');
+        var g = cnv.getContext('2d', { willReadFrequently: true });
         var skin = _ccHex(a.skin), hair = _ccHex(a.hairColor), eye = _ccHex(a.eyeColor), lip = _ccHex(a.lipColor);
         g.fillStyle = a.skin; g.fillRect(0, 0, W, HT);
         var id = g.getImageData(0, 0, W, HT), px = id.data;
@@ -51611,6 +51615,58 @@ const ThreeRenderer = (function () {
        "x,y,z" strings, built thousands of times per garment vertex. A cell is one number now: integer cell coords within
        +-65536 cells (1.3 km at 2 cm) packed in 51 bits, collision-free, the same cells as before. */
     function _ccK(x, y, z) { return ((x + 65536) * 131072 + (y + 65536)) * 131072 + (z + 65536); }
+    /* THE SHARED FITS (2026-11-05, mondo: "everyone shares the same 3 or 4 base mpfb bodies. Shouldnt this be much easier on the
+       performance?"): the nearest-skin searches a garment / hair fit makes (nearestBody, nearSet, spaceSmooth) depend only on the
+       body's bind-pose points and the garment's points, so their answers are kept for EVERY rig, not per rig: the second unit
+       wearing the same coat on the same body (the next team in the team room, the board after the room, the dock) reads them back.
+       Keyed by the arrays' content (a 64-bit hash + the length, so a moved garment is a new key); the answers are only ever read.
+       Kept within CC_FIT_MEMO_MB, the oldest let go first. window.EW_NO_FIT_MEMO = true: every search runs again (diagnostics). */
+    var _ccFitMemo = new Map(), _ccFitMemoBytes = 0, CC_FIT_MEMO_MB = 160;
+    /* THE DENSE GRID: the points of P (n of them) in cells of C metres, as flat arrays over their box (no string / Map lookups):
+       cell c holds ix[st[c] .. st[c + 1]), in ascending point order (the order the old Map lists had, so every search finds the
+       same nearest, ties and all). g.at(cx, cy, cz) = the cell's number, -1 outside the box. null when the box is too big. */
+    function _ccDenseGrid(P, n, C) {
+        if (!(n > 0)) return null;
+        var x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity, i;
+        for (i = 0; i < n; i++) {
+            var cx = Math.floor(P[i * 3] / C), cy = Math.floor(P[i * 3 + 1] / C), cz = Math.floor(P[i * 3 + 2] / C);
+            if (!isFinite(cx + cy + cz)) continue;   // (a broken point is in no cell, as it matched no other in the old lists)
+            if (cx < x0) x0 = cx; if (cx > x1) x1 = cx; if (cy < y0) y0 = cy; if (cy > y1) y1 = cy; if (cz < z0) z0 = cz; if (cz > z1) z1 = cz;
+        }
+        if (!isFinite(x0 + y0 + z0 + x1 + y1 + z1)) return null;
+        var nx = x1 - x0 + 1, ny = y1 - y0 + 1, nz = z1 - z0 + 1, nc = nx * ny * nz;
+        if (nc > 4000000) return null;
+        var cell = new Int32Array(n), st = new Int32Array(nc + 1), ix = new Int32Array(n);
+        for (i = 0; i < n; i++) { var c = ((Math.floor(P[i * 3] / C) - x0) * ny + (Math.floor(P[i * 3 + 1] / C) - y0)) * nz + (Math.floor(P[i * 3 + 2] / C) - z0); if (!(c >= 0)) { cell[i] = -1; continue; } cell[i] = c; st[c + 1]++; }
+        for (i = 0; i < nc; i++) st[i + 1] += st[i];
+        var fill = st.slice(0, nc);
+        for (i = 0; i < n; i++) if (cell[i] >= 0) ix[fill[cell[i]]++] = i;
+        return { st: st, ix: ix, at: function (ax, ay, az) { ax -= x0; ay -= y0; az -= z0; return (ax >= 0 && ay >= 0 && az >= 0 && ax < nx && ay < ny && az < nz) ? (ax * ny + ay) * nz + az : -1; } };
+    }
+    function _ccHashArr(a) {
+        if (!a || !(a instanceof Float32Array || a instanceof Int32Array || a instanceof Uint32Array)) return null;
+        var u = new Uint32Array(a.buffer, a.byteOffset, a.length), h1 = 0x811c9dc5 | 0, h2 = 0x9747b28c | 0;
+        for (var i = 0; i < u.length; i++) { var x = u[i]; h1 = Math.imul(h1 ^ x, 0x01000193); h2 = Math.imul(h2 ^ (x >>> 7 | x << 25), 0x5bd1e995); h2 ^= h2 >>> 15; }
+        return a.length.toString(36) + '.' + (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36);
+    }
+    function _ccFitKey(kind, A, B, extra) {
+        if (typeof window !== 'undefined' && window.EW_NO_FIT_MEMO) return null;
+        var ha = _ccHashArr(A), hb = B === A ? ha : _ccHashArr(B);
+        return ha && hb ? kind + '|' + ha + '|' + hb + '|' + extra : null;
+    }
+    function _ccFitGet(k) {
+        if (!k) return null;
+        var e = _ccFitMemo.get(k); if (!e) return null;
+        _ccFitMemo.delete(k); _ccFitMemo.set(k, e);
+        return e.v;
+    }
+    function _ccFitPut(k, v, bytes) {
+        if (!k) return v;
+        var old = _ccFitMemo.get(k); if (old) { _ccFitMemoBytes -= old.b; _ccFitMemo.delete(k); }
+        _ccFitMemo.set(k, { v: v, b: bytes }); _ccFitMemoBytes += bytes;
+        while (_ccFitMemoBytes > CC_FIT_MEMO_MB * 1048576 && _ccFitMemo.size > 1) { var fk = _ccFitMemo.keys().next().value, fe = _ccFitMemo.get(fk); _ccFitMemo.delete(fk); _ccFitMemoBytes -= fe.b; }
+        return v;
+    }
     /* the cells round a point's cell ring by ring (Chebyshev distance 0, 1, ... rc): a nearest-point search walks them in this order
        and stops at the ring whose closest possible point, (r - 1) cells off, is no nearer than the best found - the same nearest */
     var _ccRingCache = {};
@@ -55515,13 +55571,14 @@ const ThreeRenderer = (function () {
                 }
             }
             // the most worn within `near` of a skin vertex (a garment's vertices are sparser than the skin's)
-            var SP = part.src.attributes.position.array, grid = part.nbGrid, C = 0.03, near = HAIR_CLEAR.near * Hm, near2 = near * near, rc = Math.ceil(near / C), cache = new Map();
+            var SP = part.src.attributes.position.array, grid = bodyGrid(part), C = 0.03, near = HAIR_CLEAR.near * Hm, near2 = near * near, rc = Math.ceil(near / C), cache = new Map();
+            var GS = grid ? grid.st : null, GI = grid ? grid.ix : null;
             var thickAt = function (j) {
                 var got = cache.get(j); if (got !== undefined) return got;
                 var x = SP[j * 3], y = SP[j * 3 + 1], z = SP[j * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = thick[j];
                 if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
-                    for (var q = 0; q < l2.length; q++) { var jj = l2[q]; if (thick[jj] <= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thick[jj]; }
+                    var ci = grid.at(cx + a, cy + b, cz + c); if (ci < 0) continue;
+                    for (var q = GS[ci], qe = GS[ci + 1]; q < qe; q++) { var jj = GI[q]; if (thick[jj] <= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thick[jj]; }
                 }
                 cache.set(j, best); return best;
             };
@@ -55557,8 +55614,8 @@ const ThreeRenderer = (function () {
                 var got = thinCache.get(j); if (got !== undefined) return got;
                 var x = SP[j * 3], y = SP[j * 3 + 1], z = SP[j * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = thin[j] || Infinity;
                 if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
-                    for (var q = 0; q < l2.length; q++) { var jj = l2[q]; if (!thin[jj] || thin[jj] >= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thin[jj]; }
+                    var ci = grid.at(cx + a, cy + b, cz + c); if (ci < 0) continue;
+                    for (var q = GS[ci], qe = GS[ci + 1]; q < qe; q++) { var jj = GI[q]; if (!thin[jj] || thin[jj] >= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thin[jj]; }
                 }
                 thinCache.set(j, best); return best;
             };
@@ -56932,35 +56989,38 @@ const ThreeRenderer = (function () {
         }
         /* THE BODY SLIDERS on the pack clothes: each garment vertex rides the body vertex nearest it in the bind pose
            (found once per garment on a 3 cm grid) by that vertex's slider offset (part.shapeD) */
+        /* the body's bind-pose points on a 3 cm grid (THE DENSE GRID), made once per part (nearestBody, nearSet, the hair's clearance) */
+        function bodyGrid(part) {
+            if (part.nbGrid === undefined) part.nbGrid = _ccDenseGrid(part.src.attributes.position.array, part.count, 0.03);
+            return part.nbGrid;
+        }
         function nearestBody(part, G) {
-            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
-            if (!grid) {
-                grid = part.nbGrid = new Map();
-                for (i = 0; i < N; i++) { var key = _ccK(Math.floor(P[i * 3] / C), Math.floor(P[i * 3 + 1] / C), Math.floor(P[i * 3 + 2] / C)), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
-            }
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid, i;
+            var mk = _ccFitKey('nb', P, G, N), hit = _ccFitGet(mk); if (hit) return hit;   // THE SHARED FITS
+            grid = bodyGrid(part);
+            var GS = grid ? grid.st : null, GI = grid ? grid.ix : null;
             var n = G.length / 3, out = new Int32Array(n);
             for (var v = 0; v < n; v++) {
                 var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = Infinity;
-                for (var r = 0; r <= 4 && best < 0; r++) for (var a = -r; a <= r; a++) for (var b = -r; b <= r; b++) for (var c = -r; c <= r; c++) {
+                if (grid) for (var r = 0; r <= 4 && best < 0; r++) for (var a = -r; a <= r; a++) for (var b = -r; b <= r; b++) for (var c = -r; c <= r; c++) {
                     if (Math.max(Math.abs(a), Math.abs(b), Math.abs(c)) !== r) continue;
-                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
-                    for (var k = 0; k < l2.length; k++) { var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
+                    var ci = grid.at(cx + a, cy + b, cz + c); if (ci < 0) continue;
+                    for (var k = GS[ci], ke = GS[ci + 1]; k < ke; k++) { var j = GI[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
                 }
                 if (best < 0) for (i = 0; i < N; i += 7) { var ex = P[i * 3] - x, ey = P[i * 3 + 1] - y, ez = P[i * 3 + 2] - z, e = ex * ex + ey * ey + ez * ez; if (e < bd) { bd = e; best = i; } }
                 out[v] = best;
             }
-            return out;
+            return _ccFitPut(mk, out, out.byteLength);
         }
         /* THE BLENDER COAT: a layered garment (facings, lapels, flaps, the crossed fronts a few mm apart) rides the body
            offsets AVERAGED over the skin within R (weights (1 - d/R)^2), not the one nearest vertex: two layers 5 mm
            apart can pick different nearest vertices, and on a reshaped body (the classic ones) that tore them through
            each other. Returns {s, j, w}: per garment vertex v, body vertices j[s[v]..s[v+1]) with weights w (sum 1). */
         function nearSet(part, G, R) {
-            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
-            if (!grid) {
-                grid = part.nbGrid = new Map();
-                for (i = 0; i < N; i++) { var key = _ccK(Math.floor(P[i * 3] / C), Math.floor(P[i * 3 + 1] / C), Math.floor(P[i * 3 + 2] / C)), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
-            }
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid, i;
+            var mk = _ccFitKey('ns', P, G, N + ',' + R), hit = _ccFitGet(mk); if (hit) return hit;   // THE SHARED FITS
+            grid = bodyGrid(part);
+            var GS = grid ? grid.st : null, GI = grid ? grid.ix : null;
             /* THE SKIN UNDER THE CLOTHES (2026-11-02): the skin within R of the NEAREST skin distance (dmin + R), not within R of
                the vertex - a garment vertex standing more than R off the skin (a shirt's turned-down collar, a coat's lapel) fell
                back to its ONE nearest skin vertex, so neighbours took the neck's or the shoulder's reshape by turns and the collar
@@ -56969,10 +57029,10 @@ const ThreeRenderer = (function () {
             for (var v = 0; v < n; v++) {
                 var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), st = J.length, tot = 0;
                 var o1 = one[v] * 3, d0 = Math.sqrt((P[o1] - x) * (P[o1] - x) + (P[o1 + 1] - y) * (P[o1 + 1] - y) + (P[o1 + 2] - z) * (P[o1 + 2] - z)), Rv = d0 + R, rc = Math.min(6, Math.ceil(Rv / C)), R2 = Rv * Rv;
-                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
-                    var l2 = grid.get(_ccK(cx + a, cy + b, cz + c)); if (!l2) continue;
-                    for (var k = 0; k < l2.length; k++) {
-                        var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
+                if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var ci = grid.at(cx + a, cy + b, cz + c); if (ci < 0) continue;
+                    for (var k = GS[ci], ke = GS[ci + 1]; k < ke; k++) {
+                        var j = GI[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
                         if (d2 >= R2) continue;
                         var f = 1 - (Math.sqrt(d2) - d0) / R; if (f <= 0) continue; f = f > 1 ? 1 : f; f *= f; J.push(j); W.push(f); tot += f;
                     }
@@ -56980,27 +57040,28 @@ const ThreeRenderer = (function () {
                 if (tot > 0) { for (k = st; k < J.length; k++) W[k] /= tot; } else { J.push(one[v]); W.push(1); }
                 s[v + 1] = J.length;
             }
-            return { s: s, j: Int32Array.from(J), w: Float32Array.from(W) };
+            var res = { s: s, j: Int32Array.from(J), w: Float32Array.from(W) };
+            return _ccFitPut(mk, res, s.byteLength + res.j.byteLength + res.w.byteLength);
         }
         /* THE BLENDER COATS (bake-clothes.py): a long skirt hangs far off the legs, where nearSet finds no skin within its
            radius and falls back to the ONE nearest vertex, so the layers 5-9 mm apart (the crossed fronts, the turned
            facings) took different legs' offsets and showed through each other. spaceSmooth(P, passes, R) averages an
            offset field over the garment's OWN vertices within R (any layer), `passes` times: the layers move as one. */
         function spaceSmooth(P, passes, R) {
-            var n = P.length / 3, grid = new Map(), i, k;
-            var key = function (x, y, z) { return _ccK(x, y, z); };
-            for (i = 0; i < n; i++) { var kk = key(Math.floor(P[i * 3] / R), Math.floor(P[i * 3 + 1] / R), Math.floor(P[i * 3 + 2] / R)), l = grid.get(kk); if (l) l.push(i); else grid.set(kk, [i]); }
+            var mk = _ccFitKey('ss', P, P, passes + ',' + R), hit = _ccFitGet(mk); if (hit) return hit;   // THE SHARED FITS (the field is the garment's own)
+            var n = P.length / 3, grid = _ccDenseGrid(P, n, R), i, k;   // THE DENSE GRID
+            var GS = grid ? grid.st : null, GI = grid ? grid.ix : null;
             var s = new Int32Array(n + 1), J = [], W = [];
             for (i = 0; i < n; i++) {
                 var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], cx = Math.floor(x / R), cy = Math.floor(y / R), cz = Math.floor(z / R);
-                for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
-                    var l2 = grid.get(key(cx + a, cy + b, cz + c)); if (!l2) continue;
-                    for (k = 0; k < l2.length; k++) { var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = Math.sqrt(dx * dx + dy * dy + dz * dz); if (d < R) { J.push(j); W.push(1 - d / R); } }
+                if (grid) for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
+                    var ci = grid.at(cx + a, cy + b, cz + c); if (ci < 0) continue;
+                    for (k = GS[ci]; k < GS[ci + 1]; k++) { var j = GI[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = Math.sqrt(dx * dx + dy * dy + dz * dz); if (d < R) { J.push(j); W.push(1 - d / R); } }
                 }
                 s[i + 1] = J.length;
             }
             var Ji = Int32Array.from(J), Wf = Float32Array.from(W);
-            return { run: function (D) {
+            return _ccFitPut(mk, { run: function (D) {
                 var T = new Float32Array(D.length);
                 for (var p = 0; p < passes; p++) {
                     for (var v = 0; v < n; v++) {
@@ -57011,7 +57072,7 @@ const ThreeRenderer = (function () {
                     D.set(T);
                 }
                 return D;
-            } };
+            } }, s.byteLength + Ji.byteLength + Wf.byteLength);
         }
         function nearOffset(ns, D, v, out) {
             var x = 0, y = 0, z = 0;
@@ -59172,15 +59233,38 @@ const ThreeRenderer = (function () {
                 _ccOwnLashMap(part.stockMap, own, function (t) { if (alive && part.lookKey === key) wear(t || part.stockMap); });
                 return;
             }
+            var px = (typeof EW_MH_LOOKS !== 'undefined' && EW_MH_LOOKS.px) || 1024, sheetKey = px + '#' + key;
+            /* THE SHARED SHEETS (2026-11-05, mondo: "switching to my team with all created characters ... freezes the game ... 4
+               seconds"): the put-together sheet of a look is the same picture on every body that wears it, so it is made ONCE per
+               look and kept (_ccLookSheets); the next rig of that look (the team room's next visit, the board, the dock) wears it
+               at once. Measured: making the sheet was 45 % of a created team's switch (the tints read the canvas back). */
+            function wearSheet(c) {
+                var S = part.stockMap, t = new THREE.CanvasTexture(c);
+                t.flipY = S.flipY;
+                if (S.encoding !== undefined) t.encoding = S.encoding;
+                if (S.colorSpace !== undefined) t.colorSpace = S.colorSpace;
+                t.wrapS = S.wrapS; t.wrapT = S.wrapT; t.anisotropy = S.anisotropy || 1;
+                t.needsUpdate = true;
+                ownedTextures.push(t);
+                var old = part.lookTex;
+                part.lookTex = null;
+                wear(t);
+                part.lookTex = t;
+                if (old) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
+            }
+            var kept = _ccLookSheetGet(sheetKey);
+            if (kept) { wearSheet(kept); return; }
             var imgs = new Array(layers.length), pending = layers.length;
             layers.forEach(function (l, i) {
                 _ccLoadImage(_asNetUrl(l[0]), function (img) {
                     imgs[i] = img;
                     if (--pending || !alive || part.lookKey !== key) return;
                     if (!imgs[0]) { console.warn('[ThreeRenderer] look skin failed', l[0]); return; }
-                    var px = (typeof EW_MH_LOOKS !== 'undefined' && EW_MH_LOOKS.px) || 1024, c = _ccCanvas(px, px);
+                    var kept2 = _ccLookSheetGet(sheetKey);   // (another rig of this look made it while these loaded)
+                    if (kept2) { wearSheet(kept2); return; }
+                    var c = _ccCanvas(px, px);
                     if (!c) return;
-                    var x = c.getContext('2d');
+                    var x = c.getContext('2d', { willReadFrequently: true });   // (a CPU canvas: the tints read it back)
                     x.drawImage(imgs[0], 0, 0, px, px);
                     if (layers.smooth) smoothChest(c, x, layers.smooth, px / 1024);
                     var TT = layers.tint || {};
@@ -59197,18 +59281,8 @@ const ThreeRenderer = (function () {
                         } else x.drawImage(imgs[j], b[0], b[1], b[2], b[3]);
                     }
                     if (layers.lips) { try { tintLips(x, layers.lips, px / 1024); } catch (e) { console.warn('[ThreeRenderer] lip colour failed', e); } }   // THE LIP COLOUR
-                    var S = part.stockMap, t = new THREE.CanvasTexture(c);
-                    t.flipY = S.flipY;
-                    if (S.encoding !== undefined) t.encoding = S.encoding;
-                    if (S.colorSpace !== undefined) t.colorSpace = S.colorSpace;
-                    t.wrapS = S.wrapS; t.wrapT = S.wrapT; t.anisotropy = S.anisotropy || 1;
-                    t.needsUpdate = true;
-                    ownedTextures.push(t);
-                    var old = part.lookTex;
-                    part.lookTex = null;
-                    wear(t);
-                    part.lookTex = t;
-                    if (old) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
+                    _ccLookSheetPut(sheetKey, c);
+                    wearSheet(c);
                 });
             });
         }
@@ -59237,7 +59311,7 @@ const ThreeRenderer = (function () {
         function tintLips(x, L, k) {
             var bx = Math.floor(L.box[0] * k), by = Math.floor(L.box[1] * k), bw = Math.ceil(L.box[2] * k), bh = Math.ceil(L.box[3] * k);
             var mc = _ccCanvas(bw, bh); if (!mc) return;
-            var mx = mc.getContext('2d'), P = L.poly;
+            var mx = mc.getContext('2d', { willReadFrequently: true }), P = L.poly;
             mx.fillStyle = '#fff'; mx.beginPath();
             for (var i = 0; i < P.length; i += 2) { var qx = P[i] * k - bx, qy = P[i + 1] * k - by; if (i) mx.lineTo(qx, qy); else mx.moveTo(qx, qy); }
             mx.closePath(); mx.fill();
@@ -59299,7 +59373,7 @@ const ThreeRenderer = (function () {
            feathered rims), the pupil kept dark, the whites untouched. */
         function tintLayer(img, kind, color, iris) {
             var w = img.naturalWidth || img.width, hh = img.naturalHeight || img.height, c = _ccCanvas(w, hh); if (!c) return null;
-            var x = c.getContext('2d'); x.drawImage(img, 0, 0);
+            var x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0);
             var im = x.getImageData(0, 0, w, hh), D = im.data, hex = parseInt(String(color).slice(1), 16), cr = (hex >> 16) & 255, cg = (hex >> 8) & 255, cb = hex & 255;
             var lum = function (o) { return D[o] * 0.299 + D[o + 1] * 0.587 + D[o + 2] * 0.114; };
             var wOf = function (px, py) {   // 1 inside an iris, 0 outside, a 1 px soft rim
@@ -87595,18 +87669,39 @@ const ThreeRenderer = (function () {
     }
 
     /* ── the team: one wrap per member, shown when its rig + idle are in ── */
+    function _trDisposeMember(m) {
+        try { if (m.mixer) m.mixer.stopAllAction(); } catch (e) {}
+        try { if (m.rig) m.rig.dispose(); } catch (e) {}
+        if (m.wrap.parent) m.wrap.parent.remove(m.wrap);
+        for (var k = 0; k < m.mats.length; k++) { try { m.mats[k].dispose(); } catch (e) {} }
+        if (m.blob) { m.blob.geometry.dispose(); m.blob.material.dispose(); }
+    }
+    /* THE BENCH (2026-11-05, mondo: "switching to my team with all created characters still freezes the game for a moment ... 4
+       seconds"): a member who stood in the room steps off it, not out of the game: the last TR_BENCH_MAX wait here, dressed and
+       idling, and the next team that names the same vessel (race, gender, look) takes them back at once - flipping between teams
+       is as quick as a Meshy team. A member still loading is let go as before. */
+    var TR_BENCH_MAX = 16;
+    function _trMemberKey(slot) { return JSON.stringify([slot.race || 'door agent', slot.gender || 'male', slot.appearance || null]); }
     function _trClearTeam(T) {
         T.tok++;
+        T.buildQ = [];
+        if (!T.bench) T.bench = [];
         for (var i = 0; i < T.members.length; i++) {
             var m = T.members[i];
-            try { if (m.mixer) m.mixer.stopAllAction(); } catch (e) {}
-            try { if (m.rig) m.rig.dispose(); } catch (e) {}
-            if (m.wrap.parent) m.wrap.parent.remove(m.wrap);
-            for (var k = 0; k < m.mats.length; k++) { try { m.mats[k].dispose(); } catch (e) {} }
-            if (m.blob) { m.blob.geometry.dispose(); m.blob.material.dispose(); }
+            if (m.shown && m.model && m.mkey) {
+                if (m.pose) { try { m.pose.stop(); } catch (e) {} m.pose = null; if (m.idle) { try { m.idle.reset().play(); m.idle.time = Math.random() * ((m.idle.getClip && m.idle.getClip().duration) || 1); } catch (e) {} } }
+                if (m.wrap.parent) m.wrap.parent.remove(m.wrap);
+                T.bench.push(m);
+                continue;
+            }
+            _trDisposeMember(m);
         }
         T.members = [];
+        while (T.bench.length > TR_BENCH_MAX) _trDisposeMember(T.bench.shift());
     }
+    /* THE ONE AT A TIME: a created vessel is dressed on the frame loop, one per frame (_trFrameBody), so the room keeps moving
+       between them and each one appears as it is ready, never one long stop for the whole team */
+    function _trQueue(T, job) { (T.buildQ || (T.buildQ = [])).push(job); }
     /* the room's look on every mesh of a member that does not wear it yet (its material is not one of mem.mats): run when the
        member lands, and again every half second while it stands (_trFrameBody) - THE LATE PIECES (2026-11-05, mondo:
        "tinted clothes appear white"): a creator look's garments, hair and wings load after the body (their GLBs land
@@ -87644,16 +87739,35 @@ const ThreeRenderer = (function () {
         });
     }
     function _trAddMember(T, slot, spot, tok) {
+        var mkey = _trMemberKey(slot), U = T.U;
+        var bi = T.bench ? T.bench.findIndex(function (b) { return b.mkey === mkey; }) : -1;
+        if (bi >= 0) {   // THE BENCH: back on at once, dressed and idling
+            var back = T.bench.splice(bi, 1)[0];
+            back.wrap.position.set(spot[0] * U, 0, spot[1] * U);
+            back.wrap.rotation.y = spot[2] || 0;
+            back.wrap.visible = true; back.lookAt = 0;
+            T.unitGroup.add(back.wrap);
+            return back;
+        }
         var res = _cvResolveDef(slot.race || 'door agent', slot.gender || 'male', slot.appearance);
         if (!res || !res.def || !res.def.model) return null;   // a sprite-only vessel stands on the bar's portrait alone
-        var def = res.def, U = T.U;
-        var mem = { def: def, wrap: new THREE.Group(), mixer: null, idle: null, clips: null, pose: null, rig: null, mats: [], blob: null,
+        var def = res.def;
+        var mem = { def: def, mkey: mkey, wrap: new THREE.Group(), mixer: null, idle: null, clips: null, pose: null, rig: null, mats: [], blob: null,
                     h: Math.max(0.2, Math.min(5, (def.heightRatio || 1) * TR_HUMAN_M)), shown: false };
         mem.wrap.position.set(spot[0] * U, 0, spot[1] * U);
         mem.wrap.rotation.y = spot[2] || 0;
         mem.wrap.visible = false;
         T.unitGroup.add(mem.wrap);
         _loadUnitGLB(def.model, function (entry) {
+            if (_tr !== T || T.tok !== tok || !entry || !entry.root) return;
+            if (def.creatorBase) _trQueue(T, function () { _trBuildMember(T, mem, def, slot, entry, tok); });   // THE ONE AT A TIME
+            else _trBuildMember(T, mem, def, slot, entry, tok);
+        });
+        return mem;
+    }
+    function _trBuildMember(T, mem, def, slot, entry, tok) {
+        var U = T.U;
+        {
             if (_tr !== T || T.tok !== tok || !entry || !entry.root) return;
             var m = _cloneUnitModel(entry.root);
             var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1, s = mem.h * U / rawH;
@@ -87708,8 +87822,7 @@ const ThreeRenderer = (function () {
             } else if (def.clips && def.clips.idle) {
                 _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce && ce.clips && ce.clips[0], def.idleTimeScale || 1); });
             } else show();
-        });
-        return mem;
+        }
     }
     function _trSetTeam(slots) {
         var T = _tr; if (!T) return;
@@ -87806,6 +87919,7 @@ const ThreeRenderer = (function () {
             if (m.model && m.rig && !(now < (m.lookAt || 0))) { m.lookAt = now + 500; _trLookMats(m, m.model); }   // THE LATE PIECES
         }
         _trTickPoses(T, now);
+        if (T.buildQ && T.buildQ.length) { var job = T.buildQ.shift(); try { job(); } catch (e) { console.warn('[TEAM ROOM] member build failed', e); } }   // THE ONE AT A TIME (drawn next frame)
         /* the camera eases to its framing and drifts a hand's width side to side */
         var want = _trCameraTarget(T), C = T.cam, U = T.U, e = C.dist ? Math.min(1, dt * 2.5) : 1;
         C.dist += (want.dist - C.dist) * e; C.y += (want.y - C.y) * e;
