@@ -1353,6 +1353,14 @@ until he OKs Meshy concepts for it.
   world's carved craters (`world.craters`) are not the rim and stay. Asked him whether peaks + spires go too.
 - 11-05, mondo: "delete the rims": peaks + spires gone too (Hell Δ · voxel and Göbekli Tepe Δ · voxel lose their rock rings; their
   ground, root, wall and haze stay). three-renderer.js has no _WD_RIM / _wdRing any more; data.js has no `rim` on any map row.
+- 11-05, THE BABEL HOUSES (mondo OK'd the four Meshy mud-brick concepts B1-B4: "you have my okay"): Meshy image-to-3D (meshy-t2.5,
+  ~12.9k tris, one 2k JPEG each) → R2 `Assets/world/props/meshy/meshy_babel_house_{small,stair,yard,row}.glb` (sha 16470172 /
+  01292a1a / df1ecf89 / 6a6fad36). DOOR_HQ.catalogue `babel_house_small|stair|yard|row` (base 'misc' → the asset map sends it to
+  world/props/meshy), spans 7 / 7 / 8.5 / 12.4 m, block. site_prebuilt_babel_tower props: eight houses, each placed one by one
+  (south quarter: stair −16,−90 · small 24,−84 · row 14,−104 f180 · yard 78,−100 f270; north quarter: small −58,54 f270 · row −44,78
+  f180 · yard −40,98 · stair −78,90 f90), clear of the arena windows, paths, doors and other props, fronts to the paths. Checked on
+  screen (city probe). PROBE NOTE: the headless Chromium dies building the Babel room with every GLB on (with or without these
+  houses); a 404 for every other .glb/.obj in the probe's route let it shoot the houses.
 
 ## THE CHESS POSITIONS (2026-11-03, the Looking-Glass)
 mondo: "for the looking glass, the chess board needs to be an 8x8 (the game board stays 12x12) and i want the map to load one of these

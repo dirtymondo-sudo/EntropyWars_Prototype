@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 604 |
+| Meshy AI | no | 608 |
 | Meshy AI, reworked by Claude | no | 7 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -1126,6 +1126,15 @@ Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) 
 | asteroid_b | `Assets/world/hq/models/asteroid_2.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | computer_chair_blue | `Assets/world/hq/models/computer_chair_blue.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
 | computer_chair_grey | `Assets/world/hq/models/computer_chair_grey.glb` | Asset pack (author not recorded yet) | D.O.O.R. kit upload (mondo, author not recorded) |
+
+### Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) — Meshy AI (4)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| babel_house_row | `Assets/world/props/meshy/meshy_babel_house_row.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_small | `Assets/world/props/meshy/meshy_babel_house_small.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_stair | `Assets/world/props/meshy/meshy_babel_house_stair.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
+| babel_house_yard | `Assets/world/props/meshy/meshy_babel_house_yard.glb` | Meshy AI | Meshy image-to-3D from Claude's concept, mondo OK'd 11-05 (DOOR_HQ.catalogue babel_house_*, the Babel room) |
 
 ### Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) — Asset pack (4)
 
