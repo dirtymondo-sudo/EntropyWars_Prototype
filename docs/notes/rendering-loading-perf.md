@@ -1398,3 +1398,12 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   and `_renderPixelMask` re-scans on the first frame after any add, so a rebuilt board, a new instance-pass batch or a
   spell prop clone is pixelated on the first frame it draws. The 400 ms timed scan stays for a flag set after the add.
 - Online: looks only, both seats run their own renderer; nothing relayed.
+
+## THE CORE ADAPTER (2026-11-05)
+mondo's Firefox console (M1, ?ew_gpu=webgpu) warned: `User requested a WebGPU adapter with featureLevel: "compatibility", which is
+not yet supported` (three.webgpu.js; bugzilla 1905951). three 0.186.1 WebGPUBackend.init() always asks for featureLevel
+'compatibility' and requests the device with requiredLimits {}. three-renderer.js `_ewGpuCoreShim` (called in _ewMakeBoardRenderer,
+mode webgpu only) wraps navigator.gpu.requestAdapter: on Firefox it drops featureLevel (core, the default; same adapter, no warning),
+Chrome/Safari keep three's ask; on every browser the device asks for the adapter's maxVertexBuffers when above 8 (Dawn caps at 8, so
+Chrome is unchanged). The adapter + device vertex limits print on the `board renderer:` console line and in gpuStatus()/?ewdiag=1.
+Off: ?ew_gpucore=0. Meshes over 8 vertex buffers are still fixed at the mesh (cloth-collision attributes interleaved, team-select thread).
