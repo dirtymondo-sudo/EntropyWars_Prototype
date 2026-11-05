@@ -2253,8 +2253,9 @@ const ThreeRenderer = (function () {
     }
     /* THE CHRISTMAS PACK: a COLLADA file through the store → ColladaLoader.parse; else the loader's own network path. The file names
        its sheets by the author's own disk paths (C:/Users/…/Textures/Gift.png), so every image it asks for is read from the pack's
-       textures/ folder by its file name. The result is the scene in a plain group: the loader turns a Z-up file upright with a
-       rotation on its scene, and a piece cut from the group (_miscPiece) keeps that turn baked in. */
+       textures/ folder by its file name. The result is the scene in a plain group, a piece cut from it by _miscPiece. The file is Y-up
+       since 2026-11-05 (its vertices + node matrices turned once offline, the same world placement to 5e-15): the Z-up original made
+       the loader warn and only rotate its scene. The parser's "File version" debug line is kept out of the console. */
     function _isDaeUrl(url) { return /\.dae(?:[?#]|$)/i.test(String(url || '')); }
     function _asDae(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.ColladaLoader !== 'function') { if (onError) onError(new Error('no ColladaLoader')); return; }
@@ -2272,12 +2273,15 @@ const ThreeRenderer = (function () {
             _xmasPackMats(wrap);
             if (onLoad) onLoad(wrap);
         };
-        if (!_asAvailable()) { new THREE.ColladaLoader(mgr).load(url, done, undefined, onError); return; }
-        _asFetch(url, o).then(function (res) { return res.text(); }).then(function (text) {
-            var c = null;
-            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { if (onError) onError(e); return; }
+        var parse = function (text) {
+            var c = null, dbg = console.debug;
+            console.debug = function (m) { if (typeof m === 'string' && m.indexOf('THREE.ColladaLoader: File version') === 0) return; return dbg.apply(console, arguments); };
+            try { c = new THREE.ColladaLoader(mgr).parse(text, base); } catch (e) { console.debug = dbg; if (onError) onError(e); return; }
+            console.debug = dbg;
             done(c);
-        }).catch(function (e) { if (onError) onError(e); });
+        };
+        var got = _asAvailable() ? _asFetch(url, o) : fetch(_asNetUrl(url), { mode: 'cors', credentials: 'omit' });
+        got.then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url); return res.text(); }).then(parse).catch(function (e) { if (onError) onError(e); });
     }
     /* the pack's sheets in the game's terms: no sRGB decode (the game's linear output, like every prop sheet), the alpha cut at 0.5
        (the tree's branch cards, the ribbon, the star, the snowy pine cards; an opaque sheet is untouched by it), the card sheets
@@ -42408,6 +42412,7 @@ const ThreeRenderer = (function () {
         var s = _ewGpuBackendName();
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
+        if (_ewGpu === 'webgpu' && _ewGpuInfo.limits) s += ' · ' + _ewGpuInfo.limits;
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
@@ -44847,6 +44852,45 @@ const ThreeRenderer = (function () {
         }
         catch (e) { console.warn('[ThreeRenderer] node program: kept the stand-in', e); return null; }
     }
+    /* THE CORE ADAPTER (2026-11-05, mondo's Firefox console: 'User requested a WebGPU adapter with featureLevel:
+       "compatibility", which is not yet supported; returning a "core"-defaulting adapter for now' from three.webgpu.js).
+       three 0.186.1's WebGPUBackend.init() always asks navigator.gpu.requestAdapter for featureLevel 'compatibility' (it then
+       turns core on by asking for every feature the adapter has). Firefox has no compatibility mode (bugzilla 1905951), hands
+       back a core adapter anyway and warns. Nothing in the game needs compatibility mode, so on Firefox the ask drops
+       featureLevel (the WebGPU default, core): the same adapter, no warning. Chrome / Safari keep three's ask unchanged.
+       While the adapter passes through: its vertex limits are kept for ?ewdiag=1 / gpuStatus(), and the device asks for the
+       adapter's own maxVertexBuffers when that is above WebGPU's default 8 (three asks for no limits, so the device got 8
+       even where the GPU has more; mondo's log: 'The number of vertex buffers 13 exceeds the limit 8'). Chrome's Dawn tops
+       out at 8, so there it changes nothing. A wrapper on navigator.gpu, not a patch of the vendored three (it loads from
+       jsdelivr). Off: ?ew_gpucore=0 (reload). */
+    function _ewGpuCoreShim() {
+        var gpu = (typeof navigator !== 'undefined') ? navigator.gpu : null;
+        if (!gpu || typeof gpu.requestAdapter !== 'function' || gpu._ewCoreShim) return;
+        try { if (/[?&]ew_gpucore=0\b/.test(location.search)) return; } catch (e) {}
+        var ff = /Firefox\//.test(navigator.userAgent || ''), ra = gpu.requestAdapter;
+        gpu._ewCoreShim = true;
+        gpu.requestAdapter = function (o) {
+            if (ff && o && o.featureLevel === 'compatibility') { o = Object.assign({}, o); delete o.featureLevel; }
+            return ra.call(this, o).then(function (a) {
+                if (!a || a._ewCoreShim || typeof a.requestDevice !== 'function') return a;
+                a._ewCoreShim = true;
+                var L = a.limits || {}, mvb = L.maxVertexBuffers | 0, rd = a.requestDevice;
+                _ewGpuInfo.limits = 'adapter maxVertexBuffers ' + mvb + ', maxVertexAttributes ' + (L.maxVertexAttributes | 0) +
+                    (ff ? ' (featureLevel core)' : '');
+                a.requestDevice = function (d) {
+                    d = Object.assign({}, d || {});
+                    var rl = Object.assign({}, d.requiredLimits || {});
+                    if (mvb > 8 && !(rl.maxVertexBuffers >= mvb)) rl.maxVertexBuffers = mvb;
+                    d.requiredLimits = rl;
+                    return rd.call(this, d).then(function (dev) {
+                        try { _ewGpuInfo.limits += '; device maxVertexBuffers ' + (dev.limits.maxVertexBuffers | 0); } catch (e) {}
+                        return dev;
+                    });
+                };
+                return a;
+            });
+        };
+    }
     /* the board renderer: the node renderer when asked for and loaded, else the classic one */
     function _ewMakeBoardRenderer(cnv) {
         var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
@@ -44860,6 +44904,7 @@ const ThreeRenderer = (function () {
                     var lensUser = false;
                     try { lensUser = /[?&]perf(\b|=|&|$)/.test(location.search) || localStorage.getItem('ew_perfLensSeen') === '1'; } catch (e) {}
                     if (!ff && lensUser) opts.trackTimestamp = true;   // Firefox's wgpu invalidates the device on timestampWrites
+                    if (mode === 'webgpu') _ewGpuCoreShim();
                     var r = new G.WebGPURenderer(opts);
                     _ewGpu = mode;
                     _ewGpuCompat(r, G);
@@ -45429,7 +45474,7 @@ const ThreeRenderer = (function () {
                     if (!_ewGpuInfo.firstError) _ewGpuInfo.firstError = String(ev && ev.error && ev.error.message || ev).slice(0, 160);
                 });
             } catch (e) {}
-            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName());
+            console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}
         }, function (e) {
@@ -56149,8 +56194,28 @@ const ThreeRenderer = (function () {
            so the clearance the flaps fix needed is still there whenever a leg really swings into the cloth. Measured (jeans px through
            the coat, 4 views): MPFB male greatcoat Upright 0 -> 0, Wide stance 262 -> 280, walk 27 -> 18; female walk 248 -> 73.
            Known: mid-stride the swinging thigh still stands one side of the seat out a little (the clearance is full there; 9 / 12
-           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/. */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: [15, 35], maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+           joints per chain were tried: 2-3x the jeans through). Shots: /mnt/project-files/coat-bumps/.
+           THE BAKED SHAPE (2026-11-05 pass 2, mondo on the after shots: "the pointy side of the coat are still literally in every after
+           shot, every body ... all the wide stances cause these weird horizontal lines on the lower half of the coat", + a hole at the
+           back of the female heavy cassock). He was right: pass 1 only fixed the upright idles. Three causes, each fixed:
+           - the LINES: each chain bone aimed from wherever its joint had got to back at where the coat's own weights carry the next
+             joint; a joint a little off (pushed, or short of a stretched bake) turned the bone below back toward the bake, so the chain
+             zig-zagged and the skirt shaded in bands. `tdir` 1: each bone now lies along the coat's own baked segment (joint -> next
+             joint, both as the weights carry them), so with the legs out of the way the chain IS the bake (with no hang the coat is a
+             clean A-line in the Wide stance, only the thighs come through it).
+           - the POINT under the belt at the hips: the top bone pivots at the waist ~15 cm over the hip joints the thighs turn on, so
+             swung fully onto the thighs' carry the cloth at the hip stood out past the leg in a corner. `follow` [0.5] + `followSide`:
+             the side and back chains' top bone goes half way (the front panels keep the full follow: half let a thigh lifting forward out
+             through the front pocket). And the push clearance is `rad` x t now in every pose (`poseA` null: the full 3 cm at the top
+             sample, kept for the Wide stance in pass 1, swung the hip out 1/t as far - with the baked shape the legs no longer need it).
+           - the SLAB at the side of the duster / long coat that the baked shape showed: the sleeve cuffs hang by the hips and were
+             counted in as skirt (THE SLEEVES OUT below), pulling the side chains' joints out to the hands.
+           `jsym` + `jblend` 0.5: the cloth either side of a joint shares the two bones, so a bend shades round. Tried + dropped: chains
+           rooted at the hip joints with the cloth over them on the pelvis (a shelf at the hips + jeans through), a per-direction leg
+           radius (no change), follow 0.3 (jeans at the front pocket), "never tuck in under the widest point" on the lower bones (no
+           change to the cassock's seat, more jeans through on the lab coat), a longer fade from the coat's weights onto the chains (no
+           change). Measured: see docs/notes/character-creator.md "THE BAKED SHAPE". */
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: null, tdir: 1, follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -56181,7 +56246,11 @@ const ThreeRenderer = (function () {
             var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };
             var adiff = function (a, b) { var d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };   // signed, -PI..PI
             var sec = []; for (c = 0; c < NC; c++) sec.push([]);
-            for (i = 0; i < count; i++) { if (P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
+            /* THE SLEEVES OUT (2026-11-05): the cuffs hang down by the hips - they are no skirt (counted in, they pulled the side chains'
+               joints out to the hands and the panel there stood out in a slab, and the fade below gave the cuffs to the skirt chains) */
+            var armRx = /(Arm|Hand|Shoulder)/, isArm = new Uint8Array(count);
+            for (i = 0; i < count; i++) { var aw = 0; for (k = 0; k < 4; k++) if (sw[i * 4 + k] > 0 && bones[si[i * 4 + k]] && armRx.test(bones[si[i * 4 + k]].name)) aw += sw[i * 4 + k]; if (aw > 0.3) isArm[i] = 1; }
+            for (i = 0; i < count; i++) { if (isArm[i] || P[i * 3 + 1] > yR + 0.03 * Hm) continue; var a0 = ang(P[i * 3], P[i * 3 + 2]); sec[((Math.round((a0 + Math.PI) / step) % NC) + NC) % NC].push(i); }
             var chains = [];
             for (c = 0; c < NC; c++) {
                 var L = sec[c]; if (L.length < 24) continue;   // (the opening of an open coat: no cloth there)
@@ -56215,6 +56284,7 @@ const ThreeRenderer = (function () {
             // the skirt's weights: faded from its own onto the two chains either side of it (one, across an open front) by height
             var fade = COAT_HANG.fade * Hm, acc = {}, b4;
             for (i = 0; i < count; i++) {
+                if (isArm[i]) continue;
                 var y = P[i * 3 + 1], t = (yR - y) / fade; if (!(t > 0)) continue;
                 t = t > 1 ? 1 : t; var f = t * t * (3 - 2 * t), av = ang(P[i * 3], P[i * 3 + 2]);
                 var c0 = -1, c1 = -1, d0 = Infinity, d1 = Infinity;
@@ -56227,9 +56297,11 @@ const ThreeRenderer = (function () {
                 picks.forEach(function (pk) {
                     var C = chains[pk[0]], Jy = C.j, s = 0;
                     while (s < JN - 2 && y < Jy[s + 1][1]) s++;
-                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, wP = s > 0 && u < 0.25 ? 0.5 * (0.25 - u) / 0.25 : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
-                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP);
+                    var seg = Jy[s][1] - Jy[s + 1][1], u = seg > 1e-6 ? (Jy[s][1] - y) / seg : 0, jb = COAT_HANG.jblend || 0.25, wP = s > 0 && u < jb ? 0.5 * (jb - u) / jb : 0;   // (near a joint: a little of the bone above, so the cloth bends there, not folds)
+                    var wN = COAT_HANG.jsym && s < JN - 2 && u > 1 - jb ? 0.5 * (u - 1 + jb) / jb : 0;   // THE SMOOTH BENDS: and a little of the bone below just above the next joint (the bend shades round, not in a line)
+                    acc[C.idx0 + s] = (acc[C.idx0 + s] || 0) + pk[1] * f * (1 - wP - wN);
                     if (wP > 0) acc[C.idx0 + s - 1] = (acc[C.idx0 + s - 1] || 0) + pk[1] * f * wP;
+                    if (wN > 0) acc[C.idx0 + s + 1] = (acc[C.idx0 + s + 1] || 0) + pk[1] * f * wN;
                 });
                 var top = Object.keys(acc).map(function (bk) { return [+bk, acc[bk]]; }).sort(function (x, y2) { return y2[1] - x[1]; }).slice(0, 4), tt = 0;
                 top.forEach(function (tp) { tt += tp[1]; });
@@ -56243,7 +56315,7 @@ const ThreeRenderer = (function () {
                     return W4.filter(function (x) { return sk.boneInverses[x[0]] && bones[x[0]]; }).map(function (x) { return { b: bones[x[0]], w: tw > 0 ? x[1] / tw : 0, L: new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(sk.boneInverses[x[0]]) }; });
                 });
             });
-            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
+            return { yA: yA, hip: bones[hip], bones: newBones, chains: chains.map(function (C) { return { bones: C.bones, j: C.j, t: C.t, a: C.a }; }), skel: new THREE.Skeleton(bones.concat(newBones), sk.boneInverses.concat(newInv)) };
         }
         /* the leg capsules (THE COAT HANG): per thigh (UpLeg -> Leg) and shin (Leg -> Foot), in that bone's own bind frame, the
            axis + radius (tapered: one at each end) of everything worn on it under the hanging coat - the skin, the trousers, the
@@ -56379,8 +56451,9 @@ const ThreeRenderer = (function () {
                     _hgF.copy(Wk.a).addScaledVector(_hgE, u);
                     var kf = Wk.k == null ? 1 : Wk.k, lk = lim[k];
                     if (lk > 0 && isFinite(lk)) lk += (O.limExtra || 0) * (part.height / 1.7) * (O.limT ? ct : 1);
-                    var r = Math.min(K.ra + (K.rb - K.ra) * u + K.rad * (O.poseA ? ct + (1 - ct) * kf : 1), lk) * Wk.s;
                     var px = p.x - _hgF.x, py = p.y - _hgF.y, pz = p.z - _hgF.z, d = Math.sqrt(px * px + py * py + pz * pz);
+                    var rc = K.rad * (O.poseA ? ct + (1 - ct) * kf : O.limT ? ct : 1);
+                    var r = Math.min(K.ra + (K.rb - K.ra) * u + rc, lk) * Wk.s;
                     if (!(d < r)) continue;
                     if (side) _hd.set(side[so + k * 3], side[so + k * 3 + 1], side[so + k * 3 + 2]).transformDirection(K.a.matrixWorld); else _hd.set(0, 0, 0);   // the cloth's own side of the leg
                     _hd.addScaledVector(_hgE, -_hd.dot(_hgE) / (L2 || 1));        // (across the axis only)
@@ -56404,7 +56477,17 @@ const ThreeRenderer = (function () {
                     if (Tn && Tn.length) {   // toward where the cloth's own weights would carry its next joint (the coat as baked, following the thighs)
                         _hgB.set(0, 0, 0); for (var tq = 0; tq < Tn.length; tq++) _hgB.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
                         _hgB.sub(B.head); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG);
+                        var T0 = O.tdir > 0 && C.t[i];
+                        if (T0 && T0.length) {   // THE BAKED SHAPE: along the coat's own baked segment (joint -> next joint as its weights carry them), not from wherever this joint got to: aimed from a joint already off its baked place, each bone turned back toward the bake and the chain zig-zagged into bands across the skirt
+                            _hgS.set(0, 0, 0); for (tq = 0; tq < T0.length; tq++) _hgS.addScaledVector(_hgP.copy(T0[tq].L).applyMatrix4(T0[tq].b.matrixWorld), T0[tq].w);
+                            _hgF.set(0, 0, 0); for (tq = 0; tq < Tn.length; tq++) _hgF.addScaledVector(_hgP.copy(Tn[tq].L).applyMatrix4(Tn[tq].b.matrixWorld), Tn[tq].w);
+                            _hgF.sub(_hgS);
+                            if (_hgF.lengthSq() > 1e-10) { _hgF.normalize(); _hgB.multiplyScalar(1 - O.tdir).addScaledVector(_hgF, O.tdir); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgF); }
+                        }
                     } else _hgB.copy(_hgG);
+                    var fo = O.follow && O.follow[i] != null ? O.follow[i] : 1;
+                    if (fo < 1 && O.followSide && C.a != null) fo = 1 - (1 - fo) * (1 - Math.max(0, Math.cos(C.a)));   // (the sides + back only: the front panels must keep up with a thigh lifting into them)
+                    if (fo < 1) { _hgB.multiplyScalar(fo).addScaledVector(_hgG, 1 - fo); if (_hgB.lengthSq() > 1e-10) _hgB.normalize(); else _hgB.copy(_hgG); }   // THE HIP HANG: the top bone only part way to the thighs' carry
                     if (i && O.fall > 0) _hgB.multiplyScalar(1 - O.fall).y -= O.fall, _hgB.normalize();   // (below the first joint the cloth falls toward the ground: straight on from a pushed joint the skirt flared out like a bell / stood out stiff as a board in a kneel or kick. NOT back toward its rest hang: that pulled it back into the leg)
                     _hgA.copy(B.head).addScaledVector(_hgB, wl);
                     if (fresh || B.cur.distanceTo(B.head) > wl * 4) { B.cur.copy(_hgA); B.prev.copy(_hgA); }
@@ -59763,13 +59846,18 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            /* THE DRESSED REVEAL: the canvas stays clear and MANIFESTING spins until every piece of the look is on the body */
+            /* THE DRESSED REVEAL: MANIFESTING spins and the BODY ITSELF stays hidden until every piece of the look is on it. The
+               canvas fade alone was not enough (mondo 11-05 "i still see the naked flash briefly"): on a body swap with the body
+               GLB cached, the new body was added while the canvas was still fading out of the last character (0.5 s CSS), so the
+               bare body drew on a canvas that was still showing. */
             var dRig = v.appearanceRig;
             if (dRig && !dRig.dressed()) {
                 v.dressWait = tok;
+                wrap.visible = false;
                 dRig.whenDressed(function () {
                     if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
                     v.dressWait = 0;
+                    wrap.visible = true;
                     _cvHostState(v.host, 'ready');
                 });
             } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
@@ -60122,7 +60210,7 @@ const ThreeRenderer = (function () {
         var b = v.beat;
         v.beat = null;
         if (b) for (var i = 0; i < b.timers.length; i++) clearTimeout(b.timers[i]);
-        if (v.model) v.model.visible = true;               // a blink cut short never leaves the hero gone
+        if (v.model) v.model.visible = !(v.dressWait && v.dressWait === _cvToken);   // (THE DRESSED REVEAL: a body still dressing stays hidden)              // a blink cut short never leaves the hero gone
         v.frameTo = null;                                  // the camera eases home
         if (!b) return;
         if (silent) { v.moveTween = null; v.heroX = 0; v.heroY = 0; }
