@@ -19,7 +19,7 @@ so the game's layer path (sprites.js getMhLookLayers, three-renderer.js setLook 
   unzip makehuman_system_assets_cc0.zip 'eyelashes/*' -d /tmp/sys
   python3 -I bake-lashes.py --mpfb /tmp/mpfb2 --sys /tmp/sys --out <dir> [--check <eyelashes01_cc0 dir>]
 
-Writes <out>/eyelash_<name>.png (upload to R2 Assets/Models/charactercreation/mpfb/looks/) and prints the sprites.js
+Writes <out>/eyelash_<name>.png (upload to R2 Assets/characters/creator/mpfb/looks/) and prints the sprites.js
 EW_MH_LOOKS.lashes rows (the new boxes). --check re-draws the pack's mindfront lashes (already body-fitted) and prints
 their boxes, which must match the rows bake-mpfb.py wrote (proves this tool's UVs are the game sheet's).
 A re-run of bake-mpfb.py --looks writes the helper-drawn lash PNGs again: run this after it.

@@ -2,7 +2,7 @@
 """bake-eyes.py - THE EYE PACK (repo-only tooling, 2026-11-03): MakeHuman's own eyeball mesh for the creator's pack eyes.
 
 mondo (11-03) uploaded the MakeHuman Eye Texture Pack (36 PNGs: plain, bloodshot, cat eyes + their normal maps) to R2
-Assets/Models/charactercreation/mpfb/looks/eyes/eyetextures/. They use MakeHuman's own eye layout (the two eyeball discs of
+Assets/characters/creator/mpfb/looks/eyes/eyetextures/. They use MakeHuman's own eye layout (the two eyeball discs of
 the stock *_eye.png). Drawn INTO the body sheet like the stock eye colours (bake-mpfb.py bake_looks) an iris is ~6 texels
 across and a cat eye's slit is gone, so the game draws them the way MakeHuman does: on the stock HIGH-POLY eye proxy
 (makehuman_system_assets eyes/high-poly, CC0), which wears the pack PNG itself (1024 px, its normal map too).

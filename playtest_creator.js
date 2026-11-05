@@ -3,7 +3,7 @@
 // creates a look and photographs it: full body, face close-up, facial hair + eye colour, a few
 // hair styles, two fabrics, the female base, the walk → shots/creator/<tag>_<moment>.png.
 // The charactercreation/ assets (rigged bases, hair GLBs, fabric tiles) are served FROM DISK by
-// intercepting cdn.entropywars.net/Assets/Models/charactercreation/* — so this verifies the real
+// intercepting cdn.entropywars.net/Assets/characters/creator/* — so this verifies the real
 // runtime path (GLB parse, weight skinning, hair fit, fabric + face bake) without the CDN.
 //   npm start   (server on :3000)
 //   NODE_USE_ENV_PROXY=1 node playtest_creator.js [tag] [--tops|--layers]   PW_W / PW_H size the viewport; --tops = every top on both bases, posed;
@@ -35,14 +35,14 @@ async function installRoutes(context) {
     const ct = CT[ext] || 'application/octet-stream';
     const serve = (file) => { local++; return route.fulfill({ status: 200, contentType: ct, body: fs.readFileSync(file) }); };
     // THE CREATOR ASSETS from disk — the exact files the user uploads to R2
-    if (u.host === 'cdn.entropywars.net' && u.pathname.startsWith('/Assets/Models/charactercreation/')) {
-      const f = path.join(REPO, 'charactercreation', u.pathname.replace('/Assets/Models/charactercreation/', ''));
+    if (u.host === 'cdn.entropywars.net' && u.pathname.startsWith('/Assets/characters/creator/')) {
+      const f = path.join(REPO, 'charactercreation', u.pathname.replace('/Assets/characters/creator/', ''));
       if (fs.existsSync(f)) { creator++; return serve(f); }
       console.log('  MISSING creator asset', u.pathname); return route.fulfill({ status: 404, body: '' });
     }
     // rev 9 (2026-09-13): the ANIMATION LIBRARIES + the Meshy clips from rigged_animations/ (Assets_Models_<file>) — so the
     // rig is POSED (the idle, the walk) even with every CDN blocked; without them every shot was the bind pose
-    if (u.host === 'cdn.entropywars.net' && u.pathname.startsWith('/Assets/Models/')) { const f = path.join(REPO, 'rigged_animations', u.pathname.slice(1).replace(/\//g, '_')); if (fs.existsSync(f)) { creator++; return serve(f); } }
+    if (u.host === 'cdn.entropywars.net' && u.pathname.startsWith('/Assets/characters/animations/')) { const f = path.join(REPO, 'rigged_animations', 'Assets_Models_' + u.pathname.slice('/Assets/characters/animations/'.length).replace(/\//g, '_')); if (fs.existsSync(f)) { creator++; return serve(f); } }
     if (u.host === 'cdn.entropywars.net' && fs.existsSync(path.join(REPO, base)) && /\.(js|css)$/.test(base)) return serve(path.join(REPO, base));
     if (u.host === 'cdn.entropywars.net' && base === 'react.production.min.js') return serve(path.join(NM, 'react/umd/react.production.min.js'));
     if (u.host === 'cdn.entropywars.net' && base === 'react-dom.production.min.js') return serve(path.join(NM, 'react-dom/umd/react-dom.production.min.js'));

@@ -23,7 +23,7 @@ Usage:
   python3 -I bake-fur.py --mpfb /tmp/mpfb2 [--haireditor <dir with fur.blend | haireditor.zip>] [--only ewf_fur] [--out charactercreation/wear]
   python3 -I bake-fur.py --from-skin charactercreation/mpfb/looks/skin_ew_werewolf_fur.jpg --name ewf_fur_werewolf   (the shell in a skin's colours)
   (--haireditor: default = downloaded from files.makehumancommunity.org into /tmp/bake-fur)
-Output: <out>/ewf_<name>.glb (R2 Assets/Models/charactercreation/wear/). Notes: docs/notes/character-creator.md "THE FUR".
+Output: <out>/ewf_<name>.glb (R2 Assets/characters/creator/wear/). Notes: docs/notes/character-creator.md "THE FUR".
 """
 import argparse, importlib.util, io, json, os, shutil, sys, time, zipfile, urllib.request
 

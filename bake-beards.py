@@ -24,7 +24,7 @@ Usage:
   python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full,viking] [--out charactercreation/wear] [--shots DIR]
   (--packs: <packs>/<pack>/clothes/<name>/ - the zips are extracted / downloaded there like bake-mpfb.py --wear;
    --shots renders each joined piece on all five bodies, front / three-quarter / low, to DIR/<key>_<body>.png)
-Upload: the GLBs to R2 Assets/Models/charactercreation/wear/ (+ ASSET_MANIFEST.json rows). Notes: character-creator.md
+Upload: the GLBs to R2 Assets/characters/creator/wear/ (+ ASSET_MANIFEST.json rows). Notes: character-creator.md
 "THE JOINED BEARDS".
 """
 import argparse, importlib.util, io, json, math, os, struct, sys, uuid, zipfile, urllib.request

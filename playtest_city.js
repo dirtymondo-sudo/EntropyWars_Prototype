@@ -1,6 +1,6 @@
 // playtest_city.js — the D.O.O.R. HQ screenshot probe WITH THE REAL SHEETS (2026-09-17, THE URBAN PACK).
 // The sandbox's egress proxy (HTTPS_PROXY) reaches cdn.entropywars.net + the JS CDNs, so — unlike playtest_hq_offline.js
-// (stand-in textures) — every R2 texture / GLB / OBJ loads for real; the urban pack (Assets/Sprites/terrain/urban/) is
+// (stand-in textures) — every R2 texture / GLB / OBJ loads for real; the urban pack (Assets/world/terrain/urban/) is
 // served from the repo's textures/ folder (+ the root) so an unuploaded sheet still shows. Repo scripts from disk, the
 // JS libraries from node_modules when present. Needs the server (npm start) and playwright + three@0.128.0 (npm i --no-save).
 //   node playtest_city.js <room> '[{"name":"v","x":0,"z":0,"face":0,"pitch":-0.2,"fp":true,"dist":4}]' [--wait=25000] [--nogltf]
