@@ -17574,11 +17574,13 @@ const ThreeRenderer = (function () {
             /* THE HAIR EVERYWHERE, the late hair: a creator hair GLB that lands after this swap (not in the cache yet, or after the
                reveal gave up waiting on a slow line) kept the creator stage's own material, without the board's light level, glow,
                stencil or unit pop - swapped once the look is on, and by a half-second sweep from the frame tick after that
-               (the rig record's hairSweep, so it rides the rig carry-over; ticked by the board's and the walk's clip loops) */
+               (the rig record's hairSweep, so it rides the rig carry-over; ticked by the board's and the walk's clip loops).
+               The same for every late creator piece (a garment, the beard): it kept the creator's MeshStandard, which the WebGPU
+               board drew pitch black (the team room's _trLookMats does the same for its members) */
             if (appearanceRig) {
                 var _hairSwap = function () {
                     m.traverse(function (n) {
-                        if (!n.isMesh || !n._ew_creatorHair || n._ew_modelSkin || n._ew_silhouette) return;
+                        if (!n.isMesh || n._ew_modelSkin || n._ew_silhouette || !(n._ew_creatorHair || n._ew_creatorWear || /^EWCreator_/.test(n.name || ''))) return;   // (the late garments too: they kept the creator's MeshStandard, drawn pitch black on the WebGPU board)
                         n.frustumCulled = false; n.castShadow = true; n.receiveShadow = false; n._ew_shadowFlagged = true; n._ew_modelSkin = true; n.renderOrder = 2;
                         var src = Array.isArray(n.material) ? n.material : [n.material];
                         var out = src.map(function (sm) { return _unitSwapMat(n, sm); });
