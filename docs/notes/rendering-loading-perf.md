@@ -1370,3 +1370,15 @@ North Pole, Agartha, Atlantis, Vatican and Looking-Glass arenas. Olympus, Antarc
   room's drywall wears colour × `TR_ROOM.wallTone` (0.78), in this room only (the building's other drywall rooms keep theirs).
   The light alone (0.75) still left the back wall cream-white; the sheet tone is what brings the paint back. Proof:
   /mnt/project-files/white-glare/team_room_before_after*.jpg.
+- THE DRESSED REVEAL (2026-11-05, mondo: "the mpfb bodies load naked before the clothes come on. Wtf is the point of the
+  manifesting loading symbol if youre just gonna flash a god damn naked body before the clothes load?"). Every stage showed a
+  creator body the moment its body GLB resolved, while the look's pieces (pack / Blender garment GLBs, hair, wings, the body
+  sliders' shapes file, the look PNGs, fabric tiles, the eye pack, the own lashes) were still downloading. Now
+  `_createAppearanceRig` counts every async load it starts: its own `_ccLoadWear / _ccLoadHair / _ccLoadWings / _ccLoadImage /
+  _ccLoadFabric / _ccLoadEyeProxy / _ccOwnLashMap` shadow the shared ones (`_ccShared`) for that rig and wrap each callback
+  (`dressHold`; the count drops AFTER the callback ran, so a load it starts in turn is counted first). The rig exposes
+  `dressed()` and `whenDressed(cb)` (cb at once when dressed; after CC_DRESS_MAX_MS = 20 s at the latest). The stages:
+  the creator stage (`_cvSetCharacter`) keeps `ew-cv-loading` (MANIFESTING, canvas at opacity 0) until dressed (`v.dressWait`
+  stops the same-character path flipping it to ready early); the board / HQ walk (`_attachUnitModel`) hides the model and keeps
+  the sprite stand-in until dressed (`_unitRevealDressed`; the rig-cache fast path leaves the stand-in to it); the team room's
+  `show()` and the unit dock wait too. Later picks on a live body are not hidden (the old garment stays until the new one is in).

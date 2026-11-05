@@ -17256,6 +17256,19 @@ const ThreeRenderer = (function () {
 
     /* Swap out the flat sprite placeholder (front plane + shell + shadow
        proxy + x-ray silhouette) once the rigged model is live. */
+    /* THE DRESSED REVEAL (2026-11-05): a creator body on the board stays hidden, its sprite stand-in up, until its rig has every
+       piece of the look on (rig.whenDressed); then the body shows and the stand-in of whatever entry the unit has by then goes */
+    function _unitRevealDressed(entry, unitId, m, rig) {
+        if (!rig || rig.dressed()) { m.visible = true; _removeUnitSpritePlaceholder(entry); return; }
+        m.visible = false;
+        rig.whenDressed(function () {
+            m.visible = true;
+            _removeUnitSpritePlaceholder(entry);
+            var cur = _getUnitEntry(unitId);
+            var wr = m.parent && m.parent.parent;   // the model's inner -> the wrap -> the entry's group
+            if (cur && cur !== entry && cur.group && wr && wr.parent === cur.group) _removeUnitSpritePlaceholder(cur);
+        });
+    }
     function _removeUnitSpritePlaceholder(entry) {
         var g = entry.group;
         if (!g) return;
@@ -17395,7 +17408,7 @@ const ThreeRenderer = (function () {
                 entry.modelMats[_ri].color.setRGB(_rg, _rg, _rg);
                 if (entry.modelMats[_ri].emissiveMap) entry.modelMats[_ri].emissiveIntensity = glow;
             }
-            _removeUnitSpritePlaceholder(entry);
+            if (!(_rig.appearanceRig && !_rig.appearanceRig.dressed())) _removeUnitSpritePlaceholder(entry);   // THE DRESSED REVEAL: a rig still dressing drops the stand-in itself (_unitRevealDressed)
             return;
         }
 
@@ -17421,6 +17434,7 @@ const ThreeRenderer = (function () {
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
             var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || unit.appearance, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
+            if (appearanceRig && !appearanceRig.dressed()) m.visible = false;   // THE DRESSED REVEAL: shown (and the stand-in dropped) once the look is on (_unitRevealDressed)
             inner.add(m);
             wrap.add(inner);
             /* THE DOOR GUN IN BATTLE (2026-09-16): a def's `hold` (sprites.js — the Door Agent's
@@ -17564,7 +17578,7 @@ const ThreeRenderer = (function () {
             if (res.procClips) entry._ew_procEye = _rigRec.procEye = _procRigAttachEye(m);   // THE PROCEDURAL RIGS: the core eye (after the twins: it gets no x-ray/outline)
             if (!hasSkin && !res.procClips) {
                 console.warn('[ThreeRenderer] unit model has no rig (skin/bones) — clips skipped, rendering static:', def.model);
-                _removeUnitSpritePlaceholder(entry);
+                _unitRevealDressed(entry, unit.id, m, appearanceRig);
                 return;
             }
             var mixer = new THREE.AnimationMixer(m);
@@ -17669,7 +17683,7 @@ const ThreeRenderer = (function () {
                 _loadMeshyClips();
             }
 
-            _removeUnitSpritePlaceholder(entry);
+            _unitRevealDressed(entry, unit.id, m, appearanceRig);   // THE DRESSED REVEAL
         });
     }
 
@@ -23012,6 +23026,7 @@ const ThreeRenderer = (function () {
                 var hasSkin = _cvOwnBakes(m, ownMats, ownTex);
                 if (def.creatorBase && typeof _createAppearanceRig === 'function') {
                     try { rig = _createAppearanceRig(m, def.raceLook || (typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance)); rigRoot = m; } catch (e) { rig = null; }
+                    if (rig && !rig.dressed()) { m.visible = false; rig.whenDressed(function () { m.visible = true; }); }   // THE DRESSED REVEAL
                 }
                 var inner = new THREE.Group();
                 inner.rotation.y = def.yawOffset || 0;
@@ -51264,8 +51279,39 @@ const ThreeRenderer = (function () {
             S.arm.updateMatrixWorld(true);
         }
     }
+    /* THE DRESSED REVEAL (2026-11-05, mondo: "the mpfb bodies load naked before the clothes come on. Wtf is the point of the
+       manifesting loading symbol if youre just gonna flash a god damn naked body"): the shared loaders, kept here so the rig
+       below can count every load it starts (its own loaders of the same names wrap these). */
+    var _ccShared = { wear: _ccLoadWear, hair: _ccLoadHair, wings: _ccLoadWings, image: _ccLoadImage, fabric: _ccLoadFabric, eye: _ccLoadEyeProxy, lash: _ccOwnLashMap };
+    var CC_DRESS_MAX_MS = 20000;   // a load that never answers still lets the body show after this
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
+        /* THE DRESSED REVEAL: every async load this rig starts (a garment / hair / wings GLB, a look / fabric picture, the eye pack,
+           the body's own lashes) is counted while in flight; whenDressed(cb) fires once none is left - the callback that finished
+           the last one has already put its piece on the body, and a load it starts in turn is counted before it returns. Each
+           stage (the creator stage, the board, the team room, the dock) keeps the body hidden behind its loading sign until
+           then, so the whole look appears at once. These shadow the shared loaders for this rig only. */
+        var dressQ = { n: 0, cbs: [] };
+        function dressFlush() {
+            if (dressQ.n > 0 || !dressQ.cbs.length) return;
+            var c = dressQ.cbs; dressQ.cbs = [];
+            for (var i = 0; i < c.length; i++) { try { c[i](); } catch (e) { console.warn('[ThreeRenderer] dressed reveal failed', e); } }
+        }
+        function dressHold(cb) {
+            dressQ.n++;
+            var settled = false;
+            return function () {
+                try { return cb.apply(this, arguments); }
+                finally { if (!settled) { settled = true; dressQ.n = Math.max(0, dressQ.n - 1); dressFlush(); } }
+            };
+        }
+        function _ccLoadWear(url, cb) { return _ccShared.wear(url, dressHold(cb)); }
+        function _ccLoadHair(url, cb) { return _ccShared.hair(url, dressHold(cb)); }
+        function _ccLoadWings(url, cb) { return _ccShared.wings(url, dressHold(cb)); }
+        function _ccLoadImage(url, cb) { return _ccShared.image(url, dressHold(cb)); }
+        function _ccLoadFabric(url, unmanaged, cb) { return _ccShared.fabric(url, unmanaged, dressHold(cb)); }
+        function _ccLoadEyeProxy(url, cb) { return _ccShared.eye(url, dressHold(cb)); }
+        function _ccOwnLashMap(S, lash, cb) { return _ccShared.lash(S, lash, dressHold(cb)); }
         var targets = [];
         /* THE MPFB BODIES (2026-11-01, mondo: "base the character creator around these models"): an MPFB body (bake-mpfb.py,
            mesh `mpfb_<body>`) is dressed by this same rig — same bone names, same garments, same hair. Its STOCK skin (the
@@ -58866,6 +58912,16 @@ const ThreeRenderer = (function () {
         return {
             update: update,
             appearance: function () { return state.last; },
+            /* THE DRESSED REVEAL: dressed() = nothing of the look still loading; whenDressed(cb) = cb() once that is so (at once when
+               it already is; after CC_DRESS_MAX_MS at the latest, so a load that never answers cannot hide the unit for good) */
+            dressed: function () { return dressQ.n <= 0; },
+            whenDressed: function (cb) {
+                if (typeof cb !== 'function') return;
+                var fired = false, once = function () { if (fired) return; fired = true; if (alive) cb(); };
+                if (dressQ.n <= 0) { once(); return; }
+                dressQ.cbs.push(once);
+                setTimeout(function () { if (!fired) { console.warn('[ThreeRenderer] dressed reveal: a piece of the look is still loading; showing the body'); once(); } }, CC_DRESS_MAX_MS);
+            },
             /* dev (2026-11-05): the parts, for probes (THE CLOTH COLLISION's colStats; never used by the game) */
             devParts: function () { return parts; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
@@ -58890,6 +58946,7 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
+                dressQ.cbs = [];   // THE DRESSED REVEAL: a reveal still waiting dies with the rig
                 parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
                 stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
@@ -59460,7 +59517,7 @@ const ThreeRenderer = (function () {
                 }
             }
             _cvSwapIdle(v, def);   // THE IDLE POSE: a new pick on the same body crossfades in
-            _cvHostState(host, 'ready');
+            if (!(v.dressWait && v.dressWait === _cvToken)) _cvHostState(host, 'ready');   // THE DRESSED REVEAL: a first look still dressing keeps MANIFESTING up
             return true;
         }
         _cvClearModel();
@@ -59589,7 +59646,16 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            _cvHostState(v.host, 'ready');
+            /* THE DRESSED REVEAL: the canvas stays clear and MANIFESTING spins until every piece of the look is on the body */
+            var dRig = v.appearanceRig;
+            if (dRig && !dRig.dressed()) {
+                v.dressWait = tok;
+                dRig.whenDressed(function () {
+                    if (!_cv || _cv !== v || tok !== _cvToken || v.appearanceRig !== dRig) return;
+                    v.dressWait = 0;
+                    _cvHostState(v.host, 'ready');
+                });
+            } else { v.dressWait = 0; _cvHostState(v.host, 'ready'); }
             if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
         });
         // a failed base GLB never fires the success cb — watch the cache entry
@@ -87005,7 +87071,11 @@ const ThreeRenderer = (function () {
             mem.blob.rotation.x = -Math.PI / 2; mem.blob.position.y = 0.006 * U;
             mem.wrap.add(mem.blob);
             mem.model = m;
-            function show() { if (_tr === T && T.tok === tok) { mem.shown = true; mem.wrap.visible = true; } }
+            function show(dressed) {
+                if (_tr !== T || T.tok !== tok) return;
+                if (!dressed && mem.rig && !mem.rig.dressed()) { mem.rig.whenDressed(function () { show(true); }); return; }   // THE DRESSED REVEAL: the whole look at once
+                mem.shown = true; mem.wrap.visible = true;
+            }
             if (!hasSkin) { show(); return; }
             var mixer = mem.mixer = new THREE.AnimationMixer(m);
             mixer.addEventListener('finished', function (ev) {
