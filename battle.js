@@ -30264,7 +30264,8 @@
             const fa = _menuFreeArea();
             const now = performance.now();
             // THE CENTRED CAST: what the viewer's menu is aiming at, kept for the action it starts
-            if (fa.menu || fa.cmd) { _castSubjLatch(); _castCentred = true; }
+            // (not once the action runs: the menu lingers a few frames after the confirm while the pick's target is cleared)
+            if ((fa.menu || fa.cmd) && !state._actionExecuting) { _castSubjLatch(); _castCentred = true; }
             if (fa.menu) {
                 const fresh = !_cfHeld;
                 _cfHeld = fa; _cfSeenAt = now;
