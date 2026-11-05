@@ -1743,7 +1743,9 @@ mondo: "why do so many of the hairstyles look like shit? They look like shiny ru
   MeshPhysicalMaterial with CC_HAIR_LOOK carrying the stage's colour (light level), glow + map, stencil, alpha, side, cloth +
   pop defines, the pack normal map, sharing the source's `userData.ewHair` (crown, strands). Hook `_ccHairUnitHook` = the hair
   shader + the vertex-tinted glow. Hair that lands after the swap (not cached / after the reveal gave up on a slow line) is swapped
-  by `whenDressed` and a half-second sweep (rig record `hairSweep`, ticked by the board's and the walk's clip loops). Hologram
+  by `whenDressed` and a half-second sweep (rig record `hairSweep`, ticked by the board's and the walk's clip loops). The sweep
+  takes every late creator piece (`_ew_creatorWear`, `EWCreator_*`): a garment that landed after the swap kept the creator's
+  MeshStandard, drawn pitch black on the WebGPU board (seen in the probe: the lab coat, jeans, beard). Hologram
   clones keep it (`_ewHairUnit`), and `_ccHairKeepOnClone` makes Material.clone (body doubles, mounts, fades) keep the hook,
   defines and the shared crown. WebGPU / node: `_ewNodeDress` -> `_ewNodeHair` (TSL twin: strands from positionGeometry round
   the crown, bump over materialNormal, anisotropyT/B along the crown->down flow in setupVariants, spec tinted, F90 x 0.3).
