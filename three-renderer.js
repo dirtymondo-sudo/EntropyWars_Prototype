@@ -35214,6 +35214,15 @@ const ThreeRenderer = (function () {
            the turn that puts its nose at +Z. Both tick on the room's tickers — captured now: a file that lands after the room changed
            ticks nowhere. No room tickers, EW_PERF_LOW or the room's rig budget spent → the static copy, holding still. */
         var tickers = (opts.anim || opts.swim) && typeof _hq !== 'undefined' && _hq && _hq.tickers ? _hq.tickers : null;
+        /* THE CACHED LANDING (2026-11-05, mondo: the Singularity Arena's crystals "flickering on and off of being pixelated"):
+           a file already in the cache lands INSIDE this call, while the caller is still building. It flagged _objectsDirty
+           all the same, and rebuildObjects builds the board's crystal clusters (rebuildTerrainDecorations) after it clears
+           that flag, so every board with crystal tiles rebuilt all of its objects and crystals EVERY frame: new meshes each
+           frame, which the pixelate mask (ThreePost, re-tagged a few times a second) only caught now and then. A landing in
+           the call is already part of what the caller builds: it only asks for a shadow pass. A file that lands later still
+           flags the board as before. */
+        var inCall = true;
+        var landed = function () { if (inCall) _shadowsDirty = true; else _objectsDirty = true; };
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
@@ -35223,7 +35232,7 @@ const ThreeRenderer = (function () {
                 /* THE EAGLE: a row's `swim` circles it about its spot on the room's tickers (the eagle soars there, gliding) */
                 g.add(tickers && opts.swim ? _oceanSwimRing(an.group, opts.swim, opts.nose, tickers) : an.group);
                 if (opts.onDone) opts.onDone(g, an.group.children[0].children[0].scale.x, root._ew_bbox);
-                _objectsDirty = true;
+                landed();
                 return;
             }
             var bb = root._ew_bbox;
@@ -35261,8 +35270,9 @@ const ThreeRenderer = (function () {
                 g.add(m);
             }
             if (opts.onDone) opts.onDone(g, s, bb);
-            _objectsDirty = true;
+            landed();
         });
+        inCall = false;
         return g;
     }
 
