@@ -24190,6 +24190,7 @@
             document.body.classList.add('ew-spell-shot');
         }
 
+        const AC_BARS_CAM_WAIT_MS = 1600;
         function hideActionCamChrome() {
             const st = _acChromeState;
             // Damage buys the readout just enough time to finish its roll and be
@@ -24201,6 +24202,30 @@
                 st.hideTimer = setTimeout(() => hideActionCamChrome(),
                     Math.max(60, st.holdUntil - performance.now()));
                 return;
+            }
+            /* THE BARS HOLD WITH THE LENS (2026-11-06, playtest C6: "impact shots lose the top letterbox and show the score
+               HUD"): the camera holds on the impact (THE IMPACT HOLD) past the shot's own clock when a hit lands late, and the
+               bars used to leave on that clock — the close-up of the hit then played with the scoreboard over it. The bars
+               now wait out the hold (bounded: the hold is a timestamp, never open-ended). */
+            if (st && !_skipVisuals() && typeof window._cineImpactHoldLeft === 'function') {
+                const _ih = window._cineImpactHoldLeft();
+                if (_ih > 30 && _ih < 6000) {
+                    if (st.hideTimer) clearTimeout(st.hideTimer);
+                    st.hideTimer = setTimeout(() => hideActionCamChrome(), _ih);
+                    return;
+                }
+            }
+            /* …and while the lens is still parked on the shot's close-up (nothing has taken the camera home yet — the next
+               unit's turn waits on the cast's finish), the bars stay with it, at most AC_BARS_CAM_WAIT_MS more: they leave
+               with the close-up, never before it, and still never outstay their shot for a whole turn. */
+            if (st && !_skipVisuals() && camera._cineTps && !camera._menuShot) {
+                const _now = performance.now();
+                if (!st.camWaitUntil) st.camWaitUntil = _now + AC_BARS_CAM_WAIT_MS;
+                if (_now < st.camWaitUntil) {
+                    if (st.hideTimer) clearTimeout(st.hideTimer);
+                    st.hideTimer = setTimeout(() => hideActionCamChrome(), 120);
+                    return;
+                }
             }
             // a repeat hide while the last shot's readout lingers leaves that linger running
             if (!st && _acLingerTimer) return;
@@ -24252,7 +24277,22 @@
                     return;
                 }
                 const ov = document.getElementById('floatTextOverlay');
-                const pops = ov && ov.children.length ? Array.from(ov.children, c => c.getBoundingClientRect()) : [];
+                /* THE INK, NOT THE CANVAS (2026-11-06, playtest C6: the impact shots lost the top letterbox and showed the score
+                   HUD): a pop is a canvas with a wide empty margin round its glyphs (the glow's room). THE SAFE FRAME keeps the
+                   glyphs under the bar, but the margin's box grazed it as the number rose, and the whole bar faded to .3 for
+                   the rest of the shot. Only a pop's drawn ink (three-renderer _floatBox's margins) on a piece yields it. */
+                const pops = [];
+                if (ov && ov.children.length) for (const c of ov.children) {
+                    if (+(c.style.opacity || 1) < 0.05) continue;
+                    const r = c.getBoundingClientRect();
+                    if (!(r.width > 0 && r.height > 0)) continue;
+                    const bw0 = parseFloat(c.style.width) || c.width || 0, bh0 = parseFloat(c.style.height) || c.height || 0;
+                    const kx = bw0 > 0 ? r.width / bw0 : 1, ky = bh0 > 0 ? r.height / bh0 : 1;
+                    const mL = c._ewMarginL != null ? c._ewMarginL : (c._ewMarginX || 0), mR = c._ewMarginR != null ? c._ewMarginR : (c._ewMarginX || 0);
+                    const t = r.top + (c._ewMarginTop || 0) * ky, b = r.bottom - (c._ewMarginBot || 0) * ky;
+                    const l = r.left + mL * kx, rr = r.right - mR * kx;
+                    if (b > t && rr > l) pops.push({ top: t, bottom: b, left: l, right: rr, width: rr - l });
+                }
                 for (const [cls, sel] of [['ac-yield-title', '.acam-title'], ['ac-yield-top', '.acam-bar-top'], ['ac-yield-bot', '.acam-bar-bot']]) {
                     const part = el.querySelector(sel);
                     const r = part && pops.length ? part.getBoundingClientRect() : null;
@@ -31078,7 +31118,15 @@
                 }
             } catch (e) {}
             const lo = asCaster ? h * 0.45 : h * 0.12;
-            const hi = asCaster ? h : h + ts * 0.35;
+            /* THE CROWN (2026-11-06, playtest C8): the caster's top point is a little OVER the head — the close-up is near
+               level since THE BODY LENS, so the front of a dress / a raised arm sits nearer the lens than the body's axis and
+               a frame that held the axis's top still cut the crown off under the letterbox */
+            /* THE BODY'S HEAD ROOM (2026-11-06, playtest C1): the victim's HP bar rides a body-sized gap over the head
+               (three-renderer plate _headY) — ts·0.35 was that gap on the 1.75 m squares; on the 3.5 m squares it asked
+               for twice the room, and the head-room window backed every hit shot off until the victim was a small figure */
+            let _bk = 1;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) _bk = Math.min(1, +ThreeRenderer.bodyScale() || 1); } catch (e) {}
+            const hi = asCaster ? h * 1.15 : h + ts * 0.35 * _bk;
             out.push(asCaster || !primary ? [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2]]
                 : [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2], CINE_GUARD_HIT_LOW]);
             /* THE HEAD ROOM (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?
@@ -31888,7 +31936,7 @@
            dim / bone / heat / whiteout tints, the vignette, the scope, the speed lines), which composite for free. */
         const CINE_GRADE_POST = {
             sepia:    { f: { sepia: 0.85, con: 1.08, sat: 0.7 }, t: [0xd8b483, 0.22, 'multiply'] },
-            bone:     { f: { gray: 0.55, bri: 1.35, con: 0.92 } },
+            bone:     { f: { gray: 0.45, bri: 1.1, con: 1.0 } },   // THE BONE WASH (2026-11-06, playtest C1): was bri 1.35 / con .92 over the WHOLE frame — a pale board clipped to flat white, the target with it
             desat:    { f: { gray: 0.9, con: 1.1 } },
             invert:   { f: { invert: 1, hue: 180 } },
             hue:      { f: { sat: 1.3, con: 1.05 }, t: [0xa040ff, 0.3, 'overlay'] },   // FX-WASH: violet, not a hue-rotate to green
@@ -32205,6 +32253,16 @@
                 const d = Math.hypot(u.x - center.x, u.y - center.y);
                 if (d < 1.2 || d > 7) continue;
                 if (!_cineActorVisible(u)) continue;
+                /* THE DRY WITNESS (2026-11-06, playtest C2: Sasquatch Smash's photo was taken from inside a flooded crater —
+                   80% of the frame the water's surface, the victim a hidden outline at the top edge): the lens sits at the
+                   witness's shoulder, so a witness standing in water (a pool, a flooded crater: the surface is over the lens),
+                   a full level or more under the victim (it looks up a wall at it) or with ground between them never films it */
+                try { if (typeof _isWaterTile === 'function' && _isWaterTile(u.x, u.y)) continue; } catch (e) {}
+                if (_unitElevZ(u) < _unitElevZ(center) - 0.5) continue;
+                try {
+                    if (typeof isVisionBlockedByTerrain === 'function'
+                        && isVisionBlockedByTerrain(u.x, u.y, center.x, center.y, u.z, center.z)) continue;
+                } catch (e) {}
                 if (d < bestD) { bestD = d; best = u; }
             }
             return best;
@@ -32610,7 +32668,7 @@
                 if (this._t2) { clearTimeout(this._t2); this._t2 = null; }
             },
             /* The palette-tinted cross-fade veil. Sits above the void layer
-               and the action-cam chrome; CSS owns the fade timings. */
+               and the grade, UNDER the action-cam chrome (playtest C6, 2026-11-06: the letterbox stays black); CSS owns the fade timings. */
             /* THE TARGET STAYS (2026-10-18): the veil was one solid sheet of the palette — for the ~0.5 s it took to bloom
                in and the ~0.5 s to bloom out, the whole screen was ONE colour (a black one for abyss / shadow / hearth /
                starfield) and the target was simply gone. It is a small 2D canvas now: the same palette gradient, with a
@@ -34803,7 +34861,9 @@
                         VoidStage.enter({ palette: 'bone', actors: [caster, target], ms: 1500 });
                         cineFaceCam(target, { dist: 3.0, tilt: 80 });
                     }
-                    cineGrade('bone desat', 900);
+                    /* (2026-11-06, playtest C1) the void IS the white: no bone grade on top of it — its full-frame brighten
+                       washed the white stage, the cage and the frozen body into one grey-white field. Desat keeps the stillness. */
+                    cineGrade('desat', 900);
                     cineFreezeFrame(actionMs(420));
                 });
                 _cineAt(cut + actionMs(900), sequenceId, () => {
@@ -56960,7 +57020,12 @@
                 clearAiSafetyTimer();
                 if (state._runComputerTurnTimer) { clearTimeout(state._runComputerTurnTimer); state._runComputerTurnTimer = null; }
 
+                const _skipBefore = new Set(state.units.filter(u => u && u._skippedTurn).map(u => u.id));
                 let nextUnit = getNextBlitzUnit();
+                /* THE SKIPPED TURN ON SCREEN (2026-11-06, playtest C7: "Werewolf is FROZEN solid — turn skipped!" showed over
+                   Bigfoot and the Antperson): getNextBlitzUnit passes over a frozen / stunned unit with a log line and nothing
+                   else, so the line sat on whatever the camera last held. The ones it just passed over get their beat first. */
+                const _newSkips = state.units.filter(u => u && !u.dead && u._skippedTurn && !_skipBefore.has(u.id));
 
                 if (!nextUnit) {
 
@@ -57179,7 +57244,13 @@
                             if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             _setRoundAdvance(false);
+                            const _skipB0 = new Set(state.units.filter(u => u && u._skippedTurn).map(u => u.id));
                             const firstUnit = getNextBlitzUnit();
+                            /* THE SKIPPED TURN ON SCREEN (playtest C7): a frozen unit passed over at the round's start gets its beat too */
+                            const _skips0 = state.units.filter(u => u && !u.dead && u._skippedTurn && !_skipB0.has(u.id));
+                            if (_skips0.length && _turnSkipBeat(_skips0, () => {
+                                if (_blitzTurnGen === savedGen && _eorMine === _eorChainGen && !state.winner) _continueBlitzWithUnit(firstUnit);
+                            })) return;
                             _continueBlitzWithUnit(firstUnit);
                             });
                         });
@@ -57196,9 +57267,38 @@
                     return;
                 }
 
+                if (_newSkips.length) {
+                    const _skGen = _blitzTurnGen;
+                    if (_turnSkipBeat(_newSkips, () => { if (_skGen === _blitzTurnGen && !state.winner) _continueBlitzWithUnit(nextUnit); })) return;
+                }
                 _continueBlitzWithUnit(nextUnit);
                 return;
             }
+        }
+
+        /* THE SKIPPED TURN ON SCREEN (playtest C7, see maybeAdvanceTurn): the camera goes to the unit whose turn was skipped
+           and its status floats over it (floating text is relayed by online.js), held TURN_SKIP_BEAT_MS before the next unit's
+           activation. The camera half is window.showTurnSkipCam, which online.js relays ('turn-skip') so the guest sees the
+           same beat. Fog: a unit the viewer can't see gets no beat (no pan toward a hidden enemy). Returns true when it plays. */
+        const TURN_SKIP_BEAT_MS = 1150;
+        function showTurnSkipCam(unitId) {
+            const u = unitFromId(unitId);
+            if (!u || u.dead || _skipVisuals() || state.cameraDisabled || state.phase !== 'battle') return false;
+            if (!_isTileVisibleToViewer(u.x, u.y)) return false;
+            eorFocusCamera(u.x, u.y, { duration: actionMs(420) });
+            return true;
+        }
+        window.showTurnSkipCam = showTurnSkipCam;
+        function _turnSkipBeat(units, done) {
+            if (_skipVisuals() || state.cameraDisabled || _bufferingRoundEvents) return false;
+            const u = units.find(x => _isTileVisibleToViewer(x.x, x.y));
+            if (!u) return false;
+            const lock = Object.keys(u.status || {}).find(k => (u.status[k] | 0) > 0 && STATUS_DEFS[k]?.blockMove && STATUS_DEFS[k]?.blockAction);
+            const ld = lock ? STATUS_DEFS[lock] : null;
+            if (!window.showTurnSkipCam(u.id)) return false;
+            try { showFloatingTextForUnit(u, `${(ld && ld.icon) || '⚠'} TURN SKIPPED`, 'debuff', { durationMs: TURN_SKIP_BEAT_MS + 200 }); } catch (e) {}
+            setTimeout(done, actionMs(TURN_SKIP_BEAT_MS));
+            return true;
         }
 
         function processTurnStartTowerDamage(unit, onDone) {

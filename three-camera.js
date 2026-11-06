@@ -152,6 +152,14 @@ const ThreeCamera = (function () {
        sky; that rare case keeps the old fade. */
     const SIGHT_MAX_LIFT_TILES = 3.5;
     const CINE_MIN_EYE_TILES = 1.15;   // THE LOWEST LENS (2026-10-15): see sync()
+    /* THE BODY LENS (2026-11-06, playtest C8 / C1 / C3: close-ups stared straight down): the lowest lens is in BODIES. Since
+       2× EVERYWHERE every board plays on 3.5 m squares (three-renderer bodyScale 0.5), the close-up boom shrank with the body
+       (battle.js _cineSizeK) but the eye still had to sit 1.15 SQUARES over the floor — 2.3 bodies up, ~1 body back — so every
+       caster / victim close-up looked down on the top of a head. 1 on a 1.75 m board (unchanged there). */
+    function _camBodyK() {
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) { const k = +ThreeRenderer.bodyScale(); if (k > 0 && k < 1) return k; } } catch (e) {}
+        return 1;
+    }
     /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a room's skyscraper prop (three-renderer tallSceneryTopAt)
        stands far above the grid column under it — the lens treats it as solid to its drawn roof */
     function _tallTopWorld(wx, wz) {
@@ -857,7 +865,7 @@ const ThreeCamera = (function () {
         let sightRaised = false;
         if (cam._cineTps && !cam._tpsCollide) {
             const sightY = pivGroundY + Math.max(ts * 0.3, (pivY - pivGroundY) * 0.6);
-            let need = Math.max(pivGroundY + ts * CINE_MIN_EYE_TILES,
+            let need = Math.max(pivGroundY + ts * CINE_MIN_EYE_TILES * _camBodyK(),
                 _sightLineFloor(pivX, sightY, pivZ, eyeX, eyeY, eyeZ, clear));
             let gp = null;
             try { gp = (cam._frameGuard && typeof cam._frameGuard.points === 'function') ? cam._frameGuard.points() : null; } catch (e) { gp = null; }
