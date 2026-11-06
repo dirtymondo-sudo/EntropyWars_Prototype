@@ -43329,9 +43329,57 @@ const ThreeRenderer = (function () {
        Measured (sandbox, SwiftShader WebGPU, the same 16 looks, fresh page): pipelines made inside a frame in the scene pass
        41 → 8 (the 8 are render bundles re-recorded, which three makes at once), frames drawn in the same minute 15 → 24. */
     var _ewLate = { on: false, scene: null, cam: null, rt: null, tag: '', t0: 0, spent: 0, n: 0, sink: [], held: 0, builds: 0, buildMs: 0, pipes: 0, flying: 0 };
+    /* ══ THE WHOLE BODY (2026-11-06, playtest A1: "Cowboy and Catgirl have a name plate on their spawn squares but no body ...
+       Santa shows only the red suit") ═══════════════════════════════════════════════════════════════════════════════════════
+       THE LATE LOOK above (and its WebGL half, _glScSetup) holds each new look out of the frame until its own build stands, one
+       piece at a time. A Meshy unit is one or two looks; a CREATED character is dozens (skin, eyes, lashes, brows, hair, every
+       garment, the outline and x-ray twins), so a body first drawn after the fight's first 600 ms (a slow download, a late
+       dress, the walk) came in piece by piece: a floating red suit, a few black specks, an empty square for as long as its
+       builds took (seconds on a slow GPU; the playtest harness draws 3 frames a screenshot, so there the bodies stayed in pieces
+       for minutes). Now a body made by _createAppearanceRig (root._ew_whole) is ONE look for the late look: while any of its
+       pieces is still building none of them draws (the builds go on as before, a few a frame), and it shows whole from the
+       first frame every piece stands. Only a body's FIRST showing is held: a body already drawn never blinks out for a new
+       piece, and one drawn in the pass's first 600 ms (everything builds in its frame then) counts as shown (_lwSync).
+       Cap: 4 s AND 240 drawn frames, then the pieces that stand draw anyway (a build that never stands). Covers every place a
+       created body draws in the fight's or the walk's scene pass: board units, HQ walkers, the finisher actors; panes (the
+       team room, the creator stage) draw as before. Classic WebGL, WebGL 2 and WebGPU alike. Online: each seat draws with its
+       own renderer; nothing relayed, no game state. ThreeRenderer.shaderCache().late.wholeBodies / .wholeHeld count it. */
+    var _lw = { frame: 0, seen: new Set(), held: 0, bodies: 0 };
+    /* the created body a drawn mesh belongs to (or null), memoised per parent */
+    function _lwRoot(o) {
+        var p = o.parent;
+        if (o._ew_lwP === p && o._ew_lwR !== undefined) return o._ew_lwR;
+        var r = null, n = o;
+        while (n) { if (n._ew_whole) { r = n; break; } n = n.parent; }
+        o._ew_lwP = p; o._ew_lwR = r;
+        return r;
+    }
+    /* a piece drawn in the scene pass while no late look holds builds (the pass's first 600 ms): it built in its frame, with the rest */
+    function _lwSync(o) { var wr = _lwRoot(o); if (wr && !wr._ew_wOk) wr._ew_wOk = true; }
+    /* a piece of a body not yet shown whole: noted (held = it could not draw this frame); false = sit this frame out */
+    function _lwGate(wr, held) {
+        if (!wr || wr._ew_wOk) return true;
+        if (!wr._ew_wT0) { wr._ew_wT0 = performance.now(); _lw.bodies++; }
+        _lw.seen.add(wr);
+        if (held) wr._ew_wHeldF = _lw.frame;
+        _lw.held++;
+        return false;
+    }
+    /* each frame's start (both renderers' late-look ticks): a body none of whose pieces was held last frame is whole from now on */
+    function _lwTick(now) {
+        var F = _lw.frame;
+        _lw.frame = F + 1;
+        if (!_lw.seen.size) return;
+        _lw.seen.forEach(function (wr) {
+            wr._ew_wFr = (wr._ew_wFr || 0) + 1;   // frames it was drawn in (a sparse or hidden draw counts none)
+            if (wr._ew_wHeldF !== F || (now - wr._ew_wT0 > 4000 && wr._ew_wFr > 240)) wr._ew_wOk = true;
+        });
+        _lw.seen.clear();
+    }
     function _ewLateOff() { return _glLateOff(); }
     function _ewLateTick(r) {
         var L = _ewLate, now = performance.now(), tag = active ? 'b' : (_hq ? 'w' : '');
+        try { _lwTick(now); } catch (e) {}
         if (tag !== L.tag) { L.tag = tag; L.t0 = now; }
         L.spent = 0; L.n = 0; L.sink = [];
         L.scene = tag === 'b' ? scene : (tag === 'w' ? _hq.scene : null);
@@ -43348,14 +43396,16 @@ const ThreeRenderer = (function () {
         var L = _ewLate, land = function () { L.flying--; };
         r._renderObjectDirect = function (object, material, sc, camera, lightsNode, group, clippingContext, passId) {
             var ctx = this._currentRenderContext;
+            if (!L.on && sc && sc === L.scene && camera === L.cam) _lwSync(object);   // THE WHOLE BODY
             if (!L.on || sc !== L.scene || camera !== L.cam || this._currentRenderBundle !== null || !ctx || ctx.renderTarget !== L.rt || this._ew_sideRender || this._ew_paneRender) return rod.apply(this, arguments);
             /* three r186's _renderObjectDirect, with its two waits taken off the frame */
             var ro = O.get(object, material, sc, camera, lightsNode, ctx, clippingContext, passId);
             ro.drawRange = object.geometry.drawRange;
             ro.group = group;
             var t0 = 0;
+            var wr = _lwRoot(object);   // THE WHOLE BODY: a created body's pieces draw together
             if (N.get(ro).nodeBuilderState === undefined && !NB.has(N.getForRenderCacheKey(ro))) {
-                if (L.n > 0 && L.spent >= 4) { L.held++; return; }   // a new build, and the frame has built enough: a frame later
+                if (L.n > 0 && L.spent >= 4) { L.held++; _lwGate(wr, true); return; }   // a new build, and the frame has built enough: a frame later
                 t0 = performance.now();
             }
             var refresh = N.needsRefresh(ro);   // a new look builds here; RenderObjectRefreshType: 0 none, 1 shared, 2 full
@@ -43365,12 +43415,12 @@ const ThreeRenderer = (function () {
             var k = L.sink.length;
             P.getForRender(ro, L.sink);   // a NEW pipeline: made off the frame, and isReady says no till it stands
             for (; k < L.sink.length; k++) { L.pipes++; L.flying++; try { L.sink[k].then(land, land); } catch (e) { L.flying--; } }
-            if (P.isReady(ro)) { this.backend.draw(ro, this.info); if (refresh !== 0) N.updateAfter(ro); }
-            else L.held++;
+            if (P.isReady(ro)) { if (_lwGate(wr, false)) { this.backend.draw(ro, this.info); if (refresh !== 0) N.updateAfter(ro); } }
+            else { L.held++; _lwGate(wr, true); }
         };
     }
     function _ewLateStats() {
-        return { on: !!(renderer && renderer._ew_late), held: _ewLate.held, lateBuilds: _ewLate.builds, buildMs: Math.round(_ewLate.buildMs), asyncPipelines: _ewLate.pipes, compiling: _ewLate.flying };
+        return { on: !!(renderer && renderer._ew_late), held: _ewLate.held, lateBuilds: _ewLate.builds, buildMs: Math.round(_ewLate.buildMs), asyncPipelines: _ewLate.pipes, compiling: _ewLate.flying, wholeBodies: _lw.bodies, wholeHeld: _lw.held };
     }
     /* ══ THE SHARED INSTANCING (2026-10-12: the walk ↔ fight hitches, mondo on WebGPU) ══════════════════════════════════════
        three keys an InstancedMesh's node build on the mesh's own uuid (its matrices once lived in a uniform buffer named after
@@ -45470,6 +45520,7 @@ const ThreeRenderer = (function () {
     /* the frame's start: which scene pass is ours, the gate, the shape, then last frame's held looks to the driver */
     function _glLateTick(r, now) {
         var L = _glL, tag = active ? 'b' : (_hq ? 'w' : '');
+        try { _lwTick(performance.now()); } catch (e) {}
         L.slow = !!(L.last && now - L.last > 50);
         L.last = now;
         if (tag !== L.tag) { L.tag = tag; L.t0 = now; L.on = false; L.sid = ''; L.sidAt = 0; L.q.length = 0; L.qm.clear(); }
@@ -45520,13 +45571,17 @@ const ThreeRenderer = (function () {
         r.renderBufferDirect = function (camera, sc, geometry, material, object, group) {
             if (sc !== L.scene || camera !== L.cam || !material || !L.scene || sc.overrideMaterial || this.getRenderTarget() !== L.rtw) return rbd.apply(this, arguments);   // the scene pass only (never an AO / mask pass of the same scene)
             var mp = PR.get(material);
+            /* THE WHOLE BODY: a created body not yet shown whole draws none of its pieces till every one stands */
+            var wr = L.on ? _lwRoot(object) : null, wHold = !!(wr && !wr._ew_wOk);
+            if (!L.on) _lwSync(object);
             if (mp.currentProgram !== undefined) {
                 if (L.pendN && L.pend.has(material)) {
                     var pe = L.pend.get(material);
-                    if (!_glLateReady(pe.P) && performance.now() - pe.at < 4000) { L.held++; return; }   // still linking on the driver's threads: drawn when it stands (4 s at most)
+                    if (!_glLateReady(pe.P) && performance.now() - pe.at < 4000) { L.held++; if (wHold) _lwGate(wr, true); return; }   // still linking on the driver's threads: drawn when it stands (4 s at most)
                     L.pend.delete(material);
                     _glLookLearn(pe.R, material);
                 }
+                if (wHold && !_lwGate(wr, false)) return;
                 return rbd.apply(this, arguments);
             }
             /* a material drawn for the first time */
@@ -45541,7 +45596,8 @@ const ThreeRenderer = (function () {
                 try { R = _ewScRecipe({ object: object, material: material }, L.tag); } catch (e) { R = null; }
                 finally { _ewScRej = null; if (sw) material.side = sd; }
             }
-            if (L.on && !L.noLate.has(material) && !_glLookKnown(R, material) && object.parent) {
+            if (L.on && !L.noLate.has(material) && (wHold || !_glLookKnown(R, material)) && object.parent) {
+                if (wHold) _lwGate(wr, true);   // a known look of a body not yet whole links off the frame too, with the rest
                 if (!L.qm.has(object)) {
                     L.qm.add(object); L.q.push(object);
                     L.log.push((R ? '' : '(no recipe) ') + material.type + (material.name ? ' ' + material.name : '') + ' on ' + (object.name || object.type)); if (L.log.length > 40) L.log.shift();
@@ -45571,7 +45627,7 @@ const ThreeRenderer = (function () {
     }
     function _glLateStats() {
         return { on: !!(renderer && renderer._ew_glLate && _glL.par && !_glL.off), parallel: _glL.par, held: _glL.held, late: _glL.late, lateMs: Math.round(_glL.lateMs),
-                 inFrame: _glL.sync, inFrameMs: Math.round(_glL.syncMs) };
+                 inFrame: _glL.sync, inFrameMs: Math.round(_glL.syncMs), wholeBodies: _lw.bodies, wholeHeld: _lw.held };
     }
     /* THE SHEET WARM (2026-10-12, node renderer): the spell sheets (three-vfx-effects.js warmNextSheet: the canvas sheets,
        drawn once and cached; three-vfx.js sheetTextures: the sprite sheets) uploaded a few a frame — at most ~2 ms a frame,
@@ -51785,6 +51841,7 @@ const ThreeRenderer = (function () {
     var CC_DRESS_MAX_MS = 20000;   // a load that never answers still lets the body show after this
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
+        if (root) root._ew_whole = true;   // THE WHOLE BODY: the late look shows this body's pieces together (_lwGate)
         /* THE QUICK PICKS: a dropped garment's / hair's material is kept (its textures let go), not disposed: disposing it freed its
            shader program (three keeps one while any material holds it), so the next frame compiled the very same program again for
            the garment built to replace it, or for the boots picked back a moment later (1-2 s a pick in WebGL, a pipeline build in
