@@ -1445,16 +1445,49 @@ function Scoreboard({ st }) {
   );
 }
 
+/* THE MATCH INFO STEPS UNDER THE BARS (playtest 2026-11-05 E2: with three weathers the weather + zodiac pill ran left
+   over the P2 bar). The pill stays beside the bars while it fits there; when its words would reach a P1 / P2 bar or the
+   score plate, it drops just under the bars, still one line, still right-aligned (the combat log under it moves down with
+   it: ui.js _clogFit). Measured where the pill would sit undropped, so the drop never flips back and forth. The UI
+   Maker's move / scale of either piece is in the measure. */
+function _metaFitUnderBars(meta, plate) {
+  if (!meta || !plate || !meta.isConnected || !plate.getClientRects().length) return;
+  const cur = parseFloat(plate.style.marginTop) || 0;
+  const k = meta.offsetWidth > 0 ? (meta.getBoundingClientRect().width / meta.offsetWidth) || 1 : 1;
+  const r = plate.getBoundingClientRect();
+  const top0 = r.top - cur * k, bot0 = r.bottom - cur * k;
+  let need = 0;
+  const bars = document.querySelectorAll('.ew-scoreboard .ew-score-side, .ew-scoreboard .ew-score-plate');
+  for (let i = 0; i < bars.length; i++) {
+    const el = bars[i];
+    if (!el.getClientRects().length) continue;
+    const b = el.getBoundingClientRect();
+    if (b.width < 2 || b.height < 2) continue;
+    if (r.left < b.right + 8 && r.right > b.left - 8 && top0 < b.bottom && bot0 > b.top) need = Math.max(need, b.bottom + 6 - top0);
+  }
+  const px = need > 0 ? Math.ceil(need / k) : 0;
+  if (Math.abs(px - cur) >= 1) plate.style.marginTop = px ? px + 'px' : '';
+}
+
 function MatchMeta({ st }) {
   if (!st) return null;
 
   const weather = (st.activeWeather || []);
+  /* one span per weather, each kept whole (playtest 2026-11-05 E2: three weathers read as one long run of words) */
   const weatherText = weather.length > 0 && typeof WEATHER_REGISTRY !== 'undefined'
-    ? weather.map(w => {
+    ? weather.map((w, i) => {
         const def = WEATHER_REGISTRY[w.type];
-        return def ? (def.icon + ' ' + def.label) : w.type;
-      }).join(' ')
+        return h('span', { key: 'w' + i, className: 'ew-weather-one', style: { whiteSpace: 'nowrap', marginLeft: i ? 10 : 0 }},
+          def ? (def.icon + ' ' + def.label) : w.type);
+      })
     : '☀ Clear';
+  const metaRef = useRef(null), plateRef = useRef(null);
+  React.useLayoutEffect(() => { _metaFitUnderBars(metaRef.current, plateRef.current); });
+  useEffect(() => {
+    const f = () => _metaFitUnderBars(metaRef.current, plateRef.current);
+    window.addEventListener('resize', f);
+    return () => window.removeEventListener('resize', f);
+  }, []);
 
   const zodiac = st.activeZodiac || 'aries';
   const zodiacIcon = typeof ZODIAC_ICONS !== 'undefined' ? (ZODIAC_ICONS[zodiac] || '✦') : '✦';
@@ -1470,7 +1503,7 @@ function MatchMeta({ st }) {
   // the battlefield's name (same source as the loading-screen title)
   const mapName = (typeof window._lsMapTitle === 'function') ? window._lsMapTitle() : null;
 
-  return h('div', { className: 'ew-matchmeta', style: {
+  return h('div', { className: 'ew-matchmeta', ref: metaRef, style: {
     position: 'absolute', top: 12, right: 12,
     display: 'flex', flexDirection: 'column', gap: 6,
     alignItems: 'flex-end', zIndex: 10,
@@ -1481,8 +1514,10 @@ function MatchMeta({ st }) {
       textShadow: '0 0 12px rgba(214,178,255,0.35), 0 1px 3px rgba(0,0,0,0.8)',
       padding: '2px 2px 0 0', pointerEvents: 'none',
     }}, '◈ ' + mapName),
-    h('div', { className: 'ew-meta-plate', style: {
+    h('div', { className: 'ew-meta-plate', ref: plateRef, style: {
       display: 'flex', alignItems: 'center', gap: 10,
+      flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: 4, whiteSpace: 'nowrap',
+      maxWidth: 'calc(100vw - 40px)', boxSizing: 'border-box',
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       padding: '6px 14px 6px 16px',
       fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
@@ -1931,6 +1966,7 @@ function QuickCone() {
       _subDodge();
       _listRoom();
       _listDescDodge();
+      _backChipDodge();
       const svg = ref.current; if (!svg) return;
       const L = window._ewQpCone || {};
       if (ro) {
@@ -2093,12 +2129,22 @@ function _subDodge() {
    rows it no longer has room for. Off while the UI Maker is editing. */
 function _listDescDodge() {
   const bar = document.getElementById('ew-spell-descbar');
-  const on = !!(bar && bar.classList.contains('show') && !document.documentElement.classList.contains('uim-live'));
+  const editing = document.documentElement.classList.contains('uim-live');
+  const on = !!(bar && bar.classList.contains('show') && !editing);
   const br = on ? bar.getBoundingClientRect() : null;
   document.querySelectorAll('.hrlg-panels .hrlg-list').forEach(l => {
     let cur = +(l.dataset.ewDescLift || 0);
     if (cur && !l.style.getPropertyValue('margin-bottom')) { cur = 0; delete l.dataset.ewDescLift; }   // a re-render wiped it
-    const live = on && !(l.closest('.hrlg-panel') || l).classList.contains('bg');
+    const panel = l.closest('.hrlg-panel') || l;
+    /* EVERY ROW ON SCREEN (playtest 2026-11-05 E7: Bigfoot's sixth ability, Cryptid Vanish, sat under the description
+       bar: the list kept its panel's size and place and SHRANK by the bar's overlap, so its Height cap (UI Maker, 390)
+       less the overlap held five rows; the sixth scrolled out of sight and only the arrow keys reached it). Now the
+       panel RISES clear of the bar (the margin under the list) and the list's tallest size is the room the screen
+       really has: from the top of the panel's lifted spot up to the top HUD (scoreboard / AP icons). A list that fits
+       there shows every row; only a list taller than the screen's room still scrolls. The quick action list (under
+       the unit info card) keeps its own Height / Shortest / Tallest and its fixed panel: it only shortens, as before. */
+    if (!panel.classList.contains('quick')) { _listFit(l, panel, editing, on && !panel.classList.contains('bg') ? br : null, cur); return; }
+    const live = on && !panel.classList.contains('bg');
     if (!live || !br || !(br.height > 0)) {
       if (cur) { l.style.removeProperty('margin-bottom'); l.style.removeProperty('max-height'); delete l.dataset.ewDescLift; }
       return;
@@ -2124,6 +2170,86 @@ function _listDescDodge() {
     l.style.setProperty('margin-bottom', need + 'px', 'important');
     l.dataset.ewDescLift = String(need);
   });
+}
+/* BACK NEVER COVERS A ROW (playtest 2026-11-05 E8: on every spell's target step the BACK chip sat on the dimmed ability
+   list behind it, over the Photon Scatter / Flash Freeze / Heat Ray row). A short sub-menu (two target rows) hangs low
+   over its dimmed parent, so its chip, on its own line above the title, landed on the parent's rows. Each frame the
+   active panel's chip (its UI Maker spot and size included, its own slide undone) is checked against the dimmed panel
+   behind it; overlapping = the chip slides right on its line until it clears that panel (never off the screen's right
+   edge), clear = it slides home. Off while the UI Maker's Layout view is up, so the chip sits where it is placed. */
+function _backChipDodge() {
+  const panels = document.querySelector('.hrlg-panels');
+  const chip = panels && panels.querySelector(':scope > .hrlg-panel.on:not(.quick) > .hrlg-backchip');
+  document.querySelectorAll('.hrlg-panels .hrlg-backchip[data-ew-dodge]').forEach(c => {
+    if (c !== chip) { c.style.removeProperty('margin-left'); delete c.dataset.ewDodge; }
+  });
+  if (!chip) return;
+  const cur = +(chip.dataset.ewDodge || 0);
+  let want = 0;
+  const r = chip.getBoundingClientRect();
+  const arranging = document.documentElement.classList.contains('uim-arranging') || document.documentElement.classList.contains('uim-live');
+  if (r.width > 0 && r.height > 0 && !arranging) {
+    const on = chip.parentElement, onR = on.getBoundingClientRect();
+    const k = on.offsetWidth > 0 && onR.width > 0 ? onR.width / on.offsetWidth : 1;   // screen px per CSS px of its panel (a margin's px)
+    const L0 = r.left - cur * k, R0 = r.right - cur * k;
+    let wall = 0;
+    panels.querySelectorAll(':scope > .hrlg-panel.bg').forEach(bg => {
+      const parts = [bg.getBoundingClientRect()];
+      bg.querySelectorAll(':scope > *, :scope > .hrlg-list > .hrlg-blade').forEach(c => parts.push(c.getBoundingClientRect()));
+      parts.forEach(o => {
+        if (o.width > 1 && o.height > 1 && o.top < r.bottom - 1 && o.bottom > r.top + 1 && o.left < R0 && o.right > L0) wall = Math.max(wall, o.right);
+      });
+    });
+    if (wall) {
+      let px = Math.ceil(wall + 8 - L0);
+      px = Math.min(px, Math.max(0, Math.floor(innerWidth - 8 - R0)));
+      want = Math.max(0, Math.round(px / (k || 1)));
+    }
+  }
+  if (Math.abs(want - cur) <= 1) return;
+  if (want) { chip.style.setProperty('margin-left', (6 + want) + 'px', 'important'); chip.dataset.ewDodge = String(want); }
+  else { chip.style.removeProperty('margin-left'); delete chip.dataset.ewDodge; }
+}
+/* the top HUD a rising command panel stops under: the scoreboard and the AP press icons, where they share its columns */
+function _listCeiling(pr) {
+  let top = 8;
+  document.querySelectorAll('.ew-scoreboard, .ew-ap-press:not(.off), .ew-matchmeta').forEach(el => {
+    const q = el.getBoundingClientRect();
+    if (q.width > 1 && q.height > 1 && q.left < pr.right && q.right > pr.left && q.bottom < innerHeight / 2) top = Math.max(top, Math.ceil(q.bottom + 8));
+  });
+  return top;
+}
+function _listFit(l, panel, editing, br, cur) {
+  const clear = () => {
+    if (cur || l.dataset.ewFitCap) { l.style.removeProperty('margin-bottom'); l.style.removeProperty('max-height'); delete l.dataset.ewDescLift; delete l.dataset.ewFitCap; }
+  };
+  if (editing || !l.offsetHeight) { clear(); return; }   // the UI Maker's Layout view sees the list as it is set
+  const r = l.getBoundingClientRect();
+  const k = r.height > 0 ? r.height / l.offsetHeight : 1;   // screen px per CSS px (the rig's scale, a dimmed panel's 0.96)
+  const baseBot = r.bottom + cur * k;                       // the list's bottom with no lift (the panel is bottom-anchored)
+  /* the lift: how far the bar reaches over the list's home spot (CSS px). While one list stays open it only grows (THE
+     STILL CURSOR below: the bar is as tall as the cursor row's description) */
+  let need = 0;
+  if (br && br.height > 0 && r.right > br.left + 4 && r.left < br.right - 4) need = Math.max(0, Math.ceil((baseBot - (br.top - 6)) / k));
+  if (br && need < cur) need = cur;
+  /* the room: from the lifted bottom up to the ceiling, less what stands above the list in its panel (the BACK chip, its
+     UI Maker size included, and the title) */
+  const pr = panel.getBoundingClientRect();
+  let top = pr.top;
+  const chip = panel.querySelector(':scope > .hrlg-backchip');
+  if (chip) { const cr = chip.getBoundingClientRect(); if (cr.height > 0) top = Math.min(top, cr.top); }
+  const above = Math.max(0, r.top - top);
+  const ceil = _listCeiling(pr);
+  /* the room never shrinks below what the list can live with, and is whole CSS px; it follows the panel's fixed spots
+     only (bottom, header, ceiling), never the rows, so a hover can't move it */
+  let cap = Math.floor((baseBot - need * k - above - ceil) / k);
+  cap = Math.max(120, cap);
+  const oldCap = +(l.dataset.ewFitCap || 0);
+  if (Math.abs(need - cur) <= 1 && Math.abs(cap - oldCap) <= 1) return;
+  l.style.setProperty('max-height', cap + 'px', 'important');
+  l.dataset.ewFitCap = String(cap);
+  if (need) { l.style.setProperty('margin-bottom', need + 'px', 'important'); l.dataset.ewDescLift = String(need); }
+  else { l.style.removeProperty('margin-bottom'); delete l.dataset.ewDescLift; }
 }
 function _listRoom() {
   const lists = document.querySelectorAll('.hrlg-panels .hrlg-list');
@@ -3811,6 +3937,45 @@ function _hrlgQuickCard(key, title, qv) {
   );
 }
 
+/* THE NAME FITS (playtest 2026-11-05 E4: "Jack-o'-Lantern…" in the unit panel, cut by an ellipsis). A line that holds a
+   name never cuts it: when the words are wider than their box, the name's own font steps down until the whole line fits
+   (never under minPx; the other words on the line keep their size). The UI Maker's font / size on the name is the start
+   (an inline !important beats its sheet). Rechecked on every render and when a web font lands. */
+function ewFitLine(box, txt, minPx) {
+  if (!box || !txt || !box.isConnected) return;
+  txt.style.removeProperty('font-size');
+  const cw = box.clientWidth;
+  if (!(cw > 0) || box.scrollWidth <= cw + 1) return;
+  let px = parseFloat(getComputedStyle(txt).fontSize) || 16;
+  const lo = minPx || 9;
+  for (let i = 0; i < 12 && box.scrollWidth > cw + 1 && px > lo; i++) {
+    const over = box.scrollWidth - cw, tw = txt.scrollWidth || txt.offsetWidth || 1;
+    px = Math.max(lo, Math.min(px - 0.5, px * Math.max(0.5, (tw - over) / tw)));
+    txt.style.setProperty('font-size', px.toFixed(2) + 'px', 'important');
+  }
+}
+let _ewFitFontHook = false;
+function ewFitLineOnFonts(fn) {
+  if (!document.fonts || !document.fonts.addEventListener) return;
+  (window._ewFitFns || (window._ewFitFns = new Set())).add(fn);
+  if (_ewFitFontHook) return;
+  _ewFitFontHook = true;
+  document.fonts.addEventListener('loadingdone', () => { window._ewFitFns.forEach(f => { try { f(); } catch (e) {} }); });
+}
+
+/* THE ROW UNDER A STILL MOUSE (playtest 2026-11-05 E7: "the mouse wheel over the list does nothing"): the wheel stepped
+   the cursor down, the list scrolled to keep that row in view, the scroll slid another row under the mouse, the browser
+   fired that row's mouseenter, and hover (= selection) took the cursor straight back, so the wheel never got past the
+   rows on screen. The pointer's spot is kept here (every real move and every wheel notch); a row entered or left with
+   the pointer exactly where the last wheel / key step left it was moved under the mouse by a scroll, not by the
+   player, and does not take the cursor. Moving the mouse at all hands hover back. */
+let _hrlgPtrX = -1, _hrlgPtrY = -1;
+if (typeof window !== 'undefined' && !window._ewHrlgPtrOn) {
+  window._ewHrlgPtrOn = true;
+  const _keep = (e) => { _hrlgPtrX = e.clientX; _hrlgPtrY = e.clientY; };
+  window.addEventListener('pointermove', _keep, { capture: true, passive: true });
+  window.addEventListener('wheel', _keep, { capture: true, passive: true });
+}
 function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, apUnit, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
@@ -3863,6 +4028,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   useEffect(() => () => _apPressSetPending(null, 0, false), []);
 
   const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
+  const stepPtr = useRef(null);   // the pointer's spot at the last wheel / key step (THE ROW UNDER A STILL MOUSE)
   const autoPrev = useRef(null);  // THE CURSOR ROW'S PREVIEW this menu drew without the mouse (below)
   const [, setPrevTick] = useState(0);
   // a fresh unit or a different menu view takes the wheel → reset the cursor
@@ -3932,6 +4098,9 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   }, [viewKey]);
 
   const hoverBlade = (b, on, e) => {
+    /* a row a scroll slid under (or out from under) a still mouse after a wheel / key step: the step keeps the cursor */
+    const sp = stepPtr.current;
+    if (sp && camSrc.current === 'step' && e && e.clientX === sp.x && e.clientY === sp.y) return;
     const dead = !b.available && !b.forceLive;
     if (on) {
       autoPrev.current = null;   // the mouse takes the cursor row's preview over (THE CURSOR ROW'S PREVIEW)
@@ -4029,6 +4198,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     }
     const b = blades[next];
     camSrc.current = 'step';
+    stepPtr.current = { x: _hrlgPtrX, y: _hrlgPtrY };
     setSelId(b.id);
     if (typeof playSfx === 'function') playSfx('uiCursorMove');
     if (clockApi.wind) clockApi.wind(30);   // the minute hand ticks with the cursor
@@ -4129,6 +4299,11 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     crown: () => { if (crownRef.current) crownRef.current(); },
   };
   useEffect(() => () => { window._hrlgPad = null; }, []);
+  /* THE NAME FITS: the unit's name in the panel shrinks to fit, never an ellipsis */
+  const coreRef = useRef(null);
+  const fitName = () => { const c = coreRef.current; if (c) ewFitLine(c, c.querySelector('.hrlg-name'), 10); };
+  React.useLayoutEffect(fitName);
+  useEffect(() => { ewFitLineOnFonts(fitName); const t = setTimeout(fitName, 400); return () => { clearTimeout(t); if (window._ewFitFns) window._ewFitFns.delete(fitName); }; });
 
   // ⚒ BUILD + situational one-shots (CHANNEL / DETONATE / ENTROPY…) render
   // as full-size tool rows at the bottom of the identity column — no more
@@ -4226,7 +4401,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           title: c.title || undefined,
         }, c.label)),
       ) : null,
-      h('div', { className: 'hrlg-core' },
+      h('div', { className: 'hrlg-core', ref: coreRef },
         h('span', { className: 'hrlg-roman' }, roman + ' · '),
         h('span', { className: 'hrlg-name' }, unitName),
         /* ⓘ INFO — the full stat card (ATK/DEF/MDEF/INT + attack reach).

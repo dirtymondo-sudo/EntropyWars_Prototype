@@ -3493,6 +3493,7 @@ const ThreeRenderer = (function () {
     var FLOAT_MIN_HERO_H = 0.065;
     var FLOAT_MIN_TAG_H = 0.027;
     var FLOAT_MAX_HERO_H = 0.15;
+    var FLOAT_MAX_TAG_H = 0.07;     // a word's ink up close (playtest 2026-11-05 E6): a caption under the number's 0.15
     // a stock damage number's ink height at scale 1 (_buildFloatTextCanvas: 47 px × 0.95 + its outline both sides):
     // THE BUNCH measures its spots and the drift in number heights, so they keep their size next to the pops at any zoom
     var FLOAT_HERO_INK = 47 * 0.95 + 8;
@@ -7839,6 +7840,21 @@ const ThreeRenderer = (function () {
                     var hpNum = tc._ew_towerPlateEl.querySelector('.tp-bar-num');
                     if (hpNum) hpNum.textContent = hp + '/' + maxHp;
                 }
+            }
+            /* THE WORLD TEXT STEPS ASIDE for the Cube's plate too (playtest 2026-11-05 E3: the CUBE plate, still a CSS2D
+               plate, sat on the P2 bar, the weather line, the combat log's words and the unit panel at full strength while
+               every unit plate faded there): over the HUD chrome or an open menu (_wmOverMenu) it fades like they do */
+            if (tc._ew_towerPlateEl && _parentEl) {
+                var tpOuter = tc._ew_towerPlateEl.parentElement, nowMs = now * 1000, over = false;
+                var tr = tc._ew_towerPlateEl.getBoundingClientRect();
+                if (tr.width > 1 && tr.height > 1) {
+                    var PR = _parentEl.getBoundingClientRect();
+                    over = _wmOverMenu(tr.left - PR.left, tr.right - PR.left, tr.top - PR.top, tr.bottom - PR.top, nowMs);
+                }
+                tc._ew_mf = _wmEase(tc._ew_mf, over, nowMs - (tc._ew_mfAt || nowMs));
+                tc._ew_mfAt = nowMs;
+                var opS = tc._ew_mf >= 0.995 ? '' : tc._ew_mf.toFixed(3);
+                if (tpOuter && tpOuter.style.opacity !== opS) tpOuter.style.opacity = opS;
             }
         }
     }
@@ -19998,14 +20014,24 @@ const ThreeRenderer = (function () {
         if (mm && shown(mm)) add(mm.getBoundingClientRect());
         return out;
     }
+    /* THE PLATES STEP ASIDE FOR THE NUMBERS (playtest 2026-11-05 E6: the hit's number, its words and the unit's own
+       plate piled on one spot): a plate under a live floating number or word fades like it does under a menu, and comes
+       back when the pop has gone. The pops' boxes are last frame's (_floatStep), in the same px as the plates'. */
+    var POP_FADE_OP = 0.45;   // half, not the menu's 0.22: the plate's HP bar still reads its drain under the number
+    function _floatOverPop(l, r, t, b) {
+        var P = _floatGameCtx && _floatGameCtx.popBoxes;
+        if (!P || !P.length) return false;
+        for (var i = 0; i < P.length; i++) { var m = P[i]; if (l < m.r && r > m.l && t < m.b && b > m.t) return true; }
+        return false;
+    }
     function _wmOverMenu(l, r, t, b, now) {
         var R = _wmMenuRects(now);
         for (var i = 0; i < R.length; i++) { var m = R[i]; if (l < m.r && r > m.l && t < m.b && b > m.t) return true; }
         return false;
     }
     /* the fade glides (~0.15 s) toward MENU_FADE_OP or back to 1 */
-    function _wmEase(cur, over, dtMs) {
-        var want = over ? MENU_FADE_OP : 1;
+    function _wmEase(cur, over, dtMs, fadeTo) {
+        var want = over ? (fadeTo != null ? fadeTo : MENU_FADE_OP) : 1;
         if (cur == null) return want;
         var k = 1 - Math.exp(-Math.min(250, Math.max(0, dtMs)) / 1000 * 14);
         cur += (want - cur) * k;
@@ -20020,7 +20046,11 @@ const ThreeRenderer = (function () {
         if (_pmObs) { var recs = _pmObs.takeRecords(); if (recs.length) _pmOnMut(recs); }
         /* a UI Maker sheet changed (hud.js uimSheetBump): the CSS on every plate may have, with no mutation to say so */
         var shV = window._ewUimSheetV || 0;
-        if (shV !== _pmSheetV) { _pmSheetV = shV; _pmDirtyAll(); }
+        if (shV !== _pmSheetV) {
+            _pmSheetV = shV; _pmDirtyAll();
+            /* a new sheet may size the names anew: THE NAME FITS starts again from the plate's own size */
+            for (var fi = 0; fi < _pmList.length; fi++) { var fn = _pmList[fi].el && _pmList[fi].el.querySelector('.tp-nm'); if (fn && fn.style.fontSize) fn.style.fontSize = ''; }
+        }
         var gate = (scene && cam && _parentEl) ? _pmGate() : 0;
         var sw = _parentEl ? _parentEl.clientWidth : 0, sh = _parentEl ? _parentEl.clientHeight : 0;
         if (sw <= 0 || sh <= 0) gate = 0;
@@ -20071,7 +20101,9 @@ const ThreeRenderer = (function () {
             sp.position.copy(p2.wp).addScaledVector(R, dx).addScaledVector(Up, dy);
             sp.scale.set(p2.cw * it.s * wpp, p2.ch * it.s * wpp, 1);
             /* over an open menu: the plate fades (its box as drawn, the stack's lift included) */
-            p2.mf = _wmEase(p2.shown ? p2.mf : null, _wmOverMenu(it.l, it.r, it.t - p2.lift, it.b - p2.lift, now), _dtMs);
+            var _ovM = _wmOverMenu(it.l, it.r, it.t - p2.lift, it.b - p2.lift, now);
+            p2.mf = _wmEase(p2.shown ? p2.mf : null, _ovM || _floatOverPop(it.l, it.r, it.t - p2.lift, it.b - p2.lift), _dtMs,
+                _ovM ? MENU_FADE_OP : POP_FADE_OP);
             var op = Math.max(0, Math.min(1, p2.op * gate * p2.mf));
             if (sp.material.opacity !== op) sp.material.opacity = op;
             sp.visible = op > 0.003;
@@ -20430,10 +20462,36 @@ const ThreeRenderer = (function () {
         for (var k = 0; k < kids.length; k++) n.kids.push(_pmCollect(kids[k].el, kids[k].cs, L, n.alpha, filt, P, false));
         return n;
     }
+    /* THE NAME FITS (playtest 2026-11-05 E4: "JACK-O'-LANTE…", "WEREWO…" on the plates, the label cut by its ellipsis).
+       Before a paint the name's font steps down until the whole name fits the room its strip leaves it (the level chip,
+       the eye and the sign badges keep theirs); a name that fits keeps the plate's own size. Worked out from the name's
+       width at its own size, so a fitted plate measures the same next time and nothing is written (no repaint loop). */
+    function _pmFitName(wrap) {
+        var nm = wrap.querySelector('.tp-nm');
+        if (!nm || !nm.parentElement) return;
+        var strip = nm.parentElement, ss = getComputedStyle(strip);
+        if (ss.display === 'none' || getComputedStyle(nm).display === 'none') return;
+        if (!nm.style.fontSize) nm._ewBase = 0;
+        var base = nm._ewBase || parseFloat(getComputedStyle(nm).fontSize) || 14;
+        var cur = nm.style.fontSize ? (parseFloat(nm.style.fontSize) || base) : base;
+        var avail = strip.clientWidth - _pmNum(ss.paddingLeft) - _pmNum(ss.paddingRight), n = 0;
+        for (var c = strip.firstElementChild; c; c = c.nextElementSibling) {
+            var cs = getComputedStyle(c);
+            if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue;
+            n++;
+            if (c !== nm) avail -= c.offsetWidth + _pmNum(cs.marginLeft) + _pmNum(cs.marginRight);
+        }
+        if (n > 1) avail -= _pmNum(ss.columnGap) * (n - 1);
+        var need = nm.scrollWidth * base / cur;   // the whole name at the plate's own size
+        var want = (avail > 12 && need > avail + 0.5) ? Math.max(7, Math.floor(base * (avail - 0.5) / need * 10) / 10) : 0;
+        var wantS = (want && want < base - 0.05) ? want + 'px' : '';
+        if (nm.style.fontSize !== wantS) { if (wantS) nm._ewBase = base; nm.style.fontSize = wantS; }
+    }
     function _pmPaint(pm, now) {
         pm.dirty = false; pm.at = now;
         var wrap = pm.el, ws = wrap.isConnected ? getComputedStyle(wrap) : null;
         if (!ws || ws.display === 'none' || ws.visibility === 'hidden') { pm.ok = false; pm.anim = false; return; }
+        try { _pmFitName(wrap); } catch (e) {}
         var o = pm.outer.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
         var P = { res: pm.res || 2, b: [wr.left, wr.top, wr.right, wr.bottom], ox: 0, oy: 0 };
         var root = _pmCollect(wrap, ws, _PM_I, 1, '', P, true);
@@ -23517,6 +23575,14 @@ const ThreeRenderer = (function () {
             _pressMarks.push({ id: ids[i], el: el, group: group });
         }
         _updatePressMarks();
+    }
+    /* the marks of `group` (any group when none) on these bodies only — a forecast's plates speak for them now */
+    function dropPressMarksOn(ids, group) {
+        if (!_pressMarks.length || !ids || !ids.length) return;
+        _pressMarks = _pressMarks.filter(function (m) {
+            if ((group && m.group !== group) || ids.indexOf(m.id) < 0) return true;
+            m.el.remove(); return false;
+        });
     }
     function clearPressMarks(group) {
         if (!_pressMarks.length) return;
@@ -30574,7 +30640,19 @@ const ThreeRenderer = (function () {
         // for that punchy JRPG pop. (The look's start: chest / head / above.)
         var startY = surfaceY + ts * UNIT_SPRITE_SIZE_RATIO * (_FLOAT_START[L.start] || _FLOAT_START.chest);
 
-        _floatSpawn(_floatGameCtx, el, kind, durationMs, tileX * ts + ts / 2 + jx, tileY * ts + ts / 2 + jy, startY, tileX + ',' + tileY, L);
+        var tw = _floatSpawn(_floatGameCtx, el, kind, durationMs, tileX * ts + ts / 2 + jx, tileY * ts + ts / 2 + jy, startY, tileX + ',' + tileY, L);
+        /* THE POP RIDES ITS BODY (playtest 2026-11-05 E6: Lasso's "−159 GROUNDED! IGNITED −30" landed on Catgirl's plate,
+           not on the Cyborg the rope was still dragging): a pop over a unit follows that unit's model on screen — the
+           body still sliding to the tile the rules already moved it to, a push, a pull, a fall — instead of staying
+           where the tile is. Same on host and guest (each reads its own copy of the board). */
+        var fe = unitAtTile ? unitEntries.get(unitAtTile.id) : null;
+        if (tw && fe && fe.group) {
+            var gp = fe.group.position, cx = tileX * ts + ts / 2, cz = tileY * ts + ts / 2;
+            var atTile = Math.abs(gp.x - cx) < ts * 0.25 && Math.abs(gp.z - cz) < ts * 0.25;
+            tw.follow = unitAtTile.id;
+            tw.fdx = jx; tw.fdz = jy;
+            tw.fdy = startY - (atTile ? gp.y : surfaceY);
+        }
         return el;
     }
 
@@ -30611,6 +30689,7 @@ const ThreeRenderer = (function () {
             delayMs: staggerDelay,
             durationMs: Math.max(400, durationMs || 900) * (hero && kind !== 'pickup' ? FLOAT_HERO_HOLD : 1) * _floatNum(L.life, 1, 0.3, 5),
             isBig: isBig,
+            kind: kind,
             staggerIdx: staggerIdx,
             hero: hero,
             // on-screen size × (the hierarchy: the number reads first)
@@ -30865,7 +30944,7 @@ const ThreeRenderer = (function () {
     }
 
     function _updateFloatTextTweens() {
-        if (_floatTweens.length === 0) return;
+        if (_floatTweens.length === 0) { if (_floatGameCtx.popBoxes) _floatGameCtx.popBoxes.length = 0; return; }
         var _paneCam = _ssFloatCam();   // THE DEATH CLOSE-UP: numbers ride the full-screen death pane
         var cam = _paneCam || ThreeCamera.getCamera();
         var screenW = _parentEl ? _parentEl.clientWidth : 0;
@@ -30920,6 +30999,14 @@ const ThreeRenderer = (function () {
                 continue;
             }
 
+            /* THE POP RIDES ITS BODY: its anchor is where that unit's model is drawn this frame */
+            if (tw.follow != null && !pane) {
+                var fen = unitEntries.get(tw.follow);
+                if (fen && fen.group && fen.group.parent) {
+                    var fgp = fen.group.position;
+                    tw.wx = fgp.x + tw.fdx; tw.wz = fgp.z + tw.fdz; tw.startY = fgp.y + tw.fdy;
+                }
+            }
             var riseT = _floatRiseT(L.path, t);
             var worldY = tw.startY + tw.riseY * (hopPath ? 0 : riseT);
 
@@ -30995,6 +31082,11 @@ const ThreeRenderer = (function () {
                         var minH = fullH * (tw.hero ? minHero : minTag);
                         if (ink0 * settledK < minH) settledK = minH / ink0;
                         else if (tw.hero && ink0 * settledK > fullH * maxHero) settledK = fullH * maxHero / ink0;
+                        /* a word is a caption, never the size of a big number (playtest 2026-11-05 E6: up close in a spell
+                           shot "★ ZODIAC +10%" on the caster, nearer the lens, drew taller than the hit's own number and
+                           buried the unit): up close a word stops growing at FLOAT_MAX_TAG_H of the screen */
+                        else if (!tw.hero && !_FLOAT_SOLO_KINDS[tw.kind] && ink0 * settledK > fullH * Math.max(minTag, Math.min(maxHero * FLOAT_TAG_SCALE, FLOAT_MAX_TAG_H)))
+                            settledK = fullH * Math.max(minTag, Math.min(maxHero * FLOAT_TAG_SCALE, FLOAT_MAX_TAG_H)) / ink0;
                     }
                     // the look's size (and the kind's own) rides on top of the clamps, so it shows at every zoom;
                     // _kr = the resting size the bunch lays out by (the pop-in swell never moves a spot)
@@ -31037,6 +31129,8 @@ const ThreeRenderer = (function () {
                 live[sj]._sfDy = C2 ? (C2.d > 0 ? C2.d : C2.u) : 0;
             }
         }
+        var pops = ctx.popBoxes || (ctx.popBoxes = []);
+        pops.length = 0;
         for (var li = 0; li < live.length; li++) {
             var lw = live[li], lx = lw._sx + (lw.layDx || 0);
             if (ctx.keepIn) {   // the preview's small view: a pop near its edge is moved in, whole, rather than cut off
@@ -31046,6 +31140,11 @@ const ThreeRenderer = (function () {
             if (SF) lx += lw._sfDx || 0;
             lw.el.style.left = lx + 'px';
             lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0) + (SF ? (lw._sfDy || 0) : 0)) + 'px';
+            /* the pop's ink box on screen (the plates step aside under it: _floatOverPop) */
+            if (lw._op > 0.2) {
+                var pb = _floatBox(lw), pcx = lx + pb.cx, pcy = lw._sy + lw.layDy + (lw._pathDy || 0) + (SF ? (lw._sfDy || 0) : 0);
+                pops.push({ l: pcx - pb.hw, r: pcx + pb.hw, t: pcy - pb.up, b: pcy + pb.dn });
+            }
             lw.el.style.transform = 'translate(-50%,-50%) ' + (lw._rot ? 'rotate(' + lw._rot.toFixed(2) + 'deg) ' : '') + 'scale(' + lw._k.toFixed(4) + ')';
             lw.el.style.opacity = lw._op.toFixed(3);
             // THE BUNCH: numbers over words, the newest over the older
@@ -88153,7 +88252,7 @@ const ThreeRenderer = (function () {
            convert jumpArcApex heights with this. */
         elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
-        showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, worldToScreen,
+        showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, dropPressMarksOn, worldToScreen,
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,

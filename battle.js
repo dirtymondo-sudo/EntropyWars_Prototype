@@ -6158,7 +6158,7 @@
                     element: classifySpellElement(spell)
                 });
             }
-            addLog(`💥 ${_ctSp(spell.name)} splashes ${hit.length} ${hit.length === 1 ? 'unit' : 'units'} round ${_ctName(victim)}.`);
+            addLog(`💥 ${_ctSp(spell.name)} splashes ${hit.length} ${hit.length === 1 ? 'unit' : 'units'} around ${_ctName(victim)}.`);
             return hit.length;
         }
         /* ── THE UPGRADE RIDERS (SPELL_LIBRARY_PLAN.md §4.4 / §6.3, Phase 5) — an upgraded spell's derived def carries them
@@ -78080,7 +78080,10 @@
                             groundAirborne: true,
                             deformCenter: { x, y }
                         });
-                    addLog(`${_ctSp(spell.name)} ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`);
+                    // G1 (2026-11-06 playtest): the line names the caster, and an empty area says so (the barrage's own wording)
+                    addLog(hitCount > 0
+                        ? `${_ctName(unit)} casts ${_ctSp(spell.name)}: ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`
+                        : `${_ctName(unit)} casts ${_ctSp(spell.name)} but no enemies are in range.`);
 
                     if (spell.leaveTerrain) {
                         for (const tile of area) {
