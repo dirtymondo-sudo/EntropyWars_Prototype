@@ -1465,3 +1465,18 @@ influences + dictionary each draw (and follows a swapped parent geometry); `_clo
 (hologram, finisher double, race actor, team room) `_morphListGuard`, which rebuilds a missing / wrong-length list before the draw
 (Object3D.copy drops onBeforeRender). The node renderer never threw. Probe: /mnt/project-files/twin-morphs/ (classic WebGL,
 EW_RACE_LOOKS_ARE_DEFAULT=true, cowboy/santa/demon/catgirl x2 on a TDM board): before = hundreds of errors and a blank board, after = 0.
+
+## THE WHOLE BODY (2026-11-06, playtest A1: created looks missing at battle spawn)
+Playtest 11-05 (PLAYTEST_BUGS_20261105.md A1/C4): the saved Cowboy/Catgirl looks showed a name plate and no body on their
+Camelot spawn squares, Santa only his red suit. Not the spawn prism and not far culling. Cause: THE LATE LOOK (node renderer
+`_ewLateSetup`, WebGL `_glScSetup`) holds every NEW look out of the frame till its own build stands, a few a frame; a created
+character is dozens of looks (skin, eyes, lashes, hair, each garment, outline/x-ray twins), so a body first drawn after a
+pass's first 600 ms came in piece by piece. The harness draws only 3 frames a screenshot, so there it stayed in pieces for
+minutes; a real browser drawing every frame mostly builds them under the loading card, but a late dress / slow download /
+the walk showed the pieces arrive. Fix (three-renderer.js): `_createAppearanceRig` marks its root `_ew_whole`; in the scene
+pass a not-yet-shown body draws none of its pieces while any is still building (`_lwGate`, the builds go on), and shows
+whole from the first frame all stand (`_lwTick`). First showing only (a drawn body never blinks for a new piece); a body
+drawn in the pass's first 600 ms counts as shown (`_lwSync`); cap 4 s AND 240 drawn frames. Counts:
+`ThreeRenderer.shaderCache().late.wholeBodies / .wholeHeld`. Browser-checked on Camelot (VS CPU, saved Cowboy/Catgirl/Santa
+looks + DOOR Agent), frame by frame: WebGL2 backend before = red suit + specks for ~400 drawn frames, after = nothing then
+all three whole at once; classic WebGL after = whole. Proof /mnt/project-files/whole-body/.

@@ -2266,3 +2266,85 @@ mondo: "in the pause menu, when i change a setting it will close and reopen the 
   different cmd (`_hqOpenPause('settings')` from elsewhere) opens that page fresh. Memory only (not saved across reloads).
 - The building's menu never rebuilt its frame (`.hq-pause-frame` is static in index.html; settings re-render in place via
   `_openMainMenuSettings`), so only its reopen spot changed.
+
+## THE BATTLE HUD FITS — 2026-11-06 (token 20261106-hudfit-02-cors)
+Playtest 2026-11-05 group E (E1-E6, /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md). Viewer-local
+display only, nothing relayed (each side lays out its own HUD / pops). Shots: /mnt/project-files/hud-fit-20261106/.
+- **E1 the log under the top HUD:** ui.js `_clogFit` — the combat log keeps its bottom (the UI Maker's place) and its top
+  never rises past `.ew-matchmeta` (site name + weather) or the P1 / P2 bars where they sit over it (6 px clear): an inline
+  `max-height !important` from the measured screen rects (UI Maker move / size / scale included). Rechecked on each log
+  render (rAF), window resize and a ResizeObserver on the log + the match info. Folded = left alone. (mondo's shipped
+  layout moves the log up 232 px, which is what ran it under the weather.)
+- **E2 the weather pill:** hud.js `_metaFitUnderBars` — the weather + zodiac pill stays beside the bars while it fits; when
+  its words would reach a `.ew-score-side` / `.ew-score-plate` it drops just under them (marginTop, one line, right
+  aligned). Measured where it would sit undropped (no flip-flop). Each weather is its own nowrap span (`.ew-weather-one`).
+- **E3 the CUBE plates:** they are still CSS2D DOM (not THE PLATES IN THE WORLD sprites), so THE WORLD TEXT STEPS ASIDE never
+  faded them. three-renderer `_updateTowerCubes` now fades them (`_wmOverMenu` + `_wmEase` on the outer's opacity).
+- **E4 names:** hud.js `ewFitLine` (the unit panel `.hrlg-core` / `.hrlg-name`: the name's font steps down until the line
+  fits, min 10 px, rechecked on render + `document.fonts` loadingdone) and three-renderer `_pmFitName` (each plate's
+  `.tp-nm` before its paint: font from the room the strip leaves, worked out from the name's width at its own size so a
+  fitted plate writes nothing next paint — no repaint loop; reset when a UI Maker sheet lands).
+- **E5 Heat Ray:** (a) ui.js `updateIntentPreview` forecasts a MOVE→CAST board aim from `approachCastFrom` (the tile the
+  row and the cast use); (b) the abilities menu's hover mark ("! RESISTED", group 'menu') stayed over the target on top of
+  the forecast plates' own RESISTED — `_ewShowForecastPressMarks(…, spoken)` now drops the menu mark on every body the
+  forecast plates speak for (three-renderer `dropPressMarksOn`).
+- **E6 pops:** (a) THE POP RIDES ITS BODY — a pop over a unit follows that unit's model (`unitEntries` group position) each
+  frame, so a body still sliding / being dragged (Lasso) wears its own numbers; (b) a word pop (not the solo kinds) stops
+  growing at FLOAT_MAX_TAG_H = 7% of the screen up close; (c) a plate under a live pop fades to POP_FADE_OP 0.45 (half, so
+  its HP drain still reads; the menu fade stays 0.22). The pops' boxes: `_floatGameCtx.popBoxes`, cleared when none are up.
+
+## THE FIT — no cut-off text, no sideways scrolls in the forge + VS CPU (2026-11-06, playtest F2/F3)
+mondo: text cut-off is high priority, no sideways scrolls, redesign panels to fit. Cause: the default theme (UI Maker
+`p_entropy`) puts 'Press Start 2P' on every word of the forge and the terminal, about twice the width of the Cormorant SC
+the boxes were drawn for, so names ran out of their boxes ("Jack-o'-La…", "Snow …", "Tune Frequenc"), and the ability
+columns (min 136 px each) scrolled sideways.
+- **party-builder.js `window.EWFitText`** (top of the file): `attach(root)` watches a screen (MutationObserver +
+  ResizeObserver + window resize + `document.fonts` loadingdone, rAF-coalesced). Every box that clips its words (overflow
+  hidden / clip: an ellipsis or a line clamp, ≤14 descendants, no img/input) and runs out gets its words' font-size scaled
+  down (inline `!important`, `data-ewfit`) in batched read/write rounds, floor 50% / 6.5 px, then 5% more off (scrollWidth
+  rounds). Still too long at the floor: `hyphens: auto` + `overflow-wrap: anywhere`; still no: size back + hover title
+  (`data-ewfit-t`, the only boxes that keep an ellipsis: `.ms-crt *:not([data-ewfit-t]) { text-overflow: clip }`). Leaves
+  first. A change inside the screen re-fits only the boxes around it (~3 ms a hover); resize / fonts re-fit the whole screen.
+  Empty inputs whose placeholder is too wide shrink (canvas measure). THE GROWN ROW: a theme selGrow (`--uim-sel-grow`)
+  gives `.ms-tty-row.sel` its grown height as margins (the VS CPU ARENA row ran over TEAM DEATHMATCH).
+  Wired: the forge root (`crtRef` layout effect) and match-select.js `_msFitRef` on `.ms-crt`. Kill switch
+  `window.EW_DISABLE_FIT_TEXT = true`; numbers `EWFitText.stats()`.
+- **styles-base.css "THE FIT"** (end of file): names wrap to 2 lines (roster tiles, party names; party sub 3; column heads 3),
+  the party slots are portrait + 40 px, header parts may shrink, stat labels clip; `.pb-famcols` = `minmax(0, 1fr)` columns,
+  no sideways scroll; each `.pb-famcol` is a size container (≤200 px: the name on its own line under icon + count; ≤132 px:
+  slimmer disc / padding); spell meta lines wrap (a rider wraps inside itself); the loadout is 4 × 2 up to 2200 px wide
+  (was 8 across down to 1180 px); slot names 3 lines, family line 2. Sticky notes: whole text (no clamp), `flex: none` (one
+  note slid under the next: Pathfinder under Showmanship), the stack scrolls down; on TECHNIQUES 34% of the stage
+  (112-180 px) and under a stage pill. GEAR slot names sit under their circles. The TECHNIQUES info text scrolls whole.
+  VS CPU: `.ms-tty-cards` + the site file scroll down only, the kicker wraps, the big title clips (`overflow-x: clip`) so the
+  fit shrinks it, the footer summary wraps to 2 lines.
+- Proven in Chromium with the shipped theme at 1280×720, 1512×860, 1920×1080: 0 clipped boxes, 0 sideways scrolls on
+  ROSTER / ABILITIES (4 units) / GEAR / INFO and VS CPU. Shots: /mnt/project-files/party-builder-fit/.
+
+## THE TEAM SELECT BUTTON ROW UNDER THE TITLE BAR (2026-11-06, playtest 2026-11-05 F1)
+- Seen: after NEW TEAM > save a second team, the 4V4 / 5V5 / RANDOM / EDIT / NEW TEAM / DEPLOY row showed only as a
+  sliver under the title bar and DEPLOY could not be clicked; the "2 / 20 TEAMS" counter was cut at the right edge.
+- Cause: map.js `_sqKeepActsNow` (PR #881) pushes the UI Maker-moved row below `.sq-head`, measured on 4 timers (0-1200 ms).
+  With the main thread busy (created characters dressing in the team room) all 4 ran while the head's UI Maker open
+  (`uim-stretch`, scale 1 x 0.05 for its first half) and the dock's `sqCardIn` still played: the head read ~6 px tall, the
+  row was parked at y 101-179 under the 148 px bar, and `#sqBody` (overflow-y auto, top 160) clipped it to 18 px.
+  The UI Maker head width (1270 px) also ran past a 1280 px window.
+- Fix: `_sqKeepActsAfterAnims` measures again once every finite animation on the page has ended; the head box is read
+  from its layout size about its centre (immune to the open scale); the row also stays 4 px below `#sqBody`'s top; the head
+  gets a `max-width` so it ends 6 px inside the window. Reproduced by blocking the main thread 1.6 s right after opening
+  the desk: before = row 101-179, after = row 164-242, counter 1157-1256, DEPLOY on top at its centre and it opens the map.
+
+## THE ABILITY LIST FITS + BACK CLEARS THE ROWS (2026-11-06, playtest 2026-11-05 E7/E8)
+- E7: Bigfoot's sixth ability sat under the spell description bar. `_listDescDodge` shrank the list by the bar's overlap
+  inside its Height cap (UI Maker qListH 390), so 5 rows showed. Now (hud.js `_listFit`, every list but the quick list)
+  the panel RISES clear of the bar (margin under the list, only grows while one list is open) and the list's max-height is
+  the screen's room from that lifted bottom up to the top HUD (`_listCeiling`: scoreboard / AP icons / match info that
+  share its columns), less the BACK chip + title. A 7-ability list shows whole at 1280x720 and at 1280x540. The quick list
+  (under the unit info card) keeps its own Height / Shortest / Tallest. qListH no longer caps the non-quick lists.
+- E7 wheel: the wheel stepped the cursor, the list scrolled to it, the scroll slid another row under the still mouse and
+  its mouseenter (hover = selection) took the cursor back. `hoverBlade` now ignores enter/leave while the pointer sits
+  exactly where the last wheel/key step left it (`_hrlgPtrX/Y`, `stepPtr`); any real mouse move hands hover back.
+- E8: on a spell's target step the active panel's BACK chip landed on the dimmed ability rows behind it. `_backChipDodge`
+  (per frame, off in the UI Maker's Layout view) slides the chip right on its own line (margin-left) until it clears
+  the dimmed panel; home when clear.
+- Not changed (I2, waiting on mondo): spells on cooldown still leave the Abilities list instead of showing greyed.
