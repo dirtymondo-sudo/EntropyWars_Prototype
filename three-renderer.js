@@ -18192,8 +18192,11 @@ const ThreeRenderer = (function () {
             if (rec.state !== 'out') { rec.state = 'out'; rec.t0 = now; rec.an.ctl.play('run', { speed: 1.3, fade: 0.1 }); }
         } else if (!rec) { rec = { key: want, an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
         if (!rec.an) {
-            rec.an = rec.vehicle ? _vehicleMountBuild(rec.vehicle, ts)
-                : _animalBuild(rec.key, ts * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
+            /* THE BODY'S MOUNT (2026-11-06, playtest C5: "a horse fills a third of the impact frame"): the horse / the vehicle is
+               sized to the RIDER's body (UNIT_SPRITE_SIZE_RATIO = the body scale), not to the square — on the 3.5 m squares every
+               board plays on since 2× EVERYWHERE it was drawn at twice the rider's scale, a horse two riders tall */
+            rec.an = rec.vehicle ? _vehicleMountBuild(rec.vehicle, ts * UNIT_SPRITE_SIZE_RATIO)
+                : _animalBuild(rec.key, ts * UNIT_SPRITE_SIZE_RATIO * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
             if (!rec.an) { entry._ew_mountSit = false; return false; }   // streaming: on foot till it lands
             rec.an.group.name = 'mount_' + uid;
             if (!rec.vehicle) rec.an.group.traverse(function (n) {   // its own materials: the unit's fades (invisibility, the fog) never reach every horse
@@ -18244,12 +18247,12 @@ const ThreeRenderer = (function () {
         /* THE SPEAR (2026-10-27): a Lance / Ride to Valhalla rider couches mondo's spear: level under the right arm (the unit
            faces +Z, its right is −X), the tip a touch down and across the horse's neck; up with the rider, gone with the horse */
         if (rec.lance || rec.lanceG) {
-            if (rec.lance && !rec.lanceG) { rec.lanceG = _spearClone(ts * _MOUNT_LANCE.len); if (rec.lanceG) rec.lanceG.name = 'mount_lance_' + uid; }
+            if (rec.lance && !rec.lanceG) { rec.lanceG = _spearClone(ts * UNIT_SPRITE_SIZE_RATIO * _MOUNT_LANCE.len); if (rec.lanceG) rec.lanceG.name = 'mount_lance_' + uid; }
             if (rec.lanceG) {
                 if (rec.lanceG.parent !== wrap) wrap.add(rec.lanceG);
                 var LN = _MOUNT_LANCE;
                 rec.lanceG.visible = !!rec.lance && rec.state === 'on';
-                rec.lanceG.position.set(-unitH * LN.x, unitH * LN.y, ts * LN.z);
+                rec.lanceG.position.set(-unitH * LN.x, unitH * LN.y, ts * UNIT_SPRITE_SIZE_RATIO * LN.z);
                 rec.lanceG.rotation.set(LN.dip, LN.across, 0);
             }
         }
@@ -18445,7 +18448,9 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var surfY = unitSurfaceY(unit);
 
-        var _nativeScale = ts / 128;
+        /* THE BODY SPRITE (2026-11-06, playtest C8): 128 px art = ONE BODY, not one square — on the 3.5 m squares a race
+           drawn as its map sprite stood two bodies tall and filled (and cropped) its own close-up. */
+        var _nativeScale = ts / 128 * UNIT_SPRITE_SIZE_RATIO;
 
         var _effectiveSprH = ts;
 
@@ -22356,7 +22361,7 @@ const ThreeRenderer = (function () {
                ? getR2RaceSpriteUrl(unit.race, unit.gender, unit.cls) : null);
         var spriteTex = spriteUrl ? getTexture(spriteUrl) : null;
         if (spriteTex) {
-            var _nativeScale = ts / 128;
+            var _nativeScale = ts / 128 * UNIT_SPRITE_SIZE_RATIO;   // THE BODY SPRITE: one body, like the board's
             var nw = 128, nh = 128;
             var scanData = window._spriteGroundOffsets
                 ? window._spriteGroundOffsets.get(spriteUrl) : null;

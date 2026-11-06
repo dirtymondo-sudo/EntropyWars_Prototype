@@ -1462,6 +1462,19 @@
         };
         window.showRoundBanner = showRoundBanner;
 
+        /* THE SKIPPED TURN ON SCREEN (2026-11-06, playtest C7, RULE #2): the host's camera beat on a unit whose turn a freeze /
+           stun skipped. Its floating "TURN SKIPPED" is relayed as floating text; the pan is relayed here, and the guest pans
+           only to a tile its own fog shows (showTurnSkipCam checks _isTileVisibleToViewer on each screen). */
+        if (typeof window.showTurnSkipCam === 'function') {
+            const _origShowTurnSkipCam = window.showTurnSkipCam;
+            window.showTurnSkipCam = function(unitId) {
+                const r = _origShowTurnSkipCam(unitId);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn())) _emit('relay', { type: 'turn-skip', unitId: unitId });
+                return r;
+            };
+        }
+
         /* THE DETONATION CINEMATIC (2026-09-13, RULE #2). state.js's
            end-of-round detonation loop runs on the HOST only, and its
            multi-cam (battle.js playDetonationCinematic — the F-22 fly-by,
@@ -4602,6 +4615,10 @@
                             }
                             window.showTurnBanner(data.player, data.roundNum, data.isNewRound, blitzUnit);
                         }
+                    }
+
+                    if (data.type === 'turn-skip' && _ewMirrorView()) {
+                        if (typeof window.showTurnSkipCam === 'function') window.showTurnSkipCam(data.unitId);
                     }
 
                     if (data.type === 'round-banner' && _ewMirrorView()) {

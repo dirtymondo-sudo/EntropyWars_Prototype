@@ -19271,7 +19271,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var whiten = Math.min(1, Math.max(0, (t - freezeAt * 0.5) / freezeAt));
                 col.setHSL(0.55, 0.85 - 0.75 * whiten, 0.72 + 0.24 * whiten);
                 mat.color.copy(col);
-                mat.opacity = Math.min(1, kIn * 2.2) * 0.95;
+                /* (2026-11-06, playtest C1) the struts cross the frozen body: see-through enough that the body reads behind them */
+                mat.opacity = Math.min(1, kIn * 2.2) * 0.6;
                 return;
             }
 
@@ -22388,13 +22389,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         if (!_physCast && !P.noOrb) {   /* noOrb: nature casts call vines, not a glass orb (THE NATURE PASS) */
             try {
+                /* body-sized (2026-11-06 audit, playtest C8): a SQUARE-sized orb was twice the caster on the 3.5 m squares */
+                var _obk = _bodyK();
                 _sigMagicOrb3D(tx, ty, {
                     color: P.orb,
-                    r0: ts * 0.10 * T.orbScale,
-                    r1: ts * 0.52 * T.orbScale,
+                    r0: ts * 0.10 * T.orbScale * _obk,
+                    r1: ts * 0.52 * T.orbScale * _obk,
                     ms: Math.max(260, holdMs * 0.85),
-                    rise: ts * 0.30,
-                    height: ts * 0.50
+                    rise: ts * 0.30 * _obk,
+                    height: ts * 0.50 * _obk
                 });
             } catch (e) {}
         }
@@ -57346,10 +57349,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fr = _ivDecal(F.g, _ivFrostTex(), ts * (1.0 + 0.3 * os), new THREE.Vector3(0, ts * 0.042, 0), _IV.rime, false);
         var ux = 0, uz = 0;
         if (tx != null && (tx !== sx || ty !== sy)) { var o = _nvOff(F, tx, ty), L = Math.max(1, Math.hypot(o.x, o.z)); ux = o.x / L; uz = o.z / L; }
+        /* THE CROWN GEM (2026-11-06, playtest C8 audit): the crystal grew at chest height a third of a SQUARE in front — on
+           the 3.5 m squares that is in front of the face, half a body tall, and the caster close-up (now near level) saw a
+           block of ice where the Ice Queen was. It is body-sized now (_bodyK) and grows over the head, a little forward —
+           the water ball's place (FX-1) — so the windup lens sees the caster under her crystal. */
+        var bk = _bodyK(), gx = ux * ts * bk * 0.16, gy = ts * bk * 1.32, gz = uz * ts * bk * 0.16;
         var K = _ivCrystalGeo([[0.001, 0], [0.7, 0.3], [0.6, 0.72], [0.001, 1]]), im = _ivIceMat(), em = _ivEdgeMat();
-        var gem = _ivCrystal(F.g, K, im, em, new THREE.Vector3(ux * ts * 0.34, ts * 0.52, uz * ts * 0.34), ts * 0.07 * os, ts * 0.22 * os, null, 0);
-        gem.g.position.y -= ts * 0.11 * os;
-        var halo = _pzSpr(_IV.glow, ts * 0.42 * os, F.g); halo.position.set(ux * ts * 0.34, ts * 0.52, uz * ts * 0.34);
+        var gem = _ivCrystal(F.g, K, im, em, new THREE.Vector3(gx, gy, gz), ts * 0.07 * os * bk, ts * 0.22 * os * bk, null, 0);
+        gem.g.position.y -= ts * 0.11 * os * bk;
+        var halo = _pzSpr(_IV.glow, ts * 0.42 * os * bk, F.g); halo.position.set(gx, gy, gz);
         var END = hold + 260;
         return _sigRunOwned(F.g, END, function (el) {
             var inK = _sigEaseOutCubic(_sigClamp01(el / 260)), out = _sigClamp01((el - hold) / 240);
@@ -57941,12 +57949,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (tx != null && (tx !== sx || ty !== sy)) { var ln = _nrvLine(F, { x: tx, y: ty }, sx, sy); dx = ln.ux; dz = ln.uz; }
         /* over the head, a little forward (spell look fix FX-1, 2026-10-26): at chest height in front of the body the ball
            sat between the windup camera and the caster's face on every water cast (Enlil's Deluge, Maelstrom, Tsunami…) */
-        var at = new THREE.Vector3(dx * ts * 0.16, ts * 1.32, dz * ts * 0.16);
+        /* THE BIG SQUARES (2026-11-06 audit, playtest C8): "over the head" is in BODIES — 1.32 squares put the ball 2.6 bodies
+           up on the 3.5 m squares, out of the windup frame */
+        var bk = _bodyK();
+        var at = new THREE.Vector3(dx * ts * bk * 0.16, ts * bk * 1.32, dz * ts * bk * 0.16);
         var bm = _wvWaterMat(), ball = _pzMesh(new THREE.IcosahedronGeometry(1, 2), bm, F.g, at.x, at.y, at.z);
         _nvBake(ball.geometry, 0.7);
-        var core = _pzSpr(_WV.glow, ts * 0.5, F.g); core.position.copy(at);
+        var core = _pzSpr(_WV.glow, ts * 0.5 * bk, F.g); core.position.copy(at);
         var rm = _pzGlow(_WV.light), ring = _pzMesh(new THREE.TorusGeometry(1, 0.05, 6, 40), rm, F.g, at.x, at.y, at.z);
-        var R = ts * 0.15 * (s || 1), last = 0, popped = false;
+        var R = ts * 0.15 * (s || 1) * bk, last = 0, popped = false;
         return _sigRunOwned(F.g, ms + 420, function (el) {
             _wvFlow();
             var g = _sigEaseOutCubic(_sigClamp01(el / (ms * 0.8))), pop = _sigClamp01((el - ms) / 260);
@@ -57956,7 +57967,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             bm.opacity = 0.78 * (1 - pop); core.material.opacity = 0.55 * g * (1 - pop);
             ring.scale.setScalar(r * 1.7); ring.rotation.set(1.1 + Math.sin(el * 0.004) * 0.3, el * 0.006, 0.4); rm.opacity = 0.55 * g * (1 - pop);
             if (el < ms && el - last > 45 && _canSpawn()) {
-                last = el; var a = rn(0, 6.2832), d = ts * rn(0.45, 0.7), v = d / 0.32;
+                last = el; var a = rn(0, 6.2832), d = ts * bk * rn(0.45, 0.7), v = d / 0.32;
                 _pzP(F, at.x + Math.cos(a) * d, at.y + rn(-0.3, 0.3) * d, at.z + Math.sin(a) * d, { sprite: 'water-splash', ml: 300, size0: rn(4, 7), size1: 2,
                     vx: -Math.cos(a) * v, vy: -Math.sin(a) * v, vz: rn(-20, 20), drag: 0, gravity: 0, opacity0: 0.9 });
             }

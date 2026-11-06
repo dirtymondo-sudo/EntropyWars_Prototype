@@ -3908,8 +3908,9 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 /* tint + filter recipes */
 .cine-grade.g-sepia   { backdrop-filter: sepia(.85) contrast(1.08) saturate(.7); }
 .cine-grade.g-sepia   .cine-grade-tint { opacity: .22; background: #d8b483; mix-blend-mode: multiply; }
-.cine-grade.g-bone    { backdrop-filter: grayscale(.55) brightness(1.35) contrast(.92); }
-.cine-grade.g-bone    .cine-grade-tint { opacity: .3; background: #fff; }
+/* THE BONE WASH (2026-11-06, playtest C1): brightness 1.35 + a .3 white sheet clipped a pale board to flat white */
+.cine-grade.g-bone    { backdrop-filter: grayscale(.45) brightness(1.1); }
+.cine-grade.g-bone    .cine-grade-tint { opacity: .18; background: #fff; }
 .cine-grade.g-desat   { backdrop-filter: grayscale(.9) contrast(1.1); }
 .cine-grade.g-invert  { backdrop-filter: invert(1) hue-rotate(180deg); }
 .cine-grade.g-dim     .cine-grade-tint { opacity: .42; background: #050813; }
@@ -4188,7 +4189,8 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .void-veil {
     position: absolute; inset: 0;
     display: block; width: 100%; height: 100%;   /* a quarter-res <canvas> since 2026-10-18 (THE TARGET STAYS): stretched */
-    z-index: 97;
+    z-index: 93;   /* UNDER the action-cam chrome (94) — 2026-11-06, playtest C6: over it, a bright veil turned both letterbox bars grey
+                      and dimmed the title for the whole bloom, so the impact frame read as "no letterbox" */
     pointer-events: none;
     opacity: 0;
     transition: opacity .46s ease-out;

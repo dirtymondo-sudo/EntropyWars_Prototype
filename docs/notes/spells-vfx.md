@@ -3142,3 +3142,31 @@ the impact, what the actual fuck. Fix this for all spells."
   `window.EW_NO_IMPACT_HOLD = true`. Probe: `window._cineImpactHoldLeft()`.
 - Online: the guest re-runs playOffensiveActionCamera with the same opts (descentCam relayed), so its shot stretches the
   same way; the host's return (and its relayed settle) waits for the hold.
+
+## THE BODY LENS — playtest group C, spell shot framing (2026-11-06)
+Source: /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md C1-C8. Before/after sheets:
+/mnt/project-files/spell-shot-framing/ (filmed frame by frame with a slowed clock, main vs this branch, same staging).
+Root cause of most of it: 2× EVERYWHERE (bodies = half a square, ThreeRenderer.bodyScale 0.5) left several
+"in squares" sizes that are really "in bodies":
+- **C8 / C1 / C3 THE BODY LENS** (three-camera.js `_camBodyK`): the TPS lowest lens CINE_MIN_EYE_TILES is × bodyScale.
+  1.15 squares = 2.3 bodies over the floor with a body-sized boom → every caster / victim close-up stared down at a head.
+- **THE CROWN** (battle.js `_cineGuardUnitPts`): the caster's guard top is h × 1.15 so a near-level close-up keeps the crown.
+- **THE BODY'S HEAD ROOM** (same fn): the victim's HP-bar gap is ts·0.35 × bodyScale; unscaled, THE HEAD ROOM window backed
+  every hit shot off until the victim was a small figure (the Absolute Zero void face cam was ~3.4 squares out).
+- **THE BODY SPRITE** (three-renderer.js `_nativeScale` ×2): a race drawn as its map sprite is one body tall, not one square.
+- **THE BODY'S MOUNT / C5** (three-renderer.js `_updateUnitMount`): the riding horse / vehicle / lance are rider-sized. The
+  playtest "Camelot horse" in the Lasso shot was the Cowboy's own horse_brown at twice the rider's scale.
+- **Windups (audit)** three-vfx-effects.js: THE CROWN GEM (`_ivWindup`, every ice cast) grows over the head, a little forward,
+  body-sized (it sat in front of the face, half a body tall); `_wvGather` (water ball) and the windup `_sigMagicOrb3D` are × _bodyK().
+- **C2 THE DRY WITNESS** (battle.js `_cineFindWitness`): no witness lens from a unit on a water tile, half a level or more below
+  the victim, or with terrain between it and the victim.
+- **C6** (battle.js `hideActionCamChrome`): THE BARS HOLD WITH THE LENS — the bars wait out THE IMPACT HOLD, then stay while
+  the lens is still on the TPS close-up (camera._cineTps, no menu shot) for at most AC_BARS_CAM_WAIT_MS (1600). The
+  `_acYieldWatch` pop test uses each pop's INK rect (canvas minus its _ewMargin*), not the canvas: a margin grazing the top bar
+  faded it. The void veil (styles-cinematic.css .void-veil) is z 93, under the chrome (94): it greyed both bars.
+- **C1 THE BONE WASH**: CINE_GRADE_POST.bone gray .45 / bri 1.1 / con 1 (was .55 / 1.35 / .92), .g-bone DOM grade the same,
+  tint .18; the Absolute Zero director grades 'desat' over its white void (no bone on bone); the cage struts × 0.6 opacity.
+- **C7 THE SKIP BEAT** (battle.js `maybeAdvanceTurn` → `_turnSkipBeat` / `showTurnSkipCam`): when the next activation skips
+  a frozen / stunned unit (state.js getNextBlitzUnit sets `_skippedTurn` + the log line), the camera goes to the first one
+  the viewer can see (fog-gated) with a "TURN SKIPPED" pop for TURN_SKIP_BEAT_MS (1150), then the next unit's turn.
+  Online: online.js wraps `showTurnSkipCam` → relay `turn-skip` {unitId}; the guest runs it under `_ewMirrorView()`.
