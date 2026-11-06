@@ -3,6 +3,184 @@
 
 const h = React.createElement;
 
+/* THE FIT (2026-11-06, playtest F2/F3, mondo: text cut-off is high priority, redesign panels to fit). The menus wear the
+   theme's font (the default is Press Start 2P, about twice as wide as the Cormorant SC the boxes were drawn for), so a
+   name that fit at design time ran out of its box: "Jack-o'-La…", "Snow …", "Tune Frequenc". Every box that clips its
+   text (overflow hidden / clip, an ellipsis or a line clamp) is measured after each render, on resize and when a font
+   lands; a box whose words do not fit gets its words shrunk (font-size, inline !important) until they do, down to
+   MIN_K of their size or MIN_PX. Words that still cannot fit go back to their size and keep the full text as a hover
+   title. Leaves first: a box that holds another clipping box waits for it. One pass = a few batched layouts (read all,
+   then write all), rAF-coalesced. window.EWFitText.attach(root) wires a screen; match-select.js uses it too.
+   Kill switch: window.EW_DISABLE_FIT_TEXT = true. */
+if (!window.EWFitText) window.EWFitText = (function () {
+  const roots = new Set(), MIN_PX = 6.5, MIN_K = 0.5, MAX_KIDS = 14;
+  const SKIP = new Set(['IMG', 'CANVAS', 'VIDEO', 'svg', 'SVG', 'INPUT', 'TEXTAREA', 'SELECT', 'IFRAME', 'SCRIPT', 'STYLE']);
+  let raf = 0, stats = { runs: 0, ms: 0, fit: 0, gaveUp: 0 };
+  const clipOf = v => v === 'hidden' || v === 'clip';
+  const ownText = el => { for (const n of el.childNodes) if (n.nodeType === 3 && n.nodeValue.trim()) return true; return false; };
+  function measure(el) {
+    const cs = getComputedStyle(el);
+    const hx = clipOf(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
+    const hy = clipOf(cs.overflowY) && el.scrollHeight > el.clientHeight + 2;
+    if (!hx && !hy) return null;
+    return { rx: hx ? el.clientWidth / el.scrollWidth : 1, ry: hy ? el.clientHeight / el.scrollHeight : 1, hx, hy, sw: el.scrollWidth, sh: el.scrollHeight };
+  }
+  const inScope = (root, sel) => { const a = [...root.querySelectorAll(sel)]; if (root.matches && root.matches(sel)) a.push(root); return a; };
+  function reset(root) {
+    inScope(root, '[data-ewfit]').forEach(el => {
+      el.style.removeProperty('font-size'); el.style.removeProperty('hyphens'); el.style.removeProperty('-webkit-hyphens'); el.style.removeProperty('overflow-wrap');
+      if (el.dataset.ewfitOrig) el.style.fontSize = el.dataset.ewfitOrig;
+      delete el.dataset.ewfit; delete el.dataset.ewfitOrig;
+    });
+    inScope(root, '[data-ewfit-t]').forEach(el => { el.removeAttribute('title'); delete el.dataset.ewfitT; });
+  }
+  function fitRoot(root) {
+    reset(root);
+    // read: every clipping box with words in it that run out of the box
+    const cands = [];
+    for (const el of [root, ...root.querySelectorAll('*')]) {
+      if (SKIP.has(el.tagName) || !el.clientWidth) continue;
+      const cs = getComputedStyle(el);
+      if (!clipOf(cs.overflowX) && !clipOf(cs.overflowY)) continue;
+      const o = measure(el);
+      if (!o) continue;
+      const kids = el.getElementsByTagName('*');
+      if (kids.length > MAX_KIDS || !(el.textContent || '').trim()) continue;
+      let bad = false;
+      for (const k of kids) if (SKIP.has(k.tagName)) { bad = true; break; }
+      if (bad) continue;
+      cands.push({ el, o0: o });
+    }
+    // leaves first: drop a box that holds another candidate
+    const set = new Set(cands.map(c => c.el));
+    const work = cands.filter(c => { for (const k of c.el.getElementsByTagName('*')) if (set.has(k)) return false; return true; });
+    work.forEach(t => {
+      t.texts = [t.el, ...t.el.getElementsByTagName('*')].filter(x => x === t.el || ownText(x)).map(x => ({ x, px: parseFloat(getComputedStyle(x).fontSize) || 12 }));
+      const big = Math.max(...t.texts.map(s => s.px));
+      t.k = 1; t.minK = Math.min(1, Math.max(MIN_K, MIN_PX / big));
+    });
+    const apply = (t, k) => t.texts.forEach(s => {
+      if (!s.x.dataset.ewfit) { s.x.dataset.ewfit = '1'; if (s.x.style.fontSize) s.x.dataset.ewfitOrig = s.x.style.fontSize; }
+      s.x.style.setProperty('font-size', Math.max(MIN_PX, s.px * k).toFixed(2) + 'px', 'important');
+    });
+    // shrink in rounds: read every box, then write every box
+    let live = work.map(t => ({ t, o: t.o0 }));
+    for (let round = 0; round < 7 && live.length; round++) {
+      live.forEach(({ t, o }) => {
+        const r = Math.min(o.hx ? o.rx : 1, o.hy ? (o.hx ? o.ry : Math.sqrt(o.ry)) : 1);   // wrapped words: the height falls ~ the square
+        const k = Math.max(t.minK, t.k * Math.min(0.96, Math.max(0.6, r)));
+        if (k >= t.k - 0.001) { t.stuck = true; return; }
+        t.k = k; apply(t, k);
+      });
+      live = live.filter(x => !x.t.stuck).map(x => ({ t: x.t, o: measure(x.t.el) })).filter(x => x.o);
+    }
+    // what still runs out at the smallest size: give the words their size back if shrinking did not help, and a hover title.
+    // A box that fits after shrinking takes 5% more off: scrollWidth rounds, and words that end on the box's edge still
+    // drew an ellipsis or touched the padding (a note's folded corner)
+    const failed = [];
+    work.forEach(t => {
+      const o = measure(t.el);
+      if (!o) { if (t.k < 1) { stats.fit++; apply(t, Math.max(t.minK * 0.95, t.k * 0.95)); } return; }
+      failed.push(t);
+    });
+    // one word longer than its box at the smallest size ("Flamethrower"): break it with a hyphen (html lang="en"), or
+    // anywhere where the browser has no hyphenation dictionary
+    failed.forEach(t => t.texts.forEach(s => { s.x.dataset.ewfit = '1'; s.x.style.setProperty('hyphens', 'auto'); s.x.style.setProperty('-webkit-hyphens', 'auto'); s.x.style.setProperty('overflow-wrap', 'anywhere'); }));
+    failed.forEach(t => {
+      const o = measure(t.el);
+      if (!o) { stats.fit++; return; }
+      stats.gaveUp++;
+      t.texts.forEach(s => { s.x.style.removeProperty('hyphens'); s.x.style.removeProperty('-webkit-hyphens'); s.x.style.removeProperty('overflow-wrap'); });
+      const helped = (t.o0.hx && o.sw < t.o0.sw * 0.85) || (t.o0.hy && o.sh < t.o0.sh * 0.85);
+      if (!helped) t.texts.forEach(s => { s.x.style.removeProperty('font-size'); if (s.x.dataset.ewfitOrig) s.x.style.fontSize = s.x.dataset.ewfitOrig; delete s.x.dataset.ewfit; delete s.x.dataset.ewfitOrig; });
+      if (!t.el.getAttribute('title')) { t.el.setAttribute('title', (t.el.textContent || '').trim()); t.el.dataset.ewfitT = '1'; }
+    });
+  }
+  /* an empty input whose placeholder is wider than its box ("SEAR", "Name this squ"): the input's words shrink */
+  let _cv = null;
+  function fitInputs(root) {
+    root.querySelectorAll('input[placeholder]').forEach(el => {
+      if (el.dataset.ewfitIn) { el.style.removeProperty('font-size'); if (el.dataset.ewfitOrig) el.style.fontSize = el.dataset.ewfitOrig; delete el.dataset.ewfitIn; delete el.dataset.ewfitOrig; }
+      if (el.value || !el.clientWidth) return;
+      const cs = getComputedStyle(el), ph = getComputedStyle(el, '::placeholder');
+      _cv = _cv || document.createElement('canvas').getContext('2d');
+      const px = parseFloat(ph.fontSize) || parseFloat(cs.fontSize) || 12;
+      _cv.font = (ph.fontStyle || '') + ' ' + (ph.fontWeight || '') + ' ' + px + 'px ' + (ph.fontFamily || cs.fontFamily);
+      let txt = el.placeholder; const tt = ph.textTransform || cs.textTransform;
+      if (tt === 'uppercase') txt = txt.toUpperCase(); else if (tt === 'lowercase') txt = txt.toLowerCase();
+      const ls = parseFloat(ph.letterSpacing) || 0;
+      const need = _cv.measureText(txt).width + ls * txt.length;
+      const room = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 2;
+      if (need <= room || room <= 0) return;
+      const own = parseFloat(cs.fontSize) || px, k = Math.max(MIN_K, room / need * 0.97);
+      if (el.style.fontSize) el.dataset.ewfitOrig = el.style.fontSize;
+      el.dataset.ewfitIn = '1';
+      el.style.setProperty('font-size', Math.max(MIN_PX, own * k).toFixed(2) + 'px', 'important');
+    });
+  }
+  /* THE GROWN ROW: a theme's selected-row grow (UI Maker motion selGrow, --uim-sel-grow) scales a tall mode row from its
+     middle, so it ran over the next row and its title went up under the list's top edge (VS CPU, ARENA). The row gets
+     the grown height as margins. */
+  function roomForGrown(root) {
+    root.querySelectorAll('[data-ewgrow]').forEach(el => { el.style.removeProperty('margin-top'); el.style.removeProperty('margin-bottom'); delete el.dataset.ewgrow; });
+    const g = parseFloat(getComputedStyle(root).getPropertyValue('--uim-sel-grow')) || 1;
+    if (g <= 1.001) return;
+    root.querySelectorAll('.ms-tty-row.sel').forEach(el => {
+      const m = Math.ceil((g - 1) * el.offsetHeight / 2) + 3;
+      el.dataset.ewgrow = '1'; el.style.setProperty('margin-top', m + 'px', 'important'); el.style.setProperty('margin-bottom', m + 'px', 'important');
+    });
+  }
+  function run() {
+    raf = 0;
+    if (window.EW_DISABLE_FIT_TEXT) return;
+    const t0 = performance.now();
+    roots.forEach(r => {
+      if (!r.el.isConnected) { r.mo.disconnect(); r.ro && r.ro.disconnect(); roots.delete(r); return; }
+      try {
+        roomForGrown(r.el);
+        if (r.full || r.dirty.size > 40) fitRoot(r.el);
+        else {
+          /* a change inside the screen (a hover filling the info panel, an equip): only the boxes around it. The region =
+             the highest box over the change still small enough to be a fit box itself, so its clipping box is in it */
+          const regions = new Set();
+          r.dirty.forEach(n => {
+            if (!n.isConnected || !r.el.contains(n)) return;
+            let reg = n;
+            while (reg.parentElement && reg !== r.el && reg.parentElement.getElementsByTagName('*').length <= MAX_KIDS) reg = reg.parentElement;
+            regions.add(reg);
+          });
+          const list = [...regions];
+          list.filter(a => !list.some(b => b !== a && b.contains(a))).forEach(fitRoot);
+        }
+        fitInputs(r.el);
+      } catch (e) { console.warn('[fit-text]', e); }
+      r.full = false; r.dirty.clear();
+    });
+    stats.runs++; stats.ms += performance.now() - t0;
+  }
+  function schedule() { if (!raf) raf = requestAnimationFrame(run); }
+  function scheduleFull() { roots.forEach(r => { r.full = true; }); schedule(); }
+  window.addEventListener('resize', scheduleFull);
+  try { document.fonts && document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', scheduleFull); } catch (e) {}
+  return {
+    attach(el) {
+      if (!el) return;
+      for (const r of roots) if (r.el === el) return;
+      const rec = { el, mo: null, ro: null, full: true, dirty: new Set() };
+      rec.mo = new MutationObserver(muts => {
+        for (const m of muts) { const n = m.target.nodeType === 1 ? m.target : m.target.parentElement; if (n) rec.dirty.add(n); }
+        schedule();
+      });
+      rec.mo.observe(el, { childList: true, subtree: true, characterData: true });
+      try { rec.ro = new ResizeObserver(() => { rec.full = true; schedule(); }); rec.ro.observe(el); } catch (e) {}
+      roots.add(rec);
+      schedule();
+    },
+    refresh: scheduleFull,
+    stats: () => Object.assign({ roots: roots.size }, stats),
+  };
+})();
+
 if (!document.getElementById('pb-hover-css')) {
   const _css = document.createElement('style');
   _css.id = 'pb-hover-css';
@@ -3420,6 +3598,7 @@ function PartyBuilder(props) {
   // monitor's reactions (grade wash / scanline roll / jolt) — DOM-driven, no
   // React state churn per beat.
   const crtRef = React.useRef(null);
+  React.useLayoutEffect(() => { if (window.EWFitText) window.EWFitText.attach(crtRef.current); });   // THE FIT (cut-off text)
   const previewSpellRef = React.useRef(null);
   const gradeTimer = React.useRef(0);
   const showSpellTip = (sp, e) => { if (sp) setSpellTip({ sp, x: e.clientX, y: e.clientY }); };

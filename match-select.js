@@ -27,6 +27,8 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 const h = React.createElement;
+/* THE FIT (party-builder.js window.EWFitText): words that run out of their box shrink to fit (2026-11-06 playtest F3) */
+const _msFitRef = el => { if (el && window.EWFitText) window.EWFitText.attach(el); };
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 /* ── D.O.O.R. layer (DOOR_DESIGN §3): every map is a SITE FILE (data.js
@@ -825,7 +827,7 @@ function MatchSelect(props) {
   );
 
   /* ── the monitor ── */
-  return h('div', { className: 'ms-crt ms-crt-' + frame + ' ms-crt-' + variant },
+  return h('div', { ref: _msFitRef, className: 'ms-crt ms-crt-' + frame + ' ms-crt-' + variant },
     h('div', { className: 'ms-crt-bezel' },
       h('div', { className: 'ms-crt-glass' },
         h(MapShot, { mp: mp }),
