@@ -520,6 +520,23 @@
             if (!acts) return;
             /* the page slides in, fonts and the UI Maker's layout land a beat later: check a few times */
             [0, 120, 450, 1200].forEach(ms => setTimeout(() => _sqKeepActsNow(acts), ms));
+            /* THE OPEN ANIMATIONS (playtest 2026-11-05 F1): back from the forge with a busy room (created characters dressing)
+               the timers above could all land while the title bar's UI Maker open (a vertical stretch from 5 %) and the dock's
+               slide-in still played, so the bar read 6 px tall and the row was parked UNDER it, clipped to a sliver by the
+               body; DEPLOY could not be clicked. Measure again once every finite animation on the page has ended. */
+            _sqKeepActsAfterAnims(acts);
+        }
+        function _sqKeepActsAfterAnims(acts) {
+            try {
+                const page = document.getElementById('squadDeskPage');
+                if (!page || typeof page.getAnimations !== 'function') return;
+                const fin = page.getAnimations({ subtree: true }).filter(a => {
+                    if (a.playState === 'finished' || a.playState === 'idle') return false;
+                    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+                    return !!t && isFinite(t.endTime);   // a pulse / mote / bob loops for ever: never waited on
+                });
+                if (fin.length) Promise.all(fin.map(a => a.finished.catch(() => {}))).then(() => requestAnimationFrame(() => _sqKeepActsNow(acts)));
+            } catch (e) {}
         }
         function _sqKeepActsNow(acts) {
             if (!acts || !acts.isConnected || !acts.getClientRects().length || document.documentElement.classList.contains('uim-live')) return;   // the UI Maker's Layout view places it as set
@@ -533,8 +550,23 @@
             let tx = 0, ty = 0;
             try { const t = (getComputedStyle(acts).translate || '').split(/\s+/); if (t[0] && t[0] !== 'none') { tx = parseFloat(t[0]) || 0; ty = parseFloat(t[1]) || 0; } } catch (e) {}
             const head = document.querySelector('#squadDeskPage .sq-head');
-            const hr = head && head.getBoundingClientRect();
-            const top = Math.max(6, hr && hr.height > 0 ? hr.bottom + 6 : 6), bot = innerHeight - 6;
+            /* THE TITLE BAR ON SCREEN (F1): the UI Maker width (1270 px) ran past a 1280 px window and cut the "2 / 20 TEAMS"
+               counter: the bar is held inside the window. Its box is read from its layout size about its centre, so its open
+               animation (a scale about the centre) never shrinks the bar the row is kept under. */
+            let hr = null;
+            if (head && head.getClientRects().length) {
+                head.style.removeProperty('max-width');
+                let b = head.getBoundingClientRect(), cx = b.left + b.width / 2, w = head.offsetWidth, left = cx - w / 2;
+                if (w > 0 && left + w > innerWidth - 6) {
+                    head.style.setProperty('max-width', Math.max(160, Math.floor(innerWidth - 6 - Math.max(0, left))) + 'px', 'important');
+                    b = head.getBoundingClientRect();
+                }
+                const cy = b.top + b.height / 2, h = head.offsetHeight;
+                hr = { bottom: cy + h / 2, height: h };
+            }
+            /* the body clips its children: the row also stays below the body's top edge, or its top is cut off */
+            const bodyEl = document.getElementById('sqBody'), br = bodyEl && bodyEl.getBoundingClientRect();
+            const top = Math.max(6, hr && hr.height > 0 ? hr.bottom + 6 : 6, br && br.height > 0 ? br.top + 4 : 6), bot = innerHeight - 6;
             let dy = 0, dx = 0;
             if (r.top < top) dy = top - r.top;
             else if (r.bottom > bot) dy = Math.max(top - r.top, bot - r.bottom);

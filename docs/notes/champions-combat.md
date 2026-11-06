@@ -4094,3 +4094,18 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   (ccDenialValue) + the eye's −DEF/−VISION. Blood Rain: each round, Divine burned / Unholy restored on both sides. Already up:
   ours = only what the recast adds (max(rem, roll), new eye); an enemy's or natural hunting storm = what it would still do to us
   + what it then does for us.
+
+## THE SELF-CENTRED AIM (2026-11-06, playtest bugs G1/H1/G2)
+- G1/H1: the CPU Ringmaster cast Crowd Surge every round with nobody near ("Crowd Surge hits 0 targets") and stayed by its
+  spawn. Cause: ai.js `_reaimSpellTarget` (THE FULL LIST) re-aimed every aoePull at each enemy on the drum and scored the blast
+  as if it went off ON that enemy, but doSpell snaps every aoeOriginSelf cast to the caster's own square. The 330-point
+  phantom cast beat walking up, so the CPU inspected a square (Key search before a 1 AP act) and cast into empty air.
+  Fix: `_reaimSpellTarget` returns the picker's aim for every aoeOriginSelf spell; aoePull and zoneDebuff scoring centre on
+  the caster when aoeOriginSelf; findSpellTarget's zoneDebuff got the self branch (Exhaust Cloud had the same bug: it aimed at
+  an enemy up to 4 away, the 3x3 cloud went off on the Sedan). Audited every aoeOriginSelf kind: aoe, cross, barrage, aoeShield
+  were already right.
+- Browser proof (VS CPU, Mount Shasta, Tactics > Fight on Ringmaster + Sedan): old ai.js picked Crowd Surge aimed at the
+  Quarterback 4 rows away (score 330) and Exhaust Cloud from 3 away; new picks neither, still casts both when a body is inside.
+  10 CPU rounds: Ringmaster grappled in, Stadium Show, took the Central Nexus; zero empty casts.
+- battle.js aoePull log now names the caster ("X casts Crowd Surge: hits N targets…" / "…but no enemies are in range.").
+- G2: "splashes 1 unit round X" -> "around".

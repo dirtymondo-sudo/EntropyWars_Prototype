@@ -5486,7 +5486,13 @@
         const g = G();
         if (window.EW_AI_NO_FULL_TARGETS) return picked;
         if (!spell || !_REAIM_UNIT_KINDS.has(spell.kind) || spell.allyOnly || _riderRandomOf(spell)) return picked;
-        if ((spell.kind === 'aoe' || spell.kind === 'cross') && (spell.aoeOriginSelf || spell.aoeShape === 'ring' || !((spell.range | 0) > 0))) return picked;
+        /* G1/H1 (2026-11-06 playtest): a self-centred area spell (Crowd Surge, Round Up, Exhaust Cloud, EMP Burst …) always
+           goes off on the caster's own square (doSpell snaps it there), so an enemy picked off the drum is never its aim.
+           Re-aiming Crowd Surge at a far enemy scored the blast as if it went off on that enemy, the engine set it off on
+           the Ringmaster with nobody near, and the log read "Crowd Surge hits 0 targets" every round. The picker
+           (findSpellTarget) already aims these at the caster only when a body stands in the area. */
+        if (spell.aoeOriginSelf) return picked;
+        if ((spell.kind === 'aoe' || spell.kind === 'cross') && (spell.aoeShape === 'ring' || !((spell.range | 0) > 0))) return picked;
         if (spell.kind === 'skyThrow' && unit._skyThrowGrab) return picked;
         if (!g.TargetQuery || typeof g.TargetQuery.spellTargets !== 'function') return picked;
         let entries = null;
@@ -5918,7 +5924,9 @@
 
         if (kind === 'aoePull') {
             if (!target) return 0;
-            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
+            // a self-centred pull (Crowd Surge, Round Up) goes off on the caster whatever the aim (doSpell's self-cast snap)
+            const area = spell.aoeOriginSelf ? _aoeTilesAI(spell, unit.x, unit.y, spell.aoeRadius || 1)
+                : _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             const victims = v.visibleEnemies.filter(e => area.some(t => t.x === e.x && t.y === e.y) && !isProtected(g, e));
             if (!victims.length) return 0;
             let s = 0, first = true;
@@ -6341,7 +6349,9 @@
 
         if (kind === 'zoneDebuff') {
             if (!target) return 0;
-            const area = _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
+            // a self-centred cloud (Exhaust Cloud) goes off on the caster whatever the aim (doSpell's self-cast snap)
+            const area = spell.aoeOriginSelf ? _aoeTilesAI(spell, unit.x, unit.y, spell.aoeRadius || 1)
+                : _aoeTilesAI(spell, target.x, target.y, spell.aoeRadius || 1);
             // Low Gravity is a FRIENDLY mobility field.
             if (spell.gravityField === 'weak') {
                 const alliesInArea = [unit, ...v.allies].filter(a =>
@@ -9905,6 +9915,12 @@
         }
 
         if (kind === 'zoneDebuff') {
+            if (spell.aoeOriginSelf) {   // G1 (2026-11-06): Exhaust Cloud centres on the caster — cast it only with an enemy inside
+                const area = _aoeTilesAI(spell, unit.x, unit.y, spell.aoeRadius || 1);
+                const team = spell.gravityField === 'weak' ? [unit, ...v.allies].filter(a => !a.dead) : v.visibleEnemies;
+                const n = team.filter(e => area.some(t => t.x === e.x && t.y === e.y)).length;
+                return n >= (spell.gravityField === 'weak' ? 2 : 1) ? { x: unit.x, y: unit.y } : null;
+            }
             if (spell.gravityField === 'weak') {
                 let bestAlly = null, bestAllyScore = 0;
                 for (const a of [unit, ...v.allies]) {
