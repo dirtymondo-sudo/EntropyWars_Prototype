@@ -2294,3 +2294,31 @@ columns (min 136 px each) scrolled sideways.
   fit shrinks it, the footer summary wraps to 2 lines.
 - Proven in Chromium with the shipped theme at 1280×720, 1512×860, 1920×1080: 0 clipped boxes, 0 sideways scrolls on
   ROSTER / ABILITIES (4 units) / GEAR / INFO and VS CPU. Shots: /mnt/project-files/party-builder-fit/.
+
+## THE TEAM SELECT BUTTON ROW UNDER THE TITLE BAR (2026-11-06, playtest 2026-11-05 F1)
+- Seen: after NEW TEAM > save a second team, the 4V4 / 5V5 / RANDOM / EDIT / NEW TEAM / DEPLOY row showed only as a
+  sliver under the title bar and DEPLOY could not be clicked; the "2 / 20 TEAMS" counter was cut at the right edge.
+- Cause: map.js `_sqKeepActsNow` (PR #881) pushes the UI Maker-moved row below `.sq-head`, measured on 4 timers (0-1200 ms).
+  With the main thread busy (created characters dressing in the team room) all 4 ran while the head's UI Maker open
+  (`uim-stretch`, scale 1 x 0.05 for its first half) and the dock's `sqCardIn` still played: the head read ~6 px tall, the
+  row was parked at y 101-179 under the 148 px bar, and `#sqBody` (overflow-y auto, top 160) clipped it to 18 px.
+  The UI Maker head width (1270 px) also ran past a 1280 px window.
+- Fix: `_sqKeepActsAfterAnims` measures again once every finite animation on the page has ended; the head box is read
+  from its layout size about its centre (immune to the open scale); the row also stays 4 px below `#sqBody`'s top; the head
+  gets a `max-width` so it ends 6 px inside the window. Reproduced by blocking the main thread 1.6 s right after opening
+  the desk: before = row 101-179, after = row 164-242, counter 1157-1256, DEPLOY on top at its centre and it opens the map.
+
+## THE ABILITY LIST FITS + BACK CLEARS THE ROWS (2026-11-06, playtest 2026-11-05 E7/E8)
+- E7: Bigfoot's sixth ability sat under the spell description bar. `_listDescDodge` shrank the list by the bar's overlap
+  inside its Height cap (UI Maker qListH 390), so 5 rows showed. Now (hud.js `_listFit`, every list but the quick list)
+  the panel RISES clear of the bar (margin under the list, only grows while one list is open) and the list's max-height is
+  the screen's room from that lifted bottom up to the top HUD (`_listCeiling`: scoreboard / AP icons / match info that
+  share its columns), less the BACK chip + title. A 7-ability list shows whole at 1280x720 and at 1280x540. The quick list
+  (under the unit info card) keeps its own Height / Shortest / Tallest. qListH no longer caps the non-quick lists.
+- E7 wheel: the wheel stepped the cursor, the list scrolled to it, the scroll slid another row under the still mouse and
+  its mouseenter (hover = selection) took the cursor back. `hoverBlade` now ignores enter/leave while the pointer sits
+  exactly where the last wheel/key step left it (`_hrlgPtrX/Y`, `stepPtr`); any real mouse move hands hover back.
+- E8: on a spell's target step the active panel's BACK chip landed on the dimmed ability rows behind it. `_backChipDodge`
+  (per frame, off in the UI Maker's Layout view) slides the chip right on its own line (margin-left) until it clears
+  the dimmed panel; home when clear.
+- Not changed (I2, waiting on mondo): spells on cooldown still leave the Abilities list instead of showing greyed.
