@@ -2266,3 +2266,29 @@ mondo: "in the pause menu, when i change a setting it will close and reopen the 
   different cmd (`_hqOpenPause('settings')` from elsewhere) opens that page fresh. Memory only (not saved across reloads).
 - The building's menu never rebuilt its frame (`.hq-pause-frame` is static in index.html; settings re-render in place via
   `_openMainMenuSettings`), so only its reopen spot changed.
+
+## THE BATTLE HUD FITS — 2026-11-06 (token 20261106-hudfit-01-cors)
+Playtest 2026-11-05 group E (E1-E6, /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md). Viewer-local
+display only, nothing relayed (each side lays out its own HUD / pops). Shots: /mnt/project-files/hud-fit-20261106/.
+- **E1 the log under the top HUD:** ui.js `_clogFit` — the combat log keeps its bottom (the UI Maker's place) and its top
+  never rises past `.ew-matchmeta` (site name + weather) or the P1 / P2 bars where they sit over it (6 px clear): an inline
+  `max-height !important` from the measured screen rects (UI Maker move / size / scale included). Rechecked on each log
+  render (rAF), window resize and a ResizeObserver on the log + the match info. Folded = left alone. (mondo's shipped
+  layout moves the log up 232 px, which is what ran it under the weather.)
+- **E2 the weather pill:** hud.js `_metaFitUnderBars` — the weather + zodiac pill stays beside the bars while it fits; when
+  its words would reach a `.ew-score-side` / `.ew-score-plate` it drops just under them (marginTop, one line, right
+  aligned). Measured where it would sit undropped (no flip-flop). Each weather is its own nowrap span (`.ew-weather-one`).
+- **E3 the CUBE plates:** they are still CSS2D DOM (not THE PLATES IN THE WORLD sprites), so THE WORLD TEXT STEPS ASIDE never
+  faded them. three-renderer `_updateTowerCubes` now fades them (`_wmOverMenu` + `_wmEase` on the outer's opacity).
+- **E4 names:** hud.js `ewFitLine` (the unit panel `.hrlg-core` / `.hrlg-name`: the name's font steps down until the line
+  fits, min 10 px, rechecked on render + `document.fonts` loadingdone) and three-renderer `_pmFitName` (each plate's
+  `.tp-nm` before its paint: font from the room the strip leaves, worked out from the name's width at its own size so a
+  fitted plate writes nothing next paint — no repaint loop; reset when a UI Maker sheet lands).
+- **E5 Heat Ray:** (a) ui.js `updateIntentPreview` forecasts a MOVE→CAST board aim from `approachCastFrom` (the tile the
+  row and the cast use); (b) the abilities menu's hover mark ("! RESISTED", group 'menu') stayed over the target on top of
+  the forecast plates' own RESISTED — `_ewShowForecastPressMarks(…, spoken)` now drops the menu mark on every body the
+  forecast plates speak for (three-renderer `dropPressMarksOn`).
+- **E6 pops:** (a) THE POP RIDES ITS BODY — a pop over a unit follows that unit's model (`unitEntries` group position) each
+  frame, so a body still sliding / being dragged (Lasso) wears its own numbers; (b) a word pop (not the solo kinds) stops
+  growing at FLOAT_MAX_TAG_H = 7% of the screen up close; (c) a plate under a live pop fades to POP_FADE_OP 0.45 (half, so
+  its HP drain still reads; the menu fade stays 0.22). The pops' boxes: `_floatGameCtx.popBoxes`, cleared when none are up.

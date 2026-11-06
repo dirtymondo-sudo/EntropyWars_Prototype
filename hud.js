@@ -1445,16 +1445,49 @@ function Scoreboard({ st }) {
   );
 }
 
+/* THE MATCH INFO STEPS UNDER THE BARS (playtest 2026-11-05 E2: with three weathers the weather + zodiac pill ran left
+   over the P2 bar). The pill stays beside the bars while it fits there; when its words would reach a P1 / P2 bar or the
+   score plate, it drops just under the bars, still one line, still right-aligned (the combat log under it moves down with
+   it: ui.js _clogFit). Measured where the pill would sit undropped, so the drop never flips back and forth. The UI
+   Maker's move / scale of either piece is in the measure. */
+function _metaFitUnderBars(meta, plate) {
+  if (!meta || !plate || !meta.isConnected || !plate.getClientRects().length) return;
+  const cur = parseFloat(plate.style.marginTop) || 0;
+  const k = meta.offsetWidth > 0 ? (meta.getBoundingClientRect().width / meta.offsetWidth) || 1 : 1;
+  const r = plate.getBoundingClientRect();
+  const top0 = r.top - cur * k, bot0 = r.bottom - cur * k;
+  let need = 0;
+  const bars = document.querySelectorAll('.ew-scoreboard .ew-score-side, .ew-scoreboard .ew-score-plate');
+  for (let i = 0; i < bars.length; i++) {
+    const el = bars[i];
+    if (!el.getClientRects().length) continue;
+    const b = el.getBoundingClientRect();
+    if (b.width < 2 || b.height < 2) continue;
+    if (r.left < b.right + 8 && r.right > b.left - 8 && top0 < b.bottom && bot0 > b.top) need = Math.max(need, b.bottom + 6 - top0);
+  }
+  const px = need > 0 ? Math.ceil(need / k) : 0;
+  if (Math.abs(px - cur) >= 1) plate.style.marginTop = px ? px + 'px' : '';
+}
+
 function MatchMeta({ st }) {
   if (!st) return null;
 
   const weather = (st.activeWeather || []);
+  /* one span per weather, each kept whole (playtest 2026-11-05 E2: three weathers read as one long run of words) */
   const weatherText = weather.length > 0 && typeof WEATHER_REGISTRY !== 'undefined'
-    ? weather.map(w => {
+    ? weather.map((w, i) => {
         const def = WEATHER_REGISTRY[w.type];
-        return def ? (def.icon + ' ' + def.label) : w.type;
-      }).join(' ')
+        return h('span', { key: 'w' + i, className: 'ew-weather-one', style: { whiteSpace: 'nowrap', marginLeft: i ? 10 : 0 }},
+          def ? (def.icon + ' ' + def.label) : w.type);
+      })
     : '☀ Clear';
+  const metaRef = useRef(null), plateRef = useRef(null);
+  React.useLayoutEffect(() => { _metaFitUnderBars(metaRef.current, plateRef.current); });
+  useEffect(() => {
+    const f = () => _metaFitUnderBars(metaRef.current, plateRef.current);
+    window.addEventListener('resize', f);
+    return () => window.removeEventListener('resize', f);
+  }, []);
 
   const zodiac = st.activeZodiac || 'aries';
   const zodiacIcon = typeof ZODIAC_ICONS !== 'undefined' ? (ZODIAC_ICONS[zodiac] || '✦') : '✦';
@@ -1470,7 +1503,7 @@ function MatchMeta({ st }) {
   // the battlefield's name (same source as the loading-screen title)
   const mapName = (typeof window._lsMapTitle === 'function') ? window._lsMapTitle() : null;
 
-  return h('div', { className: 'ew-matchmeta', style: {
+  return h('div', { className: 'ew-matchmeta', ref: metaRef, style: {
     position: 'absolute', top: 12, right: 12,
     display: 'flex', flexDirection: 'column', gap: 6,
     alignItems: 'flex-end', zIndex: 10,
@@ -1481,8 +1514,10 @@ function MatchMeta({ st }) {
       textShadow: '0 0 12px rgba(214,178,255,0.35), 0 1px 3px rgba(0,0,0,0.8)',
       padding: '2px 2px 0 0', pointerEvents: 'none',
     }}, '◈ ' + mapName),
-    h('div', { className: 'ew-meta-plate', style: {
+    h('div', { className: 'ew-meta-plate', ref: plateRef, style: {
       display: 'flex', alignItems: 'center', gap: 10,
+      flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: 4, whiteSpace: 'nowrap',
+      maxWidth: 'calc(100vw - 40px)', boxSizing: 'border-box',
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       padding: '6px 14px 6px 16px',
       fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
@@ -3811,6 +3846,32 @@ function _hrlgQuickCard(key, title, qv) {
   );
 }
 
+/* THE NAME FITS (playtest 2026-11-05 E4: "Jack-o'-Lantern…" in the unit panel, cut by an ellipsis). A line that holds a
+   name never cuts it: when the words are wider than their box, the name's own font steps down until the whole line fits
+   (never under minPx; the other words on the line keep their size). The UI Maker's font / size on the name is the start
+   (an inline !important beats its sheet). Rechecked on every render and when a web font lands. */
+function ewFitLine(box, txt, minPx) {
+  if (!box || !txt || !box.isConnected) return;
+  txt.style.removeProperty('font-size');
+  const cw = box.clientWidth;
+  if (!(cw > 0) || box.scrollWidth <= cw + 1) return;
+  let px = parseFloat(getComputedStyle(txt).fontSize) || 16;
+  const lo = minPx || 9;
+  for (let i = 0; i < 12 && box.scrollWidth > cw + 1 && px > lo; i++) {
+    const over = box.scrollWidth - cw, tw = txt.scrollWidth || txt.offsetWidth || 1;
+    px = Math.max(lo, Math.min(px - 0.5, px * Math.max(0.5, (tw - over) / tw)));
+    txt.style.setProperty('font-size', px.toFixed(2) + 'px', 'important');
+  }
+}
+let _ewFitFontHook = false;
+function ewFitLineOnFonts(fn) {
+  if (!document.fonts || !document.fonts.addEventListener) return;
+  (window._ewFitFns || (window._ewFitFns = new Set())).add(fn);
+  if (_ewFitFontHook) return;
+  _ewFitFontHook = true;
+  document.fonts.addEventListener('loadingdone', () => { window._ewFitFns.forEach(f => { try { f(); } catch (e) {} }); });
+}
+
 function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, apUnit, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
@@ -4129,6 +4190,11 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     crown: () => { if (crownRef.current) crownRef.current(); },
   };
   useEffect(() => () => { window._hrlgPad = null; }, []);
+  /* THE NAME FITS: the unit's name in the panel shrinks to fit, never an ellipsis */
+  const coreRef = useRef(null);
+  const fitName = () => { const c = coreRef.current; if (c) ewFitLine(c, c.querySelector('.hrlg-name'), 10); };
+  React.useLayoutEffect(fitName);
+  useEffect(() => { ewFitLineOnFonts(fitName); const t = setTimeout(fitName, 400); return () => { clearTimeout(t); if (window._ewFitFns) window._ewFitFns.delete(fitName); }; });
 
   // ⚒ BUILD + situational one-shots (CHANNEL / DETONATE / ENTROPY…) render
   // as full-size tool rows at the bottom of the identity column — no more
@@ -4226,7 +4292,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           title: c.title || undefined,
         }, c.label)),
       ) : null,
-      h('div', { className: 'hrlg-core' },
+      h('div', { className: 'hrlg-core', ref: coreRef },
         h('span', { className: 'hrlg-roman' }, roman + ' · '),
         h('span', { className: 'hrlg-name' }, unitName),
         /* ⓘ INFO — the full stat card (ATK/DEF/MDEF/INT + attack reach).
