@@ -2267,7 +2267,7 @@ mondo: "in the pause menu, when i change a setting it will close and reopen the 
 - The building's menu never rebuilt its frame (`.hq-pause-frame` is static in index.html; settings re-render in place via
   `_openMainMenuSettings`), so only its reopen spot changed.
 
-## THE BATTLE HUD FITS — 2026-11-06 (token 20261106-hudfit-01-cors)
+## THE BATTLE HUD FITS — 2026-11-06 (token 20261106-hudfit-02-cors)
 Playtest 2026-11-05 group E (E1-E6, /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md). Viewer-local
 display only, nothing relayed (each side lays out its own HUD / pops). Shots: /mnt/project-files/hud-fit-20261106/.
 - **E1 the log under the top HUD:** ui.js `_clogFit` — the combat log keeps its bottom (the UI Maker's place) and its top
