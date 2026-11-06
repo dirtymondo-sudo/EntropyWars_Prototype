@@ -4097,6 +4097,46 @@
             _clogSetFold(_clogIsFolded());
             return el;
         }
+        /* THE LOG STAYS UNDER THE TOP HUD (playtest 2026-11-05 E1: the box grew up under the site name and the weather
+           pill, its top lines cut off behind them). The box keeps its bottom (the UI Maker's place for it) and gives up
+           height at the top: its top never rises past the match info (site name + weather) or the P1 / P2 bars where
+           they sit over it, 6 px clear. Measured on screen, so the UI Maker's move / size / scale of any of them is in
+           it; folded it is left alone. Rechecked when the log renders, when the window or the match info changes size. */
+        let _clogFitRO = null, _clogFitMeta = null, _clogFitRaf = 0;
+        function _clogFit() {
+            _clogFitRaf = 0;
+            const el = _clogEl;
+            if (!el || !el.isConnected) return;
+            const meta = document.querySelector('.ew-matchmeta');
+            if (typeof ResizeObserver !== 'undefined') {
+                if (!_clogFitRO) { _clogFitRO = new ResizeObserver(_clogFitSoon); _clogFitRO.observe(el); window.addEventListener('resize', _clogFitSoon); }
+                if (meta && meta !== _clogFitMeta) { if (_clogFitMeta) _clogFitRO.unobserve(_clogFitMeta); _clogFitMeta = meta; _clogFitRO.observe(meta); }
+            }
+            const set = (mh, mn) => {
+                if (el.style.getPropertyValue('max-height') !== mh) { if (mh) el.style.setProperty('max-height', mh, 'important'); else el.style.removeProperty('max-height'); }
+                if (!_clogIsFolded() && el.style.getPropertyValue('min-height') !== mn) { if (mn) el.style.setProperty('min-height', mn, 'important'); else el.style.removeProperty('min-height'); }
+            };
+            if (_clogIsFolded() || el.classList.contains('off') || !el.getClientRects().length) { set('', ''); return; }
+            const r = el.getBoundingClientRect();
+            if (r.height < 4 || !el.offsetHeight) return;
+            const k = r.height / el.offsetHeight || 1;   // a UI Maker scale on the box
+            let limit = -Infinity;
+            const tops = document.querySelectorAll('.ew-matchmeta, .ew-scoreboard .ew-score-side, .ew-scoreboard .ew-score-plate');
+            for (let i = 0; i < tops.length; i++) {
+                const t = tops[i];
+                if (!t.getClientRects().length) continue;
+                const cs = getComputedStyle(t);
+                if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+                const b = t.getBoundingClientRect();
+                if (b.width < 2 || b.height < 2) continue;
+                if (b.left < r.right && b.right > r.left && b.top < r.bottom - 40) limit = Math.max(limit, b.bottom + 6);
+            }
+            if (!isFinite(limit)) { set('', ''); return; }
+            /* a max-height only ever takes height away, so it can stay on while the box is shorter than the room */
+            const cap = Math.max(40, Math.floor((r.bottom - limit) / k));
+            set(cap + 'px', cap < 90 ? cap + 'px' : '');
+        }
+        function _clogFitSoon() { if (!_clogFitRaf) _clogFitRaf = requestAnimationFrame(_clogFit); }
         function _clogLineHtml(html, h, plain, fresh) {
             let cls = 'ew-clog-line';
             if (/^\s*⚡\s*Round \d+/.test(plain)) cls += ' ew-clog-round';
@@ -4133,6 +4173,7 @@
             const el = _clogEnsure();
             if (!el) return;
             el.classList.remove('off');
+            _clogFitSoon();
             const look = _clogLook();
             const auto = look.auto === 'off' || look.auto === 'shots' ? look.auto : 'board';
             if (!el.classList.contains('auto-' + auto)) { el.classList.remove('auto-board', 'auto-shots', 'auto-off'); el.classList.add('auto-' + auto); }
@@ -15910,9 +15951,16 @@
             return typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive() && !!ThreeRenderer.showPressMarks;
         }
         // lifts: { id: px } — the top of that body's plate stack (_seStackLift), so the ! sits above the plates
-        function _ewShowForecastPressMarks(ids, halfIds, lifts) {
+        // spoken (optional): every body the forecast's plates speak for — the abilities menu's hover mark on one of them
+        // (its "! RESISTED", still up from the row clicked to arm the spell) gives way, so the plates' own RESISTED is
+        // the one word over that body (playtest 2026-11-05 E5: RESISTED printed twice, on top of each other)
+        function _ewShowForecastPressMarks(ids, halfIds, lifts, spoken) {
             if (!_seHeadMarksOn()) return false;
-            try { ThreeRenderer.clearPressMarks('forecast'); if (ids && ids.length) ThreeRenderer.showPressMarks(ids, halfIds || [], 'forecast', lifts || null); } catch (e) { return false; }
+            try {
+                ThreeRenderer.clearPressMarks('forecast');
+                if (spoken && spoken.length && ThreeRenderer.dropPressMarksOn) ThreeRenderer.dropPressMarksOn(spoken, 'menu');
+                if (ids && ids.length) ThreeRenderer.showPressMarks(ids, halfIds || [], 'forecast', lifts || null);
+            } catch (e) { return false; }
             return true;
         }
         // the height of a plate stack whose next yOff is `yOff` (three-renderer _placeIntentBadge: 4px + yOff × 1.2) + a gap
@@ -16236,7 +16284,7 @@
                 _renderIntentBadges(bx, by, badgeStack);
                 if (_seIds.includes(target.id)) _seLift[target.id] = _seStackLift(yOff);
             }
-            if (_head) _ewShowForecastPressMarks(_seIds, _seHalf, _seLift);
+            if (_head) _ewShowForecastPressMarks(_seIds, _seHalf, _seLift, Array.from(shown));
             /* the caster's own riders (Nimble Dodge's Invisible, Eject!'s cleanse) read where it stands now */
             if (caster && !shown.has(caster.id) && (spell.kind === 'escape' || isSpellSelfCast(spell))) {
                 const own = _getStatusPreviewLabels(spell).filter(sl => !sl.isDebuff).map(sl => sl.text);
@@ -16260,7 +16308,12 @@
             const _ipt = state.pendingTarget;
             const _fz = ov ? undefined : (_aimHoverZ !== undefined ? _aimHoverZ
                 : ((_ipt && _ipt.x === x && _ipt.y === y && _ipt.z !== null) ? _ipt.z : undefined));
-            const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y, _fz) : null;
+            /* a MOVE→CAST aim forecasts from the tile the walk lands on (playtest 2026-11-05 E5: Heat Ray's board badge
+               read −150 from where Annunaki stood while the target row read ≈−134 from the cast tile; the hit was 133):
+               battle.js approachCastFrom, the same tile the row and the cast use */
+            let _fcFrom = null;
+            if (!ov && typeof approachCastFrom === 'function') { try { _fcFrom = approachCastFrom(caster, x, y, _fz); } catch (e) { _fcFrom = null; } }
+            const _plan = (typeof forecastSpellPlan === 'function') ? forecastSpellPlan(caster, spell, x, y, _fz, { castFrom: _fcFrom }) : null;
             if (_plan && _plan.handled) {
                 _fcRenderBadges(caster, spell, _plan);
                 drawForecastStrikes(_plan, caster);   // THE STRIKE ARROWS: caster → every body it hits from this aim
@@ -16276,7 +16329,7 @@
             // 🜂 Elemental affinity of the aimed spell (ELEMENTAL_TYPES_PLAN
             // P3) — the element is per-spell, the affinity per-target below.
             const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
-            const _head = _seHeadMarksOn(), _seIds = [], _seHalf = [], _seLift = {};   // THE ONE MARK
+            const _head = _seHeadMarksOn(), _seIds = [], _seHalf = [], _seLift = {}, _spoken = [];   // THE ONE MARK
 
             for (const at of affectedTiles) {
                 const target = unitAt(at.x, at.y);
@@ -16374,9 +16427,10 @@
                 }
 
                 _renderIntentBadges(target.x, target.y, badgeStack);
+                if (badgeStack.length) _spoken.push(target.id);
                 if (_seIds.includes(target.id)) _seLift[target.id] = _seStackLift(yOff);
             }
-            if (_head) _ewShowForecastPressMarks(_seIds, _seHalf, _seLift);
+            if (_head) _ewShowForecastPressMarks(_seIds, _seHalf, _seLift, _spoken);
 
             _renderDisplacementArrows(caster, spell, x, y);
         }
