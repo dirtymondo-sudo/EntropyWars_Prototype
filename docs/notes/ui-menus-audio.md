@@ -2266,3 +2266,16 @@ mondo: "in the pause menu, when i change a setting it will close and reopen the 
   different cmd (`_hqOpenPause('settings')` from elsewhere) opens that page fresh. Memory only (not saved across reloads).
 - The building's menu never rebuilt its frame (`.hq-pause-frame` is static in index.html; settings re-render in place via
   `_openMainMenuSettings`), so only its reopen spot changed.
+
+## THE TEAM SELECT BUTTON ROW UNDER THE TITLE BAR (2026-11-06, playtest 2026-11-05 F1)
+- Seen: after NEW TEAM > save a second team, the 4V4 / 5V5 / RANDOM / EDIT / NEW TEAM / DEPLOY row showed only as a
+  sliver under the title bar and DEPLOY could not be clicked; the "2 / 20 TEAMS" counter was cut at the right edge.
+- Cause: map.js `_sqKeepActsNow` (PR #881) pushes the UI Maker-moved row below `.sq-head`, measured on 4 timers (0-1200 ms).
+  With the main thread busy (created characters dressing in the team room) all 4 ran while the head's UI Maker open
+  (`uim-stretch`, scale 1 x 0.05 for its first half) and the dock's `sqCardIn` still played: the head read ~6 px tall, the
+  row was parked at y 101-179 under the 148 px bar, and `#sqBody` (overflow-y auto, top 160) clipped it to 18 px.
+  The UI Maker head width (1270 px) also ran past a 1280 px window.
+- Fix: `_sqKeepActsAfterAnims` measures again once every finite animation on the page has ended; the head box is read
+  from its layout size about its centre (immune to the open scale); the row also stays 4 px below `#sqBody`'s top; the head
+  gets a `max-width` so it ends 6 px inside the window. Reproduced by blocking the main thread 1.6 s right after opening
+  the desk: before = row 101-179, after = row 164-242, counter 1157-1256, DEPLOY on top at its centre and it opens the map.
