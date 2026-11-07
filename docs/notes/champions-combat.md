@@ -4149,3 +4149,25 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   thing?" It always was one status (id `wet`); the pill / ability chips said WET and everything else said Soaked. The
   pill is SOAK now and every player-facing "wet" for the status reads Soaked (Ink Cloud desc, Thunderstorm desc, Balance
   Lab reaction labels, the status description). Flavour text ("a long, wet hand") stays.
+
+
+## THE GROUND FIRE SETS OFF THE SLICK (2026-11-07, elements playtest A1: "Black ooze and fire sit on the same tile without anything happening")
+- The rule was already written (data.js `swamp`/`oil`: they DETONATE when hit by fire/lightning; PLAYTEST_NOTES "LIQUID PASS"),
+  but only a fire / lightning SPELL reached `_reactFireOil`. Fire already on the ground never did, so the Oozing trail painted
+  ooze under Black Goo standing on burning ground and the square stayed ooze AND burning forever.
+- battle.js now sends ground fire through the same blast (no new rule, same numbers):
+  (a) `igniteTile` on ooze / oil (a fire door's lane, fanned flames, any lighter) → `_groundFireDetonatesOil`;
+  (b) ooze / oil landing on a square already burning → `_detonateBurningOil`, run after every `_paintTimedTerrain` paint
+  (Oozing trail, Goo Shot, Splash), after a terrainCreate paint (Ooze Trail), and at the end of `tickBurningTiles`
+  (any other path, e.g. an oil flow running onto a fire).
+- A ground-fire blast has no spell: `_GROUND_FIRE_SPELL` (fire) → the code's spell-less default 0.9 × 90 = 81, level-priced
+  by whoever lit the fire. A burning square remembers its lighter (`state.burningTiles[k].u`, unit id; spread copies it);
+  that unit is spared like a caster, everyone else grounded in the slick (the origin square too) takes it + Burn 2.
+  Log: "💥 The fire on the ground ignites the black ooze — the whole slick detonates (N tiles), engulfing M units!".
+- `_oilBlastDepth` stops a blast's own `igniteTile` on its charred squares from starting another. Rain still wins: a square
+  the rain falls on never catches (`igniteTile` refuses), so it never goes off.
+- Left as is (no rule says otherwise): ground fire still spreads only into fuel (grass, trees, planks), not into a slick next
+  to it; a unit with the Burn status does not set off ooze it stands in; storm lightning (Thunderstorm) has no terrain reaction.
+- Checked in a real page (spell-audit harness): before, ooze + burning square sat together with no blast; after, the Oozing
+  paint on a burning square, ground fire lit on a slick and Goo Shot onto a burning square each blow the slick; Fireball on
+  ooze unchanged; rain blocks it.
