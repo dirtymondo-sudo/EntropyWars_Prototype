@@ -2451,3 +2451,21 @@ Proof: /mnt/project-files/confirm-plates-20261107/ (before = report shot or kill
   /mnt/project-files/team-select-ui/ (before/after, 1728×1000 + 1280×720, Random roll with no stamp, Layout view with every button
   boxed, column sent right, Random hidden, match select red BACK / green CONFIRM, the Buttons preview of every BACK + every CONFIRM,
   the squad stand-in). The 3D team room stalls headless screenshots after ~10 s (SwiftShader), so the proof shots run with it off.
+
+## THE PLATE FITS — Select Your Team plate text (2026-11-07)
+mondo's screenshot: the four unit names under the faces ran into each other ("BigfootCatgirl", "Nephilim/Catgirl/Politician"),
+and a rolled Random Team's bottom line was cut to "NOT SAVED · RANDOM AGAIN FOR" at 1280×720. Cause: the theme font (Press
+Start 2P) is ~2× as wide as the Cormorant SC the plate was drawn for, the names had `min-width: min-content` (a name wider than
+its slot pushed over its neighbour), and the plate is the UI Maker's fixed 494×178 px (×1.65) box with `overflow: hidden`, so
+two-line names pushed the bottom line out of it.
+- map.js `_sqFitPlate` (called from `_sqPaintTeam` via `_sqFitPlateSoon`, on resize, on fonts loading, and by a
+  ResizeObserver on the plate for UI Maker size changes): (0) teams of 5-8 whose slots are narrower than a face close the
+  slot gap to 8 px and cap faces to the slot; (1) unit names share ONE size, shrunk until each fits its own slot on ≤2
+  lines (min 6.5 px; if a one-word name still does not fit, the gap closes to 8 px and they refit; last resort
+  `.sq-fit-break` breaks the word); (2) the bottom line shrinks to one line (`.sq-fit-wrap` if it cannot); (2b) the team
+  name ≤2 lines; (3) if the words still run past the plate's bottom (measured from the in-flow children, NOT scrollHeight —
+  the absolute `.sq-plate-sheen` counts in scrollHeight), faces shrink to 60 %, then names / foot / team name.
+  `#sqPlate[data-sq-fit]` = "names foot faces title overPx". Sizes are layout px, so the result is the same at every window
+  size (the plate's UI Maker size is fixed px).
+- styles-base.css "THE PLATE FITS": slot `min-width: 0`, name `display:block; width:100%; min-width:0`, foot `nowrap`.
+- Shots: /mnt/project-files/team-plate-fit/.
