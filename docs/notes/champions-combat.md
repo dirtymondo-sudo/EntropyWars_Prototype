@@ -4181,3 +4181,9 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   a SOAK pill, title "Soaked — N turns left". (2) Wall of Fire painted burning scorch over river water. A fire spell that
   paints burnt ground (terrainCreate, not lava) now leaves water tiles water ("The water at X puts out Wall of Fire — it
   stays water.") and melts ice tiles to water.
+- RENAMED TO WET (mondo 11-07, later the same night): "just make rename soaked to wet ... wet fits much better on a status
+  badge". The one water status (id `wet`) is called Wet everywhere a player reads it: pill WET, label Wet, log "X is wet",
+  "too wet to catch fire", floats "💧 Wet" / "×1.5 WET!", every spell / weather / passive desc ("leaves them Wet for 2
+  rounds", "Wet targets take it worse"), the status library, Balance Lab labels. Code names (_soakUnit, _unitIsSoaked,
+  soakedShock notes, weather `soaks`) stay. Name adjectives ("Blood-Soaked", the Firefighter's "Soaked") and DEF/M DEF
+  "soaks" damage are not the status and stay. Checked on screen: WET pill on the unit panel after walking into the river.

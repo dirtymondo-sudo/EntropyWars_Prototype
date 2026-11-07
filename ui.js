@@ -12328,7 +12328,7 @@
             ['addStatus', 'json', '{ "id": "poison", "duration": 2 }'], ['set', 'json', '{ "field": value } (one-row numbers)'], ['shieldDelta', 'num', 'shield + n'],
             ['ignoreArmor', 'json', 'true'], ['actedTargetBonus', 'num', '+n vs a unit that acted'], ['critChanceAdd', 'num', 'crit chance + n (0.15)'],
             ['tetherDragDmg', 'num', 'rope drag a tile'], ['pullToCenter', 'json', 'true'], ['tripRadius', 'num', 'trap springs within n'],
-            ['statusPayload', 'json', '{ "id", "set": {…} }'], ['weatherPatch', 'json', '{ "weather", "patch": {…} }'], ['chainWetHops', 'num', '+n hops if Soaked'],
+            ['statusPayload', 'json', '{ "id", "set": {…} }'], ['weatherPatch', 'json', '{ "weather", "patch": {…} }'], ['chainWetHops', 'num', '+n hops if Wet'],
             ['encoreAlly', 'json', 'true'], ['paintTerrain', 'json', '{ "terrain", "radius", "rounds" }'], ['jammedArc', 'json', '{ "mult": 0.5 }'],
             ['detonateOwn', 'json', 'true'], ['onKillRefundAp', 'num', 'AP back on a kill'],
             ['protectBlocks', 'num', 'Protect blocks + n attacks'],

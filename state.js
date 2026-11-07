@@ -1756,7 +1756,7 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); wets and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
                 dmgRange: [24, 43],
                 soaks: true,
                 seedTerrain: 'water',
@@ -1778,7 +1778,7 @@
                 roaming: true,
                 global: true,
                 duration: [3, 5],
-                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Soaks everyone in the downpour. Leaves pools of blood.',
+                desc: 'Falls over the whole map. Damages Divine, heals Unholy. Leaves everyone in the downpour Wet. Leaves pools of blood.',
                 soaks: true,
                 seedTerrain: 'blood',   // 🩸 2026-10-21: the Blood Pool (was water)
                 onTurnEffect(unit) {
@@ -1845,7 +1845,7 @@
                 homingSpeed: 2,
                 global: true,
                 duration: [3, 4],
-                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the Soaked. -5 DEF in the eye. Leaves puddles.',
+                desc: 'Rains over the whole map, leaving everyone Wet. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the Wet. -5 DEF in the eye. Leaves puddles.',
                 element: 'lightning',
                 soaks: true,
                 seedTerrain: 'water',
