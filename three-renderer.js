@@ -13266,7 +13266,8 @@ const ThreeRenderer = (function () {
                set would alter game logic), so surface it as a badge explicitly.
                Concealed enemies aren't drawn, so this only ever shows on units
                the viewer can legitimately see (i.e. their own cloaked units). */
-            if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
+            /* 'wet' (SOAKED, mondo 2026-11-07) is a badge too: the one water status, shown by its one name */
+            if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible' && sk !== 'wet') continue;
             var sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
             if (!sDef) continue;
             badges.push('<span class="tp-sbadge" style="background:' + _tpStatusColor(sk) + '">' + (sDef.short || sk) + '</span>');
