@@ -82755,9 +82755,22 @@ const ThreeRenderer = (function () {
     /* the matrix: room metres (the HQ's U px per metre) → the battle's frame */
     /* the battle-frame Y of room metre 0: the base plane less the reference floor (THE FLOOR LINE above) */
     function _hqBattleRoomFloorY(R, ts) { return R.base * ts * ELEV_STEP_RATIO - (R.refM || 0) * ts / R.T.C; }
+    /* THE ROOM'S GROUND (see _hqBuildRoomInBattle / ThreeRenderer.roomGroundAt) */
+    var _roomGround = null;
+    function _roomGroundAt(wx, wz) {
+        var G = _roomGround;
+        if (!G || !G.group || G.group !== _facilityNearGroup || !G.group.parent) return -Infinity;
+        var C = G.T.C, k = G.ts / C, x = wx / k + G.T.x0, z = wz / k + G.T.z0, h = null;
+        try {
+            if (G.outer && (Math.abs(x) > G.outer.hx || Math.abs(z) > G.outer.hz)) h = G.outer.yAt(x, z);
+            else if (G.info && typeof hqTerrainHeight === 'function') h = hqTerrainHeight(G.info, x, z);
+        } catch (e) { h = null; }
+        return (h === null || !isFinite(h)) ? -Infinity : G.floorY + h * k;
+    }
     /* THE TALL SCENERY (see ThreeRenderer.tallSceneryTopAt): one pass over the battle room's pieces → the boxes of the
        tall grounded props, flat [x0, x1, z0, z1, top, …] in world px */
     var _tallScenery = null;
+    var TALL_OFF_TILES = 4;   // THE ROOM'S GROUND: props this many squares past the board's edge count as tall scenery too
     function _tallSceneryRead(F, born, now) {
         var ts = CONFIG.tileSize || BASE_TILE, W = bw(), H = bh();
         var out = { group: F, born: born, at: now, boxes: [] };
@@ -82773,9 +82786,18 @@ const ThreeRenderer = (function () {
             var w = (b.max.x - b.min.x) / ts, d = (b.max.z - b.min.z) / ts;
             if (w < 1 || d < 1 || w > 10 || d > 10) continue;
             var tx = Math.floor((b.min.x + b.max.x) / 2 / ts), ty = Math.floor((b.min.z + b.max.z) / 2 / ts);
-            if (tx < 0 || ty < 0 || tx >= W || ty >= H) continue;   // off the board: no lens goes there
-            var col = (heights[ty] && heights[ty][tx]) || 0;
-            var colPx = col > 0 ? elev(col) : 0;
+            /* THE ROOM'S GROUND (2026-11-07): a lens past the board's edge is a normal place for the board view (a unit on the
+               near row), so a tree or a rock just off the board counts too, standing on the room's drawn ground there */
+            var off = tx < 0 || ty < 0 || tx >= W || ty >= H, colPx;
+            if (off) {
+                if (tx < -TALL_OFF_TILES || ty < -TALL_OFF_TILES || tx >= W + TALL_OFF_TILES || ty >= H + TALL_OFF_TILES) continue;
+                var rg = _roomGroundAt((b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2);
+                if (!isFinite(rg)) { var cx2 = Math.max(0, Math.min(W - 1, tx)), cy2 = Math.max(0, Math.min(H - 1, ty)), c2 = (heights[cy2] && heights[cy2][cx2]) || 0; rg = c2 > 0 ? elev(c2) : 0; }
+                colPx = rg;
+            } else {
+                var col = (heights[ty] && heights[ty][tx]) || 0;
+                colPx = col > 0 ? elev(col) : 0;
+            }
             if (b.max.y < colPx + ts * 1.5) continue;           // no taller than the column it stands on
             if (b.min.y > colPx + ts * 1.0) continue;           // floats (an awning, a bridge, a sign)
             out.boxes.push(b.min.x, b.max.x, b.min.z, b.max.z, b.max.y);
@@ -84888,6 +84910,13 @@ const ThreeRenderer = (function () {
             }
             if (trueGround) { try { _hqShadowFlags(copy); } catch (e) {} }   // rev 3: the room casts and receives the key's shadow exactly as it did on the walk
         } finally { _hq = saved; }
+        /* THE ROOM'S GROUND (2026-11-07, mondo on Mount Shasta Arena: "grass is completely covering the screen"): the drawn
+           ground round the board — the terrain room's height field and its outer ground — kept for the camera's lens floor
+           past the board's edge (ThreeRenderer.roomGroundAt). A handed-over room reads its surveyed field (no outer ground). */
+        try {
+            var _rgInfo = H.terrain || ((R.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(R.roomId) : null);
+            _roomGround = (_rgInfo || H.outer) ? { group: null, info: _rgInfo, outer: H.outer || null, T: R.T, floorY: _hqBattleRoomFloorY(R, ts), ts: ts } : null;
+        } catch (e) { _roomGround = null; }
         /* the breathing glows: the room's list into the battle's (cleared with the scenery) */
         H.fxPulse.forEach(function (p) { if (p && p.mat) _hzGlowPulse.push(p); });
         var M = _hqBattleRoomMatrix(R, ts);
@@ -84949,7 +84978,8 @@ const ThreeRenderer = (function () {
         });
         /* the occlusion fade reads the facility group's direct children as its roots */
         if (_facilityNearGroup) { g.children.slice().forEach(function (c) { g.remove(c); c._ew_occNear = true; _facilityNearGroup.add(c); }); }
-        else { _facilityNearGroup = g; g._ew_hzNearRoot = true; _horizonGroup.add(g); }   // _ew_hzNearRoot: the room's late GLBs stay near scenery (_applyHorizonFog)
+        else { _facilityNearGroup = g; g._ew_hzNearRoot = true; _horizonGroup.add(g); }
+        if (_roomGround) _roomGround.group = _facilityNearGroup;   // THE ROOM'S GROUND lives as long as the room's group   // _ew_hzNearRoot: the room's late GLBs stay near scenery (_applyHorizonFog)
         if (trueGround) _fieldGroundDress(R, room, M, ts);
         /* THE SKY ONCE (SEAMLESS_FIELD_PLAN §8.1 item 3 / §8.4, 2026-09-22): a field never builds the site's far roster (hqFieldLayout
            says scenery 'none' for every field) — an OPEN room's own floaters + landmarks are handed over under a matrix holder in the
@@ -88835,6 +88865,10 @@ const ThreeRenderer = (function () {
            does), at most 10, stands on the ground under it (an awning or a bridge floats) and rises 1.5 tiles past the
            column under its middle. Read by point, not by tile: the tower's wall stands a third of a tile into the next
            row, where a unit can stand. Re-read every 3 s while the room's GLBs land (the first minute), then held. */
+        /* THE ROOM'S GROUND (2026-11-07): the drawn ground of the room round the board at world point (wx, wz) (world px), or
+           -Infinity when the battle stands in no terrain room. ThreeCamera reads it past the board's edge, where the grid has
+           no columns, so a lens behind the near row never sits inside a hillside of the room. */
+        roomGroundAt: function (wx, wz) { return _roomGroundAt(wx, wz); },
         tallSceneryTopAt: function (wx, wz) {
             var F = _facilityNearGroup;
             if (!F || !F.parent || typeof bw !== 'function') return -Infinity;

@@ -2535,6 +2535,7 @@
                     const _chM = _logMark();
                     addLog(`${_ctName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
+                    if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                     /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
                        and what its landing did read BEFORE the hit it carried in */
@@ -2743,6 +2744,7 @@
             // hold), so its strike frame lands at _chargeDelay + chargeMs.
             if (_chClip) _releaseCastSprite(unit, _chargeDelay + _chTrv.strikeMs);
             const _runCharge = () => {
+                setUnitFacing(unit, landTile.x - fromX, landTile.y - fromY);   // ⟶ THE STRIKE FACE: the body runs its lane
                 unit.x = landTile.x;
                 unit.y = landTile.y;
                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
@@ -2764,8 +2766,12 @@
             };
             if (_chargeDelay > 0) window.setTimeout(_runCharge, _chargeDelay);
             else _runCharge();
+            /* THE STRIKE FACE: off the lane and square on the victim before the kick / punch / horn lands */
+            window.setTimeout(() => { if (!target.dead) faceStrikeTarget(unit, target); },
+                _chargeDelay + Math.max(0, chargeMs - STRIKE_FACE_LEAD_MS));
 
             window.setTimeout(() => {
+                if (!target.dead) faceStrikeTarget(unit, target);
                 if (!_skipVisuals()) shakeBoard('normal');
                 /* THE NEW-RACE VFX PASS (2026-09-22): the strike on arrival plays the
                    row's `impact` recipe (Stage Dive, Sky Tackle — a tackle's mapping
@@ -13835,6 +13841,10 @@
             const dx = tx - unit.x;
             const dy = ty - unit.y;
             const mag = Math.max(1, Math.abs(dx) + Math.abs(dy));
+            /* THE STRIKE FACE (2026-11-07): the swing goes where the body faces — a striker that moved since it last
+               turned (Drive-By's shot out of the window after the dash) squares up on the tile it hits. The guest's
+               instant click feedback stays look-only: the host's facing arrives with its sync. */
+            if ((dx || dy) && !(window._NET && window._NET.online && window._NET.role === 'guest')) setUnitFacing(unit, dx, dy);
             state._attackAnimDir[unit.id] = {
                 dx: dx / mag,
                 dy: dy / mag,
@@ -15297,6 +15307,26 @@
             if (!(len > 0)) return;   // zero vector → keep current facing
             unit.facing = { dx: dx / len, dy: dy / len };
         }
+
+        /* THE STRIKE FACE (mondo 2026-11-07: "dark justice, the antihero does a kick animation but they don't even kick
+           the person they targeted, they kick the tile next to them"): doSpell turns the caster toward the target from
+           the tile it CAST from, and a charge / leap then carries it onto the open square BESIDE the target, so the
+           strike played down the old line (a diagonal cast landed square-on and kicked the empty tile beside the body).
+           A striker that has moved squares up on its victim from the tile it strikes from (fromX/fromY = the landing
+           when the unit has not been moved there yet). The real facing (arcs read it), synced to the guest at once. */
+        function faceStrikeTarget(unit, target, fromX, fromY) {
+            if (!unit || unit.dead || !target || target.id === unit.id) return false;
+            const ox = (fromX != null) ? fromX : unit.x, oy = (fromY != null) ? fromY : unit.y;
+            const dx = target.x - ox, dy = target.y - oy;
+            if (!dx && !dy) return false;
+            setUnitFacing(unit, dx, dy);
+            markDirty('board');
+            scheduleBoardRender();
+            if (window._broadcastState) { try { window._broadcastState(); } catch (e) {} }
+            return true;
+        }
+        /* the body's turn takes up to ~0.25 s (three-renderer UNIT_TURN_RATE): squared up this long before the strike frame */
+        const STRIKE_FACE_LEAD_MS = 240;
 
         /* THE CLICK FACE (mondo 2026-10-18): "whenever i click on an enemy or a
            unit, my unit should turn to face them". Every between-action unit
@@ -26404,6 +26434,9 @@
                 if (this._fogBlocked(opts._fogAllowed)) return;
                 if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
 
+                // THE GLIDE KEEPS GOING: the running tween (its clock and target angle), read before _stop() ends it
+                const _liveGlide = (this._rafId && this._duration > 0)
+                    ? { start: this._startTime, dur: this._duration, easing: this._easing, tt: this._tt, tyaw: this._tyaw } : null;
                 this._stop();
                 // THE CLEAR FRAME: a fitted frame is solved again when the menus' cover changes — only while it is
                 // still the camera's last move (the fit itself re-arms it after its own move)
@@ -26482,7 +26515,45 @@
                 this._duration = Math.max(100, opts.duration ?? 400);
                 this._easing   = opts.easing || 'easeOut';
                 this._startTime = performance.now();
+                if (_liveGlide && !window.EW_NO_GLIDE_RETARGET) this._glideRetarget(_liveGlide);
                 this._rafId = requestAnimationFrame((n) => this._tick(n));
+            },
+
+            /* THE GLIDE KEEPS GOING (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like
+               the camera is fighting itself"). A pick's framing is solved two or three times in its first half second
+               (setTool frames the pick, then THE CLEAR FRAME solves it again as the armed panel slides in), and every
+               solve restarted the glide from rest: the camera stalled, lurched off again and, when the first solve had
+               aimed closer than the last, went in and back out. A new move that only refines the running one (same
+               pitch and yaw to within REFINE_DEG) now bends that glide toward the new frame on its own clock: the
+               position never jumps and the motion never stops. Late in a glide (or when the new move asks for more
+               time than is left) it restarts without the ease-in, so it does not stop dead either. A move to another
+               angle (a new subject, the action shot) starts its own glide as before. Kill switch EW_NO_GLIDE_RETARGET. */
+            _glideRetarget(live) {
+                const REFINE_DEG = 8;
+                const now = this._startTime;
+                const t0 = Math.min(1, Math.max(0, (now - live.start) / live.dur));
+                if (t0 >= 0.9) return;
+                const gap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+                if (gap(this._tyaw, live.tyaw) > REFINE_DEG || Math.abs(this._tt - live.tt) > REFINE_DEG) return;
+                const left = live.dur - (now - live.start);
+                if (t0 < 0.5 && left >= this._duration * 0.5) {
+                    // same clock, same curve: from' is the start that puts the curve on the camera NOW and on the new target at its end
+                    const e0 = this._ease(t0, live.easing);
+                    const k = e0 / Math.max(0.05, 1 - e0);
+                    this._fromX -= (this._tx - this._fromX) * k;
+                    this._fromY -= (this._ty - this._fromY) * k;
+                    this._fromZ -= (this._tz - this._fromZ) * k;
+                    this._fromT -= (this._tt - this._fromT) * k;
+                    this._fromCZ -= (this._tcz - this._fromCZ) * k;
+                    this._fromYaw -= this._yawDelta * k;
+                    this._yawDelta *= 1 + k;
+                    if (this._fromElev >= 0 && this._tElev >= 0) this._fromElev -= (this._tElev - this._fromElev) * k;
+                    this._startTime = live.start;
+                    this._duration = live.dur;
+                    this._easing = live.easing;
+                } else if (t0 >= 0.2) {
+                    this._easing = 'easeOut';   // already moving: no ease-in stall
+                }
             },
 
             panTo(tx, ty, opts = {}) {
@@ -26901,6 +26972,7 @@
 
             focusOnTiles(points, opts = {}) {
                 if (!boardStageEl || !points?.length || state.phase !== 'battle' || state.cameraDisabled) return;
+                if (_actWalkLive()) return;   // THE ONE MOVE: the two-shot already glides to where the walk lands
                 if (this._fogBlocked(opts._fogAllowed)) return;
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
@@ -27126,6 +27198,7 @@
                camera follows none of them (it belongs to the player's unit). */
             if (typeof _mdCamMuted === 'function' && _mdCamMuted()) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
+            if (_actWalkLive()) return;   // THE ONE MOVE: the two-shot already glides to where the jump lands
             camera.moveTo({
                 x: toPoint.x, y: toPoint.y,
                 zoom: opts.zoom ?? getDefaultZoom(),
@@ -27417,6 +27490,18 @@
                 return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa, opts };
             } catch (e) { return null; }
         }
+        /* THE REFIT ONLY WIDENS (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like the
+           camera is fighting itself"). THE CLEAR FRAME solves a pick's frame again as the armed panel slides in and as
+           the forecast's words over the heads land and change (THE HEAD ROOM), up to three or four times in the first
+           second and a half. Each solve aimed a few percent closer or further, so the view crept in, back out, in again.
+           A refit now only WIDENS the frame it is refining (the words or the menu need the room) and keeps the zoom it
+           has when it would only close in by less than REFIT_ZOOM_IN (everything already fits); it still slides the
+           frame clear of the menus. A big change (a panel closing) still closes in. Kill switch EW_NO_REFIT_WIDEN_ONLY. */
+        const REFIT_ZOOM_IN = 1.2;
+        function _refitZoom(was, want) {
+            if (window.EW_NO_REFIT_WIDEN_ONLY || !(was > 0) || !(want > 0)) return want;
+            return (want > was && want < was * REFIT_ZOOM_IN) ? was : want;
+        }
         /* THE CLEAR FRAME: a range fit just moved the camera — when the menus' cover moves under it (the armed spell's
            panel arriving after the click), fit the same tiles again for the new cover */
         function _tilePickArmRefit(unit, tiles, fr) {
@@ -27429,6 +27514,7 @@
                     const u = (state.units || []).find(v => v.id === uid && !v.dead);
                     const f2 = u ? _tilePickFrame(u, tiles, null, fr.opts) : null;
                     if (!f2) return;
+                    f2.zoom = _refitZoom(fr.zoom, f2.zoom);   // THE REFIT ONLY WIDENS
                     camera.moveTo({ x: f2.x, y: f2.y, zoom: f2.zoom, tilt: TILE_PICK_TILT, duration: 360, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
                     _tilePickArmRefit(u, tiles, f2);
@@ -27552,6 +27638,47 @@
         function getRestZoom() {
             if (isUserZoomEngaged()) return getUserZoomScale();
             return (typeof isFollowCamMode === 'function' && isFollowCamMode()) ? getFollowCamZoom() : getTurnFramingZoom();
+        }
+        /* ══ THE TURN FRAME (2026-11-07) ══ mondo (Mount Shasta Arena, his unit's turn): "my unit isnt even centered, they are all
+           the way near the top of the screen, and i cant see anything bc grass is completely covering the screen ... why would
+           the camera choose this spot ... Low and near to the ground". A turn start honours an engaged hand zoom (the wheel and
+           a trackpad go to 10×), and at 6× on a 3.5 m square the lens sat 1.6 squares from the focal, ~0.7 over the grass at
+           the resting angle, the body past the top edge. The zoom a turn start (yours, a CPU's, the guest's, a respawn's first
+           turn, a pan a hand drag deferred) frames with is capped: the lens at least TURN_FRAME_MIN_DIST squares from the
+           focal (the menu two-shot's own floor, MENU_CAM_MIN_DIST) and far enough that the unit's drawn body — feet to the top
+           of a kaiju — fills at most TURN_FRAME_FIT_V of the frame's height. A capped hand zoom is written back, so the next
+           wheel step goes on from what the screen shows. Zooming in by hand while you look around is untouched. */
+        const TURN_FRAME_MIN_DIST = 3.0;   // squares from the lens to the focal, at least
+        const TURN_FRAME_FIT_V = 0.6;      // the body's half (round the focal) fills at most this share of the half-frame
+        function getTurnFrameZoomCap(unit) {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()) return Infinity;
+            if (typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return Infinity;
+            const bd = ThreeCamera.getBaseDist();
+            if (!(bd > 0)) return Infinity;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let h = 0;
+            try { h = (unit && ThreeRenderer.getUnitVisualHeight) ? (+ThreeRenderer.getUnitVisualHeight(unit.id) || 0) : 0; } catch (e) { h = 0; }
+            const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+            const lift = ts * 0.55;   // the focal rides this far over the feet when a unit stands there (camera._naturalElevAt)
+            const half = Math.max(lift, h - lift);
+            const minDist = Math.max(TURN_FRAME_MIN_DIST * ts, half / (tanV * TURN_FRAME_FIT_V));
+            return Math.max(0.15, bd / minDist);
+        }
+        /* the camera is (or is heading) closer than the cap: a turn start applies the capped zoom even where it would keep the
+           zoom the last framing left (a CPU's / a remote unit's activation) */
+        function turnFrameTooClose(unit) {
+            return (Number.isFinite(camera._tz) ? camera._tz : camera.zoom) > getTurnFrameZoomCap(unit) + 0.01;
+        }
+        function capTurnFrameZoom(unit, zoom) {
+            const cap = getTurnFrameZoomCap(unit);
+            if (!(zoom > cap)) return zoom;
+            const z = Math.floor(cap * 100) / 100;
+            if (isUserZoomEngaged() && (state.userZoomScale || 0) > z) {
+                state.userZoomScale = z;
+                const btn = document.getElementById('zoomToggleBtn');
+                if (btn) { btn.textContent = getUserZoomLabel(); btn.classList.toggle('active', isUserZoomEngaged()); }
+            }
+            return z;
         }
         function getCloseZoom()      { return _getBattleZoom(); }
         function getWideZoom()       { return _getBattleZoom(); }
@@ -31979,6 +32106,8 @@
             // row) keeps the shot running instead of restarting the tween
             // (THE CLEAR FRAME's refit, the menus having moved, solves it again)
             if (ms && ms.key === key && !refit) return true;
+            // THE REFIT ONLY WIDENS: a refit of the same pair keeps the zoom it has unless it must widen
+            if (refit && ms && ms.key === key && ms.pose) pose.zoom = _refitZoom(ms.pose.zoom, pose.zoom);
             if (!ms) {
                 // the TACTICAL view this shot leaves: resting orientation, and the
                 // zoom the player was on (a held action shot's remembered one wins)
@@ -47673,6 +47802,51 @@
             return true;
         }
         window._rearmHeldFirstPick = _rearmHeldFirstPick;
+        /* THE ONE MOVE (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like the camera is
+           fighting itself"). A MOVE→ATK / JUMP→ATK / MOVE→CAST confirm from the target two-shot played three camera moves
+           in about a second: the walk's follow left the two-shot for the tactical view it came from (pitched up, zoomed
+           out, swung back to the resting yaw), then the strike swung straight back down into a two-shot or the action
+           shot. Now a basic attack's two-shot glides ONCE, while the unit walks or jumps, to the frame of the attacker on
+           the tile it lands on and its target, and the walk's follow (focusOnTiles / animateBoardCameraPath) stays out
+           of it until the strike: the attack hold finds the pair already framed and only pushes in. A cast (`still`)
+           keeps the two-shot it was confirmed from through the walk, so the spell's own camera is the one move after
+           the confirm. Viewer-local, so the guest's own walk-then-act gets it too. Kill switch EW_NO_ONE_MOVE. */
+        function _actWalkHold(unit, approach, tx, ty, tz, still) {
+            camera._actWalk = null;
+            try {
+                if (window.EW_NO_ONE_MOVE || !unit || !approach || approach._viaSpell || !camera._menuShot) return;
+                if (!Number.isFinite(approach.x) || !Number.isFinite(approach.y)) return;
+                const live = (state.units || []).filter(u => u && !u.dead && !u._dying && u.id !== unit.id && u.x === tx && u.y === ty);
+                const tgt = live.find(u => tz == null || u.z == null || u.z === tz) || live[0] || { x: tx, y: ty };
+                const dest = Object.assign({}, unit, { x: approach.x, y: approach.y });
+                if (Number.isFinite(approach.z)) dest.z = approach.z;
+                if (!still && !_menuTargetShot(dest, tgt)) return;
+                const w = camera._actWalk = { uid: unit.id, until: performance.now() + 6000 };
+                const tid = tgt.id != null && tgt.player != null ? tgt.id : null;
+                // THE CLEAR FRAME's refit solves the LANDING pair while the walk runs (the walker is still on its way);
+                // a held cast frame is not solved again until the walk ends
+                const arm = () => {
+                    if (!camera._clearFit) return;
+                    const fit0 = camera._clearFit.fit;
+                    camera._clearFit.fit = () => {
+                        if (camera._actWalk !== w || !_actWalkLive()) { if (fit0) fit0(); return; }
+                        if (still) return;
+                        const t = tid != null ? (state.units || []).find(v => v.id === tid && !v.dead) : tgt;
+                        if (!t) return;
+                        if (_menuTargetShot(dest, t, true)) arm();
+                    };
+                };
+                arm();
+            } catch (e) { camera._actWalk = null; }
+        }
+        function _actWalkLive() {
+            const w = camera._actWalk;
+            if (!w) return false;
+            if (!camera._menuShot || performance.now() > w.until || state.phase !== 'battle') { camera._actWalk = null; return false; }
+            return true;
+        }
+        function _actWalkEnd() { camera._actWalk = null; }
+
         function _moveThenCast(unit, approach, spellName, tx, ty, tz) {
             const _viewBefore = state.actionMenuView;
             _clearSpellApproachPreview();
@@ -47686,6 +47860,7 @@
             scheduleBoardRender();
 
             const _bail = () => {
+                _actWalkEnd();
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
                 state._actionExecuting = false;
                 state.actionMode = null;
@@ -47695,6 +47870,7 @@
                 renderIfDirty();
             };
             const _cast = () => {
+                _actWalkEnd();   // THE ONE MOVE: the strike's camera takes over from the landing two-shot
                 // doSpell reads state.selectedTool, and the move above reset
                 // actionMode/selectedTool — re-assert before casting.
                 state.selectedTool = spellName;
@@ -47758,6 +47934,7 @@
                 if (r === 0 || r === false) { _bail(); return; }
                 setTimeout(next, 560);
             };
+            _actWalkHold(unit, approach, tx, ty, tz, true);   // THE ONE MOVE (held: the spell's camera is the move)
             if (approach._viaSpell) {
                 _runSelfMoveStep(unit, approach._viaSpell, _cast, _bail);   // THE DASH APPROACH
             } else if (approach._jump) {
@@ -47985,6 +48162,7 @@
             scheduleBoardRender();
 
             const _bail = () => {
+                _actWalkEnd();
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
                 state._actionExecuting = false;
                 state.actionMode = null;
@@ -47994,6 +48172,7 @@
                 renderIfDirty();
             };
             const _strike = () => {
+                _actWalkEnd();   // THE ONE MOVE: the attack hold takes over from the landing two-shot
                 state.selectedTool = null;
                 state.actionMode = 'attack';
                 state._actionExecuting = true;
@@ -48031,6 +48210,7 @@
                 const delay = typeof r === 'number' ? r : 450;
                 setTimeout(next, delay);
             };
+            _actWalkHold(unit, approach, tx, ty, tz);   // THE ONE MOVE
             if (approach._viaSpell) {
                 _runSelfMoveStep(unit, approach._viaSpell, _strike, _bail);   // THE JUMP + DASH SWINGS
             } else if (approach._jump) {
@@ -58014,8 +58194,8 @@
                         || _aliveFor(1)[0];
                     if (camU) {
                         const baseZoom = getUserZoomScale();
-                        const zoom = getRestZoom();   // THE REST ZOOM (was the whole-board overview)
-                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const zoom = capTurnFrameZoom(camU, getRestZoom());   // THE REST ZOOM (was the whole-board overview), THE TURN FRAME's cap
+                        const _retTilt = Math.min(camera._preCineView ? camera._preCineView.tilt : (camera._restTilt ?? DEFAULT_BOARD_TILT), REST_TILT_MAX);
                         const _retYaw = getTurnStartCamYaw(camU,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         // Returning from a cinematic shot: the zoom must be
@@ -58027,8 +58207,8 @@
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: camU.x, y: camU.y }], {
                             zoom,
-                            _applyZoom: _simCineActive,
-                            _bypassCap: _simCineActive,
+                            _applyZoom: _simCineActive || turnFrameTooClose(camU),
+                            _bypassCap: _simCineActive || turnFrameTooClose(camU),
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -59867,14 +60047,14 @@
                         invalidateLayoutCache();
                         renderBoard();
                         const baseZoom = getUserZoomScale();
-                        const zoom = getRestZoom();   // THE REST ZOOM (was the whole-board overview)
+                        const zoom = capTurnFrameZoom(nextUnit, getRestZoom());   // THE REST ZOOM (was the whole-board overview), THE TURN FRAME's cap
                         // Fold the return-to-tactical-view into the activation
                         // pan: every turn handoff lands at the resting tilt/yaw
                         // (the player's remembered pre-cine framing if a shot is
                         // still pending), so the camera can never carry a craned
                         // cinematic angle from the previous unit's action into
                         // the next unit's turn.
-                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retTilt = Math.min(camera._preCineView ? camera._preCineView.tilt : (camera._restTilt ?? DEFAULT_BOARD_TILT), REST_TILT_MAX);
                         const _retYaw  = getTurnStartCamYaw(nextUnit,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         // ...and the ZOOM must ride along when a shot's framing
@@ -59886,8 +60066,8 @@
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
-                            _applyZoom: _aiCineActive,
-                            _bypassCap: _aiCineActive,
+                            _applyZoom: _aiCineActive || turnFrameTooClose(nextUnit),
+                            _bypassCap: _aiCineActive || turnFrameTooClose(nextUnit),
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -59945,13 +60125,13 @@
                         invalidateLayoutCache();
                         renderBoard();
                         const baseZoom = getUserZoomScale();
-                        const zoom = getRestZoom();   // THE REST ZOOM (was the whole-board overview)
+                        const zoom = capTurnFrameZoom(nextUnit, getRestZoom());   // THE REST ZOOM (was the whole-board overview), THE TURN FRAME's cap
                         // Same turn-handoff rule as the AI branch above: the
                         // activation pan always settles at the resting tactical
                         // orientation, never at a leftover action angle — and
                         // the zoom rides along when a shot's framing was live
                         // (focusOnTiles drops `zoom` without _applyZoom).
-                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retTilt = Math.min(camera._preCineView ? camera._preCineView.tilt : (camera._restTilt ?? DEFAULT_BOARD_TILT), REST_TILT_MAX);
                         const _retYaw  = getTurnStartCamYaw(nextUnit,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
                         const _rmCineActive = camera._preCineView != null || camera._cineShotId != null;
@@ -59959,8 +60139,8 @@
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
-                            _applyZoom: _rmCineActive,
-                            _bypassCap: _rmCineActive,
+                            _applyZoom: _rmCineActive || turnFrameTooClose(nextUnit),
+                            _bypassCap: _rmCineActive || turnFrameTooClose(nextUnit),
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -64252,6 +64432,109 @@
             _waitForAnimationsThen(() => maybeAdvanceTurn());
         }
 
+        /* ══ THE TURN-START CAMERA ══ the one move that frames a unit whose turn just began (selectUnit's activation pan, and
+           the pan a hand drag deferred: state.js calls window._ewTurnStartCamera when the drag lets go).
+           THE TURN FRAME (2026-11-07, mondo on Mount Shasta Arena: "my unit isnt even centered ... grass is completely covering
+           the screen ... Low and near to the ground"): a hand zoom is honoured only as close as getTurnFrameZoomCap allows
+           (the lens never nearer the unit's body than TURN_FRAME_MIN_DIST squares, the whole body in frame), and the deferred
+           pan takes the same resting angle as the activation pan instead of whatever low angle the hand drag left. */
+        function _turnStartCamera(unit) {
+            if (!unit || state.cameraDisabled || state.phase !== 'battle') return;
+            // Captured BEFORE the shot bookkeeping is dropped: was a
+            // cinematic action shot's framing (close-up zoom) still
+            // live when this activation took over? If so the zoom must
+            // be re-applied below even for a non-local turn — "follow
+            // at whatever zoom the previous framing left" is right
+            // between plain turns, but inheriting a beat-2 CLOSE-UP
+            // meant the camera chased the next unit across the map at
+            // action-shot magnification until something else fixed it.
+            const _cineZoomActive = camera._cineShotId != null || camera._preCineView != null;
+            camera._cineShotId = null;
+            const baseZoom = getUserZoomScale();
+
+            // The local player's OWN unit gets a closer "medium" framing
+            // when its turn activates, instead of the whole-board
+            // overview that pulled the camera way out every turn. An
+            // engaged user zoom still wins; enemy/AI activations
+            // keep the overview.
+            const _localActiveTurn = unit.id === state._blitzActiveUnitId
+                && state.controllers?.[unit.player] === CTRL.LOCAL
+                && unit.player === getViewerPlayer();
+            const zoom = capTurnFrameZoom(unit, isUserZoomEngaged() ? baseZoom
+                : (_localActiveTurn
+                    ? (isFollowCamMode() ? getFollowCamZoom() : getTurnFramingZoom())
+                    : getRestZoom()));   // THE REST ZOOM: CPU / remote openings no longer pull to the overview
+            // THE TURN FRAME: a camera left closer than the cap (a hand zoom, a close-up) is pulled back to it on every side
+            const _tooClose = turnFrameTooClose(unit);
+
+            if (_cameraActingSideIsAuto()) {
+                // Auto / AI side: follow the newly-activated unit, but
+                // ALWAYS un-tilt back to the resting board orientation as
+                // the turn passes to a new unit. Keeping the previous
+                // action's cinematic tilt between units left the camera
+                // craned up — after an attack/cast at a HIGHER target it
+                // ends up staring at the sky, so subsequent enemy turns
+                // showed nothing of the map until a human unit's turn
+                // finally reset it (and then re-derived the gameplay zoom
+                // from the craned tilt, pulling it way out). Resetting the
+                // orientation per AI turn keeps the board visible and the
+                // zoom sane. We follow the new unit at whatever zoom the
+                // previous framing left (zoom is only re-applied for the
+                // local player's own turn), only the angle is restored.
+                const _retTilt = Math.min(camera._preCineView ? camera._preCineView.tilt : (camera._restTilt ?? DEFAULT_BOARD_TILT), REST_TILT_MAX);
+                const _retYaw  = getTurnStartCamYaw(unit,
+                    camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
+                camera._preCineView = null;
+                camera._releaseCineSubject(550);
+                camera._tpsHold = false;   // AI/auto turns: stock tactical follow
+                focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
+                    zoom,
+                    // Also re-frame when a cinematic shot's close-up
+                    // zoom was still live (see _cineZoomActive above) —
+                    // the angle reset alone left the tactical follow
+                    // stuck at action-shot magnification.
+                    _applyZoom: _localActiveTurn || _cineZoomActive || _tooClose,
+                    _bypassCap: _localActiveTurn || _cineZoomActive || _tooClose,
+                    tilt: _retTilt,
+                    yaw: _retYaw,
+                    holdMs: 99999,
+                    persist: true,
+                    transitionMs: 380
+                });
+            } else {
+                // A human side's turn begins: this is the single
+                // authoritative "back to gameplay" move. ALWAYS return to
+                // the resting board orientation (tilt+yaw) and frame the
+                // active unit, regardless of what the previous action or
+                // end-of-round sequence left on screen. This is what makes
+                // the start of every turn consistent: the camera can never
+                // be stranded craned-up from a spell shot or flattened/
+                // pulled-way-out from the end-of-round overview, and the
+                // unit whose turn it is is always centred.
+                camera._preCineView = null;
+                camera._savedState = null;
+                camera._releaseCineSubject(750);
+                // YOUR unit's turn opens in third person, parked behind
+                // it — the same rig as the action shots. Everything
+                // else (another human seat's unit in hotseat, 2D
+                // fallback) keeps the tactical framing.
+                if (!(_localActiveTurn && _tpsUnitShot(unit, { duration: 600 }))) {
+                    camera._tpsHold = false;
+                    camera.moveTo({
+                        x: unit.x, y: unit.y, zoom,
+                        tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
+                        yaw: getTurnStartCamYaw(unit, camera._restYaw),
+                        duration: 600, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true
+                    });
+                }
+            }
+        }
+        window._ewTurnStartCamera = function (unit) {
+            if (!unit || unit.dead || state._userPanning || state._userOrbiting) return false;
+            _turnStartCamera(unit);
+            return true;
+        };
         function selectUnit(unitId, opts = {}) {
             /* opts._auto: the ENGINE is selecting (turn activation), not the
                player clicking. Skips the cursor-move click so the unit-switch
@@ -64352,93 +64635,7 @@
                     // yank the camera; the action's own restore handles it.
                 } else {
                     state._deferredTurnPanUnitId = null;
-                    // Captured BEFORE the shot bookkeeping is dropped: was a
-                    // cinematic action shot's framing (close-up zoom) still
-                    // live when this activation took over? If so the zoom must
-                    // be re-applied below even for a non-local turn — "follow
-                    // at whatever zoom the previous framing left" is right
-                    // between plain turns, but inheriting a beat-2 CLOSE-UP
-                    // meant the camera chased the next unit across the map at
-                    // action-shot magnification until something else fixed it.
-                    const _cineZoomActive = camera._cineShotId != null || camera._preCineView != null;
-                    camera._cineShotId = null;
-                    const baseZoom = getUserZoomScale();
-
-                    // The local player's OWN unit gets a closer "medium" framing
-                    // when its turn activates, instead of the whole-board
-                    // overview that pulled the camera way out every turn. An
-                    // engaged user zoom still wins; enemy/AI activations
-                    // keep the overview.
-                    const _localActiveTurn = unitId === state._blitzActiveUnitId
-                        && state.controllers?.[unit.player] === CTRL.LOCAL
-                        && unit.player === getViewerPlayer();
-                    const zoom = isUserZoomEngaged() ? baseZoom
-                        : (_localActiveTurn
-                            ? (isFollowCamMode() ? getFollowCamZoom() : getTurnFramingZoom())
-                            : getRestZoom());   // THE REST ZOOM: CPU / remote openings no longer pull to the overview
-
-                    if (_cameraActingSideIsAuto()) {
-                        // Auto / AI side: follow the newly-activated unit, but
-                        // ALWAYS un-tilt back to the resting board orientation as
-                        // the turn passes to a new unit. Keeping the previous
-                        // action's cinematic tilt between units left the camera
-                        // craned up — after an attack/cast at a HIGHER target it
-                        // ends up staring at the sky, so subsequent enemy turns
-                        // showed nothing of the map until a human unit's turn
-                        // finally reset it (and then re-derived the gameplay zoom
-                        // from the craned tilt, pulling it way out). Resetting the
-                        // orientation per AI turn keeps the board visible and the
-                        // zoom sane. We follow the new unit at whatever zoom the
-                        // previous framing left (zoom is only re-applied for the
-                        // local player's own turn), only the angle is restored.
-                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
-                        const _retYaw  = getTurnStartCamYaw(unit,
-                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
-                        camera._preCineView = null;
-                        camera._releaseCineSubject(550);
-                        camera._tpsHold = false;   // AI/auto turns: stock tactical follow
-                        focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
-                            zoom,
-                            // Also re-frame when a cinematic shot's close-up
-                            // zoom was still live (see _cineZoomActive above) —
-                            // the angle reset alone left the tactical follow
-                            // stuck at action-shot magnification.
-                            _applyZoom: _localActiveTurn || _cineZoomActive,
-                            _bypassCap: _localActiveTurn || _cineZoomActive,
-                            tilt: _retTilt,
-                            yaw: _retYaw,
-                            holdMs: 99999,
-                            persist: true,
-                            transitionMs: 380
-                        });
-                    } else {
-                        // A human side's turn begins: this is the single
-                        // authoritative "back to gameplay" move. ALWAYS return to
-                        // the resting board orientation (tilt+yaw) and frame the
-                        // active unit, regardless of what the previous action or
-                        // end-of-round sequence left on screen. This is what makes
-                        // the start of every turn consistent: the camera can never
-                        // be stranded craned-up from a spell shot or flattened/
-                        // pulled-way-out from the end-of-round overview, and the
-                        // unit whose turn it is is always centred.
-                        camera._preCineView = null;
-                        camera._savedState = null;
-                        camera._releaseCineSubject(750);
-                        // YOUR unit's turn opens in third person, parked behind
-                        // it — the same rig as the action shots. Everything
-                        // else (another human seat's unit in hotseat, 2D
-                        // fallback) keeps the tactical framing.
-                        if (!(_localActiveTurn && _tpsUnitShot(unit, { duration: 600 }))) {
-                            camera._tpsHold = false;
-                            camera.moveTo({
-                                x: unit.x, y: unit.y, zoom,
-                                tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
-                                yaw: getTurnStartCamYaw(unit, camera._restYaw),
-                                duration: 600, easing: 'easeInOut',
-                                _allowZoomChange: true, _bypassCap: true
-                            });
-                        }
-                    }
+                    _turnStartCamera(unit);
                 }
             }
             scheduleBoardRender();
@@ -74223,7 +74420,10 @@
             // 🧱 The blast scatters the torn-out masonry/timber/plate as
             // collectible debris cubes around the crater (capped so one nuke
             // can't carpet the map).
-            if (_excavated.length) {
+            /* THE WALL GOES HOME CLEAN (zones/traps playtest 2026-11-07 D4, after PR #1030): a clock taking its own raise back off
+               (map.js revertTerrainTimer, `undo`) is the ground going home, not a blast, so it scatters no debris. Rampart's end
+               left salvage piles on and round its three squares (and dropped stone at the feet of whoever stood there). */
+            if (_excavated.length && !deform.undo) {
                 const _dCap = _matDropCfg().deformDropCap || 10;
                 spawnMaterialDrops(cx, cy, _excavated.slice(0, _dCap));
             }
@@ -83891,6 +84091,7 @@
                         unit.y = casterFromY;
                     }
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
                     addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground!${deltaLabel}`);   // the hit's own line above carries the real number (totalDmg is the raw before DEF)
@@ -84052,6 +84253,7 @@
                         if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                     }
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
                     addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
@@ -84102,6 +84304,10 @@
                     ].find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y)) || { x: casterFromX, y: casterFromY };
                     const _lsToZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(_lsLand0.x, _lsLand0.y, unit.z) : unit.z;
                     const _lsImpactAt = Math.max(_lsLaunchAt, _lsTrv.strikeMs);
+                    /* THE STRIKE FACE: the clip carries the body onto the landing square; it squares up on the victim from
+                       THERE before the strike frame (it was still facing down the line it cast from) */
+                    window.setTimeout(() => { if (!target.dead) faceStrikeTarget(unit, target, _lsLand0.x, _lsLand0.y); },
+                        Math.max(0, _lsImpactAt - STRIKE_FACE_LEAD_MS));
                     animateClipTravel(unit, _lsLand0.x, _lsLand0.y, {
                         fromX: casterFromX, fromY: casterFromY, toZ: _lsToZ, oneWay: true,
                         waitMs: _lsImpactAt + 300, fallbackMs: 420
