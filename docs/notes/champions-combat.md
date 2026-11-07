@@ -4239,3 +4239,15 @@ before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/s
 Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
+
+## OWN PIECES ARE SAFE (2026-11-07, buffs/utility playtest family I)
+- A player's own area, line and wall spells pass over their own summons, turrets and deployed objects, the same rule
+  their own units and own doors already had. Before, Supernova and Formic Acid chipped the caster's own Mitosis Blob and
+  destroyed their own Hologram, and a kill even paid the attacker entropy for wrecking their own turret.
+- battle.js: `damageTurretAt` returns early when the turret's `owner` is the attacker's player (opts.anyOwner = a bomb's
+  blast, which still hits every turret around it as before); the destroy-a-turret entropy is only paid for an enemy turret.
+  `damageMirrorAt` skips own prisms. `_ownPieceSpared(obj, unit)` gates the deployed-object hit in `_applyAoeDamage`, the
+  line spine and the wall/terrain damage loop. Own explosives (detonateOnAttack/detonateOnFire with a blastRadius) still go
+  off, the existing single-target rule (you may set off your own bomb).
+- Proof: Spell Lab in Chromium (WebGL2), own Blob + Hologram and an enemy Blob + Hologram inside Supernova's radius and on
+  Formic Acid's line: live code chipped/destroyed both sides, the fix leaves the own pieces whole and still hits the enemy's.

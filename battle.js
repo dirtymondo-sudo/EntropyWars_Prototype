@@ -6752,6 +6752,13 @@
             }
         }
         /* A decoy carrying `breakStatus` (Stuffed Double's Fear) springs it on every enemy beside it when it is destroyed. */
+        /* OWN PIECES ARE SAFE (11-07): a player's own area / line / wall spells pass over their own deployed objects
+           (Hologram, Cloning Machine, Stuffed Double, beacons ...) the way they pass over their own units. The one
+           exception is the existing single-target rule: an own object that explodes when hit (a bomb) can still be set off. */
+        function _ownPieceSpared(obj, byUnit) {
+            if (!obj || !byUnit || obj.ownerPlayer !== byUnit.player) return false;
+            return !((obj.detonateOnAttack || obj.detonateOnFire) && obj.blastRadius > 0);
+        }
         function _onDecoyBroken(obj, byUnit) {
             _clearDecoyTaunts(obj);
             if (!obj || !Array.isArray(obj.breakStatus) || !obj.breakStatus.length || obj._breakSprung) return;
@@ -7200,7 +7207,7 @@
 
                 // Deployed object damage
                 if (state._deployedObjects) {
-                    const _aoeDObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && !o._detonated);
+                    const _aoeDObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && !o._detonated && !_ownPieceSpared(o, unit));
                     if (_aoeDObj) {
                         if ((_aoeDObj.detonateOnAttack || _aoeDObj.detonateOnFire) && _aoeDObj.blastRadius > 0) {
                             detonateDeployedObject(_aoeDObj, unit);
@@ -7819,7 +7826,7 @@
                 }
                 damageDoorAt(cx, cy, unit, { label: `${spell.name}: ` });   // 🚪 one hit per door on the lane
                 if (state._deployedObjects) {
-                    const _lnDObj = state._deployedObjects.find(o => o.x === cx && o.y === cy && o.hp > 0 && !o._detonated);
+                    const _lnDObj = state._deployedObjects.find(o => o.x === cx && o.y === cy && o.hp > 0 && !o._detonated && !_ownPieceSpared(o, unit));
                     if (_lnDObj) {
                         if ((_lnDObj.detonateOnAttack || _lnDObj.detonateOnFire) && _lnDObj.blastRadius > 0) {
                             detonateDeployedObject(_lnDObj, unit);
@@ -14697,7 +14704,7 @@
                     }
                 }
 
-                damageTurretAt(tile.x, tile.y, dmg, sourceUnit);
+                damageTurretAt(tile.x, tile.y, dmg, sourceUnit, { anyOwner: true });
 
                 if (state._deployedObjects) {
                     const chainObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && o.detonateOnAttack && !o._detonated);
@@ -40281,6 +40288,11 @@
             if (!state.turrets) return false;
             const turret = state.turrets.find(t => t.x === x && t.y === y && t.hp > 0);
             if (!turret) return false;
+            /* OWN PIECES ARE SAFE (11-07): a player's own area / line / wall spells pass over their own summons and
+               turrets (Mitosis Blob, the abomination, Siege Turret, 5G Tower ...), the same rule as their own units and
+               their own doors. Single-target casts and basic attacks already refused them. opts.anyOwner = a bomb's
+               blast, which still hits every turret around it. */
+            if (attackerUnit && turret.owner === attackerUnit.player && !opts.anyOwner) return false;
             if (turret.hitsToKill) {
 
                 const _chip = (turret.armored && opts.damageType === 'physical') ? 0.5 : 1;
@@ -40303,7 +40315,7 @@
                     ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
-                if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);
+                if (attackerUnit && turret.owner !== attackerUnit.player) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);   // no pay for wrecking your own
                 // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
                 // scrap scatters as debris cubes around the wreck.
                 if (!turret.zombie && !turret.summon) {
@@ -40730,6 +40742,7 @@
             if (!state.mirrors) return false;
             const m = state.mirrors.find(mm => mm.x === x && mm.y === y && mm.hp > 0);
             if (!m) return false;
+            if (attackerUnit && m.owner === attackerUnit.player) return false;   // OWN PIECES ARE SAFE (11-07): own blasts / lines pass over own prisms
             _prismBiteBack(m, attackerUnit);   // B3: the glass bites back (once per prism per round)
             m.hp = Math.max(0, m.hp - 1);
             if (m.hp <= 0) {
@@ -79651,7 +79664,7 @@
                             damageTurretAt(ct.x, ct.y, spell.dmg || 80, unit);
 
                             if (state._deployedObjects) {
-                                const _tcDObj = state._deployedObjects.find(o => o.x === ct.x && o.y === ct.y && o.hp > 0 && !o._detonated);
+                                const _tcDObj = state._deployedObjects.find(o => o.x === ct.x && o.y === ct.y && o.hp > 0 && !o._detonated && !_ownPieceSpared(o, unit));
                                 if (_tcDObj) {
                                     if ((_tcDObj.detonateOnAttack || _tcDObj.detonateOnFire) && _tcDObj.blastRadius > 0) {
                                         detonateDeployedObject(_tcDObj, unit);
