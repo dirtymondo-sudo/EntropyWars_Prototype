@@ -12187,11 +12187,11 @@ function keyIconHtml(px, style) {
 if (typeof window !== 'undefined') { window.KEY_ICON_URI = KEY_ICON_URI; window.keyIconHtml = keyIconHtml; }
 
 /* 🎭 Control hand-off (CHAMP_REWORK_PLAN §5.5, Phase 5 wave B, 2026-09-08):
-   a Possessed / Infected unit IS the controller's unit for the duration —
-   battle.js possessUnit flips `unit.player` to the controller's seat and
-   remembers the home seat in `_origPlayer`, so every consumer of
-   `unit.player` (HUD ownership, the AI, fog, targeting, the online
-   guest-emit gate) hands the body over with no special cases. This is the
+   a Possessed / Infected unit is the controller's unit for its OWN
+   activations — battle.js _possessSettleSeats sets `unit.player` to the
+   controller's seat while it acts and back to the home seat (`_origPlayer`)
+   between them (THE HOME SIDE, 2026-11-07: team spells, ally lists and the AI
+   treat a resting possessed body as its home team's). This is the
    ONE funnel that hands it back: the two control statuses call it from
    onRemove, so every removal path (the activation count, the round tick,
    a cleanse, death → releasePossession) restores the home seat. */
