@@ -6239,8 +6239,16 @@ function ActionMenu({ st, hidden }) {
 
   const apc = typeof getActionPanelCache === 'function' ? getActionPanelCache(unit) : {};
 
-  const isStunned = unit.status && typeof getActiveStatusKeys === 'function'
-    && getActiveStatusKeys(unit).some(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k]?.blockMove);
+  /* THE LOCK WORDS (buffs playtest 2026-11-07 D): the greyed verbs name the REAL lock — Rooted, Charmed, Roped,
+     Frozen, Stoneform… (battle.js statusLockWord) — not "Stunned" for every blockMove status. A "cannot act" status
+     (blockAction: Stoneform, stun, frozen, feared…) greys every action verb too, the same lock doAttack / doSpell /
+     doItem / doGuard refuse on, so the menu never lights a verb the engine then turns down. */
+  const _moveLockKey = typeof unitMoveBlockKey === 'function' ? unitMoveBlockKey(unit)
+    : ((unit.status && typeof getActiveStatusKeys === 'function'
+        && getActiveStatusKeys(unit).find(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k]?.blockMove)) || null);
+  const _actLockKey = typeof unitActionBlockKey === 'function' ? unitActionBlockKey(unit) : null;
+  const _lockWord = k => (typeof statusLockWord === 'function' ? statusLockWord(k) : 'Stunned');
+  const isStunned = !!_moveLockKey;
   const movesUsed = unit.movesThisTurn || 0;
   const _isNotAirborne = !(typeof canFly !== 'undefined' && canFly(unit) && typeof isUnitAirborne !== 'undefined' && isUnitAirborne(unit));
   const _hasJumpFuncs = typeof canJump === 'function' && typeof getJumpTiles === 'function';
@@ -6251,7 +6259,7 @@ function ActionMenu({ st, hidden }) {
 
   let moveAction;
   if (isStunned) {
-    moveAction = { id: 'move', label: 'Move', icon: '↑', cost: null, available: false, sub: 'Stunned' };
+    moveAction = { id: 'move', label: 'Move', icon: '↑', cost: null, available: false, sub: _lockWord(_moveLockKey) };
   } else if (showJump) {
     const jumpTiles = getJumpTiles(unit);
     const jumpOk = jumpTiles.length > 0 && (typeof canUnitAct === 'function' ? canUnitAct(unit) : true);
@@ -6259,7 +6267,7 @@ function ActionMenu({ st, hidden }) {
     // was the one-leap-per-turn rule (teal tiles vanish after the first hop).
     const jumpSub = jumpOk ? null
       : unit._jumpedThisTurn ? 'Jumped'
-      : (typeof unitMoveBlockedByStatus === 'function' && unitMoveBlockedByStatus(unit)) ? 'Rooted'
+      : (typeof unitMoveBlockedByStatus === 'function' && unitMoveBlockedByStatus(unit)) ? _lockWord(_moveLockKey)
       : !(typeof canUnitAct === 'function' ? canUnitAct(unit) : (unit.ap || 0) > 0) ? 'No AP'
       : 'No landing';
     moveAction = { id: 'jump', label: 'Jump', icon: '↑', cost: 1, available: jumpOk, sub: jumpSub };
@@ -6440,12 +6448,20 @@ function ActionMenu({ st, hidden }) {
   // menu to a root verb: it's a core "spend the rest of my turn" play.
   // Guard ends the turn whatever AP is left — it needs only 1 AP, so it's
   // always a live way to spend a leftover point.
-  const _guardOk = (unit.ap || 0) >= 1 && typeof doGuard === 'function';
+  const _guardOk = (unit.ap || 0) >= 1 && typeof doGuard === 'function' && !_actLockKey;
   const guardAction = {
     id: 'guard', label: 'Guard', icon: '🛡', cost: 1, endsTurn: true,
     available: _guardOk,
-    sub: _guardOk ? null : 'No AP',
+    sub: _guardOk ? null : (_actLockKey ? _lockWord(_actLockKey) : 'No AP'),
   };
+  /* "cannot act": every action verb greys with the lock's word (Attack / Abilities / Combo / Items / Guard) */
+  if (_actLockKey) {
+    const _w = _lockWord(_actLockKey);
+    for (const a of [attackAction, abilAction, comboAction, itemsAction]) {
+      a.available = false; a.sub = _w; a.note = null;
+      if ('acc' in a) a.acc = null;
+    }
+  }
 
   // Canonical verb order, top to bottom: Move › Attack › Abilities › Combo ›
   // Items › Guard (END TURN docks at the very bottom of the ladder; Build
