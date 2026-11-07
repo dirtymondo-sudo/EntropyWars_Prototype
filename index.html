@@ -308,6 +308,48 @@
     </script>
 
     <script>
+    /* ── NO BROWSER MOUSE MENU, ANYWHERE (mondo 2026-11-07: "during automatic camera movements, the camera is
+       locked, which I want, but ... if i right click out of habit it opens the actual browser right click and then
+       i accidentally drag to back and it reloads the page") ──
+       The right-drag orbit only blocked the menu on the board canvas itself. While the camera is locked (the match
+       intro, a cinematic) a full-screen overlay (.ewi-overlay, the letterbox bars, banners) sits over the canvas, and
+       every menu screen (title, mode select, party builder) had no block at all, so a habit right-press opened the
+       browser's own menu (Mac/Linux open it on the PRESS) and the drag landed on Back. This listener is registered
+       before any game script, on the window in the capture phase, so it sees every press first, whatever covers the
+       board and whatever a later handler stops. It only cancels the BROWSER's default; every game handler still
+       runs, so the right-drag orbit, right-click BACK and the camera lock behave exactly as before.
+       - contextmenu: always cancelled, except in a text box (keeps copy/paste in the name / chat fields).
+       - right press/release: default cancelled too (no gesture, no drag-select reaches the browser).
+       - middle press: cancelled (Firefox/Windows autoscroll); middle auxclick off links.
+       - mouse side buttons (back / forward): cancelled, so a thumb button can't leave the page mid-fight either. */
+    (function () {
+        function textBox(t) {
+            if (!t || t.nodeType !== 1) return false;
+            if (t.isContentEditable) return true;
+            var tag = t.tagName;
+            if (tag === 'TEXTAREA') return true;
+            if (tag !== 'INPUT') return false;
+            var ty = (t.type || 'text').toLowerCase();
+            return ty === 'text' || ty === 'search' || ty === 'email' || ty === 'url' || ty === 'tel' || ty === 'password' || ty === 'number';
+        }
+        window.addEventListener('contextmenu', function (e) {
+            if (textBox(e.target)) return;
+            if (e.cancelable) e.preventDefault();
+        }, true);
+        function mouse(e) {
+            var b = e.button;
+            if (b === 0) return;
+            if (b === 2 && textBox(e.target)) return;
+            if (b === 1 && e.type === 'auxclick' && e.target && e.target.closest && e.target.closest('a[href]')) return;
+            if (e.cancelable) e.preventDefault();
+        }
+        window.addEventListener('mousedown', mouse, true);
+        window.addEventListener('mouseup', mouse, true);
+        window.addEventListener('auxclick', mouse, true);
+    })();
+    </script>
+
+    <script>
     /* ── Mobile detection + performance mode (must run BEFORE every game
        module — three-post.js / three-renderer.js / three-vfx.js read the
        flags at parse time to pick their defaults) ──
