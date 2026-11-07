@@ -372,6 +372,11 @@
     // (unless adjacency reveals), OR — with fog on — out of the whole
     // team's sight (isUnitSeenByTeam: the nameplate-eye truth). Every
     // targeting path gates on this; the AI never sees through walls.
+    /* 🌑 THE REALM LINE (11-07): the units of `list` that `unit` can reach — battle.js realmReachableFrom; across the
+       Shadow Realm's line there is nobody to heal, buff or count, either way. */
+    function _aiReachable(list, unit) {
+        return (typeof window.realmReachableFrom === 'function') ? window.realmReachableFrom(list, unit) : (list || []);
+    }
     function isConcealed(g, tg, viewerPlayer) {
         try {
             /* 🌑 THE SHADOW REALM (2026-10-26): across its line there is nobody to see, chase or aim at */
@@ -1808,8 +1813,8 @@
 
         const allies = g._isFFA()
             ? []
-            : g.aliveUnitsFor(player).filter(a => a.id !== unit.id
-                && !(g.unitHasStatus && g.unitHasStatus(a, 'captured')));   // 🚪 a HELD ally is in the void: no heal, no buff, no formation
+            : _aiReachable(g.aliveUnitsFor(player), unit).filter(a => a.id !== unit.id
+                && !(g.unitHasStatus && g.unitHasStatus(a, 'captured')));   // 🌑 nor an ally across the Shadow Realm's line   // 🚪 a HELD ally is in the void: no heal, no buff, no formation
 
         const visibleHourglasses = (g.state.hourglasses || []).filter(h =>
             h.carriedBy === null && h.visibleTo[player]
@@ -4897,7 +4902,7 @@
         const _likeKeys = b => (typeof itemKeysLike === 'function') ? itemKeysLike(b) : [b];
         // Heal potion — valued exactly like a heal spell.
         for (const _hk of _likeKeys('healPotion')) if (unit.items?.[_hk] > 0) {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit);
             let bestTarget = null, bestScore = 0;
             for (const ally of allies) {
                 if (ally.dead || ally.hp >= ally.maxHp) continue;
@@ -4916,7 +4921,7 @@
         // Mana potion — restored MP × the MP value constant, plus a bonus
         // when it unlocks casts the ally couldn't afford.
         for (const _mk of _likeKeys('manaPotion')) if (unit.items?.[_mk] > 0) {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit);
             const _mpPct = (((g.ITEM_RULES || {})[_mk] || {}).mpPct) || 0.35;
             let bestTarget = null, bestScore = 0;
             for (const ally of allies) {
@@ -5867,7 +5872,7 @@
                the heal alone, like a healAll */
             let _allyHealVal = 0;
             if (spell.aoeAllyHeal > 0) {
-                for (const a of g.aliveUnitsFor(unit.player)) if (area.some(t => t.x === a.x && t.y === a.y)) _allyHealVal += healValue(g, unit, a, spell.aoeAllyHeal, v) * 0.9;
+                for (const a of _aiReachable(g.aliveUnitsFor(unit.player), unit)) if (area.some(t => t.x === a.x && t.y === a.y)) _allyHealVal += healValue(g, unit, a, spell.aoeAllyHeal, v) * 0.9;
             }
             if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
@@ -6172,7 +6177,7 @@
             return _hs;
         }
         if (kind === 'healAll') {
-            const allies = g.aliveUnitsFor(unit.player).filter(a => !spell.auraRadius   // THE SPELL AUDIT C: aura heals
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit).filter(a => !spell.auraRadius   // THE SPELL AUDIT C: aura heals
                 || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
             const hBase = spell.healAmt != null ? spell.healAmt : (spell.heal || 16);
             let s = 0;
@@ -6289,7 +6294,7 @@
 
         if (kind === 'warCry') {
             const radius = spell.auraRadius || 3;
-            const inRange = g.aliveUnitsFor(unit.player).filter(a =>
+            const inRange = _aiReachable(g.aliveUnitsFor(unit.player), unit).filter(a =>
                 Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
             // Fermata (statLock): lock in live buff stages.
             if (spell.teamStatusEffects && spell.teamStatusEffects.some(e => e && e.id === 'statLock')) {
@@ -6685,7 +6690,7 @@
         }
 
         if (kind === 'rallyPull') {
-            const far = g.aliveUnitsFor(unit.player).filter(a =>
+            const far = _aiReachable(g.aliveUnitsFor(unit.player), unit).filter(a =>
                 a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 3);
             if (far.length < 2) return 0;
             const enemiesOnTop = v.visibleEnemies.filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 2).length;
@@ -6693,7 +6698,7 @@
         }
 
         if (kind === 'manaRestoreAll') {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit);
             const mpRestore = spell.mpRestore || 40;
             const lowMana = allies.filter(a => (a.maxMp || 0) > 0 && a.mp < a.maxMp * 0.4);
             const totalRestored = allies.reduce((s2, a) => s2 + Math.min(mpRestore, (a.maxMp || 0) - a.mp), 0);
@@ -9679,7 +9684,7 @@
         if (kind === 'warCry') return { x: unit.x, y: unit.y };
 
         if (kind === 'encore') {
-            const allies = g.aliveUnitsFor(unit.player)
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit)
                 .filter(a => a.id !== unit.id && !a._encoreThisRound
                     && (typeof g.unitEncoreReady === 'function' ? g.unitEncoreReady(a) : g.unitFinished(a)))
                 .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _effRange(unit, spell));

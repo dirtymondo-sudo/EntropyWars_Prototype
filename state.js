@@ -2811,6 +2811,7 @@
                     const tileSet = new Set(tiles.map(t => posKey(t.x, t.y)));
                     for (const unit of state.units) {
                         if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
+                        if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) continue;   // 🌑 nor a quake's first blow
 
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         const eff = def.onSpawnEffect(unit);
@@ -2889,7 +2890,10 @@
 
         function applyWeatherTurnEffects(player) {
             if (!state.activeWeather || !state.activeWeather.length) return;
-            const units = player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead);
+            /* 🌑 THE REALM LINE (11-07, Blood Rain "restores" the pair in the Shadow Realm): the sky is the board's,
+               so nobody in a realm (battle.js shadowRealmKey) gets its rain, its heal or its burn */
+            const units = (player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead))
+                .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)));
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
                 // Homing storms resolve all of their effects at end of round (processHomingWeather) —
@@ -2979,6 +2983,7 @@
            storm hurt the body. at: the tile it is struck on when that is not where it stands (a walk in passing). */
         function stormStrikeUnit(v, weather, def, at) {
             if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
+            if (typeof shadowRealmKey === 'function' && shadowRealmKey(v)) return false;   // 🌑 the storm is the board's
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -3096,6 +3101,7 @@
                 const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
                 const candidates = state.units.filter(u => {
                     if (!u || u.dead || u._dying) return false;
+                    if (typeof shadowRealmKey === 'function' && shadowRealmKey(u)) return false;   // 🌑 no eye hunts into the Shadow Realm
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
                     if (caster && u.player === caster.player) return false;
                     return true;
@@ -3311,6 +3317,7 @@
                 rng: 0
             };
             if (!unit || unit.dead || !state.activeWeather) return mods;
+            if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) return mods;   // 🌑 no sky in the Shadow Realm
             for (const w of state.activeWeather) {
                 if (!weatherOnTile(w, unit.x, unit.y)) continue;
                 const def = WEATHER_REGISTRY[w.type];
