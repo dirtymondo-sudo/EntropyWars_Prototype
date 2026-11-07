@@ -2974,7 +2974,9 @@
             // range only, no elevation tax and no terrain LOS — must match the
             // engine's own 2D validation in doSpell or clicks get rejected.
             const _skyGrabHl = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
-            const _rangeD = (cx, cy) => _skyGrabHl
+            // THE GROUND REACH (battle.js spellReachIsFlat): dashes + leap strikes measure flat steps too
+            const _flatHl = _skyGrabHl || (typeof spellReachIsFlat === 'function' && spellReachIsFlat(spell));
+            const _rangeD = (cx, cy) => _flatHl
               ? (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy))
               : (typeof combatReach === 'function')
                 ? combatReach(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy), _spellLong)
@@ -3131,6 +3133,18 @@
                 const occ = _liveUnitMap.get(pk);
                 if (!land.anchored) _hlCache.set(pk, 'move');
                 else if (occ && !occ.dead && !(isEnemyUnit(occ, _selectedForHl) && unitHasStatus(occ, 'invisible'))) _hlCache.set(pk, 'move ally');
+              }
+            } else if (typeof window._pairPhasePick === 'function' && window._pairPhasePick(spell)) {
+              /* THE PAIR RULE (battle.js _pairPhasePick): Soul Bind's second pick lights what lies within pairRange of
+                 the first pick — getSpellRangeTiles holds the rule, the same tiles the cast takes */
+              for (const t of getSpellRangeTiles(_selectedForHl, spell)) {
+                const pk = posKey(t.x, t.y);
+                const target = _liveUnitMap.get(pk);
+                if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
+                  _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
+                } else if (state.actionMenuView !== 'spellTargets') {
+                  _hlCache.set(pk, 'spell-range');
+                }
               }
             } else if (spell.kind === 'utility') {
 
