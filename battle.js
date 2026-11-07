@@ -27114,6 +27114,24 @@
                 // minimum frame: ±TILE_PICK_MIN_HALF tiles round the focal (THE CONFIRM FRAME passes its own)
                 const mh = ((opts && Number.isFinite(opts.minHalf)) ? opts.minHalf : TILE_PICK_MIN_HALF) * ts;
                 pts.push([fx - mh, fy, fz], [fx + mh, fy, fz], [fx, fy, fz - mh], [fx, fy, fz + mh]);
+                /* THE HEAD ROOM HERE TOO (forced movement playtest 2026-11-07 G3/O: Rampart's aim and the self-cast
+                   confirms framed the reach's tiles, and the Halfdemon's plate and numbers over its head sat under the P2
+                   bar): every body standing in the set keeps its words (its forecast column + its plate, the menu
+                   two-shot's _menuCamBody room, in NDC) inside the free frame — [3] up, [4] each side */
+                if (!window.EW_NO_HEAD_ROOM && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.headRoomPx) {
+                    const cvEl = document.getElementById('threeCanvas');
+                    const csh = cvEl ? cvEl.clientHeight : 0, csw = cvEl ? cvEl.clientWidth : 0;
+                    const inSet = new Set(set.filter(Boolean).map(tl => tl.x + ',' + tl.y));
+                    if (csh > 80 && csw > 80) for (const u of (state.units || [])) {
+                        if (!u || u.dead || !inSet.has(u.x + ',' + u.y)) continue;
+                        const hr = { hw: 0 };
+                        const room = 2 * Math.min(csh * 0.3, ThreeRenderer.headRoomPx(u.id, hr) || 0) / csh;
+                        if (!(room > 0)) continue;
+                        const lv = Number.isFinite(u.z) ? u.z : hAt(u.x, u.y);
+                        pts.push([u.x * ts + ts / 2, (Math.max(0, lv) + CONFIRM_FRAME_BODY) * ts, u.y * ts + ts / 2, room,
+                            2 * Math.min(csw * 0.25, hr.hw || 0) / csw]);
+                    }
+                }
                 // eye = focal − dist·gaze; a point at r = P − F sits at depth dist + r·gaze. THE CLEAR FRAME's slide
                 // moves the eye by (cx·dist·tanH, cy·dist·tanV) sideways / up, so the point lands at
                 // (r·right + cx·dist·tanH) / (depth·tanH) and must stay within mH·hw of cx:
@@ -27125,8 +27143,11 @@
                     const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
                     const along = ax * dX + ay * dY + az * dZ;
                     const sx = Math.abs(ax * rX + az * rZ - fa.cx * along * tanH);
-                    const sy = Math.abs(ax * uX + ay * uY + az * uZ - fa.cy * along * tanV);
-                    dist = Math.max(dist, sx / (tanH * mH) - along, sy / (tanV * mV) - along);
+                    const syS = ax * uX + ay * uY + az * uZ - fa.cy * along * tanV, sy = Math.abs(syS);
+                    // a body's words: the margin over it (and to its sides) shrinks by the room they take
+                    const mVp = (p[3] > 0 && syS > 0) ? Math.max(mV * 0.25, mV - p[3]) : mV;
+                    const mHp = p[4] > 0 ? Math.max(mH * 0.25, mH - p[4]) : mH;
+                    dist = Math.max(dist, sx / (tanH * mHp) - along, sy / (tanV * mVp) - along);
                 }
                 if (!(dist > 0)) return null;
                 return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa, opts };
@@ -31361,9 +31382,27 @@
         };
         /* camera._clearFit = { area, fit() } — the frame a fit last solved (the menu two-shot, the range fit). Any other
            camera move drops it (camera.moveTo). When the menus' cover moves under it, solve it again for the new one. */
+        const CLEAR_ROOM_PX = 16;      // THE HEAD ROOM: the words over the pair changed this much → fit again
+        const CLEAR_ROOM_FITS = 3;     // at most this many such refits for one pair
+        let _cfRoomPend = null;
         function _clearFrameRefit(fa, now) {
             const cf = camera._clearFit;
-            if (!cf) { _cfPend = null; return; }
+            if (!cf) { _cfPend = null; _cfRoomPend = null; return; }
+            if (cf.roomOf && (cf.roomFits || 0) < CLEAR_ROOM_FITS && !state._actionExecuting
+                && !state._userPanning && !state._userOrbiting && camera._cineShotId == null) {
+                let r = cf.room;
+                try { r = cf.roomOf(); } catch (e) {}
+                if (Math.abs(r - cf.room) > CLEAR_ROOM_PX) {
+                    if (!_cfRoomPend || _cfRoomPend.cf !== cf || Math.abs(_cfRoomPend.r - r) > 4) { _cfRoomPend = { cf, r, t: now }; }
+                    else if (now - _cfRoomPend.t >= CLEAR_FRAME_REFIT_MS) {
+                        _cfRoomPend = null;
+                        const n = (cf.roomFits || 0) + 1;
+                        try { cf.fit(); } catch (e) { camera._clearFit = null; return; }
+                        if (camera._clearFit && camera._clearFit !== cf) camera._clearFit.roomFits = n;
+                        return;
+                    }
+                } else _cfRoomPend = null;
+            }
             const a = cf.area || _CLEAR_FULL;
             if (Math.abs(fa.cx - a.cx) < 0.04 && Math.abs(fa.hw - a.hw) < 0.04 && Math.abs(fa.hh - a.hh) < 0.06) { _cfPend = null; return; }
             if (!_cfPend || Math.abs(_cfPend.cx - fa.cx) > 0.01 || Math.abs(_cfPend.hw - fa.hw) > 0.01) { _cfPend = { cx: fa.cx, hw: fa.hw, t: now }; return; }
@@ -31397,11 +31436,50 @@
                         && ThreeRenderer.getUnitFootprint(o.id, c)) fp = c;
                 } catch (e) { fp = null; }
             }
-            return { x: o.x * ts + ts / 2, z: o.y * ts + ts / 2, foot, top: foot + hgt, fp };
+            /* THE HEAD ROOM (forced movement playtest 2026-11-07 G3: Siren Song's and Body Check's confirm close-ups put
+               the target's plate under the top HP bars): the plate and the forecast's pills are drawn at a screen size of
+               their own (a legibility floor), so a far body's words stand much taller than its 0.4 tile — the fit keeps
+               that many screen px over the body's top (three-renderer headRoomPx: its forecast column + its plate) */
+            let room = 0, roomW = 0;
+            if (isUnit && !window.EW_NO_HEAD_ROOM) {
+                try {
+                    const cvEl = document.getElementById('threeCanvas');
+                    const sh = cvEl ? cvEl.clientHeight : 0, sw = cvEl ? cvEl.clientWidth : 0;
+                    if (sh > 80 && sw > 80 && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.headRoomPx) {
+                        const hr = { hw: 0 };
+                        room = 2 * Math.min(sh * 0.3, ThreeRenderer.headRoomPx(o.id, hr) || 0) / sh;
+                        /* THE WORDS' WIDTH (G5: the caster's plate ran out past its body over the Abilities title and faded
+                           there): the top corners also keep the plate's half width (NDC) clear of the free frame's sides */
+                        roomW = 2 * Math.min(sw * 0.25, hr.hw || 0) / sw;
+                    }
+                } catch (e) { room = 0; roomW = 0; }
+            }
+            return { x: o.x * ts + ts / 2, z: o.y * ts + ts / 2, foot, top: foot + hgt, fp, room, roomW };
         }
         /* Solve one candidate pose: focal + eye distance that fit both bodies at
            this yaw/pitch. Returns world focal, distance and the occlusion count. */
-        function _menuCamSolve(A, B, yawDeg, tiltDeg, fa) {
+        /* THE FOOTPRINT IN FRAME (forced movement playtest 2026-11-07 O: Gravity Well's target-list CONFIRM framed the
+           Annunaki and the Demon, and half the pull's area sat under the Abilities panel): an armed AoE spell's two-shot
+           also keeps the footprint it would land on that pick (its tile corners at their ground) inside the free frame */
+        const MENU_AOE_MAX_TILES = 49;
+        function _menuAoePts(unit, tgt) {
+            if (window.EW_NO_AOE_FRAME || !unit || !tgt || state.actionMode !== 'spell' || !state.selectedTool) return null;
+            if (typeof getSpellAoeFootprint !== 'function') return null;
+            const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!spell) return null;
+            let tiles = null;
+            try { tiles = getSpellAoeFootprint(spell, tgt.x, tgt.y, unit); } catch (e) { tiles = null; }
+            if (!tiles || tiles.length <= 1) return null;
+            const ts = CONFIG.tileSize || BASE_TILE, q = ts * 0.4, pts = [];
+            for (const t of tiles.slice(0, MENU_AOE_MAX_TILES)) {
+                if (!t || !isInside(t.x, t.y)) continue;
+                const gy = (typeof window._camGroundPx === 'function') ? (window._camGroundPx(t.x, t.y) || 0) : 0;
+                const cx = t.x * ts + ts / 2, cz = t.y * ts + ts / 2;
+                pts.push([cx - q, gy, cz - q], [cx + q, gy, cz - q], [cx - q, gy, cz + q], [cx + q, gy, cz + q]);
+            }
+            return pts.length ? pts : null;
+        }
+        function _menuCamSolve(A, B, yawDeg, tiltDeg, fa, extraPts) {
             fa = fa || _CLEAR_FULL;
             const ts = CONFIG.tileSize || BASE_TILE;
             const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
@@ -31414,12 +31492,15 @@
             const up = [-cT * sY, sT, -cT * cY];
             const rt = [cY, 0, -sY];
             const half = ts * 0.38;
-            const pts = [];
+            const pts = [], wide = [];
             for (const b of [A, B]) {
                 for (const s of [-1, 1]) {
                     const px = b.x + rt[0] * half * s, pz = b.z + rt[2] * half * s;
-                    pts.push([px, b.foot, pz], [px, b.top, pz]);
+                    pts.push([px, b.foot, pz], [px, b.top, pz, b.room || 0]);   // [3]: THE HEAD ROOM (NDC over the top)
                 }
+                // THE WORDS' WIDTH: the plate's own sides at the top of its room, centred on the body ([5]: NDC sideways;
+                // fitted, not the focal's pull)
+                if (b.roomW > 0) for (const s of [-1, 1]) wide.push([b.x, b.top, b.z, b.room || 0, 0, s * b.roomW]);
                 // a drawn footprint bigger than that (a car, a beast) counts whole: its corners at the feet and at
                 // the top of the model (the HP bar rides over the middle, above)
                 if (b.fp) for (let i = 0; i < 8; i += 2) {
@@ -31430,6 +31511,8 @@
             const F = [0, 0, 0];
             for (const p of pts) { F[0] += p[0]; F[1] += p[1]; F[2] += p[2]; }
             F[0] /= pts.length; F[1] /= pts.length; F[2] /= pts.length;
+            if (extraPts) for (const p of extraPts) pts.push(p);   // THE FOOTPRINT IN FRAME (fitted, not the focal's pull)
+            for (const p of wide) pts.push(p);
             const gap = Math.hypot(A.x - B.x, A.z - B.z, A.foot - B.foot);
             let dist = Math.max(MENU_CAM_MIN_DIST * ts, gap * 1.4 + ts * 3);
             // THE SUB MENU RULE: no sub menu up → the plain framing (centre right of the middle, the old margins)
@@ -31447,8 +31530,8 @@
                     const rx = p[0] - E[0], ry = p[1] - E[1], rz = p[2] - E[2];
                     const depth = rx * g[0] + ry * g[1] + rz * g[2];
                     if (depth < ts * 0.6) { tooNear = true; break; }
-                    const sx = (rx * rt[0] + rz * rt[2]) / (depth * tanH) + fa.cx * dist / depth;
-                    const sy = (rx * up[0] + ry * up[1] + rz * up[2]) / (depth * tanV) + fa.cy * dist / depth;
+                    const sx = (rx * rt[0] + rz * rt[2]) / (depth * tanH) + fa.cx * dist / depth + (p[5] || 0);
+                    const sy = (rx * up[0] + ry * up[1] + rz * up[2]) / (depth * tanV) + fa.cy * dist / depth + (p[3] || 0);
                     if (sx < xMin) xMin = sx; if (sx > xMax) xMax = sx;
                     if (sy < yMin) yMin = sy; if (sy > yMax) yMax = sy;
                 }
@@ -31553,6 +31636,7 @@
                 const tilt0 = Math.max(MENU_CAM_TILT_FAR, Math.min(MENU_CAM_TILT, MENU_CAM_TILT - Math.max(0, L - 1) * 2.4));
                 const sides = swing ? [1, -1] : [0];
                 if (!fa) fa = _menuFreeArea(true);
+                const aoe = _menuAoePts(unit, tgt);   // THE FOOTPRINT IN FRAME
                 const yawGap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
                 // THE CLEAR TWO-SHOT: a blocked pose may also swing wider off the line and look further down
                 // (to 26°) before it settles for a wall between the lens and a body; a clear pose still wins
@@ -31569,7 +31653,7 @@
                             const veryWide = !!swing && Math.abs(sw) > swing + 28;
                             if ((wide || drop > 16) && best && best.occl === 0) continue;
                             if (veryWide && drop > 16) continue;
-                            const c = _menuCamSolve(A, B, lineYaw + (side || 1) * sw, Math.max(drop > 16 ? 26 : 36, tilt0 - drop), fa);
+                            const c = _menuCamSolve(A, B, lineYaw + (side || 1) * sw, Math.max(drop > 16 ? 26 : 36, tilt0 - drop), fa, aoe);
                             c.side = side;
                             c.score = c.occl * 4 + drop / 8 * 0.6 + (veryWide ? 1.2 : wide ? 0.5 : 0)
                                 + yawGap(c.yaw, curYaw) / 180
@@ -31638,8 +31722,17 @@
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true, _menuShot: true
             });
             const uid = unit.id, tid = tgt.id != null && tgt.player != null ? tgt.id : null, tx = tgt.x, ty = tgt.y;
+            /* THE HEAD ROOM: the forecast's pills often land a moment after the pick framed the pair — when the words over
+               the two heads grow (or shrink) by more than CLEAR_ROOM_PX, the same two-shot is solved again (a few times
+               at most per pair) */
+            const roomOf = () => {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.headRoomPx) return 0;
+                return (ThreeRenderer.headRoomPx(uid) || 0) + (tid != null && tid !== uid ? (ThreeRenderer.headRoomPx(tid) || 0) : 0);
+            };
+            const prevFit = camera._clearFit;
+            const roomFits = (refit && prevFit && prevFit.key === key) ? (prevFit.roomFits || 0) : 0;
             camera._clearFit = {
-                area: fa,
+                area: fa, key, roomOf, room: roomOf(), roomFits,
                 fit() {
                     const u = (state.units || []).find(v => v.id === uid && !v.dead);
                     const t = tid != null ? (state.units || []).find(v => v.id === tid && !v.dead) : { x: tx, y: ty };
@@ -64026,6 +64119,10 @@
                     _dropPickCamKey = '';   // THE DROP PICK: the re-armed throw frames its landing ring again
                 } else if (spell && spell.orientable && !state._spellOrientation) {
                     state.actionMenuView = 'spellOrientation';
+                    /* the row's hover marks end with the pick (forced movement playtest 2026-11-07 O: Rampart's "! EARTH
+                       RESISTED" over the Bigfoot stayed through the orientation step, the mouse still on the row behind) —
+                       the aim's own forecast speaks once a target is picked */
+                    if (typeof window.clearSpellPressMarks === 'function') window.clearSpellPressMarks('menu');
                     renderBattleSelectionUI({ includeBoard: false });
                     scheduleBoardRender();
                     return;
@@ -64086,6 +64183,17 @@
                     state._spellCycleIndex = 0;
                     state.pendingTarget = { x: unit.x, y: unit.y, z: unit.z, mode: 'spell', tool: toolName, viaHover: false, selfCast: true };
                     updateAoePreview(unit.x, unit.y);
+                    /* THE CONFIRM FRAME for a self-cast too (forced movement playtest 2026-11-07 O: Wing Attack's "CONFIRM —
+                       SELF" kept the reach fit, its footprint at the screen's right edge, its number under the Cube's plate
+                       and the top HUD): the caster and the footprint round it, framed like a quick-menu AoE's CONFIRM.
+                       The viewer's own menu only (a CPU or the other seat arming never moves this camera). */
+                    if (!window.EW_NO_AOE_FRAME && state.controllers?.[unit.player] === CTRL.LOCAL && !state.autoPlayers?.[unit.player]
+                        && (typeof getViewerPlayer !== 'function' || unit.player === getViewerPlayer())) {
+                        try {
+                            const _fp = (typeof getSpellAoeFootprint === 'function') ? (getSpellAoeFootprint(spell, unit.x, unit.y, unit) || []) : [];
+                            if (_fp.length > 1 && typeof window._frameQuickAoeConfirm === 'function') window._frameQuickAoeConfirm(unit, spell, unit.x, unit.y, null);
+                        } catch (e) {}
+                    }
                 } else {
 
                     state.actionMenuView = 'spells';
