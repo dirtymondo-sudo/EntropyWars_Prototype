@@ -5161,6 +5161,10 @@ function _hrlgSpellBlades(unit, st) {
       else if (sp.hitsWetOnly && !hasTarget) reason = 'No enemies in water';
       // Pure-status spells also grey out when every target in range already
       // carries the status (statuses don't stack) — say so.
+      /* timing/counters playtest 2026-11-07 (F6): Revive works once per unit per match — a grave in reach whose unit was
+         already revived read "No target", which hid the reason */
+      else if (!hasTarget && sp.kind === 'revive' && Array.isArray(st.units) && st.units.some(u => u.player === unit.player && u.dead
+        && u.reviveLocked && (typeof spellAimProblem !== 'function' || !spellAimProblem(unit, sp, u.x, u.y, u.z)))) reason = 'Already revived';
       else if (!hasTarget) reason = (typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)) ? 'No valid target' : 'No target';
     }
 
