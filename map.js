@@ -11201,6 +11201,19 @@
 
             _noteTerrainChange(x, y, z, _priorTop, _priorAt);
             state._terrainVersion = (state._terrainVersion || 0) + 1;
+            /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07): water or ice painted on a burning tile (a flood, a spout, a
+               storm puddle, a melt) puts the ground fire out at once (it used to wait for the round end), and a grounded
+               unit standing there stops burning */
+            if (state.phase === 'battle') {
+                const _nowTop = getTerrainAt(x, y);
+                if (_nowTop === 'water' || _nowTop === 'deep_water' || _nowTop === 'ice') {
+                    if (state.burningTiles && state.burningTiles[x + ',' + y]) delete state.burningTiles[x + ',' + y];
+                    if (_nowTop !== 'ice' && typeof window._douseBurnOnUnit === 'function' && typeof unitAt === 'function') {
+                        const _u = unitAt(x, y);
+                        if (_u && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_u))) window._douseBurnOnUnit(_u, 'The water');
+                    }
+                }
+            }
             return true;
         }
 
