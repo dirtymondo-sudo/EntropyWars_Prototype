@@ -6786,7 +6786,11 @@ function ActionMenu({ st, hidden }) {
     const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
     const _quickPlace = st._quickAoePlace === st.selectedTool;
-    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && !_tileOnlyKinds.includes(_aimSp.kind || '')
+    /* THE CHARGE ROWS (playtest 2026-11-07 B1: Runaway Train armed with no enemy row, "select a tile to dash to", and a
+       click on the in-range enemy walked the caster first): a dash that charges an enemy (chargeToTarget) lists the
+       enemies it reaches like any single-target hit — the row casts from where the caster stands. */
+    const _aimCharge = !!(_aimSp && _aimSp.kind === 'dash' && _aimSp.chargeToTarget);
+    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && (_aimCharge || !_tileOnlyKinds.includes(_aimSp.kind || ''))
       && ((typeof _getSpellValidTargets === 'function'
           && _getSpellValidTargets(unit, _aimSp).length > 0)
         // MOVE→CAST-only situations still get the unit list — the drum shows
@@ -7067,7 +7071,8 @@ function spellTagline(sp) {
   else if (k === 'cross') parts.push('Cross');
   else if (k === 'barrage') parts.push('Barrage');
   else if (k === 'zoneHeal' || k === 'zoneDebuff') parts.push('Zone');
-  else if (k === 'warCry' || k === 'healAll' || k === 'manaRestoreAll') parts.push('All allies');
+  else if (k === 'manaRestoreAll') parts.push('Other allies');   // Free Energy skips its caster
+  else if (k === 'warCry' || k === 'healAll') parts.push('All allies');
   else if (k === 'ricochet') parts.push('Bouncing');
   else if (k === 'splitBeam') parts.push('Split beam');
   else if (k === 'multiHit') {
@@ -7154,7 +7159,8 @@ function spellTargetMode(sp) {
   if (k === 'cannibalize') return 'Remains';
   if (k === 'summonUnit') return 'Empty Tile';
   if (k === 'shadowRealm') return 'You + Target';
-  if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
+  if (k === 'manaRestoreAll') return 'Other Allies';   // Free Energy skips its caster
+  if (k === 'healAll') return 'All Allies';
   if (['aoe', 'aoePull', 'aoeShield', 'cleanseArea'].includes(k)) return 'Area · AOE';
   if (['line', 'linePush', 'splitBeam'].includes(k)) return 'Line';
   if (k === 'cross') return 'Cross';
@@ -8333,7 +8339,7 @@ function _predictTargetShove(spell, target, castX, castY) {
     dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
     dist = spell.pullDistance || (isGrapple ? 2 : 3); mode = 'pull';
   } else {
-    dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+    dx = Math.sign(target.x - castX); dy = Math.sign(target.y - castY);   // straight away (a shared column is a straight N/S push)
     dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
   }
   if (dx === 0 && dy === 0) return null;
@@ -9483,7 +9489,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
     let validHere;
     if (isTeamCast) {
       validHere = sp.kind === 'healAll' ? !fullHp
-        : sp.kind === 'manaRestoreAll' ? ((targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
+        : sp.kind === 'manaRestoreAll' ? (targetUnit.id !== actingUnit.id && (targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
         : true;
     } else {
       validHere = typeof _getSpellValidTargets === 'function'

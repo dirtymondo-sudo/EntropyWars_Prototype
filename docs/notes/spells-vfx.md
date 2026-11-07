@@ -3194,6 +3194,25 @@ Found by THE TRAP'S BEAT thread: a cast that ends the turn left the close-up par
   inside the ground. Each viewer's camera is its own (host and guest both run it, nothing relayed).
 - Proof: /mnt/project-files/pit-camera/ (main vs fix, same staging, eye-vs-footprint numbers per frame).
 
+## THE LANDING GATE — the turn waits for a thrown body to land (2026-11-07)
+Playtest H3 (/mnt/project-files/playtest-mechanics-20261107/forced-movement/, shot r3d.jpg): after To the Moon killed the
+Halfdemon the camera sat low in the gore while Mermaid's menu was up. Same root as E6 (CPU moves logged between the grab and
+the throw result).
+- Cause: a body flung on the 3D arc (ThreeRenderer startThrowArcTween) lands on the ANIMATION clock, which slow-mo, freeze
+  frames and slow frames hold back (dt capped at 250 ms per frame), while doSpell's finishAction ran on a wall-clock timer
+  (completionDelay). When the clock fell behind, the turn passed mid-flight: the kill, its PRESS / kill refund and the death
+  close-up all landed after the next unit was up, so the close-up (and its glide back) played over the next unit's menu.
+  hasBlockingAnims also left _throwTweens out, so the turn handoff never waited for a body in the air.
+- Fix (battle.js doSpell, no rule change): `_landingGate()` holds THE HIT GATE (_pendingSpellHits, 4 s cap) until the arc's
+  onImpact has paid out, released at once when no arc plays. Wired into every arc in doSpell: the sky throw's throw phase
+  (To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl, every skyThrow row), the sky drop (Stone Drop etc.), the sky
+  slam and the leap dive. three-renderer.js hasBlockingAnims / hasActiveAnims count _throwTweens (storm hurls too);
+  _clearAnimations clears them. At full speed the body already lands before completionDelay, so nothing changes there.
+- Camera rules kept (PR #945/#952/#986): the death close-up now plays inside the cast and hands off to the next unit's menu
+  framing as before. Host runs doSpell; the guest mirrors the turn through state-sync (nothing new to relay).
+- Proof: /mnt/project-files/moon-camera/to_the_moon_kill_before_after.jpg (main vs fix, VS CPU, harness at ~2 fps where the
+  clock falls behind; a frame-stepped 60 fps run on main showed the camera already returning correctly).
+
 ## THE BODY LENS — playtest group C, spell shot framing (2026-11-06)
 Source: /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md C1-C8. Before/after sheets:
 /mnt/project-files/spell-shot-framing/ (filmed frame by frame with a slowed clock, main vs this branch, same staging).
