@@ -7330,13 +7330,13 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'infected', duration: 3 }],
           desc: 'The rot takes hold: a Single Enemy in melee joins the horde for its next 2 activations — yours to move and swing, melee only, with +1 ATK and +1 SPD stage. Applies Infected. Shambling Horde hits Infected targets harder. Bosses cannot be infected.' },
         /* §6.18 Cannibalize (Phase 5 wave B, 2026-09-08): corpse-targeted
-           (the raiseDead targeting, `cannibalize` kind) — eat unconsumed
-           remains within 2 tiles: heal 35% max HP, the corpse's respawn
+           (the raiseDead targeting, `cannibalize` kind) — eat an ENEMY's unconsumed
+           remains within 2 tiles (enemyRemainsOnly, playtest 2026-11-07 H6): heal 35% max HP, the corpse's respawn
            timer +2 rounds, the remains are gone (no revive, no raising). */
         { id: 'raceCannibalize', tier: 2, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Cannibalize',
           type: 'heal', cost: 25, range: 2, apCost: 1,
           kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
-          desc: 'Feeds on a fallen unit\'s remains within 2 tiles — an ally\'s gravestone or an enemy\'s bones. Heals 35% of max HP and delays that unit\'s respawn by 2 rounds. The remains are consumed.' },
+          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 35% of max HP and delays that enemy\'s respawn by 2 rounds. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', tier: 2, families: ['zombie'], spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceOutbreak', upgradesBlock: ['upWiden'], tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -10191,7 +10191,7 @@ const RACE_ABILITIES = {
           type: 'heal', tier: 3, families: ['ghoulish'], cost: 20, range: 2, apCost: 1, cooldownRounds: 2,
           kind: 'cannibalize', healPct: 0.5, corpseDelay: 2,   // THE SPELL AUDIT Batch D: corpse-gated, like Cannibalize
           statStageBoost: { atk: 1 },
-          desc: 'Feeds on a fallen unit\'s remains within 2 tiles — an ally\'s gravestone or an enemy\'s bones. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and that unit\'s respawn is delayed 2 rounds.' },
+          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and that enemy\'s respawn is delayed 2 rounds.' },
         SHARED_POISON_SWAMP,
     ],
     'gnome': [

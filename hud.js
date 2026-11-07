@@ -4926,7 +4926,10 @@ function spellTargetChip(sp) {
     return { label: '⟳ SELF', color: '#9a94ab', title: 'Casts on/around the caster — no aiming needed' };
   }
   const k = sp.kind || '';
-  if (k === 'raiseDead' || k === 'cannibalize') {
+  if (k === 'cannibalize') {
+    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen enemy's remains — their bones" };
+  }
+  if (k === 'raiseDead') {
     return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
   }
   // Two-click casts (CHAMP_REWORK Phase 5 wave B): the label follows the pick.

@@ -4489,6 +4489,30 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
 
+## THE IMMUNE TARGET (2026-11-07, timing/counters playtest B1)
+mondo: "start those fixes" — Counterspell / Brainwash / Executive Order listed the CPU Ghoul (Pure Negativity: immune to
+every debuff and stat drop) with a green CONFIRM; the cast bounced and still spent MP + cooldown.
+- battle.js `unitImmuneToStatus(u, id)`: a read-only copy of applyStatusPayload's immunity gates (passive immuneStatus,
+  passive immuneKind, element immunity/absorb of a status that IS an element, Fermata statLock vs stageMod statuses, a boss
+  vs control statuses). `unitImmuneToStage(u, n)`: immuneStatDown vs negative stages, statLock vs any.
+- `spellIsStatusOnly(spell)`: kinds debuff / buff / aoe / barrage / possess whose whole effect is statuses and/or stat
+  stages (no damage, heal, MP drain, pull, stolen spell, terrain…). `spellBouncesOffImmune(spell, u)`: every status and
+  stage of such a cast bounces off u.
+- `spellTargetUsableOn` returns false for that unit (airborne flyer + groundsFlyers still counts), so the drum, the menus'
+  NO VALID TARGET, MOVE→CAST, novas (`_selfNovaSeenVictims`) and board clicks all skip it. doSpell refuses a single-target
+  debuff/buff/possess cast on such a unit before any MP/AP/cooldown ("X is immune — Spell would do nothing.").
+- Browser proof (VS CPU 2v2, Telepath + Politician vs Ghoul + Shaman): Brainwash and Executive Order read NO VALID TARGET
+  with the Ghoul adjacent and in sight; Executive Order listed only the Shaman and stunned it. Shots:
+  /mnt/project-files/immune-targets-20261107/. The CPU party was set before the match (Ghoul can't be picked for the CPU).
+
+## THE ENEMY REMAINS (2026-11-07, timing playtest H6)
+Cannibalize and Carrion Feast (kind `cannibalize`) eat only an ENEMY's remains: SPELL_KIND_META `cannibalize.enemyRemainsOnly`,
+one gate `spellCorpseUsable(unit, spell, corpse)` (battle.js, next to `spellTargetsCorpses`) used by the target list, both
+drums, castability, the forecast, the cast and the CPU pick (ai.js). Before, the list offered the caster's own ally's
+gravestone; eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds, and the CPU picked the
+nearest remains of either side. Text of both spells + the REMAINS chip say enemy bones. Raise the Dead keeps both sides
+(its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
+Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
 ## THE TIMING / COUNTER TEXTS MATCH THE GAME (2026-11-07, timing/counters playtest C1, F1-F6, G4, E1, H5, Last Kiss)
 - Same rule as PR #997 / #1012: no ruling from mondo, so the TEXT now says what the code does (no rule changed).
 - Delayed blasts hit ENEMIES ONLY (state.js `_detonateDelayedSpellNow`: `u.player !== ds.sourcePlayer`, no row sets
@@ -4516,5 +4540,4 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   reach belongs to a unit it already revived this match (`reviveLocked`).
 - state.js: a delayed blast logs "💥 X detonates at H10!" FIRST, then each unit it hit (F1; the header used to print last).
 - NOT changed (mondo's calls / other threads): Take Aim / No Mercy EXECUTED line (H10, pending), C1 friendly fire itself,
-  Cannibalize ally graves (its text already says "an ally's gravestone or an enemy's bones"), height-gated melee spells
-  reading "No target" (F7), immune targets with no tag (B1).
+  height-gated melee spells reading "No target" (F7). Cannibalize (H6) and the immune-target lists (B1) are their own PRs.

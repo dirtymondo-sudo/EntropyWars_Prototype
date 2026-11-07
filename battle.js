@@ -837,7 +837,7 @@
             shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
-            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, enemyRemainsOnly: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
             // steal — a grab: the hit lands, then the target's Keys / items
             //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
@@ -5066,6 +5066,17 @@
                     if (getGravityFieldAt(unit.x, unit.y) === 'super' && typeof forceGroundUnit === 'function') {
                         // forceGroundUnit re-enters the chain on the deck.
                         if (forceGroundUnit(unit, { byLabel: 'by the crushing gravity' })) fired++;
+                    }
+                    /* 🚪 T in the sky (zones/traps playtest 2026-11-07 D: Swing Door knocked the flying Fairy onto a free
+                       Twin Doors mouth and she stayed on it): the slide stops a flyer on an open transit mouth like anyone
+                       (resolveForcedSlide), and "anyone ... knocked, blown or pulled into it comes out of the other" —
+                       a walking flyer already steps through (doorStepThrough), a knocked one returned here first. */
+                    if (!moved() && via !== 'move' && via !== 'teleport' && via !== 'self' && typeof doorAt === 'function') {
+                        const _trS = doorAt(unit.x, unit.y);
+                        if (_trS && _trS.transit && _trS.open && doorStepThrough(unit)) {
+                            fired++;
+                            resolveTileArrival(unit, { via: 'teleport' });
+                        }
                     }
                     return fired;
                 }
@@ -13182,6 +13193,16 @@
             return !!spell && (spell.kind === 'raiseDead' || !!_kindMeta(spell).corpseTarget);
         }
         window.spellTargetsCorpses = spellTargetsCorpses;
+        /* THE ENEMY REMAINS (timing playtest 2026-11-07 H6: Cannibalize listed the caster's own ally's gravestone, and
+           eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds). One rule for every corpse
+           cast: unconsumed remains, and a kind wearing enemyRemainsOnly (Cannibalize, Carrion Feast) eats only an
+           ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
+        function spellCorpseUsable(unit, spell, corpse) {
+            if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
+            if (_kindMeta(spell).enemyRemainsOnly && !isEnemyUnit(corpse, unit)) return false;
+            return true;
+        }
+        window.spellCorpseUsable = spellCorpseUsable;
 
         /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
            wears the control status (possessed / infected) for `acts`
@@ -40316,7 +40337,7 @@
                 return;
             }
             if (kind === 'cannibalize') {
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                const corpse = state.units.find(u => spellCorpseUsable(unit, spell, u) && u.x === x && u.y === y);
                 if (corpse) helped(unit, healLandsOn(unit, Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35))), unit, { preScaled: true }), 0);
                 return;
             }
@@ -43971,7 +43992,7 @@
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
-                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
+                case 'cannibalize':   return nm + ': select a fallen enemy\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
@@ -45341,6 +45362,65 @@
         }
         window.spellIsPureStatus = spellIsPureStatus;
 
+        /* THE IMMUNE TARGET (timing/counters playtest 2026-11-07 B1: Counterspell, Brainwash and Executive Order all
+           listed the CPU Ghoul — Pure Negativity, "immune to every debuff and to stat drops" — with a green CONFIRM;
+           the cast bounced, MP and the cooldown were spent). Would this status bounce off `u` the moment it arrived?
+           A read-only copy of applyStatusPayload's immunity gates, in its order — no rule of its own:
+           a passive's immuneStatus list (Thermal Regen vs Burn, the minds vs Charm…), a passive's immuneKind (Pure
+           Negativity vs every debuff), an element the status IS that the unit is immune to / drinks (burn / frozen /
+           poison; a rider status only with the element of the hit, which a no-damage cast never carries), Fermata's
+           stat lock vs a stageMod status, and a control status (possessed / infected) on a boss (possessUnit). */
+        function unitImmuneToStatus(u, statusId) {
+            if (!u || !statusId || typeof STATUS_DEFS === 'undefined' || !STATUS_DEFS[statusId]) return false;
+            const def = STATUS_DEFS[statusId];
+            if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(u, statusId)) return true;
+            const immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(u, 'immuneKind') : undefined;
+            if (immKind && def.kind === immKind) return true;
+            const el = (typeof statusAffinityElement === 'function') ? statusAffinityElement(statusId, null) : null;
+            const aff = (el && typeof unitElementAffinity === 'function') ? unitElementAffinity(u, el) : null;
+            if (aff === 'immune' || aff === 'absorb') return true;
+            if (def.stageMod && unitHasStatus(u, 'statLock')) return true;
+            if (def.control && u._isBoss) return true;
+            return false;
+        }
+        window.unitImmuneToStatus = unitImmuneToStatus;
+        /* would this stat stage change bounce off `u`: Pure Negativity's immuneStatDown drops every negative stage,
+           Fermata's stat lock every stage (applyStatStageBoost) */
+        function unitImmuneToStage(u, n) {
+            if (!u || !n) return false;
+            if (unitHasStatus(u, 'statLock')) return true;
+            return n < 0 && typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'immuneStatDown') === true;
+        }
+        /* a cast whose whole effect on its target is statuses and/or stat stages — the pure-status casts plus the
+           stat-drop casts (Calcify, Flower in the Barrel, Meow, Psychosis…); Steal from the Rich only takes what the
+           target actually lost, so it counts. Anything else it does (damage, MP drain, a pull, a stolen spell…) still
+           lands on an immune unit, so those never count. */
+        const _IMMUNE_TARGET_KINDS = { debuff: 1, buff: 1, aoe: 1, barrage: 1, possess: 1 };
+        function spellIsStatusOnly(spell) {
+            if (!spell || !_IMMUNE_TARGET_KINDS[spell.kind]) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            const st = spell.statStageBoost ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]) : [];
+            if (!fx.length && !st.length) return false;
+            if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage || spell.zoneTickDamage || spell.blastDmg) return false;
+            if (spell.heal || spell.healAmt || spell.healPct || spell.selfHealPct || spell.shield || spell.shieldHp) return false;
+            if (spell.randomTeamBuff || spell.cleanse || spell.drainPct || spell.mpDrain || spell.mpRestore || spell.revivePct
+                || spell.stealSpell || spell.zodiacReading || spell.timedStatBonus || spell.allyStatusEffects) return false;
+            if (spell.leaveTerrain || spell.terrainType || spell.weatherType || spell.paintTerrain || spell.terrainDeform) return false;
+            if (spell.teleportDistance || spell.pushDistance || spell.pullDistance || spell.mount || spell.dispel) return false;
+            return true;
+        }
+        /* true when every status and every stat stage such a cast carries would bounce off `u` — the cast would do
+           nothing to it, so it is no target (spellTargetUsableOn) */
+        function spellBouncesOffImmune(spell, u) {
+            if (!u || u.dead || !spellIsStatusOnly(spell)) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            if (fx.some(f => !unitImmuneToStatus(u, f.id))) return false;
+            const b = spell.statStageBoost || {};
+            if (Object.keys(b).some(k => b[k] && !unitImmuneToStage(u, b[k]))) return false;
+            return true;
+        }
+        window.spellBouncesOffImmune = spellBouncesOffImmune;
+
         /* A ground-bound cast (spell.missesFlyers: Wall of Fire) passes under a flyer up in the sky — the same
            isUnitAirborne gate the burning tiles, seeds and rain already use (mondo 2026-10-26: "wall of fire shouldnt
            be able to hit flyers in the sky, and it should be greyed out when targeting a flying unit"). */
@@ -45362,9 +45442,15 @@
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
-            if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
+            if (spellTargetsCorpses(spell)) return spellCorpseUsable(unit, spell, u);
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a cast that only hands out statuses / stat stages is no target
+               on a unit every one of them bounces off (Pure Negativity, a race's immuneStatus, an element immunity,
+               Fermata, a boss vs control). Grounding an airborne flyer still lands whatever the status does. */
+            if (spellBouncesOffImmune(spell, u)
+                && !(spell.groundsFlyers && typeof isUnitAirborne === 'function'
+                    && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u))) return false;
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
                 && unitEncoreReady(u);
@@ -46782,7 +46868,7 @@
 
             if (spellTargetsCorpses(spell)) {
                 // Any corpse (either side) whose remains haven't been consumed yet.
-                return state.units.some(u => u.dead && !u._corpseConsumed &&
+                return state.units.some(u => spellCorpseUsable(unit, spell, u) &&
                     !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
@@ -64446,7 +64532,7 @@
                 if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
-                        if (u._corpseConsumed) continue;
+                        if (!spellCorpseUsable(unit, spell, u)) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 // raiseDead only ever targets the dead.
@@ -64544,7 +64630,7 @@
                 // fallen ally's grave, raiseDead to any unconsumed remains.
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
-                        if (u._corpseConsumed) continue;
+                        if (!spellCorpseUsable(unit, spell, u)) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
@@ -76696,6 +76782,18 @@
             // burn MP/AP for nothing. Menus grey these out; this guards direct
             // map clicks and move-then-cast paths. (AoE/team kinds pass: some
             // OTHER unit in the blast may still need the status.)
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a single-target status / stat-drop cast on a unit every effect
+               of it bounces off (Counterspell / Brainwash on a Pure Negativity Ghoul) is refused before any MP, AP or
+               cooldown is spent — the drum and the menus already leave that unit out; this catches a direct call. */
+            if ((spell.kind === 'debuff' || spell.kind === 'buff' || spell.kind === 'possess') && !spell.aoeRadius && !_spellMaskOf(spell)) {
+                const _imT = unitAt(x, y, z) || unitAt(x, y);
+                if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
+                    addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius && !_spellMaskOf(spell)
                 && spellIsPureStatus(spell)) {
                 const _psT = unitAt(x, y, z) || unitAt(x, y);
@@ -79583,9 +79681,9 @@
                 /* §6.18 Cannibalize (Phase 5 wave B): eat unconsumed remains —
                    heal healPct of max HP, the corpse's respawn +corpseDelay,
                    the remains consumed (no revive, no raising). */
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                const corpse = state.units.find(u => spellCorpseUsable(unit, spell, u) && u.x === x && u.y === y);
                 if (!corpse) {
-                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    addLog("Target an enemy's remains — a fallen enemy's bones.");
                     playErrorSfx();
                     return 0;
                 }
