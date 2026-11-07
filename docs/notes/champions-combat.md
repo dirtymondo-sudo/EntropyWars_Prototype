@@ -4552,6 +4552,19 @@ nearest remains of either side. Text of both spells + the REMAINS chip say enemy
 (its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
 Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
 
+### EXECUTED MEANS KILLED (2026-11-07, timing playtest H10, mondo: "Executed means killed")
+Take Aim (15%) and No Mercy (25%) judge their execute on the HP BEFORE the hit. The EXECUTED line used to print only from
+the follow-up (`_applyExecuteRider`), i.e. only when the hit left the target standing, so a hit that killed an armed target
+(almost every case) never said EXECUTED. Now battle.js `_logExecuted(target, spell, frac)` is the one EXECUTED line + float,
+and it only prints for a unit that is down (`_unitIsDown`): an armed before-the-hit execute whose hit killed says
+"💀 No Mercy: X was at 20% — EXECUTED!" (the pre-hit %); a hit that leaves it standing gets the follow-up, which says it
+only when it really died (Protect / Indomitable Will / Talisman still save). state.js `_detonateDelayedSpellNow` does the
+same for the marked Take Aim shot, and its "🎯 Take Aim lands on X!" header now reads BEFORE the hit/kill/EXECUTED lines.
+`executeAfterHit` rows (Ammit Devours, Termination Protocol) judge the HP the hit LEFT, so a hit that kills on its own is a
+plain kill there (unchanged); Walk the Plank (`executePct`) already printed on the kill (PR #1009). The gauge FINISHERS
+("EXECUTIONS") are a separate system and print no EXECUTED line. No rule changed.
+Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/executed-means-killed/.
+
 ## THE EMPTY-TILE SUMMON (2026-11-07, zones/traps playtest B1 + D)
 - A summon (summonUnit: Hawk, Wolf Pack, Elephant, Spirit Animal, Summon Creation, Whistle, The Gathering, Brood, Mitosis)
   is called onto an EMPTY tile, so no unit is ever its pick: `spellAimProblem` answers 'occupied' for a body's tile and

@@ -1148,6 +1148,8 @@
                     window.CineFX.play('grade', { kind: 'scope', ms: 700 });
                 }
                 const _dsHpB = mark.hp;
+                /* THE LOG ORDER (2026-11-07): the shot's header line reads first, then its hit, the kill and EXECUTED */
+                addLog(`🎯 ${ds.spellName} lands on ${unitDisplayName(mark)}!`, ds.sourcePlayer);
                 // Phase 5 wave A: the Sniper's execute (judged on the HP before the shot).
                 const _dsExec = !!ds.executeBelowPct && mark.maxHp > 0 && (mark.hp / mark.maxHp) <= ds.executeBelowPct;
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
@@ -1159,9 +1161,16 @@
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
-                if (_dsExec && !mark.dead && typeof window !== 'undefined' && typeof window._applyExecuteRider === 'function') {
-                    window._applyExecuteRider(sourceUnit || null, mark,
-                        { name: ds.spellName, damageType: ds.damageType || 'physical', spellType: ds.spellType || null, spellElement: ds.spellElement || null });
+                /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07, timing playtest H10): the shot alone killing an armed target IS
+                   the execution (it used to say nothing, and EXECUTED only ever showed on a target the shot left standing);
+                   a target the shot leaves standing gets the follow-up, which says EXECUTED only when it really died. */
+                const _dsDown = !!(mark.dead || mark._dying || (mark.hp || 0) <= 0);
+                const _dsFrac0 = mark.maxHp > 0 ? _dsHpB / mark.maxHp : 0;
+                const _dsStub = { name: ds.spellName, damageType: ds.damageType || 'physical', spellType: ds.spellType || null, spellElement: ds.spellElement || null };
+                if (_dsExec && !_dsDown && typeof window !== 'undefined' && typeof window._applyExecuteRider === 'function') {
+                    window._applyExecuteRider(sourceUnit || null, mark, _dsStub, _dsFrac0);
+                } else if (_dsExec && _dsDown && typeof window !== 'undefined' && typeof window._logExecuted === 'function') {
+                    window._logExecuted(mark, _dsStub, _dsFrac0);
                 }
                 // Balance telemetry: the landed shot belongs to the spell that
                 // painted the mark (its cast resolved damage-less by design).
@@ -1180,7 +1189,6 @@
                     && ds.spellId === 'raceToBeContinued') {
                     window.CineFX.play('toBeContinued', { unitId: mark.id });
                 }
-                addLog(`🎯 ${ds.spellName} lands on ${unitDisplayName(mark)}!`, ds.sourcePlayer);
                 return;
             }
 
