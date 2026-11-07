@@ -7056,6 +7056,8 @@
                    leaves it under N%") judges the HP the hit LEFT instead (below, after applyDamageToUnit). */
                 const _execArmed = !!spell.executeBelowPct && target.maxHp > 0 && (spell.executeAfterHit
                     || (target.hp / target.maxHp) <= spell.executeBelowPct);
+                /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07): the % the before-the-hit execute was judged on */
+                const _execPct0 = target.maxHp > 0 ? target.hp / target.maxHp : 0;
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
                     addLog(`🗡️ ${_ctName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
                 }
@@ -7115,8 +7117,14 @@
                 }
                 if (_wasJammed) _applyJammedArc(unit, spell, target, damage);
                 if (_sitHas) _applyStatusIfTargetHas(unit, spell, target);
+                /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07, timing playtest H10): an armed before-the-hit execute (No Mercy)
+                   whose hit already killed IS the execution, so it says EXECUTED too (it used to print only when the hit
+                   left the target standing, i.e. almost never); a hit that leaves it standing gets the follow-up, which
+                   says EXECUTED only when it really died. An `executeAfterHit` row (Ammit, Termination Protocol) judges
+                   the HP the hit left, so a hit that kills on its own is a plain kill there. */
                 if (_execArmed && !target.dead && !target._dying
-                    && (!spell.executeAfterHit || (target.hp / target.maxHp) < spell.executeBelowPct)) _applyExecuteRider(unit, target, spell);
+                    && (!spell.executeAfterHit || (target.hp / target.maxHp) < spell.executeBelowPct)) _applyExecuteRider(unit, target, spell, spell.executeAfterHit ? null : _execPct0);
+                else if (_execArmed && !spell.executeAfterHit && _unitIsDown(target)) _logExecuted(target, spell, _execPct0);
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
                 _applyOnKillRiders(unit, target, spell);
             }
@@ -7156,11 +7164,22 @@
            (armour ignored, ×4 of what's left so no resistance saves it).
            `spell` may be a stub ({ name, damageType, spellType }) — state.js
            calls this for the delayed Take Aim shot. */
-        function _applyExecuteRider(unit, target, spell) {
+        /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07): the one EXECUTED line + float, only ever for a unit that is down.
+           `frac` = the HP fraction the execute was judged on (before the hit for No Mercy / Take Aim). */
+        function _logExecuted(target, spell, frac) {
+            if (!target || !_unitIsDown(target)) return false;
+            const nm = (spell && (spell.name || spell.spellName)) || 'Execute';
+            const pct = Math.max(1, Math.round(100 * (frac != null ? frac : (Math.max(0, target.hp) / (target.maxHp || 1)))));
+            addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
+            showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
+            return true;
+        }
+        window._logExecuted = _logExecuted;
+        function _applyExecuteRider(unit, target, spell, judgedFrac) {
             if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
             const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
             const nm = (spell && spell.name) || 'Execute';
-            const pct = Math.max(1, Math.round(100 * target.hp / target.maxHp));
+            const pct0 = (judgedFrac != null) ? judgedFrac : target.hp / target.maxHp;
             applyDamageToUnit(target, lethal, `${nm}: `, {
                 sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
                 damageType: (spell && spell.damageType) || 'physical', spellType: (spell && spell.spellType) || null,
@@ -7168,10 +7187,7 @@
                 element: (spell && spell.id) ? classifySpellElement(spell) : null
             });
             /* EXECUTED only when the follow-up really killed (Protect / Indomitable Will / the realm can still save it) */
-            if (target.dead || target._dying) {
-                addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
-                showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
-            }
+            _logExecuted(target, spell, pct0);
             return !!(target.dead || target._dying);
         }
         window._applyExecuteRider = _applyExecuteRider;
