@@ -4526,12 +4526,13 @@ Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
   Bulwark and the `counterChance` hook help text say so (was "when struck in melee").
 - Full drains (`drainPct: 1`) heal through applyHealingToUnit, which stops at max HP: Last Kiss, Exsanguinate, Eaten Alive
   say "up to your full HP".
-- Place Bomb: the blast is PHYSICAL (detonateBomb passes no damageType), enemies only in the 3×3, each thrown back 1 tile
+- Place Bomb: the blast is PHYSICAL (detonateBomb passes no damageType; blocked by DEF, while its power still comes from M ATK
+  via spellPowerOf, so the row keeps no damageType and hud.js spellDamageKind reads kind `bomb` as physical), enemies only in the 3×3, each thrown back 1 tile
   (BOMB_KNOCK_TILES); goes off when an enemy steps on it, on DETONATE (1 AP, all your bombs), or on contact when thrown onto
   an enemy; 3 at a time, a 4th replaces the oldest.
 - Overfit / Paradox: the replayed last blow is capped at 500 (calcSpellHitRiders `echoCap`). Deploy Turret: MEDIUM physical
   at the end of every round (turretDmg 110 is the raw roll before DEF / level scaling; real hits 87-340), max 2 per caster,
-  a 3rd replaces the oldest. Filibuster: 2 ROUNDS; Silence lands at the end of each round and on an enemy walking in (zone
+  a 3rd replaces the oldest; its row/bar chip reads physical too (spellDamageKind). Filibuster: 2 ROUNDS; Silence lands at the end of each round and on an enemy walking in (zone
   rules), not on the cast. Encore: "already acted this round".
 - Guarding badge (STATUS_LIBRARY_DESCS.guarding): the DEF/M DEF stages last until the end of its next turn, but Guard's
   Overwatch shot and +15% counter are cleared at the round change (maybeAdvanceTurn) — the badge text says so.

@@ -4730,6 +4730,9 @@ const _HRLG_CAT = {
 const EW_MAGIC_PATH = 'M8 0L11.2 4.2L8 8.4L4.8 4.2ZM4 7.6L7.2 11.8L4 16L0.8 11.8ZM12 7.6L15.2 11.8L12 16L8.8 11.8Z';
 const EW_DMG_KIND_TITLE = { phys: 'Physical damage — scales with ATK, blocked by DEF', magic: 'Magic damage — scales with M ATK, blocked by M DEF' };
 function spellDamageKind(sp) {
+  /* a bomb's blast and a turret's shot always land as PHYSICAL (battle.js detonateBomb / processTurretVolleys pass no
+     magic type; a bomb's power still comes from M ATK) — the row and the bar said magic (timing/counters text pass 2026-11-07) */
+  if (sp && (sp.kind === 'bomb' || sp.kind === 'deployTurret')) return 'phys';
   return sp ? (sp.damageType === 'physical' ? 'phys' : 'magic') : null;
 }
 function ewMagicIcon() {

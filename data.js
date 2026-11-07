@@ -5215,7 +5215,7 @@ const SPELL_LIBRARY = [
         school: 'Agent',
         maxActivePerCaster: 3,
         blastRadius: 1,
-        desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage to every enemy in the 3×3, and each is thrown back 1 tile.'
+        desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage (it grows with your M ATK) to every enemy in the 3×3, and each is thrown back 1 tile.'
     },
 
     {
