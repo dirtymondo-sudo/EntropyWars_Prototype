@@ -13167,6 +13167,25 @@
             if (!u || u.dead || u._dying) return false;
             return team === 'ally' ? isAllyUnit(u, caster) : isEnemyUnit(u, caster);
         }
+        /* THE PARTNER RULE (timing/counters playtest 2026-11-07 A1/A2/H2: Soul Bind and Voodoo let you pick a first
+           unit with no legal second one — the second list read "NO TARGETS IN RANGE" and the only way out was CANCEL):
+           a first pick is offered only when a second pick would be taken with it, judged exactly as doSpell's second
+           click judges it (the second team, not the first pick, within pairRange of it, and the caster's own aim gates
+           from where the caster stands — spellCastableOnUnit with the pick held). Read-only: the held pick is put back. */
+        function _twoClickHasPartner(caster, spell, first) {
+            if (!caster || !spell || !first || first.dead || first._dying) return false;
+            const teams = _twoClickTeams(spell);
+            const prev = state._spellPick1;
+            state._spellPick1 = { id: first.id, spellId: spell.id, x: first.x, y: first.y };
+            try {
+                return state.units.some(u => u && u.id !== first.id && _twoClickTeamOk(caster, u, teams[1])
+                    && (!spell.pairRange || (Math.abs(u.x - first.x) + Math.abs(u.y - first.y)) <= spell.pairRange)
+                    && spellCastableOnUnit(caster, spell, u));
+            } finally {
+                state._spellPick1 = prev;
+            }
+        }
+        window._twoClickHasPartner = _twoClickHasPartner;
         function clearSpellPick() {
             if (!state._spellPick1) return;
             state._spellPick1 = null;
@@ -45365,6 +45384,10 @@
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            /* Sacrifice's SECOND pick (the receiver, the giver already held) takes only a hurt ally — doSpell's transfer
+               branch refuses a full-HP one ("is already at full HP"), and the list offered it anyway, so a giver with
+               only full-HP allies round it was a dead end (timing/counters playtest 2026-11-07, the PARTNER RULE) */
+            if (k === 'transfer' && _twoClickPick(spell)) return (u.hp || 0) < (u.maxHp || 0);
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
                 && unitEncoreReady(u);
@@ -46669,6 +46692,20 @@
             // THE TARGETING RIDERS: a random-target row is lit exactly when its pool holds a victim
             if (spell.randomTargets && kind === 'damage' && spellRandomTargetsOf(spell)) return _randomTargetPool(unit, spell).length > 0;
 
+            /* THE PARTNER RULE (playtest 2026-11-07 H2: Soul Bind's row was lit while its list read "NO TARGETS IN RANGE"):
+               a two-click cast has a target exactly when its list has a row — a first pick that has a second pick to go
+               with it, or (a pick already held) a second pick in reach */
+            if (_kindMeta(spell).twoClick) {
+                const _hpPk = _twoClickPick(spell), _hpTeams = _twoClickTeams(spell);
+                if (_hpPk) {
+                    return state.units.some(u => u && u.id !== _hpPk.id && _twoClickTeamOk(unit, u, _hpTeams[1])
+                        && (!spell.pairRange || (Math.abs(u.x - _hpPk.x) + Math.abs(u.y - _hpPk.y)) <= spell.pairRange)
+                        && spellCastableOnUnit(unit, spell, u));
+                }
+                return state.units.some(u => u && _twoClickTeamOk(unit, u, _hpTeams[0])
+                    && spellCastableOnUnit(unit, spell, u) && _twoClickHasPartner(unit, spell, u));
+            }
+
             if (['healAll', 'manaRestoreAll', 'warCry', 'scan', 'barrage', 'remoteView', 'selfHeal', 'escape'].includes(kind)) return true;
 
             // aoeOriginSelf spells center on the caster: utility/heal novae are
@@ -47072,11 +47109,17 @@
             /* a body of a shared column must be hit ITSELF from the probe tile — the column rule would hand an
                out-of-reach pick to the body beneath it (playtest 2026-10-21) */
             const _aimShared = !!(_aimBody && typeof unitsAtColumn === 'function' && unitsAtColumn(tx, ty).length > 1);
-            const _hitsTarget = _aimShared
+            const _hitsTarget0 = _aimShared
                 ? () => !spellAimProblemOn(unit, spell, _aimBody)
                 : _aimBody
                 ? () => !spellAimProblem(unit, spell, tx, ty, _aimZ)
                 : () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
+            /* THE PARTNER RULE: a two-click cast's first pick walks only to a tile from which its second pick is
+               then in reach too (Voodoo's ally is judged from where the caster ends up) */
+            const _pairFirst = (_kindMeta(spell).twoClick && !_twoClickPick(spell)) ? _aimBody : null;
+            const _hitsTarget = _pairFirst
+                ? () => _hitsTarget0() && _twoClickHasPartner(unit, spell, _pairFirst)
+                : _hitsTarget0;
             let best = null, bestScore = -1;
             try {
                 // Walk approach (ONE step). Take-off tiles that getMoveTiles folds into the
@@ -47202,7 +47245,38 @@
         // the cast. doSpell reads state.selectedTool, and a move resets
         // actionMode/selectedTool (resolveMovePath), so we re-assert them right
         // before casting.
+        /* THE HELD PICK AFTER THE STEP (timing/counters playtest 2026-11-07 H1: Voodoo's MOVE→CAST row walked the Goatman
+           into reach and then no ally list came up): the step drops the unit back into the ROOT menu (finishMoveAt), and
+           the cast that follows it was only a two-step spell's FIRST pick (Voodoo / Soul Bind / Sacrifice, Horn Toss's
+           victim, Teleport's unit) — nothing spent, the spell still armed, but no menu showing its second step. Re-open
+           the step the in-place pick shows: the target list for a list pick, the board aim for a tile pick. */
+        function _rearmHeldFirstPick(unit, spellName, viewBefore) {
+            if (!unit || unit.dead || !spellName) return false;
+            const spell = (unit.spells || []).find(s => s && s.name === spellName)
+                || (unit._raceAbilities || []).find(s => s && s.name === spellName);
+            if (!spell) return false;
+            const held = (_kindMeta(spell).twoClick || spell.throwAnyDirection) ? !!_twoClickPick(spell)
+                : (spell.kind === 'teleport' && spell.teleportAnyUnit && state._teleportingUnitId != null);
+            if (!held) return false;
+            state.actionMode = 'spell';
+            state.selectedTool = spell.name;
+            state.pendingTarget = null;
+            if (_kindMeta(spell).twoClick) {
+                state.actionMenuView = 'spellTargets';
+                state._spellCycleTargets = _getSpellValidTargets(unit, spell);
+                state._spellCycleIndex = 0;
+            } else {
+                state.actionMenuView = (viewBefore === 'spells' || viewBefore === 'spellTargets') ? viewBefore
+                    : (spell.kind === 'teleport' ? 'spells' : 'spellTargets');
+            }
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            markDirty('board', 'hud', 'selectedUnit');
+            renderIfDirty();
+            return true;
+        }
+        window._rearmHeldFirstPick = _rearmHeldFirstPick;
         function _moveThenCast(unit, approach, spellName, tx, ty, tz) {
+            const _viewBefore = state.actionMenuView;
             _clearSpellApproachPreview();
             state._enemyActionTargetId = null;
             state._actionExecuting = true;
@@ -47245,6 +47319,7 @@
                 }
                 if (result === 0 || result === false) {
                     state._actionExecuting = false;
+                    _rearmHeldFirstPick(unit, spellName, _viewBefore);   // THE HELD PICK AFTER THE STEP
                     scheduleBoardRender();
                 } else {
                     clearTimeout(state._actionExecutingWatchdog);
@@ -64492,6 +64567,8 @@
                    sight line, team sight (the telescope's sky shots included), the doors, Cryptid / Shadow
                    Realm. The drum's own copy of those numbers is what drifted from the cast. */
                 if (spellAimProblemOn(unit, spell, u)) continue;
+                // THE PARTNER RULE: a first pick of a two-click cast needs a second pick it can be paired with
+                if (_skm.twoClick && !_twoClickPick(spell) && !_twoClickHasPartner(unit, spell, u)) continue;
                 // THE GROUND REACH: a dash / leap strike row reads its flat steps; THE PAIR RULE: a second pick reads its
                 // steps from the first pick (the reach it is judged by)
                 const _vtPair = _pairPhasePick(spell);
@@ -76802,6 +76879,16 @@
                         // clicking the first pick again un-picks it
                         clearSpellPick();
                         if (!_silentReject) playSfx('uiBack');
+                        return 0;
+                    }
+                    /* THE PARTNER RULE: a first pick with no second pick to go with it is refused here (a board click), so
+                       the cast never waits on a second list with nothing in it */
+                    if (!_twoClickHasPartner(unit, spell, _pkT)) {
+                        if (!_silentReject) {
+                            addLog(`${_ctSp(spell.name)}: no ${_pkTeams[1] === 'ally' ? 'ally' : 'other enemy'} in reach to pair with ${_ctName(_pkT)}${spell.pairRange ? ` (within ${spell.pairRange} tiles of it)` : ''}.`);
+                            playErrorSfx();
+                        }
+                        state._teleportingUnitId = null;
                         return 0;
                     }
                     state._spellPick1 = { id: _pkT.id, spellId: spell.id, x: _pkT.x, y: _pkT.y };

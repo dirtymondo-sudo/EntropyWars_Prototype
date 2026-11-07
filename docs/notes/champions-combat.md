@@ -4488,3 +4488,20 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   after the one total line in `_multiHitLogFlush`. Lines that explain the hit before it (weak/resist, combo, Marked,
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
+
+## THE TWO-PICK SPELLS NEVER DEAD-END (2026-11-07, timing/counters playtest A1 / A2 / H1 / H2) — battle.js, hud.js, ui.js
+- THE PARTNER RULE: a two-click cast (`link`: Soul Bind, Voodoo; `transfer`: Sacrifice) offers a FIRST pick only when a
+  second pick would be taken with it — `_twoClickHasPartner(caster, spell, first)` holds the pick and asks
+  `spellCastableOnUnit` of every unit of the second team (pairRange from the first, the caster's own aim gates). Used by
+  `_getSpellValidTargets` (the list), `findSpellApproachTile` (a MOVE→CAST walks only to a tile where the second pick is in
+  reach too: Voodoo's ally is judged from where the caster ends up), `hasSpellTargetInRange` (the row greys "No target"
+  instead of opening a list that dead-ends) and doSpell's first-pick gate (a board click logs "no ally / other enemy in
+  reach to pair with X").
+- Sacrifice's second pick lists only a hurt ally (`spellTargetUsableOn`, transfer with a pick held) — the cast already
+  refused a full-HP receiver ("is already at full HP"); all allies full = the row reads No target.
+- THE HELD PICK AFTER THE STEP: a MOVE→CAST whose cast is only a FIRST pick (Voodoo/Soul Bind/Sacrifice, Horn Toss's victim,
+  Teleport's unit) used to land in the ROOT menu (finishMoveAt resets it), so the second step never showed.
+  `_rearmHeldFirstPick` (battle.js, called from `_moveThenCast` and hud.js's quick-menu executor) reopens the second step.
+- Backing out of the spell (Esc / BACK / CANCEL → ui.js `_dropHeldSpellPick`) now drops `state._spellPick1` too: nothing
+  was spent, and a held pick made a re-armed Voodoo skip straight to its ally list.
+- Proof (3 VS CPU matches, positions staged with `_ewShotRecApi.place`): /mnt/project-files/playtest-mechanics-20261107/two-pick-dead-ends/.
