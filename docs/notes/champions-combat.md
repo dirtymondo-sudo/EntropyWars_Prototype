@@ -4293,3 +4293,15 @@ these fixes except for fire on water making steam"). This thread built R13-R16; 
   element), `_bleedDripsBlood`; tile-cast hints in `_elementalTileCastInfo`. Terrain + burningTiles ride the state-sync,
   so the guest sees every change. AI does not seek these tile casts (score 0), same as before.
 - Proof (WebGL2 browser, VS CPU arena): /mnt/project-files/element-reactions-r13-r16/ (r13_*, r14_*, r15_*, r16_*, old_*).
+
+## THE SEEN NOVA (2026-11-07, buffs/utility playtest family F) — battle.js
+Online, the guest Sidekick's "Hey, Over Here!" row was lit with nobody in reach, cast "but no enemies are in range" and
+still spent 25 MP + its 2-round cooldown (the only enemy near was an INVISIBLE Shaman). hasSpellTargetInRange gave every
+barrage and every self-origin area a blanket pass. Now `_selfNovaEnemyOnly(spell)` (every barrage except Splash's
+paintTerrain; a no-damage self `aoe`/`aoePull` like Demonic Roar / Round Up) lights only when `_selfNovaSeenVictims` holds
+an enemy in its reach that the caster's side sees (`isUnitConcealedFrom` + fog via `spellSeesEnemy`, `_reachProbe` during
+move-then-cast probes) and the cast does something to (`spellTargetUsableOn`). Rows read "No valid target" / "No target";
+a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies in range."). Masked self damage novas
+(`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
+castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
+invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
