@@ -13471,7 +13471,7 @@ const STATUS_DEFS = {
     blind: {
         icon: '🌫️',
         glyph: '🌫️',
-        short: 'BLD',
+        short: 'BLN',          // 2026-11-07: was 'BLD', the same badge as Bleeding (the only clash among the 68 shorts)
         label: 'Blind',
         colorText: 'blinded',
         kind: 'debuff',

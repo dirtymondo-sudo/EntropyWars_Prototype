@@ -4187,3 +4187,8 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   rounds", "Wet targets take it worse"), the status library, Balance Lab labels. Code names (_soakUnit, _unitIsSoaked,
   soakedShock notes, weather `soaks`) stay. Name adjectives ("Blood-Soaked", the Firefighter's "Soaked") and DEF/M DEF
   "soaks" damage are not the status and stay. Checked on screen: WET pill on the unit panel after walking into the river.
+
+## THE BADGE CLASH (2026-11-07, status effects playtest C1) — data.js
+Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
+`short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
+badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
