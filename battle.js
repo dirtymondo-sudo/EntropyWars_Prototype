@@ -2903,7 +2903,7 @@
             const wasWet = Number(status.wet || 0) > 0;
             status.wet = Math.max(Number(status.wet || 0), WET_ROUNDS);
             if (!wasWet && !opts.quiet) {
-                showFloatingTextForUnit(u, '💧 Soaked', 'debuff', { durationMs: 900 });
+                showFloatingTextForUnit(u, '💧 Wet', 'debuff', { durationMs: 900 });
             }
             return !wasWet;
         }
@@ -3341,7 +3341,7 @@
                 const _anyWater = body.some(t => _isWetTile(t.x, t.y));
                 addLog(_anyWater
                     ? `⚡ ${_ctSp(spell.name)} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`
-                    : `⚡ ${_ctSp(spell.name)} arcs through the soaked bodies${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                    : `⚡ ${_ctSp(spell.name)} arcs through the wet bodies${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
         }
@@ -9659,7 +9659,7 @@
             corroded: 'corroded', feared: 'feared', possessed: 'possessed', infected: 'infected', stoneform: 'stoneform', voodoo: 'voodoo',
             tethered: 'roped', sparkling: 'sparkling', levitating: 'levitating', blessed: 'blessed', quickened: 'quickened',
             silence: 'silence|silenced', stun: 'stun|stunned', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
-            jammed: 'jammed', drowning: 'drowning', wet: 'soaked', protect: 'protect|protected', discord: 'discord', slow: 'slow|slowed',
+            jammed: 'jammed', drowning: 'drowning', wet: 'wet|soaked', protect: 'protect|protected', discord: 'discord', slow: 'slow|slowed',
             overclock: 'overclock|overclocked', regen: 'regen', indomitable: 'indomitable', guarding: 'guarding', statUp: 'empowered',
             statDown: 'weakened', shield: 'shield|shielded', invisible: 'invisible', charm: 'charm|charmed', taunt: 'provoked|taunted',
             minimize: 'minimized', hexed: 'hexed', frozen: 'frozen', blind: 'blind|blinded'
@@ -9927,7 +9927,7 @@
             if (payload.id === 'burn' && (unitHasStatus(target, 'wet')
                 || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
                 || (typeof _unitInRain === 'function' && _unitInRain(target, true)))) {
-                addLog(`💧 ${_ctName(target)} is too soaked to catch fire!`);
+                addLog(`💧 ${_ctName(target)} is too wet to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
             }
@@ -36967,9 +36967,9 @@
                 if (!live) { /* forecast: no callouts */ } else if (_cmb.note === 'shortCircuit') {
                     showFloatingTextForUnit(target, '⚡💧 ×1.5 SHORT CIRCUIT!', 'mult', { durationMs: 1100 });
                 } else if (_cmb.note === 'soakedShock') {
-                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
+                    showFloatingTextForUnit(target, '⚡💧 ×1.5 WET!', 'mult', { durationMs: 1100 });
                 } else if (_cmb.note === 'soakedFire') {
-                    showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
+                    showFloatingTextForUnit(target, '💧 ×0.75 WET', 'mult', { durationMs: 1000 });
                 }
             }
 
@@ -60283,8 +60283,8 @@
             crit: 'Critical hit', press: 'Press (+AP refund)', pressMiss: 'Press miss (-AP)',
             typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
             statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
-            react_shortCircuit: 'Short Circuit (lightning on soaked tech)', react_soakedShock: 'Soaked shock (lightning on soaked)',
-            react_soakedFire: 'Soaked fire (fire on soaked)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Wet shock (lightning on wet)',
+            react_soakedFire: 'Wet fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
             highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
         };
         function _balFxMark(u, kind, key) {
