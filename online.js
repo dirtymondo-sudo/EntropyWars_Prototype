@@ -5998,12 +5998,17 @@
             /* the kept flags of one live array, judged once per entry (a new array = a new match or a reset log) */
             function _gvLogKeep(key, arr, judge) {
                 var C = _gvLogCache[key];
-                if (!C || C.arr !== arr || C.keep.length > arr.length) C = _gvLogCache[key] = { arr: arr, keep: [] };
+                /* a line the host moved up into the judged part (battle.js _logHoist / _logLift / _logPut a frame later:
+                   the forced-move lines that wait for their hit) shifts every flag after it, so a hidden line could go
+                   out under fog: when the last judged slot no longer holds the line judged there, judge it all again */
+                var n = C ? C.keep.length : 0;
+                if (!C || C.arr !== arr || n > arr.length || (n > 0 && arr[n - 1] !== C.last)) C = _gvLogCache[key] = { arr: arr, keep: [], last: null };
                 for (var i = C.keep.length; i < arr.length; i++) {
                     var k = true;
                     try { k = judge(arr[i]); } catch (err) { k = false; }
                     C.keep.push(k);
                 }
+                C.last = arr.length ? arr[arr.length - 1] : null;
                 return C.keep;
             }
             function _guestLogFilter(s, v) {

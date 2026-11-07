@@ -4072,7 +4072,7 @@
            log. Its look and options come from the UI Maker (window._ewLogLook, hud.js clogSignal). */
         const CLOG_FOLD_KEY = 'ew_clog_folded', CLOG_MAX = 3000;
         let _clogEl = null, _clogBody = null, _clogList = null, _clogNewBtn = null;
-        let _clogN = 0, _clogD = 0, _clogFirst = '', _clogSig = '', _clogFolded = null, _clogUnread = 0;
+        let _clogN = 0, _clogD = 0, _clogFirst = '', _clogSig = '', _clogFolded = null, _clogUnread = 0, _clogLast = null;
         function _clogLook() { return window._ewLogLook || { auto: 'board', show: 'combat', rounds: true }; }
         function _clogIsFolded() {
             if (_clogFolded == null) { try { _clogFolded = localStorage.getItem(CLOG_FOLD_KEY) === '1'; } catch (e) { _clogFolded = false; } }
@@ -4203,7 +4203,11 @@
             const first = lines.length ? _logMsg(lines[0]) : '';
             /* a new match / a reset log, another viewer, another filter: build it again from the start */
             const sig = (typeof _ctViewer === 'function' ? _ctViewer() : getViewerPlayer()) + '|' + (look.show || 'combat') + '|' + (state.fogOfWar ? 1 : 0) + '|' + (ONLINE_RULES.active ? 1 : 0);
-            let rebuild = sig !== _clogSig || lines.length < _clogN || dlg.length < _clogD || first !== _clogFirst;
+            /* a line moved up into the part already shown (battle.js _logHoist / _logLift / _logTake + _logPut after a
+               frame: the forced-move lines that wait for their hit) shifts what sits at the last shown index: build again
+               (VS CPU check 2026-11-07: Walk the Plank's "uses … Converted" line went missing and a line showed twice) */
+            const _shifted = _clogN > 0 && _clogN <= lines.length && _logMsg(lines[_clogN - 1]) !== _clogLast;   // by text: the guest's lines are new objects every snapshot
+            let rebuild = sig !== _clogSig || lines.length < _clogN || dlg.length < _clogD || first !== _clogFirst || _shifted;
             if (!rebuild && lines.length === _clogN && dlg.length === _clogD) return;
             if (rebuild) { _clogSig = sig; _clogFirst = first; _clogN = 0; _clogD = 0; _clogList.innerHTML = ''; _clogUnread = 0; _clogNewBtn.classList.remove('on'); el.classList.add('empty'); _clogHitKeys = []; }
             const all = look.show === 'all';
@@ -4231,6 +4235,7 @@
             }
             beatsUpTo(lines.length);
             _clogN = lines.length;
+            _clogLast = lines.length ? _logMsg(lines[lines.length - 1]) : null;
             el.classList.toggle('empty', !_clogList.firstElementChild && !added);
             if (!added) return;
             _clogList.insertAdjacentHTML('beforeend', html);
@@ -6400,7 +6405,10 @@
 
             const alreadyRendered = _logRenderedCount;
             const totalToRender = recent.length;
-            if (alreadyRendered === 0 || totalToRender < alreadyRendered || logEl.children.length === 0) {
+            /* a line moved up into the part already drawn (the forced-move lines that wait for their hit) redraws it all */
+            const _moved = alreadyRendered > 0 && alreadyRendered <= totalToRender && _logMsg(recent[alreadyRendered - 1]) !== renderLog._last;
+            renderLog._last = totalToRender ? _logMsg(recent[totalToRender - 1]) : null;
+            if (alreadyRendered === 0 || totalToRender < alreadyRendered || logEl.children.length === 0 || _moved) {
 
                 logEl.innerHTML = recent.map((entry, idx) => {
                     const age = recent.length - 1 - idx;
