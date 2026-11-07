@@ -43741,6 +43741,34 @@
         function unitMoveBlockedByStatus(unit) {
             return !!(unit && unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove));
         }
+        window.unitMoveBlockedByStatus = unitMoveBlockedByStatus;
+
+        /* THE MOVE BLOCK ON SPELLS (playtest 2026-11-07, buffs/utility B3: a Charmed Rabbit cast Nimble Dodge, a Charmed
+           Juggernaut Rampage-dashed, a Charmed Spy grappled): a cast that carries the CASTER to another tile is movement,
+           so the same blockMove statuses that stop the walk and the jump (Rooted, Charm, Roped, Frozen, Stoneform, Stun,
+           Climbing…) stop it. One list, read by TargetQuery.spellBlockReason, so every menu greys the row with the
+           status' name, doSpell refuses it, the CPU (canAfford) never picks it and the online guest's menu greys it too.
+           teleportAnyUnit (warp any unit) still warps OTHER bodies: only the caster's own pick is refused. */
+        function spellMovesCaster(spell) {
+            if (!spell) return false;
+            const k = spell.kind;
+            if (k === 'dash' || k === 'escape' || k === 'swap' || k === 'leapStrike' || k === 'skySlam'
+                || k === 'tackle' || k === 'doorBreach') return true;
+            if (k === 'teleport') return !spell.teleportAnyUnit;
+            if (spell.chargeToTarget || spell.swapOnHit) return true;
+            if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) return true;
+            return false;
+        }
+        window.spellMovesCaster = spellMovesCaster;
+        /* the player-facing word for what pins the unit ('Rooted', 'Charmed', 'Roped', 'Frozen' …), null = free */
+        const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
+        function moveBlockWord(unit) {
+            if (!unit || !unit.status) return null;
+            const k = getActiveStatusKeys(unit).find(s => STATUS_DEFS[s]?.blockMove);
+            if (!k) return null;
+            return _MOVE_BLOCK_WORDS[k] || STATUS_DEFS[k].label || 'Rooted';
+        }
+        window.moveBlockWord = moveBlockWord;
 
         function unitFinished(unit) {
             return (unit.ap || 0) <= 0;
@@ -43973,6 +44001,8 @@
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
+                // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
+                if (spellMovesCaster(spell)) { const _mbw = moveBlockWord(unit); if (_mbw) return _mbw; }
                 if (!unitMeetsSpellTierReq(unit, spell)) {
                     const trl = Math.max(1, Math.min(3, (typeof spellTierOf === 'function' ? spellTierOf(spell) : 1) || 1));   // Phase 0: tier is numeric
                     return 'Req Lv.' + trl;
@@ -44227,6 +44257,8 @@
             if (!u.dead && isUnitRealmShieldedFrom(u, unit)) return false;   // 🌑 the Shadow Realm's line, both ways
             if (spellMissesFlyer(spell, u)) return false;
             if (isGrappleReel(spell) && u.id === unit.id) return false;   // THE GRAPPLE REEL: the hook never aims at the caster
+            // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
+            if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
@@ -80203,6 +80235,11 @@
 
                         if (!teleTarget) {
                             addLog('Choose a unit to teleport first.');
+                            playErrorSfx();
+                            return 0;
+                        }
+                        if (teleTarget.id === unit.id && unitMoveBlockedByStatus(unit)) {   // THE MOVE BLOCK ON SPELLS
+                            addLog(`${_ctName(unit)} is ${(moveBlockWord(unit) || 'Rooted').toLowerCase()} and cannot move: warp another unit.`);
                             playErrorSfx();
                             return 0;
                         }

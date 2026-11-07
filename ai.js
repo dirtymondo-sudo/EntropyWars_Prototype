@@ -6992,6 +6992,7 @@
         // (2) a hurt ally carried out of reach; (3) ourselves, hurt, blinked away
         for (const a of ours) {
             if ((a.hp / Math.max(1, a.maxHp)) >= 0.4 || (a.id !== unit.id && !okPick(a))) continue;
+            if (a.id === unit.id && typeof window.unitMoveBlockedByStatus === 'function' && window.unitMoveBlockedByStatus(unit)) continue;   // a pinned caster warps others, never itself
             const here = v.threatFn ? v.threatFn(a.x, a.y, a.z).totalDmg : 0;
             if (here <= 0) continue;
             for (const t of lands) {
