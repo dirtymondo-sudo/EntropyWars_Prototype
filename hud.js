@@ -6837,7 +6837,16 @@ function ActionMenu({ st, hidden }) {
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     }
     if (_aimOrientable) {
-      panels.push(_mkPanel('orient|' + (st._spellOrientation || ''), _hrlgOrientationBlades(st)));
+      /* THE ONE AIM PANEL (forced movement playtest 2026-11-07 O: Rampart's and Pyramid Protocol's aim drew a second
+         "RAMPART / CANCEL" panel, see-through, behind the Horizontal / Vertical list): the aim panel already holds the
+         spell's title and CANCEL, so the two orientation rows join it (one panel: ↔ / ↕ / CANCEL) instead of stacking a
+         second panel with the same title in front of it. A target-list aim keeps its own orientation panel. */
+      const _ap = panels[panels.length - 1];
+      if (_ap && /^aim\|spell\|/.test(_ap.key || '') && Array.isArray(_ap.blades) && _ap.blades.length <= 1) {
+        _ap.blades = _hrlgOrientationBlades(st).blades.concat(_ap.blades);
+      } else {
+        panels.push(_mkPanel('orient|' + (st._spellOrientation || ''), _hrlgOrientationBlades(st)));
+      }
     }
   } else if (menuView === 'items' && am === 'item' && st.selectedTool) {
     const itRule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[st.selectedTool] : null;

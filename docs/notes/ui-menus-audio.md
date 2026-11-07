@@ -2399,3 +2399,25 @@ default kit is 7/7 (raceDefaultKit, 134 races checked); race-to-race swaps alrea
 - Free Energy names its MP: "restoring 75 MP across the team (Sedan +25, …)".
 - Chivalry ward badge CHV (`getChivalryGuardian(unit)`, looks only, reads `_guardedBy`): 3D plates, unit panel chips, Pause > Party.
   Pause > Party also shows a live shield as "🛡 96".
+## THE CONFIRM TEXT PASS (2026-11-07, forced movement playtest families G + O)
+Proof: /mnt/project-files/confirm-plates-20261107/ (before = report shot or kill switch, after = this pass). All viewer-local, nothing relayed.
+- THE FORECAST COLUMN (three-renderer `_updateIntentBadges`): a body's forecast badges (number, pills, press !) form ONE column over its
+  head, stacked by measured height; its press mark sits on top. Columns stack upward, lowest first; `_fcBoxes` {l,r,t,b,uid}.
+  Plates stack over the columns (`_pmStack` starts from `_fcBoxes`). `window.EW_FC_PILE` = the old placement.
+- THE CLEAR PICK (floats): a floating number's spot pays FLOAT_CLEAR_COST when it covers >4% of another; scatter adds an outer ring
+  (×3.6) when every near spot is crowded (Sky Tackle's ~10 numbers).
+- THE HEAD ROOM: `ThreeRenderer.headRoomPx(id, out)` = forecast column + plate height (out.hw = half width). The menu two-shot
+  (battle.js `_menuCamBody`/`_menuCamSolve`) and the tile fits (`_tilePickFrame`: range fits, Rampart's aim, self-cast confirms) keep
+  that room over (and beside) each body inside the free frame; `_clearFrameRefit` refits ≤3× when the room grows. `EW_NO_HEAD_ROOM`.
+- THE FOOTPRINT IN FRAME: an armed AoE's footprint corners join the two-shot fit (`_menuAoePts`); a self-cast AoE arm frames through
+  `_frameQuickAoeConfirm`. `EW_NO_AOE_FRAME`.
+- THE NAME IN FRONT: the acting, aimed and forecast-hit units' plates draw with depthTest off (over walls/trees).
+  `EW_PLATE_DEPTH_ALL` = all depth-tested. THE AIMED PLATE: the aim's plate filter keeps tp-targeted units and every unit with a
+  forecast column (MOVE→CAST picks and self-cast hits had nameless bodies).
+- World text yields: the Cube plate fades over unit plates, forecast columns and Nexus counters (`_nxBoxes`); the Nexus counter fades over
+  menus/HUD chrome, forecast columns, unit plates and floating numbers. `_scaleNexusPlates` now runs BEFORE the draw (size cap + fade
+  were a frame late; s9a's full-size counter over the map name).
+- THE ONE AIM PANEL (hud.js): an orientable spell's ↔ / ↕ rows join the aim panel's CANCEL (no see-through second "RAMPART / CANCEL"
+  panel); entering the orientation step clears the menu press marks (stale "EARTH RESISTED").
+- THE HOLOGRAM READS AS ONE: the MOVE→CAST model hologram is lifted ×2.4 toward its tint and drawn at ×0.7 opacity (the dark Demon read
+  as a second Demon). `EW_GHOST_OLD`.
