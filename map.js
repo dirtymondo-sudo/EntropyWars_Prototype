@@ -15234,6 +15234,7 @@
         }
 
         function applyTerrainTurnEffects(unit) {
+            if (!unit || unit.dead || unit._dying) return;   // 💀 THE FALLEN TAKE NOTHING: no lava / plague / ooze tick on a body (battle.js applyStatusPayload)
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             /* CHAMP_REWORK Phase 5 wave C (2026-09-08): Oozing's trail — the
@@ -16314,6 +16315,7 @@
             unit._streakAtkBonus = 0;
             unit._turnKills = 0;
             unit.skyBuff = null;   // a new life never carries the celestial buff back
+            unit._lavaBurnStacks = 0;   // nor the last life's lava stacks (they escalate the Burn tick — data.js STATUS_DEFS.burn)
             /* a fresh life that wears no stance carrier (STATUS_DEFS `form` — the Sedan's Mecha) drops the form's model:
                the respawn wipes mechaForm, so the Sedan comes back a CAR, not a car-stats robot (2026-10-24) */
             if (unit._spriteOverride && !Object.keys(unit.status || {}).some(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].form)) {

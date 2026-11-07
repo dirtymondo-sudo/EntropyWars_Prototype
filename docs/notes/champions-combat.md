@@ -4109,3 +4109,14 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   10 CPU rounds: Ringmaster grappled in, Stadium Show, took the Central Nexus; zero empty casts.
 - battle.js aoePull log now names the caster ("X casts Crowd Surge: hits N targets…" / "…but no enemies are in range.").
 - G2: "splashes 1 unit round X" -> "around".
+
+## THE FALLEN TAKE NOTHING (2026-11-07, elements playtest D1)
+"Witch is defeated" then "Plasma Cannon: Witch is burning / jammed": map.js defeatUnit sets hp 0 + `_dying` at the killing
+blow and flips `dead` only after the ~800 ms fall, and every status gate checked `dead` alone, so the same hit's status payload,
+a lava / plague end-of-turn tick, a second weather pass or a round-end DoT dive still reached the falling body. Now `dead ||
+_dying` gates: battle.js applyStatusPayload / applyStatusEffects / applyStatStageBoost / applySeedEffectToUnit /
+applyAuraTreeEffectToUnit / processEndOfRoundStatuses (affected list, both tick loops: the tick that downs a unit is its last and
+reads "claimed by"), map.js applyTerrainTurnEffects, state.js beginBlitzRound terrain loop + applyWeatherTurnEffects. Damage and
+heals were already gated. A new life starts clean: processRespawns wipes `status`, and resetUnitPowerState now also zeroes
+`_lavaBurnStacks` (they escalated the next life's first lava Burn tick). Statuses a unit wore BEFORE it fell stay on the body
+until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule).
