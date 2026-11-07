@@ -2944,6 +2944,24 @@ invisible, untargetable, immune to everything not from each other ... In there, 
 - Calls flagged to mondo: the hidden pair still HOLDS its squares on the board (nobody can step there); the turn column
   still lists them; an area spell cast in the realm still paints terrain on the real squares (it only hurts the partner).
 
+## THE REALM LINE ON EVERY LIST (2026-11-07, zones/traps playtest family I: "the Wolf bit the Fairy inside the Shadow Realm", "Oath of Valor buffed the Demon inside the Realm")
+- Cause: the per-target gates (damage / heal / status) held, but every LIST built from `aliveUnitsFor` skipped them: the
+  summon / zombie hunters and turrets (processTurretVolleys prey / inRange) picked a realm unit, logged the bite and the
+  gate ate the damage; team auras (warCry, healAll, aoeAllyHeal, aoeShield, manaRestoreAll, rallyPull, cleanseArea, combo
+  heals) counted and buffed across the line (applyStatStageBoost had no realm gate; shields and MP had none at all).
+- Fix: battle.js `realmReachableFrom(list, actor)` (window too) = the units of a list the actor can reach (a null actor =
+  the board). Every ally collector above, every `aliveUnitsFor(enemyOf(unit.player))` list in battle.js, the preview
+  tiles (warCry / healAll / manaRestoreAll), Leech Seed / Tree heals, seed and tree auras, Federation Beacon, the hound's
+  nose, summon prey, turret targets (and three-renderer's turret laser) filter through it. applyStatStageBoost refuses a
+  stage from across the line (like applyStatusPayload). ai.js `_aiReachable`: the CPU's allies view (v.allies), potions,
+  healAll / warCry / manaRestoreAll / rallyPull / encore / aoeAllyHeal scoring. ui.js MP forecast for manaRestoreAll.
+  state.js weather (the sky is the board's): turn effects, homing eye targets, stormStrikeUnit, instant spawn hits and
+  getWeatherStatMod skip a realm unit (Blood Rain "restored" both ends of the pair).
+- Proof (VS CPU, North Pole 10x10, by hand, /mnt/project-files/playtest-mechanics-20261107/shadow-realm-fix/): Oath of Valor
+  with the realm Demon 2 tiles away = "3 allies" (Demon stages 0); the CPU General in the realm cast Rally Command with Gnome
+  2 tiles away = "1 ally" (Gnome stages 0); the Wolf beside the realm General "closes on Gnome" instead.
+- Unchanged on purpose: end-of-round regen (source-less self regen) and Nexus/celestial rules.
+
 ## THE GAP CLOSES WHOLE + THE HANG ON A GONE WALL (2026-10-26, mondo: "after 3 rounds fissure the map returns to normal, but i was climbing as it did so, and it didnt raise the ground all the way back up for the tile i was on, but the other 2 tiles it did")
 - Cause (reproduced VS CPU, Mount Shasta, Golem Fissure + Ice Queen Hailstorm): a water / ice hit on a unit in the gap hardens
   that cell's lava into stone (triggerTerrainSpellReaction) and map.js _noteTerrainChange restarted THAT cell's clock at 3, so

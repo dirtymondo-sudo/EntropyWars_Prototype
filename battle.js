@@ -666,7 +666,7 @@
             if (!unit || unit.dead) return;
             if (fromZ == null) fromZ = unit.z ?? 0;
             if (fromStandH == null) fromStandH = fromZ;
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             for (const enemy of enemies) {
 
                 if (Math.abs(enemy.x - fromX) > 1 || Math.abs(enemy.y - fromY) > 1) continue;
@@ -6943,7 +6943,7 @@
             const r = spell && spell.jammedArc;
             if (!r || !target || !(dmg > 0)) return;
             const arcDmg = Math.max(1, Math.round(dmg * (r.mult > 0 ? r.mult : 0.5)));
-            for (const e of aliveUnitsFor(enemyOf(unit.player))) {
+            for (const e of realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)) {
                 if (!e || e.dead || e.id === target.id || !unitHasStatus(e, 'jammed')) continue;
                 if (Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) !== 1) continue;
                 applyDamageToUnit(e, arcDmg, `${spell.name} arcs to `, {
@@ -6964,14 +6964,14 @@
                    that many more times (the extra hops carry the last hop's damage). */
                 let _chainProfile = spell.chainProfile;
                 if (spell.chainWetHops > 0) {
-                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), _chainProfile.length, spell.chainRadius || 1);
+                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), _chainProfile.length, spell.chainRadius || 1);
                     if (_probe.some(u => u && (unitHasStatus(u, 'wet') || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(u))))) {
                         _chainProfile = _chainProfile.concat(Array(spell.chainWetHops).fill(_chainProfile[_chainProfile.length - 1]));
                         addLog(`⚡💧 ${_ctSp(spell.name)} finds water — the chain jumps further!`);
                     }
                 }
                 const chain = calcChainTargets(target,
-                    spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))),   // THE SEEN SPLIT: links only find seen enemies
+                    spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)),   // THE SEEN SPLIT: links only find seen enemies
                     _chainProfile.length, spell.chainRadius || 1);
 
                 const staggerMs = actionMs(140);
@@ -7601,7 +7601,7 @@
         //         deformCenter, log }
         // ═══════════════════════════════════════════════════════════════════
         function _applyAoeDamage(unit, spell, tiles, baseDmg, spellPower, opts = {}) {
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
             let _aoeDrainTotal = 0;   // THE SPELL AUDIT Batch D: aoeLifeDrain's pool (HP actually taken, every victim)
@@ -7896,7 +7896,7 @@
         // Returns { cam, projectileDelay, impactDelay, completionDelay }.
         // ═══════════════════════════════════════════════════════════════════
         function _setupAoeCameraAndTiming(unit, spell, tx, ty, tiles) {
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             const firstHit = enemies.find(e => tiles.some(t => t.x === e.x && t.y === e.y));
             const extraTargets = firstHit ? enemies.filter(e => e !== firstHit && tiles.some(t => t.x === e.x && t.y === e.y)) : [];
             const camTarget = firstHit || { x: tx, y: ty };
@@ -8871,17 +8871,17 @@
                     const t0 = unitAt(tx, ty);
                     tiles = [{ x: tx, y: ty }];
                     if (t0) {
-                        spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e => e.id !== t0.id && !e.dead
+                        spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e => e.id !== t0.id && !e.dead
                             && Math.abs(e.x - t0.x) + Math.abs(e.y - t0.y) <= (spell.splitRadius || 2))
                             .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2)
                             .forEach(e => tiles.push({ x: e.x, y: e.y }));
                     }
                 } else if (kind === 'healAll' || kind === 'manaRestoreAll') {
                     // Free Energy (manaRestoreAll) skips its caster (doSpell), so its tiles do too
-                    tiles = aliveUnitsFor(unit.player).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
+                    tiles = realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'warCry') {
                     const r = spell.auraRadius || 3;
-                    tiles = aliveUnitsFor(unit.player)
+                    tiles = realmReachableFrom(aliveUnitsFor(unit.player), unit)
                         .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= r)
                         .map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'terrainCreate' && spell.orientable) {
@@ -9981,6 +9981,8 @@
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
             if (_unitIsDown(target) || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
+            /* 🌑 Shadow Realm: no stage from across the realm's line, either way (an aura's buff counted the Demon inside) */
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return;
             // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
             // never apply — the positive half of a mixed boost still lands.
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
@@ -10508,7 +10510,7 @@
            enemy within `range` (Manhattan) of the landing tile that the
            shooter can see (not concealed from them, no terrain in the way). */
         function _afterShotTarget(unit, lx, ly, range) {
-            const cands = aliveUnitsFor(enemyOf(unit.player)).filter(e => !e.dead
+            const cands = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => !e.dead
                 && Math.abs(e.x - lx) + Math.abs(e.y - ly) <= range
                 && !(typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(e, unit))
                 && !(typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(lx, ly, e.x, e.y)));
@@ -11900,7 +11902,7 @@
                         pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                     }
                     // Everything drained is channeled to the owner's weakest ally.
-                    const ownerAllies = aliveUnitsFor(seed.owner);
+                    const ownerAllies = realmReachableFrom(aliveUnitsFor(seed.owner), null);   // 🌑 the seed is the board's
                     if (dmg > 0 && ownerAllies.length > 0) {
                         const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                         const healed = applyHealingToUnit(target, dmg, null);
@@ -12126,7 +12128,7 @@
                     pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 // Everything drained is channeled to the owner's weakest ally.
-                const ownerAllies = aliveUnitsFor(tree.owner);
+                const ownerAllies = realmReachableFrom(aliveUnitsFor(tree.owner), null);   // 🌑 the tree is the board's
                 if (dmg > 0 && ownerAllies.length > 0) {
                     const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                     const healed = applyHealingToUnit(target, dmg, null);
@@ -12193,6 +12195,7 @@
             if (!_seedsLeft && !auraTrees.length) return;
             for (const unit of aliveUnitsFor(player)) {
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                if (shadowRealmKey(unit)) continue;   // 🌑 no seed or tree aura reaches into the Shadow Realm
                 if (_seedsLeft) {
                     const seedsHere = _seedsLeft.filter(s => s.x === unit.x && s.y === unit.y);
                     for (const seed of seedsHere) {
@@ -13090,7 +13093,14 @@
         window.shadowRealmKey = shadowRealmKey;
         window.realmViewKey = realmViewKey;
         window.isUnitOutOfRealmView = isUnitOutOfRealmView;
+        /* 🌑 THE REALM LINE ON EVERY LIST (11-07, mondo: "units sent to the Shadow Realm can still be bitten and buffed"):
+           the units of `list` the actor can reach — a null actor (a summon, a turret, a beacon, a tree) is the board,
+           so nobody inside a realm. Every team aura, area list and board hunter filters through this, both ways. */
+        function realmReachableFrom(list, actor) {
+            return (list || []).filter(u => u && !isUnitRealmShieldedFrom(u, actor || null));
+        }
         window.isUnitRealmShieldedFrom = isUnitRealmShieldedFrom;
+        window.realmReachableFrom = realmReachableFrom;
         window.closeShadowRealmFor = closeShadowRealmFor;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
@@ -39103,7 +39113,7 @@
             if (!candidates.length) return null;
             // THE FOG (2026-10-21 audit #1): run from the enemies your side can SEE — the preview shows this landing,
             // so a hidden enemy must not bend it (the cast reads the same rule, so preview = cast)
-            const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => _isUnitVisibleToViewer(e, unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => _isUnitVisibleToViewer(e, unit.player));
             candidates.sort((a, b) => {
                 const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
                 const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
@@ -39190,7 +39200,7 @@
         /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
            allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
         function rallyPullPlan(unit) {
-            const knights = aliveUnitsFor(unit.player)
+            const knights = realmReachableFrom(aliveUnitsFor(unit.player), unit)
                 .filter(a => a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 1 && !unitHasStatus(a, 'root'))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
             const taken = new Set(state.units.filter(u2 => !u2.dead).map(u2 => u2.x + ',' + u2.y));
@@ -39303,12 +39313,12 @@
         // kind 'healAll': THE SPELL AUDIT Batch C — auraRadius limits it to allies within that many tiles of the caster
         // (Rejuvenation, Milk and Cookies); without it the whole team
         function healAllAlliesOf(unit, spell) {
-            return aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
+            return realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => !spell.auraRadius
                 || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
         }
         // aoeAllyHeal (Trick or Treat, 2026-10-29): the allies standing on the area's tiles, the caster included
         function aoeAllyHealAlliesOf(unit, tiles) {
-            return aliveUnitsFor(unit.player, unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
+            return realmReachableFrom(aliveUnitsFor(unit.player, unit), unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
         }
         function aoeAllyHealAmountFor(unit, spell, ally) {
             const base = spell.aoeAllyHeal || 0;
@@ -39335,7 +39345,7 @@
         // kind 'aoeShield': every ally in the area gets the row's whole shield (caster-level scaled), stacking to the cap
         function aoeShieldAlliesOf(unit, spell, x, y) {
             const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-            return aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
+            return realmReachableFrom(aliveUnitsOnFloor(unit.player), unit).filter(a => area.some(t => t.x === a.x && t.y === a.y));
         }
         function aoeShieldPerAlly(unit, spell) {
             return (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
@@ -40015,10 +40025,10 @@
                 if (spell.chainProfile && spell.chainProfile.length) {
                     let prof = spell.chainProfile;
                     if (spell.chainWetHops > 0) {
-                        const probe = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), prof.length, spell.chainRadius || 1);
+                        const probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), prof.length, spell.chainRadius || 1);
                         if (probe.some(u => u && (unitHasStatus(u, 'wet') || _unitIsSoaked(u)))) prof = prof.concat(Array(spell.chainWetHops).fill(prof[prof.length - 1]));
                     }
-                    const chain = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), prof.length, spell.chainRadius || 1);
+                    const chain = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), prof.length, spell.chainRadius || 1);
                     chain.forEach((u, i) => { const d = calcFlatSpellDamage(prof[i], sp, 16); hit(u, d, d, d, hopts, i ? { tag: 'chain' } : null); });
                 } else {
                     const riders = (b) => calcSpellHitRiders({
@@ -40128,7 +40138,7 @@
                     mopts = { pullCenter: spell.pullToCenter ? { x, y } : null, groundAirborne: true };
                 }
                 plan.tiles = area;
-                const enemies = aliveUnitsFor(enemyOf(unit.player));
+                const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
                 const clash = _isClashMode();
                 const canPullIn = !!(spell.pullToCenter && mopts.pullCenter && !clash);
                 const pullJobs = [], pull1Jobs = [], pushJobs = [];
@@ -40358,7 +40368,7 @@
                 if (!target) return;
                 const primary = Math.max(32, (spell.dmg || 0) + sp);
                 const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined });
-                const near = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e => e.id !== target.id && !e.dead
+                const near = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e => e.id !== target.id && !e.dead
                     && Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2))
                     .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
                 hit(target, primary, primary, primary, hopts);
@@ -40934,6 +40944,7 @@
                         if (turret.summon && turret.reveals > 0) {
                             for (const e of state.units) {
                                 if (e.dead || e._dying || e.player === turret.owner) continue;
+                                if (shadowRealmKey(e)) continue;   // 🌑 no nose reaches into the Shadow Realm
                                 if (!unitHasStatus(e, 'invisible')) continue;
                                 if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > turret.reveals) continue;
                                 clearStatus(e, 'invisible');
@@ -40943,6 +40954,7 @@
                         }
                         const prey = state.units
                             .filter(u => !u.dead && !u._dying
+                                && !shadowRealmKey(u)   // 🌑 the Wolf "bit" the Fairy in the Shadow Realm: no hunter on the board sees in
                                 && (!turret.summon || u.player !== turret.owner)
                                 && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'))
                             .sort((a, b) => {
@@ -40991,7 +41003,8 @@
                         continue;
                     }
                     const inRange = getHostileUnits(turret.owner)
-                        .filter(u => (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
+                        .filter(u => !shadowRealmKey(u)   // 🌑 nor any gun
+                            && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
                             && Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y) <= turret.range
                             && turretHasShotAt(turret, u))   // a wall between them (Rampart) blocks the shot
                         .sort((a, b) => {
@@ -46295,7 +46308,7 @@
                 const area = (spell.kind === 'aoePull')   // the aoePull branch's own footprint
                     ? (_spellMaskTiles(spell, unit.x, unit.y) || getSquareArea(unit.x, unit.y, spell.aoeRadius || 1))
                     : getSpellAoeArea(spell, unit.x, unit.y);
-                pool = aliveUnitsFor(enemyOf(unit.player)).filter(e => (e.x !== unit.x || e.y !== unit.y)
+                pool = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => (e.x !== unit.x || e.y !== unit.y)
                     && area.some(t => t.x === e.x && t.y === e.y));
             }
             return pool.filter(e => _novaSeesEnemy(unit, spell, e) && spellTargetUsableOn(unit, spell, e));
@@ -46331,7 +46344,7 @@
                 ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
             const srcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             const longR = isLongRangeSpell(spell);
-            return aliveUnitsFor(enemyOf(unit.player)).filter(e => {
+            return realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => {
                 if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
                 const dist = (typeof combatReach === 'function')
                     ? combatReach(unit.x, unit.y, srcZ, e.x, e.y, e.z ?? 0, longR)
@@ -46353,7 +46366,7 @@
             /* A hollow mask (no [0,0]) needs the centre picker too — its centre never hits. */
             const _m = _spellMaskOf(spell); const _hollow = !!(_m && !_m.some(o => !o[0] && !o[1]));
             if (spell.aoeShape !== 'ring' && !_hollow) return { x: tx, y: ty };
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             let best = null, bestScore = -Infinity;
             for (const c of getSpellRangeTiles(unit, spell)) {
                 const area = getSpellAoeArea(spell, c.x, c.y);
@@ -59289,6 +59302,7 @@
                     for (const _bcnObj of state._deployedObjects) {
                         if (_bcnObj.hp <= 0 || !_bcnObj.healOnTurnStart || !_bcnObj.auraHeal || !_bcnObj.auraRadius) continue;
                         if (_bcnObj.ownerPlayer !== nextUnit.player) continue;
+                        if (shadowRealmKey(nextUnit)) continue;   // 🌑 the beacon stands on the board
                         const _bcnDist = Math.abs(nextUnit.x - _bcnObj.x) + Math.abs(nextUnit.y - _bcnObj.y);
                         if (_bcnDist > _bcnObj.auraRadius) continue;
                         const _bcnHpBefore = nextUnit.hp;
@@ -74930,7 +74944,7 @@
             else if (combo.kind === 'aoe') {
                 window.setTimeout(() => {
                     const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
-                    const enemies = aliveUnitsOnFloor(enemyOf(initiator.player), null);
+                    const enemies = realmReachableFrom(aliveUnitsOnFloor(enemyOf(initiator.player), null), initiator);
                     for (const tile of area) {
                         // Every enemy in the tile's column (a flyer over a ground unit).
                         for (const hit of enemies.filter(e => e.x === tile.x && e.y === tile.y)) {
@@ -74956,7 +74970,7 @@
 
             else if (combo.kind === 'healAll') {
                 const healAmt = Math.round((combo.heal || 20) * synergyMult);
-                for (const ally of aliveUnitsFor(initiator.player)) {
+                for (const ally of realmReachableFrom(aliveUnitsFor(initiator.player), initiator)) {
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
@@ -74990,7 +75004,7 @@
 
             if (combo.comboHeal && combo.comboHeal > 0) {
                 const healAmt = Math.round(combo.comboHeal * synergyMult);
-                for (const ally of aliveUnitsFor(initiator.player)) {
+                for (const ally of realmReachableFrom(aliveUnitsFor(initiator.player), initiator)) {
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
@@ -78303,7 +78317,7 @@
                 // healAll: sender ≠ payoff).
                 _vfxMana(unit.x, unit.y, { soft: true });
                 unit.mp -= effectiveSpellCost;
-                const allies = aliveUnitsFor(unit.player);
+                const allies = realmReachableFrom(aliveUnitsFor(unit.player), unit);   // 🌑 nobody across the realm's line
                 // Same two-beat structure as healAll: cast on the caster,
                 // then the camera cuts wide and the restore visibly lands on
                 // each ally (blue burst + floating MP), staggered.
@@ -78575,7 +78589,7 @@
                 }
                 const _caRadius = spell.aoeRadius != null ? spell.aoeRadius : 1;
                 const _caUnits = (_spellMaskTiles(spell, x, y) || getSquareArea(x, y, _caRadius))
-                    .map(t => unitAt(t.x, t.y)).filter(u => u && !u.dead);
+                    .map(t => unitAt(t.x, t.y)).filter(u => u && !u.dead && !isUnitRealmShieldedFrom(u, unit));
                 playSfx(spellLaunchSfx(spell));
                 _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
@@ -79937,7 +79951,7 @@
                 // Predict the split victims (same filter the impact resolution
                 // uses) so beat 2 frames the whole cluster, not just the
                 // primary target.
-                const _sbNearby = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e =>   // THE SEEN SPLIT
+                const _sbNearby = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e =>   // THE SEEN SPLIT
                     e.id !== target.id && !e.dead &&
                     Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2)
                 ).sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
@@ -79978,7 +79992,7 @@
                 const splitStartDelay = impactDelay + actionMs(350);
                 const splitGap = actionMs(280);
                 window.setTimeout(() => {
-                    const nearby = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e =>   // THE SEEN SPLIT (K4)
+                    const nearby = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e =>   // THE SEEN SPLIT (K4)
                         e.id !== target.id && !e.dead &&
                         Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= splitRadius
                     ).sort((a, b) => a.hp - b.hp).slice(0, splitCount);
@@ -82323,7 +82337,7 @@
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: radius });
                 } else { _vfxBuff(unit.x, unit.y); }
-                const allies = aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
+                const allies = realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);   // 🌑 Oath of Valor counted the Demon in the realm
                 let buffCount = 0;
                 // THE SPELL AUDIT Batch C: cleanse N debuffs (true = 1, 99 =
                 // every one) from each ally in the aura (Mantra, Everybody Up).

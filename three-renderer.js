@@ -26943,6 +26943,7 @@ const ThreeRenderer = (function () {
                 for (var ui = 0; ui < state.units.length; ui++) {
                     var u = state.units[ui];
                     if (!u || u.dead || u._dying || u.player === turret.owner) continue;
+                    if (typeof window.shadowRealmKey === 'function' && window.shadowRealmKey(u)) continue;   // 🌑 the volley never shoots into the realm
                     var d = Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y);
                     if (d > turret.range || d > bestD) continue;
                     if (d === bestD && best && u.hp >= best.hp) continue;
