@@ -1841,7 +1841,7 @@
                 homingSpeed: 2,
                 global: true,
                 duration: [3, 4],
-                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the wet. -5 DEF in the eye. Leaves puddles.',
+                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the Soaked. -5 DEF in the eye. Leaves puddles.',
                 element: 'lightning',
                 soaks: true,
                 seedTerrain: 'water',
