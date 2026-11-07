@@ -9345,6 +9345,8 @@
             // highlight/click gates reject casts the engine would accept
             // ("no longer in range" while hovering right next to the target).
             const _skyGrab = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+            const _flatReach = spellReachIsFlat(spell);   // THE GROUND REACH: dashes + leap strikes measure flat steps
+            const _pairPk = _pairPhasePick(spell);       // THE PAIR RULE: Soul Bind's second pick
 
             // 'delayed' (artillery / called-in strikes) is indirect fire that arcs over
             // terrain — exempt from line-of-sight so its range highlight (and the AI's
@@ -9369,8 +9371,12 @@
                             : null;
                         if (colEnemy) tz = colEnemy.z ?? 0;
                     }
-                    let effectiveD = _skyGrab ? dxy : combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
-                    if (effectiveD < minR || effectiveD > effRange) continue;
+                    let effectiveD = (_skyGrab || _flatReach) ? dxy : combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
+                    if (_pairPk) {
+                        // THE PAIR RULE: the second pick lies within pairRange of the first (the first pick stays lit to un-pick it)
+                        const _pd = Math.abs(_pairPk.x - cx) + Math.abs(_pairPk.y - cy);
+                        if (_pd > spell.pairRange || (_pd === 0 && (effectiveD < minR || effectiveD > effRange))) continue;
+                    } else if (effectiveD < minR || effectiveD > effRange) continue;
 
                     if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
 
@@ -43565,6 +43571,7 @@
                 case 'teleport':      return nm + ': select a destination tile.';
                 case 'dash':          return spell.afterShot
                     ? nm + ': select a tile to dash to — you then fire at the weakest enemy within ' + (spell.afterShot.range || 3) + ' tiles of it.'
+                    : spell.chargeToTarget ? nm + ': select an enemy to charge, or a tile to dash to.'   // THE CHARGE ROWS
                     : nm + ': select a tile to dash to.';
                 case 'warpRune':      return nm + ': select a tile to place the warp rune on.';
                 case 'bomb':          return nm + ': select a tile to place the bomb on.';
@@ -44693,6 +44700,9 @@
                 /* Mystery Dungeon lockstep: any move/jump/height-then-cast plan is
                    two beats' worth of action — never light a blade for it. */
                 if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
+                /* a self blink is cast from where the caster stands — its click is the landing, it never walks first
+                   (playtest 2026-11-07 P3), and a two-click cast mid-pick never walks either (the step drops the pick) */
+                if (_spellNeverApproaches(unit, spell)) return false;
                 const sx = unit.x, sy = unit.y, sz = unit.z;
                 /* SIGHT FROM WHERE IT STANDS (playtest 2026-10-21: Sasquatch Smash wore MOVE→CAST, its list said "No
                    targets in range"): the probe below moves the caster, and the sight gate then judged fog from the
@@ -45938,6 +45948,22 @@
         window.isTileAoeSpell = isTileAoeSpell;
         window.findBestAoeAimForTarget = findBestAoeAimForTarget;
 
+        /* THE GROUND REACH (playtest 2026-11-07 B1 / I: Runaway Train and Grotesque Dive wore MOVE→CAST on an enemy in
+           reach, and confirming walked the caster first): a dash runs along the ground and a leap strike drops onto a
+           body below, so their reach is the flat step count — doSpell's dash branch measures plain 2D Manhattan (the
+           quick menu's "Engine parity" note says so), and the leap strike measures flat steps and pays MORE for every
+           level it drops. The 3D radius (combatReach: height as its own axis) counted the drop or the climb against
+           the range. Sky grabs already measured flat. */
+        function spellReachIsFlat(spell) {
+            return !!spell && (spell.kind === 'dash' || spell.kind === 'leapStrike');
+        }
+        window.spellReachIsFlat = spellReachIsFlat;
+        /* the first pick of a paired two-click cast (Soul Bind: pairRange) while the second click is being chosen */
+        function _pairPhasePick(spell) {
+            if (!spell || !spell.pairRange || !_kindMeta(spell).twoClick) return null;
+            return _twoClickPick(spell);
+        }
+        window._pairPhasePick = _pairPhasePick;
         /* ═══ THE ONE AIM RULE (2026-10-16, mondo: Dragon Slash greyed under Abilities as "No target", offered on the
            enemy's quick menu, then refused with "Spell target is out of range" — "so is it out of range or not??").
            Four places each kept their own copy of "can this spell reach that body": doSpell, the Abilities button
@@ -45961,7 +45987,8 @@
                 const u = resolveUnitInColumn(unit, x, y, z, {
                     side: _sideC,
                     inRange: c => {
-                        const dd = (c._isBoss && c._bossSize === 2)
+                        const dd = spellReachIsFlat(spell) ? (Math.abs(unit.x - c.x) + Math.abs(unit.y - c.y))   // THE GROUND REACH
+                            : (c._isBoss && c._bossSize === 2)
                             ? spellReachToTarget(unit, spell, c)
                             : combatReach(unit.x, unit.y, unit.z ?? 0, c.x, c.y, c.z ?? 0, _lrC);
                         return dd >= _minRC && dd <= _effRC;
@@ -45991,9 +46018,20 @@
             }
             const skyGrab = spell.kind === 'skyDrop' || spell.kind === 'skySlam'
                 || (spell.kind === 'skyThrow' && !unit._skyThrowGrab);
-            const minRange = _kindMeta(spell).minRange ?? 1;
-            const effRange = getEffectiveSpellRange(unit, spell);
-            const gateD = skyGrab ? rawDxy : d;
+            let minRange = _kindMeta(spell).minRange ?? 1;
+            let effRange = getEffectiveSpellRange(unit, spell);
+            let gateD = (skyGrab || spellReachIsFlat(spell)) ? rawDxy : d;
+            /* THE PAIR RULE (playtest 2026-11-07 I: Soul Bind's second pick was judged by the caster's range of 3, so a
+               second enemy "within 4 tiles of it" wore MOVE→CAST and the walk threw the first pick away): the second
+               click of a paired two-click cast (pairRange) reaches what is within pairRange of the FIRST pick — the
+               rule its text and doSpell's pair gate already state. The first pick itself keeps the caster's range
+               (clicking it again un-picks it). */
+            const _pairPk = _pairPhasePick(spell);
+            if (_pairPk && !(_pairPk.x === x && _pairPk.y === y)) {
+                gateD = Math.abs(_pairPk.x - x) + Math.abs(_pairPk.y - y);
+                minRange = 1;
+                effRange = spell.pairRange;
+            }
             return {
                 d, rawDxy, gateD, minRange, effRange, skyGrab, longRange,
                 inRange: gateD >= minRange && gateD <= effRange,
@@ -46257,6 +46295,14 @@
 
             if (kind === 'teleport' && spell.onlyTerrain) return getTeleportTerrainTiles(unit, spell).length > 0;
             if (kind === 'teleport' && spell.prismBlink) return prismBlinkTiles(unit).length > 0;   // B4
+            /* THE SELF BLINK (playtest 2026-11-07 P3: Land on Your Feet / Cathedral Perch wore MOVE→CAST with nobody near):
+               a self teleport's only click is its landing, so it has a target exactly when a free landing tile lies in
+               its reach (getTeleportLandingReach + the landing gates of doSpell's teleport branch) — not when some
+               unit happens to stand within range. */
+            if (kind === 'teleport' && !spell.teleportAnyUnit) {
+                return getTeleportLandingReach(unit, spell).some(t => (t.x !== unit.x || t.y !== unit.y)
+                    && !unitAt(t.x, t.y) && isTerrainPassable(t.x, t.y));
+            }
             if (kind === 'teleport') {
                 const all = state.units.filter(u => !u.dead);
                 return all.some(u => {
@@ -46505,7 +46551,17 @@
         // the turn), preferring the tile FARTHEST from the target that still
         // has it in range (kite/safety) — matching the quick-action menu's
         // findMoveIntoRange.
+        /* NO WALK FIRST (playtest 2026-11-07 P3 + I): a self teleport's click IS its landing (it is never cast after a
+           step), and the second click of a two-click cast (Soul Bind) can't follow a step — the step drops the first
+           pick, so "Move + cast" started the pair over. Neither offers MOVE→CAST. */
+        function _spellNeverApproaches(unit, spell) {
+            if (!spell) return false;
+            if (spell.kind === 'teleport' && _teleportLandingPhase(spell)) return true;
+            if (_kindMeta(spell).twoClick && _twoClickPick(spell)) return true;
+            return false;
+        }
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
+            if (_spellNeverApproaches(unit, spell)) return null;
             const steps = _spellMoveBudget(unit, spell);
             const sx = unit.x, sy = unit.y, sz = unit.z;
             /* THE ONE AIM RULE (2026-10-16): aimed at a BODY, "in reach from the probe tile" is the cast's own
@@ -63916,7 +63972,12 @@
                    sight line, team sight (the telescope's sky shots included), the doors, Cryptid / Shadow
                    Realm. The drum's own copy of those numbers is what drifted from the cast. */
                 if (spellAimProblemOn(unit, spell, u)) continue;
-                targets.push({ x: u.x, y: u.y, dist: spellReachToTarget(unit, spell, u), unit: u });
+                // THE GROUND REACH: a dash / leap strike row reads its flat steps; THE PAIR RULE: a second pick reads its
+                // steps from the first pick (the reach it is judged by)
+                const _vtPair = _pairPhasePick(spell);
+                targets.push({ x: u.x, y: u.y, unit: u,
+                    dist: _vtPair ? Math.abs(u.x - _vtPair.x) + Math.abs(u.y - _vtPair.y)
+                        : spellReachIsFlat(spell) ? Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) : spellReachToTarget(unit, spell, u) });
             }
             _orderTargetsByNeed(spell, targets);
             // 🗯 Provoke: when the caster is taunted and the challenger sits in
@@ -63946,6 +64007,7 @@
         function _getSpellApproachTargets(unit, spell, haveSet) {
             if (!unit || !spell) return [];
             if (isSpellSelfCast(spell)) return [];
+            if (_spellNeverApproaches(unit, spell)) return [];   // NO WALK FIRST: self blinks, a two-click cast mid-pick
             if (spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) return [];   // THE LANDING PICK: the body is already held
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
             if (unitSpellsBlocked(unit)) return [];

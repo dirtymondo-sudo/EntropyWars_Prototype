@@ -4359,3 +4359,26 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 (`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
+
+## IN-RANGE CASTERS NEVER WALK FIRST (2026-11-07, forced-movement playtest B1 / I / P3)
+The playtest (/mnt/project-files/playtest-mechanics-20261107/forced-movement/) found in-range casts tagged MOVE→CAST and
+walking the caster first. Existing rules only, no new range:
+- **THE GROUND REACH** (battle.js `spellReachIsFlat`): `dash` and `leapStrike` measure reach in FLAT steps in
+  `_spellAimReach` (gateD), `_spellAimTarget`'s column pick, `getSpellRangeTiles` and the ui.js range light. doSpell's dash
+  branch was already plain 2D Manhattan (the hud quick menu's "Engine parity" note) and the leap strike measures flat and pays
+  more per level dropped; the shared 3D radius (combatReach, height as its own axis) counted the climb / the drop against the
+  range (Grotesque Dive from z10 at 2 squares, Runaway Train onto a raised enemy). Line of sight and fog are unchanged.
+- **THE CHARGE ROWS** (hud.js `_aimCharge`): a `dash` with `chargeToTarget` (Runaway Train, Shadow Infiltration, Dark Feather,
+  Stampede, Ram Charge, Bull Rush, Blitz) lists the enemies it reaches as target rows; the prompt says "select an enemy to
+  charge, or a tile to dash to". Board tile aim still works.
+- **THE PAIR RULE** (battle.js `_pairPhasePick`): the second click of a two-click cast with `pairRange` (Soul Bind) is judged
+  within pairRange of the FIRST pick (its text + doSpell's pair gate), not by the caster's range; the first pick itself keeps
+  the caster's range (click it again to un-pick). Lit tiles (ui.js) and row distances read the same.
+- **NO WALK FIRST** (battle.js `_spellNeverApproaches`): self teleports (the click is the landing) and a two-click cast
+  mid-pick (a step drops the first pick) never offer MOVE→CAST (findSpellApproachTile, _getSpellApproachTargets,
+  TargetQuery.hasReachableTarget).
+- **THE SELF BLINK** (hasSpellTargetInRange): a self teleport has a target when a free passable landing tile lies in
+  getTeleportLandingReach (it used to need SOME unit within range, so Cathedral Perch / Land on Your Feet wore MOVE→CAST in an
+  empty corner). Icky Surprise with no ooze in reach now greys "No target" (also playtest P2).
+- Gravity Crush (playtest I) was NOT a bug: the log shows the Annunaki on J6 (9,5), 6 squares from the Demon on G9 (6,8),
+  range 4; the step to J8 brought it to 4. A flyer at z7 casting it 3 squares out at any ground height 0-10 is in range.
