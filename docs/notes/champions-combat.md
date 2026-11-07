@@ -4526,6 +4526,11 @@ differed from its text, made to match the text (no new rules):
 - **Rampart leaves mountain ground behind** (+ a raised mountain/water cell never sank): map.js revertTerrainTimer now takes
   the clock's own raise off FIRST (`applyTerrainDeform(..., { undo: true })`, past the mountain / field guards — it is the
   cell's own change), then repaints the map's own terrain at the home height.
+- **Rampart's end left debris** (D4 follow-up, Mount Shasta Arena match after PR #1030): the `undo` sink tore the wall's mountain
+  blocks out like a blast, so spawnMaterialDrops scattered salvage on/around the three squares and dropped +1 stone at the feet
+  of a unit there. applyTerrainDeform skips the drops on `undo`. Proof + probe: /mnt/project-files/playtest-mechanics-20261107/
+  rampart-river-fix/ (before / main / fix results). Pyramid Protocol + Walls of Camelot across the same river: 3 pieces each,
+  the river square covered, nothing painted under them; the pieces have no clock (they stand all match), so nothing is left over.
 - Checked, working as written (the report read the terrain grid; the overflow is the derived liquid flow, map.js
   getLiquidFlowAt): Ooze Trail / Poison Swamp spread 1 square onto level ground; Walk the Plank / Call of the Deep runoff is
   the same spring halo. Bumper Crop's 16 rim seeds match its text ("every empty tile of the area's edge"). Quake sinks the
