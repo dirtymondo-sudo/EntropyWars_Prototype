@@ -3410,15 +3410,29 @@
         // Every grounded unit standing in the slick takes near-full spell
         // damage and starts burning; source tiles char to scorched ground and
         // keep burning for a couple of rounds. Lightning sparks it off too.
-        function _reactFireOil(caster, spell, ox, oy, slick) {
+        /* 💥🛢️ THE GROUND FIRE SETS IT OFF TOO (2026-11-07, elements playtest A1: "Black ooze and fire sit on the same tile without
+           anything happening"): only a fire / lightning SPELL used to set a slick off. Fire on the ground is fire too, so the same
+           blast now goes off when (a) ground fire is lit on ooze / oil (igniteTile: a fire door's lane, fanned flames, any lighter)
+           or (b) ooze / oil lands on a square that is already burning (the Oozing trail painted under a body on burning ground,
+           Goo Shot, Ooze Trail, an oil flow running onto it: _detonateBurningOil after each paint and at the round's fire tick).
+           A ground-fire blast has no spell: it hits like the code's spell-less default (0.9 × 90), priced by whoever lit the
+           fire (the burning square remembers its lighter, `u`), and spares no one in the slick but that lighter. */
+        const _GROUND_FIRE_SPELL = { id: 'groundFire', name: 'The ground fire', element: 'fire' };
+        let _oilBlastDepth = 0;   // a blast lights its own slick (igniteTile): that never starts a second blast
+        function _reactFireOil(caster, spell, ox, oy, slick, groundFire) {
             if (!slick || !slick.length) return;
+            _oilBlastDepth++;
+            try { _reactFireOilBody(caster, spell, ox, oy, slick, !!groundFire); } finally { _oilBlastDepth--; }
+        }
+        function _reactFireOilBody(caster, spell, ox, oy, slick, groundFire) {
             const boom = Math.max(70, Math.round((spell.dmg || 90) * 0.9));
+            const _word = groundFire ? _slickWord(slick) : null;   // read before the blast chars it
             const victims = [];
             for (const t of slick) {
                 const u = unitAt(t.x, t.y);
                 if (!u || u.dead || u._dying) continue;
-                if (u.id === caster.id) continue;
-                if (t.x === ox && t.y === oy) continue;     // origin already hit by the spell itself
+                if (caster && u.id === caster.id) continue;
+                if (!groundFire && t.x === ox && t.y === oy) continue;     // origin already hit by the spell itself
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                 victims.push({ t, u });
             }
@@ -3431,7 +3445,8 @@
             for (const { u } of victims) {
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
                     noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
-                    sourceUnit: caster,
+                    sourceUnit: caster || undefined,
+                    scaleByTargetLevel: !caster,   // a fire nobody lit: priced like the board's other hazards
                     noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
@@ -3440,7 +3455,7 @@
                     flashColor: 'burn'
                 });
                 if (!u.dead && !u._dying) {
-                    applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} firestorm: `, caster);
+                    applyStatusEffects(u, [{ id: 'burn', duration: 2 }], groundFire ? 'Burning oil: ' : `${spell.name} firestorm: `, caster);
                 }
                 /* the burn's own landing calls it out now (THE JUICE PASS) */
                 if (!_juiceOn() || u.dead || u._dying) showFloatingTextForUnit(u, '💥 IGNITED!', 'damage', { durationMs: 1100 });
@@ -3456,9 +3471,45 @@
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
-            addLog(`💥 ${_ctSp(spell.name)} ignites the oil — the whole slick detonates (${slick.length} tile${slick.length !== 1 ? 's' : ''})${victims.length ? `, engulfing ${victims.length} unit${victims.length !== 1 ? 's' : ''}` : ''}!`);
+            const _blastTail = ` — the whole slick detonates (${slick.length} tile${slick.length !== 1 ? 's' : ''})${victims.length ? `, engulfing ${victims.length} unit${victims.length !== 1 ? 's' : ''}` : ''}!`;
+            if (groundFire) addLog(`💥 The fire on the ground ignites the ${_word}${_blastTail}`);
+            else addLog(`💥 ${_ctSp(spell.name)} ignites the oil${_blastTail}`);
             if (typeof playSfx === 'function') playSfx('burningDamage');
         }
+        // the log's word for a slick: black ooze, oil, or both
+        function _slickWord(slick) {
+            let ooze = false, oil = false;
+            for (const t of slick) {
+                const tt = getTerrainAt(t.x, t.y);   // the run-off at a slick's edge is the same liquid: only the pools name it
+                if (tt === 'swamp') ooze = true; else if (tt === 'oil') oil = true;
+            }
+            return ooze && oil ? 'ooze and oil' : ooze ? 'black ooze' : 'oil';
+        }
+
+        /* (a) ground fire lit on a slick: the whole slick goes up. `byUnit` lit it (a unit, or a { player } stand-in). */
+        function _groundFireDetonatesOil(x, y, byUnit) {
+            if (_oilBlastDepth > 0 || state.phase !== 'battle') return false;
+            if (!isInside(x, y) || !_isOilTile(x, y)) return false;
+            const lighter = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
+            const slick = _floodConnectedTiles(x, y, _isOilTile, 40);
+            if (!slick.length) return false;
+            _reactFireOil(lighter, _GROUND_FIRE_SPELL, x, y, slick, true);
+            return true;
+        }
+        /* (b) a square already burning that is ooze / oil now (painted onto it, or an oil flow ran onto it): it goes up */
+        function _detonateBurningOil() {
+            if (_oilBlastDepth > 0 || state.phase !== 'battle') return 0;
+            const b = state.burningTiles;
+            if (!b) return 0;
+            let n = 0;
+            for (const k of Object.keys(b)) {
+                const f = b[k];
+                if (!f || !isInside(f.x, f.y) || !_isOilTile(f.x, f.y)) continue;
+                if (_groundFireDetonatesOil(f.x, f.y, f.u != null ? { id: f.u } : null)) n++;
+            }
+            return n;
+        }
+        window._detonateBurningOil = _detonateBurningOil;
 
         // ⚡🔩 Metal conducts: a lightning strike on metal flooring (or player-
         // placed steel blocks) arcs across the whole connected sheet and zaps
@@ -3743,6 +3794,8 @@
             /* 🌧️ the rain puts the ground fire out (mondo 2026-11-03): a tile the rain falls on does not catch — the fire
                spell itself still hits, only the ground does not stay burning */
             if (typeof window._ewRainOnTile === 'function' && window._ewRainOnTile(x, y)) return false;
+            /* 💥🛢️ fire on the ground on ooze / oil: the whole slick detonates (which then lights its own charred squares) */
+            if (_oilBlastDepth === 0 && _isOilTile(x, y) && _groundFireDetonatesOil(x, y, byUnit)) return true;
             const b = _ensureBurningState();
             const k = x + ',' + y;
             const prev = b[k];
@@ -3752,6 +3805,9 @@
                 t: Math.max(rounds || 2, prev ? prev.t : 0),
                 p: byUnit ? byUnit.player : (prev ? prev.p : 0)
             };
+            /* the unit that lit it (a slick that lands on this fire later blows up in its name) */
+            const _lu = (byUnit && byUnit.id != null) ? byUnit.id : (prev ? prev.u : null);
+            if (_lu != null) b[k].u = _lu;
             return true;
         }
 
@@ -3863,11 +3919,11 @@
                     const nk = n[0] + ',' + n[1];
                     if (b[nk] || spread.some(s => s.x === n[0] && s.y === n[1])) continue;
                     if (!_isFlammableTile(n[0], n[1])) continue;
-                    if (engineRng() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p });
+                    if (engineRng() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p, u: f.u });
                 }
             }
             for (const s of spread) {
-                b[s.x + ',' + s.y] = { x: s.x, y: s.y, t: 2, p: s.p };
+                b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: 2, p: s.p }, s.u != null ? { u: s.u } : {});
             }
 
             if (scorchedUnits || burnedOut || spread.length) {
@@ -3879,6 +3935,8 @@
                 if (burnedOut) bits.push(`${burnedOut} tile${burnedOut !== 1 ? 's' : ''} burn${burnedOut === 1 ? 's' : ''} out to scorched earth`);
                 addLog(`🔥 The ground fire ${bits.join(', ')}.`);
             }
+            // 5) 💥🛢️ a fire still burning on ooze / oil (the slick reached it by any path this round) sets the slick off
+            _detonateBurningOil();
         }
 
         // ── 🗺️ Elemental TILE casts (Pokémon-HM style, 2026-07-08) ──────────
@@ -40949,6 +41007,9 @@
                 state._terrainVersion = (state._terrainVersion || 0) + 1;
                 if (label) addLog(`${label} turns ${n} tile${n !== 1 ? 's' : ''} to ${TERRAIN_RULES[cfg.terrain].label || cfg.terrain} for ${rounds} rounds.`);
                 scheduleBoardRender();
+                /* 💥🛢️ ooze painted onto a burning square (the Oozing trail under a body standing in fire, Goo Shot / Splash
+                   on burning ground) goes up at once: the whole slick detonates (elements playtest A1, 2026-11-07) */
+                _detonateBurningOil();
             }
             return n;
         }
@@ -79435,6 +79496,8 @@
                     if (_tcEl && affectedTiles.length > 0) {
                         triggerTerrainSpellReaction(unit, spell, affectedTiles);
                     }
+                    /* 💥🛢️ a slick painted onto squares that were already burning (Ooze Trail into a fire) sets itself off */
+                    if (affectedTiles.length > 0) _detonateBurningOil();
 
                     if (_tcGap && affectedTiles.length > 0) {
                         /* THE GAP (2026-10-24, mondo: "fissure which should actually make a gap in the map all the way down to
