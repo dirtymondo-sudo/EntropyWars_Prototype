@@ -4188,6 +4188,23 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   soakedShock notes, weather `soaks`) stay. Name adjectives ("Blood-Soaked", the Firefighter's "Soaked") and DEF/M DEF
   "soaks" damage are not the status and stay. Checked on screen: WET pill on the unit panel after walking into the river.
 
+## THE FULL ROUND (2026-11-07, mondo: "i would apply a status effect ... to set up a combo and by the time it was my turn again their status effect was already gone ... it needs to at least be 1 full round")
+Statuses count down at the END OF EVERY ROUND (`_tickAllStatusDurations`); ONE ROUND = ONE TURN already kept a status that
+lands after the target's turn (the "last unit acts, round ends" case). The hole: a debuff put on an enemy who had NOT acted yet
+lasted through that enemy's turn and came off at round end, before the applier's next turn, so the combo window was gone.
+Rule now (battle.js "⏳ THE FULL ROUND", state.js getNextBlitzUnit): a debuff an ENEMY puts on a unit during a blitz round
+lasts N rounds FROM THE MOMENT IT LANDS. It is still on the target when the applier comes round again in round R+N and comes
+off when that turn ends (log "⚡ Fairy's Stun wore off."); it never covers more than N of the target's own turns (taken off
+before the target's extra turn when it landed before the target acted); the end of round R+N is the backstop.
+Holds live on the unit as `_stHold: {key: {r, by, af}}` (plain unit data, so state-sync carries them to the guest).
+Not held: buffs, own-team statuses, environment landings at round end, Strike real-time, Simul, MD lockstep, and the skip set
+(stagger, possessed, infected, statUp, statDown, climbing, exited, captured, sealed). A plain re-landing that outlasts a hold
+drops it; a hold never shortens.
+DoTs tick exactly N times now (a 3-round poison landed after the target's turn used to tick 4 times).
+Proved on screen (VS CPU, Mount Shasta): R1 Glitch stuns + Police roots Fairy (Fairy already acted) -> Fairy skipped R2, stun
+came off right after Glitch's R2 turn, root right after Police's; Plandemic 3-round poison ticked R1/R2/R3 and wore off in R4
+before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/status-timing-fix/.
+
 ## THE STATUS TEXTS MATCH THE GAME (2026-11-07, status playtest M1-M14)
 - Rule used: where no ruling from mondo exists, the TEXT was changed to say what the code does (no rule changed). data.js
   STATUS_LIBRARY_DESCS (Pause > STATUSES) + the spell descs that promised something else:
