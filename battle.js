@@ -55377,6 +55377,9 @@
                     warmers.push(window.ThreeVFXEffects.warmSpellLibrary((d, t) => { prog.spell = [d, t]; }));
                 }
             } catch (e) {}
+            // THE BLACK PYRAMID (2026-11-07): the spell-made monuments' sheets for THIS board (a beach's own sand), requested
+            // while the gate above is open, so a Pyramid Protocol / Walls of Camelot cast never stands black blocks
+            try { if (typeof ThreeRenderer !== 'undefined' && typeof ThreeRenderer.warmSpellMonuments === 'function') ThreeRenderer.warmSpellMonuments(); } catch (e) {}
             // the basic attacks' projectile sheets / models (the renderer's own projectile warm)
             try {
                 const wk = new Set(), pk = new Set();
