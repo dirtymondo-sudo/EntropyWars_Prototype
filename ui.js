@@ -5900,7 +5900,7 @@
             if (unit.status) {
                 for (const key of Object.keys(unit.status)) {
                     const def = STATUS_DEFS[key];
-                    if (def && def.kind === 'debuff') { hasDebuff = true; break; }
+                    if (def && def.kind === 'debuff' && getStatusValue(unit, key) > 0) { hasDebuff = true; break; }   // a 0 left by removeDebuffs is no debuff
                 }
             }
             if (!hasDebuff) {
@@ -5920,8 +5920,10 @@
             for (const key of Object.keys(unit.status)) {
                 const def = STATUS_DEFS[key];
                 if (def && def.kind === 'debuff') {
-                    delete unit.status[key];
-                    cleared++;
+                    /* clearStatus runs the debuff's onRemove: a raw delete freed the badge but left a Possessed body in the
+                       enemy's hands, a Soul Bind's partner echoing, a rope tied (badge audit 11-07) */
+                    if (getStatusValue(unit, key) > 0) cleared++;
+                    clearStatus(unit, key);
                 }
             }
             addLog(`💊 ${_ctName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);

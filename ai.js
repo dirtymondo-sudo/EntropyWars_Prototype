@@ -10132,7 +10132,7 @@
                 const STATUS_DEFS_ = g.STATUS_DEFS || {};
                 let hasDebuff = false;
                 for (const key of Object.keys(unit.status)) {
-                    if (STATUS_DEFS_[key]?.kind === 'debuff') { hasDebuff = true; break; }
+                    if (STATUS_DEFS_[key]?.kind === 'debuff' && Number(unit.status[key] || 0) > 0) { hasDebuff = true; break; }
                 }
                 if (!hasDebuff) {
                     g.state.aiThinking = false;
@@ -10144,8 +10144,10 @@
                 let cleared = 0;
                 for (const key of Object.keys(unit.status)) {
                     if (STATUS_DEFS_[key]?.kind === 'debuff') {
-                        delete unit.status[key];
-                        cleared++;
+                        /* the engine's clearStatus runs the debuff's onRemove (Possessed hands the body back, Soul-Bound
+                           frees its partner) — a raw delete took only the badge (badge audit 11-07) */
+                        if (Number(unit.status[key] || 0) > 0) cleared++;
+                        if (typeof clearStatus === 'function') clearStatus(unit, key); else delete unit.status[key];
                     }
                 }
                 g.addLog(`💊 ${g.unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);

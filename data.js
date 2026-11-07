@@ -13206,6 +13206,9 @@ const STATUS_DEFS = {
         // Guard braces against everything, in STAGES: +2 DEF soaks physical
         // hits, +2 MDEF soaks magic — for exactly the 1-turn Guard stance.
         stageMod: { def: 2, mdef: 2 },
+        /* the stance's riders (ui.js doGuard: +15% counter, the overwatch shot) end with the badge, by any path
+           (the round tick, a dispel, a switch-out) — timing playtest 11-07 E1 */
+        onRemove(unit) { if (unit) { unit._guardCounterBonus = 0; unit._overwatchArmed = false; } },
         iconSrc: createStatusIconDataUri('🛡', '#1a2a3a', '#c8e8ff', '#5a9ad4')
     },
     /* 🧗 Climbing (2026-10-20, design/CLIMB_MECHANIC_DESIGN.md): hanging on a wall face until the unit's next turn

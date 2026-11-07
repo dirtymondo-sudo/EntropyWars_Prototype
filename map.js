@@ -16205,6 +16205,9 @@
             if (typeof releasePossession === 'function') releasePossession(unit, { quiet: true });
             /* 🌑 a death in the Shadow Realm closes it: the survivor is back on the board */
             if (typeof closeShadowRealmFor === 'function') closeShadowRealmFor(unit);
+            /* ⛓ a status that only works through this unit (Provoked by it, its Contract, a Voodoo doll tied to it, the other end
+               of its Soul Bind) ends now instead of staying up as a badge with nothing behind it (battle.js endStatusesTiedToUnit) */
+            if (typeof endStatusesTiedToUnit === 'function') endStatusesTiedToUnit(unit);
 
             if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id);
 
