@@ -7266,7 +7266,7 @@
             _cands.sort((a, b) => _near(b) - _near(a));
             const at = _cands[0];
             if (!state._deployedObjects) state._deployedObjects = [];
-            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy && !o.spellId);   // the plain doubles' own cap: a spell's decoy (Stuffed Double, Cloning Machine, Hologram) keeps its own (A1)
             while (_owned.length >= 3) {
                 const oldest = _owned.shift();
                 state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
@@ -12014,6 +12014,13 @@
             if (unitAt(x, y)) return false;
             if (getObjectAt(x, y)) return false;
             if (state.plantedSeeds && state.plantedSeeds.some(s => s.x === x && s.y === y)) return false;
+            /* THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 D): a summon, turret, placed object or prism on the tile
+               is not "empty" either — Bumper Crop's rim seed (and any grown tree) never lands on a piece standing there */
+            if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === x && tt.y === y)) return false;
+            // (a step trap the planter may not see is no bar: only a standing piece that blocks the tile counts)
+            if ((state._deployedObjects || []).some(o => o.hp > 0 && !o._detonated && o.x === x && o.y === y
+                && (o.isDecoy || o.blocksMovement) && !o.detonateOnStep && !(o.tripRadius > 0))) return false;
+            if ((state.mirrors || []).some(m => m.hp > 0 && m.x === x && m.y === y)) return false;
             const t = getTerrainAt(x, y);
             return !['mountain', 'lava', 'water', 'deep_water', 'void', 'chasm'].includes(t);
         }
@@ -29549,7 +29556,7 @@
             function _placeTurret(caster, sp, gx, gy) {
                 if (!state.turrets) state.turrets = [];
                 const tx = Math.round(gx), ty = Math.round(gy);
-                const mine = state.turrets.filter(t => t.casterUnitId === caster.id);
+                const mine = state.turrets.filter(t => t.casterUnitId === caster.id && t.spellId === sp.id && !t.summon && !t.zombie);   // the cap is per spell (A3)
                 const cap = sp.maxActivePerCaster || 2;
                 while (mine.length >= cap) { const old = mine.shift(); state.turrets.splice(state.turrets.indexOf(old), 1); }
                 state.turrets.push({
@@ -30481,6 +30488,19 @@
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
+        /* THE SHOT FOCUS (mondo 2026-11-07, timing playtest D1: "a marked shot lands before the camera gets there, and the
+           camera leaves half a second later"). The end-of-round dive onto a shot that lands with no action shot (a marked
+           shot: Take Aim, To Be Continued; any detonation with the Action Cam off; a turret's volley). Its own name so
+           online.js relays it: the end-of-round loop runs on the HOST only, and without the relay the guest's camera
+           never moved for these hits. opts.local === false: this screen can't see the tile (fog), so only the relay goes
+           (the guest judges its own fog). Returns the glide's length (0 when this screen's camera didn't move). */
+        const EOR_SHOT_FOCUS_MS = 380;
+        function playEorShotFocus(x, y, opts = {}) {
+            if (opts.local === false || _skipVisuals() || state.cameraDisabled) return 0;
+            const ms = opts.duration ?? EOR_SHOT_FOCUS_MS;
+            eorFocusCamera(x, y, { duration: ms });
+            return ms;
+        }
 
         // ── End-of-round phase chip ──
         // A small fixed ribbon naming the beat currently resolving ("Status
@@ -30537,6 +30557,7 @@
         // state.js beats (detonations, storms, buffered round events) reach
         // these through globals — expose them explicitly for clarity.
         window.eorFocusCamera = eorFocusCamera;
+        window.playEorShotFocus = playEorShotFocus;
         window.getEorFocusZoom = getEorFocusZoom;
         window._eorPhaseLabel = _eorPhaseLabel;
         window._eorPhaseLabelHide = _eorPhaseLabelHide;
@@ -30601,6 +30622,14 @@
             if (until > (camera._impactHoldUntil || 0)) camera._impactHoldUntil = until;
         }
         window._cineImpactHoldLeft = _cineImpactHoldLeft;
+        /* THE SHOT HOLD (mondo 2026-11-07, timing playtest D1): the end-of-round shots that play no action shot (a marked
+           shot, a detonation with the Action Cam off, a turret's volley) hold the camera on the hit like a cast does */
+        window._cineHoldImpactAftermath = function (extraMs) {
+            if (_skipVisuals()) return 0;
+            const ms = Math.max(0, extraMs || 0) + actionMs(CINE_IMPACT_AFTERMATH_MS);
+            _cineHoldImpactFor(ms);
+            return window.EW_NO_IMPACT_HOLD ? 0 : ms;
+        };
 
         function _unitElevZ(unit) {
             if (!unit) return 0;
@@ -32953,6 +32982,9 @@
         function cineFreezeFrame(ms, opts = {}) {
             const d = Math.max(60, Number(ms) || 0);
             try { window.ThreeAnim?.hitstop?.(d); } catch (e) {}
+            /* THE IMPACT HOLD: a freeze on a hit the camera is holding on (To Be Continued's sepia stop) stops the
+               aftermath too, so the hold counts from the thaw */
+            if (_cineImpactHoldLeft() > 0) _cineHoldImpactFor(d + actionMs(CINE_IMPACT_AFTERMATH_MS));
             if (opts.grade) cineGrade(opts.grade, d + 120);
             // the contrast tell runs in the post shader when it is up: a CSS filter switched onto the canvas made Firefox
             // re-composite the whole canvas offscreen (THE SCREEN GRADE, three-post.js)
@@ -40545,6 +40577,9 @@
                 return;
             }
 
+            /* THE HEIGHT PAID ONCE (zones playtest 2026-11-07 K: Stone Drop, a WEAK row, hit for 1113): a drop / slam / throw /
+               leap already prices the height as levels in its raw (dmgPerLevel), so its hit never also rides HIGH GROUND from
+               the caster's own altitude (opts.noHeightBonus) — the cast and this forecast both. */
             /* the swoop a requiresFlight sky move takes before it strikes (doSpell's _skySwoopTakeoff): the drop counts its
                levels from up there, and a wind caster then strikes from the open air (THE SPELL AUDIT FIX F2) */
             const swoop = () => {
@@ -40568,7 +40603,7 @@
                     const carry = spell.carryHeight || (kind === 'skySlam' ? 5 : 4);
                     total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (cz + carry) - getHeightAt(target.x, target.y)) * (spell.dmgPerLevel || 25));
                 }
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 hit(target, total, total, total, hopts);
                 /* a sky drop's drain (Predator Drop): the caster heals its share of the drop's raw, as the cast does */
                 if (kind === 'skyDrop' && spell.drainPct && unit.hp < unit.maxHp) {
@@ -40607,7 +40642,7 @@
                     if (!t) return;
                     swoop();
                     const gTotal = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(t.x, t.y)) * (spell.dmgPerLevel || 25));
-                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
+                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true }));
                     tag(t, 'grab');
                     return;
                 }
@@ -40616,7 +40651,7 @@
                 const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
                 if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 const total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) * (spell.dmgPerLevel || 25));
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 const col = (unitAt(x, y, z) || unitAt(x, y));
                 if (col && !col.dead && col.id !== tt.id) {
                     const cb = spell.collisionBonus || 50;
@@ -40994,6 +41029,9 @@
                             if (typeof isTowerTile === 'function' && isTowerTile(nx, ny)) return true;   // ⬡ the Cube blocks a walking summon like a unit
                             if (state.units.some(u => !u.dead && u.x === nx && u.y === ny)) return true;
                             if (state.turrets.some(t2 => t2 !== turret && t2.hp > 0 && t2.x === nx && t2.y === ny)) return true;
+                            /* THE EMPTY-TILE SUMMON (zones/traps fix 2026-11-07): a placed piece that blocks units blocks the walker
+                               too — the Creation walked onto its own side's Stuffed Double and stood inside it */
+                            if ((state._deployedObjects || []).some(o => o.x === nx && o.y === ny && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return true;
                             return false;
                         };
                         let moved = false;
@@ -41146,15 +41184,17 @@
                 // A turret / summon hidden in fog never gets framed: the
                 // camera stays on the (visible) victim instead.
                 const _turretSeen = _turretCam && (!state.fogOfWar || _isTileVisibleToViewer(s.turret.x, s.turret.y));
+                /* THE SHOT FOCUS: playEorShotFocus is relayed, so the guest's camera follows the volley too (it judges
+                   its own fog for each beat) */
                 if (_turretCam) {
-                    if (_turretSeen) eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
-                    else eorFocusCamera(s.target.x, s.target.y, { duration: 380 });
+                    if (_turretSeen) playEorShotFocus(s.turret.x, s.turret.y, { duration: 380 });
+                    else playEorShotFocus(s.target.x, s.target.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                     if (state.winner) { if (onDone) onDone(); return; }
                     if (_turretSeen) {
-                        eorFocusCamera(
+                        playEorShotFocus(
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
                     }
@@ -41177,6 +41217,9 @@
                     // while the camera is still gliding onto the sight line).
                     window.setTimeout(() => {
                         if (state.winner) { if (onDone) onDone(); return; }
+                        /* THE SHOT HOLD (timing playtest 2026-11-07): armed before the hit so the hit's own freeze adds
+                           to it — the camera stays on the hit for the impact aftermath like any cast, not 0.68 s */
+                        if (_turretCam) window._cineHoldImpactAftermath(0);
                         applyShot(s);
                         // Impact feedback: spark + stagger on the victim so the
                         // hit reads as an attack, not a silent HP drop.
@@ -41188,7 +41231,8 @@
                         if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
                         checkWin();
                         if (state.winner) { if (onDone) onDone(); return; }
-                        window.setTimeout(fireNext, actionMs(680));
+                        const _volleyHold = _turretCam ? window._cineImpactHoldLeft() : 0;
+                        window.setTimeout(fireNext, Math.max(actionMs(680), _volleyHold));
                     }, actionMs(300));
                 }, _turretCam ? actionMs(760) : actionMs(420));
             }
@@ -45378,6 +45422,65 @@
         }
         window.spellIsPureStatus = spellIsPureStatus;
 
+        /* THE IMMUNE TARGET (timing/counters playtest 2026-11-07 B1: Counterspell, Brainwash and Executive Order all
+           listed the CPU Ghoul — Pure Negativity, "immune to every debuff and to stat drops" — with a green CONFIRM;
+           the cast bounced, MP and the cooldown were spent). Would this status bounce off `u` the moment it arrived?
+           A read-only copy of applyStatusPayload's immunity gates, in its order — no rule of its own:
+           a passive's immuneStatus list (Thermal Regen vs Burn, the minds vs Charm…), a passive's immuneKind (Pure
+           Negativity vs every debuff), an element the status IS that the unit is immune to / drinks (burn / frozen /
+           poison; a rider status only with the element of the hit, which a no-damage cast never carries), Fermata's
+           stat lock vs a stageMod status, and a control status (possessed / infected) on a boss (possessUnit). */
+        function unitImmuneToStatus(u, statusId) {
+            if (!u || !statusId || typeof STATUS_DEFS === 'undefined' || !STATUS_DEFS[statusId]) return false;
+            const def = STATUS_DEFS[statusId];
+            if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(u, statusId)) return true;
+            const immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(u, 'immuneKind') : undefined;
+            if (immKind && def.kind === immKind) return true;
+            const el = (typeof statusAffinityElement === 'function') ? statusAffinityElement(statusId, null) : null;
+            const aff = (el && typeof unitElementAffinity === 'function') ? unitElementAffinity(u, el) : null;
+            if (aff === 'immune' || aff === 'absorb') return true;
+            if (def.stageMod && unitHasStatus(u, 'statLock')) return true;
+            if (def.control && u._isBoss) return true;
+            return false;
+        }
+        window.unitImmuneToStatus = unitImmuneToStatus;
+        /* would this stat stage change bounce off `u`: Pure Negativity's immuneStatDown drops every negative stage,
+           Fermata's stat lock every stage (applyStatStageBoost) */
+        function unitImmuneToStage(u, n) {
+            if (!u || !n) return false;
+            if (unitHasStatus(u, 'statLock')) return true;
+            return n < 0 && typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'immuneStatDown') === true;
+        }
+        /* a cast whose whole effect on its target is statuses and/or stat stages — the pure-status casts plus the
+           stat-drop casts (Calcify, Flower in the Barrel, Meow, Psychosis…); Steal from the Rich only takes what the
+           target actually lost, so it counts. Anything else it does (damage, MP drain, a pull, a stolen spell…) still
+           lands on an immune unit, so those never count. */
+        const _IMMUNE_TARGET_KINDS = { debuff: 1, buff: 1, aoe: 1, barrage: 1, possess: 1 };
+        function spellIsStatusOnly(spell) {
+            if (!spell || !_IMMUNE_TARGET_KINDS[spell.kind]) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            const st = spell.statStageBoost ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]) : [];
+            if (!fx.length && !st.length) return false;
+            if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage || spell.zoneTickDamage || spell.blastDmg) return false;
+            if (spell.heal || spell.healAmt || spell.healPct || spell.selfHealPct || spell.shield || spell.shieldHp) return false;
+            if (spell.randomTeamBuff || spell.cleanse || spell.drainPct || spell.mpDrain || spell.mpRestore || spell.revivePct
+                || spell.stealSpell || spell.zodiacReading || spell.timedStatBonus || spell.allyStatusEffects) return false;
+            if (spell.leaveTerrain || spell.terrainType || spell.weatherType || spell.paintTerrain || spell.terrainDeform) return false;
+            if (spell.teleportDistance || spell.pushDistance || spell.pullDistance || spell.mount || spell.dispel) return false;
+            return true;
+        }
+        /* true when every status and every stat stage such a cast carries would bounce off `u` — the cast would do
+           nothing to it, so it is no target (spellTargetUsableOn) */
+        function spellBouncesOffImmune(spell, u) {
+            if (!u || u.dead || !spellIsStatusOnly(spell)) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            if (fx.some(f => !unitImmuneToStatus(u, f.id))) return false;
+            const b = spell.statStageBoost || {};
+            if (Object.keys(b).some(k => b[k] && !unitImmuneToStage(u, b[k]))) return false;
+            return true;
+        }
+        window.spellBouncesOffImmune = spellBouncesOffImmune;
+
         /* A ground-bound cast (spell.missesFlyers: Wall of Fire) passes under a flyer up in the sky — the same
            isUnitAirborne gate the burning tiles, seeds and rain already use (mondo 2026-10-26: "wall of fire shouldnt
            be able to hit flyers in the sky, and it should be greyed out when targeting a flying unit"). */
@@ -45398,10 +45501,17 @@
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
+            if (k === 'summonUnit') return false;   // THE EMPTY-TILE SUMMON: the call goes on a free tile, never on a body
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return spellCorpseUsable(unit, spell, u);
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a cast that only hands out statuses / stat stages is no target
+               on a unit every one of them bounces off (Pure Negativity, a race's immuneStatus, an element immunity,
+               Fermata, a boss vs control). Grounding an airborne flyer still lands whatever the status does. */
+            if (spellBouncesOffImmune(spell, u)
+                && !(spell.groundsFlyers && typeof isUnitAirborne === 'function'
+                    && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u))) return false;
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
                 && unitEncoreReady(u);
@@ -46646,6 +46756,14 @@
             }
             // Grapple reels only where the rope gets the caster (THE GRAPPLE REEL): not its own tile, not a blocked line.
             if (isGrappleReel(spell) && !grappleLandingFor(unit, x, y, { viewer: unit.player })) return 'blocked';
+            /* THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 B1): a summon is called onto an EMPTY tile (doSpell's
+               summonUnit branch, summonTileFree) — a body's tile is never its pick, so no list, quick menu or board click
+               offers a unit (Summon Creation offered the enemy Symbiote, JUMP→CAST spent the jump, then "pick an empty
+               tile"; Wolf Pack / Brood / Whistle listed the caster's own team) */
+            if (spell.kind === 'summonUnit') {
+                const body = tgt || unitAt(x, y);
+                if (body && !body.dead) return 'occupied';
+            }
             // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
             if (dashOnlyMoves(spell)) {
                 const body = unitAt(x, y);
@@ -46688,6 +46806,19 @@
         window.spellAimProblem = spellAimProblem;
         window.spellAimProblemLabel = spellAimProblemLabel;
         window.spellCastableOnUnit = spellCastableOnUnit;
+
+        /* THE EMPTY-TILE SUMMON: the one test of a free tile for a summon (doSpell's summonUnit branch, the menus' lit
+           check): on the board, passable, no living body, not the Cube, no living summon / turret on it */
+        function summonTileFree(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
+            const body = unitAt(x, y);
+            if (body && !body.dead) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            // a placed piece that blocks the tile (Stuffed Double, Cloning Machine …) — the walkers' own rule
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            return !(state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y);
+        }
+        window.summonTileFree = summonTileFree;
 
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
@@ -46777,18 +46908,11 @@
                 return range > 0 || true;
             }
             if (kind === 'summonUnit') {
-                // wave C: an empty passable tile within reach, and the cap not full
-                const _smCap = spell.maxActivePerCaster || 1;
-                const _smMine = (state.turrets || []).filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id).length;
-                if (_smMine >= _smCap) return true;   // a re-cast dismisses the old one
-                for (const t of getSquareArea(unit.x, unit.y, range)) {
-                    const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
-                    if (d < 1 || d > range) continue;
-                    if (!isTerrainPassable(t.x, t.y) || unitAt(t.x, t.y)) continue;
-                    if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === t.x && tt.y === t.y)) continue;
-                    return true;
-                }
-                return false;
+                /* wave C: a free tile the cast would take. THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 B1): the
+                   lit reach + doSpell's own empty test (summonTileFree) — the old copy read its own plain-step disc, not the lit
+                   tiles, skipped the Cube's tile, and lit the spell whenever the cap was full, so Brood was offered with no free
+                   tile beside the Bee Queen. A re-cast at the cap still needs a free tile (it dismisses the old one there). */
+                return getSpellRangeTiles(unit, spell).some(t => (t.x !== unit.x || t.y !== unit.y) && summonTileFree(t.x, t.y));
             }
 
             // Placement kinds: only castable when at least one tile in range
@@ -69309,6 +69433,12 @@
                 if (hDiff < 0 && typeof applyFallDamage === 'function') {
                     applyFallDamage(unit, fromZ, z, 'Jump: ');
                 }
+                /* ⛓ THE LANDING IS AN ARRIVAL (zones/traps playtest 2026-11-07 A2: King Kong jumped onto the Reptilian's
+                   bomb and nothing happened; the bomb stayed). Jumping IS stepping in, so the landing runs THE CHAIN
+                   exactly as the end of a walk does (via 'move'): an enemy bomb, hidden trap, Tesla Coil / Scrap Mine /
+                   snare, the ground under the feet, the debuff zones, the vortex, a rune. Only the landing square — the
+                   squares the arc flies over are not touched, as before. */
+                if (!unit.dead && !unit._dying) resolveTileArrival(unit, { via: 'move' });
                 // 🕯 Hex of Toil: a jump is a move — the curse flares.
                 _procHexedOnAction(unit, 'leaps');
                 // Landing in a guardian's sights: jumping IS movement, so
@@ -76733,6 +76863,18 @@
             // burn MP/AP for nothing. Menus grey these out; this guards direct
             // map clicks and move-then-cast paths. (AoE/team kinds pass: some
             // OTHER unit in the blast may still need the status.)
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a single-target status / stat-drop cast on a unit every effect
+               of it bounces off (Counterspell / Brainwash on a Pure Negativity Ghoul) is refused before any MP, AP or
+               cooldown is spent — the drum and the menus already leave that unit out; this catches a direct call. */
+            if ((spell.kind === 'debuff' || spell.kind === 'buff' || spell.kind === 'possess') && !spell.aoeRadius && !_spellMaskOf(spell)) {
+                const _imT = unitAt(x, y, z) || unitAt(x, y);
+                if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
+                    addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius && !_spellMaskOf(spell)
                 && spellIsPureStatus(spell)) {
                 const _psT = unitAt(x, y, z) || unitAt(x, y);
@@ -77668,8 +77810,7 @@
                    armored, counts physical blows as half a hit. One per caster
                    per spell (maxActivePerCaster) — a new call dismisses the old. */
                 const _sd = spell.summonDef || {};
-                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))
-                    || (state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y)) {
+                if (!summonTileFree(x, y)) {
                     addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`);
                     playErrorSfx();
                     return 0;
@@ -79825,7 +79966,7 @@
                 if (spell.spawnDecoy) {
                     if (!state._deployedObjects) state._deployedObjects = [];
 
-                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy && !o.spellId);   // a spell's decoy keeps its own cap (A1)
                     while (_ownedDecoys.length >= 3) {
                         const oldest = _ownedDecoys.shift();
                         state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
@@ -80149,12 +80290,18 @@
                     scheduleBoardRender();
                     completionDelay = actionMs(700);
                 } else {
-                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id);
+                /* THE CAP IS PER SPELL (zones/traps playtest 2026-11-07 A1: the Gnome's Spring Snare, cap 1, silently took
+                   away its Tesla Coil AND its Scrap Mine; the Mad Scientist's Cloning Machine took its Tesla Coil). Each row's
+                   maxActivePerCaster counts only that row's own live objects — the way Place Bomb's traps, the placed traps
+                   (per trapType) and the summons (per spell) already count — and the one a new cast takes away says so,
+                   to its owner's seat only (a hidden snare's square stays hidden from the other side). */
+                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated);
                 const _maxActive = spell.maxActivePerCaster || 3;
                 while (_ownedObjs.length >= _maxActive) {
                     const oldest = _ownedObjs.shift();
                     state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
                     _clearDecoyTaunts(oldest);   // a new double dismisses the old one's Provoked
+                    addLog(`${_ctName(unit)}'s older ${_ctSp(oldest.spellName || spell.name)} at ${coordLabel(oldest.x, oldest.y)} is taken down to make room.`, unit.player);
                 }
                 // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +hp on an object with an HP bar (objectHp > 1;
                 // a 1-HP snare or decoy breaks to any hit), +dmg on a blast.
@@ -82252,12 +82399,15 @@
                     return 0;
                 }
                 if (!state.turrets) state.turrets = [];
-                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id);
+                /* THE CAP IS PER SPELL (zones/traps playtest 2026-11-07 A3): state.turrets also holds the summons and the
+                   zombies, and a 5G Tower (cap 1) took down the Gnome's own Deploy Turret. The cap counts this row's own
+                   turrets only, like the summons' cap. */
+                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id && t.spellId === spell.id && !t.summon && !t.zombie);
                 if (ownedTurrets.length >= (spell.maxActivePerCaster || 2)) {
 
                     const oldest = ownedTurrets[0];
                     state.turrets = state.turrets.filter(t => t !== oldest);
-                    addLog(`Oldest turret at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
+                    addLog(`Oldest ${_ctSp(spell.name)} at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
                 }
                 if (state.turrets.some(t => t.x === x && t.y === y)) {
                     addLog('There is already a turret on that tile.');
@@ -82271,7 +82421,7 @@
                 // hitsToKill turret counts blows, not HP).
                 const _fmB = passiveDeployBonus(unit);
                 const turretHp = (spell.turretHp || 20) + (spell.hitsToKill ? 0 : _fmB.hp);
-                const turretDmg = (spell.turretDmg || 8) + _fmB.dmg;
+                const turretDmg = spell.auraDebuff ? 0 : (spell.turretDmg || 8) + _fmB.dmg;   // a 5G Tower (turretDmg 0) never shoots (A3)
                 // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                 const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
 
@@ -82313,7 +82463,10 @@
                         window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
                     }
                 }
-                addLog(`${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
+                /* a 5G Tower (auraDebuff) never shoots: its line names it and says what it does, not a turret's 8 dmg (A3) */
+                addLog(spell.auraDebuff
+                    ? `${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${spell.hitsToKill ? spell.hitsToKill + ' hits' : turretHp + ' HP'}, enemies within ${turretRange} lose ${spell.auraDefReduction || 0} M.DEF).`
+                    : `${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
                 scheduleBoardRender();
             }
 
@@ -82956,7 +83109,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83071,7 +83224,7 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -83117,7 +83270,7 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
@@ -83309,7 +83462,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83327,7 +83480,7 @@
                                 if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
@@ -83476,7 +83629,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83494,7 +83647,7 @@
                                 if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
