@@ -2404,7 +2404,7 @@
                             ThreeVFX.isActive && ThreeVFX.isActive()) {
                             ThreeLightning.strikeFromSky(x, y, { durationMs: 340 });
                         } else {
-                            showFloatingTextAtTile(x, y, ({ lightning: '⚡', fire: '🔥', water: '💧', earth: '🪨', nature: '🌿', wind: '💨' })[_etc.el] || '❄️', 'damage');
+                            showFloatingTextAtTile(x, y, ({ lightning: '⚡', fire: '🔥', water: '💧', earth: '🪨', nature: '🌿', wind: '💨', sonic: '🔊' })[_etc.el] || '❄️', 'damage');
                         }
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         markDirty('board', 'hud');
@@ -2888,6 +2888,7 @@
         // out the moment the water reaches the unit.
         function _douseBurnOnUnit(u, label) {
             if (!u || u.dead || u._dying) return false;
+            _washGooOffUnit(u, label);   // 💧🛢️ R8: the same water washes the goo off
             /* ⚗️💧 R4 (mondo 2026-11-07): Corroded is chemical FIRE (it counts as Burn), so the water puts its fire out too —
                the poison in it stays: Corroded becomes plain Poison for the rounds it had left (same applier, same hold) */
             if (u.status && Number(u.status.corroded || 0) > 0) {
@@ -2904,6 +2905,31 @@
         }
         window._douseBurnOnUnit = _douseBurnOnUnit;
 
+        /* 💧🛢️ WATER WASHES GOO OFF (element reactions R8, mondo 2026-11-07): goo is a coating, and a coating washes off the
+           same way a fire goes out, so every path that douses a Burn (a water hit, walking into or standing in water, the
+           landing splash, rain on the unit, the melting frost) also washes Gooed off. _douseBurnOnUnit calls it first. */
+        function _washGooOffUnit(u, label) {
+            if (!u || u.dead || u._dying || !unitHasStatus(u, 'goo')) return false;
+            clearStatus(u, 'goo');
+            addLog(`💧 ${label || 'The water'} washes the goo off ${_ctName(u)}.`);
+            showFloatingTextForUnit(u, '💧 Washed', 'heal', { durationMs: 1000 });
+            return true;
+        }
+        window._washGooOffUnit = _washGooOffUnit;
+
+        /* 💧⚙️ WATER SHORTS OUT OVERCLOCK (element reactions R9, mondo 2026-11-07): lightning on a dry machine overclocks
+           it, lightning on a wet one shorts it (SHORT CIRCUIT); water ending the overclock is the same rule from the other
+           side. Ends it on a water hit and whenever the unit becomes (or is kept) Wet: _soakUnit, applyStatusPayload's
+           'wet', and the weathers' rain passes (state.js). */
+        function _waterShortsOverclock(u, label) {
+            if (!u || u.dead || u._dying || !unitHasStatus(u, 'overclock')) return false;
+            clearStatus(u, 'overclock');
+            addLog(`💧⚙️ ${label || 'The water'} shorts out ${_ctName(u)}'s Overclock.`);
+            showFloatingTextForUnit(u, '⚡💧 SHORT CIRCUIT', 'debuff', { durationMs: 1000 });
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._waterShortsOverclock = _waterShortsOverclock;
         /* ⚗️ THE CHEMICAL FIRE (R4, mondo 2026-11-07 "Burn + Poison = Corroded"): Corroded's own text is "chemical fire, counts
            as BOTH Burn and Poison". A unit carrying Burn and Poison at once is Corroded instead, for the longer of the two
            (the applier and the full-round hold of whichever lasts longer move over); a Burn or Poison landing on a Corroded
@@ -2995,6 +3021,7 @@
             const status = ensureUnitStatus(u);
             const wasWet = Number(status.wet || 0) > 0;
             status.wet = Math.max(Number(status.wet || 0), WET_ROUNDS);
+            _waterShortsOverclock(u, opts.douseLabel);   // 💧⚙️ R9
             if (!wasWet && !opts.quiet) {
                 showFloatingTextForUnit(u, '💧 Wet', 'debuff', { durationMs: 900 });
             }
@@ -3439,6 +3466,59 @@
             }
         }
 
+        /* ⛈⚡ THE THUNDERSTORM'S BOLT CONDUCTS (element reactions R10, mondo 2026-11-07: "lightning is lightning"): when the
+           storm eye strikes a grounded unit standing in water or on a metal floor, the bolt arcs through the connected water
+           (or the connected metal) like a lightning spell: every other grounded unit standing in it takes the conduction
+           tick (¾ of the strike; the Wet ×1.5 still rides it), with the same arc visuals and log lines as the spells.
+           The conservative version (the doc's risk note): the arc runs through water and metal SQUARES only, never on
+           through Wet bodies on dry ground — the storm leaves everyone Wet, so a body chain would hit every clump every
+           round. state.js stormStrikeUnit calls it after the strike. */
+        function stormBoltConducts(v, weather, def, at, amount) {
+            if (!v || !def || state.phase !== 'battle') return 0;
+            const ox = at ? at.x : v.x, oy = at ? at.y : v.y;
+            if (!isInside(ox, oy) || (typeof isUnitAirborne === 'function' && isUnitAirborne(v))) return 0;
+            const onWater = _isWetTile(ox, oy), onMetal = !onWater && _isMetalTile(ox, oy);
+            if (!onWater && !onMetal) return 0;
+            const body = _floodConnectedTiles(ox, oy, onWater ? _isWetTile : _isMetalTile, onWater ? 80 : 40);
+            if (!body || !body.length) return 0;
+            const _caster = weather && weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
+            const tick = Math.max(1, Math.round((amount || 0) * 0.75));
+            const _name = `the ${def.label || 'Thunderstorm'}`;
+            const victims = [];
+            for (const t of body) {
+                const u = unitAt(t.x, t.y);
+                if (!u || u.dead || u._dying || u.id === v.id) continue;
+                if (t.x === ox && t.y === oy) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                victims.push({ t, u });
+            }
+            const arcs3D = _conductionArcVfx(ox, oy, body, victims.map(x => x.t));
+            let zapped = 0;
+            for (const { u } of victims) {
+                applyDamageToUnit(u, tick, `⚡ The ${onWater ? 'water' : 'metal'} conducts ${_name}: `, {
+                    noTerrainBonus: true,
+                    sourceUnit: (_caster && !_caster.dead) ? _caster : undefined,
+                    noRangeMult: true,
+                    allowMarkBonus: false,
+                    damageType: 'magic',
+                    element: 'lightning',
+                    flashColor: 'shock',
+                    scaleByTargetLevel: true   // natural storms have no caster (stormStrikeUnit's own rule)
+                });
+                if (!arcs3D) showFloatingTextForUnit(u, '⚡', 'damage', { durationMs: 900 });
+                zapped++;
+            }
+            if (body.length > 1 || zapped > 0) {
+                const _N = `The ${def.label || 'Thunderstorm'}`;
+                addLog(onWater
+                    ? `⚡ ${_N} electrifies the water — the charge arcs across the whole pool${zapped ? `, catching ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`
+                    : `⚡ ${_N} electrifies the metal — the charge races across ${body.length} tile${body.length !== 1 ? 's' : ''}${zapped ? `, shocking ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
+                if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, 'tech', 500);
+            }
+            return zapped;
+        }
+        window.stormBoltConducts = stormBoltConducts;
+
         // ❄️ The pool freezes solid: water → slick ice (slippery, no drowning),
         // and any unit caught in it is frozen in place for a turn.
         function _reactColdWater(caster, spell, ox, oy, body) {
@@ -3758,6 +3838,21 @@
                     addLog(`💧 ${_ctSp(spell.name)} puts out the flames on ${_wDoused} tile${_wDoused !== 1 ? 's' : ''}.`);
                 }
             }
+            /* 🔊🧊💎 SONIC SHATTERS ICE AND CRYSTAL (element reactions R11, mondo 2026-11-07): a damaging sonic spell cracks the
+               ice squares it strikes into water (the slam rule: only the struck squares) and detonates a crystal vein it
+               strikes (the fire / lightning rule: the whole vein, the same shard hit). */
+            if (_rawEl === 'sonic' && spell.dmg > 0) {
+                let _sCracked = 0;
+                if (!spellShattersIce(spell)) for (const tile of tiles) if (tile && isInside(tile.x, tile.y) && shatterIceAt(tile.x, tile.y)) _sCracked++;
+                if (_sCracked) addLog(`🧊 ${_ctSp(spell.name)} shatters the ice — ${_sCracked} tile${_sCracked !== 1 ? 's crack' : ' cracks'} into water!`);
+                const _sDone = new Set();
+                for (const tile of tiles) {
+                    if (!tile || !isInside(tile.x, tile.y) || _sDone.has(tile.x + ',' + tile.y) || !_isCrystalTile(tile.x, tile.y)) continue;
+                    const vein = _floodConnectedTiles(tile.x, tile.y, _isCrystalTile, 12);
+                    vein.forEach(b => _sDone.add(b.x + ',' + b.y));
+                    _reactCrystalShatter(caster, spell, tile.x, tile.y, vein);
+                }
+            }
             /* 🪨🌿💨 EARTH, NATURE, WIND ON THE BOARD (R13-R15, mondo 2026-11-07): see _reactEarthNatureWind below */
             if (_rawEl === 'earth' || _rawEl === 'nature' || _rawEl === 'wind') _reactEarthNatureWind(caster, spell, tiles, _rawEl);
             const el = classifySpellElement(spell);
@@ -3986,6 +4081,47 @@
             return true;
         }
         window.shatterIceAt = shatterIceAt;
+        /* 🌋🧊💎 THE EARTHQUAKE CRACKS ICE AND CRYSTAL (element reactions R12, mondo 2026-11-07): ICE SHATTER says a slam
+           cracks ice, and an earthquake is the biggest slam there is. When the quake forms (state.js weatherTerrainOnForm)
+           every ice square under it cracks into water, and a crystal vein under it is reduced to rubble with the same
+           shard hit as _reactCrystalShatter (55, ×1.5 under the earth trine). The shard hits ride the quake's own pending
+           hits (processPendingEarthquake) so they land with the shake; without a pending quake they land at once. */
+        function quakeShattersGround(tiles, def) {
+            if (!tiles || !tiles.length || state.phase !== 'battle') return 0;
+            const _lbl = (def && def.label) || 'Earthquake';
+            let cracked = 0;
+            for (const t of tiles) if (t && isInside(t.x, t.y) && shatterIceAt(t.x, t.y)) cracked++;
+            if (cracked) addLog(`🧊 The ${_lbl} shatters the ice — ${cracked} tile${cracked !== 1 ? 's crack' : ' cracks'} into water!`);
+            const done = new Set();
+            const _shardDmg = Math.round(55 * (isEarthZodiacActive() ? 1.5 : 1));
+            let veins = 0, veinTiles = 0, cut = 0;
+            for (const t of tiles) {
+                if (!t || !isInside(t.x, t.y) || done.has(t.x + ',' + t.y) || !_isCrystalTile(t.x, t.y)) continue;
+                const vein = _floodConnectedTiles(t.x, t.y, _isCrystalTile, 12);
+                vein.forEach(b => done.add(b.x + ',' + b.y));
+                veins++; veinTiles += vein.length;
+                for (const b of vein) {
+                    setTerrainAt(b.x, b.y, 'rubble_2');
+                    const u = unitAt(b.x, b.y);
+                    if (!u || u.dead || u._dying || (typeof isUnitAirborne === 'function' && isUnitAirborne(u))) continue;
+                    const text = `💎 The ${_lbl} shatters the crystal under ${unitDisplayName(u)}: `;
+                    cut++;
+                    if (state._pendingEarthquake && Array.isArray(state._pendingEarthquake.hits)) {
+                        state._pendingEarthquake.hits.push({ unitId: u.id, amount: _shardDmg, text, shards: true });
+                    } else {
+                        applyDamageToUnit(u, _shardDmg, text, { noTerrainBonus: true, noRangeMult: true, allowMarkBonus: false, damageType: 'magic', scaleByTargetLevel: true });
+                        showFloatingTextForUnit(u, '💎 SHARDS!', 'damage', { durationMs: 1100 });
+                    }
+                }
+            }
+            if (veins) {
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+                addLog(`💎 The ${_lbl} detonates the crystal vein — ${veinTiles} tile${veinTiles !== 1 ? 's explode' : ' explodes'} into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
+            }
+            return cracked + veinTiles;
+        }
+        window.quakeShattersGround = quakeShattersGround;
         /* the landing tile breaks under a hard landing: ice there, and the drop deals fall damage */
         function hardLandingCracksIce(u, fromZ, toZ, x, y) {
             if (!u || !_isIceTile(x, y)) return false;
@@ -4222,6 +4358,11 @@
             if (!isInside(x, y)) return null;
             /* 💧 a water spell may be aimed at a burning tile to put it out (WATER PUTS OUT FIRE, 2026-11-07) */
             if (getSpellElement(spell) === 'water' && _tileIsBurning(x, y)) return { el: 'water', hint: 'puts out the flames' };
+            /* 🔊 a sonic spell may be aimed at ice or crystal to break it (R11, 2026-11-07) */
+            if (getSpellElement(spell) === 'sonic') {
+                if (_isIceTile(x, y)) return { el: 'sonic', hint: 'shatters the ice' };
+                if (_isCrystalTile(x, y)) return { el: 'sonic', hint: 'detonates the crystal' };
+            }
             /* 🪨🌿💨 R13-R15: an earth spell at a fire or lava, a nature spell at the fight's scorched ground, a wind spell at a fire */
             const _tcEl = getSpellElement(spell);
             if (_tcEl === 'earth' && _tileIsBurning(x, y)) return { el: 'earth', hint: 'smothers the flames' };
@@ -10319,6 +10460,7 @@
             } else {
                 status[payload.id] = Math.max(Number(status[payload.id] || 0), nextValue);
             }
+            if (payload.id === 'wet') _waterShortsOverclock(target);   // 💧⚙️ R9: becoming Wet ends Overclock
             /* 🛡 Protect's charges (STATUS_DEFS `blocks`: attacks it turns away; the payload's `blocks` — the Bulwark
                upgrades — overrides). A refresh keeps whichever is more. */
             if (meta.blocks) {
@@ -11410,6 +11552,11 @@
                 const unit = state.units.find(u => u.id === hit.unitId);
                 if (!unit || unit.dead) continue;
                 // Natural weather has no caster — scale by the victim's level.
+                if (hit.shards) {   // 💎 R12: the crystal under it shatters (quakeShattersGround)
+                    applyDamageToUnit(unit, hit.amount, `${hit.text}`, { noTerrainBonus: true, noRangeMult: true, allowMarkBonus: false, damageType: 'magic', scaleByTargetLevel: true });
+                    showFloatingTextForUnit(unit, '💎 SHARDS!', 'damage', { durationMs: 1100 });
+                    continue;
+                }
                 applyDamageToUnit(unit, hit.amount, `${hit.text}`, { ignoreArmor: false, scaleByTargetLevel: true });
             }
 
@@ -37300,6 +37447,19 @@
                 }
             }
 
+            /* 🔊🧊 SONIC BREAKS FROZEN (element reactions R11, mondo 2026-11-07): sound breaks ice, so a sonic hit on a Frozen
+               unit breaks its ice — the hit lands ×1.5 (the "THAW!" pay-off the bonus-vs-Frozen spells use) and the Frozen
+               ends (applyDamageToUnit's post-hit half). Not on top of a spell's own ×vs Frozen combo; never a tick. Here, so
+               the forecast and the live hit read the same number. */
+            if (_affEl === 'sonic' && finalDamage > 0 && damageType !== 'dot' && unitHasStatus(target, 'frozen')
+                && !(_balBvs && _balBvs.indexOf('frozen') >= 0)) {
+                _offMult *= 1.5;
+                if (live) {
+                    if (!_skipVisuals()) showFloatingTextForUnit(target, '🧊 ×1.5 THAW!', 'mult', { durationMs: 1000 });
+                    addLog(`🔊 The sound breaks the ice around ${_ctName(target)} — the hit lands ×1.5.`);
+                }
+            }
+
             // ── ⚗️ ELEMENTAL COMBO LAYER (2026-07-13) ──────────────────────
             // Element-aware interactions between the incoming hit, the
             // victim's condition and the reigning zodiac. Callers pass
@@ -38279,12 +38439,19 @@
                 if (_comboEl === 'fire') _thawFrozenUnit(target, 'The burst of fire');
             }
 
+            // 🔊🧊 R11: the sonic hit broke the Frozen unit's ice (the ×1.5 is in _hitDamageMath) — the Frozen ends.
+            if (_affEl === 'sonic' && damage > 0 && !_unitIsDown(target) && unitHasStatus(target, 'frozen')) {
+                clearStatus(target, 'frozen');
+                addLog(`🧊 ${_ctName(target)} is no longer Frozen.`);
+            }
+
             // 💧 Water-element hits leave the target Soaked (and douse any
             // burn) — every water spell sets up the ⚡ conduction and ❄️
             // flash-freeze follow-ups. Centralized here so ALL current and
             // future water-tagged damage soaks, no per-spell wiring.
             if (_affEl === 'water' && damage > 0 && !_unitIsDown(target)) {
                 _soakUnit(target, { douseLabel: 'The deluge' });
+                _waterShortsOverclock(target, 'The deluge');   // 💧⚙️ R9: a water hit shorts it even on a flyer (no soak up there)
             }
 
             if (sourceUnit && state.plantedSeeds && !target.dead) {
