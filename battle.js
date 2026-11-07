@@ -40508,6 +40508,9 @@
                 return;
             }
 
+            /* THE HEIGHT PAID ONCE (zones playtest 2026-11-07 K: Stone Drop, a WEAK row, hit for 1113): a drop / slam / throw /
+               leap already prices the height as levels in its raw (dmgPerLevel), so its hit never also rides HIGH GROUND from
+               the caster's own altitude (opts.noHeightBonus) — the cast and this forecast both. */
             /* the swoop a requiresFlight sky move takes before it strikes (doSpell's _skySwoopTakeoff): the drop counts its
                levels from up there, and a wind caster then strikes from the open air (THE SPELL AUDIT FIX F2) */
             const swoop = () => {
@@ -40531,7 +40534,7 @@
                     const carry = spell.carryHeight || (kind === 'skySlam' ? 5 : 4);
                     total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (cz + carry) - getHeightAt(target.x, target.y)) * (spell.dmgPerLevel || 25));
                 }
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 hit(target, total, total, total, hopts);
                 /* a sky drop's drain (Predator Drop): the caster heals its share of the drop's raw, as the cast does */
                 if (kind === 'skyDrop' && spell.drainPct && unit.hp < unit.maxHp) {
@@ -40570,7 +40573,7 @@
                     if (!t) return;
                     swoop();
                     const gTotal = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(t.x, t.y)) * (spell.dmgPerLevel || 25));
-                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
+                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true }));
                     tag(t, 'grab');
                     return;
                 }
@@ -40579,7 +40582,7 @@
                 const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
                 if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 const total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) * (spell.dmgPerLevel || 25));
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 const col = (unitAt(x, y, z) || unitAt(x, y));
                 if (col && !col.dead && col.id !== tt.id) {
                     const cb = spell.collisionBonus || 50;
@@ -82919,7 +82922,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83034,7 +83037,7 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -83080,7 +83083,7 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
@@ -83272,7 +83275,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83290,7 +83293,7 @@
                                 if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
@@ -83439,7 +83442,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83457,7 +83460,7 @@
                                 if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
