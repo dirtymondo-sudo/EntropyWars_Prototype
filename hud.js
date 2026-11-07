@@ -8333,7 +8333,7 @@ function _predictTargetShove(spell, target, castX, castY) {
     dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
     dist = spell.pullDistance || (isGrapple ? 2 : 3); mode = 'pull';
   } else {
-    dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+    dx = Math.sign(target.x - castX); dy = Math.sign(target.y - castY);   // straight away (a shared column is a straight N/S push)
     dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
   }
   if (dx === 0 && dy === 0) return null;
