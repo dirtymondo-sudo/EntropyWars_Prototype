@@ -4455,3 +4455,16 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   - Seen, not changed:
     - A heavy body that "smashes a hole clean through the stone wall" of a cliff still slams and rebounds (the lintel blocks).
     - Shield-absorb and "drinks the water part" lines print above their hit's own line.
+
+### THE HIT FIRST (2026-11-07, follow-up to the forced-movement log thread)
+- Bug: applyDamageToUnit wrote its hit line LAST, after everything the hit set off, so "X's shield absorbs N", "X drinks
+  the water part of the hit", "Indomitable Will holds them at 1 HP", the Revealed line, on-hit statuses (Serrated…), link
+  echoes, Contract and Power Core all printed ABOVE their own hit. A multi-hit cast (Ninefold Scratch) stacked one shield
+  line per hit above its one total line.
+- Fix (battle.js, log order only, no rule changed): the hit line is written right after `target.hp -= finalDamage`, before
+  the riders. The hit's own body riders (shield soak, element-part drink, Indomitable save) are filed with
+  `_hitRiderAdd(riders, key, n, make)` and written by `_hitRiderFlush` right after the hit line (or the "blocks the hit."
+  line when a shield soaks it all). A logSink keeps them on `sink.riders`, sums each kind over the cast and writes them
+  after the one total line in `_multiHitLogFlush`. Lines that explain the hit before it (weak/resist, combo, Marked,
+  "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
+- Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
