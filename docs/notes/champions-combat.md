@@ -4749,6 +4749,31 @@ Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/ex
   in the proof log); by code read its onRoundEnd recovery runs at each round end it is up, while the Guard log line says
   "extra recovery this round" — a text question for mondo, not changed here.
 
+## THE ONE MOVE + THE GLIDE KEEPS GOING + THE REFIT ONLY WIDENS (2026-11-07, token 20261107-onemove-01-cors)
+mondo: "weird quick little zoom ins and zoom outs before an attack like the camera is fighting itself". Recorded per frame
+in a real VS CPU match (Mount Shasta Arena 10×10, every camera.moveTo/snap call with its stack + the lens each frame).
+Three causes, all battle.js, camera-only (no rules):
+- **THE ONE MOVE** (`_actWalkHold` / `_actWalkLive` / `_actWalkEnd`, called from `_moveThenAttack` + `_moveThenCast`):
+  a MOVE→ATK / JUMP→ATK / MOVE→CAST confirm from the target two-shot used to play three moves in ~1 s: the walk's follow
+  (`focusOnTiles` / `animateBoardCameraPath`) left the menu shot for the tactical view (pitch 60→40, yaw swung ~30° back to
+  the resting yaw, zoom to home), then the strike swung straight back into a two-shot / the action shot. Now a basic
+  attack glides ONCE during the walk to the two-shot of the attacker on its LANDING tile + target (`_menuTargetShot` with a
+  clone at approach.x/y/z — same key, so the attack hold only pushes in); a cast (`still`) holds the confirmed two-shot
+  through the walk and the spell camera is the one move. The walk follows stay out while the hold is live (6 s cap,
+  cleared at the strike / bail). Dash approaches (`_viaSpell`) untouched. Kill switch `EW_NO_ONE_MOVE`.
+- **THE GLIDE KEEPS GOING** (`camera._glideRetarget`, called from moveTo): a pick's framing is solved 2-3× in its first
+  half second (setTool, then THE CLEAR FRAME as the panel slides in). A move that only refines the running one (pitch +
+  yaw within 8°) now bends that glide on its own clock (new from-values that keep the curve on the camera now) instead
+  of restarting from rest; later in a glide it restarts with easeOut (no stall). Kill switch `EW_NO_GLIDE_RETARGET`.
+- **THE REFIT ONLY WIDENS** (`_refitZoom`, `REFIT_ZOOM_IN` 1.2): THE CLEAR FRAME / HEAD ROOM refits of the same pair (and
+  the range-fit refits) keep the zoom unless they must widen or close in by 20%+ (a Healing Potion pick went 1.40 → 1.63
+  → 1.50: out, in, out). The slide clear of the menus still applies. Kill switch `EW_NO_REFIT_WIDEN_ONLY`.
+Audited after the fix in the browser: MOVE→ATK ×2, in-range basic attack, in-range OTS spell, aimed line spell, MOVE→CAST
+(cine on), potion, combo (Combined Arms). JUMP→ATK was recorded before (out-and-back) and runs the same code path
+(animateBoardCameraPath held) but no jump came up after the fix. NOT touched: turn-start framing (another thread), the
+action shot's own beats (the face beat's yaw swing, the push-in + ease-out mondo asked for). Online: viewer-local; the
+guest runs `_moveThenAttack` locally too (its doMove/doAttack emit), so its own walk-then-act gets the hold.
+Proof sheet: /mnt/project-files/camera-one-move/camera_before_after.png.
 ## THE TURN FRAME (2026-11-07, mondo on Mount Shasta Arena) — battle.js, state.js, online.js, three-camera.js, three-renderer.js
 mondo (his Antihero's turn, round 6): "my unit isnt even centered, they are all the way near the top of the screen, and i cant
 see anything bc grass is completely covering the screen ... Low and near to the ground". Reproduced on Mount Shasta Arena
