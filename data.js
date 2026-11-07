@@ -8510,7 +8510,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 100, range: 3, aoeRadius: 1, apCost: 1,
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'A thousand of them at once. Deals MEDIUM magic damage to every enemy in a 3×3 within 3 tiles and leaves them Wet for 2 rounds.' },
+          desc: 'A thousand of them at once. Deals MEDIUM magic damage to every enemy in a 3×3 within 3 tiles and leaves them Soaked for 2 rounds.' },
         _mkBlink('short', { id: 'raceJellyDrift', tier: 2, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Ocean Current',
           desc: 'Go where the current goes. Drift to any tile within 3 — the bell folds, the water carries it, it opens again.' }),
         { id: 'raceJellyNet', spellType: 'anomaly', element: 'water', name: 'Nematocyst Net',
@@ -13037,7 +13037,7 @@ const STATUS_DEFS = {
     wet: {
         icon: '💧',
         glyph: '💧',
-        short: 'WET',
+        short: 'SOAK',   // ONE NAME (mondo 2026-11-07: "wet and soaked, isnt that the exact same thing?"): it is one status, Soaked
         label: 'Soaked',
         colorText: 'soaked',
         // 'marker' (not 'debuff') — standing in water makes you wet, period;
@@ -13555,7 +13555,7 @@ const STATUS_LIBRARY_DESCS = {
     marked:    'The next hit against this unit consumes the mark for bonus damage.',
     jammed:    'Tech systems scrambled: the unit can\'t use its allies\' sight, only what it sees itself.',
     drowning:  'Struggling in deep water: takes damage each round and can barely act.',
-    wet:       'Soaked through. Immune to burn, but vulnerable to lightning and cold.',
+    wet:       'Soaked through (standing in water or rain counts too). Can\'t catch fire; lightning hits it ×1.5, fire ×0.75 and dries it, and frost freezes it solid.',
     protect:   'Blocks the next attack completely, then wears off (Bulwark upgrades block more).',
     spawnGuard:'Fresh off a respawn: briefly protected from damage.',
     slow:      'Movement reduced by 2 while it lasts.',

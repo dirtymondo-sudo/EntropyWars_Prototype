@@ -60199,8 +60199,8 @@
             crit: 'Critical hit', press: 'Press (+AP refund)', pressMiss: 'Press miss (-AP)',
             typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
             statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
-            react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Soaked shock (lightning on wet)',
-            react_soakedFire: 'Soaked fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            react_shortCircuit: 'Short Circuit (lightning on soaked tech)', react_soakedShock: 'Soaked shock (lightning on soaked)',
+            react_soakedFire: 'Soaked fire (fire on soaked)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
             highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
         };
         function _balFxMark(u, kind, key) {

@@ -4125,3 +4125,7 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   (_walkPassHazards); rain douses every burning unit it falls on, flyers too, when it forms and every round end
   (state.js rainOnTheBoard), and a flyer in the rain can't catch fire (_unitInRain anyHeight). Water heals (Yo Ho,
   Temporal Tide) don't douse: they deal no water hit.
+- ONE NAME, SOAKED: "what is up with all of these different water effects like wet and soaked, isnt that the exact same
+  thing?" It always was one status (id `wet`); the pill / ability chips said WET and everything else said Soaked. The
+  pill is SOAK now and every player-facing "wet" for the status reads Soaked (Ink Cloud desc, Thunderstorm desc, Balance
+  Lab reaction labels, the status description). Flavour text ("a long, wet hand") stays.
