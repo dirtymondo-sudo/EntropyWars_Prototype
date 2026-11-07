@@ -16531,6 +16531,23 @@
                 }
         }
 
+        /* THE FORCED MOVE PREVIEW (11-07 A1/A3): the arrow + ghost read the engine's own slide (battle.js resolveForcedSlide,
+           simulate) so they land where the cast truly lands — a pull re-aims at the caster each step and stops beside them.
+           Null when the engine is not loaded (the old straight walk is the fallback). */
+        function _ewPreviewSlide(target, dx, dy, dist, reelTo, spell, byUnit) {
+            if (typeof resolveForcedSlide !== 'function' || typeof getUnitPushDistance !== 'function') return null;
+            if (!dx && !dy) return null;
+            try {
+                const d = getUnitPushDistance(target, dist, null, spell || undefined);
+                if (!(d > 0)) return { x: target.x, y: target.y };
+                const sim = resolveForcedSlide(target, dx, dy, d, {
+                    simulate: true, noSimChain: true, byUnit: byUnit || null,   // the caster: same realm / anchor rules as the cast
+                    stopBefore: reelTo ? { x: reelTo.x, y: reelTo.y } : null
+                });
+                return sim ? { x: sim.landX ?? sim.x, y: sim.landY ?? sim.y } : null;
+            } catch (_e) { return null; }
+        }
+
         function _renderDisplacementArrows(caster, spell, tx, ty) {
             const kind = spell.kind;
             if (!projectileLayerEl) return;
@@ -16554,7 +16571,10 @@
                 const dx = Math.sign(caster.x - target.x);
                 const dy = Math.sign(caster.y - target.y);
                 let endX = target.x, endY = target.y;
-                for (let i = 1; i <= pullDist; i++) {
+                /* THE REEL-IN (11-07 A3): the engine's own slide (re-aims at the caster each step, stops beside them) */
+                const _plSim = _ewPreviewSlide(target, dx, dy, pullDist, caster, spell, caster);
+                if (_plSim) { endX = _plSim.x; endY = _plSim.y; }
+                else for (let i = 1; i <= pullDist; i++) {
                     const nx = target.x + dx * i, ny = target.y + dy * i;
                     if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
                     endX = nx; endY = ny;
@@ -16579,7 +16599,9 @@
                     const dx = Math.sign(caster.x - target.x);
                     const dy = Math.sign(caster.y - target.y);
                     let endX = target.x, endY = target.y;
-                    for (let i = 1; i <= 2; i++) {
+                    const _grSim = _ewPreviewSlide(target, dx, dy, 2, caster, null, caster);
+                    if (_grSim) { endX = _grSim.x; endY = _grSim.y; }
+                    else for (let i = 1; i <= 2; i++) {
                         const nx = target.x + dx * i, ny = target.y + dy * i;
                         if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
                         if (nx === caster.x && ny === caster.y) break;
@@ -16714,11 +16736,13 @@
                 if (target && isEnemyUnit(caster, target)) {
                     // A fling knocks the target AWAY from the caster — trace the
                     // actual shove and hologram where it lands.
-                    const dx = Math.sign(target.x - caster.x) || 1;
+                    const dx = Math.sign(target.x - caster.x);   // straight away (11-07 A1: a shared column is a straight N/S push)
                     const dy = Math.sign(target.y - caster.y);
                     const dist = spell.displaceDistance || spell.pushDistance || 2;
                     let endX = target.x, endY = target.y;
-                    for (let i = 1; i <= dist; i++) {
+                    const _dpSim = _ewPreviewSlide(target, dx, dy, dist, null, spell, caster);
+                    if (_dpSim) { endX = _dpSim.x; endY = _dpSim.y; }
+                    else for (let i = 1; i <= dist; i++) {
                         const nx = target.x + dx * i, ny = target.y + dy * i;
                         if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
                         endX = nx; endY = ny;

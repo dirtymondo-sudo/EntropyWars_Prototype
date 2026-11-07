@@ -6051,7 +6051,10 @@
                 slamDamage: 0, animMs: 0, chain: [], simSlams: [], simHits: [], simNotes: [], legs: [],
                 dirX: Math.sign(dx || 0), dirY: Math.sign(dy || 0), spent: false
             };
-            const toward = opts.toward || null;
+            /* THE REEL-IN (playtest 11-07 A3): a pull that stops at the caster (stopBefore) is a pull INTO the caster — it re-aims
+               at the caster every step and ends beside them. The fixed sign(dx), sign(dy) heading dragged an off-line body
+               diagonally, then sideways past the caster's column (Grapple Arm, Sailor's Lure, Lure overshot two squares). */
+            const toward = opts.toward || opts.stopBefore || null;
             const within = (toward && opts.stopWithin != null) ? opts.stopWithin : 1;
             if (toward && target) {
                 dx = Math.sign(toward.x - target.x); dy = Math.sign(toward.y - target.y);
@@ -40197,7 +40200,7 @@
                 const target = enemyAt(tx, ty, z);
                 if (!target) return;
                 immovable(target);
-                const dx = dir ? dir.dx : (Math.sign(target.x - unit.x) || 1), dy = dir ? dir.dy : Math.sign(target.y - unit.y);
+                const dx = dir ? dir.dx : Math.sign(target.x - unit.x), dy = dir ? dir.dy : Math.sign(target.y - unit.y);   // straight away (a shared column is a straight N/S push, never +1 east)
                 const r = slide(target, dx, dy, getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2), null, 'push');
                 const hitObs = !!(r && (r.hitWall || r.hitUnits.length));
                 const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32).map(n => n + (hitObs && spell.collisionBonus ? spell.collisionBonus : 0));
@@ -47848,7 +47851,7 @@
                 dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
                 dist = getUnitPushDistance(target, spell.pullDistance || 3, null, spell); mode = 'pull';
             } else {
-                dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+                dx = Math.sign(target.x - castX); dy = Math.sign(target.y - castY);   // straight away from the caster (no `|| 1`: a shared column went diagonal)
                 dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2); mode = 'push';
             }
             if (!dist) return null;
@@ -78382,7 +78385,9 @@
                     let damage = computeSpellBase(spell, spellPower);
 
                     // THE SPELL AUDIT Batch D: THE TOSS — the picked direction, else straight away from the caster
-                    const dx = _throwDir ? _throwDir.dx : (Math.sign(target.x - unit.x) || 1);
+                    /* THE STRAIGHT SHOVE (playtest 11-07 A1): a shared column is a straight north/south push — the old `|| 1` turned dx 0 into 1
+                       and sent Haymaker / Shoulder Through / Body Check / Kinetic Hurl diagonal. Same math as _runPostEffects' knockback. */
+                    const dx = _throwDir ? _throwDir.dx : Math.sign(target.x - unit.x);
                     const dy = _throwDir ? _throwDir.dy : Math.sign(target.y - unit.y);
                     // 2026-07-26: honor the pushDistance fallback (Body Check /
                     // Horn Toss author it) — displaceDistance still wins.
@@ -80107,7 +80112,8 @@
                     /* both leaves swing shut: the near one quietly, the twin SLAMS */
                     window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
                     window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
-                    const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
+                    const _slamDir = { dx: Math.sign(twin.x - door.x), dy: Math.sign(twin.y - door.y) };
+                    if (!_slamDir.dx && !_slamDir.dy) _slamDir.dx = 1;   // twins in one column slam straight N/S (the old `|| 1` went diagonal)
                     const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1);
                     let _slamMax = 0, _hit = 0;
                     for (const v of victims) {
