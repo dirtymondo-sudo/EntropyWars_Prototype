@@ -5108,7 +5108,7 @@ const SPELL_LIBRARY = [
         damageType: 'magic',
         tier: 2,
         school: 'Black Mage',
-        desc: 'One bolt, one target. Deals MEDIUM magic damage to a Single Enemy. Soaked targets take half again.'
+        desc: 'One bolt, one target. Deals MEDIUM magic damage to a Single Enemy. Wet targets take half again.'
     },
     {
         id: 'thunderstorm',
@@ -5125,7 +5125,7 @@ const SPELL_LIBRARY = [
         weatherType: 'thunderstorm',
         weatherDuration: [3, 5],
         weatherTiles: [3, 5],
-        desc: 'Summons a thunderstorm over the whole map for 3 to 5 rounds. Every turn its rain Soaks every grounded unit for 2 rounds. Each round its eye chases the nearest grounded enemy up to 2 tiles. Every enemy it passes over is struck for WEAK lightning damage (Soaked targets take half again). Flyers are skipped. −5 DEF in the eye.'
+        desc: 'Summons a thunderstorm over the whole map for 3 to 5 rounds. Every turn its rain leaves every grounded unit Wet for 2 rounds. Each round its eye chases the nearest grounded enemy up to 2 tiles. Every enemy it passes over is struck for WEAK lightning damage (Wet targets take half again). Flyers are skipped. −5 DEF in the eye.'
     },
     {
         id: 'wallOfFire',
@@ -6237,7 +6237,7 @@ const SPELL_LIBRARY = [
         { id: 'raceSpout', name: 'Spout', tier: 1, families: ['deepsea'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'damage', range: 3, dmg: 80, damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'A jet of seawater from the gills. WEAK water damage and the target is soaked through.' },
+          desc: 'A jet of seawater from the gills. WEAK water damage and the target is Wet.' },
         /* THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or
            making them easily identifiable and making sure there's a nice amount of spells for each"): Water Abilities had
            no single-target Soak and no finisher vs Soaked (water's own status) at all. Two rows on existing kinds and
@@ -6246,11 +6246,11 @@ const SPELL_LIBRARY = [
         { id: 'raceWaterJet', name: 'Water Jet', tier: 1, families: ['water'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'A hard jet of water from the open hand. WEAK magic damage to a Single Enemy within 3 and it is Soaked for 2 rounds.' },
+          desc: 'A hard jet of water from the open hand. WEAK magic damage to a Single Enemy within 3 and it is Wet for 2 rounds.' },
         { id: 'raceMaelstrom', name: 'Maelstrom', tier: 4, families: ['water'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
-          desc: 'The sea turns on one spot. A whirlpool opens under a Single Enemy within 4 and its water closes over it for HEAVY magic damage. Soaked targets take it worse. Cooldown: 2 rounds.' },
+          desc: 'The sea turns on one spot. A whirlpool opens under a Single Enemy within 4 and its water closes over it for HEAVY magic damage. Wet targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceSurveillance', name: 'Surveillance', tier: 1, families: ['deepstate'], cost: 25, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 6,
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
@@ -6606,7 +6606,7 @@ const SPELL_LIBRARY = [
         { id: 'raceConduction', name: 'Conduction', tier: 3, families: ['lightning'], cost: 75, apCost: 1, spellType: 'anomaly',
           element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 4,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
-          desc: 'Current finds water. MEDIUM magic damage to a Single Enemy. A Soaked target takes it worse, on top of the usual lightning-on-water shock.' },
+          desc: 'Current finds water. MEDIUM magic damage to a Single Enemy. A Wet target takes it worse, on top of the usual lightning-on-water shock.' },
         /* THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): two Lightning
            Magic rows on existing kinds and rules only. Ball Lightning = a tier II line that Jams (the Rainspout shape: a
            lane, a status; the Crosswind numbers) — the family's second Jammed setup beside Static Shock; Bolt from the Blue = the family's tier IV
@@ -6746,7 +6746,7 @@ const SHARED_TIDAL_SURGE = {
     type: 'damage', cost: 30, dmg: 100, range: 5,
     kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
     statusEffects: [{ id: 'wet', duration: 2 }],
-    desc: 'Deals MEDIUM magic damage to All Enemies in a line. Pushes them back. Applies Soaked. Knocks the target back 2 tiles.'
+    desc: 'Deals MEDIUM magic damage to All Enemies in a line. Pushes them back. Applies Wet. Knocks the target back 2 tiles.'
 };
 
 /* ── 2026-07-17 spell/status pass: new shared kits ──────────────────────
@@ -6914,7 +6914,7 @@ const SHARED_SUMMON_BLOOD_RAIN = {
     weatherType: 'bloodRain',
     weatherDuration: [3, 5],
     weatherTiles: [5, 8],
-    desc: 'Summons Blood Rain over the whole map for 3 to 5 rounds. Each turn everyone on the map is Soaked for 2 rounds and any Burn is put out. Divine units take WEAK damage each turn; Unholy units heal a little HP and MP.'
+    desc: 'Summons Blood Rain over the whole map for 3 to 5 rounds. Each turn everyone on the map is Wet for 2 rounds and any Burn is put out. Divine units take WEAK damage each turn; Unholy units heal a little HP and MP.'
 };
 
 /* (SHARED_CALL_LIGHTNING / Summon Storm was CUT 2026-07-26 via the Spell
@@ -7175,7 +7175,7 @@ const RACE_ABILITIES = {
         { id: 'goRainspout', name: 'Rainspout', tier: 1, families: ['gargoyle'], cost: 25, apCost: 1, spellType: 'divine',
           element: 'water', type: 'damage', kind: 'line', range: 4, lineWidth: 1, dmg: 85, damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'The cathedral spout was carved to vomit rain on the street. Deals WEAK magic damage to All Enemies in a line and Soaks them for 2 rounds.' },
+          desc: 'The cathedral spout was carved to vomit rain on the street. Deals WEAK magic damage to All Enemies in a line and leaves them Wet for 2 rounds.' },
         { id: 'goCathedralPerch', name: 'Cathedral Perch', tier: 2, families: ['gargoyle'], cost: 50, apCost: 1,
           cooldownRounds: 2, spellType: 'divine', element: 'wind', type: 'utility', kind: 'teleport', range: 4,
           teleportDistance: 4, leap: true, arrivalStageBoost: { def: 1, mdef: 1 }, arrivalStageRounds: 2,
@@ -7183,7 +7183,7 @@ const RACE_ABILITIES = {
         { id: 'goGrotesqueDive', name: 'Grotesque Dive', tier: 3, families: ['gargoyle'], cost: 75, apCost: 1,
           spellType: 'divine', element: 'earth', type: 'damage', kind: 'leapStrike', range: 3, dmg: 125,
           damageType: 'physical', dmgPerLevel: 25, bonusVsStatus: { status: 'wet', mult: 1.5 },
-          desc: 'Wings shut, a ton of carved stone off the roof. From higher ground, leaps down onto a Single Enemy below you within 3 for MEDIUM physical damage, more for every level it drops. Deals bonus damage to Soaked targets.' },
+          desc: 'Wings shut, a ton of carved stone off the roof. From higher ground, leaps down onto a Single Enemy below you within 3 for MEDIUM physical damage, more for every level it drops. Deals bonus damage to Wet targets.' },
         /* §6.17 Stoneform (Phase 5 wave A, 2026-09-08) — Perch Form's grown-up
            version; Perch Form is retired (the Phase 4 `stoneform` carrier:
            blockMove + blockAction + invulnerable + 15% regen, dispelProof). */
@@ -8298,11 +8298,11 @@ const RACE_ABILITIES = {
         { id: 'pzHolyWater', name: 'Holy Water', tier: 1, families: ['holyorders'], cost: 25, apCost: 1,
           spellType: 'divine', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 3, unholyBonus: 40,   // STATS25 PASS 2026-10-29: dmg 80→100 (Priest 38/17%)
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'The power of Christ compels you. Deals WEAK magic damage to a Single Enemy within 3, more to Unholy and Anomaly targets, and Soaks them for 2 rounds.' },
+          desc: 'The power of Christ compels you. Deals WEAK magic damage to a Single Enemy within 3, more to Unholy and Anomaly targets, and leaves them Wet for 2 rounds.' },
         { id: 'pzLastRites', name: 'Last Rites', tier: 4, families: ['holyorders'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'divine', vfxElement: 'light', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 160, range: 2, unholyBonus: 60,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
-          desc: 'Go in peace. Deals HEAVY magic damage to a Single Enemy within 2, more to Unholy and Anomaly targets. Deals bonus damage to Soaked targets. Cooldown: 2 rounds.' },
+          desc: 'Go in peace. Deals HEAVY magic damage to a Single Enemy within 2, more to Unholy and Anomaly targets. Deals bonus damage to Wet targets. Cooldown: 2 rounds.' },
         { id: 'raceDivineLight', tier: 1, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Divine Light',
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 140,
@@ -8505,12 +8505,12 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 20, dmg: 62, range: 2, apCost: 1,   // BALANCE PASS 2026-10-06: DMG 90→75 (lab: 425 a cast, the best Tier I in the game); STATS32 PASS 2026-10-30: dmg 75→62 (1.56× the Tier I median a cast in STATS32, 1.51× in STATS31; Jellyfish 63%)
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'poison', duration: 2 }],
-          desc: 'A tentacle brushes past. Deals WEAK water damage and Poisons the target. The venom runs faster through wet skin: bonus damage to Soaked targets and to anything standing in water.' },
+          desc: 'A tentacle brushes past. Deals WEAK water damage and Poisons the target. The venom runs faster through wet skin: bonus damage to Wet targets and to anything standing in water.' },
         { id: 'raceJellyBloom', tier: 2, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Bloom',
           type: 'damage', cost: 30, dmg: 100, range: 3, aoeRadius: 1, apCost: 1,
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'A thousand of them at once. Deals MEDIUM magic damage to every enemy in a 3×3 within 3 tiles and leaves them Soaked for 2 rounds.' },
+          desc: 'A thousand of them at once. Deals MEDIUM magic damage to every enemy in a 3×3 within 3 tiles and leaves them Wet for 2 rounds.' },
         _mkBlink('short', { id: 'raceJellyDrift', tier: 2, families: ['jellyfish'], spellType: 'anomaly', element: 'water', name: 'Ocean Current',
           desc: 'Go where the current goes. Drift to any tile within 3 — the bell folds, the water carries it, it opens again.' }),
         { id: 'raceJellyNet', spellType: 'anomaly', element: 'water', name: 'Nematocyst Net',
@@ -8673,14 +8673,14 @@ const RACE_ABILITIES = {
         { id: 'sigFireHose', name: 'Fire Hose', tier: 2, families: ['firerescue'], cost: 50, apCost: 1, spellType: 'human',
           element: 'water', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 80, range: 4, lineWidth: 1, pushDistance: 3,
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'Full pressure down the hall. Deals WEAK magic damage to All Enemies in a line, pushes them 3 tiles and Soaks them for 2 rounds.' },
+          desc: 'Full pressure down the hall. Deals WEAK magic damage to All Enemies in a line, pushes them 3 tiles and leaves them Wet for 2 rounds.' },
         { id: 'sigFiremansCarry', name: 'Fireman\'s Carry', tier: 2, families: ['firerescue'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'human', type: 'utility', kind: 'swap', range: 4, allyOnly: true, healOnSwap: 100,
           desc: 'Over the shoulder and out. Swap places with an ally within 4 tiles; the ally arrives healed for a MEDIUM amount of HP. Cooldown: 2 rounds.' },
         { id: 'sigHalligan', name: 'Halligan Breach', tier: 3, families: ['firerescue'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 135, range: 1, ignoreArmor: true,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
-          desc: 'The forcible-entry bar goes through doors. And people. Deals MEDIUM physical damage to an adjacent enemy and ignores its DEF. Soaked targets take it worse.' },
+          desc: 'The forcible-entry bar goes through doors. And people. Deals MEDIUM physical damage to an adjacent enemy and ignores its DEF. Wet targets take it worse.' },
     ],
     'goblin': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Goblin Mob. */
@@ -10079,11 +10079,11 @@ const RACE_ABILITIES = {
         { id: 'sigOrichalcumRay', name: 'Orichalcum Ray', tier: 1, families: ['orichalcum'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'water', type: 'damage', kind: 'line', damageType: 'magic', dmg: 85, range: 5, lineWidth: 1,
           statusEffects: [{ id: 'wet', duration: 2 }],
-          desc: 'The lost metal still shines under the sea. Deals WEAK magic damage to All Enemies in a 5-tile line and Soaks them for 2 rounds.' },
+          desc: 'The lost metal still shines under the sea. Deals WEAK magic damage to All Enemies in a 5-tile line and leaves them Wet for 2 rounds.' },
         { id: 'sigCrystalResonator', name: 'Crystal Resonator', tier: 3, families: ['orichalcum'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 95, range: 4, aoeRadius: 1,   // STATS24 PASS 2026-10-29: dmg 130→110 (1.60× the Tier III median); STATS29 PASS 2026-10-30: dmg 110→95 (1.72× the Tier III median a cast in STATS29, 1.98× in STATS28; Atlantean 58%)
           bonusVsStatus: { status: 'wet', mult: 1.25 },   // strong races check 2026-10-24: was 1.5, which stacked with Wet conducting lightning (x1.5) to x2.25
-          desc: 'The great crystal that powered Atlantis, still humming. Deals WEAK magic damage to All Enemies in a 3×3 within 4 tiles. Soaked targets take it worse.' },
+          desc: 'The great crystal that powered Atlantis, still humming. Deals WEAK magic damage to All Enemies in a 3×3 within 4 tiles. Wet targets take it worse.' },
     ],
     'dinosaur': [
         /* §6.14 (Phase 5 wave A, 2026-09-08): Apex Charge → Stampede (id kept
@@ -10280,7 +10280,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 125, range: 4,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
-          desc: 'It goes off under the surface. Deals MEDIUM physical damage to All Enemies in a 3×3. Anything soaked — or standing in the water — takes the shock through its body: bonus damage to Soaked targets.' },
+          desc: 'It goes off under the surface. Deals MEDIUM physical damage to All Enemies in a 3×3. Anything Wet — or standing in the water — takes the shock through its body: bonus damage to Wet targets.' },
         SHARED_TIDAL_SURGE,
         SHARED_VORTEX_SLAM
     ],
@@ -11253,7 +11253,7 @@ const FAMILY_PASSIVES = [
       desc: 'Basic attacks and physical spells with no element of their own are fire-element, and every physical hit Burns the target for a round.' },
     { id: 'passiveLiveWire', tier: 1, families: ['lightning'], name: 'Live Wire', icon: '⚡',
       hooks: { physicalElementRider: 'lightning' },
-      desc: 'Basic attacks and physical spells with no element of their own are lightning-element, so a Soaked target takes ×1.5.' },
+      desc: 'Basic attacks and physical spells with no element of their own are lightning-element, so a Wet target takes ×1.5.' },
     { id: 'passiveVenomous', tier: 1, families: ['poison'], name: 'Venomous', icon: '🐍',
       hooks: { physicalHitStatus: { id: 'poison', duration: 1 } },
       desc: 'Every physical hit Poisons the target for a round.' },
@@ -13037,9 +13037,9 @@ const STATUS_DEFS = {
     wet: {
         icon: '💧',
         glyph: '💧',
-        short: 'SOAK',   // ONE NAME (mondo 2026-11-07: "wet and soaked, isnt that the exact same thing?"): it is one status, Soaked
-        label: 'Soaked',
-        colorText: 'soaked',
+        short: 'WET',    // ONE NAME, WET (mondo 2026-11-07: one status; "wet fits much better on a status badge" than Soaked)
+        label: 'Wet',
+        colorText: 'wet',
         // 'marker' (not 'debuff') — standing in water makes you wet, period;
         // no resist roll, no Censer purge. Whether it helps or hurts depends
         // on what hits you next: lightning ×1.5, fire ×0.75, frost = frozen
@@ -13555,7 +13555,7 @@ const STATUS_LIBRARY_DESCS = {
     marked:    'The next hit against this unit consumes the mark for bonus damage.',
     jammed:    'Tech systems scrambled: the unit can\'t use its allies\' sight, only what it sees itself.',
     drowning:  'Struggling in deep water: takes damage each round and can barely act.',
-    wet:       'Soaked through (standing in water or rain counts too). Can\'t catch fire; lightning hits it ×1.5, fire ×0.75 and dries it, and frost freezes it solid.',
+    wet:       'Wet (standing in water or rain counts too). Can\'t catch fire; lightning hits it ×1.5, fire ×0.75 and dries it, and frost freezes it solid.',
     protect:   'Blocks the next attack completely, then wears off (Bulwark upgrades block more).',
     spawnGuard:'Fresh off a respawn: briefly protected from damage.',
     slow:      'Movement reduced by 2 while it lasts.',
@@ -21373,7 +21373,7 @@ const SPELL_FAMILIES = {
         glyph: '💧',
         color: '#3d8bff',
         kind: 'discipline',
-        desc: 'Floods, pushes and soaks.',
+        desc: 'Floods, pushes and wets.',
         unique: null
     },
     earth:     {
@@ -21545,9 +21545,9 @@ const SPELL_FAMILIES = {
         glyph: '🔱',
         color: '#3fc1b0',
         kind: 'signature',
-        desc: 'The Atlantean\'s own: the lost metal\'s ray soaks them, the crystal resonator lights them up.',
+        desc: 'The Atlantean\'s own: the lost metal\'s ray wets them, the crystal resonator lights them up.',
         unique: 'atlantean',
-        identity: { who: ['High Priest', 'Crystal Keeper', 'Atlantean'], adj: ['Sunken', 'Resonant', 'Lost'], look: ['an orichalcum circlet', 'a humming power crystal'], vibe: ['soaks the enemy, then lights them up', 'runs the lost empire\'s crystal'] }
+        identity: { who: ['High Priest', 'Crystal Keeper', 'Atlantean'], adj: ['Sunken', 'Resonant', 'Lost'], look: ['an orichalcum circlet', 'a humming power crystal'], vibe: ['wets the enemy, then lights them up', 'runs the lost empire\'s crystal'] }
     },
     spacevixen: {
         id: 'spacevixen',
@@ -22989,7 +22989,7 @@ const SPELL_FAMILIES = {
         glyph: '⛪',
         color: '#8f8a7e',
         kind: 'signature',
-        desc: 'The roof-sentinel: soak them from the gutter spout, take the high perch, then drop the whole ton of stone.',
+        desc: 'The roof-sentinel: wet them from the gutter spout, take the high perch, then drop the whole ton of stone.',
         unique: 'gargoyle',
         identity: { who: ['Gargoyle', 'Grotesque', 'Roof Sentinel'], adj: ['Carved', 'Rain-Streaked', 'Watchful'], look: ['a gutter spout for a mouth', 'folded stone wings', 'moss in the cracks'], vibe: ['waits on the highest ledge and drops on you', 'pours rain from its mouth onto the street below'] }
     },
@@ -23697,7 +23697,7 @@ const SPELL_UPGRADES = {
                     desc: 'While Blood Rain is falling, the swarm heals you for 45% of the damage it deals.', patch: { weatherPatch: { weather: 'bloodRain', patch: { set: { aoeLifeDrain: 0.45 } } } } },
     upConductive: { id: 'upConductive', name: 'Conductive',   glyph: '⚡', sp: 1, roles: [], families: ['lightning'],
                     requires: 'chain', excl: null, auto: true,
-                    desc: 'If the chain touches a Soaked enemy it jumps once more.', patch: { chainWetHops: 1 } },
+                    desc: 'If the chain touches a Wet enemy it jumps once more.', patch: { chainWetHops: 1 } },
     upReprise:    { id: 'upReprise',    name: 'Reprise',      glyph: '🎶', sp: 2, roles: [], families: ['sonic'],
                     rows: ['warCry'], requires: null, excl: null, auto: true,
                     desc: 'Also grants an Encore (1 AP, act again) to the nearest ally in the aura who has finished acting.', patch: { encoreAlly: true } },
