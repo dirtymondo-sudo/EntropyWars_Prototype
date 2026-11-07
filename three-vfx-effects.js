@@ -12143,6 +12143,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (TR && typeof TR.warmAnimals === 'function') {
             try { TR.warmAnimals(_BUG_KEYS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
+        /* THE BLACK PYRAMID (2026-11-07): the spell-made monuments' sheets (Pyramid Protocol's sand, Walls of Camelot's
+           bricks) — built once off-scene so the cast never stands a block with no pixels yet (three-renderer.js _warmSpellMonuments) */
+        if (TR && typeof TR.warmSpellMonuments === 'function') {
+            try { TR.warmSpellMonuments().forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
         /* the summons that wear a rig (the cult leader's Gathering → the user's cult member GLB) */
         if (TR && typeof TR.warmSummonModels === 'function') {
             try { TR.warmSummonModels().forEach(function (fn) { checks.push(fn); }); } catch (e) {}

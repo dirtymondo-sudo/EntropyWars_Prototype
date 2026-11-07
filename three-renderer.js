@@ -9558,6 +9558,51 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* THE BLACK PYRAMID (2026-11-07, zones/traps playtest D5: "Pyramid Protocol blocks are drawn solid black"): a spell-made
+       monument (Pyramid Protocol's ziggurat blocks, Walls of Camelot's castle wall) is built MID-BATTLE, the moment the spell
+       lands, and its builder asks for its sheet (_hzTex: the desert sand, the castle bricks) right then. A board that never
+       drew that sheet had never loaded it, and a three.js texture with no pixels yet draws BLACK: the blocks stood black
+       until the sheet arrived (seconds behind a busy model queue). Now the battle's loading card builds every spell
+       monument kind once, off-scene, so each one's sheets (and the gothic wall's model) are requested while the card's
+       asset gate is open and are in memory before the first turn; the cast then builds with sheets that have landed.
+       Called from warmSpellLibrary (once a session) AND from the battle's loading card (battle.js), so a beach board's
+       own desert sheet is warmed too; a kind already warmed for this sand is skipped.
+       Returns one settle check per sheet (true once landed or failed), like warmMiscModels. */
+    var _monWarmed = {};
+    function _warmSpellMonuments(kinds) {
+        var out = [];
+        if (typeof THREE === 'undefined') return out;
+        if (!kinds) {
+            kinds = [];
+            var seen = {}, lists = [];
+            try { if (typeof SPELL_BY_ID !== 'undefined') lists.push(SPELL_BY_ID); } catch (e) {}
+            try { if (typeof RACE_ABILITY_BY_ID !== 'undefined') lists.push(RACE_ABILITY_BY_ID); } catch (e) {}
+            lists.forEach(function (L) {
+                for (var id in L) { var sp = L[id]; var k = sp && sp.monument && sp.monument.kind; if (k && !seen[k]) { seen[k] = 1; kinds.push(k); } }
+            });
+        }
+        var B = _monBuilders();
+        kinds.forEach(function (kind) {
+            var fn = B[kind];
+            var wk = kind + _ewSandPart('desert');   // THE TWO SANDS: a beach board's desert is its own sheet, warmed apart
+            if (!fn || _monWarmed[wk]) return;
+            _monWarmed[wk] = true;
+            var nMats = _horizonMats.length, g = null;
+            try { g = fn(_monRng(1), { kind: kind, x: 0, y: 0 }); } catch (e) { g = null; }
+            if (!g) return;
+            g.traverse(function (o) {
+                var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+                ms.forEach(function (m) {
+                    var t = m && m.map, rec = t && t._ew_alRec;
+                    if (rec && !rec.done) out.push(function () { return !!rec.done; });
+                });
+            });
+            _horizonMats.splice(nMats);   // the warm copy is never drawn: the grade list keeps only the real ones
+            _disposeR(g);   // geometry + materials only — the sheets stay cached for the cast (_hzTexCache)
+        });
+        return out;
+    }
+
     function rebuildObjects(soft) {
         if (!objectGroup) return;
         soft = soft === true;   // THE LANDING REBUILDS ONLY THE OBJECTS: true = only files landed since the last run
@@ -9827,6 +9872,16 @@ const ThreeRenderer = (function () {
                        viewer swap turns a grave into bones) */
                     h = _hashVal(h, gu._dyingX); h = _hashVal(h, gu._dyingY); h = _hashVal(h, gu.player === _gsVp);
                 }
+            }
+        }
+        /* THE GRAVES STAY (2026-11-07): the graves respawned units left behind (battle.js leaveRemainsOnRespawn) */
+        if (state.graves) {
+            var _grVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var gri = 0; gri < state.graves.length; gri++) {
+                var gr = state.graves[gri];
+                if (!gr) continue;
+                h = _hashInt(h, 10); h = _hashInt(h, gr.x); h = _hashInt(h, gr.y);
+                h = _hashStr(h, String(gr.id)); h = _hashVal(h, gr.player === _grVp);
             }
         }
         return h;
@@ -11571,6 +11626,32 @@ const ThreeRenderer = (function () {
                     objectGroup.add(gmesh);
                     deployableMeshes.set(gkey, gmesh);
                 }
+            }
+        }
+
+        /* THE GRAVES STAY (2026-11-07): a unit that respawned left its grave where it fell (state.graves, battle.js
+           leaveRemainsOnRespawn) — built and seen exactly like a dead body's grave above (its unit's id seeds the look,
+           so it keeps the same headstone it had) */
+        if (state.graves && state.graves.length && !window.EW_DISABLE_GRAVESTONES) {
+            var _lgViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var lg = 0; lg < state.graves.length; lg++) {
+                var gr = state.graves[lg];
+                if (!gr || gr.x == null || gr.y == null) continue;
+                var lseed = _graveSeed(gr.unitId != null ? gr.unitId : gr.id);
+                var lmesh = (gr.player === _lgViewer)
+                    ? _buildGravestone3D(gr.x, gr.y, lseed)
+                    : _buildBonePile3D(gr.x, gr.y, lseed);
+                if (!lmesh) continue;
+                if (UNIT_SPRITE_SIZE_RATIO < 1) lmesh.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);
+                lmesh._ew_depX = gr.x; lmesh._ew_depY = gr.y;
+                if (gr.player === _lgViewer) lmesh._ew_depOwner = gr.player;
+                else {
+                    /* an enemy's bones you saw fall stay seen after it gets up (same key as the body's grave) */
+                    lmesh._ew_graveKey = _lgViewer + '|' + gr.unitId + '|' + gr.x + ',' + gr.y;
+                    _graveLive.add(lmesh._ew_graveKey);
+                }
+                objectGroup.add(lmesh);
+                deployableMeshes.set('grave_' + gr.id, lmesh);
             }
         }
 
@@ -26943,6 +27024,7 @@ const ThreeRenderer = (function () {
                 for (var ui = 0; ui < state.units.length; ui++) {
                     var u = state.units[ui];
                     if (!u || u.dead || u._dying || u.player === turret.owner) continue;
+                    if (typeof window.shadowRealmKey === 'function' && window.shadowRealmKey(u)) continue;   // 🌑 the volley never shoots into the realm
                     var d = Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y);
                     if (d > turret.range || d > bestD) continue;
                     if (d === bestD && best && u.hp >= best.hp) continue;
@@ -88460,6 +88542,7 @@ const ThreeRenderer = (function () {
         preloadUnitModels,
         warmMiscModels: _warmMiscModels,
         warmSummonModels: _warmSummonModels,
+        warmSpellMonuments: _warmSpellMonuments,   // THE BLACK PYRAMID (2026-11-07): the spell monuments' sheets on the loading card
         /* THE ANIMALS (2026-10-27): mondo's rigged animals for the spells — animalClone(key, size, o) → { group, ctl } or null while
            the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
         animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
