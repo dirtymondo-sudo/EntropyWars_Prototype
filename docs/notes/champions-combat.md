@@ -4427,3 +4427,20 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   says its share of the hit; Knight's L move isn't "down the line"; ricochets name the spell; Cathedral Perch just "leaps";
   Sonic Boomerang's return is "Sonic Boomerang comes back:"; Air Mail writes its door fall; Converted uses the terrain label.
 - To the Moon (E6): the turn holds (`_pendingSpellHits`) until the thrown body lands, so the CPU no longer moves mid-throw.
+- VS CPU check (same day, units placed by hand; Grapple Arm into a cliff, Lure on a flyer, Walk the Plank on a low unit):
+  - A slide's landing lines (water / Wet / lava) now wait for its slam / crash / auto attack. Those land on the impact frame,
+    so `resolveForcedSlide` takes the landing lines and puts them back on the last hit's beat. Grapple now reads: hit, pulls,
+    slams into the cliff face, rebounds, lands in the water.
+  - A flyer a pull yanks down writes its landing lines after its fall: "falls 2 levels", then "lands in the water".
+  - Walk the Plank:
+    - The fresh deep water really drags the body under BEFORE the hit, so the drown line stays first again. Lifting it
+      under the hit made a dead body drown and go into Last Stand after "is defeated".
+    - A target below 25% that the sized hit leaves standing gets `_applyExecuteRider`. A Firefighter drank the water part
+      and lived, and the log still said "executed!". The flood line only says executed when the body died; the forecast
+      adds the follow-up.
+  - Lines moved up after a frame (a hoist across a render) made the board log (ui.js `renderFloatCombatLog`) skip one line and
+    show another twice. The old chat log and the guest's fog filter (online.js `_gvLogKeep`) could misjudge a line the same
+    way. All three now rebuild when the last line they handled is no longer where they left it.
+  - Seen, not changed:
+    - A heavy body that "smashes a hole clean through the stone wall" of a cliff still slams and rebounds (the lintel blocks).
+    - Shield-absorb and "drinks the water part" lines print above their hit's own line.

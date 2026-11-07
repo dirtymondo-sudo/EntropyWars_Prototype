@@ -6358,9 +6358,20 @@
                         }
                     }
                     if (res.moved > 0) {
+                        /* THE LANDING READS LAST (forced movement VS CPU check 2026-11-07: Grapple Arm into a cliff wrote
+                           "Grey lands in the water and is Wet." before "Grey slams into the cliff face ... and rebounds!"):
+                           a slam / crash / auto attack lands on its impact frame (THE CRASH ON THE HIT), later than the
+                           landing writes its lines, so the landing's lines wait for the last of those hits */
+                        let _hitWait = 0;
+                        for (const imp of impacts) _hitWait = Math.max(_hitWait, _slideHitDelay(imp.atMs, opts));
+                        const _lnM = _hitWait > 0 ? _logMark() : null;
                         /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
                         if (!opts.noChain && !_landDown) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
+                        if (_lnM) {
+                            const _lnT = _logTake(_lnM);
+                            if (_lnT.a.length || _lnT.b.length) window.setTimeout(() => _logPut(_lnT), _hitWait);   // same beat, queued after the hits (timers run in order)
+                        }
                     }
                 }
                 for (const imp of impacts) {
@@ -40702,6 +40713,11 @@
                     if (spellMissesFlyer(spell, v)) { tag(v, 'overhead'); continue; }
                     const ex = (spell.executePct && v.hp <= v.maxHp * spell.executePct) ? v.hp : 0;
                     hit(v, Math.max(b, ex), Math.max(b - 10, ex), Math.max(b + 9, ex), ho);
+                    /* the execute's follow-up (doSpell runs _applyExecuteRider when the hit alone left it standing) */
+                    if (ex && v.hp > 0 && !v.dead) {
+                        const _xl = Math.ceil((Math.max(0, v.hp) + (v.shield || 0)) * 4) + 50;
+                        hit(v, _xl, _xl, _xl, baseOpts(spell.damageType || 'physical', { ignoreArmor: true, consumeMarked: false, allowMarkBonus: false }), { tag: 'execute' });
+                    }
                 }
                 return;
             }
@@ -78785,6 +78801,9 @@
                     }
                     target.z = _pullGroundZ;
                     addLog(`${_ctName(target)} is yanked out of the sky!`);
+                    /* the yanked flyer's landing lines (water, Wet, lava…) read after its fall (forced movement VS CPU check
+                       2026-11-07, Lure on a Fallen Angel: "lands in the water and is Wet." came before "falls 2 levels") */
+                    let _pullLandLines = null;
                     const _pullLandFx = () => {
                         showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                         // 2026-07-17 fix: the drop from flight altitude now deals
@@ -78794,11 +78813,16 @@
                             applyFallDamage(target, _pullAirZ, _pullGroundZ, `${spell.name}: `, { byEnemy: true, forced: true });
                             if (_pullFallMs > 0 && typeof checkWin === 'function') checkWin();
                         }
+                        if (_pullLandLines) { _logPut(_pullLandLines); _pullLandLines = null; }
                     };
                     if (_pullFallMs > 0) window.setTimeout(_pullLandFx, _pullFallMs); else _pullLandFx();
                     followUnitFall(target);   // camera rides the drop
-                    if (_pullYanks && !target.dead) _applyKnockbackHazard(target, {
-                        dirX: _pullSlide.dirX, dirY: _pullSlide.dirY, noGlide: !!_pullSlide.spent, fxDelayMs: _pullFallMs });
+                    if (_pullYanks && !target.dead) {
+                        const _ylM = _pullFallMs > 0 ? _logMark() : null;
+                        _applyKnockbackHazard(target, {
+                            dirX: _pullSlide.dirX, dirY: _pullSlide.dirY, noGlide: !!_pullSlide.spent, fxDelayMs: _pullFallMs });
+                        if (_ylM) _pullLandLines = _logTake(_ylM);
+                    }
                 }
                 if (spell.dmg) {
                     // The hook's damage lands ON CAMERA — at the bite, right
@@ -80717,8 +80741,8 @@
                     }
                     // 💦 The splash douses anyone caught in fresh water (burn wiped
                     // by the knockback-hazard path; deep water starts the drowning).
-                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E4: Walk the Plank's drown + execute lines came
-                       before its hit): the cast line, the hit, the execute, then what the fresh water did to the body */
+                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E4): the "uses … Converted" line, what the fresh
+                       water did to the body (it happens first), the hit, then the execute */
                     const _tcM0 = _logMark();
                     if (_isWaterPaint && !spell.elevationFlood) {
                         for (const ct of convertedTiles) {
@@ -80780,7 +80804,13 @@
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                                     statusEffects: spell.statusEffects
                                 });
-                                if (_tcExec) addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
+                                /* forced movement VS CPU check 2026-11-07: a Firefighter at 18% drank the water part of the hit,
+                                   lived on 192 HP and the log still said "executed!". The hit is sized to the HP left, but DEF,
+                                   resistances and absorbs still cut it: what it leaves standing gets the game's execute
+                                   follow-up (_applyExecuteRider, the No Mercy / Termination Protocol path), and the line only
+                                   says executed when it really died (Protect / Indomitable Will / Last Stand still save). */
+                                if (_tcExec && !hit.dead && !hit._dying && hit.hp > 0) _applyExecuteRider(unit, hit, spell);
+                                else if (_tcExec && (hit.dead || hit._dying)) addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
                             }
 
                             damageTurretAt(ct.x, ct.y, spell.dmg || 80, unit);
@@ -80848,8 +80878,11 @@
                        and the line always said "Converted 0 tiles" while the walls went up. Its line now waits for the placer
                        below and counts the footprint tiles a piece of this wall stands on once it is done (a recast on a
                        standing wall still says 3, like an ice tile recast to ice). */
-                    /* the hits move up above the water's own lines (drown, douse), and the cast's line above them all */
-                    _logLift(_tcM0, _tcM1);
+                    /* the water's own lines (drown, douse) stay where they happened: the fresh deep water drags the body
+                       under BEFORE the hit (the forecast's order too). Lifting them under the hit (11-07 E4) made a dead
+                       body drown and go into Last Stand after "is defeated" (VS CPU check 2026-11-07). The cast's
+                       "uses … Converted" line still heads them all; the execute line follows the hit. */
+                    void _tcM1;
                     const _tcLabel = (TERRAIN_RULES[terrainType] && TERRAIN_RULES[terrainType].label) ? String(TERRAIN_RULES[terrainType].label).toLowerCase() : String(terrainType).replace(/_/g, ' ');
                     const _tcLine = (n) => { addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${_tcLabel}.`); _logHoist(_tcM0); };
                     let _tcLogged = false;
