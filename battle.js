@@ -5949,13 +5949,15 @@
             if (typeof isTowerTile === 'function' && isTowerTile(info.nx, info.ny)) return 'the tower';
             return 'the wall';
         }
-        function _slideSlamDamage(mover, dmg, info, opts) {
+        /* rebound = the slide really bounces back off it; a pull into a point is pinned there and the throw's last bounce
+           just stops, so those lines say no rebound (THE SOLID WALL check, 2026-11-07) */
+        function _slideSlamDamage(mover, dmg, info, opts, rebound = true) {
             if (!mover || mover.dead || mover._dying) return;
             const what = _slideObstacleName(info);
             applyDamageToUnit(mover, dmg, `${unitDisplayName(mover)} slams into ${what}: `, {
                 ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
             });
-            addLog(`🎱 ${_ctName(mover)} slams into ${what} and rebounds!`);
+            addLog(rebound ? `🎱 ${_ctName(mover)} slams into ${what} and rebounds!` : `🎱 ${_ctName(mover)} slams into ${what}!`);
         }
 
         /* ⚔️ THE AUTO ATTACK: the unit that strikes a body `byUnit`'s push / pull drives into `occ`, or null for the old
@@ -6251,6 +6253,7 @@
                 res.hitWall = true;
                 const slamDmg = cfg.wallSlamDmg + cfg.wallSlamPerTile * Math.max(0, m - 1);
                 const atMs = baseDelay + res.steps.length * perStepMs;
+                const _rebounds = !(toward || thr.bounces >= cfg.maxBounces);   // the same test that breaks out below
                 if (!simulate) {
                     /* THE FORCE FIELD: the board's outer edge is a barrier — its beat plays on the body's own tile with
                        the face(s) it met (only the axes that leave the board), so the 3D draws the field there */
@@ -6259,7 +6262,7 @@
                             dx: isInside(cx + vx, cy) ? 0 : vx, dy: isInside(cx, cy + vy) ? 0 : vy });
                     } else impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
                     if (!_slideDown(target)) {
-                        _slideHitAt([{ u: target, dmg: slamDmg }], _slideHitDelay(atMs, opts), () => _slideSlamDamage(target, slamDmg, info, opts));
+                        _slideHitAt([{ u: target, dmg: slamDmg }], _slideHitDelay(atMs, opts), () => _slideSlamDamage(target, slamDmg, info, opts, _rebounds));
                     }
                     res.slamDamage += slamDmg;
                 } else {
@@ -6641,6 +6644,11 @@
            blocks) against `power`. Returns false, or the list of blocks
            that would break. */
         function _breachWindowCheck(x, y, bodyZ, power, board = state) {
+            /* THE SOLID WALL holds (forced movement log check, 2026-11-07: a Golem pulled into a Mount Shasta Arena cliff
+               "smashed a hole clean through the stone wall", then slammed the same cliff face and bounced): a field's rock /
+               wall cell is never stood on, walked or landed on (fieldCellRock), and the room draws it as a model the voxel
+               hole never touched. So nothing breaks it — no crash, no charge breach, no bore: the body slams it. */
+            if (typeof fieldCellRock === 'function' && fieldCellRock(x, y)) return false;
             const colH = getBaseHeightAt(x, y, board);
             const zTop = Math.min(colH, bodyZ + 2);
             const blocks = [];
