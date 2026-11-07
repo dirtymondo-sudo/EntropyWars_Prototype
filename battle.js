@@ -76448,6 +76448,17 @@
                element entropy see every hit. A slow frame used to run finishAction first: Requiem said "It's super
                effective!" and never refunded. Capped at 4 s of waiting. */
             let _pendingSpellHits = 0, _finishWaits = 0;
+            /* THE LANDING GATE (2026-11-07, playtest H3/E6): a body flung on the 3D arc (the sky throws, Stone Drop's
+               drop, the sky slam, the leap dive) lands on the ANIMATION clock, which slow-mo, freeze frames and a slow
+               frame all hold back, while finishAction runs on a wall-clock timer. When the clock fell behind, the turn
+               passed before the body landed: the CPU moved before To the Moon's result, the kill's PRESS refund was
+               missed, and the death close-up opened over the next unit's menu (the camera sat low in the gore). Each
+               arc holds the hit gate until its impact has paid out (released at once when no arc plays). */
+            const _landingGate = () => {
+                let open = true;
+                _pendingSpellHits++;
+                return () => { if (open) { open = false; _pendingSpellHits--; } };
+            };
             const finishAction = () => {
                 if (_pendingSpellHits > 0 && _finishWaits++ < 40) { window.setTimeout(finishAction, 100); return; }
                 if (typeof endCastTerrainWatch === 'function') endCastTerrainWatch();   // 🜃 the cast is done
@@ -82328,6 +82339,7 @@
                     ? Math.max(_sdTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
                     : _sdTs * 2.2;
                 const _sdLiftMs = actionMs(460), _sdHangMs = actionMs(280), _sdFlingMs = actionMs(280);
+                const _sdLand = _landingGate();
                 const _sdUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                     && window.ThreeAnim.throwArc && !_skipVisuals()
                     && window.ThreeAnim.throwArc(target, target.x, target.y, target.x, target.y, {
@@ -82335,14 +82347,17 @@
                         liftMs: _sdLiftMs, hangMs: _sdHangMs, flingMs: _sdFlingMs,
                         liftPx: _sdLiftPx,
                         onImpact: () => {
-                            _sdApplyLanding();
-                            if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
                             try {
-                                const VFX = window.ThreeVFXEffects;
-                                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(target.x, target.y, { r0: _sdTs * 0.2, r1: _sdTs * 1.4, ms: 400 });
-                            } catch (e) {}
+                                _sdApplyLanding();
+                                if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                                try {
+                                    const VFX = window.ThreeVFXEffects;
+                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(target.x, target.y, { r0: _sdTs * 0.2, r1: _sdTs * 1.4, ms: 400 });
+                                } catch (e) {}
+                            } finally { _sdLand(); }
                         }
                     }));
+                if (!_sdUsedArc) _sdLand();
 
                 if (_sdUsedArc) {
                     completionDelay = _sdLiftMs + _sdHangMs + _sdFlingMs + actionMs(450);
@@ -82481,12 +82496,16 @@
                        on the impact frame. Relayed to the guest by the
                        online.js wrapper around playSkyThrowFx. ── */
                     _clearSkyThrowDestPreview();
+                    const _thLand = _landingGate();
                     const _thFx = window.playSkyThrowFx(throwTarget, fromX, fromY, x, y, spell, {
                         onImpact: () => {
-                            _applyThrowLanding();
-                            if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                            try {
+                                _applyThrowLanding();
+                                if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                            } finally { _thLand(); }
                         }
                     });
+                    if (!(_thFx && _thFx.usedArc)) _thLand();
 
                     if (_thFx && _thFx.usedArc) {
                         // Ride the fling: once the carry ends, the live action
@@ -82704,24 +82723,28 @@
                     ? Math.max(_ssTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
                     : _ssTs * 2.2;
                 const _ssLiftMs = actionMs(360), _ssHangMs = actionMs(140), _ssFlingMs = actionMs(240);
+                const _ssLand = _landingGate();
                 const _ssUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                     && window.ThreeAnim.throwArc && !_skipVisuals()
                     && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, slamX, slamY, {
                         liftMs: _ssLiftMs, hangMs: _ssHangMs, flingMs: _ssFlingMs,
                         liftPx: _ssLiftPx, settleMs: 220,
                         onImpact: () => {
-                            _ssApplyLanding(false);
-                            if (typeof shakeBoard === 'function') shakeBoard('hard');
                             try {
-                                const VFX = window.ThreeVFXEffects;
-                                if (VFX && VFX.sigSonicBoom3D) {
-                                    VFX.sigSonicBoom3D(slamX, slamY, { rings: 2, radiusTiles: (spell.aoeRadius || 1) + 0.6 });
-                                } else if (VFX && VFX.sigShockRing3D) {
-                                    VFX.sigShockRing3D(slamX, slamY, { r0: _ssTs * 0.2, r1: _ssTs * 1.8, ms: 460 });
-                                }
-                            } catch (e) {}
+                                _ssApplyLanding(false);
+                                if (typeof shakeBoard === 'function') shakeBoard('hard');
+                                try {
+                                    const VFX = window.ThreeVFXEffects;
+                                    if (VFX && VFX.sigSonicBoom3D) {
+                                        VFX.sigSonicBoom3D(slamX, slamY, { rings: 2, radiusTiles: (spell.aoeRadius || 1) + 0.6 });
+                                    } else if (VFX && VFX.sigShockRing3D) {
+                                        VFX.sigShockRing3D(slamX, slamY, { r0: _ssTs * 0.2, r1: _ssTs * 1.8, ms: 460 });
+                                    }
+                                } catch (e) {}
+                            } finally { _ssLand(); }
                         }
                     }));
+                if (!_ssUsedArc) _ssLand();
 
                 if (_ssUsedArc) {
                     completionDelay = _ssLiftMs + _ssHangMs + _ssFlingMs + actionMs(500);
@@ -82860,20 +82883,24 @@
                     (typeof window._getElevationPx === 'function') ? window._getElevationPx(1) + _lsTs * 0.5 : _lsTs * 0.9);
                 const _lsLiftMs = actionMs(220), _lsHangMs = actionMs(60), _lsFlingMs = actionMs(230);
                 const _lsRunDive = () => {
+                    const _lsLand = _landingGate();
                     const _lsUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                         && window.ThreeAnim.throwArc && !_skipVisuals()
                         && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, x, y, {
                             liftMs: _lsLiftMs, hangMs: _lsHangMs, flingMs: _lsFlingMs,
                             liftPx: _lsLiftPx, settleMs: 200,
                             onImpact: () => {
-                                _lsApplyLanding(false);
-                                if (typeof shakeBoard === 'function') shakeBoard('normal');
                                 try {
-                                    const VFX = window.ThreeVFXEffects;
-                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
-                                } catch (e) {}
+                                    _lsApplyLanding(false);
+                                    if (typeof shakeBoard === 'function') shakeBoard('normal');
+                                    try {
+                                        const VFX = window.ThreeVFXEffects;
+                                        if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
+                                    } catch (e) {}
+                                } finally { _lsLand(); }
                             }
                         }));
+                    if (!_lsUsedArc) _lsLand();
                     if (!_lsUsedArc) {
                         window.setTimeout(() => _lsApplyLanding(true), actionMs(300));
                     }
