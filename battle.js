@@ -38070,7 +38070,7 @@
            last hit was swallowed (protected / immune) or that ended early. */
         function _multiHitLogAdd(sink, target, sourceText, sourceUnit, dmg, typeNote) {
             if (!sink) return;
-            if (sink.done) Object.assign(sink, { hits: 0, total: 0, note: '', done: false });   // a defy-death save: the rest is a new line
+            if (sink.done) Object.assign(sink, { hits: 0, total: 0, note: '', done: false, riders: null });   // a defy-death save: the rest is a new line
             if (sink.hits === 0) { sink.src = sourceText; sink.srcUnit = sourceUnit || null; sink.target = target; }
             sink.hits++;
             sink.total += Math.max(0, dmg | 0);
@@ -38086,8 +38086,28 @@
                 ? `${_dmgLogLine(sink.src, t, '', sink.total, sink.srcUnit)}${n}${sink.note ? ` ${sink.note}` : ''}`
                 : _dmgLogLine(sink.src, t, 'blocks the hit.', null, sink.srcUnit);
             addLog(line, 0, [Math.max(0, Math.round(t.hp)), Math.round(t.maxHp || 0)]);
+            _hitRiderFlush(sink.riders);
+            sink.riders = null;
         }
-        function _multiHitLogSink() { return { hits: 0, total: 0, note: '', last: false, done: false, src: '', srcUnit: null, target: null }; }
+        function _multiHitLogSink() { return { hits: 0, total: 0, note: '', last: false, done: false, src: '', srcUnit: null, target: null, riders: null }; }
+
+        /* THE HIT FIRST (forced-movement log playtest 2026-11-07: "shield and drink lines print above their own hit"):
+           what a hit's own body does with the blow (a shield soaking part of it, an element part it drinks, a save that
+           holds it at 1 HP) reads on the line AFTER the hit. applyDamageToUnit files those lines here and writes them right
+           after the hit line; a multi-hit cast's sink sums each kind over the cast and writes it after the one total line.
+           riders = { key: { n, make } } in the order first filed; make(n) gives the line. */
+        function _hitRiderAdd(riders, key, n, make) {
+            const r = riders[key];
+            if (r) r.n += n;
+            else riders[key] = { n, make };
+        }
+        function _hitRiderFlush(riders) {
+            if (!riders) return;
+            for (const k of Object.keys(riders)) {
+                const line = riders[k].make(riders[k].n);
+                if (line) addLog(line);
+            }
+        }
 
         function applyDamageToUnit(target, damage, sourceText, opts = {}) {
             if (!target || target.dead || target._dying) return false;
@@ -38326,10 +38346,12 @@
                lands reels the body back (flash kind 'guardBreak' → the
                renderer's hitStagger, UAL2 Idle_Shield_Break) */
             const _guardBroke = _res.absorbed > 0 && !(_res.shieldLeft > 0) && _res.dmg > 0;
+            /* THE HIT FIRST: this hit's own riders, written right after its hit line (a multi-hit sink keeps them for its total line) */
+            const _riders = opts.logSink ? (opts.logSink.riders || (opts.logSink.riders = {})) : {};
             if (_res.absorbed > 0) {
                 target.shield = _res.shieldLeft;
                 _balEffect(target, 'shieldAbsorb', _res.absorbed, 0);
-                addLog(`${_ctName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
+                _hitRiderAdd(_riders, 'shield:' + target.id, _res.absorbed, n => `${_ctName(target)}'s shield absorbs ${n} HP damage.`);
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
 
@@ -38339,7 +38361,7 @@
             if (finalDamage >= target.hp && unitHasStatus(target, 'indomitable')) {
                 finalDamage = Math.max(0, target.hp - 1);
                 clearStatus(target, 'indomitable');
-                addLog(`💢 ${_ctName(target)} refuses to die — Indomitable Will holds them at 1 HP!`);
+                _hitRiderAdd(_riders, 'indomitable:' + target.id, 1, () => `💢 ${_ctName(target)} refuses to die — Indomitable Will holds them at 1 HP!`);
                 /* SPELL_CINEMATICS.md #42 — the race's whole identity in
                    800ms, and it fires on the SAVE, not on a cast. */
                 if (typeof window !== 'undefined' && window.CineFX) {
@@ -38356,7 +38378,8 @@
                 if (_absHeal > 0) {
                     target.hp += _absHeal;   // the blow comes off right below
                     const _absIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '🜂';
-                    addLog(`${_absIcon} ${_ctName(target)} drinks the ${_affEl} part of the hit — restores ${_absHeal} HP.`);
+                    const _absEl = _affEl;
+                    _hitRiderAdd(_riders, 'drink:' + target.id + ':' + _absEl, _absHeal, n => `${_absIcon} ${_ctName(target)} drinks the ${_absEl} part of the hit — restores ${n} HP.`);
                     if (!_skipVisuals()) showFloatingTextForUnit(target, `${_absIcon} +${_absHeal}`, 'heal', { durationMs: 1200, jitterY: -18 });
                 }
             }
@@ -38366,6 +38389,18 @@
                 target.hp -= finalDamage;
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
+
+                /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
+                   multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
+                   the last hit or the kill (_multiHitLogFlush) — the same total the corner TOTAL DMG shows.
+                   THE HIT FIRST (2026-11-07): the hit line is written here, before everything the hit sets off
+                   (its shield / drink / save riders, a reveal, an on-hit status, a link echo, Contract, Power Core). */
+                const _sink = opts.logSink || null;
+                if (_sink) _multiHitLogAdd(_sink, target, sourceText, sourceUnit, finalDamage, typeNote);
+                else {
+                    addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
+                    _hitRiderFlush(_riders);
+                }
 
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
@@ -38685,13 +38720,6 @@
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
                     _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
-                /* ONE CAST, ONE LINE (playtest 2, mondo 2026-10-22: "ninefold scratch just needs one line"): a
-                   multi-hit cast passes opts.logSink and its hits roll into one line with the total, written on
-                   the last hit or the kill (_multiHitLogFlush) — the same total the corner TOTAL DMG shows. */
-                const _sink = opts.logSink || null;
-                if (_sink) _multiHitLogAdd(_sink, target, sourceText, sourceUnit, finalDamage, typeNote);
-                else addLog(`${_dmgLogLine(sourceText, target, '', finalDamage, sourceUnit)}${typeNote ? ` ${typeNote}` : ''}`, 0, [Math.max(0, Math.round(target.hp)), Math.round(target.maxHp || 0)]);
-
                 if (sourceUnit && typeNote && !(_sink && _sink.hits > 1)) {
                     const dlg = [];
                     if (typeNote.includes('super effective')) dlg.push(`<span class="dlg-effective">⚡ It's super effective!</span>`);
@@ -38701,7 +38729,10 @@
             } else {
                 showFloatingTextForUnit(target, '0', 'damage');
                 if (opts.logSink) _multiHitLogAdd(opts.logSink, target, sourceText, opts.sourceUnit || null, 0, '');
-                else addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
+                else {
+                    addLog(_dmgLogLine(sourceText, target, 'blocks the hit.', null, opts.sourceUnit || null));
+                    _hitRiderFlush(_riders);   // THE HIT FIRST: a shield that soaked the whole blow reads after it
+                }
                 playSfx('block');
                 // Rigged models raise the shield (UAL2 Shield_OneShot via the
                 // 'block' hit-flash kind — steel glint, no impact shake).
