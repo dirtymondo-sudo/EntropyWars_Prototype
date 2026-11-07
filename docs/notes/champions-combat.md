@@ -4488,3 +4488,19 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   after the one total line in `_multiHitLogFlush`. Lines that explain the hit before it (weak/resist, combo, Marked,
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
+
+## THE IMMUNE TARGET (2026-11-07, timing/counters playtest B1)
+mondo: "start those fixes" — Counterspell / Brainwash / Executive Order listed the CPU Ghoul (Pure Negativity: immune to
+every debuff and stat drop) with a green CONFIRM; the cast bounced and still spent MP + cooldown.
+- battle.js `unitImmuneToStatus(u, id)`: a read-only copy of applyStatusPayload's immunity gates (passive immuneStatus,
+  passive immuneKind, element immunity/absorb of a status that IS an element, Fermata statLock vs stageMod statuses, a boss
+  vs control statuses). `unitImmuneToStage(u, n)`: immuneStatDown vs negative stages, statLock vs any.
+- `spellIsStatusOnly(spell)`: kinds debuff / buff / aoe / barrage / possess whose whole effect is statuses and/or stat
+  stages (no damage, heal, MP drain, pull, stolen spell, terrain…). `spellBouncesOffImmune(spell, u)`: every status and
+  stage of such a cast bounces off u.
+- `spellTargetUsableOn` returns false for that unit (airborne flyer + groundsFlyers still counts), so the drum, the menus'
+  NO VALID TARGET, MOVE→CAST, novas (`_selfNovaSeenVictims`) and board clicks all skip it. doSpell refuses a single-target
+  debuff/buff/possess cast on such a unit before any MP/AP/cooldown ("X is immune — Spell would do nothing.").
+- Browser proof (VS CPU 2v2, Telepath + Politician vs Ghoul + Shaman): Brainwash and Executive Order read NO VALID TARGET
+  with the Ghoul adjacent and in sight; Executive Order listed only the Shaman and stunned it. Shots:
+  /mnt/project-files/immune-targets-20261107/. The CPU party was set before the match (Ghoul can't be picked for the CPU).
