@@ -940,6 +940,20 @@ function usedSpellSlots(ids) {
   return (ids || []).reduce((s, id) => s + spellIdSlotCost(id), 0);
 }
 
+/* THE GENDER KIT (2026-11-07, playtest H: a slot switched from Priest to Nun fought at 6/7 with no Ruler Smack): the Priest and
+   the Nun are ONE race key with spells of their own (data.js RACE_GENDER_SPELLS), so a gender switch is a different vessel for
+   the kit — the old picks would lose the other gender's own spells to the scrub and leave an empty slot. true = start the kit
+   over (the default kit of the new gender), like a race change. A race with no gender-own spells keeps its picks. */
+function pbGenderKitChanges(race, prevGender, gender) {
+  const a = prevGender === 'female' ? 'female' : 'male', b = gender === 'female' ? 'female' : 'male';
+  if (a === b || typeof window.raceGenderOffSpellIds !== 'function') return false;
+  return window.raceGenderOffSpellIds(race, b).length > 0 || window.raceGenderOffSpellIds(race, a).length > 0;
+}
+function pbGenderKitReset(meta, race, gender) {   // the slot's meta, BEFORE its gender is written
+  if (!meta || !pbGenderKitChanges(race, meta.gender, gender)) return;
+  delete meta.customSpells; delete meta.spellUpgrades;   // the render's DEFAULT path (and pickRace) refill the new gender's kit
+}
+
 function buildDefaultCustomSpells(race, cls, secJob, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
   /* THE JOBS REMOVAL (the user, 2026-09-27): the default kit is data.js raceDefaultKit — the race's four curated rungs,
      then the rest of its families cheapest first, trimmed to the 7 slots / 16 SP (the Clash seal inside the repair). */
@@ -3994,10 +4008,11 @@ function PartyBuilder(props) {
   function pickRace(raceKey, gender, stay) {   // (stay: THE ASSIGNED LOOKS, LOADED keep the creator open on GEAR)
     if (pbRaceTakenElsewhere(raceKey, slot)) { pbOneOfEachToast(raceKey); return; }   // ONE OF EACH
     if (!st.partyMeta[player]) st.partyMeta[player] = []; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
-    const prevRace = st.partyMeta[player][slot].race; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
+    const prevRace = st.partyMeta[player][slot].race, prevGender = st.partyMeta[player][slot].gender; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
     st.partyBuilds[player][slot] = window.UNIT_CLASS || 'Vessel';   // THE JOBS REMOVAL (2026-09-27): one neutral class
     // A different vessel = a different spell pool (its families) — the old unit's picks must never carry over.
-    if (raceKey !== prevRace) { delete st.partyMeta[player][slot].customSpells; delete st.partyMeta[player][slot].spellUpgrades; }
+    // THE GENDER KIT (2026-11-07): Priest <-> Nun is the same race key with spells of its own — a different vessel too.
+    if (raceKey !== prevRace || pbGenderKitChanges(raceKey, prevGender, gender)) { delete st.partyMeta[player][slot].customSpells; delete st.partyMeta[player][slot].spellUpgrades; }
     if (!st.loadouts[player]) st.loadouts[player] = []; if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
     const lo = st.loadouts[player][slot]; if (typeof window.ITEM_RULES !== 'undefined') { lo.items = Object.fromEntries(Object.keys(window.ITEM_RULES).map(k=>[k,0])); lo.items.healPotion=1;lo.items.manaPotion=1;lo.items.panacea=1; }
     lo.equipment = typeof window.getDefaultEquipment === 'function' ? window.getDefaultEquipment(st.partyBuilds[player][slot]) : {};
@@ -5058,7 +5073,7 @@ function PartyBuilder(props) {
     const target = st.partyMeta[player][slot];
     st.teamLockedIn = false;
     target.appearance = window.normalizeCharacterAppearance({ ...(appearance || {}), ...changes });
-    if (gender) target.gender = gender;
+    if (gender) { pbGenderKitReset(target, target.race || unitRace, gender); target.gender = gender; }   // THE GENDER KIT (2026-11-07)
     if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
     refresh();
   };
@@ -5075,6 +5090,7 @@ function PartyBuilder(props) {
     st.teamLockedIn = false;
     const pm = st.partyMeta[player] || (st.partyMeta[player] = []), target = pm[at] || (pm[at] = { race: e.race });
     target.appearance = window.normalizeCharacterAppearance(Object.assign({}, e.appearance, { model: 'creator' }));
+    pbGenderKitReset(target, e.race, g);   // THE GENDER KIT (2026-11-07)
     target.gender = g;
     if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][at] = false;
     if (at !== slot) selectSlot(at); else refresh();

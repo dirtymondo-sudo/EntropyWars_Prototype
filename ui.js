@@ -1308,6 +1308,7 @@
         fp = Math.imul(fp ^ unit.maxMp, 16777619);
         fp = Math.imul(fp ^ (unit.shield || 0), 16777619);
         fp = Math.imul(fp ^ (unit.ap || 0), 16777619);
+        fp = Math.imul(fp ^ ((typeof window.getChivalryGuardian === 'function' && window.getChivalryGuardian(unit)) ? 7919 : 0), 16777619);   // the CHV badge
         fp = Math.imul(fp ^ ((unit.z ?? 0) * 1000 | 0), 16777619);
 
         let bits = 0;
@@ -5057,6 +5058,12 @@
 
         function chooseItemAction(itemKey) {
             const unit = getSelectedUnit();
+            if (unit && typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)) {
+                const _ab = unitActionBlockKey(unit);   // "cannot act" — no item of any kind (buffs playtest 2026-11-07 D)
+                addLog(`${_ctName(unit)} is ${STATUS_DEFS[_ab]?.colorText || 'incapacitated'} and cannot act!`);
+                playErrorSfx();
+                return;
+            }
 
             if (unit && itemKey === 'scanner') {
                 state.actionMode = 'item';
@@ -5099,6 +5106,14 @@
             if (!unit || unit.dead || (unit.ap || 0) < 1) {
                 addLog('Guard requires at least 1 AP.');
                 return;
+            }
+            {   /* "cannot act" (Stoneform, stun, frozen…): Guard is an action too (buffs playtest 2026-11-07 D) */
+                const _actBlock = typeof unitActionBlockKey === 'function' ? unitActionBlockKey(unit) : null;
+                if (_actBlock) {
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    playErrorSfx();
+                    return;
+                }
             }
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('guard', unit)) return;
             if (typeof window._imitObserve === 'function') window._imitObserve(unit, { type: 'guard' });
@@ -5909,6 +5924,11 @@
             }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
+                playErrorSfx();
+                return;
+            }
+            if (typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)) {
+                addLog(`${_ctName(unit)} is ${STATUS_DEFS[unitActionBlockKey(unit)]?.colorText || 'incapacitated'} and cannot act!`);
                 playErrorSfx();
                 return;
             }
@@ -7379,6 +7399,13 @@
                             .slice(0, 8).map(d => `<i class="bp-chip ${d.kind === 'debuff' ? 'bad' : d.kind === 'buff' ? 'good' : ''}" title="${_pauseEsc(d.label || '')}">${_pauseEsc(d.icon || '')} ${_pauseEsc(d.short || d.label || '')}</i>`).join('');
                     }
                 } catch (e) { chips = ''; }
+                /* THE SHIELD + THE PLEDGE (playtest 2026-11-07, family E: Fortify's 96 shield and Chivalry's pledge showed
+                   nothing here while statuses did): a live barrier reads as its HP, a Chivalry ward as CHV */
+                try {
+                    if (!u.dead && (u.shield | 0) > 0) chips = `<i class="bp-chip good" title="Shield: absorbs the next ${u.shield | 0} damage">🛡 ${u.shield | 0}</i>` + chips;
+                    const _chvG = (!u.dead && typeof window.getChivalryGuardian === 'function') ? window.getChivalryGuardian(u) : null;
+                    if (_chvG) chips += `<i class="bp-chip good" title="Chivalry: ${_pauseEsc((typeof unitDisplayName === 'function') ? unitDisplayName(_chvG) : (_chvG.name || ''))} takes the next attack meant for this unit">🛡 CHV</i>`;
+                } catch (e) {}
                 const state_ = u.dead ? 'KO' : where === 'bench' ? 'BENCH' : where === 'escaped' ? 'ESCAPED' : (state._blitzActiveUnitId === u.id ? 'ACTING' : '');
                 return `<div class="bp-unit${u.dead ? ' ko' : ''}${where !== 'field' ? ' off' : ''}">`
                     + `<span class="bp-face"${sprite ? ` style="background-image:url('${sprite}')"` : ''}>${state_ ? `<em>${state_}</em>` : ''}</span>`
