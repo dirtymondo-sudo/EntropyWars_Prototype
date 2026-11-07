@@ -2723,6 +2723,13 @@ Answer: both. Camera + looks only, no rule changes. Kill switch for the angle: `
 - **THE SAFE FRAME** (battle.js `window._ewFloatSafeRect`, three-renderer.js `_floatStep`): every floating pop (numbers,
   BROKEN / RESIST / tags) is kept inside the screen, below the action-cam letterbox bar and under the score plate; pops in one
   column move together so stacks stay stacked. The spell preview's own clamp (`ctx.keepIn`) is untouched.
+- **THE HUD WALLS** (2026-11-07, zones/traps playtest: "⛰ HIGH GROUND! ×1.2" / "🜃 IN THE AIR ×1.25" over a flyer in the
+  top-right corner sat under the P2 bar, the match info line and the achievement toast; the HUD draws OVER
+  `#floatTextOverlay`, so it read as cut off). `_ewFloatSafeRect` now returns `walls` (padded boxes of `.ew-scoreboard`
+  whole, `.ew-matchmeta`, `.ew-ap-press`, `.ew-turn-col`, `.ew-clog`, `.achieve-toast`, each only while shown) in place of
+  the score-plate-only ceiling. `_floatStep` takes one unit's stack (one box round all its pops) and steps it the shortest
+  way clear of every wall (down / up / left / right / a corner, inside the frame); last frame's step wins a near tie so a
+  rising stack does not flip sides. Covers every pop kind (all the ×N words, numbers, statuses), not only the terrain ones.
 - **THE LINEN** (three-vfx-effects.js `_afWraps3D`, Mummify, shot 9): it was not a loading issue: the wraps were 42 flat
   code-drawn rectangles. Now ONE continuous lit bandage (a helix ribbon, 7 overlapping turns shaped feet→chest→neck→head)
   in the creator's canvas fabric sheet from R2 (`getFabricTextureUrl('canvas')`), sized from the victim's drawn height and
