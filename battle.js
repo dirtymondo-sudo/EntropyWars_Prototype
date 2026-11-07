@@ -2500,7 +2500,7 @@
         // _runPostEffects() — dispatches post-impact effects based on
         // the spell definition and animation profile.
         // ═══════════════════════════════════════════════════════════════════
-        function _runPostEffects(unit, spell, target) {
+        function _runPostEffects(unit, spell, target, hitMark) {
             /* THE SPELL AUDIT Batch D: stealBuffs (Swipe) — the victim's buffs are the caster's now */
             if (spell.stealBuffs && target && !target.dead && !unit.dead) _stealBuffsFrom(unit, target, spell);
             /* Phase 5 wave C (2026-09-08): purgeBuffs (Terror Pounce) strips
@@ -2532,9 +2532,13 @@
                         unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                     }
                     unit._trackTilesMoved = (unit._trackTilesMoved || 0) + 1;
+                    const _chM = _logMark();
                     addLog(`${_ctName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
+                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
+                       and what its landing did read BEFORE the hit it carried in */
+                    _logLift(hitMark, _chM);
                 }
                 }
 
@@ -2596,10 +2600,14 @@
                 const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);
                 if (pdx || pdy) {
                     const _isTackle = spell.kind === 'tackle';
+                    const _pkM0 = _logMark();
                     const slide = resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
                         byUnit: unit, label: `${spell.name}: `,
                         perStepMs: 120, delayMs: actionMs(320)
                     });
+                    /* a single-target knockback's own move line, before what its landing did (forced movement playtest
+                       2026-11-07, one line per forced move) */
+                    if (!_isTackle && _logPushMove(_ctSp(spell.name), target, slide)) _logHoist(_pkM0);
                     if (_isTackle && slide) {
                         const hitObstacle = slide.hitWall || slide.hitUnits.length > 0;
                         if (slide.moved > 0) {
@@ -2612,9 +2620,16 @@
                                 animateDisplacement(unit, _ufx, _ufy, rx, ry, Math.max(200, slide.animMs || 0), spell.chessPiece === 'knight' ? { leap: true } : undefined);   // ♟ the knight leaps in
                                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the carrier's landing
                             }
-                            addLog(`${_ctName(unit)} carries ${_ctName(target)} ${slide.moved} tile${slide.moved !== 1 ? 's' : ''} down the line!`);
+                            /* E1 / E4 / E5: the real distance (not the rebound's steps back), where the ride ended, and
+                               before the lines its landing wrote (Knight into lava); a knight's L move isn't "down the line" */
+                            const _tkN = _fmNet(slide);
+                            if (_tkN > 0) {
+                                addLog(`${_ctName(unit)} carries ${_ctName(target)} ${_tkN} tile${_tkN !== 1 ? 's' : ''}${spell.chessPiece === 'knight' ? '' : ' down the line'} to ${coordLabel(slide.landX, slide.landY)}!`);
+                                _logHoist(_pkM0);
+                            }
                         }
                         if (hitObstacle && !target.dead) {
+                            addLog(`${_ctName(target)} is slammed into an obstacle by ${_ctSp(spell.name)}!`);
                             if (spell.collisionBonus) {
                                 applyDamageToUnit(target, spell.collisionBonus, `${spell.name} collision: `, {
                                     sourceUnit: unit, damageType: spell.damageType || 'physical', ignoreArmor: true, consumeMarked: false,
@@ -2625,7 +2640,6 @@
                                 applyStatusEffects(target, [spell.collisionStatus], `${spell.name} collision: `, unit);
                             }
                             showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
-                            addLog(`${_ctName(target)} is slammed into an obstacle by ${_ctSp(spell.name)}!`);
                         }
                     }
                 }
@@ -4566,7 +4580,7 @@
                 if (!_walkStormStopAt(unit, p.x, p.y)) continue;
                 const prev = i > 0 ? path[i - 1] : { x: unit.x, y: unit.y };
                 const pz = (p.z !== undefined && p.z !== null) ? p.z : (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(p.x, p.y, unit.z) : unit.z);
-                const ch = simulateArrivalChain(unit, p.x, p.y, pz, p.x - prev.x, p.y - prev.y, { noGlide: true });
+                const ch = simulateArrivalChain(unit, p.x, p.y, pz, p.x - prev.x, p.y - prev.y, { noGlide: true, walk: true });
                 const steps = (ch.steps || []).filter(st => !st.bump).map(st => ({ x: st.x, y: st.y, z: st.z }));
                 return { x: ch.x, y: ch.y, z: ch.z, steps, fromX: p.x, fromY: p.y, fromZ: pz, stopIdx: i, legs: ch.legs || [], simHits: ch.simHits || [] };
             }
@@ -4841,11 +4855,35 @@
                 for (const s of sub.steps) out.steps.push(Object.assign({}, s, { [tag]: 1 }));
                 out.x = sub.x; out.y = sub.y; out.z = sub.z;
             };
+            /* B · THE GROUND's bite on a FORCED landing (_chainGround, forced-movement playtest 2026-11-07 D7 / K2: the forecast
+               never said a shove ends in lava, deep water or burning ground): lava 60 (+ Burn), deep water 36 (+ Drowning),
+               burning ground BURNING_KNOCKIN_DAMAGE (+ Burn) — once per tile the chain lands on. A walk's own first landing
+               (sopts.walk) keeps the walk's burn (predictWalkHazardDamage). */
+            const bitten = new Set();
+            const groundBite = (depth) => {
+                if (depth === 0 && sopts.walk) return;
+                const k = out.x + ',' + out.y;
+                if (bitten.has(k)) return;
+                bitten.add(k);
+                const o = { ignoreArmor: true, damageType: 'dot', consumeMarked: false, noPress: true };
+                if (_isLavaTile(out.x, out.y)) {
+                    if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return;
+                    out.simHits.push({ unitId: u.id, mid: 60, lo: 60, hi: 60, opts: Object.assign({ element: 'fire' }, o), tag: 'lava' });
+                } else if (getTerrainAt(out.x, out.y) === 'deep_water') {
+                    if (typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(u)) return;
+                    out.simHits.push({ unitId: u.id, mid: 36, lo: 36, hi: 36, opts: o, tag: 'drown' });
+                } else if (_tileIsBurning(out.x, out.y)) {
+                    if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return;
+                    out.simHits.push({ unitId: u.id, mid: BURNING_KNOCKIN_DAMAGE, lo: BURNING_KNOCKIN_DAMAGE, hi: BURNING_KNOCKIN_DAMAGE,
+                        opts: Object.assign({ element: 'fire' }, o), tag: 'burning' });
+                }
+            };
             try {
                 for (let depth = 0; depth < CHAIN_RULES.maxDepth; depth++) {
                     u.x = out.x; u.y = out.y; u.z = out.z;
                     // A · an airborne body glides over everything below
                     if (typeof canFly === 'function' && canFly(u) && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) break;
+                    groundBite(depth);
                     // B′ · ice: the glide goes on the way the body was travelling
                     if (glide && (dx || dy) && _isIceTile(out.x, out.y) && _unitSlidesOnIce(u)) {
                         const ice = _iceSlideSteps(u, out.x, out.y, dx, dy);
@@ -5121,7 +5159,10 @@
             // doused the instant a unit lands in the drink — and leaves them
             // Soaked (conductive to the next lightning bolt).
             if (terr === 'water' || terr === 'deep_water' || _isWetTile(x, y)) {
-                _soakUnit(unit);   // douses burn + applies Soaked
+                /* forced movement playtest 2026-11-07 (E3 / B2): a body that lands in the water (a charge, a swap, a
+                   push) says it is Wet now — a walk's own wading stays quiet, like the round's soak tick */
+                const _dwDrowns = terr === 'deep_water' && via !== 'move' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit));   // the drown line says it
+                if (_soakUnit(unit) && via !== 'move' && !_dwDrowns && !unit.dead) addLog(`💧 ${_ctName(unit)} lands in the water and is Wet.`);
                 fired++;
             }
             if (via === 'move' && _isLavaTile(x, y)) {
@@ -5138,23 +5179,32 @@
                     ensureUnitStatus(unit).burn = 3;
                     unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
                 }
-                applyDamageToUnit(unit, 60, `${unitDisplayName(unit)} is hurled into molten lava: `, {
+                /* ONE ENTRY LINE (forced movement playtest 2026-11-07 E5: "is hurled into molten lava" AND "is knocked into
+                   the lava — and bursts into flame!"): the hit line says how it got there; the unit's own dash / leap /
+                   teleport onto the lava reads as its own move, not a shove */
+                const _lvWay = via === 'self' ? 'charges into the molten lava'
+                    : via === 'teleport' ? 'lands in the molten lava'
+                    : via === 'climb' ? 'climbs into the molten lava' : 'is knocked into the molten lava';
+                applyDamageToUnit(unit, 60, `🌋 ${unitDisplayName(unit)} ${_lvWay}${_lavaDrinker ? '' : ' and bursts into flame'}: `, {
                     ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn', element: 'fire'
                 });
                 fired++;
                 if (_lavaDrinker) return fired;
-                addLog(`🌋 ${_ctName(unit)} is knocked into the lava — and bursts into flame!`);
                 showFloatingTextForUnit(unit, '🌋 LAVA!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('burningDamage');
             } else if (via !== 'move' && terr === 'deep_water') {
                 if (typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit)) return fired;
                 ensureUnitStatus(unit).drowning = 3;
                 unit._drowningStacks = (unit._drowningStacks || 0) + 1;
-                applyDamageToUnit(unit, 36, `${unitDisplayName(unit)} is dragged into the depths: `, {
+                /* ONE ENTRY LINE, said the way it got there (M5: the Dinosaur's own Stampede "is dragged into the depths …
+                   knocked into deep water") */
+                const _dwWay = via === 'self' ? 'charges into deep water'
+                    : via === 'teleport' ? 'lands in deep water'
+                    : via === 'climb' ? 'climbs into deep water' : 'is knocked into deep water';
+                applyDamageToUnit(unit, 36, `🌊 ${unitDisplayName(unit)} ${_dwWay} and starts to drown: `, {
                     ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'drowning'
                 });
                 fired++;
-                addLog(`🌊 ${_ctName(unit)} is knocked into deep water and starts to drown!`);
                 showFloatingTextForUnit(unit, '🌊 SINK!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('drowningDamage');
             } else if (_tileIsBurning(x, y)) {
@@ -5607,7 +5657,7 @@
             if (!unit || unit.dead) return false;
             if (!isInside(nx, ny)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            if (unitAt(nx, ny)) return false;                        // bodies don't break
+            if (_slideGroundBodyAt(nx, ny, null)) return false;      // bodies don't break (a flyer above is not in the way)
             const power = opts.power ?? unitBreachPower(unit, opts);
             if (power <= 0) return false;                            // feather-light — bounces off
             const byUnit = opts.byUnit || null;
@@ -5696,18 +5746,43 @@
            Pure — never mutates. kinds: 'open' (nz = landing surface), 'unit'
            (occ), 'thinwall', 'wall' (voxel/terrain/object), 'edge' (map
            border), 'hole'. */
+        /* THE TWO LAYERS (playtest 11-07 A2: a Cyborg hovering at height 7 stopped Body Check / Horn Toss on the ground
+           under it). A square holds one grounded + one airborne body (map.js airborneOccupantInPocket, the tile cap), so a
+           forced slide only meets the body on ITS layer: a grounded body slides under a flyer, a flyer sails over the
+           ground. _slideGroundBodyAt = the grounded body on (nx,ny) (the mover itself last, for the forecast rebound);
+           _slideAirBodyAt = the flyer in the pocket at z, or a body standing at exactly z (a roof at the flyer's height). */
+        function _slideGroundBodyAt(nx, ny, mover) {
+            let self = null;
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying) continue;
+                const on = (u.x === nx && u.y === ny)
+                    || (u._isBoss && u._bossSize === 2 && (nx === u.x || nx === u.x + 1) && (ny === u.y || ny === u.y + 1));
+                if (!on) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (u === mover) { self = u; continue; }
+                return u;
+            }
+            return self;
+        }
+        function _slideAirBodyAt(nx, ny, z, mover) {
+            const a = (typeof airborneOccupantInPocket === 'function') ? airborneOccupantInPocket(nx, ny, z, mover) : null;
+            if (a) return a;
+            const g = unitAt(nx, ny, z);
+            return (g && g !== mover) ? g : null;
+        }
         function _slideStepInfo(mover, x, y, z, dx, dy) {
             const nx = x + dx, ny = y + dy;
             if (!isInside(nx, ny)) return { kind: 'edge', nx, ny };
             if (typeof wallBlocksStep === 'function' && wallBlocksStep(x, y, nx, ny, z, null)) {
                 return { kind: 'thinwall', nx, ny };
             }
-            const occ = unitAt(nx, ny);
+            const _airMover = typeof isUnitAirborne === 'function' && isUnitAirborne(mover);
+            const occ = _airMover ? _slideAirBodyAt(nx, ny, z, mover) : _slideGroundBodyAt(nx, ny, mover);
             if (occ && occ !== mover) return { kind: 'unit', nx, ny, occ };
             const terr = getTerrainAt(nx, ny);
             const rule = getTerrainRule(terr);
             if (rule && rule.passable === false && _SLIDE_HOLE_TERRAIN[terr]) return { kind: 'hole', nx, ny };
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) {
+            if (_airMover) {
                 // A flyer sails over anything below its altitude.
                 if (getBaseHeightAt(nx, ny) > z) return { kind: 'wall', nx, ny };
                 /* ⬡ but never onto the Cube: its column is solid for flyers too (canOccupy3D, isTerrainPassable's note) */
@@ -5720,11 +5795,22 @@
             if (nz - z > climbCap) return { kind: 'wall', nx, ny, lip: true };
             /* a forecast (simulate) leaves the body standing where it started: a rebound back onto that tile must not
                read the body itself as the blocker (the real slide has already moved it off) */
+            /* THE TWO LAYERS: canOccupy's unitAt reads a lone flyer above the square as a body there — lift the flyers
+               covering it off the board for the check too (same restore-in-finally as the mover) */
+            const _hide = [];
+            if (occ === mover) _hide.push(mover);
+            for (const u of state.units) {
+                if (!u || u === mover || u.dead || u._dying) continue;
+                const on = (u.x === nx && u.y === ny)
+                    || (u._isBoss && u._bossSize === 2 && (nx === u.x || nx === u.x + 1) && (ny === u.y || ny === u.y + 1));
+                if (on && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) _hide.push(u);
+            }
             let _free;
-            if (occ === mover) {
-                const _ox = mover.x, _oy = mover.y;
-                mover.x = -999; mover.y = -999;
-                try { _free = canOccupy(nx, ny); } finally { mover.x = _ox; mover.y = _oy; }
+            if (_hide.length) {
+                const _saved = _hide.map(u => [u.x, u.y]);
+                for (const u of _hide) { u.x = -999; u.y = -999; }
+                try { _free = canOccupy(nx, ny); }
+                finally { _hide.forEach((u, i) => { u.x = _saved[i][0]; u.y = _saved[i][1]; }); }
             } else _free = canOccupy(nx, ny);
             if (!_free) return { kind: 'wall', nx, ny };   // turret / tower / object
             return { kind: 'open', nx, ny, nz };
@@ -5736,7 +5822,7 @@
             if (_slideNoBreach()) return false;
             if (!mover || mover.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) return false;
-            if (unitAt(nx, ny)) return false;
+            if (_slideGroundBodyAt(nx, ny, null)) return false;
             const power = unitBreachPower(mover);
             if (power <= 0) return false;
             if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) {
@@ -5850,11 +5936,22 @@
                 if (typeof checkWin === 'function') checkWin();
             }, ms);
         }
+        /* what a slide slammed into, by name (forced movement playtest 2026-11-07 E1: a tree was "the wall") */
+        function _slideObstacleName(info) {
+            if (!info) return 'the wall';
+            if (info.kind === 'edge') return 'the edge of the battlefield';
+            if (info.kind === 'thinwall') return 'the wall';
+            if (info.lip) return 'the cliff face';
+            if (_tileHasTree(info.nx, info.ny)) return 'a tree';
+            const o = (typeof getObjectAt === 'function') ? getObjectAt(info.nx, info.ny) : null;
+            const r = (o && typeof getObjectRule === 'function') ? getObjectRule(o) : null;
+            if (r && r.label && r.passable === false) return 'the ' + String(r.label).replace(/\s*\(.*\)$/, '').replace(/\s+\d+$/, '').toLowerCase();
+            if (typeof isTowerTile === 'function' && isTowerTile(info.nx, info.ny)) return 'the tower';
+            return 'the wall';
+        }
         function _slideSlamDamage(mover, dmg, info, opts) {
             if (!mover || mover.dead || mover._dying) return;
-            const what = info.kind === 'edge' ? 'the edge of the battlefield'
-                : info.kind === 'thinwall' ? 'the wall'
-                : info.lip ? 'the cliff face' : 'the wall';
+            const what = _slideObstacleName(info);
             applyDamageToUnit(mover, dmg, `${unitDisplayName(mover)} slams into ${what}: `, {
                 ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
             });
@@ -6184,6 +6281,12 @@
             const _hardIce = res.moved > 0 && !opts.noFall && hardLandingCracksIce(target, res.fromZ, cz, cx, cy);
             if (_hardIce) res.iceCracked = true;
 
+            /* ⬇ THE FALL FORECAST (forced-movement playtest 2026-11-07 K2): a slide that ends lower than it started falls for
+               the landing's own fall damage (applyFallDamage's math, state.js fallDamageFor) */
+            if (simulate && res.moved > 0 && !opts.noFall && typeof fallDamageFor === 'function') {
+                const _fd = fallDamageFor(target, res.fromZ, cz, null, cx, cy);
+                if (_fd > 0) res.simHits.push({ unitId: target.id, mid: _fd, lo: _fd, hi: _fd, opts: { ignoreArmor: true, consumeMarked: false, noPress: true }, tag: 'fall' });
+            }
             /* THE CHAIN FORECAST (THE FORCED MOVE): the landing's chain walked with the real rules — a body shoved onto
                ice glides on the way it was going, a bomb throws it back, a storm flings it on its heading, and so on;
                every leg rides res.steps (tagged ice / blast / fling) and res.legs, the end is the landing. */
@@ -6833,6 +6936,7 @@
         }
         function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
             const _spellEl = classifySpellElement(spell);
+            const _hitMark = _logMark();   // THE LOG ORDER: a charge in (_runPostEffects) reads before the hit it carried
             if (spell.chainProfile?.length) {
                 // Chain damage path — hop selection is pure (calcChainTargets,
                 // see PURE DAMAGE MATH); this wrapper supplies the live enemy
@@ -6941,6 +7045,10 @@
                 /* THE SPELL AUDIT Batch D: purgeFirst (Annihilation) — every buff, every positive stat stage and the
                    whole shield come off BEFORE the hit, so the damage lands on what is left. */
                 if (spell.purgeFirst && !target.dead) _purgeWardsBeforeHit(unit, spell, target);
+                /* M1 (forced movement playtest 2026-11-07): Air Mail's fall through the door is the move its hit comes from */
+                if (spell.dropTiles && spell.doorGun && !target.dead) {
+                    addLog(`🚪 ${_ctName(target)} goes into the door and falls ${spell.dropTiles} levels out of the one over their head.`);
+                }
                 const _sitHas = _statusIfTargetHasArmed(spell, target);
                 applyDamageToUnit(target, damage,
                     `${unitDisplayName(unit)} casts ${spell.name}: `, {
@@ -7001,7 +7109,7 @@
             }
 
             // Post-effects (chargeToTarget, swap, selfStun)
-            _runPostEffects(unit, spell, target);
+            _runPostEffects(unit, spell, target, _hitMark);
 
             // Ambush bonus is one-shot — consume it after the hit resolves.
             delete unit._sneakStrikeBonus;
@@ -7413,7 +7521,7 @@
         function _applyRicochetDamage(unit, spell, first, spellPower, bounceDelay, bounceProjectileMs) {
             // Primary hit
             const dmg = calcFlatSpellDamage(spell.dmg || 0, spellPower, 0);
-            applyDamageToUnit(first, dmg, `Ricochet from ${unitDisplayName(unit)}: `, {
+            applyDamageToUnit(first, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {   // M5 / P6: the line names the spell
                 sourceUnit: unit,
                 damageType: spell.damageType || 'physical',
                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
@@ -7453,7 +7561,7 @@
                         if (second.dead) return;
                         applyDamageToUnit(second,
                             calcFlatSpellDamage(spell.bounceDamage || 8, spellPower, 0),
-                            `Ricochet bounces to `, {
+                            `${spell.name} ricochets to `, {
                                 sourceUnit: unit,
                                 damageType: spell.damageType || 'physical',
                                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
@@ -7487,6 +7595,7 @@
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
             const _aoeLead = _castLeadOnce(unit, spell);
+            if (opts.leadNamed) _aoeLead();   // the caller wrote the cast's lead line itself (aoePull's summary, first)
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
                    blast hits EVERY enemy standing in the column, not just the
@@ -7655,6 +7764,7 @@
             }
 
             const _aaStruck = new Set();   // ⚔️ one auto attack per enemy for the whole cast (resolveForcedSlide _struck)
+            if (opts.stats) opts.stats.pushMark = _logMark();   // a caller's summary line reads here, before the pushes it caused
             if (_pushJobs.length && opts.pushFromCenter) {
                 const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
                 const _pd = (u) => Math.max(Math.abs(u.x - cx), Math.abs(u.y - cy));
@@ -7663,15 +7773,23 @@
                     if (target.dead) continue;
                     const pdx = Math.sign(target.x - cx), pdy = Math.sign(target.y - cy);
                     if (pdx || pdy) {
-                        resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
+                        const _apM = _logMark();
+                        const _apR = resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
                             byUnit: unit, label: `${spell.name}: `,
                             perStepMs: 120, delayMs: actionMs(320), _struck: _aaStruck
                         });
+                        /* forced movement playtest 2026-11-07 (M1 / P4: Wing Attack, Resonance Pulse): each push its own line */
+                        if (_logPushMove(_ctSp(spell.name), target, _apR)) {
+                            _logHoist(_apM);
+                            if (opts.stats) opts.stats.pushed = (opts.stats.pushed || 0) + 1;
+                        }
                     }
                 }
             }
-            if (_pullJobs.length) _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter, { struck: _aaStruck });
-            if (_pull1Jobs.length) _runAoePullJobs(unit, spell, _pull1Jobs, opts.pullCenter, { dist: 1, within: 0, struck: _aaStruck });
+            let _aoePulled = 0;
+            if (_pullJobs.length) _aoePulled += _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter, { struck: _aaStruck });
+            if (_pull1Jobs.length) _aoePulled += _runAoePullJobs(unit, spell, _pull1Jobs, opts.pullCenter, { dist: 1, within: 0, struck: _aaStruck });
+            if (opts.stats) opts.stats.pulled = (opts.stats.pulled || 0) + _aoePulled;
             if (spell.leaveTerrain) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
@@ -7727,7 +7845,8 @@
            it, and the landing's chain runs with the pull's heading (onto ice it glides on). jopts { dist, within }: the
            one-step pull of a plain pullToCenter area (Gravity Well, Black Hole) may land ON the centre (within 0). */
         function _runAoePullJobs(unit, spell, ids, center, jopts = {}) {
-            if (!center) return;
+            if (!center) return 0;
+            let pulledN = 0;
             const within = (jopts.within != null) ? jopts.within : 1;
             const cheb = (u) => Math.max(Math.abs(u.x - center.x), Math.abs(u.y - center.y));
             const bodies = ids.map(id => unitFromId(id)).filter(u => u && !u.dead);
@@ -7736,12 +7855,20 @@
                 if (t.dead || t._dying) continue;
                 const n = getUnitPushDistance(t, jopts.dist || spell.pullDistance, 'pull', spell);
                 if (!(n > 0) || cheb(t) <= within) continue;
+                const _hm = _logMark();
                 const r = resolveForcedSlide(t, Math.sign(center.x - t.x), Math.sign(center.y - t.y), n, {
                     byUnit: unit, label: `${spell.name}: `, toward: center, stopWithin: within,
                     perStepMs: 120, delayMs: actionMs(320), _struck: jopts.struck || null
                 });
-                if (r.moved > 0) addLog(`${_ctName(t)} is hauled ${r.moved} tile${r.moved > 1 ? 's' : ''} in by ${_ctSp(spell.name)}!`);
+                const _hn = _fmNet(r);
+                if (_hn > 0) {
+                    pulledN++;
+                    /* the haul reads before what its landing did, with where it ended (forced movement playtest 2026-11-07) */
+                    addLog(`${_ctName(t)} is hauled ${_fmTiles(_hn, r.landX, r.landY)} by ${_ctSp(spell.name)}!`);
+                    _logHoist(_hm);
+                }
             }
+            return pulledN;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -8147,7 +8274,7 @@
             return { tiles, spine, bores, uncertain };
         }
 
-        function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower, aim) {
+        function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower, aim, again) {
             // Beams are capped at the spell's range (3-5 tiles) — they no longer
             // sweep the whole map. Matches the aimed-hover preview (spell.range || 4).
             const lineRange = spell.range || 4;
@@ -8330,9 +8457,11 @@
             }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
             const _lnLead = _castLeadOnce(unit, spell);
+            /* P6 (forced movement playtest 2026-11-07): Sonic Boomerang's way back is its own pass, not a second cast */
+            if (again) _lnLead();
             for (const hit of hitTargets) {
                 const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
-                applyDamageToUnit(hit, dmg, _lnLead(), {
+                applyDamageToUnit(hit, dmg, again ? `${spell.name} comes back: ` : _lnLead(), {
                     sourceUnit: unit,
                     ignoreArmor: !!spell.ignoreArmor,   // THE SPELL AUDIT FIX (2026-10-26): Bone Lance / Railgun "Ignores DEF"
                     statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,   // Formic Acid's DEF -1
@@ -8348,6 +8477,7 @@
             const _lpOrder = hitTargets.slice().sort((a, b) =>
                 (((b.x - unit.x) * dx + (b.y - unit.y) * dy) - ((a.x - unit.x) * dx + (a.y - unit.y) * dy)));
             const _lpStruck = new Set();   // ⚔️ one auto attack per enemy for the whole cast
+            hitTargets._pushMark = _logMark();   // the caller's "hits N targets in a line" reads here, before the pushes
             for (const hit of _lpOrder) {
                 // linePush: push targets away — 🎱 full slide physics (crash-
                 // through, wall/edge rebounds, bowling-pin chains). The slide
@@ -8355,10 +8485,14 @@
                 // reads impact → knockback.
                 if (spell.kind === 'linePush' && !hit.dead) {
                     const _lpD = _bankDir.get(hit.id) || { dx, dy };   // B1: a body the turned light caught goes its way
+                    const _lpM0 = _logMark();
                     const _lpSlide = resolveForcedSlide(hit, _lpD.dx, _lpD.dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
                         byUnit: unit, label: `${spell.name}: `,
                         perStepMs: 120, delayMs: actionMs(320), _struck: _lpStruck
                     });
+                    /* forced movement playtest 2026-11-07 (M1: Gale, Tsunami): the push's own line, before what its landing did */
+                    if (_logPushMove(_ctSp(spell.name), hit, _lpSlide)) _logHoist(_lpM0);
+                    const _lpPinM = _logMark();
                     /* Phase 5 wave A (2026-09-08): pin riders (Piercing Arrow).
                        A victim that slams a wall or a bystander takes
                        collisionBonus (armour-proof) and wears collisionStatus;
@@ -8382,6 +8516,13 @@
                         }
                         showFloatingTextForUnit(hit, '📌 PINNED!', 'streak', { durationMs: 1000 });
                         addLog(`${_ctName(hit)} is pinned by ${_ctSp(spell.name)}!`);
+                        /* M3 (Piercing Arrow): the pin is what the slam did — its lines (the bonus hit and the Rooted) wait for
+                           the slam's own line on the impact frame */
+                        const _lpPinT = _lpSlide.animMs || 0;
+                        if (_lpPinT > 0 && !_skipVisuals() && !_bufferingRoundEvents) {
+                            const _lpPinTaken = _logTake(_lpPinM);
+                            window.setTimeout(() => _logPut(_lpPinTaken), _lpPinT + 30);
+                        }
                     }
                 }
             }
@@ -9404,10 +9545,18 @@
             return !!spell && spell.kind === 'teleport' && (state._teleportingUnitId != null || !spell.teleportAnyUnit);
         }
         /* every tile a teleport's landing click may name, measured from the caster: Manhattan ≤ the effective range,
-           sight-checked only for a needsLoS row (Web Swing). Occupancy / terrain stay doSpell's own messages. */
+           sight-checked only for a needsLoS row (Web Swing). THE LANDING LIST (forced-movement playtest 2026-11-07 D4/K6:
+           Door Dash, Shadow Step and Cathedral Perch lit squares holding a unit, the caster's own square and a prism, and the
+           click beeped "Destination tile must be unoccupied"): only the squares doSpell's landing takes — free of every body
+           the caster's side can SEE (a hidden one stays lit and doSpell refuses it, so the list never gives a hidden enemy
+           away, like the escape pick), passable, the row's onlyTerrain (Icky Surprise: ooze) and prism rule (Mirror Blink).
+           The mover's own square stays only while a pick-a-unit teleport holds its pick (clicking it cancels). */
         function getTeleportLandingReach(unit, spell) {
+            if (spell && spell.onlyTerrain) return getTeleportTerrainTiles(unit, spell);   // Icky Surprise: the ooze squares only
             const R = getEffectiveSpellRange(unit, spell);
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            const mover = (typeof _teleportMover === 'function' && _teleportMover()) || unit;
+            const keepMover = !!(spell && spell.teleportAnyUnit && state._teleportingUnitId != null);
             const out = [];
             for (let dy = -R; dy <= R; dy++) {
                 for (let dx = -R; dx <= R; dx++) {
@@ -9415,8 +9564,15 @@
                     if (d > R) continue;
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (!isInside(tx, ty)) continue;
+                    if (tx === mover.x && ty === mover.y) { if (keepMover) out.push({ x: tx, y: ty }); continue; }
                     if (typeof isTowerTile === 'function' && isTowerTile(tx, ty)) continue;   // ⬡ the Cube is never a landing
                     if (typeof fieldCellRock === 'function' && fieldCellRock(tx, ty)) continue;   // THE SOLID WALL: never landed on (2026-11-03)
+                    if (!isTerrainPassable(tx, ty)) continue;
+                    /* a body the caster's side sees fills the square; two floors (a bridge deck) keep it — the other floor may be free */
+                    const occ = unitAt(tx, ty);
+                    if (occ && !occ.dead && _isUnitVisibleToViewer(occ, unit.player)
+                        && !(typeof getWalkableSurfaces === 'function' && state.boardColumns?.length && getWalkableSurfaces(tx, ty).length > 1)) continue;
+                    if (spell.prismBlink && !prismBlinkTileOk(unit, spell, tx, ty)) continue;
                     if (spell.needsLoS && d >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unitZ)) continue;
                     out.push({ x: tx, y: ty });
                 }
@@ -39575,8 +39731,12 @@
                 if (!u || u.dead || !(dist > 0) || (!dx && !dy)) return null;
                 const r = resolveForcedSlide(u, dx, dy, dist, Object.assign({ simulate: true, byUnit: unit, viewer: unit.player, _struck: _fcStruck }, sopts || {}));
                 if (!r) return null;
-                if (r.moved > 0 || r.x !== u.x || r.y !== u.y) addMove(u, r.x, r.y, mode, Object.assign({ slam: !!(r.hitWall || r.hitUnits.length) }, legsOf(r) || {}));
-                else if (r.hitWall || r.hitUnits.length) tag(u, 'slam');
+                /* a SLAM is a wall slam or a crash (simSlams): a body driven into a unit of the mover's side that swings at it
+                   (THE AUTO ATTACK) takes that strike, not a slam (forced-movement playtest 2026-11-07 D2: Swing Door forecast
+                   💥 SLAM, the result was the auto attack) */
+                const _slammed = (r.simSlams || []).some(s => s.unitId === u.id);
+                if (r.moved > 0 || r.x !== u.x || r.y !== u.y) addMove(u, r.x, r.y, mode, Object.assign({ slam: _slammed }, legsOf(r) || {}));
+                else if (_slammed) tag(u, 'slam');
                 for (const s of (r.simSlams || [])) {
                     const v = unitFromId(s.unitId);
                     if (v) hit(v, s.dmg, s.dmg, s.dmg, { ignoreArmor: true, consumeMarked: false, sourceUnit: unit, noPress: true }, { tag: 'slam' });
@@ -39613,6 +39773,19 @@
                 return (t && !t.dead && !isAllyUnit(t, unit)) ? t : null;
             };
             const grounded = (u) => { if (u && !u.dead && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) tag(u, 'grounded'); };
+            /* ⬇ THE YANK'S FALL (forced-movement playtest 2026-11-07 K2: Gravity Well forecast 209, the Demon fell 2 levels for
+               158 more): a flyer yanked out of the sky takes the FORCED fall (applyFallDamage forced: flyers too, every level
+               counts) from fromZ to the ground under it — the same number the cast deals (state.js fallDamageFor) */
+            /* ⚖️ a colossal body no push or pull moves (getUnitPushDistance 0): the forecast says IMMOVABLE, the cast's own float
+               (forced-movement playtest 2026-11-07 K3: Horn Hook on the Dinosaur forecast nothing) */
+            const immovable = (u) => {
+                if (u && !u.dead && !_isClashMode() && getUnitDisplaceWeightClass(u, spell) === 'colossal') tag(u, 'immovable');
+            };
+            const yankFall = (u, fromZ) => {
+                if (!u || u.dead || u.hp <= 0 || typeof fallDamageFor !== 'function') return;
+                const fd = fallDamageFor(u, fromZ, getHeightAt(u.x, u.y), { forced: true }, u.x, u.y);
+                if (fd > 0) hit(u, fd, fd, fd, { ignoreArmor: true, consumeMarked: false, noPress: true }, { tag: 'fall' });
+            };
 
             /* THE TARGETING RIDERS: random victims — every legal one could be drawn. THE SPELL AUDIT FIX F2 (2026-10-26):
                the plan says how many shots the cast fires (plan.randomShots, the badge's "×N SHOTS"); a body the draw is
@@ -39739,6 +39912,7 @@
                 /* ♟ THE CHESS PIECE: a capture takes the square (_runPostEffects) */
                 if (spell.chessPiece && target.hp <= 0 && !_clash) addMove(unit, target.x, target.y, 'self');
                 if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash) {
+                    immovable(target);
                     const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);
                     if (pdx || pdy) {
                         const r = slide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), null, 'push');
@@ -39799,7 +39973,12 @@
                         if (anchor) tag(t, 'anchored');
                         if (canPullIn && spell.pullDistance && !anchor) pullJobs.push(t);
                         else if (spell.pullToCenter && mopts.pullCenter && !anchor && !clash) pull1Jobs.push(t);
-                        if (mopts.groundAirborne) grounded(t);
+                        if (mopts.groundAirborne && typeof isUnitAirborne === 'function' && isUnitAirborne(t)) {
+                            grounded(t);
+                            const _az = t.z ?? 0;
+                            moveTmp(t, t.x, t.y); t.z = getHeightAt(t.x, t.y);   // down on the deck before the pulls (_applyAoeDamage)
+                            yankFall(t, _az);
+                        }
                     }
                 }
                 /* 🧭 the pulls into the centre, nearest first — the same shared slide as _runAoePullJobs */
@@ -40020,6 +40199,7 @@
                 }
                 const target = enemyAt(tx, ty, z);
                 if (!target) return;
+                immovable(target);
                 const dx = dir ? dir.dx : Math.sign(target.x - unit.x), dy = dir ? dir.dy : Math.sign(target.y - unit.y);   // straight away (a shared column is a straight N/S push, never +1 east)
                 const r = slide(target, dx, dy, getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2), null, 'push');
                 const hitObs = !!(r && (r.hitWall || r.hitUnits.length));
@@ -40052,9 +40232,12 @@
                 const n = getUnitPushDistance(target, spell.pullDistance || 3, ally ? 'rescue' : 'pull', spell);
                 const anchor = ally ? null : unitResistsDisplace(target, 'pull');
                 if (anchor) tag(target, 'anchored');
+                if (!ally) immovable(target);
+                const _plAir = !ally && typeof isUnitAirborne === 'function' && isUnitAirborne(target), _plAirZ = target.z ?? 0;
                 slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), n, { stopBefore: { x: unit.x, y: unit.y }, noFall: ally,
-                    groundFirst: !ally && typeof isUnitAirborne === 'function' && isUnitAirborne(target) }, ally ? 'rescue' : 'pull');
+                    groundFirst: _plAir }, ally ? 'rescue' : 'pull');
                 if (!ally) grounded(target);
+                if (_plAir) yankFall(target, _plAirZ);   // the hook's yank out of the sky (doSpell's pull: forced fall at the landing)
                 if (spell.dmg) {
                     const d = Math.max(16, (spell.dmg || 0) + sp);
                     hit(target, d, d, d, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
@@ -43407,6 +43590,58 @@
                 arr.splice(k - block.length + 1, 0, ...block);
             }
         }
+        /* the lines written from `from` to now move back to `mark`, in their own order (same task only, like _logHoist) */
+        function _logLift(mark, from) {
+            if (!mark || !from || state.devAutoSim) return;
+            for (const [key, at, src] of [['logEntries', mark.a, from.a], ['_fullLogEntries', mark.b, from.b]]) {
+                const arr = state[key];
+                if (!arr || !(src > at) || src >= arr.length) continue;
+                const block = arr.splice(src);
+                arr.splice(at, 0, ...block);
+            }
+        }
+        /* THE FORCED MOVE LINES (forced movement playtest 2026-11-07, families E / M): a line written now that only
+           happens later on screen (a slide's landing, a pin, a throw) comes out of both logs now (_logTake, in the same
+           task it was written) and goes back in on its beat (_logPut), after the line that caused it. */
+        function _logTake(mark) {
+            const out = { a: [], b: [] };
+            if (!mark || state.devAutoSim) return out;
+            for (const [key, at, slot] of [['logEntries', mark.a, 'a'], ['_fullLogEntries', mark.b, 'b']]) {
+                const arr = state[key];
+                if (arr && arr.length > at) out[slot] = arr.splice(at);
+            }
+            return out;
+        }
+        function _logPut(taken) {
+            if (!taken || (!taken.a.length && !taken.b.length)) return;
+            state.logEntries = state.logEntries || [];
+            state._fullLogEntries = state._fullLogEntries || [];
+            state.logEntries.push(...taken.a);
+            state._fullLogEntries.push(...taken.b);
+            taken.a = []; taken.b = [];
+            if (!_logRenderQueued) {
+                _logRenderQueued = true;
+                window.requestAnimationFrame(() => { _logRenderQueued = false; renderLog(); });
+            }
+        }
+        /* how far a forced slide really took the body: start to the end of the slide (a rebound's steps back don't count) */
+        function _fmNet(res) {
+            if (!res) return 0;
+            const lx = res.landX != null ? res.landX : res.x, ly = res.landY != null ? res.landY : res.y;
+            return Math.max(Math.abs(lx - res.fromX), Math.abs(ly - res.fromY));
+        }
+        /* "2 tiles to E5" — the one move line every forced move writes (who, how far, where it ended) */
+        function _fmTiles(n, x, y) {
+            return `${n} tile${n !== 1 ? 's' : ''} to ${coordLabel(x, y)}`;
+        }
+        /* a push's own line: "Gale knocks Bigfoot 2 tiles back to E5." (nothing when the body didn't move off its tile) */
+        function _logPushMove(lead, target, res, verb) {
+            const n = _fmNet(res);
+            if (!(n > 0) || !target) return false;
+            const lx = res.landX != null ? res.landX : res.x, ly = res.landY != null ? res.landY : res.y;
+            addLog(`${lead} ${verb || 'knocks'} ${_ctName(target)} ${verb ? '' : 'back '}${_fmTiles(n, lx, ly)}.`);
+            return true;
+        }
 
         /* "already acted" is a click answer for the player at the controls: a CPU (or remote) seat's planner probing a spent
            unit never prints it into the player's log (Cube playtest 2026-10-23) — doMove's gate, for every action */
@@ -44710,6 +44945,11 @@
                 /* a self blink is cast from where the caster stands — its click is the landing, it never walks first
                    (playtest 2026-11-07 P3), and a two-click cast mid-pick never walks either (the step drops the pick) */
                 if (_spellNeverApproaches(unit, spell)) return false;
+                /* a SELF teleport (Icky Surprise, Shadow Step, Cathedral Perch…) aims at its landing square from where the
+                   caster stands — no walk comes first (a board click on a square out of reach is refused), so it is never a
+                   MOVE→CAST (forced-movement playtest 2026-11-07 P2: Icky Surprise with no ooze in reach read MOVE→CAST, not
+                   NO TARGET) */
+                if (spell && spell.kind === 'teleport' && !spell.teleportAnyUnit) return false;
                 const sx = unit.x, sy = unit.y, sz = unit.z;
                 /* SIGHT FROM WHERE IT STANDS (playtest 2026-10-21: Sasquatch Smash wore MOVE→CAST, its list said "No
                    targets in range"): the probe below moves the caster, and the sight gate then judged fog from the
@@ -44870,6 +45110,9 @@
             if (!u.dead && isUnitRealmShieldedFrom(u, unit)) return false;   // 🌑 the Shadow Realm's line, both ways
             if (spellMissesFlyer(spell, u)) return false;
             if (isGrappleReel(spell) && u.id === unit.id) return false;   // THE GRAPPLE REEL: the hook never aims at the caster
+            /* an ally haul / ally swap (Rescue Line, Miracle) never takes the caster itself: the cast refuses it (forecast + doSpell),
+               so the list never offers it (forced-movement playtest 2026-11-07 D1: "PIRATE 0T MOVE→CAST" on the Pirate's own row) */
+            if ((spell.kind === 'pull' || spell.kind === 'swap') && spell.allyOnly && u.id === unit.id) return false;
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
@@ -46223,7 +46466,11 @@
             if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle', 'possess', 'shadowRealm', 'link', 'doorBreach', 'doorTrap'].includes(kind)) {
                 // THE ONE AIM RULE: an enemy counts exactly when doSpell would take the cast on it from here
                 // (reach, sight line, team sight, cloaks — spellCastableOnUnit), and the cast does something to it.
-                const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
+                /* an ally-only row of these kinds (Rescue Line's haul, an ally swap) counts its ALLIES, never the caster
+                   (forced-movement playtest 2026-11-07 D1: an ally in range 4 still read MOVE→CAST) */
+                const enemies = spell.allyOnly
+                    ? state.units.filter(u => !u.dead && u.id !== unit.id && isAllyUnit(u, unit))
+                    : state.units.filter(u => !u.dead && u.player !== unit.player);
                 const hasEnemy = enemies.some(e => spellCastableOnUnit(unit, spell, e));
                 // (Towers don't count — Cubes are immune to spells by design.)
                 return hasEnemy;
@@ -47163,7 +47410,7 @@
                     /* the solo click's fog gate first: a fogged tile is out of sight unless the kind casts into fog */
                     const _gFog = state.fogOfWar && !_kindMeta(spell).fogExempt && !computeVisibleTiles(state.activePlayer).has(posKey(x, y));
                     if (!_gFog && (_mtcReachesPick(actingUnit, spell, x, y, z) || findSpellApproachTile(actingUnit, spell, x, y, z))) return false;
-                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : 'Target is no longer in range or line of sight.', actingUnit.player);
+                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player);
                     playErrorSfx();
                     markDirty('board', 'hud');
                     renderIfDirty();
@@ -64059,6 +64306,9 @@
                     if (_tt === 'enemy' && isAllyUnit(u, unit)) continue;
                 }
                 if (!spellTargetUsableOn(unit, spell, u)) continue;
+                /* 🚪 SWING DOOR: a victim a hinge in reach already swings is cast on from here (the board is its drum), never
+                   walked to (forced-movement playtest 2026-11-07 D2: the victim in range read MOVE→CAST) */
+                if (spell.hinge && !swingDoorResolve(unit, spell, u.x, u.y, { auto: true }).error) continue;
                 /* THE GRAPPLE REEL: a body already in reach whose rope is only blocked (an ally next door, a body in the
                    line) is not worth a walk — stepping away to reel straight back is no move */
                 if (isGrappleReel(spell) && spellAimProblemOn(unit, spell, u) === 'blocked') continue;
@@ -66113,7 +66363,7 @@
 
                         // ── Stale highlight fix: clear + re-render + notify ──
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                        addLog('Target is no longer in range or line of sight.', actingUnit.player);
+                        addLog(`${_ctSp(spell.name)}: that ${isSpellTileTargeted(spell) ? 'tile' : 'target'} is out of range or line of sight.`, actingUnit.player);   // K5 (forced-movement playtest 11-07): the click is refused here, so never "no longer"
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();
@@ -78144,6 +78394,7 @@
                     const dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2);
                     const _displaceFromX = target.x, _displaceFromY = target.y;
                     _sigVfxGeom(spell.id + ':throw', target.x, target.y, 0, { fromX: unit.x, fromY: unit.y });
+                    const _dpM0 = _logMark();
                     if (dist === 0) {
                         addLog(`${_ctName(target)} is far too heavy to budge!`);
                         showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
@@ -78152,13 +78403,19 @@
                     // wall/edge slam + rebound, bowling-pin momentum transfer.
                     // Movement, fall damage, hazards, fanned flames and the
                     // fling animation all resolve inside.
+                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E3 / E4 / E7): the hit line first, then the move
+                       ("Juggernaut knocks Halfdemon back 2 tiles to E5."), the slam bonus with its number, and only then
+                       what the landing did (lava, water, a trap) — the slide writes those lines before the hit exists. */
                     const slide = resolveForcedSlide(target, dx, dy, dist, {
                         byUnit: unit, label: `${spell.name}: `,
                         perStepMs: 120, delayMs: actionMs(320),
                         arcThrow: !!spell.arcThrow
                     });
+                    const _dpM1 = _logMark();
                     const hitObstacle = slide.hitWall || slide.hitUnits.length > 0;
-                    if (hitObstacle && spell.collisionBonus) damage += spell.collisionBonus;
+                    const _dpBonus = (hitObstacle && spell.collisionBonus) ? spell.collisionBonus : 0;
+                    damage += _dpBonus;
+                    const _dpBefore = (target.hp || 0) + (target.shield || 0);
 
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -78167,10 +78424,18 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                         element: classifySpellElement(spell)
                     });
+                    _logPushMove(_ctName(unit), target, slide,
+                        spell.throwAnyDirection ? 'tosses' : spell.arcThrow ? 'hurls' : null);
                     if (hitObstacle) {
-                        addLog(`${_ctName(target)} slams into an obstacle for bonus damage!`);
+                        /* E7: the slam's share of the hit, as a number (the bonus rides the one hit, so it is that hit's part) */
+                        const _dpDealt = Math.max(0, _dpBefore - ((target.hp || 0) + (target.shield || 0)));
+                        const _dpShare = (_dpBonus && damage > 0) ? Math.round(_dpDealt * _dpBonus / damage) : 0;
+                        addLog(_dpShare > 0
+                            ? `💥 ${_ctName(target)} slams into an obstacle for ${_dpShare} bonus damage (part of the hit above).`
+                            : `💥 ${_ctName(target)} slams into an obstacle!`);
                         showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
                     }
+                    _logLift(_dpM0, _dpM1);
 
                     if (slide.steps.length > 0) {
                         const flingAnimMs = slide.animMs || (slide.steps.length * 120);
@@ -78339,6 +78604,7 @@
                     window.setTimeout(() => {
                         const hitTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim);
                         addLog(`${_ctSp(spell.name)} hits ${hitTargets.length} target${hitTargets.length !== 1 ? 's' : ''} in a line.`);
+                        if (hitTargets._pushMark) _logHoist(hitTargets._pushMark);   // the summary before the pushes it caused
                         scheduleBoardRender();
                     }, impactDelay);
 
@@ -78351,7 +78617,7 @@
                         const _boomReturnMs = actionMs(560);
                         window.setTimeout(() => {
                             if (state.phase !== 'battle') return;
-                            const backTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim);
+                            const backTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower, _beamAim, true);
                             if (backTargets.length > 0) {
                                 addLog(`🪃 ${_ctSp(spell.name)} scythes back through the line — ${backTargets.length} target${backTargets.length !== 1 ? 's' : ''} hit again!`);
                             }
@@ -78389,13 +78655,15 @@
                 _fireAoeVfx(unit, spell, cx, cy, timing.cam, timing.projectileDelay, timing.vfxDelay);
 
                 window.setTimeout(() => {
+                    const _crStats = {};
                     const hitCount = _applyAoeDamage(unit, spell, crossTiles,
                         Math.max(32, (spell.dmg || 0) + spellPower), spellPower, {
                             rngRange: 24, minDmg: 32,
                             pushFromCenter: spell.pushDistance ? { x: cx, y: cy } : null,
-                            deformCenter: { x: cx, y: cy }
+                            deformCenter: { x: cx, y: cy }, stats: _crStats
                         });
                     addLog(`${_ctSp(spell.name)} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a${spell.diamond ? ' resonant diamond' : spell.diagonal ? 'n X pattern' : ' cross pattern'}.`);
+                    if (_crStats.pushMark) _logHoist(_crStats.pushMark);   // the summary before the pushes (Resonance Pulse)
                     scheduleBoardRender();
                 }, timing.impactDelay);
             }
@@ -78446,6 +78714,11 @@
                     }
                 }, _pullCamHold);
                 unit.mp -= effectiveSpellCost;
+                /* THE LOG ORDER (forced movement playtest 2026-11-07 M3, Lure: "yanked out of the sky" before "casts Lure"):
+                   the hook's hit lands first (on the bite, below), then the pull, the landing and the fall; the lines the
+                   pull writes now wait for the hit's line (_logTake / _logPut). */
+                const _plM0 = _logMark();
+                let _plTaken = null;
                 // Weight + Clash gate in one place now (getUnitPushDistance:
                 // feather +1, heavy -1, colossal 0, Clash freezes everyone).
                 if (getUnitDisplaceWeightClass(target, spell) === 'colossal'
@@ -78480,6 +78753,7 @@
                 /* 🧭 a hooked enemy flyer is yanked down onto the tile it is dragged to: its landing (a bomb, a trap,
                    ice, a storm) reacts once it is on the ground, below — not while it still counts as airborne */
                 const _pullYanks = !_plAlly && typeof isUnitAirborne === 'function' && isUnitAirborne(target);
+                const _plMSlide = _logMark();
                 const _pullSlide = resolveForcedSlide(target, pdx, pdy, pullDist, {
                     byUnit: unit, label: `${spell.name}: `,
                     perStepMs: 120, delayMs: _yankDelayMs,
@@ -78537,12 +78811,14 @@
                     // of the caster's windup like the old instant apply.
                     const dmg = Math.max(16, (spell.dmg || 0) + spellPower);
                     window.setTimeout(() => {
-                        if (target.dead || target._dying) return;
-                        applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
-                            sourceUnit: unit,
-                            damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
-                        });
+                        if (!(target.dead || target._dying)) {
+                            applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                sourceUnit: unit,
+                                damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                            });
+                        }
+                        _logPut(_plTaken);   // the pull's own lines, after the hit that started it
                     }, Math.max(0, _yankDelayMs - actionMs(80)));
                 }
                 /* Phase 5 wave C (2026-09-08): the pull's own statusEffects
@@ -78577,9 +78853,18 @@
                         window.setTimeout(() => { if (!target.dead) showFloatingTextForUnit(target, '✨ CLEANSED', 'heal', { durationMs: 900 }); }, Math.max(0, _yankDelayMs || 0));
                     }
                 }
-                /* spell audit F3 (10-26): a body that held (Windborne) or is too heavy already has its line — no "pulls 0 tiles" */
-                if (pulled > 0 || !(_pullAnchor || getUnitDisplaceWeightClass(target, spell) === 'colossal'))
-                    addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
+                /* spell audit F3 (10-26): a body that held (Windborne) or is too heavy already has its line — no "pulls 0 tiles".
+                   Forced movement playtest 2026-11-07 (E1 / M2): the count is how far the body really came (Grapple Arm's
+                   rebound off a tree said "3 tiles" for 1), with where it ended, read before what the landing did; a body
+                   that came no distance (already beside the caster, a pin in the way) gets no pull line at all. */
+                {
+                    const _plNet = _fmNet(_pullSlide);
+                    if (_plNet > 0) {
+                        addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${_fmTiles(_plNet, _pullSlide.landX, _pullSlide.landY)}.`);
+                        _logHoist(_plMSlide);
+                    }
+                }
+                if (spell.dmg) _plTaken = _logTake(_plM0);
 
                 let _pullTotalAnimMs = 0;
 
@@ -78705,10 +78990,10 @@
                     unit.x = tx; unit.y = ty;
                     target.x = ux; target.y = uy;
                     if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
-                    // ⛓ both bodies arrive somewhere new
+                    // ⛓ both bodies arrive somewhere new — the swap's line first, then what each landing did
+                    addLog(`${_ctName(unit)} swaps positions with ${_ctName(target)}!`);
                     resolveTileArrival(unit, { via: 'self' });
                     resolveTileArrival(target, { via: 'displaced' });
-                    addLog(`${_ctName(unit)} swaps positions with ${_ctName(target)}!`);
                     showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
                     /* THE SPELL AUDIT Batch D: healOnSwap (Miracle) — an ALLY that trades places with the caster is healed
                        on arrival (a flat heal, scaled like any other). Enemies swapped are never healed. */
@@ -79321,17 +79606,25 @@
                 }
                 window.setTimeout(() => {
                     const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                    /* ONE SUMMARY, FIRST (forced movement playtest 2026-11-07 E2 / M4: Gravity Well and Black Hole named the
+                       caster twice with the summary between the per-body lines, Round Up's came last, Whirlpool said "pulls
+                       them inward" when nothing moved): the cast's own line leads, then each body's hit, haul and landing */
+                    const _apM0 = _logMark();
+                    const _apStats = { pulled: 0 };
                     const hitCount = _applyAoeDamage(unit, spell, area,
                         Math.max(32, (spell.dmg || 0) + spellPower), spellPower, {
                             rngRange: 20, minDmg: 32,
                             pullCenter: spell.pullToCenter ? { x, y } : null,
                             groundAirborne: true,
-                            deformCenter: { x, y }
+                            deformCenter: { x, y },
+                            leadNamed: true, stats: _apStats
                         });
                     // G1 (2026-11-06 playtest): the line names the caster, and an empty area says so (the barrage's own wording)
+                    const _apP = _apStats.pulled;
                     addLog(hitCount > 0
-                        ? `${_ctName(unit)} casts ${_ctSp(spell.name)}: ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''} and pulls them inward.`
+                        ? `${_ctName(unit)} casts ${_ctSp(spell.name)}: ${spell.noDamage ? 'catches' : 'hits'} ${hitCount} target${hitCount !== 1 ? 's' : ''}${_apP > 0 ? ` and pulls ${_apP === hitCount ? (hitCount === 1 ? 'it' : 'them') : _apP} inward` : ''}.`
                         : `${_ctName(unit)} casts ${_ctSp(spell.name)} but no enemies are in range.`);
+                    _logHoist(_apM0);
 
                     if (spell.leaveTerrain) {
                         for (const tile of area) {
@@ -79745,6 +80038,10 @@
                     triggerAttackAnim(unit, target.x, target.y);
                     const VFX = window.ThreeVFXEffects;
                     if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3): the agent comes through the door, THEN the hit */
+                    addLog(_fromAbove
+                        ? `🚪 ${unitDisplayName(unit)} drops out of a door in the air onto ${unitDisplayName(target)} at ${coordLabel(unit.x, unit.y)} — from behind.`
+                        : `🚪 ${unitDisplayName(unit)} comes through a door nobody saw at ${coordLabel(unit.x, unit.y)} and hits ${unitDisplayName(target)} from behind.`);
                     applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType, bonusVsStatus: spell.bonusVsStatus || null });
                     if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     if (_fromAbove && spell.splashDmg) {
@@ -79754,9 +80051,6 @@
                         for (const u of _sl) applyDamageToUnit(u, spell.splashDmg + Math.round(spellPower * 0.5), `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
                         if (_sl.length) addLog(`🚪 The landing rattles ${_sl.length} more.`);
                     }
-                    addLog(_fromAbove
-                        ? `🚪 ${unitDisplayName(unit)} drops out of a door in the air onto ${unitDisplayName(target)} — from behind.`
-                        : `🚪 ${unitDisplayName(unit)} comes through a door nobody saw and hits ${unitDisplayName(target)} from behind.`);
                 }, _beDelay);
                 completionDelay = _beDelay + actionMs(500);
             }
@@ -80429,12 +80723,16 @@
                     }
                     // 💦 The splash douses anyone caught in fresh water (burn wiped
                     // by the knockback-hazard path; deep water starts the drowning).
+                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E4: Walk the Plank's drown + execute lines came
+                       before its hit): the cast line, the hit, the execute, then what the fresh water did to the body */
+                    const _tcM0 = _logMark();
                     if (_isWaterPaint && !spell.elevationFlood) {
                         for (const ct of convertedTiles) {
                             const _wpU = unitAt(ct.x, ct.y);
                             if (_wpU && !_wpU.dead) _applyKnockbackHazard(_wpU);
                         }
                     }
+                    const _tcM1 = _logMark();
                     trackTilesChanged(unit, convertedTiles.length);
 
                     _invalidateBoardGrid();
@@ -80477,10 +80775,10 @@
                                 addLog(`${_ctName(hit)} flies above ${_ctSp(spell.name)}.`);
                             } else if (hit && hit.player !== unit.player && !hit.dead) {
                                 let dmg = baseDmg + Math.floor(engineRng() * 20) - 10;
-                                if (spell.executePct && hit.hp <= hit.maxHp * spell.executePct) {
+                                const _tcExec = !!(spell.executePct && hit.hp <= hit.maxHp * spell.executePct);
+                                if (_tcExec) {
                                     dmg = Math.max(dmg, hit.hp);
                                     showFloatingTextForUnit(hit, 'OVERBOARD!', 'damage', { durationMs: 1300 });
-                                    addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
                                 }
                                 applyDamageToUnit(hit, dmg, _wlLead(), {
                                     sourceUnit: unit,
@@ -80488,6 +80786,7 @@
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                                     statusEffects: spell.statusEffects
                                 });
+                                if (_tcExec) addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
                             }
 
                             damageTurretAt(ct.x, ct.y, spell.dmg || 80, unit);
@@ -80555,7 +80854,10 @@
                        and the line always said "Converted 0 tiles" while the walls went up. Its line now waits for the placer
                        below and counts the footprint tiles a piece of this wall stands on once it is done (a recast on a
                        standing wall still says 3, like an ice tile recast to ice). */
-                    const _tcLine = (n) => addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${terrainType}.`);
+                    /* the hits move up above the water's own lines (drown, douse), and the cast's line above them all */
+                    _logLift(_tcM0, _tcM1);
+                    const _tcLabel = (TERRAIN_RULES[terrainType] && TERRAIN_RULES[terrainType].label) ? String(TERRAIN_RULES[terrainType].label).toLowerCase() : String(terrainType).replace(/_/g, ' ');
+                    const _tcLine = (n) => { addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${_tcLabel}.`); _logHoist(_tcM0); };
                     let _tcLogged = false;
                     const _tcGap = !!(spell.terrainDeform && spell.terrainDeform.toBed);
                     if (!spell.monument && !_tcGap) {
@@ -81208,7 +81510,8 @@
                     else if (!spell.leap && _tpLeave > 0 && !_skipVisuals())
                         animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, spell.doorGun ? actionMs(480) : TP_BLINK_MS, { escStyle: 'blink', delayMs: _tpLeave });
                     addLog(spell.leap && tUnit === unit
-                        ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
+                        /* P6: "lands on their feet" is Land on Your Feet's own line; other leaps (Cathedral Perch) just land */
+                        ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)}${spell.id === 'raceLandOnYourFeet' ? ' and lands on their feet' : ''}.`
                         : tUnit === unit
                             ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
                             : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
@@ -82028,6 +82331,7 @@
                 const _runDash = () => {
                     let dashHitCount = 0;
                     let _dashKillFed = false;
+                    const _dsM0 = _logMark();   // THE LOG ORDER (forced movement playtest 2026-11-07 M3): the run reads first
                     if (!_skipVisuals()) _vfxDash(casterStartX, casterStartY, x, y);
                     // Spell-specific dash signature (Sleigh Dash snowburst…) —
                     // keyed '<id>:dash' in the _spell3DGeometry registry. The
@@ -82196,6 +82500,9 @@
                     } else {
                         addLog(`${_ctName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
                     }
+                    /* …then its hits, the body knocked aside and what the landing did (Rampage's "takes 98" and the
+                       Stampede's drown line used to come before "dashes from") */
+                    _logHoist(_dsM0);
                     scheduleBoardRender();
 
                     /* CHAMP_REWORK_PLAN §5.3 Phase 6 (2026-09-08): `afterShot`
@@ -82314,6 +82621,8 @@
                 _spellFocusCamera(unit, x, y);
 
                 const _sdApplyLanding = () => {
+                    /* THE LOG ORDER (forced movement playtest 2026-11-07 E4): the drop, then its hit (the number is the hit's) */
+                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above!${elevDelta > 0 ? ` (${elevDelta}-level drop!)` : ''}`);
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
@@ -82327,8 +82636,6 @@
                         unit.hp = Math.min(unit.maxHp, unit.hp + healed);
                         showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 800 });
                     }
-                    const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
-                    addLog(`${_ctName(unit)} drops ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
                     /* applyDamageToUnit already floats the real post-mitigation
                        number — no second (pre-armor) float. */
                     // the impact tile reacts like any spell hit (a drop is a slam: it shatters ice)
@@ -82428,6 +82735,7 @@
                     });
 
                     const _applyThrowLanding = () => {
+                        const _thM0 = _logMark();   // THE LOG ORDER: the hurl reads first, then what it hit and did
                         if (collisionTarget && !collisionTarget.dead && collisionTarget.id !== throwTarget.id) {
 
                             const colBonus = spell.collisionBonus || 50;
@@ -82495,7 +82803,9 @@
                         // 💥 the landing tile reacts like any spell hit (Infernal Hurl into an oil slick blows it)
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
-                        addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);
+                        /* forced movement playtest 2026-11-07 E4: "hurls Halfdemon 3 tiles!" came after the defeat lines */
+                        addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${_fmTiles(throwDist, x, y)}!${deltaLabel}`);
+                        _logHoist(_thM0);
                         scheduleBoardRender();
                     };
 

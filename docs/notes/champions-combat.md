@@ -4394,3 +4394,36 @@ walking the caster first. Existing rules only, no new range:
 - data.js desc: "both are Rooted for 1 turn (your own units are never Rooted by it)".
 - Proof: VS CPU TDM in Chromium (WebGL2), staged on one column against the board edge. Live: "Piercing Arrow pins:
   Bigfoot is rooted." (caster) and the ally rooted. Fixed: only the enemy is rooted in both cases.
+
+## THE TWO LAYERS — a flyer only blocks a forced slide at its height (2026-11-07, playtest A2) — battle.js
+- Report: /mnt/project-files/playtest-mechanics-20261107/forced-movement/ A2 (Body Check / Horn Toss stopped by a Cyborg
+  hovering at height 7 over the next square, and the reverse).
+- Cause: `_slideStepInfo` asked `unitAt(nx, ny)` with no height, and its `canOccupy(nx, ny)` reads a lone flyer as a body
+  there. Every forced slide (push, pull, toss, knockback, chain) goes through it.
+- Fix (existing tile cap: one grounded + one airborne body per square, `airborneOccupantInPocket`): a grounded mover meets
+  only grounded bodies (`_slideGroundBodyAt`); a flyer meets only the flyer in its air pocket or a body standing at exactly
+  its height (`_slideAirBodyAt`). The flyers over the square are lifted off the board for the `canOccupy` check (restored in
+  finally, same trick as the mover). `_tryCrashThrough` / `_slideCouldBreach` use the grounded check too.
+- Proof: VS CPU TDM in Chromium (WebGL2), real doSpell casts. Live: Body Check victim stays put and hits the flyer; Kinetic
+  Hurl on a flyer stops at the ground unit. Fixed: both slide 2 squares (under / over); ground-into-ground and
+  flyer-into-flyer still stop and crash.
+## THE FORCED MOVE LINES (2026-11-07, forced movement playtest families E, M, P6 + B2's line) — battle.js, state.js
+Log text and order only; no rule changed. Report: /mnt/project-files/playtest-mechanics-20261107/forced-movement/PLAYTEST_FORCED_MOVEMENT_20261107.md.
+- One line per forced move: who, how far (`_fmNet` = start to the end of the slide; rebound steps back don't count), where
+  it ended (`_fmTiles` "2 tiles to E5"), then what the landing did. `_logPushMove(lead, target, res, verb)` writes the push
+  line (displacement: knocks / tosses (Horn Toss) / hurls (arcThrow); damage-kind pushDistance; linePush; aoe / cross pushes).
+  Pulls: "X pulls Y 3 tiles to C4." and no line at all for 0 tiles. Area pulls: "Y is hauled 1 tile to E4 by Black Hole!".
+- Log order tools (next to `_logHoist`): `_logLift(mark, from)` moves a block back; `_logTake(mark)` / `_logPut(taken)` hold
+  lines written now and put them in on their beat (the pull's lines after the hook's hit; Piercing Arrow's pin after the
+  slam). Same task only, like `_logHoist`, so the guest's log filter never sees a line move.
+- Order fixed: chargeToTarget's "charges to" + its landing lift above the hit (`_runPostEffects(unit, spell, target, hitMark)`);
+  tackles' "carries" before the landing's lava/water lines; Drop In / Breaking and Entering's door line before the hit; Stone
+  Drop's drop line before its hit; To the Moon's "hurls" first; Walk the Plank: Converted, hit, execute, then the drown; dash
+  line first; aoePull summary FIRST (opts.leadNamed, "hits N targets and pulls K inward", no pull clause when nothing moved);
+  line / cross summaries before the pushes.
+- Wording: one entry line for lava / deep water (`_chainGround`, said the unit's own way for via self / teleport / climb);
+  the liquid fall line's icon matches the liquid (state.js); "💧 X lands in the water and is Wet." for any non-walk arrival;
+  slam names what was hit (`_slideObstacleName`: a tree, the barrier, the cliff face, the edge…); displacement's slam bonus
+  says its share of the hit; Knight's L move isn't "down the line"; ricochets name the spell; Cathedral Perch just "leaps";
+  Sonic Boomerang's return is "Sonic Boomerang comes back:"; Air Mail writes its door fall; Converted uses the terrain label.
+- To the Moon (E6): the turn holds (`_pendingSpellHits`) until the thrown body lands, so the CPU no longer moves mid-throw.
