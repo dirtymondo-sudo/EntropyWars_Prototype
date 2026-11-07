@@ -2421,3 +2421,33 @@ Proof: /mnt/project-files/confirm-plates-20261107/ (before = report shot or kill
   panel); entering the orientation step clears the menu press marks (stale "EARTH RESISTED").
 - THE HOLOGRAM READS AS ONE: the MOVE→CAST model hologram is lifted ×2.4 toward its tint and drawn at ×0.7 opacity (the dark Demon read
   as a second Demon). `EW_GHOST_OLD`.
+
+### UI Maker pass 33: THE ARRANGE + THE SIDE, each team-select button its own, red BACK + green CONFIRM shipped (2026-11-07, mondo on the Select Your Team screen: "There's not enough customization/options in the ui maker for this menu layout. I want to put the buttons vertically on the left side of the swcreen, the deploy button needs to be green like other confirm buttons, and i thought i already told you to make all back buttons red. I also want to get rid of the random stamp. Just a lot of stuff wrong with this screen that i cant change")
+- **THE ARRANGE + THE SIDE** (hud.js `flowCss`, LOOK_DEF `flow gap jal pin pinM pinA`, Layout > a piece > "Arrange + screen side"):
+  any piece of any screen. Its parts = As the game / Side by side / Stacked (display:flex row|column); Space between (gap px; set,
+  the parts' own margins go to 0); Line up = Left / Centre / Right / Same size (stretch in a column, equal shares in a row).
+  Stick to = Left side / Right side / Top / Bottom (position:fixed, From the edge = pinM px), Along it = Top|Middle|Bottom (or
+  Left|Middle|Right on the top/bottom); Move X / Y still nudge from there and Scale grows away from that edge + corner
+  (transform-origin). Picking another side clears the old nudge across the new side (both axes when it turns from a side to the
+  top/bottom). A pinned piece skips the `zrel` position:relative. The squad page's `.title-page.active` transform makes it the
+  fixed box's containing block (= the whole screen), so the body's overflow never clips the column.
+- **EACH BUTTON ITS OWN** (UIM_PIECES squad rows): Back button `sqbback`, 4v4 / 5v5 switch `sqbsize`, Random `sqbrnd`, Edit `sqbedit`,
+  New Team `sqbnew`, Deploy `sqbgo` = pieces of their own: Hide, move, size, Panel look (fill / frame / glow) and Text look each.
+  The squad stand-in (UIM_SPECIMENS) now carries the real buttons with their data attributes. TEXT_PARTS `sqbar` (the team plate):
+  team name, unit count, team number, list arrow, unit names, bottom line, NEW stamp, arrows.
+- **SHIPPED** (UIM_SHIPPED, by hand inside the SHIPPED-UI markers; his next SAVE EVERYTHING carries it): `sqact` = Stacked, gap 10,
+  Same size, Left side 32 px, Along Top, Move Y 168 (under the title bar), Scale 1.3, Look like Window, Inner space 14 (x / y −408 /
+  w 810 / h 58 / ord of the old top bar dropped). His three picked "Deploy" parts lost their old-row nudges (x/y) and the first its
+  w 144 (it stretches with the column; buttonSel look + h 60 kept). `btns.back.tint #e0453a` + `btns.confirm.tint #3ccf6e` (the
+  BTN_TICK colours) = every BACK red and every CONFIRM green unless a menu's own look says otherwise; `back-results.padX 34` so
+  "BACK TO PARTY BUILDER" clears the re-baked Parallelogram's slanted ends.
+- BACK audit: BTN_MENUS 'pages' gained the credits page `#creditsPage .ms-back-btn` and the map editor's ← over the map
+  `.me-hud-back`. Left as they were (not BACK buttons): the tutorial's THE SHELF / BACK TO ROOM 64 end card, the editor banner's
+  BACK TO MY WORLD, the map's ◂ YOU ARE HERE / ◂ THE CHART, the encounter's BACK TO THE ROOM continue.
+- **NO RANDOM STAMP** (map.js `_sqPaintTeam`): a rolled Random Team wears no stamp on the plate (its bottom line still says Not
+  saved); the NEW stamp on a team just forged stays. The RANDOM button stays (Layout > Random button > Hide hides it).
+- styles-base.css: `.sq-team-size` centres its pair and each takes an equal share, so the 4v4 / 5v5 switch fills a stacked column.
+- Proof (Chromium, local hud.js / map.js / styles-base.css over the live CDN, fresh browser = the shipped look):
+  /mnt/project-files/team-select-ui/ (before/after, 1728×1000 + 1280×720, Random roll with no stamp, Layout view with every button
+  boxed, column sent right, Random hidden, match select red BACK / green CONFIRM, the Buttons preview of every BACK + every CONFIRM,
+  the squad stand-in). The 3D team room stalls headless screenshots after ~10 s (SwiftShader), so the proof shots run with it off.
