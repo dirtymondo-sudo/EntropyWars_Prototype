@@ -512,6 +512,8 @@
             if (_sqDropOpen) _sqDropPaint();
             _sqRoomTeam();
             _sqKeepActs();
+            try { if (window._ewSqFitRO) { window._ewSqFitRO.disconnect(); window._ewSqFitRO.observe(plate); } } catch (e) {}
+            _sqFitPlateSoon();   // THE PLATE FITS
         }
         /* THE BUTTONS STAY ON SCREEN (playtest 2026-11-03): the UI Maker moves the button row up from the bottom dock by a
            fixed number of pixels, so on a shorter window (1280×720, 1440×810) the row landed under the title bar and DEPLOY
@@ -575,7 +577,146 @@
             if (r.left < 6) dx = 6 - r.left; else if (r.right > innerWidth - 6) dx = Math.max(6 - r.left, innerWidth - 6 - r.right);
             if (dx || dy) acts.style.setProperty('translate', `${Math.round(tx + dx)}px ${Math.round(ty + dy)}px`, 'important');
         }
-        if (!window._ewSqKeepActsWired) { window._ewSqKeepActsWired = true; window.addEventListener('resize', () => { try { _sqKeepActs(); } catch (e) {} }); }
+        /* THE PLATE FITS (2026-11-07, mondo: unit names ran into each other, "BigfootCatgirl", "Nephilim/Catgirl/Politician",
+           and a rolled team's bottom line read "NOT SAVED · RANDOM AGAIN FOR": text cut-off is high priority). The plate is
+           the size the UI Maker gives it (178 px tall at ×1.65 shipped) and the theme font (Press Start 2P) is about twice as
+           wide as the Cormorant SC it was drawn for. After each paint the words are measured and shrunk until they fit:
+           1) the unit names share ONE size, each keeps to its own slot (the slots' column gap stays clear) on two lines at
+              most; 2) the bottom line stays on one line (wraps only if it cannot fit at the smallest size); 3) if the plate
+           still runs out of height, the faces shrink (to 60 %), then the names and the bottom line a little more. Nothing
+           is cut and nothing is dropped. Sizes are layout px, so the plate's UI Maker scale does not matter. */
+        const SQ_FIT_MIN_PX = 6.5;
+        function _sqFitPlate() {
+            const plate = document.getElementById('sqPlate');
+            if (!plate || !plate.isConnected || !plate.getClientRects().length) return;
+            const ems = [...plate.querySelectorAll('.sq-plate-slot em')];
+            const foot = plate.querySelector('.sq-plate-foot');
+            const faces = [...plate.querySelectorAll('.sq-plate-slot .sq-face')];
+            const clear = el => { el.style.removeProperty('font-size'); };
+            ems.forEach(clear);
+            plate.querySelectorAll('.sq-plate-name').forEach(clear);
+            if (foot) { foot.classList.remove('sq-fit-wrap'); [foot, ...foot.querySelectorAll('*')].forEach(clear); }
+            faces.forEach(f => { f.style.removeProperty('width'); f.style.removeProperty('height'); });
+            ems.forEach(el => el.classList.remove('sq-fit-break'));
+            const row = plate.querySelector('.sq-plate-faces');
+            if (row) row.style.removeProperty('column-gap');
+            /* 0) MANY FACES (a team of 5 to 8): slots narrower than a face close their gap a little and the faces fit their slot */
+            const slotW = () => Math.min(...[...plate.querySelectorAll('.sq-plate-slot')].map(sl => sl.clientWidth || 999), 999);
+            if (row && faces.length && slotW() < Math.max(...faces.map(f => f.offsetWidth || 0))) row.style.setProperty('column-gap', '8px', 'important');
+            faces.forEach(f => { const w = f.parentElement ? f.parentElement.clientWidth : 0; if (w && f.offsetWidth > w) { f.style.setProperty('width', w + 'px', 'important'); f.style.setProperty('height', w + 'px', 'important'); } });
+            const px = el => parseFloat(getComputedStyle(el).fontSize) || 12;
+            const setPx = (el, v) => el.style.setProperty('font-size', Math.max(SQ_FIT_MIN_PX, v).toFixed(2) + 'px', 'important');
+            /* 1) THE NAMES: one shared size, each name inside its slot, two lines at most */
+            const nameBase = ems.map(px), nameMax = Math.max(12, ...nameBase);
+            const nameMinK = Math.min(1, SQ_FIT_MIN_PX / nameMax);
+            const linesOf = el => { const lh = parseFloat(getComputedStyle(el).lineHeight) || px(el) * 1.15; return Math.round(el.scrollHeight / lh); };
+            const namesBad = () => {
+                let worst = 1;
+                ems.forEach(el => {
+                    if (!el.clientWidth) return;
+                    if (el.scrollWidth > el.clientWidth + 0.5) worst = Math.min(worst, el.clientWidth / el.scrollWidth);
+                    const n = linesOf(el);
+                    if (n > 2) worst = Math.min(worst, Math.sqrt(2 / n));
+                });
+                return worst;
+            };
+            let nk = 1;
+            const applyNames = k => { nk = k; ems.forEach((el, i) => setPx(el, nameBase[i] * k)); };
+            const fitNames = () => {
+                applyNames(1);
+                for (let r = 0; r < 12; r++) {
+                    const w = namesBad();
+                    if (w >= 1 || nk <= nameMinK + 0.001) break;
+                    applyNames(Math.max(nameMinK, nk * Math.min(0.95, Math.max(0.6, w))));
+                }
+            };
+            fitNames();
+            /* a long one-word name ("Necromancer") still wider than its slot at the smallest size: the slots close their gap */
+            if (row && namesBad() < 1 && !row.style.getPropertyValue('column-gap')) {
+                row.style.setProperty('column-gap', '8px', 'important');
+                faces.forEach(f => { const w = f.parentElement ? f.parentElement.clientWidth : 0; if (w && f.offsetWidth > w) { f.style.setProperty('width', w + 'px', 'important'); f.style.setProperty('height', w + 'px', 'important'); } });
+                fitNames();
+            }
+            /* a single word wider than its slot at the smallest size ("Conspiracy" on a team of 6) breaks with a hyphen */
+            ems.forEach(el => { if (el.clientWidth && el.scrollWidth > el.clientWidth + 0.5) el.classList.add('sq-fit-break'); });
+            /* 2) THE BOTTOM LINE: one line across the plate */
+            let fk = 1;
+            const footParts = foot ? [foot, ...foot.querySelectorAll('*')] : [];
+            const footBase = footParts.map(px), footMinK = footParts.length ? Math.min(1, SQ_FIT_MIN_PX / Math.max(...footBase)) : 1;
+            const applyFoot = k => { fk = k; footParts.forEach((el, i) => setPx(el, footBase[i] * k)); };
+            const footW = () => foot && foot.clientWidth ? Math.min(1, foot.clientWidth / Math.max(1, foot.scrollWidth)) : 1;
+            for (let r = 0; foot && r < 12; r++) {
+                const w = footW();
+                if (w >= 1 || fk <= footMinK + 0.001) break;
+                applyFoot(Math.max(footMinK, fk * Math.min(0.96, Math.max(0.6, w))));
+            }
+            if (foot && footW() < 1) foot.classList.add('sq-fit-wrap');   // cannot fit on one line at the smallest size: wrap it
+            /* 2b) THE TEAM NAME: two lines at most, its longest word inside the plate (a long name wrapped down over the faces) */
+            const tName = plate.querySelector('.sq-plate-name');
+            const tBase = tName ? px(tName) : 0, tMinK = tName ? Math.min(1, Math.max(0.4, SQ_FIT_MIN_PX * 1.6 / Math.max(1, tBase))) : 1;
+            let tk = 1;
+            const applyTitle = k => { tk = k; if (tName) setPx(tName, tBase * k); };
+            for (let r = 0; tName && r < 12; r++) {
+                let w = 1;
+                if (tName.clientWidth && tName.scrollWidth > tName.clientWidth + 0.5) w = tName.clientWidth / tName.scrollWidth;
+                const n = linesOf(tName);
+                if (n > 2) w = Math.min(w, Math.sqrt(2 / n));
+                if (w >= 1 || tk <= tMinK + 0.001) break;
+                applyTitle(Math.max(tMinK, tk * Math.min(0.95, Math.max(0.6, w))));
+            }
+            /* 3) THE HEIGHT: the plate clips, so whatever runs past its bottom shrinks: faces first, then words */
+            const faceBase = faces.map(f => f.offsetWidth || 54);
+            let ck = 1;
+            /* the sheen is an absolute box past the plate's edges (it counts in scrollHeight): measure the words' own bottom */
+            const flow = [...plate.children].filter(el => getComputedStyle(el).position !== 'absolute');
+            const over = () => {
+                const pr = plate.getBoundingClientRect(), sc = plate.offsetHeight ? pr.height / plate.offsetHeight : 1;
+                if (!(sc > 0)) return 0;
+                const cs = getComputedStyle(plate), padB = parseFloat(cs.paddingBottom) || 0, bdB = parseFloat(cs.borderBottomWidth) || 0;
+                let bottom = 0;
+                flow.forEach(el => { const r = el.getBoundingClientRect(); if (r.height) bottom = Math.max(bottom, (r.bottom - pr.top) / sc + (parseFloat(getComputedStyle(el).marginBottom) || 0)); });
+                return Math.round(bottom + padB + bdB - plate.offsetHeight);
+            };
+            for (let r = 0; r < 18 && over() > 0; r++) {
+                const o = over();
+                if (ck > 0.6 + 0.001) {
+                    const big = Math.max(...faceBase, 1);
+                    ck = Math.max(0.6, ck - Math.max(0.04, o / big));
+                    faces.forEach((f, i) => { const v = Math.round(faceBase[i] * ck); f.style.setProperty('width', v + 'px', 'important'); f.style.setProperty('height', v + 'px', 'important'); });
+                } else if (nk > nameMinK + 0.001 || fk > footMinK + 0.001 || tk > tMinK + 0.001) {
+                    if (tk > tMinK + 0.001) applyTitle(Math.max(tMinK, tk * 0.9));
+                    if (nk > nameMinK + 0.001) applyNames(Math.max(nameMinK, nk * 0.9));
+                    if (fk > footMinK + 0.001) applyFoot(Math.max(footMinK, fk * 0.92));
+                } else break;
+            }
+            if (nk >= 0.999) ems.forEach(clear);   // nothing shrunk: the UI Maker's own size stays live
+            plate.dataset.sqFit = [nk.toFixed(2), fk.toFixed(2), ck.toFixed(2), tk.toFixed(2), Math.max(0, over())].join(' ');
+        }
+        let _sqFitT = [];
+        function _sqFitPlateSoon() {
+            _sqFitT.forEach(clearTimeout);
+            _sqFitPlate();
+            /* fonts, the UI Maker's sizes and the open animation land a beat later */
+            _sqFitT = [80, 300, 900, 1800].map(ms => setTimeout(() => { try { _sqFitPlate(); } catch (e) {} }, ms));
+            try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { try { _sqFitPlate(); } catch (e) {} }); } catch (e) {}
+        }
+        window._sqFitPlate = _sqFitPlate;
+        if (!window._ewSqFitWired) {
+            window._ewSqFitWired = true;
+            try { if (document.fonts) document.fonts.addEventListener('loadingdone', () => { try { _sqFitPlate(); } catch (e) {} }); } catch (e) {}
+            /* the UI Maker resizing the plate (its Layout view, a new width / height) fits it again */
+            try {
+                if (typeof ResizeObserver === 'function') {
+                    let last = '';
+                    window._ewSqFitRO = new ResizeObserver(() => {
+                        const p = document.getElementById('sqPlate');
+                        const k = p ? p.clientWidth + 'x' + p.clientHeight : '';
+                        if (k && k !== last) { last = k; requestAnimationFrame(() => { try { _sqFitPlate(); } catch (e) {} }); }
+                    });
+                }
+            } catch (e) {}
+        }
+        if (!window._ewSqKeepActsWired) { window._ewSqKeepActsWired = true; window.addEventListener('resize', () => { try { _sqKeepActs(); _sqFitPlateSoon(); } catch (e) {} }); }
         function _sqFocusCard(id) {
             if (!id || id === _sqFocusId) return;
             _sqFocusId = id;
