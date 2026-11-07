@@ -27059,7 +27059,7 @@
         function _tilePickFrame(unit, tiles, fa, opts) {
             if (!unit) return null;
             opts = opts || null;
-            fa = fa || _menuFreeArea(true);
+            fa = fa || _menuFreeArea(true, !!(opts && opts.solid));
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
                     || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
@@ -27139,6 +27139,7 @@
             const uid = unit.id;
             camera._clearFit = {
                 area: fr.fa,
+                solid: !!(fr.opts && fr.opts.solid),   // THE CLICKABLE PICK: the slide reads the same solid cover
                 fit() {
                     const u = (state.units || []).find(v => v.id === uid && !v.dead);
                     const f2 = u ? _tilePickFrame(u, tiles, null, fr.opts) : null;
@@ -31030,8 +31031,22 @@
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
         const _CLEAR_ROOT = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true });   // the action menu alone
-        let _cfArea = null, _cfAt = 0, _cfHeld = null, _cfSeenAt = 0, _cfPend = null;
-        function _menuFreeArea(fresh) {
+        let _cfArea = null, _cfAt = 0, _cfHeld = null, _cfSeenAt = 0, _cfPend = null, _cfSolid = false, _cfSolidArea = null, _cfSolidAt = 0;
+        function _menuFreeArea(fresh, solid) {
+            /* THE CLICKABLE PICK (forced-movement playtest 2026-11-07 C2: Teleport's landing squares under the Abilities
+               panel could not be clicked): `solid` reads the cover for a board pick that must stay clickable, the second
+               step of a two-click spell (THE DROP PICK). The faded backdrop list counts as cover there (it takes the click:
+               clicking it backs out of the spell) and the frame goes all the way to the free part's middle. Uncached. */
+            if (solid) {
+                const _sNow = performance.now();
+                if (!fresh && _cfSolidArea && _sNow - _cfSolidAt < 120) return _cfSolidArea;
+                const _keep = [_cfArea, _cfAt];
+                _cfArea = null; _cfAt = 0;
+                _cfSolid = true;
+                try { _cfSolidArea = _menuFreeArea(true); } finally { _cfSolid = false; _cfArea = _keep[0]; _cfAt = _keep[1]; }
+                _cfSolidAt = _sNow;
+                return _cfSolidArea;
+            }
             const now = performance.now();
             if (!fresh && _cfArea && now - _cfAt < 120) return _cfArea;
             _cfAt = now;
@@ -31071,7 +31086,7 @@
                     }
                     if ((r.left + r.right) / 2 < midX) x0 = Math.max(x0, r.right);
                     else x1 = Math.min(x1, r.left);
-                    if (!el.closest('.hrlg-panel.bg')) lowTop = Math.min(lowTop, r.top);
+                    if (_cfSolid || !el.closest('.hrlg-panel.bg')) lowTop = Math.min(lowTop, r.top);
                 });
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
@@ -31112,7 +31127,7 @@
                 }
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
-                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * CLEAR_FRAME_SHIFT,
+                    cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * (_cfSolid ? 1 : CLEAR_FRAME_SHIFT),
                     cy: Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
                     hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
                     // THE NEAR FRAME: the free part's own edges and middle, in NDC
@@ -31301,7 +31316,7 @@
         /* the slide ThreeCamera.sync puts the board rig through this frame ({ cx, cy } NDC) */
         window._ewMenuSlide = function () {
             if (state.phase !== 'battle' || state.cameraDisabled || state._fullMapOverview) { _cfHeld = null; _castCentred = false; return _CLEAR_FULL; }
-            const fa = _menuFreeArea();
+            const fa = _menuFreeArea(false, !!(camera._clearFit && camera._clearFit.solid));   // THE CLICKABLE PICK
             const now = performance.now();
             // THE CENTRED CAST: what the viewer's menu is aiming at, kept for the action it starts
             // (not once the action runs: the menu lingers a few frames after the confirm while the pick's target is cleared)
@@ -43871,6 +43886,69 @@
             return 'Select a target for ' + nm + '.';
         }
 
+        /* THE STEP PROMPTS (forced-movement playtest 2026-11-07, C1/C2/L1: Horn Toss kept "Select an enemy target" after the
+           victim pick, Teleport said "select a destination tile" when the first click had to be a unit and never changed
+           after it, Twin Doors still said "select a tile to deploy on" after the first door; only the log told the next
+           step). A two-click spell's bar names the pick it waits for at EVERY step, in the bar's own wording (the log lines
+           doSpell already writes for each step), and a hovered / picked aim reads what that click will do. Text only. */
+        function _twoStepSpellPrompt(unit, spell, pt, ptLabel, esc) {
+            const nm = '<strong>' + esc(_ctSp(spell.name)) + '</strong>';
+            const nmOf = u => '<strong>' + esc(_ctName(u)) + '</strong>';
+            const ptIs = (x, y) => !!pt && pt.x === x && pt.y === y;
+            const ptBody = pt ? ((pt.z !== undefined && pt.z !== null ? unitAt(pt.x, pt.y, pt.z) : null) || unitAt(pt.x, pt.y)) : null;
+            const reach = () => (typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(unit, spell) : 0) || spell.range || 4;
+            /* Horn Toss (throwAnyDirection): the victim, then a tile beside it (or the victim again) */
+            if (spell.throwAnyDirection && spell.kind === 'displacement') {
+                const pk = _twoClickPick(spell);
+                if (!pk) {
+                    if (ptLabel && ptBody) return _promptBarHtml(nm + ' → ' + ptLabel + ' — click to grab it.', 'or pick another target · ESC cancel');
+                    return _promptBarHtml(nm + ': select an enemy to grab.', 'ESC cancel');
+                }
+                if (pt && Math.max(Math.abs(pt.x - pk.x), Math.abs(pt.y - pk.y)) <= 1) {
+                    if (ptIs(pk.x, pk.y)) return _promptBarHtml(nm + ' throws ' + nmOf(pk) + ' straight back, away from you — click to confirm.', 'or pick another way · ESC cancel');
+                    return _promptBarHtml(nm + ' throws ' + nmOf(pk) + ' toward ' + esc(coordLabel(pt.x, pt.y)) + ' — click to confirm.', 'or pick another way · ESC cancel');
+                }
+                return _promptBarHtml(nm + ': ' + nmOf(pk) + ' is caught — click a tile beside it to throw it that way.', 'click ' + nmOf(pk) + ' again: straight back · ESC cancel');
+            }
+            /* Teleport (teleportAnyUnit): the unit to warp, then the tile it lands on */
+            if (spell.kind === 'teleport' && spell.teleportAnyUnit) {
+                const mv = state._teleportingUnitId != null ? unitFromId(state._teleportingUnitId) : null;
+                if (!mv || mv.dead) {
+                    if (ptLabel && ptBody) return _promptBarHtml(nm + ' → ' + ptLabel + ' — click to pick it.', 'or pick another unit · ESC cancel');
+                    return _promptBarHtml(nm + ': select a unit to warp — then where it lands.', 'ESC cancel');
+                }
+                if (pt && !ptBody && !ptIs(mv.x, mv.y) && ptLabel) return _promptBarHtml(nm + ' warps ' + nmOf(mv) + ' to ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
+                return _promptBarHtml(nm + ': ' + nmOf(mv) + ' chosen — now select an empty tile within ' + reach() + ' to warp it to.', 'click ' + nmOf(mv) + ' again to cancel · ESC cancel');
+            }
+            /* Twin Doors (deployPair + pairPicks): the first door's tile, then the second's */
+            if (spell.kind === 'deployPair' && spell.pairPicks) {
+                const pk = typeof _gunDoorPick === 'function' ? _gunDoorPick(spell) : null;
+                if (!pk) {
+                    if (ptLabel && pt && !ptBody) return _promptBarHtml(nm + ' → the first door on ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
+                    return _promptBarHtml(nm + ': pick a lit empty tile for the first door.', 'ESC cancel');
+                }
+                const fl = esc(coordLabel(pk.x, pk.y));
+                if (ptLabel && pt && !ptBody && !ptIs(pk.x, pk.y)) return _promptBarHtml(nm + ' → the second door on ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
+                return _promptBarHtml(nm + ': the first door goes on ' + fl + ' — now pick a lit empty tile for the second.', 'click ' + fl + ' again to cancel · ESC cancel');
+            }
+            /* a lane door (doorDeploy): the tile, then which way it faces */
+            if (spell.kind === 'doorDeploy' && typeof _gunDoorPick === 'function' && _gunDoorPick(spell) && pt) {
+                const pk = _gunDoorPick(spell);
+                if (ptIs(pk.x, pk.y)) return _promptBarHtml(nm + ' faces away from you — click to confirm.', 'or pick a lane · ESC cancel');
+                return _promptBarHtml(nm + ' faces toward ' + esc(coordLabel(pt.x, pt.y)) + ' — click to confirm.', 'or pick another lane · ESC cancel');
+            }
+            /* link / transfer (twoClick kinds): the first unit, then the second */
+            if (_kindMeta(spell).twoClick && pt && ptBody) {
+                const pk = _twoClickPick(spell);
+                const tm = _twoClickTeams(spell);
+                const word = t => (t === 'ally' ? 'an ally' : 'an enemy');
+                if (!pk) return _promptBarHtml(nm + ' → ' + ptLabel + ' — click to pick it first, then ' + word(tm[1]) + '.', 'or pick another target · ESC cancel');
+                if (ptBody.id !== pk.id) return _promptBarHtml(nm + ': ' + nmOf(pk) + ' and ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                return _promptBarHtml(_spellTargetPromptText(spell, esc), 'click ' + nmOf(pk) + ' again to drop it · ESC cancel');
+            }
+            return null;
+        }
+
         /* THE STACKED FLOORS (2026-10-22): the hovered column holds two lit floors (a bridge deck and the ground under it)
            — the bar says which way F flips (three-renderer publishes window._ewStackPick) */
         function _withStackFloorHint(html) {
@@ -43947,6 +44025,7 @@
                     const spell = (unit.spells || []).find(s => s && s.name === state.selectedTool)
                         || (unit._raceAbilities || []).find(s => s && s.name === state.selectedTool);
                     if (!spell) return _promptBarHtml('Select an ability to cast.', 'ESC back');
+                    { const _step = _twoStepSpellPrompt(unit, spell, pt, ptLabel, esc); if (_step) return _step; }   // THE STEP PROMPTS
                     // THE SELF-CAST CONFIRM: the caster is the only target, so there is nothing else to pick
                     // THE ESCAPE PICK: the player picks where the escape lands
                     if (spell.kind === 'escape') {
@@ -63873,7 +63952,10 @@
                 || state.controllers?.[unit.player] === CTRL.AI) return;
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return;
             if (!_fogCamAllSeen(unit)) return;
-            _frameSpellTilePick(unit, ph.tiles, ph.spell.throwRange || ph.spell.range || 3);
+            /* THE CLICKABLE PICK (forced-movement playtest 2026-11-07 C2): a pick whose clicks land ANYWHERE in the frame (a
+               teleport's landing, a sky throw's landing) is framed in the board left clear of the menus, never under them; a
+               toss clicks only the ring round its victim (centred), so it keeps the near frame */
+            _frameSpellTilePick(unit, ph.tiles, ph.spell.throwRange || ph.spell.range || 3, { solid: ph.key.indexOf('toss|') !== 0 });
         }
         window._dropPickCamCheck = _dropPickCamCheck;
 
@@ -64023,7 +64105,10 @@
                            Keys matchup) — nothing is pre-picked, the player clicks the tile to search */
                         /* a prism folds onto an EMPTY tile: pre-picking a body armed "CONFIRM — Machine Elves" onto the
                            caster's own tile (the PRISM action, 2026-10-29) */
-                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport' && spell.kind !== 'remoteView' && spell.kind !== 'placeMirror') {
+                        /* a door / a deployable / a summon goes on an EMPTY tile too: Twin Doors armed "CONFIRM — DOOR Agent" on
+                           the caster's own tile (forced-movement playtest 2026-11-07 L1) — nothing is pre-picked for those */
+                        const _emptyAim = ['deployPair', 'deployObject', 'deployTurret', 'summonUnit', 'door', 'doorDeploy'].includes(spell.kind);
+                        if (targets.length > 0 && !_emptyAim && spell.kind !== 'dash' && spell.kind !== 'teleport' && spell.kind !== 'remoteView' && spell.kind !== 'placeMirror') {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
                             /* THE PICK IN FRAME (wipeout playtest 2026-10-23): the range fit above frames only the
@@ -65636,6 +65721,11 @@
                     } else {
                         const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                         validTargets = spell ? _getSpellValidTargets(unit, spell) : [];
+                        /* THE TOSS'S DIRECTION HOVER (forced-movement playtest 2026-11-07 C1: "no landing or path is drawn
+                           while hovering a direction"): after the victim pick a tile beside it is a legal aim, as the click
+                           already allows (clickTile), so the hover picks it too and the forecast draws the throw that way */
+                        if (spell && spell.throwAnyDirection && _twoClickPick(spell)
+                            && getSpellRangeTiles(unit, spell).some(t => t.x === x && t.y === y)) validTargets = validTargets.concat([{ x, y }]);
                     }
                     const isValidTarget = validTargets.some(t => t.x === x && t.y === y);
                     if (!isValidTarget) {
@@ -66322,11 +66412,14 @@
                         // Out of range, but the unit may be able to step into range
                         // and still act this turn → PICK it (its MOVE→ATK / MOVE→CAST
                         // row); the confirming click walks there, then attacks/casts.
-                        if (_boardApproachPick(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
+                        /* THE TOSS: with the victim caught, a click away from it says where the direction click goes */
+                        const _tossPk = (_etcSpell && _etcSpell.throwAnyDirection) ? _twoClickPick(_etcSpell) : null;
+                        if (!_tossPk && _boardApproachPick(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
 
                         // ── Stale highlight fix: clear + re-render + notify ──
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                        addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
+                        addLog(_tossPk ? `${_ctSp(_etcSpell.name)}: click a tile beside ${_ctName(_tossPk)} to throw it that way, or ${_ctName(_tossPk)} again to throw it straight back.`
+                            : _outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
                         renderIfDirty();

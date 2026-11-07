@@ -49688,14 +49688,20 @@ const ThreeRenderer = (function () {
             if (hit && typeof handleTileDragStart === 'function') handleTileDragStart(hit.tileX, hit.tileY);
         };
 
-        _onMouseLeave = function() {
+        _onMouseLeave = function(e) {
             _lastMouseClientX = _lastMouseClientY = null;
             _updateUnitHover(null);
             updateHoverHighlight(-1, -1);
+            /* THE PICK WAITS FOR ITS CONFIRM (forced-movement playtest 2026-11-07 H2: Walk the Plank's "✓ CONFIRM —
+               Mantid" did nothing while Enter worked): the pointer leaving the board for the HUD dropped the hovered
+               pick, so the green CONFIRM it was heading for vanished under it and the click fell on the board. Going
+               onto the HUD keeps the pick (and its preview); leaving the window or the board's own edge clears it. */
+            var _toHud = !!(e && e.relatedTarget && e.relatedTarget !== canvas && e.relatedTarget.nodeType === 1
+                && document.body && document.body.contains(e.relatedTarget));
             if (_lastHitX >= 0 || _lastHitY >= 0) {
                 var prevX = _lastHitX, prevY = _lastHitY;
                 _lastHitX = -1; _lastHitY = -1;
-                if (typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
+                if (!_toHud && typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
                 if (typeof restoreHoverFocus === 'function') restoreHoverFocus();
                 if (typeof clearHoverHighlight === 'function') clearHoverHighlight();
             }
