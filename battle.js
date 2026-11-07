@@ -10264,6 +10264,15 @@
         }
         if (typeof window !== 'undefined') window.removeBuffs = removeBuffs;
 
+        /* THE ITEM NAMES (2026-11-07, buffs playtest K): a log line or a float names an item by its ITEM_RULES name
+           ("Healing Potion"), never its code key ("healPotion"). _itemArticle gives "a" / "an" for the name. */
+        function _itemDisplayName(key) {
+            const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES) ? ITEM_RULES[key] : null;
+            return (r && r.name) || String(key || 'item');
+        }
+        function _itemArticle(name) { return /^[aeiou]/i.test(String(name || '')) ? 'an' : 'a'; }
+        if (typeof window !== 'undefined') window._itemDisplayName = _itemDisplayName;
+
         /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the grab behind the `steal`
            kind. Moves up to opts.keys Keys and opts.items items (one random
            kind each) from victim to thief with the plunder's floating text.
@@ -10297,7 +10306,7 @@
                 wantItems--;
             }
             if (out.items.length) {
-                const _ni = out.items.slice();
+                const _ni = out.items.map(_itemDisplayName);
                 _fx(() => {
                     addLog(`${_ctName(thief)} — ${label}: ${_ni.join(', ')} taken from ${_ctName(victim)}!`);
                     showFloatingTextForUnit(thief, `📦 Stole ${_ni[0]}${_ni.length > 1 ? ' +' + (_ni.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
@@ -41956,6 +41965,7 @@
         window._ewItemLike = _ewItemLike;
         function canUseItemNow(unit, itemKey) {
             if (!unit || unit.dead) return false;
+            if (unitActionBlockKey(unit)) return false;   // "cannot act" (Stoneform, stun, frozen…) — no items either
             if ((unit.items?.[itemKey] || 0) <= 0) return false;
             if (_ewItemLike(itemKey, 'healPotion')) {
                 return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
@@ -44252,6 +44262,30 @@
             return !!(unit && unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove));
         }
 
+        /* THE LOCK WORDS (2026-11-07, buffs playtest D): which status locks this unit, so a greyed MOVE / BUILD / ITEMS /
+           GUARD says the real one (Rooted, Charmed, Roped, Frozen, Stoneform…) instead of "Stunned" for all of them.
+           unitMoveBlockKey = first active blockMove status, unitActionBlockKey = first active blockAction status
+           (the "cannot act" doAttack / doSpell already refuse on). statusLockWord = the one word a button fits:
+           a one-word colorText ('rooted', 'charmed', 'stunned'), else the label ('Frozen', 'Stoneform'). */
+        function unitMoveBlockKey(unit) {
+            if (!unit || !unit.status) return null;
+            return getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockMove) || null;
+        }
+        function unitActionBlockKey(unit) {
+            if (!unit || !unit.status) return null;
+            return getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction) || null;
+        }
+        function statusLockWord(key) {
+            const d = key && STATUS_DEFS[key];
+            if (!d) return 'Stunned';
+            const ct = d.colorText;
+            const w = (ct && !/\s/.test(ct)) ? ct : (d.label || key);
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        }
+        window.unitMoveBlockKey = unitMoveBlockKey;
+        window.unitActionBlockKey = unitActionBlockKey;
+        window.statusLockWord = statusLockWord;
+
         function unitFinished(unit) {
             return (unit.ap || 0) <= 0;
         }
@@ -45653,6 +45687,45 @@
            ON the footprint. The old blanket pass lit the button (and let the
            cast through) for novae that hit zero targets. Footprint comes from
            the same getCrossArea/getSpellAoeArea the damage handler uses. */
+        /* THE SEEN NOVA (buffs/utility playtest 2026-11-07 F: online, the guest Sidekick's "Hey, Over Here!" row was lit
+           with nobody in reach, cast "but no enemies are in range" and still spent 25 MP + its cooldown; the only enemy
+           near was an INVISIBLE Shaman). A self-centred cast that only does something to enemies has a target exactly
+           when an enemy the caster's side can SEE stands in its reach and the cast does something to it. A cloaked
+           enemy (invisible, smoke, Cryptid) or one in fog never lights the row, so the row can't tell anyone an
+           unseen unit is close. A reach probe (TargetQuery.hasReachableTarget) judges sight from where the caster
+           stands now (_reachProbe), like every other row. */
+        function _novaSeesEnemy(unit, spell, e) {
+            if (!e || e.dead) return false;
+            if (isEnemyUnit(e, unit) && isUnitConcealedFrom(e, unit.player)) return false;
+            if (_reachProbe && _reachProbe.id === unit.id) return _reachProbe.seen.has(e.id);
+            return spellSeesEnemy(unit, spell, e);
+        }
+        /* the self-centred casts whose every effect lands on enemies: a barrage nova (Hey, Over Here!, Meow, Requiem…;
+           Splash paints its goo either way) and a no-damage area nova (Demonic Roar, Round Up). Damage areas keep their
+           ground effects (deform, terrain reactions, turrets) and stay a player choice. */
+        function _selfNovaEnemyOnly(spell) {
+            if (!spell) return false;
+            if (spell.paintTerrain || spell.aoeAllyHeal || spell.leaveTerrain || spell.zoneTickDamage > 0) return false;
+            if (spell.kind === 'barrage') return true;
+            return !!spell.aoeOriginSelf && (spell.kind === 'aoe' || spell.kind === 'aoePull')
+                && !!spell.noDamage && !((spell.dmg || 0) > 0) && !spell.terrainDeform;
+        }
+        /* the enemies such a cast would hit from where `unit` stands that its side sees and that it does something to */
+        function _selfNovaSeenVictims(unit, spell) {
+            if (!unit || !spell) return [];
+            let pool;
+            if (spell.kind === 'barrage') pool = _barrageTargets(unit, spell);
+            else {
+                const area = (spell.kind === 'aoePull')   // the aoePull branch's own footprint
+                    ? (_spellMaskTiles(spell, unit.x, unit.y) || getSquareArea(unit.x, unit.y, spell.aoeRadius || 1))
+                    : getSpellAoeArea(spell, unit.x, unit.y);
+                pool = aliveUnitsFor(enemyOf(unit.player)).filter(e => (e.x !== unit.x || e.y !== unit.y)
+                    && area.some(t => t.x === e.x && t.y === e.y));
+            }
+            return pool.filter(e => _novaSeesEnemy(unit, spell, e) && spellTargetUsableOn(unit, spell, e));
+        }
+        window._selfNovaSeenVictims = _selfNovaSeenVictims;
+
         function _selfNovaHasTarget(unit, spell) {
             if (!unit || !spell) return false;
             const area = (spell.kind === 'cross')
@@ -45660,7 +45733,9 @@
                 : getSpellAoeArea(spell, unit.x, unit.y);
             for (const t of area) {
                 if (t.x === unit.x && t.y === unit.y) continue;
-                if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y)) return true;
+                /* THE SEEN NOVA: an unseen enemy never lights a self-centred blast (it would tell where it hides) */
+                if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y
+                    && _novaSeesEnemy(unit, spell, e))) return true;
                 if (state.turrets?.some(tr => tr.hp > 0 && tr.x === t.x && tr.y === t.y)) return true;
                 if (state._deployedObjects?.some(o => o.hp > 0 && !o._detonated && o.x === t.x && o.y === t.y && o.ownerPlayer !== unit.player)) return true;
             }
@@ -45983,7 +46058,10 @@
             // cast hits nothing, so the menus grey it instead of letting a dead
             // cast through. Plain barrages keep the blanket pass (their radius is
             // the caster's problem, and casting into empty air is a player choice).
-            if (kind === 'barrage' && spell.hitsWetOnly) return _barrageTargets(unit, spell).length > 0;
+            if (kind === 'barrage' && spell.hitsWetOnly) return _selfNovaSeenVictims(unit, spell).length > 0;
+            // THE SEEN NOVA (playtest 2026-11-07 F): a nova that only touches enemies (Hey, Over Here!, Meow, Demonic
+            // Roar…) reads NO TARGET when no enemy the caster's side can see stands in its reach.
+            if (_selfNovaEnemyOnly(spell)) return _selfNovaSeenVictims(unit, spell).length > 0;
             // THE TARGETING RIDERS: a random-target row is lit exactly when its pool holds a victim
             if (spell.randomTargets && kind === 'damage' && spellRandomTargetsOf(spell)) return _randomTargetPool(unit, spell).length > 0;
 
@@ -51915,7 +51993,7 @@
             state._mdItems.push({ x: u.x, y: u.y, type: itemKey });
             const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
             const icon = (rule && rule.icon) || '📦';
-            addLog(`⤵ ${_ctName(u)} drops a ${(rule && rule.name) || itemKey} on the floor.`);
+            addLog(`⤵ ${_ctName(u)} drops ${_itemArticle(_itemDisplayName(itemKey))} ${_itemDisplayName(itemKey)} on the floor.`);
             try { showFloatingTextForUnit(u, `${icon} ⤵`, 'pickup', { durationMs: 900 }); } catch (e) {}
             playSfx('uiCursorMove');
             markDirty('board', 'hud', 'selectedUnit');
@@ -51944,13 +52022,13 @@
                     ? getItemCapForClass(unit, it.type) : ((rule && rule.max) || 1);
                 const bagFull = (typeof unitItemsFull === 'function') && unitItemsFull(unit);
                 if ((unit.items[it.type] || 0) >= cap || bagFull) {
-                    addLog(`🎒 ${_ctName(unit)} steps over a ${name} — pockets full, it stays on the floor.`);
+                    addLog(`🎒 ${_ctName(unit)} steps over ${_itemArticle(name)} ${name} — pockets full, it stays on the floor.`);
                     continue;
                 }
                 items.splice(i, 1);
                 unit.items[it.type] = (unit.items[it.type] || 0) + 1;
                 const icon = (typeof ITEM_META !== 'undefined' && ITEM_META[it.type] && ITEM_META[it.type].icon) || '📦';
-                addLog(`${icon} ${_ctName(unit)} picks up a ${name}!`);
+                addLog(`${icon} ${_ctName(unit)} picks up ${_itemArticle(name)} ${name}!`);
                 try { showFloatingTextForUnit(unit, `${icon} +1`, 'pickup', { durationMs: 1000 }); } catch (e) {}
                 if (!state.devAutoSim) { try { playSfx('uiConfirm'); } catch (e) {} }
                 markDirty('board', 'selectedUnit', 'hud');
@@ -72118,8 +72196,9 @@
             const cfg = FLYING_ALTITUDE_CONFIG;
             if ((unit.ap || 0) < cfg.apCost) return { ok: false, reason: 'Not enough AP.' };
 
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
-                return { ok: false, reason: 'Unit is stunned.' };
+            {
+                const _lk = unitMoveBlockKey(unit) || unitActionBlockKey(unit);
+                if (_lk) return { ok: false, reason: `Unit is ${STATUS_DEFS[_lk]?.colorText || 'stunned'}.` };
             }
 
             const used = unit._altitudeChangesThisTurn || 0;
@@ -72412,8 +72491,9 @@
             if (canFly(unit)) return { ok: false, reason: 'Flying units change altitude instead of reshaping terrain.' };
             if ((unit.ap || 0) < TERRAIN_RESHAPE_CONFIG.apCost) return { ok: false, reason: 'Not enough AP.' };
 
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
-                return { ok: false, reason: 'Unit is stunned.' };
+            {
+                const _lk = unitMoveBlockKey(unit) || unitActionBlockKey(unit);
+                if (_lk) return { ok: false, reason: `Unit is ${STATUS_DEFS[_lk]?.colorText || 'stunned'}.` };
             }
             const x = unit.x, y = unit.y;
             if (!isInside(x, y)) return { ok: false, reason: 'Out of bounds.' };
@@ -72551,8 +72631,9 @@
             if (typeof _isClashMode === 'function' && _isClashMode()) return 'Not in Clash';
             if (typeof isUnitAirborne === 'function' && typeof canFly === 'function'
                 && canFly(unit) && isUnitAirborne(unit)) return 'Land first';
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
-                return 'Stunned';
+            {
+                const _lk = unitMoveBlockKey(unit) || unitActionBlockKey(unit);
+                if (_lk) return statusLockWord(_lk);   // the real lock (Rooted / Stoneform / Frozen…), not "Stunned" for all
             }
             if ((unit._buildCharges || 0) <= 0 && (unit.ap || 0) < BUILD_ACTION_CONFIG.apCost) return 'No AP';
             return null;
@@ -74269,6 +74350,14 @@
             if (!canUnitAct(unit)) {
                 _actedLog(unit, 'That unit already acted this round.');
                 return;
+            }
+            {
+                const _actBlock = unitActionBlockKey(unit);
+                if (_actBlock) {
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    playErrorSfx();
+                    return;
+                }
             }
 
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('item', unit)) return;
@@ -77590,6 +77679,13 @@
                         ? `${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${_mrTotal} MP across the team (${_mrWho.join(', ')}).`
                         : `${_ctName(unit)} casts ${_ctSp(spell.name)}, but every ally's MP is already full.`);
             } else if (spell.kind === 'aoe') {
+                /* THE SEEN NOVA (playtest 2026-11-07 F): a no-damage self nova (Demonic Roar) with no enemy the caster's
+                   side sees in reach is refused before any MP or cooldown is spent */
+                if (spell.aoeOriginSelf && _selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 const _aoeArea = getSpellAoeArea(spell, x, y);
@@ -77636,6 +77732,13 @@
                 // that hit nothing.
                 if (spell.hitsWetOnly && _barrageTargets(unit, spell).length === 0) {
                     addLog(`${_ctSp(spell.name)}: no enemies are standing in water.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                /* THE SEEN NOVA (playtest 2026-11-07 F): no enemy the caster's side sees in reach = no cast, before any
+                   MP or cooldown is spent (the rows read NO TARGET; this catches a board click) */
+                if (_selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -77768,7 +77871,7 @@
                         items: spell.stealItems != null ? spell.stealItems : 1,
                         verb: spell.name,
                     });
-                    if (!_stTook.keys && !_stTook.items) {
+                    if (!_stTook.keys && !_stTook.items.length) {
                         addLog(`${_ctName(target)} had nothing worth taking.`);
                     }
                 });
@@ -78303,7 +78406,7 @@
                         verb: spell.name,
                         fxDelayMs: _plFxMs,
                     });
-                    if (!_plTook.keys && !_plTook.items) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
+                    if (!_plTook.keys && !_plTook.items.length) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
                 }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */
@@ -79029,6 +79132,13 @@
             }
 
             else if (spell.kind === 'aoePull') {
+                /* THE SEEN NOVA (playtest 2026-11-07 F): a no-damage self pull (Round Up) with no enemy the caster's side
+                   sees in reach is refused before any MP or cooldown is spent */
+                if (spell.aoeOriginSelf && _selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: aoePull uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
@@ -80649,8 +80759,9 @@
                                 target.items[pick]--;
                                 if (!unit.items) unit.items = {};
                                 unit.items[pick] = (unit.items[pick] || 0) + 1;
-                                addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
-                                showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                                const _pickName = _itemDisplayName(pick);
+                                addLog(`${_ctName(unit)} plunders ${_itemArticle(_pickName)} ${_pickName} from ${_ctName(target)}!`);
+                                showFloatingTextForUnit(unit, `📦 Stole ${_pickName}`, 'pickup', { durationMs: 1200 });
                                 stolen = true;
                             }
                         }

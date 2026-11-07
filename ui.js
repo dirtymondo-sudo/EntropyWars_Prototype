@@ -5058,6 +5058,12 @@
 
         function chooseItemAction(itemKey) {
             const unit = getSelectedUnit();
+            if (unit && typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)) {
+                const _ab = unitActionBlockKey(unit);   // "cannot act" — no item of any kind (buffs playtest 2026-11-07 D)
+                addLog(`${_ctName(unit)} is ${STATUS_DEFS[_ab]?.colorText || 'incapacitated'} and cannot act!`);
+                playErrorSfx();
+                return;
+            }
 
             if (unit && itemKey === 'scanner') {
                 state.actionMode = 'item';
@@ -5100,6 +5106,14 @@
             if (!unit || unit.dead || (unit.ap || 0) < 1) {
                 addLog('Guard requires at least 1 AP.');
                 return;
+            }
+            {   /* "cannot act" (Stoneform, stun, frozen…): Guard is an action too (buffs playtest 2026-11-07 D) */
+                const _actBlock = typeof unitActionBlockKey === 'function' ? unitActionBlockKey(unit) : null;
+                if (_actBlock) {
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    playErrorSfx();
+                    return;
+                }
             }
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('guard', unit)) return;
             if (typeof window._imitObserve === 'function') window._imitObserve(unit, { type: 'guard' });
@@ -5910,6 +5924,11 @@
             }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
+                playErrorSfx();
+                return;
+            }
+            if (typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)) {
+                addLog(`${_ctName(unit)} is ${STATUS_DEFS[unitActionBlockKey(unit)]?.colorText || 'incapacitated'} and cannot act!`);
                 playErrorSfx();
                 return;
             }

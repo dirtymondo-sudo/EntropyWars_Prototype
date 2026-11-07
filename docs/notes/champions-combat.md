@@ -4327,3 +4327,15 @@ Existing statuses / terrains / log conventions only; no new names. Proof shots (
   "💎 SHARDS!") so they land with the shake in processPendingEarthquake; without a pending quake they land at once.
 - Pause > STATUSES texts updated: Gooed (water washes it off), Wet (getting wet ends Overclock), Frozen (sonic breaks it ×1.5).
   Earthquake desc names the ice / crystal cracks.
+
+## THE SEEN NOVA (2026-11-07, buffs/utility playtest family F) — battle.js
+Online, the guest Sidekick's "Hey, Over Here!" row was lit with nobody in reach, cast "but no enemies are in range" and
+still spent 25 MP + its 2-round cooldown (the only enemy near was an INVISIBLE Shaman). hasSpellTargetInRange gave every
+barrage and every self-origin area a blanket pass. Now `_selfNovaEnemyOnly(spell)` (every barrage except Splash's
+paintTerrain; a no-damage self `aoe`/`aoePull` like Demonic Roar / Round Up) lights only when `_selfNovaSeenVictims` holds
+an enemy in its reach that the caster's side sees (`isUnitConcealedFrom` + fog via `spellSeesEnemy`, `_reachProbe` during
+move-then-cast probes) and the cast does something to (`spellTargetUsableOn`). Rows read "No valid target" / "No target";
+a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies in range."). Masked self damage novas
+(`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
+castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
+invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
