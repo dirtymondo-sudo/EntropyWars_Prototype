@@ -3300,3 +3300,7 @@ shot, every `_spellFocusCamera` support shot, every damage shot), not in the pot
 relayed shots.
 Kill switch `window.EW_NO_GUARD_CARRY = true`; probe `ThreeCamera.guardCarryState()` ({mode:'hold'|'fade', w}).
 Proof: /mnt/project-files/potion-camera/.
+Follow-up PR (same day, review finding): the fade's world offsets were only filled by a hold frame, so a shot whose
+return glide started on the very next frame (the player's own potion, a small turn home) dropped the correction.
+`_frameGuardSolve` now stores them (`_fgCarry.last`) with each solve. Checked in the browser: the own-turn glide home
+reports `{mode:'fade'}` from its first frame and the eye pulls out 1.93 → 6.1 squares with no dip.
