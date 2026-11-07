@@ -3570,6 +3570,8 @@
             }
             const el = classifySpellElement(spell);
             if (!el) return;
+            const _meltStamp = (state.round || 0) + ':' + (state._blitzActiveUnitId || '');
+            const _meltNow = (mx, my) => !!(state._iceMeltTiles && state._iceMeltTiles[mx + ',' + my] === _meltStamp);
             const handled = new Set();
             let _lit = 0, _doused = 0, _meltPools = 0;
             for (const tile of tiles) {
@@ -3582,9 +3584,10 @@
                     const body = _floodConnectedTiles(tile.x, tile.y, _isConductiveWetTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactLightningWater(caster, spell, tile.x, tile.y, body);
-                } else if (el === 'cold' && _isWaterTile(tile.x, tile.y)) {
-                    // frost only freezes REAL water solid (flow is too shallow)
-                    const body = _floodConnectedTiles(tile.x, tile.y, _isWaterTile, 80);
+                } else if (el === 'cold' && _isWaterTile(tile.x, tile.y) && !_meltNow(tile.x, tile.y)) {
+                    // frost only freezes REAL water solid (flow is too shallow) — never the meltwater this same cast
+                    // just left on a fire (ICE + HEAT = WATER, map.js setTerrainAt)
+                    const body = _floodConnectedTiles(tile.x, tile.y, (bx, by) => _isWaterTile(bx, by) && !_meltNow(bx, by), 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactColdWater(caster, spell, tile.x, tile.y, body);
                 } else if ((el === 'fire' || el === 'lightning') && _isOilTile(tile.x, tile.y)) {
