@@ -3173,6 +3173,27 @@ animation finished so i didnt even see what happened".
 - Proof: /mnt/project-files/deathtrap-camera/ (frame-stepped with Playwright's clock, main vs fix, same staging). Walk onto
   Deathtrap: turn passed 1.45 s → 3.75 s, camera left at 1.65 s → 3.9 s, doors end ~1.9 s. Probe `window._cineImpactHoldLeft()`.
 
+## THE LENS FOOTPRINT — the camera never sinks into a pit's rim (2026-11-07)
+Found by THE TRAP'S BEAT thread: a cast that ends the turn left the close-up parked on a victim standing in a 2-level pit
+(Deathtrap laid under an enemy sinks the 3x3) and for about a second the lens sat under the board, the frame mostly white.
+- Reproduced on main (WebGL2 backend, real R2 assets, frame-stepped with Playwright's clock): Deathtrap under an enemy at
+  the stadium's edge row; from 1.2 s to 3.0 s the eye hung 0.55 squares BELOW the rim top, a hair from the rim column and
+  just past the board edge; the frame showed the pit wall and the ghosted columns (white).
+- Cause (three-camera.js): every eye floor (THE SIGHT LINE, THE CLEAR BOARD, the frame guard's re-check, THE CLEAR ANGLE's
+  "eye inside a wall" cost) read only the ONE square under the eye's centre. A pit square's ground is the pit floor, so a
+  lens 0.1 squares from a two-level wall "cleared the ground"; off the board the lookup stretches the edge square out, so
+  a pit on the edge row let the lens sink beside the rim. The glides between poses had no floor at all.
+- Fix (three-camera.js, camera only, no rules): `_eyeFloorWorld(wx, wz)` = the highest solid ground under the lens's
+  footprint (a ring LENS_FOOT_TILES 0.4 round it on the board, LENS_FOOT_OFF_TILES 1.0 past the edge). All four eye floors
+  use it, and the drawn lens (after the damping / swoop) is held LENS_FLOOR_CLEAR_TILES 0.2 over it on the battle board
+  (gaze point kept, so the subject keeps its place). Not the first-person eye, not Strike Mode's own boom collision.
+  Kill switch `window.EW_NO_LENS_FLOOR = true`; probe `ThreeCamera.lensFloorHits()` (frames the last guard had to lift).
+- Covers every spell that lowers squares (Ground Slam / Meteor / crater -1/-2 rows, Fissure's toBed cut, Flat Earth's
+  flatten, the trapdoors) because it is the lens's own floor, not a per-spell rule. Camera rules kept: the impact hold,
+  the clear angle, the frame guard and the menu framing still compose the shot; this only lifts a lens that would be
+  inside the ground. Each viewer's camera is its own (host and guest both run it, nothing relayed).
+- Proof: /mnt/project-files/pit-camera/ (main vs fix, same staging, eye-vs-footprint numbers per frame).
+
 ## THE BODY LENS — playtest group C, spell shot framing (2026-11-06)
 Source: /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md C1-C8. Before/after sheets:
 /mnt/project-files/spell-shot-framing/ (filmed frame by frame with a slowed clock, main vs this branch, same staging).
