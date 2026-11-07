@@ -4239,3 +4239,65 @@ before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/s
 Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
+
+## ONE DEFENCE on opportunity + auto attacks (2026-11-07, buffs/utility playtest H)
+Opportunity attacks on a retreating Valkraye did 1 HP twice. Not a rule (no shield): battle.js `_oppStrikeDamage` took
+the victim's defence off "half the striker's ATK", then `applyDamageToUnit` took it off AGAIN (and THE SOAK FLOOR only
+guarded the already-reduced number), so every opportunity / slide AUTO ATTACK paid defence twice. Now
+`_oppStrikeBase(striker, mult)` = the hit before defence and the engine (checkOpportunityAttack, the slide auto attack
++ its simHits forecast) hands that to the hit pipeline, which takes defence once with the soak floor.
+`_oppStrikeDamage` = the after-defence number via forecastHitOnUnit (ai.js `_oppAttackCost`, the slide's pending hit).
+Browser proof (WebGL2): Nun ATK 74 into Valkraye: 1 HP before, 23 after; Cult Leader 5-7 before, 25 after.
+## OWN PIECES ARE SAFE (2026-11-07, buffs/utility playtest family I)
+- A player's own area, line and wall spells pass over their own summons, turrets and deployed objects, the same rule
+  their own units and own doors already had. Before, Supernova and Formic Acid chipped the caster's own Mitosis Blob and
+  destroyed their own Hologram, and a kill even paid the attacker entropy for wrecking their own turret.
+- battle.js: `damageTurretAt` returns early when the turret's `owner` is the attacker's player (opts.anyOwner = a bomb's
+  blast, which still hits every turret around it as before); the destroy-a-turret entropy is only paid for an enemy turret.
+  `damageMirrorAt` skips own prisms. `_ownPieceSpared(obj, unit)` gates the deployed-object hit in `_applyAoeDamage`, the
+  line spine and the wall/terrain damage loop. Own explosives (detonateOnAttack/detonateOnFire with a blastRadius) still go
+  off, the existing single-target rule (you may set off your own bomb).
+- Proof: Spell Lab in Chromium (WebGL2), own Blob + Hologram and an enemy Blob + Hologram inside Supernova's radius and on
+  Formic Acid's line: live code chipped/destroyed both sides, the fix leaves the own pieces whole and still hits the enemy's.
+
+## THE NEW REACTIONS R1-R7 (2026-11-07)
+
+mondo picked R1-R16 of /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md (steam R17 dropped). This
+thread built R1-R7; R8-R12 and R13-R16 went to sibling threads.
+- R1 dry skies dry bodies: Drought (state.js evaporateBattleWater, on form + every round end) and the Sandstorm's eye
+  (stormStrikeUnit, `def.sky === 'dry'`) take Wet off; a unit standing in water or under rain stays wet (battle.js _dryWetUnit).
+- R2 Solar Flare is heat: WEATHER_REGISTRY.solarFlare `heats: true` -> state.js heatUnderWeather (form + round end): thaws
+  Frozen, ice/ice_1 -> water (normal terrain timer), dries Wet.
+- R3 Drought feeds fire: battle.js _droughtFeedsFire; igniteTile +1 round, tickBurningTiles spread 0.65 (DROUGHT_SPREAD_CHANCE) and 3 rounds.
+- R4 THE CHEMICAL FIRE: _chemicalFireMerge after every burn/poison/corroded landing (applyStatusPayload) and at the top of
+  processEndOfRoundStatuses: Burn + Poison -> Corroded for the longer one (applier, full-round hold, fresh mark move over;
+  lava-stack burns excluded). _douseBurnOnUnit turns Corroded into Poison (water, rain, wading in, frost), corroded onRoundEnd
+  douses like Burn, Corroded on a wet unit lands as Poison. mondo's ruling: water puts out Corroded.
+- R5 Gooed bodies burn: combo post-hit half (fire/lightning, not ticks, not wet) lands Burn and clears Goo; any Burn landing
+  clears Goo; _reactFireOilBody also catches grounded Gooed bodies touching the slick (and Gooed bodies touching them).
+- R6 fire cauterises: combo post-hit half, fire, not ticks: Bleeding off.
+- R7 THE BOG BURNS: _isBogTile (poison, poison_bog, purple_bog + poison flow); fire spell (dispatcher) or ground fire lit on it
+  (igniteTile) -> _reactFireBog: grounded units in the connected bog Corroded 2 (caster spared), one per resolution. Tile cast hint added.
+Proof (staged on a real VS CPU board, real engine calls): /mnt/project-files/element-reactions-20261107/r1-r7/.
+
+## EARTH, NATURE, WIND AND BLOOD ON THE BOARD (2026-11-07, element reactions R13-R16) — battle.js, data.js
+mondo picked R1-R16 of /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md ("let's start working on all of
+these fixes except for fire on water making steam"). This thread built R13-R16; other threads build R1-R12 in the same code.
+- **R13 earth:** an `element:'earth'` spell's hit on a burning square puts the fire out (the square stays what it was); on
+  `lava` it leaves `stone` (same result water gives, own log line "plugs the lava"). Tile-castable (hint "smothers the
+  flames" / "hardens the lava into stone").
+- **R14 nature:** a nature spell on `scorched` or `desert` that the FIGHT left (`state.paintedFrom` says the map had
+  something else) regrows `grass`. The map's own scorched ground / desert never changes. Normal 3-round terrain timer
+  (if the map's own ground was grass the square is simply back to the map). Tile-castable ("regrows the grass").
+- **R15 wind:** a wind spell on burning squares fans each one: the next square away from the caster (dominant axis,
+  diagonal on an exact tie) catches via `igniteTile` (2 rounds), only fires burning when the gust lands, the fire cap
+  `BURNING_TILE_CAP` holds. Log mirrors Fanned Flames. Tile-castable ("fans the flames").
+- **R16 blood:** `STATUS_DEFS.bleed.onRoundEnd` calls `_bleedDripsBlood(unit)`: a grounded bleeder's square becomes a
+  `blood` Blood Pool (plain paint, not a spring, so one square). Same ground rules as Blood Rain (`WEATHER_SEED_KEEP`, no
+  water/lava/bog/oil, passable, no monument / fixed field cell) plus: not under a roof (the paint would land on the roof
+  block) and not on a burning square. Standing in a pool already restarts its clock. Replaces the 10-21 default "only
+  Blood Rain makes blood" (mondo approved). Status library text says so.
+- Code: battle.js `_reactEarthNatureWind` + `_natureCanRegrowAt` (called from `triggerTerrainSpellReaction` by raw
+  element), `_bleedDripsBlood`; tile-cast hints in `_elementalTileCastInfo`. Terrain + burningTiles ride the state-sync,
+  so the guest sees every change. AI does not seek these tile casts (score 0), same as before.
+- Proof (WebGL2 browser, VS CPU arena): /mnt/project-files/element-reactions-r13-r16/ (r13_*, r14_*, r15_*, r16_*, old_*).
