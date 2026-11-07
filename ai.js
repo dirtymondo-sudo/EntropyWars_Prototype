@@ -9670,7 +9670,8 @@
 
         if (kind === 'encore') {
             const allies = g.aliveUnitsFor(unit.player)
-                .filter(a => a.id !== unit.id && g.unitFinished(a) && !a._encoreThisRound)
+                .filter(a => a.id !== unit.id && !a._encoreThisRound
+                    && (typeof g.unitEncoreReady === 'function' ? g.unitEncoreReady(a) : g.unitFinished(a)))
                 .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _effRange(unit, spell));
             // Give the extra action to the highest-output ally.
             allies.sort((a, b) => unitThreatOutput(g, b, v.closestEnemy || unit)

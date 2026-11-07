@@ -4240,6 +4240,26 @@ Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and t
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
 
+## THE NEW REACTIONS R1-R7 (2026-11-07)
+
+mondo picked R1-R16 of /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md (steam R17 dropped). This
+thread built R1-R7; R8-R12 and R13-R16 went to sibling threads.
+- R1 dry skies dry bodies: Drought (state.js evaporateBattleWater, on form + every round end) and the Sandstorm's eye
+  (stormStrikeUnit, `def.sky === 'dry'`) take Wet off; a unit standing in water or under rain stays wet (battle.js _dryWetUnit).
+- R2 Solar Flare is heat: WEATHER_REGISTRY.solarFlare `heats: true` -> state.js heatUnderWeather (form + round end): thaws
+  Frozen, ice/ice_1 -> water (normal terrain timer), dries Wet.
+- R3 Drought feeds fire: battle.js _droughtFeedsFire; igniteTile +1 round, tickBurningTiles spread 0.65 (DROUGHT_SPREAD_CHANCE) and 3 rounds.
+- R4 THE CHEMICAL FIRE: _chemicalFireMerge after every burn/poison/corroded landing (applyStatusPayload) and at the top of
+  processEndOfRoundStatuses: Burn + Poison -> Corroded for the longer one (applier, full-round hold, fresh mark move over;
+  lava-stack burns excluded). _douseBurnOnUnit turns Corroded into Poison (water, rain, wading in, frost), corroded onRoundEnd
+  douses like Burn, Corroded on a wet unit lands as Poison. mondo's ruling: water puts out Corroded.
+- R5 Gooed bodies burn: combo post-hit half (fire/lightning, not ticks, not wet) lands Burn and clears Goo; any Burn landing
+  clears Goo; _reactFireOilBody also catches grounded Gooed bodies touching the slick (and Gooed bodies touching them).
+- R6 fire cauterises: combo post-hit half, fire, not ticks: Bleeding off.
+- R7 THE BOG BURNS: _isBogTile (poison, poison_bog, purple_bog + poison flow); fire spell (dispatcher) or ground fire lit on it
+  (igniteTile) -> _reactFireBog: grounded units in the connected bog Corroded 2 (caster spared), one per resolution. Tile cast hint added.
+Proof (staged on a real VS CPU board, real engine calls): /mnt/project-files/element-reactions-20261107/r1-r7/.
+
 ## THE WATER, CONDUCTION + SHATTER REACTIONS (2026-11-07, element reactions R8-R12; mondo picked R1-R16 from /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md, R17 steam rejected)
 Existing statuses / terrains / log conventions only; no new names. Proof shots (WebGL2, local scripts): /mnt/project-files/element-reactions-r8-r12/.
 - R8 WATER WASHES GOO OFF: battle.js `_washGooOffUnit`, called first thing in `_douseBurnOnUnit`, so every path that douses a

@@ -2849,6 +2849,14 @@
         // knocked into either one burns (see _applyKnockbackHazard), and
         // ending a turn in the flow ticks the full lava rule (map.js
         // applyTerrainTurnEffects).
+        /* ☠️ R7: the poison bogs (Poison Bog, Purple Bog) or their spread-flow — the poison liquid fire turns to chemical fire */
+        const _BOG_TERRAIN = new Set(['poison', 'poison_bog', 'purple_bog']);
+        function _isBogTile(x, y) {
+            if (_BOG_TERRAIN.has(getTerrainAt(x, y))) return true;
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'poison');
+        }
+
         function _isLavaTile(x, y) {
             if (getTerrainAt(x, y) === 'lava') return true;
             const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
@@ -2869,6 +2877,14 @@
         function _douseBurnOnUnit(u, label) {
             if (!u || u.dead || u._dying) return false;
             _washGooOffUnit(u, label);   // 💧🛢️ R8: the same water washes the goo off
+            /* ⚗️💧 R4 (mondo 2026-11-07): Corroded is chemical FIRE (it counts as Burn), so the water puts its fire out too —
+               the poison in it stays: Corroded becomes plain Poison for the rounds it had left (same applier, same hold) */
+            if (u.status && Number(u.status.corroded || 0) > 0) {
+                _corrodedToPoison(u);
+                addLog(`💧 ${label || 'The water'} puts out the chemical fire on ${_ctName(u)} — the poison stays!`);
+                showFloatingTextForUnit(u, '💧 Doused', 'heal', { durationMs: 1000 });
+                if (!(u.status && u.status.burn)) return true;
+            }
             if (!(u.status && u.status.burn)) return false;
             clearStatus(u, 'burn');
             addLog(`💧 ${label || 'The water'} douses the flames on ${_ctName(u)}!`);
@@ -2902,6 +2918,70 @@
             return true;
         }
         window._waterShortsOverclock = _waterShortsOverclock;
+        /* ⚗️ THE CHEMICAL FIRE (R4, mondo 2026-11-07 "Burn + Poison = Corroded"): Corroded's own text is "chemical fire, counts
+           as BOTH Burn and Poison". A unit carrying Burn and Poison at once is Corroded instead, for the longer of the two
+           (the applier and the full-round hold of whichever lasts longer move over); a Burn or Poison landing on a Corroded
+           unit feeds the Corroded. A lava burn (the stacking one, _lavaBurnStacks) stays the lava's own. Water puts the fire
+           out and leaves the Poison (_douseBurnOnUnit). Plain status data, so state-sync carries it to the guest. */
+        function _moveStatusBook(u, fromKeys, toKey) {
+            let best = null;
+            for (const k of fromKeys) {
+                const v = Number((u.status && u.status[k]) || 0);
+                if (v > 0 && (!best || v > best.v)) best = { k, v };
+            }
+            if (!best) return 0;
+            if (u._statusSrc && u._statusSrc[best.k]) u._statusSrc[toKey] = u._statusSrc[best.k];
+            if (u._stHold && typeof u._stHold === 'object') {
+                const h = fromKeys.map(k => u._stHold[k]).filter(Boolean).sort((a, b) => b.r - a.r)[0];
+                if (h && (!u._stHold[toKey] || u._stHold[toKey].r < h.r)) u._stHold[toKey] = Object.assign({}, h);
+            }
+            if (u._stFresh && typeof u._stFresh === 'object' && fromKeys.some(k => u._stFresh[k] === state.round)) u._stFresh[toKey] = state.round;
+            return best.v;
+        }
+        function _chemicalFireMerge(u, quiet) {
+            if (!u || !u.status || _unitIsDown(u)) return false;
+            const st = u.status;
+            const burn = (u._lavaBurnStacks | 0) > 0 ? 0 : Number(st.burn || 0);
+            const pois = Number(st.poison || 0), cor = Number(st.corroded || 0);
+            if (!(burn > 0 && pois > 0) && !(cor > 0 && (burn > 0 || pois > 0))) return false;
+            const keys = burn > 0 ? ['corroded', 'burn', 'poison'] : ['corroded', 'poison'];
+            const left = _moveStatusBook(u, keys, 'corroded');
+            if (burn > 0) clearStatus(u, 'burn');
+            if (pois > 0) clearStatus(u, 'poison');
+            st.corroded = Math.max(cor, left);
+            if (!quiet) {
+                addLog(cor > 0
+                    ? `⚗️ The fire and poison feed the chemical fire on ${_ctName(u)} — Corroded for ${st.corroded} round${st.corroded !== 1 ? 's' : ''}.`
+                    : `⚗️ Fire meets poison on ${_ctName(u)} — the chemical fire takes hold: Corroded for ${st.corroded} round${st.corroded !== 1 ? 's' : ''}!`);
+                showFloatingTextForUnit(u, '⚗️ CORRODED!', 'debuff', { durationMs: 1100 });
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._chemicalFireMerge = _chemicalFireMerge;
+        function _corrodedToPoison(u) {
+            if (!u || !u.status || !(Number(u.status.corroded || 0) > 0)) return false;
+            const left = _moveStatusBook(u, ['corroded'], 'poison');
+            clearStatus(u, 'corroded');
+            u.status.poison = Math.max(Number(u.status.poison || 0), left);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._corrodedToPoison = _corrodedToPoison;
+
+        /* ☀ R1 / R2 (mondo 2026-11-07): a dry sky (Drought, the Sandstorm's eye) and the Solar Flare's heat dry a Wet unit —
+           unless it is standing in water (or a rain is on it), which wets it again straight away. */
+        function _dryWetUnit(u, label) {
+            if (!u || _unitIsDown(u) || !unitHasStatus(u, 'wet')) return false;
+            if (!(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) && _isWetTile(u.x, u.y)) return false;
+            if (_unitInRain(u, true)) return false;
+            clearStatus(u, 'wet');
+            addLog(`♨️ ${label || 'The heat'} dries ${_ctName(u)} out.`);
+            showFloatingTextForUnit(u, '♨️ Dried out', 'debuff', { durationMs: 900 });
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._dryWetUnit = _dryWetUnit;
 
         // 🌧️ True when rain-type weather (any def.soaks system: hurricane,
         // thunderstorm, blood rain) is falling on the unit's tile. Airborne
@@ -3519,6 +3599,31 @@
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                 victims.push({ t, u });
             }
+            /* 🛢️🔥 R5 GOO BURNS (mondo 2026-11-07): a grounded Gooed unit touching the slick is part of it — the blast reaches it
+               (and on through every Gooed body touching that one), the mirror of WET CONDUCTS for the water. */
+            {
+                const _inSlick = new Set(slick.map(t => t.x + ',' + t.y));
+                const _gooAt = (x, y) => {
+                    if (_inSlick.has(x + ',' + y)) return false;
+                    const u = unitAt(x, y);
+                    if (!u || _unitIsDown(u) || (caster && u.id === caster.id) || !unitHasStatus(u, 'goo')) return false;
+                    return !(typeof isUnitAirborne === 'function' && isUnitAirborne(u));
+                };
+                const _seen = new Set();
+                const _q = [];
+                for (const t of slick) for (const n of [[t.x + 1, t.y], [t.x - 1, t.y], [t.x, t.y + 1], [t.x, t.y - 1]]) {
+                    if (isInside(n[0], n[1]) && _gooAt(n[0], n[1]) && !_seen.has(n[0] + ',' + n[1])) { _seen.add(n[0] + ',' + n[1]); _q.push(n); }
+                }
+                while (_q.length && _seen.size < 40) {
+                    const c = _q.pop();
+                    victims.push({ t: { x: c[0], y: c[1] }, u: unitAt(c[0], c[1]), goo: true });
+                    for (const n of [[c[0] + 1, c[1]], [c[0] - 1, c[1]], [c[0], c[1] + 1], [c[0], c[1] - 1]]) {
+                        const k = n[0] + ',' + n[1];
+                        if (_seen.has(k) || !isInside(n[0], n[1]) || !_gooAt(n[0], n[1])) continue;
+                        _seen.add(k); _q.push(n);
+                    }
+                }
+            }
             // consume the slick FIRST (oil terrain → scorched) so igniteTile
             // sees ground it's allowed to burn on, then light the whole area
             for (const t of slick) {
@@ -3526,6 +3631,7 @@
                 igniteTile(t.x, t.y, 2, caster);
             }
             for (const { u } of victims) {
+                const _burnBefore = unitHasStatus(u, 'burn');
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
                     noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster || undefined,
@@ -3537,7 +3643,7 @@
                     element: 'fire',
                     flashColor: 'burn'
                 });
-                if (!u.dead && !u._dying) {
+                if (!u.dead && !u._dying && (_burnBefore || !unitHasStatus(u, 'burn'))) {   // a Gooed body this blast just lit (R5) isn't lit twice
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], groundFire ? 'Burning oil: ' : `${spell.name} firestorm: `, caster);
                 }
                 /* the burn's own landing calls it out now (THE JUICE PASS) */
@@ -3632,6 +3738,26 @@
                 addLog(`⚡ ${_ctSp(spell.name)} electrifies the metal — the charge races across ${sheet.length} tile${sheet.length !== 1 ? 's' : ''}${zapped ? `, shocking ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
+        }
+
+        /* ☠️🔥 R7 THE BOG BURNS (mondo 2026-11-07): fire on a poison bog is chemical fire — every grounded unit standing in the
+           connected bog is Corroded for 2 rounds (Burn + Poison = Corroded, on the ground). The bog stays. The caster is
+           spared, like the oil blast. A wet unit only takes the poison (applyStatusPayload). */
+        let _bogFireDone = null;   // one chemical fire per bog per resolution (a fire wall lights it tile by tile in one go)
+        function _reactFireBog(caster, spell, ox, oy, bog, groundFire) {
+            if (!bog || !bog.length) return;
+            if (!_bogFireDone) { _bogFireDone = new Set(); Promise.resolve().then(() => { _bogFireDone = null; }); }
+            if (bog.every(t => _bogFireDone.has(t.x + ',' + t.y))) return;
+            bog.forEach(t => _bogFireDone.add(t.x + ',' + t.y));
+            let n = 0;
+            for (const t of bog) {
+                const u = unitAt(t.x, t.y);
+                if (!u || _unitIsDown(u) || (caster && u.id === caster.id)) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (applyStatusPayload(u, { id: 'corroded', duration: 2, _element: 'fire' }, groundFire ? 'The burning bog: ' : `${spell.name} lights the bog: `, caster || null)) n++;
+            }
+            addLog(`☠️🔥 ${groundFire ? 'The fire' : _ctSp(spell.name)} sets the poison bog alight — chemical fire across ${bog.length} tile${bog.length !== 1 ? 's' : ''}${n ? `, corroding ${n} unit${n !== 1 ? 's' : ''}` : ''}!`);
+            if (!_skipVisuals() && typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType || null, 450);
         }
 
         // 💥💎 Crystal shatters: fire or lightning detonates the connected
@@ -3761,6 +3887,11 @@
                     const vein = _floodConnectedTiles(tile.x, tile.y, _isCrystalTile, 12);
                     vein.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactCrystalShatter(caster, spell, tile.x, tile.y, vein);
+                } else if (el === 'fire' && _isBogTile(tile.x, tile.y)) {
+                    // ☠️🔥 R7: fire on the poison bog is chemical fire
+                    const bog = _floodConnectedTiles(tile.x, tile.y, _isBogTile, 40);
+                    bog.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactFireBog(caster, spell, tile.x, tile.y, bog, false);
                 } else if (el === 'fire' && _isFlammableTile(tile.x, tile.y)) {
                     // 🔥 fire on open fuel (grass, leaves, planks): the tile
                     // catches — the wildfire system takes it from there.
@@ -3942,6 +4073,12 @@
             return !!(fl && fl.t === 'water');
         }
 
+        /* ☀🔥 R3 DROUGHT FEEDS FIRE (mondo 2026-11-07): the mirror of the rain putting fire out — under a Drought fresh ground
+           fire burns a round longer (3, not 2) and spreads to fuel more often (DROUGHT_SPREAD_CHANCE, not 0.45). */
+        const DROUGHT_SPREAD_CHANCE = 0.65;
+        function _droughtFeedsFire() {
+            return (state.activeWeather || []).some(w => w && w.type === 'drought' && (w.remaining == null || w.remaining > 0));
+        }
         function igniteTile(x, y, rounds, byUnit) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
@@ -3956,12 +4093,17 @@
             if (typeof noteCastPreBurn === 'function') noteCastPreBurn(x, y, !!prev);   // 🜃 the cast's own fire never powers it
             b[k] = {
                 x, y,
-                t: Math.max(rounds || 2, prev ? prev.t : 0),
+                t: Math.max((rounds || 2) + (_droughtFeedsFire() ? 1 : 0), prev ? prev.t : 0),   // ☀ R3: a Drought fire burns a round longer
                 p: byUnit ? byUnit.player : (prev ? prev.p : 0)
             };
             /* the unit that lit it (a slick that lands on this fire later blows up in its name) */
             const _lu = (byUnit && byUnit.id != null) ? byUnit.id : (prev ? prev.u : null);
             if (_lu != null) b[k].u = _lu;
+            /* ☠️🔥 R7: ground fire lit on a poison bog is chemical fire too */
+            if (!prev && state.phase === 'battle' && _isBogTile(x, y)) {
+                const _lighter = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
+                _reactFireBog(_lighter, _GROUND_FIRE_SPELL, x, y, _floodConnectedTiles(x, y, _isBogTile, 40), true);
+            }
             return true;
         }
 
@@ -4065,6 +4207,8 @@
             // 4) Spread: each surviving fire tries to catch adjacent fuel.
             const spread = [];
             let total = Object.keys(b).length;
+            const _dry = _droughtFeedsFire();   // ☀ R3
+            const _spreadChance = _dry ? DROUGHT_SPREAD_CHANCE : BURNING_SPREAD_CHANCE;
             for (const k of Object.keys(b)) {
                 const f = b[k];
                 const nbrs = [[f.x + 1, f.y], [f.x - 1, f.y], [f.x, f.y + 1], [f.x, f.y - 1]];
@@ -4073,11 +4217,11 @@
                     const nk = n[0] + ',' + n[1];
                     if (b[nk] || spread.some(s => s.x === n[0] && s.y === n[1])) continue;
                     if (!_isFlammableTile(n[0], n[1])) continue;
-                    if (engineRng() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p, u: f.u });
+                    if (engineRng() < _spreadChance) spread.push({ x: n[0], y: n[1], p: f.p, u: f.u });
                 }
             }
             for (const s of spread) {
-                b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: 2, p: s.p }, s.u != null ? { u: s.u } : {});
+                b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: _dry ? 3 : 2, p: s.p }, s.u != null ? { u: s.u } : {});
             }
 
             if (scorchedUnits || burnedOut || spread.length) {
@@ -4123,6 +4267,7 @@
                 if (_isIceTile(x, y)) return { el, hint: 'melts the ice' };
                 if (_isCrystalTile(x, y)) return { el, hint: 'detonates the crystal' };
                 if (_isForestTile(x, y)) return { el, hint: 'sets the trees ablaze' };
+                if (_isBogTile(x, y)) return { el, hint: 'sets the poison bog alight' };
                 if (_isFlammableTile(x, y)) return { el, hint: 'sets the ground ablaze' };
             } else if (el === 'cold') {
                 if (_isWaterTile(x, y)) return { el, hint: 'flash-freezes the water' };
@@ -10097,6 +10242,13 @@
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
             }
+            /* ⚗️💧 R4: Corroded is chemical fire — on a wet unit the fire can't take, only the poison lands */
+            if (payload.id === 'corroded' && (unitHasStatus(target, 'wet')
+                || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
+                || (typeof _unitInRain === 'function' && _unitInRain(target, true)))) {
+                addLog(`💧 ${_ctName(target)} is too wet for the chemical fire — only the poison takes!`);
+                return applyStatusPayload(target, Object.assign({}, payload, { id: 'poison' }), sourceLabel, sourceUnit);
+            }
             /* 🛡 Passive status immunities (2026-07-23, data.js PASSIVE_DEFS):
                any passive whose immuneStatus list names this status bounces it
                outright — Thermal Regen vs Burn, Man-at-Arms vs Stagger,
@@ -10376,6 +10528,14 @@
             }
 
             _balStatusEvt(payload.id, 'applied', sourceUnit, target);   // Balance Lab status telemetry
+            /* 🛢️🔥 R5 (mondo 2026-11-07): Gooed is the Black Ooze on a body — a Burn that lands on it burns the goo away */
+            if (payload.id === 'burn' && unitHasStatus(target, 'burn') && unitHasStatus(target, 'goo')) {
+                clearStatus(target, 'goo');
+                addLog(`🛢️🔥 The goo on ${_ctName(target)} goes up in flames!`);
+                showFloatingTextForUnit(target, '🛢️ GOO BURNS', 'debuff', { durationMs: 1000 });
+            }
+            /* ⚗️ R4: Burn + Poison = Corroded (THE CHEMICAL FIRE) */
+            if (payload.id === 'burn' || payload.id === 'poison' || payload.id === 'corroded') _chemicalFireMerge(target);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
         }
@@ -10401,6 +10561,8 @@
 
         function processEndOfRoundStatuses(onDone) {
             _expireStatusHolds({ roundEnd: true });   // ⏳ THE FULL ROUND: a hold whose round this was ends before any tick
+            /* ⚗️ R4: a Burn / Poison a terrain wrote straight onto the unit (Plague Flesh) meets the other one here, before the tick */
+            for (const _cu of (state.units || [])) _chemicalFireMerge(_cu);
 
             const affected = state.units.filter(u => {
                 if (_unitIsDown(u)) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
@@ -38097,6 +38259,24 @@
 
             // ── ⚗️ Elemental combo layer, post-hit half ────────────────────
             if (_comboEl && !_unitIsDown(target)) {   // the hit that killed it neither freezes, steams nor thaws the body
+                /* 🛢️🔥 R5 GOOED BODIES CATCH FIRE (mondo 2026-11-07): Gooed is the Black Ooze on a body, and the ooze goes up
+                   with fire and lightning — the hit sets the unit burning (2 rounds) and the goo burns away. A wet body can't
+                   catch fire (the goo stays on it). Ticks never do it. */
+                if ((_comboEl === 'fire' || _comboEl === 'lightning') && damageType !== 'dot'
+                    && unitHasStatus(target, 'goo') && !_unitIsSoaked(target)) {
+                    applyStatusPayload(target, { id: 'burn', duration: 2, _element: 'fire' }, '🛢️🔥 The goo catches fire: ', sourceUnit);
+                    if (unitHasStatus(target, 'goo') && !_unitIsDown(target)) {
+                        clearStatus(target, 'goo');
+                        addLog(`🛢️🔥 The goo on ${_ctName(target)} burns away.`);
+                    }
+                }
+                /* 🔥🩸 R6 FIRE CAUTERISES (mondo 2026-11-07): a fire hit closes a bleeding wound — the same double edge as fire
+                   thawing a Frozen ally. Ticks never do it. */
+                if (_comboEl === 'fire' && damageType !== 'dot' && unitHasStatus(target, 'bleed')) {
+                    clearStatus(target, 'bleed');
+                    addLog(`🔥🩸 The fire sears ${_ctName(target)}'s wound shut — the Bleeding stops.`);
+                    showFloatingTextForUnit(target, '🔥 CAUTERISED', 'buff', { durationMs: 1000 });
+                }
                 if (_comboSupercharge) {
                     // ⚙️ SUPERCHARGED: the jolt overclocks the machine (+ATK,
                     // +1 move, tech range bonus) and tops up its capacitors.
@@ -38125,7 +38305,7 @@
                 }
                 // ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07): a frost hit on a burning unit melts on the flames —
                 // the burn goes out and the meltwater leaves the unit Soaked (the same as being doused by water).
-                if (_comboEl === 'cold' && !_unitIsDown(target) && target.status && target.status.burn) {
+                if (_comboEl === 'cold' && !_unitIsDown(target) && target.status && (target.status.burn || Number(target.status.corroded || 0) > 0)) {
                     _douseBurnOnUnit(target, 'The melting frost');
                     _soakUnit(target, { douseLabel: 'The melting frost' });
                 }
@@ -43914,6 +44094,19 @@
             return (unit.ap || 0) <= 0;
         }
 
+        /* 🎶 ENCORE'S "ALREADY ACTED THIS TURN" (buffs playtest C, 2026-11-07): an ally is an Encore target only once its
+           own turn this round is over (0 AP, and in a blitz round its activation has been spent, `_turnRound`). A unit
+           sitting out its 1-round respawn penalty starts the round at 0 AP without acting (`_respawnSitOutRound`), and a
+           staggered unit can too: neither has acted, so neither is offered and neither gets a turn out of it. Used by the
+           encore kind (list, castable check, doSpell, the CPU) and the Reprise rider. */
+        function unitEncoreReady(u) {
+            if (!u || u.dead || u._dying) return false;
+            if (!unitFinished(u)) return false;
+            if (u._respawnSitOutRound === state.round) return false;
+            if (state.phase === 'battle' && state._blitzActiveUnitId != null && u._turnRound !== state.round) return false;
+            return true;
+        }
+
         function spendAP(unit, cost) {
             /* THE VICTORY SHARE (2026-09-22): a unit that spends AP in a story-mode encounter FOUGHT — it takes the pool's
                full share at the commit; a body that only stood there (or sat the bench) takes the present share */
@@ -44402,7 +44595,7 @@
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
-                && (unitFinished(u) || u.ap === 0);
+                && unitEncoreReady(u);
             if (k === 'cleanse') {
                 if (typeof getActiveStatusKeys === 'function'
                     && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff')) return true;
@@ -57579,7 +57772,7 @@
 
                     for (const u of state.units) {
                         if (!u.dead) {
-                            if (u._justRespawned) { u._justRespawned = false; continue; }
+                            if (u._justRespawned) { u._justRespawned = false; u._respawnSitOutRound = state.round; continue; }   // 🎶 Encore reads the sit-out
                             // Stagger landed after this unit had already spent its
                             // AP → the loss was banked as a debt; settle it here.
                             u.ap = Math.max(0, getUnitMaxAP(u) - (u._staggerApDebt || 0));
@@ -62351,7 +62544,7 @@
             isFlightCrippled, forceGroundUnit,
             canFlyToSky, canDescendUnderground, canReturnToGround,
             unitHasJetpack, unitHasSpelunkingGear,
-            SKY_RACES, UNDERGROUND_RACES, unitFinished,
+            SKY_RACES, UNDERGROUND_RACES, unitFinished, unitEncoreReady,
             getEffectiveRange, getEffectiveSpellRange, getEffectiveMove,
             /* VISION (2026-10-09) — ai.js reads these through GAME */
             getEffectiveVision, getEffectiveCrit, unitLosesSharedVision, getUnitVisionRange,
@@ -81122,7 +81315,7 @@
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
                 if (spell.encoreAlly) {
                     const _rep = allies
-                        .filter(a => a.id !== unit.id && !a.dead && !a._encoreThisRound && (unitFinished(a) || a.ap === 0))
+                        .filter(a => a.id !== unit.id && !a.dead && !a._encoreThisRound && unitEncoreReady(a))
                         .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)))[0];
                     if (_rep) {
                         _rep._encoreThisRound = true;
@@ -81224,8 +81417,10 @@
                     return 0;
                 }
 
-                if (!unitFinished(target) && (target.ap === undefined || target.ap > 0)) {
-                    addLog(`${_ctName(target)} hasn't finished acting yet. Encore targets units that are done.`);
+                if (!unitEncoreReady(target)) {
+                    addLog(target._respawnSitOutRound === state.round
+                        ? `${_ctName(target)} is sitting out this round after respawning. Encore targets units that have acted.`
+                        : `${_ctName(target)} hasn't acted yet this round. Encore targets units that are done.`);
                     playErrorSfx();
                     return 0;
                 }
