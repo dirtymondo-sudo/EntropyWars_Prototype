@@ -4732,6 +4732,11 @@
             const u = getSelectedUnit();
             if (u && u._skyThrowGrab && typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(u);
             state._teleportingUnitId = null;
+            /* a two-step spell's FIRST pick (Voodoo's enemy, Soul Bind's first enemy, Sacrifice's giver, Horn Toss's
+               victim) goes with the spell it was made for — nothing was spent on it, so backing out of the spell cancels
+               the whole cast (timing/counters playtest 2026-11-07: Escape left Voodoo's pick held, and re-arming Voodoo
+               skipped straight to the ally list) */
+            if (typeof clearSpellPick === 'function') clearSpellPick(); else state._spellPick1 = null;
             clearSpellAimPreviews();
         }
 

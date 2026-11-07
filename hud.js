@@ -9187,7 +9187,15 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY, targetUnit.id)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
-        else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
+        else {
+          const _qmR = _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
+          /* THE HELD PICK (timing/counters playtest 2026-11-07 H1): the row was only a two-step spell's FIRST pick
+             (Voodoo's enemy, Soul Bind's first enemy, Horn Toss's victim…) — nothing spent; the quick menu is gone, so
+             open the spell's second step (battle.js _rearmHeldFirstPick) instead of leaving the bare root menu */
+          if ((_qmR === 0 || _qmR === false) && typeof window._rearmHeldFirstPick === 'function') {
+            if (window._rearmHeldFirstPick(actingUnit, spell.name, null)) return;
+          }
+        }
       }
     } else if (actionId.startsWith('item:')) {
 
