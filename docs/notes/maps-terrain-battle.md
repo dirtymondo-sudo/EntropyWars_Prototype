@@ -1004,7 +1004,7 @@ Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untext
 
 ## THE ONE PIXEL GRID (2026-11-07, mondo on Mount Shasta, Firefox ?ew_gpu=webgpu, close camera: "why are there mixels/blurriness on the grass? It's pixel art, it should not look like this")
 
-Three causes, all fixed. Token 20261107-pixelgrid-01-cors. R2: sprites.js, three-renderer.js + 8 new sheets. Proof: /mnt/project-files/pixel-grid/.
+Three causes, all fixed. Token 20261107-pixelgrid-02-cors. R2: sprites.js, three-renderer.js + 8 new sheets. Proof: /mnt/project-files/pixel-grid/.
 - **The sheets**: 8 terrain sheets were never 128 px pixel tiles. grass_2 (Mount Shasta's base), dirt, cave_floor, deep_water, obsidian,
   forest_2, cloud_2, lava are 1024 x 1024 paintings made to LOOK like pixel art: soft anti-aliased "pixels" of mixed sizes (11,000-
   194,000 colours; the real pixel tiles have 24 on a hard 128 grid). That is the rounded-corner blobs + mixels in his shot. Each is

@@ -484,9 +484,11 @@
             const twice = short ? [] : _sqTwice(t), gone = short ? [] : _sqGoneBlock(t), locked = short || twice.length > 0 || gone.length > 0;   // ONE OF EACH (+ HOMOSAPIEN OUT)
             const when = t.lastUsed ? new Date(t.lastUsed) : null;
             const at = presets.findIndex(p => p.id === t.id);
-            plate.className = ['sq-plate', locked ? 'is-locked' : '', (t.id === _sqNewId || rnd) ? 'is-new' : ''].filter(Boolean).join(' ');
+            /* NO RANDOM STAMP (2026-11-07, mondo: "I also want to get rid of the random stamp"): a rolled team wears no stamp on
+               the plate; its bottom line still says it is not saved. The NEW stamp on a team just forged stays. */
+            plate.className = ['sq-plate', locked ? 'is-locked' : '', (t.id === _sqNewId && !rnd) ? 'is-new' : ''].filter(Boolean).join(' ');
             plate.innerHTML = `<span class="sq-plate-sheen"></span>`
-                + (rnd ? '<span class="sq-card-stamp">RANDOM</span>' : t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
+                + (!rnd && t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
                 + `<div class="sq-plate-top"><span class="sq-plate-name">${_sqEsc(t.name || 'Team')}</span>`
                 + `<span class="sq-plate-n">${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}</span>`
                 + (presets.length > 1 ? `<span class="sq-plate-of">${at + 1} / ${presets.length}</span>` : '')
