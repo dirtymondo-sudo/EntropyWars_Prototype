@@ -40941,16 +40941,11 @@
                                 showFloatingTextForUnit(e, '👁️ Revealed!', 'debuff');
                             }
                         }
-                        const prey = state.units
+                        const _wPrey = state.units
                             .filter(u => !u.dead && !u._dying
                                 && (!turret.summon || u.player !== turret.owner)
-                                && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'))
-                            .sort((a, b) => {
-                                const da = Math.abs(a.x - turret.x) + Math.abs(a.y - turret.y);
-                                const db = Math.abs(b.x - turret.x) + Math.abs(b.y - turret.y);
-                                return (da - db) || (a.hp - b.hp);
-                            })[0];
-                        if (!prey) continue;
+                                && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'));
+                        if (!_wPrey.length) continue;
                         const _zBlocked = (nx, ny) => {
                             if (!isInside(nx, ny)) return true;
                             if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) return true;
@@ -40959,29 +40954,81 @@
                             if (state.turrets.some(t2 => t2 !== turret && t2.hp > 0 && t2.x === nx && t2.y === ny)) return true;
                             return false;
                         };
-                        let moved = false;
+                        const _wReach = turret.range || 1;
                         const _walkSteps = turret.summon ? (turret.move || 3) : 2;
-                        for (let step = 0; step < _walkSteps; step++) {
-                            let d0 = Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y);
-                            if (d0 <= (turret.range || 1)) break;
-                            let best = null, bestD = d0;
+                        /* THE WALK AROUND (zones playtest 2026-11-07 F1: the Hound sat on 4,7 for the whole match because its
+                           own Blob stood on 4,8 between it and the Martian on 4,9 — the walker only took steps that cut the
+                           straight-line distance, so one body in the way froze it; the Elephant idled the same way under a
+                           target on the Camelot wall). The walker now reads the real walk: every free square it can reach
+                           (4-way steps, the same blocked squares as before), the nearest enemy (nearest unit for the
+                           abomination) it can strike from one of them (in reach + a clear shot), and walks that road
+                           `move` squares a round. Nobody it can strike from anywhere → it walks toward the nearest as
+                           before, and when it can't take a step the log says so. */
+                        const _wKey = (x, y) => x + ',' + y;
+                        const _wDist = new Map([[_wKey(turret.x, turret.y), 0]]);
+                        const _wPrev = new Map();
+                        const _wQ = [{ x: turret.x, y: turret.y }];
+                        for (let qi = 0; qi < _wQ.length && qi < 4096; qi++) {
+                            const c = _wQ[qi], cd = _wDist.get(_wKey(c.x, c.y));
                             for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-                                const nx = turret.x + ddx, ny = turret.y + ddy;
-                                if (_zBlocked(nx, ny)) continue;
-                                const nd = Math.abs(prey.x - nx) + Math.abs(prey.y - ny);
-                                if (nd < bestD) { bestD = nd; best = { x: nx, y: ny }; }
+                                const nx = c.x + ddx, ny = c.y + ddy, nk = _wKey(nx, ny);
+                                if (_wDist.has(nk) || _zBlocked(nx, ny)) continue;
+                                _wDist.set(nk, cd + 1); _wPrev.set(nk, c); _wQ.push({ x: nx, y: ny });
                             }
-                            if (!best) break;
+                        }
+                        let prey = null, _wGoal = null, _wBest = Infinity;
+                        for (const u of _wPrey) {
+                            for (const c of _wQ) {
+                                const cd = _wDist.get(_wKey(c.x, c.y));
+                                if (cd > _wBest) continue;
+                                if (Math.abs(u.x - c.x) + Math.abs(u.y - c.y) > _wReach) continue;
+                                if (!turretHasShotAt({ x: c.x, y: c.y }, u)) continue;
+                                if (cd < _wBest || (cd === _wBest && prey && ((Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y)) - (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y)) || (u.hp - prey.hp)) < 0)) {
+                                    _wBest = cd; prey = u; _wGoal = c;
+                                }
+                            }
+                        }
+                        let moved = false, _wNoReach = false;
+                        const _wStepTo = (nx, ny) => {
                             // THE SPELL AUDIT Batch D: a summon with a trail (the Blob) slimes the tile it leaves
                             if (turret.trailTerrain) _paintTimedTerrain(turret.x, turret.y, turret.trailTerrain, unitFromId(turret.casterUnitId) || null, null, turret.z);
-                            turret.x = best.x; turret.y = best.y;
+                            turret.x = nx; turret.y = ny;
                             moved = true;
+                        };
+                        if (prey && _wGoal) {
+                            const road = [];
+                            for (let c = _wGoal; c && !(c.x === turret.x && c.y === turret.y); c = _wPrev.get(_wKey(c.x, c.y))) road.unshift(c);
+                            for (let step = 0; step < _walkSteps && step < road.length; step++) _wStepTo(road[step].x, road[step].y);
+                        } else {
+                            _wNoReach = true;
+                            prey = _wPrey.slice().sort((a, b) => {
+                                const da = Math.abs(a.x - turret.x) + Math.abs(a.y - turret.y);
+                                const db = Math.abs(b.x - turret.x) + Math.abs(b.y - turret.y);
+                                return (da - db) || (a.hp - b.hp);
+                            })[0];
+                            for (let step = 0; step < _walkSteps; step++) {
+                                let d0 = Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y);
+                                if (d0 <= _wReach) break;
+                                let best = null, bestD = d0;
+                                for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                                    const nx = turret.x + ddx, ny = turret.y + ddy;
+                                    if (_zBlocked(nx, ny)) continue;
+                                    const nd = Math.abs(prey.x - nx) + Math.abs(prey.y - ny);
+                                    if (nd < bestD) { bestD = nd; best = { x: nx, y: ny }; }
+                                }
+                                if (!best) break;
+                                _wStepTo(best.x, best.y);
+                            }
                         }
                         if (moved) {
                             addLog(turret.summon
                                 ? `${_summonLook(turret.summon).icon} ${turret.spellName} closes on ${unitDisplayName(prey)}...`
                                 : `🧟 The flesh abomination shambles toward ${unitDisplayName(prey)}...`);
                             scheduleBoardRender();
+                        } else if (_wNoReach) {
+                            addLog(turret.summon
+                                ? `${_summonLook(turret.summon).icon} ${turret.spellName} can't find a way to ${unitDisplayName(prey)}.`
+                                : `🧟 The flesh abomination can't find a way to ${unitDisplayName(prey)}.`);
                         }
                         if (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y) <= (turret.range || 1)
                             && turretHasShotAt(turret, prey)) {
@@ -59789,6 +59836,8 @@
             mobilityShotShare_v1:    { value: 0.7357,  prev: 0.95,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
             mobilityGoalShare_v1:    { value: 0.6407,   prev: 0.5,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
             jumpPathCost_v1:         { value: 2.183,     prev: 2,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
+            // ── NEW 2026-11-07 (no schema bump, every trained value carries over): THE SPELL ZONES (ai.js spellZoneCost) ──
+            spellZoneCaution_v1:     { value: 1,     prev: 0,     min: 0,    max: 2,    noMult: true, label: 'Spell Zone Caution', desc: '× what an enemy spell zone does to a unit that ends on its square (Black Smoke, War of the Worlds, Hall of Mirrors ticks; the statuses a zone lands; a Gravity Crush slam on a flyer). 0 = the old blind spot' },
         };
         /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
            in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
