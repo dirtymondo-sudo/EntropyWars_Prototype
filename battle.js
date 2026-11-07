@@ -43927,6 +43927,19 @@
             return (unit.ap || 0) <= 0;
         }
 
+        /* 🎶 ENCORE'S "ALREADY ACTED THIS TURN" (buffs playtest C, 2026-11-07): an ally is an Encore target only once its
+           own turn this round is over (0 AP, and in a blitz round its activation has been spent, `_turnRound`). A unit
+           sitting out its 1-round respawn penalty starts the round at 0 AP without acting (`_respawnSitOutRound`), and a
+           staggered unit can too: neither has acted, so neither is offered and neither gets a turn out of it. Used by the
+           encore kind (list, castable check, doSpell, the CPU) and the Reprise rider. */
+        function unitEncoreReady(u) {
+            if (!u || u.dead || u._dying) return false;
+            if (!unitFinished(u)) return false;
+            if (u._respawnSitOutRound === state.round) return false;
+            if (state.phase === 'battle' && state._blitzActiveUnitId != null && u._turnRound !== state.round) return false;
+            return true;
+        }
+
         function spendAP(unit, cost) {
             /* THE VICTORY SHARE (2026-09-22): a unit that spends AP in a story-mode encounter FOUGHT — it takes the pool's
                full share at the commit; a body that only stood there (or sat the bench) takes the present share */
@@ -44415,7 +44428,7 @@
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
-                && (unitFinished(u) || u.ap === 0);
+                && unitEncoreReady(u);
             if (k === 'cleanse') {
                 if (typeof getActiveStatusKeys === 'function'
                     && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff')) return true;
@@ -57592,7 +57605,7 @@
 
                     for (const u of state.units) {
                         if (!u.dead) {
-                            if (u._justRespawned) { u._justRespawned = false; continue; }
+                            if (u._justRespawned) { u._justRespawned = false; u._respawnSitOutRound = state.round; continue; }   // 🎶 Encore reads the sit-out
                             // Stagger landed after this unit had already spent its
                             // AP → the loss was banked as a debt; settle it here.
                             u.ap = Math.max(0, getUnitMaxAP(u) - (u._staggerApDebt || 0));
@@ -62364,7 +62377,7 @@
             isFlightCrippled, forceGroundUnit,
             canFlyToSky, canDescendUnderground, canReturnToGround,
             unitHasJetpack, unitHasSpelunkingGear,
-            SKY_RACES, UNDERGROUND_RACES, unitFinished,
+            SKY_RACES, UNDERGROUND_RACES, unitFinished, unitEncoreReady,
             getEffectiveRange, getEffectiveSpellRange, getEffectiveMove,
             /* VISION (2026-10-09) — ai.js reads these through GAME */
             getEffectiveVision, getEffectiveCrit, unitLosesSharedVision, getUnitVisionRange,
@@ -81135,7 +81148,7 @@
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
                 if (spell.encoreAlly) {
                     const _rep = allies
-                        .filter(a => a.id !== unit.id && !a.dead && !a._encoreThisRound && (unitFinished(a) || a.ap === 0))
+                        .filter(a => a.id !== unit.id && !a.dead && !a._encoreThisRound && unitEncoreReady(a))
                         .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)))[0];
                     if (_rep) {
                         _rep._encoreThisRound = true;
@@ -81237,8 +81250,10 @@
                     return 0;
                 }
 
-                if (!unitFinished(target) && (target.ap === undefined || target.ap > 0)) {
-                    addLog(`${_ctName(target)} hasn't finished acting yet. Encore targets units that are done.`);
+                if (!unitEncoreReady(target)) {
+                    addLog(target._respawnSitOutRound === state.round
+                        ? `${_ctName(target)} is sitting out this round after respawning. Encore targets units that have acted.`
+                        : `${_ctName(target)} hasn't acted yet this round. Encore targets units that are done.`);
                     playErrorSfx();
                     return 0;
                 }
