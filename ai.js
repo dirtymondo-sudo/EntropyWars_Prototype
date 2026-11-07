@@ -10252,6 +10252,7 @@
                 g.pushUndoSnapshot(true);
                 unit.items.panacea -= 1;
                 let cleared = 0;
+                const _pnMark = (typeof _logMark === 'function') ? _logMark() : null;   // the Panacea line goes above what the cure sets off
                 for (const key of Object.keys(unit.status)) {
                     if (STATUS_DEFS_[key]?.kind === 'debuff') {
                         /* the engine's clearStatus runs the debuff's onRemove (Possessed hands the body back, Soul-Bound
@@ -10261,6 +10262,7 @@
                     }
                 }
                 g.addLog(`💊 ${g.unitDisplayName(unit)} uses Panacea! ${cleared} status effect${cleared > 1 ? 's' : ''} cured.`);
+                if (_pnMark && typeof _logHoist === 'function') _logHoist(_pnMark);
                 g.showFloatingTextForUnit(unit, '💊 CURED', 'heal', { durationMs: 1200 });
                 g.spendAP(unit, 1);   // Panacea costs 1 AP (mondo 2026-10-17)
                 g.finishComputerAction();
