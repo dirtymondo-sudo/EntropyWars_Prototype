@@ -5607,7 +5607,7 @@
             if (!unit || unit.dead) return false;
             if (!isInside(nx, ny)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            if (unitAt(nx, ny)) return false;                        // bodies don't break
+            if (_slideGroundBodyAt(nx, ny, null)) return false;      // bodies don't break (a flyer above is not in the way)
             const power = opts.power ?? unitBreachPower(unit, opts);
             if (power <= 0) return false;                            // feather-light — bounces off
             const byUnit = opts.byUnit || null;
@@ -5696,18 +5696,43 @@
            Pure — never mutates. kinds: 'open' (nz = landing surface), 'unit'
            (occ), 'thinwall', 'wall' (voxel/terrain/object), 'edge' (map
            border), 'hole'. */
+        /* THE TWO LAYERS (playtest 11-07 A2: a Cyborg hovering at height 7 stopped Body Check / Horn Toss on the ground
+           under it). A square holds one grounded + one airborne body (map.js airborneOccupantInPocket, the tile cap), so a
+           forced slide only meets the body on ITS layer: a grounded body slides under a flyer, a flyer sails over the
+           ground. _slideGroundBodyAt = the grounded body on (nx,ny) (the mover itself last, for the forecast rebound);
+           _slideAirBodyAt = the flyer in the pocket at z, or a body standing at exactly z (a roof at the flyer's height). */
+        function _slideGroundBodyAt(nx, ny, mover) {
+            let self = null;
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying) continue;
+                const on = (u.x === nx && u.y === ny)
+                    || (u._isBoss && u._bossSize === 2 && (nx === u.x || nx === u.x + 1) && (ny === u.y || ny === u.y + 1));
+                if (!on) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (u === mover) { self = u; continue; }
+                return u;
+            }
+            return self;
+        }
+        function _slideAirBodyAt(nx, ny, z, mover) {
+            const a = (typeof airborneOccupantInPocket === 'function') ? airborneOccupantInPocket(nx, ny, z, mover) : null;
+            if (a) return a;
+            const g = unitAt(nx, ny, z);
+            return (g && g !== mover) ? g : null;
+        }
         function _slideStepInfo(mover, x, y, z, dx, dy) {
             const nx = x + dx, ny = y + dy;
             if (!isInside(nx, ny)) return { kind: 'edge', nx, ny };
             if (typeof wallBlocksStep === 'function' && wallBlocksStep(x, y, nx, ny, z, null)) {
                 return { kind: 'thinwall', nx, ny };
             }
-            const occ = unitAt(nx, ny);
+            const _airMover = typeof isUnitAirborne === 'function' && isUnitAirborne(mover);
+            const occ = _airMover ? _slideAirBodyAt(nx, ny, z, mover) : _slideGroundBodyAt(nx, ny, mover);
             if (occ && occ !== mover) return { kind: 'unit', nx, ny, occ };
             const terr = getTerrainAt(nx, ny);
             const rule = getTerrainRule(terr);
             if (rule && rule.passable === false && _SLIDE_HOLE_TERRAIN[terr]) return { kind: 'hole', nx, ny };
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) {
+            if (_airMover) {
                 // A flyer sails over anything below its altitude.
                 if (getBaseHeightAt(nx, ny) > z) return { kind: 'wall', nx, ny };
                 /* ⬡ but never onto the Cube: its column is solid for flyers too (canOccupy3D, isTerrainPassable's note) */
@@ -5720,11 +5745,22 @@
             if (nz - z > climbCap) return { kind: 'wall', nx, ny, lip: true };
             /* a forecast (simulate) leaves the body standing where it started: a rebound back onto that tile must not
                read the body itself as the blocker (the real slide has already moved it off) */
+            /* THE TWO LAYERS: canOccupy's unitAt reads a lone flyer above the square as a body there — lift the flyers
+               covering it off the board for the check too (same restore-in-finally as the mover) */
+            const _hide = [];
+            if (occ === mover) _hide.push(mover);
+            for (const u of state.units) {
+                if (!u || u === mover || u.dead || u._dying) continue;
+                const on = (u.x === nx && u.y === ny)
+                    || (u._isBoss && u._bossSize === 2 && (nx === u.x || nx === u.x + 1) && (ny === u.y || ny === u.y + 1));
+                if (on && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) _hide.push(u);
+            }
             let _free;
-            if (occ === mover) {
-                const _ox = mover.x, _oy = mover.y;
-                mover.x = -999; mover.y = -999;
-                try { _free = canOccupy(nx, ny); } finally { mover.x = _ox; mover.y = _oy; }
+            if (_hide.length) {
+                const _saved = _hide.map(u => [u.x, u.y]);
+                for (const u of _hide) { u.x = -999; u.y = -999; }
+                try { _free = canOccupy(nx, ny); }
+                finally { _hide.forEach((u, i) => { u.x = _saved[i][0]; u.y = _saved[i][1]; }); }
             } else _free = canOccupy(nx, ny);
             if (!_free) return { kind: 'wall', nx, ny };   // turret / tower / object
             return { kind: 'open', nx, ny, nz };
@@ -5736,7 +5772,7 @@
             if (_slideNoBreach()) return false;
             if (!mover || mover.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) return false;
-            if (unitAt(nx, ny)) return false;
+            if (_slideGroundBodyAt(nx, ny, null)) return false;
             const power = unitBreachPower(mover);
             if (power <= 0) return false;
             if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) {
