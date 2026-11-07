@@ -7555,7 +7555,7 @@ const RACE_ABILITIES = {
         { id: 'raceSkinSwap', tier: 3, families: ['trickery'], spellType: 'anomaly', name: 'Skin Swap',
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
-          desc: 'Swaps positions with the target unit.' },
+          desc: 'Swaps positions with a Single Enemy within 4 tiles you can see.' },
         { id: 'raceMimicry', upgradesBlock: ['upLinger'], spellType: 'anomaly', name: 'Mimicry',
           type: 'buff', tier: 4, cooldownRounds: 3, families: ['trickery'], cost: 20, apCost: 1, range: 0,
           kind: 'buff',
@@ -8128,7 +8128,7 @@ const RACE_ABILITIES = {
         { id: 'freeEnergy', upgradesBlock: ['upEfficient'], tier: 2, families: ['advancedtechnology'], spellType: 'divine', element: 'lightning', name: 'Free Energy',
           type: 'heal', cost: 50, mpRestore: 40, range: 0,
           kind: 'manaRestoreAll',
-          desc: 'Restores 40 MP to All Allies.' }
+          desc: 'Restores 40 MP to every Other Ally (not the caster).' }
     ],
     'cowboy': [
         /* CHAMP_REWORK_PLAN §6.15 wave C (2026-09-08): Lasso reworked into the
@@ -8596,7 +8596,7 @@ const RACE_ABILITIES = {
           statStageBoost: { def: -1, mdef: -1 },
           desc: 'The team\'s focus-fire call. Lowers a Single Enemy\'s DEF and M DEF by 1 stage and Marks them for 2 rounds.' },
         { id: 'racePopStadiumShow', upgradesBlock: ['upWiden'], spellType: 'anomaly', element: 'sonic', name: 'Stadium Show',
-          type: 'damage', cost: 85, dmg: 150, range: 3, aoeRadius: 2, apCost: 1, tier: 4, bonusVsStatus: { status: 'stagger', mult: 1.5 }, families: ['stagepresence'], cooldownRounds: 3,
+          type: 'damage', cost: 85, dmg: 150, range: 3, aoeRadius: 2, apCost: 1, tier: 4, bonusVsStatus: { status: 'stagger', mult: 1.5 }, families: ['stagepresence'], cooldownRounds: 4,   // 11-07: was 3 (back after 3 rounds) while its text promises once every 4 (like Immortal Cycle's 4)
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'The pyro goes, the crowd goes. HEAVY magic damage to every enemy in a 5×5 within 3 tiles, and every one of them is Charmed for a round — they are fans now. Once every 4 rounds.' },
@@ -9118,7 +9118,7 @@ const RACE_ABILITIES = {
         { id: 'raceSpellsteal', tier: 2, upgrades: ['upEfficient', 'upReach', 'upCounterspell'], spellType: 'unholy', vfxElement: 'arcane', name: 'Spellsteal',
           type: 'debuff', cost: 25, range: 4, apCost: 1, cooldownRounds: 3,
           kind: 'debuff', stealSpell: true,
-          desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
+          desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it for the rest of the match. Cooldown: 3 rounds.' },
         /* (Mana Shield deleted 2026-08-12 — Hocus Pocus took its tree slot.) */
         { id: 'racePolymorph', tier: 3, statusEffects: [{ id: 'silence', duration: 1 }], spellType: 'unholy', vfxElement: 'arcane', name: 'Polymorph',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -9546,7 +9546,7 @@ const RACE_ABILITIES = {
         { id: 'sigInfernalWaltz', name: 'Infernal Waltz', tier: 2, families: ['hellsbelle'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', element: 'psychic', type: 'debuff', kind: 'swap', range: 4, requiresLineOfSight: true,
           statusEffects: [{ id: 'charm', duration: 2 }],
-          desc: 'May I have this dance. Trade places with a unit within 4 tiles you can see; an enemy partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
+          desc: 'May I have this dance. Trade places with an enemy within 4 tiles you can see; your partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'sigLastDance', name: 'Last Dance', tier: 4, families: ['hellsbelle'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.3,   // strong races check 2026-10-24: was 0.5
           bonusVsStatus: { status: 'charm', mult: 1.5 },
@@ -9774,7 +9774,7 @@ const RACE_ABILITIES = {
         { id: 'raceDimensionalFold', tier: 1, families: ['fractal'], spellType: 'alien', vfxElement: 'arcane', name: 'Dimensional Fold',
           type: 'utility', cost: 25, range: 3, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
-          desc: 'Swaps positions with the target unit.' },
+          desc: 'Swaps positions with a Single Enemy within 3 tiles you can see.' },
         SHARED_POISON_SWAMP,
         SHARED_BLACK_HOLE,
     ],
@@ -11029,7 +11029,7 @@ const RACE_ABILITIES = {
         { id: 'raceTemporalShift', tier: 2, families: ['temporal'], spellType: 'anomaly', name: 'Temporal Shift',
           type: 'utility', cost: 50, range: 4, apCost: 1,
           kind: 'swap',
-          desc: 'Swaps positions with the target unit.' },
+          desc: 'Swaps positions with a Single Enemy within 4 tiles.' },
         { id: 'raceJudgmentBeam', tier: 1, statusEffects: [{ id: 'slow', duration: 1 }], families: ['temporal'], spellType: 'divine', name: 'Judgment Beam',
           type: 'damage', cost: 35, dmg: 90, range: 5, apCost: 1,
           kind: 'line', damageType: 'magic', lineWidth: 1,

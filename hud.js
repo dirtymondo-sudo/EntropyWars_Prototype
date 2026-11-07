@@ -7044,7 +7044,8 @@ function spellTagline(sp) {
   else if (k === 'cross') parts.push('Cross');
   else if (k === 'barrage') parts.push('Barrage');
   else if (k === 'zoneHeal' || k === 'zoneDebuff') parts.push('Zone');
-  else if (k === 'warCry' || k === 'healAll' || k === 'manaRestoreAll') parts.push('All allies');
+  else if (k === 'manaRestoreAll') parts.push('Other allies');   // Free Energy skips its caster
+  else if (k === 'warCry' || k === 'healAll') parts.push('All allies');
   else if (k === 'ricochet') parts.push('Bouncing');
   else if (k === 'splitBeam') parts.push('Split beam');
   else if (k === 'multiHit') {
@@ -7131,7 +7132,8 @@ function spellTargetMode(sp) {
   if (k === 'cannibalize') return 'Remains';
   if (k === 'summonUnit') return 'Empty Tile';
   if (k === 'shadowRealm') return 'You + Target';
-  if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
+  if (k === 'manaRestoreAll') return 'Other Allies';   // Free Energy skips its caster
+  if (k === 'healAll') return 'All Allies';
   if (['aoe', 'aoePull', 'aoeShield', 'cleanseArea'].includes(k)) return 'Area · AOE';
   if (['line', 'linePush', 'splitBeam'].includes(k)) return 'Line';
   if (k === 'cross') return 'Cross';
@@ -9460,7 +9462,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
     let validHere;
     if (isTeamCast) {
       validHere = sp.kind === 'healAll' ? !fullHp
-        : sp.kind === 'manaRestoreAll' ? ((targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
+        : sp.kind === 'manaRestoreAll' ? (targetUnit.id !== actingUnit.id && (targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
         : true;
     } else {
       validHere = typeof _getSpellValidTargets === 'function'

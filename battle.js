@@ -8301,7 +8301,8 @@
                             .forEach(e => tiles.push({ x: e.x, y: e.y }));
                     }
                 } else if (kind === 'healAll' || kind === 'manaRestoreAll') {
-                    tiles = aliveUnitsFor(unit.player).map(a => ({ x: a.x, y: a.y }));
+                    // Free Energy (manaRestoreAll) skips its caster (doSpell), so its tiles do too
+                    tiles = aliveUnitsFor(unit.player).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'warCry') {
                     const r = spell.auraRadius || 3;
                     tiles = aliveUnitsFor(unit.player)
@@ -43001,7 +43002,7 @@
                         + (spell.pairRange ? ' within ' + spell.pairRange + ' tiles of it' : '') + '.';
                     return nm + ': select ' + _word(_tm[0]) + ' first, then ' + _word(_tm[1]) + '.';
                 }
-                case 'swap':          return nm + ': select a unit to swap places with.';
+                case 'swap':          return nm + (spell.allyOnly ? ': select an ally to swap places with.' : ': select an enemy to swap places with.');
                 case 'pull':          return nm + ': select an enemy to pull in.';
                 case 'teleport':      return nm + ': select a destination tile.';
                 case 'dash':          return spell.afterShot
@@ -80948,6 +80949,17 @@
                         ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]).map(k => `${spell.statStageBoost[k] > 0 ? '+' : ''}${spell.statStageBoost[k]} ${_stageStatLabel(k)}`)
                         : ['+2 ATK'];
                     if (spell.timedStatBonus && spell.timedStatBonus.move > 0) _wcGot.push(`+${spell.timedStatBonus.move} MOV`);
+                    if (!spell.statStageBoost) {
+                        /* 11-07: the default cry (Anthem) gives the others +2 ATK and the singer +1, so the line says so
+                           (it read "1 ally within 3 tiles gains +2 ATK" when the singer sang alone and got +1) */
+                        const _wcMov = _wcGot.slice(1);
+                        const _wcSelf = allies.some(a => a.id === unit.id);
+                        const _wcOthers = buffCount - (_wcSelf ? 1 : 0);
+                        const _wcParts = [];
+                        if (_wcOthers > 0) _wcParts.push(`${_wcOthers} all${_wcOthers === 1 ? 'y' : 'ies'} within ${radius} tiles gain${_wcOthers === 1 ? 's' : ''} ${['+2 ATK', ..._wcMov].join(' and ')}`);
+                        if (_wcSelf) _wcParts.push(`${_ctName(unit)} takes ${['+1 ATK', ..._wcMov].join(' and ')}`);
+                        addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}! ${_wcParts.join('; ')}.`);
+                    } else
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}! ${buffCount} all${buffCount === 1 ? 'y' : 'ies'} within ${radius} tiles gain${buffCount === 1 ? 's' : ''} ${_wcGot.join(' and ')}.`);
                 }
                 /* THE SPELL AUDIT Batch D (Reprise): the song also hands Encore's AP to the nearest ally in the aura who has
