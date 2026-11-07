@@ -41478,6 +41478,7 @@
         window._ewItemLike = _ewItemLike;
         function canUseItemNow(unit, itemKey) {
             if (!unit || unit.dead) return false;
+            if (unitActionBlockKey(unit)) return false;   // "cannot act" (Stoneform, stun, frozen…) — no items either
             if ((unit.items?.[itemKey] || 0) <= 0) return false;
             if (_ewItemLike(itemKey, 'healPotion')) {
                 return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
@@ -43741,6 +43742,30 @@
         function unitMoveBlockedByStatus(unit) {
             return !!(unit && unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove));
         }
+
+        /* THE LOCK WORDS (2026-11-07, buffs playtest D): which status locks this unit, so a greyed MOVE / BUILD / ITEMS /
+           GUARD says the real one (Rooted, Charmed, Roped, Frozen, Stoneform…) instead of "Stunned" for all of them.
+           unitMoveBlockKey = first active blockMove status, unitActionBlockKey = first active blockAction status
+           (the "cannot act" doAttack / doSpell already refuse on). statusLockWord = the one word a button fits:
+           a one-word colorText ('rooted', 'charmed', 'stunned'), else the label ('Frozen', 'Stoneform'). */
+        function unitMoveBlockKey(unit) {
+            if (!unit || !unit.status) return null;
+            return getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockMove) || null;
+        }
+        function unitActionBlockKey(unit) {
+            if (!unit || !unit.status) return null;
+            return getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction) || null;
+        }
+        function statusLockWord(key) {
+            const d = key && STATUS_DEFS[key];
+            if (!d) return 'Stunned';
+            const ct = d.colorText;
+            const w = (ct && !/\s/.test(ct)) ? ct : (d.label || key);
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        }
+        window.unitMoveBlockKey = unitMoveBlockKey;
+        window.unitActionBlockKey = unitActionBlockKey;
+        window.statusLockWord = statusLockWord;
 
         function unitFinished(unit) {
             return (unit.ap || 0) <= 0;
@@ -71595,8 +71620,9 @@
             const cfg = FLYING_ALTITUDE_CONFIG;
             if ((unit.ap || 0) < cfg.apCost) return { ok: false, reason: 'Not enough AP.' };
 
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
-                return { ok: false, reason: 'Unit is stunned.' };
+            {
+                const _lk = unitMoveBlockKey(unit) || unitActionBlockKey(unit);
+                if (_lk) return { ok: false, reason: `Unit is ${STATUS_DEFS[_lk]?.colorText || 'stunned'}.` };
             }
 
             const used = unit._altitudeChangesThisTurn || 0;
@@ -71889,8 +71915,9 @@
             if (canFly(unit)) return { ok: false, reason: 'Flying units change altitude instead of reshaping terrain.' };
             if ((unit.ap || 0) < TERRAIN_RESHAPE_CONFIG.apCost) return { ok: false, reason: 'Not enough AP.' };
 
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
-                return { ok: false, reason: 'Unit is stunned.' };
+            {
+                const _lk = unitMoveBlockKey(unit) || unitActionBlockKey(unit);
+                if (_lk) return { ok: false, reason: `Unit is ${STATUS_DEFS[_lk]?.colorText || 'stunned'}.` };
             }
             const x = unit.x, y = unit.y;
             if (!isInside(x, y)) return { ok: false, reason: 'Out of bounds.' };
@@ -72028,8 +72055,9 @@
             if (typeof _isClashMode === 'function' && _isClashMode()) return 'Not in Clash';
             if (typeof isUnitAirborne === 'function' && typeof canFly === 'function'
                 && canFly(unit) && isUnitAirborne(unit)) return 'Land first';
-            if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
-                return 'Stunned';
+            {
+                const _lk = unitMoveBlockKey(unit) || unitActionBlockKey(unit);
+                if (_lk) return statusLockWord(_lk);   // the real lock (Rooted / Stoneform / Frozen…), not "Stunned" for all
             }
             if ((unit._buildCharges || 0) <= 0 && (unit.ap || 0) < BUILD_ACTION_CONFIG.apCost) return 'No AP';
             return null;
@@ -73746,6 +73774,14 @@
             if (!canUnitAct(unit)) {
                 _actedLog(unit, 'That unit already acted this round.');
                 return;
+            }
+            {
+                const _actBlock = unitActionBlockKey(unit);
+                if (_actBlock) {
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    playErrorSfx();
+                    return;
+                }
             }
 
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('item', unit)) return;
