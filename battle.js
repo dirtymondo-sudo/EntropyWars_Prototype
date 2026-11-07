@@ -45362,6 +45362,65 @@
         }
         window.spellIsPureStatus = spellIsPureStatus;
 
+        /* THE IMMUNE TARGET (timing/counters playtest 2026-11-07 B1: Counterspell, Brainwash and Executive Order all
+           listed the CPU Ghoul — Pure Negativity, "immune to every debuff and to stat drops" — with a green CONFIRM;
+           the cast bounced, MP and the cooldown were spent). Would this status bounce off `u` the moment it arrived?
+           A read-only copy of applyStatusPayload's immunity gates, in its order — no rule of its own:
+           a passive's immuneStatus list (Thermal Regen vs Burn, the minds vs Charm…), a passive's immuneKind (Pure
+           Negativity vs every debuff), an element the status IS that the unit is immune to / drinks (burn / frozen /
+           poison; a rider status only with the element of the hit, which a no-damage cast never carries), Fermata's
+           stat lock vs a stageMod status, and a control status (possessed / infected) on a boss (possessUnit). */
+        function unitImmuneToStatus(u, statusId) {
+            if (!u || !statusId || typeof STATUS_DEFS === 'undefined' || !STATUS_DEFS[statusId]) return false;
+            const def = STATUS_DEFS[statusId];
+            if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(u, statusId)) return true;
+            const immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(u, 'immuneKind') : undefined;
+            if (immKind && def.kind === immKind) return true;
+            const el = (typeof statusAffinityElement === 'function') ? statusAffinityElement(statusId, null) : null;
+            const aff = (el && typeof unitElementAffinity === 'function') ? unitElementAffinity(u, el) : null;
+            if (aff === 'immune' || aff === 'absorb') return true;
+            if (def.stageMod && unitHasStatus(u, 'statLock')) return true;
+            if (def.control && u._isBoss) return true;
+            return false;
+        }
+        window.unitImmuneToStatus = unitImmuneToStatus;
+        /* would this stat stage change bounce off `u`: Pure Negativity's immuneStatDown drops every negative stage,
+           Fermata's stat lock every stage (applyStatStageBoost) */
+        function unitImmuneToStage(u, n) {
+            if (!u || !n) return false;
+            if (unitHasStatus(u, 'statLock')) return true;
+            return n < 0 && typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'immuneStatDown') === true;
+        }
+        /* a cast whose whole effect on its target is statuses and/or stat stages — the pure-status casts plus the
+           stat-drop casts (Calcify, Flower in the Barrel, Meow, Psychosis…); Steal from the Rich only takes what the
+           target actually lost, so it counts. Anything else it does (damage, MP drain, a pull, a stolen spell…) still
+           lands on an immune unit, so those never count. */
+        const _IMMUNE_TARGET_KINDS = { debuff: 1, buff: 1, aoe: 1, barrage: 1, possess: 1 };
+        function spellIsStatusOnly(spell) {
+            if (!spell || !_IMMUNE_TARGET_KINDS[spell.kind]) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            const st = spell.statStageBoost ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]) : [];
+            if (!fx.length && !st.length) return false;
+            if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage || spell.zoneTickDamage || spell.blastDmg) return false;
+            if (spell.heal || spell.healAmt || spell.healPct || spell.selfHealPct || spell.shield || spell.shieldHp) return false;
+            if (spell.randomTeamBuff || spell.cleanse || spell.drainPct || spell.mpDrain || spell.mpRestore || spell.revivePct
+                || spell.stealSpell || spell.zodiacReading || spell.timedStatBonus || spell.allyStatusEffects) return false;
+            if (spell.leaveTerrain || spell.terrainType || spell.weatherType || spell.paintTerrain || spell.terrainDeform) return false;
+            if (spell.teleportDistance || spell.pushDistance || spell.pullDistance || spell.mount || spell.dispel) return false;
+            return true;
+        }
+        /* true when every status and every stat stage such a cast carries would bounce off `u` — the cast would do
+           nothing to it, so it is no target (spellTargetUsableOn) */
+        function spellBouncesOffImmune(spell, u) {
+            if (!u || u.dead || !spellIsStatusOnly(spell)) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            if (fx.some(f => !unitImmuneToStatus(u, f.id))) return false;
+            const b = spell.statStageBoost || {};
+            if (Object.keys(b).some(k => b[k] && !unitImmuneToStage(u, b[k]))) return false;
+            return true;
+        }
+        window.spellBouncesOffImmune = spellBouncesOffImmune;
+
         /* A ground-bound cast (spell.missesFlyers: Wall of Fire) passes under a flyer up in the sky — the same
            isUnitAirborne gate the burning tiles, seeds and rain already use (mondo 2026-10-26: "wall of fire shouldnt
            be able to hit flyers in the sky, and it should be greyed out when targeting a flying unit"). */
@@ -45386,6 +45445,12 @@
             if (spellTargetsCorpses(spell)) return spellCorpseUsable(unit, spell, u);
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a cast that only hands out statuses / stat stages is no target
+               on a unit every one of them bounces off (Pure Negativity, a race's immuneStatus, an element immunity,
+               Fermata, a boss vs control). Grounding an airborne flyer still lands whatever the status does. */
+            if (spellBouncesOffImmune(spell, u)
+                && !(spell.groundsFlyers && typeof isUnitAirborne === 'function'
+                    && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u))) return false;
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
                 && unitEncoreReady(u);
@@ -76717,6 +76782,18 @@
             // burn MP/AP for nothing. Menus grey these out; this guards direct
             // map clicks and move-then-cast paths. (AoE/team kinds pass: some
             // OTHER unit in the blast may still need the status.)
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a single-target status / stat-drop cast on a unit every effect
+               of it bounces off (Counterspell / Brainwash on a Pure Negativity Ghoul) is refused before any MP, AP or
+               cooldown is spent — the drum and the menus already leave that unit out; this catches a direct call. */
+            if ((spell.kind === 'debuff' || spell.kind === 'buff' || spell.kind === 'possess') && !spell.aoeRadius && !_spellMaskOf(spell)) {
+                const _imT = unitAt(x, y, z) || unitAt(x, y);
+                if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
+                    addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius && !_spellMaskOf(spell)
                 && spellIsPureStatus(spell)) {
                 const _psT = unitAt(x, y, z) || unitAt(x, y);
