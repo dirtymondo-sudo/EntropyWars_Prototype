@@ -2849,6 +2849,14 @@
         // knocked into either one burns (see _applyKnockbackHazard), and
         // ending a turn in the flow ticks the full lava rule (map.js
         // applyTerrainTurnEffects).
+        /* ☠️ R7: the poison bogs (Poison Bog, Purple Bog) or their spread-flow — the poison liquid fire turns to chemical fire */
+        const _BOG_TERRAIN = new Set(['poison', 'poison_bog', 'purple_bog']);
+        function _isBogTile(x, y) {
+            if (_BOG_TERRAIN.has(getTerrainAt(x, y))) return true;
+            const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            return !!(fl && fl.t === 'poison');
+        }
+
         function _isLavaTile(x, y) {
             if (getTerrainAt(x, y) === 'lava') return true;
             const fl = (typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
@@ -2868,6 +2876,14 @@
         // out the moment the water reaches the unit.
         function _douseBurnOnUnit(u, label) {
             if (!u || u.dead || u._dying) return false;
+            /* ⚗️💧 R4 (mondo 2026-11-07): Corroded is chemical FIRE (it counts as Burn), so the water puts its fire out too —
+               the poison in it stays: Corroded becomes plain Poison for the rounds it had left (same applier, same hold) */
+            if (u.status && Number(u.status.corroded || 0) > 0) {
+                _corrodedToPoison(u);
+                addLog(`💧 ${label || 'The water'} puts out the chemical fire on ${_ctName(u)} — the poison stays!`);
+                showFloatingTextForUnit(u, '💧 Doused', 'heal', { durationMs: 1000 });
+                if (!(u.status && u.status.burn)) return true;
+            }
             if (!(u.status && u.status.burn)) return false;
             clearStatus(u, 'burn');
             addLog(`💧 ${label || 'The water'} douses the flames on ${_ctName(u)}!`);
@@ -2875,6 +2891,71 @@
             return true;
         }
         window._douseBurnOnUnit = _douseBurnOnUnit;
+
+        /* ⚗️ THE CHEMICAL FIRE (R4, mondo 2026-11-07 "Burn + Poison = Corroded"): Corroded's own text is "chemical fire, counts
+           as BOTH Burn and Poison". A unit carrying Burn and Poison at once is Corroded instead, for the longer of the two
+           (the applier and the full-round hold of whichever lasts longer move over); a Burn or Poison landing on a Corroded
+           unit feeds the Corroded. A lava burn (the stacking one, _lavaBurnStacks) stays the lava's own. Water puts the fire
+           out and leaves the Poison (_douseBurnOnUnit). Plain status data, so state-sync carries it to the guest. */
+        function _moveStatusBook(u, fromKeys, toKey) {
+            let best = null;
+            for (const k of fromKeys) {
+                const v = Number((u.status && u.status[k]) || 0);
+                if (v > 0 && (!best || v > best.v)) best = { k, v };
+            }
+            if (!best) return 0;
+            if (u._statusSrc && u._statusSrc[best.k]) u._statusSrc[toKey] = u._statusSrc[best.k];
+            if (u._stHold && typeof u._stHold === 'object') {
+                const h = fromKeys.map(k => u._stHold[k]).filter(Boolean).sort((a, b) => b.r - a.r)[0];
+                if (h && (!u._stHold[toKey] || u._stHold[toKey].r < h.r)) u._stHold[toKey] = Object.assign({}, h);
+            }
+            if (u._stFresh && typeof u._stFresh === 'object' && fromKeys.some(k => u._stFresh[k] === state.round)) u._stFresh[toKey] = state.round;
+            return best.v;
+        }
+        function _chemicalFireMerge(u, quiet) {
+            if (!u || !u.status || _unitIsDown(u)) return false;
+            const st = u.status;
+            const burn = (u._lavaBurnStacks | 0) > 0 ? 0 : Number(st.burn || 0);
+            const pois = Number(st.poison || 0), cor = Number(st.corroded || 0);
+            if (!(burn > 0 && pois > 0) && !(cor > 0 && (burn > 0 || pois > 0))) return false;
+            const keys = burn > 0 ? ['corroded', 'burn', 'poison'] : ['corroded', 'poison'];
+            const left = _moveStatusBook(u, keys, 'corroded');
+            if (burn > 0) clearStatus(u, 'burn');
+            if (pois > 0) clearStatus(u, 'poison');
+            st.corroded = Math.max(cor, left);
+            if (!quiet) {
+                addLog(cor > 0
+                    ? `⚗️ The fire and poison feed the chemical fire on ${_ctName(u)} — Corroded for ${st.corroded} round${st.corroded !== 1 ? 's' : ''}.`
+                    : `⚗️ Fire meets poison on ${_ctName(u)} — the chemical fire takes hold: Corroded for ${st.corroded} round${st.corroded !== 1 ? 's' : ''}!`);
+                showFloatingTextForUnit(u, '⚗️ CORRODED!', 'debuff', { durationMs: 1100 });
+            }
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._chemicalFireMerge = _chemicalFireMerge;
+        function _corrodedToPoison(u) {
+            if (!u || !u.status || !(Number(u.status.corroded || 0) > 0)) return false;
+            const left = _moveStatusBook(u, ['corroded'], 'poison');
+            clearStatus(u, 'corroded');
+            u.status.poison = Math.max(Number(u.status.poison || 0), left);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._corrodedToPoison = _corrodedToPoison;
+
+        /* ☀ R1 / R2 (mondo 2026-11-07): a dry sky (Drought, the Sandstorm's eye) and the Solar Flare's heat dry a Wet unit —
+           unless it is standing in water (or a rain is on it), which wets it again straight away. */
+        function _dryWetUnit(u, label) {
+            if (!u || _unitIsDown(u) || !unitHasStatus(u, 'wet')) return false;
+            if (!(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) && _isWetTile(u.x, u.y)) return false;
+            if (_unitInRain(u, true)) return false;
+            clearStatus(u, 'wet');
+            addLog(`♨️ ${label || 'The heat'} dries ${_ctName(u)} out.`);
+            showFloatingTextForUnit(u, '♨️ Dried out', 'debuff', { durationMs: 900 });
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+            return true;
+        }
+        window._dryWetUnit = _dryWetUnit;
 
         // 🌧️ True when rain-type weather (any def.soaks system: hurricane,
         // thunderstorm, blood rain) is falling on the unit's tile. Airborne
@@ -2896,7 +2977,7 @@
         window._unitInRain = _unitInRain;
 
         function _soakUnit(u, opts = {}) {
-            if (!u || u.dead || u._dying) return false;
+            if (_unitIsDown(u)) return false;   // THE FALLEN TAKE NOTHING (applyStatusPayload)
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
             _douseBurnOnUnit(u, opts.douseLabel);
             const status = ensureUnitStatus(u);
@@ -3438,6 +3519,31 @@
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                 victims.push({ t, u });
             }
+            /* 🛢️🔥 R5 GOO BURNS (mondo 2026-11-07): a grounded Gooed unit touching the slick is part of it — the blast reaches it
+               (and on through every Gooed body touching that one), the mirror of WET CONDUCTS for the water. */
+            {
+                const _inSlick = new Set(slick.map(t => t.x + ',' + t.y));
+                const _gooAt = (x, y) => {
+                    if (_inSlick.has(x + ',' + y)) return false;
+                    const u = unitAt(x, y);
+                    if (!u || _unitIsDown(u) || (caster && u.id === caster.id) || !unitHasStatus(u, 'goo')) return false;
+                    return !(typeof isUnitAirborne === 'function' && isUnitAirborne(u));
+                };
+                const _seen = new Set();
+                const _q = [];
+                for (const t of slick) for (const n of [[t.x + 1, t.y], [t.x - 1, t.y], [t.x, t.y + 1], [t.x, t.y - 1]]) {
+                    if (isInside(n[0], n[1]) && _gooAt(n[0], n[1]) && !_seen.has(n[0] + ',' + n[1])) { _seen.add(n[0] + ',' + n[1]); _q.push(n); }
+                }
+                while (_q.length && _seen.size < 40) {
+                    const c = _q.pop();
+                    victims.push({ t: { x: c[0], y: c[1] }, u: unitAt(c[0], c[1]), goo: true });
+                    for (const n of [[c[0] + 1, c[1]], [c[0] - 1, c[1]], [c[0], c[1] + 1], [c[0], c[1] - 1]]) {
+                        const k = n[0] + ',' + n[1];
+                        if (_seen.has(k) || !isInside(n[0], n[1]) || !_gooAt(n[0], n[1])) continue;
+                        _seen.add(k); _q.push(n);
+                    }
+                }
+            }
             // consume the slick FIRST (oil terrain → scorched) so igniteTile
             // sees ground it's allowed to burn on, then light the whole area
             for (const t of slick) {
@@ -3445,6 +3551,7 @@
                 igniteTile(t.x, t.y, 2, caster);
             }
             for (const { u } of victims) {
+                const _burnBefore = unitHasStatus(u, 'burn');
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
                     noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster || undefined,
@@ -3456,7 +3563,7 @@
                     element: 'fire',
                     flashColor: 'burn'
                 });
-                if (!u.dead && !u._dying) {
+                if (!u.dead && !u._dying && (_burnBefore || !unitHasStatus(u, 'burn'))) {   // a Gooed body this blast just lit (R5) isn't lit twice
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], groundFire ? 'Burning oil: ' : `${spell.name} firestorm: `, caster);
                 }
                 /* the burn's own landing calls it out now (THE JUICE PASS) */
@@ -3551,6 +3658,26 @@
                 addLog(`⚡ ${_ctSp(spell.name)} electrifies the metal — the charge races across ${sheet.length} tile${sheet.length !== 1 ? 's' : ''}${zapped ? `, shocking ${zapped} unit${zapped !== 1 ? 's' : ''}` : ''}!`);
                 if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 500);
             }
+        }
+
+        /* ☠️🔥 R7 THE BOG BURNS (mondo 2026-11-07): fire on a poison bog is chemical fire — every grounded unit standing in the
+           connected bog is Corroded for 2 rounds (Burn + Poison = Corroded, on the ground). The bog stays. The caster is
+           spared, like the oil blast. A wet unit only takes the poison (applyStatusPayload). */
+        let _bogFireDone = null;   // one chemical fire per bog per resolution (a fire wall lights it tile by tile in one go)
+        function _reactFireBog(caster, spell, ox, oy, bog, groundFire) {
+            if (!bog || !bog.length) return;
+            if (!_bogFireDone) { _bogFireDone = new Set(); Promise.resolve().then(() => { _bogFireDone = null; }); }
+            if (bog.every(t => _bogFireDone.has(t.x + ',' + t.y))) return;
+            bog.forEach(t => _bogFireDone.add(t.x + ',' + t.y));
+            let n = 0;
+            for (const t of bog) {
+                const u = unitAt(t.x, t.y);
+                if (!u || _unitIsDown(u) || (caster && u.id === caster.id)) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (applyStatusPayload(u, { id: 'corroded', duration: 2, _element: 'fire' }, groundFire ? 'The burning bog: ' : `${spell.name} lights the bog: `, caster || null)) n++;
+            }
+            addLog(`☠️🔥 ${groundFire ? 'The fire' : _ctSp(spell.name)} sets the poison bog alight — chemical fire across ${bog.length} tile${bog.length !== 1 ? 's' : ''}${n ? `, corroding ${n} unit${n !== 1 ? 's' : ''}` : ''}!`);
+            if (!_skipVisuals() && typeof playAoeRing === 'function') playAoeRing(ox, oy, 1, spell.spellType || null, 450);
         }
 
         // 💥💎 Crystal shatters: fire or lightning detonates the connected
@@ -3665,6 +3792,11 @@
                     const vein = _floodConnectedTiles(tile.x, tile.y, _isCrystalTile, 12);
                     vein.forEach(b => handled.add(b.x + ',' + b.y));
                     _reactCrystalShatter(caster, spell, tile.x, tile.y, vein);
+                } else if (el === 'fire' && _isBogTile(tile.x, tile.y)) {
+                    // ☠️🔥 R7: fire on the poison bog is chemical fire
+                    const bog = _floodConnectedTiles(tile.x, tile.y, _isBogTile, 40);
+                    bog.forEach(b => handled.add(b.x + ',' + b.y));
+                    _reactFireBog(caster, spell, tile.x, tile.y, bog, false);
                 } else if (el === 'fire' && _isFlammableTile(tile.x, tile.y)) {
                     // 🔥 fire on open fuel (grass, leaves, planks): the tile
                     // catches — the wildfire system takes it from there.
@@ -3805,6 +3937,12 @@
             return !!(fl && fl.t === 'water');
         }
 
+        /* ☀🔥 R3 DROUGHT FEEDS FIRE (mondo 2026-11-07): the mirror of the rain putting fire out — under a Drought fresh ground
+           fire burns a round longer (3, not 2) and spreads to fuel more often (DROUGHT_SPREAD_CHANCE, not 0.45). */
+        const DROUGHT_SPREAD_CHANCE = 0.65;
+        function _droughtFeedsFire() {
+            return (state.activeWeather || []).some(w => w && w.type === 'drought' && (w.remaining == null || w.remaining > 0));
+        }
         function igniteTile(x, y, rounds, byUnit) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
@@ -3819,12 +3957,17 @@
             if (typeof noteCastPreBurn === 'function') noteCastPreBurn(x, y, !!prev);   // 🜃 the cast's own fire never powers it
             b[k] = {
                 x, y,
-                t: Math.max(rounds || 2, prev ? prev.t : 0),
+                t: Math.max((rounds || 2) + (_droughtFeedsFire() ? 1 : 0), prev ? prev.t : 0),   // ☀ R3: a Drought fire burns a round longer
                 p: byUnit ? byUnit.player : (prev ? prev.p : 0)
             };
             /* the unit that lit it (a slick that lands on this fire later blows up in its name) */
             const _lu = (byUnit && byUnit.id != null) ? byUnit.id : (prev ? prev.u : null);
             if (_lu != null) b[k].u = _lu;
+            /* ☠️🔥 R7: ground fire lit on a poison bog is chemical fire too */
+            if (!prev && state.phase === 'battle' && _isBogTile(x, y)) {
+                const _lighter = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
+                _reactFireBog(_lighter, _GROUND_FIRE_SPELL, x, y, _floodConnectedTiles(x, y, _isBogTile, 40), true);
+            }
             return true;
         }
 
@@ -3928,6 +4071,8 @@
             // 4) Spread: each surviving fire tries to catch adjacent fuel.
             const spread = [];
             let total = Object.keys(b).length;
+            const _dry = _droughtFeedsFire();   // ☀ R3
+            const _spreadChance = _dry ? DROUGHT_SPREAD_CHANCE : BURNING_SPREAD_CHANCE;
             for (const k of Object.keys(b)) {
                 const f = b[k];
                 const nbrs = [[f.x + 1, f.y], [f.x - 1, f.y], [f.x, f.y + 1], [f.x, f.y - 1]];
@@ -3936,11 +4081,11 @@
                     const nk = n[0] + ',' + n[1];
                     if (b[nk] || spread.some(s => s.x === n[0] && s.y === n[1])) continue;
                     if (!_isFlammableTile(n[0], n[1])) continue;
-                    if (engineRng() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p, u: f.u });
+                    if (engineRng() < _spreadChance) spread.push({ x: n[0], y: n[1], p: f.p, u: f.u });
                 }
             }
             for (const s of spread) {
-                b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: 2, p: s.p }, s.u != null ? { u: s.u } : {});
+                b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: _dry ? 3 : 2, p: s.p }, s.u != null ? { u: s.u } : {});
             }
 
             if (scorchedUnits || burnedOut || spread.length) {
@@ -3981,6 +4126,7 @@
                 if (_isIceTile(x, y)) return { el, hint: 'melts the ice' };
                 if (_isCrystalTile(x, y)) return { el, hint: 'detonates the crystal' };
                 if (_isForestTile(x, y)) return { el, hint: 'sets the trees ablaze' };
+                if (_isBogTile(x, y)) return { el, hint: 'sets the poison bog alight' };
                 if (_isFlammableTile(x, y)) return { el, hint: 'sets the ground ablaze' };
             } else if (el === 'cold') {
                 if (_isWaterTile(x, y)) return { el, hint: 'flash-freezes the water' };
@@ -6528,6 +6674,7 @@
                    (Gooed: magic ×1.25) applies to this very cast. */
                 /* THE LOG ORDER: the status is applied first (rule), but its line reads after the hit's line */
                 const _sfMark = (spell.statusFirst && spell.statusEffects && !target.dead) ? _logMark() : null;
+                const _sfBefore = _sfMark ? Object.assign({}, target.status || {}) : null;   // THE KILLING HIT TOO: undone if the hit kills
                 if (spell.statusFirst && spell.statusEffects && !target.dead) {
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                 }
@@ -6548,7 +6695,12 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                         element: _spellEl, isCrit: _hitCrit.isCrit
                     });
-                if (_sfMark) {
+                if (_sfMark && _unitIsDown(target)) {
+                    /* 💀 THE KILLING HIT TOO (status playtest 2026-11-07): the status went on first only so its multiplier
+                       counts for this hit; a hit that kills leaves no status on the body, and its line goes too */
+                    target.status = _sfBefore;
+                    _logDrop(_sfMark, _sfMid);
+                } else if (_sfMark) {
                     const _sfHead = `${unitDisplayName(unit)} casts ${spell.name}`;
                     _logSinkAfter(_sfMark, _sfMid, m => _ctPlain(m).indexOf(_sfHead) >= 0);
                 }
@@ -9376,7 +9528,7 @@
         }
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
-            if (!target || target.dead || target._dying || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
+            if (_unitIsDown(target) || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
             // never apply — the positive half of a mixed boost still lands.
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
@@ -9904,14 +10056,26 @@
         }
         if (typeof window !== 'undefined') window._afterShotTarget = _afterShotTarget;
 
+        /* 💀 DOWN = dead, falling (`_dying`) or at 0 HP inside the killing hit (applyDamageToUnit lands its payload before
+           defeatUnit flags the body). Every status / stat stage / seed / aura / soak gate reads this. */
+        function _unitIsDown(u) {
+            return !u || !!u.dead || !!u._dying || (typeof u.hp === 'number' && u.hp <= 0);
+        }
+        if (typeof window !== 'undefined') window._unitIsDown = _unitIsDown;
+
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
             /* 💀 THE FALLEN TAKE NOTHING (elements playtest 2026-11-06 D1: "Witch is defeated" then "Plasma Cannon: Witch
                is burning / jammed"). defeatUnit sets hp 0 + `_dying` at the killing blow and only flips `dead` after the
                ~800 ms fall, so the same hit's status payload, a terrain tick or a weather pass in that window still landed
                on the body. A unit that is down — dead OR falling — takes no status from any source; its next life starts
                clean (processRespawns wipes `status`). Same gate on applyStatusEffects / applyStatStageBoost / seeds / auras,
-               map.js applyTerrainTurnEffects and state.js's terrain + weather passes. */
-            if (!target || target.dead || target._dying || !payload?.id || !STATUS_DEFS[payload.id]) return false;
+               map.js applyTerrainTurnEffects and state.js's terrain + weather passes.
+               THE KILLING HIT TOO (status playtest 2026-11-07 A1/A2: "Vampire takes 361" -> "Vampire is grievously wounded" ->
+               "Vampire is defeated"; Migraine's "Ghost is weakened" on the hit that killed it): applyDamageToUnit takes the HP
+               off, lands the hit's own statuses / stat stages, and only THEN calls defeatUnit, so the gate above saw a live
+               unit at 0 HP. 0 HP is down too (_unitIsDown); the Martyr's Talisman save now runs before the hit's payload, so
+               a unit it holds at 1 HP still takes the status. */
+            if (_unitIsDown(target) || !payload?.id || !STATUS_DEFS[payload.id]) return false;
             /* THE SPELL AUDIT Batch D (Hush): a payload with `ifTargetHas` lands only on a unit already wearing that status
                (silence the Discorded) — a quiet skip, no "resists" line. */
             if (payload.ifTargetHas && !bonusStatusMatches(target, payload.ifTargetHas)) return false;
@@ -9936,6 +10100,13 @@
                 addLog(`💧 ${_ctName(target)} is too wet to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
+            }
+            /* ⚗️💧 R4: Corroded is chemical fire — on a wet unit the fire can't take, only the poison lands */
+            if (payload.id === 'corroded' && (unitHasStatus(target, 'wet')
+                || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
+                || (typeof _unitInRain === 'function' && _unitInRain(target, true)))) {
+                addLog(`💧 ${_ctName(target)} is too wet for the chemical fire — only the poison takes!`);
+                return applyStatusPayload(target, Object.assign({}, payload, { id: 'poison' }), sourceLabel, sourceUnit);
             }
             /* 🛡 Passive status immunities (2026-07-23, data.js PASSIVE_DEFS):
                any passive whose immuneStatus list names this status bounces it
@@ -10185,6 +10356,8 @@
                round (or on the unit whose turn it is) must still be on it for its NEXT turn — mark it fresh so this
                round's end-of-round tick skips it once (_tickAllStatusDurations). */
             if (unitHasStatus(target, payload.id)) _markStatusFresh(target, payload.id);
+            // ⏳ THE FULL ROUND: an enemy's debuff lasts its rounds from the moment it lands (_setStatusHold)
+            if (unitHasStatus(target, payload.id)) _setStatusHold(target, payload.id, sourceUnit);
 
             // 💫 Stagger takes its AP the moment it lands. If the target already
             // spent everything this round, the loss carries over as a debt the
@@ -10213,12 +10386,20 @@
             }
 
             _balStatusEvt(payload.id, 'applied', sourceUnit, target);   // Balance Lab status telemetry
+            /* 🛢️🔥 R5 (mondo 2026-11-07): Gooed is the Black Ooze on a body — a Burn that lands on it burns the goo away */
+            if (payload.id === 'burn' && unitHasStatus(target, 'burn') && unitHasStatus(target, 'goo')) {
+                clearStatus(target, 'goo');
+                addLog(`🛢️🔥 The goo on ${_ctName(target)} goes up in flames!`);
+                showFloatingTextForUnit(target, '🛢️ GOO BURNS', 'debuff', { durationMs: 1000 });
+            }
+            /* ⚗️ R4: Burn + Poison = Corroded (THE CHEMICAL FIRE) */
+            if (payload.id === 'burn' || payload.id === 'poison' || payload.id === 'corroded') _chemicalFireMerge(target);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
         }
 
         function applyStatusEffects(target, status = {}, sourceLabel = '', sourceUnit = null) {
-            if (!target || target.dead || target._dying || !status) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
+            if (_unitIsDown(target) || !status) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             if (Array.isArray(status)) {
                 status.forEach(payload => applyStatusPayload(target, payload, sourceLabel, sourceUnit));
                 return;
@@ -10237,9 +10418,12 @@
         }
 
         function processEndOfRoundStatuses(onDone) {
+            _expireStatusHolds({ roundEnd: true });   // ⏳ THE FULL ROUND: a hold whose round this was ends before any tick
+            /* ⚗️ R4: a Burn / Poison a terrain wrote straight onto the unit (Plague Flesh) meets the other one here, before the tick */
+            for (const _cu of (state.units || [])) _chemicalFireMerge(_cu);
 
             const affected = state.units.filter(u => {
-                if (u.dead || u._dying) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
+                if (_unitIsDown(u)) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
                 const keys = getActiveStatusKeys(u);
                 return keys.some(k => {
                     const def = STATUS_DEFS[k];
@@ -11189,7 +11373,7 @@
             return o;
         }
         function applySeedEffectToUnit(seed, unit, events = null, planted = false) {
-            if (!seed || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
+            if (!seed || _unitIsDown(unit)) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -11411,7 +11595,7 @@
 
         // What a grown aura tree does to one unit inside its radius each round.
         function applyAuraTreeEffectToUnit(tree, unit, events = null) {
-            if (!tree || !tree.aura || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
+            if (!tree || !tree.aura || _unitIsDown(unit)) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -12203,11 +12387,101 @@
             u._stFresh[key] = state.round;
         }
 
+        /* ⏳ THE FULL ROUND (mondo 2026-11-07: "I would apply a status effect to try to set up a combo and by the time it
+           was my turn again their status effect was already gone ... it needs to at least be 1 full round"). A debuff an
+           ENEMY lands during a blitz round now lasts its N rounds counted from the moment it lands, not from the round's
+           edge: it is still on the target when the unit that put it there comes round again N rounds later (that unit's
+           whole team gets its combo window), and it comes off the moment that unit's turn ends. It still covers N of the
+           target's own turns and never more (ONE ROUND = ONE TURN, mondo 10-23): a target that already had its N turns and
+           comes up again in that round before the applier loses it first, and a target that landed it after its own turn
+           keeps it through its next one. A damage-over-time therefore ticks exactly N times (it used to tick N+1 when it
+           landed after the target acted; status playtest 11-07 B1). The end of round N is the backstop.
+           Holds are plain unit data (_stHold: { key: { r: round it ends in, by: applier id, af: landed after the target's
+           turn } }), so state-sync carries them to the guest (RULE #2); only the host engine expires them. Buffs, terrain /
+           weather / end-of-round statuses, Strike, Simul and the Mystery Dungeon clock keep the plain end-of-round count. */
+        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed']);
+        function _statusHoldsOn() {
+            if (state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            if (typeof _isSimulMode === 'function' && _isSimulMode()) return false;
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
+            return true;
+        }
+        function _setStatusHold(u, key, sourceUnit) {
+            if (!u || u.dead || u._dying) return;
+            const left = getStatusValue(u, key);
+            if (!(left > 0)) return;
+            const meta = STATUS_DEFS[key];
+            const old = (u._stHold && typeof u._stHold === 'object') ? u._stHold[key] : null;
+            const by = sourceUnit || unitFromId(state._blitzActiveUnitId);
+            if (!meta || meta.kind !== 'debuff' || _STATUS_HOLD_SKIP.has(key) || !_statusHoldsOn() || !by || !isEnemyUnit(by, u)) {
+                // a plain-count landing that now outlasts an older hold takes over from it
+                if (old && state.round + left - 1 >= old.r) delete u._stHold[key];
+                return;
+            }
+            const h = { r: state.round + left, by: by.id, af: _statusLandsAfterTurn(u) ? 1 : 0 };
+            if (old && old.r > h.r) return;   // a refresh never shortens it
+            if (!u._stHold || typeof u._stHold !== 'object') u._stHold = {};
+            u._stHold[key] = h;
+        }
+        function _statusHeldTurnDone(u) {
+            return !u || u.dead || u._dying || (state._blitzActiveUnitId !== u.id
+                && (unitFinished(u) || !!u._skippedTurn || u._turnRound === state.round));
+        }
+        function _endHeldStatus(u, key) {
+            if (u._stHold) delete u._stHold[key];
+            const def = STATUS_DEFS[key] || {};
+            clearStatus(u, key);
+            addLog(`${def.icon || '✓'} ${_ctName(u)}'s ${def.label || key} wore off.`);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+        }
+        /* After every activation (the blitz advance) and at the top of the end of round (roundEnd): a hold ends once its
+           round has come, the applier's turn in it is over, and (when it landed after the target's turn) the target's
+           turn in it is over too. At the end of its round it ends whatever happened, before any damage-over-time ticks. */
+        function _expireStatusHolds(opts) {
+            const roundEnd = !!(opts && opts.roundEnd);
+            for (const u of state.units || []) {
+                if (!u || !u._stHold || typeof u._stHold !== 'object') continue;
+                for (const key of Object.keys(u._stHold)) {
+                    const h = u._stHold[key];
+                    if (!h || !(getStatusValue(u, key) > 0)) { delete u._stHold[key]; continue; }
+                    if (u.dead || u._dying || state.round < h.r) continue;
+                    if (!roundEnd) {
+                        if (!_statusHeldTurnDone(unitFromId(h.by))) continue;
+                        if (h.af && !_statusHeldTurnDone(u)) continue;
+                    }
+                    _endHeldStatus(u, key);
+                }
+            }
+        }
+        /* state.js getNextBlitzUnit, the moment a unit comes up: a hold that already covered its N turns (it landed
+           before the target's turn) ends now, so the target never gets an extra turn under it (no second skipped turn). */
+        function _statusHoldsBeforeTurn(u) {
+            if (!u || !u._stHold || typeof u._stHold !== 'object') return;
+            for (const key of Object.keys(u._stHold)) {
+                const h = u._stHold[key];
+                if (!h || !(getStatusValue(u, key) > 0)) { delete u._stHold[key]; continue; }
+                if (!h.af && state.round >= h.r) _endHeldStatus(u, key);
+            }
+        }
+
         function _tickAllStatusDurations() {
             for (const u of state.units) {
                 if (u.dead) continue;
                 const _fresh = (u._stFresh && typeof u._stFresh === 'object') ? u._stFresh : null;
                 u._stFresh = null;
+                /* ⏳ THE FULL ROUND: a held debuff counts down for the badge but never reaches 0 here before its round
+                   (it ends after the applier's turn in it, _expireStatusHolds); at the end of its own round it ends. */
+                const _hold = (u._stHold && typeof u._stHold === 'object') ? u._stHold : null;
+                if (_hold) {
+                    for (const key of Object.keys(_hold)) {
+                        const h = _hold[key];
+                        const v = getStatusValue(u, key);
+                        if (!h || !(v > 0)) { delete _hold[key]; continue; }
+                        if (state.round >= h.r) { _endHeldStatus(u, key); continue; }
+                        u.status[key] = Math.max(1, v - 1);
+                    }
+                }
                 // The decrement/expiry split is pure (calcStatusDurationTick,
                 // see PURE DAMAGE MATH in battle.js top); this wrapper picks
                 // the tickable keys (unknown STATUS_DEFS stay untouched) and
@@ -12219,6 +12493,7 @@
                         .filter(key => !(key === 'stagger' && (u._staggerApDebt || 0) > 0))
                         // ONE ROUND = ONE TURN: landed after this unit's turn this round → skip this tick once
                         .filter(key => !(_fresh && _fresh[key] === state.round))
+                        .filter(key => !(_hold && _hold[key]))   // ⏳ held: counted above
                         .map(key => ({ key, value: getStatusValue(u, key) })));
                 for (const e of tick.next) u.status[e.key] = e.value;
                 for (const key of tick.expired) {
@@ -37787,6 +38062,24 @@
                 flashUnit(target.id, 'block');
             }
 
+            // ── Martyr's Talisman: defy the first killing blow each life ──
+            // Fires on ANY lethal damage (hits, DoT, environment) — one save
+            // per life, recharged when the unit eventually dies and respawns.
+            // (THE PASSIVES, Phase 4: the `surviveLethalOnce` hook — the Talisman's gear row carries it)
+            /* 💀 THE KILLING HIT TOO (status playtest 2026-11-07): the save runs BEFORE the hit's statuses, stat stages and
+               element riders below. They all skip a unit left at 0 HP (_unitIsDown), so the save has to come first or the
+               unit it holds at 1 HP would lose the payload it lived through. */
+            if (target.hp <= 0 && !target._talismanSpent && typeof unitPassiveValue === 'function'
+                && unitPassiveValue(target, 'surviveLethalOnce')) {
+                const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
+                target._talismanSpent = true;
+                target.hp = 1;
+                addLog(`✨ ${_ctName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
+                showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
+                flashUnit(target.id, 'heal');
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            }
+
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;
                 // Stamp the hit's element on the payloads so affinity-coupled
@@ -37800,12 +38093,30 @@
             }
             /* THE SPELL AUDIT FIX (2026-10-26): a damaging row's `statStageBoost` ("lowers DEF by 1 stage") rides the hit
                like its statuses — every damage resolver passes it here (it used to land only on the noDamage paths). */
-            if (opts.statStageBoost && !target.dead && !target._dying) {
+            if (opts.statStageBoost && !_unitIsDown(target)) {
                 applyStatStageBoost(target, opts.statStageBoost, opts.statStageLabel || '', sourceUnit);
             }
 
             // ── ⚗️ Elemental combo layer, post-hit half ────────────────────
-            if (_comboEl && !target.dead && !target._dying) {
+            if (_comboEl && !_unitIsDown(target)) {   // the hit that killed it neither freezes, steams nor thaws the body
+                /* 🛢️🔥 R5 GOOED BODIES CATCH FIRE (mondo 2026-11-07): Gooed is the Black Ooze on a body, and the ooze goes up
+                   with fire and lightning — the hit sets the unit burning (2 rounds) and the goo burns away. A wet body can't
+                   catch fire (the goo stays on it). Ticks never do it. */
+                if ((_comboEl === 'fire' || _comboEl === 'lightning') && damageType !== 'dot'
+                    && unitHasStatus(target, 'goo') && !_unitIsSoaked(target)) {
+                    applyStatusPayload(target, { id: 'burn', duration: 2, _element: 'fire' }, '🛢️🔥 The goo catches fire: ', sourceUnit);
+                    if (unitHasStatus(target, 'goo') && !_unitIsDown(target)) {
+                        clearStatus(target, 'goo');
+                        addLog(`🛢️🔥 The goo on ${_ctName(target)} burns away.`);
+                    }
+                }
+                /* 🔥🩸 R6 FIRE CAUTERISES (mondo 2026-11-07): a fire hit closes a bleeding wound — the same double edge as fire
+                   thawing a Frozen ally. Ticks never do it. */
+                if (_comboEl === 'fire' && damageType !== 'dot' && unitHasStatus(target, 'bleed')) {
+                    clearStatus(target, 'bleed');
+                    addLog(`🔥🩸 The fire sears ${_ctName(target)}'s wound shut — the Bleeding stops.`);
+                    showFloatingTextForUnit(target, '🔥 CAUTERISED', 'buff', { durationMs: 1000 });
+                }
                 if (_comboSupercharge) {
                     // ⚙️ SUPERCHARGED: the jolt overclocks the machine (+ATK,
                     // +1 move, tech range bonus) and tops up its capacitors.
@@ -37834,7 +38145,7 @@
                 }
                 // ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07): a frost hit on a burning unit melts on the flames —
                 // the burn goes out and the meltwater leaves the unit Soaked (the same as being doused by water).
-                if (_comboEl === 'cold' && !target.dead && !target._dying && target.status && target.status.burn) {
+                if (_comboEl === 'cold' && !_unitIsDown(target) && target.status && (target.status.burn || Number(target.status.corroded || 0) > 0)) {
                     _douseBurnOnUnit(target, 'The melting frost');
                     _soakUnit(target, { douseLabel: 'The melting frost' });
                 }
@@ -37848,7 +38159,7 @@
             // burn) — every water spell sets up the ⚡ conduction and ❄️
             // flash-freeze follow-ups. Centralized here so ALL current and
             // future water-tagged damage soaks, no per-spell wiring.
-            if (_affEl === 'water' && damage > 0 && !target.dead && !target._dying) {
+            if (_affEl === 'water' && damage > 0 && !_unitIsDown(target)) {
                 _soakUnit(target, { douseLabel: 'The deluge' });
             }
 
@@ -37881,20 +38192,7 @@
                 forceGroundUnit(target, { reason: 'wounded' });
             }
 
-            // ── Martyr's Talisman: defy the first killing blow each life ──
-            // Fires on ANY lethal damage (hits, DoT, environment) — one save
-            // per life, recharged when the unit eventually dies and respawns.
-            // (THE PASSIVES, Phase 4: the `surviveLethalOnce` hook — the Talisman's gear row carries it)
-            if (target.hp <= 0 && !target._talismanSpent && typeof unitPassiveValue === 'function'
-                && unitPassiveValue(target, 'surviveLethalOnce')) {
-                const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
-                target._talismanSpent = true;
-                target.hp = 1;
-                addLog(`✨ ${_ctName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
-                showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
-                flashUnit(target.id, 'heal');
-                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
-            }
+            /* (the Martyr's Talisman save runs above, before the hit's statuses — THE KILLING HIT TOO) */
             /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4) — `healOnceBelowPct: { pct, healPct }`: once per life, a hit
                that leaves the unit alive under pct% HP heals it healPct% of max HP. The ledger `_passiveSpent` is per life
                (cleared at respawn beside `_talismanSpent`); host-side, the HP rides state-sync. */
@@ -42694,6 +42992,15 @@
                 arr.splice(at, 0, e);
             }
         }
+        /* the lines written between `mark` and `mid` come out of both logs (a status line the same hit took back) */
+        function _logDrop(mark, mid) {
+            if (!mark || !mid) return;
+            for (const [key, a, b] of [['logEntries', mark.a, mid.a], ['_fullLogEntries', mark.b, mid.b]]) {
+                const arr = state[key];
+                if (!arr || !(b > a) || b > arr.length) continue;
+                arr.splice(a, b - a);
+            }
+        }
         /* the lines written between `mark` and `mid` move to just after the first later line `isAnchor` accepts */
         function _logSinkAfter(mark, mid, isAnchor) {
             if (!mark || !mid || state.devAutoSim) return;
@@ -43620,6 +43927,19 @@
             return (unit.ap || 0) <= 0;
         }
 
+        /* 🎶 ENCORE'S "ALREADY ACTED THIS TURN" (buffs playtest C, 2026-11-07): an ally is an Encore target only once its
+           own turn this round is over (0 AP, and in a blitz round its activation has been spent, `_turnRound`). A unit
+           sitting out its 1-round respawn penalty starts the round at 0 AP without acting (`_respawnSitOutRound`), and a
+           staggered unit can too: neither has acted, so neither is offered and neither gets a turn out of it. Used by the
+           encore kind (list, castable check, doSpell, the CPU) and the Reprise rider. */
+        function unitEncoreReady(u) {
+            if (!u || u.dead || u._dying) return false;
+            if (!unitFinished(u)) return false;
+            if (u._respawnSitOutRound === state.round) return false;
+            if (state.phase === 'battle' && state._blitzActiveUnitId != null && u._turnRound !== state.round) return false;
+            return true;
+        }
+
         function spendAP(unit, cost) {
             /* THE VICTORY SHARE (2026-09-22): a unit that spends AP in a story-mode encounter FOUGHT — it takes the pool's
                full share at the commit; a body that only stood there (or sat the bench) takes the present share */
@@ -44108,7 +44428,7 @@
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
-                && (unitFinished(u) || u.ap === 0);
+                && unitEncoreReady(u);
             if (k === 'cleanse') {
                 if (typeof getActiveStatusKeys === 'function'
                     && getActiveStatusKeys(u).some(key => STATUS_DEFS[key]?.kind === 'debuff')) return true;
@@ -57129,6 +57449,7 @@
                 state.actionMenuView = 'root';
                 state.showUnitInfo = false;
                 state._blitzActiveUnitId = null;
+                _expireStatusHolds();   // ⏳ THE FULL ROUND: the turn that just ended may be the one a held debuff was waiting for
 
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                 clearSpellRangePreview();
@@ -57284,7 +57605,7 @@
 
                     for (const u of state.units) {
                         if (!u.dead) {
-                            if (u._justRespawned) { u._justRespawned = false; continue; }
+                            if (u._justRespawned) { u._justRespawned = false; u._respawnSitOutRound = state.round; continue; }   // 🎶 Encore reads the sit-out
                             // Stagger landed after this unit had already spent its
                             // AP → the loss was banked as a debt; settle it here.
                             u.ap = Math.max(0, getUnitMaxAP(u) - (u._staggerApDebt || 0));
@@ -62056,7 +62377,7 @@
             isFlightCrippled, forceGroundUnit,
             canFlyToSky, canDescendUnderground, canReturnToGround,
             unitHasJetpack, unitHasSpelunkingGear,
-            SKY_RACES, UNDERGROUND_RACES, unitFinished,
+            SKY_RACES, UNDERGROUND_RACES, unitFinished, unitEncoreReady,
             getEffectiveRange, getEffectiveSpellRange, getEffectiveMove,
             /* VISION (2026-10-09) — ai.js reads these through GAME */
             getEffectiveVision, getEffectiveCrit, unitLosesSharedVision, getUnitVisionRange,
@@ -79990,11 +80311,12 @@
                     } else if (mimicSpell.kind === 'buff' && target && isAllyUnit(target, unit)) {
                         applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
                     } else if (mimicSpell.kind === 'debuff' && target && isEnemyUnit(target, unit)) {
-                        applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
+                        /* THE KILLING HIT TOO (2026-11-07): the hit first, then the status — a hit that kills leaves none */
                         if (mimicSpell.dmg) {
                             const dmg = Math.max(16, Math.floor(mimicSpell.dmg + spellPower));
                             applyDamageToUnit(target, dmg, `Mimic ${mimicSpell.name}: `, { sourceUnit: unit, damageType: mimicSpell.damageType || 'magic', spellType: mimicSpell.spellType || null });
                         }
+                        applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
                     } else {
                         addLog(`Mimic fizzles — invalid target for ${mimicSpell.name}.`);
                     }
@@ -80826,7 +81148,7 @@
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
                 if (spell.encoreAlly) {
                     const _rep = allies
-                        .filter(a => a.id !== unit.id && !a.dead && !a._encoreThisRound && (unitFinished(a) || a.ap === 0))
+                        .filter(a => a.id !== unit.id && !a.dead && !a._encoreThisRound && unitEncoreReady(a))
                         .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)))[0];
                     if (_rep) {
                         _rep._encoreThisRound = true;
@@ -80928,8 +81250,10 @@
                     return 0;
                 }
 
-                if (!unitFinished(target) && (target.ap === undefined || target.ap > 0)) {
-                    addLog(`${_ctName(target)} hasn't finished acting yet. Encore targets units that are done.`);
+                if (!unitEncoreReady(target)) {
+                    addLog(target._respawnSitOutRound === state.round
+                        ? `${_ctName(target)} is sitting out this round after respawning. Encore targets units that have acted.`
+                        : `${_ctName(target)} hasn't acted yet this round. Encore targets units that are done.`);
                     playErrorSfx();
                     return 0;
                 }

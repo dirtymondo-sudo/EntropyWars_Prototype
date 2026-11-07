@@ -4187,3 +4187,75 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   rounds", "Wet targets take it worse"), the status library, Balance Lab labels. Code names (_soakUnit, _unitIsSoaked,
   soakedShock notes, weather `soaks`) stay. Name adjectives ("Blood-Soaked", the Firefighter's "Soaked") and DEF/M DEF
   "soaks" damage are not the status and stay. Checked on screen: WET pill on the unit panel after walking into the river.
+
+## THE KILLING HIT TOO (2026-11-07, status effects playtest A1/A2)
+"Vampire takes 361" -> "Vampire is grievously wounded" -> "Vampire is defeated" (Vivisection) and "Migraine: Ghost is weakened"
+on the hit that killed it: battle.js applyDamageToUnit takes the HP off, lands the hit's own `statusEffects` / `statStageBoost` /
+element riders, and only then calls defeatUnit, so THE FALLEN TAKE NOTHING gate (dead || _dying) still saw a live unit at 0 HP.
+- battle.js `_unitIsDown(u)` = dead || _dying || hp <= 0. It gates applyStatusPayload, applyStatusEffects, applyStatStageBoost,
+  applySeedEffectToUnit, applyAuraTreeEffectToUnit, _soakUnit, the round-end DoT list, and applyDamageToUnit's statStageBoost,
+  elemental combo (flash-freeze / supercharge / steam / melt / thaw) and water soak. Every path that lands a status after a
+  hit (spells, combos, counters, traps, zones, auras, weather) goes through those, so all of them skip the body.
+- The Martyr's Talisman save (`surviveLethalOnce`) now runs BEFORE the hit's statuses, so a unit it holds at 1 HP still takes them.
+- Status-before-hit orders: Goo Shot's `statusFirst` keeps the status for its own multiplier, but a hit that kills restores the
+  body's statuses and drops the status line (`_logDrop`); Mimic's debuff copy hits first, then applies; a blizzard's snow-blind
+  lands after its strike (state.js stormStrikeUnit). map.js applyTerrainTurnEffects + state.js terrain/weather loops read hp <= 0 too.
+- Browser proof (live vs local, VS CPU 8x8): before, the 20 HP target killed by Vivisection kept `grievous: 2` and Migraine's kill
+  kept `statDown` + `int -1`; after, both bodies carry nothing and the log has no status line; non-lethal casts still land both.
+
+## THE FULL ROUND (2026-11-07, mondo: "i would apply a status effect ... to set up a combo and by the time it was my turn again their status effect was already gone ... it needs to at least be 1 full round")
+Statuses count down at the END OF EVERY ROUND (`_tickAllStatusDurations`); ONE ROUND = ONE TURN already kept a status that
+lands after the target's turn (the "last unit acts, round ends" case). The hole: a debuff put on an enemy who had NOT acted yet
+lasted through that enemy's turn and came off at round end, before the applier's next turn, so the combo window was gone.
+Rule now (battle.js "⏳ THE FULL ROUND", state.js getNextBlitzUnit): a debuff an ENEMY puts on a unit during a blitz round
+lasts N rounds FROM THE MOMENT IT LANDS. It is still on the target when the applier comes round again in round R+N and comes
+off when that turn ends (log "⚡ Fairy's Stun wore off."); it never covers more than N of the target's own turns (taken off
+before the target's extra turn when it landed before the target acted); the end of round R+N is the backstop.
+Holds live on the unit as `_stHold: {key: {r, by, af}}` (plain unit data, so state-sync carries them to the guest).
+Not held: buffs, own-team statuses, environment landings at round end, Strike real-time, Simul, MD lockstep, and the skip set
+(stagger, possessed, infected, statUp, statDown, climbing, exited, captured, sealed). A plain re-landing that outlasts a hold
+drops it; a hold never shortens.
+DoTs tick exactly N times now (a 3-round poison landed after the target's turn used to tick 4 times).
+Proved on screen (VS CPU, Mount Shasta): R1 Glitch stuns + Police roots Fairy (Fairy already acted) -> Fairy skipped R2, stun
+came off right after Glitch's R2 turn, root right after Police's; Plandemic 3-round poison ticked R1/R2/R3 and wore off in R4
+before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/status-timing-fix/.
+
+## THE STATUS TEXTS MATCH THE GAME (2026-11-07, status playtest M1-M14)
+- Rule used: where no ruling from mondo exists, the TEXT was changed to say what the code does (no rule changed). data.js
+  STATUS_LIBRARY_DESCS (Pause > STATUSES) + the spell descs that promised something else:
+  Charm = cannot move at all, can still attack/cast (Love Ray, The Sermon, The Kool-Aid no longer say "against you" /
+  "will not raise a hand"; mondo asked to pick the real Charm rule). Minimized = −2 ATK stages only (Pixie Prank lost "harder
+  to hit"). Marked = consumed by the next PHYSICAL hit or basic attack (battle.js canConsumeMarked); magic hits leave it
+  (Wanted Poster, Nothing Unseen, Knife Throw, Dead Eye). Feared = every activation while it lasts is a flee. Hexed = move,
+  jump, climb, cast (36 base), not basic attacks. Spawn Guard = half damage for a round. Invisible = attacks, attack spells
+  and enemy hits reveal; moving/buffs/heals do not (Blurry Photo "until it attacks"). Drowning = −1 MOV + growing tick in
+  deep water. Blind = BASIC attacks miss 50%. Evasion-zero line added to Frozen, Charm, Roped (every blockMove status,
+  battle.js getEvasionChance). Bleed/Haunted/Corroded ticks say "base damage" (dot type, DEF and M DEF ignored), Roped drag
+  and Blessed heal say "base"; the page opens with "Numbers are level-1 base values: damage and healing grow with the
+  unit's level" (scaleByTargetLevel / supportScale). Taser Bolt "Jams it for 3 rounds" (Jammed 3, mondo 11-03). Exhaust
+  Cloud "fall into Discord" (no Confused status). ui.js page stat name int = M.ATK (Jack of All read "+1 INT").
+
+## THE BADGE CLASH (2026-11-07, status effects playtest C1) — data.js
+Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
+`short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
+badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
+
+## THE NEW REACTIONS R1-R7 (2026-11-07)
+
+mondo picked R1-R16 of /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md (steam R17 dropped). This
+thread built R1-R7; R8-R12 and R13-R16 went to sibling threads.
+- R1 dry skies dry bodies: Drought (state.js evaporateBattleWater, on form + every round end) and the Sandstorm's eye
+  (stormStrikeUnit, `def.sky === 'dry'`) take Wet off; a unit standing in water or under rain stays wet (battle.js _dryWetUnit).
+- R2 Solar Flare is heat: WEATHER_REGISTRY.solarFlare `heats: true` -> state.js heatUnderWeather (form + round end): thaws
+  Frozen, ice/ice_1 -> water (normal terrain timer), dries Wet.
+- R3 Drought feeds fire: battle.js _droughtFeedsFire; igniteTile +1 round, tickBurningTiles spread 0.65 (DROUGHT_SPREAD_CHANCE) and 3 rounds.
+- R4 THE CHEMICAL FIRE: _chemicalFireMerge after every burn/poison/corroded landing (applyStatusPayload) and at the top of
+  processEndOfRoundStatuses: Burn + Poison -> Corroded for the longer one (applier, full-round hold, fresh mark move over;
+  lava-stack burns excluded). _douseBurnOnUnit turns Corroded into Poison (water, rain, wading in, frost), corroded onRoundEnd
+  douses like Burn, Corroded on a wet unit lands as Poison. mondo's ruling: water puts out Corroded.
+- R5 Gooed bodies burn: combo post-hit half (fire/lightning, not ticks, not wet) lands Burn and clears Goo; any Burn landing
+  clears Goo; _reactFireOilBody also catches grounded Gooed bodies touching the slick (and Gooed bodies touching them).
+- R6 fire cauterises: combo post-hit half, fire, not ticks: Bleeding off.
+- R7 THE BOG BURNS: _isBogTile (poison, poison_bog, purple_bog + poison flow); fire spell (dispatcher) or ground fire lit on it
+  (igniteTile) -> _reactFireBog: grounded units in the connected bog Corroded 2 (caster spared), one per resolution. Tile cast hint added.
+Proof (staged on a real VS CPU board, real engine calls): /mnt/project-files/element-reactions-20261107/r1-r7/.

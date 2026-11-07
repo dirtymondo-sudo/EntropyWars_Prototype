@@ -15231,6 +15231,12 @@
             // healing spring) douses burn (lava-stoked or not) on the
             // spot. Runs on every move and on the round tick, so stepping into
             // the shallows is a real answer to being set on fire.
+            /* ⚗️💧 R4: wading in puts out a Corroded unit's chemical fire too (it turns back into Poison) */
+            if ((terrain === 'water' || terrain === 'deep_water' || terrain === 'healing_spring')
+                && unit.status && !unit.status.burn && Number(unit.status.corroded || 0) > 0
+                && typeof window._douseBurnOnUnit === 'function') {
+                window._douseBurnOnUnit(unit, 'The water');
+            }
             if ((terrain === 'water' || terrain === 'deep_water' || terrain === 'healing_spring')
                 && unit.status && unit.status.burn) {
                 clearStatus(unit, 'burn');
@@ -15261,7 +15267,7 @@
         }
 
         function applyTerrainTurnEffects(unit) {
-            if (!unit || unit.dead || unit._dying) return;   // 💀 THE FALLEN TAKE NOTHING: no lava / plague / ooze tick on a body (battle.js applyStatusPayload)
+            if (!unit || unit.dead || unit._dying || unit.hp <= 0) return;   // 💀 THE FALLEN TAKE NOTHING: no lava / plague / ooze tick on a body (battle.js applyStatusPayload)
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             /* CHAMP_REWORK Phase 5 wave C (2026-09-08): Oozing's trail — the

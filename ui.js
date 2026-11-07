@@ -7411,7 +7411,7 @@
             // not status effects, but spells put them on units too, so they list in their
             // own group with the effect read straight off the def (2026-10-06).
             groups.push({ title: 'Stat Changes', match: d => !!d.statChange, stat: true });
-            const _stName = { atk: 'ATK', def: 'DEF', int: 'INT', mdef: 'M.DEF', spd: 'SPD', matk: 'M.ATK' };
+            const _stName = { atk: 'ATK', def: 'DEF', int: 'M.ATK', mdef: 'M.DEF', spd: 'SPD', matk: 'M.ATK' };   // int IS M ATK everywhere else in the game (the HUD chips, spell texts)
             const _sgn = n => (n > 0 ? '+' : '−') + Math.abs(n);
             // A def's real numbers, as a sentence (stage mods, MOV, RNG).
             const _derive = (id, d) => {
@@ -7425,6 +7425,8 @@
                 return d.colorText ? d.colorText.charAt(0).toUpperCase() + d.colorText.slice(1) + '.' : '';
             };
             let html = '<div class="pause-status-lib" style="text-align:left;padding-right:6px;">';
+            /* the numbers below are the level-1 base: every tick, drag and heal grows with the unit's level (status playtest 2026-11-07) */
+            html += '<div style="font-size:11px;opacity:.6;line-height:1.35;margin:2px 2px 4px;">Numbers are level-1 base values: damage and healing grow with the unit\'s level.</div>';
             for (const g of groups) {
                 // Every real status lists; display-only rows (Heal/Mana/Damage) never do.
                 const rows = Object.entries(STATUS_DEFS).filter(([id, d]) => d && d.category !== 'display' && (g.stat ? d.statChange : !d.statChange) && g.match(d))

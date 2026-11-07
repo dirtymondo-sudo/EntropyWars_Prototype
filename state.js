@@ -694,6 +694,8 @@
                 if (u.dead || u._dying) continue;
                 if (unitFinished(u)) continue;
                 if (u._skippedTurn) continue;
+                // ⏳ THE FULL ROUND (battle.js): a held debuff that already covered this unit's turns comes off before it acts
+                if (typeof _statusHoldsBeforeTurn === 'function') _statusHoldsBeforeTurn(u);
                 // 🧊/⚡ Hard CC skips the whole activation — frozen units stay
                 // iced out of the rotation until thawed, and a stunned unit
                 // (2026-08-10: stun is blockMove + blockAction now, the real
@@ -1245,7 +1247,7 @@
             if (weStartedBuffering) _reStartBuffering();
 
             for (const u of state.units) {
-                if (!u.dead && !u._dying) {   // a body still falling (killed earlier this pass) takes no terrain tick
+                if (!u.dead && !u._dying && !(u.hp <= 0)) {   // a body still falling (killed earlier this pass) takes no terrain tick
                     updateTerrainStay(u);
                     _reBeginGroup(`🌍 Terrain: ${unitDisplayName(u)}`);
                     applyTerrainTurnEffects(u);
@@ -1806,7 +1808,7 @@
                 roaming: true,
                 global: true,
                 duration: [4, 6],
-                desc: 'Bakes the whole map: dries up the water, blood and ice spells and storms left behind and bakes the land into desert. Healing 50% effective. Scorches planted seeds.',
+                desc: 'Bakes the whole map: dries up the water, blood and ice spells and storms left behind and bakes the land into desert. Dries out Wet units. Ground fire spreads faster and burns longer. Healing 50% effective. Scorches planted seeds.',
                 healMult: 0.5,
                 seedTerrain: 'desert',
                 evaporates: true
@@ -1819,7 +1821,8 @@
                 roaming: false,
                 duration: [3, 5],
                 seedTerrain: 'scorched',   // ⏳ 2026-10-21: "Scorches the earth" now leaves Scorched ground (was desert)
-                desc: 'Damages Tech, +8 ATK to Divine. Scorches the earth.',
+                heats: true,   // ☀ R2 (2026-11-07): heat — thaws the Frozen, melts the ice, dries the Wet under it (heatUnderWeather)
+                desc: 'Damages Tech, +8 ATK to Divine. Scorches the earth. Its heat thaws the Frozen, melts ice and dries the Wet.',
                 onTurnEffect(unit) {
                     const isTech = (unit.types || []).includes('tech');
                     if (isTech) return {
@@ -1934,7 +1937,7 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 VISION in the eye. Drifts sand into desert.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches and dries out the Wet. -5 VISION in the eye. Drifts sand into desert.',
                 seedTerrain: 'desert',   // ⏳ 2026-10-21: the sand it carries piles up where it passes
                 dmgRange: [20, 29],
                 dmgSparesType: 'human',
@@ -2600,8 +2603,38 @@
                 if (def) addLog(`${def.icon} The ${def.label} dries up ${n} tile${n !== 1 ? 's' : ''} of water, blood and ice.`);
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             }
+            /* ☀ R1 DRY SKIES DRY BODIES (mondo 2026-11-07): the Drought dries the water off every Wet unit too (on forming and
+               every round end) — one still standing in the map's own water, or under a rain, stays wet (battle.js _dryWetUnit) */
+            if (def && def.evaporates && typeof _dryWetUnit === 'function') {
+                for (const u of (state.units || [])) _dryWetUnit(u, `The ${def.label.toLowerCase()}`);
+            }
             return n;
         }
+        /* ☀ R2 THE SOLAR FLARE IS HEAT (mondo 2026-11-07): it scorches the earth, so under it the Frozen thaw, ice squares melt
+           to water (the normal 3-round terrain timer brings them back) and the Wet dry out — the same three things Drought and
+           lava do. On forming and every round end. Host-side; terrain + statuses ride the state-sync. */
+        function heatUnderWeather(weather) {
+            const def = weather && WEATHER_REGISTRY[weather.type];
+            if (!def || !def.heats) return;
+            let melted = 0;
+            const cells = weatherDefIsGlobal(weather) ? allWeatherBoardTiles() : (weather.tiles || []);
+            for (const t of cells) {
+                if (!t || !_weatherInBoard(t.x, t.y)) continue;
+                const cur = getTerrainAt(t.x, t.y);
+                if ((cur === 'ice' || cur === 'ice_1') && setTerrainAt(t.x, t.y, 'water') !== false && getTerrainAt(t.x, t.y) === 'water') melted++;
+            }
+            for (const u of (state.units || [])) {
+                if (!u || u.dead || u._dying || u.hp <= 0 || !weatherRainsOnTile(weather, u.x, u.y)) continue;
+                if (typeof _thawFrozenUnit === 'function') _thawFrozenUnit(u, `The ${def.label}'s heat`);
+                if (typeof _dryWetUnit === 'function') _dryWetUnit(u, `The ${def.label}'s heat`);
+            }
+            if (melted) {
+                addLog(`${def.icon} The ${def.label}'s heat melts ${melted} tile${melted !== 1 ? 's' : ''} of ice into water.`);
+                if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+        }
+        window.heatUnderWeather = heatUnderWeather;
         /* 🌧️ THE RAIN ON THE GROUND (2026-10-18, mondo: "a thunderstorm started, yet there is still tiles on fire on the map.
            isnt rain supposed to put out fire? it should be immediately" + "fire spells should still work in the rain im just
            talking about grass tiles being on fire" + "same if it rains on lava"). Nothing ever asked the rain about the ground
@@ -2642,7 +2675,7 @@
                burning (the per-turn soak below also douses the grounded) */
             if (typeof _douseBurnOnUnit === 'function') {
                 for (const u of (state.units || [])) {
-                    if (!u || u.dead || u._dying || !(u.status && u.status.burn)) continue;
+                    if (!u || u.dead || u._dying || !(u.status && (u.status.burn || Number(u.status.corroded || 0) > 0))) continue;
                     if (_rainLandsOn(weather, u.x, u.y)) _douseBurnOnUnit(u, `The ${def.label.toLowerCase()}`);
                 }
             }
@@ -2667,6 +2700,7 @@
             if (!def) return;
             if (def.soaks) rainOnTheBoard(weather, true);
             if (def.evaporates) evaporateBattleWater(def);
+            if (def.heats) heatUnderWeather(weather);
             if (def.seedTerrain && !def.roaming && !weatherDefIsGlobal(weather)) {
                 const n = seedWeatherTerrain(def, weather.tiles, 0.3);
                 if (n > 0) addLog(`The ${def.label} reshapes ${n} tile${n !== 1 ? 's' : ''} into ${_seedTerrainLabel(def.seedTerrain)}.`);
@@ -2807,7 +2841,7 @@
                 if (def.homing) {
                     if (!def.soaks || !weatherDefIsGlobal(weather)) continue;
                     for (const unit of units) {
-                        if (unit.dead || unit._dying) continue;
+                        if (unit.dead || unit._dying || unit.hp <= 0) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
                         const _wPrevG = Number((unit.status && unit.status.wet) || 0);
@@ -2818,7 +2852,7 @@
                 }
                 if (!def.onTurnEffect && !def.soaks) continue;
                 for (const unit of units) {
-                    if (unit.dead || unit._dying || !weatherOnTile(weather, unit.x, unit.y)) continue;   // the storm that downed it doesn't soak the body
+                    if (unit.dead || unit._dying || unit.hp <= 0 || !weatherOnTile(weather, unit.x, unit.y)) continue;   // the storm that downed it doesn't soak the body
                     // 🌧️ Rain-type weather soaks whoever stands in it (wet =
                     // conducts lightning, resists fire, flash-freezable) —
                     // and the downpour puts out any fire on them on the spot.
@@ -2886,7 +2920,7 @@
            through the eye, mondo 2026-10-19) both hit through here, so the two can never drift. Returns true when the
            storm hurt the body. at: the tile it is struck on when that is not where it stands (a walk in passing). */
         function stormStrikeUnit(v, weather, def, at) {
-            if (!v || v.dead || v._dying || !weather || !def) return false;
+            if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -2898,6 +2932,8 @@
                 if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
                 else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
             }
+            /* ☀ R1: a dry sky's eye (the Sandstorm) dries out whoever it catches */
+            if (def.sky === 'dry' && typeof _dryWetUnit === 'function') _dryWetUnit(v, `The ${def.label.toLowerCase()}`);
             const hit = def.homingDamage ? def.homingDamage(v) : null;
             // 🌫️ Blinding storms (blizzard): whoever the eye
             // batters staggers out snow-blind — attacks whiff 50%
@@ -2906,9 +2942,6 @@
             // THE SPELL AUDIT Batch D — `weatherStatusImmune: { blizzard: ['blind'] }` (Snowborn): this weather's status never lands.
             const _wsi = (typeof unitPassiveValue === 'function') ? unitPassiveValue(v, 'weatherStatusImmune') : null;
             const _wsiBlind = !!(_wsi && Array.isArray(_wsi[weather.type]) && _wsi[weather.type].includes('blind'));
-            if (hit && hit.amount > 0 && def.blinds && !_wsiBlind) {
-                applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
-            }
             if (!(hit && hit.amount > 0)) return false;
             applyDamageToUnit(v, hit.amount, `${String(hit.text || '').replace(/\s+for$/, '')}: `, {
                 ignoreArmor: false,
@@ -2921,6 +2954,11 @@
                 // victim's level (see applyWeatherTurnEffects).
                 scaleByTargetLevel: true
             });
+            /* the snow-blind lands AFTER the strike (it never changed the strike's damage): a strike that kills leaves no
+               status on the body (THE KILLING HIT TOO, battle.js applyStatusPayload) */
+            if (def.blinds && !_wsiBlind) {
+                applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
+            }
             if (weather.type === 'thunderstorm' && window.playStormLightningFx) {
                 // ⚡ same crack + delayed rumble as the
                 // per-turn strike above — fires live here (the
@@ -3168,6 +3206,7 @@
                 const def = WEATHER_REGISTRY[weather.type];
                 if (!def) continue;
                 if (def.soaks) rainOnTheBoard(weather, false);   // 🌧️ the rain keeps hardening the fight's lava
+                if (def.heats) heatUnderWeather(weather);   // ☀ R2: the flare's heat keeps thawing, melting and drying
                 if (def.seedTerrain && weatherDefIsGlobal(weather) && weather.remaining > 0) {
                     seedWeatherTerrainRandom(def, Math.max(1, Math.round(_weatherPatchSize(weather, def) * WEATHER_SEED_ROUND_FRAC)));
                 }
