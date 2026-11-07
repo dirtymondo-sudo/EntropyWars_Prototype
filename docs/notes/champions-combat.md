@@ -4202,3 +4202,8 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   and Blessed heal say "base"; the page opens with "Numbers are level-1 base values: damage and healing grow with the
   unit's level" (scaleByTargetLevel / supportScale). Taser Bolt "Jams it for 3 rounds" (Jammed 3, mondo 11-03). Exhaust
   Cloud "fall into Discord" (no Confused status). ui.js page stat name int = M.ATK (Jack of All read "+1 INT").
+
+## THE BADGE CLASH (2026-11-07, status effects playtest C1) — data.js
+Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
+`short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
+badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
