@@ -20086,8 +20086,16 @@ const ThreeRenderer = (function () {
             V.copy(pm.wp).project(cam);
             if (V.z < -1 || V.z > 1) { spr.visible = false; pm.shown = false; continue; }
             var sx = (V.x * 0.5 + 0.5) * sw, sy = (-V.y * 0.5 + 0.5) * sh, s = h._s, off = side ? (h._off || 0) : 0;
-            items.push({ pm: pm, s: s, off: off, sx: sx, sy: sy, lift: 0, pri: _pmPri(pm.el),
-                l: sx + off + pm.box[0] * s, r: sx + off + pm.box[2] * s, t: sy + pm.box[1] * s, b: sy + pm.box[3] * s });
+            var it0 = { pm: pm, s: s, off: off, sx: sx, sy: sy, lift: 0, pri: _pmPri(pm.el),
+                l: sx + off + pm.box[0] * s, r: sx + off + pm.box[2] * s, t: sy + pm.box[1] * s, b: sy + pm.box[3] * s };
+            /* THE CURSOR CLEARS THE NAME: the turn cursor's plate (same unit group, a plate over the head) */
+            var chv = _selChevronMesh;
+            if (chv && chv.visible && !side && chv.parent && chv.parent === pm.anchor.parent) {
+                var wpp0 = _pmWpp(cam, pm.wp, sh), cs0 = chv.scale.x || 1;
+                it0.chev = { w: 2 * (chv._ew_w || 0) * cs0 * CHEV_HALO / wpp0, h: (chv._ew_h || 0) * cs0 * CHEV_HALO / wpp0 };
+                it0.ptop = sy + (pm.top != null ? pm.top : pm.box[1]) * s;
+            }
+            items.push(it0);
         }
         _pmStack(items);
         var _dtMs = now - (_pmTick.at || now);
@@ -20106,6 +20114,7 @@ const ThreeRenderer = (function () {
             var dx = ((p2.cw / 2 - p2.ax) * it.s + it.off) * wpp, dy = ((p2.ay - p2.ch / 2) * it.s + p2.lift) * wpp;
             sp.position.copy(p2.wp).addScaledVector(R, dx).addScaledVector(Up, dy);
             sp.scale.set(p2.cw * it.s * wpp, p2.ch * it.s * wpp, 1);
+            if (it.chev) _chevPlaceAbove(p2.wp, (it.sy - it.ptop) + p2.lift, wpp, Up);
             /* over an open menu: the plate fades (its box as drawn, the stack's lift included) */
             var _ovM = _wmOverMenu(it.l, it.r, it.t - p2.lift, it.b - p2.lift, now);
             p2.mf = _wmEase(p2.shown ? p2.mf : null, _ovM || _floatOverPop(it.l, it.r, it.t - p2.lift, it.b - p2.lift), _dtMs,
@@ -20115,6 +20124,46 @@ const ThreeRenderer = (function () {
             sp.visible = op > 0.003;
             p2.shown = true;
         }
+    }
+    /* ══ THE CURSOR CLEARS THE NAME (playtest 2026-11-07 D1: "COWBO", "SUCCUB" — the gold turn cursor sat on the end of
+       the acting unit's name) ══════════════════════════════════════════════════════════════════════════════════════════
+       The cursor was put a fixed 75 screen px up the world's vertical over the plate's anchor. On the tilted battle
+       camera a world-vertical step shows shorter on screen, and a plate with a type column, status badges or a UI Maker
+       size is taller than 75 px, so the cursor landed on the name row (every plate is centred on its unit, so any name
+       past the middle ran under it). Now a plate on screen puts the cursor's tip CHEV_GAP_PX over the plate's own drawn
+       top, in the camera's up (the plane the plate sprite is drawn in), at the anchor's depth; the stack keeps that room
+       clear of other plates. No plate on screen (plates off, the 'side' style, fog) = the old spot. */
+    var CHEV_GAP_PX = 4;        // screen px between the plate's top and the cursor's tip
+    var CHEV_BOB_PX = 4;        // the bob rides upward only, so it never dips into the name
+    var CHEV_HALO = 1.6;        // the halo layer's scale (the widest of the cursor's layers)
+    var _chevW = null, _chevV = null;
+    /* the cursor's tip abovePx screen px over the anchor at world point wp (wpp = world units per px there) */
+    function _chevPlaceAbove(wp, abovePx, wpp, Up) {
+        var chv = _selChevronMesh;
+        if (!chv || !chv.parent) return;
+        var bob = (0.5 + 0.5 * Math.sin(performance.now() * 0.003)) * CHEV_BOB_PX;
+        var W = _chevW || (_chevW = new THREE.Vector3());
+        W.copy(wp).addScaledVector(Up, (abovePx + CHEV_GAP_PX + bob) * wpp);
+        chv.parent.updateMatrixWorld();
+        chv.parent.worldToLocal(W);
+        chv.position.copy(W);
+        chv._ew_onPlate = true;
+    }
+    /* the CSS2D plates (window.EW_CSS_PLATES, the HQ's CSS text): the same spot, read off the plate element's own box */
+    function _chevOverCssPlate(selId, ue, cam) {
+        var po = _plateObjs.get(selId);
+        if (!po || po.pm || !po.el || !po.css2d || !po.css2d.visible || _plateIsSide(po)) return;
+        if (!po.el.isConnected || !po.el.getClientRects().length) return;
+        var r = po.el.getBoundingClientRect(), P = _parentEl.getBoundingClientRect();
+        if (!(r.height > 0)) return;
+        var V = _chevV || (_chevV = new THREE.Vector3()), wp = new THREE.Vector3();
+        po.css2d.getWorldPosition(wp);
+        cam.updateMatrixWorld();
+        V.copy(wp).project(cam);
+        if (V.z < -1 || V.z > 1) return;
+        var sh = _parentEl.clientHeight, sy = (-V.y * 0.5 + 0.5) * sh;
+        var Up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1).normalize();
+        _chevPlaceAbove(wp, sy - (r.top - P.top), _pmWpp(cam, wp, sh), Up);
     }
     /* overlapping plates stack upward: the acting / aimed plate first, then the lowest on screen; each later plate rises
        just above whatever it overlaps (window.EW_PLATE_PILE = true → the old pile) */
@@ -20135,6 +20184,12 @@ const ThreeRenderer = (function () {
             }
             it.lift = lift;
             placed.push({ l: it.l, r: it.r, t: it.t - lift, b: it.b - lift });
+            /* THE CURSOR CLEARS THE NAME: the room the turn cursor takes over its plate is kept, so a plate stacking up
+               over the acting one rises above the cursor too, never under it */
+            if (it.chev) {
+                var ct = it.ptop - lift - CHEV_GAP_PX - CHEV_BOB_PX - it.chev.h;
+                placed.push({ l: it.sx - it.chev.w / 2, r: it.sx + it.chev.w / 2, t: ct, b: it.ptop - lift });
+            }
         }
     }
 
@@ -20520,6 +20575,7 @@ const ThreeRenderer = (function () {
         } else pm.tex.needsUpdate = true;
         pm.cw = cw; pm.ch = ch; pm.ax = o.left - ox; pm.ay = o.top - oy;
         pm.box = [wr.left - o.left, wr.top - o.top, wr.right - o.left, wr.bottom - o.top];
+        pm.top = Math.min(P.b[1], wr.top) - o.top;   // the highest painted box (css px from the anchor): THE CURSOR CLEARS THE NAME
         var op = parseFloat(ws.opacity);
         pm.op = isFinite(op) ? op : 1;
         pm.ok = true;
@@ -20570,6 +20626,17 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* THE NAME FITS on the CSS2D plates too (window.EW_CSS_PLATES, the ew_text = css setting): _pmFitName only ran before a
+       world plate's paint, so a CSS plate kept the ellipsis ("CONSPIRACY TH…"). Rechecked a few times a second (it writes
+       only when the fit changes, so no layout loop); the scale transform leaves the layout widths alone. */
+    var CSS_PLATE_FIT_MS = 300;
+    function _cssPlateFit(holder) {
+        if (!holder || holder.pm || !holder.el) return;
+        var now = performance.now();
+        if (holder._fitAt && now - holder._fitAt < CSS_PLATE_FIT_MS) return;
+        holder._fitAt = now;
+        try { _pmFitName(holder.el); } catch (e) {}
+    }
     function _scalePlates(cam) {
         if (!cam || !_parentEl) return;
         var screenH = _parentEl.clientHeight;
@@ -20601,6 +20668,7 @@ const ThreeRenderer = (function () {
             var s = Math.min(MAX_PLATE_SCALE, Math.max(projW / PLATE_BASE_W, MIN_PLATE_SCALE));
 
             _writePlateTransform(po, s, projW);
+            _cssPlateFit(po);
         });
 
         /* Scale decoy nameplates the same way so they don't betray the decoy by
@@ -20616,6 +20684,7 @@ const ThreeRenderer = (function () {
             _plateFarToggle(_dse, _dse.el, _ddist / _drefW);
             var _ds = Math.min(MAX_PLATE_SCALE, Math.max(_dprojW / PLATE_BASE_W, MIN_PLATE_SCALE));
             _writePlateTransform(_dse, _ds, _dprojW);
+            _cssPlateFit(_dse);
         }
     }
 
@@ -23909,6 +23978,7 @@ const ThreeRenderer = (function () {
         grp._ew_billboard = true;
         grp._ew_mats = [];       // opacity-pulsed each frame (kept empty: body stays solid)
         grp._ew_glowMats = [];   // additive halo (gently pulsed)
+        grp._ew_w = w; grp._ew_h = h;   // THE CURSOR CLEARS THE NAME (_pmTick) sizes its room above the plate from these
 
         var c = new THREE.Color(col);
         var topCol = c.clone().lerp(new THREE.Color(0xffffff), 0.38);
@@ -24037,7 +24107,11 @@ const ThreeRenderer = (function () {
             var cScale = Math.max(0.2, dist / 800);
             _selChevronMesh.scale.setScalar(cScale);
         }
-        _selChevronMesh.position.y = chevY + bobOffset;
+        /* the guess above is only the fallback: a plate on screen puts the cursor just over its own drawn top
+           (_pmTick for the plates in the world, _chevOverCssPlate for the CSS2D ones) */
+        _selChevronMesh.position.set(0, chevY + bobOffset, 0);
+        _selChevronMesh._ew_onPlate = false;
+        if (cam && _parentEl) { try { _chevOverCssPlate(selId, ue, cam); } catch (e) {} }
 
         var pulse = 0.75 + 0.25 * Math.sin(performance.now() * 0.004);
         var i;
@@ -24149,6 +24223,14 @@ const ThreeRenderer = (function () {
 
     var _lastActivePlateId = null;
 
+    /* THE ACTIVE PLATE (found 2026-11-07 with the cursor fix): the plate code asked a getBlitzTurnUnit that no file ever
+       defined, so the acting unit's plate never wore tp-active (no gold name, never first in the plate stack). The acting
+       unit is the blitz-active one, the same unit the turn cursor rides (_turnIndicatorUnitId). */
+    function getBlitzTurnUnit() {
+        if (!state || state.phase !== 'battle' || state._blitzActiveUnitId == null) return null;
+        var u = _findUnit(state._blitzActiveUnitId);
+        return (u && !u.dead) ? u : null;
+    }
     function _syncActivePlateClass() {
         var blitzUnit = (typeof getBlitzTurnUnit === 'function') ? getBlitzTurnUnit() : null;
         var activeId = blitzUnit ? blitzUnit.id : null;
