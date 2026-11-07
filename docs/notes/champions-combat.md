@@ -4507,6 +4507,26 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
 
+## THE SPELL ZONES + THE WALK AROUND (2026-11-07, zones/traps playtest E1 + F1) — ai.js, battle.js
+- E1 "the CPU never leaves a damaging zone": `aiHazardPenaltyAt` read ground and telegraphed blasts but never
+  `state._activeZones`. New `spellZoneCost(g, unit, x, y)` (ai.js, beside groundHazardCost) is added to it, so every
+  consumer (end-square danger ×2, the hazard flee, the safety move, the push/pull worth on an enemy) sees the zone:
+  an enemy debuff zone = its round-end tick (forecastHitOnUnit with the tick's type/element/caster) + each status it
+  lands priced by `ccDenialValue` (0 if already on / immune); an enemy heal zone = its enemyStatusEffects; Gravity Crush
+  = the forced fall ×3 for an airborne flyer (either side's field). +150 when lethal. Weight `spellZoneCaution_v1`
+  (battle.js AI_WEIGHT_DEFAULTS, value 1, prev 0; a key missing there reads as 0 — that is why it had to be added).
+  Kill-switch `window.EW_AI_NO_SPELL_ZONES`. Read-only probes: `window._aiSpellZoneCost(unit,x,y)`,
+  `window._aiRankCandidates(unit)` (ranked options with each one's end-square charge). AI stamp v4.34.
+- Proof (VS CPU, Mount Shasta 10×10, by hand): War of the Worlds on Demon + Firefighter → Firefighter dashed out,
+  Demon walked out (probe: zone cost 308, flee to 4,4 ranked first); Black Smoke on Demon → it walked to D7 and Life
+  Sapped from outside. Files /mnt/project-files/cpu-zones-20261107/.
+- F1 "the Hound stays still": processTurretVolleys' walker only took steps that cut the straight-line distance, so
+  one body between it and the prey froze it (Hound 4,7 / Blob 4,8 / Martian 4,9), and the Elephant idled under a
+  target on the Camelot wall. Now it floods the free squares it can reach (same blocked squares), picks the nearest
+  prey it can strike from one of them (in reach + `turretHasShotAt`), and walks that road `move` squares. No prey
+  strikeable from anywhere → the old walk toward the nearest, and "<summon> can't find a way to X." when it can't
+  step. Applies to the abomination too (nearest unit by walk). Check: cpu-zones-20261107/summon_walk_check.js.
+
 ## THE PER-SPELL CAP + THE JUMP LANDING (zones/traps playtest 2026-11-07, A1-A3)
 mondo: "Go ahead and start those fixes" (PLAYTEST_ZONES_TRAPS_20261107.md family A). Existing rules only.
 - A1: battle.js `deployObject` counted ALL of the caster's placed objects against the NEW row's maxActivePerCaster, so a
