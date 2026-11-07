@@ -31476,9 +31476,14 @@ const ThreeRenderer = (function () {
             else _layoutFloatTexts(live, realDt, gapPx);
         }
         /* THE SAFE FRAME (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?"):
-           a pop is never drawn off the screen, under the action cam's letterbox bars or under the score plate
-           (battle.js window._ewFloatSafeRect). A pop that would be is moved in, and every pop of its unit moves with it,
-           so the stack keeps its order (the number under its tags) — it rests against the edge instead of leaving. */
+           a pop is never drawn off the screen or under the action cam's letterbox bars (battle.js window._ewFloatSafeRect).
+           A pop that would be is moved in, and every pop of its unit moves with it, so the stack keeps its order (the
+           number under its tags) — it rests against the edge instead of leaving.
+           THE HUD WALLS (zones/traps playtest 2026-11-07: HIGH GROUND! / IN THE AIR over a flyer in the top-right corner
+           were drawn under the bars, the match info and the toast): a unit's stack is never left under a HUD box either
+           (SF.walls: the scoreboard, the match info, the AP press, the turn order, the combat log, a toast). The stack steps the shortest
+           way clear of them all (down, up, left or right, or a corner of two), staying inside the frame; the step it took
+           last frame wins a near tie, so a rising stack does not flip sides. */
         var SF = (!ctx.keepIn && live.length && typeof window !== 'undefined' && typeof window._ewFloatSafeRect === 'function')
             ? window._ewFloatSafeRect() : null;
         if (SF) {
@@ -31490,16 +31495,61 @@ const ThreeRenderer = (function () {
                 var lo2 = SF.l + sb.hw - sb.cx, hi2 = SF.r - sb.hw - sb.cx, sx0 = scx - sb.cx;
                 sw._sfDx = lo2 > hi2 ? 0 : Math.max(lo2, Math.min(hi2, sx0)) - sx0;
                 var tTop = SF.t;
-                if (SF.plate && scx + sw._sfDx + sb.hw > SF.plate[0] && scx + sw._sfDx - sb.hw < SF.plate[1]) tTop = Math.max(tTop, SF.plate[2]);
+                if (!SF.walls && SF.plate && scx + sw._sfDx + sb.hw > SF.plate[0] && scx + sw._sfDx - sb.hw < SF.plate[1]) tTop = Math.max(tTop, SF.plate[2]);   // an older battle.js
                 var down = Math.max(0, tTop - (scy - sb.up)), up = Math.min(0, SF.b - (scy + sb.dn));
-                var key = Math.round(sw.wx) + ',' + Math.round(sw.wz), C = cols[key] || (cols[key] = { d: 0, u: 0 });
+                var key = Math.round(sw.wx) + ',' + Math.round(sw.wz), C = cols[key] || (cols[key] = { d: 0, u: 0, l: 1e9, t: 1e9, r: -1e9, b: -1e9, px: null, py: 0 });
                 if (down > C.d) C.d = down;
                 if (up < C.u) C.u = up;
+                var bl = scx + sw._sfDx - sb.hw, br = scx + sw._sfDx + sb.hw;
+                if (bl < C.l) C.l = bl;
+                if (br > C.r) C.r = br;
+                if (scy - sb.up < C.t) C.t = scy - sb.up;
+                if (scy + sb.dn > C.b) C.b = scy + sb.dn;
+                if (C.px == null && sw._sfWx != null) { C.px = sw._sfWx; C.py = sw._sfWy || 0; }
                 sw._sfKey = key;
+            }
+            var walls = SF.walls && SF.walls.length ? SF.walls : null;
+            for (var gk in cols) {
+                var G = cols[gk];
+                G.dy = G.d > 0 ? G.d : G.u;
+                G.wx = 0; G.wy = 0;
+                if (!walls) continue;
+                var gl = G.l, gt = G.t + G.dy, gr = G.r, gb = G.b + G.dy;
+                var hits = function (ox, oy) {
+                    for (var wi = 0; wi < walls.length; wi++) {
+                        var w = walls[wi];
+                        if (gr + ox > w[0] && gl + ox < w[2] && gb + oy > w[1] && gt + oy < w[3]) return true;
+                    }
+                    return false;
+                };
+                if (!hits(0, 0)) continue;
+                // the steps: clear of each wall's every side, alone and two at once (a corner)
+                var dxs = [0], dys = [0];
+                for (var wj = 0; wj < walls.length; wj++) {
+                    var W = walls[wj];
+                    dxs.push(W[0] - gr, W[2] - gl);
+                    dys.push(W[1] - gb, W[3] - gt);
+                }
+                var bestC = Infinity, bx2 = 0, by2 = 0, px = G.px != null ? G.px : 0, py = G.px != null ? G.py : 0, hasPrev = G.px != null;
+                for (var xi = 0; xi < dxs.length; xi++) {
+                    var ox = dxs[xi];
+                    if (gl + ox < SF.l - 0.5 || gr + ox > SF.r + 0.5) continue;
+                    for (var yi2 = 0; yi2 < dys.length; yi2++) {
+                        var oy = dys[yi2];
+                        if (gt + oy < SF.t - 0.5 || gb + oy > SF.b + 0.5) continue;
+                        var cst = Math.sqrt(ox * ox + oy * oy) + (hasPrev ? 0.35 * Math.sqrt((ox - px) * (ox - px) + (oy - py) * (oy - py)) : 0);
+                        if (cst >= bestC || hits(ox, oy)) continue;
+                        bestC = cst; bx2 = ox; by2 = oy;
+                    }
+                }
+                if (bestC < Infinity) { G.wx = bx2; G.wy = by2; }
             }
             for (var sj = 0; sj < live.length; sj++) {
                 var C2 = cols[live[sj]._sfKey];
-                live[sj]._sfDy = C2 ? (C2.d > 0 ? C2.d : C2.u) : 0;
+                live[sj]._sfDy = C2 ? C2.dy + C2.wy : 0;
+                live[sj]._sfDx += C2 ? C2.wx : 0;
+                live[sj]._sfWx = C2 ? C2.wx : 0;
+                live[sj]._sfWy = C2 ? C2.wy : 0;
             }
         }
         var pops = ctx.popBoxes || (ctx.popBoxes = []);

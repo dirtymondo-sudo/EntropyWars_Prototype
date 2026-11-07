@@ -25364,8 +25364,18 @@
                 if (rt && rt.height > 0 && rt.bottom > o.top) R.t = Math.max(R.t, rt.bottom - o.top + pad);
                 if (rb && rb.height > 0 && rb.top < o.bottom) R.b = Math.min(R.b, rb.top - o.top - pad);
             }
-            const plate = shown(document.querySelector('.ew-scoreboard .ew-score-plate')) || shown(document.querySelector('.ew-scoreboard'));
-            if (plate && plate.top - o.top < o.height * 0.25) R.plate = [plate.left - o.left, plate.right - o.left, plate.bottom - o.top + pad];
+            /* THE HUD WALLS (zones/traps playtest 2026-11-07: "⛰ HIGH GROUND! ×1.2" / "🜃 IN THE AIR ×1.25" over a flyer
+               in the top-right corner sat under the P2 bar, the match info line and the achievement toast). The HUD draws
+               OVER this layer, so any pop under a HUD panel reads as cut off. Every HUD box a pop can drift under is a wall:
+               the whole scoreboard (both bars, not only the score plate), the match info (map name, weather, zodiac), the
+               AP press icons, the turn order column, the combat log and an achievement toast while it shows. three-renderer.js steps a unit's
+               whole stack the shortest way clear of them. R.walls = [left, top, right, bottom] in layer px, padded. */
+            R.walls = [];
+            document.querySelectorAll('.ew-scoreboard, .ew-matchmeta, .ew-ap-press:not(.off), .ew-turn-col, .ew-clog, .achieve-toast').forEach(el => {
+                const r = shown(el);
+                if (!r || r.right <= o.left || r.left >= o.right || r.bottom <= o.top || r.top >= o.bottom) return;
+                R.walls.push([r.left - o.left - pad, r.top - o.top - pad, r.right - o.left + pad, r.bottom - o.top + pad]);
+            });
             return (_floatSafe = R);
         };
 
