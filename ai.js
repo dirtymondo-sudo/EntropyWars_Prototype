@@ -9429,7 +9429,9 @@
             // THE ENEMY REMAINS (playtest 2026-11-07 H6): only an enemy's remains — never its own team's graves (the cast's own gate)
             const _cbOk = (typeof spellCorpseUsable === 'function') ? (d => spellCorpseUsable(unit, spell, d))
                 : (d => d.dead && !d._corpseConsumed && d.player !== unit.player);
-            const remains = g.state.units.filter(_cbOk)
+            // THE GRAVES STAY: the still-dead bodies and the graves respawned units left (battle.js corpseRemainsBodies)
+            const _cbPool = (typeof corpseRemainsBodies === 'function') ? corpseRemainsBodies() : g.state.units;
+            const remains = _cbPool.filter(_cbOk)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
                               - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
@@ -9460,7 +9462,11 @@
         }
 
         if (kind === 'raiseDead') {
-            const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
+            // THE GRAVES STAY: left graves too; the cast's own gate (spellCorpseUsable: a covered square can't be raised)
+            const _rdPool = (typeof corpseRemainsBodies === 'function') ? corpseRemainsBodies() : g.state.units;
+            const _rdOk = (typeof spellCorpseUsable === 'function') ? (d => spellCorpseUsable(unit, spell, d))
+                : (d => d.dead && !d._corpseConsumed);
+            const remains = _rdPool.filter(_rdOk)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
                               - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
