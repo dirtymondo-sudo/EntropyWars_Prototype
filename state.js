@@ -1245,7 +1245,7 @@
             if (weStartedBuffering) _reStartBuffering();
 
             for (const u of state.units) {
-                if (!u.dead && !u._dying) {   // a body still falling (killed earlier this pass) takes no terrain tick
+                if (!u.dead && !u._dying && !(u.hp <= 0)) {   // a body still falling (killed earlier this pass) takes no terrain tick
                     updateTerrainStay(u);
                     _reBeginGroup(`🌍 Terrain: ${unitDisplayName(u)}`);
                     applyTerrainTurnEffects(u);
@@ -2807,7 +2807,7 @@
                 if (def.homing) {
                     if (!def.soaks || !weatherDefIsGlobal(weather)) continue;
                     for (const unit of units) {
-                        if (unit.dead || unit._dying) continue;
+                        if (unit.dead || unit._dying || unit.hp <= 0) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
                         const _wPrevG = Number((unit.status && unit.status.wet) || 0);
@@ -2818,7 +2818,7 @@
                 }
                 if (!def.onTurnEffect && !def.soaks) continue;
                 for (const unit of units) {
-                    if (unit.dead || unit._dying || !weatherOnTile(weather, unit.x, unit.y)) continue;   // the storm that downed it doesn't soak the body
+                    if (unit.dead || unit._dying || unit.hp <= 0 || !weatherOnTile(weather, unit.x, unit.y)) continue;   // the storm that downed it doesn't soak the body
                     // 🌧️ Rain-type weather soaks whoever stands in it (wet =
                     // conducts lightning, resists fire, flash-freezable) —
                     // and the downpour puts out any fire on them on the spot.
@@ -2886,7 +2886,7 @@
            through the eye, mondo 2026-10-19) both hit through here, so the two can never drift. Returns true when the
            storm hurt the body. at: the tile it is struck on when that is not where it stands (a walk in passing). */
         function stormStrikeUnit(v, weather, def, at) {
-            if (!v || v.dead || v._dying || !weather || !def) return false;
+            if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -2906,9 +2906,6 @@
             // THE SPELL AUDIT Batch D — `weatherStatusImmune: { blizzard: ['blind'] }` (Snowborn): this weather's status never lands.
             const _wsi = (typeof unitPassiveValue === 'function') ? unitPassiveValue(v, 'weatherStatusImmune') : null;
             const _wsiBlind = !!(_wsi && Array.isArray(_wsi[weather.type]) && _wsi[weather.type].includes('blind'));
-            if (hit && hit.amount > 0 && def.blinds && !_wsiBlind) {
-                applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
-            }
             if (!(hit && hit.amount > 0)) return false;
             applyDamageToUnit(v, hit.amount, `${String(hit.text || '').replace(/\s+for$/, '')}: `, {
                 ignoreArmor: false,
@@ -2921,6 +2918,11 @@
                 // victim's level (see applyWeatherTurnEffects).
                 scaleByTargetLevel: true
             });
+            /* the snow-blind lands AFTER the strike (it never changed the strike's damage): a strike that kills leaves no
+               status on the body (THE KILLING HIT TOO, battle.js applyStatusPayload) */
+            if (def.blinds && !_wsiBlind) {
+                applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
+            }
             if (weather.type === 'thunderstorm' && window.playStormLightningFx) {
                 // ⚡ same crack + delayed rumble as the
                 // per-turn strike above — fires live here (the

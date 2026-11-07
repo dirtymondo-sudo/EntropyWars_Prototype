@@ -4187,3 +4187,18 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   rounds", "Wet targets take it worse"), the status library, Balance Lab labels. Code names (_soakUnit, _unitIsSoaked,
   soakedShock notes, weather `soaks`) stay. Name adjectives ("Blood-Soaked", the Firefighter's "Soaked") and DEF/M DEF
   "soaks" damage are not the status and stay. Checked on screen: WET pill on the unit panel after walking into the river.
+
+## THE KILLING HIT TOO (2026-11-07, status effects playtest A1/A2)
+"Vampire takes 361" -> "Vampire is grievously wounded" -> "Vampire is defeated" (Vivisection) and "Migraine: Ghost is weakened"
+on the hit that killed it: battle.js applyDamageToUnit takes the HP off, lands the hit's own `statusEffects` / `statStageBoost` /
+element riders, and only then calls defeatUnit, so THE FALLEN TAKE NOTHING gate (dead || _dying) still saw a live unit at 0 HP.
+- battle.js `_unitIsDown(u)` = dead || _dying || hp <= 0. It gates applyStatusPayload, applyStatusEffects, applyStatStageBoost,
+  applySeedEffectToUnit, applyAuraTreeEffectToUnit, _soakUnit, the round-end DoT list, and applyDamageToUnit's statStageBoost,
+  elemental combo (flash-freeze / supercharge / steam / melt / thaw) and water soak. Every path that lands a status after a
+  hit (spells, combos, counters, traps, zones, auras, weather) goes through those, so all of them skip the body.
+- The Martyr's Talisman save (`surviveLethalOnce`) now runs BEFORE the hit's statuses, so a unit it holds at 1 HP still takes them.
+- Status-before-hit orders: Goo Shot's `statusFirst` keeps the status for its own multiplier, but a hit that kills restores the
+  body's statuses and drops the status line (`_logDrop`); Mimic's debuff copy hits first, then applies; a blizzard's snow-blind
+  lands after its strike (state.js stormStrikeUnit). map.js applyTerrainTurnEffects + state.js terrain/weather loops read hp <= 0 too.
+- Browser proof (live vs local, VS CPU 8x8): before, the 20 HP target killed by Vivisection kept `grievous: 2` and Migraine's kill
+  kept `statDown` + `int -1`; after, both bodies carry nothing and the log has no status line; non-lethal casts still land both.
