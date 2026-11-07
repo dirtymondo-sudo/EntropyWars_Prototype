@@ -3323,7 +3323,16 @@ The report: Divine Light's target rows showed no heal amount, and the Cube row i
   summonWeather cast (battle.js) stacked a second copy (two Blood Rains = double burn/heal). Now a cast of a weather
   that is up renews it: rounds = max(left, cast roll), it becomes the caster's, a storm's eye / patch moves to the
   picked tile; log "The X already up is renewed: N rounds left." (call flagged to mondo).
-- OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.
+- ~~OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.~~ settled 2026-11-07 below.
+- OPPOSITE WEATHERS NEVER SHARE THE SKY (2026-11-07, elements playtest E1 Thunderstorm + Drought, E2 Thunderstorm +
+  Sandstorm + Blood Rain; mondo "fix the other big bugs the elemental playtest found"; the card's recommended option):
+  state.js WEATHER_REGISTRY `sky: 'dry'` (Drought, Sandstorm) vs `sky: 'wet'` (Thunderstorm, Hurricane, Blood Rain,
+  Blizzard); `weathersOppose(a, b)`. spawnWeather + the dungeon floor sky (battle.js `_mdRollFloorAmbience`) never roll a
+  kind opposite to one up; a summonWeather cast is the newer one and `driveOffOpposedWeathers(type)` ends the opposite
+  one on the spot (log "The Drought ☀ is driven off by the Thunderstorm ⛈."), no leftover terrain; tickWeather first runs
+  `settleOpposedWeathers()` (any pair left: the later one in the list stays). Not opposite (both stay): two rains
+  (Thunderstorm + Blood Rain), Tornado, Earthquake, Solar Flare, Tesseract Storm. Guest gets it through state-sync
+  (activeWeather + log). ui.js board fingerprint now hashes every weather's type (a swap kept the count).
 
 ## THE FLYER IS NOT THE TILE — flyer clicks vs tile clicks (2026-10-29, VS CPU playtest R9 + R7, mondo's notes 4/5 + bug 3)
 mondo: "clicking a flying unit and clicking a tile need to be 2 separate things" (a click on the tile under the
@@ -4110,6 +4119,17 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
 - battle.js aoePull log now names the caster ("X casts Crowd Surge: hits N targets…" / "…but no enemies are in range.").
 - G2: "splashes 1 unit round X" -> "around".
 
+## THE FALLEN TAKE NOTHING (2026-11-07, elements playtest D1)
+"Witch is defeated" then "Plasma Cannon: Witch is burning / jammed": map.js defeatUnit sets hp 0 + `_dying` at the killing
+blow and flips `dead` only after the ~800 ms fall, and every status gate checked `dead` alone, so the same hit's status payload,
+a lava / plague end-of-turn tick, a second weather pass or a round-end DoT dive still reached the falling body. Now `dead ||
+_dying` gates: battle.js applyStatusPayload / applyStatusEffects / applyStatStageBoost / applySeedEffectToUnit /
+applyAuraTreeEffectToUnit / processEndOfRoundStatuses (affected list, both tick loops: the tick that downs a unit is its last and
+reads "claimed by"), map.js applyTerrainTurnEffects, state.js beginBlitzRound terrain loop + applyWeatherTurnEffects. Damage and
+heals were already gated. A new life starts clean: processRespawns wipes `status`, and resetUnitPowerState now also zeroes
+`_lavaBurnStacks` (they escalated the next life's first lava Burn tick). Statuses a unit wore BEFORE it fell stay on the body
+until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule).
+
 ### THE WATER + FIRE + FREEZE PASS (2026-11-07, mondo after the elements playtest)
 - FROZEN IS FROZEN: "obviously frozen is not supposed to be stun. frozen is frozen". The flash-freeze (frost on a soaked
   unit, battle.js applyDamageToUnit combo; frost on a pool, _reactColdWater; the retired Frost Mine trap) applies the
@@ -4133,3 +4153,25 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   the fire. Now ANY ice painted on a burning tile becomes water in map.js setTerrainAt ("The ice melts on the flames at X —
   the fire goes out and leaves water"), and the same cast's cold reaction skips that meltwater (state._iceMeltTiles,
   stamped round:active unit) so it is not frozen straight back to ice.
+
+
+## THE GROUND FIRE SETS OFF THE SLICK (2026-11-07, elements playtest A1: "Black ooze and fire sit on the same tile without anything happening")
+- The rule was already written (data.js `swamp`/`oil`: they DETONATE when hit by fire/lightning; PLAYTEST_NOTES "LIQUID PASS"),
+  but only a fire / lightning SPELL reached `_reactFireOil`. Fire already on the ground never did, so the Oozing trail painted
+  ooze under Black Goo standing on burning ground and the square stayed ooze AND burning forever.
+- battle.js now sends ground fire through the same blast (no new rule, same numbers):
+  (a) `igniteTile` on ooze / oil (a fire door's lane, fanned flames, any lighter) → `_groundFireDetonatesOil`;
+  (b) ooze / oil landing on a square already burning → `_detonateBurningOil`, run after every `_paintTimedTerrain` paint
+  (Oozing trail, Goo Shot, Splash), after a terrainCreate paint (Ooze Trail), and at the end of `tickBurningTiles`
+  (any other path, e.g. an oil flow running onto a fire).
+- A ground-fire blast has no spell: `_GROUND_FIRE_SPELL` (fire) → the code's spell-less default 0.9 × 90 = 81, level-priced
+  by whoever lit the fire. A burning square remembers its lighter (`state.burningTiles[k].u`, unit id; spread copies it);
+  that unit is spared like a caster, everyone else grounded in the slick (the origin square too) takes it + Burn 2.
+  Log: "💥 The fire on the ground ignites the black ooze — the whole slick detonates (N tiles), engulfing M units!".
+- `_oilBlastDepth` stops a blast's own `igniteTile` on its charred squares from starting another. Rain still wins: a square
+  the rain falls on never catches (`igniteTile` refuses), so it never goes off.
+- Left as is (no rule says otherwise): ground fire still spreads only into fuel (grass, trees, planks), not into a slick next
+  to it; a unit with the Burn status does not set off ooze it stands in; storm lightning (Thunderstorm) has no terrain reaction.
+- Checked in a real page (spell-audit harness): before, ooze + burning square sat together with no blast; after, the Oozing
+  paint on a burning square, ground fire lit on a slick and Goo Shot onto a burning square each blow the slick; Fireball on
+  ooze unchanged; rain blocks it.
