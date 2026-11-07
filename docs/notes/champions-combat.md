@@ -4271,3 +4271,25 @@ thread built R1-R7; R8-R12 and R13-R16 went to sibling threads.
 - R7 THE BOG BURNS: _isBogTile (poison, poison_bog, purple_bog + poison flow); fire spell (dispatcher) or ground fire lit on it
   (igniteTile) -> _reactFireBog: grounded units in the connected bog Corroded 2 (caster spared), one per resolution. Tile cast hint added.
 Proof (staged on a real VS CPU board, real engine calls): /mnt/project-files/element-reactions-20261107/r1-r7/.
+
+## EARTH, NATURE, WIND AND BLOOD ON THE BOARD (2026-11-07, element reactions R13-R16) — battle.js, data.js
+mondo picked R1-R16 of /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md ("let's start working on all of
+these fixes except for fire on water making steam"). This thread built R13-R16; other threads build R1-R12 in the same code.
+- **R13 earth:** an `element:'earth'` spell's hit on a burning square puts the fire out (the square stays what it was); on
+  `lava` it leaves `stone` (same result water gives, own log line "plugs the lava"). Tile-castable (hint "smothers the
+  flames" / "hardens the lava into stone").
+- **R14 nature:** a nature spell on `scorched` or `desert` that the FIGHT left (`state.paintedFrom` says the map had
+  something else) regrows `grass`. The map's own scorched ground / desert never changes. Normal 3-round terrain timer
+  (if the map's own ground was grass the square is simply back to the map). Tile-castable ("regrows the grass").
+- **R15 wind:** a wind spell on burning squares fans each one: the next square away from the caster (dominant axis,
+  diagonal on an exact tie) catches via `igniteTile` (2 rounds), only fires burning when the gust lands, the fire cap
+  `BURNING_TILE_CAP` holds. Log mirrors Fanned Flames. Tile-castable ("fans the flames").
+- **R16 blood:** `STATUS_DEFS.bleed.onRoundEnd` calls `_bleedDripsBlood(unit)`: a grounded bleeder's square becomes a
+  `blood` Blood Pool (plain paint, not a spring, so one square). Same ground rules as Blood Rain (`WEATHER_SEED_KEEP`, no
+  water/lava/bog/oil, passable, no monument / fixed field cell) plus: not under a roof (the paint would land on the roof
+  block) and not on a burning square. Standing in a pool already restarts its clock. Replaces the 10-21 default "only
+  Blood Rain makes blood" (mondo approved). Status library text says so.
+- Code: battle.js `_reactEarthNatureWind` + `_natureCanRegrowAt` (called from `triggerTerrainSpellReaction` by raw
+  element), `_bleedDripsBlood`; tile-cast hints in `_elementalTileCastInfo`. Terrain + burningTiles ride the state-sync,
+  so the guest sees every change. AI does not seek these tile casts (score 0), same as before.
+- Proof (WebGL2 browser, VS CPU arena): /mnt/project-files/element-reactions-r13-r16/ (r13_*, r14_*, r15_*, r16_*, old_*).

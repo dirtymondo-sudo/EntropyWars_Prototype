@@ -2392,7 +2392,7 @@
                             ThreeVFX.isActive && ThreeVFX.isActive()) {
                             ThreeLightning.strikeFromSky(x, y, { durationMs: 340 });
                         } else {
-                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : _etc.el === 'water' ? '💧' : '❄️', 'damage');
+                            showFloatingTextAtTile(x, y, ({ lightning: '⚡', fire: '🔥', water: '💧', earth: '🪨', nature: '🌿', wind: '💨' })[_etc.el] || '❄️', 'damage');
                         }
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         markDirty('board', 'hud');
@@ -3746,6 +3746,8 @@
                     addLog(`💧 ${_ctSp(spell.name)} puts out the flames on ${_wDoused} tile${_wDoused !== 1 ? 's' : ''}.`);
                 }
             }
+            /* 🪨🌿💨 EARTH, NATURE, WIND ON THE BOARD (R13-R15, mondo 2026-11-07): see _reactEarthNatureWind below */
+            if (_rawEl === 'earth' || _rawEl === 'nature' || _rawEl === 'wind') _reactEarthNatureWind(caster, spell, tiles, _rawEl);
             const el = classifySpellElement(spell);
             if (!el) return;
             const _meltStamp = (state.round || 0) + ':' + (state._blitzActiveUnitId || '');
@@ -3839,6 +3841,101 @@
             }
         }
         window.triggerTerrainSpellReaction = triggerTerrainSpellReaction;
+
+        /* 🪨🌿💨 EARTH, NATURE, WIND ON THE BOARD (element reactions R13-R15, mondo 2026-11-07: "let's start working on all of
+           these fixes"; ELEMENT_REACTIONS_PROPOSALS_20261107.md). Only existing pieces: extinguishTile, the stone that water
+           leaves on lava, grass, igniteTile + the fire cap (Fanned Flames). Every change rides the normal 3-round terrain timer.
+             R13 · an EARTH spell on burning ground puts the fire out (the square stays what it was); on lava it leaves stone.
+             R14 · a NATURE spell on scorched ground or desert the FIGHT left (never the map's own) regrows it into grass.
+             R15 · a WIND spell on burning squares fans each one: the next square away from the caster catches (Fanned Flames). */
+        function _natureCanRegrowAt(x, y) {
+            const t = getTerrainAt(x, y);
+            if (t !== 'scorched' && t !== 'desert') return false;
+            const pf = state.paintedFrom && state.paintedFrom[x + ',' + y];
+            return !!(pf && pf.t !== t);   // the map's own scorched ground / desert stays
+        }
+        function _reactEarthNatureWind(caster, spell, tiles, rawEl) {
+            const seen = new Set();
+            const hit = [];
+            for (const tile of tiles) {
+                if (!tile || !isInside(tile.x, tile.y)) continue;
+                const k = tile.x + ',' + tile.y;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                hit.push(tile);
+            }
+            if (rawEl === 'earth') {
+                let smothered = 0, plugged = 0;
+                for (const t of hit) {
+                    if (_tileIsBurning(t.x, t.y) && extinguishTile(t.x, t.y)) smothered++;
+                    if (getTerrainAt(t.x, t.y) === 'lava' && setTerrainAt(t.x, t.y, 'stone') !== false && getTerrainAt(t.x, t.y) === 'stone') plugged++;
+                }
+                if (plugged) _invalidateBoardGrid();
+                if (smothered || plugged) scheduleBoardRender();
+                if (smothered) addLog(`🪨 ${_ctSp(spell.name)} smothers the flames on ${smothered} tile${smothered !== 1 ? 's' : ''}.`);
+                if (plugged) addLog(`🪨 ${_ctSp(spell.name)} plugs the lava: ${plugged} tile${plugged !== 1 ? 's' : ''} harden${plugged === 1 ? 's' : ''} into stone!`);
+            } else if (rawEl === 'nature') {
+                let regrown = 0;
+                for (const t of hit) {
+                    if (!_natureCanRegrowAt(t.x, t.y)) continue;
+                    if (setTerrainAt(t.x, t.y, 'grass') !== false && getTerrainAt(t.x, t.y) === 'grass') regrown++;
+                }
+                if (regrown) {
+                    _invalidateBoardGrid();
+                    scheduleBoardRender();
+                    addLog(`🌿 ${_ctSp(spell.name)} regrows ${regrown} tile${regrown !== 1 ? 's' : ''} of scorched ground into grass.`);
+                }
+            } else if (rawEl === 'wind') {
+                const burning = hit.filter(t => _tileIsBurning(t.x, t.y));   // only the fires burning when the gust lands
+                if (!burning.length) return;
+                let leapt = 0;
+                for (const t of burning) {
+                    const ox = t.x - caster.x, oy = t.y - caster.y;
+                    if (!ox && !oy) continue;   // the caster's own square has no "away"
+                    const ax = Math.abs(ox), ay = Math.abs(oy);
+                    const dx = ax >= ay ? Math.sign(ox) : 0, dy = ay >= ax ? Math.sign(oy) : 0;
+                    const nx = t.x + dx, ny = t.y + dy;
+                    if (!isInside(nx, ny) || _tileIsBurning(nx, ny)) continue;
+                    if (Object.keys(state.burningTiles || {}).length >= BURNING_TILE_CAP) break;   // the fire cap still holds
+                    if (igniteTile(nx, ny, 2, caster)) leapt++;
+                }
+                addLog(`💨 ${_ctSp(spell.name)} fans the flames${leapt ? ` — the fire leaps ${leapt} tile${leapt !== 1 ? 's' : ''} downwind` : ''}!`);
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+            }
+        }
+
+        /* 🩸 BLEEDING DRIPS BLOOD (element reaction R16, mondo 2026-11-07, replaces the 10-21 default "only Blood Rain makes
+           blood"): a grounded Bleeding unit's square becomes a Blood Pool at its bleed tick (data.js STATUS_DEFS.bleed
+           onRoundEnd), on the normal 3-round terrain timer; a pool it already stands in starts its 3 rounds over. The same
+           ground rules as Blood Rain: never on water (blood never reddens it), lava, a bog or oil, walls, objectives, under a
+           roof, or a square that is on fire. Rain washes it away like any Blood Pool. */
+        function _bleedDripsBlood(u) {
+            if (!u || _unitIsDown(u) || state.phase !== 'battle') return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            const x = u.x, y = u.y;
+            if (!isInside(x, y)) return false;
+            const cur = getTerrainAt(x, y);
+            if (cur === 'blood') { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(x, y, 'blood'); return false; }
+            if (!cur || cur.indexOf('void') === 0) return false;
+            if (typeof liquidFamilyOf === 'function' && liquidFamilyOf(cur)) return false;
+            if (_isWetTile(x, y) || _isLavaTile(x, y) || _isOilTile(x, y) || _tileIsBurning(x, y)) return false;
+            if (typeof WEATHER_SEED_KEEP !== 'undefined' && WEATHER_SEED_KEEP.has(cur)) return false;
+            if (/^(barrier|cloud|nexus|sanctuary|beanstalk|mountain|tree)/.test(cur)) return false;
+            const rule = (typeof getTerrainRule === 'function') ? getTerrainRule(cur) : null;
+            if (rule && rule.passable === false) return false;
+            const col = state.boardColumns?.[y]?.[x];
+            if (col && col.some(b => b && b.roof)) return false;
+            const _mt = state._monumentTiles;
+            if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
+            if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) return false;
+            if (setTerrainAt(x, y, 'blood') === false || getTerrainAt(x, y) !== 'blood') return false;
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            addLog(`🩸 ${_ctName(u)} bleeds onto the ground: a Blood Pool forms at ${coordLabel(x, y)}.`);
+            return true;
+        }
+        window._bleedDripsBlood = _bleedDripsBlood;
 
         /* 💥🛢️ FIRE ON OIL / GOO (2026-10-23, mondo: "Does using fireball on a target in goo or oil already make the body of
            liquid explode? If not it should."): a fire / lightning spell that leaves terrain (Meteor's scorch, Hellmouth's
@@ -4113,6 +4210,12 @@
             if (!isInside(x, y)) return null;
             /* 💧 a water spell may be aimed at a burning tile to put it out (WATER PUTS OUT FIRE, 2026-11-07) */
             if (getSpellElement(spell) === 'water' && _tileIsBurning(x, y)) return { el: 'water', hint: 'puts out the flames' };
+            /* 🪨🌿💨 R13-R15: an earth spell at a fire or lava, a nature spell at the fight's scorched ground, a wind spell at a fire */
+            const _tcEl = getSpellElement(spell);
+            if (_tcEl === 'earth' && _tileIsBurning(x, y)) return { el: 'earth', hint: 'smothers the flames' };
+            if (_tcEl === 'earth' && getTerrainAt(x, y) === 'lava') return { el: 'earth', hint: 'hardens the lava into stone' };
+            if (_tcEl === 'nature' && _natureCanRegrowAt(x, y)) return { el: 'nature', hint: 'regrows the grass' };
+            if (_tcEl === 'wind' && _tileIsBurning(x, y)) return { el: 'wind', hint: 'fans the flames' };
             const el = classifySpellElement(spell);
             if (!el) return null;
             if (el === 'lightning') {
