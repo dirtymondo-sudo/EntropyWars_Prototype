@@ -167,14 +167,24 @@ const ThreeCamera = (function () {
         if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.tallSceneryTopAt !== 'function') return -Infinity;
         try { return ThreeRenderer.tallSceneryTopAt(wx, wz); } catch (e) { return -Infinity; }
     }
+    /* THE ROOM'S GROUND (2026-11-07, mondo on Mount Shasta Arena: "grass is completely covering the screen"): past the board's
+       edge the grid has no column (the lookups stretch the edge square out), but an arena cut from a terrain room stands in that
+       room's hillside, so a lens behind the near row could sit inside the slope. Off the board the lens also reads the room's
+       drawn ground (three-renderer roomGroundAt). */
+    function _roomGroundOffWorld(wx, wz) {
+        if (typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.roomGroundAt !== 'function') return -Infinity;
+        const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        if (!(W > 0 && H > 0) || (wx >= 0 && wz >= 0 && wx < W * tileSize && wz < H * tileSize)) return -Infinity;
+        try { const g = ThreeRenderer.roomGroundAt(wx, wz); return Number.isFinite(g) ? g : -Infinity; } catch (e) { return -Infinity; }
+    }
     function _solidGroundYWorld(wx, wz) {
         if (typeof window !== 'undefined' && typeof window._camSolidGroundPx === 'function') {
             try {
                 const g = window._camSolidGroundPx(Math.floor(wx / tileSize), Math.floor(wz / tileSize));
-                if (Number.isFinite(g)) return Math.max(0, g, _tallTopWorld(wx, wz));
+                if (Number.isFinite(g)) return Math.max(0, g, _tallTopWorld(wx, wz), _roomGroundOffWorld(wx, wz));
             } catch (e) {}
         }
-        return Math.max(_groundYWorld(wx, wz), _tallTopWorld(wx, wz));
+        return Math.max(_groundYWorld(wx, wz), _tallTopWorld(wx, wz), _roomGroundOffWorld(wx, wz));
     }
     /* ══ THE LENS FOOTPRINT (2026-11-07) ══
        The Deathtrap camera thread: a turn-ending cast parked the close-up on a victim standing in a 2-level pit (the

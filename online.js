@@ -6618,8 +6618,15 @@
                                     if (typeof focusBoardCameraOnTiles === 'function') {
                                         var _bz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                         var _dz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                        /* THE TURN FRAME (2026-11-07): a hand zoom closer than the cap is pulled back to it (battle.js capTurnFrameZoom) */
+                                        var _z1 = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz : _dz;
+                                        if (typeof capTurnFrameZoom === 'function') _z1 = capTurnFrameZoom(hostUnit, _z1);
+                                        var _cl1 = typeof turnFrameTooClose === 'function' && turnFrameTooClose(hostUnit);
+                                        /* and the resting angle, like the host's own CPU activations (a low hand angle never carries into the turn) */
+                                        var _rt1 = (typeof camera !== 'undefined' && camera && !st._userPanning && !st._userOrbiting && Number.isFinite(camera._restTilt))
+                                            ? Math.min(camera._restTilt, (typeof REST_TILT_MAX === 'number') ? REST_TILT_MAX : 62) : undefined;
                                         focusBoardCameraOnTiles([{ x: hostUnit.x, y: hostUnit.y }], {
-                                            zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz : _dz,
+                                            zoom: _z1, _applyZoom: _cl1, _bypassCap: _cl1, tilt: _rt1,
                                             holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
                                         });
                                     }
@@ -6745,8 +6752,11 @@
                                 if (activeU && typeof focusBoardCameraOnTiles === 'function') {
                                     var _bz3 = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
                                     var _dz3 = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                    var _z3 = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz3 : _dz3;
+                                    if (typeof capTurnFrameZoom === 'function') _z3 = capTurnFrameZoom(activeU, _z3);   // THE TURN FRAME
+                                    var _cl3 = typeof turnFrameTooClose === 'function' && turnFrameTooClose(activeU);
                                     focusBoardCameraOnTiles([{ x: activeU.x, y: activeU.y }], {
-                                        zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz3 : _dz3,
+                                        zoom: _z3, _applyZoom: _cl3, _bypassCap: _cl3,
                                         holdMs: 99999, persist: true, transitionMs: 600
                                     });
                                 }
@@ -7494,8 +7504,10 @@
                         var _dz = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
                             && typeof getUserZoomScale === 'function') ? getUserZoomScale()
                             : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
+                        if (typeof capTurnFrameZoom === 'function') _dz = capTurnFrameZoom(au, _dz);   // THE TURN FRAME (2026-11-07)
+                        var _clR = typeof turnFrameTooClose === 'function' && turnFrameTooClose(au);
                         focusBoardCameraOnTiles([{ x: au.x, y: au.y }], {
-                            zoom: _dz, holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
+                            zoom: _dz, _applyZoom: _clR, _bypassCap: _clR, holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
                         });
                     }
                 }
