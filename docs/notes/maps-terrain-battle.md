@@ -1468,3 +1468,18 @@ to the ceiling. Where as an outdoor map like cyberpunk does not need that, bc it
 - three-renderer.js `_fieldSurfaceY`: over a sky square the flyer hovers its clearance over `skyTops` (marks keep `rockTops`).
 - Cyberpunk arena: all 5 rock squares are sky (3.7 m, 10.3 m x2, 6.9 m building edges; 2.7 m the slope crest at 9,5).
   Proof: videos/units/fixes/FLYER_OVER_BUILDING_EDGE_CYBERPUNK_1080p30.mp4.
+
+## THE SOLID WALL HOLDS — no smashing through a field's rock (2026-11-07, forced movement log check)
+Seen in a VS CPU match on Mount Shasta Arena: Grapple Arm pulled a Golem into a cliff and the log said "💥 Golem smashes a
+hole clean through the stone wall — debris everywhere!", then "🎱 Golem slams into the cliff face and rebounds!".
+- Cause: every cliff on that arena is a field rock cell (`fieldCellRock`, THE SOLID WALL above). A heavy/colossal body's
+  crash-through (`_tryCrashThrough` → `_breachWindowCheck`) still removed the hidden column's voxels at body height, but the cell
+  stays a rock nobody stands on (canOccupy refuses it), so resolveForcedSlide's re-check fell through to the slam. The drawn rock
+  never changed either; only the invisible column got a hole.
+- Fix (battle.js): `_breachWindowCheck` answers false on a field rock cell, so no crash, no charge breach and no beam bore there,
+  and the forecast agrees (it showed the body stepping into the rock before). The body slams it.
+- Same pass: the slam line only says "and rebounds" when the slide really bounces back. A pull into a point (Grapple Arm, Lure,
+  Telekinetic Slam, Black Hole) is pinned, and the throw's last allowed bounce just stops, so those read "🎱 X slams into Y!".
+- Proof (real menus, WebGL2, staged with `_ewShotRecApi.place` + a copied spell row):
+  /mnt/project-files/playtest-mechanics-20261107/solid-wall-smash/ (before: Haymaker on a Yeti; after: Telekinetic Slam on a
+  Juggernaut, column 0-8 intact, no crash line).

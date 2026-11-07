@@ -630,9 +630,12 @@
                 // keep the P1/P2 alternation and the per-side shuffle.
                 for (const bucket of [tierUnits.filter(_quick), tierUnits.filter(u => !_quick(u))]) {
                     if (!bucket.length) continue;
-                    const p0 = bucket.filter(u => u.player === 0);
-                    const p1 = bucket.filter(u => u.player === 1);
-                    const p2 = bucket.filter(u => u.player === 2);
+                    /* THE HOME SIDE (2026-11-07): a possessed body rests on its home seat but still takes its turn in its
+                       controller's half of the alternation, as it always has — sort by the seat that steers it. */
+                    const _seat = (typeof getControllingPlayer === 'function') ? (u => getControllingPlayer(u)) : (u => u.player);
+                    const p0 = bucket.filter(u => _seat(u) === 0);
+                    const p1 = bucket.filter(u => _seat(u) === 1);
+                    const p2 = bucket.filter(u => _seat(u) === 2);
 
                     for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
                     for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
@@ -2125,6 +2128,31 @@
             return null;
         }
 
+        /* THE FALL'S NUMBER, read without side effects (the forecast: forced-movement playtest 2026-11-07 K2, Gravity Well's
+           yank and a shove off a ledge fell for damage the forecast never showed): applyFallDamage's own math for a body
+           landing at (x, y) — 0 when it takes nothing (a flyer's own landing, under the grace, low gravity, a liquid). */
+        function fallDamageFor(unit, fromZ, toZ, opts, x, y) {
+            if (!unit || unit.dead) return 0;
+            const _forced = !!(opts && opts.forced);
+            if (!_forced && typeof canFly === 'function' && canFly(unit)) return 0;
+            const FALL_THRESHOLD = _forced ? 1 : ((typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3);
+            const drop = (fromZ ?? 0) - (toZ ?? 0);
+            if (drop < FALL_THRESHOLD) return 0;
+            const lx = (x != null) ? x : unit.x, ly = (y != null) ? y : unit.y;
+            const _gravField = (typeof getGravityFieldAt === 'function') ? getGravityFieldAt(lx, ly) : null;
+            if (_gravField === 'weak') return 0;
+            let _splash = null;
+            if (typeof liquidFamilyOf === 'function' && typeof getTerrainAt === 'function') _splash = liquidFamilyOf(getTerrainAt(lx, ly));
+            if (!_splash && typeof getLiquidFlowAt === 'function') { const _fl = getLiquidFlowAt(lx, ly); if (_fl) _splash = _fl.t; }
+            if (_splash) return 0;
+            const FALL_PCT = (typeof FALL_DAMAGE_PCT_PER_LEVEL !== 'undefined') ? FALL_DAMAGE_PCT_PER_LEVEL : 0.05;
+            const _wMult = (typeof getUnitFallDamageMult === 'function') ? getUnitFallDamageMult(unit) : 1.0;
+            const _zEarthMult = (typeof isEarthZodiacActive === 'function' && isEarthZodiacActive()) ? 1.5 : 1;
+            const _gravMult = _gravField === 'super' ? 3 : 1;
+            return Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult * _gravMult));
+        }
+        window.fallDamageFor = fallDamageFor;
+
         function applyFallDamage(unit, fromZ, toZ, logPrefix, opts) {
             if (!unit || unit.dead) return 0;
             // 🪝 FORCED groundings (Anchor, Gravity Well, Lasso, Stasis Beam,
@@ -2165,7 +2193,8 @@
                 const _splashName = _splash === 'lava' ? 'molten lava'
                     : _splash === 'oil' ? 'black ooze'
                     : _splash === 'poison' ? 'bog' : 'water';
-                addLog(`💦 ${unitDisplayName(unit)} falls ${drop} levels — but the ${_splashName} breaks the fall!`);
+                const _splashIcon = _splash === 'lava' ? '🌋' : _splash === 'oil' ? '🛢️' : _splash === 'poison' ? '☠️' : '💦';   // E5: no water drop on a lava fall
+                addLog(`${_splashIcon} ${unitDisplayName(unit)} falls ${drop} levels — but the ${_splashName} breaks the fall!`);
                 if (typeof showFloatingTextForUnit === 'function') {
                     showFloatingTextForUnit(unit, '💦 SPLASH!', 'heal', { durationMs: 900 });
                 }

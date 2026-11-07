@@ -3556,6 +3556,35 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   );
 }
 
+/* THE LIST OPENS FIRST (forced-movement playtest 2026-11-07 H1: "clicking an ability row right after opening ABILITIES
+   armed the row below it while the list was still sliding in"): a theme's window-open motion (UI Maker "Windows open",
+   Stretch / Pop / Unroll / Wipe, the uim-* keyframes) squashes the action list while it opens, so for those few hundred
+   ms every row sits somewhere other than where it comes to rest and a quick click lands on its neighbour (or on the board
+   under the squashed list). A real click that arrives while an action list is still opening finishes that opening at
+   once and goes to whatever sits under the pointer in the OPEN list: the row the player aimed at. A click on the same
+   row it was always on goes through untouched. Looks only: no rule, no new state. */
+(function _hrlgOpeningClickGuard() {
+  if (typeof window === 'undefined' || window._hrlgOpeningGuardOn) return;
+  window._hrlgOpeningGuardOn = true;
+  const _hit = (el) => (el && el.closest) ? (el.closest('.hrlg-blade, .hrlg-confirm, .hrlg-backchip') || null) : null;
+  window.addEventListener('click', (e) => {
+    if (!e.isTrusted || e.button !== 0) return;
+    let opening = [];
+    document.querySelectorAll('.hrlg-list').forEach(l => {
+      if (typeof l.getAnimations !== 'function') return;
+      l.getAnimations().forEach(a => { if (/^uim-/.test(a.animationName || '') && a.playState === 'running') opening.push(a); });
+    });
+    if (!opening.length) return;
+    opening.forEach(a => { try { a.finish(); } catch (err) { /* already done */ } });
+    const was = _hit(e.target);
+    const now = _hit(document.elementFromPoint(e.clientX, e.clientY));
+    if (was === now) return;
+    e.stopPropagation();
+    e.preventDefault();
+    if (now) now.click();
+  }, true);
+})();
+
 // Tiny mouse glyph with the RIGHT button lit — the "right-click goes back"
 // hint riding the sub-menu BACK chips (pads show their B button instead).
 function _HrlgRmbIcon() {
@@ -6786,7 +6815,11 @@ function ActionMenu({ st, hidden }) {
     const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
     const _quickPlace = st._quickAoePlace === st.selectedTool;
-    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && !_tileOnlyKinds.includes(_aimSp.kind || '')
+    /* THE CHARGE ROWS (playtest 2026-11-07 B1: Runaway Train armed with no enemy row, "select a tile to dash to", and a
+       click on the in-range enemy walked the caster first): a dash that charges an enemy (chargeToTarget) lists the
+       enemies it reaches like any single-target hit — the row casts from where the caster stands. */
+    const _aimCharge = !!(_aimSp && _aimSp.kind === 'dash' && _aimSp.chargeToTarget);
+    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && (_aimCharge || !_tileOnlyKinds.includes(_aimSp.kind || ''))
       && ((typeof _getSpellValidTargets === 'function'
           && _getSpellValidTargets(unit, _aimSp).length > 0)
         // MOVE→CAST-only situations still get the unit list — the drum shows
@@ -6837,7 +6870,16 @@ function ActionMenu({ st, hidden }) {
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     }
     if (_aimOrientable) {
-      panels.push(_mkPanel('orient|' + (st._spellOrientation || ''), _hrlgOrientationBlades(st)));
+      /* THE ONE AIM PANEL (forced movement playtest 2026-11-07 O: Rampart's and Pyramid Protocol's aim drew a second
+         "RAMPART / CANCEL" panel, see-through, behind the Horizontal / Vertical list): the aim panel already holds the
+         spell's title and CANCEL, so the two orientation rows join it (one panel: ↔ / ↕ / CANCEL) instead of stacking a
+         second panel with the same title in front of it. A target-list aim keeps its own orientation panel. */
+      const _ap = panels[panels.length - 1];
+      if (_ap && /^aim\|spell\|/.test(_ap.key || '') && Array.isArray(_ap.blades) && _ap.blades.length <= 1) {
+        _ap.blades = _hrlgOrientationBlades(st).blades.concat(_ap.blades);
+      } else {
+        panels.push(_mkPanel('orient|' + (st._spellOrientation || ''), _hrlgOrientationBlades(st)));
+      }
     }
   } else if (menuView === 'items' && am === 'item' && st.selectedTool) {
     const itRule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[st.selectedTool] : null;
@@ -7067,7 +7109,8 @@ function spellTagline(sp) {
   else if (k === 'cross') parts.push('Cross');
   else if (k === 'barrage') parts.push('Barrage');
   else if (k === 'zoneHeal' || k === 'zoneDebuff') parts.push('Zone');
-  else if (k === 'warCry' || k === 'healAll' || k === 'manaRestoreAll') parts.push('All allies');
+  else if (k === 'manaRestoreAll') parts.push('Other allies');   // Free Energy skips its caster
+  else if (k === 'warCry' || k === 'healAll') parts.push('All allies');
   else if (k === 'ricochet') parts.push('Bouncing');
   else if (k === 'splitBeam') parts.push('Split beam');
   else if (k === 'multiHit') {
@@ -7154,7 +7197,8 @@ function spellTargetMode(sp) {
   if (k === 'cannibalize') return 'Remains';
   if (k === 'summonUnit') return 'Empty Tile';
   if (k === 'shadowRealm') return 'You + Target';
-  if (['healAll', 'manaRestoreAll'].includes(k)) return 'All Allies';
+  if (k === 'manaRestoreAll') return 'Other Allies';   // Free Energy skips its caster
+  if (k === 'healAll') return 'All Allies';
   if (['aoe', 'aoePull', 'aoeShield', 'cleanseArea'].includes(k)) return 'Area · AOE';
   if (['line', 'linePush', 'splitBeam'].includes(k)) return 'Line';
   if (k === 'cross') return 'Cross';
@@ -8333,7 +8377,7 @@ function _predictTargetShove(spell, target, castX, castY) {
     dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
     dist = spell.pullDistance || (isGrapple ? 2 : 3); mode = 'pull';
   } else {
-    dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
+    dx = Math.sign(target.x - castX); dy = Math.sign(target.y - castY);   // straight away (a shared column is a straight N/S push)
     dist = spell.displaceDistance || spell.pushDistance || 2; mode = 'push';
   }
   if (dx === 0 && dy === 0) return null;
@@ -9483,7 +9527,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
     let validHere;
     if (isTeamCast) {
       validHere = sp.kind === 'healAll' ? !fullHp
-        : sp.kind === 'manaRestoreAll' ? ((targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
+        : sp.kind === 'manaRestoreAll' ? (targetUnit.id !== actingUnit.id && (targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
         : true;
     } else {
       validHere = typeof _getSpellValidTargets === 'function'
@@ -12653,6 +12697,8 @@ function _hudHideCss() {
        of the active panel; clicking it fires the armed target pick. */
     .hrlg-confirm {
       position: relative; margin: 0 7px 0 5px; height: 46px; flex: none;
+      /* the pill grows to its whole label, never narrower than the panel ("CONFIRM — Deep Water…", playtest 2026-11-07) */
+      align-self: flex-start; width: max-content; min-width: calc(100% - 12px); box-sizing: border-box;
       display: flex; align-items: center; gap: 10px; padding: 0 22px 0 14px;
       pointer-events: auto; cursor: pointer; z-index: 3;
       background: linear-gradient(100deg, #10301c 0%, #0a1f12 100%);
@@ -12675,7 +12721,7 @@ function _hudHideCss() {
       font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 15px;
       letter-spacing: 0.16em; color: #b8f5d0; white-space: nowrap;
       text-shadow: 0 0 12px rgba(87,217,138,0.6);
-      overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+      overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;   /* the pill's own width, not a 260 px cap: "CONFIRM — Grassl…" (playtest 2026-11-07) */
     }
     .hrlg-confirm-tgt { color: #fff; font-size: 12px; letter-spacing: 0.06em; }
     /* inline CONFIRM — the green seal at the END of the pending (✓) row.
