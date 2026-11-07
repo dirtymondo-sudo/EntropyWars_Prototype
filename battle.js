@@ -3353,7 +3353,10 @@
                 setTerrainAt(t.x, t.y, 'ice');
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
-                    applyStatusEffects(u, [{ id: 'stun', duration: 1 }], `${spell.name} flash-freeze: `, caster);
+                    /* FROZEN IS FROZEN (mondo 2026-11-07: "obviously frozen is not supposed to be stun. frozen is frozen"):
+                       the flash-freeze applies the real Frozen status (Shatter and every ×1.5 vs Frozen pays, fire thaws
+                       it), and a unit the hit's own wet+cold combo already froze is not frozen (or logged) twice. */
+                    if (!unitHasStatus(u, 'frozen')) applyStatusEffects(u, [{ id: 'frozen', duration: 1 }], `${spell.name} flash-freeze: `, caster);
                     u._drowningStacks = 0;
                     clearStatus(u, 'drowning');
                     showFloatingTextForUnit(u, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
@@ -37709,10 +37712,11 @@
                     }
                     showFloatingTextForUnit(target, '⚙️ SUPERCHARGED!', 'buff', { durationMs: 1200 });
                     addLog(`⚙️ The surge overloads ${_ctName(target)}'s circuits — SUPERCHARGED (Overclock)!`);
-                } else if (_comboEl === 'cold' && _unitIsSoaked(target) && !unitHasStatus(target, 'stun')) {
+                } else if (_comboEl === 'cold' && _unitIsSoaked(target) && !unitHasStatus(target, 'frozen')) {
                     // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
                     // solid for a turn (soak them first, then bring the cold).
-                    applyStatusPayload(target, { id: 'stun', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
+                    // FROZEN IS FROZEN (mondo 2026-11-07): the real Frozen status, not a Stun.
+                    applyStatusPayload(target, { id: 'frozen', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
                     // creaking ice locking solid with a deep "clunk"
                     playSfx('freezeSolid');
                 } else if (_comboEl === 'fire' && unitHasStatus(target, 'wet')) {
@@ -65814,7 +65818,7 @@
                     sourceUnit: owner, damageType: 'magic', noRangeMult: true, spellType: trap.spellType || null
                 });
                 if (!victim.dead) {
-                    applyStatusEffects(victim, [{ id: 'stun', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);
+                    applyStatusEffects(victim, [{ id: 'frozen', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);   // FROZEN IS FROZEN (mondo 2026-11-07)
                     showFloatingTextForUnit(victim, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
                 }
                 // 3×3 flash-freeze: water and soft natural ground glaze to ice.

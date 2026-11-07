@@ -4109,3 +4109,9 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   10 CPU rounds: Ringmaster grappled in, Stadium Show, took the Central Nexus; zero empty casts.
 - battle.js aoePull log now names the caster ("X casts Crowd Surge: hits N targets…" / "…but no enemies are in range.").
 - G2: "splashes 1 unit round X" -> "around".
+
+### THE WATER + FIRE + FREEZE PASS (2026-11-07, mondo after the elements playtest)
+- FROZEN IS FROZEN: "obviously frozen is not supposed to be stun. frozen is frozen". The flash-freeze (frost on a soaked
+  unit, battle.js applyDamageToUnit combo; frost on a pool, _reactColdWater; the retired Frost Mine trap) applies the
+  real `frozen` status (1 round), so Shatter / every ×1.5 vs Frozen pays and a fire hit thaws it. A unit the combo
+  already froze is not frozen (or logged) again by the pool reaction.
