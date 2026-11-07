@@ -10699,6 +10699,7 @@
                         def.onRoundEnd(unit);
                         if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
                         if (unit.dead || unit._dying) break;   // the tick that downed it is its last
+                        if ((unit.hp || 0) > hpBefore) _logStatusTickHeal(unit, def, key, unit.hp - hpBefore);
                     }
                     if (unit.dead) checkWin();
                 }
@@ -10785,6 +10786,7 @@
                         }
                     } else if (hpLost < 0) {
                         dlgMsgs.push(`<span class="dlg-heal">${def.icon || '💚'} ${_ctName(unit)} heals ${Math.abs(hpLost)} from ${def.label || key}</span>`);
+                        _logStatusTickHeal(unit, def, key, -hpLost);
                         if (isVisible) {
                             // applyHealingToUnit (called by onRoundEnd) already shows the "+N".
                             _vfxHeal(unit.x, unit.y, { soft: true });
@@ -43220,10 +43222,15 @@
             state.logEntries = state.logEntries || [];
             if (!hp) { try { hp = _clogHealHp(msg); } catch (e) { hp = null; } }
             const zn = !!(o && o.zone);
-            const entry = (vis === 1 || vis === 2 || hp || zn) ? { m: msg } : msg;
+            /* o.seats (buffs/utility playtest 2026-11-07, Spirit Walk online: the guest saw the Shaman cast and then nothing,
+               the line judged after the Shaman was already hidden): the line goes to exactly these seats and nobody else,
+               judged by the writer at the moment it happened (_logVisible here, online.js _gvLogShows for the guest). */
+            const sn = (o && Array.isArray(o.seats)) ? o.seats.filter(p => (p | 0) > 0) : null;
+            const entry = (vis === 1 || vis === 2 || hp || zn || sn) ? { m: msg } : msg;
             if (vis === 1 || vis === 2) entry.v = vis;
             if (hp) entry.h = hp;
             if (zn) entry.zn = 1;
+            if (sn) entry.sn = sn;
             if (zn && o.anon) {
                 let zh = null;
                 try { zh = _zoneLogHiddenFrom(o.caster); } catch (e) { zh = null; }
@@ -43254,6 +43261,32 @@
                     renderTimer();
                 });
             }
+        }
+
+        /* THE CLEANSE LINE (buffs/utility playtest 2026-11-07, family E: Hallelujah, Ayahuasca Retreat and Absolution took
+           debuffs off and the log never said which): every spell cleanse names what came off, in Temporal Tide's shape
+           ("Temporal Tide washes Slow off Witch."). `keys` = the status keys the cleanse just cleared. */
+        function _logCleansed(spellName, target, keys) {
+            if (!target || !Array.isArray(keys) || !keys.length) return;
+            const labels = keys.map(k => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].label) || k);
+            addLog(`✨ ${_ctSp(spellName)} lifts ${labels.join(', ')} off ${_ctName(target)}.`);
+        }
+
+        /* THE CHIVALRY BADGE (playtest 2026-11-07, family E: "you can't see who is guarded until the Knight intercepts"):
+           the ward of a living pledged guardian wears a CHV badge (plates, unit panel, Pause > Party) for both sides,
+           until the pledge is spent or the guardian falls. Looks only: the pledge itself is unit._guardedBy. */
+        function getChivalryGuardian(unit) {
+            if (!unit || !unit._guardedBy || unit.dead) return null;
+            const g = (state.units || []).find(u => u && u.id === unit._guardedBy && !u.dead && !u._dying);
+            return (g && g.id !== unit.id) ? g : null;
+        }
+        window.getChivalryGuardian = getChivalryGuardian;
+
+        /* THE TICK HEAL LINE (playtest 2026-11-07, family E: Blessing's +40 and Regen's round heal showed only in the HP
+           numbers): a status that heals at the round end writes one line, like a damage tick's hit line. */
+        function _logStatusTickHeal(unit, def, key, n) {
+            if (!unit || !(n > 0)) return;
+            addLog(`${(def && def.icon) || '💚'} ${_ctName(unit)} restores ${Math.round(n)} HP from ${(def && def.label) || key}.`);
         }
 
         /* THE LOG ORDER (playtest 2026-11-03: "Spy is gooed" printed before the hit that gooed it, the walk's fire and
@@ -43322,6 +43355,7 @@
             const v = _logVis(entry);
             const viewer = getViewerPlayer();
 
+            if (entry && typeof entry === 'object' && Array.isArray(entry.sn)) return entry.sn.includes(viewer);   // addLog o.seats
             if (entry && typeof entry === 'object' && entry.zn && v === 0) return true;   // a zone's cast line: the zone is on every board
             if (v !== 0) {
                 if (ONLINE_RULES.active) return v === viewer;
@@ -76418,13 +76452,16 @@
                     const healed = applyHealingToUnit(_ht, healAmount, unit, _healPreScaled ? { preScaled: true } : {});
                     /* THE SPELL AUDIT (2026-09-30): a heal row's `cleanse` (a count, 99 = all) was never read here —
                        Herbal Remedy, Séance, Absolution and Tidal Blessing all promise it. */
+                    let _hcGone = [];
                     if (spell.cleanse) {
                         const _hcDebuffs = getActiveStatusKeys(_ht).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
-                        for (const k of _hcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_ht, k);
+                        _hcGone = _hcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse);
+                        for (const k of _hcGone) clearStatus(_ht, k);
                     }
                     // THE SPELL AUDIT Batch B: a heal row's own statusEffects land on the ally (Soothe's Regen)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_ht, spell.statusEffects, `${spell.name}: `, unit);
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${healed} HP to ${_ctName(_ht)}.`);
+                    _logCleansed(spell.name, _ht, _hcGone);   // THE CLEANSE LINE (playtest 11-07: Absolution logged only the heal)
                     /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — the light that mends the ally burns
                        every enemy standing next to it (the 8 tiles round the ally): N + spell power, magic, the row's element. */
                     if (spell.healAdjacentDamage && !_ht.dead) {
@@ -76491,7 +76528,9 @@
                        Prophecy Fulfilled), so the fresh buffs are never the ones it strips. */
                     if (spell.cleanse) {
                         const _bcDebuffs = getActiveStatusKeys(_bt).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
-                        for (const k of _bcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_bt, k);
+                        const _bcGone = _bcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse);
+                        for (const k of _bcGone) clearStatus(_bt, k);
+                        _logCleansed(spell.name, _bt, _bcGone);   // THE CLEANSE LINE (Ayahuasca Retreat logged only the heal)
                     }
                     /* THE SPELL AUDIT FIX (2026-10-26): a buff row's `selfHealPct` (Awakening 30%, Ayahuasca Retreat 50%) —
                        a percent of the target's max HP, like the selfHeal kind (preScaled); the buff kind never read it. */
@@ -77429,6 +77468,7 @@
                                 const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
                                 const toCleanse = debuffs.slice(0, cleanseCount);
                                 for (const k of toCleanse) clearStatus(ally, k);
+                                _logCleansed(spell.name, ally, toCleanse);   // THE CLEANSE LINE (Hallelujah)
                             }
                         }, healLanding);
                     });
@@ -77481,7 +77521,9 @@
                             if (spell.cleanse && !_useVfx3dHealAllAura) {
                                 const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                                 const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
-                                for (const k of debuffs.slice(0, cleanseCount)) clearStatus(ally, k);
+                                const _haGone = debuffs.slice(0, cleanseCount);
+                                for (const k of _haGone) clearStatus(ally, k);
+                                _logCleansed(spell.name, ally, _haGone);   // THE CLEANSE LINE (Hallelujah)
                             }
                             if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
                         }
@@ -77542,7 +77584,16 @@
                     (_mrCam?.totalMs ?? 0) + actionMs(120),
                     actionMs(800)
                 );
-                addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring MP across the team.`);
+                /* THE MP NUMBER (playtest 2026-11-07, family E: "restoring MP across the team" with no number): the line
+                   names what each ally gets, read the same way the restore lands (row MP, capped by the room in the bar) */
+                const _mrGets = _mrTargets.map(a => ({ a, n: Math.max(0, Math.min(spell.mpRestore || 40, (a.maxMp || 0) - (a.mp || 0))) }));
+                const _mrTotal = _mrGets.reduce((t, g) => t + g.n, 0);
+                const _mrWho = _mrGets.filter(g => g.n > 0).map(g => `${_ctName(g.a)} +${g.n}`);
+                addLog(!_mrTargets.length
+                    ? `${_ctName(unit)} casts ${_ctSp(spell.name)}, but no other ally is there to take the MP.`
+                    : _mrTotal > 0
+                        ? `${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${_mrTotal} MP across the team (${_mrWho.join(', ')}).`
+                        : `${_ctName(unit)} casts ${_ctSp(spell.name)}, but every ally's MP is already full.`);
             } else if (spell.kind === 'aoe') {
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
@@ -77801,7 +77852,7 @@
                 }
                 if (cleansedCount > 0) unit._matchCleanses = (unit._matchCleanses || 0) + cleansedCount;
                 if (spell.statStageBoost) applyStatStageBoost(_ct, spell.statStageBoost, `${spell.name}: `, unit);   // THE SPELL AUDIT: Inner Peace
-                addLog(cleansedCount > 0 ? `${_ctName(unit)} cleanses ${_ctName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`
+                addLog(cleansedCount > 0 ? `${_ctName(unit)} cleanses ${_ctName(_ct)}! Removed ${debuffKeys.map(k => STATUS_DEFS[k]?.label || k).join(', ')}.`
                     : `${_ctName(unit)} casts ${_ctSp(spell.name)} on ${_ctName(_ct)}.`);
                 showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
                 flashUnit(_ct.id, 'heal');
@@ -78776,12 +78827,25 @@
                 /* the body waits on its tile through beat 1 (turned to the landing), then runs on the cut */
                 const _escLeaveMs = (_escShotLive && _escShot.mode === 'support') ? Math.max(0, _escShot.sourceHold || 0) : 0;
                 unit.mp -= effectiveSpellCost;
+                /* THE ESCAPE LINE (buffs/utility playtest 2026-11-07, family E: Eject! and Reassemble wrote nothing at all,
+                   Agent Vanish only "is invisible", and online the side that watched a Spirit Walk got no line when the
+                   Shaman vanished): the cast line is written once the landing is known (below) and hoisted here, so it reads
+                   first. Who saw the caster leave is judged now, on the tile it leaves from. */
+                const _escLogMark = _logMark();
+                const _escSawSeats = [];
+                try {
+                    for (const _su of (state.units || [])) {
+                        const _sp = _su && _su.player;
+                        if (!_sp || _sp === unit.player || _escSawSeats.includes(_sp)) continue;
+                        if (_isUnitVisibleToViewer(unit, _sp)) _escSawSeats.push(_sp);
+                    }
+                } catch (e) {}
 
                 if (spell.cleanse) {
                     const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                     const toCleanse = debuffs.slice(0, spell.cleanse);
                     for (const k of toCleanse) clearStatus(unit, k);
-                    if (toCleanse.length) addLog(`${_ctName(unit)} cleanses ${toCleanse.length} debuff${toCleanse.length > 1 ? 's' : ''}.`);
+                    _logCleansed(spell.name, unit, toCleanse);   // THE CLEANSE LINE: names what came off (was "cleanses 1 debuff")
                 }
 
                 const decoyX = unit.x, decoyY = unit.y;
@@ -78861,6 +78925,39 @@
                     const _escHeal = applyHealingToUnit(unit, Math.floor(unit.maxHp * spell.selfHealPct), unit, { preScaled: true });
                     if (_escHeal > 0) addLog(`${_ctName(unit)} restores ${_escHeal} HP.`);
                 }
+                /* THE ESCAPE LINE: the owner reads where it went; a seat that can see the landing reads the same; a seat
+                   that saw it leave and can't see it now reads that it vanished (no tile). A decoy escape (Shed Skin) keeps
+                   its deception: the other side gets no line that tells the real body from the decoy. */
+                try {
+                    const _escMoved = candidates.length > 0;
+                    const _escWhere = _escMoved ? `, landing at ${coordLabel(unit.x, unit.y)}` : ', but finds nowhere to go';
+                    const _escFull = `${_ctName(unit)} casts ${_ctSp(spell.name)}${_escWhere}.`;
+                    const _escGone = `${_ctName(unit)} casts ${_ctSp(spell.name)} and vanishes.`;
+                    const _escFog = !!(state.fogOfWar || (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active));
+                    const _escAt = _logMark();
+                    let _escN = 0;
+                    if (!_escFog) {
+                        /* no fog: every line reaches every log, so write the one the player at this screen should read */
+                        const _escMine = unit.player === getViewerPlayer();
+                        const _escSeen = _escMine || (!spell.spawnDecoy && _isUnitVisibleToViewer(unit, getViewerPlayer()));
+                        if (_escSeen) { addLog(_escFull); _escN++; }
+                        else if (!spell.spawnDecoy) { addLog(_escGone); _escN++; }
+                    } else {
+                        const _escSeeNow = [unit.player], _escLost = [];
+                        for (const _su of (state.units || [])) {
+                            const _sp = _su && _su.player;
+                            if (!_sp || _escSeeNow.includes(_sp) || _escLost.includes(_sp)) continue;
+                            if (spell.spawnDecoy) continue;
+                            if (_isUnitVisibleToViewer(unit, _sp)) _escSeeNow.push(_sp);
+                            else if (_escSawSeats.includes(_sp)) _escLost.push(_sp);
+                        }
+                        addLog(_escFull, undefined, undefined, { seats: _escSeeNow }); _escN++;
+                        if (_escLost.length) { addLog(_escGone, undefined, undefined, { seats: _escLost }); _escN++; }
+                    }
+                    for (let _ei = 0; _ei < _escN; _ei++) {
+                        _logHoist({ a: _escLogMark.a + _ei, b: _escLogMark.b + _ei }, { a: _escAt.a + _ei, b: _escAt.b + _ei });
+                    }
+                } catch (e) {}
 
                 if (spell.spawnDecoy) {
                     if (!state._deployedObjects) state._deployedObjects = [];
@@ -78914,9 +79011,11 @@
                     // selfHealPct is already a percent of (scaled) max HP — opt it out
                     // of the level scale; the flat heal fallback still scales.
                     const _shGot = applyHealingToUnit(unit, healAmt, unit, _shPre ? { preScaled: true } : {});
+                    let _shGone = [];
                     if (spell.cleanse) {
                         const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                        for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
+                        _shGone = debuffs.slice(0, spell.cleanse);
+                        for (const k of _shGone) clearStatus(unit, k);
                     }
                     // THE SPELL AUDIT Batch C: a self heal may also land
                     // statuses on the caster (Lunar Regeneration: Regen).
@@ -78925,6 +79024,7 @@
                     if (spell.statStageBoost) applyStatStageBoost(unit, spell.statStageBoost, `${spell.name}: `, unit);
                     // the log names the HP really restored (a full-HP cast used to claim the whole heal)
                     addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Heals ${Math.max(0, _shGot || 0)} HP.`);
+                    _logCleansed(spell.name, unit, _shGone);   // THE CLEANSE LINE
                     markDirty('hud');
                     renderIfDirty();
                 }, _shApplyAt);
@@ -81360,10 +81460,13 @@
                 let buffCount = 0;
                 // THE SPELL AUDIT Batch C: cleanse N debuffs (true = 1, 99 =
                 // every one) from each ally in the aura (Mantra, Everybody Up).
+                const _wcCleansed = [];   // THE CLEANSE LINE: written after the cast line below
                 if (spell.cleanse) {
                     for (const ally of allies) {
                         const _wcDebuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                        for (const k of _wcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(ally, k);
+                        const _wcGone = _wcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse);
+                        for (const k of _wcGone) clearStatus(ally, k);
+                        _wcCleansed.push([ally, _wcGone]);   // THE CLEANSE LINE (Mantra, Everybody Up)
                     }
                 }
                 if (spell.teamStatusEffects) {
@@ -81427,6 +81530,7 @@
                     if (spell.timedStatBonus && spell.timedStatBonus.move > 0) _wcGot.push(`+${spell.timedStatBonus.move} MOV`);
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}! ${buffCount} all${buffCount === 1 ? 'y' : 'ies'} within ${radius} tiles gain${buffCount === 1 ? 's' : ''} ${_wcGot.join(' and ')}.`);
                 }
+                for (const [_wcA, _wcG] of _wcCleansed) _logCleansed(spell.name, _wcA, _wcG);
                 /* THE SPELL AUDIT Batch D (Reprise): the song also hands Encore's AP to the nearest ally in the aura who has
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
                 if (spell.encoreAlly) {
