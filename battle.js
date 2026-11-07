@@ -44262,6 +44262,34 @@
         function unitMoveBlockedByStatus(unit) {
             return !!(unit && unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove));
         }
+        window.unitMoveBlockedByStatus = unitMoveBlockedByStatus;
+
+        /* THE MOVE BLOCK ON SPELLS (playtest 2026-11-07, buffs/utility B3: a Charmed Rabbit cast Nimble Dodge, a Charmed
+           Juggernaut Rampage-dashed, a Charmed Spy grappled): a cast that carries the CASTER to another tile is movement,
+           so the same blockMove statuses that stop the walk and the jump (Rooted, Charm, Roped, Frozen, Stoneform, Stun,
+           Climbing…) stop it. One list, read by TargetQuery.spellBlockReason, so every menu greys the row with the
+           status' name, doSpell refuses it, the CPU (canAfford) never picks it and the online guest's menu greys it too.
+           teleportAnyUnit (warp any unit) still warps OTHER bodies: only the caster's own pick is refused. */
+        function spellMovesCaster(spell) {
+            if (!spell) return false;
+            const k = spell.kind;
+            if (k === 'dash' || k === 'escape' || k === 'swap' || k === 'leapStrike' || k === 'skySlam'
+                || k === 'tackle' || k === 'doorBreach') return true;
+            if (k === 'teleport') return !spell.teleportAnyUnit;
+            if (spell.chargeToTarget || spell.swapOnHit) return true;
+            if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) return true;
+            return false;
+        }
+        window.spellMovesCaster = spellMovesCaster;
+        /* the player-facing word for what pins the unit ('Rooted', 'Charmed', 'Roped', 'Frozen' …), null = free */
+        const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
+        function moveBlockWord(unit) {
+            if (!unit || !unit.status) return null;
+            const k = getActiveStatusKeys(unit).find(s => STATUS_DEFS[s]?.blockMove);
+            if (!k) return null;
+            return _MOVE_BLOCK_WORDS[k] || STATUS_DEFS[k].label || 'Rooted';
+        }
+        window.moveBlockWord = moveBlockWord;
 
         /* THE LOCK WORDS (2026-11-07, buffs playtest D): which status locks this unit, so a greyed MOVE / BUILD / ITEMS /
            GUARD says the real one (Rooted, Charmed, Roped, Frozen, Stoneform…) instead of "Stunned" for all of them.
@@ -44531,6 +44559,8 @@
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
+                // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
+                if (spellMovesCaster(spell)) { const _mbw = moveBlockWord(unit); if (_mbw) return _mbw; }
                 if (!unitMeetsSpellTierReq(unit, spell)) {
                     const trl = Math.max(1, Math.min(3, (typeof spellTierOf === 'function' ? spellTierOf(spell) : 1) || 1));   // Phase 0: tier is numeric
                     return 'Req Lv.' + trl;
@@ -44785,6 +44815,8 @@
             if (!u.dead && isUnitRealmShieldedFrom(u, unit)) return false;   // 🌑 the Shadow Realm's line, both ways
             if (spellMissesFlyer(spell, u)) return false;
             if (isGrappleReel(spell) && u.id === unit.id) return false;   // THE GRAPPLE REEL: the hook never aims at the caster
+            // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
+            if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
@@ -77505,6 +77537,27 @@
                 // Beat 2 starts when the cast beat ends (the wide cut lands).
                 const _haCastMs = Math.max(actionMs(300), _haCam?.sourceHold ?? actionMs(650));
                 const _haStagger = actionMs(140);
+                // YO HO FIX (11-07): ONE landing per ally, in a fixed order — heal, cleanse, then the spell's own
+                // statuses + stat stages. The cleanse used to run at another beat (the aura branch cleansed at the
+                // heal landing, AFTER the stat change), so Yo Ho's own -1 M ATK (a statDown debuff) was cleansed by
+                // Yo Ho itself; a Choir healRider cleanse on a later heal could eat it the same way. A cast never
+                // cleanses what it applies.
+                const _haCleanseN = spell.cleanse ? ((spell.cleanse === true) ? 1 : spell.cleanse) : 0;
+                const _haLand = (ally) => {
+                    if (ally.dead) return;
+                    const healAmount = healAllAmountFor(unit, spell, ally);
+                    const healed = healAmount > 0 ? applyHealingToUnit(ally, healAmount, unit) : 0;
+                    if (_haCleanseN > 0) {
+                        const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                        const _haGone = debuffs.slice(0, _haCleanseN);
+                        for (const k of _haGone) clearStatus(ally, k);
+                        _logCleansed(spell.name, ally, _haGone);   // THE CLEANSE LINE (Hallelujah)
+                    }
+                    if (state.phase !== 'battle') return healed;
+                    if (spell.teamStatusEffects) applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
+                    if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
+                    return healed;
+                };
 
                 const _useVfx3dHealAll = (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'descent'));
@@ -77528,11 +77581,7 @@
 
                         window.setTimeout(() => {
                             if (ally.dead) return;
-                            const healAmount = healAllAmountFor(unit, spell, ally);
-                            if (healAmount > 0) {
-                                const healed = applyHealingToUnit(ally, healAmount, unit);
-                                totalHealed += healed;
-                            }
+                            totalHealed += _haLand(ally) || 0;
                         }, healLanding);
                     });
                     completionDelay = Math.max(
@@ -77558,20 +77607,7 @@
 
                         window.setTimeout(() => {
                             if (ally.dead) return;
-
-                            const healAmount = healAllAmountFor(unit, spell, ally);
-                            if (healAmount > 0) {
-                                const healed = applyHealingToUnit(ally, healAmount, unit);
-                                totalHealed += healed;
-                            }
-
-                            if (spell.cleanse) {
-                                const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                                const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
-                                const toCleanse = debuffs.slice(0, cleanseCount);
-                                for (const k of toCleanse) clearStatus(ally, k);
-                                _logCleansed(spell.name, ally, toCleanse);   // THE CLEANSE LINE (Hallelujah)
-                            }
+                            totalHealed += _haLand(ally) || 0;
                         }, healLanding);
                     });
                     completionDelay = Math.max(
@@ -77597,8 +77633,7 @@
                             if (ally.dead) return;
                             if (state.phase !== 'battle') return;
                             if (!_skipVisuals()) _vfxHeal(ally.x, ally.y, _haBigVfx ? { big: true } : undefined);
-                            const healAmount = healAllAmountFor(unit, spell, ally);
-                            if (healAmount > 0) applyHealingToUnit(ally, healAmount, unit);
+                            _haLand(ally);
                         }, _haCastMs + idx * _haStagger);
                     });
                     completionDelay = Math.max(
@@ -77609,28 +77644,8 @@
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, healing ${allies.length} allies.`);
                 }
 
-                // Unified team support for healAll: cleanse debuffs + apply a stat
-                // buff to the whole crew. The aura VFX branch already cleanses, so
-                // skip cleanse there to avoid double-dipping; stat buffs apply in all.
-                // Runs at beat 2 so the buff/cleanse floaters pop while the wide
-                // shot frames the team (not during the caster's wind-up).
-                if (spell.statStageBoost || spell.teamStatusEffects || (spell.cleanse && !_useVfx3dHealAllAura)) {
-                    window.setTimeout(() => {
-                        if (state.phase !== 'battle') return;
-                        for (const ally of allies) {
-                            if (ally.dead) continue;
-                            if (spell.teamStatusEffects) applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
-                            if (spell.cleanse && !_useVfx3dHealAllAura) {
-                                const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                                const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
-                                const _haGone = debuffs.slice(0, cleanseCount);
-                                for (const k of _haGone) clearStatus(ally, k);
-                                _logCleansed(spell.name, ally, _haGone);   // THE CLEANSE LINE (Hallelujah)
-                            }
-                            if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
-                        }
-                    }, _haCastMs);
-                }
+                // Team support (cleanse + teamStatusEffects + statStageBoost) lands per ally inside _haLand above, at
+                // that ally's heal beat, so the floaters still pop while the wide shot frames the team.
             } else if (spell.kind === 'manaRestoreAll') {
                 playSfx('manaRegen');
                 // Soft cast shimmer on the caster — the recipients get the
@@ -80904,6 +80919,11 @@
 
                         if (!teleTarget) {
                             addLog('Choose a unit to teleport first.');
+                            playErrorSfx();
+                            return 0;
+                        }
+                        if (teleTarget.id === unit.id && unitMoveBlockedByStatus(unit)) {   // THE MOVE BLOCK ON SPELLS
+                            addLog(`${_ctName(unit)} is ${(moveBlockWord(unit) || 'Rooted').toLowerCase()} and cannot move: warp another unit.`);
                             playErrorSfx();
                             return 0;
                         }
