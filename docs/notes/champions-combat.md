@@ -4488,3 +4488,12 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   after the one total line in `_multiHitLogFlush`. Lines that explain the hit before it (weak/resist, combo, Marked,
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
+
+## THE ENEMY REMAINS (2026-11-07, timing playtest H6)
+Cannibalize and Carrion Feast (kind `cannibalize`) eat only an ENEMY's remains: SPELL_KIND_META `cannibalize.enemyRemainsOnly`,
+one gate `spellCorpseUsable(unit, spell, corpse)` (battle.js, next to `spellTargetsCorpses`) used by the target list, both
+drums, castability, the forecast, the cast and the CPU pick (ai.js). Before, the list offered the caster's own ally's
+gravestone; eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds, and the CPU picked the
+nearest remains of either side. Text of both spells + the REMAINS chip say enemy bones. Raise the Dead keeps both sides
+(its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
+Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.

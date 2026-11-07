@@ -837,7 +837,7 @@
             shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
-            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, enemyRemainsOnly: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
             // steal — a grab: the hit lands, then the target's Keys / items
             //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
@@ -13182,6 +13182,16 @@
             return !!spell && (spell.kind === 'raiseDead' || !!_kindMeta(spell).corpseTarget);
         }
         window.spellTargetsCorpses = spellTargetsCorpses;
+        /* THE ENEMY REMAINS (timing playtest 2026-11-07 H6: Cannibalize listed the caster's own ally's gravestone, and
+           eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds). One rule for every corpse
+           cast: unconsumed remains, and a kind wearing enemyRemainsOnly (Cannibalize, Carrion Feast) eats only an
+           ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
+        function spellCorpseUsable(unit, spell, corpse) {
+            if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
+            if (_kindMeta(spell).enemyRemainsOnly && !isEnemyUnit(corpse, unit)) return false;
+            return true;
+        }
+        window.spellCorpseUsable = spellCorpseUsable;
 
         /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
            wears the control status (possessed / infected) for `acts`
@@ -40316,7 +40326,7 @@
                 return;
             }
             if (kind === 'cannibalize') {
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                const corpse = state.units.find(u => spellCorpseUsable(unit, spell, u) && u.x === x && u.y === y);
                 if (corpse) helped(unit, healLandsOn(unit, Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35))), unit, { preScaled: true }), 0);
                 return;
             }
@@ -43971,7 +43981,7 @@
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
-                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
+                case 'cannibalize':   return nm + ': select a fallen enemy\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
@@ -45362,7 +45372,7 @@
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
-            if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
+            if (spellTargetsCorpses(spell)) return spellCorpseUsable(unit, spell, u);
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
@@ -46782,7 +46792,7 @@
 
             if (spellTargetsCorpses(spell)) {
                 // Any corpse (either side) whose remains haven't been consumed yet.
-                return state.units.some(u => u.dead && !u._corpseConsumed &&
+                return state.units.some(u => spellCorpseUsable(unit, spell, u) &&
                     !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
@@ -64446,7 +64456,7 @@
                 if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
-                        if (u._corpseConsumed) continue;
+                        if (!spellCorpseUsable(unit, spell, u)) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 // raiseDead only ever targets the dead.
@@ -64544,7 +64554,7 @@
                 // fallen ally's grave, raiseDead to any unconsumed remains.
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
-                        if (u._corpseConsumed) continue;
+                        if (!spellCorpseUsable(unit, spell, u)) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
@@ -79583,9 +79593,9 @@
                 /* §6.18 Cannibalize (Phase 5 wave B): eat unconsumed remains —
                    heal healPct of max HP, the corpse's respawn +corpseDelay,
                    the remains consumed (no revive, no raising). */
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                const corpse = state.units.find(u => spellCorpseUsable(unit, spell, u) && u.x === x && u.y === y);
                 if (!corpse) {
-                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    addLog("Target an enemy's remains — a fallen enemy's bones.");
                     playErrorSfx();
                     return 0;
                 }
