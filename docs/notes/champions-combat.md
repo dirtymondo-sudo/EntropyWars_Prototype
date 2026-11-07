@@ -4239,3 +4239,12 @@ before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/s
 Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
+
+## ONE DEFENCE on opportunity + auto attacks (2026-11-07, buffs/utility playtest H)
+Opportunity attacks on a retreating Valkraye did 1 HP twice. Not a rule (no shield): battle.js `_oppStrikeDamage` took
+the victim's defence off "half the striker's ATK", then `applyDamageToUnit` took it off AGAIN (and THE SOAK FLOOR only
+guarded the already-reduced number), so every opportunity / slide AUTO ATTACK paid defence twice. Now
+`_oppStrikeBase(striker, mult)` = the hit before defence and the engine (checkOpportunityAttack, the slide auto attack
++ its simHits forecast) hands that to the hit pipeline, which takes defence once with the soak floor.
+`_oppStrikeDamage` = the after-defence number via forecastHitOnUnit (ai.js `_oppAttackCost`, the slide's pending hit).
+Browser proof (WebGL2): Nun ATK 74 into Valkraye: 1 HP before, 23 after; Cult Leader 5-7 before, 25 after.

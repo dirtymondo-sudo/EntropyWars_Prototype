@@ -2379,3 +2379,11 @@ columns (min 136 px each) scrolled sideways.
   side buttons (back/forward). Game handlers all still run: right-drag orbit verified (yaw 1.4 -> 61.4), right-click
   BACK and the camera lock unchanged. index.html only, no R2 file, no ?v= bump needed.
 - Shift+right-click in Firefox always forces the browser menu (a browser rule a page cannot override).
+
+## THE GENDER KIT in the forge (2026-11-07, buffs/utility playtest H)
+Switching a slot Priest -> Nun (or back) left 6/7 with slot 7 empty: same race key `priest`, so pickRace kept the old
+picks and the scrub dropped the other gender's own spell (data.js RACE_GENDER_SPELLS: Holy Water / Ruler Smack).
+party-builder.js `pbGenderKitChanges` / `pbGenderKitReset`: a gender switch on a race with gender-own spells starts the
+kit over like a race change (roster pick, the creator's body gender, an assigned look's gender). Every race x gender
+default kit is 7/7 (raceDefaultKit, 134 races checked); race-to-race swaps already reset. Cowboy/cowgirl-style races
+(no gender-own spells) keep their picks.
