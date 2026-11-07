@@ -32317,6 +32317,7 @@ const ThreeRenderer = (function () {
         _hitBlinks.clear();
         _strikeTweens.clear();
         _clipTravelTweens.clear();
+        _throwTweens.clear();   // a match reset never leaves a body on an arc (it blocks the turn now)
         _prevAttackIds.clear();
         _prevCastIds.clear();
         _castRig.clear();
@@ -49802,8 +49803,10 @@ const ThreeRenderer = (function () {
        flashes, a dead body dissolving: they finish on screen while the next turn starts (battle.js caps that tail). */
     function hasBlockingAnims() {
         if (_freeRoam) return true;
+        /* a body still on a throw arc (sky throws, drops, storm hurls) is a body still moving: the turn waits for its
+           landing (2026-11-07, playtest H3 — the kill's close-up opened over the next unit's menu) */
         return _projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
-            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0;
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0 || _throwTweens.size > 0;
     }
     function hasDecorAnims() {
         return _floatTweens.length > 0 || _hitFxTweens.length > 0 || _deathTweens.size > 0;
@@ -49834,6 +49837,7 @@ const ThreeRenderer = (function () {
         if (_jumpTweens.size > 0) return true;
         if (_strikeTweens.size > 0) return true;
         if (_clipTravelTweens.size > 0) return true;
+        if (_throwTweens.size > 0) return true;
         if (_deathTweens.size > 0) return true;
         return false;
     }
