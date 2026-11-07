@@ -4240,6 +4240,26 @@ Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and t
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
 
+## THE HOME SIDE (2026-11-07, buffs/utility playtest A) — battle.js, state.js, data.js
+Possession used to flip `unit.player` to the controller for the whole possession, so every team check treated the
+body as the controller's: Hallelujah healed the possessed Gangster and its cleanse took Possessed off (freed it),
+Oath of Valor buffed the possessed Shaman (the buff outlasted the possession), Chivalry listed the possessed
+Valkraye, and the CPU attacked/debuffed its own possessed teammates. Now `possessUnit` leaves `player` on the HOME
+seat and `_possessSettleSeats(activeId)` sets it to `_controllerPlayer` only while the body is the active unit
+(called when an activation starts in `_continueBlitzWithUnit_impl` / the human hand-off timer, and after
+`_possessSpendActivation` when it ends). So at rest the body is its home team's for team spells, ally lists, AOE
+sides and the AI; during its own turn the controller steers it (AI/human branch, online guest-emit gate, fog,
+its own targeting) exactly as before. `getControllingPlayer(u)` now returns the controller between activations;
+state.js round order buckets by it so the body still takes its turn in the controller's half of the alternation.
+Simul keeps the old whole-duration flip (its plan phase has no active unit). Cleanses: no rule changed — Possessed
+is a debuff, so the HOME team's cleanse can free its teammate (the status text); the controller's team no longer
+reaches it. Also: Chivalry's MOVE→CAST rows no longer list the Knight himself (doSpell already refused it).
+Proven in WebGL2 vs CPU (before: Hallelujah "healing 5 allies" + Possessed gone, Oath "Annunaki is empowered",
+Chivalry lists the possessed enemy, CPU Deathtrap on its own possessed Ringmaster; after: 4 allies, no buff, empty
+list, CPU used a Healing Potion on its possessed Kraken, the body attacked its home teammate on its own turn, then
+"is its own again") and online two-seat (guest-possessed host unit: guest sees it Possessed + not an ally at rest,
+gets it as its own only during its activation, its attack resolved on the host, back to the host after).
+
 ## ONE DEFENCE on opportunity + auto attacks (2026-11-07, buffs/utility playtest H)
 Opportunity attacks on a retreating Valkraye did 1 HP twice. Not a rule (no shield): battle.js `_oppStrikeDamage` took
 the victim's defence off "half the striker's ATK", then `applyDamageToUnit` took it off AGAIN (and THE SOAK FLOOR only
@@ -4339,3 +4359,26 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 (`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
+
+## IN-RANGE CASTERS NEVER WALK FIRST (2026-11-07, forced-movement playtest B1 / I / P3)
+The playtest (/mnt/project-files/playtest-mechanics-20261107/forced-movement/) found in-range casts tagged MOVE→CAST and
+walking the caster first. Existing rules only, no new range:
+- **THE GROUND REACH** (battle.js `spellReachIsFlat`): `dash` and `leapStrike` measure reach in FLAT steps in
+  `_spellAimReach` (gateD), `_spellAimTarget`'s column pick, `getSpellRangeTiles` and the ui.js range light. doSpell's dash
+  branch was already plain 2D Manhattan (the hud quick menu's "Engine parity" note) and the leap strike measures flat and pays
+  more per level dropped; the shared 3D radius (combatReach, height as its own axis) counted the climb / the drop against the
+  range (Grotesque Dive from z10 at 2 squares, Runaway Train onto a raised enemy). Line of sight and fog are unchanged.
+- **THE CHARGE ROWS** (hud.js `_aimCharge`): a `dash` with `chargeToTarget` (Runaway Train, Shadow Infiltration, Dark Feather,
+  Stampede, Ram Charge, Bull Rush, Blitz) lists the enemies it reaches as target rows; the prompt says "select an enemy to
+  charge, or a tile to dash to". Board tile aim still works.
+- **THE PAIR RULE** (battle.js `_pairPhasePick`): the second click of a two-click cast with `pairRange` (Soul Bind) is judged
+  within pairRange of the FIRST pick (its text + doSpell's pair gate), not by the caster's range; the first pick itself keeps
+  the caster's range (click it again to un-pick). Lit tiles (ui.js) and row distances read the same.
+- **NO WALK FIRST** (battle.js `_spellNeverApproaches`): self teleports (the click is the landing) and a two-click cast
+  mid-pick (a step drops the first pick) never offer MOVE→CAST (findSpellApproachTile, _getSpellApproachTargets,
+  TargetQuery.hasReachableTarget).
+- **THE SELF BLINK** (hasSpellTargetInRange): a self teleport has a target when a free passable landing tile lies in
+  getTeleportLandingReach (it used to need SOME unit within range, so Cathedral Perch / Land on Your Feet wore MOVE→CAST in an
+  empty corner). Icky Surprise with no ooze in reach now greys "No target" (also playtest P2).
+- Gravity Crush (playtest I) was NOT a bug: the log shows the Annunaki on J6 (9,5), 6 squares from the Demon on G9 (6,8),
+  range 4; the step to J8 brought it to 4. A flyer at z7 casting it 3 squares out at any ground height 0-10 is in range.
