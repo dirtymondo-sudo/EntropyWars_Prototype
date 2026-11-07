@@ -12319,6 +12319,8 @@ const STATUS_DEFS = {
         dot: 20,
         iconSrc: createStatusIconDataUri('🩸', '#3a0f14', '#ffd6da', '#e0455a'),
         onRoundEnd(unit) {
+            /* 🩸 R16 (mondo 2026-11-07): a grounded bleeder leaves a Blood Pool on its square (battle.js _bleedDripsBlood) */
+            if (typeof _bleedDripsBlood === 'function') _bleedDripsBlood(unit);
             const _srcId = unit._statusSrc && unit._statusSrc.bleed;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
             if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
@@ -13526,7 +13528,7 @@ const STATUS_META = STATUS_DEFS;
 const STATUS_LIBRARY_DESCS = {
     burn:      'Takes fire damage at the end of every round. Water puts it out: walking through or standing in water, a water or frost hit, or rain. Burn and Poison together become Corroded.',
     poison:    'Takes poison damage at the end of every round. Poison and Burn together become Corroded.',
-    bleed:     'Bleeding out: takes 20 base damage at the end of every round (DEF ignored). A fire hit stops it.',
+    bleed:     'Bleeding out: takes 20 base damage at the end of every round (DEF ignored). A fire hit stops it. A unit on the ground leaves a Blood Pool on its square each round.',
     goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25. A fire or lightning hit sets it burning and burns the goo away; a blast in a touching slick reaches it. Water washes it off: walking through or standing in water, a water hit, or rain.',
     wolfForm:  'The Beast is loose: +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages while the night lasts.',
     // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch.
