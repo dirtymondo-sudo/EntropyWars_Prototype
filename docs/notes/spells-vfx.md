@@ -3170,3 +3170,14 @@ Root cause of most of it: 2× EVERYWHERE (bodies = half a square, ThreeRenderer.
   a frozen / stunned unit (state.js getNextBlitzUnit sets `_skippedTurn` + the log line), the camera goes to the first one
   the viewer can see (fog-gated) with a "TURN SKIPPED" pop for TURN_SKIP_BEAT_MS (1150), then the next unit's turn.
   Online: online.js wraps `showTurnSkipCam` → relay `turn-skip` {unitId}; the guest runs it under `_ewMirrorView()`.
+
+## THE TARGET TILE TAKES THE POUR (2026-11-07, elements playtest B1) — battle.js
+Great Flood / Enlil's Deluge (`elevationFlood`) aimed at a Cube's tile said "Converted 0 tiles to water", hit nobody, and
+still spent the MP and the turn. Cause: `_tileCanFlood` refused objective tiles, and `computeElevationFloodTiles` refused
+its own START tile, so the pour started nowhere. Fix: the objective guard is gone (mondo 2026-10-07 "we can change the
+terrain on objectives"; the Cube floats over its tile), and the aimed tile always takes the pour unless it is a wall or an
+open sky hole (`void` / `cloud_gap` / `sky_open`): lava there hardens into stone (the usual water + lava rule) and the
+flood spreads on; a solid prop there stays dry and the water runs round it (`holds`). Checked in the browser on Proving
+Grounds: Cube tile 0 → 12 tiles + the enemy beside the Cube hit; lava tile 0 → stone + 11 water. Other terrain spells
+(the BFS / squareFlood / line paints) never had the Cube guard; placeBlock / buildStructure / dig refuse the Cube on
+purpose and the target list already greys those.
