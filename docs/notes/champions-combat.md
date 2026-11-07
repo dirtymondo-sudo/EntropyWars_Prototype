@@ -4743,3 +4743,14 @@ Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/ex
 - Left as is (badge and effect agree): Guard's Recovering (guardRegen) badge also lasts to the end of the next round (seen
   in the proof log); by code read its onRoundEnd recovery runs at each round end it is up, while the Guard log line says
   "extra recovery this round" — a text question for mondo, not changed here.
+
+## ONE CHAIN, ONE COUNT (2026-11-07, timing/counters playtest H3 follow-up)
+- H3 ("Antihero 3 then 2, linked Politician 2 then 1") was seen on b3ab112, before THE FULL ROUND (PR #981). On main after
+  PR #1031 a real VS-CPU match (Soul Bind on one enemy that had acted + one that had not) read 3/3, 2/2, 1/1, 1/1 and both
+  ends broke together in round 4 after the caster's turn.
+- Still live: Shadow Realm. The caster's end lands on the caster's own turn (fresh, skips one round-end tick) while a
+  target that had not acted yet ticks at once, so the caster read 2 while the target read 1, and both left at the target's
+  1 (_realmClosePartner). battle.js `syncPairStatusCount(a, b, key)` gives both ends the SHORTER end's count, fresh mark and
+  hold (`_pairStatusEnd`); Soul Bind's #1031 sync now uses it too (it missed the fresh mark, which matters wherever holds are
+  off). When a pair ends does not change, only that both badges say it.
+- Voodoo (only the doll wears it) and Tether Line / Roped (only the target wears it) have one badge each: no pair to drift.

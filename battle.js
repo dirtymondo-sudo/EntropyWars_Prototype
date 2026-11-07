@@ -13156,6 +13156,35 @@
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: p });
             }
         }
+        /* ⛓🌑 ONE CHAIN, ONE COUNT (timing playtest 11-07 H3, "the two units in a Soul Bind count down differently"):
+           a status one cast puts on TWO units that end together (Soul Bind's pair, Shadow Realm's caster + target —
+           _bindClosePartner / _realmClosePartner) runs one countdown. Each end lands on its own clock: the end that had
+           already acted this round is marked fresh (ONE ROUND = ONE TURN) and an enemy end may be held (THE FULL ROUND)
+           while the caster's own end is not, so the badges read a round apart (Shadow Realm's caster read 2 while its
+           target read 1, and both left together at the target's 1). Both ends take the SHORTER end's count, fresh mark
+           and hold — the moment the pair really ends — so nothing about when it ends changes, only that both badges
+           say it. Plain unit fields: state-sync carries them to the guest (RULE #2). */
+        function _pairStatusEnd(u, key) {
+            const h = (u._stHold && typeof u._stHold === 'object') ? u._stHold[key] : null;
+            if (h) return h.r;
+            const fresh = !!(u._stFresh && typeof u._stFresh === 'object' && u._stFresh[key] === state.round);
+            return (state.round || 0) + getStatusValue(u, key) - (fresh ? 0 : 1);
+        }
+        function syncPairStatusCount(a, b, key) {
+            if (!a || !b || a.id === b.id || !(getStatusValue(a, key) > 0) || !(getStatusValue(b, key) > 0)) return;
+            const lo = _pairStatusEnd(a, key) <= _pairStatusEnd(b, key) ? a : b;
+            const hi = lo === a ? b : a;
+            hi.status[key] = getStatusValue(lo, key);
+            const loFresh = !!(lo._stFresh && typeof lo._stFresh === 'object' && lo._stFresh[key] === state.round);
+            if (loFresh) { if (!hi._stFresh || typeof hi._stFresh !== 'object') hi._stFresh = {}; hi._stFresh[key] = state.round; }
+            else if (hi._stFresh && typeof hi._stFresh === 'object') delete hi._stFresh[key];
+            const hLo = (lo._stHold && typeof lo._stHold === 'object') ? lo._stHold[key] : null;
+            const hHi = (hi._stHold && typeof hi._stHold === 'object') ? hi._stHold[key] : null;
+            if (hLo) {
+                if (!hi._stHold || typeof hi._stHold !== 'object') hi._stHold = {};
+                hi._stHold[key] = Object.assign({}, hLo, hHi ? { af: hHi.af } : {});
+            } else if (hHi) delete hi._stHold[key];
+        }
         const _TIED_STATUS_FIELDS = [['taunt', '_tauntCasterId'], ['contract', '_contractCasterId'], ['voodoo', '_voodooAllyId'], ['soulBound', '_boundToId']];
         function endStatusesTiedToUnit(unit) {
             if (!unit) return 0;
@@ -79961,6 +79990,7 @@
                         return;
                     }
                     applyStatusPayload(unit, { id: 'shadowRealm', duration: _srDur, partnerId: target.id }, `${spell.name}: `, unit);
+                    syncPairStatusCount(unit, target, 'shadowRealm');   // ⛓🌑 ONE CHAIN, ONE COUNT: the caster's badge read a round more than the realm lasts
                     addLog(`🌑 ${_ctName(unit)} and ${_ctName(target)} are gone — into the Shadow Realm for ${_srDur} rounds.`);
                     if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
                     markDirty('board', 'hud', 'selectedUnit');
@@ -80012,16 +80042,7 @@
                         if (okA && okB) {
                             /* ONE CHAIN, ONE COUNT (timing playtest 11-07 H3: Antihero read 3 then 2 while the Politician bound to
                                him read 2 then 1): both ends wear the shorter end's count and end together (_bindClosePartner) */
-                            const _vA = getStatusValue(first, fx.id), _vB = getStatusValue(second, fx.id);
-                            if (_vA > 0 && _vB > 0 && _vA !== _vB) {
-                                const _lo = _vA < _vB ? first : second, _hi = _lo === first ? second : first;
-                                _hi.status[fx.id] = getStatusValue(_lo, fx.id);
-                                const _hLo = _lo._stHold && _lo._stHold[fx.id];
-                                if (_hi._stHold && _hi._stHold[fx.id]) {
-                                    if (_hLo) _hi._stHold[fx.id].r = Math.min(_hi._stHold[fx.id].r, _hLo.r);
-                                    else delete _hi._stHold[fx.id];
-                                }
-                            }
+                            syncPairStatusCount(first, second, fx.id);   // the count, the fresh mark and the hold (H3 follow-up)
                             addLog(`${def.icon || '⛓'} ${_ctName(first)} and ${_ctName(second)} are chained soul to soul!`);
                         } else {
                             if (okA) clearStatus(first, fx.id);
