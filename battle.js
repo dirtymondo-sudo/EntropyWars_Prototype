@@ -6699,8 +6699,8 @@
             });
             let n = 0;
             if (ric) {
-                const second = calcBounceTarget(victim, state.units.filter(u => !u._dying && isEnemyUnit(u, unit)
-                    && !(typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, unit))), ric.radius, victim.id);
+                const second = calcBounceTarget(victim, spellHopPool(unit, spell, state.units.filter(u => !u._dying && isEnemyUnit(u, unit)
+                    && !(typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(u, unit)))), ric.radius, victim.id);   // THE SEEN SPLIT
                 if (second) {
                     n++;
                     const fly = actionMs(300);
@@ -6838,14 +6838,14 @@
                    that many more times (the extra hops carry the last hop's damage). */
                 let _chainProfile = spell.chainProfile;
                 if (spell.chainWetHops > 0) {
-                    const _probe = calcChainTargets(target, aliveUnitsFor(enemyOf(unit.player)), _chainProfile.length, spell.chainRadius || 1);
+                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), _chainProfile.length, spell.chainRadius || 1);
                     if (_probe.some(u => u && (unitHasStatus(u, 'wet') || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(u))))) {
                         _chainProfile = _chainProfile.concat(Array(spell.chainWetHops).fill(_chainProfile[_chainProfile.length - 1]));
                         addLog(`⚡💧 ${_ctSp(spell.name)} finds water — the chain jumps further!`);
                     }
                 }
                 const chain = calcChainTargets(target,
-                    aliveUnitsFor(enemyOf(unit.player)),
+                    spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))),   // THE SEEN SPLIT: links only find seen enemies
                     _chainProfile.length, spell.chainRadius || 1);
 
                 const staggerMs = actionMs(140);
@@ -7426,7 +7426,7 @@
                 // Bounce pick is pure (calcBounceTarget, see PURE DAMAGE
                 // MATH); the wrapper supplies the enemy roster.
                 const second = calcBounceTarget(first,
-                    state.units.filter(u => u.player !== unit.player),
+                    spellHopPool(unit, spell, state.units.filter(u => u.player !== unit.player)),   // THE SEEN SPLIT
                     spell.bounceRadius || 2, first.id);
                 if (second) {
                     playProjectile(first.x, first.y, second.x, second.y,
@@ -8704,7 +8704,7 @@
                     const t0 = unitAt(tx, ty);
                     tiles = [{ x: tx, y: ty }];
                     if (t0) {
-                        aliveUnitsFor(enemyOf(unit.player)).filter(e => e.id !== t0.id && !e.dead
+                        spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e => e.id !== t0.id && !e.dead
                             && Math.abs(e.x - t0.x) + Math.abs(e.y - t0.y) <= (spell.splitRadius || 2))
                             .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2)
                             .forEach(e => tiles.push({ x: e.x, y: e.y }));
@@ -12044,6 +12044,24 @@
         }
         window.spellVisionGate = spellVisionGate;
         window.spellSeesEnemy = spellSeesEnemy;
+        /* THE SEEN SPLIT (forced-movement playtest 2026-11-07 K4: Fractal Needle's split hit an Annunaki the caster's
+           team could not see for 331; online that number would show where a hidden enemy stands). A hop that SEEKS its
+           next victim (a split beam, a ricochet bounce, a chain lightning link) only finds enemies the caster's side can
+           see: the same sight rule the first target passes (spellSeesEnemy, PR #396 fog + the cloak / smoke / Cryptid /
+           Shadow Realm concealment). A menu reach probe judges sight from where the caster stands now (_reachProbe).
+           Area blasts still hit whatever stands in their footprint. */
+        function spellHopSeesEnemy(unit, spell, e) {
+            if (!unit || !e || e.dead) return false;
+            if (!isEnemyUnit(e, unit)) return true;
+            if (isUnitConcealedFrom(e, unit.player)) return false;
+            if (_reachProbe && _reachProbe.id === unit.id) return _reachProbe.seen.has(e.id);
+            return spellSeesEnemy(unit, spell, e);
+        }
+        /* the units in `pool` a seeking hop of `spell` cast by `unit` may reach */
+        function spellHopPool(unit, spell, pool) {
+            return (pool || []).filter(e => spellHopSeesEnemy(unit, spell, e));
+        }
+        window.spellHopPool = spellHopPool;
 
         function _isUnitVisibleToViewer(unit, viewer) {
             if (!unit) return false;
@@ -39614,10 +39632,10 @@
                 if (spell.chainProfile && spell.chainProfile.length) {
                     let prof = spell.chainProfile;
                     if (spell.chainWetHops > 0) {
-                        const probe = calcChainTargets(target, aliveUnitsFor(enemyOf(unit.player)), prof.length, spell.chainRadius || 1);
+                        const probe = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), prof.length, spell.chainRadius || 1);
                         if (probe.some(u => u && (unitHasStatus(u, 'wet') || _unitIsSoaked(u)))) prof = prof.concat(Array(spell.chainWetHops).fill(prof[prof.length - 1]));
                     }
-                    const chain = calcChainTargets(target, aliveUnitsFor(enemyOf(unit.player)), prof.length, spell.chainRadius || 1);
+                    const chain = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), prof.length, spell.chainRadius || 1);
                     chain.forEach((u, i) => { const d = calcFlatSpellDamage(prof[i], sp, 16); hit(u, d, d, d, hopts, i ? { tag: 'chain' } : null); });
                 } else {
                     const riders = (b) => calcSpellHitRiders({
@@ -39663,7 +39681,7 @@
                     }
                     const ric = spellRicochetRiderOf(spell), ext = spellExtraTargetsOf(spell);
                     if (ric) {
-                        const second = calcBounceTarget(target, state.units.filter(u => !u._dying && isEnemyUnit(u, unit) && !isUnitRealmShieldedFrom(u, unit)), ric.radius, target.id);
+                        const second = calcBounceTarget(target, spellHopPool(unit, spell, state.units.filter(u => !u._dying && isEnemyUnit(u, unit) && !isUnitRealmShieldedFrom(u, unit))), ric.radius, target.id);
                         if (second) { const [a, b, c] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 16).map(n => Math.max(1, Math.round(n * ric.mult))); hit(second, a, b, c, hopts, { tag: 'bounce' }); }
                     }
                     if (ext) {
@@ -39846,7 +39864,7 @@
                 const dt = spell.damageType || 'physical';
                 const d = calcFlatSpellDamage(spell.dmg || 0, sp, 0);
                 hit(first, d, d, d, baseOpts(dt, { allowMarkBonus: undefined }));
-                const second = calcBounceTarget(first, state.units.filter(u => u.player !== unit.player), spell.bounceRadius || 2, first.id);
+                const second = calcBounceTarget(first, spellHopPool(unit, spell, state.units.filter(u => u.player !== unit.player)), spell.bounceRadius || 2, first.id);
                 if (second) {
                     const b = calcFlatSpellDamage(spell.bounceDamage || 8, sp, 0);
                     hit(second, b, b, b, baseOpts(dt, { allowMarkBonus: undefined, element: undefined, shieldIgnore: spell.bounceShieldIgnore || 0 }), { tag: 'bounce' });
@@ -39951,7 +39969,7 @@
                 if (!target) return;
                 const primary = Math.max(32, (spell.dmg || 0) + sp);
                 const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined });
-                const near = aliveUnitsFor(enemyOf(unit.player)).filter(e => e.id !== target.id && !e.dead
+                const near = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e => e.id !== target.id && !e.dead
                     && Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2))
                     .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
                 hit(target, primary, primary, primary, hopts);
@@ -79233,7 +79251,7 @@
                 // Predict the split victims (same filter the impact resolution
                 // uses) so beat 2 frames the whole cluster, not just the
                 // primary target.
-                const _sbNearby = aliveUnitsFor(enemyOf(unit.player)).filter(e =>
+                const _sbNearby = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e =>   // THE SEEN SPLIT
                     e.id !== target.id && !e.dead &&
                     Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2)
                 ).sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
@@ -79274,7 +79292,7 @@
                 const splitStartDelay = impactDelay + actionMs(350);
                 const splitGap = actionMs(280);
                 window.setTimeout(() => {
-                    const nearby = aliveUnitsFor(enemyOf(unit.player)).filter(e =>
+                    const nearby = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e =>   // THE SEEN SPLIT (K4)
                         e.id !== target.id && !e.dead &&
                         Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= splitRadius
                     ).sort((a, b) => a.hp - b.hp).slice(0, splitCount);

@@ -4339,3 +4339,14 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 (`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
+
+## THE SEEN SPLIT (2026-11-07, forced-movement playtest K4) — battle.js
+Fractal Needle's split hit an Annunaki the caster's team could not see (not in the target list, not in the forecast) for
+331; online that number tells the caster where a hidden enemy stands. Every hop that SEEKS its next victim now draws from
+`spellHopPool(unit, spell, pool)` (`spellHopSeesEnemy`: `isUnitConcealedFrom` + `spellSeesEnemy`, the same sight rule the
+first target passes, `_reachProbe` during move-then-cast probes): split beams (Fractal Needle, Firefly Swarm), ricochets
+(Mirror Shard, Shardstorm, Splitting Arrow, Prism Burst), chain-lightning links (`chainProfile`, incl. the chainWetHops
+probe) and the Ricochet upgrade rider. Covered in each place the pick is made: the hit itself, the CONFIRM forecast
+(`_forecastSpellInto`), the strike-tile highlight and the split camera framing. Extra Targets (Forked) and random targets
+already used the sight-checked target list. Area blasts still hit whatever stands in their footprint. Proof (online,
+fog on, host casts, guest owns the hidden unit): /mnt/project-files/playtest-mechanics-20261107/split-fog/.
