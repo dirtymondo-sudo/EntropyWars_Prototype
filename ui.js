@@ -1596,7 +1596,8 @@
 
       const _aw = state.activeWeather;
       _bfpI(_aw ? _aw.length : 0);
-      if (_aw && _aw.length) { _bfpI(_aw[0].tiles?.length || 0); _bfpS(_aw[0].type || ''); }
+      /* every weather up, not only the first (a weather driven off by its opposite leaves the count the same) */
+      if (_aw && _aw.length) for (const _w of _aw) { _bfpI(_w?.tiles?.length || 0); _bfpS(_w?.type || ''); }
 
       _bfpI(state.bombs?.length || 0);
       _bfpI(state.plantedSeeds?.length || 0);

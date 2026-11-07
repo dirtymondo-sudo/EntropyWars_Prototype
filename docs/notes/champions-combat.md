@@ -3323,7 +3323,16 @@ The report: Divine Light's target rows showed no heal amount, and the Cube row i
   summonWeather cast (battle.js) stacked a second copy (two Blood Rains = double burn/heal). Now a cast of a weather
   that is up renews it: rounds = max(left, cast roll), it becomes the caster's, a storm's eye / patch moves to the
   picked tile; log "The X already up is renewed: N rounds left." (call flagged to mondo).
-- OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.
+- ~~OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.~~ settled 2026-11-07 below.
+- OPPOSITE WEATHERS NEVER SHARE THE SKY (2026-11-07, elements playtest E1 Thunderstorm + Drought, E2 Thunderstorm +
+  Sandstorm + Blood Rain; mondo "fix the other big bugs the elemental playtest found"; the card's recommended option):
+  state.js WEATHER_REGISTRY `sky: 'dry'` (Drought, Sandstorm) vs `sky: 'wet'` (Thunderstorm, Hurricane, Blood Rain,
+  Blizzard); `weathersOppose(a, b)`. spawnWeather + the dungeon floor sky (battle.js `_mdRollFloorAmbience`) never roll a
+  kind opposite to one up; a summonWeather cast is the newer one and `driveOffOpposedWeathers(type)` ends the opposite
+  one on the spot (log "The Drought ☀ is driven off by the Thunderstorm ⛈."), no leftover terrain; tickWeather first runs
+  `settleOpposedWeathers()` (any pair left: the later one in the list stays). Not opposite (both stay): two rains
+  (Thunderstorm + Blood Rain), Tornado, Earthquake, Solar Flare, Tesseract Storm. Guest gets it through state-sync
+  (activeWeather + log). ui.js board fingerprint now hashes every weather's type (a swap kept the count).
 
 ## THE FLYER IS NOT THE TILE — flyer clicks vs tile clicks (2026-10-29, VS CPU playtest R9 + R7, mondo's notes 4/5 + bug 3)
 mondo: "clicking a flying unit and clicking a tile need to be 2 separate things" (a click on the tile under the
