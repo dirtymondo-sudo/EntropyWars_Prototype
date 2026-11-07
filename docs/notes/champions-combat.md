@@ -4513,6 +4513,7 @@ gravestone; eating it healed nothing at full HP and pushed that ally's respawn b
 nearest remains of either side. Text of both spells + the REMAINS chip say enemy bones. Raise the Dead keeps both sides
 (its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
 Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
+
 ## THE TIMING / COUNTER TEXTS MATCH THE GAME (2026-11-07, timing/counters playtest C1, F1-F6, G4, E1, H5, Last Kiss)
 - Same rule as PR #997 / #1012: no ruling from mondo, so the TEXT now says what the code does (no rule changed).
 - Delayed blasts hit ENEMIES ONLY (state.js `_detonateDelayedSpellNow`: `u.player !== ds.sourcePlayer`, no row sets
