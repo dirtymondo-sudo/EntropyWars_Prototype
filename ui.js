@@ -15739,6 +15739,7 @@
                         : (state.units || []).filter(u => u.player === caster.player && !u.dead && !u._dying);
                     for (const a of allies) {
                         if (a.id === caster.id) continue;   // the caster never refills itself (battle.js)
+                        if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(a, caster)) continue;   // 🌑 nor across the Shadow Realm's line
                         add(a, 0, Math.min(spell.mpRestore || 40, Math.max(0, (a.maxMp || 0) - (a.mp || 0))));
                     }
                 } else if (spell.kind === 'debuff' && spell.mpDrain > 0 && target && target.id !== caster.id
