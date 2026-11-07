@@ -7555,7 +7555,7 @@ const RACE_ABILITIES = {
         { id: 'raceSkinSwap', tier: 3, families: ['trickery'], spellType: 'anomaly', name: 'Skin Swap',
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
-          desc: 'Swaps positions with the target unit.' },
+          desc: 'Swaps positions with a Single Enemy within 4 tiles you can see.' },
         { id: 'raceMimicry', upgradesBlock: ['upLinger'], spellType: 'anomaly', name: 'Mimicry',
           type: 'buff', tier: 4, cooldownRounds: 3, families: ['trickery'], cost: 20, apCost: 1, range: 0,
           kind: 'buff',
@@ -8128,7 +8128,7 @@ const RACE_ABILITIES = {
         { id: 'freeEnergy', upgradesBlock: ['upEfficient'], tier: 2, families: ['advancedtechnology'], spellType: 'divine', element: 'lightning', name: 'Free Energy',
           type: 'heal', cost: 50, mpRestore: 40, range: 0,
           kind: 'manaRestoreAll',
-          desc: 'Restores 40 MP to All Allies.' }
+          desc: 'Restores 40 MP to every Other Ally (not the caster).' }
     ],
     'cowboy': [
         /* CHAMP_REWORK_PLAN §6.15 wave C (2026-09-08): Lasso reworked into the
@@ -8596,7 +8596,7 @@ const RACE_ABILITIES = {
           statStageBoost: { def: -1, mdef: -1 },
           desc: 'The team\'s focus-fire call. Lowers a Single Enemy\'s DEF and M DEF by 1 stage and Marks them for 2 rounds.' },
         { id: 'racePopStadiumShow', upgradesBlock: ['upWiden'], spellType: 'anomaly', element: 'sonic', name: 'Stadium Show',
-          type: 'damage', cost: 85, dmg: 150, range: 3, aoeRadius: 2, apCost: 1, tier: 4, bonusVsStatus: { status: 'stagger', mult: 1.5 }, families: ['stagepresence'], cooldownRounds: 3,
+          type: 'damage', cost: 85, dmg: 150, range: 3, aoeRadius: 2, apCost: 1, tier: 4, bonusVsStatus: { status: 'stagger', mult: 1.5 }, families: ['stagepresence'], cooldownRounds: 4,   // 11-07: was 3 (back after 3 rounds) while its text promises once every 4 (like Immortal Cycle's 4)
           kind: 'aoe', damageType: 'magic',
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'The pyro goes, the crowd goes. HEAVY magic damage to every enemy in a 5×5 within 3 tiles, and every one of them is Charmed for a round — they are fans now. Once every 4 rounds.' },
@@ -9118,7 +9118,7 @@ const RACE_ABILITIES = {
         { id: 'raceSpellsteal', tier: 2, upgrades: ['upEfficient', 'upReach', 'upCounterspell'], spellType: 'unholy', vfxElement: 'arcane', name: 'Spellsteal',
           type: 'debuff', cost: 25, range: 4, apCost: 1, cooldownRounds: 3,
           kind: 'debuff', stealSpell: true,
-          desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
+          desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it for the rest of the match. Cooldown: 3 rounds.' },
         /* (Mana Shield deleted 2026-08-12 — Hocus Pocus took its tree slot.) */
         { id: 'racePolymorph', tier: 3, statusEffects: [{ id: 'silence', duration: 1 }], spellType: 'unholy', vfxElement: 'arcane', name: 'Polymorph',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -9546,7 +9546,7 @@ const RACE_ABILITIES = {
         { id: 'sigInfernalWaltz', name: 'Infernal Waltz', tier: 2, families: ['hellsbelle'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', element: 'psychic', type: 'debuff', kind: 'swap', range: 4, requiresLineOfSight: true,
           statusEffects: [{ id: 'charm', duration: 2 }],
-          desc: 'May I have this dance. Trade places with a unit within 4 tiles you can see; an enemy partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
+          desc: 'May I have this dance. Trade places with an enemy within 4 tiles you can see; your partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'sigLastDance', name: 'Last Dance', tier: 4, families: ['hellsbelle'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.3,   // strong races check 2026-10-24: was 0.5
           bonusVsStatus: { status: 'charm', mult: 1.5 },
@@ -9774,7 +9774,7 @@ const RACE_ABILITIES = {
         { id: 'raceDimensionalFold', tier: 1, families: ['fractal'], spellType: 'alien', vfxElement: 'arcane', name: 'Dimensional Fold',
           type: 'utility', cost: 25, range: 3, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
-          desc: 'Swaps positions with the target unit.' },
+          desc: 'Swaps positions with a Single Enemy within 3 tiles you can see.' },
         SHARED_POISON_SWAMP,
         SHARED_BLACK_HOLE,
     ],
@@ -11029,7 +11029,7 @@ const RACE_ABILITIES = {
         { id: 'raceTemporalShift', tier: 2, families: ['temporal'], spellType: 'anomaly', name: 'Temporal Shift',
           type: 'utility', cost: 50, range: 4, apCost: 1,
           kind: 'swap',
-          desc: 'Swaps positions with the target unit.' },
+          desc: 'Swaps positions with a Single Enemy within 4 tiles.' },
         { id: 'raceJudgmentBeam', tier: 1, statusEffects: [{ id: 'slow', duration: 1 }], families: ['temporal'], spellType: 'divine', name: 'Judgment Beam',
           type: 'damage', cost: 35, dmg: 90, range: 5, apCost: 1,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -12319,6 +12319,8 @@ const STATUS_DEFS = {
         dot: 20,
         iconSrc: createStatusIconDataUri('🩸', '#3a0f14', '#ffd6da', '#e0455a'),
         onRoundEnd(unit) {
+            /* 🩸 R16 (mondo 2026-11-07): a grounded bleeder leaves a Blood Pool on its square (battle.js _bleedDripsBlood) */
+            if (typeof _bleedDripsBlood === 'function') _bleedDripsBlood(unit);
             const _srcId = unit._statusSrc && unit._statusSrc.bleed;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
             if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
@@ -12453,6 +12455,12 @@ const STATUS_DEFS = {
         countsAs: ['burn', 'poison'],
         iconSrc: createStatusIconDataUri('⚗', '#2d3a12', '#f0ffd0', '#a4d43a'),
         onRoundEnd(unit) {
+            /* 💧 R4 (2026-11-07): it is chemical FIRE — standing in water or rain puts the fire out instead of ticking and
+               leaves the Poison (battle.js _douseBurnOnUnit), the same belt-and-braces as Burn */
+            if ((typeof _unitIsSoaked === 'function' && _unitIsSoaked(unit))
+                || (typeof _unitInRain === 'function' && _unitInRain(unit))) {
+                if (typeof _douseBurnOnUnit === 'function' && _douseBurnOnUnit(unit)) return;
+            }
             const _srcId = unit._statusSrc && unit._statusSrc.corroded;
             const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
             if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSourceId = _src.id;
@@ -13518,14 +13526,14 @@ const STATUS_META = STATUS_DEFS;
    through the stat-change chips instead (statChange carriers: discord,
    overclock, pixieDust, jackOfAll, statUp, statDown). */
 const STATUS_LIBRARY_DESCS = {
-    burn:      'Takes fire damage at the end of every round. Water puts it out: walking through or standing in water, a water or frost hit, or rain.',
-    poison:    'Takes poison damage at the end of every round.',
-    bleed:     'Bleeding out: takes 20 base damage at the end of every round (DEF ignored).',
-    goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25.',
+    burn:      'Takes fire damage at the end of every round. Water puts it out: walking through or standing in water, a water or frost hit, or rain. Burn and Poison together become Corroded.',
+    poison:    'Takes poison damage at the end of every round. Poison and Burn together become Corroded.',
+    bleed:     'Bleeding out: takes 20 base damage at the end of every round (DEF ignored). A fire hit stops it. A unit on the ground leaves a Blood Pool on its square each round.',
+    goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25. A fire or lightning hit sets it burning and burns the goo away; a blast in a touching slick reaches it. Water washes it off: walking through or standing in water, a water hit, or rain.',
     wolfForm:  'The Beast is loose: +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages while the night lasts.',
     // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch.
     haunted:   'Wracked by a restless spirit: takes 28 base damage at the end of every round (DEF and M DEF ignored). Boo hits Haunted targets harder.',
-    corroded:  'Eaten by chemical fire: takes 44 base damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff.',
+    corroded:  'Eaten by chemical fire: takes 44 base damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff. Burn and Poison together become Corroded, and fire on a poison bog corrodes everyone in it. Water puts the fire out and leaves the Poison.',
     grievous:  'A wound that will not close: healing received is halved.',
     feared:    'Paralysed with fear: no attacks, no spells. Every activation while it lasts is spent fleeing from what frightened it (a 1-round fear = one flee).',
     possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',
@@ -13555,7 +13563,7 @@ const STATUS_LIBRARY_DESCS = {
     marked:    'The next physical hit or basic attack an enemy lands on this unit consumes the mark for bonus damage. Magic hits leave the mark on.',
     jammed:    'Tech systems scrambled: the unit can\'t use its allies\' sight, only what it sees itself.',
     drowning:  'Struggling in deep water: −1 MOV, and takes damage at the end of every round it stays in deep water, more each round. Leaving deep water ends it.',
-    wet:       'Wet (standing in water or rain counts too). Can\'t catch fire; lightning hits it ×1.5, fire ×0.75 and dries it, and frost freezes it solid.',
+    wet:       'Wet (standing in water or rain counts too). Can\'t catch fire; lightning hits it ×1.5, fire ×0.75 and dries it, and frost freezes it solid. A Drought, a Sandstorm\'s eye or a Solar Flare dries it. Getting wet ends Overclock.',
     protect:   'Blocks the next attack completely, then wears off (Bulwark upgrades block more).',
     spawnGuard:'Fresh off a respawn: takes half damage from everything for a round.',
     slow:      'Movement reduced by 2 while it lasts.',
@@ -13575,7 +13583,7 @@ const STATUS_LIBRARY_DESCS = {
     statLock:  'Stats are locked and cannot be raised or lowered.',
     quickened: 'Light on their feet: +1 move while it lasts.',
     hexed:     'Cursed: every move, jump, climb or spell cast feeds the hex and deals 36 base damage. Basic attacks do not.',
-    frozen:    'Encased in ice: cannot move or act, and evasion drops to zero. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
+    frozen:    'Encased in ice: cannot move or act, and evasion drops to zero. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in a Drought or Solar Flare. A sonic hit breaks the ice: it lands ×1.5 and the Frozen ends.',
     blind:     'Vision whited out: basic attacks miss 50% of the time, VISION drops to 1 (only the tiles beside it) and it can\'t use its allies\' sight.',
     broken:    'Every passive is switched off while it lasts: no passive hooks, immunities or gear bonuses. A unit that flies by passive falls out of the sky and takes fall damage.',
     siegeMode: 'Anchored down: +1 ATK stage and +2 RNG, but −2 MOV. Cannot be stolen.'

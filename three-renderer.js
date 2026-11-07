@@ -13272,6 +13272,12 @@ const ThreeRenderer = (function () {
             if (!sDef) continue;
             badges.push('<span class="tp-sbadge" style="background:' + _tpStatusColor(sk) + '">' + (sDef.short || sk) + '</span>');
         }
+        /* 🛡 THE CHIVALRY BADGE (battle.js getChivalryGuardian): the pledged ward wears CHV until the oath is spent */
+        var _chvG = (typeof window.getChivalryGuardian === 'function') ? window.getChivalryGuardian(unit) : null;
+        if (_chvG) {
+            var _chvN = (typeof unitDisplayName === 'function') ? unitDisplayName(_chvG) : (_chvG.name || 'A knight');
+            badges.push('<span class="tp-sbadge" style="background:' + _tpStatusColor('guarding') + '" title="Chivalry: ' + String(_chvN).replace(/[<>&"]/g, '') + ' takes the next attack meant for this unit">CHV</span>');
+        }
 
         /* Stat modifiers read in STAGES (max ±5) — "+2 ATK" means two ATK
            stages, exactly the unit the stage math stacks in. Raw point

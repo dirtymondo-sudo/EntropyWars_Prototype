@@ -1741,7 +1741,8 @@
                 duration: [1, 1],
                 instant: true,
                 seedTerrain: 'rocks_1',   // ⏳ 2026-10-21: the quake cracks the ground into rocky ground (was mountains)
-                desc: 'Hits immediately with seismic force, cracks the ground into rocky ground, then ends.',
+                cracksIce: true,          // 🌋🧊💎 R12 (2026-11-07): ice under it cracks into water, a crystal vein shatters (battle.js quakeShattersGround)
+                desc: 'Hits immediately with seismic force, cracks the ground into rocky ground (ice cracks into water, crystal shatters into shards), then ends.',
                 onSpawnEffect(unit) {
                     return {
                         type: 'damage',
@@ -1811,7 +1812,7 @@
                 roaming: true,
                 global: true,
                 duration: [4, 6],
-                desc: 'Bakes the whole map: dries up the water, blood and ice spells and storms left behind and bakes the land into desert. Healing 50% effective. Scorches planted seeds.',
+                desc: 'Bakes the whole map: dries up the water, blood and ice spells and storms left behind and bakes the land into desert. Dries out Wet units. Ground fire spreads faster and burns longer. Healing 50% effective. Scorches planted seeds.',
                 healMult: 0.5,
                 seedTerrain: 'desert',
                 evaporates: true
@@ -1824,7 +1825,8 @@
                 roaming: false,
                 duration: [3, 5],
                 seedTerrain: 'scorched',   // ⏳ 2026-10-21: "Scorches the earth" now leaves Scorched ground (was desert)
-                desc: 'Damages Tech, +8 ATK to Divine. Scorches the earth.',
+                heats: true,   // ☀ R2 (2026-11-07): heat — thaws the Frozen, melts the ice, dries the Wet under it (heatUnderWeather)
+                desc: 'Damages Tech, +8 ATK to Divine. Scorches the earth. Its heat thaws the Frozen, melts ice and dries the Wet.',
                 onTurnEffect(unit) {
                     const isTech = (unit.types || []).includes('tech');
                     if (isTech) return {
@@ -1939,7 +1941,7 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 VISION in the eye. Drifts sand into desert.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches and dries out the Wet. -5 VISION in the eye. Drifts sand into desert.',
                 seedTerrain: 'desert',   // ⏳ 2026-10-21: the sand it carries piles up where it passes
                 dmgRange: [20, 29],
                 dmgSparesType: 'human',
@@ -2605,8 +2607,38 @@
                 if (def) addLog(`${def.icon} The ${def.label} dries up ${n} tile${n !== 1 ? 's' : ''} of water, blood and ice.`);
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             }
+            /* ☀ R1 DRY SKIES DRY BODIES (mondo 2026-11-07): the Drought dries the water off every Wet unit too (on forming and
+               every round end) — one still standing in the map's own water, or under a rain, stays wet (battle.js _dryWetUnit) */
+            if (def && def.evaporates && typeof _dryWetUnit === 'function') {
+                for (const u of (state.units || [])) _dryWetUnit(u, `The ${def.label.toLowerCase()}`);
+            }
             return n;
         }
+        /* ☀ R2 THE SOLAR FLARE IS HEAT (mondo 2026-11-07): it scorches the earth, so under it the Frozen thaw, ice squares melt
+           to water (the normal 3-round terrain timer brings them back) and the Wet dry out — the same three things Drought and
+           lava do. On forming and every round end. Host-side; terrain + statuses ride the state-sync. */
+        function heatUnderWeather(weather) {
+            const def = weather && WEATHER_REGISTRY[weather.type];
+            if (!def || !def.heats) return;
+            let melted = 0;
+            const cells = weatherDefIsGlobal(weather) ? allWeatherBoardTiles() : (weather.tiles || []);
+            for (const t of cells) {
+                if (!t || !_weatherInBoard(t.x, t.y)) continue;
+                const cur = getTerrainAt(t.x, t.y);
+                if ((cur === 'ice' || cur === 'ice_1') && setTerrainAt(t.x, t.y, 'water') !== false && getTerrainAt(t.x, t.y) === 'water') melted++;
+            }
+            for (const u of (state.units || [])) {
+                if (!u || u.dead || u._dying || u.hp <= 0 || !weatherRainsOnTile(weather, u.x, u.y)) continue;
+                if (typeof _thawFrozenUnit === 'function') _thawFrozenUnit(u, `The ${def.label}'s heat`);
+                if (typeof _dryWetUnit === 'function') _dryWetUnit(u, `The ${def.label}'s heat`);
+            }
+            if (melted) {
+                addLog(`${def.icon} The ${def.label}'s heat melts ${melted} tile${melted !== 1 ? 's' : ''} of ice into water.`);
+                if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+            }
+        }
+        window.heatUnderWeather = heatUnderWeather;
         /* 🌧️ THE RAIN ON THE GROUND (2026-10-18, mondo: "a thunderstorm started, yet there is still tiles on fire on the map.
            isnt rain supposed to put out fire? it should be immediately" + "fire spells should still work in the rain im just
            talking about grass tiles being on fire" + "same if it rains on lava"). Nothing ever asked the rain about the ground
@@ -2647,7 +2679,7 @@
                burning (the per-turn soak below also douses the grounded) */
             if (typeof _douseBurnOnUnit === 'function') {
                 for (const u of (state.units || [])) {
-                    if (!u || u.dead || u._dying || !(u.status && u.status.burn)) continue;
+                    if (!u || u.dead || u._dying || !(u.status && (u.status.burn || Number(u.status.corroded || 0) > 0))) continue;
                     if (_rainLandsOn(weather, u.x, u.y)) _douseBurnOnUnit(u, `The ${def.label.toLowerCase()}`);
                 }
             }
@@ -2672,6 +2704,8 @@
             if (!def) return;
             if (def.soaks) rainOnTheBoard(weather, true);
             if (def.evaporates) evaporateBattleWater(def);
+            if (def.cracksIce && typeof quakeShattersGround === 'function') quakeShattersGround(weather.tiles, def);   // 🌋 R12: the quake cracks ice + crystal
+            if (def.heats) heatUnderWeather(weather);
             if (def.seedTerrain && !def.roaming && !weatherDefIsGlobal(weather)) {
                 const n = seedWeatherTerrain(def, weather.tiles, 0.3);
                 if (n > 0) addLog(`The ${def.label} reshapes ${n} tile${n !== 1 ? 's' : ''} into ${_seedTerrainLabel(def.seedTerrain)}.`);
@@ -2815,6 +2849,7 @@
                         if (unit.dead || unit._dying || unit.hp <= 0) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
+                        if (typeof _waterShortsOverclock === 'function') _waterShortsOverclock(unit, `The ${def.label.toLowerCase()}`);   // 💧⚙️ R9: the rain shorts the Overclock (it is Wet)
                         const _wPrevG = Number((unit.status && unit.status.wet) || 0);
                         if (_wPrevG > 0) unit.status.wet = Math.max(_wPrevG, 2);
                         else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
@@ -2829,6 +2864,7 @@
                     // and the downpour puts out any fire on them on the spot.
                     if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
                         if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
+                        if (typeof _waterShortsOverclock === 'function') _waterShortsOverclock(unit, `The ${def.label.toLowerCase()}`);   // 💧⚙️ R9: the rain shorts the Overclock (it is Wet)
                         const _wPrev = Number((unit.status && unit.status.wet) || 0);
                         if (_wPrev > 0) unit.status.wet = Math.max(_wPrev, 2);
                         else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
@@ -2899,10 +2935,13 @@
             // drenching also douses any burn on the spot.
             if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(v))) {
                 if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(v, `The ${def.label.toLowerCase()}`);
+                if (typeof _waterShortsOverclock === 'function') _waterShortsOverclock(v, `The ${def.label.toLowerCase()}`);   // 💧⚙️ R9: the rain shorts the Overclock (it is Wet)
                 const _wPrev = Number((v.status && v.status.wet) || 0);
                 if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
                 else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
             }
+            /* ☀ R1: a dry sky's eye (the Sandstorm) dries out whoever it catches */
+            if (def.sky === 'dry' && typeof _dryWetUnit === 'function') _dryWetUnit(v, `The ${def.label.toLowerCase()}`);
             const hit = def.homingDamage ? def.homingDamage(v) : null;
             // 🌫️ Blinding storms (blizzard): whoever the eye
             // batters staggers out snow-blind — attacks whiff 50%
@@ -2934,6 +2973,8 @@
                 // camera is already following the storm).
                 window.playStormLightningFx(at ? at.x : v.x, at ? at.y : v.y);
             }
+            /* ⛈⚡ R10 (2026-11-07): a bolt that strikes a unit standing in water / on metal arcs through it (battle.js stormBoltConducts) */
+            if (def.element === 'lightning' && typeof stormBoltConducts === 'function') stormBoltConducts(v, weather, def, at, hit.amount);
             return true;
         }
         window.stormStrikeUnit = stormStrikeUnit;
@@ -3175,6 +3216,7 @@
                 const def = WEATHER_REGISTRY[weather.type];
                 if (!def) continue;
                 if (def.soaks) rainOnTheBoard(weather, false);   // 🌧️ the rain keeps hardening the fight's lava
+                if (def.heats) heatUnderWeather(weather);   // ☀ R2: the flare's heat keeps thawing, melting and drying
                 if (def.seedTerrain && weatherDefIsGlobal(weather) && weather.remaining > 0) {
                     seedWeatherTerrainRandom(def, Math.max(1, Math.round(_weatherPatchSize(weather, def) * WEATHER_SEED_ROUND_FRAC)));
                 }

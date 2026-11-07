@@ -175,8 +175,34 @@ const ThreeCamera = (function () {
         }
         return Math.max(_groundYWorld(wx, wz), _tallTopWorld(wx, wz));
     }
+    /* ══ THE LENS FOOTPRINT (2026-11-07) ══
+       The Deathtrap camera thread: a turn-ending cast parked the close-up on a victim standing in a 2-level pit (the
+       sunk 3×3) and for about a second the lens sat UNDER THE BOARD: the eye hung in the pit, a hair from the rim
+       column, below its top (or just past the board edge beside it), and the frame was the ghosted columns and the
+       void under the stage, mostly white. Every eye floor read only the ONE tile under the eye's centre, and a pit
+       tile's ground is the pit floor, so a lens 0.1 squares from a two-level wall "cleared the ground". The eye's
+       floor is now the highest solid ground under its footprint: a ring LENS_FOOT_TILES round it on the board, and
+       LENS_FOOT_OFF_TILES past the board edge (off the board the lookup stretches the edge tile out, and a pit at the
+       edge would otherwise let the lens sink beside the rim). Any spell that lowers squares (craters, slams, sinks,
+       Fissure's cut, trapdoors) and every rig use it. */
+    const LENS_FOOT_TILES = 0.4;
+    const LENS_FOOT_OFF_TILES = 1.0;
+    const LENS_FLOOR_CLEAR_TILES = 0.2;   // the drawn lens's last-resort clearance (the rigs keep their own, larger ones)
+    let _lensFloorHits = 0;               // probe: ThreeCamera.lensFloorHits()
+    const _LENS_RING = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, 0.7071], [-0.7071, -0.7071]];
+    function _eyeFloorWorld(wx, wz) {
+        let g = _solidGroundYWorld(wx, wz);
+        const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        const off = W > 0 && H > 0 && (wx < 0 || wz < 0 || wx >= W * tileSize || wz >= H * tileSize);
+        const r = tileSize * (off ? LENS_FOOT_OFF_TILES : LENS_FOOT_TILES);
+        for (let i = 0; i < _LENS_RING.length; i++) {
+            const h = _solidGroundYWorld(wx + _LENS_RING[i][0] * r, wz + _LENS_RING[i][1] * r);
+            if (h > g) g = h;
+        }
+        return g;
+    }
     function _sightLineFloor(sx, sy, sz, ex, ey, ez, clear) {
-        let need = _solidGroundYWorld(ex, ez) + clear;
+        let need = _eyeFloorWorld(ex, ez) + clear;
         const hx = ex - sx, hz = ez - sz;
         const horiz = Math.hypot(hx, hz);
         if (horiz > tileSize * 0.6) {
@@ -227,7 +253,7 @@ const ThreeCamera = (function () {
         return -Infinity;
     }
     function _boardSightFloor(sx, sy, sz, ex, ey, ez, clear) {
-        let need = Math.max(_solidGroundYWorld(ex, ez), _bodyTopYWorld(ex, ez)) + clear;
+        let need = Math.max(_eyeFloorWorld(ex, ez), _bodyTopYWorld(ex, ez)) + clear;
         const hx = ex - sx, hz = ez - sz;
         const horiz = Math.hypot(hx, hz);
         const skip = tileSize * 0.7;
@@ -432,7 +458,7 @@ const ThreeCamera = (function () {
     function _caOccl(ex, ey, ez, lx, ly, lz, subs, bodies, clear, stopAt) {
         const ts = tileSize;
         let cost = 0;
-        if (ey < _solidGroundYWorld(ex, ez) + clear) cost += 3;   // the eye inside a wall / a hill
+        if (ey < _eyeFloorWorld(ex, ez) + clear) cost += 3;   // the eye inside a wall / a hill (THE LENS FOOTPRINT)
         if (ey < _bodyTopYWorld(ex, ez) + ts * 0.3) cost += 3;   // the eye inside a model
         let dx = lx - ex, dy = ly - ey, dz = lz - ez;
         const dl = Math.hypot(dx, dy, dz) || 1;
@@ -1039,7 +1065,7 @@ const ThreeCamera = (function () {
                 /* the guard's slide / dolly-back moved the eye sideways or
                    back: never let it land inside the ground there */
                 if (cam._cineTps && !cam._tpsCollide) {
-                    const gy = _solidGroundYWorld(targetPosX, targetPosZ) + clear;
+                    const gy = _eyeFloorWorld(targetPosX, targetPosZ) + clear;
                     if (targetPosY < gy) { targetLookY += gy - targetPosY; targetPosY = gy; }
                 }
             }
@@ -1123,6 +1149,17 @@ const ThreeCamera = (function () {
         }
 
         if (seeded) _seedLevelUp();
+        /* THE LENS FOOTPRINT's last word: whatever the rig, the shot, the glide or the swoop asked for, the lens that is
+           actually drawn never sits inside the ground under its footprint (a glide from a pit close-up back to the board
+           view used to cut through the rim, and a parked close-up could sink into it). The gaze point stays, so the
+           subject keeps its place and the shot only grows a little steeper. The battle board only (other screens have no
+           board columns), never the first-person eye or Strike Mode's own boom collision. Kill switch:
+           window.EW_NO_LENS_FLOOR = true. */
+        if (!cam._fpEye && !cam._tpsCollide && typeof state !== 'undefined' && state && state.phase === 'battle'
+            && !(typeof window !== 'undefined' && window.EW_NO_LENS_FLOOR)) {
+            const lf = _eyeFloorWorld(_smoothPosX, _smoothPosZ) + tileSize * LENS_FLOOR_CLEAR_TILES;
+            if (Number.isFinite(lf) && _smoothPosY < lf) { _smoothPosY = lf; _lensFloorHits++; }
+        }
         threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
         threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
     }
@@ -1440,6 +1477,7 @@ const ThreeCamera = (function () {
         markUserInput,
         snapImmediate,
         clearAngleState,
+        lensFloorHits: function () { return _lensFloorHits; },
         seedPose,
         seedState,
         frameGuardState,
