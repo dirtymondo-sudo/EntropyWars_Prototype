@@ -2348,3 +2348,15 @@ columns (min 136 px each) scrolled sideways.
   (per frame, off in the UI Maker's Layout view) slides the chip right on its own line (margin-left) until it clears
   the dimmed panel; home when clear.
 - Not changed (I2, waiting on mondo): spells on cooldown still leave the Abilities list instead of showing greyed.
+
+## NO BROWSER MOUSE MENU, ANYWHERE (2026-11-07)
+- mondo: a habit right-press while the camera was locked (automatic moves) opened Firefox's own menu and the drag hit
+  Back, reloading the page. Cause: only the board canvas (three-renderer.js `_onContextMenu`) and the battle/editor
+  board parent (state.js) cancelled `contextmenu`; while the camera is locked a full-screen overlay (`.ewi-overlay`
+  match intro, cinematic bars, banners) sits over the canvas, and the title / mode select / party builder had no block
+  at all. Probe (Chromium, real right-press): before 4 of 10 presses would open the browser menu, after 0 of 11.
+- Fix: index.html, the second inline script (before every game script), a window CAPTURE listener that cancels the
+  browser default only: `contextmenu` always (except in text boxes), right press/release, middle press (autoscroll),
+  side buttons (back/forward). Game handlers all still run: right-drag orbit verified (yaw 1.4 -> 61.4), right-click
+  BACK and the camera lock unchanged. index.html only, no R2 file, no ?v= bump needed.
+- Shift+right-click in Firefox always forces the browser menu (a browser rule a page cannot override).
