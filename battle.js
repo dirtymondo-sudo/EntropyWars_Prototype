@@ -10203,6 +10203,8 @@
                round (or on the unit whose turn it is) must still be on it for its NEXT turn — mark it fresh so this
                round's end-of-round tick skips it once (_tickAllStatusDurations). */
             if (unitHasStatus(target, payload.id)) _markStatusFresh(target, payload.id);
+            // ⏳ THE FULL ROUND: an enemy's debuff lasts its rounds from the moment it lands (_setStatusHold)
+            if (unitHasStatus(target, payload.id)) _setStatusHold(target, payload.id, sourceUnit);
 
             // 💫 Stagger takes its AP the moment it lands. If the target already
             // spent everything this round, the loss carries over as a debt the
@@ -10255,6 +10257,7 @@
         }
 
         function processEndOfRoundStatuses(onDone) {
+            _expireStatusHolds({ roundEnd: true });   // ⏳ THE FULL ROUND: a hold whose round this was ends before any tick
 
             const affected = state.units.filter(u => {
                 if (_unitIsDown(u)) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
@@ -12221,11 +12224,101 @@
             u._stFresh[key] = state.round;
         }
 
+        /* ⏳ THE FULL ROUND (mondo 2026-11-07: "I would apply a status effect to try to set up a combo and by the time it
+           was my turn again their status effect was already gone ... it needs to at least be 1 full round"). A debuff an
+           ENEMY lands during a blitz round now lasts its N rounds counted from the moment it lands, not from the round's
+           edge: it is still on the target when the unit that put it there comes round again N rounds later (that unit's
+           whole team gets its combo window), and it comes off the moment that unit's turn ends. It still covers N of the
+           target's own turns and never more (ONE ROUND = ONE TURN, mondo 10-23): a target that already had its N turns and
+           comes up again in that round before the applier loses it first, and a target that landed it after its own turn
+           keeps it through its next one. A damage-over-time therefore ticks exactly N times (it used to tick N+1 when it
+           landed after the target acted; status playtest 11-07 B1). The end of round N is the backstop.
+           Holds are plain unit data (_stHold: { key: { r: round it ends in, by: applier id, af: landed after the target's
+           turn } }), so state-sync carries them to the guest (RULE #2); only the host engine expires them. Buffs, terrain /
+           weather / end-of-round statuses, Strike, Simul and the Mystery Dungeon clock keep the plain end-of-round count. */
+        const _STATUS_HOLD_SKIP = new Set(['stagger', 'possessed', 'infected', 'statUp', 'statDown', 'climbing', 'exited', 'captured', 'sealed']);
+        function _statusHoldsOn() {
+            if (state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return false;
+            if (typeof _isSimulMode === 'function' && _isSimulMode()) return false;
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
+            return true;
+        }
+        function _setStatusHold(u, key, sourceUnit) {
+            if (!u || u.dead || u._dying) return;
+            const left = getStatusValue(u, key);
+            if (!(left > 0)) return;
+            const meta = STATUS_DEFS[key];
+            const old = (u._stHold && typeof u._stHold === 'object') ? u._stHold[key] : null;
+            const by = sourceUnit || unitFromId(state._blitzActiveUnitId);
+            if (!meta || meta.kind !== 'debuff' || _STATUS_HOLD_SKIP.has(key) || !_statusHoldsOn() || !by || !isEnemyUnit(by, u)) {
+                // a plain-count landing that now outlasts an older hold takes over from it
+                if (old && state.round + left - 1 >= old.r) delete u._stHold[key];
+                return;
+            }
+            const h = { r: state.round + left, by: by.id, af: _statusLandsAfterTurn(u) ? 1 : 0 };
+            if (old && old.r > h.r) return;   // a refresh never shortens it
+            if (!u._stHold || typeof u._stHold !== 'object') u._stHold = {};
+            u._stHold[key] = h;
+        }
+        function _statusHeldTurnDone(u) {
+            return !u || u.dead || u._dying || (state._blitzActiveUnitId !== u.id
+                && (unitFinished(u) || !!u._skippedTurn || u._turnRound === state.round));
+        }
+        function _endHeldStatus(u, key) {
+            if (u._stHold) delete u._stHold[key];
+            const def = STATUS_DEFS[key] || {};
+            clearStatus(u, key);
+            addLog(`${def.icon || '✓'} ${_ctName(u)}'s ${def.label || key} wore off.`);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+        }
+        /* After every activation (the blitz advance) and at the top of the end of round (roundEnd): a hold ends once its
+           round has come, the applier's turn in it is over, and (when it landed after the target's turn) the target's
+           turn in it is over too. At the end of its round it ends whatever happened, before any damage-over-time ticks. */
+        function _expireStatusHolds(opts) {
+            const roundEnd = !!(opts && opts.roundEnd);
+            for (const u of state.units || []) {
+                if (!u || !u._stHold || typeof u._stHold !== 'object') continue;
+                for (const key of Object.keys(u._stHold)) {
+                    const h = u._stHold[key];
+                    if (!h || !(getStatusValue(u, key) > 0)) { delete u._stHold[key]; continue; }
+                    if (u.dead || u._dying || state.round < h.r) continue;
+                    if (!roundEnd) {
+                        if (!_statusHeldTurnDone(unitFromId(h.by))) continue;
+                        if (h.af && !_statusHeldTurnDone(u)) continue;
+                    }
+                    _endHeldStatus(u, key);
+                }
+            }
+        }
+        /* state.js getNextBlitzUnit, the moment a unit comes up: a hold that already covered its N turns (it landed
+           before the target's turn) ends now, so the target never gets an extra turn under it (no second skipped turn). */
+        function _statusHoldsBeforeTurn(u) {
+            if (!u || !u._stHold || typeof u._stHold !== 'object') return;
+            for (const key of Object.keys(u._stHold)) {
+                const h = u._stHold[key];
+                if (!h || !(getStatusValue(u, key) > 0)) { delete u._stHold[key]; continue; }
+                if (!h.af && state.round >= h.r) _endHeldStatus(u, key);
+            }
+        }
+
         function _tickAllStatusDurations() {
             for (const u of state.units) {
                 if (u.dead) continue;
                 const _fresh = (u._stFresh && typeof u._stFresh === 'object') ? u._stFresh : null;
                 u._stFresh = null;
+                /* ⏳ THE FULL ROUND: a held debuff counts down for the badge but never reaches 0 here before its round
+                   (it ends after the applier's turn in it, _expireStatusHolds); at the end of its own round it ends. */
+                const _hold = (u._stHold && typeof u._stHold === 'object') ? u._stHold : null;
+                if (_hold) {
+                    for (const key of Object.keys(_hold)) {
+                        const h = _hold[key];
+                        const v = getStatusValue(u, key);
+                        if (!h || !(v > 0)) { delete _hold[key]; continue; }
+                        if (state.round >= h.r) { _endHeldStatus(u, key); continue; }
+                        u.status[key] = Math.max(1, v - 1);
+                    }
+                }
                 // The decrement/expiry split is pure (calcStatusDurationTick,
                 // see PURE DAMAGE MATH in battle.js top); this wrapper picks
                 // the tickable keys (unknown STATUS_DEFS stay untouched) and
@@ -12237,6 +12330,7 @@
                         .filter(key => !(key === 'stagger' && (u._staggerApDebt || 0) > 0))
                         // ONE ROUND = ONE TURN: landed after this unit's turn this round → skip this tick once
                         .filter(key => !(_fresh && _fresh[key] === state.round))
+                        .filter(key => !(_hold && _hold[key]))   // ⏳ held: counted above
                         .map(key => ({ key, value: getStatusValue(u, key) })));
                 for (const e of tick.next) u.status[e.key] = e.value;
                 for (const key of tick.expired) {
@@ -57161,6 +57255,7 @@
                 state.actionMenuView = 'root';
                 state.showUnitInfo = false;
                 state._blitzActiveUnitId = null;
+                _expireStatusHolds();   // ⏳ THE FULL ROUND: the turn that just ended may be the one a held debuff was waiting for
 
                 if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
                 clearSpellRangePreview();

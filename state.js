@@ -694,6 +694,8 @@
                 if (u.dead || u._dying) continue;
                 if (unitFinished(u)) continue;
                 if (u._skippedTurn) continue;
+                // ⏳ THE FULL ROUND (battle.js): a held debuff that already covered this unit's turns comes off before it acts
+                if (typeof _statusHoldsBeforeTurn === 'function') _statusHoldsBeforeTurn(u);
                 // 🧊/⚡ Hard CC skips the whole activation — frozen units stay
                 // iced out of the rotation until thawed, and a stunned unit
                 // (2026-08-10: stun is blockMove + blockAction now, the real

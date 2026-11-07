@@ -4202,3 +4202,40 @@ element riders, and only then calls defeatUnit, so THE FALLEN TAKE NOTHING gate 
   lands after its strike (state.js stormStrikeUnit). map.js applyTerrainTurnEffects + state.js terrain/weather loops read hp <= 0 too.
 - Browser proof (live vs local, VS CPU 8x8): before, the 20 HP target killed by Vivisection kept `grievous: 2` and Migraine's kill
   kept `statDown` + `int -1`; after, both bodies carry nothing and the log has no status line; non-lethal casts still land both.
+
+## THE FULL ROUND (2026-11-07, mondo: "i would apply a status effect ... to set up a combo and by the time it was my turn again their status effect was already gone ... it needs to at least be 1 full round")
+Statuses count down at the END OF EVERY ROUND (`_tickAllStatusDurations`); ONE ROUND = ONE TURN already kept a status that
+lands after the target's turn (the "last unit acts, round ends" case). The hole: a debuff put on an enemy who had NOT acted yet
+lasted through that enemy's turn and came off at round end, before the applier's next turn, so the combo window was gone.
+Rule now (battle.js "⏳ THE FULL ROUND", state.js getNextBlitzUnit): a debuff an ENEMY puts on a unit during a blitz round
+lasts N rounds FROM THE MOMENT IT LANDS. It is still on the target when the applier comes round again in round R+N and comes
+off when that turn ends (log "⚡ Fairy's Stun wore off."); it never covers more than N of the target's own turns (taken off
+before the target's extra turn when it landed before the target acted); the end of round R+N is the backstop.
+Holds live on the unit as `_stHold: {key: {r, by, af}}` (plain unit data, so state-sync carries them to the guest).
+Not held: buffs, own-team statuses, environment landings at round end, Strike real-time, Simul, MD lockstep, and the skip set
+(stagger, possessed, infected, statUp, statDown, climbing, exited, captured, sealed). A plain re-landing that outlasts a hold
+drops it; a hold never shortens.
+DoTs tick exactly N times now (a 3-round poison landed after the target's turn used to tick 4 times).
+Proved on screen (VS CPU, Mount Shasta): R1 Glitch stuns + Police roots Fairy (Fairy already acted) -> Fairy skipped R2, stun
+came off right after Glitch's R2 turn, root right after Police's; Plandemic 3-round poison ticked R1/R2/R3 and wore off in R4
+before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/status-timing-fix/.
+
+## THE STATUS TEXTS MATCH THE GAME (2026-11-07, status playtest M1-M14)
+- Rule used: where no ruling from mondo exists, the TEXT was changed to say what the code does (no rule changed). data.js
+  STATUS_LIBRARY_DESCS (Pause > STATUSES) + the spell descs that promised something else:
+  Charm = cannot move at all, can still attack/cast (Love Ray, The Sermon, The Kool-Aid no longer say "against you" /
+  "will not raise a hand"; mondo asked to pick the real Charm rule). Minimized = −2 ATK stages only (Pixie Prank lost "harder
+  to hit"). Marked = consumed by the next PHYSICAL hit or basic attack (battle.js canConsumeMarked); magic hits leave it
+  (Wanted Poster, Nothing Unseen, Knife Throw, Dead Eye). Feared = every activation while it lasts is a flee. Hexed = move,
+  jump, climb, cast (36 base), not basic attacks. Spawn Guard = half damage for a round. Invisible = attacks, attack spells
+  and enemy hits reveal; moving/buffs/heals do not (Blurry Photo "until it attacks"). Drowning = −1 MOV + growing tick in
+  deep water. Blind = BASIC attacks miss 50%. Evasion-zero line added to Frozen, Charm, Roped (every blockMove status,
+  battle.js getEvasionChance). Bleed/Haunted/Corroded ticks say "base damage" (dot type, DEF and M DEF ignored), Roped drag
+  and Blessed heal say "base"; the page opens with "Numbers are level-1 base values: damage and healing grow with the
+  unit's level" (scaleByTargetLevel / supportScale). Taser Bolt "Jams it for 3 rounds" (Jammed 3, mondo 11-03). Exhaust
+  Cloud "fall into Discord" (no Confused status). ui.js page stat name int = M.ATK (Jack of All read "+1 INT").
+
+## THE BADGE CLASH (2026-11-07, status effects playtest C1) — data.js
+Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
+`short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
+badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
