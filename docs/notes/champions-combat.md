@@ -4507,6 +4507,30 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
 
+## THE ZONE SPELLS COVER THEIR AREA + LAST AS WRITTEN — 2026-11-07 (zones playtest D-family)
+mondo "Go ahead and start those fixes" on PLAYTEST_ZONES_TRAPS_20261107.md. Every zone / terrain spell whose area or duration
+differed from its text, made to match the text (no new rules):
+- **Dragon Breath 1 tile, not 3** (cast by a flyer): battle.js `lineBeamLine` — past the aimed body a DOWNWARD line carried on
+  at its slope into the earth and the sight check stopped it at the aim. Past the aim it now levels out at the aimed height
+  (`Math.max(slope, aimZ)`) and runs on flat; ground that rises above that still stops it. Up to the aim: unchanged. Every
+  line reader (damage, `lineBeamPlan` preview, `lineSpellHeadingTo`, AI `lineBeamHits`) goes through `lineBeamLine`.
+- **Hellmouth no lava** (beam above body height: aimed up at a flyer, or the first squares of a flying Demon's cast):
+  `_applyLineDamage` `_markAirCell` — a line that leaves ground (`leaveTerrain`: Hellmouth, Chemtrails, Formic Acid;
+  `lineZone`: Dragon Breath) marks EVERY square of its lane, wherever the beam runs over it. Who is hit, and the turrets /
+  doors / objects it strikes, still follow THE 3D LINE. getLineForecast already painted the whole lane.
+- **Plaguefield not permanent**: data.js `permanentTerrain: true`; battle.js terrainCreate THE PERMANENT GROUND — painted
+  cells drop off the 3-round clock and `state.paintedFrom` = the flesh, so later changes on it come back to flesh.
+- **Rampart over a river**: a field's water cell ('W' NO-DEFORM FLAG) refused the raise → walkable gap. applyTerrainDeform: a
+  `mound` raise (Rampart only) heaps over a field's water; digs there stay refused. The terrainCreate deform records the
+  timer's `d` by what the cell REALLY moved (a refused cell has nothing to put back).
+- **Rampart leaves mountain ground behind** (+ a raised mountain/water cell never sank): map.js revertTerrainTimer now takes
+  the clock's own raise off FIRST (`applyTerrainDeform(..., { undo: true })`, past the mountain / field guards — it is the
+  cell's own change), then repaints the map's own terrain at the home height.
+- Checked, working as written (the report read the terrain grid; the overflow is the derived liquid flow, map.js
+  getLiquidFlowAt): Ooze Trail / Poison Swamp spread 1 square onto level ground; Walk the Plank / Call of the Deep runoff is
+  the same spring halo. Bumper Crop's 16 rim seeds match its text ("every empty tile of the area's edge"). Quake sinks the
+  caster's square 1 (center -1, edge 0); on a field's river it cannot.
+- Proof (VS CPU, Mount Shasta Arena, WebGL2): /mnt/project-files/playtest-mechanics-20261107/zone-area-duration/.
 ## THE SPELL ZONES + THE WALK AROUND (2026-11-07, zones/traps playtest E1 + F1) — ai.js, battle.js
 - E1 "the CPU never leaves a damaging zone": `aiHazardPenaltyAt` read ground and telegraphed blasts but never
   `state._activeZones`. New `spellZoneCost(g, unit, x, y)` (ai.js, beside groundHazardCost) is added to it, so every
