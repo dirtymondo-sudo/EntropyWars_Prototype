@@ -2379,3 +2379,16 @@ columns (min 136 px each) scrolled sideways.
   side buttons (back/forward). Game handlers all still run: right-drag orbit verified (yaw 1.4 -> 61.4), right-click
   BACK and the camera lock unchanged. index.html only, no R2 file, no ?v= bump needed.
 - Shift+right-click in Firefox always forces the browser menu (a browser rule a page cannot override).
+
+## THE SUPPORT LOG LINES (2026-11-07, buffs/utility playtest family E)
+- Every spell cleanse names what came off: battle.js `_logCleansed(spellName, target, keys)` → "✨ Absolution lifts Frozen, Blind off Catgirl."
+  Wired in the heal, buff, healAll (both branches), selfHeal, warCry (written after the cast line), escape kinds; the cleanse kind now names them too.
+- Round-end heal ticks (Blessed, Regen, Recovering, Stoneform…) write "🙏 X restores 40 HP from Blessed." (`_logStatusTickHeal`, both the
+  visual and the no-visuals tick path).
+- Escapes (Eject!, Reassemble, Agent Vanish, Spirit Walk, Shed Skin…) write a cast line, hoisted above the cleanse/status lines.
+  With fog/online it is seat-scoped: addLog `o.seats` → entry `sn` (battle.js `_logVisible`, online.js `_gvLogShows` honour it): the owner +
+  seats that see the landing read "X casts S, landing at E5."; a seat that saw it leave and can't see it now reads "X casts S and vanishes."
+  A decoy escape (Shed Skin) writes nothing for the other side (keeps the decoy deception). No fog: one line, picked for the local viewer.
+- Free Energy names its MP: "restoring 75 MP across the team (Sedan +25, …)".
+- Chivalry ward badge CHV (`getChivalryGuardian(unit)`, looks only, reads `_guardedBy`): 3D plates, unit panel chips, Pause > Party.
+  Pause > Party also shows a live shield as "🛡 96".
