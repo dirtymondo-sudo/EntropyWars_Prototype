@@ -70086,7 +70086,9 @@
             playSfx('teleport');
             if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz');
             if (!_skipVisuals()) _vfxTeleport(fx, fy, twin.x, twin.y);
-            addLog(`🚪 ${_ctName(unit)} steps through the door at ${coordLabel(fx, fy)} and out at ${coordLabel(twin.x, twin.y)}.`);
+            addLog(door.fixed   // a Tunnel Network / Grave Passage gate is not a door: name it as the spell does
+                ? `🚪 ${_ctName(unit)} goes into the ${door.spellName || 'gate'} at ${coordLabel(fx, fy)} and comes out at ${coordLabel(twin.x, twin.y)}.`
+                : `🚪 ${_ctName(unit)} steps through the door at ${coordLabel(fx, fy)} and out at ${coordLabel(twin.x, twin.y)}.`);
             _doorTouched();
             return true;
         }
@@ -83314,7 +83316,7 @@
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
-                    addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground for ${totalDmg} damage!${deltaLabel}`);
+                    addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground!${deltaLabel}`);   // the hit's own line above carries the real number (totalDmg is the raw before DEF)
                     // the slammed ground reacts like any spell hit (shatters ice, freezes water, ...)
                     triggerTerrainSpellReaction(unit, spell, getSquareArea(slamX, slamY, spell.aoeRadius || 0));
 

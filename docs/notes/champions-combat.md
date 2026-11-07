@@ -4360,6 +4360,26 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
 
+## THE FORCED-MOVEMENT TEXTS MATCH THE GAME (2026-11-07, forced-movement playtest A4, B3, F, K1, N, P1, P4)
+- Same rule as the status texts: no ruling from mondo, so the TEXT now says what the code does (no rule changed). data.js:
+  Telekinetic Slam pulls UP TO 3 and a wall or body stops it short (no pass-through exists; "drags through whatever is
+  between you" is gone). Grapple + the Grapnel Gauntlet (both item rows) reel to a tile up to 5 away IN ANY DIRECTION
+  (grappleLandingFor walks a drawn line, _ewLineTiles; it was never row/column/diagonal only). Sprint runs to an empty tile up
+  to 3 away in any direction (every `dash` takes any square within its Manhattan range; the other dash rows say "in a line",
+  which the drawn path is, so they stay). Walk the Plank: one deep-water tile + a SHALLOW runoff (map.js spring halo, flow
+  only, the terrain under it stays grass) on the level ground beside it; whoever stands on the deep tile is dragged under.
+  Rampage: a dash to a tile up to 4 away, WEAK (dashDamage 96) to every enemy on the path, SEVERE (dmg 240) instead to an
+  enemy on the landing tile, who is shoved aside (dashShovePlan). Round Up / Tether Line / Orbital Strike say Roped (the
+  status's label); the upgrade fit label reads "ropes a target (Roped)". Descending Wrath names the dive slam (+15 a level of
+  the drop, the ground sinks a level). Tunnel Network: one mouth on the caster's own tile, the other on an empty picked tile;
+  anyone who ENDS A WALK on one comes out of the other (fixed door pair; casting/attacking from the other mouth is The Long Way
+  Round status, which Tunnel Network does not give); three enemy hits collapse both. Resonance Pulse says it pushes 1 away.
+- battle.js log lines: Descending Wrath's "slams X into the ground!" no longer prints a raw number (it showed the pre-DEF 271
+  next to the real 1018 hit, which read as a second hit; there is only one); a fixed gate pair (Tunnel Network) logs "goes
+  into the Tunnel Network at A4 and comes out at D4" instead of "steps through the door".
+- NOT changed, mondo's call: Prism Burst's `wallBounce: true` is read nowhere in the code (no wall bounce exists; its text
+  never promised one). Build the bounce or drop the flag.
+
 ## THE SEEN SPLIT (2026-11-07, forced-movement playtest K4) — battle.js
 Fractal Needle's split hit an Annunaki the caster's team could not see (not in the target list, not in the forecast) for
 331; online that number tells the caster where a hidden enemy stands. Every hop that SEEKS its next victim now draws from
