@@ -9297,7 +9297,7 @@
         }
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
-            if (!target || target.dead || !boost) return;
+            if (!target || target.dead || target._dying || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
             // never apply — the positive half of a mixed boost still lands.
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
@@ -9826,7 +9826,13 @@
         if (typeof window !== 'undefined') window._afterShotTarget = _afterShotTarget;
 
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
-            if (!target || target.dead || !payload?.id || !STATUS_DEFS[payload.id]) return false;
+            /* 💀 THE FALLEN TAKE NOTHING (elements playtest 2026-11-06 D1: "Witch is defeated" then "Plasma Cannon: Witch
+               is burning / jammed"). defeatUnit sets hp 0 + `_dying` at the killing blow and only flips `dead` after the
+               ~800 ms fall, so the same hit's status payload, a terrain tick or a weather pass in that window still landed
+               on the body. A unit that is down — dead OR falling — takes no status from any source; its next life starts
+               clean (processRespawns wipes `status`). Same gate on applyStatusEffects / applyStatStageBoost / seeds / auras,
+               map.js applyTerrainTurnEffects and state.js's terrain + weather passes. */
+            if (!target || target.dead || target._dying || !payload?.id || !STATUS_DEFS[payload.id]) return false;
             /* THE SPELL AUDIT Batch D (Hush): a payload with `ifTargetHas` lands only on a unit already wearing that status
                (silence the Discorded) — a quiet skip, no "resists" line. */
             if (payload.ifTargetHas && !bonusStatusMatches(target, payload.ifTargetHas)) return false;
@@ -10133,7 +10139,7 @@
         }
 
         function applyStatusEffects(target, status = {}, sourceLabel = '', sourceUnit = null) {
-            if (!target || target.dead || !status) return;
+            if (!target || target.dead || target._dying || !status) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             if (Array.isArray(status)) {
                 status.forEach(payload => applyStatusPayload(target, payload, sourceLabel, sourceUnit));
                 return;
@@ -10154,7 +10160,7 @@
         function processEndOfRoundStatuses(onDone) {
 
             const affected = state.units.filter(u => {
-                if (u.dead) return false;
+                if (u.dead || u._dying) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
                 const keys = getActiveStatusKeys(u);
                 return keys.some(k => {
                     const def = STATUS_DEFS[k];
@@ -10170,14 +10176,14 @@
                    so in every sim a DoT never dealt damage (found 2026-10-25 by the Balance Lab status telemetry). */
                 for (const unit of affected) {
                     if (state.winner) break;
-                    if (unit.dead) continue;
+                    if (unit.dead || unit._dying) continue;
                     for (const key of getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k))) {
                         const def = STATUS_DEFS[key];
                         if (!def?.onRoundEnd) continue;
                         const hpBefore = unit.hp;
                         def.onRoundEnd(unit);
                         if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
-                        if (unit.dead) break;
+                        if (unit.dead || unit._dying) break;   // the tick that downed it is its last
                     }
                     if (unit.dead) checkWin();
                 }
@@ -10213,7 +10219,7 @@
                 }
 
                 const unit = affected[idx++];
-                if (unit.dead) { processNext(); return; }
+                if (unit.dead || unit._dying) { processNext(); return; }
 
                 const activeKeys = getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k));
                 if (!activeKeys.length) { processNext(); return; }
@@ -10237,7 +10243,7 @@
                 // it is deferred past the camera travel when a dive happened.
                 const _applyTick = () => {
                 if (state.winner) { if (onDone) onDone(); return; }
-                if (unit.dead) { processNext(); return; }
+                if (unit.dead || unit._dying) { processNext(); return; }
 
                 const dlgMsgs = [];
                 for (const key of activeKeys) {
@@ -10247,7 +10253,7 @@
                     def.onRoundEnd(unit);
                     if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
 
-                    if (unit.dead) {
+                    if (unit.dead || unit._dying) {   // downed by this tick: no more ticks on the body
                         dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${_ctName(unit)} was claimed by ${def.label || key}</span>`);
                         break;
                     }
@@ -11104,7 +11110,7 @@
             return o;
         }
         function applySeedEffectToUnit(seed, unit, events = null, planted = false) {
-            if (!seed || !unit || unit.dead) return false;
+            if (!seed || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -11326,7 +11332,7 @@
 
         // What a grown aura tree does to one unit inside its radius each round.
         function applyAuraTreeEffectToUnit(tree, unit, events = null) {
-            if (!tree || !tree.aura || !unit || unit.dead) return false;
+            if (!tree || !tree.aura || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;

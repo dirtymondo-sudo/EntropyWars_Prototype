@@ -1245,7 +1245,7 @@
             if (weStartedBuffering) _reStartBuffering();
 
             for (const u of state.units) {
-                if (!u.dead) {
+                if (!u.dead && !u._dying) {   // a body still falling (killed earlier this pass) takes no terrain tick
                     updateTerrainStay(u);
                     _reBeginGroup(`🌍 Terrain: ${unitDisplayName(u)}`);
                     applyTerrainTurnEffects(u);
@@ -2818,7 +2818,7 @@
                 }
                 if (!def.onTurnEffect && !def.soaks) continue;
                 for (const unit of units) {
-                    if (unit.dead || !weatherOnTile(weather, unit.x, unit.y)) continue;
+                    if (unit.dead || unit._dying || !weatherOnTile(weather, unit.x, unit.y)) continue;   // the storm that downed it doesn't soak the body
                     // 🌧️ Rain-type weather soaks whoever stands in it (wet =
                     // conducts lightning, resists fire, flash-freezable) —
                     // and the downpour puts out any fire on them on the spot.
