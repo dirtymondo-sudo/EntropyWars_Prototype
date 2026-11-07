@@ -4008,7 +4008,7 @@
             if (veins) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
-                addLog(`💎 The ${_lbl} detonates the crystal vein — ${veinTiles} tile${veinTiles !== 1 ? 's' : ''} explode into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
+                addLog(`💎 The ${_lbl} detonates the crystal vein — ${veinTiles} tile${veinTiles !== 1 ? 's explode' : ' explodes'} into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
             }
             return cracked + veinTiles;
         }
