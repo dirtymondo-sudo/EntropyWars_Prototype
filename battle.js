@@ -30465,6 +30465,19 @@
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
+        /* THE SHOT FOCUS (mondo 2026-11-07, timing playtest D1: "a marked shot lands before the camera gets there, and the
+           camera leaves half a second later"). The end-of-round dive onto a shot that lands with no action shot (a marked
+           shot: Take Aim, To Be Continued; any detonation with the Action Cam off; a turret's volley). Its own name so
+           online.js relays it: the end-of-round loop runs on the HOST only, and without the relay the guest's camera
+           never moved for these hits. opts.local === false: this screen can't see the tile (fog), so only the relay goes
+           (the guest judges its own fog). Returns the glide's length (0 when this screen's camera didn't move). */
+        const EOR_SHOT_FOCUS_MS = 380;
+        function playEorShotFocus(x, y, opts = {}) {
+            if (opts.local === false || _skipVisuals() || state.cameraDisabled) return 0;
+            const ms = opts.duration ?? EOR_SHOT_FOCUS_MS;
+            eorFocusCamera(x, y, { duration: ms });
+            return ms;
+        }
 
         // ── End-of-round phase chip ──
         // A small fixed ribbon naming the beat currently resolving ("Status
@@ -30521,6 +30534,7 @@
         // state.js beats (detonations, storms, buffered round events) reach
         // these through globals — expose them explicitly for clarity.
         window.eorFocusCamera = eorFocusCamera;
+        window.playEorShotFocus = playEorShotFocus;
         window.getEorFocusZoom = getEorFocusZoom;
         window._eorPhaseLabel = _eorPhaseLabel;
         window._eorPhaseLabelHide = _eorPhaseLabelHide;
@@ -30585,6 +30599,14 @@
             if (until > (camera._impactHoldUntil || 0)) camera._impactHoldUntil = until;
         }
         window._cineImpactHoldLeft = _cineImpactHoldLeft;
+        /* THE SHOT HOLD (mondo 2026-11-07, timing playtest D1): the end-of-round shots that play no action shot (a marked
+           shot, a detonation with the Action Cam off, a turret's volley) hold the camera on the hit like a cast does */
+        window._cineHoldImpactAftermath = function (extraMs) {
+            if (_skipVisuals()) return 0;
+            const ms = Math.max(0, extraMs || 0) + actionMs(CINE_IMPACT_AFTERMATH_MS);
+            _cineHoldImpactFor(ms);
+            return window.EW_NO_IMPACT_HOLD ? 0 : ms;
+        };
 
         function _unitElevZ(unit) {
             if (!unit) return 0;
@@ -32937,6 +32959,9 @@
         function cineFreezeFrame(ms, opts = {}) {
             const d = Math.max(60, Number(ms) || 0);
             try { window.ThreeAnim?.hitstop?.(d); } catch (e) {}
+            /* THE IMPACT HOLD: a freeze on a hit the camera is holding on (To Be Continued's sepia stop) stops the
+               aftermath too, so the hold counts from the thaw */
+            if (_cineImpactHoldLeft() > 0) _cineHoldImpactFor(d + actionMs(CINE_IMPACT_AFTERMATH_MS));
             if (opts.grade) cineGrade(opts.grade, d + 120);
             // the contrast tell runs in the post shader when it is up: a CSS filter switched onto the canvas made Firefox
             // re-composite the whole canvas offscreen (THE SCREEN GRADE, three-post.js)
@@ -41130,15 +41155,17 @@
                 // A turret / summon hidden in fog never gets framed: the
                 // camera stays on the (visible) victim instead.
                 const _turretSeen = _turretCam && (!state.fogOfWar || _isTileVisibleToViewer(s.turret.x, s.turret.y));
+                /* THE SHOT FOCUS: playEorShotFocus is relayed, so the guest's camera follows the volley too (it judges
+                   its own fog for each beat) */
                 if (_turretCam) {
-                    if (_turretSeen) eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
-                    else eorFocusCamera(s.target.x, s.target.y, { duration: 380 });
+                    if (_turretSeen) playEorShotFocus(s.turret.x, s.turret.y, { duration: 380 });
+                    else playEorShotFocus(s.target.x, s.target.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                     if (state.winner) { if (onDone) onDone(); return; }
                     if (_turretSeen) {
-                        eorFocusCamera(
+                        playEorShotFocus(
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
                     }
@@ -41161,6 +41188,9 @@
                     // while the camera is still gliding onto the sight line).
                     window.setTimeout(() => {
                         if (state.winner) { if (onDone) onDone(); return; }
+                        /* THE SHOT HOLD (timing playtest 2026-11-07): armed before the hit so the hit's own freeze adds
+                           to it — the camera stays on the hit for the impact aftermath like any cast, not 0.68 s */
+                        if (_turretCam) window._cineHoldImpactAftermath(0);
                         applyShot(s);
                         // Impact feedback: spark + stagger on the victim so the
                         // hit reads as an attack, not a silent HP drop.
@@ -41172,7 +41202,8 @@
                         if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
                         checkWin();
                         if (state.winner) { if (onDone) onDone(); return; }
-                        window.setTimeout(fireNext, actionMs(680));
+                        const _volleyHold = _turretCam ? window._cineImpactHoldLeft() : 0;
+                        window.setTimeout(fireNext, Math.max(actionMs(680), _volleyHold));
                     }, actionMs(300));
                 }, _turretCam ? actionMs(760) : actionMs(420));
             }
