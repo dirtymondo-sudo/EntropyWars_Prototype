@@ -4240,6 +4240,26 @@ Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and t
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
 
+## THE HOME SIDE (2026-11-07, buffs/utility playtest A) — battle.js, state.js, data.js
+Possession used to flip `unit.player` to the controller for the whole possession, so every team check treated the
+body as the controller's: Hallelujah healed the possessed Gangster and its cleanse took Possessed off (freed it),
+Oath of Valor buffed the possessed Shaman (the buff outlasted the possession), Chivalry listed the possessed
+Valkraye, and the CPU attacked/debuffed its own possessed teammates. Now `possessUnit` leaves `player` on the HOME
+seat and `_possessSettleSeats(activeId)` sets it to `_controllerPlayer` only while the body is the active unit
+(called when an activation starts in `_continueBlitzWithUnit_impl` / the human hand-off timer, and after
+`_possessSpendActivation` when it ends). So at rest the body is its home team's for team spells, ally lists, AOE
+sides and the AI; during its own turn the controller steers it (AI/human branch, online guest-emit gate, fog,
+its own targeting) exactly as before. `getControllingPlayer(u)` now returns the controller between activations;
+state.js round order buckets by it so the body still takes its turn in the controller's half of the alternation.
+Simul keeps the old whole-duration flip (its plan phase has no active unit). Cleanses: no rule changed — Possessed
+is a debuff, so the HOME team's cleanse can free its teammate (the status text); the controller's team no longer
+reaches it. Also: Chivalry's MOVE→CAST rows no longer list the Knight himself (doSpell already refused it).
+Proven in WebGL2 vs CPU (before: Hallelujah "healing 5 allies" + Possessed gone, Oath "Annunaki is empowered",
+Chivalry lists the possessed enemy, CPU Deathtrap on its own possessed Ringmaster; after: 4 allies, no buff, empty
+list, CPU used a Healing Potion on its possessed Kraken, the body attacked its home teammate on its own turn, then
+"is its own again") and online two-seat (guest-possessed host unit: guest sees it Possessed + not an ally at rest,
+gets it as its own only during its activation, its attack resolved on the host, back to the host after).
+
 ## ONE DEFENCE on opportunity + auto attacks (2026-11-07, buffs/utility playtest H)
 Opportunity attacks on a retreating Valkraye did 1 HP twice. Not a rule (no shield): battle.js `_oppStrikeDamage` took
 the victim's defence off "half the striker's ATK", then `applyDamageToUnit` took it off AGAIN (and THE SOAK FLOOR only
@@ -4339,3 +4359,82 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 (`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
+
+## THE SEEN SPLIT (2026-11-07, forced-movement playtest K4) — battle.js
+Fractal Needle's split hit an Annunaki the caster's team could not see (not in the target list, not in the forecast) for
+331; online that number tells the caster where a hidden enemy stands. Every hop that SEEKS its next victim now draws from
+`spellHopPool(unit, spell, pool)` (`spellHopSeesEnemy`: `isUnitConcealedFrom` + `spellSeesEnemy`, the same sight rule the
+first target passes, `_reachProbe` during move-then-cast probes): split beams (Fractal Needle, Firefly Swarm), ricochets
+(Mirror Shard, Shardstorm, Splitting Arrow, Prism Burst), chain-lightning links (`chainProfile`, incl. the chainWetHops
+probe) and the Ricochet upgrade rider. Covered in each place the pick is made: the hit itself, the CONFIRM forecast
+(`_forecastSpellInto`), the strike-tile highlight and the split camera framing. Extra Targets (Forked) and random targets
+already used the sight-checked target list. Area blasts still hit whatever stands in their footprint. Proof (online,
+fog on, host casts, guest owns the hidden unit): /mnt/project-files/playtest-mechanics-20261107/split-fog/.
+
+## IN-RANGE CASTERS NEVER WALK FIRST (2026-11-07, forced-movement playtest B1 / I / P3)
+The playtest (/mnt/project-files/playtest-mechanics-20261107/forced-movement/) found in-range casts tagged MOVE→CAST and
+walking the caster first. Existing rules only, no new range:
+- **THE GROUND REACH** (battle.js `spellReachIsFlat`): `dash` and `leapStrike` measure reach in FLAT steps in
+  `_spellAimReach` (gateD), `_spellAimTarget`'s column pick, `getSpellRangeTiles` and the ui.js range light. doSpell's dash
+  branch was already plain 2D Manhattan (the hud quick menu's "Engine parity" note) and the leap strike measures flat and pays
+  more per level dropped; the shared 3D radius (combatReach, height as its own axis) counted the climb / the drop against the
+  range (Grotesque Dive from z10 at 2 squares, Runaway Train onto a raised enemy). Line of sight and fog are unchanged.
+- **THE CHARGE ROWS** (hud.js `_aimCharge`): a `dash` with `chargeToTarget` (Runaway Train, Shadow Infiltration, Dark Feather,
+  Stampede, Ram Charge, Bull Rush, Blitz) lists the enemies it reaches as target rows; the prompt says "select an enemy to
+  charge, or a tile to dash to". Board tile aim still works.
+- **THE PAIR RULE** (battle.js `_pairPhasePick`): the second click of a two-click cast with `pairRange` (Soul Bind) is judged
+  within pairRange of the FIRST pick (its text + doSpell's pair gate), not by the caster's range; the first pick itself keeps
+  the caster's range (click it again to un-pick). Lit tiles (ui.js) and row distances read the same.
+- **NO WALK FIRST** (battle.js `_spellNeverApproaches`): self teleports (the click is the landing) and a two-click cast
+  mid-pick (a step drops the first pick) never offer MOVE→CAST (findSpellApproachTile, _getSpellApproachTargets,
+  TargetQuery.hasReachableTarget).
+- **THE SELF BLINK** (hasSpellTargetInRange): a self teleport has a target when a free passable landing tile lies in
+  getTeleportLandingReach (it used to need SOME unit within range, so Cathedral Perch / Land on Your Feet wore MOVE→CAST in an
+  empty corner). Icky Surprise with no ooze in reach now greys "No target" (also playtest P2).
+- Gravity Crush (playtest I) was NOT a bug: the log shows the Annunaki on J6 (9,5), 6 squares from the Demon on G9 (6,8),
+  range 4; the step to J8 brought it to 4. A flyer at z7 casting it 3 squares out at any ground height 0-10 is in range.
+
+## THE PIN SPARES OWN SIDE (2026-11-07, forced-movement playtest J1) — battle.js, data.js
+- Piercing Arrow (`racePiercingArrow`, the only row with `collisionStatusBoth`) rooted every body its victim was driven
+  into, so a Skeleton that rebounded off a cliff into Robin Hood rooted Robin Hood too, and a rebound into an ally rooted
+  the ally. battle.js `_applyLineDamage` linePush pin block: the "both" bodies now only wear `collisionStatus` when
+  `isEnemyUnit(caster, body)`. The victim itself is still pinned (it is always an enemy: the line only hits enemies), the
+  bonus damage, the auto attack and the crash physics are unchanged. Same rule as own blasts never hitting own units.
+- The other collision riders (`collisionStatus` on tackles in `_runPostEffects`, Body Check's statusEffects) only ever
+  land on the pushed target, never the bodies it hit, so nothing else could pin the caster's side.
+- data.js desc: "both are Rooted for 1 turn (your own units are never Rooted by it)".
+- Proof: VS CPU TDM in Chromium (WebGL2), staged on one column against the board edge. Live: "Piercing Arrow pins:
+  Bigfoot is rooted." (caster) and the ally rooted. Fixed: only the enemy is rooted in both cases.
+
+## THE TWO LAYERS — a flyer only blocks a forced slide at its height (2026-11-07, playtest A2) — battle.js
+- Report: /mnt/project-files/playtest-mechanics-20261107/forced-movement/ A2 (Body Check / Horn Toss stopped by a Cyborg
+  hovering at height 7 over the next square, and the reverse).
+- Cause: `_slideStepInfo` asked `unitAt(nx, ny)` with no height, and its `canOccupy(nx, ny)` reads a lone flyer as a body
+  there. Every forced slide (push, pull, toss, knockback, chain) goes through it.
+- Fix (existing tile cap: one grounded + one airborne body per square, `airborneOccupantInPocket`): a grounded mover meets
+  only grounded bodies (`_slideGroundBodyAt`); a flyer meets only the flyer in its air pocket or a body standing at exactly
+  its height (`_slideAirBodyAt`). The flyers over the square are lifted off the board for the `canOccupy` check (restored in
+  finally, same trick as the mover). `_tryCrashThrough` / `_slideCouldBreach` use the grounded check too.
+- Proof: VS CPU TDM in Chromium (WebGL2), real doSpell casts. Live: Body Check victim stays put and hits the flyer; Kinetic
+  Hurl on a flyer stops at the ground unit. Fixed: both slide 2 squares (under / over); ground-into-ground and
+  flyer-into-flyer still stop and crash.
+## THE FORCED MOVE LINES (2026-11-07, forced movement playtest families E, M, P6 + B2's line) — battle.js, state.js
+Log text and order only; no rule changed. Report: /mnt/project-files/playtest-mechanics-20261107/forced-movement/PLAYTEST_FORCED_MOVEMENT_20261107.md.
+- One line per forced move: who, how far (`_fmNet` = start to the end of the slide; rebound steps back don't count), where
+  it ended (`_fmTiles` "2 tiles to E5"), then what the landing did. `_logPushMove(lead, target, res, verb)` writes the push
+  line (displacement: knocks / tosses (Horn Toss) / hurls (arcThrow); damage-kind pushDistance; linePush; aoe / cross pushes).
+  Pulls: "X pulls Y 3 tiles to C4." and no line at all for 0 tiles. Area pulls: "Y is hauled 1 tile to E4 by Black Hole!".
+- Log order tools (next to `_logHoist`): `_logLift(mark, from)` moves a block back; `_logTake(mark)` / `_logPut(taken)` hold
+  lines written now and put them in on their beat (the pull's lines after the hook's hit; Piercing Arrow's pin after the
+  slam). Same task only, like `_logHoist`, so the guest's log filter never sees a line move.
+- Order fixed: chargeToTarget's "charges to" + its landing lift above the hit (`_runPostEffects(unit, spell, target, hitMark)`);
+  tackles' "carries" before the landing's lava/water lines; Drop In / Breaking and Entering's door line before the hit; Stone
+  Drop's drop line before its hit; To the Moon's "hurls" first; Walk the Plank: Converted, hit, execute, then the drown; dash
+  line first; aoePull summary FIRST (opts.leadNamed, "hits N targets and pulls K inward", no pull clause when nothing moved);
+  line / cross summaries before the pushes.
+- Wording: one entry line for lava / deep water (`_chainGround`, said the unit's own way for via self / teleport / climb);
+  the liquid fall line's icon matches the liquid (state.js); "💧 X lands in the water and is Wet." for any non-walk arrival;
+  slam names what was hit (`_slideObstacleName`: a tree, the barrier, the cliff face, the edge…); displacement's slam bonus
+  says its share of the hit; Knight's L move isn't "down the line"; ricochets name the spell; Cathedral Perch just "leaps";
+  Sonic Boomerang's return is "Sonic Boomerang comes back:"; Air Mail writes its door fall; Converted uses the terrain label.
+- To the Moon (E6): the turn holds (`_pendingSpellHits`) until the thrown body lands, so the CPU no longer moves mid-throw.

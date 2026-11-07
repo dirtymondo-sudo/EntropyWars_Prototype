@@ -2401,7 +2401,7 @@
         }
       }
       const _hlKeyParts = _selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting
-        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnitId ?? '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
+        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnitId ?? '') + '|' + (state._spellPick1 && state._spellPick1.tile ? 'pk' + state._spellPick1.x + ',' + state._spellPick1.y : '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
         : '';
       let _hlCache;
       let _hlZCache;
@@ -2974,7 +2974,9 @@
             // range only, no elevation tax and no terrain LOS — must match the
             // engine's own 2D validation in doSpell or clicks get rejected.
             const _skyGrabHl = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
-            const _rangeD = (cx, cy) => _skyGrabHl
+            // THE GROUND REACH (battle.js spellReachIsFlat): dashes + leap strikes measure flat steps too
+            const _flatHl = _skyGrabHl || (typeof spellReachIsFlat === 'function' && spellReachIsFlat(spell));
+            const _rangeD = (cx, cy) => _flatHl
               ? (Math.abs(_selectedForHl.x - cx) + Math.abs(_selectedForHl.y - cy))
               : (typeof combatReach === 'function')
                 ? combatReach(_selectedForHl.x, _selectedForHl.y, _spellSrcZ, cx, cy, _tgtZAt(cx, cy), _spellLong)
@@ -3132,6 +3134,18 @@
                 if (!land.anchored) _hlCache.set(pk, 'move');
                 else if (occ && !occ.dead && !(isEnemyUnit(occ, _selectedForHl) && unitHasStatus(occ, 'invisible'))) _hlCache.set(pk, 'move ally');
               }
+            } else if (typeof window._pairPhasePick === 'function' && window._pairPhasePick(spell)) {
+              /* THE PAIR RULE (battle.js _pairPhasePick): Soul Bind's second pick lights what lies within pairRange of
+                 the first pick — getSpellRangeTiles holds the rule, the same tiles the cast takes */
+              for (const t of getSpellRangeTiles(_selectedForHl, spell)) {
+                const pk = posKey(t.x, t.y);
+                const target = _liveUnitMap.get(pk);
+                if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
+                  _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
+                } else if (state.actionMenuView !== 'spellTargets') {
+                  _hlCache.set(pk, 'spell-range');
+                }
+              }
             } else if (spell.kind === 'utility') {
 
               const _fogLimitUtil = spellVisionGate(_selectedForHl, spell);
@@ -3232,6 +3246,12 @@
             }
           }
         }
+          /* THE FIRST PICK STAYS MARKED (forced-movement playtest 2026-11-07 L1: "after the first door the first square
+             isn't marked"): a tile pick an armed spell remembers (Twin Doors' first door, a lane door's tile) paints the picked orange
+             under the second step, so the player sees where the first click went. Viewer-local. */
+          if (state.actionMode === 'spell' && state._spellPick1 && state._spellPick1.tile && isInside(state._spellPick1.x, state._spellPick1.y)) {
+            _hlCache.set(posKey(state._spellPick1.x, state._spellPick1.y), 'combo-target');   // the 'picked' orange
+          }
         } catch(e) { console.error('hlCache error', e); }
         }
 
@@ -16226,7 +16246,10 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED', reflected: 'REFLECTED' };
-        const _FC_TAG_TEXT = { oil: '💥 OIL BLAST', recoil: '🩸 RECOIL', walkFire: '🔥 WALKS THROUGH FIRE · BURN', walkLava: '🌋 WALKS THROUGH LAVA · BURN', bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
+        const _FC_TAG_TEXT = { oil: '💥 OIL BLAST', recoil: '🩸 RECOIL', walkFire: '🔥 WALKS THROUGH FIRE · BURN', walkLava: '🌋 WALKS THROUGH LAVA · BURN', bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS',
+            /* the forced landing's bite (forced-movement playtest 2026-11-07 D7 / K2): battle.js simulateArrivalChain's ground
+               step and the fall (resolveForcedSlide / THE YANK'S FALL) */
+            lava: '🌋 KNOCKED INTO LAVA · BURN', burning: '🔥 HURLED INTO FLAMES · BURN', fall: '⬇ FALL DAMAGE', immovable: '⚖️ IMMOVABLE' };
         const _FC_SECONDARY = { oil: 1, recoil: 1, walkFire: 1, walkLava: 1, bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, autoAttack: 1, intercepts: 1, crash: 1, conduct: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
@@ -16514,6 +16537,23 @@
                 }
         }
 
+        /* THE FORCED MOVE PREVIEW (11-07 A1/A3): the arrow + ghost read the engine's own slide (battle.js resolveForcedSlide,
+           simulate) so they land where the cast truly lands — a pull re-aims at the caster each step and stops beside them.
+           Null when the engine is not loaded (the old straight walk is the fallback). */
+        function _ewPreviewSlide(target, dx, dy, dist, reelTo, spell, byUnit) {
+            if (typeof resolveForcedSlide !== 'function' || typeof getUnitPushDistance !== 'function') return null;
+            if (!dx && !dy) return null;
+            try {
+                const d = getUnitPushDistance(target, dist, null, spell || undefined);
+                if (!(d > 0)) return { x: target.x, y: target.y };
+                const sim = resolveForcedSlide(target, dx, dy, d, {
+                    simulate: true, noSimChain: true, byUnit: byUnit || null,   // the caster: same realm / anchor rules as the cast
+                    stopBefore: reelTo ? { x: reelTo.x, y: reelTo.y } : null
+                });
+                return sim ? { x: sim.landX ?? sim.x, y: sim.landY ?? sim.y } : null;
+            } catch (_e) { return null; }
+        }
+
         function _renderDisplacementArrows(caster, spell, tx, ty) {
             const kind = spell.kind;
             if (!projectileLayerEl) return;
@@ -16537,7 +16577,10 @@
                 const dx = Math.sign(caster.x - target.x);
                 const dy = Math.sign(caster.y - target.y);
                 let endX = target.x, endY = target.y;
-                for (let i = 1; i <= pullDist; i++) {
+                /* THE REEL-IN (11-07 A3): the engine's own slide (re-aims at the caster each step, stops beside them) */
+                const _plSim = _ewPreviewSlide(target, dx, dy, pullDist, caster, spell, caster);
+                if (_plSim) { endX = _plSim.x; endY = _plSim.y; }
+                else for (let i = 1; i <= pullDist; i++) {
                     const nx = target.x + dx * i, ny = target.y + dy * i;
                     if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
                     endX = nx; endY = ny;
@@ -16562,7 +16605,9 @@
                     const dx = Math.sign(caster.x - target.x);
                     const dy = Math.sign(caster.y - target.y);
                     let endX = target.x, endY = target.y;
-                    for (let i = 1; i <= 2; i++) {
+                    const _grSim = _ewPreviewSlide(target, dx, dy, 2, caster, null, caster);
+                    if (_grSim) { endX = _grSim.x; endY = _grSim.y; }
+                    else for (let i = 1; i <= 2; i++) {
                         const nx = target.x + dx * i, ny = target.y + dy * i;
                         if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
                         if (nx === caster.x && ny === caster.y) break;
@@ -16697,11 +16742,13 @@
                 if (target && isEnemyUnit(caster, target)) {
                     // A fling knocks the target AWAY from the caster — trace the
                     // actual shove and hologram where it lands.
-                    const dx = Math.sign(target.x - caster.x) || 1;
+                    const dx = Math.sign(target.x - caster.x);   // straight away (11-07 A1: a shared column is a straight N/S push)
                     const dy = Math.sign(target.y - caster.y);
                     const dist = spell.displaceDistance || spell.pushDistance || 2;
                     let endX = target.x, endY = target.y;
-                    for (let i = 1; i <= dist; i++) {
+                    const _dpSim = _ewPreviewSlide(target, dx, dy, dist, null, spell, caster);
+                    if (_dpSim) { endX = _dpSim.x; endY = _dpSim.y; }
+                    else for (let i = 1; i <= dist; i++) {
                         const nx = target.x + dx * i, ny = target.y + dy * i;
                         if (!isInside(nx, ny) || !canOccupy(nx, ny)) break;
                         endX = nx; endY = ny;

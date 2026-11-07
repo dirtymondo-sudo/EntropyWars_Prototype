@@ -32514,6 +32514,7 @@ const ThreeRenderer = (function () {
         _hitBlinks.clear();
         _strikeTweens.clear();
         _clipTravelTweens.clear();
+        _throwTweens.clear();   // a match reset never leaves a body on an arc (it blocks the turn now)
         _prevAttackIds.clear();
         _prevCastIds.clear();
         _castRig.clear();
@@ -49888,14 +49889,20 @@ const ThreeRenderer = (function () {
             if (hit && typeof handleTileDragStart === 'function') handleTileDragStart(hit.tileX, hit.tileY);
         };
 
-        _onMouseLeave = function() {
+        _onMouseLeave = function(e) {
             _lastMouseClientX = _lastMouseClientY = null;
             _updateUnitHover(null);
             updateHoverHighlight(-1, -1);
+            /* THE PICK WAITS FOR ITS CONFIRM (forced-movement playtest 2026-11-07 H2: Walk the Plank's "✓ CONFIRM —
+               Mantid" did nothing while Enter worked): the pointer leaving the board for the HUD dropped the hovered
+               pick, so the green CONFIRM it was heading for vanished under it and the click fell on the board. Going
+               onto the HUD keeps the pick (and its preview); leaving the window or the board's own edge clears it. */
+            var _toHud = !!(e && e.relatedTarget && e.relatedTarget !== canvas && e.relatedTarget.nodeType === 1
+                && document.body && document.body.contains(e.relatedTarget));
             if (_lastHitX >= 0 || _lastHitY >= 0) {
                 var prevX = _lastHitX, prevY = _lastHitY;
                 _lastHitX = -1; _lastHitY = -1;
-                if (typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
+                if (!_toHud && typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
                 if (typeof restoreHoverFocus === 'function') restoreHoverFocus();
                 if (typeof clearHoverHighlight === 'function') clearHoverHighlight();
             }
@@ -50003,8 +50010,10 @@ const ThreeRenderer = (function () {
        flashes, a dead body dissolving: they finish on screen while the next turn starts (battle.js caps that tail). */
     function hasBlockingAnims() {
         if (_freeRoam) return true;
+        /* a body still on a throw arc (sky throws, drops, storm hurls) is a body still moving: the turn waits for its
+           landing (2026-11-07, playtest H3 — the kill's close-up opened over the next unit's menu) */
         return _projTweens.length > 0 || _tetherTweens.length > 0 || _walkTweens.size > 0 || _displaceTweens.size > 0
-            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0;
+            || _jumpTweens.size > 0 || _strikeTweens.size > 0 || _clipTravelTweens.size > 0 || _throwTweens.size > 0;
     }
     function hasDecorAnims() {
         return _floatTweens.length > 0 || _hitFxTweens.length > 0 || _deathTweens.size > 0;
@@ -50035,6 +50044,7 @@ const ThreeRenderer = (function () {
         if (_jumpTweens.size > 0) return true;
         if (_strikeTweens.size > 0) return true;
         if (_clipTravelTweens.size > 0) return true;
+        if (_throwTweens.size > 0) return true;
         if (_deathTweens.size > 0) return true;
         return false;
     }
