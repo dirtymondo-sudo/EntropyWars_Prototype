@@ -1500,6 +1500,23 @@
             };
         }
 
+        /* THE SHOT FOCUS (2026-11-07, RULE #2): the end-of-round dive onto a shot with no cinematic (a marked shot, a
+           blast with the Action Cam off, a turret's volley, battle.js playEorShotFocus) ran on the HOST only, so the
+           guest's camera never moved for those hits. The host relays the tile; the guest gates on its own fog. */
+        if (typeof window.playEorShotFocus === 'function') {
+            const _origPlayEorShotFocus = window.playEorShotFocus;
+            window.playEorShotFocus = function(x, y, opts) {
+                var r = _origPlayEorShotFocus(x, y, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (!(opts && opts.relayed) && Number.isFinite(x) && Number.isFinite(y)
+                    && (_netOn && _isHost() || _ewRecOn())) {
+                    _emit('relay', { type: 'eor-shot-focus', x: x, y: y,
+                        duration: (opts && Number.isFinite(opts.duration)) ? opts.duration : null });
+                }
+                return r;
+            };
+        }
+
         /* Turn-handoff sweep ("Your Turn" / "Opponent's Turn"). The blitz
            engine only runs on the HOST, so without this relay the guest
            NEVER sees the handoff announcement — one of the biggest "online
@@ -4639,6 +4656,20 @@
                         }
                     }
 
+                    /* THE SHOT FOCUS (see the host wrapper above): fog is ENFORCED, a hit on a tile the guest can't
+                       see moves no camera */
+                    if (data.type === 'eor-shot-focus' && _ewMirrorView()
+                        && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+                        var _sfVis = !st || !st.fogOfWar
+                            || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(data.x, data.y));
+                        if (_sfVis && typeof window.playEorShotFocus === 'function') {
+                            try {
+                                window.playEorShotFocus(data.x, data.y,
+                                    { duration: Number.isFinite(data.duration) ? data.duration : undefined, relayed: true });
+                            } catch (e) {}
+                        }
+                    }
+
                     if (data.type === 'player-turn-announce' && _ewMirrorView()) {
                         if (typeof window.showPlayerTurnAnnounce === 'function' && data.player) {
                             var _ptaUnit = null;
@@ -6194,6 +6225,7 @@
                         case 'opp-banner':
                         case 'storm-lightning-fx':
                         case 'key-fx':
+                        case 'eor-shot-focus':
                             if (!tv(data.x, data.y)) return null;
                             break;
                         case 'det-cine':
@@ -6874,7 +6906,7 @@
                camera themselves (free-cam mode for filming trailers). */
             var CAMERA_RELAY = {
                 'camera-events': 1, 'cam-action-settle': 1, 'dash-cam-follow': 1,
-                'unit-fall-follow': 1, 'spell-focus-cam': 1
+                'unit-fall-follow': 1, 'spell-focus-cam': 1, 'eor-shot-focus': 1
             };
 
             /* ── IndexedDB (localStorage's ~5MB quota is too small for this) ── */

@@ -4489,6 +4489,44 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
 
+## THE PER-SPELL CAP + THE JUMP LANDING (zones/traps playtest 2026-11-07, A1-A3)
+mondo: "Go ahead and start those fixes" (PLAYTEST_ZONES_TRAPS_20261107.md family A). Existing rules only.
+- A1: battle.js `deployObject` counted ALL of the caster's placed objects against the NEW row's maxActivePerCaster, so a
+  Spring Snare (cap 1) silently took the Gnome's Tesla Coil and Scrap Mine; a Cloning Machine took the Mad Scientist's
+  Tesla Coil. The cap now counts only that row's own live objects (`o.spellId === spell.id`), like placeTrap (per
+  trapType) and summonUnit (per spell) already did. The one a re-cast takes away is logged to its owner's seat only
+  ("Gnome's older Spring Snare at C8 is taken down to make room."). All 8 deployObject rows share the path: Spring
+  Snare, Scrap Mine, Tesla Coil, Jack-in-the-Box, Stuffed Double, Cloning Machine, Hologram, Federation Beacon.
+  The plain doubles (Shed Skin / spawnDecoy, cap 3) count only spell-less decoys now, so they never take a Stuffed
+  Double / Cloning Machine / Hologram.
+- A3: `deployTurret` (and the real-time `_placeTurret`) counted every state.turrets entry of the caster, summons and
+  zombies included: a 5G Tower (cap 1) took down the Deploy Turret. Now per spell, never a summon/zombie. The 5G
+  Tower stores dmg 0 (was `turretDmg || 8`) and its log line names it and its M.DEF aura.
+- ai.js reads the same per-spell caps (deployObject x2, deployTurret).
+- A2: `doJump`'s landing (`_doPostJump`) never ran THE CHAIN, so a jump onto a bomb / hidden trap / Scrap Mine /
+  Tesla Coil / snare (and onto lava, fire, a debuff zone, a vortex, a rune) did nothing. It now calls
+  `resolveTileArrival(unit, { via: 'move' })` after the fall damage, exactly the end of a walk. Only the landing
+  square; the arc's squares are untouched.
+- Proof (online friendly, two seats, Mount Shasta 10x10): /mnt/project-files/playtest-mechanics-20261107/trap-cap-jump-fix/
+  (ms2: Tesla + Cloning Machine both stand; g2: Gnome's three traps stand, a 2nd Spring Snare replaces the 1st with the
+  line; kk5 = the GUEST's screen: King Kong jumps onto the Scrap Mine, −124 + Stagger; g6: Deploy Turret + 5G Tower both stand).
+### THE HEIGHT PAID ONCE (2026-11-07, zones/traps playtest K + J)
+- Bug: Stone Drop (a WEAK row) hit a Symbiote for 1113. The drop prices height as levels in its raw (`dmg + spell power +
+  levels × dmgPerLevel`, levels counted from the flyer's own altitude + carryHeight), then applyDamageToUnit also gave the
+  hit HIGH GROUND from that same altitude (`1 + DOWNHILL_DAMAGE_BONUS × Δ`, ×1.4 for a flyer parked 4 up). Height was paid
+  twice. Every row that prices levels did the same: skyDrop, skyThrow (grab + throw), skySlam (+ its shockwave),
+  leapStrike (+ its shockwave).
+- Fix (battle.js, no data changed): those hits pass `noHeightBonus: true` (the HIGH GROUND multiplier and the defender's
+  height soak are skipped; the levels stay). Cast and forecast both (the forecast plan's baseOpts for these kinds). Stagger
+  ×1.5, the element ground ×1.25 and every other multiplier are untouched. The throw's collision bystander (flat
+  collisionBonus, no levels in it) is unchanged.
+- Measured in a real VS CPU match (Gargoyle, Mount Shasta): main, Stone Drop from +2 on Spy forecast = hit = 475; the same
+  raw without the double height = 385. At +4 (the playtest's 8-level drop) the extra was ×1.4 on the whole hit.
+- J (the camera "under the terrain" during Stone Drop): the playtest build predates PR #986 (the lens footprint), and its
+  frame was taken 8 s after the drop KILLED the Symbiote, i.e. the death close-up. On current main Stone Drop's own shot
+  and its kill close-up stayed above the board (6-, 9- and 10-level drops filmed, one a kill). The death close-up on
+  Mount Shasta's slopes is its own thread ("Keep death close-up camera out of trees and hills").
+
 ## THE IMMUNE TARGET (2026-11-07, timing/counters playtest B1)
 mondo: "start those fixes" — Counterspell / Brainwash / Executive Order listed the CPU Ghoul (Pure Negativity: immune to
 every debuff and stat drop) with a green CONFIRM; the cast bounced and still spent MP + cooldown.

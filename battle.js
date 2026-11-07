@@ -7250,7 +7250,7 @@
             _cands.sort((a, b) => _near(b) - _near(a));
             const at = _cands[0];
             if (!state._deployedObjects) state._deployedObjects = [];
-            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy && !o.spellId);   // the plain doubles' own cap: a spell's decoy (Stuffed Double, Cloning Machine, Hologram) keeps its own (A1)
             while (_owned.length >= 3) {
                 const oldest = _owned.shift();
                 state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
@@ -29533,7 +29533,7 @@
             function _placeTurret(caster, sp, gx, gy) {
                 if (!state.turrets) state.turrets = [];
                 const tx = Math.round(gx), ty = Math.round(gy);
-                const mine = state.turrets.filter(t => t.casterUnitId === caster.id);
+                const mine = state.turrets.filter(t => t.casterUnitId === caster.id && t.spellId === sp.id && !t.summon && !t.zombie);   // the cap is per spell (A3)
                 const cap = sp.maxActivePerCaster || 2;
                 while (mine.length >= cap) { const old = mine.shift(); state.turrets.splice(state.turrets.indexOf(old), 1); }
                 state.turrets.push({
@@ -30465,6 +30465,19 @@
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
+        /* THE SHOT FOCUS (mondo 2026-11-07, timing playtest D1: "a marked shot lands before the camera gets there, and the
+           camera leaves half a second later"). The end-of-round dive onto a shot that lands with no action shot (a marked
+           shot: Take Aim, To Be Continued; any detonation with the Action Cam off; a turret's volley). Its own name so
+           online.js relays it: the end-of-round loop runs on the HOST only, and without the relay the guest's camera
+           never moved for these hits. opts.local === false: this screen can't see the tile (fog), so only the relay goes
+           (the guest judges its own fog). Returns the glide's length (0 when this screen's camera didn't move). */
+        const EOR_SHOT_FOCUS_MS = 380;
+        function playEorShotFocus(x, y, opts = {}) {
+            if (opts.local === false || _skipVisuals() || state.cameraDisabled) return 0;
+            const ms = opts.duration ?? EOR_SHOT_FOCUS_MS;
+            eorFocusCamera(x, y, { duration: ms });
+            return ms;
+        }
 
         // ── End-of-round phase chip ──
         // A small fixed ribbon naming the beat currently resolving ("Status
@@ -30521,6 +30534,7 @@
         // state.js beats (detonations, storms, buffered round events) reach
         // these through globals — expose them explicitly for clarity.
         window.eorFocusCamera = eorFocusCamera;
+        window.playEorShotFocus = playEorShotFocus;
         window.getEorFocusZoom = getEorFocusZoom;
         window._eorPhaseLabel = _eorPhaseLabel;
         window._eorPhaseLabelHide = _eorPhaseLabelHide;
@@ -30585,6 +30599,14 @@
             if (until > (camera._impactHoldUntil || 0)) camera._impactHoldUntil = until;
         }
         window._cineImpactHoldLeft = _cineImpactHoldLeft;
+        /* THE SHOT HOLD (mondo 2026-11-07, timing playtest D1): the end-of-round shots that play no action shot (a marked
+           shot, a detonation with the Action Cam off, a turret's volley) hold the camera on the hit like a cast does */
+        window._cineHoldImpactAftermath = function (extraMs) {
+            if (_skipVisuals()) return 0;
+            const ms = Math.max(0, extraMs || 0) + actionMs(CINE_IMPACT_AFTERMATH_MS);
+            _cineHoldImpactFor(ms);
+            return window.EW_NO_IMPACT_HOLD ? 0 : ms;
+        };
 
         function _unitElevZ(unit) {
             if (!unit) return 0;
@@ -32937,6 +32959,9 @@
         function cineFreezeFrame(ms, opts = {}) {
             const d = Math.max(60, Number(ms) || 0);
             try { window.ThreeAnim?.hitstop?.(d); } catch (e) {}
+            /* THE IMPACT HOLD: a freeze on a hit the camera is holding on (To Be Continued's sepia stop) stops the
+               aftermath too, so the hold counts from the thaw */
+            if (_cineImpactHoldLeft() > 0) _cineHoldImpactFor(d + actionMs(CINE_IMPACT_AFTERMATH_MS));
             if (opts.grade) cineGrade(opts.grade, d + 120);
             // the contrast tell runs in the post shader when it is up: a CSS filter switched onto the canvas made Firefox
             // re-composite the whole canvas offscreen (THE SCREEN GRADE, three-post.js)
@@ -40529,6 +40554,9 @@
                 return;
             }
 
+            /* THE HEIGHT PAID ONCE (zones playtest 2026-11-07 K: Stone Drop, a WEAK row, hit for 1113): a drop / slam / throw /
+               leap already prices the height as levels in its raw (dmgPerLevel), so its hit never also rides HIGH GROUND from
+               the caster's own altitude (opts.noHeightBonus) — the cast and this forecast both. */
             /* the swoop a requiresFlight sky move takes before it strikes (doSpell's _skySwoopTakeoff): the drop counts its
                levels from up there, and a wind caster then strikes from the open air (THE SPELL AUDIT FIX F2) */
             const swoop = () => {
@@ -40552,7 +40580,7 @@
                     const carry = spell.carryHeight || (kind === 'skySlam' ? 5 : 4);
                     total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (cz + carry) - getHeightAt(target.x, target.y)) * (spell.dmgPerLevel || 25));
                 }
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 hit(target, total, total, total, hopts);
                 /* a sky drop's drain (Predator Drop): the caster heals its share of the drop's raw, as the cast does */
                 if (kind === 'skyDrop' && spell.drainPct && unit.hp < unit.maxHp) {
@@ -40591,7 +40619,7 @@
                     if (!t) return;
                     swoop();
                     const gTotal = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(t.x, t.y)) * (spell.dmgPerLevel || 25));
-                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
+                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true }));
                     tag(t, 'grab');
                     return;
                 }
@@ -40600,7 +40628,7 @@
                 const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
                 if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 const total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) * (spell.dmgPerLevel || 25));
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 const col = (unitAt(x, y, z) || unitAt(x, y));
                 if (col && !col.dead && col.id !== tt.id) {
                     const cb = spell.collisionBonus || 50;
@@ -41130,15 +41158,17 @@
                 // A turret / summon hidden in fog never gets framed: the
                 // camera stays on the (visible) victim instead.
                 const _turretSeen = _turretCam && (!state.fogOfWar || _isTileVisibleToViewer(s.turret.x, s.turret.y));
+                /* THE SHOT FOCUS: playEorShotFocus is relayed, so the guest's camera follows the volley too (it judges
+                   its own fog for each beat) */
                 if (_turretCam) {
-                    if (_turretSeen) eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
-                    else eorFocusCamera(s.target.x, s.target.y, { duration: 380 });
+                    if (_turretSeen) playEorShotFocus(s.turret.x, s.turret.y, { duration: 380 });
+                    else playEorShotFocus(s.target.x, s.target.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                     if (state.winner) { if (onDone) onDone(); return; }
                     if (_turretSeen) {
-                        eorFocusCamera(
+                        playEorShotFocus(
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
                     }
@@ -41161,6 +41191,9 @@
                     // while the camera is still gliding onto the sight line).
                     window.setTimeout(() => {
                         if (state.winner) { if (onDone) onDone(); return; }
+                        /* THE SHOT HOLD (timing playtest 2026-11-07): armed before the hit so the hit's own freeze adds
+                           to it — the camera stays on the hit for the impact aftermath like any cast, not 0.68 s */
+                        if (_turretCam) window._cineHoldImpactAftermath(0);
                         applyShot(s);
                         // Impact feedback: spark + stagger on the victim so the
                         // hit reads as an attack, not a silent HP drop.
@@ -41172,7 +41205,8 @@
                         if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
                         checkWin();
                         if (state.winner) { if (onDone) onDone(); return; }
-                        window.setTimeout(fireNext, actionMs(680));
+                        const _volleyHold = _turretCam ? window._cineImpactHoldLeft() : 0;
+                        window.setTimeout(fireNext, Math.max(actionMs(680), _volleyHold));
                     }, actionMs(300));
                 }, _turretCam ? actionMs(760) : actionMs(420));
             }
@@ -69358,6 +69392,12 @@
                 if (hDiff < 0 && typeof applyFallDamage === 'function') {
                     applyFallDamage(unit, fromZ, z, 'Jump: ');
                 }
+                /* ⛓ THE LANDING IS AN ARRIVAL (zones/traps playtest 2026-11-07 A2: King Kong jumped onto the Reptilian's
+                   bomb and nothing happened; the bomb stayed). Jumping IS stepping in, so the landing runs THE CHAIN
+                   exactly as the end of a walk does (via 'move'): an enemy bomb, hidden trap, Tesla Coil / Scrap Mine /
+                   snare, the ground under the feet, the debuff zones, the vortex, a rune. Only the landing square — the
+                   squares the arc flies over are not touched, as before. */
+                if (!unit.dead && !unit._dying) resolveTileArrival(unit, { via: 'move' });
                 // 🕯 Hex of Toil: a jump is a move — the curse flares.
                 _procHexedOnAction(unit, 'leaps');
                 // Landing in a guardian's sights: jumping IS movement, so
@@ -79886,7 +79926,7 @@
                 if (spell.spawnDecoy) {
                     if (!state._deployedObjects) state._deployedObjects = [];
 
-                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy && !o.spellId);   // a spell's decoy keeps its own cap (A1)
                     while (_ownedDecoys.length >= 3) {
                         const oldest = _ownedDecoys.shift();
                         state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
@@ -80210,12 +80250,18 @@
                     scheduleBoardRender();
                     completionDelay = actionMs(700);
                 } else {
-                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id);
+                /* THE CAP IS PER SPELL (zones/traps playtest 2026-11-07 A1: the Gnome's Spring Snare, cap 1, silently took
+                   away its Tesla Coil AND its Scrap Mine; the Mad Scientist's Cloning Machine took its Tesla Coil). Each row's
+                   maxActivePerCaster counts only that row's own live objects — the way Place Bomb's traps, the placed traps
+                   (per trapType) and the summons (per spell) already count — and the one a new cast takes away says so,
+                   to its owner's seat only (a hidden snare's square stays hidden from the other side). */
+                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated);
                 const _maxActive = spell.maxActivePerCaster || 3;
                 while (_ownedObjs.length >= _maxActive) {
                     const oldest = _ownedObjs.shift();
                     state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
                     _clearDecoyTaunts(oldest);   // a new double dismisses the old one's Provoked
+                    addLog(`${_ctName(unit)}'s older ${_ctSp(oldest.spellName || spell.name)} at ${coordLabel(oldest.x, oldest.y)} is taken down to make room.`, unit.player);
                 }
                 // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +hp on an object with an HP bar (objectHp > 1;
                 // a 1-HP snare or decoy breaks to any hit), +dmg on a blast.
@@ -82313,12 +82359,15 @@
                     return 0;
                 }
                 if (!state.turrets) state.turrets = [];
-                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id);
+                /* THE CAP IS PER SPELL (zones/traps playtest 2026-11-07 A3): state.turrets also holds the summons and the
+                   zombies, and a 5G Tower (cap 1) took down the Gnome's own Deploy Turret. The cap counts this row's own
+                   turrets only, like the summons' cap. */
+                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id && t.spellId === spell.id && !t.summon && !t.zombie);
                 if (ownedTurrets.length >= (spell.maxActivePerCaster || 2)) {
 
                     const oldest = ownedTurrets[0];
                     state.turrets = state.turrets.filter(t => t !== oldest);
-                    addLog(`Oldest turret at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
+                    addLog(`Oldest ${_ctSp(spell.name)} at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
                 }
                 if (state.turrets.some(t => t.x === x && t.y === y)) {
                     addLog('There is already a turret on that tile.');
@@ -82332,7 +82381,7 @@
                 // hitsToKill turret counts blows, not HP).
                 const _fmB = passiveDeployBonus(unit);
                 const turretHp = (spell.turretHp || 20) + (spell.hitsToKill ? 0 : _fmB.hp);
-                const turretDmg = (spell.turretDmg || 8) + _fmB.dmg;
+                const turretDmg = spell.auraDebuff ? 0 : (spell.turretDmg || 8) + _fmB.dmg;   // a 5G Tower (turretDmg 0) never shoots (A3)
                 // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                 const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
 
@@ -82374,7 +82423,10 @@
                         window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
                     }
                 }
-                addLog(`${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
+                /* a 5G Tower (auraDebuff) never shoots: its line names it and says what it does, not a turret's 8 dmg (A3) */
+                addLog(spell.auraDebuff
+                    ? `${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${spell.hitsToKill ? spell.hitsToKill + ' hits' : turretHp + ' HP'}, enemies within ${turretRange} lose ${spell.auraDefReduction || 0} M.DEF).`
+                    : `${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
                 scheduleBoardRender();
             }
 
@@ -83017,7 +83069,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83132,7 +83184,7 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -83178,7 +83230,7 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
@@ -83370,7 +83422,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83388,7 +83440,7 @@
                                 if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
@@ -83537,7 +83589,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83555,7 +83607,7 @@
                                 if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
