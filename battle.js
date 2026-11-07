@@ -4861,7 +4861,9 @@
         function _tileCanFlood(x, y) {
             if (!isInside(x, y)) return false;
             if (!_floodableTerrain(getTerrainAt(x, y))) return false;
-            if (typeof isObjectiveTile === 'function' && isObjectiveTile(x, y)) return false;
+            /* (2026-11-07, the objective guard is gone: mondo 2026-10-07 "we can change the terrain on objectives". It
+               made Great Flood aimed at a Cube's tile pour nothing — "Converted 0 tiles to water" — while Flash Freeze
+               painted ice there and lava ran onto it. The Cube floats over its tile, so water under it is just ground.) */
             const o = getObjectAt(x, y);
             if (o) {
                 const rule = typeof getObjectRule === 'function' ? getObjectRule(o) : null;
@@ -4931,12 +4933,22 @@
 
         function computeElevationFloodTiles(x, y, cap) {
             const startH = getBaseHeightAt(x, y);
+            /* THE TARGET TILE TAKES THE POUR (2026-11-07, elements playtest B1): "Water pours into the target tile", so
+               the aimed tile never stops the flood. Lava there takes the water (the paint hardens it into stone, map.js
+               lavaWaterMixOf, like every other water spell) and the flood spreads on from it; a solid prop there stays
+               dry but the water runs off it onto the ground around. Only a wall or an open hole into the sky (the
+               water falls out of the world) pours nothing — the same tiles the other terrain spells skip. */
+            const _st = isInside(x, y) ? getTerrainAt(x, y) : null;
+            const startPour = !!_st && _st !== 'wall' && _st !== 'void' && _st !== 'cloud_gap' && _st !== 'sky_open';
+            const startHolds = startPour && (_st === 'water' || _st === 'deep_water' || _st === 'chasm' || _st === 'lava' || _tileCanFlood(x, y));
             function passable(tx, ty) {
                 if (!isInside(tx, ty)) return false;
+                if (tx === x && ty === y) return startPour;
                 const t = getTerrainAt(tx, ty);
                 if (t === 'water' || t === 'deep_water' || t === 'chasm') return true;
                 return _tileCanFlood(tx, ty);
             }
+            const holds = (tx, ty) => !(tx === x && ty === y) || startHolds;
             function floorAt(tx, ty) {
                 if (getTerrainAt(tx, ty) === 'chasm') return startH - 99;  // bottomless
                 return getBaseHeightAt(tx, ty);
@@ -4954,7 +4966,7 @@
                     seen.add(k);
                     if (!passable(c.x, c.y)) continue;
                     if (floorAt(c.x, c.y) >= line) continue;
-                    out.push({ x: c.x, y: c.y });
+                    if (holds(c.x, c.y)) out.push({ x: c.x, y: c.y });
                     if (out.length > cap) return null;
                     queue.push({ x: c.x + 1, y: c.y }, { x: c.x - 1, y: c.y },
                                { x: c.x, y: c.y + 1 }, { x: c.x, y: c.y - 1 });
@@ -4983,7 +4995,7 @@
                     seen.add(k);
                     if (!passable(c.x, c.y)) continue;
                     if (floorAt(c.x, c.y) >= waterline) continue;
-                    region.push({ x: c.x, y: c.y });
+                    if (holds(c.x, c.y)) region.push({ x: c.x, y: c.y });
                     queue.push({ x: c.x + 1, y: c.y }, { x: c.x - 1, y: c.y },
                                { x: c.x, y: c.y + 1 }, { x: c.x, y: c.y - 1 });
                 }
@@ -39696,7 +39708,7 @@
                     for (const t of fill.tiles) {
                         add(t.x, t.y);
                         const cur = getTerrainAt(t.x, t.y);
-                        if (cur !== 'water' && cur !== 'deep_water' && (cur === 'chasm' || fill.waterline - getBaseHeightAt(t.x, t.y) >= 2)) deepAt.add(t.x + ',' + t.y);
+                        if (cur !== 'water' && cur !== 'deep_water' && cur !== 'lava' && (cur === 'chasm' || fill.waterline - getBaseHeightAt(t.x, t.y) >= 2)) deepAt.add(t.x + ',' + t.y);
                     }
                 } else {
                     let cand;
@@ -79202,7 +79214,7 @@
                                blocks stack from each tile's floor up to the waterline, so the crater becomes a lake with one
                                level surface at its rim, deep in the bowl and shallow at the edge. The floor stays ground under
                                it. A chasm takes deep water as before; open ground (nothing holds the pour) only wets the floor. */
-                            if (fill.contained && !isHole && state.boardColumns?.[tile.y]?.[tile.x] && _floor < fill.waterline
+                            if (fill.contained && !isHole && current !== 'lava' && state.boardColumns?.[tile.y]?.[tile.x] && _floor < fill.waterline
                                 && !(typeof fieldCellFixed === 'function' && fieldCellFixed(tile.x, tile.y))) {
                                 for (let z = _floor + 1; z <= fill.waterline; z++) setBlockAt(tile.x, tile.y, z, wet);
                                 setTerrainAt(tile.x, tile.y, wet);   // the top block again: notes the cell repainted (the true ground's skins) and gives a puddle in the bowl the lake's depth
