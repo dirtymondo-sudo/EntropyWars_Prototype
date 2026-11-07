@@ -1002,9 +1002,38 @@ crystal-vein detonation) are untouched.
 Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untextured phong), the craftShards 'crystal' kind
 (untextured), the per-map `tints.crystal` colours, the Meshy crystal shard/ball GLBs.
 
+## THE ONE PIXEL GRID (2026-11-07, mondo on Mount Shasta, Firefox ?ew_gpu=webgpu, close camera: "why are there mixels/blurriness on the grass? It's pixel art, it should not look like this")
+
+Three causes, all fixed. Token 20261107-pixelgrid-01-cors. R2: sprites.js, three-renderer.js + 8 new sheets. Proof: /mnt/project-files/pixel-grid/.
+- **The sheets**: 8 terrain sheets were never 128 px pixel tiles. grass_2 (Mount Shasta's base), dirt, cave_floor, deep_water, obsidian,
+  forest_2, cloud_2, lava are 1024 x 1024 paintings made to LOOK like pixel art: soft anti-aliased "pixels" of mixed sizes (11,000-
+  194,000 colours; the real pixel tiles have 24 on a hard 128 grid). That is the rounded-corner blobs + mixels in his shot. Each is
+  baked once by `bake-pixel-sheet.py --size 128 --keep 4 --sharpen 80` (box-average 8x8 -> 1 texel, wrap-safe light sharpen, 24-colour
+  median cut with 4 colours kept for the worst-fitting texels so the cave gems / dirt sprigs survive, then 4 k-means steps so nothing
+  drifts in hue) to R2 `Assets/world/terrain/px/<same name>.png` (sha e319bb41 grass_2, 3e5d9940 dirt, c167c782 cave_floor, 5ff0ec8a
+  deep_water, eb097928 obsidian, 94588d40 forest_2, 6d340200 cloud_2, 475fe3e0 lava). Same picture, same mean brightness (cloud_2 0.922
+  -> 0.920, so TERRAIN_WHITE_SHEETS' 0.71 still fits; it is keyed by basename, which is unchanged). Originals untouched in the bucket.
+  sprites.js `TERRAIN_PIXEL_SHEETS` + `ewPixelSheetUrl(url)`: TERRAIN_SPRITES rows point at px/, and three-renderer.js textureLoader.load
+  sends ANY load of terrain/<one of the 8> to px/ (the fluid tops' `base + key + '.png'`, the spell pieces' _sigTerrainTex, _deployMat,
+  the foliage leaves). Kill switch: `window.EW_SOFT_SHEETS = true` before load. Not touched: hud.js UI Maker stage CSS background
+  (grass_2 as a 2D backdrop); the liquid sheets (liquids keep their noise look); sand.png (3,870 colours, his ambientCG pick).
+- **The linear magnification**: the 11-05 crystal note said every board tile goes through getTexture (Nearest). Wrong for the HQ engine:
+  every site board's field (_hqTerrainMat: floor / cliff / path / painted sheets), walls and buildings read `_hzTex`, and HQ rooms read
+  `_hqTex`, both magFilter LINEAR + trilinear mips (written for far scenery buzz). Up close every texel was bilinear-smeared into its
+  neighbours. Both are magFilter Nearest now; minification stays trilinear + anisotropy (no buzz at distance). Kill switch `?ew_softmag=1`.
+  (On WebGPU three only enables anisotropy when all three filters are linear, so far grazing ground there has no aniso now.)
+- **The WebGPU mips**: three 0.186.1's node renderer builds a mip chain for every texture with generateMipmaps = true (three's default)
+  and its WebGPU sampler cannot say "no mips" (minFilter Nearest -> mipmapFilter 'nearest', lodMaxClamp 32), so on WebGPU every
+  Nearest/Nearest sheet (getTexture boards, fluids, props) was drawn from its box-blurred half/quarter copies wherever minified: blur +
+  blocks 2x/4x/8x across one floor. WebGL never samples mips for a Nearest/Linear minFilter. `_ewGpuNoMipsUnlessSampled(r)` (init) makes
+  `r._textures.needsMipmaps` false for a Nearest/Linear minFilter texture with no uploaded mips (not render targets / framebuffer
+  textures): one level, exactly as WebGL draws it. Kill switch `?ew_pixmips=1`. Checked on headless WebGPU (swiftshader): patch active,
+  Nearest sheets mipLevelCount 1, the field (LinearMipmapLinear) 8. Headless WebGPU screenshots come out black (canvas not captured), so
+  the on-screen proof is the WebGL2 run.
+
 ## THE CRISP CRYSTAL SHEET (2026-11-05, mondo: "figure out why the blue liquid texture you replaced the crystal texture with (crystal terrain, not the crystals) is so blurry. All pixel sprite 128x128 terrain tiles are supposed to have the same pixel density")
 
-- **Cause**: not the sampling. The crystal tile goes through the same getTexture path as every board tile (NearestFilter, one
+- **Cause**: not the sampling (CORRECTED 11-07, THE ONE PIXEL GRID: the HQ engine's boards used _hzTex, linear-magnified). The crystal tile goes through the same getTexture path as every board tile (NearestFilter, one
   sheet per 3.5 m square). Liquid_Blue_05 is 128x128 too, but it is a smooth painting: 6,314 colours and soft gradients
   (mean neighbour step 7) where the pixel tiles (moon, moon_3, grass, rocks_5, ice) are 24 colours with hard texel edges
   (step 18-22). Same pixel count, but its detail is wider than one texel, so it read as a smear next to them.

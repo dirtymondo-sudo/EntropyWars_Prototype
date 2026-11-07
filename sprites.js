@@ -6602,10 +6602,29 @@ const TRAINING_SLAB_URI = _mkTrainingSlabURI();
 const HOLO_TILE_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABjUlEQVR42u3auw2EMBRFQcsEIFEBDVETldAkRZiAFPGJkLgTvGxP4jcLEnKZt9ZM7hSHAICDAOCYaVlNwAAAwDWAfhjNDwcAAN4BqLW7nae/03/XAwAAAAAAAAAAAAAAAAAAAAAAAAD4EuhLoCeAJwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOEAAHCAADhAACwDAAtwHMO4D+Ad6BVgAABYAgAUAYAEAWAAAFgCABQBgAQBYAAAWAIAFAGABAFgAABbgPoBxH0DvFaAHQA+AHgA9AHoA9ADoAdADoAdAD4AeAD0AegD07gMY9wH0XgF6APQA6AHQA6AHQA+AHgA9AHoA9ADoAdADoAdA7z6AcR9A7xWgB0APgB4APQB6APQA6AHQA6AHQA+AHgA9AAAAAID7AO4DeAJ4AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGPcB/IO8AhwgAA4QAAsAwAIAsAAALAAAC/AhyIR8CDKhAMy/BwAAzgGYvAEAAIeQPDuIkxzLSqDdLAAAAABJRU5ErkJggg==';
 const HOLO_RED_TILE_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAC40lEQVR42u3cMW7cMBAFUJcpjFSpfQADuUOq1D5Y7rxB4MZAtFquRGpmyFdMp++CfJS8Eocvt18fN7VuvRgEAAwEAJ/15+2nWqAAAGAfwPvrDzVhAQDAcwDevn1/WK3XycflAQAAAAAAAAAAAAAAAAAAAAAAAAC8CfQm0B3AHQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADCAABhAAAwiACQDABNgPoOwHsAI9AiYZwNvvj/8KAAAAWAHA1uQfRQAAAABUArA3+UcQAFAcwL88AIsA2FrtWwCeQQBAYQBf8wBMDuDeKr8HoBUBAEUBbOUBmBTA3ureA9CCAICCAPbyAEwG4NGqfgTgEQIAigFoyQMwyffve7/7R+XsB0i2AlpW8r18613AIyDpALQ+y0flAUgG4Oo7CACBA9CyentdA0ABAGdu8QAUA3B0Yo9eB0ByAD32BAJQBMCZST16LQCJAfTcFQxAcgBnJ/To9QAkBTCiLwCApAB6TObRDAAJAYzsDAIgGYBeEzk6B8BFAK7oDVwGwKzf+yOz9gN0zJ9ZiWdv5b3uAh4BQe3d0XkAOgOIOB8AgETt3VX/BgAdAESeEAJAgv7+TAAytpdPDSDDGUEABPf3ZwOQrb18WgCZTgkDILi/PxuATO3lUwKoviMJgAH9/ZX2JAIwqL+/yq5kAAb191fpSwBgYH9/hc4k+wGCv7tX/dtL7QcY2Z07+nNupvMFSgIY3Z9/NYDI9vIpAGTbUFLpfIFyAJ6ZnEoAov6JLQ8g45aySr9iSgG46nd0FICI9xilAWTdVFrpTWYZAFe+S48EcPW3jLIAZjmrOPprZgkAM5/XH32+QFkAsxcADf8DzDz5AAAAgEcAAPL2Ayj7AeQ9AuQBkAdAHgB5AOQBkAdAHgB5AOQBkAdAHgB5AOQBkLcfQNkPIO8RIA+APADyAMgDIA+APADyXgSpfi+C1KIA1NwFAADbANR6BQAABmHl+gu4GMAWRTQqBAAAAABJRU5ErkJggg==';
 
+/* THE ONE PIXEL GRID (2026-11-07, mondo on Mount Shasta: "why are there mixels/blurriness on the grass? It's pixel art, it
+   should not look like this"). Eight terrain sheets on R2 were never 128 px pixel tiles: grass_2, dirt, cave_floor,
+   deep_water, obsidian, forest_2, cloud_2 and lava are 1024 x 1024 paintings made to LOOK like pixel art, with soft,
+   anti-aliased "pixels" of mixed sizes (11,000-190,000 colours; the real pixel tiles have 24 on a hard 128 px grid). Drawn
+   crisp (NearestFilter) they show every soft edge and every odd cell size: blobs with rounded corners, mixels. Each is baked
+   ONCE onto the true grid by bake-pixel-sheet.py (--size 128 --keep 4 --sharpen 80: box-average each 8 x 8 block to one
+   texel, a light wrap-safe sharpen, a 24-colour palette that keeps the rare colours: the cave gems, the dirt sprigs) and
+   lives beside its original at terrain/px/<same name>. Same picture, same 3.5 m per sheet, the same pixel density as every
+   other tile. The originals stay in the bucket untouched. Every holder follows: TERRAIN_SPRITES below points at px/, and
+   three-renderer.js textureLoader sends any load of terrain/<one of these> to px/ (the fluids, the spell pieces, the props,
+   the foliage leaves). Off: window.EW_SOFT_SHEETS = true before load. */
+const TERRAIN_PIXEL_SHEETS = { 'grass_2.png': 1, 'dirt.png': 1, 'cave_floor.png': 1, 'deep_water.png': 1, 'obsidian.png': 1, 'forest_2.png': 1, 'cloud_2.png': 1, 'lava.png': 1 };
+function ewPixelSheetUrl(url) {
+    if (typeof url !== 'string' || (typeof window !== 'undefined' && window.EW_SOFT_SHEETS)) return url;
+    const m = /^(.*\/Assets\/world\/terrain\/)([a-z0-9_]+\.png)(\?.*)?$/.exec(url);
+    return (m && TERRAIN_PIXEL_SHEETS[m[2]]) ? m[1] + 'px/' + m[2] + (m[3] || '') : url;
+}
+if (typeof window !== 'undefined') { window.TERRAIN_PIXEL_SHEETS = TERRAIN_PIXEL_SHEETS; window.ewPixelSheetUrl = ewPixelSheetUrl; }
+
 const TERRAIN_SPRITES = {
     grass:          [`${_T}/grass.png`],
     water:          [`${_T}/water.png`],
-    deep_water:     [`${_T}/deep_water.png`],
+    deep_water:     [ewPixelSheetUrl(`${_T}/deep_water.png`)],
     bridge:         [`${_T}/bridge.png`],
     mountain:       [`${_T}/mountain.png`],
     /* THE TWO SANDS (2026-11-03, mondo picked "A" off the sand options sheet, then: "you need to differentiate between beach
@@ -6614,8 +6633,8 @@ const TERRAIN_SPRITES = {
        one terrain key, one set of rules, two colours by place. desert.png stays in the bucket, unreferenced. */
     desert:         [`${_T}/sand.png`],
     tree:           [`${_T}/forest.png`],
-    dirt:           [`${_T}/dirt.png`],
-    lava:           [`${_T}/lava.png`],
+    dirt:           [ewPixelSheetUrl(`${_T}/dirt.png`)],
+    lava:           [ewPixelSheetUrl(`${_T}/lava.png`)],
     scorched:       [`${_T}/scorched.png`],
     /* 🧪 THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as
        is"): every liquid that isn't water or lava wears its own sheet from R2 Assets/world/terrain/liquids/ (his 48-sheet
@@ -6623,13 +6642,13 @@ const TERRAIN_SPRITES = {
        sheet (three-renderer.js _LIQUID_STYLES). poison = the toxic green, poison_bog = the olive bog, purple_bog = the
        purple, swamp (Black Ooze) = the dark slate goo, oil = the brown swirls (both darkened in 3D), blood = the deep red. */
     poison:         [`${_T}/liquids/Liquid_Green_02-128x128.png`],
-    cave_floor:     [`${_T}/cave_floor.png`],
+    cave_floor:     [ewPixelSheetUrl(`${_T}/cave_floor.png`)],
     cave_wall:      [`${_T}/cave_wall.png`],
     cloud:          [`${_T}/cloud.png`],
     /* THE THICK CLOUD (2026-11-03, mondo: "yes i want the cloud thick gone too"): its own sheet was a grey storm cloud with
        white lightning forks painted in. It wears the painted puffy cloud sheet now (cloud_2's), so the cloud seas, the
        Heaven mounds and Saturn's deck read as cloud, never as bolts; each map's own `tints.cloud_thick` still colours it. */
-    cloud_thick:    [`${_T}/cloud_2.png`],
+    cloud_thick:    [ewPixelSheetUrl(`${_T}/cloud_2.png`)],
     cloud_gap:      [`${_T}/cloud_gap.png`],
     /* THE STORM ZONE (2026-11-03, mondo: "replace this weird looking cloud with a lightning bolt"): 'storm' never had a
        sheet of its own, so it fell back to the legacy SVG doodle (a dark smudge + one yellow bolt) — on an opaque wall
@@ -6657,7 +6676,7 @@ const TERRAIN_SPRITES = {
        sheet baked by bake-pixel-sheet.py (wrap-safe sharpen + 24-colour palette, no dither): same picture, crisp texels.
        The liquid sheet itself is untouched (the liquids still wear it). */
     crystal:        [`${_T}/crystal_blue.png`],
-    obsidian:       [`${_T}/obsidian.png`],
+    obsidian:       [ewPixelSheetUrl(`${_T}/obsidian.png`)],
     stone:          [`${_T}/rocks_5.png`],   // 🪨 water + lava (map.js lavaWaterMixOf): the cliffs' rock sheet
     healing_spring: [`${_T}/healing_spring.png`],
     fog_wall:       [`${_T}/fog.png`],
@@ -6670,10 +6689,10 @@ const TERRAIN_SPRITES = {
     sanctuary_church: [`${_T}/sanctuary.png`],
     sanctuary_shop:   [`${_T}/sanctuary.png`],
     purple_grass:     [`${_T}/purple_grass.png`],
-    grass_2:          [`${_T}/grass_2.png`],
+    grass_2:          [ewPixelSheetUrl(`${_T}/grass_2.png`)],
     wasteland:        [`${_T}/wasteland.png`],
     mountain_top:     [`${_T}/mountain.png`],
-    forest_2:         [`${_T}/forest_2.png`],
+    forest_2:         [ewPixelSheetUrl(`${_T}/forest_2.png`)],
     mountain_2:       [`${_T}/mountain_2.png`],
 
     forest:           [`${_T}/forest.png`],
@@ -6733,7 +6752,7 @@ const TERRAIN_SPRITES = {
     metal:            [`${_T}/metal.png`],
     leaves:           [`${_T}/leaves.png`],
     wallpaper:        [`${_T}/wallpaper.png`],
-    cloud_2:          [`${_T}/cloud_2.png`],
+    cloud_2:          [ewPixelSheetUrl(`${_T}/cloud_2.png`)],
 
     // New terrain sprites (2026-06 R2 batch — variants + masonry)
     moon_2:           [`${_T}/moon_2.png`],

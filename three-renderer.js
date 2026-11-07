@@ -2630,6 +2630,7 @@ const ThreeRenderer = (function () {
     }
     if (typeof window !== 'undefined') window._ewWhiteGuard = _ewWhiteGuard;
     textureLoader.load = function (url, onLoad, onProgress, onError) {
+        if (typeof ewPixelSheetUrl === 'function') url = ewPixelSheetUrl(url);   // THE ONE PIXEL GRID (sprites.js): a soft 1024 px sheet -> its 128 px bake
         var u = window._ewCorsBust ? window._ewCorsBust(url) : url;
         var tex = new THREE.Texture();
         var isJPEG = /\.jpe?g($|\?)/i.test(u) || u.indexOf('data:image/jpeg') === 0;
@@ -34569,8 +34570,9 @@ const ThreeRenderer = (function () {
     // and the renderer runs with antialias:false so nothing hides it. Distant
     // scenery doesn't need crisp 1:1 pixels, so we trade pixel-art sharpness for
     // trilinear mipmapping + anisotropy, which is the correct distance AA and
-    // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
+    // kills the buzzing. (Magnification is Nearest since 2026-11-07: THE ONE PIXEL GRID below.)
     var _hzTexCache = {};
+    var _ewSoftMag = false; try { _ewSoftMag = /[?&]ew_softmag=1\b/.test(location.search); } catch (e) {}
     function _hzTex(terrainKey) {
         var ck = terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
         if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
@@ -34582,7 +34584,13 @@ const ThreeRenderer = (function () {
         if (!url) { _hzTexCache[ck] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate (no placeholder — the gate holds the scene until it lands)
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-        tex.magFilter = THREE.LinearFilter;
+        /* THE ONE PIXEL GRID (2026-11-07, mondo on Mount Shasta: "why are there mixels/blurriness on the grass? It's pixel art"):
+           this loader also dresses the WHOLE in-world HQ engine — every site board's field (_hqTerrainMat: floor, cliff, path,
+           painted sheets), the walls, the buildings — not only the far scenery the note above was written for. Its LINEAR
+           magnification blurred every 128 px texel into its neighbours wherever a square is bigger on screen than its sheet
+           (any close camera). Up close a texel is a hard square now (Nearest), exactly as getTexture's boards draw it; far
+           away (minification) stays trilinear + anisotropy, so distant scenery still never buzzes. Off: ?ew_softmag=1. */
+        tex.magFilter = _ewSoftMag ? THREE.LinearFilter : THREE.NearestFilter;
         tex.minFilter = THREE.LinearMipmapLinearFilter;   // trilinear: smooth minification at distance
         tex.generateMipmaps = true;
         try {
@@ -43143,6 +43151,27 @@ const ThreeRenderer = (function () {
             return rawCV.apply(this, arguments);
         };
     }
+    /* THE ONE PIXEL GRID (2026-11-07, mondo on Mount Shasta, Firefox WebGPU: "why are there mixels/blurriness on the grass?
+       It's pixel art"). WebGL samples a texture's mip chain only when its minFilter is a *Mipmap* filter, so the pixel sheets
+       (minFilter = NearestFilter, three's default generateMipmaps = true) always showed their own crisp 128 px texels. three
+       0.186.1's node renderer builds a mip chain for every texture with generateMipmaps = true and its WebGPU sampler has no
+       "no mips" mode (minFilter Nearest -> mipmapFilter 'nearest', lodMaxClamp 32): every NearestFilter sheet was drawn from
+       the box-blurred half / quarter / eighth copies wherever a square covered fewer screen pixels than the sheet has, a
+       smear with blocks 2x / 4x / 8x the size changing across one floor. Here a texture whose minFilter samples no mips
+       (Nearest / Linear) gets no mip chain, exactly as WebGL draws it: board, HQ, creator, team room, dock, props, every
+       sheet. A texture with its own uploaded mips, a render target and a Mipmap filter are untouched. Off: ?ew_pixmips=1. */
+    function _ewGpuNoMipsUnlessSampled(r) {
+        var TX = r && r._textures;
+        if (!TX || TX._ewNoMips || typeof TX.needsMipmaps !== 'function' || typeof THREE === 'undefined') return;
+        try { if (/[?&]ew_pixmips=1\b/.test(location.search)) return; } catch (e) {}
+        TX._ewNoMips = true;
+        var raw = TX.needsMipmaps, NF = THREE.NearestFilter, LF = THREE.LinearFilter;
+        TX.needsMipmaps = function (texture) {
+            if (texture && (texture.minFilter === NF || texture.minFilter === LF) && !(texture.mipmaps && texture.mipmaps.length)
+                && !texture.isRenderTargetTexture && !texture.isFramebufferTexture) return false;
+            return raw.apply(this, arguments);
+        };
+    }
     /* WEBGPU_PLAN W3 (2026-10-04): three 0.186.1 loses an interleaved geometry's attributes after a dispose. Geometries
        .updateAttribute skips an interleaved attribute whose buffer was already touched this call, and its attributeCall map
        outlives the dispose, so after one only the FIRST attribute is uploaded again; the rest are left with no buffer and
@@ -46225,6 +46254,7 @@ const ThreeRenderer = (function () {
             _ewGpuSafeBuffers(r);
             _ewGpuOneWrite(r);
             _ewGpuInterleaveFix(r);
+            _ewGpuNoMipsUnlessSampled(r);   // THE ONE PIXEL GRID: a Nearest / Linear sheet samples no mips on WebGPU either
             try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
             try { _ewScSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the shader cache failed', e); }
             try { _ewLateSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the late look failed', e); }
@@ -61992,7 +62022,8 @@ const ThreeRenderer = (function () {
         t._ew_hqName = name;   // THE WORLD-SCALE UVs (2026-10-06): _hqWorldUV reads which sheet a mesh wears
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
         t.repeat.set(ru || 1, rv || 1);
-        t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        t.magFilter = _ewSoftMag ? THREE.LinearFilter : THREE.NearestFilter;   // THE ONE PIXEL GRID: a texel up close is a hard square (see _hzTex)
+        t.minFilter = THREE.LinearMipmapLinearFilter;
         t.generateMipmaps = true;
         try { t.anisotropy = Math.min(8, (renderer && renderer.capabilities.getMaxAnisotropy()) || 1); } catch (e) {}
         _hqTexCache[key] = t;
