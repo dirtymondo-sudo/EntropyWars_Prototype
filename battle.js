@@ -12979,11 +12979,21 @@
 
         /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
            wears the control status (possessed / infected) for `acts`
-           activations and its `player` BECOMES the caster's seat — HUD
-           ownership, the AI, fog, targeting, the blitz activation and the
-           online guest-emit gate all key on unit.player, so the hand-off
-           needs no special cases anywhere. The home seat lives in
-           _origPlayer (plain unit data → state-sync). The status defs'
+           activations. THE HOME SIDE (2026-11-07 playtest A: Hallelujah healed
+           and cleansed the Gangster my Cult Leader had just possessed, Oath of
+           Valor buffed the possessed Shaman, Chivalry listed the possessed
+           Valkraye as an ally, and the CPU hit its own possessed teammates):
+           the body stays on its HOME side for everyone else — team spells,
+           ally/enemy lists, AOE sides, the AI's friend-or-foe — and its
+           `player` becomes the controller's seat only for the length of its
+           OWN activations (_possessSettleSeats, called when an activation
+           starts and ends). While it acts, it is the controller's unit: the
+           blitz activation, the AI/human branch, the online guest-emit gate,
+           fog and its own targeting all key on unit.player, so the steering
+           needs no special cases. Simul keeps the old whole-duration hand-off
+           (its plan phase has no active unit). The home seat lives in
+           _origPlayer, the controller in _controllerPlayer (plain unit data →
+           state-sync). The status defs'
            onRemove (data.js _releaseControl) restores the seat on EVERY
            removal path; releasePossession is the explicit hand-back (the
            activation count, death — a respawn wipes `status` without
@@ -12993,7 +13003,31 @@
             return !!unit && unit._origPlayer != null
                 && (unitHasStatus(unit, 'possessed') || unitHasStatus(unit, 'infected'));
         }
-        function getControllingPlayer(unit) { return unit ? unit.player : null; }
+        /* The seat that steers this body (the controller while possessed, even between its activations). */
+        function getControllingPlayer(unit) {
+            if (!unit) return null;
+            return (unitIsControlled(unit) && unit._controllerPlayer != null) ? unit._controllerPlayer : unit.player;
+        }
+        /* THE HOME SIDE: every controlled body wears its controller's seat while it is the active unit, and its
+           home seat the rest of the time. activeId = the unit whose activation is live (null = nobody's). */
+        function _possessSettleSeats(activeId) {
+            if (typeof _isSimulMode === 'function' && _isSimulMode()) return;   // simul: the whole-duration hand-off
+            let changed = false;
+            for (const u of (state.units || [])) {
+                if (!u || !unitIsControlled(u) || u._controllerPlayer == null) continue;
+                const want = (activeId != null && u.id === activeId && !u.dead && !u._dying) ? u._controllerPlayer : u._origPlayer;
+                if (u.player !== want) {
+                    u.player = want;
+                    changed = true;
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+                }
+            }
+            if (changed) {
+                if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+            }
+            return changed;
+        }
         function unitHomePlayer(unit) {
             if (!unit) return null;
             return unit._origPlayer != null ? unit._origPlayer : unit.player;
@@ -13020,7 +13054,10 @@
             }
             if (target.player !== caster.player) {
                 target._origPlayer = target.player;
-                target.player = caster.player;
+                /* THE HOME SIDE: the body keeps its home seat until its own activation (_possessSettleSeats);
+                   simul still hands it over for the whole duration. */
+                if (typeof _isSimulMode === 'function' && _isSimulMode()) target.player = caster.player;
+                else _possessSettleSeats(state._blitzActiveUnitId);
             }
             if (state._enemyActionTargetId === target.id) state._enemyActionTargetId = null;
             showFloatingTextForUnit(target, `${def.icon || '🎭'} ${String(def.label || sid).toUpperCase()}`, 'debuff', { durationMs: 1200 });
@@ -13106,6 +13143,7 @@
         }
         window.unitIsControlled = unitIsControlled;
         window.getControllingPlayer = getControllingPlayer;
+        window._possessSettleSeats = _possessSettleSeats;
         window.unitHomePlayer = unitHomePlayer;
         window.possessUnit = possessUnit;
         window.releasePossession = releasePossession;
@@ -57870,6 +57908,7 @@
                 if (state._blitzActiveUnitId) {
                     const _ctlUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
                     if (_ctlUnit && !_ctlUnit.dead) _possessSpendActivation(_ctlUnit);
+                    _possessSettleSeats(null);   // THE HOME SIDE: its activation is over, the body goes home until the next one
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                     if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
                 }
@@ -58612,6 +58651,7 @@
                 // enemy→player handoff announcement below. Captured before we
                 // overwrite activePlayer so consecutive friendly units don't
                 // re-trigger it.
+                _possessSettleSeats(nextUnit.id);   // THE HOME SIDE: a controlled body is the controller's unit for its own activation
                 const _prevActivePlayer = state._prevBlitzActivePlayer;
                 state._prevBlitzActivePlayer = nextUnit.player;
 
@@ -58773,8 +58813,8 @@
                 }
 
                 /* 🎭 Possessed / Infected (wave B): this activation belongs to
-                   the controller's seat (unit.player already is it) — say so
-                   and show the stolen face. */
+                   the controller's seat (_possessSettleSeats above made it
+                   unit.player) — say so and show the stolen face. */
                 if (unitIsControlled(nextUnit)) showPossessedActivation(nextUnit);
 
                 /* Mystery Dungeon: AUTO-tactic companions are player-1 units
@@ -58910,6 +58950,7 @@
                         // now runs its own timer and coexists with the action
                         // menu; the subtitle bar and the command panels don't
                         // overlap.)
+                        _possessSettleSeats(pendingUnitId);
                         state._blitzActiveUnitId = pendingUnitId;
                         state.activePlayer = u.player;
                         _startShotClock();
@@ -63926,6 +63967,9 @@
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
                 if (haveSet && u.id != null && haveSet.has(u.id)) continue;
+                // Chivalry pledges to ANOTHER ally (doSpell refuses the caster) — the drum's own rule, here too
+                // (playtest 2026-11-07 A3: the Knight listed himself as a 0T MOVE→CAST row).
+                if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
                 if (_skm.twoClick) {
                     // Two-click kinds (wave B): before the first pick the drum
                     // lists the FIRST team of the pair; after it, the second —
