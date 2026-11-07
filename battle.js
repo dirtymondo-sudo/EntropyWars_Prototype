@@ -3551,6 +3551,7 @@
                 igniteTile(t.x, t.y, 2, caster);
             }
             for (const { u } of victims) {
+                const _burnBefore = unitHasStatus(u, 'burn');
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
                     noTerrainBonus: true,   // 🜃 a reaction's follow-up hit, not the spell's own
                     sourceUnit: caster || undefined,
@@ -3562,7 +3563,7 @@
                     element: 'fire',
                     flashColor: 'burn'
                 });
-                if (!u.dead && !u._dying) {
+                if (!u.dead && !u._dying && (_burnBefore || !unitHasStatus(u, 'burn'))) {   // a Gooed body this blast just lit (R5) isn't lit twice
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], groundFire ? 'Burning oil: ' : `${spell.name} firestorm: `, caster);
                 }
                 /* the burn's own landing calls it out now (THE JUICE PASS) */
