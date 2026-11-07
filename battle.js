@@ -74145,7 +74145,10 @@
             // 🧱 The blast scatters the torn-out masonry/timber/plate as
             // collectible debris cubes around the crater (capped so one nuke
             // can't carpet the map).
-            if (_excavated.length) {
+            /* THE WALL GOES HOME CLEAN (zones/traps playtest 2026-11-07 D4, after PR #1030): a clock taking its own raise back off
+               (map.js revertTerrainTimer, `undo`) is the ground going home, not a blast, so it scatters no debris. Rampart's end
+               left salvage piles on and round its three squares (and dropped stone at the feet of whoever stood there). */
+            if (_excavated.length && !deform.undo) {
                 const _dCap = _matDropCfg().deformDropCap || 10;
                 spawnMaterialDrops(cx, cy, _excavated.slice(0, _dCap));
             }
