@@ -147,7 +147,7 @@ const EQUIP_DEFS = {
     'purity_censer': { slot: 'accessory1', label: 'Censer of Purity', desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
     'berserkers_brand': { slot: 'accessory1', label: "Berserker's Brand", desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'atk', statVal: 16 },
     'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
-    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself up to 5 tiles in a straight line, onto an open tile or up beside a wall, a door or a unit.' },
+    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself to a tile up to 5 away in any direction, onto an open tile or up beside a wall, a door or a unit.' },
     'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
     'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
     'masons_gauntlets': { slot: 'accessory1', label: "Mason's Gauntlets", desc: 'A master builder’s grip: every AP spent on the Build action places or digs 2 blocks instead of 1.' },
@@ -5635,7 +5635,7 @@ const SPELL_LIBRARY = [
         school: 'Raider',
         jobPreference: ['Raider'],
         dashDamage: 96,   // BALANCE PASS 2026-10-06: PATH 64→96 (lab: 867 casts at 267 a cast, half the Tier IV median; the landing target is rarely hit)
-        desc: 'Charges through the battlefield. Deals SEVERE physical damage to the target and hits every enemy on the path. Rooted targets take it worse.'
+        desc: 'Charges through the battlefield to a tile up to 4 away. Every enemy on the path takes WEAK physical damage; an enemy standing on the tile you charge to takes SEVERE physical damage instead and is shoved aside. Rooted targets take it worse.'
     },
     {
         id: 'skullCrack',
@@ -6459,7 +6459,7 @@ const SPELL_LIBRARY = [
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'pull', range: 4, dmg: 165,   // STATS24 PASS 2026-10-29: dmg 145→165 (0.85× the Tier III median)
           damageType: 'magic', pullDistance: 3, groundsFlyers: true,
           weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): the mind weighs nothing — heavy and colossal bodies come like any other
-          desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
+          desc: 'Grab them with your mind and drag them in. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it up to 3 tiles toward the caster; a wall or a body in the way stops it short.' },
         /* THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): Mind Shatter (the
            family's tier IV) pays off Silence, but no Psychic Abilities row applied it. Mind Blank = the setup, on an
            existing kind and status only (the Antimagic Gaze / Timber Stomp shape: tier II, WEAK damage, Silence 1). Its
@@ -6573,7 +6573,7 @@ const SPELL_LIBRARY = [
           spellType: 'human', element: 'metal', type: 'utility', kind: 'aoePull', range: 0, aoeOriginSelf: true,
           aoeRadius: 2, noDamage: true, pullToCenter: true, pullDistance: 2,
           statusEffects: [{ id: 'tethered', duration: 1 }],
-          desc: 'Bring \'em in. Every enemy within 2 tiles is pulled 2 tiles toward you and Tethered for 1 round. No damage of its own (bodies that crash still hurt). Cooldown: 3 rounds.' },
+          desc: 'Bring \'em in. Every enemy within 2 tiles is pulled 2 tiles toward you and Roped for 1 round. No damage of its own (bodies that crash still hurt). Cooldown: 3 rounds.' },
         { id: 'raceTagIn', name: 'Tag In', tier: 1, families: ['teamwork'], cost: 25, apCost: 1, cooldownRounds: 2,
           spellType: 'human', element: 'physical', type: 'utility', kind: 'swap', range: 3, allyOnly: true,
           desc: 'Sub in. Sub out. Swap places with a Single Ally within 3. Cooldown: 2 rounds.' },
@@ -7576,7 +7576,7 @@ const RACE_ABILITIES = {
         { id: 'raceTunnelNetwork', tier: 3, families: ['insectoid'], spellType: 'alien', name: 'Tunnel Network',
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'deployPair', maxActivePerCaster: 1,
-          desc: 'Dig a tunnel: one mouth beside you, one where you point (within 4). An ally standing at either mouth attacks and casts as if it stood at the other. One tunnel per caster; three hits collapse both mouths.' },
+          desc: 'Dig a tunnel: one mouth on your own tile, one on an empty tile where you point (within 4). Anyone who ends a walk on one mouth comes out of the other. One tunnel per caster; three enemy hits collapse both mouths.' },
         { id: 'raceSwarmSignal', spellType: 'anomaly', name: 'Swarm Signal',
           type: 'buff', tier: 4, auraRadius: 2, families: ['insectoid'], cost: 20, range: 0, apCost: 1,
           kind: 'warCry',
@@ -7934,7 +7934,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 75, range: 3, apCost: 1,   // STATS32 PASS 2026-10-30: dmg 90→75 (1.33× the Tier II median a cast in STATS32, 1.94× in STATS31; Pirate 57%)
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1, orientable: false,
           damageType: 'physical', executePct: 0.25,
-          desc: 'Force enemies overboard. Deep water erupts on one tile and overflows the ground around it; the target drowns if it lands in deep water. Executes any enemy below 25% HP. Flyers up in the sky are above it.' },
+          desc: 'Force enemies overboard. Deep water erupts on one tile and a shallow runoff spills onto the level ground beside it; whoever stands on the deep tile is dragged under. Executes any enemy below 25% HP. Flyers up in the sky are above it.' },
         { id: 'racePlunder', tier: 1, families: ['piracy'], spellType: 'human', element: 'metal', name: 'Plunder',
           type: 'utility', cost: 18, dmg: 100, apCost: 1, range: 1,
           kind: 'utility', damageType: 'physical',
@@ -7957,7 +7957,7 @@ const RACE_ABILITIES = {
         { id: 'raceGrapple', tier: 1, families: ['ropework'], spellType: 'human', element: 'metal', name: 'Grapple',
           type: 'utility', cost: 25, apCost: 1, range: 5,   // THE GRAPPLE REEL (mondo 2026-10-27: "more range"): 3 → 5
           kind: 'utility', selfPullOnly: true,   // THE SPELL AUDIT Batch D: the hook moves YOU
-          desc: 'Fire a grappling hook up to 5 tiles in a straight line and reel yourself there — onto an open tile, or up beside a wall, a door or a unit. No damage.' },
+          desc: 'Fire a grappling hook at a tile up to 5 away, in any direction, and reel yourself along the rope — onto an open tile, or up beside a wall, a door or a unit. No damage.' },
     ],
     // Swordfighter (2026-07-13, reworked same day) — the anime-protagonist
     // duelist: a tragic past, an unkillable narrative, and a blade the story
@@ -8608,11 +8608,11 @@ const RACE_ABILITIES = {
         { id: 'sigTetherLine', name: 'Tether Line', tier: 1, families: ['missioncontrol'], cost: 25, apCost: 1, spellType: 'tech',
           element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 120, range: 4, pullDistance: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched); STATS28 PASS 2026-10-29: dmg 100→120 (0.68× the Tier I median; Astronaut 39%)
           statusEffects: [{ id: 'tethered', duration: 1 }],
-          desc: 'Clip on, reel in. Deals MEDIUM physical damage to a Single Enemy within 4 tiles, pulls it 2 tiles toward you and keeps it Tethered for a round: it is dragged behind you when you move.' },
+          desc: 'Clip on, reel in. Deals MEDIUM physical damage to a Single Enemy within 4 tiles, pulls it 2 tiles toward you and keeps it Roped for a round: it is dragged behind you when you move.' },
         { id: 'sigOrbitalStrike', name: 'Orbital Strike', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'tech', element: 'lightning', vfxElement: 'light', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 170,
           range: 7, aoeRadius: 1, delayTurns: 1, groundsFlyers: true, bonusVsStatus: { status: 'tethered', mult: 1.5 },
-          desc: 'Houston, we have a target. Marks a 3×3 within 7 tiles; at the end of the round the strike lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Tethered targets take it worse. Cooldown: 2 rounds.' },
+          desc: 'Houston, we have a target. Marks a 3×3 within 7 tiles; at the end of the round the strike lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Roped targets take it worse. Cooldown: 2 rounds.' },
         /* THE SPACE PROPS (2026-10-27, mondo: "build his spells around the space props in the game"): the satellite's laser, the
            rover, the debris with a satellite coming down, the shuttle. Existing kinds, damage and statuses only: the two setups
            apply Burn / Stagger, the two finishers hit those harder and apply nothing. Looks: three-vfx-effects.js "THE SPACE PROPS". */
@@ -8651,7 +8651,7 @@ const RACE_ABILITIES = {
     'rabbit': [
         { id: 'raceSprint', name: 'Sprint', tier: 1, families: ['athleticism'], cost: 25, apCost: 1, spellType: 'human',
           element: 'wind', type: 'utility', kind: 'dash', damageType: 'physical', dmg: 0, range: 3,
-          desc: 'Go. Runs up to 3 tiles in a straight line.' },
+          desc: 'Go. Runs to an empty tile up to 3 away, in any direction.' },
 
         { id: 'raceVault', name: 'Vault', tier: 3, families: ['athleticism'], cost: 75, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'leapStrike', damageType: 'physical', dmg: 125, range: 3, dmgPerLevel: 15,
@@ -9247,7 +9247,7 @@ const RACE_ABILITIES = {
           kind: 'cross', damageType: 'magic', crossRadius: 2, diamond: true, aoeOriginSelf: true,
           pushDistance: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Deals MEDIUM magic damage to All Enemies in a diamond-shaped AOE. Applies Slow.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in a diamond-shaped AOE around you, pushes them 1 tile away from you and Applies Slow.' },
         { id: 'raceStasisBeam', tier: 3, dmg: 80, damageType: 'magic', cooldownRounds: 2, families: ['galacticfederation'], spellType: 'alien', vfxElement: 'light', name: 'Stasis Beam',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'debuff',
@@ -9603,7 +9603,7 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'burn', mult: 1.5 },
-          desc: 'Dives from the sky onto the target, dealing MEDIUM magic damage. Deals bonus damage to targets with Burn. Caster must be flying.' },
+          desc: 'Dives from high in the sky onto the target beside you and slams it into the ground: MEDIUM magic damage, plus 15 for every level of the drop. The ground there sinks a level. Deals bonus damage to targets with Burn. Caster must be flying.' },
         SHARED_SUMMON_BLOOD_RAIN,
         SHARED_WING_ATTACK,
         /* THE SIGNATURE FAMILY (2026-10-23): Morning Star, this race's own. */
@@ -11166,7 +11166,7 @@ const GEAR_PASSIVES = [
       desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.' },
     { id: 'gearGrapnelGauntlet', tier: 1, name: 'Grapnel Gauntlet', icon: '🪝', accessory: 'grapnel_gauntlet',
       hooks: { grantSpell: { id: 'raceGrapple', cost: 12 } },
-      desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself up to 5 tiles in a straight line, onto an open tile or up beside a wall, a door or a unit.' },
+      desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself to a tile up to 5 away in any direction, onto an open tile or up beside a wall, a door or a unit.' },
     { id: 'gearEchoBand', tier: 2, name: 'Echo Band', icon: '🔁', accessory: 'echo_band',
       hooks: { basicEcho: 0.5 },
       desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
@@ -23563,7 +23563,7 @@ const SPELL_UPGRADE_FITS = {
     areaAny:    { label: 'an area under 5×5',          test: d => d.kind !== 'passive' && !d.noAoeGrow && (_UPG_AOE_KINDS.has(d.kind) || ['zoneHeal', 'cleanseArea', 'aoeShield'].includes(d.kind))
                     && ((d.aoeRadius | 0) > 0 || aoeMaskValid(d.aoeMask)) && !_upgAreaIsFull5(d) },
     areaGrow:   { label: 'an area damage cast under 5×5', test: d => SPELL_UPGRADE_FITS.area.test(d) && !_upgAreaIsFull5(d) },
-    tether:     { label: 'ropes (Tethered)',           test: d => Array.isArray(d.statusEffects) && d.statusEffects.some(e => e && e.id === 'tethered') },
+    tether:     { label: 'ropes a target (Roped)',           test: d => Array.isArray(d.statusEffects) && d.statusEffects.some(e => e && e.id === 'tethered') },
     stepTrap:   { label: 'a trap that springs underfoot', test: d => d.kind === 'deployObject' && !!d.detonateOnStep },
     dashHit:    { label: 'a dash that hits',           test: d => (d.kind === 'dash' || d.kind === 'tackle') && spellHasDamage(d) },
     protect:    { label: 'grants Protect',             test: d => [d.statusEffects, d.teamStatusEffects].some(l => Array.isArray(l) && l.some(e => e && e.id === 'protect')) },
