@@ -4187,3 +4187,18 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   rounds", "Wet targets take it worse"), the status library, Balance Lab labels. Code names (_soakUnit, _unitIsSoaked,
   soakedShock notes, weather `soaks`) stay. Name adjectives ("Blood-Soaked", the Firefighter's "Soaked") and DEF/M DEF
   "soaks" damage are not the status and stay. Checked on screen: WET pill on the unit panel after walking into the river.
+
+## THE STATUS TEXTS MATCH THE GAME (2026-11-07, status playtest M1-M14)
+- Rule used: where no ruling from mondo exists, the TEXT was changed to say what the code does (no rule changed). data.js
+  STATUS_LIBRARY_DESCS (Pause > STATUSES) + the spell descs that promised something else:
+  Charm = cannot move at all, can still attack/cast (Love Ray, The Sermon, The Kool-Aid no longer say "against you" /
+  "will not raise a hand"; mondo asked to pick the real Charm rule). Minimized = −2 ATK stages only (Pixie Prank lost "harder
+  to hit"). Marked = consumed by the next PHYSICAL hit or basic attack (battle.js canConsumeMarked); magic hits leave it
+  (Wanted Poster, Nothing Unseen, Knife Throw, Dead Eye). Feared = every activation while it lasts is a flee. Hexed = move,
+  jump, climb, cast (36 base), not basic attacks. Spawn Guard = half damage for a round. Invisible = attacks, attack spells
+  and enemy hits reveal; moving/buffs/heals do not (Blurry Photo "until it attacks"). Drowning = −1 MOV + growing tick in
+  deep water. Blind = BASIC attacks miss 50%. Evasion-zero line added to Frozen, Charm, Roped (every blockMove status,
+  battle.js getEvasionChance). Bleed/Haunted/Corroded ticks say "base damage" (dot type, DEF and M DEF ignored), Roped drag
+  and Blessed heal say "base"; the page opens with "Numbers are level-1 base values: damage and healing grow with the
+  unit's level" (scaleByTargetLevel / supportScale). Taser Bolt "Jams it for 3 rounds" (Jammed 3, mondo 11-03). Exhaust
+  Cloud "fall into Discord" (no Confused status). ui.js page stat name int = M.ATK (Jack of All read "+1 INT").
