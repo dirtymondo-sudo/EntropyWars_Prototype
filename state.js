@@ -2165,7 +2165,8 @@
                 const _splashName = _splash === 'lava' ? 'molten lava'
                     : _splash === 'oil' ? 'black ooze'
                     : _splash === 'poison' ? 'bog' : 'water';
-                addLog(`💦 ${unitDisplayName(unit)} falls ${drop} levels — but the ${_splashName} breaks the fall!`);
+                const _splashIcon = _splash === 'lava' ? '🌋' : _splash === 'oil' ? '🛢️' : _splash === 'poison' ? '☠️' : '💦';   // E5: no water drop on a lava fall
+                addLog(`${_splashIcon} ${unitDisplayName(unit)} falls ${drop} levels — but the ${_splashName} breaks the fall!`);
                 if (typeof showFloatingTextForUnit === 'function') {
                     showFloatingTextForUnit(unit, '💦 SPLASH!', 'heal', { durationMs: 900 });
                 }

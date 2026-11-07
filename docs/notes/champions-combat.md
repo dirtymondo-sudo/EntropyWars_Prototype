@@ -4339,3 +4339,24 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 (`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
+
+## THE FORCED MOVE LINES (2026-11-07, forced movement playtest families E, M, P6 + B2's line) — battle.js, state.js
+Log text and order only; no rule changed. Report: /mnt/project-files/playtest-mechanics-20261107/forced-movement/PLAYTEST_FORCED_MOVEMENT_20261107.md.
+- One line per forced move: who, how far (`_fmNet` = start to the end of the slide; rebound steps back don't count), where
+  it ended (`_fmTiles` "2 tiles to E5"), then what the landing did. `_logPushMove(lead, target, res, verb)` writes the push
+  line (displacement: knocks / tosses (Horn Toss) / hurls (arcThrow); damage-kind pushDistance; linePush; aoe / cross pushes).
+  Pulls: "X pulls Y 3 tiles to C4." and no line at all for 0 tiles. Area pulls: "Y is hauled 1 tile to E4 by Black Hole!".
+- Log order tools (next to `_logHoist`): `_logLift(mark, from)` moves a block back; `_logTake(mark)` / `_logPut(taken)` hold
+  lines written now and put them in on their beat (the pull's lines after the hook's hit; Piercing Arrow's pin after the
+  slam). Same task only, like `_logHoist`, so the guest's log filter never sees a line move.
+- Order fixed: chargeToTarget's "charges to" + its landing lift above the hit (`_runPostEffects(unit, spell, target, hitMark)`);
+  tackles' "carries" before the landing's lava/water lines; Drop In / Breaking and Entering's door line before the hit; Stone
+  Drop's drop line before its hit; To the Moon's "hurls" first; Walk the Plank: Converted, hit, execute, then the drown; dash
+  line first; aoePull summary FIRST (opts.leadNamed, "hits N targets and pulls K inward", no pull clause when nothing moved);
+  line / cross summaries before the pushes.
+- Wording: one entry line for lava / deep water (`_chainGround`, said the unit's own way for via self / teleport / climb);
+  the liquid fall line's icon matches the liquid (state.js); "💧 X lands in the water and is Wet." for any non-walk arrival;
+  slam names what was hit (`_slideObstacleName`: a tree, the barrier, the cliff face, the edge…); displacement's slam bonus
+  says its share of the hit; Knight's L move isn't "down the line"; ricochets name the spell; Cathedral Perch just "leaps";
+  Sonic Boomerang's return is "Sonic Boomerang comes back:"; Air Mail writes its door fall; Converted uses the terrain label.
+- To the Moon (E6): the turn holds (`_pendingSpellHits`) until the thrown body lands, so the CPU no longer moves mid-throw.
