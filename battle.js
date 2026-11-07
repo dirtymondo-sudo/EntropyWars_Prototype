@@ -5067,6 +5067,17 @@
                         // forceGroundUnit re-enters the chain on the deck.
                         if (forceGroundUnit(unit, { byLabel: 'by the crushing gravity' })) fired++;
                     }
+                    /* 🚪 T in the sky (zones/traps playtest 2026-11-07 D: Swing Door knocked the flying Fairy onto a free
+                       Twin Doors mouth and she stayed on it): the slide stops a flyer on an open transit mouth like anyone
+                       (resolveForcedSlide), and "anyone ... knocked, blown or pulled into it comes out of the other" —
+                       a walking flyer already steps through (doorStepThrough), a knocked one returned here first. */
+                    if (!moved() && via !== 'move' && via !== 'teleport' && via !== 'self' && typeof doorAt === 'function') {
+                        const _trS = doorAt(unit.x, unit.y);
+                        if (_trS && _trS.transit && _trS.open && doorStepThrough(unit)) {
+                            fired++;
+                            resolveTileArrival(unit, { via: 'teleport' });
+                        }
+                    }
                     return fired;
                 }
 
