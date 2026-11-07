@@ -9675,6 +9675,7 @@
             if (!unit?.status) return;
             if (!(key in unit.status)) return;
             const _realmPid = key === 'shadowRealm' ? unit._realmPartnerId : null;   // onRemove drops it; the partner leaves too
+            const _bindPid = key === 'soulBound' ? unit._boundToId : null;   // a Soul Bind is one chain: both ends come off together
             // CHAMP REWORK Phase 4: a def's onRemove runs BEFORE the key goes
             // (Levitating still counts as a flyer while it is set down,
             // Monstrous gives its HP back, partner ids are dropped).
@@ -9687,6 +9688,7 @@
             delete unit.status[key];
             if (unit._mounted === key) delete unit._mounted;   // THE HORSES: Saddle Up's ride ends with its buff
             if (_realmPid) _realmClosePartner(unit, _realmPid);
+            if (_bindPid) _bindClosePartner(unit, _bindPid);
             /* THE SPELL AUDIT Batch D: possessAfterStatus (Brainwash) — when a control status comes off by ANY path
                (the activation count, the round tick, a cleanse), the body that walks home carries what the caster
                left in it. onRemove has already handed the seat back, so the status lands on the right team. Death
@@ -13137,6 +13139,44 @@
         function closeShadowRealmFor(unit) {
             if (unit && unitHasStatus(unit, 'shadowRealm')) clearStatus(unit, 'shadowRealm');
         }
+        /* ⛓ THE BADGE ENDS WITH ITS EFFECT (timing playtest 11-07 E1 + H3, the badge audit): a status whose whole effect hangs
+           on ANOTHER unit comes off the moment that unit can no longer give it, instead of sitting out its rounds as a badge
+           that does nothing.
+           - Soul-Bound: the echo needs BOTH ends bound (_procLinks), so when one end's bind comes off by any path (its count,
+             a cleanse, a death) the other end's comes off with it — the two badges used to count down apart (3/2 vs 2/1).
+           - endStatusesTiedToUnit (map.js defeatUnit, at the killing blow): Provoked (_tauntCasterId: getTauntTargeter only
+             binds to a living taunter — the decoy's Provoked already ended with the decoy, spell audit F4), Contract
+             (_contractCasterId: the siphon needs a living holder), Voodoo (_voodooAllyId: the doll only echoes its living
+             ally), Soul-Bound (_boundToId). Plain unit data + clearStatus on the host; state-sync carries it (RULE #2). */
+        function _bindClosePartner(unit, pid) {
+            const p = pid ? unitFromId(pid) : null;
+            if (p && p.id !== unit.id && unitHasStatus(p, 'soulBound') && p._boundToId === unit.id) {
+                clearStatus(p, 'soulBound');
+                if (!p.dead && !p._dying) addLog(`${STATUS_DEFS.soulBound?.icon || '⛓'} ${_ctName(p)}'s Soul-Bound breaks — the other end is gone.`);
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: p });
+            }
+        }
+        const _TIED_STATUS_FIELDS = [['taunt', '_tauntCasterId'], ['contract', '_contractCasterId'], ['voodoo', '_voodooAllyId'], ['soulBound', '_boundToId']];
+        function endStatusesTiedToUnit(unit) {
+            if (!unit) return 0;
+            let n = 0;
+            for (const u of (state.units || [])) {
+                if (!u || u.id === unit.id || u.dead || !u.status) continue;
+                for (const [key, field] of _TIED_STATUS_FIELDS) {
+                    if (u[field] !== unit.id || !unitHasStatus(u, key)) continue;
+                    if (key === 'taunt' && u._tauntObjKey) continue;   // a decoy's Provoked follows the decoy (_clearDecoyTaunts)
+                    const def = STATUS_DEFS[key] || {};
+                    clearStatus(u, key);
+                    if (key === 'taunt') delete u._tauntCasterId;
+                    if (key === 'contract') delete u._contractCasterId;
+                    if (!u._dying) addLog(`${def.icon || '✓'} ${_ctName(u)}'s ${def.label || key} ends — ${_ctName(unit)} is down.`);
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+                    n++;
+                }
+            }
+            return n;
+        }
+        window.endStatusesTiedToUnit = endStatusesTiedToUnit;
         function _realmClosePartner(unit, pid) {
             const p = pid ? unitFromId(pid) : null;
             if (p && unitHasStatus(p, 'shadowRealm') && p._realmPartnerId === unit.id) {
@@ -15192,7 +15232,9 @@
         function getCounterChance(unit) {
             if (!unit || unit.dead) return 0;
             if (unit._climb) return 0;   // 🧗 both hands on the wall: no counter
-            return calcCounterChance(unitPassiveMax(unit, 'counterChance') || 0, unit.def || 0, unit._guardCounterBonus || 0);
+            /* Guard's +15% rides the Guard stance: it lasts exactly as long as the GRD badge (timing playtest 11-07 E1) */
+            const _gcb = unitHasStatus(unit, 'guarding') ? (unit._guardCounterBonus || 0) : 0;
+            return calcCounterChance(unitPassiveMax(unit, 'counterChance') || 0, unit.def || 0, _gcb);
         }
 
         function rollCounter(unit) {
@@ -29636,7 +29678,9 @@
                     if (target.status && typeof STATUS_DEFS !== 'undefined') {
                         let _rtCleansed = 0;
                         for (const k of Object.keys(target.status)) {
-                            if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff') { delete target.status[k]; _rtCleansed++; }
+                            /* clearStatus, not a raw delete: a control / link debuff's onRemove (Possessed, Infected, Soul-Bound,
+                               Roped, Feared, Broken) must run, or its effect outlives its badge (badge audit 11-07) */
+                            if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff') { if (getStatusValue(target, k) > 0) _rtCleansed++; clearStatus(target, k); }
                         }
                         /* parity with the turn-based cleanse: count removals */
                         if (_rtCleansed > 0 && caster) caster._matchCleanses = (caster._matchCleanses || 0) + _rtCleansed;
@@ -54530,8 +54574,10 @@
                 u._pressPenaltiesThisTurn = 0;
                 u._spellsUsedThisTurn = null;
 
-                u._guardCounterBonus = 0;
-                u._overwatchArmed = false;
+                /* THE GUARD LASTS AS LONG AS ITS BADGE (timing playtest 11-07 E1): the +15% counter and the overwatch ride the
+                   Guarding status, so a round start only clears them on a unit no longer Guarding (STATUS_DEFS.guarding
+                   onRemove clears them when the stance wears off) */
+                if (!unitHasStatus(u, 'guarding')) { u._guardCounterBonus = 0; u._overwatchArmed = false; }
             }
 
             if (!state.bench) state.bench = { 1: [], 2: [] };
@@ -59068,8 +59114,10 @@
                             u._aiLoopCount = 0;
                             u._encoreThisRound = false;
 
-                            u._guardCounterBonus = 0;
-                            u._overwatchArmed = false;
+                            /* THE GUARD LASTS AS LONG AS ITS BADGE (timing playtest 11-07 E1): a Guard taken late in a round kept its
+                               GRD badge and +DEF through the next round while this reset took its overwatch and +15% counter at the
+                               round's first second. They ride the Guarding status now (STATUS_DEFS.guarding onRemove ends them). */
+                            if (!unitHasStatus(u, 'guarding')) { u._guardCounterBonus = 0; u._overwatchArmed = false; }
                             u._skippedTurn = false;
                             /* THE SPELL AUDIT FIX (2026-10-26): the line names the status that pins the unit — Rooted, Charmed, Frozen
                                and Roped units were all logged "is stunned" */
@@ -71361,7 +71409,8 @@
                     const healed = (typeof applyHealingToUnit === 'function') ? applyHealingToUnit(u, sp.laneHeal || 40, owner, { scaleByTargetLevel: true }) : 0;
                     let cleansed = 0;
                     if (u.status && typeof STATUS_DEFS !== 'undefined') for (const k of Object.keys(u.status)) {
-                        if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured') { delete u.status[k]; cleansed++; }
+                        /* clearStatus runs the debuff's onRemove (a raw delete left Possessed / Soul-Bound working with no badge, badge audit 11-07) */
+                        if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff' && k !== 'captured') { if (getStatusValue(u, k) > 0) cleansed++; clearStatus(u, k); }
                     }
                     if (!_skipVisuals()) showFloatingTextForUnit(u, cleansed ? `${def.icon} CLEANSED` : `${def.icon} +${Math.round(healed || 0)}`, 'heal', { durationMs: 1000 });
                     addLog(`${def.icon} The ${def.name}'s light ${healed ? 'heals' : 'bathes'} ${_ctName(u)}${cleansed ? ' and lifts ' + _gdPlural(cleansed, 'debuff') : ''}.`);
@@ -79964,6 +80013,18 @@
                         const okA = !first.dead && applyStatusPayload(first, { id: fx.id, duration: fx.duration, partnerId: second.id }, `${spell.name}: `, unit);
                         const okB = !second.dead && applyStatusPayload(second, { id: fx.id, duration: fx.duration, partnerId: first.id }, `${spell.name}: `, unit);
                         if (okA && okB) {
+                            /* ONE CHAIN, ONE COUNT (timing playtest 11-07 H3: Antihero read 3 then 2 while the Politician bound to
+                               him read 2 then 1): both ends wear the shorter end's count and end together (_bindClosePartner) */
+                            const _vA = getStatusValue(first, fx.id), _vB = getStatusValue(second, fx.id);
+                            if (_vA > 0 && _vB > 0 && _vA !== _vB) {
+                                const _lo = _vA < _vB ? first : second, _hi = _lo === first ? second : first;
+                                _hi.status[fx.id] = getStatusValue(_lo, fx.id);
+                                const _hLo = _lo._stHold && _lo._stHold[fx.id];
+                                if (_hi._stHold && _hi._stHold[fx.id]) {
+                                    if (_hLo) _hi._stHold[fx.id].r = Math.min(_hi._stHold[fx.id].r, _hLo.r);
+                                    else delete _hi._stHold[fx.id];
+                                }
+                            }
                             addLog(`${def.icon || '⛓'} ${_ctName(first)} and ${_ctName(second)} are chained soul to soul!`);
                         } else {
                             if (okA) clearStatus(first, fx.id);

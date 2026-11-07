@@ -4726,3 +4726,25 @@ Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/ex
 - Backing out of the spell (Esc / BACK / CANCEL → ui.js `_dropHeldSpellPick`) now drops `state._spellPick1` too: nothing
   was spent, and a held pick made a re-armed Voodoo skip straight to its ally list.
 - Proof (3 VS CPU matches, positions staged with `_ewShotRecApi.place`): /mnt/project-files/playtest-mechanics-20261107/two-pick-dead-ends/.
+
+## THE BADGE ENDS WITH ITS EFFECT (2026-11-07, timing/counters playtest E1 + H3, badge audit)
+- GUARD: ui.js doGuard puts `guarding` (+2 DEF / M DEF stages, the GRD badge) on the unit with `_guardCounterBonus` (+15%
+  counter) and `_overwatchArmed`. Guard is taken on the unit's own turn, so ONE ROUND = ONE TURN keeps `guarding` to the end
+  of the NEXT round, but both round-start resets (battle.js) wiped the counter bonus and the overwatch at that round's first
+  second: a late Guard got no overwatch while its badge said it was guarding. Now the resets keep both while `guarding` is
+  up, STATUS_DEFS.guarding onRemove clears them when it comes off (round tick, dispel, switch-out), and getCounterChance
+  only adds the bonus while guarding. The overwatch is still one shot per stance (checkOverwatchTriggers disarms it).
+- TIED STATUSES (battle.js endStatusesTiedToUnit, called from map.js defeatUnit at the killing blow): Provoked
+  (`_tauntCasterId`), Contract (`_contractCasterId`), Voodoo (`_voodooAllyId`) and Soul-Bound (`_boundToId`) come off the
+  moment the unit they work through goes down (log: "X's Provoked ends — Y is down."). The decoy's Provoked already ended
+  with the decoy (spell audit F4). Soul-Bound is one chain: clearStatus on one end ends the other (`_bindClosePartner`), and
+  the cast gives both ends the shorter count (H3: they read 3/2 vs 2/1).
+- CLEANSES: Panacea (ui.js usePanacea, ai.js CPU panacea), the real-time cleanse (_cleanseUnit) and the Gun Door's lane
+  cleanse deleted debuff keys raw, so onRemove never ran: the badge went but a Possessed body stayed in enemy hands, a
+  Soul Bind partner kept echoing, a rope stayed tied. They call clearStatus now and only count live debuffs.
+- Audited and already right: Marked (cleared by its hit), Protect (spent per block), Indomitable, Invisible (breaks),
+  Possessed (_possessLeft releases through clearStatus), Stagger, Chivalry CHV (derived from a living knight), stat stage
+  chips (derived from the ledger), terrain / weather / MOV / KEY / streak chips (derived live).
+- Left as is (badge and effect agree): Guard's Recovering (guardRegen) badge also lasts to the end of the next round (seen
+  in the proof log); by code read its onRoundEnd recovery runs at each round end it is up, while the Guard log line says
+  "extra recovery this round" — a text question for mondo, not changed here.
