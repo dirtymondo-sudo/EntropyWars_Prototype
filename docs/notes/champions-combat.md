@@ -4671,3 +4671,13 @@ Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/ex
 - state.js: a delayed blast logs "💥 X detonates at H10!" FIRST, then each unit it hit (F1; the header used to print last).
 - NOT changed (mondo's calls / other threads): Take Aim / No Mercy EXECUTED line (H10, pending), C1 friendly fire itself,
   height-gated melee spells reading "No target" (F7). Cannibalize (H6) and the immune-target lists (B1) are their own PRs.
+
+## THE WALL LINE + THE EARTH-SIGN TILE (2026-11-07, Pyramid Protocol playtest follow-up)
+- "One cast raised 4 blocks instead of 3": not a bug. The sky was Capricorn; the existing earth-sign rule
+  (battle.js `_terrainSpellTileCount`, Taurus / Virgo / Capricorn) gives every terrainCreate cast +1 tile. The cast line
+  now names it: "... (Capricorn: +1 piece)" / "(Capricorn: +1 tile)" (not on squareFlood rows, which ignore the count).
+- "Converted to mountain while the ground stays grass": a monument row (Pyramid Protocol, Walls of Camelot) never paints
+  the ground (its pieces stand on it), so its line is now ONE line "X uses Pyramid Protocol! N pieces of wall rise."
+  (the old "Converted N tiles to mountain/castle wall" + "🪨 N pieces of wall stand where the ground was" pair is gone).
+  Rampart really paints mountain, so it keeps "Converted N tiles to mountain".
+- Proof (real browser VS CPU, before = live R2, after = local battle.js): /mnt/project-files/playtest-mechanics-20261107/pyramid-count-log-fix/.

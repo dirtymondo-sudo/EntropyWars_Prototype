@@ -81474,7 +81474,20 @@
                        "uses … Converted" line still heads them all; the execute line follows the hit. */
                     void _tcM1;
                     const _tcLabel = (TERRAIN_RULES[terrainType] && TERRAIN_RULES[terrainType].label) ? String(TERRAIN_RULES[terrainType].label).toLowerCase() : String(terrainType).replace(/_/g, ' ');
-                    const _tcLine = (n) => { addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${_tcLabel}.`); _logHoist(_tcM0); };
+                    /* THE EARTH-SIGN TILE + THE WALL LINE (2026-11-07, Pyramid Protocol playtest: "a cast raised 4 blocks instead of 3";
+                       "the log says converted to mountain when the ground stays grass"). The 4th piece is the earth-sign rule
+                       (_terrainSpellTileCount: Taurus / Virgo / Capricorn give a terraform cast +1 tile), so the line now names the
+                       sign that added it. A monument row (Pyramid Protocol, Walls of Camelot) never paints the ground: its pieces
+                       stand ON the ground, so its line counts the pieces that rose instead of "converted to <terrain>". */
+                    const _tcSign = (!spell.squareFlood && isEarthZodiacActive() && state.activeZodiac)
+                        ? String(state.activeZodiac).charAt(0).toUpperCase() + String(state.activeZodiac).slice(1) : '';
+                    const _tcLine = (n) => { addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${_tcLabel}.${_tcSign ? ` (${_tcSign}: +1 tile)` : ''}`); _logHoist(_tcM0); };
+                    const _tcWallLine = (n) => {
+                        addLog(n > 0
+                            ? `${_ctName(unit)} uses ${_ctSp(spell.name)}! ${n} piece${n !== 1 ? 's' : ''} of wall rise${n === 1 ? 's' : ''}.${_tcSign ? ` (${_tcSign}: +1 piece)` : ''}`
+                            : `${_ctName(unit)} uses ${_ctSp(spell.name)}, but no wall can rise there.`);
+                        _logHoist(_tcM0);
+                    };
                     let _tcLogged = false;
                     const _tcGap = !!(spell.terrainDeform && spell.terrainDeform.toBed);
                     if (!spell.monument && !_tcGap) {
@@ -81600,18 +81613,17 @@
                             }, { liftUnits: true });   // a unit on the tile rides up onto the piece (mondo 2026-10-07), never skips it
                             if (ok) _monPlaced++;
                         });
-                        _tcLine(affectedTiles.filter(at => (state.monuments || []).some(m => m.kind === _monKind && m.x === at.x && m.y === at.y)).length);
+                        _tcWallLine(affectedTiles.filter(at => (state.monuments || []).some(m => m.kind === _monKind && m.x === at.x && m.y === at.y)).length);
                         _tcLogged = true;
                         if (_monPlaced > 0) {
                             _invalidateBoardGrid();
                             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
                             if (typeof shakeBoard === 'function') shakeBoard('normal');
-                            addLog(`🪨 ${_ctSp(spell.name)}: ${_monPlaced} piece${_monPlaced !== 1 ? 's' : ''} of wall stand${_monPlaced === 1 ? 's' : ''} where the ground was.`);
                         }
                         scheduleBoardRender();
                     }
-                    if (!_tcLogged) _tcLine(0);
+                    if (!_tcLogged) (spell.monument ? _tcWallLine : _tcLine)(0);
                 }, impactDelay);
 
                 state._spellOrientation = null;
