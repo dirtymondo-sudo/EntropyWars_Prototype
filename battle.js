@@ -11998,6 +11998,13 @@
             if (unitAt(x, y)) return false;
             if (getObjectAt(x, y)) return false;
             if (state.plantedSeeds && state.plantedSeeds.some(s => s.x === x && s.y === y)) return false;
+            /* THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 D): a summon, turret, placed object or prism on the tile
+               is not "empty" either — Bumper Crop's rim seed (and any grown tree) never lands on a piece standing there */
+            if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === x && tt.y === y)) return false;
+            // (a step trap the planter may not see is no bar: only a standing piece that blocks the tile counts)
+            if ((state._deployedObjects || []).some(o => o.hp > 0 && !o._detonated && o.x === x && o.y === y
+                && (o.isDecoy || o.blocksMovement) && !o.detonateOnStep && !(o.tripRadius > 0))) return false;
+            if ((state.mirrors || []).some(m => m.hp > 0 && m.x === x && m.y === y)) return false;
             const t = getTerrainAt(x, y);
             return !['mountain', 'lava', 'water', 'deep_water', 'void', 'chasm'].includes(t);
         }
@@ -40978,6 +40985,9 @@
                             if (typeof isTowerTile === 'function' && isTowerTile(nx, ny)) return true;   // ⬡ the Cube blocks a walking summon like a unit
                             if (state.units.some(u => !u.dead && u.x === nx && u.y === ny)) return true;
                             if (state.turrets.some(t2 => t2 !== turret && t2.hp > 0 && t2.x === nx && t2.y === ny)) return true;
+                            /* THE EMPTY-TILE SUMMON (zones/traps fix 2026-11-07): a placed piece that blocks units blocks the walker
+                               too — the Creation walked onto its own side's Stuffed Double and stood inside it */
+                            if ((state._deployedObjects || []).some(o => o.x === nx && o.y === ny && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return true;
                             return false;
                         };
                         let moved = false;
@@ -45441,6 +45451,7 @@
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
+            if (k === 'summonUnit') return false;   // THE EMPTY-TILE SUMMON: the call goes on a free tile, never on a body
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return spellCorpseUsable(unit, spell, u);
             if (u.dead) return false;
@@ -46695,6 +46706,14 @@
             }
             // Grapple reels only where the rope gets the caster (THE GRAPPLE REEL): not its own tile, not a blocked line.
             if (isGrappleReel(spell) && !grappleLandingFor(unit, x, y, { viewer: unit.player })) return 'blocked';
+            /* THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 B1): a summon is called onto an EMPTY tile (doSpell's
+               summonUnit branch, summonTileFree) — a body's tile is never its pick, so no list, quick menu or board click
+               offers a unit (Summon Creation offered the enemy Symbiote, JUMP→CAST spent the jump, then "pick an empty
+               tile"; Wolf Pack / Brood / Whistle listed the caster's own team) */
+            if (spell.kind === 'summonUnit') {
+                const body = tgt || unitAt(x, y);
+                if (body && !body.dead) return 'occupied';
+            }
             // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
             if (dashOnlyMoves(spell)) {
                 const body = unitAt(x, y);
@@ -46737,6 +46756,19 @@
         window.spellAimProblem = spellAimProblem;
         window.spellAimProblemLabel = spellAimProblemLabel;
         window.spellCastableOnUnit = spellCastableOnUnit;
+
+        /* THE EMPTY-TILE SUMMON: the one test of a free tile for a summon (doSpell's summonUnit branch, the menus' lit
+           check): on the board, passable, no living body, not the Cube, no living summon / turret on it */
+        function summonTileFree(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
+            const body = unitAt(x, y);
+            if (body && !body.dead) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            // a placed piece that blocks the tile (Stuffed Double, Cloning Machine …) — the walkers' own rule
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            return !(state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y);
+        }
+        window.summonTileFree = summonTileFree;
 
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
@@ -46826,18 +46858,11 @@
                 return range > 0 || true;
             }
             if (kind === 'summonUnit') {
-                // wave C: an empty passable tile within reach, and the cap not full
-                const _smCap = spell.maxActivePerCaster || 1;
-                const _smMine = (state.turrets || []).filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id).length;
-                if (_smMine >= _smCap) return true;   // a re-cast dismisses the old one
-                for (const t of getSquareArea(unit.x, unit.y, range)) {
-                    const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
-                    if (d < 1 || d > range) continue;
-                    if (!isTerrainPassable(t.x, t.y) || unitAt(t.x, t.y)) continue;
-                    if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === t.x && tt.y === t.y)) continue;
-                    return true;
-                }
-                return false;
+                /* wave C: a free tile the cast would take. THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 B1): the
+                   lit reach + doSpell's own empty test (summonTileFree) — the old copy read its own plain-step disc, not the lit
+                   tiles, skipped the Cube's tile, and lit the spell whenever the cap was full, so Brood was offered with no free
+                   tile beside the Bee Queen. A re-cast at the cap still needs a free tile (it dismisses the old one there). */
+                return getSpellRangeTiles(unit, spell).some(t => (t.x !== unit.x || t.y !== unit.y) && summonTileFree(t.x, t.y));
             }
 
             // Placement kinds: only castable when at least one tile in range
@@ -77729,8 +77754,7 @@
                    armored, counts physical blows as half a hit. One per caster
                    per spell (maxActivePerCaster) — a new call dismisses the old. */
                 const _sd = spell.summonDef || {};
-                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))
-                    || (state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y)) {
+                if (!summonTileFree(x, y)) {
                     addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`);
                     playErrorSfx();
                     return 0;

@@ -4513,3 +4513,25 @@ gravestone; eating it healed nothing at full HP and pushed that ally's respawn b
 nearest remains of either side. Text of both spells + the REMAINS chip say enemy bones. Raise the Dead keeps both sides
 (its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
 Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
+
+## THE EMPTY-TILE SUMMON (2026-11-07, zones/traps playtest B1 + D)
+- A summon (summonUnit: Hawk, Wolf Pack, Elephant, Spirit Animal, Summon Creation, Whistle, The Gathering, Brood, Mitosis)
+  is called onto an EMPTY tile, so no unit is ever its pick: `spellAimProblem` answers 'occupied' for a body's tile and
+  `spellTargetUsableOn` refuses every unit for summonUnit. The target list, the MOVE→CAST / JUMP→CAST rows, the quick
+  menus and the board click all read those, so Summon Creation no longer offers an enemy (it jumped toward the Symbiote,
+  then said "pick an empty tile") and Wolf Pack / Brood / Whistle no longer list the caster's own team. Only CANCEL shows;
+  the lit free tiles around the caster are the pick.
+- `summonTileFree(x, y)` is the one free-tile test (doSpell's summonUnit branch and the menus' lit check): passable, no
+  living body, not the Cube, no living summon / turret, no placed piece that blocks units (isDecoy / blocksMovement, the
+  walkers' own rule). The lit check now walks the spell's lit tiles (it used its own disc and lit the spell whenever the
+  cap was full, even with no free tile).
+- Walking summons (and the raised abomination) step round placed pieces that block units: the Creation walked onto its
+  own side's Stuffed Double and stood inside it.
+- Bumper Crop on own pieces: the area hit already spared own summons, decoys and machines (OWN PIECES ARE SAFE, PR #987;
+  the playtest ran on main before it). Its rim seeds (and any grown tree, `_treeCanGrowAt`) no longer land on a living
+  summon / turret, a placed piece that blocks units, or a prism: "a seed lands on every EMPTY tile of the edge".
+- Proof: 3 VS CPU matches in Chromium (Mad Scientist + Scarecrow): Summon Creation with King Arthur beside the caster and
+  the Scarecrow next to him listed no unit; a click on King Arthur said "pick an empty tile", AP and MP kept; Bumper Crop
+  over the Creation, Stuffed Double and Cloning Machine hit 3 enemies, left all three pieces whole and sowed 9 seeds, none
+  on the Cloning Machine's rim tile; the Creation walked round the Stuffed Double. Shots: project files
+  playtest-mechanics-20261107/summons-fix/.
