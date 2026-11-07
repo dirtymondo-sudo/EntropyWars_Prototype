@@ -4394,3 +4394,16 @@ walking the caster first. Existing rules only, no new range:
 - data.js desc: "both are Rooted for 1 turn (your own units are never Rooted by it)".
 - Proof: VS CPU TDM in Chromium (WebGL2), staged on one column against the board edge. Live: "Piercing Arrow pins:
   Bigfoot is rooted." (caster) and the ally rooted. Fixed: only the enemy is rooted in both cases.
+
+## THE TWO LAYERS — a flyer only blocks a forced slide at its height (2026-11-07, playtest A2) — battle.js
+- Report: /mnt/project-files/playtest-mechanics-20261107/forced-movement/ A2 (Body Check / Horn Toss stopped by a Cyborg
+  hovering at height 7 over the next square, and the reverse).
+- Cause: `_slideStepInfo` asked `unitAt(nx, ny)` with no height, and its `canOccupy(nx, ny)` reads a lone flyer as a body
+  there. Every forced slide (push, pull, toss, knockback, chain) goes through it.
+- Fix (existing tile cap: one grounded + one airborne body per square, `airborneOccupantInPocket`): a grounded mover meets
+  only grounded bodies (`_slideGroundBodyAt`); a flyer meets only the flyer in its air pocket or a body standing at exactly
+  its height (`_slideAirBodyAt`). The flyers over the square are lifted off the board for the `canOccupy` check (restored in
+  finally, same trick as the mover). `_tryCrashThrough` / `_slideCouldBreach` use the grounded check too.
+- Proof: VS CPU TDM in Chromium (WebGL2), real doSpell casts. Live: Body Check victim stays put and hits the flyer; Kinetic
+  Hurl on a flyer stops at the ground unit. Fixed: both slide 2 squares (under / over); ground-into-ground and
+  flyer-into-flyer still stop and crash.
