@@ -4239,3 +4239,29 @@ before a 4th tick. Shots + log: /mnt/project-files/playtest-mechanics-20261107/s
 Blind and Bleeding both badged "BLD" on the HUD plate, the unit info panel and the Pause > STATUSES page. Blind's
 `short` is now "BLN"; Bleeding keeps "BLD". Audit of all 68 STATUS_DEFS shorts: that was the only duplicate (every
 badge reads `STATUS_DEFS[k].short`, nothing hard-codes it). Proven in a WebGL2 browser with both on one unit.
+
+## THE WATER, CONDUCTION + SHATTER REACTIONS (2026-11-07, element reactions R8-R12; mondo picked R1-R16 from /mnt/project-files/proposals/ELEMENT_REACTIONS_PROPOSALS_20261107.md, R17 steam rejected)
+Existing statuses / terrains / log conventions only; no new names. Proof shots (WebGL2, local scripts): /mnt/project-files/element-reactions-r8-r12/.
+- R8 WATER WASHES GOO OFF: battle.js `_washGooOffUnit`, called first thing in `_douseBurnOnUnit`, so every path that douses a
+  Burn (water hit via `_soakUnit`, wading / standing in water `tickWetUnits`, landing splash, rain incl. flyers, the melting
+  frost) also clears Gooed ("💧 X washes the goo off Y.", floater "💧 Washed").
+- R9 WATER SHORTS OVERCLOCK: battle.js `_waterShortsOverclock` ("💧⚙️ X shorts out Y's Overclock.", floater "⚡💧 SHORT CIRCUIT").
+  Fires in `_soakUnit`, in applyStatusPayload when 'wet' lands (spell-applied Wet), on any water-element hit (even a flyer),
+  and in state.js's three rain passes (applyWeatherTurnEffects x2, stormStrikeUnit) before the Wet is stamped.
+- R10 THE THUNDERSTORM'S BOLT CONDUCTS: battle.js `stormBoltConducts`, called at the end of state.js `stormStrikeUnit` for a
+  `def.element === 'lightning'` weather. A grounded unit struck on water (`_isWetTile`) or metal (`_isMetalTile`): the bolt
+  arcs through the connected water / metal squares, every other grounded unit standing in them takes ¾ of the strike
+  (lightning, scaleByTargetLevel, Wet ×1.5 rides it), same arc VFX + log lines as the spells. CONSERVATIVE (the doc's risk
+  note): it never chains on through Wet bodies on dry ground (the storm wets everyone). Spells keep WET CONDUCTS.
+- R11 SONIC: battle.js triggerTerrainSpellReaction's sonic block (before the classifySpellElement early-out): a damaging sonic
+  spell cracks the ice squares it strikes into water (slam rule, struck squares only, skipped when the spell is itself a slam)
+  and detonates a struck crystal vein (`_reactCrystalShatter`). `_elementalTileCastInfo` lets a sonic spell aim at ice /
+  crystal. Frozen: `_hitDamageMath` ×1.5 ("🧊 ×1.5 THAW!" + "🔊 The sound breaks the ice around X — the hit lands ×1.5.";
+  skipped when the spell's own bonusVsStatus already paid on frozen; never a dot), the post-hit half clears the Frozen.
+  Forecast reads the same pipeline; ai.js estimator mirrors the ×1.5.
+- R12 THE EARTHQUAKE: WEATHER_REGISTRY.earthquake `cracksIce: true`; state.js weatherTerrainOnForm calls battle.js
+  `quakeShattersGround(tiles, def)` before the rocky-ground seed: ice under it → water, a crystal vein under it → rubble_2
+  with the 55 shard hit (×1.5 earth trine). The shard hits ride `state._pendingEarthquake.hits` (`shards: true`, magic, shown
+  "💎 SHARDS!") so they land with the shake in processPendingEarthquake; without a pending quake they land at once.
+- Pause > STATUSES texts updated: Gooed (water washes it off), Wet (getting wet ends Overclock), Frozen (sonic breaks it ×1.5).
+  Earthquake desc names the ice / crystal cracks.

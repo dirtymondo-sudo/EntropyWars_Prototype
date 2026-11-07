@@ -1738,7 +1738,8 @@
                 duration: [1, 1],
                 instant: true,
                 seedTerrain: 'rocks_1',   // ⏳ 2026-10-21: the quake cracks the ground into rocky ground (was mountains)
-                desc: 'Hits immediately with seismic force, cracks the ground into rocky ground, then ends.',
+                cracksIce: true,          // 🌋🧊💎 R12 (2026-11-07): ice under it cracks into water, a crystal vein shatters (battle.js quakeShattersGround)
+                desc: 'Hits immediately with seismic force, cracks the ground into rocky ground (ice cracks into water, crystal shatters into shards), then ends.',
                 onSpawnEffect(unit) {
                     return {
                         type: 'damage',
@@ -2669,6 +2670,7 @@
             if (!def) return;
             if (def.soaks) rainOnTheBoard(weather, true);
             if (def.evaporates) evaporateBattleWater(def);
+            if (def.cracksIce && typeof quakeShattersGround === 'function') quakeShattersGround(weather.tiles, def);   // 🌋 R12: the quake cracks ice + crystal
             if (def.seedTerrain && !def.roaming && !weatherDefIsGlobal(weather)) {
                 const n = seedWeatherTerrain(def, weather.tiles, 0.3);
                 if (n > 0) addLog(`The ${def.label} reshapes ${n} tile${n !== 1 ? 's' : ''} into ${_seedTerrainLabel(def.seedTerrain)}.`);
@@ -2812,6 +2814,7 @@
                         if (unit.dead || unit._dying || unit.hp <= 0) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
+                        if (typeof _waterShortsOverclock === 'function') _waterShortsOverclock(unit, `The ${def.label.toLowerCase()}`);   // 💧⚙️ R9: the rain shorts the Overclock (it is Wet)
                         const _wPrevG = Number((unit.status && unit.status.wet) || 0);
                         if (_wPrevG > 0) unit.status.wet = Math.max(_wPrevG, 2);
                         else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
@@ -2826,6 +2829,7 @@
                     // and the downpour puts out any fire on them on the spot.
                     if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
                         if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
+                        if (typeof _waterShortsOverclock === 'function') _waterShortsOverclock(unit, `The ${def.label.toLowerCase()}`);   // 💧⚙️ R9: the rain shorts the Overclock (it is Wet)
                         const _wPrev = Number((unit.status && unit.status.wet) || 0);
                         if (_wPrev > 0) unit.status.wet = Math.max(_wPrev, 2);
                         else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
@@ -2896,6 +2900,7 @@
             // drenching also douses any burn on the spot.
             if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(v))) {
                 if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(v, `The ${def.label.toLowerCase()}`);
+                if (typeof _waterShortsOverclock === 'function') _waterShortsOverclock(v, `The ${def.label.toLowerCase()}`);   // 💧⚙️ R9: the rain shorts the Overclock (it is Wet)
                 const _wPrev = Number((v.status && v.status.wet) || 0);
                 if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
                 else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
@@ -2931,6 +2936,8 @@
                 // camera is already following the storm).
                 window.playStormLightningFx(at ? at.x : v.x, at ? at.y : v.y);
             }
+            /* ⛈⚡ R10 (2026-11-07): a bolt that strikes a unit standing in water / on metal arcs through it (battle.js stormBoltConducts) */
+            if (def.element === 'lightning' && typeof stormBoltConducts === 'function') stormBoltConducts(v, weather, def, at, hit.amount);
             return true;
         }
         window.stormStrikeUnit = stormStrikeUnit;

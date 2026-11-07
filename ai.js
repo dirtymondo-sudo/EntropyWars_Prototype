@@ -621,6 +621,11 @@
         if (sp && sp.bonusVsStatus && _bonusVsMatches(tg, sp.bonusVsStatus)) {
             offMult *= (sp.bonusVsStatus.mult || 1.5);                        // status combo
         }
+        // 🔊🧊 R11 (2026-11-07): a sonic hit breaks a Frozen target's ice ×1.5 (battle.js _hitDamageMath), unless the spell's own ×vs Frozen already paid
+        try {
+            if (sp && g.unitHasStatus(tg, 'frozen') && (typeof getSpellElement === 'function') && getSpellElement(sp) === 'sonic'
+                && !(sp.bonusVsStatus && [].concat(sp.bonusVsStatus.status).includes('frozen'))) offMult *= 1.5;
+        } catch (e) {}
         if (_elSurge) offMult *= (typeof ZODIAC_SURGE_MULT === 'number') ? ZODIAC_SURGE_MULT : 1.25;   // zodiac spell surge
         if (_elTerrain !== 1) offMult *= _elTerrain;   // 🜃 the element's own ground
         // THE SPELL AUDIT Batch D — the family passives' strike multipliers (battle.js passiveStrikeMult: high ground,
