@@ -2723,6 +2723,13 @@ Answer: both. Camera + looks only, no rule changes. Kill switch for the angle: `
 - **THE SAFE FRAME** (battle.js `window._ewFloatSafeRect`, three-renderer.js `_floatStep`): every floating pop (numbers,
   BROKEN / RESIST / tags) is kept inside the screen, below the action-cam letterbox bar and under the score plate; pops in one
   column move together so stacks stay stacked. The spell preview's own clamp (`ctx.keepIn`) is untouched.
+- **THE HUD WALLS** (2026-11-07, zones/traps playtest: "⛰ HIGH GROUND! ×1.2" / "🜃 IN THE AIR ×1.25" over a flyer in the
+  top-right corner sat under the P2 bar, the match info line and the achievement toast; the HUD draws OVER
+  `#floatTextOverlay`, so it read as cut off). `_ewFloatSafeRect` now returns `walls` (padded boxes of `.ew-scoreboard`
+  whole, `.ew-matchmeta`, `.ew-ap-press`, `.ew-turn-col`, `.ew-clog`, `.achieve-toast`, each only while shown) in place of
+  the score-plate-only ceiling. `_floatStep` takes one unit's stack (one box round all its pops) and steps it the shortest
+  way clear of every wall (down / up / left / right / a corner, inside the frame); last frame's step wins a near tie so a
+  rising stack does not flip sides. Covers every pop kind (all the ×N words, numbers, statuses), not only the terrain ones.
 - **THE LINEN** (three-vfx-effects.js `_afWraps3D`, Mummify, shot 9): it was not a loading issue: the wraps were 42 flat
   code-drawn rectangles. Now ONE continuous lit bandage (a helix ribbon, 7 overlapping turns shaped feet→chest→neck→head)
   in the creator's canvas fabric sheet from R2 (`getFabricTextureUrl('canvas')`), sized from the victim's drawn height and
@@ -3142,6 +3149,30 @@ the impact, what the actual fuck. Fix this for all spells."
   `window.EW_NO_IMPACT_HOLD = true`. Probe: `window._cineImpactHoldLeft()`.
 - Online: the guest re-runs playOffensiveActionCamera with the same opts (descentCam relayed), so its shot stretches the
   same way; the host's return (and its relayed settle) waits for the hold.
+
+## THE SHOT HOLD — marked shots and end-of-round volleys (2026-11-07)
+Timing/counters playtest D1 (mondo: "Go ahead and start those fixes"): "a marked shot lands before the camera gets there,
+and the camera leaves half a second later".
+- Cause: state.js `processDelayedSpellDetonations` sends a marked shot (Take Aim, To Be Continued: `ds.markedUnitId`) and any
+  blast with no cinematic (the Action Cam off, the cine ineligible) through a 380 ms `eorFocusCamera` glide with an impact
+  delay of 0 and a 500 ms dwell. THE IMPACT HOLD never armed (no action shot). Turret / summon / zombie volleys
+  (battle.js `processTurretVolleys`) dwelt 680 ms. Online the guest's camera never moved for any of these (host-only loop).
+- Fix (camera only, no rules):
+  - battle.js `playEorShotFocus(x, y, opts)`: the end-of-round dive onto such a shot (eorFocusCamera underneath), returns the
+    glide ms. online.js wraps it and relays `eor-shot-focus` {x, y, duration}; the guest replays it on its own fog
+    (also in the per-viewer fog filter and the replay CAMERA_RELAY list). `opts.local === false` = relay only (online, the
+    host can't see the tile).
+  - `window._cineHoldImpactAftermath(extraMs)` arms `_cineHoldImpactFor(extra + CINE_IMPACT_AFTERMATH_MS)`.
+  - state.js: the shot waits for the glide (impact >= 420 ms), arms the hold BEFORE the hit (so the hit's freeze adds via
+    applyDamageToUnit), and the next beat waits `max(500 ms, _cineImpactHoldLeft())`. Online it always waits.
+  - `cineFreezeFrame` during a live hold extends it by the freeze (To Be Continued's 900 ms sepia stop).
+  - Turret volleys: the focus beats go through playEorShotFocus; the hold arms before `applyShot`; the next shot waits
+    `max(680 ms, hold left)`.
+- Audit (the report's other counters): overwatch (`_holdTrapBeat`), Riposte / follow-ups and the Overfit replay (hits inside
+  a live shot extend THE IMPACT HOLD) and the cinematic detonations (`afterMs` 1300) already held. DoT / weather ticks are
+  not shots (the hold skips DoT by design).
+- Proof (real VS CPU match, recorder every 50 ms): Take Aim on Kraken, the glide centred Kraken by 442 ms when the hit
+  landed, the camera left 3.08 s later (Cinematic tempo). /mnt/project-files/marked-shot-hold/.
 
 ## THE TRAP'S BEAT — the camera stays on a sprung trap (2026-11-07)
 mondo: "I was playing a battle and Deathtrap went off but the camera panned to my next unit's turn before the spell

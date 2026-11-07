@@ -988,9 +988,19 @@
                    wide for the blast. Falls back to the classic tactical dive
                    when ineligible (2D renderer, toggle off, marked shots). ── */
                 let _cine = null;
+                /* THE SHOT FOCUS (timing playtest 2026-11-07 D1): a shot with no cinematic (a marked shot, any blast
+                   with the Action Cam off) waits for the camera's glide before it lands and holds on the hit for the
+                   impact aftermath, like a cast. Online it always waits: the guest may see what the host can't. */
+                let _shotFocus = false;
+                const _detOnline = !!(window._NET && window._NET.online);
                 /* Mystery Dungeon lockstep: the camera belongs to the leader —
                    the blast's VFX/damage still play, but no detonation dive. */
                 const _mdNoDetCam = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
+                if (_detOnline && (!isVisible || state.cameraDisabled) && !_mdNoDetCam && _vfxAllowed
+                    && typeof playEorShotFocus === 'function') {
+                    playEorShotFocus(ds.x, ds.y, { local: false });   // the relay only: the guest judges its own fog
+                    _shotFocus = true;
+                }
                 if (isVisible && !state.cameraDisabled && !_mdNoDetCam && typeof camera !== 'undefined') {
                     if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Detonations');
                     if (!ds.markedUnitId && typeof window !== 'undefined'
@@ -1002,7 +1012,9 @@
                     if (!_cine) {
                         // Shared end-of-round framing (resting tactical angle,
                         // one tour zoom) matching every other between-round beat.
-                        if (typeof eorFocusCamera === 'function') {
+                        if (typeof playEorShotFocus === 'function') {
+                            _shotFocus = playEorShotFocus(ds.x, ds.y, { duration: 380 }) > 0;
+                        } else if (typeof eorFocusCamera === 'function') {
                             eorFocusCamera(ds.x, ds.y, { duration: 380 });
                         } else {
                             const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
@@ -1012,8 +1024,9 @@
                 }
 
                 const _impactDelay = _cine ? _cine.impactMs
-                    : (_descentVfxMs > 0 ? actionMs(_descentVfxMs)
-                        : (_hasArmingVfx ? actionMs(1100) : 0));
+                    : Math.max(_shotFocus ? 420 : 0,   // the 380 ms glide arrives first
+                        (_descentVfxMs > 0 ? actionMs(_descentVfxMs)
+                            : (_hasArmingVfx ? actionMs(1100) : 0)));
 
                 /* Action tile glow: the blast footprint arms while the shell
                    falls and goes white-hot on the detonation frame (no actor
@@ -1030,6 +1043,8 @@
                 }
 
                 window.setTimeout(() => {
+                    /* THE SHOT HOLD: armed before the hit, so the hit's freeze (and To Be Continued's sepia stop) add to it */
+                    if (_shotFocus && typeof window._cineHoldImpactAftermath === 'function') window._cineHoldImpactAftermath(0);
                     _detonateDelayedSpell(ds);
 
                     /* Descent-less detonations still need a BLAST to look at —
@@ -1063,7 +1078,8 @@
 
                     const _postImpactDelay = _cine
                         ? Math.max(actionMs(500), _cine.afterMs)
-                        : actionMs(500);
+                        : Math.max(actionMs(500), (_shotFocus && typeof window._cineImpactHoldLeft === 'function')
+                            ? window._cineImpactHoldLeft() : 0);
                     window.setTimeout(detonateNext, _postImpactDelay);
                 }, _impactDelay);
             }
@@ -1132,6 +1148,8 @@
                     window.CineFX.play('grade', { kind: 'scope', ms: 700 });
                 }
                 const _dsHpB = mark.hp;
+                /* THE LOG ORDER (2026-11-07): the shot's header line reads first, then its hit, the kill and EXECUTED */
+                addLog(`🎯 ${ds.spellName} lands on ${unitDisplayName(mark)}!`, ds.sourcePlayer);
                 // Phase 5 wave A: the Sniper's execute (judged on the HP before the shot).
                 const _dsExec = !!ds.executeBelowPct && mark.maxHp > 0 && (mark.hp / mark.maxHp) <= ds.executeBelowPct;
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
@@ -1143,9 +1161,16 @@
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
-                if (_dsExec && !mark.dead && typeof window !== 'undefined' && typeof window._applyExecuteRider === 'function') {
-                    window._applyExecuteRider(sourceUnit || null, mark,
-                        { name: ds.spellName, damageType: ds.damageType || 'physical', spellType: ds.spellType || null, spellElement: ds.spellElement || null });
+                /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07, timing playtest H10): the shot alone killing an armed target IS
+                   the execution (it used to say nothing, and EXECUTED only ever showed on a target the shot left standing);
+                   a target the shot leaves standing gets the follow-up, which says EXECUTED only when it really died. */
+                const _dsDown = !!(mark.dead || mark._dying || (mark.hp || 0) <= 0);
+                const _dsFrac0 = mark.maxHp > 0 ? _dsHpB / mark.maxHp : 0;
+                const _dsStub = { name: ds.spellName, damageType: ds.damageType || 'physical', spellType: ds.spellType || null, spellElement: ds.spellElement || null };
+                if (_dsExec && !_dsDown && typeof window !== 'undefined' && typeof window._applyExecuteRider === 'function') {
+                    window._applyExecuteRider(sourceUnit || null, mark, _dsStub, _dsFrac0);
+                } else if (_dsExec && _dsDown && typeof window !== 'undefined' && typeof window._logExecuted === 'function') {
+                    window._logExecuted(mark, _dsStub, _dsFrac0);
                 }
                 // Balance telemetry: the landed shot belongs to the spell that
                 // painted the mark (its cast resolved damage-less by design).
@@ -1164,7 +1189,6 @@
                     && ds.spellId === 'raceToBeContinued') {
                     window.CineFX.play('toBeContinued', { unitId: mark.id });
                 }
-                addLog(`🎯 ${ds.spellName} lands on ${unitDisplayName(mark)}!`, ds.sourcePlayer);
                 return;
             }
 
@@ -1172,6 +1196,8 @@
             const area = (ds.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(ds.aoeMask) && typeof aoeMaskTiles === 'function')
                 ? aoeMaskTiles(ds.aoeMask, ds.x, ds.y, bw(), bh())
                 : getSquareArea(ds.x, ds.y, ds.aoeRadius || 1);
+            /* timing/counters playtest 2026-11-07 (F1): the blast's own line leads, then each unit it hit (it used to print after them) */
+            addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
             const allUnits = state.units.filter(u => !u.dead);
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));
@@ -1200,7 +1226,6 @@
                     }
                 }
             }
-            addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
 
             /* 💥 the blast's tiles react like any spell hit (a nuke on an oil slick blows the whole slick), BEFORE the
                crater's scorch paints the oil away (battle.js triggerTerrainSpellReaction) */
@@ -2786,6 +2811,7 @@
                     const tileSet = new Set(tiles.map(t => posKey(t.x, t.y)));
                     for (const unit of state.units) {
                         if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
+                        if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) continue;   // 🌑 nor a quake's first blow
 
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         const eff = def.onSpawnEffect(unit);
@@ -2864,7 +2890,10 @@
 
         function applyWeatherTurnEffects(player) {
             if (!state.activeWeather || !state.activeWeather.length) return;
-            const units = player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead);
+            /* 🌑 THE REALM LINE (11-07, Blood Rain "restores" the pair in the Shadow Realm): the sky is the board's,
+               so nobody in a realm (battle.js shadowRealmKey) gets its rain, its heal or its burn */
+            const units = (player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead))
+                .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)));
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
                 // Homing storms resolve all of their effects at end of round (processHomingWeather) —
@@ -2954,6 +2983,7 @@
            storm hurt the body. at: the tile it is struck on when that is not where it stands (a walk in passing). */
         function stormStrikeUnit(v, weather, def, at) {
             if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
+            if (typeof shadowRealmKey === 'function' && shadowRealmKey(v)) return false;   // 🌑 the storm is the board's
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -3071,6 +3101,7 @@
                 const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
                 const candidates = state.units.filter(u => {
                     if (!u || u.dead || u._dying) return false;
+                    if (typeof shadowRealmKey === 'function' && shadowRealmKey(u)) return false;   // 🌑 no eye hunts into the Shadow Realm
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
                     if (caster && u.player === caster.player) return false;
                     return true;
@@ -3286,6 +3317,7 @@
                 rng: 0
             };
             if (!unit || unit.dead || !state.activeWeather) return mods;
+            if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) return mods;   // 🌑 no sky in the Shadow Realm
             for (const w of state.activeWeather) {
                 if (!weatherOnTile(w, unit.x, unit.y)) continue;
                 const def = WEATHER_REGISTRY[w.type];

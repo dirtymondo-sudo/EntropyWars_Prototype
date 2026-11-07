@@ -1495,3 +1495,14 @@ all three whole at once; classic WebGL after = whole. Proof /mnt/project-files/w
   /mnt/project-files/online-result-rematch-20261107/. Live code: match 2 guest on the board (`M2_guest_before_fix`), host
   rematch = host in match 3 alone (`H8_host_before_fix`). Fixed: match 2 guest DEFEAT / host VICTORY, request -> guest
   "Accept Rematch" -> both party builder (still there 20 s later, no picks) -> lock + start -> match 3 -> both results.
+
+## THE BLACK PYRAMID (2026-11-07, zones/traps playtest D5)
+Pyramid Protocol's ziggurat blocks stood solid black (cyan glyph band only). Cause: a spell-made monument (`state.monuments`,
+three-renderer.js `_buildMonumentObj` → `_hzZigguratBlock` / `_hzCastleWallSeg`) is built mid-battle when the spell lands, and its
+builder asks `_hzTex` for its sheet (desert sand / castle bricks) only then. A board that never drew that sheet had never loaded it,
+and a three.js texture with no pixels draws BLACK until it lands (seconds behind a busy model queue). Reproduced in Chromium with
+real R2 sheets by slowing sand.png: blocks black with the sheet in flight. Fix: `ThreeRenderer.warmSpellMonuments()` builds every
+`monument.kind` found in SPELL_BY_ID / RACE_ABILITY_BY_ID once, off-scene (warm copy's grade mats spliced off `_horizonMats`, then
+disposed; sheets stay in `_hzTexCache`), called from `ThreeVFXEffects.warmSpellLibrary` and from the battle loading card (battle.js,
+inside the asset gate, so a beach board's own desert sheet is warmed too: keyed kind + `_ewSandPart('desert')`). Proof shots:
+/mnt/project-files/playtest-mechanics-20261107/pyramid-black-fix/. Any NEW spell monument kind is covered automatically.
