@@ -3143,6 +3143,36 @@ the impact, what the actual fuck. Fix this for all spells."
 - Online: the guest re-runs playOffensiveActionCamera with the same opts (descentCam relayed), so its shot stretches the
   same way; the host's return (and its relayed settle) waits for the hold.
 
+## THE TRAP'S BEAT — the camera stays on a sprung trap (2026-11-07)
+mondo: "I was playing a battle and Deathtrap went off but the camera panned to my next unit's turn before the spell
+animation finished so i didnt even see what happened".
+- Cause: a sprung trap is no cast, so it never armed THE IMPACT HOLD. The turn hand-off (`_waitForAnimationsThen`) waits
+  for walks, the camera (`camera.isBusy()`), blocking anims and projectiles, and none of those cover the trap's look: the
+  turn passed at 1.45 s while Deathtrap's nine doors (`_doorGeom('raceTrapdoor')`, 80 + i·90 ms staggers, 790 ms each) ran
+  to 1.5 s, and the camera was gone by 1.65 s. Worse, `_springTrap` played the look AT THE START of the walk that sprang it:
+  the doors and the damage numbers went off while the body was still walking onto the tile.
+- Fix (battle.js, camera + timing of looks only, no rules): `_trapBeatDelayMs(unit, opts)` = `opts.fxDelayMs` or the
+  walker's tween left (`_walkTweenLeftMs`), the rule the deployed mines already had (THE TRAP SPRING). `_holdTrapBeat(x, y,
+  unit, delayMs, lookMs)` arms `_cineHoldImpactFor(delay + look + CINE_IMPACT_AFTERMATH_MS)`, so the hand-off, the AI's next
+  action, softResetToUnit and the menu wait. Fog: a beat the viewer can't see holds nothing; online it always holds.
+- Where (the audit of every trap / reactive hit outside a cast):
+  - `_springTrap` (every placeTrap: Snare/spike, Frost Mine, Tremor Charge, Magnet Mine, Trapdoor, Deathtrap): the shake,
+    sfx, snap VFX and doors wait `_beatMs`; every victim's numbers wait (`_floatHoldUntil`); Magnet's drag slide waits
+    (`delayMs`); hold = the look (trapdoor: last door's swing; others TRAP_BEAT_LOOK_MS 700) + 1.2 s.
+  - Deathtrap / any placeTrap laid UNDER an enemy: the trap goes off as the support shot's beat 2 reaches the tile
+    (`sourceHold + travelMs`, the contact-mine rule), not on the caster beat (it used to play while the lens was on the
+    caster). No extra hold there (`opts.inShot`): the doors end inside the shot, which brings the camera home itself.
+    Holding past the shot's end (tried: a hold, then a longer completionDelay) parks the TPS close-up over the sunk 3×3
+    and the lens drops under the board (white frame) — a parked close-up over a 2-level pit is a separate camera bug.
+  - `_chainFuses` step-on bomb (now waits for the walk like the mines; `detonateBomb` holds its victims' numbers while
+    `fxDelayMs`), deployed blast mines (springCam rows keep their own shot) and status snares: hold.
+  - `_fireOverwatchShot`: the reaction shot lands on its own timers (320 + 260/400 ms) after the walk: hold.
+  - Not changed: counters ride the attack's own shot; end-of-round effects (DoT, delayed detonations, turrets, celestial)
+    have the end-of-round sequence's own pacing and `_bufferingRoundEvents` skips the hold; seeds and warp runes have no look.
+- Still the case: the floor DEFORM (state) lands at once, so the 3×3 sinks while the walker is still on its way in.
+- Proof: /mnt/project-files/deathtrap-camera/ (frame-stepped with Playwright's clock, main vs fix, same staging). Walk onto
+  Deathtrap: turn passed 1.45 s → 3.75 s, camera left at 1.65 s → 3.9 s, doors end ~1.9 s. Probe `window._cineImpactHoldLeft()`.
+
 ## THE BODY LENS — playtest group C, spell shot framing (2026-11-06)
 Source: /mnt/project-files/playtest-battles-20261105/PLAYTEST_BUGS_20261105.md C1-C8. Before/after sheets:
 /mnt/project-files/spell-shot-framing/ (filmed frame by frame with a slowed clock, main vs this branch, same staging).

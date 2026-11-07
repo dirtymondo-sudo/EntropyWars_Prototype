@@ -4794,14 +4794,18 @@
                 const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
                 if (bombIndex >= 0) {
                     const bomb = state.bombs.splice(bombIndex, 1)[0];
+                    /* THE TRAP'S BEAT: the blast waits for the walk / shove still bringing the body onto it, and the camera
+                       holds through it (it used to go off at the start of the walk) */
+                    const _bmMs = _trapBeatDelayMs(unit, opts);
                     /* 🧭 the body that set it off is thrown back the way it came (bombKnockDir) */
-                    detonateBomb(bomb, `💣 Bomb trap detonates under ${unitDisplayName(unit)} at ${coordLabel(x, y)}.`, { fxDelayMs: opts.fxDelayMs || 0,
+                    detonateBomb(bomb, `💣 Bomb trap detonates under ${unitDisplayName(unit)} at ${coordLabel(x, y)}.`, { fxDelayMs: _bmMs,
                         trigger: { unitId: unit.id, dirX: Math.sign(opts.dirX || 0), dirY: Math.sign(opts.dirY || 0) } });
+                    _holdTrapBeat(x, y, unit, _bmMs, TRAP_BEAT_LOOK_MS);
                     fired++;
                     if (unit.dead || unit.x !== x || unit.y !== y) return fired;
                 }
             }
-            if (typeof checkTrapTrigger === 'function' && checkTrapTrigger(unit)) {
+            if (typeof checkTrapTrigger === 'function' && checkTrapTrigger(unit, opts)) {
                 fired++;
                 if (unit.dead || unit.x !== x || unit.y !== y) return fired;
             }
@@ -4829,8 +4833,10 @@
                     if (trap.blastRadius > 0 && trap.blastDmg > 0) {
                         const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
                         detonateDeployedObject(trap, _trapOwner, { fxDelayMs: _springMs, victimId: unit.id });
+                        _holdTrapBeat(x, y, unit, _springMs, TRAP_BEAT_LOOK_MS);   // THE TRAP'S BEAT (a springCam row's shot holds too)
                     } else {
                         trap._detonated = true;
+                        _holdTrapBeat(x, y, unit, _trapBeatDelayMs(unit, opts), TRAP_BEAT_LOOK_MS);   // THE TRAP'S BEAT: the snap and the status
                         /* Apply status effects from the trap's spell data */
                         const spellDef = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[trap.spellId] : null;
                         // THE SPELL AUDIT Batch D: the trap's own copy first — it carries the caster's upgrades (Lingering)
@@ -65629,6 +65635,7 @@
                 const target = unitAt(tile.x, tile.y);
                 if (target && target.player !== bomb.owner) {
                     if (!_bombVictims.includes(target)) { _bombVictims.push(target); _bkDirs[target.id] = bombKnockDir(bomb, target, _bkCtx); }
+                    if (opts.fxDelayMs > 0 && !_skipVisuals()) _floatHoldUntil[target.id] = Date.now() + opts.fxDelayMs;   // its numbers land with the blast's look
                     const _hpBefore = target.hp;
                     if (_bombCaster) target._lastDamageSourceId = _bombCaster.id;
                     applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
@@ -65849,24 +65856,61 @@
         // tile springs it — walking, or being shoved/pulled onto it
         // (_applyKnockbackHazard calls this too, so "drag them into the trap"
         // is a real play). Airborne units glide over.
-        function checkTrapTrigger(unit) {
+        function checkTrapTrigger(unit, opts) {
             if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
             if (shadowRealmKey(unit)) return false;   // 🌑 the board's traps never reach into the Shadow Realm
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
             if (idx < 0) return false;
             const trap = state.traps.splice(idx, 1)[0];
-            _springTrap(trap, unit);
+            _springTrap(trap, unit, opts);
             return true;
         }
 
-        function _springTrap(trap, victim) {
+        /* THE TRAP'S BEAT (mondo 2026-11-07: "Deathtrap went off but the camera panned to my next unit's turn before the
+           spell animation finished so i didnt even see what happened"). A sprung trap, a stepped-on bomb or mine, a snare
+           or an overwatch shot is no cast, so none of them armed the action camera's hold, and the turn hand-off
+           (_waitForAnimationsThen reads camera.isBusy) moved on as soon as the walk ended, with the trap's look still
+           playing (Deathtrap's nine doors run ~1.5 s). A placed trap also went off at the START of the walk that sprang
+           it: the doors and the numbers played while the body was still walking onto it.
+           - _trapBeatDelayMs: the look and the numbers (_floatHoldUntil) wait for the walk, slide or shot still bringing
+             the body onto the tile (what the deployed mines already did, THE TRAP SPRING). The state lands now.
+           - _holdTrapBeat: the camera holds (camera._impactHoldUntil, THE IMPACT HOLD) until the look has played plus
+             CINE_IMPACT_AFTERMATH_MS, so the turn hand-off, the AI's next action, softResetToUnit and the menu wait for
+             it. A beat this screen cannot see (fog) holds nothing; online it always holds (one of the two seats owns
+             the body that set it off, and only the host runs the turn loop). */
+        const TRAP_BEAT_LOOK_MS = 700;
+        function _trapBeatDelayMs(unit, opts) {
+            if (_skipVisuals()) return 0;
+            return Math.max(0, (opts && opts.fxDelayMs) || 0) || _walkTweenLeftMs(unit);
+        }
+        function _holdTrapBeat(x, y, unit, delayMs, lookMs) {
+            if (_skipVisuals() || _bufferingRoundEvents || state.phase !== 'battle') return;
+            const _online = !!(window._NET && window._NET.online);
+            const _seen = _online || !state.fogOfWar || _isTileVisibleToViewer(x, y)
+                || (unit && unit.player === getViewerPlayer());
+            if (!_seen) return;
+            _cineHoldImpactFor(Math.max(0, delayMs || 0) + actionMs(Math.max(0, lookMs ?? TRAP_BEAT_LOOK_MS) + CINE_IMPACT_AFTERMATH_MS));
+        }
+        window._ewTrapBeatHoldLeft = () => _cineImpactHoldLeft();
+
+        function _springTrap(trap, victim, opts = {}) {
             const owner = state.units.find(u => u.id === trap.casterUnitId) || null;
             const _trapHpBefore = victim.hp;
+            /* THE TRAP'S BEAT: the look waits for the body to land on the tile; the camera holds through it */
+            const _beatMs = _trapBeatDelayMs(victim, opts);
+            const _look = (fn) => {
+                if (_beatMs > 0) window.setTimeout(() => { if (state.phase === 'battle') fn(); }, _beatMs);
+                else fn();
+            };
+            if (_beatMs > 0) _floatHoldUntil[victim.id] = Date.now() + _beatMs;
+            let _lookMs = TRAP_BEAT_LOOK_MS;
             addLog(`🪤 ${_ctName(victim)} springs a hidden ${_ctSp(trap.spellName || 'trap')} at ${coordLabel(trap.x, trap.y)}!`);
             showFloatingTextForUnit(victim, '🪤 TRAP!', 'damage', { durationMs: 1100 });
-            playSfx('damage');
-            if (typeof shakeBoard === 'function') shakeBoard('normal');
+            _look(() => {
+                playSfx('damage');
+                if (typeof shakeBoard === 'function') shakeBoard('normal');
+            });
             const dmg = Math.max(1, trap.dmg || 0);
 
             if (trap.trapType === 'trapdoor') {
@@ -65882,9 +65926,13 @@
                 if (gid) state.traps = state.traps.filter(t => t.groupId !== gid);
                 const tiles = [{ x: trap.x, y: trap.y }].concat(group.map(t => ({ x: t.x, y: t.y })));
                 const _tdVFX = window.ThreeVFXEffects;
-                if (_tdVFX && trap.spellId && _tdVFX.hasMapping(trap.spellId, 'impact') && !_skipVisuals()) _tdVFX.fire('impact', trap.spellId, { tx: trap.x, ty: trap.y });
-                else window._doorGeom('raceTrapdoor', trap.x, trap.y, {});
-                tiles.slice(1).forEach((t, i) => window._doorGeom('raceTrapdoor', t.x, t.y, { delay: 80 + i * 90 }));
+                _look(() => {
+                    if (_tdVFX && trap.spellId && _tdVFX.hasMapping(trap.spellId, 'impact') && !_skipVisuals()) _tdVFX.fire('impact', trap.spellId, { tx: trap.x, ty: trap.y });
+                    else window._doorGeom('raceTrapdoor', trap.x, trap.y, {});
+                    tiles.slice(1).forEach((t, i) => window._doorGeom('raceTrapdoor', t.x, t.y, { delay: 80 + i * 90 }));
+                });
+                /* the last door's swing (three-vfx-effects.js 'raceTrapdoor': rise 200 + open 180 + hold 300 + shut 110) */
+                _lookMs = (tiles.length > 1 ? 80 + (tiles.length - 2) * 90 : 0) + 790;
                 /* THE SPELL AUDIT Batch D: a hitAll trapdoor (Deathtrap) takes every grounded enemy of the owner
                    standing on the footprint; each pays the hit and the fall. */
                 const _tdVictims = [victim];
@@ -65897,6 +65945,7 @@
                     }
                 }
                 const _tdFromZs = _tdVictims.map(u => u.z ?? getBaseHeightAt(u.x, u.y));
+                if (_beatMs > 0) for (const u of _tdVictims) _floatHoldUntil[u.id] = Date.now() + _beatMs;   // their numbers land with the doors
                 for (const u of _tdVictims) {
                     applyDamageToUnit(u, dmg, `${trap.spellName || 'Trapdoor'}: `, {
                         sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
@@ -65913,11 +65962,11 @@
                         showFloatingTextForUnit(u, '🚪 DROPPED!', 'debuff', { durationMs: 1100 });
                     }
                 });
-                if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                if (typeof playDoorSfx === 'function') _look(() => playDoorSfx('stamp'));
                 addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : _ctName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 /* THE TRAPS PACK (2026-10-27): Snare's bear trap snaps shut on the victim (looks only; relayed like every fire()) */
-                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y, uid: victim.id });
+                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) _look(() => window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y, uid: victim.id }));
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
@@ -65976,7 +66025,7 @@
                     if (!(_mgN > 0)) continue;
                     const _mgR = resolveForcedSlide(u, pdx, pdy, _mgN, {
                         byUnit: (owner && owner.player !== u.player) ? owner : null, label: `${trap.spellName || 'Magnet Mine'}: `,
-                        toward: { x: trap.x, y: trap.y }, stopWithin: 1, perStepMs: 160
+                        toward: { x: trap.x, y: trap.y }, stopWithin: 1, perStepMs: 160, delayMs: _beatMs
                     });
                     if (_mgR.moved > 0) dragged++;
                 }
@@ -65994,6 +66043,10 @@
                 const _applied = Math.max(0, _trapHpBefore - Math.max(0, victim.hp || 0));
                 _balAddSpellEffect(trap.spellId, _applied, (victim.dead || (victim.hp || 0) <= 0) ? 1 : 0);
             }
+            /* sprung inside the cast's own shot (laid under an enemy): the doors start as beat 2 reaches the trap and end
+               inside that shot (~0.3 s before it), which takes the camera home itself. Holding past the shot's end
+               parked its close-up over the sunk 3×3 and the lens sank under the board (browser check 2026-11-07). */
+            if (!opts.inShot) _holdTrapBeat(trap.x, trap.y, victim, _beatMs, _lookMs);
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             scheduleBoardRender();
         }
@@ -67042,6 +67095,8 @@
             const _isMelee = dist <= 1;
             const _shotDelay = actionMs(320);
             const _impactDelay = _isMelee ? actionMs(260) : actionMs(400);
+            /* THE TRAP'S BEAT: the shot lands on its own timers after the walk; the camera holds through the hit */
+            _holdTrapBeat(mover.x, mover.y, mover, _shotDelay + _impactDelay, 0);
             window.setTimeout(() => {
                 if (state.winner || guardian.dead || guardian._dying) return;
                 playSfx('basicAttack');
@@ -76411,7 +76466,7 @@
                     state.traps = state.traps.filter(t => _tGroupOf(t) !== _oldG);
                 }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, _tfp.x, _tfp.y);
+                const _tShot = _spellFocusCamera(unit, _tfp.x, _tfp.y);
                 unit.mp -= effectiveSpellCost;
                 const _gid = 'tg-' + unit.id + '-' + _tfp.x + ',' + _tfp.y + '-' + (state.round || 0);
                 for (const t of _tfp.tiles) state.traps.push({
@@ -76444,10 +76499,13 @@
                    footprint springs it right now (checkTrapTrigger → _springTrap: its hit, its status, the trapdoor's
                    drop), and the cast resolves as a hit (_placementStruck: spell slot + the turn ends). Empty tiles =
                    quiet setup: 1 AP, the turn goes on. An airborne enemy sits above it (checkTrapTrigger skips them). */
+                /* THE TRAP'S BEAT: laid under an enemy, the trap goes off as the shot's beat 2 reaches it, not while the
+                   camera is still on the caster (the deployed contact mines' rule) */
+                const _tSpringMs = (_tShot && _tShot.mode === 'support') ? (_tShot.sourceHold || 0) + (_tShot.travelMs || 0) : 0;
                 for (const t of _tfp.tiles) {
                     const _tOcc = unitAt(t.x, t.y);
                     if (!_tOcc || _tOcc.dead || _tOcc.player === unit.player) continue;
-                    if (checkTrapTrigger(_tOcc)) _placementStruck = true;
+                    if (checkTrapTrigger(_tOcc, { fxDelayMs: _tSpringMs, inShot: !!_tShot })) _placementStruck = true;
                 }
                 if (_placementStruck && typeof checkWin === 'function') checkWin();
             } else if (spell.kind === 'scan') {
