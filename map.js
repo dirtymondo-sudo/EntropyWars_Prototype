@@ -11149,6 +11149,17 @@
                 const _mt = state._monumentTiles;
                 if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
             }
+            /* ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07: "flash freeze on burning tiles should cause water"): ice painted
+               on a burning tile (Flash Freeze's wall of ice, a frost door, a blizzard's glaze) melts on the fire — the tile
+               becomes water and the fire goes out (the hook at the bottom). Every ice paint, so no ice spell can skip it. */
+            let _iceMelt = false;
+            if (terrain === 'ice' && state.phase === 'battle' && state.burningTiles && state.burningTiles[x + ',' + y]) {
+                terrain = 'water';
+                _iceMelt = true;
+                /* the same cast's own frost reaction must not freeze this meltwater straight back to ice
+                   (battle.js triggerTerrainSpellReaction skips these: this round, this unit's action) */
+                (state._iceMeltTiles || (state._iceMeltTiles = {}))[x + ',' + y] = (state.round || 0) + ':' + (state._blitzActiveUnitId || '');
+            }
             notePaintOrigin(x, y);
             const _priorTop = getTerrainAt(x, y);
             const _priorAt = (z !== undefined && z !== null && typeof getTerrainAt3D === 'function') ? getTerrainAt3D(x, y, z) : _priorTop;
@@ -11208,6 +11219,9 @@
                 const _nowTop = getTerrainAt(x, y);
                 if (_nowTop === 'water' || _nowTop === 'deep_water' || _nowTop === 'ice') {
                     if (state.burningTiles && state.burningTiles[x + ',' + y]) delete state.burningTiles[x + ',' + y];
+                    if (_iceMelt && typeof addLog === 'function') {
+                        addLog(`❄️🔥 The ice melts on the flames at ${typeof coordLabel === 'function' ? coordLabel(x, y) : x + ',' + y} — the fire goes out and leaves water.`);
+                    }
                     if (_nowTop !== 'ice' && typeof window._douseBurnOnUnit === 'function' && typeof unitAt === 'function') {
                         const _u = unitAt(x, y);
                         if (_u && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_u))) window._douseBurnOnUnit(_u, 'The water');

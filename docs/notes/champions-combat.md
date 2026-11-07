@@ -4149,6 +4149,10 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
   thing?" It always was one status (id `wet`); the pill / ability chips said WET and everything else said Soaked. The
   pill is SOAK now and every player-facing "wet" for the status reads Soaked (Ink Cloud desc, Thunderstorm desc, Balance
   Lab reaction labels, the status description). Flavour text ("a long, wet hand") stays.
+- BROWSER CHECK (11-07) found Flash Freeze is an ice-WALL paint (terrainCreate), not a cold reaction, so its ice landed on
+  the fire. Now ANY ice painted on a burning tile becomes water in map.js setTerrainAt ("The ice melts on the flames at X —
+  the fire goes out and leaves water"), and the same cast's cold reaction skips that meltwater (state._iceMeltTiles,
+  stamped round:active unit) so it is not frozen straight back to ice.
 
 
 ## THE GROUND FIRE SETS OFF THE SLICK (2026-11-07, elements playtest A1: "Black ooze and fire sit on the same tile without anything happening")
