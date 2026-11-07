@@ -4552,6 +4552,23 @@ nearest remains of either side. Text of both spells + the REMAINS chip say enemy
 (its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
 Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
 
+## THE GRAVES STAY (2026-11-07, zones playtest "Raise the Dead: the Necromancer died before a grave was free"; mondo "sure")
+A grave used to BE the dead unit object, so it vanished the moment the unit respawned. Now map.js processRespawns calls
+battle.js `leaveRemainsOnRespawn(unit, deathTile)` right before a unit comes back on the clock (FFA scatter + spawn-zone
+paths): a `state.graves` row `{id:'remains_<uid>_<n>', unitId, player, x, y, z}` stays on the square it fell on (one per
+square, newest wins; reset per match next to every `state.turrets = []`; plain data so it rides the host snapshot to the
+guest). Not left by: a consumed corpse (raised / eaten), a revive, Return of the Dead (the zombie climbs out of its own
+grave), bosses. The respawn also resets `_corpseConsumed` and the corpse-only revive lock (`_corpseReviveLock`), so the
+NEXT death leaves fresh remains (before, a raised unit's later corpses were born "consumed").
+Corpse casts read `corpseRemainsBodies()` (still-dead bodies + rows as read-only pseudo-bodies, `_remains:true`,
+`_remainsOf`) / `corpseRemainsAt(unit, spell, x, y)` and eat with `consumeCorpseRemains` — the drum, MOVE→CAST list,
+castability, forecast, doSpell (Raise the Dead, Cannibalize, Carrion Feast) and ai.js picks. `spellCorpseUsable` now also:
+Raise the Dead needs the grave's square empty (no living body, no standing turret/summon/zombie), and in FFA a unit can't
+eat its own left grave. Renderer: three-renderer.js builds the rows like a body's grave (headstone own / bones enemy,
+seen-gate key `viewer|unitId|x,y` so bones seen before the respawn stay seen). Text: Cannibalize / Carrion Feast delay the
+respawn only "while that enemy is still down"; all three say a grave stays after a respawn.
+Proof: /mnt/project-files/playtest-mechanics-20261107/graves-stay/.
+
 ### EXECUTED MEANS KILLED (2026-11-07, timing playtest H10, mondo: "Executed means killed")
 Take Aim (15%) and No Mercy (25%) judge their execute on the HP BEFORE the hit. The EXECUTED line used to print only from
 the follow-up (`_applyExecuteRider`), i.e. only when the hit left the target standing, so a hit that killed an armed target
