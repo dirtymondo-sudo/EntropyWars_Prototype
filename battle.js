@@ -9855,6 +9855,15 @@
         }
         if (typeof window !== 'undefined') window.removeBuffs = removeBuffs;
 
+        /* THE ITEM NAMES (2026-11-07, buffs playtest K): a log line or a float names an item by its ITEM_RULES name
+           ("Healing Potion"), never its code key ("healPotion"). _itemArticle gives "a" / "an" for the name. */
+        function _itemDisplayName(key) {
+            const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES) ? ITEM_RULES[key] : null;
+            return (r && r.name) || String(key || 'item');
+        }
+        function _itemArticle(name) { return /^[aeiou]/i.test(String(name || '')) ? 'an' : 'a'; }
+        if (typeof window !== 'undefined') window._itemDisplayName = _itemDisplayName;
+
         /* CHAMP_REWORK_PLAN Phase 6 (2026-09-08): the grab behind the `steal`
            kind. Moves up to opts.keys Keys and opts.items items (one random
            kind each) from victim to thief with the plunder's floating text.
@@ -9888,7 +9897,7 @@
                 wantItems--;
             }
             if (out.items.length) {
-                const _ni = out.items.slice();
+                const _ni = out.items.map(_itemDisplayName);
                 _fx(() => {
                     addLog(`${_ctName(thief)} — ${label}: ${_ni.join(', ')} taken from ${_ctName(victim)}!`);
                     showFloatingTextForUnit(thief, `📦 Stole ${_ni[0]}${_ni.length > 1 ? ' +' + (_ni.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
@@ -51392,7 +51401,7 @@
             state._mdItems.push({ x: u.x, y: u.y, type: itemKey });
             const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
             const icon = (rule && rule.icon) || '📦';
-            addLog(`⤵ ${_ctName(u)} drops a ${(rule && rule.name) || itemKey} on the floor.`);
+            addLog(`⤵ ${_ctName(u)} drops ${_itemArticle(_itemDisplayName(itemKey))} ${_itemDisplayName(itemKey)} on the floor.`);
             try { showFloatingTextForUnit(u, `${icon} ⤵`, 'pickup', { durationMs: 900 }); } catch (e) {}
             playSfx('uiCursorMove');
             markDirty('board', 'hud', 'selectedUnit');
@@ -51421,13 +51430,13 @@
                     ? getItemCapForClass(unit, it.type) : ((rule && rule.max) || 1);
                 const bagFull = (typeof unitItemsFull === 'function') && unitItemsFull(unit);
                 if ((unit.items[it.type] || 0) >= cap || bagFull) {
-                    addLog(`🎒 ${_ctName(unit)} steps over a ${name} — pockets full, it stays on the floor.`);
+                    addLog(`🎒 ${_ctName(unit)} steps over ${_itemArticle(name)} ${name} — pockets full, it stays on the floor.`);
                     continue;
                 }
                 items.splice(i, 1);
                 unit.items[it.type] = (unit.items[it.type] || 0) + 1;
                 const icon = (typeof ITEM_META !== 'undefined' && ITEM_META[it.type] && ITEM_META[it.type].icon) || '📦';
-                addLog(`${icon} ${_ctName(unit)} picks up a ${name}!`);
+                addLog(`${icon} ${_ctName(unit)} picks up ${_itemArticle(name)} ${name}!`);
                 try { showFloatingTextForUnit(unit, `${icon} +1`, 'pickup', { durationMs: 1000 }); } catch (e) {}
                 if (!state.devAutoSim) { try { playSfx('uiConfirm'); } catch (e) {} }
                 markDirty('board', 'selectedUnit', 'hud');
@@ -77245,7 +77254,7 @@
                         items: spell.stealItems != null ? spell.stealItems : 1,
                         verb: spell.name,
                     });
-                    if (!_stTook.keys && !_stTook.items) {
+                    if (!_stTook.keys && !_stTook.items.length) {
                         addLog(`${_ctName(target)} had nothing worth taking.`);
                     }
                 });
@@ -77780,7 +77789,7 @@
                         verb: spell.name,
                         fxDelayMs: _plFxMs,
                     });
-                    if (!_plTook.keys && !_plTook.items) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
+                    if (!_plTook.keys && !_plTook.items.length) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
                 }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */
@@ -80077,8 +80086,9 @@
                                 target.items[pick]--;
                                 if (!unit.items) unit.items = {};
                                 unit.items[pick] = (unit.items[pick] || 0) + 1;
-                                addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
-                                showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                                const _pickName = _itemDisplayName(pick);
+                                addLog(`${_ctName(unit)} plunders ${_itemArticle(_pickName)} ${_pickName} from ${_ctName(target)}!`);
+                                showFloatingTextForUnit(unit, `📦 Stole ${_pickName}`, 'pickup', { durationMs: 1200 });
                                 stolen = true;
                             }
                         }
