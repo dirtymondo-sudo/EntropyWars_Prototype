@@ -2401,7 +2401,7 @@
         }
       }
       const _hlKeyParts = _selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting
-        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnitId ?? '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
+        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnitId ?? '') + '|' + (state._spellPick1 && state._spellPick1.tile ? 'pk' + state._spellPick1.x + ',' + state._spellPick1.y : '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
         : '';
       let _hlCache;
       let _hlZCache;
@@ -3246,6 +3246,12 @@
             }
           }
         }
+          /* THE FIRST PICK STAYS MARKED (forced-movement playtest 2026-11-07 L1: "after the first door the first square
+             isn't marked"): a tile pick an armed spell remembers (Twin Doors' first door, a lane door's tile) paints the picked orange
+             under the second step, so the player sees where the first click went. Viewer-local. */
+          if (state.actionMode === 'spell' && state._spellPick1 && state._spellPick1.tile && isInside(state._spellPick1.x, state._spellPick1.y)) {
+            _hlCache.set(posKey(state._spellPick1.x, state._spellPick1.y), 'combo-target');   // the 'picked' orange
+          }
         } catch(e) { console.error('hlCache error', e); }
         }
 

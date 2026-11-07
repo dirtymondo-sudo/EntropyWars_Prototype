@@ -3556,6 +3556,35 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   );
 }
 
+/* THE LIST OPENS FIRST (forced-movement playtest 2026-11-07 H1: "clicking an ability row right after opening ABILITIES
+   armed the row below it while the list was still sliding in"): a theme's window-open motion (UI Maker "Windows open",
+   Stretch / Pop / Unroll / Wipe, the uim-* keyframes) squashes the action list while it opens, so for those few hundred
+   ms every row sits somewhere other than where it comes to rest and a quick click lands on its neighbour (or on the board
+   under the squashed list). A real click that arrives while an action list is still opening finishes that opening at
+   once and goes to whatever sits under the pointer in the OPEN list: the row the player aimed at. A click on the same
+   row it was always on goes through untouched. Looks only: no rule, no new state. */
+(function _hrlgOpeningClickGuard() {
+  if (typeof window === 'undefined' || window._hrlgOpeningGuardOn) return;
+  window._hrlgOpeningGuardOn = true;
+  const _hit = (el) => (el && el.closest) ? (el.closest('.hrlg-blade, .hrlg-confirm, .hrlg-backchip') || null) : null;
+  window.addEventListener('click', (e) => {
+    if (!e.isTrusted || e.button !== 0) return;
+    let opening = [];
+    document.querySelectorAll('.hrlg-list').forEach(l => {
+      if (typeof l.getAnimations !== 'function') return;
+      l.getAnimations().forEach(a => { if (/^uim-/.test(a.animationName || '') && a.playState === 'running') opening.push(a); });
+    });
+    if (!opening.length) return;
+    opening.forEach(a => { try { a.finish(); } catch (err) { /* already done */ } });
+    const was = _hit(e.target);
+    const now = _hit(document.elementFromPoint(e.clientX, e.clientY));
+    if (was === now) return;
+    e.stopPropagation();
+    e.preventDefault();
+    if (now) now.click();
+  }, true);
+})();
+
 // Tiny mouse glyph with the RIGHT button lit — the "right-click goes back"
 // hint riding the sub-menu BACK chips (pads show their B button instead).
 function _HrlgRmbIcon() {
@@ -12659,6 +12688,8 @@ function _hudHideCss() {
        of the active panel; clicking it fires the armed target pick. */
     .hrlg-confirm {
       position: relative; margin: 0 7px 0 5px; height: 46px; flex: none;
+      /* the pill grows to its whole label, never narrower than the panel ("CONFIRM — Deep Water…", playtest 2026-11-07) */
+      align-self: flex-start; width: max-content; min-width: calc(100% - 12px); box-sizing: border-box;
       display: flex; align-items: center; gap: 10px; padding: 0 22px 0 14px;
       pointer-events: auto; cursor: pointer; z-index: 3;
       background: linear-gradient(100deg, #10301c 0%, #0a1f12 100%);
@@ -12681,7 +12712,7 @@ function _hudHideCss() {
       font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 15px;
       letter-spacing: 0.16em; color: #b8f5d0; white-space: nowrap;
       text-shadow: 0 0 12px rgba(87,217,138,0.6);
-      overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+      overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;   /* the pill's own width, not a 260 px cap: "CONFIRM — Grassl…" (playtest 2026-11-07) */
     }
     .hrlg-confirm-tgt { color: #fff; font-size: 12px; letter-spacing: 0.06em; }
     /* inline CONFIRM — the green seal at the END of the pending (✓) row.
