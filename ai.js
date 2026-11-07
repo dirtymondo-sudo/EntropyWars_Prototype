@@ -6520,7 +6520,7 @@
             const _contactE = spell.detonateOnStep
                 && g.state.units.find(u => !u.dead && u.x === target.x && u.y === target.y && u.player !== unit.player);
             if (_contactE) return s + 40 + (spell.blastDmg || 0) * 0.5;
-            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
+            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated).length;   // the cap is per spell (battle.js deployObject)
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
             // WEAK RACES II (2026-10-23): a mine is worth the blast it will likely set off (see _trapHitValue)
             if (spell.detonateOnStep && spell.blastDmg) {
@@ -9134,7 +9134,7 @@
             // Turrets are stamped with casterUnitId (battle.js doSpell) — the
             // old ownerUnitId read always counted 0, so the AI never saw its
             // own cap and re-deployed every turn, dismantling its own turrets.
-            const active = (g.state.turrets || []).filter(t => t.casterUnitId === unit.id).length;
+            const active = (g.state.turrets || []).filter(t => t.casterUnitId === unit.id && t.spellId === spell.id && !t.summon && !t.zombie).length;   // the cap is per spell (battle.js deployTurret)
             if (active >= (spell.maxActivePerCaster || 2)) return null;
             const R = _effRange(unit, spell) || 2;
             let bestTile = null, bestScore = -1;
@@ -9854,7 +9854,7 @@
         }
 
         if (kind === 'deployObject') {
-            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
+            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated).length;   // the cap is per spell (battle.js deployObject)
             if (active >= (spell.maxActivePerCaster || 2)) return null;
             const R = _effRange(unit, spell) || 1;
             let bestTile = null, bestScore = -1;

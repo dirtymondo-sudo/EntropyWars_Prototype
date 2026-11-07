@@ -4488,3 +4488,25 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   after the one total line in `_multiHitLogFlush`. Lines that explain the hit before it (weak/resist, combo, Marked,
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
+
+## THE PER-SPELL CAP + THE JUMP LANDING (zones/traps playtest 2026-11-07, A1-A3)
+mondo: "Go ahead and start those fixes" (PLAYTEST_ZONES_TRAPS_20261107.md family A). Existing rules only.
+- A1: battle.js `deployObject` counted ALL of the caster's placed objects against the NEW row's maxActivePerCaster, so a
+  Spring Snare (cap 1) silently took the Gnome's Tesla Coil and Scrap Mine; a Cloning Machine took the Mad Scientist's
+  Tesla Coil. The cap now counts only that row's own live objects (`o.spellId === spell.id`), like placeTrap (per
+  trapType) and summonUnit (per spell) already did. The one a re-cast takes away is logged to its owner's seat only
+  ("Gnome's older Spring Snare at C8 is taken down to make room."). All 8 deployObject rows share the path: Spring
+  Snare, Scrap Mine, Tesla Coil, Jack-in-the-Box, Stuffed Double, Cloning Machine, Hologram, Federation Beacon.
+  The plain doubles (Shed Skin / spawnDecoy, cap 3) count only spell-less decoys now, so they never take a Stuffed
+  Double / Cloning Machine / Hologram.
+- A3: `deployTurret` (and the real-time `_placeTurret`) counted every state.turrets entry of the caster, summons and
+  zombies included: a 5G Tower (cap 1) took down the Deploy Turret. Now per spell, never a summon/zombie. The 5G
+  Tower stores dmg 0 (was `turretDmg || 8`) and its log line names it and its M.DEF aura.
+- ai.js reads the same per-spell caps (deployObject x2, deployTurret).
+- A2: `doJump`'s landing (`_doPostJump`) never ran THE CHAIN, so a jump onto a bomb / hidden trap / Scrap Mine /
+  Tesla Coil / snare (and onto lava, fire, a debuff zone, a vortex, a rune) did nothing. It now calls
+  `resolveTileArrival(unit, { via: 'move' })` after the fall damage, exactly the end of a walk. Only the landing
+  square; the arc's squares are untouched.
+- Proof (online friendly, two seats, Mount Shasta 10x10): /mnt/project-files/playtest-mechanics-20261107/trap-cap-jump-fix/
+  (ms2: Tesla + Cloning Machine both stand; g2: Gnome's three traps stand, a 2nd Spring Snare replaces the 1st with the
+  line; kk5 = the GUEST's screen: King Kong jumps onto the Scrap Mine, −124 + Stagger; g6: Deploy Turret + 5G Tower both stand).
