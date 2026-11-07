@@ -1480,3 +1480,18 @@ drawn in the pass's first 600 ms counts as shown (`_lwSync`); cap 4 s AND 240 dr
 `ThreeRenderer.shaderCache().late.wholeBodies / .wholeHeld`. Browser-checked on Camelot (VS CPU, saved Cowboy/Catgirl/Santa
 looks + DOOR Agent), frame by frame: WebGL2 backend before = red suit + specks for ~400 drawn frames, after = nothing then
 all three whole at once; classic WebGL after = whole. Proof /mnt/project-files/whole-body/.
+
+## THE GUEST'S RESULT EVERY MATCH + THE REMATCH VOTE (2026-11-07, timing/counters playtest H7 + H8; mondo: "Go ahead and start those fixes")
+- H7 (guest stayed on the board after a sudden-death win, host on VICTORY): not the sudden death. online.js `_applyRemoteState`
+  ran the guest's finalizeMatch once per `st._guestResultShown`, a bare `true` that only a rematch cleared. A second online match
+  in the same page (Main Menu, new room) never showed its result. The latch holds the match's `NET.matchId` now, and
+  `_ewResetOnlineMatchFlags` (every room in / out) clears it plus `_guestBoardBuilt`. (The 10-23 "THE LAST WORD" heartbeat was
+  the same symptom.)
+- H8 (REQUEST REMATCH started a host-only match against an unpicked team): ui.js binds the static `#nextMatchBtn` at load, before
+  online.js wraps `continueToNextMatch`, so online the button ran the OFFLINE next match on the host (the server then dropped the
+  host's snapshots, no votes). online.js rebinds the button to the wrapper right after wrapping; the wrapper is a vote only after
+  a decided match; both votes -> `_startOnlineRematch` (both seats to team pick, the lock again).
+- Proof (two real browsers, local server, live R2 code vs LOCAL_ASSETS=online.js, sudden-death kill ends each match):
+  /mnt/project-files/online-result-rematch-20261107/. Live code: match 2 guest on the board (`M2_guest_before_fix`), host
+  rematch = host in match 3 alone (`H8_host_before_fix`). Fixed: match 2 guest DEFEAT / host VICTORY, request -> guest
+  "Accept Rematch" -> both party builder (still there 20 s later, no picks) -> lock + start -> match 3 -> both results.

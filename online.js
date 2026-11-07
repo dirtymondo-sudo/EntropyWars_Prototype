@@ -1862,6 +1862,9 @@
         const _origContinueMatch = continueToNextMatch;
         continueToNextMatch = async function() {
             if (!_isOnline()) return _origContinueMatch();
+            /* a finished match only: the request is a vote, never a restart */
+            if (!state.winner && state._winCondition !== 'draw') return;
+            var nextMatchBtn = document.getElementById('nextMatchBtn');
             const me = _myPlayer();
             if (!window._NET._rematchState) window._NET._rematchState = {
                 1: false,
@@ -1883,6 +1886,15 @@
                 _startOnlineRematch();
             }
         };
+        /* THE REMATCH VOTE (timing/counters playtest 2026-11-07 H8: REQUEST REMATCH started a host-only match against a
+           team nobody picked while the guest still sat on the old board): ui.js binds the result screen's static button at
+           load, BEFORE this file wraps continueToNextMatch, so online it ran the offline "next match" — a new board at once,
+           the opponent's seat filled from the old builds. The button calls the wrapper now: a vote, and on both votes the
+           party builder for both seats (_startOnlineRematch). */
+        (function () {
+            var _nmb = document.getElementById('nextMatchBtn');
+            if (_nmb) _nmb.onclick = function () { return continueToNextMatch(); };
+        })();
 
         async function _startOnlineRematch() {
             window._NET._rematchState = {
@@ -3207,6 +3219,8 @@
                 NET._rankedResultEmitted = false;
                 NET.lastSyncJson = '';
                 NET._leanSent = null;
+                /* the guest's per-match latches (the result screen, the board build) start clean in every room (H7) */
+                if (window._gameState) { window._gameState._guestResultShown = false; window._gameState._guestBoardBuilt = false; }
                 window._ewIntroRemoteSkip = false;
                 window._ewRemoteMatchReady = false;
                 window._ewRemoteIntroDone = false;
@@ -6720,9 +6734,14 @@
                         }
                     }
 
-                    /* a draw is winner 0 (falsy): its own marker ends the guest's match too */
-                    if ((st.winner || st._winCondition === 'draw') && !st._guestResultShown) {
-                        st._guestResultShown = true;
+                    /* a draw is winner 0 (falsy): its own marker ends the guest's match too.
+                       THE GUEST'S RESULT, EVERY MATCH (timing/counters playtest 2026-11-07 H7: after a first online match
+                       the guest stayed on the board when the next one ended — a sudden-death win, the host on VICTORY):
+                       the latch was a bare `true` that only a rematch cleared, so a second match in the same page (Main
+                       Menu, then a new room) skipped finalizeMatch for good. It holds THIS match's id now. */
+                    var _grsKey = NET.matchId || true;
+                    if ((st.winner || st._winCondition === 'draw') && st._guestResultShown !== _grsKey) {
+                        st._guestResultShown = _grsKey;
 
                         if (typeof window.finalizeMatch === 'function') {
                             try {
