@@ -76887,6 +76887,25 @@
                 // Beat 2 starts when the cast beat ends (the wide cut lands).
                 const _haCastMs = Math.max(actionMs(300), _haCam?.sourceHold ?? actionMs(650));
                 const _haStagger = actionMs(140);
+                // YO HO FIX (11-07): ONE landing per ally, in a fixed order — heal, cleanse, then the spell's own
+                // statuses + stat stages. The cleanse used to run at another beat (the aura branch cleansed at the
+                // heal landing, AFTER the stat change), so Yo Ho's own -1 M ATK (a statDown debuff) was cleansed by
+                // Yo Ho itself; a Choir healRider cleanse on a later heal could eat it the same way. A cast never
+                // cleanses what it applies.
+                const _haCleanseN = spell.cleanse ? ((spell.cleanse === true) ? 1 : spell.cleanse) : 0;
+                const _haLand = (ally) => {
+                    if (ally.dead) return;
+                    const healAmount = healAllAmountFor(unit, spell, ally);
+                    const healed = healAmount > 0 ? applyHealingToUnit(ally, healAmount, unit) : 0;
+                    if (_haCleanseN > 0) {
+                        const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                        for (const k of debuffs.slice(0, _haCleanseN)) clearStatus(ally, k);
+                    }
+                    if (state.phase !== 'battle') return healed;
+                    if (spell.teamStatusEffects) applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
+                    if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
+                    return healed;
+                };
 
                 const _useVfx3dHealAll = (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'descent'));
@@ -76910,11 +76929,7 @@
 
                         window.setTimeout(() => {
                             if (ally.dead) return;
-                            const healAmount = healAllAmountFor(unit, spell, ally);
-                            if (healAmount > 0) {
-                                const healed = applyHealingToUnit(ally, healAmount, unit);
-                                totalHealed += healed;
-                            }
+                            totalHealed += _haLand(ally) || 0;
                         }, healLanding);
                     });
                     completionDelay = Math.max(
@@ -76940,19 +76955,7 @@
 
                         window.setTimeout(() => {
                             if (ally.dead) return;
-
-                            const healAmount = healAllAmountFor(unit, spell, ally);
-                            if (healAmount > 0) {
-                                const healed = applyHealingToUnit(ally, healAmount, unit);
-                                totalHealed += healed;
-                            }
-
-                            if (spell.cleanse) {
-                                const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                                const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
-                                const toCleanse = debuffs.slice(0, cleanseCount);
-                                for (const k of toCleanse) clearStatus(ally, k);
-                            }
+                            totalHealed += _haLand(ally) || 0;
                         }, healLanding);
                     });
                     completionDelay = Math.max(
@@ -76978,8 +76981,7 @@
                             if (ally.dead) return;
                             if (state.phase !== 'battle') return;
                             if (!_skipVisuals()) _vfxHeal(ally.x, ally.y, _haBigVfx ? { big: true } : undefined);
-                            const healAmount = healAllAmountFor(unit, spell, ally);
-                            if (healAmount > 0) applyHealingToUnit(ally, healAmount, unit);
+                            _haLand(ally);
                         }, _haCastMs + idx * _haStagger);
                     });
                     completionDelay = Math.max(
@@ -76990,26 +76992,8 @@
                     addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}, healing ${allies.length} allies.`);
                 }
 
-                // Unified team support for healAll: cleanse debuffs + apply a stat
-                // buff to the whole crew. The aura VFX branch already cleanses, so
-                // skip cleanse there to avoid double-dipping; stat buffs apply in all.
-                // Runs at beat 2 so the buff/cleanse floaters pop while the wide
-                // shot frames the team (not during the caster's wind-up).
-                if (spell.statStageBoost || spell.teamStatusEffects || (spell.cleanse && !_useVfx3dHealAllAura)) {
-                    window.setTimeout(() => {
-                        if (state.phase !== 'battle') return;
-                        for (const ally of allies) {
-                            if (ally.dead) continue;
-                            if (spell.teamStatusEffects) applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
-                            if (spell.cleanse && !_useVfx3dHealAllAura) {
-                                const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                                const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
-                                for (const k of debuffs.slice(0, cleanseCount)) clearStatus(ally, k);
-                            }
-                            if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
-                        }
-                    }, _haCastMs);
-                }
+                // Team support (cleanse + teamStatusEffects + statStageBoost) lands per ally inside _haLand above, at
+                // that ally's heal beat, so the floaters still pop while the wide shot frames the team.
             } else if (spell.kind === 'manaRestoreAll') {
                 playSfx('manaRegen');
                 // Soft cast shimmer on the caster — the recipients get the
