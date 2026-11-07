@@ -3557,7 +3557,7 @@
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
-            let _lit = 0, _doused = 0;
+            let _lit = 0, _doused = 0, _meltPools = 0;
             for (const tile of tiles) {
                 if (!tile || !isInside(tile.x, tile.y)) continue;
                 if (handled.has(tile.x + ',' + tile.y)) continue;
@@ -3603,9 +3603,14 @@
                     handled.add(tile.x + ',' + tile.y);
                     if (igniteTile(tile.x, tile.y, 2, caster)) _lit++;
                 } else if (el === 'cold' && _tileIsBurning(tile.x, tile.y)) {
-                    // ❄️ frost smothers ground fire.
+                    // ❄️ frost smothers ground fire. ICE + HEAT = WATER (mondo 2026-11-07: "flash freeze on burning tiles
+                    // should cause water"): the frost melts on the fire and the tile is left shallow water (the normal
+                    // terrain-change timer brings the ground back).
                     handled.add(tile.x + ',' + tile.y);
-                    if (extinguishTile(tile.x, tile.y)) _doused++;
+                    if (extinguishTile(tile.x, tile.y)) {
+                        _doused++;
+                        if (setTerrainAt(tile.x, tile.y, 'water') !== false && getTerrainAt(tile.x, tile.y) === 'water') _meltPools++;
+                    }
                 }
             }
             /* 💧⚡ WET CONDUCTS: a Soaked unit struck on dry ground carries the charge to every Soaked body (and wet tile)
@@ -3628,8 +3633,9 @@
                 addLog(`🔥 ${_ctSp(spell.name)} sets ${_lit} tile${_lit !== 1 ? 's' : ''} ablaze!`);
             }
             if (_doused) {
+                if (_meltPools) _invalidateBoardGrid();
                 scheduleBoardRender();
-                addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
+                addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}${_meltPools ? ` — the frost melts into water` : ''}.`);
             }
         }
         window.triggerTerrainSpellReaction = triggerTerrainSpellReaction;
@@ -3901,7 +3907,7 @@
                 if (_isFlammableTile(x, y)) return { el, hint: 'sets the ground ablaze' };
             } else if (el === 'cold') {
                 if (_isWaterTile(x, y)) return { el, hint: 'flash-freezes the water' };
-                if (_tileIsBurning(x, y)) return { el, hint: 'douses the flames' };
+                if (_tileIsBurning(x, y)) return { el, hint: 'douses the flames and leaves water' };
             }
             return null;
         }
@@ -37724,6 +37730,12 @@
                     // hit burns at full strength and can set them alight.
                     clearStatus(target, 'wet');
                     showFloatingTextForUnit(target, '♨️ Dried out', 'debuff', { durationMs: 900 });
+                }
+                // ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07): a frost hit on a burning unit melts on the flames —
+                // the burn goes out and the meltwater leaves the unit Soaked (the same as being doused by water).
+                if (_comboEl === 'cold' && !target.dead && !target._dying && target.status && target.status.burn) {
+                    _douseBurnOnUnit(target, 'The melting frost');
+                    _soakUnit(target, { douseLabel: 'The melting frost' });
                 }
                 // 🔥🧊 Fire cracks the ice: any fire-element hit thaws a
                 // Frozen target on the spot (yes, that means a fireball is

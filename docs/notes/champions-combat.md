@@ -4115,3 +4115,6 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   unit, battle.js applyDamageToUnit combo; frost on a pool, _reactColdWater; the retired Frost Mine trap) applies the
   real `frozen` status (1 round), so Shatter / every ×1.5 vs Frozen pays and a fire hit thaws it. A unit the combo
   already froze is not frozen (or logged) again by the pool reaction.
+- ICE + HEAT = WATER: "flash freeze on burning tiles should cause water". A frost spell on a burning tile puts it out
+  and leaves shallow water there (normal terrain-change timer); a frost hit on a burning unit puts the burn out and
+  leaves it Soaked (combo layer, after the flash-freeze check). Lava + ice still makes stone (his 10-18 rule).
