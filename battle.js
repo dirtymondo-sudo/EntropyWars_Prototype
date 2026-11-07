@@ -45662,6 +45662,45 @@
            ON the footprint. The old blanket pass lit the button (and let the
            cast through) for novae that hit zero targets. Footprint comes from
            the same getCrossArea/getSpellAoeArea the damage handler uses. */
+        /* THE SEEN NOVA (buffs/utility playtest 2026-11-07 F: online, the guest Sidekick's "Hey, Over Here!" row was lit
+           with nobody in reach, cast "but no enemies are in range" and still spent 25 MP + its cooldown; the only enemy
+           near was an INVISIBLE Shaman). A self-centred cast that only does something to enemies has a target exactly
+           when an enemy the caster's side can SEE stands in its reach and the cast does something to it. A cloaked
+           enemy (invisible, smoke, Cryptid) or one in fog never lights the row, so the row can't tell anyone an
+           unseen unit is close. A reach probe (TargetQuery.hasReachableTarget) judges sight from where the caster
+           stands now (_reachProbe), like every other row. */
+        function _novaSeesEnemy(unit, spell, e) {
+            if (!e || e.dead) return false;
+            if (isEnemyUnit(e, unit) && isUnitConcealedFrom(e, unit.player)) return false;
+            if (_reachProbe && _reachProbe.id === unit.id) return _reachProbe.seen.has(e.id);
+            return spellSeesEnemy(unit, spell, e);
+        }
+        /* the self-centred casts whose every effect lands on enemies: a barrage nova (Hey, Over Here!, Meow, Requiem…;
+           Splash paints its goo either way) and a no-damage area nova (Demonic Roar, Round Up). Damage areas keep their
+           ground effects (deform, terrain reactions, turrets) and stay a player choice. */
+        function _selfNovaEnemyOnly(spell) {
+            if (!spell) return false;
+            if (spell.paintTerrain || spell.aoeAllyHeal || spell.leaveTerrain || spell.zoneTickDamage > 0) return false;
+            if (spell.kind === 'barrage') return true;
+            return !!spell.aoeOriginSelf && (spell.kind === 'aoe' || spell.kind === 'aoePull')
+                && !!spell.noDamage && !((spell.dmg || 0) > 0) && !spell.terrainDeform;
+        }
+        /* the enemies such a cast would hit from where `unit` stands that its side sees and that it does something to */
+        function _selfNovaSeenVictims(unit, spell) {
+            if (!unit || !spell) return [];
+            let pool;
+            if (spell.kind === 'barrage') pool = _barrageTargets(unit, spell);
+            else {
+                const area = (spell.kind === 'aoePull')   // the aoePull branch's own footprint
+                    ? (_spellMaskTiles(spell, unit.x, unit.y) || getSquareArea(unit.x, unit.y, spell.aoeRadius || 1))
+                    : getSpellAoeArea(spell, unit.x, unit.y);
+                pool = aliveUnitsFor(enemyOf(unit.player)).filter(e => (e.x !== unit.x || e.y !== unit.y)
+                    && area.some(t => t.x === e.x && t.y === e.y));
+            }
+            return pool.filter(e => _novaSeesEnemy(unit, spell, e) && spellTargetUsableOn(unit, spell, e));
+        }
+        window._selfNovaSeenVictims = _selfNovaSeenVictims;
+
         function _selfNovaHasTarget(unit, spell) {
             if (!unit || !spell) return false;
             const area = (spell.kind === 'cross')
@@ -45669,7 +45708,9 @@
                 : getSpellAoeArea(spell, unit.x, unit.y);
             for (const t of area) {
                 if (t.x === unit.x && t.y === unit.y) continue;
-                if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y)) return true;
+                /* THE SEEN NOVA: an unseen enemy never lights a self-centred blast (it would tell where it hides) */
+                if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y
+                    && _novaSeesEnemy(unit, spell, e))) return true;
                 if (state.turrets?.some(tr => tr.hp > 0 && tr.x === t.x && tr.y === t.y)) return true;
                 if (state._deployedObjects?.some(o => o.hp > 0 && !o._detonated && o.x === t.x && o.y === t.y && o.ownerPlayer !== unit.player)) return true;
             }
@@ -45992,7 +46033,10 @@
             // cast hits nothing, so the menus grey it instead of letting a dead
             // cast through. Plain barrages keep the blanket pass (their radius is
             // the caster's problem, and casting into empty air is a player choice).
-            if (kind === 'barrage' && spell.hitsWetOnly) return _barrageTargets(unit, spell).length > 0;
+            if (kind === 'barrage' && spell.hitsWetOnly) return _selfNovaSeenVictims(unit, spell).length > 0;
+            // THE SEEN NOVA (playtest 2026-11-07 F): a nova that only touches enemies (Hey, Over Here!, Meow, Demonic
+            // Roar…) reads NO TARGET when no enemy the caster's side can see stands in its reach.
+            if (_selfNovaEnemyOnly(spell)) return _selfNovaSeenVictims(unit, spell).length > 0;
             // THE TARGETING RIDERS: a random-target row is lit exactly when its pool holds a victim
             if (spell.randomTargets && kind === 'damage' && spellRandomTargetsOf(spell)) return _randomTargetPool(unit, spell).length > 0;
 
@@ -77616,6 +77660,13 @@
                         ? `${_ctName(unit)} casts ${_ctSp(spell.name)}, restoring ${_mrTotal} MP across the team (${_mrWho.join(', ')}).`
                         : `${_ctName(unit)} casts ${_ctSp(spell.name)}, but every ally's MP is already full.`);
             } else if (spell.kind === 'aoe') {
+                /* THE SEEN NOVA (playtest 2026-11-07 F): a no-damage self nova (Demonic Roar) with no enemy the caster's
+                   side sees in reach is refused before any MP or cooldown is spent */
+                if (spell.aoeOriginSelf && _selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 const _aoeArea = getSpellAoeArea(spell, x, y);
@@ -77662,6 +77713,13 @@
                 // that hit nothing.
                 if (spell.hitsWetOnly && _barrageTargets(unit, spell).length === 0) {
                     addLog(`${_ctSp(spell.name)}: no enemies are standing in water.`);
+                    playErrorSfx();
+                    return 0;
+                }
+                /* THE SEEN NOVA (playtest 2026-11-07 F): no enemy the caster's side sees in reach = no cast, before any
+                   MP or cooldown is spent (the rows read NO TARGET; this catches a board click) */
+                if (_selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -79055,6 +79113,13 @@
             }
 
             else if (spell.kind === 'aoePull') {
+                /* THE SEEN NOVA (playtest 2026-11-07 F): a no-damage self pull (Round Up) with no enemy the caster's side
+                   sees in reach is refused before any MP or cooldown is spent */
+                if (spell.aoeOriginSelf && _selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: aoePull uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
