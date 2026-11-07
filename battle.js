@@ -2896,7 +2896,7 @@
         window._unitInRain = _unitInRain;
 
         function _soakUnit(u, opts = {}) {
-            if (!u || u.dead || u._dying) return false;
+            if (_unitIsDown(u)) return false;   // THE FALLEN TAKE NOTHING (applyStatusPayload)
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
             _douseBurnOnUnit(u, opts.douseLabel);
             const status = ensureUnitStatus(u);
@@ -6528,6 +6528,7 @@
                    (Gooed: magic ×1.25) applies to this very cast. */
                 /* THE LOG ORDER: the status is applied first (rule), but its line reads after the hit's line */
                 const _sfMark = (spell.statusFirst && spell.statusEffects && !target.dead) ? _logMark() : null;
+                const _sfBefore = _sfMark ? Object.assign({}, target.status || {}) : null;   // THE KILLING HIT TOO: undone if the hit kills
                 if (spell.statusFirst && spell.statusEffects && !target.dead) {
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                 }
@@ -6548,7 +6549,12 @@
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                         element: _spellEl, isCrit: _hitCrit.isCrit
                     });
-                if (_sfMark) {
+                if (_sfMark && _unitIsDown(target)) {
+                    /* 💀 THE KILLING HIT TOO (status playtest 2026-11-07): the status went on first only so its multiplier
+                       counts for this hit; a hit that kills leaves no status on the body, and its line goes too */
+                    target.status = _sfBefore;
+                    _logDrop(_sfMark, _sfMid);
+                } else if (_sfMark) {
                     const _sfHead = `${unitDisplayName(unit)} casts ${spell.name}`;
                     _logSinkAfter(_sfMark, _sfMid, m => _ctPlain(m).indexOf(_sfHead) >= 0);
                 }
@@ -9376,7 +9382,7 @@
         }
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
-            if (!target || target.dead || target._dying || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
+            if (_unitIsDown(target) || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
             // never apply — the positive half of a mixed boost still lands.
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
@@ -9904,14 +9910,26 @@
         }
         if (typeof window !== 'undefined') window._afterShotTarget = _afterShotTarget;
 
+        /* 💀 DOWN = dead, falling (`_dying`) or at 0 HP inside the killing hit (applyDamageToUnit lands its payload before
+           defeatUnit flags the body). Every status / stat stage / seed / aura / soak gate reads this. */
+        function _unitIsDown(u) {
+            return !u || !!u.dead || !!u._dying || (typeof u.hp === 'number' && u.hp <= 0);
+        }
+        if (typeof window !== 'undefined') window._unitIsDown = _unitIsDown;
+
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
             /* 💀 THE FALLEN TAKE NOTHING (elements playtest 2026-11-06 D1: "Witch is defeated" then "Plasma Cannon: Witch
                is burning / jammed"). defeatUnit sets hp 0 + `_dying` at the killing blow and only flips `dead` after the
                ~800 ms fall, so the same hit's status payload, a terrain tick or a weather pass in that window still landed
                on the body. A unit that is down — dead OR falling — takes no status from any source; its next life starts
                clean (processRespawns wipes `status`). Same gate on applyStatusEffects / applyStatStageBoost / seeds / auras,
-               map.js applyTerrainTurnEffects and state.js's terrain + weather passes. */
-            if (!target || target.dead || target._dying || !payload?.id || !STATUS_DEFS[payload.id]) return false;
+               map.js applyTerrainTurnEffects and state.js's terrain + weather passes.
+               THE KILLING HIT TOO (status playtest 2026-11-07 A1/A2: "Vampire takes 361" -> "Vampire is grievously wounded" ->
+               "Vampire is defeated"; Migraine's "Ghost is weakened" on the hit that killed it): applyDamageToUnit takes the HP
+               off, lands the hit's own statuses / stat stages, and only THEN calls defeatUnit, so the gate above saw a live
+               unit at 0 HP. 0 HP is down too (_unitIsDown); the Martyr's Talisman save now runs before the hit's payload, so
+               a unit it holds at 1 HP still takes the status. */
+            if (_unitIsDown(target) || !payload?.id || !STATUS_DEFS[payload.id]) return false;
             /* THE SPELL AUDIT Batch D (Hush): a payload with `ifTargetHas` lands only on a unit already wearing that status
                (silence the Discorded) — a quiet skip, no "resists" line. */
             if (payload.ifTargetHas && !bonusStatusMatches(target, payload.ifTargetHas)) return false;
@@ -10220,7 +10238,7 @@
         }
 
         function applyStatusEffects(target, status = {}, sourceLabel = '', sourceUnit = null) {
-            if (!target || target.dead || target._dying || !status) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
+            if (_unitIsDown(target) || !status) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             if (Array.isArray(status)) {
                 status.forEach(payload => applyStatusPayload(target, payload, sourceLabel, sourceUnit));
                 return;
@@ -10242,7 +10260,7 @@
             _expireStatusHolds({ roundEnd: true });   // ⏳ THE FULL ROUND: a hold whose round this was ends before any tick
 
             const affected = state.units.filter(u => {
-                if (u.dead || u._dying) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
+                if (_unitIsDown(u)) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
                 const keys = getActiveStatusKeys(u);
                 return keys.some(k => {
                     const def = STATUS_DEFS[k];
@@ -11192,7 +11210,7 @@
             return o;
         }
         function applySeedEffectToUnit(seed, unit, events = null, planted = false) {
-            if (!seed || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
+            if (!seed || _unitIsDown(unit)) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -11414,7 +11432,7 @@
 
         // What a grown aura tree does to one unit inside its radius each round.
         function applyAuraTreeEffectToUnit(tree, unit, events = null) {
-            if (!tree || !tree.aura || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
+            if (!tree || !tree.aura || _unitIsDown(unit)) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -37881,6 +37899,24 @@
                 flashUnit(target.id, 'block');
             }
 
+            // ── Martyr's Talisman: defy the first killing blow each life ──
+            // Fires on ANY lethal damage (hits, DoT, environment) — one save
+            // per life, recharged when the unit eventually dies and respawns.
+            // (THE PASSIVES, Phase 4: the `surviveLethalOnce` hook — the Talisman's gear row carries it)
+            /* 💀 THE KILLING HIT TOO (status playtest 2026-11-07): the save runs BEFORE the hit's statuses, stat stages and
+               element riders below. They all skip a unit left at 0 HP (_unitIsDown), so the save has to come first or the
+               unit it holds at 1 HP would lose the payload it lived through. */
+            if (target.hp <= 0 && !target._talismanSpent && typeof unitPassiveValue === 'function'
+                && unitPassiveValue(target, 'surviveLethalOnce')) {
+                const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
+                target._talismanSpent = true;
+                target.hp = 1;
+                addLog(`✨ ${_ctName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
+                showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
+                flashUnit(target.id, 'heal');
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+            }
+
             if (opts.statusEffects || opts.status) {
                 let _stFx = opts.statusEffects || opts.status;
                 // Stamp the hit's element on the payloads so affinity-coupled
@@ -37894,12 +37930,12 @@
             }
             /* THE SPELL AUDIT FIX (2026-10-26): a damaging row's `statStageBoost` ("lowers DEF by 1 stage") rides the hit
                like its statuses — every damage resolver passes it here (it used to land only on the noDamage paths). */
-            if (opts.statStageBoost && !target.dead && !target._dying) {
+            if (opts.statStageBoost && !_unitIsDown(target)) {
                 applyStatStageBoost(target, opts.statStageBoost, opts.statStageLabel || '', sourceUnit);
             }
 
             // ── ⚗️ Elemental combo layer, post-hit half ────────────────────
-            if (_comboEl && !target.dead && !target._dying) {
+            if (_comboEl && !_unitIsDown(target)) {   // the hit that killed it neither freezes, steams nor thaws the body
                 if (_comboSupercharge) {
                     // ⚙️ SUPERCHARGED: the jolt overclocks the machine (+ATK,
                     // +1 move, tech range bonus) and tops up its capacitors.
@@ -37928,7 +37964,7 @@
                 }
                 // ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07): a frost hit on a burning unit melts on the flames —
                 // the burn goes out and the meltwater leaves the unit Soaked (the same as being doused by water).
-                if (_comboEl === 'cold' && !target.dead && !target._dying && target.status && target.status.burn) {
+                if (_comboEl === 'cold' && !_unitIsDown(target) && target.status && target.status.burn) {
                     _douseBurnOnUnit(target, 'The melting frost');
                     _soakUnit(target, { douseLabel: 'The melting frost' });
                 }
@@ -37942,7 +37978,7 @@
             // burn) — every water spell sets up the ⚡ conduction and ❄️
             // flash-freeze follow-ups. Centralized here so ALL current and
             // future water-tagged damage soaks, no per-spell wiring.
-            if (_affEl === 'water' && damage > 0 && !target.dead && !target._dying) {
+            if (_affEl === 'water' && damage > 0 && !_unitIsDown(target)) {
                 _soakUnit(target, { douseLabel: 'The deluge' });
             }
 
@@ -37975,20 +38011,7 @@
                 forceGroundUnit(target, { reason: 'wounded' });
             }
 
-            // ── Martyr's Talisman: defy the first killing blow each life ──
-            // Fires on ANY lethal damage (hits, DoT, environment) — one save
-            // per life, recharged when the unit eventually dies and respawns.
-            // (THE PASSIVES, Phase 4: the `surviveLethalOnce` hook — the Talisman's gear row carries it)
-            if (target.hp <= 0 && !target._talismanSpent && typeof unitPassiveValue === 'function'
-                && unitPassiveValue(target, 'surviveLethalOnce')) {
-                const _talName = (getUnitPassives(target).find(p => p && p.surviveLethalOnce) || {}).name || "Martyr's Talisman";
-                target._talismanSpent = true;
-                target.hp = 1;
-                addLog(`✨ ${_ctName(target)}'s ${_talName} flares — they defy death and hold on at 1 HP!`);
-                showFloatingTextForUnit(target, '✨ ENDURED!', 'buff', { durationMs: 1400 });
-                flashUnit(target.id, 'heal');
-                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
-            }
+            /* (the Martyr's Talisman save runs above, before the hit's statuses — THE KILLING HIT TOO) */
             /* THE PASSIVES (SPELL_LIBRARY_PLAN.md §4.5, Phase 4) — `healOnceBelowPct: { pct, healPct }`: once per life, a hit
                that leaves the unit alive under pct% HP heals it healPct% of max HP. The ledger `_passiveSpent` is per life
                (cleared at respawn beside `_talismanSpent`); host-side, the HP rides state-sync. */
@@ -42786,6 +42809,15 @@
                 if (!(i > at) || i >= arr.length) continue;
                 const e = arr.splice(i, 1)[0];
                 arr.splice(at, 0, e);
+            }
+        }
+        /* the lines written between `mark` and `mid` come out of both logs (a status line the same hit took back) */
+        function _logDrop(mark, mid) {
+            if (!mark || !mid) return;
+            for (const [key, a, b] of [['logEntries', mark.a, mid.a], ['_fullLogEntries', mark.b, mid.b]]) {
+                const arr = state[key];
+                if (!arr || !(b > a) || b > arr.length) continue;
+                arr.splice(a, b - a);
             }
         }
         /* the lines written between `mark` and `mid` move to just after the first later line `isAnchor` accepts */
@@ -80085,11 +80117,12 @@
                     } else if (mimicSpell.kind === 'buff' && target && isAllyUnit(target, unit)) {
                         applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
                     } else if (mimicSpell.kind === 'debuff' && target && isEnemyUnit(target, unit)) {
-                        applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
+                        /* THE KILLING HIT TOO (2026-11-07): the hit first, then the status — a hit that kills leaves none */
                         if (mimicSpell.dmg) {
                             const dmg = Math.max(16, Math.floor(mimicSpell.dmg + spellPower));
                             applyDamageToUnit(target, dmg, `Mimic ${mimicSpell.name}: `, { sourceUnit: unit, damageType: mimicSpell.damageType || 'magic', spellType: mimicSpell.spellType || null });
                         }
+                        applyStatusEffects(target, mimicSpell.statusEffects, `Mimic ${mimicSpell.name}: `, unit);
                     } else {
                         addLog(`Mimic fizzles — invalid target for ${mimicSpell.name}.`);
                     }

@@ -15261,7 +15261,7 @@
         }
 
         function applyTerrainTurnEffects(unit) {
-            if (!unit || unit.dead || unit._dying) return;   // 💀 THE FALLEN TAKE NOTHING: no lava / plague / ooze tick on a body (battle.js applyStatusPayload)
+            if (!unit || unit.dead || unit._dying || unit.hp <= 0) return;   // 💀 THE FALLEN TAKE NOTHING: no lava / plague / ooze tick on a body (battle.js applyStatusPayload)
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             /* CHAMP_REWORK Phase 5 wave C (2026-09-08): Oozing's trail — the
