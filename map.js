@@ -11201,6 +11201,19 @@
 
             _noteTerrainChange(x, y, z, _priorTop, _priorAt);
             state._terrainVersion = (state._terrainVersion || 0) + 1;
+            /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07): water or ice painted on a burning tile (a flood, a spout, a
+               storm puddle, a melt) puts the ground fire out at once (it used to wait for the round end), and a grounded
+               unit standing there stops burning */
+            if (state.phase === 'battle') {
+                const _nowTop = getTerrainAt(x, y);
+                if (_nowTop === 'water' || _nowTop === 'deep_water' || _nowTop === 'ice') {
+                    if (state.burningTiles && state.burningTiles[x + ',' + y]) delete state.burningTiles[x + ',' + y];
+                    if (_nowTop !== 'ice' && typeof window._douseBurnOnUnit === 'function' && typeof unitAt === 'function') {
+                        const _u = unitAt(x, y);
+                        if (_u && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_u))) window._douseBurnOnUnit(_u, 'The water');
+                    }
+                }
+            }
             return true;
         }
 
@@ -15234,6 +15247,7 @@
         }
 
         function applyTerrainTurnEffects(unit) {
+            if (!unit || unit.dead || unit._dying) return;   // 💀 THE FALLEN TAKE NOTHING: no lava / plague / ooze tick on a body (battle.js applyStatusPayload)
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             /* CHAMP_REWORK Phase 5 wave C (2026-09-08): Oozing's trail — the
@@ -16314,6 +16328,7 @@
             unit._streakAtkBonus = 0;
             unit._turnKills = 0;
             unit.skyBuff = null;   // a new life never carries the celestial buff back
+            unit._lavaBurnStacks = 0;   // nor the last life's lava stacks (they escalate the Burn tick — data.js STATUS_DEFS.burn)
             /* a fresh life that wears no stance carrier (STATUS_DEFS `form` — the Sedan's Mecha) drops the form's model:
                the respawn wipes mechaForm, so the Sedan comes back a CAR, not a car-stats robot (2026-10-24) */
             if (unit._spriteOverride && !Object.keys(unit.status || {}).some(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].form)) {

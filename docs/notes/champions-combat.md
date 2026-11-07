@@ -3323,7 +3323,16 @@ The report: Divine Light's target rows showed no heal amount, and the Cube row i
   summonWeather cast (battle.js) stacked a second copy (two Blood Rains = double burn/heal). Now a cast of a weather
   that is up renews it: rounds = max(left, cast roll), it becomes the caster's, a storm's eye / patch moves to the
   picked tile; log "The X already up is renewed: N rounds left." (call flagged to mondo).
-- OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.
+- ~~OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.~~ settled 2026-11-07 below.
+- OPPOSITE WEATHERS NEVER SHARE THE SKY (2026-11-07, elements playtest E1 Thunderstorm + Drought, E2 Thunderstorm +
+  Sandstorm + Blood Rain; mondo "fix the other big bugs the elemental playtest found"; the card's recommended option):
+  state.js WEATHER_REGISTRY `sky: 'dry'` (Drought, Sandstorm) vs `sky: 'wet'` (Thunderstorm, Hurricane, Blood Rain,
+  Blizzard); `weathersOppose(a, b)`. spawnWeather + the dungeon floor sky (battle.js `_mdRollFloorAmbience`) never roll a
+  kind opposite to one up; a summonWeather cast is the newer one and `driveOffOpposedWeathers(type)` ends the opposite
+  one on the spot (log "The Drought ☀ is driven off by the Thunderstorm ⛈."), no leftover terrain; tickWeather first runs
+  `settleOpposedWeathers()` (any pair left: the later one in the list stays). Not opposite (both stay): two rains
+  (Thunderstorm + Blood Rain), Tornado, Earthquake, Solar Flare, Tesseract Storm. Guest gets it through state-sync
+  (activeWeather + log). ui.js board fingerprint now hashes every weather's type (a swap kept the count).
 
 ## THE FLYER IS NOT THE TILE — flyer clicks vs tile clicks (2026-10-29, VS CPU playtest R9 + R7, mondo's notes 4/5 + bug 3)
 mondo: "clicking a flying unit and clicking a tile need to be 2 separate things" (a click on the tile under the
@@ -4110,6 +4119,17 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
 - battle.js aoePull log now names the caster ("X casts Crowd Surge: hits N targets…" / "…but no enemies are in range.").
 - G2: "splashes 1 unit round X" -> "around".
 
+## THE FALLEN TAKE NOTHING (2026-11-07, elements playtest D1)
+"Witch is defeated" then "Plasma Cannon: Witch is burning / jammed": map.js defeatUnit sets hp 0 + `_dying` at the killing
+blow and flips `dead` only after the ~800 ms fall, and every status gate checked `dead` alone, so the same hit's status payload,
+a lava / plague end-of-turn tick, a second weather pass or a round-end DoT dive still reached the falling body. Now `dead ||
+_dying` gates: battle.js applyStatusPayload / applyStatusEffects / applyStatStageBoost / applySeedEffectToUnit /
+applyAuraTreeEffectToUnit / processEndOfRoundStatuses (affected list, both tick loops: the tick that downs a unit is its last and
+reads "claimed by"), map.js applyTerrainTurnEffects, state.js beginBlitzRound terrain loop + applyWeatherTurnEffects. Damage and
+heals were already gated. A new life starts clean: processRespawns wipes `status`, and resetUnitPowerState now also zeroes
+`_lavaBurnStacks` (they escalated the next life's first lava Burn tick). Statuses a unit wore BEFORE it fell stay on the body
+until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule).
+
 ### THE WATER + FIRE + FREEZE PASS (2026-11-07, mondo after the elements playtest)
 - FROZEN IS FROZEN: "obviously frozen is not supposed to be stun. frozen is frozen". The flash-freeze (frost on a soaked
   unit, battle.js applyDamageToUnit combo; frost on a pool, _reactColdWater; the retired Frost Mine trap) applies the
@@ -4118,6 +4138,18 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
 - ICE + HEAT = WATER: "flash freeze on burning tiles should cause water". A frost spell on a burning tile puts it out
   and leaves shallow water there (normal terrain-change timer); a frost hit on a burning unit puts the burn out and
   leaves it Soaked (combo layer, after the flash-freeze check). Lava + ice still makes stone (his 10-18 rule).
+- WATER PUTS OUT FIRE: "Water is supposed to put out fire" + "walking through water should put out burn" + "rain should
+  put out burning units". Every water spell puts out the ground fire on the tiles it strikes (triggerTerrainSpellReaction)
+  and can be aimed at a burning tile (_elementalTileCastInfo, el 'water'); water/ice painted on a burning tile puts it out
+  at once and douses a grounded unit there (map.js setTerrainAt); a water tile crossed mid-walk soaks + douses the walker
+  (_walkPassHazards); rain douses every burning unit it falls on, flyers too, when it forms and every round end
+  (state.js rainOnTheBoard), and a flyer in the rain can't catch fire (_unitInRain anyHeight). Water heals (Yo Ho,
+  Temporal Tide) don't douse: they deal no water hit.
+- ONE NAME, SOAKED: "what is up with all of these different water effects like wet and soaked, isnt that the exact same
+  thing?" It always was one status (id `wet`); the pill / ability chips said WET and everything else said Soaked. The
+  pill is SOAK now and every player-facing "wet" for the status reads Soaked (Ink Cloud desc, Thunderstorm desc, Balance
+  Lab reaction labels, the status description). Flavour text ("a long, wet hand") stays.
+
 
 ## THE GROUND FIRE SETS OFF THE SLICK (2026-11-07, elements playtest A1: "Black ooze and fire sit on the same tile without anything happening")
 - The rule was already written (data.js `swamp`/`oil`: they DETONATE when hit by fire/lightning; PLAYTEST_NOTES "LIQUID PASS"),

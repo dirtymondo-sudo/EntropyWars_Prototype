@@ -1245,7 +1245,7 @@
             if (weStartedBuffering) _reStartBuffering();
 
             for (const u of state.units) {
-                if (!u.dead) {
+                if (!u.dead && !u._dying) {   // a body still falling (killed earlier this pass) takes no terrain tick
                     updateTerrainStay(u);
                     _reBeginGroup(`🌍 Terrain: ${unitDisplayName(u)}`);
                     applyTerrainTurnEffects(u);
@@ -1747,6 +1747,7 @@
             },
             hurricane: {
                 label: 'Hurricane',
+                sky: 'wet',   // 🌦 OPPOSITE WEATHERS: a soaking rain / a freezing storm (weathersOppose)
                 icon: '🌀',
                 tiles: [5, 8],
                 roaming: true,
@@ -1771,6 +1772,7 @@
             },
             bloodRain: {
                 label: 'Blood Rain',
+                sky: 'wet',   // 🌦 OPPOSITE WEATHERS: a soaking rain / a freezing storm (weathersOppose)
                 icon: '🩸',
                 tiles: [5, 8],
                 roaming: true,
@@ -1798,6 +1800,7 @@
             },
             drought: {
                 label: 'Drought',
+                sky: 'dry',   // 🌦 OPPOSITE WEATHERS: it dries the water, blood and ice / drifts desert (weathersOppose)
                 icon: '☀',
                 tiles: [7, 10],
                 roaming: true,
@@ -1834,6 +1837,7 @@
             },
             thunderstorm: {
                 label: 'Thunderstorm',
+                sky: 'wet',   // 🌦 OPPOSITE WEATHERS: a soaking rain / a freezing storm (weathersOppose)
                 icon: '⛈',
                 tiles: [4, 7],
                 roaming: true,
@@ -1841,7 +1845,7 @@
                 homingSpeed: 2,
                 global: true,
                 duration: [3, 4],
-                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the wet. -5 DEF in the eye. Leaves puddles.',
+                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the Soaked. -5 DEF in the eye. Leaves puddles.',
                 element: 'lightning',
                 soaks: true,
                 seedTerrain: 'water',
@@ -1889,6 +1893,7 @@
             },
             blizzard: {
                 label: 'Blizzard',
+                sky: 'wet',   // 🌦 OPPOSITE WEATHERS: a soaking rain / a freezing storm (weathersOppose)
                 icon: '🌨',
                 tiles: [4, 6],
                 roaming: true,
@@ -1922,6 +1927,7 @@
             },
             sandstorm: {
                 label: 'Sandstorm',
+                sky: 'dry',   // 🌦 OPPOSITE WEATHERS: it dries the water, blood and ice / drifts desert (weathersOppose)
                 icon: '🏜',
                 tiles: [5, 7],
                 roaming: true,
@@ -1973,6 +1979,54 @@
         const WEATHER_SPAWN_ROUND = 2;
         const WEATHER_SPAWN_CHANCE = 0.42;
         const WEATHER_MAX_ACTIVE = 2;
+
+        /* 🌦 OPPOSITE WEATHERS NEVER SHARE THE SKY (2026-11-07, the elements playtest E1/E2: Thunderstorm + Drought, then
+           Thunderstorm + Sandstorm + Blood Rain, all up at once and all ticking; mondo's 10-29 weathers-together card,
+           its recommended option). A weather's `sky` names its side: 'dry' (the Drought dries the water, blood and ice;
+           the Sandstorm drifts the desert) against 'wet' (a rain that soaks; the Blizzard's ice). The natural roll never
+           forms a weather opposite to one up (spawnWeather, a dungeon floor's sky); a cast weather is the newer one and
+           drives the opposite one off on the spot (battle.js summonWeather); tickWeather settles any pair left, the
+           newer one staying. The weather that leaves takes its rules with it (its heal cut, its rain, its eye). */
+        function weathersOppose(a, b) {
+            const da = WEATHER_REGISTRY[a], db = WEATHER_REGISTRY[b];
+            return !!(da && db && da.sky && db.sky && da.sky !== db.sky);
+        }
+        function weatherOpposedUp(type) {
+            return (state.activeWeather || []).filter(w => w && weathersOppose(w.type, type));
+        }
+        /* the newer weather `type` drives off every opposite one up; returns the weathers it ended */
+        function driveOffOpposedWeathers(type) {
+            const off = weatherOpposedUp(type);
+            if (!off.length) return off;
+            const nDef = WEATHER_REGISTRY[type];
+            state.activeWeather = state.activeWeather.filter(w => !off.includes(w));
+            for (const w of off) {
+                const def = WEATHER_REGISTRY[w.type];
+                addLog(`The ${def.label} ${def.icon} is driven off by the ${nDef.label} ${nDef.icon}.`);
+            }
+            return off;
+        }
+        /* any opposite pair still up (an older board, a path that pushed one in): the later one in the list is the newer
+           one and stays */
+        function settleOpposedWeathers() {
+            const list = state.activeWeather || [];
+            if (list.length < 2) return;
+            for (let i = list.length - 1; i >= 0; i--) {
+                const w = list[i];
+                if (!w || !state.activeWeather.includes(w)) continue;
+                const older = state.activeWeather.slice(0, state.activeWeather.indexOf(w)).filter(o => o && weathersOppose(o.type, w.type));
+                if (!older.length) continue;
+                const nDef = WEATHER_REGISTRY[w.type];
+                state.activeWeather = state.activeWeather.filter(o => !older.includes(o));
+                for (const o of older) {
+                    const def = WEATHER_REGISTRY[o.type];
+                    addLog(`The ${def.label} ${def.icon} is driven off by the ${nDef.label} ${nDef.icon}.`);
+                }
+            }
+        }
+        window.weathersOppose = weathersOppose;
+        window.weatherOpposedUp = weatherOpposedUp;
+        window.driveOffOpposedWeathers = driveOffOpposedWeathers;
 
         function checkFallDamage() {}
         function canFlyToSky() { return false; }
@@ -2583,6 +2637,15 @@
                 if (setTerrainAt(x, y, 'water') !== false && getTerrainAt(x, y) === 'stone') hardened++;
             }
             if (doused) addLog(`${def.icon} The ${def.label} puts out the fire on ${doused} tile${doused !== 1 ? 's' : ''}.`);
+            /* 🌧️🔥 RAIN PUTS OUT BURNING UNITS (mondo 2026-11-07: "yes rain should put out burning units"): the moment the
+               rain forms and at every round end, every unit it falls on — flyers too, the rain falls on them — stops
+               burning (the per-turn soak below also douses the grounded) */
+            if (typeof _douseBurnOnUnit === 'function') {
+                for (const u of (state.units || [])) {
+                    if (!u || u.dead || u._dying || !(u.status && u.status.burn)) continue;
+                    if (_rainLandsOn(weather, u.x, u.y)) _douseBurnOnUnit(u, `The ${def.label.toLowerCase()}`);
+                }
+            }
             if (hardened && typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
             if ((doused || hardened) && typeof scheduleBoardRender === 'function') scheduleBoardRender();
         }
@@ -2622,7 +2685,8 @@
             /* 🌦 a weather that is already up never forms a second time on top of itself (PvP playtest 10-24: Solar Flare formed
                in round 2 and again in round 3, and the two ran at once) — the roll picks among the kinds not on the board */
             const _upNow = new Set((state.activeWeather || []).map(w => w && w.type));
-            let availableKeys = WEATHER_KEYS.filter(k => !_upNow.has(k));
+            /* 🌦 OPPOSITE WEATHERS: nor one opposite to a weather up (a Drought never forms under a Thunderstorm) */
+            let availableKeys = WEATHER_KEYS.filter(k => !_upNow.has(k) && !weatherOpposedUp(k).length);
             if (!availableKeys.length) return;
             const type = availableKeys[engineRandInt(availableKeys.length)];
             const def = WEATHER_REGISTRY[type];
@@ -2754,7 +2818,7 @@
                 }
                 if (!def.onTurnEffect && !def.soaks) continue;
                 for (const unit of units) {
-                    if (unit.dead || !weatherOnTile(weather, unit.x, unit.y)) continue;
+                    if (unit.dead || unit._dying || !weatherOnTile(weather, unit.x, unit.y)) continue;   // the storm that downed it doesn't soak the body
                     // 🌧️ Rain-type weather soaks whoever stands in it (wet =
                     // conducts lightning, resists fire, flash-freezable) —
                     // and the downpour puts out any fire on them on the spot.
@@ -3095,6 +3159,7 @@
 
         function tickWeather() {
             if (!state.activeWeather) return;
+            settleOpposedWeathers();   // 🌦 OPPOSITE WEATHERS: never both tick
             for (const weather of state.activeWeather) {
                 driftWeather(weather);
                 weather.remaining -= 1;

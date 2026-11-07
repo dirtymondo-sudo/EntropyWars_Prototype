@@ -2392,7 +2392,7 @@
                             ThreeVFX.isActive && ThreeVFX.isActive()) {
                             ThreeLightning.strikeFromSky(x, y, { durationMs: 340 });
                         } else {
-                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : '❄️', 'damage');
+                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : _etc.el === 'water' ? '💧' : '❄️', 'damage');
                         }
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         markDirty('board', 'hud');
@@ -2879,9 +2879,11 @@
         // 🌧️ True when rain-type weather (any def.soaks system: hurricane,
         // thunderstorm, blood rain) is falling on the unit's tile. Airborne
         // flyers ride above the soak, same rule as the weather tick itself.
-        function _unitInRain(u) {
+        function _unitInRain(u, anyHeight) {
             if (!u || !state.activeWeather || !state.activeWeather.length) return false;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            /* anyHeight: the rain falls on a flyer too — it can't catch fire in it (WATER PUTS OUT FIRE, mondo 2026-11-07);
+               only the Soaked status still skips flyers */
+            if (!anyHeight && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
             for (const w of state.activeWeather) {
                 const def = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[w.type] : null;
                 if (!def || !def.soaks) continue;
@@ -3605,6 +3607,18 @@
                 }
                 if (_hard) { _invalidateBoardGrid(); scheduleBoardRender(); }
             }
+            /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07: "Water is supposed to put out fire"): every water spell puts out
+               the ground fire on the tiles it strikes (frost already did, and leaves water) */
+            if (_rawEl === 'water') {
+                let _wDoused = 0;
+                for (const tile of tiles) {
+                    if (tile && isInside(tile.x, tile.y) && _tileIsBurning(tile.x, tile.y) && extinguishTile(tile.x, tile.y)) _wDoused++;
+                }
+                if (_wDoused) {
+                    scheduleBoardRender();
+                    addLog(`💧 ${_ctSp(spell.name)} puts out the flames on ${_wDoused} tile${_wDoused !== 1 ? 's' : ''}.`);
+                }
+            }
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
@@ -3949,6 +3963,8 @@
         function _elementalTileCastInfo(spell, x, y) {
             if (!spell || spell.kind !== 'damage') return null;
             if (!isInside(x, y)) return null;
+            /* 💧 a water spell may be aimed at a burning tile to put it out (WATER PUTS OUT FIRE, 2026-11-07) */
+            if (getSpellElement(spell) === 'water' && _tileIsBurning(x, y)) return { el: 'water', hint: 'puts out the flames' };
             const el = classifySpellElement(spell);
             if (!el) return null;
             if (el === 'lightning') {
@@ -9339,7 +9355,7 @@
         }
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
-            if (!target || target.dead || !boost) return;
+            if (!target || target.dead || target._dying || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
             // never apply — the positive half of a mixed boost still lands.
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
@@ -9868,7 +9884,13 @@
         if (typeof window !== 'undefined') window._afterShotTarget = _afterShotTarget;
 
         function applyStatusPayload(target, payload = {}, sourceLabel = '', sourceUnit = null) {
-            if (!target || target.dead || !payload?.id || !STATUS_DEFS[payload.id]) return false;
+            /* 💀 THE FALLEN TAKE NOTHING (elements playtest 2026-11-06 D1: "Witch is defeated" then "Plasma Cannon: Witch
+               is burning / jammed"). defeatUnit sets hp 0 + `_dying` at the killing blow and only flips `dead` after the
+               ~800 ms fall, so the same hit's status payload, a terrain tick or a weather pass in that window still landed
+               on the body. A unit that is down — dead OR falling — takes no status from any source; its next life starts
+               clean (processRespawns wipes `status`). Same gate on applyStatusEffects / applyStatStageBoost / seeds / auras,
+               map.js applyTerrainTurnEffects and state.js's terrain + weather passes. */
+            if (!target || target.dead || target._dying || !payload?.id || !STATUS_DEFS[payload.id]) return false;
             /* THE SPELL AUDIT Batch D (Hush): a payload with `ifTargetHas` lands only on a unit already wearing that status
                (silence the Discorded) — a quiet skip, no "resists" line. */
             if (payload.ifTargetHas && !bonusStatusMatches(target, payload.ifTargetHas)) return false;
@@ -9889,7 +9911,7 @@
             // can't ignite someone who is being rained on / waist-deep.
             if (payload.id === 'burn' && (unitHasStatus(target, 'wet')
                 || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
-                || (typeof _unitInRain === 'function' && _unitInRain(target)))) {
+                || (typeof _unitInRain === 'function' && _unitInRain(target, true)))) {
                 addLog(`💧 ${_ctName(target)} is too soaked to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
@@ -10175,7 +10197,7 @@
         }
 
         function applyStatusEffects(target, status = {}, sourceLabel = '', sourceUnit = null) {
-            if (!target || target.dead || !status) return;
+            if (!target || target.dead || target._dying || !status) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
             if (Array.isArray(status)) {
                 status.forEach(payload => applyStatusPayload(target, payload, sourceLabel, sourceUnit));
                 return;
@@ -10196,7 +10218,7 @@
         function processEndOfRoundStatuses(onDone) {
 
             const affected = state.units.filter(u => {
-                if (u.dead) return false;
+                if (u.dead || u._dying) return false;   // a falling body takes no tick (THE FALLEN TAKE NOTHING)
                 const keys = getActiveStatusKeys(u);
                 return keys.some(k => {
                     const def = STATUS_DEFS[k];
@@ -10212,14 +10234,14 @@
                    so in every sim a DoT never dealt damage (found 2026-10-25 by the Balance Lab status telemetry). */
                 for (const unit of affected) {
                     if (state.winner) break;
-                    if (unit.dead) continue;
+                    if (unit.dead || unit._dying) continue;
                     for (const key of getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k))) {
                         const def = STATUS_DEFS[key];
                         if (!def?.onRoundEnd) continue;
                         const hpBefore = unit.hp;
                         def.onRoundEnd(unit);
                         if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
-                        if (unit.dead) break;
+                        if (unit.dead || unit._dying) break;   // the tick that downed it is its last
                     }
                     if (unit.dead) checkWin();
                 }
@@ -10255,7 +10277,7 @@
                 }
 
                 const unit = affected[idx++];
-                if (unit.dead) { processNext(); return; }
+                if (unit.dead || unit._dying) { processNext(); return; }
 
                 const activeKeys = getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k));
                 if (!activeKeys.length) { processNext(); return; }
@@ -10279,7 +10301,7 @@
                 // it is deferred past the camera travel when a dive happened.
                 const _applyTick = () => {
                 if (state.winner) { if (onDone) onDone(); return; }
-                if (unit.dead) { processNext(); return; }
+                if (unit.dead || unit._dying) { processNext(); return; }
 
                 const dlgMsgs = [];
                 for (const key of activeKeys) {
@@ -10289,7 +10311,7 @@
                     def.onRoundEnd(unit);
                     if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
 
-                    if (unit.dead) {
+                    if (unit.dead || unit._dying) {   // downed by this tick: no more ticks on the body
                         dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${_ctName(unit)} was claimed by ${def.label || key}</span>`);
                         break;
                     }
@@ -11146,7 +11168,7 @@
             return o;
         }
         function applySeedEffectToUnit(seed, unit, events = null, planted = false) {
-            if (!seed || !unit || unit.dead) return false;
+            if (!seed || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -11368,7 +11390,7 @@
 
         // What a grown aura tree does to one unit inside its radius each round.
         function applyAuraTreeEffectToUnit(tree, unit, events = null) {
-            if (!tree || !tree.aura || !unit || unit.dead) return false;
+            if (!tree || !tree.aura || !unit || unit.dead || unit._dying) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const pushEvt = (u, msg, float) => {
                 if (!events) return;
@@ -51554,7 +51576,9 @@
                     && typeof rollWeatherTiles === 'function' && Math.random() < MD_FLOOR_WEATHER_CHANCE) {
                     const _wKeys = WEATHER_KEYS.filter(k => {
                         const d = WEATHER_REGISTRY[k];
-                        return d && !d.instant && !d.homing;
+                        /* 🌦 OPPOSITE WEATHERS (state.js weathersOppose): never one opposite to a weather up */
+                        return d && !d.instant && !d.homing
+                            && !(typeof weatherOpposedUp === 'function' && weatherOpposedUp(k).length);
                     });
                     if (_wKeys.length) {
                         const _wType = _wKeys[randInt(_wKeys.length)];
@@ -60244,8 +60268,8 @@
             crit: 'Critical hit', press: 'Press (+AP refund)', pressMiss: 'Press miss (-AP)',
             typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
             statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
-            react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Soaked shock (lightning on wet)',
-            react_soakedFire: 'Soaked fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            react_shortCircuit: 'Short Circuit (lightning on soaked tech)', react_soakedShock: 'Soaked shock (lightning on soaked)',
+            react_soakedFire: 'Soaked fire (fire on soaked)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
             highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
         };
         function _balFxMark(u, kind, key) {
@@ -66013,6 +66037,9 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (_isLavaTile(x, y)) _walkLavaBurn(unit, x, y, true);
             else if (_tileIsBurning(x, y)) _walkFireBurn(unit, x, y, true);
+            /* 💧 WALKING THROUGH WATER PUTS OUT BURN (mondo 2026-11-07: "yes walking through water should put out burn"):
+               a water tile the walk crosses douses the walker and soaks it, the same as ending the move in it */
+            else if (_isWetTile(x, y)) _soakUnit(unit, { douseLabel: 'The water' });
             if (unit.dead || unit._dying) return;
             for (const { weather, def } of _chainStormsAt(x, y)) {
                 if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) continue;
@@ -76539,6 +76566,9 @@
                     ? `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} covers the whole map. ${wDef.desc}`
                     : `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
                 }
+                /* 🌦 OPPOSITE WEATHERS NEVER SHARE THE SKY (state.js weathersOppose; elements playtest 11-06 E1/E2): the cast
+                   weather is the newer one, so it drives off the opposite one up (a Summon Thunderstorm ends the Drought) */
+                if (typeof driveOffOpposedWeathers === 'function') driveOffOpposedWeathers(wType);
                 queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
 
                 if (!_skipVisuals() && window.ThreeVFXEffects) {
