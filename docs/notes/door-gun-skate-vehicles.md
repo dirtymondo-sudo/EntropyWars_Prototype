@@ -701,3 +701,15 @@ unused). `Shadow (3D)/car_shadow.png` is drawn as a blob plane under each car. `
 - `muzzle` = the dish at the new size [0.105, 0.101, 0] (it was [0.5, 0.11, 0], ~30 cm past the old gun's dish).
   The first-person viewmodel keeps its own size and muzzle (`vmSpan` 0.36, `vmMuzzle`): its glove is built round the gun.
 - Close-ups (forge stage, probe camera on the gun's flanks): /mnt/project-files/door-gun-grip/.
+
+## TWIN DOORS CATCH FLYERS (2026-11-07, zones/traps playtest D: Swing Door + Twin Doors)
+- Seen: Swing Door knocked the flying Fairy onto a free Twin Doors mouth; she stopped on it and stayed (desc: "anyone
+  ... knocked, blown or pulled into it comes out of the other").
+- Cause: resolveForcedSlide stops ANY body on an open transit mouth, but battle.js resolveTileArrival's sky branch (A)
+  returned before step T (the transit doors), so an airborne flyer never went through. A walking flyer already did
+  (doMove -> doorStepThrough has no flyer gate).
+- Fix: the sky branch runs the same step-T check (forced arrivals only: not move / teleport / self) after its gravity
+  check. The exit is doorStepThrough's, unchanged (the body comes out on the far mouth's ground, like a walker).
+- "pushed 1, not 2": the push stops on the mouth by design (the slide's remaining tiles are spent going through); no change.
+- Other door / portal rows checked: Tunnel Network / Grave Passage (walk-only pairs, no `transit`), Door Dash, Drop In,
+  Breaking and Entering, Air Mail, Trapdoor, Door Slam don't link through a pair; the warp rune skips flyers on purpose.
