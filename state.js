@@ -1188,6 +1188,8 @@
             const area = (ds.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(ds.aoeMask) && typeof aoeMaskTiles === 'function')
                 ? aoeMaskTiles(ds.aoeMask, ds.x, ds.y, bw(), bh())
                 : getSquareArea(ds.x, ds.y, ds.aoeRadius || 1);
+            /* timing/counters playtest 2026-11-07 (F1): the blast's own line leads, then each unit it hit (it used to print after them) */
+            addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
             const allUnits = state.units.filter(u => !u.dead);
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));
@@ -1216,7 +1218,6 @@
                     }
                 }
             }
-            addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
 
             /* 💥 the blast's tiles react like any spell hit (a nuke on an oil slick blows the whole slick), BEFORE the
                crater's scorch paints the oil away (battle.js triggerTerrainSpellReaction) */

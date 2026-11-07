@@ -4573,3 +4573,33 @@ Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
   over the Creation, Stuffed Double and Cloning Machine hit 3 enemies, left all three pieces whole and sowed 9 seeds, none
   on the Cloning Machine's rim tile; the Creation walked round the Stuffed Double. Shots: project files
   playtest-mechanics-20261107/summons-fix/.
+
+## THE TIMING / COUNTER TEXTS MATCH THE GAME (2026-11-07, timing/counters playtest C1, F1-F6, G4, E1, H5, Last Kiss)
+- Same rule as PR #997 / #1012: no ruling from mondo, so the TEXT now says what the code does (no rule changed).
+- Delayed blasts hit ENEMIES ONLY (state.js `_detonateDelayedSpellNow`: `u.player !== ds.sourcePlayer`, no row sets
+  `friendlyFire`): Spirit Bomb, Prophecy of Disaster, Nuclear Option, Orbital Strike, Extinction Event now say "every enemy
+  inside" (was "everything inside"). Nuclear Option: "at the end of the next round" (delayTurns 2) and "every building in it
+  is levelled" (`demolishesBuildings`). Crystal Ball / Star Decree / Cataclysm Decree / Fire for Effect: "At the end of the
+  round" (was "After 1 turn"; delayTurns 1 lands at the end of the cast round, the log says "Detonates in 1 round").
+- Counters (battle.js doAttack → `rollCounter`): only an ADJACENT BASIC ATTACK that lands from the front or side draws one;
+  spells (Skull Crack, No Mercy, Thousand Cuts at range 1) and back-arc hits never do. Riposte, Iron Discipline, Warpath,
+  Bulwark and the `counterChance` hook help text say so (was "when struck in melee").
+- Full drains (`drainPct: 1`) heal through applyHealingToUnit, which stops at max HP: Last Kiss, Exsanguinate, Eaten Alive
+  say "up to your full HP".
+- Place Bomb: the blast is PHYSICAL (detonateBomb passes no damageType; blocked by DEF, while its power still comes from M ATK
+  via spellPowerOf, so the row keeps no damageType and hud.js spellDamageKind reads kind `bomb` as physical), enemies only in the 3×3, each thrown back 1 tile
+  (BOMB_KNOCK_TILES); goes off when an enemy steps on it, on DETONATE (1 AP, all your bombs), or on contact when thrown onto
+  an enemy; 3 at a time, a 4th replaces the oldest.
+- Overfit / Paradox: the replayed last blow is capped at 500 (calcSpellHitRiders `echoCap`). Deploy Turret: MEDIUM physical
+  at the end of every round (turretDmg 110 is the raw roll before DEF / level scaling; real hits 87-340), max 2 per caster,
+  a 3rd replaces the oldest; its row/bar chip reads physical too (spellDamageKind). Filibuster: 2 ROUNDS; Silence lands at the end of each round and on an enemy walking in (zone
+  rules), not on the cast. Encore: "already acted this round".
+- Guarding badge (STATUS_LIBRARY_DESCS.guarding): the DEF/M DEF stages last until the end of its next turn, but Guard's
+  Overwatch shot and +15% counter are cleared at the round change (maybeAdvanceTurn) — the badge text says so.
+- describeSpell (the editor AUTO-DESC): delayed / bomb / deployTurret / encore sentences say the same things, so a regenerate
+  doesn't bring the old wording back.
+- hud.js `_hrlgSpellBlades`: Revive / Chooser of the Slain grey "Already revived" (was "No target") when the only grave in
+  reach belongs to a unit it already revived this match (`reviveLocked`).
+- state.js: a delayed blast logs "💥 X detonates at H10!" FIRST, then each unit it hit (F1; the header used to print last).
+- NOT changed (mondo's calls / other threads): Take Aim / No Mercy EXECUTED line (H10, pending), C1 friendly fire itself,
+  height-gated melee spells reading "No target" (F7). Cannibalize (H6) and the immune-target lists (B1) are their own PRs.
