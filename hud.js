@@ -3641,6 +3641,13 @@ function _hrlgStatusChips(unit) {
       title: (sDef.label || sk) + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
     });
   }
+  /* 🛡 THE CHIVALRY BADGE (battle.js getChivalryGuardian): the pledged ward wears CHV until the oath is spent */
+  const chvG = (typeof window.getChivalryGuardian === 'function') ? window.getChivalryGuardian(unit) : null;
+  if (chvG) {
+    const chvN = (typeof unitDisplayName === 'function') ? unitDisplayName(chvG) : (chvG.name || 'A knight');
+    chips.push({ key: 'st-chivalry', label: 'CHV', bg: _HRLG_SB_COLORS.guarding || '#4a90e2',
+      title: 'Chivalry — ' + chvN + ' takes the next attack meant for this unit' });
+  }
   // Stat stages — one stage = ±20 on the 0-100 ruler = one letter grade
   // (2026-08-29 rework). The chip shows the EFFECTIVE stages after the
   // ruler clamp (getStatStageDelta saturates at 100 / the floor), so a
