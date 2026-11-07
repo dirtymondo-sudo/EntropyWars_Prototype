@@ -7849,7 +7849,23 @@ const ThreeRenderer = (function () {
                 var tr = tc._ew_towerPlateEl.getBoundingClientRect();
                 if (tr.width > 1 && tr.height > 1) {
                     var PR = _parentEl.getBoundingClientRect();
-                    over = _wmOverMenu(tr.left - PR.left, tr.right - PR.left, tr.top - PR.top, tr.bottom - PR.top, nowMs);
+                    var cl = tr.left - PR.left, cr = tr.right - PR.left, ct = tr.top - PR.top, cb = tr.bottom - PR.top;
+                    over = _wmOverMenu(cl, cr, ct, cb, nowMs);
+                    /* THE FORECAST COLUMN (forced movement playtest 2026-11-07 O: the CUBE label and bar sat on the target's
+                       plate and its pills): over a unit's plate or a forecast column the Cube's plate fades too — the unit's
+                       name and the cast's numbers read first */
+                    if (!over && !window.EW_FC_PILE) {
+                        over = _fcOver(cl, cr, ct, cb);
+                        for (var pb = 0; !over && pb < _pmBoxes.length; pb++) {
+                            var B = _pmBoxes[pb];
+                            if (cl < B.r && cr > B.l && ct < B.b && cb > B.t) over = true;
+                        }
+                        /* and over a Nexus counter (the CUBE label sat across "NEUTRAL ▢▢▢▢ 4/8") */
+                        for (var nb = 0; !over && nb < _nxBoxes.length; nb++) {
+                            var N = _nxBoxes[nb];
+                            if (cl < N.r && cr > N.l && ct < N.b && cb > N.t) over = true;
+                        }
+                    }
                 }
                 tc._ew_mf = _wmEase(tc._ew_mf, over, nowMs - (tc._ew_mfAt || nowMs));
                 tc._ew_mfAt = nowMs;
@@ -12928,10 +12944,12 @@ const ThreeRenderer = (function () {
     }
     /* after each render (beside _scalePlates): the plate's world size, raised to the legibility floor when the camera is far */
     function _scaleNexusPlates(cam) {
+        _nxBoxes.length = 0;
         if (!cam || !_parentEl || !_nexusBarObjs.size) return;
         var screenH = _parentEl.clientHeight, ts = CONFIG.tileSize || BASE_TILE, now = performance.now();
         if (screenH <= 0 || !cam.fov) return;
         var halfTan = Math.tan(cam.fov * Math.PI / 360);
+        _nxBoxes.length = 0;
         for (var e of _nexusBarObjs) {
             var W = e[1].world;
             if (!W || !W.g.visible) continue;
@@ -12941,23 +12959,33 @@ const ThreeRenderer = (function () {
             var plateW = NEXUS_PLATE_W * projW;   // the plate's natural width on screen, px
             var fit = plateW < NEXUS_PLATE_MIN_PX ? Math.min(4, NEXUS_PLATE_MIN_PX / plateW)
                 : (plateW > NEXUS_PLATE_MAX_PX ? Math.max(0.05, NEXUS_PLATE_MAX_PX / plateW) : 1);
-            if (W.fit !== fit) { W.fit = fit; W.k = -1; }
+            if (W.fit !== fit) { W.fit = fit; W.k = -1; _tickNexusPlate(W, now); }   // this frame's size, before the draw
             /* THE WORLD TEXT STEPS ASIDE: over an open menu the counter fades (_wmOverMenu). The sprite stands on its
                bottom centre, so its box on screen is the projected anchor, up by its height, out by half its width. */
             _nexusVec.copy(_batWorldVec).project(cam);
-            var over = false;
+            var over = false, overPop = false;
             if (_nexusVec.z >= -1 && _nexusVec.z <= 1) {
                 var sw = _parentEl.clientWidth, wpp = _pmWpp(cam, _batWorldVec, screenH), sc = W.g.scale.x || 1;
                 var nx = (_nexusVec.x * 0.5 + 0.5) * sw, ny = (-_nexusVec.y * 0.5 + 0.5) * screenH;
                 var hw = W.w * sc / wpp / 2, hh = W.h * sc / wpp;
-                over = _wmOverMenu(nx - hw, nx + hw, ny - hh, ny, now);
+                over = _wmOverMenu(nx - hw, nx + hw, ny - hh, ny, now)
+                    || (!window.EW_FC_PILE && _fcOver(nx - hw, nx + hw, ny - hh, ny));   // THE FORECAST COLUMN: the cast's numbers read first (Tsunami, playtest 2026-11-07 O)
+                /* and a unit's plate (the Rampart confirm: the Sidekick's plate sat across "P1 CONTROLLED ▢▢▢ 8/8"): the
+                   unit's name reads first, like the Cube's plate steps aside for it */
+                if (!over && !window.EW_FC_PILE) for (var pb = 0; pb < _pmBoxes.length; pb++) {
+                    var B = _pmBoxes[pb];
+                    if (nx - hw < B.r && nx + hw > B.l && ny - hh < B.b && ny > B.t) { over = true; break; }
+                }
+                overPop = !over && _floatOverPop(nx - hw, nx + hw, ny - hh, ny);   // and a hit's floating numbers (G2: Sky Tackle's landed on it)
+                if (W.g.visible) _nxBoxes.push({ l: nx - hw, r: nx + hw, t: ny - hh, b: ny });   // the Cube's plate steps aside (_updateTowerCubes)
             }
-            W.mf = _wmEase(W.mf, over, now - (W.mfAt || now));
+            W.mf = _wmEase(W.mf, over || overPop, now - (W.mfAt || now), overPop ? POP_FADE_OP : null);
             W.mfAt = now;
             if (W.base.material.opacity !== W.mf) W.base.material.opacity = W.mf;
         }
     }
     var _nexusVec = new THREE.Vector3();
+    var _nxBoxes = [];   // this frame's Nexus counters on screen, canvas css px
     /* per frame: the pop (scale 1 → 1.35 → 1 over 0.55 s, the old nb-pop keyframes) and the CONTESTED pulse (1.2 s) */
     function _tickNexusPlate(W, now) {
         var k = 1;
@@ -20054,7 +20082,7 @@ const ThreeRenderer = (function () {
     var _pmV = null, _pmR = null, _pmU = null;
     var _pmSheetV = 0;
     function _pmTick(cam) {
-        if (!_pmList.length) return;
+        if (!_pmList.length) { _pmBoxes.length = 0; return; }
         if (_pmObs) { var recs = _pmObs.takeRecords(); if (recs.length) _pmOnMut(recs); }
         /* a UI Maker sheet changed (hud.js uimSheetBump): the CSS on every plate may have, with no mutation to say so */
         var shV = window._ewUimSheetV || 0;
@@ -20075,6 +20103,7 @@ const ThreeRenderer = (function () {
         var now = performance.now();
         var V = _pmV || (_pmV = new THREE.Vector3());
         var items = [];
+        _pmBoxes.length = 0;
         for (var i = 0; i < _pmList.length; i++) {
             var pm = _pmList[i], h = pm.holder, spr = pm.spr;
             var on = gate > 0.001 && !!h && h._s > 0 && _pmInScene(pm.anchor);
@@ -20127,10 +20156,18 @@ const ThreeRenderer = (function () {
                 _ovM ? MENU_FADE_OP : POP_FADE_OP);
             var op = Math.max(0, Math.min(1, p2.op * gate * p2.mf));
             if (sp.material.opacity !== op) sp.material.opacity = op;
+            /* THE NAME IN FRONT (forced movement playtest 2026-11-07 G4: the Knight confirm cut the aimed Halfdemon's plate
+               to "ALFDEMON" / "NHOLY" where a pillar stood in front of its left half): the acting unit's and the aimed
+               unit's plates draw over the scenery, whole; every other plate is still hidden by a wall, a tree or a body in
+               front of it (THE PLATES IN THE WORLD). window.EW_PLATE_DEPTH_ALL = true → every plate depth-tested. */
+            var dt = !(it.pri > 0 || _fcHas(it.pm.uid)) || !!window.EW_PLATE_DEPTH_ALL;   // (and every body the cast's forecast is on)
+            if (sp.material.depthTest !== dt) { sp.material.depthTest = dt; sp.material.needsUpdate = true; }
             sp.visible = op > 0.003;
             p2.shown = true;
+            if (op > 0.5) _pmBoxes.push({ l: it.l, r: it.r, t: it.t - p2.lift, b: it.b - p2.lift });   // the Cube's plate steps aside (_updateTowerCubes)
         }
     }
+    var _pmBoxes = [];   // last frame's drawn unit plates, canvas css px
     /* ══ THE CURSOR CLEARS THE NAME (playtest 2026-11-07 D1: "COWBO", "SUCCUB" — the gold turn cursor sat on the end of
        the acting unit's name) ══════════════════════════════════════════════════════════════════════════════════════════
        The cursor was put a fixed 75 screen px up the world's vertical over the plate's anchor. On the tilted battle
@@ -20176,7 +20213,9 @@ const ThreeRenderer = (function () {
     function _pmStack(items) {
         items.sort(function (a, b) { return (b.pri - a.pri) || (b.sy - a.sy) || (a.sx - b.sx); });
         if (window.EW_PLATE_PILE) return;
-        var placed = [];
+        /* THE FORECAST COLUMN: a body's forecast badges (its number, pills and press !) hold their spot over its head and
+           every plate they would cover rises over them, the body's own plate included, so no word sits on a name */
+        var placed = _fcBoxes.slice();
         for (var i = 0; i < items.length; i++) {
             var it = items[i], lift = 0;
             for (var pass = 0; pass < 32; pass++) {
@@ -20772,9 +20811,18 @@ const ThreeRenderer = (function () {
         for (var entry of _plateObjs) {
             var uid = entry[0], po = entry[1];
             var vis = true;
+            if (po.pm) po.pm.uid = uid;   // (THE NAME IN FRONT reads the plate's unit)
 
             if (targetSet && !targetSet.has(uid)) {
                 vis = false;
+                /* THE AIMED PLATE (forced movement playtest 2026-11-07 G: a MOVE→CAST pick — Haymaker on the Marksman,
+                   Gravity Well on the Occulus — stands outside the lit reach, so the aim's plate filter hid the very
+                   unit the CONFIRM names): the aimed unit (tp-targeted) keeps its plate while aiming. An action's own
+                   focus set still rules while it plays. The fog gate below still applies. */
+                if (!(_af && _af.set === targetSet) && po.el && po.el.classList && po.el.classList.contains('tp-targeted')) vis = true;
+                /* and every unit the armed cast's forecast is on (Wing Attack's self-cast confirm hit the Dreameater and
+                   the Succubus: their numbers stood over nameless bodies) keeps its name over its column */
+                if (!vis && !(_af && _af.set === targetSet) && _fcHas(uid)) vis = true;
             }
 
             if (vis && state.fogOfWar && _fogVisibleSet) {
@@ -22395,6 +22443,8 @@ const ThreeRenderer = (function () {
         return Math.max(0, fade);
     }
 
+    var GHOST_MODEL_LIFT = 2.4;   // the model hologram's texture × this toward its plan colour (THE HOLOGRAM READS AS ONE)
+    var GHOST_MODEL_OP = 0.7;     // and its opacity × this
     function showGhostUnit(unit, tileX, tileY, surfaceYOverride, opts) {
         opts = opts || {};
         var tag = opts.tag || 'caster';
@@ -22453,6 +22503,14 @@ const ThreeRenderer = (function () {
                 // (GreaterDepth Shader) = drop.
                 var _tcM = new THREE.Color(tintColor);
                 _tcM.lerp(new THREE.Color(0xffffff), 0.35);
+                /* THE HOLOGRAM READS AS ONE (forced movement playtest 2026-11-07 O: "a second Demon model appears on a light
+                   pillar" — the MOVE→CAST preview of a dark-skinned model was its own dark texture × a pale tint at 0.85,
+                   so it stood there as a second, solid Demon): the model hologram's texture is lifted toward its plan
+                   colour (×GHOST_MODEL_LIFT, the basic material's colour may pass 1) and drawn see-through
+                   (×GHOST_MODEL_OP), so the ground shows through it. window.EW_GHOST_OLD = true → the old look. */
+                var _ghostOld = !!window.EW_GHOST_OLD;
+                if (!_ghostOld) _tcM.multiplyScalar(GHOST_MODEL_LIFT);
+                var _gOp = _ghostOld ? baseOpacity : baseOpacity * GHOST_MODEL_OP;
                 var _drop = [], _kept = 0;
                 gclone.traverse(function (n) {
                     if (!n.isMesh) return;
@@ -22460,8 +22518,9 @@ const ThreeRenderer = (function () {
                     if (!sm || !(sm.isMeshLambertMaterial || sm._ewHairUnit)) { _drop.push(n); return; }   // (THE HAIR EVERYWHERE: a creator hair copy is kept too)
                     var gm = new THREE.MeshBasicMaterial({
                         map: sm.map || null, color: _tcM,
-                        transparent: true, opacity: baseOpacity, depthWrite: false
+                        transparent: true, opacity: _gOp, depthWrite: false
                     });
+                    if (!_ghostOld) gm.toneMapped = false;
                     if (n.isSkinnedMesh) gm.skinning = true;
                     n.material = gm;
                     mats.push(gm);
@@ -22567,7 +22626,7 @@ const ThreeRenderer = (function () {
         highlightGroup.add(group);
         _ghostGroups.push({
             group: group, mat: mat, mats: mats, ringMat: ringInfo.mat, ring: ringInfo.mesh,
-            tag: tag, baseOpacity: baseOpacity,
+            tag: tag, baseOpacity: (_builtFromModel && !window.EW_GHOST_OLD) ? baseOpacity * GHOST_MODEL_OP : baseOpacity,
             syncSrc: syncSrc, syncDst: syncDst, bonePairs: bonePairs, motion: motionRec
         });
         if (tag === 'caster') { _ghostGroup = group; _ghostMat = mat; }
@@ -23585,12 +23644,133 @@ const ThreeRenderer = (function () {
         el.style.left = (((_projVec2.x + 1) / 2) * cw) + 'px';
         el.style.top = (((1 - _projVec2.y) / 2) * ch - 4 - a.yOff * 1.2) + 'px';
     }
+    /* ══ THE FORECAST COLUMN (forced movement playtest 2026-11-07 G1 / O: Sky Tackle's CRASH / AUTO ATTACK / SLAM pills sat
+       on top of each other and on the target's name plate; Shockwave Clap's AUTO ATTACK / SLAM / SLAM pills of two bodies
+       piled up; Tsunami's number sat on the Nexus counter, Pyramid Protocol's under the caster's plate) ══════════════════
+       Each badge was put a fixed 1.2 × its yOff up from the head, whatever its real height (a UI Maker font makes the pills
+       taller than the 14 px step), and knew nothing of the plates, the other bodies' badges or the Cube's and the Nexus'
+       counters. Now each body's badges are ONE column, laid out every frame from their real heights: the number on the head,
+       the pills over it in order, the press ! (THE ONE MARK) on top. Columns that overlap on screen stack upward like the
+       plates do (the lowest on screen keeps its place). The columns' boxes (_fcBoxes) are then obstacles the plates stack
+       over (_pmStack: the body's own plate rises above its column, so its name reads), and the Cube's plate and the Nexus
+       counter fade under them like they do under a menu. Viewer-local (each side draws its own forecast), nothing relayed.
+       window.EW_FC_PILE = true → the old fixed steps. */
+    var FC_GAP = 2;                // screen px between two badges of a column, and between stacked columns
+    var _fcBoxes = [];             // this frame's columns: { l, r, t, b, uid } in the canvas's css px
+    var _fcGroups = {}, _fcList = [];
+    function _fcSize(el) {
+        if (!(el._fcH > 0)) { el._fcH = el.offsetHeight || 0; el._fcW = el.offsetWidth || 0; }
+        return el._fcH;
+    }
     function _updateIntentBadges() {
+        _fcBoxes.length = 0;
         if (!_intentBadgeEls.length) return;
         var cam = ThreeCamera.getCamera();
         if (!cam || !canvas) return;
         var cw = canvas.clientWidth, ch = canvas.clientHeight;
-        for (var i = 0; i < _intentBadgeEls.length; i++) _placeIntentBadge(_intentBadgeEls[i], cam, cw, ch);
+        if (window.EW_FC_PILE) { for (var i = 0; i < _intentBadgeEls.length; i++) _placeIntentBadge(_intentBadgeEls[i], cam, cw, ch); return; }
+        var ts = CONFIG.tileSize || BASE_TILE, k, g, j;
+        for (k in _fcGroups) delete _fcGroups[k];
+        _fcList.length = 0;
+        for (var bi = 0; bi < _intentBadgeEls.length; bi++) {
+            var el = _intentBadgeEls[bi], a = el._tiAnchor;
+            if (!a) continue;
+            k = a.unitId != null ? 'u' + a.unitId : 't' + a.x + ',' + a.y;
+            g = _fcGroups[k];
+            if (!g) { g = _fcGroups[k] = { a: a, els: [], mark: null }; _fcList.push(g); }
+            el._fcI = bi;
+            g.els.push(el);
+        }
+        var placed = [];
+        for (var gi = 0; gi < _fcList.length; gi++) {
+            g = _fcList[gi];
+            var A = g.a, ue = A.unitId != null ? unitEntries.get(A.unitId) : null;
+            var topY = (ue && ue.group && ue.group._ew_spriteTopY) ? ue.group._ew_spriteTopY : tileTopY(A.x, A.y) + ts * 0.6;
+            _projVec2.set(A.x * ts + ts / 2, topY, A.y * ts + ts / 2);
+            _projVec2.project(cam);
+            g.off = _projVec2.z > 1;
+            if (g.off) { for (j = 0; j < g.els.length; j++) g.els[j].style.visibility = 'hidden'; continue; }
+            g.sx = ((_projVec2.x + 1) / 2) * cw;
+            g.sy = ((1 - _projVec2.y) / 2) * ch - 4;
+            g.els.sort(function (p, q) { return ((p._tiAnchor.yOff || 0) - (q._tiAnchor.yOff || 0)) || (p._fcI - q._fcI); });
+            var h = 0, w = 0;
+            for (j = 0; j < g.els.length; j++) { h += _fcSize(g.els[j]) + (j ? FC_GAP : 0); w = Math.max(w, g.els[j]._fcW || 0); }
+            /* the press ! of this body rides on top of its column (the forecast's own mark, or the menu's still up) */
+            for (j = 0; j < _pressMarks.length; j++) {
+                var pmk = _pressMarks[j];
+                if (A.unitId == null || pmk.id !== A.unitId || pmk.el.style.visibility === 'hidden') continue;
+                if (!g.mark || pmk.group === 'forecast') g.mark = pmk;
+            }
+            if (g.mark) {
+                var mh = g.mark.el.offsetHeight || 0, mw = g.mark.el.offsetWidth || 0;
+                if (mh > 0) { h += mh + FC_GAP; w = Math.max(w, mw); } else g.mark = null;
+            }
+            g.h = h; g.w = w;
+        }
+        /* the lowest column on screen keeps its place; each later one rises just over whatever column it overlaps */
+        _fcList.sort(function (p, q) { return (q.sy || 0) - (p.sy || 0); });
+        for (gi = 0; gi < _fcList.length; gi++) {
+            g = _fcList[gi];
+            if (g.off) continue;
+            var l = g.sx - g.w / 2, r = g.sx + g.w / 2, lift = 0;
+            for (var pass = 0; pass < 24; pass++) {
+                var hit = null;
+                for (j = 0; j < placed.length; j++) {
+                    var p = placed[j];
+                    if (l < p.r && r > p.l && g.sy - lift > p.t - FC_GAP && g.sy - g.h - lift < p.b) { hit = p; break; }
+                }
+                if (!hit) break;
+                lift = g.sy - hit.t + FC_GAP;
+            }
+            var y = g.sy - lift;
+            for (j = 0; j < g.els.length; j++) {
+                var e2 = g.els[j];
+                e2.style.visibility = '';
+                e2.style.left = g.sx + 'px';
+                e2.style.top = y + 'px';
+                y -= (e2._fcH || 0) + FC_GAP;
+            }
+            if (g.mark) {
+                g.mark.el.style.marginTop = '0px';
+                g.mark.el.style.left = g.sx + 'px';
+                g.mark.el.style.top = y + 'px';
+                g.mark._fcCol = true;
+            }
+            var box = { l: l, r: r, t: g.sy - lift - g.h, b: g.sy - lift, uid: g.a.unitId };
+            placed.push(box);
+            _fcBoxes.push(box);
+        }
+    }
+    /* THE HEAD ROOM (playtest 2026-11-07 G3: the confirm close-ups put the target's plate under the top HP bars): the
+       screen px a body's words take over its head right now — its forecast column, then its plate stacked over it. The
+       menu camera (battle.js _menuCamSolve) keeps that much room over each body inside the free frame. */
+    function headRoomPx(unitId, out) {
+        if (unitId == null) return 0;
+        var room = 0, hw = 0, i;
+        for (i = 0; i < _fcBoxes.length; i++) if (_fcBoxes[i].uid === unitId) {
+            room = Math.max(room, _fcBoxes[i].b - _fcBoxes[i].t + FC_GAP);
+            hw = Math.max(hw, (_fcBoxes[i].r - _fcBoxes[i].l) / 2);
+        }
+        var po = _plateObjs.get(unitId), pm = po && po.pm;
+        if (pm && pm.ok && pm.holder && pm.holder._s > 0) {
+            room += (pm.box[3] - pm.box[1]) * pm.holder._s + PM_STACK_GAP;
+            hw = Math.max(hw, (pm.box[2] - pm.box[0]) * pm.holder._s / 2);
+        }
+        /* out.hw: the half width of those words (G5: the Luchador's plate stood out past its body over the Abilities
+           title and faded there, under the Halfdemon's) */
+        if (out) out.hw = hw;
+        return room;
+    }
+    /* a unit with a forecast column this frame */
+    function _fcHas(uid) {
+        if (uid == null || window.EW_FC_PILE) return false;
+        for (var i = 0; i < _fcBoxes.length; i++) if (_fcBoxes[i].uid === uid) return true;
+        return false;
+    }
+    /* a screen box (canvas css px) over a forecast column this frame */
+    function _fcOver(l, r, t, b) {
+        for (var i = 0; i < _fcBoxes.length; i++) { var m = _fcBoxes[i]; if (l < m.r && r > m.l && t < m.b && b > m.t) return true; }
+        return false;
     }
 
     function showIntentBadges(tileX, tileY, badges) {
@@ -23653,7 +23833,7 @@ const ThreeRenderer = (function () {
             el.innerHTML = (bd && typeof window._ewSeBadBangHtml === 'function') ? window._ewSeBadBangHtml(bd.kind, bd.word)
                 : (halfIds && halfIds.indexOf(ids[i]) >= 0) ? bangHalf : bangFull;
             _intentBadgeContainer.appendChild(el);
-            _pressMarks.push({ id: ids[i], el: el, group: group });
+            _pressMarks.push({ id: ids[i], el: el, group: group, mt0: el.style.marginTop });
         }
         _updatePressMarks();
     }
@@ -23692,6 +23872,7 @@ const ThreeRenderer = (function () {
             if (_projVec2.z > 1) { m.el.style.visibility = 'hidden'; continue; }
             m.el.style.left = (((_projVec2.x + 1) / 2) * cw) + 'px';
             m.el.style.top = (((1 - _projVec2.y) / 2) * ch) + 'px';
+            if (m._fcCol) { m._fcCol = false; m.el.style.marginTop = m.mt0 || ''; }   // THE FORECAST COLUMN puts it back on top of its column
             m.el.style.visibility = '';
         }
     }
@@ -30875,6 +31056,9 @@ const ThreeRenderer = (function () {
        words and the newest over the older (z-index). */
     var _floatBoxes = [];
     var _floatSafeCols = {};
+    var FLOAT_CLEAR_SHARE = 0.04;   // THE CLEAR PICK: covering more than this share of a pop up now counts as covering it
+    var FLOAT_CLEAR_COST = 3;       // and costs this much (more than the farthest clear spot of the outer ring)
+    var FLOAT_OUTER_F = 3.6;        // the outer ring reaches this many × the look's oval (bunch ×) round the unit
     var _FLOAT_GOLD = Math.PI * (3 - Math.sqrt(5));
     /* the look-aheads, as shares of a word's life (1100 ms × the look's Life ×): a pop that has faded out by then is
        left out of that one */
@@ -30984,7 +31168,11 @@ const ThreeRenderer = (function () {
             }
             for (var j = 0; j < boxes.length && cost < bestCost; j++) {   // (a spot already dearer than the best stops here)
                 var b = boxes[j];
-                var o = _floatOverlap(cx, cy, mine, b.x, b.y, b) * 0.2;
+                var o0 = _floatOverlap(cx, cy, mine, b.x, b.y, b), o = o0 * 0.2;
+                /* THE CLEAR PICK (forced movement playtest 2026-11-07 G2: Sky Tackle's impact stacked ~10 numbers and words
+                   on one spot): a spot that covers a pop already up RIGHT NOW is dearer than any clear spot out to the
+                   outer ring, so a burst spreads out instead of landing on itself */
+                if (o0 > FLOAT_CLEAR_SHARE * Math.min(mine.area, b.area)) cost += FLOAT_CLEAR_COST;
                 for (var h = 0; h < fut.length; h++) {
                     if (fut[h] !== fut[h] || b.fut[h] !== b.fut[h]) continue;
                     o += _floatOverlap(cx + futX[h], cy + fut[h], mine, b.futX[h], b.fut[h], b) * 0.2;
@@ -31032,6 +31220,15 @@ const ThreeRenderer = (function () {
                 var a = turn + k * _FLOAT_GOLD, f = 1.8 * Math.sqrt((k + 0.5) / N);
                 var dice = Math.abs((Math.sin((k + 1) * 12.9898 + R[3] * 78.233) * 43758.5453) % 1);
                 tryAt(Math.cos(a) * rx * f, Math.sin(a) * ry * f, dice * 0.3);
+            }
+            /* THE CLEAR PICK: the oval full (the best spot still covers a pop) → the outer ring, out to FLOAT_OUTER_F ×
+               the oval (still round its own unit), before anything is drawn over anything */
+            if (bestCost >= FLOAT_CLEAR_COST) {
+                var N2 = 96, rxo = Math.max(rx, 1.2 * U), ryo = Math.max(ry, 0.9 * U);
+                for (var k2 = 0; k2 < N2; k2++) {
+                    var a2 = turn + k2 * _FLOAT_GOLD, f2 = 1.8 + (FLOAT_OUTER_F - 1.8) * Math.sqrt((k2 + 0.5) / N2);
+                    tryAt(Math.cos(a2) * rxo * f2, Math.sin(a2) * ryo * f2, 0);
+                }
             }
         }
         return best || { x: 0, y: 0 };
@@ -49092,6 +49289,11 @@ const ThreeRenderer = (function () {
 
             /* THE PLATES IN THE WORLD: the plates are in the scene now, so their size, paint and stack come before the draw */
             if (!_simNoDraw && cam) { _scalePlates(cam); _pmTick(cam); }
+            /* THE COUNTER'S SIZE + FADE BEFORE THE DRAW (forced movement playtest 2026-11-07 G6: the "P2 CONTROLLED /
+               SPAWN NEXUS" counter stood whole and full size over the map name and the weather line): its size cap and
+               its fade under the HUD were set after the frame was drawn, so the frame a camera move landed on still drew
+               the counter at its old size and full strength (and no later frame came when nothing else moved) */
+            if (!_simNoDraw && cam && !_ss.active) _scaleNexusPlates(cam);
 
             if (!_simNoDraw) _lightMatchBoard(_frameNow);   // THE SAME LIGHT COUNT: a story fight keeps the walk's count
             if (_simNoDraw) {
@@ -49111,7 +49313,6 @@ const ThreeRenderer = (function () {
                 _quietAfter();
 
                 if (css2dRenderer) _css2dRender(scene, cam);
-                _scaleNexusPlates(cam);
                 if (window.EWCine && window.EWCine.on) { try { window.EWCine.after(renderer.domElement); } catch (e) {} }   // THE CINEMATIC CAMERA: stills and video read this frame
                 if (window.EWShots && window.EWShots.wants) { try { window.EWShots.after(renderer.domElement); } catch (e) {} }   // THE SHOT RECORDER: a recorded shot's picture
                 if (_hqDissolveRec) _hqDissolveFrame();   // THE ENCOUNTER: the room's last frame fades over this, the battle's first (2026-10-25 rev 4: the very first — nothing is waited for)
@@ -49688,14 +49889,20 @@ const ThreeRenderer = (function () {
             if (hit && typeof handleTileDragStart === 'function') handleTileDragStart(hit.tileX, hit.tileY);
         };
 
-        _onMouseLeave = function() {
+        _onMouseLeave = function(e) {
             _lastMouseClientX = _lastMouseClientY = null;
             _updateUnitHover(null);
             updateHoverHighlight(-1, -1);
+            /* THE PICK WAITS FOR ITS CONFIRM (forced-movement playtest 2026-11-07 H2: Walk the Plank's "✓ CONFIRM —
+               Mantid" did nothing while Enter worked): the pointer leaving the board for the HUD dropped the hovered
+               pick, so the green CONFIRM it was heading for vanished under it and the click fell on the board. Going
+               onto the HUD keeps the pick (and its preview); leaving the window or the board's own edge clears it. */
+            var _toHud = !!(e && e.relatedTarget && e.relatedTarget !== canvas && e.relatedTarget.nodeType === 1
+                && document.body && document.body.contains(e.relatedTarget));
             if (_lastHitX >= 0 || _lastHitY >= 0) {
                 var prevX = _lastHitX, prevY = _lastHitY;
                 _lastHitX = -1; _lastHitY = -1;
-                if (typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
+                if (!_toHud && typeof clearHoveredTarget === 'function') clearHoveredTarget(prevX, prevY);
                 if (typeof restoreHoverFocus === 'function') restoreHoverFocus();
                 if (typeof clearHoverHighlight === 'function') clearHoverHighlight();
             }
@@ -88350,7 +88557,7 @@ const ThreeRenderer = (function () {
            convert jumpArcApex heights with this. */
         elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
-        showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, dropPressMarksOn, worldToScreen,
+        showIntentBadges, clearIntentBadges, showPressMarks, clearPressMarks, dropPressMarksOn, worldToScreen, headRoomPx,
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
