@@ -6786,7 +6786,11 @@ function ActionMenu({ st, hidden }) {
     const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
     const _quickPlace = st._quickAoePlace === st.selectedTool;
-    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && !_tileOnlyKinds.includes(_aimSp.kind || '')
+    /* THE CHARGE ROWS (playtest 2026-11-07 B1: Runaway Train armed with no enemy row, "select a tile to dash to", and a
+       click on the in-range enemy walked the caster first): a dash that charges an enemy (chargeToTarget) lists the
+       enemies it reaches like any single-target hit — the row casts from where the caster stands. */
+    const _aimCharge = !!(_aimSp && _aimSp.kind === 'dash' && _aimSp.chargeToTarget);
+    const _listUnits = _aimSp && !_aimSelf && !_quickPlace && (_aimCharge || !_tileOnlyKinds.includes(_aimSp.kind || ''))
       && ((typeof _getSpellValidTargets === 'function'
           && _getSpellValidTargets(unit, _aimSp).length > 0)
         // MOVE→CAST-only situations still get the unit list — the drum shows
