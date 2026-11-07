@@ -13199,10 +13199,78 @@
            ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
         function spellCorpseUsable(unit, spell, corpse) {
             if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
-            if (_kindMeta(spell).enemyRemainsOnly && !isEnemyUnit(corpse, unit)) return false;
+            if (_kindMeta(spell).enemyRemainsOnly && (corpse._remainsOf === unit.id || !isEnemyUnit(corpse, unit))) return false;   // a left grave: its unit's own (FFA)
+            /* THE GRAVES STAY: a grave outlives its unit's respawn, so someone can be standing on it — Raise the Dead
+               claws its zombie out of THAT square, so a body or a standing turret / summon / zombie on it blocks the raise */
+            if (spell && spell.kind === 'raiseDead') {
+                if (state.units.some(o => !o.dead && !o._dying && o.x === corpse.x && o.y === corpse.y)) return false;
+                if ((state.turrets || []).some(t => t.hp > 0 && t.x === corpse.x && t.y === corpse.y)) return false;
+            }
             return true;
         }
         window.spellCorpseUsable = spellCorpseUsable;
+
+        /* THE GRAVES STAY (mondo 2026-11-07, zones playtest: "Raise the Dead: the Necromancer died before a grave was
+           free" — a grave vanished the moment its unit respawned). A unit that comes back on the respawn clock leaves its
+           remains on the square it fell on: a state.graves row (plain data → state-sync; reset per match). Every corpse
+           cast (Raise the Dead, Cannibalize, Carrion Feast) reads the still-dead bodies AND these rows through
+           corpseRemainsBodies / corpseRemainsAt, and eats either with consumeCorpseRemains. A revive is not offered on a
+           row: its unit is already alive. The row is drawn like the dead body's grave (your own: a headstone, the enemy's:
+           bones, once seen). */
+        function _remainsBody(g) {
+            const real = (state.units || []).find(u => u.id === g.unitId) || {};
+            /* its unit's face and name (a shallow copy: read-only, never stored), on the grave's square, dead */
+            return Object.assign({}, real, {
+                id: g.id, _remains: true, _remainsOf: g.unitId,
+                player: g.player, dead: true, _dying: false, hp: 0, maxHp: real.maxHp || 0, shield: 0,
+                x: g.x, y: g.y, z: g.z, _dyingX: g.x, _dyingY: g.y,
+                reviveLocked: true, _corpseConsumed: false, _respawnIn: null, statusEffects: [], status: {}
+            });
+        }
+        function corpseRemainsBodies() {
+            const out = [];
+            for (const u of state.units) if (u.dead && !u._corpseConsumed) out.push(u);
+            for (const g of (state.graves || [])) {
+                if (out.some(b => !b._remains && b.x === g.x && b.y === g.y)) continue;   // a fresh body lies on it: that one first
+                out.push(_remainsBody(g));
+            }
+            return out;
+        }
+        /* the remains at a square the cast accepts: a still-dead body first, then a left-behind grave */
+        function corpseRemainsAt(unit, spell, x, y) {
+            return corpseRemainsBodies().find(c => c.x === x && c.y === y && spellCorpseUsable(unit, spell, c)) || null;
+        }
+        function consumeCorpseRemains(corpse) {
+            if (!corpse) return;
+            if (corpse._remains) {
+                state.graves = (state.graves || []).filter(g => g.id !== corpse.id);
+                return;
+            }
+            corpse._corpseConsumed = true;
+            /* the raised / eaten meat leaves nothing to revive — for THIS death only: the respawn hands the lock back
+               (a Revive's own once-per-match lock stays) */
+            if (!corpse.reviveLocked) corpse._corpseReviveLock = true;
+            corpse.reviveLocked = true;
+        }
+        /* map.js processRespawns, the moment a dead unit comes back on the clock (not a revive, not a zombie clawing
+           out of its own grave): its unconsumed remains stay where it fell (one grave a square, the newest) */
+        function leaveRemainsOnRespawn(unit, from) {
+            if (!unit) return;
+            const consumed = !!unit._corpseConsumed;
+            unit._corpseConsumed = false;   // a new life: its next death leaves fresh remains
+            if (unit._corpseReviveLock) { unit.reviveLocked = false; unit._corpseReviveLock = false; }
+            if (consumed || unit._isBoss || !from || !Number.isFinite(from.x) || !Number.isFinite(from.y)) return;
+            if (!state.graves) state.graves = [];
+            state.graves = state.graves.filter(g => !(g.x === from.x && g.y === from.y));
+            state._graveSerial = (state._graveSerial || 0) + 1;
+            state.graves.push({ id: 'remains_' + unit.id + '_' + state._graveSerial, unitId: unit.id,
+                player: (unit._origPlayer != null ? unit._origPlayer : unit.player),
+                x: from.x, y: from.y, z: from.z, round: state.round || 0 });
+        }
+        window.corpseRemainsBodies = corpseRemainsBodies;
+        window.corpseRemainsAt = corpseRemainsAt;
+        window.consumeCorpseRemains = consumeCorpseRemains;
+        window.leaveRemainsOnRespawn = leaveRemainsOnRespawn;
 
         /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
            wears the control status (possessed / infected) for `acts`
@@ -40337,7 +40405,7 @@
                 return;
             }
             if (kind === 'cannibalize') {
-                const corpse = state.units.find(u => spellCorpseUsable(unit, spell, u) && u.x === x && u.y === y);
+                const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (corpse) helped(unit, healLandsOn(unit, Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35))), unit, { preScaled: true }), 0);
                 return;
             }
@@ -43416,6 +43484,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -46868,7 +46937,7 @@
 
             if (spellTargetsCorpses(spell)) {
                 // Any corpse (either side) whose remains haven't been consumed yet.
-                return state.units.some(u => spellCorpseUsable(unit, spell, u) &&
+                return corpseRemainsBodies().some(u => spellCorpseUsable(unit, spell, u) &&   // THE GRAVES STAY: left graves too
                     !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
@@ -54048,6 +54117,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -54647,6 +54717,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -54861,6 +54932,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -64525,7 +64597,8 @@
             const _casterStandH = _needsAbove
                 ? ((typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : unitZ)
                 : 0;
-            for (const u of state.units) {
+            /* THE GRAVES STAY: a corpse cast lists the still-dead bodies and the graves respawned units left behind */
+            for (const u of (spellTargetsCorpses(spell) ? corpseRemainsBodies() : state.units)) {
                 // Dead units are invisible to targeting EXCEPT for revive, whose
                 // whole job is targeting a fallen ally's gravestone — and raiseDead,
                 // which reanimates ANY unconsumed remains (ally grave or enemy bones).
@@ -64625,7 +64698,7 @@
             const isOffensive = !!_skm.offensive;
             const fogLimit = spellVisionGate(unit, spell);   // VISION (2026-10-09)
             const out = [];
-            for (const u of state.units) {
+            for (const u of (spellTargetsCorpses(spell) ? corpseRemainsBodies() : state.units)) {   // THE GRAVES STAY (the drum's list)
                 // Dead-target rules mirror the drum: revive walks to its own
                 // fallen ally's grave, raiseDead to any unconsumed remains.
                 if (u.dead) {
@@ -77687,17 +77760,19 @@
                 // It lives in state.turrets (zombie: true) so it inherits the whole
                 // siege-engine pipeline: it can be attacked (3 hits), is fogged and
                 // rendered like a deployable, and acts in the end-of-round phase.
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                /* THE GRAVES STAY: a still-dead body or the grave a respawned unit left; its square must be free */
+                const corpse = corpseRemainsAt(unit, spell, x, y);
                 if (!corpse) {
-                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    const _covered = corpseRemainsBodies().some(c => c.x === x && c.y === y);
+                    addLog(_covered ? "Those remains are covered — Raise the Dead needs their square empty."
+                        : "Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
                     playErrorSfx();
                     return 0;
                 }
                 playSfx(spellLaunchSfx(spell));
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                corpse._corpseConsumed = true;
-                corpse.reviveLocked = true;   // the raised meat leaves nothing to revive
+                consumeCorpseRemains(corpse);   // the raised meat leaves nothing to revive (this death)
                 if (!state.turrets) state.turrets = [];
                 const _zHits = spell.zombieHits || 3;
                 state.turrets.push({
@@ -79681,7 +79756,7 @@
                 /* §6.18 Cannibalize (Phase 5 wave B): eat unconsumed remains —
                    heal healPct of max HP, the corpse's respawn +corpseDelay,
                    the remains consumed (no revive, no raising). */
-                const corpse = state.units.find(u => spellCorpseUsable(unit, spell, u) && u.x === x && u.y === y);
+                const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (!corpse) {
                     addLog("Target an enemy's remains — a fallen enemy's bones.");
                     playErrorSfx();
@@ -79690,8 +79765,7 @@
                 playSfx('buff');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                corpse._corpseConsumed = true;
-                corpse.reviveLocked = true;
+                consumeCorpseRemains(corpse);
                 const _cbDelay = spell.corpseDelay || 2;
                 const _cbDelayed = corpse._respawnIn != null && Number.isFinite(corpse._respawnIn);
                 if (_cbDelayed) corpse._respawnIn += _cbDelay;

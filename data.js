@@ -7336,7 +7336,7 @@ const RACE_ABILITIES = {
         { id: 'raceCannibalize', tier: 2, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Cannibalize',
           type: 'heal', cost: 25, range: 2, apCost: 1,
           kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
-          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 35% of max HP and delays that enemy\'s respawn by 2 rounds. The remains are consumed.' },
+          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 35% of max HP and, while that enemy is still down, delays its respawn by 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', tier: 2, families: ['zombie'], spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceOutbreak', upgradesBlock: ['upWiden'], tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -10191,7 +10191,7 @@ const RACE_ABILITIES = {
           type: 'heal', tier: 3, families: ['ghoulish'], cost: 20, range: 2, apCost: 1, cooldownRounds: 2,
           kind: 'cannibalize', healPct: 0.5, corpseDelay: 2,   // THE SPELL AUDIT Batch D: corpse-gated, like Cannibalize
           statStageBoost: { atk: 1 },
-          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and that enemy\'s respawn is delayed 2 rounds.' },
+          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and, while that enemy is still down, its respawn is delayed 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too.' },
         SHARED_POISON_SWAMP,
     ],
     'gnome': [
@@ -10715,7 +10715,7 @@ const RACE_ABILITIES = {
         { id: 'raceRaiseDead', spellType: 'unholy', name: 'Raise the Dead',
           type: 'utility', tier: 4, families: ['necromancy'], cost: 40, range: 4, apCost: 2,
           kind: 'raiseDead', zombieDmg: 60,
-          desc: 'Reanimate the remains of the fallen — target an ally\'s gravestone or an enemy\'s pile of bones to raise a mindless flesh abomination. At the end of every round it attacks the nearest unit, friend or foe, until destroyed (3 hits). The consumed corpse can never be revived.' }
+          desc: 'Reanimate the remains of the fallen — target an ally\'s gravestone or an enemy\'s pile of bones to raise a mindless flesh abomination. At the end of every round it attacks the nearest unit, friend or foe, until destroyed (3 hits). A grave stays where a unit fell even after that unit respawns, and can still be raised while nothing stands on it. The consumed corpse can never be revived.' }
     ],
 
     'occulus': [
