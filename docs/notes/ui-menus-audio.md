@@ -2293,6 +2293,25 @@ display only, nothing relayed (each side lays out its own HUD / pops). Shots: /m
   growing at FLOAT_MAX_TAG_H = 7% of the screen up close; (c) a plate under a live pop fades to POP_FADE_OP 0.45 (half, so
   its HP drain still reads; the menu fade stays 0.22). The pops' boxes: `_floatGameCtx.popBoxes`, cleared when none are up.
 
+## THE CURSOR CLEARS THE NAME — 2026-11-07 (status effects playtest D1)
+"COWBO", "SUCCUB": the gold / red turn cursor (three-renderer `_buildSelectionChevron`) sat on the end of the acting unit's
+name. Not the name fit (`_pmFitName` already fits every plate state, active included): the cursor was put a fixed 75 screen
+px up the WORLD vertical from the plate anchor (`_syncSelectionIndicator`). On the tilted battle camera a world-vertical step
+draws shorter on screen, and a plate with the type column / status badges / a UI Maker size is taller than 75 px, so the
+cursor landed on the name row; plates are centred on the unit, so any name past the middle ran under it.
+- Fix: `_pmTick` marks the plate in the cursor's unit group (`it.chev`, not the 'side' style) and `_chevPlaceAbove` puts
+  the cursor's tip CHEV_GAP_PX (4) over the plate's own drawn top (`pm.top`, from the paint's box union) in the camera's up,
+  at the anchor's depth; the bob (CHEV_BOB_PX) only rises. `_pmStack` keeps the cursor's room clear, so a plate stacking over
+  the acting one rises above the cursor. CSS2D plates (EW_CSS_PLATES / HQ CSS text): `_chevOverCssPlate`, same spot off the
+  element's box. No plate on screen (off, side style, fog) = the old 75 px spot. Viewer-local, nothing relayed (each side
+  draws its own cursor over its own plates).
+- THE ACTIVE PLATE: the plate code asked `getBlitzTurnUnit()`, which no file ever defined, so the acting unit's plate never
+  wore `tp-active` (the gold name + glow in the plate CSS, first place in `_pmStack`). three-renderer now defines it locally
+  (the blitz-active unit in battle), so the acting plate is gold and keeps its place while others stack over the cursor.
+- CSS2D plates (EW_CSS_PLATES, localStorage ew_text = css) never ran THE NAME FITS (only a world plate's paint did), so
+  long names kept the ellipsis there; `_scalePlates` now runs `_pmFitName` on them via `_cssPlateFit` (every 300 ms).
+- Proof shots (longest names, status badges, zoom 1.6-3, tilt 15-50): /mnt/project-files/nameplate-cursor-20261107/.
+
 ## THE FIT — no cut-off text, no sideways scrolls in the forge + VS CPU (2026-11-06, playtest F2/F3)
 mondo: text cut-off is high priority, no sideways scrolls, redesign panels to fit. Cause: the default theme (UI Maker
 `p_entropy`) puts 'Press Start 2P' on every word of the forge and the terminal, about twice the width of the Cormorant SC
