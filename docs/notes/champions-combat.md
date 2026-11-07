@@ -4510,3 +4510,44 @@ mondo: "Go ahead and start those fixes" (PLAYTEST_ZONES_TRAPS_20261107.md family
 - Proof (online friendly, two seats, Mount Shasta 10x10): /mnt/project-files/playtest-mechanics-20261107/trap-cap-jump-fix/
   (ms2: Tesla + Cloning Machine both stand; g2: Gnome's three traps stand, a 2nd Spring Snare replaces the 1st with the
   line; kk5 = the GUEST's screen: King Kong jumps onto the Scrap Mine, −124 + Stagger; g6: Deploy Turret + 5G Tower both stand).
+### THE HEIGHT PAID ONCE (2026-11-07, zones/traps playtest K + J)
+- Bug: Stone Drop (a WEAK row) hit a Symbiote for 1113. The drop prices height as levels in its raw (`dmg + spell power +
+  levels × dmgPerLevel`, levels counted from the flyer's own altitude + carryHeight), then applyDamageToUnit also gave the
+  hit HIGH GROUND from that same altitude (`1 + DOWNHILL_DAMAGE_BONUS × Δ`, ×1.4 for a flyer parked 4 up). Height was paid
+  twice. Every row that prices levels did the same: skyDrop, skyThrow (grab + throw), skySlam (+ its shockwave),
+  leapStrike (+ its shockwave).
+- Fix (battle.js, no data changed): those hits pass `noHeightBonus: true` (the HIGH GROUND multiplier and the defender's
+  height soak are skipped; the levels stay). Cast and forecast both (the forecast plan's baseOpts for these kinds). Stagger
+  ×1.5, the element ground ×1.25 and every other multiplier are untouched. The throw's collision bystander (flat
+  collisionBonus, no levels in it) is unchanged.
+- Measured in a real VS CPU match (Gargoyle, Mount Shasta): main, Stone Drop from +2 on Spy forecast = hit = 475; the same
+  raw without the double height = 385. At +4 (the playtest's 8-level drop) the extra was ×1.4 on the whole hit.
+- J (the camera "under the terrain" during Stone Drop): the playtest build predates PR #986 (the lens footprint), and its
+  frame was taken 8 s after the drop KILLED the Symbiote, i.e. the death close-up. On current main Stone Drop's own shot
+  and its kill close-up stayed above the board (6-, 9- and 10-level drops filmed, one a kill). The death close-up on
+  Mount Shasta's slopes is its own thread ("Keep death close-up camera out of trees and hills").
+
+## THE IMMUNE TARGET (2026-11-07, timing/counters playtest B1)
+mondo: "start those fixes" — Counterspell / Brainwash / Executive Order listed the CPU Ghoul (Pure Negativity: immune to
+every debuff and stat drop) with a green CONFIRM; the cast bounced and still spent MP + cooldown.
+- battle.js `unitImmuneToStatus(u, id)`: a read-only copy of applyStatusPayload's immunity gates (passive immuneStatus,
+  passive immuneKind, element immunity/absorb of a status that IS an element, Fermata statLock vs stageMod statuses, a boss
+  vs control statuses). `unitImmuneToStage(u, n)`: immuneStatDown vs negative stages, statLock vs any.
+- `spellIsStatusOnly(spell)`: kinds debuff / buff / aoe / barrage / possess whose whole effect is statuses and/or stat
+  stages (no damage, heal, MP drain, pull, stolen spell, terrain…). `spellBouncesOffImmune(spell, u)`: every status and
+  stage of such a cast bounces off u.
+- `spellTargetUsableOn` returns false for that unit (airborne flyer + groundsFlyers still counts), so the drum, the menus'
+  NO VALID TARGET, MOVE→CAST, novas (`_selfNovaSeenVictims`) and board clicks all skip it. doSpell refuses a single-target
+  debuff/buff/possess cast on such a unit before any MP/AP/cooldown ("X is immune — Spell would do nothing.").
+- Browser proof (VS CPU 2v2, Telepath + Politician vs Ghoul + Shaman): Brainwash and Executive Order read NO VALID TARGET
+  with the Ghoul adjacent and in sight; Executive Order listed only the Shaman and stunned it. Shots:
+  /mnt/project-files/immune-targets-20261107/. The CPU party was set before the match (Ghoul can't be picked for the CPU).
+
+## THE ENEMY REMAINS (2026-11-07, timing playtest H6)
+Cannibalize and Carrion Feast (kind `cannibalize`) eat only an ENEMY's remains: SPELL_KIND_META `cannibalize.enemyRemainsOnly`,
+one gate `spellCorpseUsable(unit, spell, corpse)` (battle.js, next to `spellTargetsCorpses`) used by the target list, both
+drums, castability, the forecast, the cast and the CPU pick (ai.js). Before, the list offered the caster's own ally's
+gravestone; eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds, and the CPU picked the
+nearest remains of either side. Text of both spells + the REMAINS chip say enemy bones. Raise the Dead keeps both sides
+(its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
+Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.

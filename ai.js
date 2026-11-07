@@ -9421,7 +9421,10 @@
         }
         if (kind === 'cannibalize') {
             if ((unit.hp / (unit.maxHp || 1)) > 0.7) return null;
-            const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
+            // THE ENEMY REMAINS (playtest 2026-11-07 H6): only an enemy's remains — never its own team's graves (the cast's own gate)
+            const _cbOk = (typeof spellCorpseUsable === 'function') ? (d => spellCorpseUsable(unit, spell, d))
+                : (d => d.dead && !d._corpseConsumed && d.player !== unit.player);
+            const remains = g.state.units.filter(_cbOk)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
                               - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));

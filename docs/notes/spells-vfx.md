@@ -3143,6 +3143,30 @@ the impact, what the actual fuck. Fix this for all spells."
 - Online: the guest re-runs playOffensiveActionCamera with the same opts (descentCam relayed), so its shot stretches the
   same way; the host's return (and its relayed settle) waits for the hold.
 
+## THE SHOT HOLD — marked shots and end-of-round volleys (2026-11-07)
+Timing/counters playtest D1 (mondo: "Go ahead and start those fixes"): "a marked shot lands before the camera gets there,
+and the camera leaves half a second later".
+- Cause: state.js `processDelayedSpellDetonations` sends a marked shot (Take Aim, To Be Continued: `ds.markedUnitId`) and any
+  blast with no cinematic (the Action Cam off, the cine ineligible) through a 380 ms `eorFocusCamera` glide with an impact
+  delay of 0 and a 500 ms dwell. THE IMPACT HOLD never armed (no action shot). Turret / summon / zombie volleys
+  (battle.js `processTurretVolleys`) dwelt 680 ms. Online the guest's camera never moved for any of these (host-only loop).
+- Fix (camera only, no rules):
+  - battle.js `playEorShotFocus(x, y, opts)`: the end-of-round dive onto such a shot (eorFocusCamera underneath), returns the
+    glide ms. online.js wraps it and relays `eor-shot-focus` {x, y, duration}; the guest replays it on its own fog
+    (also in the per-viewer fog filter and the replay CAMERA_RELAY list). `opts.local === false` = relay only (online, the
+    host can't see the tile).
+  - `window._cineHoldImpactAftermath(extraMs)` arms `_cineHoldImpactFor(extra + CINE_IMPACT_AFTERMATH_MS)`.
+  - state.js: the shot waits for the glide (impact >= 420 ms), arms the hold BEFORE the hit (so the hit's freeze adds via
+    applyDamageToUnit), and the next beat waits `max(500 ms, _cineImpactHoldLeft())`. Online it always waits.
+  - `cineFreezeFrame` during a live hold extends it by the freeze (To Be Continued's 900 ms sepia stop).
+  - Turret volleys: the focus beats go through playEorShotFocus; the hold arms before `applyShot`; the next shot waits
+    `max(680 ms, hold left)`.
+- Audit (the report's other counters): overwatch (`_holdTrapBeat`), Riposte / follow-ups and the Overfit replay (hits inside
+  a live shot extend THE IMPACT HOLD) and the cinematic detonations (`afterMs` 1300) already held. DoT / weather ticks are
+  not shots (the hold skips DoT by design).
+- Proof (real VS CPU match, recorder every 50 ms): Take Aim on Kraken, the glide centred Kraken by 442 ms when the hit
+  landed, the camera left 3.08 s later (Cinematic tempo). /mnt/project-files/marked-shot-hold/.
+
 ## THE TRAP'S BEAT — the camera stays on a sprung trap (2026-11-07)
 mondo: "I was playing a battle and Deathtrap went off but the camera panned to my next unit's turn before the spell
 animation finished so i didnt even see what happened".

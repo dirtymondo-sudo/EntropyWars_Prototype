@@ -988,9 +988,19 @@
                    wide for the blast. Falls back to the classic tactical dive
                    when ineligible (2D renderer, toggle off, marked shots). ── */
                 let _cine = null;
+                /* THE SHOT FOCUS (timing playtest 2026-11-07 D1): a shot with no cinematic (a marked shot, any blast
+                   with the Action Cam off) waits for the camera's glide before it lands and holds on the hit for the
+                   impact aftermath, like a cast. Online it always waits: the guest may see what the host can't. */
+                let _shotFocus = false;
+                const _detOnline = !!(window._NET && window._NET.online);
                 /* Mystery Dungeon lockstep: the camera belongs to the leader —
                    the blast's VFX/damage still play, but no detonation dive. */
                 const _mdNoDetCam = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
+                if (_detOnline && (!isVisible || state.cameraDisabled) && !_mdNoDetCam && _vfxAllowed
+                    && typeof playEorShotFocus === 'function') {
+                    playEorShotFocus(ds.x, ds.y, { local: false });   // the relay only: the guest judges its own fog
+                    _shotFocus = true;
+                }
                 if (isVisible && !state.cameraDisabled && !_mdNoDetCam && typeof camera !== 'undefined') {
                     if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Detonations');
                     if (!ds.markedUnitId && typeof window !== 'undefined'
@@ -1002,7 +1012,9 @@
                     if (!_cine) {
                         // Shared end-of-round framing (resting tactical angle,
                         // one tour zoom) matching every other between-round beat.
-                        if (typeof eorFocusCamera === 'function') {
+                        if (typeof playEorShotFocus === 'function') {
+                            _shotFocus = playEorShotFocus(ds.x, ds.y, { duration: 380 }) > 0;
+                        } else if (typeof eorFocusCamera === 'function') {
                             eorFocusCamera(ds.x, ds.y, { duration: 380 });
                         } else {
                             const _detZoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? getUserZoomScale() : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
@@ -1012,8 +1024,9 @@
                 }
 
                 const _impactDelay = _cine ? _cine.impactMs
-                    : (_descentVfxMs > 0 ? actionMs(_descentVfxMs)
-                        : (_hasArmingVfx ? actionMs(1100) : 0));
+                    : Math.max(_shotFocus ? 420 : 0,   // the 380 ms glide arrives first
+                        (_descentVfxMs > 0 ? actionMs(_descentVfxMs)
+                            : (_hasArmingVfx ? actionMs(1100) : 0)));
 
                 /* Action tile glow: the blast footprint arms while the shell
                    falls and goes white-hot on the detonation frame (no actor
@@ -1030,6 +1043,8 @@
                 }
 
                 window.setTimeout(() => {
+                    /* THE SHOT HOLD: armed before the hit, so the hit's freeze (and To Be Continued's sepia stop) add to it */
+                    if (_shotFocus && typeof window._cineHoldImpactAftermath === 'function') window._cineHoldImpactAftermath(0);
                     _detonateDelayedSpell(ds);
 
                     /* Descent-less detonations still need a BLAST to look at —
@@ -1063,7 +1078,8 @@
 
                     const _postImpactDelay = _cine
                         ? Math.max(actionMs(500), _cine.afterMs)
-                        : actionMs(500);
+                        : Math.max(actionMs(500), (_shotFocus && typeof window._cineImpactHoldLeft === 'function')
+                            ? window._cineImpactHoldLeft() : 0);
                     window.setTimeout(detonateNext, _postImpactDelay);
                 }, _impactDelay);
             }
