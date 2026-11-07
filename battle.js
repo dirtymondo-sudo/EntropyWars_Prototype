@@ -2392,7 +2392,7 @@
                             ThreeVFX.isActive && ThreeVFX.isActive()) {
                             ThreeLightning.strikeFromSky(x, y, { durationMs: 340 });
                         } else {
-                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : '❄️', 'damage');
+                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : _etc.el === 'water' ? '💧' : '❄️', 'damage');
                         }
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         markDirty('board', 'hud');
@@ -2879,9 +2879,11 @@
         // 🌧️ True when rain-type weather (any def.soaks system: hurricane,
         // thunderstorm, blood rain) is falling on the unit's tile. Airborne
         // flyers ride above the soak, same rule as the weather tick itself.
-        function _unitInRain(u) {
+        function _unitInRain(u, anyHeight) {
             if (!u || !state.activeWeather || !state.activeWeather.length) return false;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            /* anyHeight: the rain falls on a flyer too — it can't catch fire in it (WATER PUTS OUT FIRE, mondo 2026-11-07);
+               only the Soaked status still skips flyers */
+            if (!anyHeight && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
             for (const w of state.activeWeather) {
                 const def = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[w.type] : null;
                 if (!def || !def.soaks) continue;
@@ -3353,7 +3355,10 @@
                 setTerrainAt(t.x, t.y, 'ice');
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
-                    applyStatusEffects(u, [{ id: 'stun', duration: 1 }], `${spell.name} flash-freeze: `, caster);
+                    /* FROZEN IS FROZEN (mondo 2026-11-07: "obviously frozen is not supposed to be stun. frozen is frozen"):
+                       the flash-freeze applies the real Frozen status (Shatter and every ×1.5 vs Frozen pays, fire thaws
+                       it), and a unit the hit's own wet+cold combo already froze is not frozen (or logged) twice. */
+                    if (!unitHasStatus(u, 'frozen')) applyStatusEffects(u, [{ id: 'frozen', duration: 1 }], `${spell.name} flash-freeze: `, caster);
                     u._drowningStacks = 0;
                     clearStatus(u, 'drowning');
                     showFloatingTextForUnit(u, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
@@ -3551,10 +3556,22 @@
                 }
                 if (_hard) { _invalidateBoardGrid(); scheduleBoardRender(); }
             }
+            /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07: "Water is supposed to put out fire"): every water spell puts out
+               the ground fire on the tiles it strikes (frost already did, and leaves water) */
+            if (_rawEl === 'water') {
+                let _wDoused = 0;
+                for (const tile of tiles) {
+                    if (tile && isInside(tile.x, tile.y) && _tileIsBurning(tile.x, tile.y) && extinguishTile(tile.x, tile.y)) _wDoused++;
+                }
+                if (_wDoused) {
+                    scheduleBoardRender();
+                    addLog(`💧 ${_ctSp(spell.name)} puts out the flames on ${_wDoused} tile${_wDoused !== 1 ? 's' : ''}.`);
+                }
+            }
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
-            let _lit = 0, _doused = 0;
+            let _lit = 0, _doused = 0, _meltPools = 0;
             for (const tile of tiles) {
                 if (!tile || !isInside(tile.x, tile.y)) continue;
                 if (handled.has(tile.x + ',' + tile.y)) continue;
@@ -3600,9 +3617,14 @@
                     handled.add(tile.x + ',' + tile.y);
                     if (igniteTile(tile.x, tile.y, 2, caster)) _lit++;
                 } else if (el === 'cold' && _tileIsBurning(tile.x, tile.y)) {
-                    // ❄️ frost smothers ground fire.
+                    // ❄️ frost smothers ground fire. ICE + HEAT = WATER (mondo 2026-11-07: "flash freeze on burning tiles
+                    // should cause water"): the frost melts on the fire and the tile is left shallow water (the normal
+                    // terrain-change timer brings the ground back).
                     handled.add(tile.x + ',' + tile.y);
-                    if (extinguishTile(tile.x, tile.y)) _doused++;
+                    if (extinguishTile(tile.x, tile.y)) {
+                        _doused++;
+                        if (setTerrainAt(tile.x, tile.y, 'water') !== false && getTerrainAt(tile.x, tile.y) === 'water') _meltPools++;
+                    }
                 }
             }
             /* 💧⚡ WET CONDUCTS: a Soaked unit struck on dry ground carries the charge to every Soaked body (and wet tile)
@@ -3625,8 +3647,9 @@
                 addLog(`🔥 ${_ctSp(spell.name)} sets ${_lit} tile${_lit !== 1 ? 's' : ''} ablaze!`);
             }
             if (_doused) {
+                if (_meltPools) _invalidateBoardGrid();
                 scheduleBoardRender();
-                addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}.`);
+                addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}${_meltPools ? ` — the frost melts into water` : ''}.`);
             }
         }
         window.triggerTerrainSpellReaction = triggerTerrainSpellReaction;
@@ -3882,6 +3905,8 @@
         function _elementalTileCastInfo(spell, x, y) {
             if (!spell || spell.kind !== 'damage') return null;
             if (!isInside(x, y)) return null;
+            /* 💧 a water spell may be aimed at a burning tile to put it out (WATER PUTS OUT FIRE, 2026-11-07) */
+            if (getSpellElement(spell) === 'water' && _tileIsBurning(x, y)) return { el: 'water', hint: 'puts out the flames' };
             const el = classifySpellElement(spell);
             if (!el) return null;
             if (el === 'lightning') {
@@ -3898,7 +3923,7 @@
                 if (_isFlammableTile(x, y)) return { el, hint: 'sets the ground ablaze' };
             } else if (el === 'cold') {
                 if (_isWaterTile(x, y)) return { el, hint: 'flash-freezes the water' };
-                if (_tileIsBurning(x, y)) return { el, hint: 'douses the flames' };
+                if (_tileIsBurning(x, y)) return { el, hint: 'douses the flames and leaves water' };
             }
             return null;
         }
@@ -9828,7 +9853,7 @@
             // can't ignite someone who is being rained on / waist-deep.
             if (payload.id === 'burn' && (unitHasStatus(target, 'wet')
                 || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
-                || (typeof _unitInRain === 'function' && _unitInRain(target)))) {
+                || (typeof _unitInRain === 'function' && _unitInRain(target, true)))) {
                 addLog(`💧 ${_ctName(target)} is too soaked to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
@@ -37715,10 +37740,11 @@
                     }
                     showFloatingTextForUnit(target, '⚙️ SUPERCHARGED!', 'buff', { durationMs: 1200 });
                     addLog(`⚙️ The surge overloads ${_ctName(target)}'s circuits — SUPERCHARGED (Overclock)!`);
-                } else if (_comboEl === 'cold' && _unitIsSoaked(target) && !unitHasStatus(target, 'stun')) {
+                } else if (_comboEl === 'cold' && _unitIsSoaked(target) && !unitHasStatus(target, 'frozen')) {
                     // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
                     // solid for a turn (soak them first, then bring the cold).
-                    applyStatusPayload(target, { id: 'stun', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
+                    // FROZEN IS FROZEN (mondo 2026-11-07): the real Frozen status, not a Stun.
+                    applyStatusPayload(target, { id: 'frozen', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
                     // creaking ice locking solid with a deep "clunk"
                     playSfx('freezeSolid');
                 } else if (_comboEl === 'fire' && unitHasStatus(target, 'wet')) {
@@ -37726,6 +37752,12 @@
                     // hit burns at full strength and can set them alight.
                     clearStatus(target, 'wet');
                     showFloatingTextForUnit(target, '♨️ Dried out', 'debuff', { durationMs: 900 });
+                }
+                // ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07): a frost hit on a burning unit melts on the flames —
+                // the burn goes out and the meltwater leaves the unit Soaked (the same as being doused by water).
+                if (_comboEl === 'cold' && !target.dead && !target._dying && target.status && target.status.burn) {
+                    _douseBurnOnUnit(target, 'The melting frost');
+                    _soakUnit(target, { douseLabel: 'The melting frost' });
                 }
                 // 🔥🧊 Fire cracks the ice: any fire-element hit thaws a
                 // Frozen target on the spot (yes, that means a fireball is
@@ -60173,8 +60205,8 @@
             crit: 'Critical hit', press: 'Press (+AP refund)', pressMiss: 'Press miss (-AP)',
             typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
             statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
-            react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Soaked shock (lightning on wet)',
-            react_soakedFire: 'Soaked fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            react_shortCircuit: 'Short Circuit (lightning on soaked tech)', react_soakedShock: 'Soaked shock (lightning on soaked)',
+            react_soakedFire: 'Soaked fire (fire on soaked)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
             highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
         };
         function _balFxMark(u, kind, key) {
@@ -65820,7 +65852,7 @@
                     sourceUnit: owner, damageType: 'magic', noRangeMult: true, spellType: trap.spellType || null
                 });
                 if (!victim.dead) {
-                    applyStatusEffects(victim, [{ id: 'stun', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);
+                    applyStatusEffects(victim, [{ id: 'frozen', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);   // FROZEN IS FROZEN (mondo 2026-11-07)
                     showFloatingTextForUnit(victim, '❄️ FROZEN!', 'debuff', { durationMs: 1100 });
                 }
                 // 3×3 flash-freeze: water and soft natural ground glaze to ice.
@@ -65942,6 +65974,9 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (_isLavaTile(x, y)) _walkLavaBurn(unit, x, y, true);
             else if (_tileIsBurning(x, y)) _walkFireBurn(unit, x, y, true);
+            /* 💧 WALKING THROUGH WATER PUTS OUT BURN (mondo 2026-11-07: "yes walking through water should put out burn"):
+               a water tile the walk crosses douses the walker and soaks it, the same as ending the move in it */
+            else if (_isWetTile(x, y)) _soakUnit(unit, { douseLabel: 'The water' });
             if (unit.dead || unit._dying) return;
             for (const { weather, def } of _chainStormsAt(x, y)) {
                 if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) continue;

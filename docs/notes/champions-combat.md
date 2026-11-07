@@ -4120,3 +4120,23 @@ reads "claimed by"), map.js applyTerrainTurnEffects, state.js beginBlitzRound te
 heals were already gated. A new life starts clean: processRespawns wipes `status`, and resetUnitPowerState now also zeroes
 `_lavaBurnStacks` (they escalated the next life's first lava Burn tick). Statuses a unit wore BEFORE it fell stay on the body
 until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule).
+
+### THE WATER + FIRE + FREEZE PASS (2026-11-07, mondo after the elements playtest)
+- FROZEN IS FROZEN: "obviously frozen is not supposed to be stun. frozen is frozen". The flash-freeze (frost on a soaked
+  unit, battle.js applyDamageToUnit combo; frost on a pool, _reactColdWater; the retired Frost Mine trap) applies the
+  real `frozen` status (1 round), so Shatter / every ×1.5 vs Frozen pays and a fire hit thaws it. A unit the combo
+  already froze is not frozen (or logged) again by the pool reaction.
+- ICE + HEAT = WATER: "flash freeze on burning tiles should cause water". A frost spell on a burning tile puts it out
+  and leaves shallow water there (normal terrain-change timer); a frost hit on a burning unit puts the burn out and
+  leaves it Soaked (combo layer, after the flash-freeze check). Lava + ice still makes stone (his 10-18 rule).
+- WATER PUTS OUT FIRE: "Water is supposed to put out fire" + "walking through water should put out burn" + "rain should
+  put out burning units". Every water spell puts out the ground fire on the tiles it strikes (triggerTerrainSpellReaction)
+  and can be aimed at a burning tile (_elementalTileCastInfo, el 'water'); water/ice painted on a burning tile puts it out
+  at once and douses a grounded unit there (map.js setTerrainAt); a water tile crossed mid-walk soaks + douses the walker
+  (_walkPassHazards); rain douses every burning unit it falls on, flyers too, when it forms and every round end
+  (state.js rainOnTheBoard), and a flyer in the rain can't catch fire (_unitInRain anyHeight). Water heals (Yo Ho,
+  Temporal Tide) don't douse: they deal no water hit.
+- ONE NAME, SOAKED: "what is up with all of these different water effects like wet and soaked, isnt that the exact same
+  thing?" It always was one status (id `wet`); the pill / ability chips said WET and everything else said Soaked. The
+  pill is SOAK now and every player-facing "wet" for the status reads Soaked (Ink Cloud desc, Thunderstorm desc, Balance
+  Lab reaction labels, the status description). Flavour text ("a long, wet hand") stays.
