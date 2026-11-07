@@ -13518,7 +13518,7 @@ const STATUS_META = STATUS_DEFS;
    through the stat-change chips instead (statChange carriers: discord,
    overclock, pixieDust, jackOfAll, statUp, statDown). */
 const STATUS_LIBRARY_DESCS = {
-    burn:      'Takes fire damage at the end of every round. Standing in water or getting soaked puts it out.',
+    burn:      'Takes fire damage at the end of every round. Water puts it out: walking through or standing in water, a water or frost hit, or rain.',
     poison:    'Takes poison damage at the end of every round.',
     bleed:     'Bleeding out: takes 20 physical damage at the end of every round (DEF ignored).',
     goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25.',

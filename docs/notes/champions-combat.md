@@ -4118,3 +4118,10 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
 - ICE + HEAT = WATER: "flash freeze on burning tiles should cause water". A frost spell on a burning tile puts it out
   and leaves shallow water there (normal terrain-change timer); a frost hit on a burning unit puts the burn out and
   leaves it Soaked (combo layer, after the flash-freeze check). Lava + ice still makes stone (his 10-18 rule).
+- WATER PUTS OUT FIRE: "Water is supposed to put out fire" + "walking through water should put out burn" + "rain should
+  put out burning units". Every water spell puts out the ground fire on the tiles it strikes (triggerTerrainSpellReaction)
+  and can be aimed at a burning tile (_elementalTileCastInfo, el 'water'); water/ice painted on a burning tile puts it out
+  at once and douses a grounded unit there (map.js setTerrainAt); a water tile crossed mid-walk soaks + douses the walker
+  (_walkPassHazards); rain douses every burning unit it falls on, flyers too, when it forms and every round end
+  (state.js rainOnTheBoard), and a flyer in the rain can't catch fire (_unitInRain anyHeight). Water heals (Yo Ho,
+  Temporal Tide) don't douse: they deal no water hit.

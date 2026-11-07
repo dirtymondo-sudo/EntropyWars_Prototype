@@ -2392,7 +2392,7 @@
                             ThreeVFX.isActive && ThreeVFX.isActive()) {
                             ThreeLightning.strikeFromSky(x, y, { durationMs: 340 });
                         } else {
-                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : '❄️', 'damage');
+                            showFloatingTextAtTile(x, y, _etc.el === 'lightning' ? '⚡' : _etc.el === 'fire' ? '🔥' : _etc.el === 'water' ? '💧' : '❄️', 'damage');
                         }
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         markDirty('board', 'hud');
@@ -2879,9 +2879,11 @@
         // 🌧️ True when rain-type weather (any def.soaks system: hurricane,
         // thunderstorm, blood rain) is falling on the unit's tile. Airborne
         // flyers ride above the soak, same rule as the weather tick itself.
-        function _unitInRain(u) {
+        function _unitInRain(u, anyHeight) {
             if (!u || !state.activeWeather || !state.activeWeather.length) return false;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            /* anyHeight: the rain falls on a flyer too — it can't catch fire in it (WATER PUTS OUT FIRE, mondo 2026-11-07);
+               only the Soaked status still skips flyers */
+            if (!anyHeight && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
             for (const w of state.activeWeather) {
                 const def = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[w.type] : null;
                 if (!def || !def.soaks) continue;
@@ -3554,6 +3556,18 @@
                 }
                 if (_hard) { _invalidateBoardGrid(); scheduleBoardRender(); }
             }
+            /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07: "Water is supposed to put out fire"): every water spell puts out
+               the ground fire on the tiles it strikes (frost already did, and leaves water) */
+            if (_rawEl === 'water') {
+                let _wDoused = 0;
+                for (const tile of tiles) {
+                    if (tile && isInside(tile.x, tile.y) && _tileIsBurning(tile.x, tile.y) && extinguishTile(tile.x, tile.y)) _wDoused++;
+                }
+                if (_wDoused) {
+                    scheduleBoardRender();
+                    addLog(`💧 ${_ctSp(spell.name)} puts out the flames on ${_wDoused} tile${_wDoused !== 1 ? 's' : ''}.`);
+                }
+            }
             const el = classifySpellElement(spell);
             if (!el) return;
             const handled = new Set();
@@ -3891,6 +3905,8 @@
         function _elementalTileCastInfo(spell, x, y) {
             if (!spell || spell.kind !== 'damage') return null;
             if (!isInside(x, y)) return null;
+            /* 💧 a water spell may be aimed at a burning tile to put it out (WATER PUTS OUT FIRE, 2026-11-07) */
+            if (getSpellElement(spell) === 'water' && _tileIsBurning(x, y)) return { el: 'water', hint: 'puts out the flames' };
             const el = classifySpellElement(spell);
             if (!el) return null;
             if (el === 'lightning') {
@@ -9831,7 +9847,7 @@
             // can't ignite someone who is being rained on / waist-deep.
             if (payload.id === 'burn' && (unitHasStatus(target, 'wet')
                 || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
-                || (typeof _unitInRain === 'function' && _unitInRain(target)))) {
+                || (typeof _unitInRain === 'function' && _unitInRain(target, true)))) {
                 addLog(`💧 ${_ctName(target)} is too soaked to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
@@ -65952,6 +65968,9 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             if (_isLavaTile(x, y)) _walkLavaBurn(unit, x, y, true);
             else if (_tileIsBurning(x, y)) _walkFireBurn(unit, x, y, true);
+            /* 💧 WALKING THROUGH WATER PUTS OUT BURN (mondo 2026-11-07: "yes walking through water should put out burn"):
+               a water tile the walk crosses douses the walker and soaks it, the same as ending the move in it */
+            else if (_isWetTile(x, y)) _soakUnit(unit, { douseLabel: 'The water' });
             if (unit.dead || unit._dying) return;
             for (const { weather, def } of _chainStormsAt(x, y)) {
                 if (!_chainStampOk(unit, '_vortexStamps', String(weather.id || weather.type))) continue;
