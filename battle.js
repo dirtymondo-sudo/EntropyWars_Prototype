@@ -26405,6 +26405,9 @@
                 if (this._fogBlocked(opts._fogAllowed)) return;
                 if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
 
+                // THE GLIDE KEEPS GOING: the running tween (its clock and target angle), read before _stop() ends it
+                const _liveGlide = (this._rafId && this._duration > 0)
+                    ? { start: this._startTime, dur: this._duration, easing: this._easing, tt: this._tt, tyaw: this._tyaw } : null;
                 this._stop();
                 // THE CLEAR FRAME: a fitted frame is solved again when the menus' cover changes — only while it is
                 // still the camera's last move (the fit itself re-arms it after its own move)
@@ -26483,7 +26486,45 @@
                 this._duration = Math.max(100, opts.duration ?? 400);
                 this._easing   = opts.easing || 'easeOut';
                 this._startTime = performance.now();
+                if (_liveGlide && !window.EW_NO_GLIDE_RETARGET) this._glideRetarget(_liveGlide);
                 this._rafId = requestAnimationFrame((n) => this._tick(n));
+            },
+
+            /* THE GLIDE KEEPS GOING (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like
+               the camera is fighting itself"). A pick's framing is solved two or three times in its first half second
+               (setTool frames the pick, then THE CLEAR FRAME solves it again as the armed panel slides in), and every
+               solve restarted the glide from rest: the camera stalled, lurched off again and, when the first solve had
+               aimed closer than the last, went in and back out. A new move that only refines the running one (same
+               pitch and yaw to within REFINE_DEG) now bends that glide toward the new frame on its own clock: the
+               position never jumps and the motion never stops. Late in a glide (or when the new move asks for more
+               time than is left) it restarts without the ease-in, so it does not stop dead either. A move to another
+               angle (a new subject, the action shot) starts its own glide as before. Kill switch EW_NO_GLIDE_RETARGET. */
+            _glideRetarget(live) {
+                const REFINE_DEG = 8;
+                const now = this._startTime;
+                const t0 = Math.min(1, Math.max(0, (now - live.start) / live.dur));
+                if (t0 >= 0.9) return;
+                const gap = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+                if (gap(this._tyaw, live.tyaw) > REFINE_DEG || Math.abs(this._tt - live.tt) > REFINE_DEG) return;
+                const left = live.dur - (now - live.start);
+                if (t0 < 0.5 && left >= this._duration * 0.5) {
+                    // same clock, same curve: from' is the start that puts the curve on the camera NOW and on the new target at its end
+                    const e0 = this._ease(t0, live.easing);
+                    const k = e0 / Math.max(0.05, 1 - e0);
+                    this._fromX -= (this._tx - this._fromX) * k;
+                    this._fromY -= (this._ty - this._fromY) * k;
+                    this._fromZ -= (this._tz - this._fromZ) * k;
+                    this._fromT -= (this._tt - this._fromT) * k;
+                    this._fromCZ -= (this._tcz - this._fromCZ) * k;
+                    this._fromYaw -= this._yawDelta * k;
+                    this._yawDelta *= 1 + k;
+                    if (this._fromElev >= 0 && this._tElev >= 0) this._fromElev -= (this._tElev - this._fromElev) * k;
+                    this._startTime = live.start;
+                    this._duration = live.dur;
+                    this._easing = live.easing;
+                } else if (t0 >= 0.2) {
+                    this._easing = 'easeOut';   // already moving: no ease-in stall
+                }
             },
 
             panTo(tx, ty, opts = {}) {
@@ -26902,6 +26943,7 @@
 
             focusOnTiles(points, opts = {}) {
                 if (!boardStageEl || !points?.length || state.phase !== 'battle' || state.cameraDisabled) return;
+                if (_actWalkLive()) return;   // THE ONE MOVE: the two-shot already glides to where the walk lands
                 if (this._fogBlocked(opts._fogAllowed)) return;
                 this._stop();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
@@ -27127,6 +27169,7 @@
                camera follows none of them (it belongs to the player's unit). */
             if (typeof _mdCamMuted === 'function' && _mdCamMuted()) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
+            if (_actWalkLive()) return;   // THE ONE MOVE: the two-shot already glides to where the jump lands
             camera.moveTo({
                 x: toPoint.x, y: toPoint.y,
                 zoom: opts.zoom ?? getDefaultZoom(),
@@ -27418,6 +27461,18 @@
                 return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa, opts };
             } catch (e) { return null; }
         }
+        /* THE REFIT ONLY WIDENS (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like the
+           camera is fighting itself"). THE CLEAR FRAME solves a pick's frame again as the armed panel slides in and as
+           the forecast's words over the heads land and change (THE HEAD ROOM), up to three or four times in the first
+           second and a half. Each solve aimed a few percent closer or further, so the view crept in, back out, in again.
+           A refit now only WIDENS the frame it is refining (the words or the menu need the room) and keeps the zoom it
+           has when it would only close in by less than REFIT_ZOOM_IN (everything already fits); it still slides the
+           frame clear of the menus. A big change (a panel closing) still closes in. Kill switch EW_NO_REFIT_WIDEN_ONLY. */
+        const REFIT_ZOOM_IN = 1.2;
+        function _refitZoom(was, want) {
+            if (window.EW_NO_REFIT_WIDEN_ONLY || !(was > 0) || !(want > 0)) return want;
+            return (want > was && want < was * REFIT_ZOOM_IN) ? was : want;
+        }
         /* THE CLEAR FRAME: a range fit just moved the camera — when the menus' cover moves under it (the armed spell's
            panel arriving after the click), fit the same tiles again for the new cover */
         function _tilePickArmRefit(unit, tiles, fr) {
@@ -27430,6 +27485,7 @@
                     const u = (state.units || []).find(v => v.id === uid && !v.dead);
                     const f2 = u ? _tilePickFrame(u, tiles, null, fr.opts) : null;
                     if (!f2) return;
+                    f2.zoom = _refitZoom(fr.zoom, f2.zoom);   // THE REFIT ONLY WIDENS
                     camera.moveTo({ x: f2.x, y: f2.y, zoom: f2.zoom, tilt: TILE_PICK_TILT, duration: 360, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
                     _tilePickArmRefit(u, tiles, f2);
@@ -31980,6 +32036,8 @@
             // row) keeps the shot running instead of restarting the tween
             // (THE CLEAR FRAME's refit, the menus having moved, solves it again)
             if (ms && ms.key === key && !refit) return true;
+            // THE REFIT ONLY WIDENS: a refit of the same pair keeps the zoom it has unless it must widen
+            if (refit && ms && ms.key === key && ms.pose) pose.zoom = _refitZoom(ms.pose.zoom, pose.zoom);
             if (!ms) {
                 // the TACTICAL view this shot leaves: resting orientation, and the
                 // zoom the player was on (a held action shot's remembered one wins)
@@ -47674,6 +47732,51 @@
             return true;
         }
         window._rearmHeldFirstPick = _rearmHeldFirstPick;
+        /* THE ONE MOVE (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like the camera is
+           fighting itself"). A MOVE→ATK / JUMP→ATK / MOVE→CAST confirm from the target two-shot played three camera moves
+           in about a second: the walk's follow left the two-shot for the tactical view it came from (pitched up, zoomed
+           out, swung back to the resting yaw), then the strike swung straight back down into a two-shot or the action
+           shot. Now a basic attack's two-shot glides ONCE, while the unit walks or jumps, to the frame of the attacker on
+           the tile it lands on and its target, and the walk's follow (focusOnTiles / animateBoardCameraPath) stays out
+           of it until the strike: the attack hold finds the pair already framed and only pushes in. A cast (`still`)
+           keeps the two-shot it was confirmed from through the walk, so the spell's own camera is the one move after
+           the confirm. Viewer-local, so the guest's own walk-then-act gets it too. Kill switch EW_NO_ONE_MOVE. */
+        function _actWalkHold(unit, approach, tx, ty, tz, still) {
+            camera._actWalk = null;
+            try {
+                if (window.EW_NO_ONE_MOVE || !unit || !approach || approach._viaSpell || !camera._menuShot) return;
+                if (!Number.isFinite(approach.x) || !Number.isFinite(approach.y)) return;
+                const live = (state.units || []).filter(u => u && !u.dead && !u._dying && u.id !== unit.id && u.x === tx && u.y === ty);
+                const tgt = live.find(u => tz == null || u.z == null || u.z === tz) || live[0] || { x: tx, y: ty };
+                const dest = Object.assign({}, unit, { x: approach.x, y: approach.y });
+                if (Number.isFinite(approach.z)) dest.z = approach.z;
+                if (!still && !_menuTargetShot(dest, tgt)) return;
+                const w = camera._actWalk = { uid: unit.id, until: performance.now() + 6000 };
+                const tid = tgt.id != null && tgt.player != null ? tgt.id : null;
+                // THE CLEAR FRAME's refit solves the LANDING pair while the walk runs (the walker is still on its way);
+                // a held cast frame is not solved again until the walk ends
+                const arm = () => {
+                    if (!camera._clearFit) return;
+                    const fit0 = camera._clearFit.fit;
+                    camera._clearFit.fit = () => {
+                        if (camera._actWalk !== w || !_actWalkLive()) { if (fit0) fit0(); return; }
+                        if (still) return;
+                        const t = tid != null ? (state.units || []).find(v => v.id === tid && !v.dead) : tgt;
+                        if (!t) return;
+                        if (_menuTargetShot(dest, t, true)) arm();
+                    };
+                };
+                arm();
+            } catch (e) { camera._actWalk = null; }
+        }
+        function _actWalkLive() {
+            const w = camera._actWalk;
+            if (!w) return false;
+            if (!camera._menuShot || performance.now() > w.until || state.phase !== 'battle') { camera._actWalk = null; return false; }
+            return true;
+        }
+        function _actWalkEnd() { camera._actWalk = null; }
+
         function _moveThenCast(unit, approach, spellName, tx, ty, tz) {
             const _viewBefore = state.actionMenuView;
             _clearSpellApproachPreview();
@@ -47687,6 +47790,7 @@
             scheduleBoardRender();
 
             const _bail = () => {
+                _actWalkEnd();
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
                 state._actionExecuting = false;
                 state.actionMode = null;
@@ -47696,6 +47800,7 @@
                 renderIfDirty();
             };
             const _cast = () => {
+                _actWalkEnd();   // THE ONE MOVE: the strike's camera takes over from the landing two-shot
                 // doSpell reads state.selectedTool, and the move above reset
                 // actionMode/selectedTool — re-assert before casting.
                 state.selectedTool = spellName;
@@ -47759,6 +47864,7 @@
                 if (r === 0 || r === false) { _bail(); return; }
                 setTimeout(next, 560);
             };
+            _actWalkHold(unit, approach, tx, ty, tz, true);   // THE ONE MOVE (held: the spell's camera is the move)
             if (approach._viaSpell) {
                 _runSelfMoveStep(unit, approach._viaSpell, _cast, _bail);   // THE DASH APPROACH
             } else if (approach._jump) {
@@ -47986,6 +48092,7 @@
             scheduleBoardRender();
 
             const _bail = () => {
+                _actWalkEnd();
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, 'Blocked!', 'status', { color: '#ff4444' });
                 state._actionExecuting = false;
                 state.actionMode = null;
@@ -47995,6 +48102,7 @@
                 renderIfDirty();
             };
             const _strike = () => {
+                _actWalkEnd();   // THE ONE MOVE: the attack hold takes over from the landing two-shot
                 state.selectedTool = null;
                 state.actionMode = 'attack';
                 state._actionExecuting = true;
@@ -48032,6 +48140,7 @@
                 const delay = typeof r === 'number' ? r : 450;
                 setTimeout(next, delay);
             };
+            _actWalkHold(unit, approach, tx, ty, tz);   // THE ONE MOVE
             if (approach._viaSpell) {
                 _runSelfMoveStep(unit, approach._viaSpell, _strike, _bail);   // THE JUMP + DASH SWINGS
             } else if (approach._jump) {
