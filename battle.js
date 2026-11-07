@@ -2535,6 +2535,7 @@
                     const _chM = _logMark();
                     addLog(`${_ctName(unit)} charges to ${coordLabel(landTile.x, landTile.y)}.`);
                     animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, 200, { leap: true });
+                    if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the charge's landing
                     /* THE LOG ORDER (forced movement playtest 2026-11-07 E4 / M3: Gore Charge, Land Ho, Rook): the charge
                        and what its landing did read BEFORE the hit it carried in */
@@ -2743,6 +2744,7 @@
             // hold), so its strike frame lands at _chargeDelay + chargeMs.
             if (_chClip) _releaseCastSprite(unit, _chargeDelay + _chTrv.strikeMs);
             const _runCharge = () => {
+                setUnitFacing(unit, landTile.x - fromX, landTile.y - fromY);   // ⟶ THE STRIKE FACE: the body runs its lane
                 unit.x = landTile.x;
                 unit.y = landTile.y;
                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
@@ -2764,8 +2766,12 @@
             };
             if (_chargeDelay > 0) window.setTimeout(_runCharge, _chargeDelay);
             else _runCharge();
+            /* THE STRIKE FACE: off the lane and square on the victim before the kick / punch / horn lands */
+            window.setTimeout(() => { if (!target.dead) faceStrikeTarget(unit, target); },
+                _chargeDelay + Math.max(0, chargeMs - STRIKE_FACE_LEAD_MS));
 
             window.setTimeout(() => {
+                if (!target.dead) faceStrikeTarget(unit, target);
                 if (!_skipVisuals()) shakeBoard('normal');
                 /* THE NEW-RACE VFX PASS (2026-09-22): the strike on arrival plays the
                    row's `impact` recipe (Stage Dive, Sky Tackle — a tackle's mapping
@@ -13806,6 +13812,10 @@
             const dx = tx - unit.x;
             const dy = ty - unit.y;
             const mag = Math.max(1, Math.abs(dx) + Math.abs(dy));
+            /* THE STRIKE FACE (2026-11-07): the swing goes where the body faces — a striker that moved since it last
+               turned (Drive-By's shot out of the window after the dash) squares up on the tile it hits. The guest's
+               instant click feedback stays look-only: the host's facing arrives with its sync. */
+            if ((dx || dy) && !(window._NET && window._NET.online && window._NET.role === 'guest')) setUnitFacing(unit, dx, dy);
             state._attackAnimDir[unit.id] = {
                 dx: dx / mag,
                 dy: dy / mag,
@@ -15268,6 +15278,26 @@
             if (!(len > 0)) return;   // zero vector → keep current facing
             unit.facing = { dx: dx / len, dy: dy / len };
         }
+
+        /* THE STRIKE FACE (mondo 2026-11-07: "dark justice, the antihero does a kick animation but they don't even kick
+           the person they targeted, they kick the tile next to them"): doSpell turns the caster toward the target from
+           the tile it CAST from, and a charge / leap then carries it onto the open square BESIDE the target, so the
+           strike played down the old line (a diagonal cast landed square-on and kicked the empty tile beside the body).
+           A striker that has moved squares up on its victim from the tile it strikes from (fromX/fromY = the landing
+           when the unit has not been moved there yet). The real facing (arcs read it), synced to the guest at once. */
+        function faceStrikeTarget(unit, target, fromX, fromY) {
+            if (!unit || unit.dead || !target || target.id === unit.id) return false;
+            const ox = (fromX != null) ? fromX : unit.x, oy = (fromY != null) ? fromY : unit.y;
+            const dx = target.x - ox, dy = target.y - oy;
+            if (!dx && !dy) return false;
+            setUnitFacing(unit, dx, dy);
+            markDirty('board');
+            scheduleBoardRender();
+            if (window._broadcastState) { try { window._broadcastState(); } catch (e) {} }
+            return true;
+        }
+        /* the body's turn takes up to ~0.25 s (three-renderer UNIT_TURN_RATE): squared up this long before the strike frame */
+        const STRIKE_FACE_LEAD_MS = 240;
 
         /* THE CLICK FACE (mondo 2026-10-18): "whenever i click on an enemy or a
            unit, my unit should turn to face them". Every between-action unit
@@ -83982,6 +84012,7 @@
                         unit.y = casterFromY;
                     }
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level slam!)` : '';
                     addLog(`${_ctName(unit)} slams ${_ctName(target)} into the ground!${deltaLabel}`);   // the hit's own line above carries the real number (totalDmg is the raw before DEF)
@@ -84143,6 +84174,7 @@
                         if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
                     }
                     if (useAnim) animateDisplacement(unit, casterFromX, casterFromY, unit.x, unit.y, 200);
+                    if (!target.dead) faceStrikeTarget(unit, target);   // THE STRIKE FACE: lands square on the victim
                     resolveTileArrival(unit, { via: 'self' });   // ⛓ the striker's landing
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level dive!)` : '';
                     addLog(`${_ctName(unit)} leaps onto ${_ctName(target)} from above!${deltaLabel}`);   // the number is on the hit's own line
@@ -84193,6 +84225,10 @@
                     ].find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y)) || { x: casterFromX, y: casterFromY };
                     const _lsToZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(_lsLand0.x, _lsLand0.y, unit.z) : unit.z;
                     const _lsImpactAt = Math.max(_lsLaunchAt, _lsTrv.strikeMs);
+                    /* THE STRIKE FACE: the clip carries the body onto the landing square; it squares up on the victim from
+                       THERE before the strike frame (it was still facing down the line it cast from) */
+                    window.setTimeout(() => { if (!target.dead) faceStrikeTarget(unit, target, _lsLand0.x, _lsLand0.y); },
+                        Math.max(0, _lsImpactAt - STRIKE_FACE_LEAD_MS));
                     animateClipTravel(unit, _lsLand0.x, _lsLand0.y, {
                         fromX: casterFromX, fromY: casterFromY, toZ: _lsToZ, oneWay: true,
                         waitMs: _lsImpactAt + 300, fallbackMs: 420
