@@ -3160,7 +3160,10 @@ animation finished so i didnt even see what happened".
     sfx, snap VFX and doors wait `_beatMs`; every victim's numbers wait (`_floatHoldUntil`); Magnet's drag slide waits
     (`delayMs`); hold = the look (trapdoor: last door's swing; others TRAP_BEAT_LOOK_MS 700) + 1.2 s.
   - Deathtrap / any placeTrap laid UNDER an enemy: the trap goes off as the support shot's beat 2 reaches the tile
-    (`sourceHold + travelMs`, the contact-mine rule), not on the caster beat.
+    (`sourceHold + travelMs`, the contact-mine rule), not on the caster beat (it used to play while the lens was on the
+    caster). No extra hold there (`opts.inShot`): the doors end inside the shot, which brings the camera home itself.
+    Holding past the shot's end (tried: a hold, then a longer completionDelay) parks the TPS close-up over the sunk 3×3
+    and the lens drops under the board (white frame) — a parked close-up over a 2-level pit is a separate camera bug.
   - `_chainFuses` step-on bomb (now waits for the walk like the mines; `detonateBomb` holds its victims' numbers while
     `fxDelayMs`), deployed blast mines (springCam rows keep their own shot) and status snares: hold.
   - `_fireOverwatchShot`: the reaction shot lands on its own timers (320 + 260/400 ms) after the walk: hold.

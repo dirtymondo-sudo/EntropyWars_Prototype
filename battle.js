@@ -66043,7 +66043,10 @@
                 const _applied = Math.max(0, _trapHpBefore - Math.max(0, victim.hp || 0));
                 _balAddSpellEffect(trap.spellId, _applied, (victim.dead || (victim.hp || 0) <= 0) ? 1 : 0);
             }
-            _holdTrapBeat(trap.x, trap.y, victim, _beatMs, _lookMs);
+            /* sprung inside the cast's own shot (laid under an enemy): the doors start as beat 2 reaches the trap and end
+               inside that shot (~0.3 s before it), which takes the camera home itself. Holding past the shot's end
+               parked its close-up over the sunk 3×3 and the lens sank under the board (browser check 2026-11-07). */
+            if (!opts.inShot) _holdTrapBeat(trap.x, trap.y, victim, _beatMs, _lookMs);
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             scheduleBoardRender();
         }
@@ -76502,7 +76505,7 @@
                 for (const t of _tfp.tiles) {
                     const _tOcc = unitAt(t.x, t.y);
                     if (!_tOcc || _tOcc.dead || _tOcc.player === unit.player) continue;
-                    if (checkTrapTrigger(_tOcc, { fxDelayMs: _tSpringMs })) _placementStruck = true;
+                    if (checkTrapTrigger(_tOcc, { fxDelayMs: _tSpringMs, inShot: !!_tShot })) _placementStruck = true;
                 }
                 if (_placementStruck && typeof checkWin === 'function') checkWin();
             } else if (spell.kind === 'scan') {
