@@ -16240,7 +16240,10 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED', reflected: 'REFLECTED' };
-        const _FC_TAG_TEXT = { oil: '💥 OIL BLAST', recoil: '🩸 RECOIL', walkFire: '🔥 WALKS THROUGH FIRE · BURN', walkLava: '🌋 WALKS THROUGH LAVA · BURN', bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
+        const _FC_TAG_TEXT = { oil: '💥 OIL BLAST', recoil: '🩸 RECOIL', walkFire: '🔥 WALKS THROUGH FIRE · BURN', walkLava: '🌋 WALKS THROUGH LAVA · BURN', bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS',
+            /* the forced landing's bite (forced-movement playtest 2026-11-07 D7 / K2): battle.js simulateArrivalChain's ground
+               step and the fall (resolveForcedSlide / THE YANK'S FALL) */
+            lava: '🌋 KNOCKED INTO LAVA · BURN', burning: '🔥 HURLED INTO FLAMES · BURN', fall: '⬇ FALL DAMAGE', immovable: '⚖️ IMMOVABLE' };
         const _FC_SECONDARY = { oil: 1, recoil: 1, walkFire: 1, walkLava: 1, bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, autoAttack: 1, intercepts: 1, crash: 1, conduct: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
