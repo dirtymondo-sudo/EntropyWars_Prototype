@@ -11307,6 +11307,17 @@
                     if (state.gapTiles) delete state.gapTiles[k];
                     if (typeof _terrainChunkCache !== 'undefined') _terrainChunkCache.clear();
                 }
+                /* THE WALL COMES DOWN FIRST (zones playtest 2026-11-07: "When the wall drops after 3 rounds, the heights go
+                   back but 7,10 and 9,10 stay mountain ground"): a raise stacked blocks of the painted terrain, so repainting
+                   the top first and sinking after bared the painted block under it — and a mountain top refused to sink at
+                   all (a Rampart over water stood forever). The clock's own raise comes off first (`undo`: the cell's own
+                   change, so the mountain / field guards that stop a spell's dig do not apply); the cell is then at its own
+                   height and goes back to the map's own terrain below. A sunk cell (d > 0) still rises after the repaint. */
+                let _dDone = false;
+                if (e.d < 0 && (e.z === null || e.z === undefined) && typeof applyTerrainDeform === 'function') {
+                    applyTerrainDeform(x, y, 0, { centerDelta: e.d, edgeDelta: 0, undo: true });
+                    _dDone = true;
+                }
                 if (e.z !== null && e.z !== undefined) {
                     if (getTerrainAt3D(x, y, e.z) === e.t) setTerrainAt(x, y, e.o, e.z);
                 } else if (!e.m) {
@@ -11325,7 +11336,7 @@
                     if (back && top !== back) setTerrainAt(x, y, back);
                     if (state.liquidSprings && !liquidFamilyOf(getTerrainAt(x, y))) delete state.liquidSprings[k];
                 }
-                if (e.d && typeof applyTerrainDeform === 'function') applyTerrainDeform(x, y, 0, { centerDelta: e.d, edgeDelta: 0 });
+                if (e.d && !_dDone && typeof applyTerrainDeform === 'function') applyTerrainDeform(x, y, 0, { centerDelta: e.d, edgeDelta: 0 });
             } finally { _terrainRevertHold = false; }
             if (e.m) setTerrainSpringAt(x, y, e.m);   // the puddle is a fresh change: its own clock
             const h1 = getBaseHeightAt(x, y);

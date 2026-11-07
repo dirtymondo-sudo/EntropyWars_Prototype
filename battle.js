@@ -8100,7 +8100,15 @@
                 aimZ = (aim.lineZ != null) ? aim.lineZ : lineBeamAimZ(aim.x, aim.y, aim.z, from.id);
             }
             const slope = (n >= 1) ? (aimZ - z0) / n : 0;
-            return { z0, aimZ: n >= 1 ? aimZ : z0, aimStep: n >= 1 ? n : 0, zAt: (step) => z0 + slope * step };
+            /* THE LINE MEETS THE GROUND (zones playtest 2026-11-07: a flying Dragon's Dragon Breath at the square in front
+               burned that one square, not its 3-tile line): past the aimed body a line angled DOWN carried on at its slope
+               into the earth, and the sight check stopped it there. Past the aim it now levels out at the height it struck
+               and runs on flat (ground that rises above that still stops it), so the line keeps its full reach. Up to the
+               aim the line is the same straight line. */
+            const zAt = (slope < 0 && n >= 1)
+                ? (step) => (step <= n ? z0 + slope * step : Math.max(z0 + slope * step, aimZ))
+                : (step) => z0 + slope * step;
+            return { z0, aimZ: n >= 1 ? aimZ : z0, aimStep: n >= 1 ? n : 0, zAt };
         }
         function beamBodyOnLine(u, lineZ) {
             if (lineZ == null) return true;
@@ -8313,6 +8321,21 @@
             const _boreZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
             let _bores = 0;
             let _bankAt = null;   // B1: the own-team prism the line turned at
+            /* THE LINE'S OWN GROUND (zones playtest 2026-11-07: Hellmouth "Leaves lava tiles behind" left none on the
+               squares its beam crossed above body height — aimed up at a flyer, or cast by a flying Demon). A line whose
+               text leaves ground behind it (leaveTerrain: Hellmouth's lava, Chemtrails / Formic Acid poison; lineZone:
+               Dragon Breath's burning tiles) marks EVERY square of its lane, wherever the beam runs over it. The beam's
+               height still decides who it hits and which turrets, doors and objects it strikes (THE 3D LINE). */
+            const _airCells = [];
+            const _markAirCell = (mx, my) => {
+                if (!spell.leaveTerrain && !spell.lineZone) return;
+                _airCells.push({ x: mx, y: my });
+                if (!spell.leaveTerrain) return;
+                igniteOilBeforePaint(unit, spell, mx, my);
+                if (getTerrainAt(mx, my) !== spell.leaveTerrain) {
+                    if (setTerrainSpringAt(mx, my, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
+                } else if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(mx, my, spell.leaveTerrain);   // ⏳ back to 3 rounds
+            };
             const _bankDir = new Map();   // B1: victim id → the heading the turned light crossed them in (linePush)
             let cx = unit.x + dx, cy = unit.y + dy;
             for (let i = 0; i < lineRange; i++) {
@@ -8360,7 +8383,7 @@
                 }
                 // High in the air (a line angled up at a flyer) the beam passes
                 // over the ground's turrets, prisms, doors and objects.
-                if (!_zig && !_beamAtGround(cx, cy, _lz)) { cx += dx; cy += dy; continue; }
+                if (!_zig && !_beamAtGround(cx, cy, _lz)) { _markAirCell(cx, cy); cx += dx; cy += dy; continue; }
                 /* B1 (mondo 2026-10-29): the line reaches one of its own team's prisms with reach to spare — the light
                    turns there (below) instead of breaking the glass */
                 if (i + 1 < lineRange && _ownPrismAt(unit.player, cx, cy)) { _bankAt = { x: cx, y: cy, left: lineRange - i - 1 }; break; }
@@ -8440,7 +8463,7 @@
                         for (const lh of _beamCellVictims(unit, spell, lx, ly, c.z)) {
                             if (!hitTargets.includes(lh)) hitTargets.push(lh);
                         }
-                        if (!_zig && !_beamAtGround(lx, ly, c.z)) continue;
+                        if (!_zig && !_beamAtGround(lx, ly, c.z)) { _markAirCell(lx, ly); continue; }
                         _groundCells.push({ x: lx, y: ly });
                         damageTurretAt(lx, ly, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                         if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, lx, ly);
@@ -8458,7 +8481,7 @@
             if (spell.lineZone && _lineCells.length) {
                 if (!state._activeZones) state._activeZones = [];
                 let _lzN = 0;
-                for (const c of _groundCells) {
+                for (const c of _groundCells.concat(_airCells)) {
                     if (!isTerrainPassable(c.x, c.y)) continue;
                     const _ez = state._activeZones.find(z => z.lineZone && z.x === c.x && z.y === c.y && z.spellName === spell.name);
                     if (_ez) { _ez.duration = Math.max(_ez.duration, spell.zoneDuration || 2); _lzN++; continue; }
@@ -8545,7 +8568,7 @@
                     }
                 }
             }
-            triggerTerrainSpellReaction(unit, spell, _groundCells);
+            triggerTerrainSpellReaction(unit, spell, _airCells.length ? _groundCells.concat(_airCells) : _groundCells);   // the line's own ground reacts too
             return hitTargets;
         }
 
@@ -73618,9 +73641,15 @@
 
                     const terrain = getTerrainAt(tx, ty);
                     if (terrain === 'wall') continue;
-                    if (terrain === 'mountain' && (cDelta < 0 || _flatten || _toBed)) continue;
+                    const _undo = !!deform.undo && cDelta < 0;   // map.js revertTerrainTimer taking a clock's own raise back off
+                    if (terrain === 'mountain' && (cDelta < 0 || _flatten || _toBed) && !_undo) continue;
                     /* (2026-10-07, mondo: "we can change the terrain on objectives" — the objective guard is gone) */
-                    if (fieldCellFixed(tx, ty)) continue;   // THE NO-DEFORM FLAG: the ground under a prop / a doorway / water in a field
+                    /* THE NO-DEFORM FLAG: the ground under a prop / a doorway / water in a field. THE WALL OVER THE RIVER (zones
+                       playtest 2026-11-07: Rampart "a stone wall two tiles high" across a river left a walkable gap where the
+                       water was): an earthwork mound (Rampart's `mound` raise) heaps up over a field's water like it does over
+                       any ground, and sinks back to the river when its timer runs out. Digs stay refused there. */
+                    const _fxWhy = _undo ? null : fieldCellFixed(tx, ty);
+                    if (_fxWhy && !(_fxWhy === 'water' && cDelta > 0 && deform.mound && !_flatten && !_toBed)) continue;
                     const obj = getObjectAt(tx, ty);
                     if (obj) {
                         const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
@@ -74059,7 +74088,10 @@
                     const cDelta = deform.centerDelta || 0;
                     let blocked = false;
                     if (current === 'mountain' && (cDelta < 0 || deform.toBed)) blocked = true;
-                    if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) blocked = true;   // the handler's field guard too
+                    if (typeof fieldCellFixed === 'function') {   // the handler's field guard too (a mound raise heaps over a field's water)
+                        const _pvFx = fieldCellFixed(x, y);
+                        if (_pvFx && !(_pvFx === 'water' && deform.mound && cDelta > 0)) blocked = true;
+                    }
                     const obj = getObjectAt(x, y);
                     if (obj) {
                         const rule = typeof getObjectRule === 'function' ? getObjectRule(obj) : null;
@@ -81230,13 +81262,35 @@
                         scheduleBoardRender();
                     } else if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
+                            const _tdH0 = getBaseHeightAt(at.x, at.y);
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
-                            /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out */
+                            /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out — by what it REALLY
+                               moved (a cell the deform refuses, a field's river under a Rampart, moved 0: nothing to put back) */
+                            const _tdMoved = getBaseHeightAt(at.x, at.y) - _tdH0;
                             const _tt = state.terrainTimers && state.terrainTimers[at.x + ',' + at.y];
-                            if (_tt && spell.terrainDeform.centerDelta) _tt.d = (_tt.d || 0) - spell.terrainDeform.centerDelta;
+                            if (_tt && _tdMoved) _tt.d = (_tt.d || 0) - _tdMoved;
                         }
                         _invalidateBoardGrid();
                         scheduleBoardRender();
+                    }
+                    /* THE PERMANENT GROUND (zones playtest 2026-11-07: Plaguefield "Corrupt a 3x3 area into a PERMANENT mass of
+                       plague-ridden flesh" went back to grass after 3 rounds like every other change). A row with
+                       `permanentTerrain` makes what it painted the cell's own ground: the cell drops off the 3-round terrain clock
+                       (map.js THE TERRAIN TIMERS) and later changes on it come back to it, the way they come back to the map's
+                       own terrain. state.paintedFrom + state.terrainTimers are plain state: the sync carries both (RULE #2). */
+                    if (spell.permanentTerrain && _tcFoot.length) {
+                        const _ptT = state.terrainTimers || null;
+                        const _ptPf = state.paintedFrom || (state.paintedFrom = {});
+                        for (const ft of _tcFoot) {
+                            if (ft.z !== undefined && ft.z !== null) continue;   // a lower floor's paint keeps its clock
+                            if (getTerrainAt(ft.x, ft.y) !== terrainType) continue;
+                            const _ptK = ft.x + ',' + ft.y;
+                            _ptPf[_ptK] = { t: terrainType, z: getBaseHeightAt(ft.x, ft.y) };
+                            const _ptE = _ptT && _ptT[_ptK];
+                            if (!_ptE) continue;
+                            if ((Array.isArray(_ptE.cut) && _ptE.cut.length) || _ptE.d) { _ptE.o = terrainType; _ptE.p = terrainType; }   // a cut / a raise still closes on its clock, onto the flesh
+                            else delete _ptT[_ptK];
+                        }
                     }
                     /* THE SPELL AUDIT Batch D: meltRounds (Snow Fort) — the painted tiles are timed terrain: after N
                        rounds _tickTimedTerrain turns each back (to `meltTo` when set — the puddle) and lowers it by the
