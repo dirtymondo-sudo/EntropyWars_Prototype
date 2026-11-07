@@ -10710,7 +10710,7 @@ const RACE_ABILITIES = {
           desc: 'Sign here. Raises the caster\'s ATK by 2 stages. Costs 25% of max HP (never fatal).' },
         { id: 'racePlaguefield', tier: 2, families: ['necromancy'], spellType: 'unholy', name: 'Plaguefield',
           type: 'utility', cost: 30, range: 4, apCost: 1,
-          kind: 'terrainCreate', terrainType: 'plague_flesh', squareFlood: true, aoeRadius: 1,
+          kind: 'terrainCreate', terrainType: 'plague_flesh', squareFlood: true, aoeRadius: 1, permanentTerrain: true,
           desc: 'Corrupt a 3x3 area into a PERMANENT mass of plague-ridden flesh. Anyone (except the necromancer) who ends their turn standing on it is poisoned.' },
         { id: 'raceRaiseDead', spellType: 'unholy', name: 'Raise the Dead',
           type: 'utility', tier: 4, families: ['necromancy'], cost: 40, range: 4, apCost: 2,
