@@ -633,10 +633,22 @@
             if (striker._climb) return false;   // 🧗 a climber can't swing at anyone
             return true;
         }
-        /* The opportunity attack's hit: half the striker's attack power (× mult), less the victim's defence. */
+        /* The opportunity attack's hit: half the striker's attack power (× mult), less the victim's defence.
+           ONE DEFENCE (playtest 2026-11-07: opportunity attacks on a retreating Valkraye did 1 HP twice): the hit
+           pipeline (applyDamageToUnit / forecastHitOnUnit) takes the defence off — at the victim's level, with THE SOAK
+           FLOOR (a connected hit keeps 35% of itself) — so the engine hands it the number BEFORE defence. This used to
+           take the defence off here too, so every opportunity / auto attack paid it twice and a sturdy unit took 1. */
+        function _oppStrikeBase(striker, mult) {
+            return Math.max(1, Math.round(pwrAtk(striker) * 0.5 * (mult || 1)));
+        }
+        /* The hit after the victim's defence (the AI's price of a retreat), read through the real hit pipeline. */
         function _oppStrikeDamage(striker, victim, mult) {
-            const baseDmg = Math.max(1, Math.round(pwrAtk(striker) * 0.5 * (mult || 1)));
-            return Math.max(1, baseDmg - getEffectiveArmor(victim));
+            const base = _oppStrikeBase(striker, mult);
+            try {
+                const f = forecastHitOnUnit(victim, base, { sourceUnit: striker, damageType: 'physical' });
+                if (f) return Math.max(0, f.dmg || 0);
+            } catch (e) {}
+            return Math.max(1, base - getEffectiveArmor(victim));
         }
         /* The opportunity attack's centre banner. Its own global so online.js relays it to the guest (RULE #2), with
            the struck tile for the fog gate. */
@@ -684,7 +696,7 @@
                 if (_shankChance != null) chance = Math.max(chance, Math.min(1, _shankChance));
                 if (engineRng() >= chance) continue;
 
-                const dmg = _oppStrikeDamage(enemy, unit, _shankMult);
+                const dmg = _oppStrikeBase(enemy, _shankMult);   // ONE DEFENCE: applyDamageToUnit takes it off
                 /* ONE HIT, ONE NUMBER (playtest 2): the hit's own line carries the real (after defence) number —
                    no second "for N" line with the number before defence. */
                 applyDamageToUnit(unit, dmg, `⚔️ ${unitDisplayName(enemy)} lands an opportunity attack as ${unitDisplayName(unit)} retreats! `, {
@@ -5864,7 +5876,7 @@
         function _slideAutoAttack(striker, victim, dmg, atMs, opts) {
             setUnitFacing(striker, victim.x - striker.x, victim.y - striker.y);
             striker._matchOppStrikes = (striker._matchOppStrikes || 0) + 1;
-            _slideHitAt([{ u: victim, dmg }], _slideHitDelay(atMs, opts), () => {
+            _slideHitAt([{ u: victim, dmg: _oppStrikeDamage(striker, victim, 1) }], _slideHitDelay(atMs, opts), () => {   // the pending hit after defence (ONE DEFENCE: `dmg` is before it)
                 if (victim.dead || victim._dying) return;
                 addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
                 applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
@@ -6040,7 +6052,7 @@
                         break;
                     }
                     if (striker) {
-                        const aaDmg = _oppStrikeDamage(striker, target, 1);
+                        const aaDmg = _oppStrikeBase(striker, 1);   // ONE DEFENCE: the hit pipeline (and the forecast's f) takes it off
                         const atMs = baseDelay + res.steps.length * perStepMs;
                         if (simulate) {
                             res.simHits.push({ unitId: target.id, mid: aaDmg, lo: aaDmg, hi: aaDmg,
