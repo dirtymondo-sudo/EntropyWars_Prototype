@@ -666,7 +666,7 @@
             if (!unit || unit.dead) return;
             if (fromZ == null) fromZ = unit.z ?? 0;
             if (fromStandH == null) fromStandH = fromZ;
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             for (const enemy of enemies) {
 
                 if (Math.abs(enemy.x - fromX) > 1 || Math.abs(enemy.y - fromY) > 1) continue;
@@ -837,7 +837,7 @@
             shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
-            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, enemyRemainsOnly: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
             // steal — a grab: the hit lands, then the target's Keys / items
             //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
@@ -5067,6 +5067,17 @@
                         // forceGroundUnit re-enters the chain on the deck.
                         if (forceGroundUnit(unit, { byLabel: 'by the crushing gravity' })) fired++;
                     }
+                    /* 🚪 T in the sky (zones/traps playtest 2026-11-07 D: Swing Door knocked the flying Fairy onto a free
+                       Twin Doors mouth and she stayed on it): the slide stops a flyer on an open transit mouth like anyone
+                       (resolveForcedSlide), and "anyone ... knocked, blown or pulled into it comes out of the other" —
+                       a walking flyer already steps through (doorStepThrough), a knocked one returned here first. */
+                    if (!moved() && via !== 'move' && via !== 'teleport' && via !== 'self' && typeof doorAt === 'function') {
+                        const _trS = doorAt(unit.x, unit.y);
+                        if (_trS && _trS.transit && _trS.open && doorStepThrough(unit)) {
+                            fired++;
+                            resolveTileArrival(unit, { via: 'teleport' });
+                        }
+                    }
                     return fired;
                 }
 
@@ -6943,7 +6954,7 @@
             const r = spell && spell.jammedArc;
             if (!r || !target || !(dmg > 0)) return;
             const arcDmg = Math.max(1, Math.round(dmg * (r.mult > 0 ? r.mult : 0.5)));
-            for (const e of aliveUnitsFor(enemyOf(unit.player))) {
+            for (const e of realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)) {
                 if (!e || e.dead || e.id === target.id || !unitHasStatus(e, 'jammed')) continue;
                 if (Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) !== 1) continue;
                 applyDamageToUnit(e, arcDmg, `${spell.name} arcs to `, {
@@ -6964,14 +6975,14 @@
                    that many more times (the extra hops carry the last hop's damage). */
                 let _chainProfile = spell.chainProfile;
                 if (spell.chainWetHops > 0) {
-                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), _chainProfile.length, spell.chainRadius || 1);
+                    const _probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), _chainProfile.length, spell.chainRadius || 1);
                     if (_probe.some(u => u && (unitHasStatus(u, 'wet') || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(u))))) {
                         _chainProfile = _chainProfile.concat(Array(spell.chainWetHops).fill(_chainProfile[_chainProfile.length - 1]));
                         addLog(`⚡💧 ${_ctSp(spell.name)} finds water — the chain jumps further!`);
                     }
                 }
                 const chain = calcChainTargets(target,
-                    spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))),   // THE SEEN SPLIT: links only find seen enemies
+                    spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)),   // THE SEEN SPLIT: links only find seen enemies
                     _chainProfile.length, spell.chainRadius || 1);
 
                 const staggerMs = actionMs(140);
@@ -7045,6 +7056,8 @@
                    leaves it under N%") judges the HP the hit LEFT instead (below, after applyDamageToUnit). */
                 const _execArmed = !!spell.executeBelowPct && target.maxHp > 0 && (spell.executeAfterHit
                     || (target.hp / target.maxHp) <= spell.executeBelowPct);
+                /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07): the % the before-the-hit execute was judged on */
+                const _execPct0 = target.maxHp > 0 ? target.hp / target.maxHp : 0;
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
                     addLog(`🗡️ ${_ctName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
                 }
@@ -7104,8 +7117,14 @@
                 }
                 if (_wasJammed) _applyJammedArc(unit, spell, target, damage);
                 if (_sitHas) _applyStatusIfTargetHas(unit, spell, target);
+                /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07, timing playtest H10): an armed before-the-hit execute (No Mercy)
+                   whose hit already killed IS the execution, so it says EXECUTED too (it used to print only when the hit
+                   left the target standing, i.e. almost never); a hit that leaves it standing gets the follow-up, which
+                   says EXECUTED only when it really died. An `executeAfterHit` row (Ammit, Termination Protocol) judges
+                   the HP the hit left, so a hit that kills on its own is a plain kill there. */
                 if (_execArmed && !target.dead && !target._dying
-                    && (!spell.executeAfterHit || (target.hp / target.maxHp) < spell.executeBelowPct)) _applyExecuteRider(unit, target, spell);
+                    && (!spell.executeAfterHit || (target.hp / target.maxHp) < spell.executeBelowPct)) _applyExecuteRider(unit, target, spell, spell.executeAfterHit ? null : _execPct0);
+                else if (_execArmed && !spell.executeAfterHit && _unitIsDown(target)) _logExecuted(target, spell, _execPct0);
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
                 _applyOnKillRiders(unit, target, spell);
             }
@@ -7145,11 +7164,22 @@
            (armour ignored, ×4 of what's left so no resistance saves it).
            `spell` may be a stub ({ name, damageType, spellType }) — state.js
            calls this for the delayed Take Aim shot. */
-        function _applyExecuteRider(unit, target, spell) {
+        /* 💀 EXECUTED MEANS KILLED (mondo 2026-11-07): the one EXECUTED line + float, only ever for a unit that is down.
+           `frac` = the HP fraction the execute was judged on (before the hit for No Mercy / Take Aim). */
+        function _logExecuted(target, spell, frac) {
+            if (!target || !_unitIsDown(target)) return false;
+            const nm = (spell && (spell.name || spell.spellName)) || 'Execute';
+            const pct = Math.max(1, Math.round(100 * (frac != null ? frac : (Math.max(0, target.hp) / (target.maxHp || 1)))));
+            addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
+            showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
+            return true;
+        }
+        window._logExecuted = _logExecuted;
+        function _applyExecuteRider(unit, target, spell, judgedFrac) {
             if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
             const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
             const nm = (spell && spell.name) || 'Execute';
-            const pct = Math.max(1, Math.round(100 * target.hp / target.maxHp));
+            const pct0 = (judgedFrac != null) ? judgedFrac : target.hp / target.maxHp;
             applyDamageToUnit(target, lethal, `${nm}: `, {
                 sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
                 damageType: (spell && spell.damageType) || 'physical', spellType: (spell && spell.spellType) || null,
@@ -7157,10 +7187,7 @@
                 element: (spell && spell.id) ? classifySpellElement(spell) : null
             });
             /* EXECUTED only when the follow-up really killed (Protect / Indomitable Will / the realm can still save it) */
-            if (target.dead || target._dying) {
-                addLog(`💀 ${nm}: ${_ctName(target)} was at ${pct}% — EXECUTED!`);
-                showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
-            }
+            _logExecuted(target, spell, pct0);
             return !!(target.dead || target._dying);
         }
         window._applyExecuteRider = _applyExecuteRider;
@@ -7239,7 +7266,7 @@
             _cands.sort((a, b) => _near(b) - _near(a));
             const at = _cands[0];
             if (!state._deployedObjects) state._deployedObjects = [];
-            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+            const _owned = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy && !o.spellId);   // the plain doubles' own cap: a spell's decoy (Stuffed Double, Cloning Machine, Hologram) keeps its own (A1)
             while (_owned.length >= 3) {
                 const oldest = _owned.shift();
                 state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
@@ -7601,7 +7628,7 @@
         //         deformCenter, log }
         // ═══════════════════════════════════════════════════════════════════
         function _applyAoeDamage(unit, spell, tiles, baseDmg, spellPower, opts = {}) {
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             const waterMult = (opts.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
             let hitCount = 0;
             let _aoeDrainTotal = 0;   // THE SPELL AUDIT Batch D: aoeLifeDrain's pool (HP actually taken, every victim)
@@ -7896,7 +7923,7 @@
         // Returns { cam, projectileDelay, impactDelay, completionDelay }.
         // ═══════════════════════════════════════════════════════════════════
         function _setupAoeCameraAndTiming(unit, spell, tx, ty, tiles) {
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             const firstHit = enemies.find(e => tiles.some(t => t.x === e.x && t.y === e.y));
             const extraTargets = firstHit ? enemies.filter(e => e !== firstHit && tiles.some(t => t.x === e.x && t.y === e.y)) : [];
             const camTarget = firstHit || { x: tx, y: ty };
@@ -8871,17 +8898,17 @@
                     const t0 = unitAt(tx, ty);
                     tiles = [{ x: tx, y: ty }];
                     if (t0) {
-                        spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e => e.id !== t0.id && !e.dead
+                        spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e => e.id !== t0.id && !e.dead
                             && Math.abs(e.x - t0.x) + Math.abs(e.y - t0.y) <= (spell.splitRadius || 2))
                             .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2)
                             .forEach(e => tiles.push({ x: e.x, y: e.y }));
                     }
                 } else if (kind === 'healAll' || kind === 'manaRestoreAll') {
                     // Free Energy (manaRestoreAll) skips its caster (doSpell), so its tiles do too
-                    tiles = aliveUnitsFor(unit.player).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
+                    tiles = realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => kind !== 'manaRestoreAll' || a.id !== unit.id).map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'warCry') {
                     const r = spell.auraRadius || 3;
-                    tiles = aliveUnitsFor(unit.player)
+                    tiles = realmReachableFrom(aliveUnitsFor(unit.player), unit)
                         .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= r)
                         .map(a => ({ x: a.x, y: a.y }));
                 } else if (kind === 'terrainCreate' && spell.orientable) {
@@ -9981,6 +10008,8 @@
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
             if (_unitIsDown(target) || !boost) return;   // THE FALLEN TAKE NOTHING (see applyStatusPayload)
+            /* 🌑 Shadow Realm: no stage from across the realm's line, either way (an aura's buff counted the Demon inside) */
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return;
             // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
             // never apply — the positive half of a mixed boost still lands.
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
@@ -10508,7 +10537,7 @@
            enemy within `range` (Manhattan) of the landing tile that the
            shooter can see (not concealed from them, no terrain in the way). */
         function _afterShotTarget(unit, lx, ly, range) {
-            const cands = aliveUnitsFor(enemyOf(unit.player)).filter(e => !e.dead
+            const cands = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => !e.dead
                 && Math.abs(e.x - lx) + Math.abs(e.y - ly) <= range
                 && !(typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(e, unit))
                 && !(typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(lx, ly, e.x, e.y)));
@@ -11900,7 +11929,7 @@
                         pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                     }
                     // Everything drained is channeled to the owner's weakest ally.
-                    const ownerAllies = aliveUnitsFor(seed.owner);
+                    const ownerAllies = realmReachableFrom(aliveUnitsFor(seed.owner), null);   // 🌑 the seed is the board's
                     if (dmg > 0 && ownerAllies.length > 0) {
                         const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                         const healed = applyHealingToUnit(target, dmg, null);
@@ -11987,6 +12016,13 @@
             if (unitAt(x, y)) return false;
             if (getObjectAt(x, y)) return false;
             if (state.plantedSeeds && state.plantedSeeds.some(s => s.x === x && s.y === y)) return false;
+            /* THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 D): a summon, turret, placed object or prism on the tile
+               is not "empty" either — Bumper Crop's rim seed (and any grown tree) never lands on a piece standing there */
+            if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === x && tt.y === y)) return false;
+            // (a step trap the planter may not see is no bar: only a standing piece that blocks the tile counts)
+            if ((state._deployedObjects || []).some(o => o.hp > 0 && !o._detonated && o.x === x && o.y === y
+                && (o.isDecoy || o.blocksMovement) && !o.detonateOnStep && !(o.tripRadius > 0))) return false;
+            if ((state.mirrors || []).some(m => m.hp > 0 && m.x === x && m.y === y)) return false;
             const t = getTerrainAt(x, y);
             return !['mountain', 'lava', 'water', 'deep_water', 'void', 'chasm'].includes(t);
         }
@@ -12126,7 +12162,7 @@
                     pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 // Everything drained is channeled to the owner's weakest ally.
-                const ownerAllies = aliveUnitsFor(tree.owner);
+                const ownerAllies = realmReachableFrom(aliveUnitsFor(tree.owner), null);   // 🌑 the tree is the board's
                 if (dmg > 0 && ownerAllies.length > 0) {
                     const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                     const healed = applyHealingToUnit(target, dmg, null);
@@ -12193,6 +12229,7 @@
             if (!_seedsLeft && !auraTrees.length) return;
             for (const unit of aliveUnitsFor(player)) {
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
+                if (shadowRealmKey(unit)) continue;   // 🌑 no seed or tree aura reaches into the Shadow Realm
                 if (_seedsLeft) {
                     const seedsHere = _seedsLeft.filter(s => s.x === unit.x && s.y === unit.y);
                     for (const seed of seedsHere) {
@@ -13090,7 +13127,14 @@
         window.shadowRealmKey = shadowRealmKey;
         window.realmViewKey = realmViewKey;
         window.isUnitOutOfRealmView = isUnitOutOfRealmView;
+        /* 🌑 THE REALM LINE ON EVERY LIST (11-07, mondo: "units sent to the Shadow Realm can still be bitten and buffed"):
+           the units of `list` the actor can reach — a null actor (a summon, a turret, a beacon, a tree) is the board,
+           so nobody inside a realm. Every team aura, area list and board hunter filters through this, both ways. */
+        function realmReachableFrom(list, actor) {
+            return (list || []).filter(u => u && !isUnitRealmShieldedFrom(u, actor || null));
+        }
         window.isUnitRealmShieldedFrom = isUnitRealmShieldedFrom;
+        window.realmReachableFrom = realmReachableFrom;
         window.closeShadowRealmFor = closeShadowRealmFor;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
@@ -13182,6 +13226,84 @@
             return !!spell && (spell.kind === 'raiseDead' || !!_kindMeta(spell).corpseTarget);
         }
         window.spellTargetsCorpses = spellTargetsCorpses;
+        /* THE ENEMY REMAINS (timing playtest 2026-11-07 H6: Cannibalize listed the caster's own ally's gravestone, and
+           eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds). One rule for every corpse
+           cast: unconsumed remains, and a kind wearing enemyRemainsOnly (Cannibalize, Carrion Feast) eats only an
+           ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
+        function spellCorpseUsable(unit, spell, corpse) {
+            if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
+            if (_kindMeta(spell).enemyRemainsOnly && (corpse._remainsOf === unit.id || !isEnemyUnit(corpse, unit))) return false;   // a left grave: its unit's own (FFA)
+            /* THE GRAVES STAY: a grave outlives its unit's respawn, so someone can be standing on it — Raise the Dead
+               claws its zombie out of THAT square, so a body or a standing turret / summon / zombie on it blocks the raise */
+            if (spell && spell.kind === 'raiseDead') {
+                if (state.units.some(o => !o.dead && !o._dying && o.x === corpse.x && o.y === corpse.y)) return false;
+                if ((state.turrets || []).some(t => t.hp > 0 && t.x === corpse.x && t.y === corpse.y)) return false;
+            }
+            return true;
+        }
+        window.spellCorpseUsable = spellCorpseUsable;
+
+        /* THE GRAVES STAY (mondo 2026-11-07, zones playtest: "Raise the Dead: the Necromancer died before a grave was
+           free" — a grave vanished the moment its unit respawned). A unit that comes back on the respawn clock leaves its
+           remains on the square it fell on: a state.graves row (plain data → state-sync; reset per match). Every corpse
+           cast (Raise the Dead, Cannibalize, Carrion Feast) reads the still-dead bodies AND these rows through
+           corpseRemainsBodies / corpseRemainsAt, and eats either with consumeCorpseRemains. A revive is not offered on a
+           row: its unit is already alive. The row is drawn like the dead body's grave (your own: a headstone, the enemy's:
+           bones, once seen). */
+        function _remainsBody(g) {
+            const real = (state.units || []).find(u => u.id === g.unitId) || {};
+            /* its unit's face and name (a shallow copy: read-only, never stored), on the grave's square, dead */
+            return Object.assign({}, real, {
+                id: g.id, _remains: true, _remainsOf: g.unitId,
+                player: g.player, dead: true, _dying: false, hp: 0, maxHp: real.maxHp || 0, shield: 0,
+                x: g.x, y: g.y, z: g.z, _dyingX: g.x, _dyingY: g.y,
+                reviveLocked: true, _corpseConsumed: false, _respawnIn: null, statusEffects: [], status: {}
+            });
+        }
+        function corpseRemainsBodies() {
+            const out = [];
+            for (const u of state.units) if (u.dead && !u._corpseConsumed) out.push(u);
+            for (const g of (state.graves || [])) {
+                if (out.some(b => !b._remains && b.x === g.x && b.y === g.y)) continue;   // a fresh body lies on it: that one first
+                out.push(_remainsBody(g));
+            }
+            return out;
+        }
+        /* the remains at a square the cast accepts: a still-dead body first, then a left-behind grave */
+        function corpseRemainsAt(unit, spell, x, y) {
+            return corpseRemainsBodies().find(c => c.x === x && c.y === y && spellCorpseUsable(unit, spell, c)) || null;
+        }
+        function consumeCorpseRemains(corpse) {
+            if (!corpse) return;
+            if (corpse._remains) {
+                state.graves = (state.graves || []).filter(g => g.id !== corpse.id);
+                return;
+            }
+            corpse._corpseConsumed = true;
+            /* the raised / eaten meat leaves nothing to revive — for THIS death only: the respawn hands the lock back
+               (a Revive's own once-per-match lock stays) */
+            if (!corpse.reviveLocked) corpse._corpseReviveLock = true;
+            corpse.reviveLocked = true;
+        }
+        /* map.js processRespawns, the moment a dead unit comes back on the clock (not a revive, not a zombie clawing
+           out of its own grave): its unconsumed remains stay where it fell (one grave a square, the newest) */
+        function leaveRemainsOnRespawn(unit, from) {
+            if (!unit) return;
+            const consumed = !!unit._corpseConsumed;
+            unit._corpseConsumed = false;   // a new life: its next death leaves fresh remains
+            if (unit._corpseReviveLock) { unit.reviveLocked = false; unit._corpseReviveLock = false; }
+            if (consumed || unit._isBoss || !from || !Number.isFinite(from.x) || !Number.isFinite(from.y)) return;
+            if (!state.graves) state.graves = [];
+            state.graves = state.graves.filter(g => !(g.x === from.x && g.y === from.y));
+            state._graveSerial = (state._graveSerial || 0) + 1;
+            state.graves.push({ id: 'remains_' + unit.id + '_' + state._graveSerial, unitId: unit.id,
+                player: (unit._origPlayer != null ? unit._origPlayer : unit.player),
+                x: from.x, y: from.y, z: from.z, round: state.round || 0 });
+        }
+        window.corpseRemainsBodies = corpseRemainsBodies;
+        window.corpseRemainsAt = corpseRemainsAt;
+        window.consumeCorpseRemains = consumeCorpseRemains;
+        window.leaveRemainsOnRespawn = leaveRemainsOnRespawn;
 
         /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
            wears the control status (possessed / infected) for `acts`
@@ -29512,7 +29634,7 @@
             function _placeTurret(caster, sp, gx, gy) {
                 if (!state.turrets) state.turrets = [];
                 const tx = Math.round(gx), ty = Math.round(gy);
-                const mine = state.turrets.filter(t => t.casterUnitId === caster.id);
+                const mine = state.turrets.filter(t => t.casterUnitId === caster.id && t.spellId === sp.id && !t.summon && !t.zombie);   // the cap is per spell (A3)
                 const cap = sp.maxActivePerCaster || 2;
                 while (mine.length >= cap) { const old = mine.shift(); state.turrets.splice(state.turrets.indexOf(old), 1); }
                 state.turrets.push({
@@ -30444,6 +30566,19 @@
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
         }
+        /* THE SHOT FOCUS (mondo 2026-11-07, timing playtest D1: "a marked shot lands before the camera gets there, and the
+           camera leaves half a second later"). The end-of-round dive onto a shot that lands with no action shot (a marked
+           shot: Take Aim, To Be Continued; any detonation with the Action Cam off; a turret's volley). Its own name so
+           online.js relays it: the end-of-round loop runs on the HOST only, and without the relay the guest's camera
+           never moved for these hits. opts.local === false: this screen can't see the tile (fog), so only the relay goes
+           (the guest judges its own fog). Returns the glide's length (0 when this screen's camera didn't move). */
+        const EOR_SHOT_FOCUS_MS = 380;
+        function playEorShotFocus(x, y, opts = {}) {
+            if (opts.local === false || _skipVisuals() || state.cameraDisabled) return 0;
+            const ms = opts.duration ?? EOR_SHOT_FOCUS_MS;
+            eorFocusCamera(x, y, { duration: ms });
+            return ms;
+        }
 
         // ── End-of-round phase chip ──
         // A small fixed ribbon naming the beat currently resolving ("Status
@@ -30500,6 +30635,7 @@
         // state.js beats (detonations, storms, buffered round events) reach
         // these through globals — expose them explicitly for clarity.
         window.eorFocusCamera = eorFocusCamera;
+        window.playEorShotFocus = playEorShotFocus;
         window.getEorFocusZoom = getEorFocusZoom;
         window._eorPhaseLabel = _eorPhaseLabel;
         window._eorPhaseLabelHide = _eorPhaseLabelHide;
@@ -30564,6 +30700,14 @@
             if (until > (camera._impactHoldUntil || 0)) camera._impactHoldUntil = until;
         }
         window._cineImpactHoldLeft = _cineImpactHoldLeft;
+        /* THE SHOT HOLD (mondo 2026-11-07, timing playtest D1): the end-of-round shots that play no action shot (a marked
+           shot, a detonation with the Action Cam off, a turret's volley) hold the camera on the hit like a cast does */
+        window._cineHoldImpactAftermath = function (extraMs) {
+            if (_skipVisuals()) return 0;
+            const ms = Math.max(0, extraMs || 0) + actionMs(CINE_IMPACT_AFTERMATH_MS);
+            _cineHoldImpactFor(ms);
+            return window.EW_NO_IMPACT_HOLD ? 0 : ms;
+        };
 
         function _unitElevZ(unit) {
             if (!unit) return 0;
@@ -32916,6 +33060,9 @@
         function cineFreezeFrame(ms, opts = {}) {
             const d = Math.max(60, Number(ms) || 0);
             try { window.ThreeAnim?.hitstop?.(d); } catch (e) {}
+            /* THE IMPACT HOLD: a freeze on a hit the camera is holding on (To Be Continued's sepia stop) stops the
+               aftermath too, so the hold counts from the thaw */
+            if (_cineImpactHoldLeft() > 0) _cineHoldImpactFor(d + actionMs(CINE_IMPACT_AFTERMATH_MS));
             if (opts.grade) cineGrade(opts.grade, d + 120);
             // the contrast tell runs in the post shader when it is up: a CSS filter switched onto the canvas made Firefox
             // re-composite the whole canvas offscreen (THE SCREEN GRADE, three-post.js)
@@ -39103,7 +39250,7 @@
             if (!candidates.length) return null;
             // THE FOG (2026-10-21 audit #1): run from the enemies your side can SEE — the preview shows this landing,
             // so a hidden enemy must not bend it (the cast reads the same rule, so preview = cast)
-            const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => _isUnitVisibleToViewer(e, unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => _isUnitVisibleToViewer(e, unit.player));
             candidates.sort((a, b) => {
                 const aMin = Math.min(...enemies.map(e => Math.abs(e.x - a.x) + Math.abs(e.y - a.y)), 99);
                 const bMin = Math.min(...enemies.map(e => Math.abs(e.x - b.x) + Math.abs(e.y - b.y)), 99);
@@ -39190,7 +39337,7 @@
         /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
            allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
         function rallyPullPlan(unit) {
-            const knights = aliveUnitsFor(unit.player)
+            const knights = realmReachableFrom(aliveUnitsFor(unit.player), unit)
                 .filter(a => a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 1 && !unitHasStatus(a, 'root'))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
             const taken = new Set(state.units.filter(u2 => !u2.dead).map(u2 => u2.x + ',' + u2.y));
@@ -39303,12 +39450,12 @@
         // kind 'healAll': THE SPELL AUDIT Batch C — auraRadius limits it to allies within that many tiles of the caster
         // (Rejuvenation, Milk and Cookies); without it the whole team
         function healAllAlliesOf(unit, spell) {
-            return aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
+            return realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => !spell.auraRadius
                 || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
         }
         // aoeAllyHeal (Trick or Treat, 2026-10-29): the allies standing on the area's tiles, the caster included
         function aoeAllyHealAlliesOf(unit, tiles) {
-            return aliveUnitsFor(unit.player, unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
+            return realmReachableFrom(aliveUnitsFor(unit.player, unit), unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
         }
         function aoeAllyHealAmountFor(unit, spell, ally) {
             const base = spell.aoeAllyHeal || 0;
@@ -39335,7 +39482,7 @@
         // kind 'aoeShield': every ally in the area gets the row's whole shield (caster-level scaled), stacking to the cap
         function aoeShieldAlliesOf(unit, spell, x, y) {
             const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-            return aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
+            return realmReachableFrom(aliveUnitsOnFloor(unit.player), unit).filter(a => area.some(t => t.x === a.x && t.y === a.y));
         }
         function aoeShieldPerAlly(unit, spell) {
             return (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
@@ -40015,10 +40162,10 @@
                 if (spell.chainProfile && spell.chainProfile.length) {
                     let prof = spell.chainProfile;
                     if (spell.chainWetHops > 0) {
-                        const probe = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), prof.length, spell.chainRadius || 1);
+                        const probe = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), prof.length, spell.chainRadius || 1);
                         if (probe.some(u => u && (unitHasStatus(u, 'wet') || _unitIsSoaked(u)))) prof = prof.concat(Array(spell.chainWetHops).fill(prof[prof.length - 1]));
                     }
-                    const chain = calcChainTargets(target, spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))), prof.length, spell.chainRadius || 1);
+                    const chain = calcChainTargets(target, spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)), prof.length, spell.chainRadius || 1);
                     chain.forEach((u, i) => { const d = calcFlatSpellDamage(prof[i], sp, 16); hit(u, d, d, d, hopts, i ? { tag: 'chain' } : null); });
                 } else {
                     const riders = (b) => calcSpellHitRiders({
@@ -40128,7 +40275,7 @@
                     mopts = { pullCenter: spell.pullToCenter ? { x, y } : null, groundAirborne: true };
                 }
                 plan.tiles = area;
-                const enemies = aliveUnitsFor(enemyOf(unit.player));
+                const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
                 const clash = _isClashMode();
                 const canPullIn = !!(spell.pullToCenter && mopts.pullCenter && !clash);
                 const pullJobs = [], pull1Jobs = [], pushJobs = [];
@@ -40316,7 +40463,7 @@
                 return;
             }
             if (kind === 'cannibalize') {
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (corpse) helped(unit, healLandsOn(unit, Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35))), unit, { preScaled: true }), 0);
                 return;
             }
@@ -40358,7 +40505,7 @@
                 if (!target) return;
                 const primary = Math.max(32, (spell.dmg || 0) + sp);
                 const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined });
-                const near = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e => e.id !== target.id && !e.dead
+                const near = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e => e.id !== target.id && !e.dead
                     && Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2))
                     .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
                 hit(target, primary, primary, primary, hopts);
@@ -40508,6 +40655,9 @@
                 return;
             }
 
+            /* THE HEIGHT PAID ONCE (zones playtest 2026-11-07 K: Stone Drop, a WEAK row, hit for 1113): a drop / slam / throw /
+               leap already prices the height as levels in its raw (dmgPerLevel), so its hit never also rides HIGH GROUND from
+               the caster's own altitude (opts.noHeightBonus) — the cast and this forecast both. */
             /* the swoop a requiresFlight sky move takes before it strikes (doSpell's _skySwoopTakeoff): the drop counts its
                levels from up there, and a wind caster then strikes from the open air (THE SPELL AUDIT FIX F2) */
             const swoop = () => {
@@ -40531,7 +40681,7 @@
                     const carry = spell.carryHeight || (kind === 'skySlam' ? 5 : 4);
                     total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (cz + carry) - getHeightAt(target.x, target.y)) * (spell.dmgPerLevel || 25));
                 }
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 hit(target, total, total, total, hopts);
                 /* a sky drop's drain (Predator Drop): the caster heals its share of the drop's raw, as the cast does */
                 if (kind === 'skyDrop' && spell.drainPct && unit.hp < unit.maxHp) {
@@ -40570,7 +40720,7 @@
                     if (!t) return;
                     swoop();
                     const gTotal = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(t.x, t.y)) * (spell.dmgPerLevel || 25));
-                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
+                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true }));
                     tag(t, 'grab');
                     return;
                 }
@@ -40579,7 +40729,7 @@
                 const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
                 if (td < 1 || td > (spell.throwRange || 3) || !isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 const total = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(x, y)) * (spell.dmgPerLevel || 25));
-                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
+                const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined, noHeightBonus: true });
                 const col = (unitAt(x, y, z) || unitAt(x, y));
                 if (col && !col.dead && col.id !== tt.id) {
                     const cb = spell.collisionBonus || 50;
@@ -40934,6 +41084,7 @@
                         if (turret.summon && turret.reveals > 0) {
                             for (const e of state.units) {
                                 if (e.dead || e._dying || e.player === turret.owner) continue;
+                                if (shadowRealmKey(e)) continue;   // 🌑 no nose reaches into the Shadow Realm
                                 if (!unitHasStatus(e, 'invisible')) continue;
                                 if (Math.max(Math.abs(e.x - turret.x), Math.abs(e.y - turret.y)) > turret.reveals) continue;
                                 clearStatus(e, 'invisible');
@@ -40943,6 +41094,7 @@
                         }
                         const prey = state.units
                             .filter(u => !u.dead && !u._dying
+                                && !shadowRealmKey(u)   // 🌑 the Wolf "bit" the Fairy in the Shadow Realm: no hunter on the board sees in
                                 && (!turret.summon || u.player !== turret.owner)
                                 && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth'))
                             .sort((a, b) => {
@@ -40957,6 +41109,9 @@
                             if (typeof isTowerTile === 'function' && isTowerTile(nx, ny)) return true;   // ⬡ the Cube blocks a walking summon like a unit
                             if (state.units.some(u => !u.dead && u.x === nx && u.y === ny)) return true;
                             if (state.turrets.some(t2 => t2 !== turret && t2.hp > 0 && t2.x === nx && t2.y === ny)) return true;
+                            /* THE EMPTY-TILE SUMMON (zones/traps fix 2026-11-07): a placed piece that blocks units blocks the walker
+                               too — the Creation walked onto its own side's Stuffed Double and stood inside it */
+                            if ((state._deployedObjects || []).some(o => o.x === nx && o.y === ny && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return true;
                             return false;
                         };
                         let moved = false;
@@ -40991,7 +41146,8 @@
                         continue;
                     }
                     const inRange = getHostileUnits(turret.owner)
-                        .filter(u => (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
+                        .filter(u => !shadowRealmKey(u)   // 🌑 nor any gun
+                            && (typeof getSectionForUnit !== 'function' || getSectionForUnit(u) === 'earth')
                             && Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y) <= turret.range
                             && turretHasShotAt(turret, u))   // a wall between them (Rampart) blocks the shot
                         .sort((a, b) => {
@@ -41109,15 +41265,17 @@
                 // A turret / summon hidden in fog never gets framed: the
                 // camera stays on the (visible) victim instead.
                 const _turretSeen = _turretCam && (!state.fogOfWar || _isTileVisibleToViewer(s.turret.x, s.turret.y));
+                /* THE SHOT FOCUS: playEorShotFocus is relayed, so the guest's camera follows the volley too (it judges
+                   its own fog for each beat) */
                 if (_turretCam) {
-                    if (_turretSeen) eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
-                    else eorFocusCamera(s.target.x, s.target.y, { duration: 380 });
+                    if (_turretSeen) playEorShotFocus(s.turret.x, s.turret.y, { duration: 380 });
+                    else playEorShotFocus(s.target.x, s.target.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                     if (state.winner) { if (onDone) onDone(); return; }
                     if (_turretSeen) {
-                        eorFocusCamera(
+                        playEorShotFocus(
                             (s.turret.x + s.target.x) / 2, (s.turret.y + s.target.y) / 2,
                             { duration: 400 });
                     }
@@ -41140,6 +41298,9 @@
                     // while the camera is still gliding onto the sight line).
                     window.setTimeout(() => {
                         if (state.winner) { if (onDone) onDone(); return; }
+                        /* THE SHOT HOLD (timing playtest 2026-11-07): armed before the hit so the hit's own freeze adds
+                           to it — the camera stays on the hit for the impact aftermath like any cast, not 0.68 s */
+                        if (_turretCam) window._cineHoldImpactAftermath(0);
                         applyShot(s);
                         // Impact feedback: spark + stagger on the victim so the
                         // hit reads as an attack, not a silent HP drop.
@@ -41151,7 +41312,8 @@
                         if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
                         checkWin();
                         if (state.winner) { if (onDone) onDone(); return; }
-                        window.setTimeout(fireNext, actionMs(680));
+                        const _volleyHold = _turretCam ? window._cineImpactHoldLeft() : 0;
+                        window.setTimeout(fireNext, Math.max(actionMs(680), _volleyHold));
                     }, actionMs(300));
                 }, _turretCam ? actionMs(760) : actionMs(420));
             }
@@ -43395,6 +43557,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -43971,7 +44134,7 @@
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
-                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
+                case 'cannibalize':   return nm + ': select a fallen enemy\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
@@ -45341,6 +45504,65 @@
         }
         window.spellIsPureStatus = spellIsPureStatus;
 
+        /* THE IMMUNE TARGET (timing/counters playtest 2026-11-07 B1: Counterspell, Brainwash and Executive Order all
+           listed the CPU Ghoul — Pure Negativity, "immune to every debuff and to stat drops" — with a green CONFIRM;
+           the cast bounced, MP and the cooldown were spent). Would this status bounce off `u` the moment it arrived?
+           A read-only copy of applyStatusPayload's immunity gates, in its order — no rule of its own:
+           a passive's immuneStatus list (Thermal Regen vs Burn, the minds vs Charm…), a passive's immuneKind (Pure
+           Negativity vs every debuff), an element the status IS that the unit is immune to / drinks (burn / frozen /
+           poison; a rider status only with the element of the hit, which a no-damage cast never carries), Fermata's
+           stat lock vs a stageMod status, and a control status (possessed / infected) on a boss (possessUnit). */
+        function unitImmuneToStatus(u, statusId) {
+            if (!u || !statusId || typeof STATUS_DEFS === 'undefined' || !STATUS_DEFS[statusId]) return false;
+            const def = STATUS_DEFS[statusId];
+            if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(u, statusId)) return true;
+            const immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(u, 'immuneKind') : undefined;
+            if (immKind && def.kind === immKind) return true;
+            const el = (typeof statusAffinityElement === 'function') ? statusAffinityElement(statusId, null) : null;
+            const aff = (el && typeof unitElementAffinity === 'function') ? unitElementAffinity(u, el) : null;
+            if (aff === 'immune' || aff === 'absorb') return true;
+            if (def.stageMod && unitHasStatus(u, 'statLock')) return true;
+            if (def.control && u._isBoss) return true;
+            return false;
+        }
+        window.unitImmuneToStatus = unitImmuneToStatus;
+        /* would this stat stage change bounce off `u`: Pure Negativity's immuneStatDown drops every negative stage,
+           Fermata's stat lock every stage (applyStatStageBoost) */
+        function unitImmuneToStage(u, n) {
+            if (!u || !n) return false;
+            if (unitHasStatus(u, 'statLock')) return true;
+            return n < 0 && typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'immuneStatDown') === true;
+        }
+        /* a cast whose whole effect on its target is statuses and/or stat stages — the pure-status casts plus the
+           stat-drop casts (Calcify, Flower in the Barrel, Meow, Psychosis…); Steal from the Rich only takes what the
+           target actually lost, so it counts. Anything else it does (damage, MP drain, a pull, a stolen spell…) still
+           lands on an immune unit, so those never count. */
+        const _IMMUNE_TARGET_KINDS = { debuff: 1, buff: 1, aoe: 1, barrage: 1, possess: 1 };
+        function spellIsStatusOnly(spell) {
+            if (!spell || !_IMMUNE_TARGET_KINDS[spell.kind]) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            const st = spell.statStageBoost ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]) : [];
+            if (!fx.length && !st.length) return false;
+            if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage || spell.zoneTickDamage || spell.blastDmg) return false;
+            if (spell.heal || spell.healAmt || spell.healPct || spell.selfHealPct || spell.shield || spell.shieldHp) return false;
+            if (spell.randomTeamBuff || spell.cleanse || spell.drainPct || spell.mpDrain || spell.mpRestore || spell.revivePct
+                || spell.stealSpell || spell.zodiacReading || spell.timedStatBonus || spell.allyStatusEffects) return false;
+            if (spell.leaveTerrain || spell.terrainType || spell.weatherType || spell.paintTerrain || spell.terrainDeform) return false;
+            if (spell.teleportDistance || spell.pushDistance || spell.pullDistance || spell.mount || spell.dispel) return false;
+            return true;
+        }
+        /* true when every status and every stat stage such a cast carries would bounce off `u` — the cast would do
+           nothing to it, so it is no target (spellTargetUsableOn) */
+        function spellBouncesOffImmune(spell, u) {
+            if (!u || u.dead || !spellIsStatusOnly(spell)) return false;
+            const fx = Array.isArray(spell.statusEffects) ? spell.statusEffects.filter(f => f && f.id) : [];
+            if (fx.some(f => !unitImmuneToStatus(u, f.id))) return false;
+            const b = spell.statStageBoost || {};
+            if (Object.keys(b).some(k => b[k] && !unitImmuneToStage(u, b[k]))) return false;
+            return true;
+        }
+        window.spellBouncesOffImmune = spellBouncesOffImmune;
+
         /* A ground-bound cast (spell.missesFlyers: Wall of Fire) passes under a flyer up in the sky — the same
            isUnitAirborne gate the burning tiles, seeds and rain already use (mondo 2026-10-26: "wall of fire shouldnt
            be able to hit flyers in the sky, and it should be greyed out when targeting a flying unit"). */
@@ -45361,10 +45583,17 @@
             // THE MOVE BLOCK ON SPELLS: a pinned caster may warp any body but its own
             if (spell.kind === 'teleport' && spell.teleportAnyUnit && u.id === unit.id && unitMoveBlockedByStatus(unit)) return false;
             const k = spell.kind;
+            if (k === 'summonUnit') return false;   // THE EMPTY-TILE SUMMON: the call goes on a free tile, never on a body
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
-            if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
+            if (spellTargetsCorpses(spell)) return spellCorpseUsable(unit, spell, u);
             if (u.dead) return false;
             if (k === 'heal') return (u.hp || 0) < (u.maxHp || 0);
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a cast that only hands out statuses / stat stages is no target
+               on a unit every one of them bounces off (Pure Negativity, a race's immuneStatus, an element immunity,
+               Fermata, a boss vs control). Grounding an airborne flyer still lands whatever the status does. */
+            if (spellBouncesOffImmune(spell, u)
+                && !(spell.groundsFlyers && typeof isUnitAirborne === 'function'
+                    && typeof canFly === 'function' && canFly(u) && isUnitAirborne(u))) return false;
             // Encore: an ally that is done acting and has no Encore yet this round (doSpell's own gates)
             if (k === 'encore') return u.id !== unit.id && !isEnemyUnit(u, unit) && !u._encoreThisRound
                 && unitEncoreReady(u);
@@ -46295,7 +46524,7 @@
                 const area = (spell.kind === 'aoePull')   // the aoePull branch's own footprint
                     ? (_spellMaskTiles(spell, unit.x, unit.y) || getSquareArea(unit.x, unit.y, spell.aoeRadius || 1))
                     : getSpellAoeArea(spell, unit.x, unit.y);
-                pool = aliveUnitsFor(enemyOf(unit.player)).filter(e => (e.x !== unit.x || e.y !== unit.y)
+                pool = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => (e.x !== unit.x || e.y !== unit.y)
                     && area.some(t => t.x === e.x && t.y === e.y));
             }
             return pool.filter(e => _novaSeesEnemy(unit, spell, e) && spellTargetUsableOn(unit, spell, e));
@@ -46331,7 +46560,7 @@
                 ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
             const srcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             const longR = isLongRangeSpell(spell);
-            return aliveUnitsFor(enemyOf(unit.player)).filter(e => {
+            return realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit).filter(e => {
                 if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
                 const dist = (typeof combatReach === 'function')
                     ? combatReach(unit.x, unit.y, srcZ, e.x, e.y, e.z ?? 0, longR)
@@ -46353,7 +46582,7 @@
             /* A hollow mask (no [0,0]) needs the centre picker too — its centre never hits. */
             const _m = _spellMaskOf(spell); const _hollow = !!(_m && !_m.some(o => !o[0] && !o[1]));
             if (spell.aoeShape !== 'ring' && !_hollow) return { x: tx, y: ty };
-            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            const enemies = realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit);
             let best = null, bestScore = -Infinity;
             for (const c of getSpellRangeTiles(unit, spell)) {
                 const area = getSpellAoeArea(spell, c.x, c.y);
@@ -46609,6 +46838,14 @@
             }
             // Grapple reels only where the rope gets the caster (THE GRAPPLE REEL): not its own tile, not a blocked line.
             if (isGrappleReel(spell) && !grappleLandingFor(unit, x, y, { viewer: unit.player })) return 'blocked';
+            /* THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 B1): a summon is called onto an EMPTY tile (doSpell's
+               summonUnit branch, summonTileFree) — a body's tile is never its pick, so no list, quick menu or board click
+               offers a unit (Summon Creation offered the enemy Symbiote, JUMP→CAST spent the jump, then "pick an empty
+               tile"; Wolf Pack / Brood / Whistle listed the caster's own team) */
+            if (spell.kind === 'summonUnit') {
+                const body = tgt || unitAt(x, y);
+                if (body && !body.dead) return 'occupied';
+            }
             // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
             if (dashOnlyMoves(spell)) {
                 const body = unitAt(x, y);
@@ -46651,6 +46888,19 @@
         window.spellAimProblem = spellAimProblem;
         window.spellAimProblemLabel = spellAimProblemLabel;
         window.spellCastableOnUnit = spellCastableOnUnit;
+
+        /* THE EMPTY-TILE SUMMON: the one test of a free tile for a summon (doSpell's summonUnit branch, the menus' lit
+           check): on the board, passable, no living body, not the Cube, no living summon / turret on it */
+        function summonTileFree(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
+            const body = unitAt(x, y);
+            if (body && !body.dead) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            // a placed piece that blocks the tile (Stuffed Double, Cloning Machine …) — the walkers' own rule
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            return !(state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y);
+        }
+        window.summonTileFree = summonTileFree;
 
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
@@ -46740,18 +46990,11 @@
                 return range > 0 || true;
             }
             if (kind === 'summonUnit') {
-                // wave C: an empty passable tile within reach, and the cap not full
-                const _smCap = spell.maxActivePerCaster || 1;
-                const _smMine = (state.turrets || []).filter(t => t.summon && t.casterUnitId === unit.id && t.spellId === spell.id).length;
-                if (_smMine >= _smCap) return true;   // a re-cast dismisses the old one
-                for (const t of getSquareArea(unit.x, unit.y, range)) {
-                    const d = Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y);
-                    if (d < 1 || d > range) continue;
-                    if (!isTerrainPassable(t.x, t.y) || unitAt(t.x, t.y)) continue;
-                    if ((state.turrets || []).some(tt => tt.hp > 0 && tt.x === t.x && tt.y === t.y)) continue;
-                    return true;
-                }
-                return false;
+                /* wave C: a free tile the cast would take. THE EMPTY-TILE SUMMON (zones/traps playtest 2026-11-07 B1): the
+                   lit reach + doSpell's own empty test (summonTileFree) — the old copy read its own plain-step disc, not the lit
+                   tiles, skipped the Cube's tile, and lit the spell whenever the cap was full, so Brood was offered with no free
+                   tile beside the Bee Queen. A re-cast at the cap still needs a free tile (it dismisses the old one there). */
+                return getSpellRangeTiles(unit, spell).some(t => (t.x !== unit.x || t.y !== unit.y) && summonTileFree(t.x, t.y));
             }
 
             // Placement kinds: only castable when at least one tile in range
@@ -46782,7 +47025,7 @@
 
             if (spellTargetsCorpses(spell)) {
                 // Any corpse (either side) whose remains haven't been consumed yet.
-                return state.units.some(u => u.dead && !u._corpseConsumed &&
+                return corpseRemainsBodies().some(u => spellCorpseUsable(unit, spell, u) &&   // THE GRAVES STAY: left graves too
                     !spellAimProblem(unit, spell, u.x, u.y, u.z));   // THE ONE AIM RULE
             }
 
@@ -53962,6 +54205,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -54561,6 +54805,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -54775,6 +55020,7 @@
             _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY: the graves respawned units left (per match)
             state.mirrors = [];
             state._mirrorFreq = { 1: 0, 2: 0 };
             state._trickRoomRounds = 0;   // initiative reversal belongs to this match
@@ -59292,6 +59538,7 @@
                     for (const _bcnObj of state._deployedObjects) {
                         if (_bcnObj.hp <= 0 || !_bcnObj.healOnTurnStart || !_bcnObj.auraHeal || !_bcnObj.auraRadius) continue;
                         if (_bcnObj.ownerPlayer !== nextUnit.player) continue;
+                        if (shadowRealmKey(nextUnit)) continue;   // 🌑 the beacon stands on the board
                         const _bcnDist = Math.abs(nextUnit.x - _bcnObj.x) + Math.abs(nextUnit.y - _bcnObj.y);
                         if (_bcnDist > _bcnObj.auraRadius) continue;
                         const _bcnHpBefore = nextUnit.hp;
@@ -64442,14 +64689,15 @@
             const _casterStandH = _needsAbove
                 ? ((typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : unitZ)
                 : 0;
-            for (const u of state.units) {
+            /* THE GRAVES STAY: a corpse cast lists the still-dead bodies and the graves respawned units left behind */
+            for (const u of (spellTargetsCorpses(spell) ? corpseRemainsBodies() : state.units)) {
                 // Dead units are invisible to targeting EXCEPT for revive, whose
                 // whole job is targeting a fallen ally's gravestone — and raiseDead,
                 // which reanimates ANY unconsumed remains (ally grave or enemy bones).
                 if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
-                        if (u._corpseConsumed) continue;
+                        if (!spellCorpseUsable(unit, spell, u)) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 // raiseDead only ever targets the dead.
@@ -64542,12 +64790,12 @@
             const isOffensive = !!_skm.offensive;
             const fogLimit = spellVisionGate(unit, spell);   // VISION (2026-10-09)
             const out = [];
-            for (const u of state.units) {
+            for (const u of (spellTargetsCorpses(spell) ? corpseRemainsBodies() : state.units)) {   // THE GRAVES STAY (the drum's list)
                 // Dead-target rules mirror the drum: revive walks to its own
                 // fallen ally's grave, raiseDead to any unconsumed remains.
                 if (u.dead) {
                     if (spellTargetsCorpses(spell)) {
-                        if (u._corpseConsumed) continue;
+                        if (!spellCorpseUsable(unit, spell, u)) continue;
                     } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
@@ -69275,6 +69523,12 @@
                 if (hDiff < 0 && typeof applyFallDamage === 'function') {
                     applyFallDamage(unit, fromZ, z, 'Jump: ');
                 }
+                /* ⛓ THE LANDING IS AN ARRIVAL (zones/traps playtest 2026-11-07 A2: King Kong jumped onto the Reptilian's
+                   bomb and nothing happened; the bomb stayed). Jumping IS stepping in, so the landing runs THE CHAIN
+                   exactly as the end of a walk does (via 'move'): an enemy bomb, hidden trap, Tesla Coil / Scrap Mine /
+                   snare, the ground under the feet, the debuff zones, the vortex, a rune. Only the landing square — the
+                   squares the arc flies over are not touched, as before. */
+                if (!unit.dead && !unit._dying) resolveTileArrival(unit, { via: 'move' });
                 // 🕯 Hex of Toil: a jump is a move — the curse flares.
                 _procHexedOnAction(unit, 'leaps');
                 // Landing in a guardian's sights: jumping IS movement, so
@@ -74933,7 +75187,7 @@
             else if (combo.kind === 'aoe') {
                 window.setTimeout(() => {
                     const area = getSquareArea(targetX, targetY, combo.aoeRadius || 1);
-                    const enemies = aliveUnitsOnFloor(enemyOf(initiator.player), null);
+                    const enemies = realmReachableFrom(aliveUnitsOnFloor(enemyOf(initiator.player), null), initiator);
                     for (const tile of area) {
                         // Every enemy in the tile's column (a flyer over a ground unit).
                         for (const hit of enemies.filter(e => e.x === tile.x && e.y === tile.y)) {
@@ -74959,7 +75213,7 @@
 
             else if (combo.kind === 'healAll') {
                 const healAmt = Math.round((combo.heal || 20) * synergyMult);
-                for (const ally of aliveUnitsFor(initiator.player)) {
+                for (const ally of realmReachableFrom(aliveUnitsFor(initiator.player), initiator)) {
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
@@ -74993,7 +75247,7 @@
 
             if (combo.comboHeal && combo.comboHeal > 0) {
                 const healAmt = Math.round(combo.comboHeal * synergyMult);
-                for (const ally of aliveUnitsFor(initiator.player)) {
+                for (const ally of realmReachableFrom(aliveUnitsFor(initiator.player), initiator)) {
                     const hpGain = Math.min(healAmt, ally.maxHp - ally.hp);
                     if (hpGain > 0) {
                         applyHealingToUnit(ally, hpGain, initiator);
@@ -76699,6 +76953,18 @@
             // burn MP/AP for nothing. Menus grey these out; this guards direct
             // map clicks and move-then-cast paths. (AoE/team kinds pass: some
             // OTHER unit in the blast may still need the status.)
+            /* THE IMMUNE TARGET (playtest 2026-11-07 B1): a single-target status / stat-drop cast on a unit every effect
+               of it bounces off (Counterspell / Brainwash on a Pure Negativity Ghoul) is refused before any MP, AP or
+               cooldown is spent — the drum and the menus already leave that unit out; this catches a direct call. */
+            if ((spell.kind === 'debuff' || spell.kind === 'buff' || spell.kind === 'possess') && !spell.aoeRadius && !_spellMaskOf(spell)) {
+                const _imT = unitAt(x, y, z) || unitAt(x, y);
+                if (_imT && !_imT.dead && spellBouncesOffImmune(spell, _imT) && !spellTargetUsableOn(unit, spell, _imT)) {
+                    addLog(`${_ctName(_imT)} is immune — ${_ctSp(spell.name)} would do nothing.`);
+                    state._teleportingUnitId = null;
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             if ((spell.kind === 'debuff' || spell.kind === 'buff') && !spell.aoeRadius && !_spellMaskOf(spell)
                 && spellIsPureStatus(spell)) {
                 const _psT = unitAt(x, y, z) || unitAt(x, y);
@@ -77592,17 +77858,19 @@
                 // It lives in state.turrets (zombie: true) so it inherits the whole
                 // siege-engine pipeline: it can be attacked (3 hits), is fogged and
                 // rendered like a deployable, and acts in the end-of-round phase.
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                /* THE GRAVES STAY: a still-dead body or the grave a respawned unit left; its square must be free */
+                const corpse = corpseRemainsAt(unit, spell, x, y);
                 if (!corpse) {
-                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    const _covered = corpseRemainsBodies().some(c => c.x === x && c.y === y);
+                    addLog(_covered ? "Those remains are covered — Raise the Dead needs their square empty."
+                        : "Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
                     playErrorSfx();
                     return 0;
                 }
                 playSfx(spellLaunchSfx(spell));
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                corpse._corpseConsumed = true;
-                corpse.reviveLocked = true;   // the raised meat leaves nothing to revive
+                consumeCorpseRemains(corpse);   // the raised meat leaves nothing to revive (this death)
                 if (!state.turrets) state.turrets = [];
                 const _zHits = spell.zombieHits || 3;
                 state.turrets.push({
@@ -77634,8 +77902,7 @@
                    armored, counts physical blows as half a hit. One per caster
                    per spell (maxActivePerCaster) — a new call dismisses the old. */
                 const _sd = spell.summonDef || {};
-                if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))
-                    || (state.turrets || []).some(t => t.hp > 0 && t.x === x && t.y === y)) {
+                if (!summonTileFree(x, y)) {
                     addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`);
                     playErrorSfx();
                     return 0;
@@ -78306,7 +78573,7 @@
                 // healAll: sender ≠ payoff).
                 _vfxMana(unit.x, unit.y, { soft: true });
                 unit.mp -= effectiveSpellCost;
-                const allies = aliveUnitsFor(unit.player);
+                const allies = realmReachableFrom(aliveUnitsFor(unit.player), unit);   // 🌑 nobody across the realm's line
                 // Same two-beat structure as healAll: cast on the caster,
                 // then the camera cuts wide and the restore visibly lands on
                 // each ally (blue burst + floating MP), staggered.
@@ -78578,7 +78845,7 @@
                 }
                 const _caRadius = spell.aoeRadius != null ? spell.aoeRadius : 1;
                 const _caUnits = (_spellMaskTiles(spell, x, y) || getSquareArea(x, y, _caRadius))
-                    .map(t => unitAt(t.x, t.y)).filter(u => u && !u.dead);
+                    .map(t => unitAt(t.x, t.y)).filter(u => u && !u.dead && !isUnitRealmShieldedFrom(u, unit));
                 playSfx(spellLaunchSfx(spell));
                 _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
@@ -79586,17 +79853,16 @@
                 /* §6.18 Cannibalize (Phase 5 wave B): eat unconsumed remains —
                    heal healPct of max HP, the corpse's respawn +corpseDelay,
                    the remains consumed (no revive, no raising). */
-                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (!corpse) {
-                    addLog("Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                    addLog("Target an enemy's remains — a fallen enemy's bones.");
                     playErrorSfx();
                     return 0;
                 }
                 playSfx('buff');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                corpse._corpseConsumed = true;
-                corpse.reviveLocked = true;
+                consumeCorpseRemains(corpse);
                 const _cbDelay = spell.corpseDelay || 2;
                 const _cbDelayed = corpse._respawnIn != null && Number.isFinite(corpse._respawnIn);
                 if (_cbDelayed) corpse._respawnIn += _cbDelay;
@@ -79791,7 +80057,7 @@
                 if (spell.spawnDecoy) {
                     if (!state._deployedObjects) state._deployedObjects = [];
 
-                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy);
+                    const _ownedDecoys = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.isDecoy && !o.spellId);   // a spell's decoy keeps its own cap (A1)
                     while (_ownedDecoys.length >= 3) {
                         const oldest = _ownedDecoys.shift();
                         state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
@@ -79940,7 +80206,7 @@
                 // Predict the split victims (same filter the impact resolution
                 // uses) so beat 2 frames the whole cluster, not just the
                 // primary target.
-                const _sbNearby = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e =>   // THE SEEN SPLIT
+                const _sbNearby = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e =>   // THE SEEN SPLIT
                     e.id !== target.id && !e.dead &&
                     Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2)
                 ).sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
@@ -79981,7 +80247,7 @@
                 const splitStartDelay = impactDelay + actionMs(350);
                 const splitGap = actionMs(280);
                 window.setTimeout(() => {
-                    const nearby = spellHopPool(unit, spell, aliveUnitsFor(enemyOf(unit.player))).filter(e =>   // THE SEEN SPLIT (K4)
+                    const nearby = spellHopPool(unit, spell, realmReachableFrom(aliveUnitsFor(enemyOf(unit.player)), unit)).filter(e =>   // THE SEEN SPLIT (K4)
                         e.id !== target.id && !e.dead &&
                         Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= splitRadius
                     ).sort((a, b) => a.hp - b.hp).slice(0, splitCount);
@@ -80115,12 +80381,18 @@
                     scheduleBoardRender();
                     completionDelay = actionMs(700);
                 } else {
-                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id);
+                /* THE CAP IS PER SPELL (zones/traps playtest 2026-11-07 A1: the Gnome's Spring Snare, cap 1, silently took
+                   away its Tesla Coil AND its Scrap Mine; the Mad Scientist's Cloning Machine took its Tesla Coil). Each row's
+                   maxActivePerCaster counts only that row's own live objects — the way Place Bomb's traps, the placed traps
+                   (per trapType) and the summons (per spell) already count — and the one a new cast takes away says so,
+                   to its owner's seat only (a hidden snare's square stays hidden from the other side). */
+                const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated);
                 const _maxActive = spell.maxActivePerCaster || 3;
                 while (_ownedObjs.length >= _maxActive) {
                     const oldest = _ownedObjs.shift();
                     state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
                     _clearDecoyTaunts(oldest);   // a new double dismisses the old one's Provoked
+                    addLog(`${_ctName(unit)}'s older ${_ctSp(oldest.spellName || spell.name)} at ${coordLabel(oldest.x, oldest.y)} is taken down to make room.`, unit.player);
                 }
                 // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +hp on an object with an HP bar (objectHp > 1;
                 // a 1-HP snare or decoy breaks to any hit), +dmg on a blast.
@@ -82218,12 +82490,15 @@
                     return 0;
                 }
                 if (!state.turrets) state.turrets = [];
-                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id);
+                /* THE CAP IS PER SPELL (zones/traps playtest 2026-11-07 A3): state.turrets also holds the summons and the
+                   zombies, and a 5G Tower (cap 1) took down the Gnome's own Deploy Turret. The cap counts this row's own
+                   turrets only, like the summons' cap. */
+                const ownedTurrets = state.turrets.filter(t => t.casterUnitId === unit.id && t.spellId === spell.id && !t.summon && !t.zombie);
                 if (ownedTurrets.length >= (spell.maxActivePerCaster || 2)) {
 
                     const oldest = ownedTurrets[0];
                     state.turrets = state.turrets.filter(t => t !== oldest);
-                    addLog(`Oldest turret at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
+                    addLog(`Oldest ${_ctSp(spell.name)} at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
                 }
                 if (state.turrets.some(t => t.x === x && t.y === y)) {
                     addLog('There is already a turret on that tile.');
@@ -82237,7 +82512,7 @@
                 // hitsToKill turret counts blows, not HP).
                 const _fmB = passiveDeployBonus(unit);
                 const turretHp = (spell.turretHp || 20) + (spell.hitsToKill ? 0 : _fmB.hp);
-                const turretDmg = (spell.turretDmg || 8) + _fmB.dmg;
+                const turretDmg = spell.auraDebuff ? 0 : (spell.turretDmg || 8) + _fmB.dmg;   // a 5G Tower (turretDmg 0) never shoots (A3)
                 // Tinker (passive row, the `turretRangeBonus` hook — was the Engineer job, THE JOBS REMOVAL 2026-09-27): turrets reach +1 tile.
                 const turretRange = (spell.turretRange || 2) + (unitPassiveSum(unit, 'turretRangeBonus') || 0);
 
@@ -82279,7 +82554,10 @@
                         window.ThreeVFXEffects.fire('aura', spell.id, { tx: x, ty: y });
                     }
                 }
-                addLog(`${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
+                /* a 5G Tower (auraDebuff) never shoots: its line names it and says what it does, not a turret's 8 dmg (A3) */
+                addLog(spell.auraDebuff
+                    ? `${_ctName(unit)} deploys ${_ctSp(spell.name)} at ${coordLabel(x, y)} (${spell.hitsToKill ? spell.hitsToKill + ' hits' : turretHp + ' HP'}, enemies within ${turretRange} lose ${spell.auraDefReduction || 0} M.DEF).`
+                    : `${_ctName(unit)} deploys a turret at ${coordLabel(x, y)} (${turretHp} HP, ${turretDmg} dmg, range ${turretRange}).`, unit.player);
                 scheduleBoardRender();
             }
 
@@ -82326,7 +82604,7 @@
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: radius });
                 } else { _vfxBuff(unit.x, unit.y); }
-                const allies = aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
+                const allies = realmReachableFrom(aliveUnitsFor(unit.player), unit).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);   // 🌑 Oath of Valor counted the Demon in the realm
                 let buffCount = 0;
                 // THE SPELL AUDIT Batch C: cleanse N debuffs (true = 1, 99 =
                 // every one) from each ally in the aura (Mantra, Everybody Up).
@@ -82922,7 +83200,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83037,7 +83315,7 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -83083,7 +83361,7 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
@@ -83275,7 +83553,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83293,7 +83571,7 @@
                                 if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }
@@ -83442,7 +83720,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -83460,7 +83738,7 @@
                                 if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
                                     });
                                 }
                             }

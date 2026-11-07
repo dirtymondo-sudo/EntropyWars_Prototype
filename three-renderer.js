@@ -9874,6 +9874,16 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+        /* THE GRAVES STAY (2026-11-07): the graves respawned units left behind (battle.js leaveRemainsOnRespawn) */
+        if (state.graves) {
+            var _grVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var gri = 0; gri < state.graves.length; gri++) {
+                var gr = state.graves[gri];
+                if (!gr) continue;
+                h = _hashInt(h, 10); h = _hashInt(h, gr.x); h = _hashInt(h, gr.y);
+                h = _hashStr(h, String(gr.id)); h = _hashVal(h, gr.player === _grVp);
+            }
+        }
         return h;
     }
 
@@ -11616,6 +11626,32 @@ const ThreeRenderer = (function () {
                     objectGroup.add(gmesh);
                     deployableMeshes.set(gkey, gmesh);
                 }
+            }
+        }
+
+        /* THE GRAVES STAY (2026-11-07): a unit that respawned left its grave where it fell (state.graves, battle.js
+           leaveRemainsOnRespawn) — built and seen exactly like a dead body's grave above (its unit's id seeds the look,
+           so it keeps the same headstone it had) */
+        if (state.graves && state.graves.length && !window.EW_DISABLE_GRAVESTONES) {
+            var _lgViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var lg = 0; lg < state.graves.length; lg++) {
+                var gr = state.graves[lg];
+                if (!gr || gr.x == null || gr.y == null) continue;
+                var lseed = _graveSeed(gr.unitId != null ? gr.unitId : gr.id);
+                var lmesh = (gr.player === _lgViewer)
+                    ? _buildGravestone3D(gr.x, gr.y, lseed)
+                    : _buildBonePile3D(gr.x, gr.y, lseed);
+                if (!lmesh) continue;
+                if (UNIT_SPRITE_SIZE_RATIO < 1) lmesh.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);
+                lmesh._ew_depX = gr.x; lmesh._ew_depY = gr.y;
+                if (gr.player === _lgViewer) lmesh._ew_depOwner = gr.player;
+                else {
+                    /* an enemy's bones you saw fall stay seen after it gets up (same key as the body's grave) */
+                    lmesh._ew_graveKey = _lgViewer + '|' + gr.unitId + '|' + gr.x + ',' + gr.y;
+                    _graveLive.add(lmesh._ew_graveKey);
+                }
+                objectGroup.add(lmesh);
+                deployableMeshes.set('grave_' + gr.id, lmesh);
             }
         }
 
@@ -26988,6 +27024,7 @@ const ThreeRenderer = (function () {
                 for (var ui = 0; ui < state.units.length; ui++) {
                     var u = state.units[ui];
                     if (!u || u.dead || u._dying || u.player === turret.owner) continue;
+                    if (typeof window.shadowRealmKey === 'function' && window.shadowRealmKey(u)) continue;   // 🌑 the volley never shoots into the realm
                     var d = Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y);
                     if (d > turret.range || d > bestD) continue;
                     if (d === bestD && best && u.hp >= best.hp) continue;
