@@ -51509,7 +51509,9 @@
                     && typeof rollWeatherTiles === 'function' && Math.random() < MD_FLOOR_WEATHER_CHANCE) {
                     const _wKeys = WEATHER_KEYS.filter(k => {
                         const d = WEATHER_REGISTRY[k];
-                        return d && !d.instant && !d.homing;
+                        /* 🌦 OPPOSITE WEATHERS (state.js weathersOppose): never one opposite to a weather up */
+                        return d && !d.instant && !d.homing
+                            && !(typeof weatherOpposedUp === 'function' && weatherOpposedUp(k).length);
                     });
                     if (_wKeys.length) {
                         const _wType = _wKeys[randInt(_wKeys.length)];
@@ -76497,6 +76499,9 @@
                     ? `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} covers the whole map. ${wDef.desc}`
                     : `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
                 }
+                /* 🌦 OPPOSITE WEATHERS NEVER SHARE THE SKY (state.js weathersOppose; elements playtest 11-06 E1/E2): the cast
+                   weather is the newer one, so it drives off the opposite one up (a Summon Thunderstorm ends the Drought) */
+                if (typeof driveOffOpposedWeathers === 'function') driveOffOpposedWeathers(wType);
                 queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
 
                 if (!_skipVisuals() && window.ThreeVFXEffects) {
