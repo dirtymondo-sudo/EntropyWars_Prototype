@@ -4339,3 +4339,15 @@ a board click is refused in doSpell before MP or cooldown ("<spell>: no enemies 
 (`_selfNovaHasTarget`) skip unseen enemies too. Damage areas (Ground Slam, Tidal Slam…) keep their ground effects and stay
 castable into the air; Shield Maiden stays castable (its DEF +1 lands on her). Same function on the online guest (the
 invisible status reaches it in the snapshot). Proof: /mnt/project-files/taunt-no-target-20261107/.
+
+## THE PIN SPARES OWN SIDE (2026-11-07, forced-movement playtest J1) — battle.js, data.js
+- Piercing Arrow (`racePiercingArrow`, the only row with `collisionStatusBoth`) rooted every body its victim was driven
+  into, so a Skeleton that rebounded off a cliff into Robin Hood rooted Robin Hood too, and a rebound into an ally rooted
+  the ally. battle.js `_applyLineDamage` linePush pin block: the "both" bodies now only wear `collisionStatus` when
+  `isEnemyUnit(caster, body)`. The victim itself is still pinned (it is always an enemy: the line only hits enemies), the
+  bonus damage, the auto attack and the crash physics are unchanged. Same rule as own blasts never hitting own units.
+- The other collision riders (`collisionStatus` on tackles in `_runPostEffects`, Body Check's statusEffects) only ever
+  land on the pushed target, never the bodies it hit, so nothing else could pin the caster's side.
+- data.js desc: "both are Rooted for 1 turn (your own units are never Rooted by it)".
+- Proof: VS CPU TDM in Chromium (WebGL2), staged on one column against the board edge. Live: "Piercing Arrow pins:
+  Bigfoot is rooted." (caster) and the ally rooted. Fixed: only the enemy is rooted in both cases.

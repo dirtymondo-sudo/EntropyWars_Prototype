@@ -10826,7 +10826,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 95, range: 5, apCost: 1,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 120→110 (cast WR 75/100%, 1.18× the Tier III median); STATS29 PASS 2026-10-30: dmg 110→95 (1.48× the Tier III median a cast in STATS29, 1.40× in STATS28; Robin Hood 57%)
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
           collisionBonus: 40, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
-          desc: 'A bodkin that carries its victim with it. Deals WEAK physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
+          desc: 'A bodkin that carries its victim with it. Deals WEAK physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn (your own units are never Rooted by it).' },
         { id: 'raceStealFromRich', upgradesBlock: ['upLinger'], tier: 2, families: ['thievery'], spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 50, range: 3, apCost: 1,
           kind: 'debuff',

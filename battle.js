@@ -8370,7 +8370,11 @@
                         }
                         if (spell.collisionStatus) {
                             const _pinned = [hit];
-                            if (spell.collisionStatusBoth) for (const o of _lpSlide.hitUnits) if (o && !o.dead && !_pinned.includes(o)) _pinned.push(o);
+                            /* OWN SIDE IS SAFE (11-07, forced-movement playtest J1): the bodies it was driven into wear the pin
+                               only when they are the caster's enemies. A victim that rebounded off a cliff into Robin Hood used
+                               to root Robin Hood too; the caster and the caster's own units (summons included) are never
+                               pinned by their own arrow, the same rule as own blasts never hitting own units. */
+                            if (spell.collisionStatusBoth) for (const o of _lpSlide.hitUnits) if (o && !o.dead && !_pinned.includes(o) && isEnemyUnit(unit, o)) _pinned.push(o);
                             for (const p of _pinned) if (!p.dead) applyStatusEffects(p, [spell.collisionStatus], `${spell.name} pins: `, unit);
                         }
                         showFloatingTextForUnit(hit, '📌 PINNED!', 'streak', { durationMs: 1000 });
