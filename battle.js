@@ -79299,9 +79299,24 @@
                         if (spell.monument) return;
                         if (spell.terrainDeform && spell.terrainDeform.toBed) return;   // THE GAP: Fissure paints nothing, it cuts (below)
                         igniteOilBeforePaint(unit, spell, tx, ty);   // 💥 Wall of Fire on a slick: it goes up before the scorch covers it
+                        /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07): a fire wall laid across water does not burn there — the
+                           water stays water and the flames go out on it; laid on ice it melts the ice to water (fire + ice) */
+                        if (_fireGroundPaint && (current === 'water' || current === 'deep_water')) {
+                            addLog(`💧 The water at ${coordLabel(tx, ty)} puts out ${_ctSp(spell.name)} — it stays water.`);
+                            return;
+                        }
                         _tcFoot.push({ x: tx, y: ty, z: pz });
+                        if (_fireGroundPaint && current === 'ice') {
+                            if (_paintTile(tx, ty, current, 'water', pz, false)) {
+                                convertedTiles.push({ x: tx, y: ty });
+                                addLog(`🔥 ${_ctSp(spell.name)} melts the ice at ${coordLabel(tx, ty)} — it turns to water.`);
+                            }
+                            return;
+                        }
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
+                    /* a fire spell that paints burnt ground (Wall of Fire's scorch) — not lava, which keeps its own water rule (stone) */
+                    const _fireGroundPaint = getSpellElement(spell) === 'fire' && terrainType !== 'lava' && !(typeof liquidFamilyOf === 'function' && liquidFamilyOf(terrainType));
                     if (spell.elevationFlood) {
                         // 🌊 Basin-aware flood (2026-07-10 rework): water pours
                         // into the target tile and RISES — the waterline climbs

@@ -4175,3 +4175,9 @@ until the respawn wipe (nothing reads them; Revive keeps its removeDebuffs rule)
 - Checked in a real page (spell-audit harness): before, ooze + burning square sat together with no blast; after, the Oozing
   paint on a burning square, ground fire lit on a slick and Goo Shot onto a burning square each blow the slick; Fireball on
   ooze unchanged; rain blocks it.
+- BROWSER CHECK (11-07) also found: (1) the Soaked status never showed on the unit panel or the nameplate ('wet' is not in
+  state.js _STATUS_EFFECT_IDS, the engine's tick set, which must not change: it would add every rained-on unit to the
+  end-of-round camera tour). hud.js _hrlgStatusChips and three-renderer.js plate badges now surface 'wet' like 'invisible':
+  a SOAK pill, title "Soaked — N turns left". (2) Wall of Fire painted burning scorch over river water. A fire spell that
+  paints burnt ground (terrainCreate, not lava) now leaves water tiles water ("The water at X puts out Wall of Fire — it
+  stays water.") and melts ice tiles to water.

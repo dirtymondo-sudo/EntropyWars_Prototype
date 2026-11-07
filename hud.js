@@ -3630,7 +3630,9 @@ function _hrlgStatusChips(unit) {
   const chips = [];
   if (!unit || typeof getActiveStatusKeys !== 'function' || typeof _STATUS_EFFECT_IDS === 'undefined') return chips;
   for (const sk of getActiveStatusKeys(unit)) {
-    if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible') continue;
+    /* SOAKED shows too (mondo 2026-11-07: wet and soaked are one status): 'wet' stays out of the engine's tick set,
+       so it is surfaced here like 'invisible' */
+    if (!_STATUS_EFFECT_IDS.has(sk) && sk !== 'invisible' && sk !== 'wet') continue;
     const sDef = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[sk] : null;
     if (!sDef) continue;
     const turns = (typeof getStatusValue === 'function') ? getStatusValue(unit, sk) : 0;
