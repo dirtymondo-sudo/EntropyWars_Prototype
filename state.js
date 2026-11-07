@@ -1845,7 +1845,7 @@
                 homingSpeed: 2,
                 global: true,
                 duration: [3, 4],
-                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the wet. -5 DEF in the eye. Leaves puddles.',
+                desc: 'Rains over the whole map, soaking everyone. Its eye hunts the nearest unit (2 tiles/rnd) and strikes with lightning, deadly to the Soaked. -5 DEF in the eye. Leaves puddles.',
                 element: 'lightning',
                 soaks: true,
                 seedTerrain: 'water',
@@ -2637,6 +2637,15 @@
                 if (setTerrainAt(x, y, 'water') !== false && getTerrainAt(x, y) === 'stone') hardened++;
             }
             if (doused) addLog(`${def.icon} The ${def.label} puts out the fire on ${doused} tile${doused !== 1 ? 's' : ''}.`);
+            /* 🌧️🔥 RAIN PUTS OUT BURNING UNITS (mondo 2026-11-07: "yes rain should put out burning units"): the moment the
+               rain forms and at every round end, every unit it falls on — flyers too, the rain falls on them — stops
+               burning (the per-turn soak below also douses the grounded) */
+            if (typeof _douseBurnOnUnit === 'function') {
+                for (const u of (state.units || [])) {
+                    if (!u || u.dead || u._dying || !(u.status && u.status.burn)) continue;
+                    if (_rainLandsOn(weather, u.x, u.y)) _douseBurnOnUnit(u, `The ${def.label.toLowerCase()}`);
+                }
+            }
             if (hardened && typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
             if ((doused || hardened) && typeof scheduleBoardRender === 'function') scheduleBoardRender();
         }
