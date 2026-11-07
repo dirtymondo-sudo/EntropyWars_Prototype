@@ -4730,6 +4730,9 @@ const _HRLG_CAT = {
 const EW_MAGIC_PATH = 'M8 0L11.2 4.2L8 8.4L4.8 4.2ZM4 7.6L7.2 11.8L4 16L0.8 11.8ZM12 7.6L15.2 11.8L12 16L8.8 11.8Z';
 const EW_DMG_KIND_TITLE = { phys: 'Physical damage — scales with ATK, blocked by DEF', magic: 'Magic damage — scales with M ATK, blocked by M DEF' };
 function spellDamageKind(sp) {
+  /* a bomb's blast and a turret's shot always land as PHYSICAL (battle.js detonateBomb / processTurretVolleys pass no
+     magic type; a bomb's power still comes from M ATK) — the row and the bar said magic (timing/counters text pass 2026-11-07) */
+  if (sp && (sp.kind === 'bomb' || sp.kind === 'deployTurret')) return 'phys';
   return sp ? (sp.damageType === 'physical' ? 'phys' : 'magic') : null;
 }
 function ewMagicIcon() {
@@ -4926,7 +4929,10 @@ function spellTargetChip(sp) {
     return { label: '⟳ SELF', color: '#9a94ab', title: 'Casts on/around the caster — no aiming needed' };
   }
   const k = sp.kind || '';
-  if (k === 'raiseDead' || k === 'cannibalize') {
+  if (k === 'cannibalize') {
+    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen enemy's remains — their bones" };
+  }
+  if (k === 'raiseDead') {
     return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
   }
   // Two-click casts (CHAMP_REWORK Phase 5 wave B): the label follows the pick.
@@ -5161,6 +5167,10 @@ function _hrlgSpellBlades(unit, st) {
       else if (sp.hitsWetOnly && !hasTarget) reason = 'No enemies in water';
       // Pure-status spells also grey out when every target in range already
       // carries the status (statuses don't stack) — say so.
+      /* timing/counters playtest 2026-11-07 (F6): Revive works once per unit per match — a grave in reach whose unit was
+         already revived read "No target", which hid the reason */
+      else if (!hasTarget && sp.kind === 'revive' && Array.isArray(st.units) && st.units.some(u => u.player === unit.player && u.dead
+        && u.reviveLocked && (typeof spellAimProblem !== 'function' || !spellAimProblem(unit, sp, u.x, u.y, u.z)))) reason = 'Already revived';
       else if (!hasTarget) reason = (typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)) ? 'No valid target' : 'No target';
     }
 
@@ -9177,7 +9187,15 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       if (_placeAoe && !_selfCast && _hrlgArmAoePlacement(actingUnit, spell, _aimX, _aimY, targetUnit.id)) return;   // THE AOE PLACEMENT
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
-        else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
+        else {
+          const _qmR = _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
+          /* THE HELD PICK (timing/counters playtest 2026-11-07 H1): the row was only a two-step spell's FIRST pick
+             (Voodoo's enemy, Soul Bind's first enemy, Horn Toss's victim…) — nothing spent; the quick menu is gone, so
+             open the spell's second step (battle.js _rearmHeldFirstPick) instead of leaving the bare root menu */
+          if ((_qmR === 0 || _qmR === false) && typeof window._rearmHeldFirstPick === 'function') {
+            if (window._rearmHeldFirstPick(actingUnit, spell.name, null)) return;
+          }
+        }
       }
     } else if (actionId.startsWith('item:')) {
 

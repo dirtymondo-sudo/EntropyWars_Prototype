@@ -1500,6 +1500,23 @@
             };
         }
 
+        /* THE SHOT FOCUS (2026-11-07, RULE #2): the end-of-round dive onto a shot with no cinematic (a marked shot, a
+           blast with the Action Cam off, a turret's volley, battle.js playEorShotFocus) ran on the HOST only, so the
+           guest's camera never moved for those hits. The host relays the tile; the guest gates on its own fog. */
+        if (typeof window.playEorShotFocus === 'function') {
+            const _origPlayEorShotFocus = window.playEorShotFocus;
+            window.playEorShotFocus = function(x, y, opts) {
+                var r = _origPlayEorShotFocus(x, y, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (!(opts && opts.relayed) && Number.isFinite(x) && Number.isFinite(y)
+                    && (_netOn && _isHost() || _ewRecOn())) {
+                    _emit('relay', { type: 'eor-shot-focus', x: x, y: y,
+                        duration: (opts && Number.isFinite(opts.duration)) ? opts.duration : null });
+                }
+                return r;
+            };
+        }
+
         /* Turn-handoff sweep ("Your Turn" / "Opponent's Turn"). The blitz
            engine only runs on the HOST, so without this relay the guest
            NEVER sees the handoff announcement — one of the biggest "online
@@ -1862,6 +1879,9 @@
         const _origContinueMatch = continueToNextMatch;
         continueToNextMatch = async function() {
             if (!_isOnline()) return _origContinueMatch();
+            /* a finished match only: the request is a vote, never a restart */
+            if (!state.winner && state._winCondition !== 'draw') return;
+            var nextMatchBtn = document.getElementById('nextMatchBtn');
             const me = _myPlayer();
             if (!window._NET._rematchState) window._NET._rematchState = {
                 1: false,
@@ -1883,6 +1903,15 @@
                 _startOnlineRematch();
             }
         };
+        /* THE REMATCH VOTE (timing/counters playtest 2026-11-07 H8: REQUEST REMATCH started a host-only match against a
+           team nobody picked while the guest still sat on the old board): ui.js binds the result screen's static button at
+           load, BEFORE this file wraps continueToNextMatch, so online it ran the offline "next match" — a new board at once,
+           the opponent's seat filled from the old builds. The button calls the wrapper now: a vote, and on both votes the
+           party builder for both seats (_startOnlineRematch). */
+        (function () {
+            var _nmb = document.getElementById('nextMatchBtn');
+            if (_nmb) _nmb.onclick = function () { return continueToNextMatch(); };
+        })();
 
         async function _startOnlineRematch() {
             window._NET._rematchState = {
@@ -3207,6 +3236,8 @@
                 NET._rankedResultEmitted = false;
                 NET.lastSyncJson = '';
                 NET._leanSent = null;
+                /* the guest's per-match latches (the result screen, the board build) start clean in every room (H7) */
+                if (window._gameState) { window._gameState._guestResultShown = false; window._gameState._guestBoardBuilt = false; }
                 window._ewIntroRemoteSkip = false;
                 window._ewRemoteMatchReady = false;
                 window._ewRemoteIntroDone = false;
@@ -4636,6 +4667,20 @@
                             || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(data.ds.x, data.ds.y));
                         if (_dsVis && typeof window.playDetonationCinematic === 'function') {
                             try { window.playDetonationCinematic(data.ds, { descentMs: data.descentMs || 0, relayed: true }); } catch (e) {}
+                        }
+                    }
+
+                    /* THE SHOT FOCUS (see the host wrapper above): fog is ENFORCED, a hit on a tile the guest can't
+                       see moves no camera */
+                    if (data.type === 'eor-shot-focus' && _ewMirrorView()
+                        && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+                        var _sfVis = !st || !st.fogOfWar
+                            || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(data.x, data.y));
+                        if (_sfVis && typeof window.playEorShotFocus === 'function') {
+                            try {
+                                window.playEorShotFocus(data.x, data.y,
+                                    { duration: Number.isFinite(data.duration) ? data.duration : undefined, relayed: true });
+                            } catch (e) {}
                         }
                     }
 
@@ -6194,6 +6239,7 @@
                         case 'opp-banner':
                         case 'storm-lightning-fx':
                         case 'key-fx':
+                        case 'eor-shot-focus':
                             if (!tv(data.x, data.y)) return null;
                             break;
                         case 'det-cine':
@@ -6720,9 +6766,14 @@
                         }
                     }
 
-                    /* a draw is winner 0 (falsy): its own marker ends the guest's match too */
-                    if ((st.winner || st._winCondition === 'draw') && !st._guestResultShown) {
-                        st._guestResultShown = true;
+                    /* a draw is winner 0 (falsy): its own marker ends the guest's match too.
+                       THE GUEST'S RESULT, EVERY MATCH (timing/counters playtest 2026-11-07 H7: after a first online match
+                       the guest stayed on the board when the next one ended — a sudden-death win, the host on VICTORY):
+                       the latch was a bare `true` that only a rematch cleared, so a second match in the same page (Main
+                       Menu, then a new room) skipped finalizeMatch for good. It holds THIS match's id now. */
+                    var _grsKey = NET.matchId || true;
+                    if ((st.winner || st._winCondition === 'draw') && st._guestResultShown !== _grsKey) {
+                        st._guestResultShown = _grsKey;
 
                         if (typeof window.finalizeMatch === 'function') {
                             try {
@@ -6874,7 +6925,7 @@
                camera themselves (free-cam mode for filming trailers). */
             var CAMERA_RELAY = {
                 'camera-events': 1, 'cam-action-settle': 1, 'dash-cam-follow': 1,
-                'unit-fall-follow': 1, 'spell-focus-cam': 1
+                'unit-fall-follow': 1, 'spell-focus-cam': 1, 'eor-shot-focus': 1
             };
 
             /* ── IndexedDB (localStorage's ~5MB quota is too small for this) ── */

@@ -5215,7 +5215,7 @@ const SPELL_LIBRARY = [
         school: 'Agent',
         maxActivePerCaster: 3,
         blastRadius: 1,
-        desc: 'Places a bomb. Detonate it to deal MEDIUM magic damage in an AOE.'
+        desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage (it grows with your M ATK) to every enemy in the 3×3, and each is thrown back 1 tile.'
     },
 
     {
@@ -5406,7 +5406,7 @@ const SPELL_LIBRARY = [
         turretHp: 80,
         turretDmg: 110,
         turretRange: 3,
-        desc: 'Deploy a turret on an empty tile (1 AP). It paints the nearest enemy within 3 tiles with a targeting laser — the shot lands at the end of the round for 110 damage. Max 2 per Engineer. Enemies can destroy turrets.'
+        desc: 'Deploy a turret on an empty tile (1 AP). It paints the nearest enemy within 3 tiles with a targeting laser — the shot lands at the end of every round for MEDIUM physical damage. Max 2 per caster (a 3rd replaces the oldest). Enemies can destroy turrets.'
     },
     {
         id: 'overclock',
@@ -5527,7 +5527,7 @@ const SPELL_LIBRARY = [
         tier: 2,
         families: ['teamwork'],
         school: 'Harbinger',
-        desc: 'Grant a friendly unit that already acted this turn 1 bonus AP, letting them take one more action. Each unit can only receive Encore once per round.'
+        desc: 'Grant a friendly unit that already acted this round 1 bonus AP, letting them take one more action. Each unit can only receive Encore once per round.'
     },
     {
         id: 'lullaby',
@@ -6190,7 +6190,7 @@ const SPELL_LIBRARY = [
         { id: 'raceExsanguinate', name: 'Exsanguinate', tier: 4, families: ['blood'], cost: 100, apCost: 2, cooldownRounds: 2,
           spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 180,
           range: 3, drainPct: 1, bonusVsStatus: { status: 'grievous', mult: 1.5 },
-          desc: 'Take all of it. HEAVY magic damage to a Single Enemy and every point of it comes back to you. Deals bonus damage to targets with a Grievous Wound.' },
+          desc: 'Take all of it. HEAVY magic damage to a Single Enemy and every point of it comes back to you, up to your full HP. Deals bonus damage to targets with a Grievous Wound.' },
         { id: 'raceConstrict', name: 'Constrict', tier: 2, families: ['tentacleappendages'], cost: 50, apCost: 1,
           spellType: 'anomaly', element: 'water', type: 'debuff', kind: 'debuff', range: 2,
           statusEffects: [{ id: 'root', duration: 2 }], statStageBoost: { def: -1 },
@@ -6364,7 +6364,7 @@ const SPELL_LIBRARY = [
         { id: 'raceSpiritBomb', name: 'Spirit Bomb', tier: 4, families: ['ki'], cost: 100, apCost: 2, spellType: 'human',
           vfxElement: 'light', type: 'damage', kind: 'delayed', range: 5, dmg: 160, damageType: 'magic', aoeRadius: 1,
           delayTurns: 1,
-          desc: 'Lend me your energy. Marks a 3×3 within 5 tiles; at the end of the round it lands for HEAVY magic damage to everything inside.' },
+          desc: 'Lend me your energy. Marks a 3×3 within 5 tiles; at the end of the round it lands for HEAVY magic damage to every enemy inside.' },
         { id: 'raceShieldBash', name: 'Shield Bash', tier: 2, families: ['knight'], cost: 50, apCost: 1, spellType: 'human',
           element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 110, damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -6927,7 +6927,7 @@ const SHARED_NUKE = {
     leaveTerrain: 'scorched',
     terrainDeform: { centerDelta: -3, edgeDelta: -1 },
     demolishesBuildings: true,
-    desc: 'The football is open. Mark the grid; two rounds later there is no grid. SEVERE magic damage to everything in a 5×5, buildings included.'
+    desc: 'The football is open. Mark the grid; at the end of the next round there is no grid. SEVERE magic damage to every enemy in a 5×5, and every building in it is levelled.'
 };
 
 
@@ -7277,7 +7277,7 @@ const RACE_ABILITIES = {
         { id: 'pzLastKiss', name: 'Last Kiss', tier: 4, families: ['nightvisitor'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', vfxElement: 'shadow', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 1, drainPct: 1,
           bonusVsStatus: { status: 'grievous', mult: 1.5 },
-          desc: 'Goodnight. Deals HEAVY magic damage to an adjacent enemy and heals you for all of it. Deals bonus damage to targets with a Grievous Wound. Cooldown: 2 rounds.' },
+          desc: 'Goodnight. Deals HEAVY magic damage to an adjacent enemy and heals you for all of it, up to your full HP. Deals bonus damage to targets with a Grievous Wound. Cooldown: 2 rounds.' },
         { id: 'raceSoulSuck', tier: 1, bonusVsStatus: { status: 'charm', mult: 1.5 }, families: ['seduction'], spellType: 'unholy', name: 'Soul Suck',
           type: 'damage', cost: 30, dmg: 85, range: 2,   // STATS25 PASS 2026-10-29: dmg 100→85 (448 a cast, 1.34× the Tier I median; Succubus 70/65%)
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.5,
@@ -7330,13 +7330,13 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'infected', duration: 3 }],
           desc: 'The rot takes hold: a Single Enemy in melee joins the horde for its next 2 activations — yours to move and swing, melee only, with +1 ATK and +1 SPD stage. Applies Infected. Shambling Horde hits Infected targets harder. Bosses cannot be infected.' },
         /* §6.18 Cannibalize (Phase 5 wave B, 2026-09-08): corpse-targeted
-           (the raiseDead targeting, `cannibalize` kind) — eat unconsumed
-           remains within 2 tiles: heal 35% max HP, the corpse's respawn
+           (the raiseDead targeting, `cannibalize` kind) — eat an ENEMY's unconsumed
+           remains within 2 tiles (enemyRemainsOnly, playtest 2026-11-07 H6): heal 35% max HP, the corpse's respawn
            timer +2 rounds, the remains are gone (no revive, no raising). */
         { id: 'raceCannibalize', tier: 2, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Cannibalize',
           type: 'heal', cost: 25, range: 2, apCost: 1,
           kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
-          desc: 'Feeds on a fallen unit\'s remains within 2 tiles — an ally\'s gravestone or an enemy\'s bones. Heals 35% of max HP and delays that unit\'s respawn by 2 rounds. The remains are consumed.' },
+          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 35% of max HP and, while that enemy is still down, delays its respawn by 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', tier: 2, families: ['zombie'], spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceOutbreak', upgradesBlock: ['upWiden'], tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -7419,7 +7419,7 @@ const RACE_ABILITIES = {
           kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 1,
           groundsFlyers: true,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
-          desc: 'The mothman foretells the disaster: marks a 5×5 zone. At the end of the round a METEOR STORM falls on it — HEAVY magic damage to everything inside, flyers knocked from the sky. Deals bonus damage to targets with Discord.' },
+          desc: 'The mothman foretells the disaster: marks a 5×5 zone. At the end of the round a METEOR STORM falls on it — HEAVY magic damage to every enemy inside, flyers knocked from the sky. Deals bonus damage to targets with Discord.' },
         { id: 'raceRedEyes', tier: 1, families: ['mothman'], spellType: 'unholy', name: 'Red Eyes',
           type: 'debuff', cost: 20, range: 4, apCost: 1,
           kind: 'debuff',
@@ -7737,7 +7737,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 4, bonusVsStatus: { status: ['slow', 'stagger'], mult: 1.5 }, families: ['temporal'], cost: 35, dmg: 180, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic',
           echoLastDealt: true,
-          desc: 'You were never standing there. Deals HEAVY magic damage to a Single Enemy, then replays the last blow it dealt against it. Deals bonus damage to Slowed or Staggered targets.' },
+          desc: 'You were never standing there. Deals HEAVY magic damage to a Single Enemy, then replays the last blow it dealt against it (up to 500 damage). Deals bonus damage to Slowed or Staggered targets.' },
         SHARED_FISSURE
     ],
     'ai': [
@@ -7766,7 +7766,7 @@ const RACE_ABILITIES = {
         { id: 'sigOverfit', name: 'Overfit', tier: 3, families: ['deeplearning'], cost: 75, apCost: 1, spellType: 'tech',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4, echoLastDealt: true,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
-          desc: 'It has seen this one before. Deals MEDIUM magic damage to a Single Enemy, then replays the last blow that enemy dealt back at it. Jammed targets take it worse.' },
+          desc: 'It has seen this one before. Deals MEDIUM magic damage to a Single Enemy, then replays the last blow that enemy dealt back at it (up to 500 damage). Jammed targets take it worse.' },
     ],
     /* 2026-07-18: Chassis Slam reworked into Kill Mode (360° weapons-free
        barrage) + new Hydraulic Crush — the robot fights like a Warrior now. */
@@ -8291,7 +8291,7 @@ const RACE_ABILITIES = {
           leaveTerrain: 'scorched',
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
           bonusVsStatus: { status: 'burn', mult: 1.5 },   // §6.11: the payoff flips to Burn (Incendiary Rounds)
-          desc: 'Calls in the whole battery on a marked grid. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' }
+          desc: 'Calls in the whole battery on a marked grid. At the end of the round, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' }
     ],
     'priest': [
         /* HOLY ORDERS (the P-Z signature families, mondo 2026-10-23): holy water Soaks, the last rites pay it off. */
@@ -8612,7 +8612,7 @@ const RACE_ABILITIES = {
         { id: 'sigOrbitalStrike', name: 'Orbital Strike', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'tech', element: 'lightning', vfxElement: 'light', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 170,
           range: 7, aoeRadius: 1, delayTurns: 1, groundsFlyers: true, bonusVsStatus: { status: 'tethered', mult: 1.5 },
-          desc: 'Houston, we have a target. Marks a 3×3 within 7 tiles; at the end of the round the strike lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Roped targets take it worse. Cooldown: 2 rounds.' },
+          desc: 'Houston, we have a target. Marks a 3×3 within 7 tiles; at the end of the round the strike lands for HEAVY magic damage to every enemy inside and knocks flyers out of the sky. Roped targets take it worse. Cooldown: 2 rounds.' },
         /* THE SPACE PROPS (2026-10-27, mondo: "build his spells around the space props in the game"): the satellite's laser, the
            rover, the debris with a satellite coming down, the shuttle. Existing kinds, damage and statuses only: the two setups
            apply Burn / Stagger, the two finishers hit those harder and apply nothing. Looks: three-vfx-effects.js "THE SPACE PROPS". */
@@ -8745,7 +8745,7 @@ const RACE_ABILITIES = {
         { id: 'nrEatenAlive', name: 'Eaten Alive', tier: 4, families: ['flesheater'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 160, damageType: 'physical',
           drainPct: 1, bonusVsStatus: { status: ['root', 'grievous'], mult: 1.5 },
-          desc: 'The whole mouth opens. Deals HEAVY physical damage to a Single Enemy beside you and heals for all of it. Deals bonus damage to Rooted or Grievously Wounded targets. Cooldown: 2 rounds.' },
+          desc: 'The whole mouth opens. Deals HEAVY physical damage to a Single Enemy beside you and heals for all of it, up to your full HP. Deals bonus damage to Rooted or Grievously Wounded targets. Cooldown: 2 rounds.' },
     ],
     'mime': [
         { id: 'nrInvisibleBox', name: 'Invisible Box', tier: 1, families: ['mime'], cost: 25, apCost: 1, cooldownRounds: 2,
@@ -9150,7 +9150,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 4, families: ['fortunetelling'], cost: 100, dmg: 160, range: 5, apCost: 1,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           bonusVsStatus: { status: 'hexed', mult: 1.5 },
-          desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE). Deals bonus damage to Hexed targets.' },
+          desc: 'Marks a zone. At the end of the round, deals HEAVY magic damage to All Enemies inside (AOE). Deals bonus damage to Hexed targets.' },
         { id: 'raceSpiritChannel', tier: 2, families: ['fortunetelling'], spellType: 'anomaly', element: 'psychic', name: 'Séance',
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'heal', healAmt: 190, cleanse: 2,
@@ -9200,7 +9200,7 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 3, families: ['cosmic'], cost: 75, dmg: 135, range: 3,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Marks a zone. After 1 turn, deals MEDIUM magic damage to All Enemies inside (AOE). Deals bonus damage to Slowed targets.' },
+          desc: 'Marks a zone. At the end of the round, deals MEDIUM magic damage to All Enemies inside (AOE). Deals bonus damage to Slowed targets.' },
         { id: 'raceGravityWell', upgradesBlock: ['upBlowback'], tier: 1, families: ['cosmic'], spellType: 'alien', vfxElement: 'arcane', name: 'Gravity Well',
           type: 'damage', cost: 30, dmg: 80, range: 4,
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
@@ -9986,7 +9986,7 @@ const RACE_ABILITIES = {
           leaveTerrain: 'lava',
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
           bonusVsStatus: { status: 'burn', mult: 1.5 },
-          desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE). Leaves lava tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' },
+          desc: 'Marks a zone. At the end of the round, deals HEAVY magic damage to All Enemies inside (AOE). Leaves lava tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' },
         SHARED_NUKE
     ],
     'chosen one': [
@@ -10035,7 +10035,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'silence', duration: 1 }],
-          desc: 'I yield the floor to NO ONE. 3×3 zone for 2 turns. Enemies inside are silenced.' },
+          desc: 'I yield the floor to NO ONE. 3×3 zone for 2 rounds. At the end of each round every enemy inside is Silenced, and an enemy that walks in is Silenced on the spot.' },
         SHARED_NUKE,
     ],
 
@@ -10118,7 +10118,7 @@ const RACE_ABILITIES = {
         { id: 'sigExtinctionEvent', name: 'Extinction Event', tier: 4, families: ['jurassic'], cost: 100, apCost: 1, cooldownRounds: 3,
           spellType: 'anomaly', element: 'fire', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 170, range: 6, aoeRadius: 2,
           delayTurns: 1, groundsFlyers: true, bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'It happened once. It can happen again. Marks a 5×5 within 6 tiles; at the end of the round the meteor lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Slowed targets take it worse. Cooldown: 3 rounds.' },
+          desc: 'It happened once. It can happen again. Marks a 5×5 within 6 tiles; at the end of the round the meteor lands for HEAVY magic damage to every enemy inside and knocks flyers out of the sky. Slowed targets take it worse. Cooldown: 3 rounds.' },
     ],
     'dragon': [
         /* CHAMP_REWORK_PLAN §6.7 wave C (2026-09-08): Dragon Breath — the
@@ -10191,7 +10191,7 @@ const RACE_ABILITIES = {
           type: 'heal', tier: 3, families: ['ghoulish'], cost: 20, range: 2, apCost: 1, cooldownRounds: 2,
           kind: 'cannibalize', healPct: 0.5, corpseDelay: 2,   // THE SPELL AUDIT Batch D: corpse-gated, like Cannibalize
           statStageBoost: { atk: 1 },
-          desc: 'Feeds on a fallen unit\'s remains within 2 tiles — an ally\'s gravestone or an enemy\'s bones. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and that unit\'s respawn is delayed 2 rounds.' },
+          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and, while that enemy is still down, its respawn is delayed 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too.' },
         SHARED_POISON_SWAMP,
     ],
     'gnome': [
@@ -10715,7 +10715,7 @@ const RACE_ABILITIES = {
         { id: 'raceRaiseDead', spellType: 'unholy', name: 'Raise the Dead',
           type: 'utility', tier: 4, families: ['necromancy'], cost: 40, range: 4, apCost: 2,
           kind: 'raiseDead', zombieDmg: 60,
-          desc: 'Reanimate the remains of the fallen — target an ally\'s gravestone or an enemy\'s pile of bones to raise a mindless flesh abomination. At the end of every round it attacks the nearest unit, friend or foe, until destroyed (3 hits). The consumed corpse can never be revived.' }
+          desc: 'Reanimate the remains of the fallen — target an ally\'s gravestone or an enemy\'s pile of bones to raise a mindless flesh abomination. At the end of every round it attacks the nearest unit, friend or foe, until destroyed (3 hits). A grave stays where a unit fell even after that unit respawns, and can still be raised while nothing stands on it. The consumed corpse can never be revived.' }
     ],
 
     'occulus': [
@@ -11201,10 +11201,10 @@ const TRAINING_PASSIVES = [
       desc: '+10 SPD, and basic-attack crits hit ×2.0 instead of ×1.8. Always ready to draw first.' },
     { id: 'passiveWarpath', tier: 2, name: 'Warpath', icon: '⚔️',
       hooks: { basicDmgMult: 1.15, counterChance: 0.30, armor: 5 },
-      desc: 'Basic attacks hit +15% harder, every hit taken is 5 smaller, and counterattacks at a hardened 30% rate. Born for the front line.' },
+      desc: 'Basic attacks hit +15% harder, every hit taken is 5 smaller, and counterattacks adjacent basic attacks (not spells, not from behind) at a hardened 30% rate. Born for the front line.' },
     { id: 'passiveBulwark', tier: 1, name: 'Bulwark', icon: '🛡️',
       hooks: { damageSoak: 8, counterChance: 0.30, armor: 5 },
-      desc: 'Reduces incoming damage by 8, then 5 more off every hit, and counterattacks at a 30% rate.' },
+      desc: 'Reduces incoming damage by 8, then 5 more off every hit, and counterattacks adjacent basic attacks (not spells, not from behind) at a 30% rate.' },
     { id: 'passiveArcaneSurge', tier: 1, name: 'Arcane Surge', icon: '✴️',
       hooks: { spellPower: 8 },
       desc: '+8 spell damage on every cast.' },
@@ -11234,7 +11234,7 @@ const TRAINING_PASSIVES = [
       desc: 'Basic attacks deal +20% damage, and the unit can swim.' },
     { id: 'passiveRiposte', tier: 1, name: 'Riposte', icon: '🤺',
       hooks: { counterChance: 0.35, counterAtkPct: 0.6 },
-      desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
+      desc: '35% chance to counterattack when an adjacent enemy\'s basic attack lands on you from the front or side (spells and hits from behind are never countered), and counters swing at full sword strength (60% ATK instead of 40%).' },
 ];
 for (const sp of TRAINING_PASSIVES) {
     // THE SPELL AUDIT Batch C: a row that moved into a family (Green Thumb, Tinker, Field Operative) keeps it
@@ -11326,7 +11326,7 @@ const FAMILY_PASSIVES = [
       desc: 'Heals this unit casts are 15% stronger. Healing a Blessed ally also cleanses 1 debuff.' },
     { id: 'passiveIronDiscipline', tier: 1, families: ['militarysupport'], name: 'Iron Discipline', icon: '🎖️',
       hooks: { counterChance: 0.30, statAura: { within: 2, def: 5 } },
-      desc: '30% chance to counterattack when struck in melee. Other allies within 2 tiles gain +5 DEF.' },
+      desc: '30% chance to counterattack when an adjacent enemy\'s basic attack lands on you from the front or side (spells and hits from behind are never countered). Other allies within 2 tiles gain +5 DEF.' },
     /* the three Batch C skipped (plan §6.4) — Jellyfish's row is named Jelly Drift: "Deep Breath" is the Meditation T1 spell */
     { id: 'passiveResonantVoice', tier: 1, families: ['sonic'], name: 'Resonant Voice', icon: '🎙️',
       hooks: { familyRangeBonus: { sonic: 1 } },
@@ -13568,7 +13568,7 @@ const STATUS_LIBRARY_DESCS = {
     spawnGuard:'Fresh off a respawn: takes half damage from everything for a round.',
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
-    guarding:  'Braced for impact — bonus defense until the next turn.',
+    guarding:  'Braced for impact: DEF and M DEF up 2 stages until the end of its next turn. The Overwatch shot and the +15% counter chance Guard arms only last until the end of the round it was taken in.',
     climbing:  'Hanging on a wall face until its next turn (a tall face takes a turn per stretch): no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage from where it hangs.',
     guardRegen: 'Catching a breath from Guard: an extra 5% max HP and 3% max MP recover at the end of this round.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
@@ -21116,7 +21116,7 @@ const PASSIVE_HOOK_KEYS = {
     // THE TRAINING (THE JOBS REMOVAL, 2026-09-27) — the old job passives' effects as keys; two rows stack (Σ / Π / max)
     critMult:              { type: 'number', example: 2.0, reads: 'basic attack crit (max)', desc: 'basic-attack crit damage × (default 1.8)' },
     basicDmgMult:          { type: 'number', example: 1.15, reads: 'basic attack (product)', desc: 'basic-attack damage ×' },
-    counterChance:         { type: 'number', example: 0.3, reads: 'counterattack (max)', desc: 'chance to counter when struck in melee' },
+    counterChance:         { type: 'number', example: 0.3, reads: 'counterattack (max)', desc: 'chance to counter an adjacent basic attack that lands from the front or side (never spells, never from behind)' },
     counterAtkPct:         { type: 'number', example: 0.6, reads: 'counterattack (max)', desc: 'counter damage as a fraction of ATK (default 0.4)' },
     armor:                 { type: 'number', example: 5, reads: 'createUnit (sum)', desc: 'flat armor' },
     damageSoak:            { type: 'number', example: 8, reads: 'applyDamageToUnit (sum)', desc: 'incoming damage reduced by N' },
@@ -25159,8 +25159,14 @@ function describeSpell(def) {
         case 'linePush':    S.push(`${dmgClause(aoeTarget)} Pushes them back.`); break;
         case 'dash':        S.push(`Dashes through the battlefield${d.dashDamage != null ? `, dealing ${_dscDmgWord(d.dashDamage) || 'MEDIUM'} ${dmgType} damage to enemies along the path` : ''}.`); break;
         case 'leapStrike':  S.push(`Leaps to a Single Enemy, dealing ${tier || 'MEDIUM'} ${dmgType} damage.`); break;
-        case 'delayed':     S.push(`Marks the target tile — the strike lands after ${d.delayTurns || 1} round${(d.delayTurns || 1) === 1 ? '' : 's'}, dealing ${tier || 'MEDIUM'} ${dmgType} damage${radius ? ' in an AOE' : ''}.`); break;
-        case 'bomb':        S.push(`Places a bomb. Detonate it to deal ${tier || 'MEDIUM'} ${dmgType} damage in an AOE.`); break;
+        /* timing/counters playtest 2026-11-07: delayTurns 1 lands at the end of the cast round, 2 at the end of the next one; the
+           blast hits enemies only (state.js _detonateDelayedSpellNow). A bomb blast is physical whatever the row says (detonateBomb). */
+        case 'delayed': {
+            const _dt = d.delayTurns || 1;
+            const _when = _dt === 1 ? 'at the end of the round' : _dt === 2 ? 'at the end of the next round' : `at the end of the round ${_dt - 1} rounds later`;
+            S.push(`Marks the target tile — the strike lands ${_when}, dealing ${tier || 'MEDIUM'} ${dmgType} damage to every enemy in the area.`); break;
+        }
+        case 'bomb':        S.push(`Places a bomb. It goes off when an enemy steps on it, or when you DETONATE: ${tier || 'MEDIUM'} physical damage to every enemy in the 3×3, and each is thrown back 1 tile.`); break;
         case 'pull':        S.push(`${tier ? dmgClause('a Single Enemy') + ' ' : ''}Pulls the target toward the caster.`.trim()); break;
         case 'aoePull':     S.push(`${tier ? dmgClause(aoeTarget) + ' ' : ''}Drags everything caught toward the center.`.trim()); break;
         case 'rallyPull':   S.push('Pulls allies to the caster\'s side.'); break;
@@ -25185,7 +25191,7 @@ function describeSpell(def) {
         case 'aoeShield':   S.push(`Shields All Allies in an AOE${d.shieldHp ? ` for ${d.shieldHp} HP` : ''}.`); break;
         case 'buff':        S.push(`Empowers ${((d.range || 0) === 0) ? 'the caster' : (d.teamStatusEffects ? 'All Allies' : 'a Single Ally')}.`); break;
         case 'warCry':      S.push('Empowers All Allies nearby.'); break;
-        case 'encore':      S.push('Grant a friendly unit that already acted this turn 1 bonus AP, letting them take one more action.'); break;
+        case 'encore':      S.push('Grant a friendly unit that already acted this round 1 bonus AP, letting them take one more action.'); break;
         case 'guard':       S.push('The caster braces, taking reduced damage until their next turn.'); break;
         case 'debuff':      S.push('Weakens a Single Enemy.'); break;
         case 'zoneDebuff':  S.push(`Creates a hostile zone that weakens enemies inside${d.zoneDuration ? ` for ${d.zoneDuration} rounds` : ''}.`); break;
@@ -25194,7 +25200,7 @@ function describeSpell(def) {
         case 'summonWeather': S.push(`Summons ${d.weatherType || 'wild'} weather over the battlefield.`); break;
         case 'terrainCreate': S.push(`Reshapes the battlefield — creates ${d.terrainType || 'new terrain'}${d.tileCount ? ` across ${d.tileCount} tiles` : ''}${d.orientable ? ' (pick the orientation)' : ''}.`); break;
         case 'deployObject': S.push('Deploys an object on an empty tile.'); break;
-        case 'deployTurret': S.push(`Deploys a turret${d.turretDmg ? ` that fires for ${d.turretDmg} damage` : ''}${d.maxActivePerCaster ? ` (max ${d.maxActivePerCaster} active)` : ''}. Enemies can destroy it.`); break;
+        case 'deployTurret': S.push(`Deploys a turret${d.turretDmg ? ` that fires at the end of every round for ${_dscDmgWord(d.turretDmg)} physical damage` : ''}${d.maxActivePerCaster ? ` (max ${d.maxActivePerCaster} active)` : ''}. Enemies can destroy it.`); break;
         case 'deployPair':  S.push('Deploys a linked pair of objects.'); break;
         case 'placeTrap':   S.push(`Places a hidden ${d.trapType || ''} trap that triggers when an enemy steps on it.`.replace('  ', ' ')); break;
         case 'placeMirror': S.push('Places a mirror that redirects beams.'); break;
