@@ -630,9 +630,12 @@
                 // keep the P1/P2 alternation and the per-side shuffle.
                 for (const bucket of [tierUnits.filter(_quick), tierUnits.filter(u => !_quick(u))]) {
                     if (!bucket.length) continue;
-                    const p0 = bucket.filter(u => u.player === 0);
-                    const p1 = bucket.filter(u => u.player === 1);
-                    const p2 = bucket.filter(u => u.player === 2);
+                    /* THE HOME SIDE (2026-11-07): a possessed body rests on its home seat but still takes its turn in its
+                       controller's half of the alternation, as it always has — sort by the seat that steers it. */
+                    const _seat = (typeof getControllingPlayer === 'function') ? (u => getControllingPlayer(u)) : (u => u.player);
+                    const p0 = bucket.filter(u => _seat(u) === 0);
+                    const p1 = bucket.filter(u => _seat(u) === 1);
+                    const p2 = bucket.filter(u => _seat(u) === 2);
 
                     for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
                     for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }

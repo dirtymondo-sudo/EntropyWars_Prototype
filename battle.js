@@ -5631,7 +5631,7 @@
             if (!unit || unit.dead) return false;
             if (!isInside(nx, ny)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
-            if (unitAt(nx, ny)) return false;                        // bodies don't break
+            if (_slideGroundBodyAt(nx, ny, null)) return false;      // bodies don't break (a flyer above is not in the way)
             const power = opts.power ?? unitBreachPower(unit, opts);
             if (power <= 0) return false;                            // feather-light — bounces off
             const byUnit = opts.byUnit || null;
@@ -5720,18 +5720,43 @@
            Pure — never mutates. kinds: 'open' (nz = landing surface), 'unit'
            (occ), 'thinwall', 'wall' (voxel/terrain/object), 'edge' (map
            border), 'hole'. */
+        /* THE TWO LAYERS (playtest 11-07 A2: a Cyborg hovering at height 7 stopped Body Check / Horn Toss on the ground
+           under it). A square holds one grounded + one airborne body (map.js airborneOccupantInPocket, the tile cap), so a
+           forced slide only meets the body on ITS layer: a grounded body slides under a flyer, a flyer sails over the
+           ground. _slideGroundBodyAt = the grounded body on (nx,ny) (the mover itself last, for the forecast rebound);
+           _slideAirBodyAt = the flyer in the pocket at z, or a body standing at exactly z (a roof at the flyer's height). */
+        function _slideGroundBodyAt(nx, ny, mover) {
+            let self = null;
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying) continue;
+                const on = (u.x === nx && u.y === ny)
+                    || (u._isBoss && u._bossSize === 2 && (nx === u.x || nx === u.x + 1) && (ny === u.y || ny === u.y + 1));
+                if (!on) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (u === mover) { self = u; continue; }
+                return u;
+            }
+            return self;
+        }
+        function _slideAirBodyAt(nx, ny, z, mover) {
+            const a = (typeof airborneOccupantInPocket === 'function') ? airborneOccupantInPocket(nx, ny, z, mover) : null;
+            if (a) return a;
+            const g = unitAt(nx, ny, z);
+            return (g && g !== mover) ? g : null;
+        }
         function _slideStepInfo(mover, x, y, z, dx, dy) {
             const nx = x + dx, ny = y + dy;
             if (!isInside(nx, ny)) return { kind: 'edge', nx, ny };
             if (typeof wallBlocksStep === 'function' && wallBlocksStep(x, y, nx, ny, z, null)) {
                 return { kind: 'thinwall', nx, ny };
             }
-            const occ = unitAt(nx, ny);
+            const _airMover = typeof isUnitAirborne === 'function' && isUnitAirborne(mover);
+            const occ = _airMover ? _slideAirBodyAt(nx, ny, z, mover) : _slideGroundBodyAt(nx, ny, mover);
             if (occ && occ !== mover) return { kind: 'unit', nx, ny, occ };
             const terr = getTerrainAt(nx, ny);
             const rule = getTerrainRule(terr);
             if (rule && rule.passable === false && _SLIDE_HOLE_TERRAIN[terr]) return { kind: 'hole', nx, ny };
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) {
+            if (_airMover) {
                 // A flyer sails over anything below its altitude.
                 if (getBaseHeightAt(nx, ny) > z) return { kind: 'wall', nx, ny };
                 /* ⬡ but never onto the Cube: its column is solid for flyers too (canOccupy3D, isTerrainPassable's note) */
@@ -5744,11 +5769,22 @@
             if (nz - z > climbCap) return { kind: 'wall', nx, ny, lip: true };
             /* a forecast (simulate) leaves the body standing where it started: a rebound back onto that tile must not
                read the body itself as the blocker (the real slide has already moved it off) */
+            /* THE TWO LAYERS: canOccupy's unitAt reads a lone flyer above the square as a body there — lift the flyers
+               covering it off the board for the check too (same restore-in-finally as the mover) */
+            const _hide = [];
+            if (occ === mover) _hide.push(mover);
+            for (const u of state.units) {
+                if (!u || u === mover || u.dead || u._dying) continue;
+                const on = (u.x === nx && u.y === ny)
+                    || (u._isBoss && u._bossSize === 2 && (nx === u.x || nx === u.x + 1) && (ny === u.y || ny === u.y + 1));
+                if (on && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) _hide.push(u);
+            }
             let _free;
-            if (occ === mover) {
-                const _ox = mover.x, _oy = mover.y;
-                mover.x = -999; mover.y = -999;
-                try { _free = canOccupy(nx, ny); } finally { mover.x = _ox; mover.y = _oy; }
+            if (_hide.length) {
+                const _saved = _hide.map(u => [u.x, u.y]);
+                for (const u of _hide) { u.x = -999; u.y = -999; }
+                try { _free = canOccupy(nx, ny); }
+                finally { _hide.forEach((u, i) => { u.x = _saved[i][0]; u.y = _saved[i][1]; }); }
             } else _free = canOccupy(nx, ny);
             if (!_free) return { kind: 'wall', nx, ny };   // turret / tower / object
             return { kind: 'open', nx, ny, nz };
@@ -5760,7 +5796,7 @@
             if (_slideNoBreach()) return false;
             if (!mover || mover.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) return false;
-            if (unitAt(nx, ny)) return false;
+            if (_slideGroundBodyAt(nx, ny, null)) return false;
             const power = unitBreachPower(mover);
             if (power <= 0) return false;
             if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) {
@@ -8400,7 +8436,11 @@
                         }
                         if (spell.collisionStatus) {
                             const _pinned = [hit];
-                            if (spell.collisionStatusBoth) for (const o of _lpSlide.hitUnits) if (o && !o.dead && !_pinned.includes(o)) _pinned.push(o);
+                            /* OWN SIDE IS SAFE (11-07, forced-movement playtest J1): the bodies it was driven into wear the pin
+                               only when they are the caster's enemies. A victim that rebounded off a cliff into Robin Hood used
+                               to root Robin Hood too; the caster and the caster's own units (summons included) are never
+                               pinned by their own arrow, the same rule as own blasts never hitting own units. */
+                            if (spell.collisionStatusBoth) for (const o of _lpSlide.hitUnits) if (o && !o.dead && !_pinned.includes(o) && isEnemyUnit(unit, o)) _pinned.push(o);
                             for (const p of _pinned) if (!p.dead) applyStatusEffects(p, [spell.collisionStatus], `${spell.name} pins: `, unit);
                         }
                         showFloatingTextForUnit(hit, '📌 PINNED!', 'streak', { durationMs: 1000 });
@@ -9375,6 +9415,8 @@
             // highlight/click gates reject casts the engine would accept
             // ("no longer in range" while hovering right next to the target).
             const _skyGrab = spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+            const _flatReach = spellReachIsFlat(spell);   // THE GROUND REACH: dashes + leap strikes measure flat steps
+            const _pairPk = _pairPhasePick(spell);       // THE PAIR RULE: Soul Bind's second pick
 
             // 'delayed' (artillery / called-in strikes) is indirect fire that arcs over
             // terrain — exempt from line-of-sight so its range highlight (and the AI's
@@ -9399,8 +9441,12 @@
                             : null;
                         if (colEnemy) tz = colEnemy.z ?? 0;
                     }
-                    let effectiveD = _skyGrab ? dxy : combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
-                    if (effectiveD < minR || effectiveD > effRange) continue;
+                    let effectiveD = (_skyGrab || _flatReach) ? dxy : combatReach(unit.x, unit.y, unitZ, cx, cy, tz, longRange);
+                    if (_pairPk) {
+                        // THE PAIR RULE: the second pick lies within pairRange of the first (the first pick stays lit to un-pick it)
+                        const _pd = Math.abs(_pairPk.x - cx) + Math.abs(_pairPk.y - cy);
+                        if (_pd > spell.pairRange || (_pd === 0 && (effectiveD < minR || effectiveD > effRange))) continue;
+                    } else if (effectiveD < minR || effectiveD > effRange) continue;
 
                     if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unitZ)) continue;
 
@@ -13024,11 +13070,21 @@
 
         /* 🎭 Control (plan §5.5, Phase 5 wave B). possessUnit: the victim
            wears the control status (possessed / infected) for `acts`
-           activations and its `player` BECOMES the caster's seat — HUD
-           ownership, the AI, fog, targeting, the blitz activation and the
-           online guest-emit gate all key on unit.player, so the hand-off
-           needs no special cases anywhere. The home seat lives in
-           _origPlayer (plain unit data → state-sync). The status defs'
+           activations. THE HOME SIDE (2026-11-07 playtest A: Hallelujah healed
+           and cleansed the Gangster my Cult Leader had just possessed, Oath of
+           Valor buffed the possessed Shaman, Chivalry listed the possessed
+           Valkraye as an ally, and the CPU hit its own possessed teammates):
+           the body stays on its HOME side for everyone else — team spells,
+           ally/enemy lists, AOE sides, the AI's friend-or-foe — and its
+           `player` becomes the controller's seat only for the length of its
+           OWN activations (_possessSettleSeats, called when an activation
+           starts and ends). While it acts, it is the controller's unit: the
+           blitz activation, the AI/human branch, the online guest-emit gate,
+           fog and its own targeting all key on unit.player, so the steering
+           needs no special cases. Simul keeps the old whole-duration hand-off
+           (its plan phase has no active unit). The home seat lives in
+           _origPlayer, the controller in _controllerPlayer (plain unit data →
+           state-sync). The status defs'
            onRemove (data.js _releaseControl) restores the seat on EVERY
            removal path; releasePossession is the explicit hand-back (the
            activation count, death — a respawn wipes `status` without
@@ -13038,7 +13094,31 @@
             return !!unit && unit._origPlayer != null
                 && (unitHasStatus(unit, 'possessed') || unitHasStatus(unit, 'infected'));
         }
-        function getControllingPlayer(unit) { return unit ? unit.player : null; }
+        /* The seat that steers this body (the controller while possessed, even between its activations). */
+        function getControllingPlayer(unit) {
+            if (!unit) return null;
+            return (unitIsControlled(unit) && unit._controllerPlayer != null) ? unit._controllerPlayer : unit.player;
+        }
+        /* THE HOME SIDE: every controlled body wears its controller's seat while it is the active unit, and its
+           home seat the rest of the time. activeId = the unit whose activation is live (null = nobody's). */
+        function _possessSettleSeats(activeId) {
+            if (typeof _isSimulMode === 'function' && _isSimulMode()) return;   // simul: the whole-duration hand-off
+            let changed = false;
+            for (const u of (state.units || [])) {
+                if (!u || !unitIsControlled(u) || u._controllerPlayer == null) continue;
+                const want = (activeId != null && u.id === activeId && !u.dead && !u._dying) ? u._controllerPlayer : u._origPlayer;
+                if (u.player !== want) {
+                    u.player = want;
+                    changed = true;
+                    if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+                }
+            }
+            if (changed) {
+                if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+            }
+            return changed;
+        }
         function unitHomePlayer(unit) {
             if (!unit) return null;
             return unit._origPlayer != null ? unit._origPlayer : unit.player;
@@ -13065,7 +13145,10 @@
             }
             if (target.player !== caster.player) {
                 target._origPlayer = target.player;
-                target.player = caster.player;
+                /* THE HOME SIDE: the body keeps its home seat until its own activation (_possessSettleSeats);
+                   simul still hands it over for the whole duration. */
+                if (typeof _isSimulMode === 'function' && _isSimulMode()) target.player = caster.player;
+                else _possessSettleSeats(state._blitzActiveUnitId);
             }
             if (state._enemyActionTargetId === target.id) state._enemyActionTargetId = null;
             showFloatingTextForUnit(target, `${def.icon || '🎭'} ${String(def.label || sid).toUpperCase()}`, 'debuff', { durationMs: 1200 });
@@ -13151,6 +13234,7 @@
         }
         window.unitIsControlled = unitIsControlled;
         window.getControllingPlayer = getControllingPlayer;
+        window._possessSettleSeats = _possessSettleSeats;
         window.unitHomePlayer = unitHomePlayer;
         window.possessUnit = possessUnit;
         window.releasePossession = releasePossession;
@@ -43599,6 +43683,7 @@
                 case 'teleport':      return nm + ': select a destination tile.';
                 case 'dash':          return spell.afterShot
                     ? nm + ': select a tile to dash to — you then fire at the weakest enemy within ' + (spell.afterShot.range || 3) + ' tiles of it.'
+                    : spell.chargeToTarget ? nm + ': select an enemy to charge, or a tile to dash to.'   // THE CHARGE ROWS
                     : nm + ': select a tile to dash to.';
                 case 'warpRune':      return nm + ': select a tile to place the warp rune on.';
                 case 'bomb':          return nm + ': select a tile to place the bomb on.';
@@ -44727,6 +44812,9 @@
                 /* Mystery Dungeon lockstep: any move/jump/height-then-cast plan is
                    two beats' worth of action — never light a blade for it. */
                 if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
+                /* a self blink is cast from where the caster stands — its click is the landing, it never walks first
+                   (playtest 2026-11-07 P3), and a two-click cast mid-pick never walks either (the step drops the pick) */
+                if (_spellNeverApproaches(unit, spell)) return false;
                 /* a SELF teleport (Icky Surprise, Shadow Step, Cathedral Perch…) aims at its landing square from where the
                    caster stands — no walk comes first (a board click on a square out of reach is refused), so it is never a
                    MOVE→CAST (forced-movement playtest 2026-11-07 P2: Icky Surprise with no ooze in reach read MOVE→CAST, not
@@ -45980,6 +46068,22 @@
         window.isTileAoeSpell = isTileAoeSpell;
         window.findBestAoeAimForTarget = findBestAoeAimForTarget;
 
+        /* THE GROUND REACH (playtest 2026-11-07 B1 / I: Runaway Train and Grotesque Dive wore MOVE→CAST on an enemy in
+           reach, and confirming walked the caster first): a dash runs along the ground and a leap strike drops onto a
+           body below, so their reach is the flat step count — doSpell's dash branch measures plain 2D Manhattan (the
+           quick menu's "Engine parity" note says so), and the leap strike measures flat steps and pays MORE for every
+           level it drops. The 3D radius (combatReach: height as its own axis) counted the drop or the climb against
+           the range. Sky grabs already measured flat. */
+        function spellReachIsFlat(spell) {
+            return !!spell && (spell.kind === 'dash' || spell.kind === 'leapStrike');
+        }
+        window.spellReachIsFlat = spellReachIsFlat;
+        /* the first pick of a paired two-click cast (Soul Bind: pairRange) while the second click is being chosen */
+        function _pairPhasePick(spell) {
+            if (!spell || !spell.pairRange || !_kindMeta(spell).twoClick) return null;
+            return _twoClickPick(spell);
+        }
+        window._pairPhasePick = _pairPhasePick;
         /* ═══ THE ONE AIM RULE (2026-10-16, mondo: Dragon Slash greyed under Abilities as "No target", offered on the
            enemy's quick menu, then refused with "Spell target is out of range" — "so is it out of range or not??").
            Four places each kept their own copy of "can this spell reach that body": doSpell, the Abilities button
@@ -46003,7 +46107,8 @@
                 const u = resolveUnitInColumn(unit, x, y, z, {
                     side: _sideC,
                     inRange: c => {
-                        const dd = (c._isBoss && c._bossSize === 2)
+                        const dd = spellReachIsFlat(spell) ? (Math.abs(unit.x - c.x) + Math.abs(unit.y - c.y))   // THE GROUND REACH
+                            : (c._isBoss && c._bossSize === 2)
                             ? spellReachToTarget(unit, spell, c)
                             : combatReach(unit.x, unit.y, unit.z ?? 0, c.x, c.y, c.z ?? 0, _lrC);
                         return dd >= _minRC && dd <= _effRC;
@@ -46033,9 +46138,20 @@
             }
             const skyGrab = spell.kind === 'skyDrop' || spell.kind === 'skySlam'
                 || (spell.kind === 'skyThrow' && !unit._skyThrowGrab);
-            const minRange = _kindMeta(spell).minRange ?? 1;
-            const effRange = getEffectiveSpellRange(unit, spell);
-            const gateD = skyGrab ? rawDxy : d;
+            let minRange = _kindMeta(spell).minRange ?? 1;
+            let effRange = getEffectiveSpellRange(unit, spell);
+            let gateD = (skyGrab || spellReachIsFlat(spell)) ? rawDxy : d;
+            /* THE PAIR RULE (playtest 2026-11-07 I: Soul Bind's second pick was judged by the caster's range of 3, so a
+               second enemy "within 4 tiles of it" wore MOVE→CAST and the walk threw the first pick away): the second
+               click of a paired two-click cast (pairRange) reaches what is within pairRange of the FIRST pick — the
+               rule its text and doSpell's pair gate already state. The first pick itself keeps the caster's range
+               (clicking it again un-picks it). */
+            const _pairPk = _pairPhasePick(spell);
+            if (_pairPk && !(_pairPk.x === x && _pairPk.y === y)) {
+                gateD = Math.abs(_pairPk.x - x) + Math.abs(_pairPk.y - y);
+                minRange = 1;
+                effRange = spell.pairRange;
+            }
             return {
                 d, rawDxy, gateD, minRange, effRange, skyGrab, longRange,
                 inRange: gateD >= minRange && gateD <= effRange,
@@ -46303,8 +46419,14 @@
 
             if (kind === 'teleport' && spell.onlyTerrain) return getTeleportTerrainTiles(unit, spell).length > 0;
             if (kind === 'teleport' && spell.prismBlink) return prismBlinkTiles(unit).length > 0;   // B4
-            /* a self blink's target is its landing square: castable while one is lit (getTeleportLandingReach) */
-            if (kind === 'teleport' && !spell.teleportAnyUnit) return getTeleportLandingReach(unit, spell).length > 0;
+            /* THE SELF BLINK (playtest 2026-11-07 P3: Land on Your Feet / Cathedral Perch wore MOVE→CAST with nobody near):
+               a self teleport's only click is its landing, so it has a target exactly when a free landing tile lies in
+               its reach (getTeleportLandingReach + the landing gates of doSpell's teleport branch) — not when some
+               unit happens to stand within range. */
+            if (kind === 'teleport' && !spell.teleportAnyUnit) {
+                return getTeleportLandingReach(unit, spell).some(t => (t.x !== unit.x || t.y !== unit.y)
+                    && !unitAt(t.x, t.y) && isTerrainPassable(t.x, t.y));
+            }
             if (kind === 'teleport') {
                 const all = state.units.filter(u => !u.dead);
                 return all.some(u => {
@@ -46553,7 +46675,17 @@
         // the turn), preferring the tile FARTHEST from the target that still
         // has it in range (kite/safety) — matching the quick-action menu's
         // findMoveIntoRange.
+        /* NO WALK FIRST (playtest 2026-11-07 P3 + I): a self teleport's click IS its landing (it is never cast after a
+           step), and the second click of a two-click cast (Soul Bind) can't follow a step — the step drops the first
+           pick, so "Move + cast" started the pair over. Neither offers MOVE→CAST. */
+        function _spellNeverApproaches(unit, spell) {
+            if (!spell) return false;
+            if (spell.kind === 'teleport' && _teleportLandingPhase(spell)) return true;
+            if (_kindMeta(spell).twoClick && _twoClickPick(spell)) return true;
+            return false;
+        }
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
+            if (_spellNeverApproaches(unit, spell)) return null;
             const steps = _spellMoveBudget(unit, spell);
             const sx = unit.x, sy = unit.y, sz = unit.z;
             /* THE ONE AIM RULE (2026-10-16): aimed at a BODY, "in reach from the probe tile" is the cast's own
@@ -57956,6 +58088,7 @@
                 if (state._blitzActiveUnitId) {
                     const _ctlUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
                     if (_ctlUnit && !_ctlUnit.dead) _possessSpendActivation(_ctlUnit);
+                    _possessSettleSeats(null);   // THE HOME SIDE: its activation is over, the body goes home until the next one
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                     if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
                 }
@@ -58698,6 +58831,7 @@
                 // enemy→player handoff announcement below. Captured before we
                 // overwrite activePlayer so consecutive friendly units don't
                 // re-trigger it.
+                _possessSettleSeats(nextUnit.id);   // THE HOME SIDE: a controlled body is the controller's unit for its own activation
                 const _prevActivePlayer = state._prevBlitzActivePlayer;
                 state._prevBlitzActivePlayer = nextUnit.player;
 
@@ -58859,8 +58993,8 @@
                 }
 
                 /* 🎭 Possessed / Infected (wave B): this activation belongs to
-                   the controller's seat (unit.player already is it) — say so
-                   and show the stolen face. */
+                   the controller's seat (_possessSettleSeats above made it
+                   unit.player) — say so and show the stolen face. */
                 if (unitIsControlled(nextUnit)) showPossessedActivation(nextUnit);
 
                 /* Mystery Dungeon: AUTO-tactic companions are player-1 units
@@ -58996,6 +59130,7 @@
                         // now runs its own timer and coexists with the action
                         // menu; the subtitle bar and the command panels don't
                         // overlap.)
+                        _possessSettleSeats(pendingUnitId);
                         state._blitzActiveUnitId = pendingUnitId;
                         state.activePlayer = u.player;
                         _startShotClock();
@@ -63961,7 +64096,12 @@
                    sight line, team sight (the telescope's sky shots included), the doors, Cryptid / Shadow
                    Realm. The drum's own copy of those numbers is what drifted from the cast. */
                 if (spellAimProblemOn(unit, spell, u)) continue;
-                targets.push({ x: u.x, y: u.y, dist: spellReachToTarget(unit, spell, u), unit: u });
+                // THE GROUND REACH: a dash / leap strike row reads its flat steps; THE PAIR RULE: a second pick reads its
+                // steps from the first pick (the reach it is judged by)
+                const _vtPair = _pairPhasePick(spell);
+                targets.push({ x: u.x, y: u.y, unit: u,
+                    dist: _vtPair ? Math.abs(u.x - _vtPair.x) + Math.abs(u.y - _vtPair.y)
+                        : spellReachIsFlat(spell) ? Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) : spellReachToTarget(unit, spell, u) });
             }
             _orderTargetsByNeed(spell, targets);
             // 🗯 Provoke: when the caster is taunted and the challenger sits in
@@ -63991,6 +64131,7 @@
         function _getSpellApproachTargets(unit, spell, haveSet) {
             if (!unit || !spell) return [];
             if (isSpellSelfCast(spell)) return [];
+            if (_spellNeverApproaches(unit, spell)) return [];   // NO WALK FIRST: self blinks, a two-click cast mid-pick
             if (spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) return [];   // THE LANDING PICK: the body is already held
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
             if (unitSpellsBlocked(unit)) return [];
@@ -64012,6 +64153,9 @@
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
                 if (haveSet && u.id != null && haveSet.has(u.id)) continue;
+                // Chivalry pledges to ANOTHER ally (doSpell refuses the caster) — the drum's own rule, here too
+                // (playtest 2026-11-07 A3: the Knight listed himself as a 0T MOVE→CAST row).
+                if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
                 if (_skm.twoClick) {
                     // Two-click kinds (wave B): before the first pick the drum
                     // lists the FIRST team of the pair; after it, the second —
@@ -76431,6 +76575,17 @@
                element entropy see every hit. A slow frame used to run finishAction first: Requiem said "It's super
                effective!" and never refunded. Capped at 4 s of waiting. */
             let _pendingSpellHits = 0, _finishWaits = 0;
+            /* THE LANDING GATE (2026-11-07, playtest H3/E6): a body flung on the 3D arc (the sky throws, Stone Drop's
+               drop, the sky slam, the leap dive) lands on the ANIMATION clock, which slow-mo, freeze frames and a slow
+               frame all hold back, while finishAction runs on a wall-clock timer. When the clock fell behind, the turn
+               passed before the body landed: the CPU moved before To the Moon's result, the kill's PRESS refund was
+               missed, and the death close-up opened over the next unit's menu (the camera sat low in the gore). Each
+               arc holds the hit gate until its impact has paid out (released at once when no arc plays). */
+            const _landingGate = () => {
+                let open = true;
+                _pendingSpellHits++;
+                return () => { if (open) { open = false; _pendingSpellHits--; } };
+            };
             const finishAction = () => {
                 if (_pendingSpellHits > 0 && _finishWaits++ < 40) { window.setTimeout(finishAction, 100); return; }
                 if (typeof endCastTerrainWatch === 'function') endCastTerrainWatch();   // 🜃 the cast is done
@@ -82311,6 +82466,7 @@
                     ? Math.max(_sdTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
                     : _sdTs * 2.2;
                 const _sdLiftMs = actionMs(460), _sdHangMs = actionMs(280), _sdFlingMs = actionMs(280);
+                const _sdLand = _landingGate();
                 const _sdUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                     && window.ThreeAnim.throwArc && !_skipVisuals()
                     && window.ThreeAnim.throwArc(target, target.x, target.y, target.x, target.y, {
@@ -82318,14 +82474,17 @@
                         liftMs: _sdLiftMs, hangMs: _sdHangMs, flingMs: _sdFlingMs,
                         liftPx: _sdLiftPx,
                         onImpact: () => {
-                            _sdApplyLanding();
-                            if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
                             try {
-                                const VFX = window.ThreeVFXEffects;
-                                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(target.x, target.y, { r0: _sdTs * 0.2, r1: _sdTs * 1.4, ms: 400 });
-                            } catch (e) {}
+                                _sdApplyLanding();
+                                if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                                try {
+                                    const VFX = window.ThreeVFXEffects;
+                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(target.x, target.y, { r0: _sdTs * 0.2, r1: _sdTs * 1.4, ms: 400 });
+                                } catch (e) {}
+                            } finally { _sdLand(); }
                         }
                     }));
+                if (!_sdUsedArc) _sdLand();
 
                 if (_sdUsedArc) {
                     completionDelay = _sdLiftMs + _sdHangMs + _sdFlingMs + actionMs(450);
@@ -82464,12 +82623,16 @@
                        on the impact frame. Relayed to the guest by the
                        online.js wrapper around playSkyThrowFx. ── */
                     _clearSkyThrowDestPreview();
+                    const _thLand = _landingGate();
                     const _thFx = window.playSkyThrowFx(throwTarget, fromX, fromY, x, y, spell, {
                         onImpact: () => {
-                            _applyThrowLanding();
-                            if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                            try {
+                                _applyThrowLanding();
+                                if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
+                            } finally { _thLand(); }
                         }
                     });
+                    if (!(_thFx && _thFx.usedArc)) _thLand();
 
                     if (_thFx && _thFx.usedArc) {
                         // Ride the fling: once the carry ends, the live action
@@ -82687,24 +82850,28 @@
                     ? Math.max(_ssTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
                     : _ssTs * 2.2;
                 const _ssLiftMs = actionMs(360), _ssHangMs = actionMs(140), _ssFlingMs = actionMs(240);
+                const _ssLand = _landingGate();
                 const _ssUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                     && window.ThreeAnim.throwArc && !_skipVisuals()
                     && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, slamX, slamY, {
                         liftMs: _ssLiftMs, hangMs: _ssHangMs, flingMs: _ssFlingMs,
                         liftPx: _ssLiftPx, settleMs: 220,
                         onImpact: () => {
-                            _ssApplyLanding(false);
-                            if (typeof shakeBoard === 'function') shakeBoard('hard');
                             try {
-                                const VFX = window.ThreeVFXEffects;
-                                if (VFX && VFX.sigSonicBoom3D) {
-                                    VFX.sigSonicBoom3D(slamX, slamY, { rings: 2, radiusTiles: (spell.aoeRadius || 1) + 0.6 });
-                                } else if (VFX && VFX.sigShockRing3D) {
-                                    VFX.sigShockRing3D(slamX, slamY, { r0: _ssTs * 0.2, r1: _ssTs * 1.8, ms: 460 });
-                                }
-                            } catch (e) {}
+                                _ssApplyLanding(false);
+                                if (typeof shakeBoard === 'function') shakeBoard('hard');
+                                try {
+                                    const VFX = window.ThreeVFXEffects;
+                                    if (VFX && VFX.sigSonicBoom3D) {
+                                        VFX.sigSonicBoom3D(slamX, slamY, { rings: 2, radiusTiles: (spell.aoeRadius || 1) + 0.6 });
+                                    } else if (VFX && VFX.sigShockRing3D) {
+                                        VFX.sigShockRing3D(slamX, slamY, { r0: _ssTs * 0.2, r1: _ssTs * 1.8, ms: 460 });
+                                    }
+                                } catch (e) {}
+                            } finally { _ssLand(); }
                         }
                     }));
+                if (!_ssUsedArc) _ssLand();
 
                 if (_ssUsedArc) {
                     completionDelay = _ssLiftMs + _ssHangMs + _ssFlingMs + actionMs(500);
@@ -82843,20 +83010,24 @@
                     (typeof window._getElevationPx === 'function') ? window._getElevationPx(1) + _lsTs * 0.5 : _lsTs * 0.9);
                 const _lsLiftMs = actionMs(220), _lsHangMs = actionMs(60), _lsFlingMs = actionMs(230);
                 const _lsRunDive = () => {
+                    const _lsLand = _landingGate();
                     const _lsUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
                         && window.ThreeAnim.throwArc && !_skipVisuals()
                         && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, x, y, {
                             liftMs: _lsLiftMs, hangMs: _lsHangMs, flingMs: _lsFlingMs,
                             liftPx: _lsLiftPx, settleMs: 200,
                             onImpact: () => {
-                                _lsApplyLanding(false);
-                                if (typeof shakeBoard === 'function') shakeBoard('normal');
                                 try {
-                                    const VFX = window.ThreeVFXEffects;
-                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
-                                } catch (e) {}
+                                    _lsApplyLanding(false);
+                                    if (typeof shakeBoard === 'function') shakeBoard('normal');
+                                    try {
+                                        const VFX = window.ThreeVFXEffects;
+                                        if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
+                                    } catch (e) {}
+                                } finally { _lsLand(); }
                             }
                         }));
+                    if (!_lsUsedArc) _lsLand();
                     if (!_lsUsedArc) {
                         window.setTimeout(() => _lsApplyLanding(true), actionMs(300));
                     }

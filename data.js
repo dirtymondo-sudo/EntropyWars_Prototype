@@ -10826,7 +10826,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 95, range: 5, apCost: 1,   // BALANCE PASS 2026-10-26 (stats23 lab): dmg 120→110 (cast WR 75/100%, 1.18× the Tier III median); STATS29 PASS 2026-10-30: dmg 110→95 (1.48× the Tier III median a cast in STATS29, 1.40× in STATS28; Robin Hood 57%)
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
           collisionBonus: 40, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
-          desc: 'A bodkin that carries its victim with it. Deals WEAK physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
+          desc: 'A bodkin that carries its victim with it. Deals WEAK physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn (your own units are never Rooted by it).' },
         { id: 'raceStealFromRich', upgradesBlock: ['upLinger'], tier: 2, families: ['thievery'], spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 50, range: 3, apCost: 1,
           kind: 'debuff',
@@ -12187,11 +12187,11 @@ function keyIconHtml(px, style) {
 if (typeof window !== 'undefined') { window.KEY_ICON_URI = KEY_ICON_URI; window.keyIconHtml = keyIconHtml; }
 
 /* 🎭 Control hand-off (CHAMP_REWORK_PLAN §5.5, Phase 5 wave B, 2026-09-08):
-   a Possessed / Infected unit IS the controller's unit for the duration —
-   battle.js possessUnit flips `unit.player` to the controller's seat and
-   remembers the home seat in `_origPlayer`, so every consumer of
-   `unit.player` (HUD ownership, the AI, fog, targeting, the online
-   guest-emit gate) hands the body over with no special cases. This is the
+   a Possessed / Infected unit is the controller's unit for its OWN
+   activations — battle.js _possessSettleSeats sets `unit.player` to the
+   controller's seat while it acts and back to the home seat (`_origPlayer`)
+   between them (THE HOME SIDE, 2026-11-07: team spells, ally lists and the AI
+   treat a resting possessed body as its home team's). This is the
    ONE funnel that hands it back: the two control statuses call it from
    onRemove, so every removal path (the activation count, the round tick,
    a cleanse, death → releasePossession) restores the home seat. */
