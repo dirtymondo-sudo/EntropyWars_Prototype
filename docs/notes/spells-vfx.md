@@ -3282,3 +3282,21 @@ flood spreads on; a solid prop there stays dry and the water runs round it (`hol
 Grounds: Cube tile 0 → 12 tiles + the enemy beside the Cube hit; lava tile 0 → stone + 11 water. Other terrain spells
 (the BFS / squareFlood / line paints) never had the Cube guard; placeBlock / buildStructure / dig refuse the Cube on
 purpose and the target list already greys those.
+
+## THE GUARD'S HAND-OFF (2026-11-07, mondo: "Healing potion action camera zooms in towards the ground at the end on the unit being healed") — three-camera.js
+Cause (measured in a real VS CPU match, real R2 models, Playwright clock stepped 50 ms): THE FRAME GUARD only corrects the
+frame while its shot is live (`_cineGuardLive`: shot id + `until`), but a shot's framing often outlives it. The heal
+two-shot's beat 2 (`_playSupportCineShot`, the push-in to zoom ×1.07) sits its bare boom 0.85 squares off the healed body;
+the guard was dollying it back to 1.73. When the CPU's potion shot ended (softResetToUnit's auto branch clears the shot id,
+the settle waits 600 ms) the guard let go and the lens dived in at the unit's feet (eye 1.08 → 0.58 squares over the
+ground, feet 531 → 602 px) until the settle cut home. The same drop hit any parked shot (press-turn hold, a guard whose
+`until` ran out before the return) and the start of every glide home (the rig drops to the board orbit at the shot's zoom).
+Fix: `_fgCarry` keeps the guard's last solve (slide + dolly). While the same cine rig stays on the same subject and the
+controller's target zoom / pitch / heading are unchanged, the correction is carried in full along the live gaze; once the
+rig moves on (glide home, next unit's pan) the last world offset eases out over GUARD_CARRY_FADE_S (0.6 s, the glide's
+length); a cut (`snapImmediate`, `_returnCut`) drops it; a frame the guard found already framed carries nothing; hand
+pans drop it. It lives in the one camera rig every guarded shot uses (the potions' heal + mana two-shot and self hero
+shot, every `_spellFocusCamera` support shot, every damage shot), not in the potion branch. Guest: same code runs on its
+relayed shots.
+Kill switch `window.EW_NO_GUARD_CARRY = true`; probe `ThreeCamera.guardCarryState()` ({mode:'hold'|'fade', w}).
+Proof: /mnt/project-files/potion-camera/.

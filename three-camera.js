@@ -106,6 +106,7 @@ const ThreeCamera = (function () {
     function snapImmediate() {
         if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it
         _initialized = false;
+        _fgCarry = null;   // THE GUARD'S HAND-OFF: a cut starts its frame clean
     }
 
     function _damp(current, target, smoothTime, dt) {
@@ -287,6 +288,19 @@ const ThreeCamera = (function () {
     const FG_MARGIN_H = 0.86;
     const FG_MARGIN_V = 0.70;
     let _frameGuardLast = null;
+    /* THE GUARD'S HAND-OFF (2026-11-07, mondo: "Healing potion action camera zooms in towards the ground at the end on
+       the unit being healed"): the guard's correction lives only while the shot is live, but a shot's framing often
+       outlives it — the CPU's / remote side's shot stays parked on beat 2 until the settle (600 ms+), a press-turn hold
+       keeps it, a return home glides out of it. The beat's own boom is tighter than the frame the guard was showing
+       (the heal two-shot's push-in sat 0.85 squares off the healed body; the guard had it at 1.7), so the moment the
+       guard let go the lens dived in at the unit's feet. Now the last correction is CARRIED: in full while the same
+       shot rig stays on the same subject (the frame the player was watching holds), faded out over GUARD_CARRY_FADE_S
+       once the rig moves on (the glide home leaves from the frame on screen, not from the bare boom). A cut
+       (snapImmediate) drops it. Camera only, viewer-local (the guest runs the same rig on its relayed shots).
+       Kill switch: window.EW_NO_GUARD_CARRY = true. Probe: ThreeCamera.guardCarryState(). */
+    const GUARD_CARRY_FADE_S = 0.6;
+    let _fgCarry = null;      // { sx, sy, D, key, fade: null | { t0, d: [6 world deltas] } }
+    let _fgCarryLast = null;  // probe: { mode: 'hold' | 'fade', w }
     function _fgBasis(dx, dy, dz, yawRad) {
         /* r = screen right (horizontal: d × world-up), u = screen up (r × d).
            A straight-down gaze has no d × up; the yaw gives the right axis. */
@@ -425,9 +439,51 @@ const ThreeCamera = (function () {
         const oz = res.sx * B.rz + res.sy * B.uz;
         const bx = ex + ox, by = ey + oy, bz = ez + oz;
         _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed };
+        /* THE GUARD'S HAND-OFF: the correction the frame on screen carries (a re-aimed gaze is not carried: the bare
+           rig's own gaze differs from it) */
+        _fgCarry = reaimed ? null : { sx: res.sx, sy: res.sy, D: res.D, key: _fgCarryKey(cam), fade: null };
         return [bx - dx * res.D, by - dy * res.D, bz - dz * res.D,
                 bx + dx * dl, by + dy * dl, bz + dz * dl];
     }
+    /* THE GUARD'S HAND-OFF: the frame a carried correction belongs to — the cinematic rig on one subject, aimed where
+       the controller is headed (its target zoom / pitch / heading: a new move on the same body is another frame) */
+    function _fgCarryKey(cam) {
+        if (!cam || !cam._cineTps || cam._tpsCollide || cam._fpEye) return null;
+        const s = cam._tpsSubject;
+        const r = (v, k) => Number.isFinite(v) ? Math.round(v * k) : 'x';
+        return (s ? r(s.x, 4) + ',' + r(s.y, 4) : 'tps') + '|' + r(cam._tz, 100) + '|' + r(cam._tt, 1) + '|' + r(cam._tyaw, 1);
+    }
+    /* Applies the carried correction to the bare frame (eye ex/ey/ez, gaze point lx/ly/lz); null = nothing carried */
+    function _fgCarryApply(cam, ex, ey, ez, lx, ly, lz, nowS) {
+        const C = _fgCarry;
+        if (!C) { _fgCarryLast = null; return null; }
+        const key = _fgCarryKey(cam);
+        if (!C.fade && C.key != null && key === C.key) {
+            /* the same rig on the same subject: the frame holds — the carried slide + dolly along the live gaze */
+            let dx = lx - ex, dy = ly - ey, dz = lz - ez;
+            const dl = Math.hypot(dx, dy, dz);
+            if (!(dl > 1e-6)) return null;
+            dx /= dl; dy /= dl; dz /= dl;
+            const B = _fgBasis(dx, dy, dz, (cam.yaw || 0) * DEG2RAD);
+            const ox = C.sx * B.rx + C.sy * B.ux - dx * C.D;
+            const oy = C.sy * B.uy - dy * C.D;
+            const oz = C.sx * B.rz + C.sy * B.uz - dz * C.D;
+            const lox = C.sx * B.rx + C.sy * B.ux, loy = C.sy * B.uy, loz = C.sx * B.rz + C.sy * B.uz;
+            C.last = [ox, oy, oz, lox, loy, loz];
+            _fgCarryLast = { mode: 'hold', w: 1 };
+            return [ex + ox, ey + oy, ez + oz, lx + lox, ly + loy, lz + loz];
+        }
+        /* the rig moved on (the glide home, the next unit's pan): the same world offset, eased out */
+        if (!C.last) { _fgCarry = null; _fgCarryLast = null; return null; }
+        if (!C.fade) C.fade = { t0: nowS };
+        const u = Math.max(0, Math.min(1, (nowS - C.fade.t0) / GUARD_CARRY_FADE_S));
+        const w = 1 - (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+        if (w <= 0.001) { _fgCarry = null; _fgCarryLast = null; return null; }
+        const o = C.last;
+        _fgCarryLast = { mode: 'fade', w: w };
+        return [ex + o[0] * w, ey + o[1] * w, ez + o[2] * w, lx + o[3] * w, ly + o[4] * w, lz + o[5] * w];
+    }
+    function guardCarryState() { return _fgCarryLast; }
     /* probe: what the guard did on the last frame */
     function frameGuardState() { return _frameGuardLast; }
 
@@ -1056,20 +1112,30 @@ const ThreeCamera = (function () {
            the view direction never changed. A frame that already shows them
            all is left untouched, so every shot keeps its look and only a shot
            that would have lost a body is fixed. */
+        let _fgOut = null;
         if (cam._frameGuard && !handHeld) {
-            const g = _frameGuardSolve(cam, targetPosX, targetPosY, targetPosZ,
+            _fgOut = _frameGuardSolve(cam, targetPosX, targetPosY, targetPosZ,
                 targetLookX, targetLookY, targetLookZ, floorY);
-            if (g) {
-                targetPosX = g[0]; targetPosY = g[1]; targetPosZ = g[2];
-                targetLookX = g[3]; targetLookY = g[4]; targetLookZ = g[5];
-                /* the guard's slide / dolly-back moved the eye sideways or
-                   back: never let it land inside the ground there */
-                if (cam._cineTps && !cam._tpsCollide) {
-                    const gy = _eyeFloorWorld(targetPosX, targetPosZ) + clear;
-                    if (targetPosY < gy) { targetLookY += gy - targetPosY; targetPosY = gy; }
-                }
-            }
+            /* a frame the guard found already framed carries nothing on */
+            if (!_fgOut && _frameGuardLast && _frameGuardLast.framed) { _fgCarry = null; _fgCarryLast = null; }
         } else _frameGuardLast = null;
+        /* THE GUARD'S HAND-OFF: no live guard this frame (the shot ended, or its guard ran out) — the frame it was
+           showing carries on (see _fgCarryApply) */
+        if (!_fgOut && !_frameGuardLast && _fgCarry) {
+            if (handHeld || (typeof window !== 'undefined' && window.EW_NO_GUARD_CARRY)) { _fgCarry = null; _fgCarryLast = null; }
+            else _fgOut = _fgCarryApply(cam, targetPosX, targetPosY, targetPosZ, targetLookX, targetLookY, targetLookZ, performance.now() / 1000);
+        }
+        if (_fgOut) {
+            const g = _fgOut;
+            targetPosX = g[0]; targetPosY = g[1]; targetPosZ = g[2];
+            targetLookX = g[3]; targetLookY = g[4]; targetLookZ = g[5];
+            /* the guard's slide / dolly-back moved the eye sideways or
+               back: never let it land inside the ground there */
+            if (cam._cineTps && !cam._tpsCollide) {
+                const gy = _eyeFloorWorld(targetPosX, targetPosZ) + clear;
+                if (targetPosY < gy) { targetLookY += gy - targetPosY; targetPosY = gy; }
+            }
+        }
 
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, _stepCap()) : 0.016;
@@ -1481,6 +1547,7 @@ const ThreeCamera = (function () {
         seedPose,
         seedState,
         frameGuardState,
+        guardCarryState,
         FOV,
         NEAR,
         FAR
