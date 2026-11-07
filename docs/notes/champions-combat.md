@@ -2944,6 +2944,24 @@ invisible, untargetable, immune to everything not from each other ... In there, 
 - Calls flagged to mondo: the hidden pair still HOLDS its squares on the board (nobody can step there); the turn column
   still lists them; an area spell cast in the realm still paints terrain on the real squares (it only hurts the partner).
 
+## THE REALM LINE ON EVERY LIST (2026-11-07, zones/traps playtest family I: "the Wolf bit the Fairy inside the Shadow Realm", "Oath of Valor buffed the Demon inside the Realm")
+- Cause: the per-target gates (damage / heal / status) held, but every LIST built from `aliveUnitsFor` skipped them: the
+  summon / zombie hunters and turrets (processTurretVolleys prey / inRange) picked a realm unit, logged the bite and the
+  gate ate the damage; team auras (warCry, healAll, aoeAllyHeal, aoeShield, manaRestoreAll, rallyPull, cleanseArea, combo
+  heals) counted and buffed across the line (applyStatStageBoost had no realm gate; shields and MP had none at all).
+- Fix: battle.js `realmReachableFrom(list, actor)` (window too) = the units of a list the actor can reach (a null actor =
+  the board). Every ally collector above, every `aliveUnitsFor(enemyOf(unit.player))` list in battle.js, the preview
+  tiles (warCry / healAll / manaRestoreAll), Leech Seed / Tree heals, seed and tree auras, Federation Beacon, the hound's
+  nose, summon prey, turret targets (and three-renderer's turret laser) filter through it. applyStatStageBoost refuses a
+  stage from across the line (like applyStatusPayload). ai.js `_aiReachable`: the CPU's allies view (v.allies), potions,
+  healAll / warCry / manaRestoreAll / rallyPull / encore / aoeAllyHeal scoring. ui.js MP forecast for manaRestoreAll.
+  state.js weather (the sky is the board's): turn effects, homing eye targets, stormStrikeUnit, instant spawn hits and
+  getWeatherStatMod skip a realm unit (Blood Rain "restored" both ends of the pair).
+- Proof (VS CPU, North Pole 10x10, by hand, /mnt/project-files/playtest-mechanics-20261107/shadow-realm-fix/): Oath of Valor
+  with the realm Demon 2 tiles away = "3 allies" (Demon stages 0); the CPU General in the realm cast Rally Command with Gnome
+  2 tiles away = "1 ally" (Gnome stages 0); the Wolf beside the realm General "closes on Gnome" instead.
+- Unchanged on purpose: end-of-round regen (source-less self regen) and Nexus/celestial rules.
+
 ## THE GAP CLOSES WHOLE + THE HANG ON A GONE WALL (2026-10-26, mondo: "after 3 rounds fissure the map returns to normal, but i was climbing as it did so, and it didnt raise the ground all the way back up for the tile i was on, but the other 2 tiles it did")
 - Cause (reproduced VS CPU, Mount Shasta, Golem Fissure + Ice Queen Hailstorm): a water / ice hit on a unit in the gap hardens
   that cell's lava into stone (triggerTerrainSpellReaction) and map.js _noteTerrainChange restarted THAT cell's clock at 3, so
@@ -4488,6 +4506,197 @@ Log text and order only; no rule changed. Report: /mnt/project-files/playtest-me
   after the one total line in `_multiHitLogFlush`. Lines that explain the hit before it (weak/resist, combo, Marked,
   "unmakes wards — gone before the blow", Walk the Plank's drown) stay before on purpose.
 - Proof (VS CPU, WebGL2, live vs fixed): /mnt/project-files/playtest-mechanics-20261107/hit-first-log/.
+
+## THE SPELL ZONES + THE WALK AROUND (2026-11-07, zones/traps playtest E1 + F1) — ai.js, battle.js
+- E1 "the CPU never leaves a damaging zone": `aiHazardPenaltyAt` read ground and telegraphed blasts but never
+  `state._activeZones`. New `spellZoneCost(g, unit, x, y)` (ai.js, beside groundHazardCost) is added to it, so every
+  consumer (end-square danger ×2, the hazard flee, the safety move, the push/pull worth on an enemy) sees the zone:
+  an enemy debuff zone = its round-end tick (forecastHitOnUnit with the tick's type/element/caster) + each status it
+  lands priced by `ccDenialValue` (0 if already on / immune); an enemy heal zone = its enemyStatusEffects; Gravity Crush
+  = the forced fall ×3 for an airborne flyer (either side's field). +150 when lethal. Weight `spellZoneCaution_v1`
+  (battle.js AI_WEIGHT_DEFAULTS, value 1, prev 0; a key missing there reads as 0 — that is why it had to be added).
+  Kill-switch `window.EW_AI_NO_SPELL_ZONES`. Read-only probes: `window._aiSpellZoneCost(unit,x,y)`,
+  `window._aiRankCandidates(unit)` (ranked options with each one's end-square charge). AI stamp v4.34.
+- Proof (VS CPU, Mount Shasta 10×10, by hand): War of the Worlds on Demon + Firefighter → Firefighter dashed out,
+  Demon walked out (probe: zone cost 308, flee to 4,4 ranked first); Black Smoke on Demon → it walked to D7 and Life
+  Sapped from outside. Files /mnt/project-files/cpu-zones-20261107/.
+- F1 "the Hound stays still": processTurretVolleys' walker only took steps that cut the straight-line distance, so
+  one body between it and the prey froze it (Hound 4,7 / Blob 4,8 / Martian 4,9), and the Elephant idled under a
+  target on the Camelot wall. Now it floods the free squares it can reach (same blocked squares), picks the nearest
+  prey it can strike from one of them (in reach + `turretHasShotAt`), and walks that road `move` squares. No prey
+  strikeable from anywhere → the old walk toward the nearest, and "<summon> can't find a way to X." when it can't
+  step. Applies to the abomination too (nearest unit by walk). Check: cpu-zones-20261107/summon_walk_check.js.
+
+## THE PER-SPELL CAP + THE JUMP LANDING (zones/traps playtest 2026-11-07, A1-A3)
+mondo: "Go ahead and start those fixes" (PLAYTEST_ZONES_TRAPS_20261107.md family A). Existing rules only.
+- A1: battle.js `deployObject` counted ALL of the caster's placed objects against the NEW row's maxActivePerCaster, so a
+  Spring Snare (cap 1) silently took the Gnome's Tesla Coil and Scrap Mine; a Cloning Machine took the Mad Scientist's
+  Tesla Coil. The cap now counts only that row's own live objects (`o.spellId === spell.id`), like placeTrap (per
+  trapType) and summonUnit (per spell) already did. The one a re-cast takes away is logged to its owner's seat only
+  ("Gnome's older Spring Snare at C8 is taken down to make room."). All 8 deployObject rows share the path: Spring
+  Snare, Scrap Mine, Tesla Coil, Jack-in-the-Box, Stuffed Double, Cloning Machine, Hologram, Federation Beacon.
+  The plain doubles (Shed Skin / spawnDecoy, cap 3) count only spell-less decoys now, so they never take a Stuffed
+  Double / Cloning Machine / Hologram.
+- A3: `deployTurret` (and the real-time `_placeTurret`) counted every state.turrets entry of the caster, summons and
+  zombies included: a 5G Tower (cap 1) took down the Deploy Turret. Now per spell, never a summon/zombie. The 5G
+  Tower stores dmg 0 (was `turretDmg || 8`) and its log line names it and its M.DEF aura.
+- ai.js reads the same per-spell caps (deployObject x2, deployTurret).
+- A2: `doJump`'s landing (`_doPostJump`) never ran THE CHAIN, so a jump onto a bomb / hidden trap / Scrap Mine /
+  Tesla Coil / snare (and onto lava, fire, a debuff zone, a vortex, a rune) did nothing. It now calls
+  `resolveTileArrival(unit, { via: 'move' })` after the fall damage, exactly the end of a walk. Only the landing
+  square; the arc's squares are untouched.
+- Proof (online friendly, two seats, Mount Shasta 10x10): /mnt/project-files/playtest-mechanics-20261107/trap-cap-jump-fix/
+  (ms2: Tesla + Cloning Machine both stand; g2: Gnome's three traps stand, a 2nd Spring Snare replaces the 1st with the
+  line; kk5 = the GUEST's screen: King Kong jumps onto the Scrap Mine, −124 + Stagger; g6: Deploy Turret + 5G Tower both stand).
+### THE HEIGHT PAID ONCE (2026-11-07, zones/traps playtest K + J)
+- Bug: Stone Drop (a WEAK row) hit a Symbiote for 1113. The drop prices height as levels in its raw (`dmg + spell power +
+  levels × dmgPerLevel`, levels counted from the flyer's own altitude + carryHeight), then applyDamageToUnit also gave the
+  hit HIGH GROUND from that same altitude (`1 + DOWNHILL_DAMAGE_BONUS × Δ`, ×1.4 for a flyer parked 4 up). Height was paid
+  twice. Every row that prices levels did the same: skyDrop, skyThrow (grab + throw), skySlam (+ its shockwave),
+  leapStrike (+ its shockwave).
+- Fix (battle.js, no data changed): those hits pass `noHeightBonus: true` (the HIGH GROUND multiplier and the defender's
+  height soak are skipped; the levels stay). Cast and forecast both (the forecast plan's baseOpts for these kinds). Stagger
+  ×1.5, the element ground ×1.25 and every other multiplier are untouched. The throw's collision bystander (flat
+  collisionBonus, no levels in it) is unchanged.
+- Measured in a real VS CPU match (Gargoyle, Mount Shasta): main, Stone Drop from +2 on Spy forecast = hit = 475; the same
+  raw without the double height = 385. At +4 (the playtest's 8-level drop) the extra was ×1.4 on the whole hit.
+- J (the camera "under the terrain" during Stone Drop): the playtest build predates PR #986 (the lens footprint), and its
+  frame was taken 8 s after the drop KILLED the Symbiote, i.e. the death close-up. On current main Stone Drop's own shot
+  and its kill close-up stayed above the board (6-, 9- and 10-level drops filmed, one a kill). The death close-up on
+  Mount Shasta's slopes is its own thread ("Keep death close-up camera out of trees and hills").
+
+## THE IMMUNE TARGET (2026-11-07, timing/counters playtest B1)
+mondo: "start those fixes" — Counterspell / Brainwash / Executive Order listed the CPU Ghoul (Pure Negativity: immune to
+every debuff and stat drop) with a green CONFIRM; the cast bounced and still spent MP + cooldown.
+- battle.js `unitImmuneToStatus(u, id)`: a read-only copy of applyStatusPayload's immunity gates (passive immuneStatus,
+  passive immuneKind, element immunity/absorb of a status that IS an element, Fermata statLock vs stageMod statuses, a boss
+  vs control statuses). `unitImmuneToStage(u, n)`: immuneStatDown vs negative stages, statLock vs any.
+- `spellIsStatusOnly(spell)`: kinds debuff / buff / aoe / barrage / possess whose whole effect is statuses and/or stat
+  stages (no damage, heal, MP drain, pull, stolen spell, terrain…). `spellBouncesOffImmune(spell, u)`: every status and
+  stage of such a cast bounces off u.
+- `spellTargetUsableOn` returns false for that unit (airborne flyer + groundsFlyers still counts), so the drum, the menus'
+  NO VALID TARGET, MOVE→CAST, novas (`_selfNovaSeenVictims`) and board clicks all skip it. doSpell refuses a single-target
+  debuff/buff/possess cast on such a unit before any MP/AP/cooldown ("X is immune — Spell would do nothing.").
+- Browser proof (VS CPU 2v2, Telepath + Politician vs Ghoul + Shaman): Brainwash and Executive Order read NO VALID TARGET
+  with the Ghoul adjacent and in sight; Executive Order listed only the Shaman and stunned it. Shots:
+  /mnt/project-files/immune-targets-20261107/. The CPU party was set before the match (Ghoul can't be picked for the CPU).
+
+## THE ENEMY REMAINS (2026-11-07, timing playtest H6)
+Cannibalize and Carrion Feast (kind `cannibalize`) eat only an ENEMY's remains: SPELL_KIND_META `cannibalize.enemyRemainsOnly`,
+one gate `spellCorpseUsable(unit, spell, corpse)` (battle.js, next to `spellTargetsCorpses`) used by the target list, both
+drums, castability, the forecast, the cast and the CPU pick (ai.js). Before, the list offered the caster's own ally's
+gravestone; eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds, and the CPU picked the
+nearest remains of either side. Text of both spells + the REMAINS chip say enemy bones. Raise the Dead keeps both sides
+(its text names an ally's gravestone; its zombie mauls friend or foe); Revive / Chooser of the Slain stay own-side only.
+Proof: /mnt/project-files/playtest-mechanics-20261107/cannibalize-own-graves/.
+
+## THE GRAVES STAY (2026-11-07, zones playtest "Raise the Dead: the Necromancer died before a grave was free"; mondo "sure")
+A grave used to BE the dead unit object, so it vanished the moment the unit respawned. Now map.js processRespawns calls
+battle.js `leaveRemainsOnRespawn(unit, deathTile)` right before a unit comes back on the clock (FFA scatter + spawn-zone
+paths): a `state.graves` row `{id:'remains_<uid>_<n>', unitId, player, x, y, z}` stays on the square it fell on (one per
+square, newest wins; reset per match next to every `state.turrets = []`; plain data so it rides the host snapshot to the
+guest). Not left by: a consumed corpse (raised / eaten), a revive, Return of the Dead (the zombie climbs out of its own
+grave), bosses. The respawn also resets `_corpseConsumed` and the corpse-only revive lock (`_corpseReviveLock`), so the
+NEXT death leaves fresh remains (before, a raised unit's later corpses were born "consumed").
+Corpse casts read `corpseRemainsBodies()` (still-dead bodies + rows as read-only pseudo-bodies, `_remains:true`,
+`_remainsOf`) / `corpseRemainsAt(unit, spell, x, y)` and eat with `consumeCorpseRemains` — the drum, MOVE→CAST list,
+castability, forecast, doSpell (Raise the Dead, Cannibalize, Carrion Feast) and ai.js picks. `spellCorpseUsable` now also:
+Raise the Dead needs the grave's square empty (no living body, no standing turret/summon/zombie), and in FFA a unit can't
+eat its own left grave. Renderer: three-renderer.js builds the rows like a body's grave (headstone own / bones enemy,
+seen-gate key `viewer|unitId|x,y` so bones seen before the respawn stay seen). Text: Cannibalize / Carrion Feast delay the
+respawn only "while that enemy is still down"; all three say a grave stays after a respawn.
+Proof: /mnt/project-files/playtest-mechanics-20261107/graves-stay/.
+
+### EXECUTED MEANS KILLED (2026-11-07, timing playtest H10, mondo: "Executed means killed")
+Take Aim (15%) and No Mercy (25%) judge their execute on the HP BEFORE the hit. The EXECUTED line used to print only from
+the follow-up (`_applyExecuteRider`), i.e. only when the hit left the target standing, so a hit that killed an armed target
+(almost every case) never said EXECUTED. Now battle.js `_logExecuted(target, spell, frac)` is the one EXECUTED line + float,
+and it only prints for a unit that is down (`_unitIsDown`): an armed before-the-hit execute whose hit killed says
+"💀 No Mercy: X was at 20% — EXECUTED!" (the pre-hit %); a hit that leaves it standing gets the follow-up, which says it
+only when it really died (Protect / Indomitable Will / Talisman still save). state.js `_detonateDelayedSpellNow` does the
+same for the marked Take Aim shot, and its "🎯 Take Aim lands on X!" header now reads BEFORE the hit/kill/EXECUTED lines.
+`executeAfterHit` rows (Ammit Devours, Termination Protocol) judge the HP the hit LEFT, so a hit that kills on its own is a
+plain kill there (unchanged); Walk the Plank (`executePct`) already printed on the kill (PR #1009). The gauge FINISHERS
+("EXECUTIONS") are a separate system and print no EXECUTED line. No rule changed.
+Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/executed-means-killed/.
+
+## THE EMPTY-TILE SUMMON (2026-11-07, zones/traps playtest B1 + D)
+- A summon (summonUnit: Hawk, Wolf Pack, Elephant, Spirit Animal, Summon Creation, Whistle, The Gathering, Brood, Mitosis)
+  is called onto an EMPTY tile, so no unit is ever its pick: `spellAimProblem` answers 'occupied' for a body's tile and
+  `spellTargetUsableOn` refuses every unit for summonUnit. The target list, the MOVE→CAST / JUMP→CAST rows, the quick
+  menus and the board click all read those, so Summon Creation no longer offers an enemy (it jumped toward the Symbiote,
+  then said "pick an empty tile") and Wolf Pack / Brood / Whistle no longer list the caster's own team. Only CANCEL shows;
+  the lit free tiles around the caster are the pick.
+- `summonTileFree(x, y)` is the one free-tile test (doSpell's summonUnit branch and the menus' lit check): passable, no
+  living body, not the Cube, no living summon / turret, no placed piece that blocks units (isDecoy / blocksMovement, the
+  walkers' own rule). The lit check now walks the spell's lit tiles (it used its own disc and lit the spell whenever the
+  cap was full, even with no free tile).
+- Walking summons (and the raised abomination) step round placed pieces that block units: the Creation walked onto its
+  own side's Stuffed Double and stood inside it.
+- Bumper Crop on own pieces: the area hit already spared own summons, decoys and machines (OWN PIECES ARE SAFE, PR #987;
+  the playtest ran on main before it). Its rim seeds (and any grown tree, `_treeCanGrowAt`) no longer land on a living
+  summon / turret, a placed piece that blocks units, or a prism: "a seed lands on every EMPTY tile of the edge".
+- Proof: 3 VS CPU matches in Chromium (Mad Scientist + Scarecrow): Summon Creation with King Arthur beside the caster and
+  the Scarecrow next to him listed no unit; a click on King Arthur said "pick an empty tile", AP and MP kept; Bumper Crop
+  over the Creation, Stuffed Double and Cloning Machine hit 3 enemies, left all three pieces whole and sowed 9 seeds, none
+  on the Cloning Machine's rim tile; the Creation walked round the Stuffed Double. Shots: project files
+  playtest-mechanics-20261107/summons-fix/.
+
+## THE TIMING / COUNTER TEXTS MATCH THE GAME (2026-11-07, timing/counters playtest C1, F1-F6, G4, E1, H5, Last Kiss)
+- Same rule as PR #997 / #1012: no ruling from mondo, so the TEXT now says what the code does (no rule changed).
+- Delayed blasts hit ENEMIES ONLY (state.js `_detonateDelayedSpellNow`: `u.player !== ds.sourcePlayer`, no row sets
+  `friendlyFire`): Spirit Bomb, Prophecy of Disaster, Nuclear Option, Orbital Strike, Extinction Event now say "every enemy
+  inside" (was "everything inside"). Nuclear Option: "at the end of the next round" (delayTurns 2) and "every building in it
+  is levelled" (`demolishesBuildings`). Crystal Ball / Star Decree / Cataclysm Decree / Fire for Effect: "At the end of the
+  round" (was "After 1 turn"; delayTurns 1 lands at the end of the cast round, the log says "Detonates in 1 round").
+- Counters (battle.js doAttack → `rollCounter`): only an ADJACENT BASIC ATTACK that lands from the front or side draws one;
+  spells (Skull Crack, No Mercy, Thousand Cuts at range 1) and back-arc hits never do. Riposte, Iron Discipline, Warpath,
+  Bulwark and the `counterChance` hook help text say so (was "when struck in melee").
+- Full drains (`drainPct: 1`) heal through applyHealingToUnit, which stops at max HP: Last Kiss, Exsanguinate, Eaten Alive
+  say "up to your full HP".
+- Place Bomb: the blast is PHYSICAL (detonateBomb passes no damageType; blocked by DEF, while its power still comes from M ATK
+  via spellPowerOf, so the row keeps no damageType and hud.js spellDamageKind reads kind `bomb` as physical), enemies only in the 3×3, each thrown back 1 tile
+  (BOMB_KNOCK_TILES); goes off when an enemy steps on it, on DETONATE (1 AP, all your bombs), or on contact when thrown onto
+  an enemy; 3 at a time, a 4th replaces the oldest.
+- Overfit / Paradox: the replayed last blow is capped at 500 (calcSpellHitRiders `echoCap`). Deploy Turret: MEDIUM physical
+  at the end of every round (turretDmg 110 is the raw roll before DEF / level scaling; real hits 87-340), max 2 per caster,
+  a 3rd replaces the oldest; its row/bar chip reads physical too (spellDamageKind). Filibuster: 2 ROUNDS; Silence lands at the end of each round and on an enemy walking in (zone
+  rules), not on the cast. Encore: "already acted this round".
+- Guarding badge (STATUS_LIBRARY_DESCS.guarding): the DEF/M DEF stages last until the end of its next turn, but Guard's
+  Overwatch shot and +15% counter are cleared at the round change (maybeAdvanceTurn) — the badge text says so.
+- describeSpell (the editor AUTO-DESC): delayed / bomb / deployTurret / encore sentences say the same things, so a regenerate
+  doesn't bring the old wording back.
+- hud.js `_hrlgSpellBlades`: Revive / Chooser of the Slain grey "Already revived" (was "No target") when the only grave in
+  reach belongs to a unit it already revived this match (`reviveLocked`).
+- state.js: a delayed blast logs "💥 X detonates at H10!" FIRST, then each unit it hit (F1; the header used to print last).
+- NOT changed (mondo's calls / other threads): Take Aim / No Mercy EXECUTED line (H10, pending), C1 friendly fire itself,
+  height-gated melee spells reading "No target" (F7). Cannibalize (H6) and the immune-target lists (B1) are their own PRs.
+
+## THE WALL LINE + THE EARTH-SIGN TILE (2026-11-07, Pyramid Protocol playtest follow-up)
+- "One cast raised 4 blocks instead of 3": not a bug. The sky was Capricorn; the existing earth-sign rule
+  (battle.js `_terrainSpellTileCount`, Taurus / Virgo / Capricorn) gives every terrainCreate cast +1 tile. The cast line
+  now names it: "... (Capricorn: +1 piece)" / "(Capricorn: +1 tile)" (not on squareFlood rows, which ignore the count).
+- "Converted to mountain while the ground stays grass": a monument row (Pyramid Protocol, Walls of Camelot) never paints
+  the ground (its pieces stand on it), so its line is now ONE line "X uses Pyramid Protocol! N pieces of wall rise."
+  (the old "Converted N tiles to mountain/castle wall" + "🪨 N pieces of wall stand where the ground was" pair is gone).
+  Rampart really paints mountain, so it keeps "Converted N tiles to mountain".
+- Proof (real browser VS CPU, before = live R2, after = local battle.js): /mnt/project-files/playtest-mechanics-20261107/pyramid-count-log-fix/.
+## THE TWO-PICK SPELLS NEVER DEAD-END (2026-11-07, timing/counters playtest A1 / A2 / H1 / H2) — battle.js, hud.js, ui.js
+- THE PARTNER RULE: a two-click cast (`link`: Soul Bind, Voodoo; `transfer`: Sacrifice) offers a FIRST pick only when a
+  second pick would be taken with it — `_twoClickHasPartner(caster, spell, first)` holds the pick and asks
+  `spellCastableOnUnit` of every unit of the second team (pairRange from the first, the caster's own aim gates). Used by
+  `_getSpellValidTargets` (the list), `findSpellApproachTile` (a MOVE→CAST walks only to a tile where the second pick is in
+  reach too: Voodoo's ally is judged from where the caster ends up), `hasSpellTargetInRange` (the row greys "No target"
+  instead of opening a list that dead-ends) and doSpell's first-pick gate (a board click logs "no ally / other enemy in
+  reach to pair with X").
+- Sacrifice's second pick lists only a hurt ally (`spellTargetUsableOn`, transfer with a pick held) — the cast already
+  refused a full-HP receiver ("is already at full HP"); all allies full = the row reads No target.
+- THE HELD PICK AFTER THE STEP: a MOVE→CAST whose cast is only a FIRST pick (Voodoo/Soul Bind/Sacrifice, Horn Toss's victim,
+  Teleport's unit) used to land in the ROOT menu (finishMoveAt resets it), so the second step never showed.
+  `_rearmHeldFirstPick` (battle.js, called from `_moveThenCast` and hud.js's quick-menu executor) reopens the second step.
+- Backing out of the spell (Esc / BACK / CANCEL → ui.js `_dropHeldSpellPick`) now drops `state._spellPick1` too: nothing
+  was spent, and a held pick made a re-armed Voodoo skip straight to its ally list.
+- Proof (3 VS CPU matches, positions staged with `_ewShotRecApi.place`): /mnt/project-files/playtest-mechanics-20261107/two-pick-dead-ends/.
 
 ## THE BADGE ENDS WITH ITS EFFECT (2026-11-07, timing/counters playtest E1 + H3, badge audit)
 - GUARD: ui.js doGuard puts `guarding` (+2 DEF / M DEF stages, the GRD badge) on the unit with `_guardCounterBonus` (+15%

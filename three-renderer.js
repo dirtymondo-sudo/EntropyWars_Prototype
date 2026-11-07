@@ -9558,6 +9558,51 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* THE BLACK PYRAMID (2026-11-07, zones/traps playtest D5: "Pyramid Protocol blocks are drawn solid black"): a spell-made
+       monument (Pyramid Protocol's ziggurat blocks, Walls of Camelot's castle wall) is built MID-BATTLE, the moment the spell
+       lands, and its builder asks for its sheet (_hzTex: the desert sand, the castle bricks) right then. A board that never
+       drew that sheet had never loaded it, and a three.js texture with no pixels yet draws BLACK: the blocks stood black
+       until the sheet arrived (seconds behind a busy model queue). Now the battle's loading card builds every spell
+       monument kind once, off-scene, so each one's sheets (and the gothic wall's model) are requested while the card's
+       asset gate is open and are in memory before the first turn; the cast then builds with sheets that have landed.
+       Called from warmSpellLibrary (once a session) AND from the battle's loading card (battle.js), so a beach board's
+       own desert sheet is warmed too; a kind already warmed for this sand is skipped.
+       Returns one settle check per sheet (true once landed or failed), like warmMiscModels. */
+    var _monWarmed = {};
+    function _warmSpellMonuments(kinds) {
+        var out = [];
+        if (typeof THREE === 'undefined') return out;
+        if (!kinds) {
+            kinds = [];
+            var seen = {}, lists = [];
+            try { if (typeof SPELL_BY_ID !== 'undefined') lists.push(SPELL_BY_ID); } catch (e) {}
+            try { if (typeof RACE_ABILITY_BY_ID !== 'undefined') lists.push(RACE_ABILITY_BY_ID); } catch (e) {}
+            lists.forEach(function (L) {
+                for (var id in L) { var sp = L[id]; var k = sp && sp.monument && sp.monument.kind; if (k && !seen[k]) { seen[k] = 1; kinds.push(k); } }
+            });
+        }
+        var B = _monBuilders();
+        kinds.forEach(function (kind) {
+            var fn = B[kind];
+            var wk = kind + _ewSandPart('desert');   // THE TWO SANDS: a beach board's desert is its own sheet, warmed apart
+            if (!fn || _monWarmed[wk]) return;
+            _monWarmed[wk] = true;
+            var nMats = _horizonMats.length, g = null;
+            try { g = fn(_monRng(1), { kind: kind, x: 0, y: 0 }); } catch (e) { g = null; }
+            if (!g) return;
+            g.traverse(function (o) {
+                var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+                ms.forEach(function (m) {
+                    var t = m && m.map, rec = t && t._ew_alRec;
+                    if (rec && !rec.done) out.push(function () { return !!rec.done; });
+                });
+            });
+            _horizonMats.splice(nMats);   // the warm copy is never drawn: the grade list keeps only the real ones
+            _disposeR(g);   // geometry + materials only — the sheets stay cached for the cast (_hzTexCache)
+        });
+        return out;
+    }
+
     function rebuildObjects(soft) {
         if (!objectGroup) return;
         soft = soft === true;   // THE LANDING REBUILDS ONLY THE OBJECTS: true = only files landed since the last run
@@ -9827,6 +9872,16 @@ const ThreeRenderer = (function () {
                        viewer swap turns a grave into bones) */
                     h = _hashVal(h, gu._dyingX); h = _hashVal(h, gu._dyingY); h = _hashVal(h, gu.player === _gsVp);
                 }
+            }
+        }
+        /* THE GRAVES STAY (2026-11-07): the graves respawned units left behind (battle.js leaveRemainsOnRespawn) */
+        if (state.graves) {
+            var _grVp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var gri = 0; gri < state.graves.length; gri++) {
+                var gr = state.graves[gri];
+                if (!gr) continue;
+                h = _hashInt(h, 10); h = _hashInt(h, gr.x); h = _hashInt(h, gr.y);
+                h = _hashStr(h, String(gr.id)); h = _hashVal(h, gr.player === _grVp);
             }
         }
         return h;
@@ -11571,6 +11626,32 @@ const ThreeRenderer = (function () {
                     objectGroup.add(gmesh);
                     deployableMeshes.set(gkey, gmesh);
                 }
+            }
+        }
+
+        /* THE GRAVES STAY (2026-11-07): a unit that respawned left its grave where it fell (state.graves, battle.js
+           leaveRemainsOnRespawn) — built and seen exactly like a dead body's grave above (its unit's id seeds the look,
+           so it keeps the same headstone it had) */
+        if (state.graves && state.graves.length && !window.EW_DISABLE_GRAVESTONES) {
+            var _lgViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            for (var lg = 0; lg < state.graves.length; lg++) {
+                var gr = state.graves[lg];
+                if (!gr || gr.x == null || gr.y == null) continue;
+                var lseed = _graveSeed(gr.unitId != null ? gr.unitId : gr.id);
+                var lmesh = (gr.player === _lgViewer)
+                    ? _buildGravestone3D(gr.x, gr.y, lseed)
+                    : _buildBonePile3D(gr.x, gr.y, lseed);
+                if (!lmesh) continue;
+                if (UNIT_SPRITE_SIZE_RATIO < 1) lmesh.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);
+                lmesh._ew_depX = gr.x; lmesh._ew_depY = gr.y;
+                if (gr.player === _lgViewer) lmesh._ew_depOwner = gr.player;
+                else {
+                    /* an enemy's bones you saw fall stay seen after it gets up (same key as the body's grave) */
+                    lmesh._ew_graveKey = _lgViewer + '|' + gr.unitId + '|' + gr.x + ',' + gr.y;
+                    _graveLive.add(lmesh._ew_graveKey);
+                }
+                objectGroup.add(lmesh);
+                deployableMeshes.set('grave_' + gr.id, lmesh);
             }
         }
 
@@ -26943,6 +27024,7 @@ const ThreeRenderer = (function () {
                 for (var ui = 0; ui < state.units.length; ui++) {
                     var u = state.units[ui];
                     if (!u || u.dead || u._dying || u.player === turret.owner) continue;
+                    if (typeof window.shadowRealmKey === 'function' && window.shadowRealmKey(u)) continue;   // 🌑 the volley never shoots into the realm
                     var d = Math.abs(u.x - turret.x) + Math.abs(u.y - turret.y);
                     if (d > turret.range || d > bestD) continue;
                     if (d === bestD && best && u.hp >= best.hp) continue;
@@ -31394,9 +31476,14 @@ const ThreeRenderer = (function () {
             else _layoutFloatTexts(live, realDt, gapPx);
         }
         /* THE SAFE FRAME (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?"):
-           a pop is never drawn off the screen, under the action cam's letterbox bars or under the score plate
-           (battle.js window._ewFloatSafeRect). A pop that would be is moved in, and every pop of its unit moves with it,
-           so the stack keeps its order (the number under its tags) — it rests against the edge instead of leaving. */
+           a pop is never drawn off the screen or under the action cam's letterbox bars (battle.js window._ewFloatSafeRect).
+           A pop that would be is moved in, and every pop of its unit moves with it, so the stack keeps its order (the
+           number under its tags) — it rests against the edge instead of leaving.
+           THE HUD WALLS (zones/traps playtest 2026-11-07: HIGH GROUND! / IN THE AIR over a flyer in the top-right corner
+           were drawn under the bars, the match info and the toast): a unit's stack is never left under a HUD box either
+           (SF.walls: the scoreboard, the match info, the AP press, the turn order, the combat log, a toast). The stack steps the shortest
+           way clear of them all (down, up, left or right, or a corner of two), staying inside the frame; the step it took
+           last frame wins a near tie, so a rising stack does not flip sides. */
         var SF = (!ctx.keepIn && live.length && typeof window !== 'undefined' && typeof window._ewFloatSafeRect === 'function')
             ? window._ewFloatSafeRect() : null;
         if (SF) {
@@ -31408,16 +31495,61 @@ const ThreeRenderer = (function () {
                 var lo2 = SF.l + sb.hw - sb.cx, hi2 = SF.r - sb.hw - sb.cx, sx0 = scx - sb.cx;
                 sw._sfDx = lo2 > hi2 ? 0 : Math.max(lo2, Math.min(hi2, sx0)) - sx0;
                 var tTop = SF.t;
-                if (SF.plate && scx + sw._sfDx + sb.hw > SF.plate[0] && scx + sw._sfDx - sb.hw < SF.plate[1]) tTop = Math.max(tTop, SF.plate[2]);
+                if (!SF.walls && SF.plate && scx + sw._sfDx + sb.hw > SF.plate[0] && scx + sw._sfDx - sb.hw < SF.plate[1]) tTop = Math.max(tTop, SF.plate[2]);   // an older battle.js
                 var down = Math.max(0, tTop - (scy - sb.up)), up = Math.min(0, SF.b - (scy + sb.dn));
-                var key = Math.round(sw.wx) + ',' + Math.round(sw.wz), C = cols[key] || (cols[key] = { d: 0, u: 0 });
+                var key = Math.round(sw.wx) + ',' + Math.round(sw.wz), C = cols[key] || (cols[key] = { d: 0, u: 0, l: 1e9, t: 1e9, r: -1e9, b: -1e9, px: null, py: 0 });
                 if (down > C.d) C.d = down;
                 if (up < C.u) C.u = up;
+                var bl = scx + sw._sfDx - sb.hw, br = scx + sw._sfDx + sb.hw;
+                if (bl < C.l) C.l = bl;
+                if (br > C.r) C.r = br;
+                if (scy - sb.up < C.t) C.t = scy - sb.up;
+                if (scy + sb.dn > C.b) C.b = scy + sb.dn;
+                if (C.px == null && sw._sfWx != null) { C.px = sw._sfWx; C.py = sw._sfWy || 0; }
                 sw._sfKey = key;
+            }
+            var walls = SF.walls && SF.walls.length ? SF.walls : null;
+            for (var gk in cols) {
+                var G = cols[gk];
+                G.dy = G.d > 0 ? G.d : G.u;
+                G.wx = 0; G.wy = 0;
+                if (!walls) continue;
+                var gl = G.l, gt = G.t + G.dy, gr = G.r, gb = G.b + G.dy;
+                var hits = function (ox, oy) {
+                    for (var wi = 0; wi < walls.length; wi++) {
+                        var w = walls[wi];
+                        if (gr + ox > w[0] && gl + ox < w[2] && gb + oy > w[1] && gt + oy < w[3]) return true;
+                    }
+                    return false;
+                };
+                if (!hits(0, 0)) continue;
+                // the steps: clear of each wall's every side, alone and two at once (a corner)
+                var dxs = [0], dys = [0];
+                for (var wj = 0; wj < walls.length; wj++) {
+                    var W = walls[wj];
+                    dxs.push(W[0] - gr, W[2] - gl);
+                    dys.push(W[1] - gb, W[3] - gt);
+                }
+                var bestC = Infinity, bx2 = 0, by2 = 0, px = G.px != null ? G.px : 0, py = G.px != null ? G.py : 0, hasPrev = G.px != null;
+                for (var xi = 0; xi < dxs.length; xi++) {
+                    var ox = dxs[xi];
+                    if (gl + ox < SF.l - 0.5 || gr + ox > SF.r + 0.5) continue;
+                    for (var yi2 = 0; yi2 < dys.length; yi2++) {
+                        var oy = dys[yi2];
+                        if (gt + oy < SF.t - 0.5 || gb + oy > SF.b + 0.5) continue;
+                        var cst = Math.sqrt(ox * ox + oy * oy) + (hasPrev ? 0.35 * Math.sqrt((ox - px) * (ox - px) + (oy - py) * (oy - py)) : 0);
+                        if (cst >= bestC || hits(ox, oy)) continue;
+                        bestC = cst; bx2 = ox; by2 = oy;
+                    }
+                }
+                if (bestC < Infinity) { G.wx = bx2; G.wy = by2; }
             }
             for (var sj = 0; sj < live.length; sj++) {
                 var C2 = cols[live[sj]._sfKey];
-                live[sj]._sfDy = C2 ? (C2.d > 0 ? C2.d : C2.u) : 0;
+                live[sj]._sfDy = C2 ? C2.dy + C2.wy : 0;
+                live[sj]._sfDx += C2 ? C2.wx : 0;
+                live[sj]._sfWx = C2 ? C2.wx : 0;
+                live[sj]._sfWy = C2 ? C2.wy : 0;
             }
         }
         var pops = ctx.popBoxes || (ctx.popBoxes = []);
@@ -88460,6 +88592,7 @@ const ThreeRenderer = (function () {
         preloadUnitModels,
         warmMiscModels: _warmMiscModels,
         warmSummonModels: _warmSummonModels,
+        warmSpellMonuments: _warmSpellMonuments,   // THE BLACK PYRAMID (2026-11-07): the spell monuments' sheets on the loading card
         /* THE ANIMALS (2026-10-27): mondo's rigged animals for the spells — animalClone(key, size, o) → { group, ctl } or null while
            the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
         animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },

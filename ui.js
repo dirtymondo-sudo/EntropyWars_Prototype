@@ -4732,6 +4732,11 @@
             const u = getSelectedUnit();
             if (u && u._skyThrowGrab && typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(u);
             state._teleportingUnitId = null;
+            /* a two-step spell's FIRST pick (Voodoo's enemy, Soul Bind's first enemy, Sacrifice's giver, Horn Toss's
+               victim) goes with the spell it was made for — nothing was spent on it, so backing out of the spell cancels
+               the whole cast (timing/counters playtest 2026-11-07: Escape left Voodoo's pick held, and re-arming Voodoo
+               skipped straight to the ally list) */
+            if (typeof clearSpellPick === 'function') clearSpellPick(); else state._spellPick1 = null;
             clearSpellAimPreviews();
         }
 
@@ -15736,6 +15741,7 @@
                         : (state.units || []).filter(u => u.player === caster.player && !u.dead && !u._dying);
                     for (const a of allies) {
                         if (a.id === caster.id) continue;   // the caster never refills itself (battle.js)
+                        if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(a, caster)) continue;   // 🌑 nor across the Shadow Realm's line
                         add(a, 0, Math.min(spell.mpRestore || 40, Math.max(0, (a.maxMp || 0) - (a.mp || 0))));
                     }
                 } else if (spell.kind === 'debuff' && spell.mpDrain > 0 && target && target.id !== caster.id

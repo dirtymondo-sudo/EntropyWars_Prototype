@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.33-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs+trained'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.34-2026-11-07-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs+trained+spell-zones'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -372,6 +372,11 @@
     // (unless adjacency reveals), OR — with fog on — out of the whole
     // team's sight (isUnitSeenByTeam: the nameplate-eye truth). Every
     // targeting path gates on this; the AI never sees through walls.
+    /* 🌑 THE REALM LINE (11-07): the units of `list` that `unit` can reach — battle.js realmReachableFrom; across the
+       Shadow Realm's line there is nobody to heal, buff or count, either way. */
+    function _aiReachable(list, unit) {
+        return (typeof window.realmReachableFrom === 'function') ? window.realmReachableFrom(list, unit) : (list || []);
+    }
     function isConcealed(g, tg, viewerPlayer) {
         try {
             /* 🌑 THE SHADOW REALM (2026-10-26): across its line there is nobody to see, chase or aim at */
@@ -1808,8 +1813,8 @@
 
         const allies = g._isFFA()
             ? []
-            : g.aliveUnitsFor(player).filter(a => a.id !== unit.id
-                && !(g.unitHasStatus && g.unitHasStatus(a, 'captured')));   // 🚪 a HELD ally is in the void: no heal, no buff, no formation
+            : _aiReachable(g.aliveUnitsFor(player), unit).filter(a => a.id !== unit.id
+                && !(g.unitHasStatus && g.unitHasStatus(a, 'captured')));   // 🌑 nor an ally across the Shadow Realm's line   // 🚪 a HELD ally is in the void: no heal, no buff, no formation
 
         const visibleHourglasses = (g.state.hourglasses || []).filter(h =>
             h.carriedBy === null && h.visibleTo[player]
@@ -2802,6 +2807,101 @@
         return Math.max(-40, cost);   // Thermal Regen basks in lava (+40 HP at most a turn end)
     }
 
+    /* ═══ THE SPELL ZONES (2026-11-07, the zones playtest E1: "the CPU never leaves a damaging zone" — the CPU Martian
+       stood in Black Smoke, Gravity Crush, White Christmas, Quicksand and War of the Worlds for three rounds, 170-318 a
+       round, and walked into Filibuster, Dimensional Web, Cold Spot, Ink Cloud, Hall of Mirrors). aiHazardPenaltyAt
+       read the ground and the telegraphed blasts but never state._activeZones. Now ending on a square a zone covers
+       costs what the engine's own rules do to the body there (battle.js processEndOfRoundZonesAndSeeds, _chainZones):
+         an ENEMY debuff zone  — its round-end tick (tickDamage, the unit's own hit math through forecastHitOnUnit) +
+                                 every status it lands (on arrival and again at the round end), priced as the denial
+                                 the status costs this unit (ccDenialValue — Stun / Frozen / Silence / Blind / Slow…,
+                                 0 when the unit already has it or shrugs it off);
+         an ENEMY heal zone    — the statuses it puts on enemies inside (Temporal Tide's Slow);
+         a Gravity Crush field — an airborne flyer is slammed down (the forced fall ×3), either side's field.
+       A price that would kill the unit adds 150, as on the ground. Existing rules only; nothing on unit / state.
+       spellZoneCaution_v1 scales it (default 1, a new key — no trained weight changes). Kill-switch:
+       window.EW_AI_NO_SPELL_ZONES (the old blind spot). ═══ */
+    function _aiZoneCovers(zone, x, y) {
+        if (!zone || zone.x == null) return false;
+        try {
+            if (zone.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(zone.aoeMask)) {
+                return aoeMaskTiles(zone.aoeMask, zone.x, zone.y).some(t => t.x === x && t.y === y);
+            }
+        } catch (e) {}
+        const r = (zone.radius ?? 1);
+        return Math.abs(x - zone.x) <= r && Math.abs(y - zone.y) <= r;
+    }
+    let _szCache = new Map(), _szKey = '';
+    function spellZoneCost(g, unit, x, y) {
+        if (!unit || window.EW_AI_NO_SPELL_ZONES) return 0;
+        const st = g.state;
+        const zones = st && st._activeZones;
+        if (!zones || !zones.length) return 0;
+        const w = wght(g, 'spellZoneCaution_v1', 1);
+        if (!(w > 0)) return 0;
+        const ck = (st.round || 0) + '|' + (st._blitzActiveUnitId || '') + '|' + zones.length + '|' + zones.reduce((a, z) => a + (z.duration || 0), 0);
+        if (ck !== _szKey || _szCache.size > 4000) { _szCache = new Map(); _szKey = ck; }
+        const k = unit.id + '|' + unit.player + '|' + x + '|' + y + '|' + (unit.hp || 0);
+        if (_szCache.has(k)) return _szCache.get(k);
+        let cost = 0;
+        try {
+            let flyerUp = false;
+            try { flyerUp = typeof canFly === 'function' && canFly(unit) && typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit); } catch (e) {}
+            const seen = new Set();   // one price per status id (two zones landing the same status don't stack it)
+            let slammed = false;
+            for (const zone of zones) {
+                if (!zone || !_aiZoneCovers(zone, x, y)) continue;
+                const theirs = zone.ownerPlayer !== unit.player;
+                const caster = zone.casterUnitId ? st.units.find(u => u.id === zone.casterUnitId && !u.dead) : null;
+                let list = null;
+                if (zone.type === 'debuff') {
+                    if (zone.gravityField) {
+                        // Gravity Crush slams an airborne flyer down (forceGroundUnit → the forced fall, ×3 in the field)
+                        if (zone.gravityField === 'super' && flyerUp && !slammed) {
+                            slammed = true;
+                            let clear = 2;
+                            try {
+                                const fz = (typeof g.getFloorBelowZ === 'function') ? g.getFloorBelowZ(x, y, unit.z ?? 0) : null;
+                                if (fz != null) clear = Math.max(1, (unit.z ?? 0) - fz);
+                            } catch (e) {}
+                            let mass = 1;
+                            try { if (typeof getUnitFallDamageMult === 'function') mass = getUnitFallDamageMult(unit) || 1; } catch (e) {}
+                            cost += Math.round((unit.maxHp || 100) * 0.05 * clear * 3 * mass);
+                        }
+                        continue;
+                    }
+                    if (!theirs) continue;
+                    if (zone.tickDamage > 0) {
+                        let d = zone.tickDamage;
+                        try {
+                            const r = forecastHitOnUnit(unit, zone.tickDamage, { damageType: zone.tickDamageType || 'magic',
+                                spellType: zone.tickSpellType || null, spellElement: zone.tickElement || undefined,
+                                sourceUnit: caster || undefined, noRangeMult: true, noTerrainBonus: true, noHeightBonus: true,
+                                allowMarkBonus: false, consumeMarked: false });
+                            if (r) d = r.blocked === 'absorb' ? -(r.heal || 0) : (r.dmg || 0);
+                        } catch (e) {}
+                        cost += d;
+                    }
+                    list = zone.statusEffects;
+                } else if (zone.type === 'heal' && theirs) {
+                    list = zone.enemyStatusEffects;
+                }
+                if (!Array.isArray(list)) continue;
+                for (const eff of list) {
+                    const id = eff && (eff.id || eff);
+                    if (typeof id !== 'string' || seen.has(id)) continue;
+                    seen.add(id);
+                    if (!_setupCanStick(g, unit, id)) continue;
+                    cost += ccDenialValue(g, caster || unit, unit, id, (eff && eff.duration) || 1, null) || 0;
+                }
+            }
+            if (cost > 0 && cost >= (unit.hp || 0) + (unit.shield || 0)) cost += 150;
+            cost = Math.max(-40, cost) * w;
+        } catch (e) { cost = 0; }
+        _szCache.set(k, cost);
+        return cost;
+    }
+
     /* ═══ THE GROUND LEFT BEHIND (2026-11-01, the AI gap list, audit item 6 of PR #721: "terrain spells price only the
        impact, not the ground left behind"). Fissure, Flash Freeze, Wall of Fire, Poison Swamp, Call of the Deep, Walk
        the Plank, Great Flood, Permafrost, Ooze Trail, Plaguefield, Sacred Geometry… were scored as "enemies within 1
@@ -3129,6 +3229,7 @@
         } else {
             pen += groundHazardCost(g, unit, terr, x, y, _burning);
         }
+        pen += spellZoneCost(g, unit, x, y);   // THE SPELL ZONES: an enemy zone's round-end tick + the statuses it lands
         pen += _capHazardAt(g, unit, x, y);   // 🚪 THE ONE-WAY DOOR: on an enemy capture door, or a push away from one
         pen += _gdLaneHazardAt(g, unit, x, y);   // 🚪 THE STANDING DOORS: a hostile beam / shaft / tongue / draught
         return pen;
@@ -4897,7 +4998,7 @@
         const _likeKeys = b => (typeof itemKeysLike === 'function') ? itemKeysLike(b) : [b];
         // Heal potion — valued exactly like a heal spell.
         for (const _hk of _likeKeys('healPotion')) if (unit.items?.[_hk] > 0) {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit);
             let bestTarget = null, bestScore = 0;
             for (const ally of allies) {
                 if (ally.dead || ally.hp >= ally.maxHp) continue;
@@ -4916,7 +5017,7 @@
         // Mana potion — restored MP × the MP value constant, plus a bonus
         // when it unlocks casts the ally couldn't afford.
         for (const _mk of _likeKeys('manaPotion')) if (unit.items?.[_mk] > 0) {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit);
             const _mpPct = (((g.ITEM_RULES || {})[_mk] || {}).mpPct) || 0.35;
             let bestTarget = null, bestScore = 0;
             for (const ally of allies) {
@@ -5867,7 +5968,7 @@
                the heal alone, like a healAll */
             let _allyHealVal = 0;
             if (spell.aoeAllyHeal > 0) {
-                for (const a of g.aliveUnitsFor(unit.player)) if (area.some(t => t.x === a.x && t.y === a.y)) _allyHealVal += healValue(g, unit, a, spell.aoeAllyHeal, v) * 0.9;
+                for (const a of _aiReachable(g.aliveUnitsFor(unit.player), unit)) if (area.some(t => t.x === a.x && t.y === a.y)) _allyHealVal += healValue(g, unit, a, spell.aoeAllyHeal, v) * 0.9;
             }
             if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
@@ -6172,7 +6273,7 @@
             return _hs;
         }
         if (kind === 'healAll') {
-            const allies = g.aliveUnitsFor(unit.player).filter(a => !spell.auraRadius   // THE SPELL AUDIT C: aura heals
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit).filter(a => !spell.auraRadius   // THE SPELL AUDIT C: aura heals
                 || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
             const hBase = spell.healAmt != null ? spell.healAmt : (spell.heal || 16);
             let s = 0;
@@ -6289,7 +6390,7 @@
 
         if (kind === 'warCry') {
             const radius = spell.auraRadius || 3;
-            const inRange = g.aliveUnitsFor(unit.player).filter(a =>
+            const inRange = _aiReachable(g.aliveUnitsFor(unit.player), unit).filter(a =>
                 Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
             // Fermata (statLock): lock in live buff stages.
             if (spell.teamStatusEffects && spell.teamStatusEffects.some(e => e && e.id === 'statLock')) {
@@ -6520,7 +6621,7 @@
             const _contactE = spell.detonateOnStep
                 && g.state.units.find(u => !u.dead && u.x === target.x && u.y === target.y && u.player !== unit.player);
             if (_contactE) return s + 40 + (spell.blastDmg || 0) * 0.5;
-            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
+            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated).length;   // the cap is per spell (battle.js deployObject)
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
             // WEAK RACES II (2026-10-23): a mine is worth the blast it will likely set off (see _trapHitValue)
             if (spell.detonateOnStep && spell.blastDmg) {
@@ -6685,7 +6786,7 @@
         }
 
         if (kind === 'rallyPull') {
-            const far = g.aliveUnitsFor(unit.player).filter(a =>
+            const far = _aiReachable(g.aliveUnitsFor(unit.player), unit).filter(a =>
                 a.id !== unit.id && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > 3);
             if (far.length < 2) return 0;
             const enemiesOnTop = v.visibleEnemies.filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 2).length;
@@ -6693,7 +6794,7 @@
         }
 
         if (kind === 'manaRestoreAll') {
-            const allies = g.aliveUnitsFor(unit.player);
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit);
             const mpRestore = spell.mpRestore || 40;
             const lowMana = allies.filter(a => (a.maxMp || 0) > 0 && a.mp < a.maxMp * 0.4);
             const totalRestored = allies.reduce((s2, a) => s2 + Math.min(mpRestore, (a.maxMp || 0) - a.mp), 0);
@@ -9134,7 +9235,7 @@
             // Turrets are stamped with casterUnitId (battle.js doSpell) — the
             // old ownerUnitId read always counted 0, so the AI never saw its
             // own cap and re-deployed every turn, dismantling its own turrets.
-            const active = (g.state.turrets || []).filter(t => t.casterUnitId === unit.id).length;
+            const active = (g.state.turrets || []).filter(t => t.casterUnitId === unit.id && t.spellId === spell.id && !t.summon && !t.zombie).length;   // the cap is per spell (battle.js deployTurret)
             if (active >= (spell.maxActivePerCaster || 2)) return null;
             const R = _effRange(unit, spell) || 2;
             let bestTile = null, bestScore = -1;
@@ -9421,7 +9522,12 @@
         }
         if (kind === 'cannibalize') {
             if ((unit.hp / (unit.maxHp || 1)) > 0.7) return null;
-            const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
+            // THE ENEMY REMAINS (playtest 2026-11-07 H6): only an enemy's remains — never its own team's graves (the cast's own gate)
+            const _cbOk = (typeof spellCorpseUsable === 'function') ? (d => spellCorpseUsable(unit, spell, d))
+                : (d => d.dead && !d._corpseConsumed && d.player !== unit.player);
+            // THE GRAVES STAY: the still-dead bodies and the graves respawned units left (battle.js corpseRemainsBodies)
+            const _cbPool = (typeof corpseRemainsBodies === 'function') ? corpseRemainsBodies() : g.state.units;
+            const remains = _cbPool.filter(_cbOk)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
                               - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
@@ -9452,7 +9558,11 @@
         }
 
         if (kind === 'raiseDead') {
-            const remains = g.state.units.filter(u => u.dead && !u._corpseConsumed)
+            // THE GRAVES STAY: left graves too; the cast's own gate (spellCorpseUsable: a covered square can't be raised)
+            const _rdPool = (typeof corpseRemainsBodies === 'function') ? corpseRemainsBodies() : g.state.units;
+            const _rdOk = (typeof spellCorpseUsable === 'function') ? (d => spellCorpseUsable(unit, spell, d))
+                : (d => d.dead && !d._corpseConsumed);
+            const remains = _rdPool.filter(_rdOk)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
                 .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
                               - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
@@ -9670,7 +9780,7 @@
         if (kind === 'warCry') return { x: unit.x, y: unit.y };
 
         if (kind === 'encore') {
-            const allies = g.aliveUnitsFor(unit.player)
+            const allies = _aiReachable(g.aliveUnitsFor(unit.player), unit)
                 .filter(a => a.id !== unit.id && !a._encoreThisRound
                     && (typeof g.unitEncoreReady === 'function' ? g.unitEncoreReady(a) : g.unitFinished(a)))
                 .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= _effRange(unit, spell));
@@ -9854,7 +9964,7 @@
         }
 
         if (kind === 'deployObject') {
-            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
+            const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id && o.spellId === spell.id && !o._detonated).length;   // the cap is per spell (battle.js deployObject)
             if (active >= (spell.maxActivePerCaster || 2)) return null;
             const R = _effRange(unit, spell) || 1;
             let bestTile = null, bestScore = -1;
@@ -10729,6 +10839,23 @@
             console.warn('[AI] _aiPlanCandidates failed:', e);
             return [];
         }
+    };
+
+    /* THE SPELL ZONES (2026-11-07): read-only probes — what ending on (x,y) costs the unit (the zones alone / every
+       hazard), and the unit's ranked options with the end-square charge each one paid. Nothing changes on the board. */
+    window._aiSpellZoneCost = function (unit, x, y) {
+        try { return { zones: Math.round(spellZoneCost(G(), unit, x, y)), hazard: Math.round(aiHazardPenaltyAt(unit, x, y)) }; } catch (e) { return null; }
+    };
+    window._aiRankCandidates = function (unit) {
+        if (!unit || unit.dead) return [];
+        _failedSpells = new Set(); _failedCombos = new Set(); _skipAttack = false; _skipTowerAttack = false; _skipMove = false;
+        _skipJump = false; _failedNexus = false; _failedItems = new Set(); _skipClimb = false; _turnActionLog = []; _outputCache = new Map();
+        try {
+            const ranked = rankCandidates(unit, buildVision(unit));
+            return (ranked.candidates || []).map(c => ({ type: c.type, spell: c.spell && c.spell.name, x: c.x, y: c.y,
+                target: c.target && (c.target.name || (c.target.x + ',' + c.target.y)), score: Math.round(c.score || 0),
+                danger: Math.round(c._dangerCost || 0), flee: !!c._fleeHazard, best: c === ranked.best }));
+        } catch (e) { return String(e); }
     };
 
     console.log('[AI] Entropy Wars tactical AI v4 loaded — one brain, one currency (see AI_REDESIGN.md).');

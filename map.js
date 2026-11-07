@@ -16436,6 +16436,9 @@
                 if (unit._respawnIn <= 0) {
                     const floorTerrain = state.boardTerrain;
                     if (!floorTerrain) continue;
+                    /* THE GRAVES STAY (battle.js leaveRemainsOnRespawn): the square it fell on, read before it moves */
+                    const _graveFrom = { x: unit._dyingX != null ? unit._dyingX : unit.x, y: unit._dyingY != null ? unit._dyingY : unit.y, z: unit.z };
+                    const _leaveGrave = () => { if (typeof leaveRemainsOnRespawn === 'function') leaveRemainsOnRespawn(unit, _graveFrom); };
 
                     /* FFA mode: keep existing scattered respawn */
                     const _ffaMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
@@ -16461,6 +16464,7 @@
                         const pool = candidates.slice(0, Math.max(1, Math.floor(candidates.length * 0.25)));
                         /* Engine roll (respawn placement is match state) — seeded stream. */
                         const pick = pool[engineRandInt(pool.length)];
+                        _leaveGrave();
                         unit.x = pick.x;
                         unit.y = pick.y;
                         unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(pick.x, pick.y) : (state.boardHeights?.[pick.y]?.[pick.x] ?? 0);
@@ -16514,6 +16518,8 @@
                             }
                         }
                         if (placed) {
+                            /* the body itself claws out of its grave — no remains left behind (only the corpse flags reset) */
+                            if (typeof leaveRemainsOnRespawn === 'function') leaveRemainsOnRespawn(unit, null);
                             unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(unit.x, unit.y) : (state.boardHeights?.[unit.y]?.[unit.x] ?? 0);
                             unit.dead = false;
                             unit._dying = false;
@@ -16612,6 +16618,7 @@
                         if (!placed) continue;
                     }
 
+                    _leaveGrave();
                     unit.dead = false;
                     unit._dying = false;
                     unit.hp = unit.maxHp;
@@ -18165,6 +18172,7 @@
             state.bombs = [];
             state.plantedSeeds = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY (battle.js leaveRemainsOnRespawn): per match
             state.wards = [];
             state.pings = [];
             state._deployedObjects = [];
@@ -19689,6 +19697,7 @@
             state.traps = [];
             state.wards = [];
             state.turrets = [];
+            state.graves = [];   // THE GRAVES STAY (battle.js leaveRemainsOnRespawn): per match
             state.mirrors = [];
             state.warpRunes = [];
             state.pixieDust = [];

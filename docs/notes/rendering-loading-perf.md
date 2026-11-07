@@ -1480,3 +1480,29 @@ drawn in the pass's first 600 ms counts as shown (`_lwSync`); cap 4 s AND 240 dr
 `ThreeRenderer.shaderCache().late.wholeBodies / .wholeHeld`. Browser-checked on Camelot (VS CPU, saved Cowboy/Catgirl/Santa
 looks + DOOR Agent), frame by frame: WebGL2 backend before = red suit + specks for ~400 drawn frames, after = nothing then
 all three whole at once; classic WebGL after = whole. Proof /mnt/project-files/whole-body/.
+
+## THE GUEST'S RESULT EVERY MATCH + THE REMATCH VOTE (2026-11-07, timing/counters playtest H7 + H8; mondo: "Go ahead and start those fixes")
+- H7 (guest stayed on the board after a sudden-death win, host on VICTORY): not the sudden death. online.js `_applyRemoteState`
+  ran the guest's finalizeMatch once per `st._guestResultShown`, a bare `true` that only a rematch cleared. A second online match
+  in the same page (Main Menu, new room) never showed its result. The latch holds the match's `NET.matchId` now, and
+  `_ewResetOnlineMatchFlags` (every room in / out) clears it plus `_guestBoardBuilt`. (The 10-23 "THE LAST WORD" heartbeat was
+  the same symptom.)
+- H8 (REQUEST REMATCH started a host-only match against an unpicked team): ui.js binds the static `#nextMatchBtn` at load, before
+  online.js wraps `continueToNextMatch`, so online the button ran the OFFLINE next match on the host (the server then dropped the
+  host's snapshots, no votes). online.js rebinds the button to the wrapper right after wrapping; the wrapper is a vote only after
+  a decided match; both votes -> `_startOnlineRematch` (both seats to team pick, the lock again).
+- Proof (two real browsers, local server, live R2 code vs LOCAL_ASSETS=online.js, sudden-death kill ends each match):
+  /mnt/project-files/online-result-rematch-20261107/. Live code: match 2 guest on the board (`M2_guest_before_fix`), host
+  rematch = host in match 3 alone (`H8_host_before_fix`). Fixed: match 2 guest DEFEAT / host VICTORY, request -> guest
+  "Accept Rematch" -> both party builder (still there 20 s later, no picks) -> lock + start -> match 3 -> both results.
+
+## THE BLACK PYRAMID (2026-11-07, zones/traps playtest D5)
+Pyramid Protocol's ziggurat blocks stood solid black (cyan glyph band only). Cause: a spell-made monument (`state.monuments`,
+three-renderer.js `_buildMonumentObj` → `_hzZigguratBlock` / `_hzCastleWallSeg`) is built mid-battle when the spell lands, and its
+builder asks `_hzTex` for its sheet (desert sand / castle bricks) only then. A board that never drew that sheet had never loaded it,
+and a three.js texture with no pixels draws BLACK until it lands (seconds behind a busy model queue). Reproduced in Chromium with
+real R2 sheets by slowing sand.png: blocks black with the sheet in flight. Fix: `ThreeRenderer.warmSpellMonuments()` builds every
+`monument.kind` found in SPELL_BY_ID / RACE_ABILITY_BY_ID once, off-scene (warm copy's grade mats spliced off `_horizonMats`, then
+disposed; sheets stay in `_hzTexCache`), called from `ThreeVFXEffects.warmSpellLibrary` and from the battle loading card (battle.js,
+inside the asset gate, so a beach board's own desert sheet is warmed too: keyed kind + `_ewSandPart('desert')`). Proof shots:
+/mnt/project-files/playtest-mechanics-20261107/pyramid-black-fix/. Any NEW spell monument kind is covered automatically.
