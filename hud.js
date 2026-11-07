@@ -10250,7 +10250,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const passable = tRule.passable !== false && !tileOccupied;
 
     let reason = '';
-    if (!canAfford) reason = isSilenced ? 'Silenced' : actingUnit.mp < mpCost ? 'No MP' : 'No AP';
+    const _engWhy = engineOk ? null : _tqBlockReason(actingUnit, sp);   // the engine's own word (Rooted, Charmed, ⏳ CD …)
+    if (!canAfford) reason = isSilenced ? 'Silenced' : (_engWhy && _engWhy !== 'No MP') ? _engWhy : actingUnit.mp < mpCost ? 'No MP' : 'No AP';
     else if (!tierOk) reason = 'Level req';
     else if (!inRange) reason = 'Out of range';
     else if (!passable) reason = tileOccupied ? 'Tile occupied' : 'Impassable';
@@ -10355,8 +10356,10 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(actingUnit, sp) : 0;
     const needMats = sp.materialCost && typeof canAffordMaterials === 'function' && !canAffordMaterials(actingUnit.player, sp.materialCost);
+    const _engWhy = engineOk ? null : _tqBlockReason(actingUnit, sp);
     let reason = '';
     if (isSilenced) reason = 'Silenced';
+    else if (_engWhy && typeof moveBlockWord === 'function' && _engWhy === moveBlockWord(actingUnit)) reason = _engWhy;   // THE MOVE BLOCK ON SPELLS
     else if (!tierOk) reason = 'Level req';
     else if (cdLeft > 0) reason = '⏳ CD ' + cdLeft;
     else if (actingUnit.mp < mpCost) reason = 'No MP';
