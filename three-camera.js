@@ -451,7 +451,10 @@ const ThreeCamera = (function () {
         _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed };
         /* THE GUARD'S HAND-OFF: the correction the frame on screen carries (a re-aimed gaze is not carried: the bare
            rig's own gaze differs from it) */
-        _fgCarry = reaimed ? null : { sx: res.sx, sy: res.sy, D: res.D, key: _fgCarryKey(cam), fade: null };
+        /* `last` = this frame's world offsets (eye, gaze), so a shot that hands STRAIGHT into a glide home (the key
+           changes on the next frame, before a hold frame ever ran) still fades out from the frame on screen */
+        _fgCarry = reaimed ? null : { sx: res.sx, sy: res.sy, D: res.D, key: _fgCarryKey(cam), fade: null,
+            last: [ox - dx * res.D, oy - dy * res.D, oz - dz * res.D, ox, oy, oz] };
         return [bx - dx * res.D, by - dy * res.D, bz - dz * res.D,
                 bx + dx * dl, by + dy * dl, bz + dz * dl];
     }
