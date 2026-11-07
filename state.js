@@ -6082,7 +6082,9 @@
                     const defId = state._deferredTurnPanUnitId;
                     state._deferredTurnPanUnitId = null;
                     const u = state.units?.find(u => u.id === defId && !u.dead);
-                    if (u && typeof focusBoardCameraOnTiles === 'function') {
+                    /* THE TURN FRAME (2026-11-07): the same frame the activation pan would have given it (resting angle, a capped zoom) */
+                    if (u && typeof window._ewTurnStartCamera === 'function' && window._ewTurnStartCamera(u)) { /* framed */ }
+                    else if (u && typeof focusBoardCameraOnTiles === 'function') {
                         const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
                         const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                         focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
@@ -6195,7 +6197,9 @@
                     const defId = state._deferredTurnPanUnitId;
                     state._deferredTurnPanUnitId = null;
                     const u = state.units?.find(u => u.id === defId && !u.dead);
-                    if (u && typeof focusBoardCameraOnTiles === 'function') {
+                    /* THE TURN FRAME (2026-11-07): the same frame the activation pan would have given it (resting angle, a capped zoom) */
+                    if (u && typeof window._ewTurnStartCamera === 'function' && window._ewTurnStartCamera(u)) { /* framed */ }
+                    else if (u && typeof focusBoardCameraOnTiles === 'function') {
                         const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
                         const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                         focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
@@ -6241,7 +6245,9 @@
                     const defId = state._deferredTurnPanUnitId;
                     state._deferredTurnPanUnitId = null;
                     const u = state.units?.find(un => un.id === defId && !un.dead);
-                    if (u && typeof focusBoardCameraOnTiles === 'function') {
+                    /* THE TURN FRAME (2026-11-07): the same frame the activation pan would have given it (resting angle, a capped zoom) */
+                    if (u && typeof window._ewTurnStartCamera === 'function' && window._ewTurnStartCamera(u)) { /* framed */ }
+                    else if (u && typeof focusBoardCameraOnTiles === 'function') {
                         const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
                         const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
                             ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
@@ -6659,7 +6665,9 @@
                             const defId = state._deferredTurnPanUnitId;
                             state._deferredTurnPanUnitId = null;
                             const u = state.units?.find(u => u.id === defId && !u.dead);
-                            if (u && typeof focusBoardCameraOnTiles === 'function') {
+                            /* THE TURN FRAME (2026-11-07): the same frame the activation pan would have given it (resting angle, a capped zoom) */
+                            if (u && typeof window._ewTurnStartCamera === 'function' && window._ewTurnStartCamera(u)) { /* framed */ }
+                            else if (u && typeof focusBoardCameraOnTiles === 'function') {
                                 const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
                                 const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                                 focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
@@ -6682,7 +6690,9 @@
                             const defId = state._deferredTurnPanUnitId;
                             state._deferredTurnPanUnitId = null;
                             const u = state.units?.find(u => u.id === defId && !u.dead);
-                            if (u && typeof focusBoardCameraOnTiles === 'function') {
+                            /* THE TURN FRAME (2026-11-07): the same frame the activation pan would have given it (resting angle, a capped zoom) */
+                            if (u && typeof window._ewTurnStartCamera === 'function' && window._ewTurnStartCamera(u)) { /* framed */ }
+                            else if (u && typeof focusBoardCameraOnTiles === 'function') {
                                 const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
                                 const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                                 focusBoardCameraOnTiles([{ x: u.x, y: u.y }], {
@@ -7125,7 +7135,9 @@
                 const defId = state._deferredTurnPanUnitId;
                 state._deferredTurnPanUnitId = null;
                 const u = state.units?.find(un => un.id === defId && !un.dead);
-                if (u && typeof focusBoardCameraOnTiles === 'function') {
+                /* THE TURN FRAME (2026-11-07): the same frame the activation pan would have given it (resting angle, a capped zoom) */
+                if (u && typeof window._ewTurnStartCamera === 'function' && window._ewTurnStartCamera(u)) { /* framed */ }
+                else if (u && typeof focusBoardCameraOnTiles === 'function') {
                     const baseZoom = (typeof getUserZoomScale === 'function') ? getUserZoomScale() : 1;
                     const zoom = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged())
                         ? baseZoom : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);

@@ -4748,3 +4748,25 @@ Proof (VS CPU Arena, browser): /mnt/project-files/playtest-mechanics-20261107/ex
 - Left as is (badge and effect agree): Guard's Recovering (guardRegen) badge also lasts to the end of the next round (seen
   in the proof log); by code read its onRoundEnd recovery runs at each round end it is up, while the Guard log line says
   "extra recovery this round" — a text question for mondo, not changed here.
+
+## THE TURN FRAME (2026-11-07, mondo on Mount Shasta Arena) — battle.js, state.js, online.js, three-camera.js, three-renderer.js
+mondo (his Antihero's turn, round 6): "my unit isnt even centered, they are all the way near the top of the screen, and i cant
+see anything bc grass is completely covering the screen ... Low and near to the ground". Reproduced on Mount Shasta Arena
+(VS CPU): a plain turn start frames fine; a HAND ZOOM (the wheel / a trackpad goes to 10×, and every turn start honours an
+engaged hand zoom) put the lens 1-1.6 squares from the focal, ~0.7-1 square over the grass at the resting angle (tilt 62 after
+an orbit), the body cut off at the top. Also: a turn that began while the player held an orbit (right-drag) deferred its pan,
+and the deferred pan kept the hand angle (up to 170, the sky) and the hand zoom.
+- battle.js `getTurnFrameZoomCap(unit)` / `capTurnFrameZoom(unit, zoom)` / `turnFrameTooClose(unit)`: every turn-start frame
+  (selectUnit's `_turnStartCamera`, the CPU / remote / SIMUL plan activations, online.js guest follow + own-turn pre-select, the
+  replay follow) zooms at most so the lens stays TURN_FRAME_MIN_DIST (3) squares from the focal and the drawn body fills at most
+  TURN_FRAME_FIT_V (0.6) of the half-frame. A capped hand zoom is written back to state.userZoomScale (the next wheel step goes on
+  from the screen). Hand zooming while looking around is untouched. 10× → 3.44× on a 3.5 m square board.
+- `window._ewTurnStartCamera(unit)`: the deferred pan (state.js drag / edge-pan / touch release, `_consumeDeferredTurnPan`) gives
+  the same frame as the activation pan (resting angle ≤ REST_TILT_MAX, capped zoom).
+- THE ROOM'S GROUND: three-renderer `ThreeRenderer.roomGroundAt(wx, wz)` = the battle room's drawn ground (terrain field + outer
+  ground, kept from `_hqBuildRoomInBattle`); three-camera `_solidGroundYWorld` reads it past the board's edge (the grid stretches
+  the edge square there), so a lens behind the near row never sits in a hillside. Tall scenery (`tallSceneryTopAt`) now counts
+  props up to TALL_OFF_TILES (4) squares off the board too.
+- Proof: /mnt/project-files/turn-start-camera/ (hand zoom before/after, turn start during an orbit). Scan of all 576
+  square × angle turn frames on the arena at the cap: lens ≥ 1.15 squares over the drawn ground. Tune TURN_FRAME_MIN_DIST if he
+  wants the turn start closer / farther.
