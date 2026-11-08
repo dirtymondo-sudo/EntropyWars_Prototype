@@ -1765,5 +1765,6 @@ replacement reaches every browser and the edge.
 mondo bought Pizza Doggy's PSX Mega Pack and dropped it unzipped in `dirtymondo:inbox/psxmegapack/`. 584 of its 592 GLBs are on the
 game bucket at `Assets/world/packs/pizzadoggy_psx_mega_pack/<category>/<name>.glb` (pack names kept; textures embedded); the 8
 fake-light cards + the loose textures folder + the licence PDF are pack source in `dirtymondo:source/Assets/world/packs/pizzadoggy_psx_mega_pack/`.
-NOT wired into any room yet. MODEL_LIST §12b = the inventory, the licence rules (no AI use of any kind, no standalone
+Ten Meshy props swapped to it the same day (MODEL_LIST §12b table; catalogue `base: 'psxmp'`, _MISC_GLB `psxmp/...` via the
+sprites.js EW_ASSET_MOVES alias `Assets/misc/psxmp/`; facings measured from vertices, never renders). MODEL_LIST §12b = the inventory, the licence rules (no AI use of any kind, no standalone
 redistribution, never in the repo) and the Meshy / code swap candidates by name. Credited in data.js EW_CREDITS.

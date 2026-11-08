@@ -222,7 +222,7 @@ const KIT = H.assets.models;
 const BASES = {
     misc: CDN + 'Assets/misc/', weapons: CDN + 'Assets/weapons/', rt: CDN + 'Assets/foilage/retrotreepack/GLB/',
     ocean: CDN + 'Assets/oceanic/', animals: CDN + 'Assets/animals/', instruments: CDN + 'Assets/instruments/',
-    traps: CDN + 'Assets/traps/', chess: CDN + 'Assets/chess/',
+    traps: CDN + 'Assets/traps/', chess: CDN + 'Assets/chess/', psxmp: CDN + 'Assets/world/packs/pizzadoggy_psx_mega_pack/',
 };
 const R3 = read('three-renderer.js');
 const XMAS_FILE = (R3.match(/var _XMAS_FILE = '([^']+)'/) || [, 'Christmas.dae'])[1];

@@ -61,6 +61,7 @@ const EW_ASSET_MOVES = [
   ['Assets/decor/', 'Assets/world/props/meshy_decor/'],
   ['Assets/props/', 'Assets/world/props/misc/'],
   ['Assets/misc/ebd_', 'Assets/world/packs/elbolilloduro/ebd_'],
+  ['Assets/misc/psxmp/', 'Assets/world/packs/pizzadoggy_psx_mega_pack/'],   // THE PSX MEGA PACK (2026-11-08): three-renderer _MISC_GLB rows 'psxmp/<category>/<file>' (catalogue rows use base 'psxmp')
   ['Assets/misc/Castles_and', 'Assets/world/packs/mcsteeg_castles/Castles_and'],
   ['Assets/misc/wings/', 'Assets/characters/gear/wings/'],
   ['Assets/misc/', 'Assets/world/props/meshy/'],
