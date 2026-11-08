@@ -28635,13 +28635,13 @@ const DOOR_HQ = {
         papers_b:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb',        h: 0.10, foot: 0 },
         notebook_paper:    { file: 'Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb',       h: 0.06, foot: 0 },
         paper_sheet:       { file: 'Meshy_AI_a_piece_of_office_paper_0903105947_texture.glb',         span: 0.30, foot: 0 },
-        pencil:            { file: 'Meshy_AI_a_no_2_pencil_0903110156_texture.glb',                   span: 0.19, foot: 0 },
-        pen:               { file: 'Meshy_AI_an_office_pen_0903110146_texture.glb',                   span: 0.15, foot: 0 },
+        pencil:            { file: 'small_props/pencil_mp_1.glb', base: 'psxmp',                   span: 0.19, foot: 0, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_no_2_pencil_0903110156_texture.glb
+        pen:               { file: 'small_props/pen_mp_1.glb', base: 'psxmp',                   span: 0.15, foot: 0, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_an_office_pen_0903110146_texture.glb (pack pen lies along Z, the Meshy one along X)
         desk_fan:          { file: 'Meshy_AI_a_circular_desk_fan_0903105635_texture.glb',             h: 0.38, foot: 0 },
         desk_lamp:         { file: 'ebd_house_desk_lamp.glb', base: 'misc',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
         table_lamp:        { file: 'ebd_trailerpark_table_lamp.glb', base: 'misc',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
-        house_key:         { file: 'Meshy_AI_a_house_key_0903110053_texture.glb',                     span: 0.07, foot: 0 },
-        key:               { file: 'Meshy_AI_a_key_0903110102_texture.glb',                           span: 0.08, foot: 0 },
+        house_key:         { file: 'items_and_weapons/key_mp_4.glb', base: 'psxmp',                     span: 0.07, foot: 0 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_house_key_0903110053_texture.glb
+        key:               { file: 'items_and_weapons/key_mp_1.glb', base: 'psxmp',                           span: 0.08, foot: 0 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_key_0903110102_texture.glb
         car_key:           { file: 'Meshy_AI_car_key_0903110043_texture.glb',                         span: 0.08, foot: 0 },
         /* the "wedge" desk kit (HQ plan 2.2, re-homed 2026-09-03): the
            dispatch desk STAYS procedural by the user's decision, so these
@@ -28678,7 +28678,7 @@ const DOOR_HQ = {
         round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
         office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
         locker:            { file: 'ebd_mine_locker.glb', base: 'misc',                        h: 1.85, foot: 0.40, wall: true },
-        cardboard_box:     { file: 'Meshy_AI_a_cardboard_box_0903105957_texture.glb',                 h: 0.42, foot: 0.30 },
+        cardboard_box:     { file: 'large_props/cardboard_box_2.glb', base: 'psxmp',                 h: 0.42, foot: 0.30 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_cardboard_box_0903105957_texture.glb
         cardboard_boxes:   { file: 'Meshy_AI_cardboard_boxes_0903105142_texture.glb',                 h: 0.95, foot: 0.55 },
         /* ── fixtures ── */
         globe_lamp:        { file: 'Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb',           h: 1.95, foot: 0.40, glow: { y: 1.70, size: 1.6, color: 0xfff1d6 } },
@@ -28755,7 +28755,7 @@ const DOOR_HQ = {
            / braziers, and THE TELESCOPE (the observatory's way — DOOR_HQ.ways.telescope reads `brass_telescope`). Sizes and
            facings are TARGETS (the files are unmeasured — a wrong height is `h` / `span`, a backward front is `rot` /
            `front`); a `rect` row is placed at face 0 / 180 only (the pews); the sarcophagi and booths keep a disc. */
-        library_shelf:      { file: 'Meshy_AI_a_library_shelf_0917035552_texture.glb',                base: 'misc', h: 2.6, foot: 0.6, block: true, wall: true },
+        library_shelf:      { file: 'furniture/shelf_mp_4.glb',                base: 'psxmp', h: 2.6, foot: 0.6, block: true, wall: true },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_library_shelf_0917035552_texture.glb (back panel at -Z, open +Z: no turn)
         library_shelf_full: { file: 'Meshy_AI_library_shelf_full_of_books_0917035645_texture.glb',    base: 'misc', h: 2.6, foot: 0.9, block: true },
         ancient_walkway:    { file: 'Meshy_AI_ancient_walkway_0917035609_texture.glb',                base: 'misc', span: 6.0, foot: 0 },
         angel_statue:       { file: 'Meshy_AI_angel_statue_0917035332_texture.glb',                   base: 'misc', h: 2.8, foot: 0.5, block: true },
@@ -28800,8 +28800,8 @@ const DOOR_HQ = {
         fighter_jet:        { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',            base: 'weapons', span: 15.5, foot: 4.5, rect: { hw: 6.8, hd: 7.8 }, block: true, turn: 180 },              // the F22 on RUNWAY 33 (the same file the Air Support spell flies — MODEL_INDEX §5, the same-thing rule)
         yellow_pole:        { file: 'Meshy_AI_a_yellow_pole_0922010159_texture.glb',               base: 'misc', h: 3.3,  foot: 0.12, block: true },                                  // the traffic light's pole on the board (_buildTrafficLight3D, GLB-first); a bollard of its own in a room
         hospital_bed:       { file: 'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              base: 'misc', span: 2.1, foot: 0.75, rect: { hw: 0.5, hd: 1.05 }, block: true, seat: 0.6 },                // Room 1111's ward (the cots elsewhere stay cots)
-        dorm_bed:           { file: 'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  base: 'misc', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5 },                  // the keep's guardroom
-        couples_bed:        { file: 'Meshy_AI_a_couples_bed_0922010443_texture.glb',               base: 'misc', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5 },                // the bunker's loft
+        dorm_bed:           { file: 'furniture/bed_5.glb',                  base: 'psxmp', span: 2.0, foot: 0.7, rect: { hw: 0.5, hd: 1.0 }, block: true, seat: 0.5, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_dorm_bed_0922010217_texture.glb (wooden single bed; head +X -> turn 90)                  // the keep's guardroom
+        couples_bed:        { file: 'furniture/bed_4.glb',               base: 'psxmp', span: 2.1, foot: 1.0, rect: { hw: 0.85, hd: 1.05 }, block: true, seat: 0.5, turn: 90 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_a_couples_bed_0922010443_texture.glb; the pack bed's head is +X, turn 90 puts it at -Z like the Meshy bed                // the bunker's loft
         royal_bed:          { file: 'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 base: 'misc', span: 2.4, foot: 1.1, rect: { hw: 1.0, hd: 1.2 }, block: true, seat: 0.6 },                  // THE SOLAR in the keep
         camping_tent:       { file: 'ebd_survival_camping_tent.glb',              base: 'misc', span: 3.2, foot: 1.5, rect: { hw: 1.6, hd: 1.4 }, block: true },                             // the grove's camp
         carnival_tent:      { file: 'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             base: 'misc', span: 6.0, foot: 2.8, rect: { hw: 3.0, hd: 3.0 }, block: true },                             // the grove's lawn (the carnival room's own canvas is the bigtop ceiling)
@@ -28841,7 +28841,7 @@ const DOOR_HQ = {
         babel_house_stair: { file: 'meshy_babel_house_stair.glb', base: 'misc', span: 7.0, foot: 2.8, rect: { hw: 3.0, hd: 3.5 }, block: true },
         babel_house_yard:  { file: 'meshy_babel_house_yard.glb', base: 'misc', span: 8.5, foot: 3.0, rect: { hw: 3.35, hd: 4.25 }, block: true },
         babel_house_row:   { file: 'meshy_babel_house_row.glb', base: 'misc', span: 12.4, foot: 2.5, rect: { hw: 6.2, hd: 2.55 }, block: true },
-        cinder_block:      { file: 'Meshy_AI_cinder_block_0917064959_texture.glb',                base: 'misc', span: 0.4, foot: 0.2 },
+        cinder_block:      { file: 'small_props/concrete_block_1.glb',                base: 'psxmp', span: 0.4, foot: 0.2 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_cinder_block_0917064959_texture.glb
         fire_hydrant:      { file: 'Meshy_AI_fire_hydrant_0917064858_texture.glb',                base: 'misc', h: 0.8, foot: 0.22, block: true },
         traffic_barrel:    { file: 'Meshy_AI_traffic_barrel_0917064936_texture.glb',              base: 'misc', h: 1.0, foot: 0.3 },
         traffic_cone:      { file: 'Meshy_AI_traffic_cone_0917064925_texture.glb',                base: 'misc', h: 0.7, foot: 0.18 },
@@ -29170,7 +29170,7 @@ const DOOR_HQ = {
         /* ── the retired procedurals (now real models) ── */
         hook_rail:         { file: 'Meshy_AI_coat_hook_rail_0910054259_texture.glb',                span: 0.60, foot: 0, wall: true, mount: 1.75 },
         hook_rail_long:    { file: 'Meshy_AI_hook_rail_0910054853_texture.glb',                     span: 1.10, foot: 0, wall: true, mount: 1.80 },
-        vent_grille:       { file: 'Meshy_AI_vent_0910054228_texture.glb',                          span: 0.45, foot: 0, wall: true, mount: 2.35 },
+        vent_grille:       { file: 'electronics_and_misc/vent_1.glb', base: 'psxmp',                          span: 0.45, foot: 0, wall: true, mount: 2.35 },   // THE PSX MEGA PACK (2026-11-08): was Meshy_AI_vent_0910054228_texture.glb (face +Z)
         floor_drain:       { file: 'Meshy_AI_water_drain_0910054212_texture.glb',                   span: 0.36, foot: 0 },
         rotary_phone:      { file: 'ebd_vhsshop_rotary_phone.glb', base: 'misc',                  span: 0.24, foot: 0 },
         /* ── the cafeteria kit (Room 86, HQ plan 7.4 / 5.6 — the serving
@@ -51825,7 +51825,7 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/world/hq/models/', misc: 'Assets/misc/', weapons: 'Assets/fx/spell_props/', metro: 'Assets/world/packs/elbolilloduro_metro_psx/Models/', xmas: 'Assets/world/packs/elbolilloduro_christmas/models/', ocean: 'Assets/world/packs/ocean/', animals: 'Assets/world/animals/', instruments: 'Assets/world/packs/instruments/', traps: 'Assets/world/packs/traps/', chess: 'Assets/world/packs/chess/', foliage: 'Assets/world/nature/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/world/hq/models/', misc: 'Assets/misc/', weapons: 'Assets/fx/spell_props/', metro: 'Assets/world/packs/elbolilloduro_metro_psx/Models/', xmas: 'Assets/world/packs/elbolilloduro_christmas/models/', ocean: 'Assets/world/packs/ocean/', animals: 'Assets/world/animals/', instruments: 'Assets/world/packs/instruments/', traps: 'Assets/world/packs/traps/', psxmp: 'Assets/world/packs/pizzadoggy_psx_mega_pack/', chess: 'Assets/world/packs/chess/', foliage: 'Assets/world/nature/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
@@ -51855,7 +51855,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : cat.base === 'chess' ? F.chess : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : cat.base === 'psxmp' ? F.psxmp : cat.base === 'chess' ? F.chess : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */

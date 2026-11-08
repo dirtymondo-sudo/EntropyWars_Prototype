@@ -14584,7 +14584,7 @@ const ThreeRenderer = (function () {
         if (hold.grip && !hold.open) { try { seat = _gripFrame(m, bone, hold); } catch (_sf) { seat = null; console.warn('[3D] grip seat failed', _sf); } }   // THE GRIP, THE SEAT
         if (seat) { inner.quaternion.copy(seat.q); inner.position.copy(seat.p); }
         var target = ((hold.h != null ? hold.h : hold.span != null ? hold.span : (cat.h || cat.span)) || 1) * pxm;   // (the door gun: HQ_PORTAL_RULES.gun.span — the board read the catalogue's 0.62 before 2026-11-02)
-        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/fx/spell_props/)
+        var url = (cat.base === 'psxmp') ? _hqModelUrl(cat) : (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/fx/spell_props/)
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g, sc, bb) {
                 g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
@@ -35269,6 +35269,9 @@ const ThreeRenderer = (function () {
        Hill (three-vfx-effects.js "THE TRAPS PACK"). Kill-switch: window.EW_NO_TRAPS_PACK (the rows draw nothing, every spell and the
        Spring Snare keep their own build). */
     var _R2_TRAPS = 'https://cdn.entropywars.net/Assets/world/packs/traps/';
+    /* THE PSX MEGA PACK (2026-11-08, mondo bought it): `base: 'psxmp'` rows load Pizza Doggy's PSX Mega Pack, one GLB per model,
+       `file` = '<pack category>/<pack file>.glb' (MODEL_LIST §12b). Pizza Doggy licence: never feed these files to an AI tool. */
+    var _R2_PSXMP = 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/';
     var _TRAPS_SHEET = 'color_swatches_purple.png';
     function _trapsPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_TRAPS_PACK) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
     function _trapsUrl(name) { return _R2_TRAPS + encodeURIComponent(String(name || '').replace(/\.glb$/i, '') + '.glb'); }
@@ -36168,8 +36171,8 @@ const ThreeRenderer = (function () {
         hot_dog_stand:     'Meshy_AI_a_hot_dog_stand_0922010432_texture.glb',             // the cities' kerbs
         military_tank:     'Meshy_AI_a_military_tank_0922010101_texture.glb',             // Area 51's pens
         hospital_bed:      'Meshy_AI_a_hospital_bed_0922010451_texture.glb',              // Room 1111
-        dorm_bed:          'Meshy_AI_a_dorm_bed_0922010217_texture.glb',                  // the keep's guardroom
-        couples_bed:       'Meshy_AI_a_couples_bed_0922010443_texture.glb',               // the bunker's loft
+        dorm_bed:          'psxmp/furniture/bed_5.glb',                  // the keep's guardroom — THE PSX MEGA PACK (2026-11-08), was Meshy_AI_a_dorm_bed_0922010217_texture.glb (head +X; the catalogue row turns it)
+        couples_bed:       'psxmp/furniture/bed_4.glb',               // the bunker's loft — THE PSX MEGA PACK (2026-11-08), was Meshy_AI_a_couples_bed_0922010443_texture.glb
         royal_bed:         'Meshy_AI_a_royal_bed_0922010438_texture.glb',                 // the solar
         camping_tent:      'ebd_survival_camping_tent.glb',              // the grove's camp
         carnival_tent:     'Meshy_AI_a_carnival_tent_0922010243_texture.glb',             // the grove's lawn
@@ -36193,7 +36196,7 @@ const ThreeRenderer = (function () {
         road_turn:       'Meshy_AI_a_road_turn_quarter_0917065230_texture.glb',
         escalator:       'Meshy_AI_an_escalator_0917064623_texture.glb',        // THE MEZZANINE's escalator (the catalogue row)
         bus_shelter:     'ebd_busstop_bus_shelter.glb',
-        cinder_block:    'Meshy_AI_cinder_block_0917064959_texture.glb',
+        cinder_block:    'psxmp/small_props/concrete_block_1.glb',   // THE PSX MEGA PACK (2026-11-08), was Meshy_AI_cinder_block_0917064959_texture.glb
         fire_hydrant:    'Meshy_AI_fire_hydrant_0917064858_texture.glb',
         storefront:      'Meshy_AI_storefront_0917064551_texture.glb',          // a street lot's ground-floor shopfront
         storefront_unit: 'Meshy_AI_storefront_unit_0917064533_texture.glb',     // the mall's store unit front
@@ -36296,7 +36299,7 @@ const ThreeRenderer = (function () {
            UNMEASURED (the CDN is unreachable from the sandbox) — the building reads
            them through DOOR_HQ.catalogue (base: 'misc'), a wrong front is the row's
            `rot` / `front`, a wrong height its `h` / `span`. */
-        library_shelf:      'Meshy_AI_a_library_shelf_0917035552_texture.glb',
+        library_shelf:      'psxmp/furniture/shelf_mp_4.glb',   // THE PSX MEGA PACK (2026-11-08), was Meshy_AI_a_library_shelf_0917035552_texture.glb
         ancient_walkway:    'Meshy_AI_ancient_walkway_0917035609_texture.glb',
         angel_statue:       'Meshy_AI_angel_statue_0917035332_texture.glb',
         brazier:            'Meshy_AI_brazier_0917035429_texture.glb',
@@ -62612,6 +62615,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'chess') return _R2_CHESS + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHESS SET (2026-10-29): a piece (or a game) of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
+        if (entry.base === 'psxmp') return _R2_PSXMP + entry.file.split('/').map(encodeURIComponent).join('/');   // THE PSX MEGA PACK (2026-11-08)
         if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
         if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
         if (entry.base === 'instruments') return _R2_INSTRUMENTS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE INSTRUMENTS (2026-10-27)

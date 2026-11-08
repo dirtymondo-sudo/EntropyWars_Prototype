@@ -26168,8 +26168,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!leaf || !leaf.cat || !leaf.cat.file || !D || !D.assets || !D.assets.models) return null;
         var key = 'door:' + leaf.key;
         if (!_WPN_MODELS[key]) {
-            var base = (leaf.cat.base === 'misc') ? 'https://cdn.entropywars.net/Assets/misc/' : D.assets.models;
-            _WPN_MODELS[key] = { url: base + encodeURIComponent(leaf.cat.file), axis: 'y',
+            var base = (leaf.cat.base === 'misc') ? 'https://cdn.entropywars.net/Assets/misc/' : (leaf.cat.base === 'psxmp') ? 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/' : D.assets.models;
+            _WPN_MODELS[key] = { url: base + leaf.cat.file.split('/').map(encodeURIComponent).join('/'), axis: 'y',
                                  tweak: leaf.cat.yaw ? { ry: leaf.cat.yaw * Math.PI / 180 } : null, door: leaf.cat };
         }
         return key;
@@ -45267,8 +45267,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!cat || !cat.file || !D.assets || !D.assets.models) return null;
         var key = 'cat:' + catKey;
         if (!_WPN_MODELS[key]) {
-            var base = (cat.base === 'misc') ? 'https://cdn.entropywars.net/Assets/misc/' : D.assets.models;
-            _WPN_MODELS[key] = { url: base + encodeURIComponent(cat.file), axis: axis || 'z', door: cat };
+            var base = (cat.base === 'misc') ? 'https://cdn.entropywars.net/Assets/misc/' : (cat.base === 'psxmp') ? 'https://cdn.entropywars.net/Assets/world/packs/pizzadoggy_psx_mega_pack/' : D.assets.models;   // THE PSX MEGA PACK (2026-11-08)
+            _WPN_MODELS[key] = { url: base + cat.file.split('/').map(encodeURIComponent).join('/'), axis: axis || 'z', door: cat };
         }
         return key;
     }

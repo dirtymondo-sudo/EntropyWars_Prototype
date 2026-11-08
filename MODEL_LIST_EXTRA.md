@@ -388,34 +388,31 @@ carry, plus 30 extra surface sheets) is pack SOURCE, kept private in `dirtymondo
 light; the game uses real lights (VISUAL RULES), so they don't fit. The older contents list also named `shotgun_1`, `sofa_2*`
 and the padlock knobs; this version of the pack has no such models (only a `shotgun_1.png` texture), so there was nothing to add.
 
-**Swap candidates (mondo's call; nothing swapped):** pack files whose NAME matches a Meshy model or a code stand-in in the game. The
-match is by name only: the licence forbids feeding the pack to AI, so no thread looked at renders of these; mondo picks by eye.
+**SWAPPED 2026-11-08 (mondo: "yeah sure" to the swap list).** Ten Meshy models replaced by the pack, everywhere they draw
+(DOOR_HQ.catalogue rows with `base: 'psxmp'`, the renderer's _MISC_GLB rows as `psxmp/...` through the sprites.js EW_ASSET_MOVES
+alias, the spell finishers that read the catalogue). Each row keeps its size (`h` / `span`, `foot`, `rect`, `wall`, `mount`). The
+facing was MEASURED from each model's vertices, never from a picture (the licence): the placer wants the front on +Z.
 
-| in the game now | made by | pack candidate(s) under `Assets/world/packs/pizzadoggy_psx_mega_pack/` |
-| --- | --- | --- |
-| `cardboard_box`, `cardboard_boxes` | Meshy AI | `large_props/cardboard_box_1`, `_2`, `_2_1` |
-| `cinder_block` | Meshy AI | `small_props/concrete_block_1` |
-| `clock` | Meshy AI | `small_props/clock_1`, `clock_2` |
-| `couples_bed`, `dorm_bed` | Meshy AI | `furniture/bed_1` ... `bed_5_4`, `bed_1_frame`, `old_mattress_mp_1` |
-| `coffee_table` | Meshy AI | `furniture/coffee_table_1` ... `_1_4` (square, not round) |
-| `folding_chair`, `cafeteria_chair`, `molded_chair` | Meshy AI | `furniture/chair_mp_1` ... `chair_mp_5_4` |
-| `curved_couch`, `curved_office_couch` | Meshy AI | `furniture/sofa_1` / `_3` / `_4` / `_5` (straight, not curved) |
-| `library_shelf`, `library_shelf_full` | Meshy AI | `furniture/shelf_mp_2` ... `shelf_mp_7_4`, `small_props/book_mp_1` ... `_10` |
-| `key`, `house_key` | Meshy AI | `items_and_weapons/key_mp_1` ... `key_mp_4_2` |
-| `pen`, `pencil`, `notebook_paper` | Meshy AI | `small_props/pen_mp_1`, `pencil_mp_1`, `notebook_1` |
-| `potted_plant`, `office_plant` | Meshy AI | `small_props/planter_pot_mp_1_full`, `potted_cactus_mp_1` |
-| `pipe_run` | Meshy AI | `large_props/pipe_1`, `_corner`, `_cross`, `_short` |
-| `vent_grille` | Meshy AI | `electronics_and_misc/vent_1` / `_2` / `_3` / `vent_mp_1` |
-| `vhs_tape` | Meshy AI | `small_props/vhs_tape_1` |
-| `wooden_cross`, `cross` (spell prop) | Meshy AI | `small_props/cross_1`, `cross_mp_2` |
-| `pistol` (spell prop + `lone_gun`) | Meshy AI | `items_and_weapons/pistol_mp_1` ... `_1_3` |
-| `desk_fan` | Meshy AI | none (the pack's fans are ceiling fans) |
-| door leaves (`leaf_office`, `leaf_hollow_core`, `leaf_shabby_wood`, ...) | Meshy AI | `modular_structures/door_1_loose` ... `door_mp_6_loose` |
-| `keypad` | code | `small_props/keypad_1`, `keypad_2` |
-| `cell_bars` | code | `modular_structures/bars_metal_1`, `_2`, `window_metal_bars_single` / `_double` |
-| `monitor_stack` | code | `electronics_and_misc/pc_monitor_mp_1`, `monitoring_screen_mp_1` |
-| `lost_shelf` | code | `furniture/shelf_mp_*` |
-| `world_clocks` | code | `small_props/clock_1`, `clock_2` |
-| `planter` (D17) | code | `small_props/planter_pot_mp_1_full` (a pot, not a long concrete planter) |
-| `false_window` | code | `modular_structures/window_2_single` ... (a whole wall piece with the window) |
-| `shag_rug` | code | `large_props/carpet_mp_1` |
+| key | Meshy file it replaced | pack file | facing |
+| --- | --- | --- | --- |
+| `cardboard_box` (+ the android finisher's crate) | `Meshy_AI_a_cardboard_box_0903105957_texture.glb` | `large_props/cardboard_box_2.glb` | a cube |
+| `cinder_block` | `Meshy_AI_cinder_block_0917064959_texture.glb` | `small_props/concrete_block_1.glb` | long axis X, like the Meshy one |
+| `couples_bed` | `Meshy_AI_a_couples_bed_0922010443_texture.glb` | `furniture/bed_4.glb` (wooden double) | head at +X: `turn: 90` puts it at −Z like the Meshy bed |
+| `dorm_bed` (+ the spell bed) | `Meshy_AI_a_dorm_bed_0922010217_texture.glb` | `furniture/bed_5.glb` (wooden single) | same, `turn: 90` (the spell turns its bed by its long side itself) |
+| `library_shelf` | `Meshy_AI_a_library_shelf_0917035552_texture.glb` | `furniture/shelf_mp_4.glb` (2.19 m wooden shelf) | back panel at −Z, open +Z: no turn |
+| `key` | `Meshy_AI_a_key_0903110102_texture.glb` | `items_and_weapons/key_mp_1.glb` | lies flat |
+| `house_key` | `Meshy_AI_a_house_key_0903110053_texture.glb` | `items_and_weapons/key_mp_4.glb` | lies flat (the Meshy key stood on its edge) |
+| `pen` | `Meshy_AI_an_office_pen_0903110146_texture.glb` | `small_props/pen_mp_1.glb` | along Z: `turn: 90` lays it along X like the Meshy pen |
+| `pencil` | `Meshy_AI_a_no_2_pencil_0903110156_texture.glb` | `small_props/pencil_mp_1.glb` | same, `turn: 90` |
+| `vent_grille` | `Meshy_AI_vent_0910054228_texture.glb` | `electronics_and_misc/vent_1.glb` | flat, its face on +Z |
+
+The Meshy files stay on R2 (§13), nothing deleted. **Not swapped, and why:** `cardboard_boxes` (a stack; the pack has single boxes),
+`folding_chair` / `cafeteria_chair` / `molded_chair` (every pack chair is wooden; ours are plastic / metal), `potted_plant` /
+`office_plant` (the pack's pots are 0.2 m cactus pots), `coffee_table` (round; the pack's are square), `curved_couch` /
+`curved_office_couch` (the pack sofas are straight), `library_shelf_full` (the pack shelves are empty), `pipe_run` (one pipe, not a
+run), `wooden_cross` + the `cross` spell prop (the pack crosses lie flat and a catalogue row can only turn about the vertical), the
+`pistol` spell prop + `lone_gun` (a spell prop is aimed along its own axis: needs an eye check), `vhs_tape` (kept: the find_tape tape
+tilts on the shelf by its Meshy shape), the Meshy door leaves (each is fitted to its opening: needs an eye check), and the code
+stand-ins (`keypad` carries the sticky-note code, `monitor_stack` its live feeds, `world_clocks` its city clocks, `cell_bars`,
+`lost_shelf`, `shag_rug`, `planter`, `false_window` are built to their rooms; a single pack model would drop those parts). Any of
+these can still go: mondo names it and how it should look.
