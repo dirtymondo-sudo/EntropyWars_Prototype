@@ -63031,7 +63031,7 @@
             if (!low) col = r.ciLo > 0.5 ? 'var(--green)' : (r.ciHi < 0.5 ? 'var(--red)' : 'var(--gold)');
             const ci = low ? '' : `<span style="color:var(--muted);font-weight:400">±${Math.round(r.ciHalf * 100)}</span>`;
             const per = (v, n) => n > 0 ? Math.round(v / n) : 0;
-            let detail = '', tip = `${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}`;
+            let detail = '', tip = !r.games ? 'set off by the board or the weather (no unit behind it): count only, no win rate' : `${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}`;
             if (_balanceTab === 'statusUse') {
                 // 2026-11-08: rd = unit-rounds worn per landing (THE FULL ROUND), t = turns it took (turn-skip statuses)
                 // rd = round ends it was still on, per FRESH landing (top-ups of a status already on the unit don't count as new)
@@ -63055,7 +63055,7 @@
             }
             return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${_balEsc(tip)}">
                 <span class="bal-row-name">${_balEsc(r.name)}</span>
-                <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${pct}% ${ci}</span>
+                <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${r.games ? `${pct}% ${ci}` : "—"}</span>
                 <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
                 <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.games}g</span>
                 <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:118px;text-align:right">${detail}</span>
