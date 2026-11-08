@@ -2988,6 +2988,8 @@
             if (!(cor > 0)) {   // Balance Lab: a new chemical fire (not a feed), credited to whoever's status it carries on
                 const _cfSrc = (u._statusSrc && u._statusSrc.corroded != null && typeof unitFromId === 'function') ? unitFromId(u._statusSrc.corroded) : null;
                 _balReactUse('chemicalFire', (_cfSrc && isEnemyUnit(_cfSrc, u)) ? _cfSrc : null);
+                // the Corroded it leaves is a fresh landing (set straight on the unit, not through applyStatusPayload)
+                if (_balanceSimMode) _balStatusEvt('corroded', 'applied', (_cfSrc && isEnemyUnit(_cfSrc, u)) ? _cfSrc : null, u, true);
             }
             if (!quiet) {
                 addLog(cor > 0
@@ -3003,7 +3005,13 @@
             if (!u || !u.status || !(Number(u.status.corroded || 0) > 0)) return false;
             const left = _moveStatusBook(u, ['corroded'], 'poison');
             clearStatus(u, 'corroded');
+            const _hadPoison = Number(u.status.poison || 0) > 0;
             u.status.poison = Math.max(Number(u.status.poison || 0), left);
+            // Balance Lab: the Poison it leaves is a fresh landing when the unit had none (set straight on the unit)
+            if (!_hadPoison && _balanceSimMode) {
+                const _ps = (u._statusSrc && u._statusSrc.poison != null && typeof unitFromId === 'function') ? unitFromId(u._statusSrc.poison) : null;
+                _balStatusEvt('poison', 'applied', (_ps && isEnemyUnit(_ps, u)) ? _ps : null, u, true);
+            }
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
             return true;
         }
@@ -63436,6 +63444,8 @@
                 fxRules: s.fxRules || null,   // THE RULES STAMP: the status / element rules these three tables were recorded under
                 fxBeforeMatches: (s.fxBefore && s.fxBefore.fxMatches) || 0,
                 reactions: _balReactionsOut(s.effectUse),
+                // reactions the game has that never fired in these matches (a dead rule, or the CPU never sets it up)
+                reactionsNeverFired: Object.keys(_BAL_FX_LABELS).filter(k => /^react_/.test(k) && !((s.effectUse || {})[k] || {}).n).map(k => k.slice(6)),
                 statuses: _balFxAnalysis(s.statusUse, b => {
                     const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
                     return {

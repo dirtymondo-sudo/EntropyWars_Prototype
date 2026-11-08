@@ -4828,6 +4828,6 @@ What was stale was the TELEMETRY around it (battle.js BALANCE LAB section):
   cauterise, sonicThaw (with its damage), terrainFreeze, douseTile, lavaStone, iceShatter, iceMelt, lightningWater,
   lightningMetal, wetConducts, forestFire, frostDouseTile, oilFire, bogBurns, crystalShatter, stormConducts, earthSmother,
   natureRegrow, windFans, bleedDrips. Board / weather ones have no unit (count only). Export: `analysis.reactions`
-  (fired, perMatch, games, wr). _douseBurnOnUnit / _washGooOffUnit / _waterShortsOverclock / _thawFrozenUnit take an
+  (fired, perMatch, games, wr) + `analysis.reactionsNeverFired`. _douseBurnOnUnit / _washGooOffUnit / _waterShortsOverclock / _thawFrozenUnit take an
   optional source unit; _soakUnit opts.src.
 - ai.js: the status value table still keyed the old id `soaked` (matched nothing after the rename) -> `wet`; EW_AI_VERSION v4.35.
