@@ -116,6 +116,155 @@ const ThreeVFX = (function () {
         return d;
     }
 
+    /* ── THE RIOT PASS, phase A (2026-11-08, mondo sent Riot's League VFX style guide: "use it to improve the visual
+       clarity and VFX in the game"; plan https://claude.ai/artifact/Y9TyT9NUqMHnyjXYcbmZGQ, approved phase A) ──────────
+       Four of the guide's rules, applied in spawn() to every particle, with nothing new painted:
+         1 IMPORTANCE (p.10-11): the spell that spawned a particle has a weight (three-vfx-effects.js SPELL STAGING:
+           light · standard · heavy · ultimate). fire() / projectile() / beam() / aoe() / fireBoltDirect() note it, every
+           _fxDelay / ticker carries it, and spawn() reads it here (ThreeVFXEffects._rvCtxNow). It scales the billboard's
+           size, opacity, saturation and value, and caps how long it lingers. Ground decals (rings that show an area,
+           scorch) keep their size: the area must stay true. The staging beats are tier-scaled already (no second scale).
+         2 PRIMARY vs SECONDARY (p.6-7): smoke, soft smoke, dust, mists, wisps, embers and sparkles are atmosphere —
+           opacity capped, saturation down ~30 %, a little darker, and pushed back in depth so a body in front of them
+           stays clear (_rvBack: along the camera ray with a matching scale, so the screen picture is unchanged; never
+           further than the particle stands above its floor, so it never sinks into the ground).
+         3 VALUE (p.13-17): a flash takes the spell's own light colour (the stage palette's `flash`) and never tops 92 %;
+           overlapping flashes share one light budget per spot (_batchFlush), so a stack can't burn to flat white.
+         4 TIMING (p.32-36): size eases out (a fast burst, a slow settle), opacity holds and then eases away (a flash pops
+           and drops fast), and the colour slides darker and greyer as it fades (fire: yellow, orange, red).
+       Choreographed or gameplay particles are left alone: kept, zone, decor, trails, seek / orbit / descent paths,
+       onComplete / floorAt hooks, gore, beams and quads. Off: window.EW_NO_RIOT_VFX = true (or localStorage
+       ew_riotvfx = 'off') — the next spawn is the old look. */
+    var _RV_W = {
+        light:    { sz: 0.55, op: 0.82, sat: 0.78, val: 0.88, linger: 600 },
+        standard: { sz: 0.80, op: 0.92, sat: 0.90, val: 0.95, linger: 900 },
+        heavy:    { sz: 1.05, op: 1.00, sat: 1.00, val: 1.00, linger: 1300 },
+        ultimate: { sz: 1.35, op: 1.00, sat: 1.12, val: 1.00, linger: 1800 },
+    };
+    var _RV_SEC_BIG = { 'smoke': 1, 'smoke-soft': 1, 'dust-puff': 1, 'poison-mist': 1, 'void-mist': 1, 'frost-mist': 1, 'shadow-wisp': 1 };
+    var _RV_SEC_SMALL = { 'ember': 1, 'sparkle': 1, 'divine-sparkle': 1 };
+    var _RV_SEC_OP = 0.35, _RV_SEC_OP_SMALL = 0.6;
+    var _RV_FLASH = { 'flash': 1, 'muzzle-flash': 1, 'holy-light': 1, 'flame-hot': 1 };
+    var _RV_FIRE = { 'flame': 1, 'flame-hot': 1, 'fire-glow': 1, 'ember': 1, 'explosion-orange': 1, 'meteor': 1 };
+    var _RV_MARKS = { 'scorch': 1, 'inkblot': 1, 'spiderweb-1': 1 };   // ground marks keep their old curves
+    var _RV_VALUE_MAX = 0.92;
+    var _RV_STACK = 1.15;            // the light budget of one spot: overlapping flashes share it
+    var _RV_HOLD = 0.2;              // opacity holds this share of the life before it eases away
+    var _rvLs = null;
+    function _rvOn() {
+        if (typeof window === 'undefined') return false;
+        if (window.EW_NO_RIOT_VFX) return false;
+        if (_rvLs === null) { _rvLs = 'on'; try { if (localStorage.getItem('ew_riotvfx') === 'off') _rvLs = 'off'; } catch (e) {} }
+        return _rvLs !== 'off';
+    }
+    function _rvCtx() {
+        var E = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
+        if (!E || typeof E._rvCtxNow !== 'function') return null;
+        try { return E._rvCtxNow(); } catch (e) { return null; }
+    }
+    function _rvFloor(px, py, fallback) {
+        var E = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
+        if (E && typeof E._rvFloorAt === 'function') {
+            try { var z = E._rvFloorAt(px, py); if (typeof z === 'number' && isFinite(z)) return z; } catch (e) {}
+        }
+        return fallback;
+    }
+    var _rvLightCache = {};
+    /* the spell's light colour (a stage palette hex) at full value, hue kept */
+    function _rvLight(hex) {
+        if (hex == null) return null;
+        var key = String(hex);
+        if (_rvLightCache[key] !== undefined) return _rvLightCache[key];
+        var t = _normTint(hex), out = null;
+        if (t) { var mx = Math.max(t.r, t.g, t.b) || 1; out = { r: t.r / mx, g: t.g / mx, b: t.b / mx }; }
+        _rvLightCache[key] = out;
+        return out;
+    }
+    function _rvGrade(c, sat, val) {
+        var l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+        c.r = Math.max(0, l + (c.r - l) * sat) * val;
+        c.g = Math.max(0, l + (c.g - l) * sat) * val;
+        c.b = Math.max(0, l + (c.b - l) * sat) * val;
+    }
+    /* spawn()'s hook: the particle is built, before its first write */
+    function _rvApply(p, opts, sprite, poolType) {
+        p._rvCol = null; p._rvEase = 0; p._rvFade = 0; p._rvBack = 0; p._rvWhite = false;
+        if (!_rvOn() || poolType === 'glob' || sprite.indexOf('blood') === 0) return;
+        if (opts.keep || opts._zone || opts.decor || opts.onComplete || opts.trail || opts.descent ||
+            opts.seek || opts.orbit || opts.floorAt || opts.onLand) return;
+        if (poolType === 'quad' || p._beamYawDeg != null || p._trackHeading || p._stretchVel) return;
+        var world = poolType === 'world';
+        if (world && _RV_MARKS[sprite]) return;
+        var ctx = _rvCtx();
+        var W = ctx ? _RV_W[ctx.w] : null;
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
+        var flash = !world && !!_RV_FLASH[sprite];
+        var big = !world && !!_RV_SEC_BIG[sprite], small = !world && !!_RV_SEC_SMALL[sprite];
+        /* 1 IMPORTANCE: billboards only (a ground ring's size is the area), once (the staging beats are tier-scaled) */
+        if (W && !world && !ctx.staged) {
+            var f = W.sz;
+            if (f > 1) { var s0 = Math.max(p.size0, p.size1); if (s0 > ts) f = 1 + (f - 1) * Math.max(0, (2 * ts - s0) / ts); }
+            p.size0 *= f; p.size1 *= f;
+            p.opacity0 = Math.min(1, p.opacity0 * W.op); p.opacity1 = Math.min(1, p.opacity1 * W.op);
+        }
+        if (W && !world && p.ml > W.linger) p.ml = W.linger;
+        /* 2 ROLES: the atmosphere steps back */
+        if (big || small) {
+            var cap = big ? _RV_SEC_OP : _RV_SEC_OP_SMALL;
+            if (p.opacity0 > cap) p.opacity0 = cap;
+            if (p.opacity1 > cap) p.opacity1 = cap;
+            p._rvBack = 1;
+            p._rvFloor = _rvFloor(p.x, p.y, p.z - ts * 0.25);
+        }
+        /* the colour multiplier the writers read (_pColor); a wave's frames switch atlas shapes, so it keeps the old pick */
+        if (!p._animFrames) {
+            var src = p._tint || ((_gradientDefs[sprite] || _imageDefs[sprite]) ? _RV_WHITE : p._color);
+            var c = { r: src.r, g: src.g, b: src.b };
+            /* 3 VALUE: a flash takes the spell's light, and its brightest channel stays under 92 % */
+            if (flash) {
+                var lt = (!p._tint && ctx) ? _rvLight(ctx.light) : null;
+                if (lt) { c.r = lt.r; c.g = lt.g; c.b = lt.b; }
+                var mx = Math.max(c.r, c.g, c.b);
+                if (mx > _RV_VALUE_MAX) { var k = _RV_VALUE_MAX / mx; c.r *= k; c.g *= k; c.b *= k; }
+                p._rvWhite = true;
+            }
+            if (W && !world) _rvGrade(c, W.sat, W.val);
+            if (big) _rvGrade(c, 0.7, 0.85);
+            else if (small) _rvGrade(c, 0.7, 0.9);
+            p._rvCol = c;
+            p._rvFade = _RV_FIRE[sprite] ? 2 : 1;
+        }
+        /* 4 TIMING: eased curves (an explicit sizeEaseOut / opHold keeps its own numbers) */
+        p._rvEase = flash ? 2 : 1;
+        if (!(opts.sizeEaseOut > 0)) p._szPow = 2;
+        if (!flash && !(opts.opHold > 0)) p._opHold = _RV_HOLD;
+    }
+    var _RV_WHITE = { r: 1, g: 1, b: 1 };
+    /* the colour a writer gives a particle at t: its graded multiplier, sliding darker + greyer (fire: redder) in the outro */
+    var _pcTmp = { r: 1, g: 1, b: 1 };
+    function _pColor(p, t) {
+        var c = p._rvCol;
+        if (!c) {
+            if (p._tint) return p._tint;
+            if (_gradientDefs[p.sprite] || _imageDefs[p.sprite]) return _RV_WHITE;
+            return p._color;
+        }
+        if (!p._rvFade || t <= 0.45) return c;
+        var k = (t - 0.45) / 0.55; k *= k;
+        var l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b, gr = 0.35 * k, d = 1 - 0.4 * k;
+        _pcTmp.r = (c.r + (l - c.r) * gr) * d;
+        _pcTmp.g = (c.g + (l - c.g) * gr) * d;
+        _pcTmp.b = (c.b + (l - c.b) * gr) * d;
+        if (p._rvFade === 2) { _pcTmp.g *= 1 - 0.4 * k; _pcTmp.b *= 1 - 0.55 * k; }
+        return _pcTmp;
+    }
+    /* how far (vfx px) a secondary particle steps back from the camera now: up to 0.3 tile, never past its own floor */
+    function _rvBackOf(p) {
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
+        var h = p.z - p._rvFloor - ts * 0.06;
+        return h > 0 ? Math.min(ts * 0.3, h) : 0;
+    }
+
     var _spriteMap = {
 
         'ember':             { r: 1.00, g: 0.78, b: 0.31, blend: 'add' },
@@ -1776,6 +1925,8 @@ const ThreeVFX = (function () {
     var _bCamQ = null, _bCamP = null, _bFwd = null, _bRight = null, _bUp = null, _bInv = null, _bPQ = null;
     var _BATCH_CAP = { s: MAX_PARTICLES, w: MAX_WORLD_QUADS, q: MAX_QUAD_BILLBOARDS };
     var _BATCH_ORDER = { s: 100, w: 101, q: 102 };
+    var _bPersp = true;
+    var _rvCells = null, _rvWl = [];   // THE RIOT PASS: the flashes' light budget per spot, rebuilt each flush
 
     function _batchWanted() {
         if (typeof window === 'undefined' || typeof THREE === 'undefined' || !THREE.InstancedMesh || !THREE.InstancedBufferAttribute) return false;
@@ -1845,11 +1996,8 @@ const ThreeVFX = (function () {
     }
 
     function _batchTint(p, arr, i3) {
-        var r, gg, b;
-        if (p._tint) { r = p._tint.r; gg = p._tint.g; b = p._tint.b; }
-        else if (_gradientDefs[p.sprite] || _imageDefs[p.sprite]) { r = 1; gg = 1; b = 1; }
-        else { r = p._color.r; gg = p._color.g; b = p._color.b; }
-        arr[i3] = r; arr[i3 + 1] = gg; arr[i3 + 2] = b;
+        var c = _pColor(p, p._bT);
+        arr[i3] = c.r; arr[i3 + 1] = c.g; arr[i3 + 2] = c.b;
     }
 
     /* one particle's local matrix → the group's instanceMatrix at slot i (the
@@ -1857,7 +2005,7 @@ const ThreeVFX = (function () {
     function _batchPose(p, t, arr, i16) {
         var w = _vfxToWorld(p.x, p.y, p.z), e;
         if (p.poolType === 'sprite') {
-            var sz = _lerp(p.size0, p.size1, t), sx = sz, sy = sz, rot = 0, cx = 0.5;
+            var sz = _lerp(p.size0, p.size1, p._rvEase ? _szT(p, t) : t), sx = sz, sy = sz, rot = 0, cx = 0.5;
             var vs = false;
             if (p._velSpark && !_craftOff()) {
                 var sxv = p.vx * _bRight.x + p.vz * _bRight.y + p.vy * _bRight.z;
@@ -1873,9 +2021,21 @@ const ThreeVFX = (function () {
                 }
             }
             if (!vs && (p._spriteRot || p._spriteSpin)) rot = (p._spriteRot + p._spriteSpin * (p.life / 1000)) * 0.017453293;
+            var bx = w.x, by = w.y, bz = w.z;
+            /* THE RIOT PASS: an atmosphere particle steps back along the camera ray and grows to match — the same
+               picture on screen, but a body standing in front of it now hides it instead of the other way round */
+            if (p._rvBack && (_bFwd.x || _bFwd.y || _bFwd.z)) {
+                var bk = _rvBackOf(p);
+                if (bk > 0) {
+                    if (_bPersp) {
+                        var ddx = bx - _bCamP.x, ddy = by - _bCamP.y, ddz = bz - _bCamP.z, dd = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+                        if (dd > 1) { var kk = (dd + bk) / dd; bx = _bCamP.x + ddx * kk; by = _bCamP.y + ddy * kk; bz = _bCamP.z + ddz * kk; sx *= kk; sy *= kk; }
+                    } else { bx += _bFwd.x * bk; by += _bFwd.y * bk; bz += _bFwd.z * bk; }
+                }
+            }
             _bQ.copy(_bCamQ);
             if (rot) _bQ.multiply(_bQ2.setFromAxisAngle(_bE.set(0, 0, 1), rot));
-            _bM.compose(_bP.set(w.x, w.y, w.z), _bQ, _bS.set(sx, sy, 1));
+            _bM.compose(_bP.set(bx, by, bz), _bQ, _bS.set(sx, sy, 1));
             e = _bM.elements;
             if (cx !== 0.5) { var k = -(cx - 0.5); e[12] += e[0] * k; e[13] += e[1] * k; e[14] += e[2] * k; }
         } else if (p.poolType === 'world') {
@@ -1934,6 +2094,7 @@ const ThreeVFX = (function () {
                 cam.getWorldQuaternion(_bCamQ); _bCamQ.premultiply(_bPQ);
                 _bCamP.setFromMatrixPosition(cam.matrixWorld).applyMatrix4(_bInv);
                 _bFwd.set(-ce[8], -ce[9], -ce[10]).transformDirection(_bInv);
+                _bPersp = !cam.isOrthographicCamera;
             } else {
                 _bCamQ.identity(); _bCamP.set(0, 0, 0); _bFwd.set(0, 0, 0); _bRight.set(1, 0, 0); _bUp.set(0, 1, 0);
             }
@@ -1947,6 +2108,14 @@ const ThreeVFX = (function () {
                 g = _batchGroup(type, p._blend === 'add', _getSpriteTexture(p.sprite));
                 if (g.list.length >= _BATCH_CAP[type]) continue;
                 p._bOp = op; p._bT = t;
+                if (p._rvWhite) {
+                    if (!_rvCells) _rvCells = new Map();
+                    var cw = _vfxToWorld(p.x, p.y, p.z), cs = ((typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128) * 0.75;
+                    var ck = (Math.floor(cw.x / cs) & 1023) * 1048576 + (Math.floor(cw.z / cs) & 1023) * 1024 + (Math.floor(cw.y / cs) & 1023);
+                    p._rvKey = ck;
+                    _rvCells.set(ck, (_rvCells.get(ck) || 0) + op);
+                    _rvWl.push(p);
+                }
                 if (!g.add) {
                     var w = _vfxToWorld(p.x, p.y, p.z);
                     p._bD = (w.x - _bCamP.x) * _bFwd.x + (w.y - _bCamP.y) * _bFwd.y + (w.z - _bCamP.z) * _bFwd.z;
@@ -1954,6 +2123,13 @@ const ThreeVFX = (function () {
                 g.list.push(p);
                 live++;
             }
+            /* THE RIOT PASS: flashes stacked on one spot share one light budget, so they can't burn to flat white */
+            for (i = 0; i < _rvWl.length; i++) {
+                var rq = _rvWl[i], rs = _rvCells.get(rq._rvKey);
+                if (rs > _RV_STACK) rq._bOp *= _RV_STACK / rs;
+            }
+            _rvWl.length = 0;
+            if (_rvCells) _rvCells.clear();
         }
         var shown = 0;
         for (i = 0; i < _batchList.length; i++) {
@@ -2783,6 +2959,8 @@ const ThreeVFX = (function () {
             p._beamPitchDeg = hPitch0 * 180 / Math.PI;
         }
 
+        _rvApply(p, opts, sprite, poolType);   // THE RIOT PASS (importance, roles, value, timing)
+
         _setupMaterial(p);
 
         _aliveCount++;
@@ -2837,6 +3015,14 @@ const ThreeVFX = (function () {
        at the end instead of thinning from the first frame. */
     function _opAt(p, t) {
         var h = p._opHold;
+        if (p._rvEase) {   // THE RIOT PASS: a fade-in eases in; a flash pops and drops fast; the rest hold, then ease away
+            var o0 = p.opacity0, o1 = p.opacity1, u;
+            if (o1 >= o0) { u = t * t * (3 - 2 * t); return o0 + (o1 - o0) * u; }
+            if (p._rvEase === 2) { u = 1 - (1 - t) * (1 - t); return o0 + (o1 - o0) * u; }
+            if (t <= h) return o0;
+            u = h < 1 ? (t - h) / (1 - h) : 1; u = u * u * (3 - 2 * u);
+            return o0 + (o1 - o0) * u;
+        }
         if (h > 0) return t <= h ? p.opacity0 : _lerp(p.opacity0, p.opacity1, (t - h) / (1 - h));
         return _lerp(p.opacity0, p.opacity1, t);
     }
@@ -2893,7 +3079,7 @@ const ThreeVFX = (function () {
 
         entry.sprite.position.set(w.x, w.y, w.z);
 
-        var sz = _lerp(p.size0, p.size1, t);
+        var sz = _lerp(p.size0, p.size1, p._rvEase ? _szT(p, t) : t);
         if (!(p._velSpark && !_craftOff() && _poseVelSpark(p, entry, sz))) {
             entry.sprite.scale.set(sz, sz, 1);
             if (entry.sprite.center && entry.sprite.center.x !== 0.5) entry.sprite.center.x = 0.5;
@@ -2908,14 +3094,8 @@ const ThreeVFX = (function () {
         var op = _opAt(p, t);
         entry.material.opacity = op;
 
-        var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
-        if (p._tint) {
-            entry.material.color.setRGB(p._tint.r, p._tint.g, p._tint.b);
-        } else if (hasAtlasShape) {
-            entry.material.color.setRGB(1, 1, 1);
-        } else {
-            entry.material.color.setRGB(p._color.r, p._color.g, p._color.b);
-        }
+        var pc = _pColor(p, t);
+        entry.material.color.setRGB(pc.r, pc.g, pc.b);
 
         entry.sprite.visible = (op > 0.001);
     }
@@ -2973,14 +3153,8 @@ const ThreeVFX = (function () {
         var op = _opAt(p, t);
         entry.material.opacity = op;
 
-        var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
-        if (p._tint) {
-            entry.material.color.setRGB(p._tint.r, p._tint.g, p._tint.b);
-        } else if (hasAtlasShape) {
-            entry.material.color.setRGB(1, 1, 1);
-        } else {
-            entry.material.color.setRGB(p._color.r, p._color.g, p._color.b);
-        }
+        var pc = _pColor(p, t);
+        entry.material.color.setRGB(pc.r, pc.g, pc.b);
 
         mesh.visible = (op > 0.001);
     }
@@ -3038,14 +3212,8 @@ const ThreeVFX = (function () {
         var op = _opAt(p, t);
         entry.material.opacity = op;
 
-        var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
-        if (p._tint) {
-            entry.material.color.setRGB(p._tint.r, p._tint.g, p._tint.b);
-        } else if (hasAtlasShape) {
-            entry.material.color.setRGB(1, 1, 1);
-        } else {
-            entry.material.color.setRGB(p._color.r, p._color.g, p._color.b);
-        }
+        var pc = _pColor(p, t);
+        entry.material.color.setRGB(pc.r, pc.g, pc.b);
 
         mesh.visible = (op > 0.001);
     }
