@@ -713,6 +713,7 @@
                     if (_lock) {
                         const _ld = STATUS_DEFS[_lock];
                         u._skippedTurn = true;
+                        if (typeof window._balTurnSkipped === 'function') window._balTurnSkipped(_lock, u);   // Balance Lab: turns lost
                         if (typeof addLog === 'function') addLog(`${_ld.icon || '⚠'} ${unitDisplayName(u)} is ${_ld.colorText || _ld.label || _lock} — turn skipped!`);
                         continue;
                     }

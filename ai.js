@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.34-2026-11-07-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs+trained+spell-zones'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.35-2026-11-08-wet-id+full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs+trained+spell-zones'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1183,7 +1183,7 @@
         if (id === 'marked') return 45;
         if (id === 'discord') return 70;
         if (id === 'glare') return 35;
-        if (id === 'soaked') return 30;
+        if (id === 'wet') return 30;   // the water status (was 'soaked' before the 2026-11-07 rename; the old id matched nothing)
         return 25;
     }
 

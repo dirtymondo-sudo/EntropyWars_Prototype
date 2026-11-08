@@ -2906,19 +2906,21 @@
         // every soak path (wading in, knocked into water, rain-type weather,
         // the round-end wet tick) so standing in water or rain puts the fire
         // out the moment the water reaches the unit.
-        function _douseBurnOnUnit(u, label) {
+        function _douseBurnOnUnit(u, label, src) {
             if (!u || u.dead || u._dying) return false;
-            _washGooOffUnit(u, label);   // 💧🛢️ R8: the same water washes the goo off
+            _washGooOffUnit(u, label, src);   // 💧🛢️ R8: the same water washes the goo off
             /* ⚗️💧 R4 (mondo 2026-11-07): Corroded is chemical FIRE (it counts as Burn), so the water puts its fire out too —
                the poison in it stays: Corroded becomes plain Poison for the rounds it had left (same applier, same hold) */
             if (u.status && Number(u.status.corroded || 0) > 0) {
                 _corrodedToPoison(u);
+                _balReactUse('douseCorroded', src, u, 'corroded');   // Balance Lab: the reaction count
                 addLog(`💧 ${label || 'The water'} puts out the chemical fire on ${_ctName(u)} — the poison stays!`);
                 showFloatingTextForUnit(u, '💧 Doused', 'heal', { durationMs: 1000 });
                 if (!(u.status && u.status.burn)) return true;
             }
             if (!(u.status && u.status.burn)) return false;
             clearStatus(u, 'burn');
+            _balReactUse('douse', src, u, 'burn');
             addLog(`💧 ${label || 'The water'} douses the flames on ${_ctName(u)}!`);
             showFloatingTextForUnit(u, '💧 Doused', 'heal', { durationMs: 1000 });
             return true;
@@ -2928,9 +2930,10 @@
         /* 💧🛢️ WATER WASHES GOO OFF (element reactions R8, mondo 2026-11-07): goo is a coating, and a coating washes off the
            same way a fire goes out, so every path that douses a Burn (a water hit, walking into or standing in water, the
            landing splash, rain on the unit, the melting frost) also washes Gooed off. _douseBurnOnUnit calls it first. */
-        function _washGooOffUnit(u, label) {
+        function _washGooOffUnit(u, label, src) {
             if (!u || u.dead || u._dying || !unitHasStatus(u, 'goo')) return false;
             clearStatus(u, 'goo');
+            _balReactUse('washGoo', src, u, 'goo');
             addLog(`💧 ${label || 'The water'} washes the goo off ${_ctName(u)}.`);
             showFloatingTextForUnit(u, '💧 Washed', 'heal', { durationMs: 1000 });
             return true;
@@ -2941,9 +2944,10 @@
            it, lightning on a wet one shorts it (SHORT CIRCUIT); water ending the overclock is the same rule from the other
            side. Ends it on a water hit and whenever the unit becomes (or is kept) Wet: _soakUnit, applyStatusPayload's
            'wet', and the weathers' rain passes (state.js). */
-        function _waterShortsOverclock(u, label) {
+        function _waterShortsOverclock(u, label, src) {
             if (!u || u.dead || u._dying || !unitHasStatus(u, 'overclock')) return false;
             clearStatus(u, 'overclock');
+            _balReactUse('shortOverclock', src, u, 'overclock');
             addLog(`💧⚙️ ${label || 'The water'} shorts out ${_ctName(u)}'s Overclock.`);
             showFloatingTextForUnit(u, '⚡💧 SHORT CIRCUIT', 'debuff', { durationMs: 1000 });
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
@@ -2981,6 +2985,10 @@
             if (burn > 0) clearStatus(u, 'burn');
             if (pois > 0) clearStatus(u, 'poison');
             st.corroded = Math.max(cor, left);
+            if (!(cor > 0)) {   // Balance Lab: a new chemical fire (not a feed), credited to whoever's status it carries on
+                const _cfSrc = (u._statusSrc && u._statusSrc.corroded != null && typeof unitFromId === 'function') ? unitFromId(u._statusSrc.corroded) : null;
+                _balReactUse('chemicalFire', (_cfSrc && isEnemyUnit(_cfSrc, u)) ? _cfSrc : null);
+            }
             if (!quiet) {
                 addLog(cor > 0
                     ? `⚗️ The fire and poison feed the chemical fire on ${_ctName(u)} — Corroded for ${st.corroded} round${st.corroded !== 1 ? 's' : ''}.`
@@ -3008,6 +3016,7 @@
             if (!(typeof isUnitAirborne === 'function' && isUnitAirborne(u)) && _isWetTile(u.x, u.y)) return false;
             if (_unitInRain(u, true)) return false;
             clearStatus(u, 'wet');
+            _balReactUse('dried', null, u, 'wet');
             addLog(`♨️ ${label || 'The heat'} dries ${_ctName(u)} out.`);
             showFloatingTextForUnit(u, '♨️ Dried out', 'debuff', { durationMs: 900 });
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
@@ -3037,11 +3046,13 @@
         function _soakUnit(u, opts = {}) {
             if (_unitIsDown(u)) return false;   // THE FALLEN TAKE NOTHING (applyStatusPayload)
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
-            _douseBurnOnUnit(u, opts.douseLabel);
+            _douseBurnOnUnit(u, opts.douseLabel, opts.src);
             const status = ensureUnitStatus(u);
             const wasWet = Number(status.wet || 0) > 0;
             status.wet = Math.max(Number(status.wet || 0), WET_ROUNDS);
-            _waterShortsOverclock(u, opts.douseLabel);   // 💧⚙️ R9
+            // Balance Lab: a soak is a Wet landing (it never goes through applyStatusPayload) — by the water hit's caster or the board
+            if (!wasWet && _balanceSimMode) _balStatusEvt('wet', 'applied', (opts.src && isEnemyUnit(opts.src, u)) ? opts.src : null, u, true);
+            _waterShortsOverclock(u, opts.douseLabel, opts.src);   // 💧⚙️ R9
             if (!wasWet && !opts.quiet) {
                 showFloatingTextForUnit(u, '💧 Wet', 'debuff', { durationMs: 900 });
             }
@@ -3513,6 +3524,7 @@
                 victims.push({ t, u });
             }
             const arcs3D = _conductionArcVfx(ox, oy, body, victims.map(x => x.t));
+            if (victims.length) _balReactUse('stormConducts', (_caster && !_caster.dead) ? _caster : null, null, null, victims.length);
             let zapped = 0;
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The ${onWater ? 'water' : 'metal'} conducts ${_name}: `, {
@@ -3558,6 +3570,7 @@
                     frozenUnits++;
                 }
             }
+            _balReactUse('terrainFreeze', caster, null, null, frozenUnits);
             _invalidateBoardGrid();
             scheduleBoardRender();
             addLog(`❄️ ${_ctSp(spell.name)} flash-freezes the water solid — the pool turns to slick ice${frozenUnits ? `, locking ${frozenUnits} unit${frozenUnits !== 1 ? 's' : ''} in place` : ''}!`);
@@ -3617,6 +3630,7 @@
         function _reactFireOil(caster, spell, ox, oy, slick, groundFire) {
             if (!slick || !slick.length) return;
             _oilBlastDepth++;
+            _balReactUse('oilFire', caster, null, null, slick.length);
             try { _reactFireOilBody(caster, spell, ox, oy, slick, !!groundFire); } finally { _oilBlastDepth--; }
         }
         function _reactFireOilBody(caster, spell, ox, oy, slick, groundFire) {
@@ -3781,6 +3795,7 @@
             if (!_bogFireDone) { _bogFireDone = new Set(); Promise.resolve().then(() => { _bogFireDone = null; }); }
             if (bog.every(t => _bogFireDone.has(t.x + ',' + t.y))) return;
             bog.forEach(t => _bogFireDone.add(t.x + ',' + t.y));
+            _balReactUse('bogBurns', caster, null, null, bog.length);
             let n = 0;
             for (const t of bog) {
                 const u = unitAt(t.x, t.y);
@@ -3799,6 +3814,7 @@
             if (!vein || !vein.length) return;
             // ⛰ Earth trine: crystal detonations blow half again as hard.
             const _shardDmg = Math.round(55 * (isEarthZodiacActive() ? 1.5 : 1));
+            _balReactUse('crystalShatter', caster, null, null, vein.length);
             let cut = 0;
             for (const t of vein) {
                 setTerrainAt(t.x, t.y, 'rubble_2');
@@ -3833,6 +3849,7 @@
             if (spellShattersIce(spell)) {
                 let _cracked = 0;
                 for (const tile of tiles) if (tile && isInside(tile.x, tile.y) && shatterIceAt(tile.x, tile.y)) _cracked++;
+                if (_cracked) _balReactUse('iceShatter', caster, null, null, _cracked);
                 if (_cracked) addLog(`🧊 ${_ctSp(spell.name)} shatters the ice — ${_cracked} tile${_cracked !== 1 ? 's' : ''} crack into water!`);
             }
             /* 🪨 WATER + LAVA = STONE (2026-10-18, mondo): a water or ice spell's hit on lava hardens it into stone
@@ -3844,7 +3861,7 @@
                     if (!tile || !isInside(tile.x, tile.y) || getTerrainAt(tile.x, tile.y) !== 'lava') continue;
                     if (setTerrainAt(tile.x, tile.y, _rawEl === 'ice' ? 'ice' : 'water') !== false && getTerrainAt(tile.x, tile.y) === 'stone') _hard++;
                 }
-                if (_hard) { _invalidateBoardGrid(); scheduleBoardRender(); }
+                if (_hard) { _balReactUse('lavaStone', caster, null, null, _hard); _invalidateBoardGrid(); scheduleBoardRender(); }
             }
             /* 💧🔥 WATER PUTS OUT FIRE (mondo 2026-11-07: "Water is supposed to put out fire"): every water spell puts out
                the ground fire on the tiles it strikes (frost already did, and leaves water) */
@@ -3854,6 +3871,7 @@
                     if (tile && isInside(tile.x, tile.y) && _tileIsBurning(tile.x, tile.y) && extinguishTile(tile.x, tile.y)) _wDoused++;
                 }
                 if (_wDoused) {
+                    _balReactUse('douseTile', caster, null, null, _wDoused);
                     scheduleBoardRender();
                     addLog(`💧 ${_ctSp(spell.name)} puts out the flames on ${_wDoused} tile${_wDoused !== 1 ? 's' : ''}.`);
                 }
@@ -3864,6 +3882,7 @@
             if (_rawEl === 'sonic' && spell.dmg > 0) {
                 let _sCracked = 0;
                 if (!spellShattersIce(spell)) for (const tile of tiles) if (tile && isInside(tile.x, tile.y) && shatterIceAt(tile.x, tile.y)) _sCracked++;
+                if (_sCracked) _balReactUse('iceShatter', caster, null, null, _sCracked);
                 if (_sCracked) addLog(`🧊 ${_ctSp(spell.name)} shatters the ice — ${_sCracked} tile${_sCracked !== 1 ? 's crack' : ' cracks'} into water!`);
                 const _sDone = new Set();
                 for (const tile of tiles) {
@@ -3890,6 +3909,7 @@
                     // and through any Soaked body touching it (WET CONDUCTS)
                     const body = _floodConnectedTiles(tile.x, tile.y, _isConductiveWetTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
+                    _balReactUse('lightningWater', caster, null, null, body.length);
                     _reactLightningWater(caster, spell, tile.x, tile.y, body);
                 } else if (el === 'cold' && _isWaterTile(tile.x, tile.y) && !_meltNow(tile.x, tile.y)) {
                     // frost only freezes REAL water solid (flow is too shallow) — never the meltwater this same cast
@@ -3908,14 +3928,17 @@
                     // tree sets it (and the connected forest) ablaze all the same.
                     const stand = _floodConnectedTiles(tile.x, tile.y, _isForestTile, 40);
                     stand.forEach(b => handled.add(b.x + ',' + b.y));
+                    _balReactUse('forestFire', caster, null, null, stand.length);
                     _reactFireForest(caster, spell, tile.x, tile.y, stand);
                 } else if (el === 'fire' && _isIceTile(tile.x, tile.y)) {
                     const body = _floodConnectedTiles(tile.x, tile.y, _isIceTile, 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
+                    _balReactUse('iceMelt', caster, null, null, body.length);
                     _reactFireIce(caster, spell, tile.x, tile.y, body);
                 } else if (el === 'lightning' && _isMetalTile(tile.x, tile.y)) {
                     const sheet = _floodConnectedTiles(tile.x, tile.y, _isMetalTile, 40);
                     sheet.forEach(b => handled.add(b.x + ',' + b.y));
+                    _balReactUse('lightningMetal', caster, null, null, sheet.length);
                     _reactLightningMetal(caster, spell, tile.x, tile.y, sheet);
                 } else if ((el === 'fire' || el === 'lightning') && _isCrystalTile(tile.x, tile.y)) {
                     const vein = _floodConnectedTiles(tile.x, tile.y, _isCrystalTile, 12);
@@ -3953,6 +3976,7 @@
                     const body = _floodConnectedTiles(tile.x, tile.y,
                         (bx, by) => (bx === tile.x && by === tile.y) || (!handled.has(bx + ',' + by) && _isConductiveWetTile(bx, by)), 80);
                     body.forEach(b => handled.add(b.x + ',' + b.y));
+                    if (body.length > 1) _balReactUse('wetConducts', caster, null, null, body.length);
                     if (body.length > 1) _reactLightningWater(caster, spell, tile.x, tile.y, body);
                 }
             }
@@ -3962,6 +3986,7 @@
                 addLog(`🔥 ${_ctSp(spell.name)} sets ${_lit} tile${_lit !== 1 ? 's' : ''} ablaze!`);
             }
             if (_doused) {
+                _balReactUse('frostDouseTile', caster, null, null, _doused);
                 if (_meltPools) _invalidateBoardGrid();
                 scheduleBoardRender();
                 addLog(`❄️ ${_ctSp(spell.name)} douses the flames on ${_doused} tile${_doused !== 1 ? 's' : ''}${_meltPools ? ` — the frost melts into water` : ''}.`);
@@ -3999,6 +4024,7 @@
                 }
                 if (plugged) _invalidateBoardGrid();
                 if (smothered || plugged) scheduleBoardRender();
+                if (smothered || plugged) _balReactUse('earthSmother', caster, null, null, smothered + plugged);
                 if (smothered) addLog(`🪨 ${_ctSp(spell.name)} smothers the flames on ${smothered} tile${smothered !== 1 ? 's' : ''}.`);
                 if (plugged) addLog(`🪨 ${_ctSp(spell.name)} plugs the lava: ${plugged} tile${plugged !== 1 ? 's' : ''} harden${plugged === 1 ? 's' : ''} into stone!`);
             } else if (rawEl === 'nature') {
@@ -4008,6 +4034,7 @@
                     if (setTerrainAt(t.x, t.y, 'grass') !== false && getTerrainAt(t.x, t.y) === 'grass') regrown++;
                 }
                 if (regrown) {
+                    _balReactUse('natureRegrow', caster, null, null, regrown);
                     _invalidateBoardGrid();
                     scheduleBoardRender();
                     addLog(`🌿 ${_ctSp(spell.name)} regrows ${regrown} tile${regrown !== 1 ? 's' : ''} of scorched ground into grass.`);
@@ -4026,6 +4053,7 @@
                     if (Object.keys(state.burningTiles || {}).length >= BURNING_TILE_CAP) break;   // the fire cap still holds
                     if (igniteTile(nx, ny, 2, caster)) leapt++;
                 }
+                _balReactUse('windFans', caster, null, null, leapt);
                 addLog(`💨 ${_ctSp(spell.name)} fans the flames${leapt ? ` — the fire leaps ${leapt} tile${leapt !== 1 ? 's' : ''} downwind` : ''}!`);
                 _invalidateBoardGrid();
                 scheduleBoardRender();
@@ -4057,6 +4085,7 @@
             if (_mt && typeof _mt.has === 'function' && _mt.has(x + ',' + y)) return false;
             if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) return false;
             if (setTerrainAt(x, y, 'blood') === false || getTerrainAt(x, y) !== 'blood') return false;
+            _balReactUse('bleedDrips', null);
             _invalidateBoardGrid();
             scheduleBoardRender();
             addLog(`🩸 ${_ctName(u)} bleeds onto the ground: a Blood Pool forms at ${coordLabel(x, y)}.`);
@@ -4418,9 +4447,10 @@
         // early: standing on/next to lava, taking a fire-element hit (combo
         // layer in applyDamageToUnit), a ward/torch placed adjacent (doWard,
         // ui.js), or active drought weather.
-        function _thawFrozenUnit(unit, why) {
+        function _thawFrozenUnit(unit, why, src) {
             if (!unit || unit.dead || !unitHasStatus(unit, 'frozen')) return false;
             clearStatus(unit, 'frozen');
+            _balReactUse('thaw', src, unit, 'frozen');
             showFloatingTextForUnit(unit, '💧 THAWED!', 'buff', { durationMs: 1100 });
             addLog(`💧 ${why} thaws ${_ctName(unit)} out of the ice!`);
             return true;
@@ -10907,10 +10937,11 @@
                 }
             }
 
-            _balStatusEvt(payload.id, 'applied', sourceUnit, target);   // Balance Lab status telemetry
+            _balStatusEvt(payload.id, 'applied', sourceUnit, target, !_hadBefore);   // Balance Lab status telemetry
             /* 🛢️🔥 R5 (mondo 2026-11-07): Gooed is the Black Ooze on a body — a Burn that lands on it burns the goo away */
             if (payload.id === 'burn' && unitHasStatus(target, 'burn') && unitHasStatus(target, 'goo')) {
                 clearStatus(target, 'goo');
+                _balReactUse('gooBurns', (sourceUnit && isEnemyUnit(sourceUnit, target)) ? sourceUnit : null, target, 'goo');
                 addLog(`🛢️🔥 The goo on ${_ctName(target)} goes up in flames!`);
                 showFloatingTextForUnit(target, '🛢️ GOO BURNS', 'debuff', { durationMs: 1000 });
             }
@@ -13021,6 +13052,7 @@
         }
 
         function _tickAllStatusDurations() {
+            if (_balanceSimMode) _balStatusUptimeTick();   // Balance Lab: unit-rounds worn, before the countdown
             for (const u of state.units) {
                 if (u.dead) continue;
                 const _fresh = (u._stFresh && typeof u._stFresh === 'object') ? u._stFresh : null;
@@ -39185,6 +39217,7 @@
                     applyStatusPayload(target, { id: 'burn', duration: 2, _element: 'fire' }, '🛢️🔥 The goo catches fire: ', sourceUnit);
                     if (unitHasStatus(target, 'goo') && !_unitIsDown(target)) {
                         clearStatus(target, 'goo');
+                        _balReactUse('gooBurns', sourceUnit, target, 'goo');
                         addLog(`🛢️🔥 The goo on ${_ctName(target)} burns away.`);
                     }
                 }
@@ -39192,6 +39225,7 @@
                    thawing a Frozen ally. Ticks never do it. */
                 if (_comboEl === 'fire' && damageType !== 'dot' && unitHasStatus(target, 'bleed')) {
                     clearStatus(target, 'bleed');
+                    _balReactUse('cauterise', sourceUnit, target, 'bleed');
                     addLog(`🔥🩸 The fire sears ${_ctName(target)}'s wound shut — the Bleeding stops.`);
                     showFloatingTextForUnit(target, '🔥 CAUTERISED', 'buff', { durationMs: 1000 });
                 }
@@ -39212,30 +39246,33 @@
                     // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
                     // solid for a turn (soak them first, then bring the cold).
                     // FROZEN IS FROZEN (mondo 2026-11-07): the real Frozen status, not a Stun.
-                    applyStatusPayload(target, { id: 'frozen', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
+                    if (applyStatusPayload(target, { id: 'frozen', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit)) _balReactUse('flashFreeze', sourceUnit, target);
                     // creaking ice locking solid with a deep "clunk"
                     playSfx('freezeSolid');
                 } else if (_comboEl === 'fire' && unitHasStatus(target, 'wet')) {
                     // 🔥💧 The blast steams a soaked unit dry — the NEXT fire
                     // hit burns at full strength and can set them alight.
                     clearStatus(target, 'wet');
+                    _balReactUse('dried', sourceUnit, target, 'wet');
                     showFloatingTextForUnit(target, '♨️ Dried out', 'debuff', { durationMs: 900 });
                 }
                 // ❄️🔥 ICE + HEAT = WATER (mondo 2026-11-07): a frost hit on a burning unit melts on the flames —
                 // the burn goes out and the meltwater leaves the unit Soaked (the same as being doused by water).
                 if (_comboEl === 'cold' && !_unitIsDown(target) && target.status && (target.status.burn || Number(target.status.corroded || 0) > 0)) {
-                    _douseBurnOnUnit(target, 'The melting frost');
-                    _soakUnit(target, { douseLabel: 'The melting frost' });
+                    _balReactUse('meltFrost', sourceUnit, target);
+                    _douseBurnOnUnit(target, 'The melting frost', sourceUnit);
+                    _soakUnit(target, { douseLabel: 'The melting frost', src: sourceUnit });
                 }
                 // 🔥🧊 Fire cracks the ice: any fire-element hit thaws a
                 // Frozen target on the spot (yes, that means a fireball is
                 // also a rescue tool for your own frozen bruiser).
-                if (_comboEl === 'fire') _thawFrozenUnit(target, 'The burst of fire');
+                if (_comboEl === 'fire') _thawFrozenUnit(target, 'The burst of fire', sourceUnit);
             }
 
             // 🔊🧊 R11: the sonic hit broke the Frozen unit's ice (the ×1.5 is in _hitDamageMath) — the Frozen ends.
             if (_affEl === 'sonic' && damage > 0 && !_unitIsDown(target) && unitHasStatus(target, 'frozen')) {
                 clearStatus(target, 'frozen');
+                _balReactUse('sonicThaw', sourceUnit, target, 'frozen', 0, damage);
                 addLog(`🧊 ${_ctName(target)} is no longer Frozen.`);
             }
 
@@ -39244,8 +39281,8 @@
             // flash-freeze follow-ups. Centralized here so ALL current and
             // future water-tagged damage soaks, no per-spell wiring.
             if (_affEl === 'water' && damage > 0 && !_unitIsDown(target)) {
-                _soakUnit(target, { douseLabel: 'The deluge' });
-                _waterShortsOverclock(target, 'The deluge');   // 💧⚙️ R9: a water hit shorts it even on a flyer (no soak up there)
+                _soakUnit(target, { douseLabel: 'The deluge', src: sourceUnit });
+                _waterShortsOverclock(target, 'The deluge', sourceUnit);   // 💧⚙️ R9: a water hit shorts it even on a flyer (no soak up there)
             }
 
             if (sourceUnit && state.plantedSeeds && !target.dead) {
@@ -62132,6 +62169,7 @@
         // which BALANCE_NOTES repeatedly had to correct for by hand.
         let _balSpellCollector = null;
         const BALANCE_STATS_VERSION = 4;
+        const BAL_FX_RULES = '2026-11-08 status + element rules';   // THE RULES STAMP (_balFxRulesCheck)
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
         const BALANCE_MATCH_LOG_CAP = 2000; // raw per-match records kept for offline analysis + the team-adjusted fit (was 400; ~1.4 KB a match)
         const _BAL_TABS = [
@@ -62196,6 +62234,9 @@
                 // matches it covers (older matches carry none of it).
                 statusUse: {}, elementUse: {}, effectUse: {},
                 fxMatches: 0,
+                // Balance Lab (2026-11-08, THE RULES STAMP): the status / element rules these three tables were recorded under;
+                // tables from older rules move to fxBefore (kept in the export, never deleted) — see _balFxRulesCheck
+                fxRules: BAL_FX_RULES, fxBefore: null,
                 // Balance Lab (2026-10-25, the race detail): per race damage / kills by source, casts, MP, turns, dry
                 // turns (_balFoldFxMatch), and per spell the games + wins of the units that cast it.
                 raceDetail: {}, spellCastGames: {},
@@ -62225,8 +62266,37 @@
             if (_balanceStats.firstKillWins == null) _balanceStats.firstKillWins = 0;
             if (_balanceStats.fxMatches == null) _balanceStats.fxMatches = 0;
             if (!_balanceStats.forecastLive) _balanceStats.forecastLive = { n: 0, favWins: 0, favP: 0, brier: 0, last: null };
+            _balFxRulesCheck(_balanceStats);
             _balanceStats.version = BALANCE_STATS_VERSION;
             return _balanceStats;
+        }
+
+        /* ═══ THE RULES STAMP (2026-11-08, mondo: "After the status effect and element fixes ... make sure the balance lab is
+           still up to date and gives useful/relevant data") ════════════════════════════════════════════════════════════
+           The 11-06 / 11-07 fixes changed what the Status / Elements / Effects tables measure: Frozen is its own status (the
+           flash-freeze used to land Stun), Soaked became the one status Wet, a status lasts its full rounds from the moment it
+           lands and a DoT ticks exactly its rounds (it ticked once more), a killing hit lands no status, water puts out fire
+           everywhere, and reactions R1-R16 went in. Matches recorded before that read the old rules, so those three tables
+           start over under the new stamp and the old ones move, whole, to stats.fxBefore (in the JSON export; nothing is
+           deleted). Races, spells, casts, builds, the match log and the spread are untouched (they already split by build). */
+        function _balFxRulesCheck(s) {
+            if (!s || s.fxRules === BAL_FX_RULES) return;
+            const had = (s.fxMatches || 0) > 0 || Object.keys(s.statusUse || {}).length || Object.keys(s.elementUse || {}).length
+                || Object.keys(s.effectUse || {}).length;
+            if (had) {
+                // a status renamed since (Soaked -> Wet, 2026-11-07) is the same row
+                const st = Object.assign({}, s.statusUse || {});
+                if (st.soaked) {
+                    const w = st.wet || (st.wet = {});
+                    for (const k of Object.keys(st.soaked)) if (typeof st.soaked[k] === 'number') w[k] = (w[k] || 0) + st.soaked[k];
+                    delete st.soaked;
+                }
+                s.fxBefore = { rules: s.fxRules || '2026-10-25 first tracking', fxMatches: s.fxMatches || 0, movedAt: Date.now(),
+                    statusUse: st, elementUse: s.elementUse || {}, effectUse: s.effectUse || {} };
+            }
+            s.statusUse = {}; s.elementUse = {}; s.effectUse = {};
+            s.fxMatches = 0;
+            s.fxRules = BAL_FX_RULES;
         }
 
         // Mid-match narrative tracker (balance sim only): first blood, first
@@ -62315,7 +62385,24 @@
             react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Wet shock (lightning on wet)',
             react_soakedFire: 'Wet fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
             highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
+            // THE REACTIONS (2026-11-08, _balReactUse): the element / status reactions that change a status or the board
+            react_douse: 'Water puts out Burn', react_douseCorroded: 'Water puts out Corroded (Poison stays)',
+            react_washGoo: 'Water washes off Goo', react_shortOverclock: 'Water shorts out Overclock',
+            react_chemicalFire: 'Burn + Poison = Corroded', react_dried: 'Fire / heat / dry sky dries Wet',
+            react_flashFreeze: 'Frost on Wet = Frozen', react_thaw: 'Fire / heat thaws Frozen', react_meltFrost: 'Frost on Burn = Wet',
+            react_gooBurns: 'Goo catches fire', react_cauterise: 'Fire cauterises Bleeding', react_sonicThaw: 'Sonic breaks Frozen (x1.5)',
+            react_terrainFreeze: 'Frost freezes water (Frozen)', react_douseTile: 'Water puts out burning ground',
+            react_oilFire: 'Fire on an oil / goo slick', react_bogBurns: 'Fire on a bog = Corroded',
+            react_crystalShatter: 'Crystal vein shatters', react_quakeCracks: 'Earthquake cracks ice / crystal',
+            react_stormConducts: 'Storm bolt conducts (water / metal)', react_earthSmother: 'Earth smothers fire / lava',
+            react_natureRegrow: 'Nature regrows grass', react_windFans: 'Wind fans the flames', react_bleedDrips: 'Bleeding drips blood',
+            react_lavaStone: 'Water / ice hardens lava (stone)', react_iceShatter: 'Slam / sonic cracks ice', react_iceMelt: 'Fire melts ice into water',
+            react_lightningWater: 'Lightning through water', react_lightningMetal: 'Lightning through metal',
+            react_wetConducts: 'Lightning through Wet bodies', react_forestFire: 'Fire / lightning sets trees ablaze',
+            react_frostDouseTile: 'Frost on burning ground = water',
         };
+        // reaction rows whose amount is units (the rest count squares)
+        const _BAL_REACT_UNIT_AMT = { react_terrainFreeze: 1, react_stormConducts: 1 };
         function _balFxMark(u, kind, key) {
             if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2) || !key) return;
             if (!_balFx) _balFx = {};
@@ -62351,11 +62438,17 @@
             }
             if (cheapest < Infinity && (u.mp || 0) < cheapest) L.c.dry++;
         }
+        const _BAL_STATUS_NEW_COLS = ['env', 'fresh', 'rounds', 'turnsLost', 'cleansed'];
         function _balStatusRow(id) {
             ensureBalanceStats();
             const m = _balanceStats.statusUse;
-            return m[id] || (m[id] = { applied: 0, onEnemy: 0, onAlly: 0, resisted: 0, blocked: 0, dotDmg: 0, dotKills: 0,
+            /* 2026-11-08: env = landings with no unit behind them (water / rain soaking, lava, weather), rounds = unit-rounds
+               worn (counted at each round end before the countdown, _balStatusUptimeTick), turnsLost = activations a
+               turn-skip status took (state.js getNextBlitzUnit), cleansed = taken off early by an element reaction */
+            const r = m[id] || (m[id] = { applied: 0, onEnemy: 0, onAlly: 0, resisted: 0, blocked: 0, dotDmg: 0, dotKills: 0,
                 heal: 0, dmgWhile: 0, killsWhile: 0, comboHits: 0, comboDmg: 0, blockedHits: 0, games: 0, wins: 0 });
+            for (const k of _BAL_STATUS_NEW_COLS) if (r[k] == null) r[k] = 0;
+            return r;
         }
         function _balElemRow(el) {
             ensureBalanceStats();
@@ -62368,22 +62461,50 @@
             return m[key] || (m[key] = { n: 0, amt: 0, dmg: 0, kills: 0, games: 0, wins: 0 });
         }
         // A status event: 'applied' (with its source and target), 'resisted', 'blocked', 'blockedHit'.
-        function _balStatusEvt(id, ev, src, tgt) {
+        function _balStatusEvt(id, ev, src, tgt, fresh) {
             if (!_balanceSimMode || !id) return;
             const r = _balStatusRow(id);
             if (ev === 'applied') {
                 r.applied++;
+                if (fresh) r.fresh++;   // landed on a unit that did not have it (not a re-landing / top-up)
                 if (src && tgt) {
                     if (isEnemyUnit(src, tgt)) r.onEnemy++; else r.onAlly++;
                 } else if (tgt && STATUS_DEFS[id]?.kind === 'buff') {
                     r.onAlly++;   // a self buff with no source passed (Guard, a stance): its wearer is the one using it
                     _balFxMark(tgt, 's', id);
-                }
+                } else if (tgt) r.env++;   // no unit behind it: water / rain / lava / weather
                 _balFxMark(src, 's', id);
             } else if (ev === 'resisted') r.resisted++;
             else if (ev === 'blocked') r.blocked++;
             else if (ev === 'blockedHit') { r.blockedHits++; _balFxMark(tgt, 's', id); }
         }
+        /* STATUS UPTIME (2026-11-08): every unit-round a status is worn, counted at the round end before the countdown
+           (_tickAllStatusDurations). rounds / applied = how long a landing really lasts (THE FULL ROUND, PR #981). */
+        function _balStatusUptimeTick() {
+            if (!_balanceSimMode) return;
+            for (const u of (state.units || [])) {
+                if (!u || u.dead || (u.player !== 1 && u.player !== 2)) continue;
+                for (const k of getActiveStatusKeys(u)) {
+                    if (STATUS_DEFS[k]) _balStatusRow(k).rounds++;
+                }
+            }
+        }
+        // A turn-skip status (blockMove + blockAction: Stun, Frozen, Stoneform…) took this unit's activation.
+        function _balTurnSkipped(id, u) {
+            if (!_balanceSimMode || !id || !u || (u.player !== 1 && u.player !== 2)) return;
+            _balStatusRow(id).turnsLost++;
+        }
+        if (typeof window !== 'undefined') window._balTurnSkipped = _balTurnSkipped;
+        /* THE REACTIONS (2026-11-08): one count per element / status reaction that fired (douse, wash, short, chemical fire,
+           flash-freeze, thaw, cauterise, the R1-R16 board reactions). src = the unit whose hit or spell set it off (its row
+           games / wins, as every effect); null for the board / weather ones (count only). tgt + cleared: the status the
+           reaction took off that unit (its row's `cleansed`). */
+        function _balReactUse(key, src, tgt, cleared, amt, dmg) {
+            if (!_balanceSimMode || !key) return;
+            _balEffect((src && (src.player === 1 || src.player === 2)) ? src : null, 'react_' + key, amt || 0, dmg || 0);
+            if (cleared && tgt && (tgt.player === 1 || tgt.player === 2)) _balStatusRow(cleared).cleansed++;
+        }
+        if (typeof window !== 'undefined') window._balReactUse = _balReactUse;
         // One effect use by unit u: amount (heal / shield / tiles) and the damage of the hit it rode.
         function _balEffect(u, key, amt, dmg) {
             if (!_balanceSimMode || !key) return;
@@ -62904,8 +63025,12 @@
             const per = (v, n) => n > 0 ? Math.round(v / n) : 0;
             let detail = '', tip = `${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}`;
             if (_balanceTab === 'statusUse') {
-                detail = `${r.uses}× · ${per(r.impact, r.uses)}d · ${r.kills}k${(b.resisted || b.blocked) ? ` · ${Math.round(r.resistPct * 100)}%r` : ''}`;
-                tip += ` · ${r.kind || 'status'} · applied ${b.applied || 0} (on enemies ${b.onEnemy || 0}, on allies ${b.onAlly || 0}) · resisted ${b.resisted || 0} · immune ${b.blocked || 0}`
+                // 2026-11-08: rd = unit-rounds worn per landing (THE FULL ROUND), t = turns it took (turn-skip statuses)
+                // rd = round ends it was still on, per FRESH landing (top-ups of a status already on the unit don't count as new)
+                const _rpa = (b.fresh || 0) > 0 ? ((b.rounds || 0) / b.fresh).toFixed(1) : '–';
+                detail = `${r.uses}× · ${_rpa}rd · ${per(r.impact, r.uses)}d · ${r.kills}k${b.turnsLost ? ` · ${b.turnsLost}t` : ''}${(b.resisted || b.blocked) ? ` · ${Math.round(r.resistPct * 100)}%r` : ''}`;
+                tip += ` · ${r.kind || 'status'} · applied ${b.applied || 0} (on enemies ${b.onEnemy || 0}, on allies ${b.onAlly || 0}, by the board / weather ${b.env || 0}) · resisted ${b.resisted || 0} · immune ${b.blocked || 0}`
+                    + ` · fresh landings ${b.fresh || 0} · still on at ${b.rounds || 0} round ends (a kill or a cleanse ends it early)${b.turnsLost ? ` · turns it took ${b.turnsLost}` : ''}${b.cleansed ? ` · taken off by a reaction ${b.cleansed}` : ''}`
                     + ` · tick damage ${b.dotDmg || 0} (${b.dotKills || 0} kills)${b.heal ? ` · tick healing ${b.heal}` : ''}`
                     + ` · ${r.kind === 'buff' ? 'damage the wearer dealt while worn' : 'damage the wearer took from enemies while worn'} ${b.dmgWhile || 0} (${b.killsWhile || 0} kills)`
                     + `${b.comboHits ? ` · combo finisher hits on it ${b.comboHits} for ${b.comboDmg || 0}` : ''}${b.blockedHits ? ` · hits turned away ${b.blockedHits}` : ''}`;
@@ -62915,7 +63040,8 @@
                 tip += ` · casts ${b.casts || 0} (${b.mp || 0} MP) · enemy hits ${b.hits || 0} for ${b.dmg || 0} · kills ${b.kills || 0}`
                     + (r.key === '(none)' ? '' : ` · weak ${b.weak || 0} · resist ${b.resist || 0} · immune ${b.immune || 0} · absorb ${b.absorb || 0}`);
             } else {
-                const amtKey = { heal: 'healed', shieldAbsorb: 'soaked', forcedMove: 'tiles', press: 'AP', pressMiss: 'AP' }[r.key];
+                const amtKey = { heal: 'healed', shieldAbsorb: 'soaked', forcedMove: 'tiles', press: 'AP', pressMiss: 'AP' }[r.key]
+                    || (/^react_/.test(r.key) && b.amt ? (_BAL_REACT_UNIT_AMT[r.key] ? 'units' : 'sq') : null);
                 detail = `${b.n || 0}× · ${amtKey ? per(b.amt || 0, b.n || 0) + ' ' + amtKey : per(b.dmg || 0, b.n || 0) + 'd'} · ${b.kills || 0}k`;
                 tip += ` · uses ${b.n || 0} · amount ${b.amt || 0} · damage ${b.dmg || 0} · kills ${b.kills || 0}`;
             }
@@ -62991,7 +63117,8 @@
                 tableHtml = fxRows.length
                     ? fxRows.slice(0, 120).map(_balFxRowHtml).join('')
                     : `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'Nothing matches the filter.' : 'No data yet — this records from the next Balance Lab match on.'}</div>`;
-                treeAggHtml = `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${s.fxMatches || 0} of ${totalM} matches carry this table (tracking started 2026-10-25; older matches have none of it)</div>`;
+                const _fxb = s.fxBefore;
+                treeAggHtml = `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${s.fxMatches || 0} of ${totalM} matches carry this table: recorded under the 2026-11-08 status + element rules${_fxb && _fxb.fxMatches ? ` (${_fxb.fxMatches} older matches kept in the export as fxBefore)` : ''}</div>`;
             } else if (_balanceTab === 'spread') {
                 const sp = _balSpreadHtml(s, matchesFilter);
                 tableHtml = sp.table; treeAggHtml = sp.head; totalRows = sp.total; shownRows = sp.shown;
@@ -63057,11 +63184,11 @@
                     ? 'exp = forecast win % of its team with this race swapped for an average race (its teammates and foes kept) · won = actual · ± = over/under in win-% points, 95% range · green = beats the forecast, red = under it · hover for more'
                     : 'exp = forecast win % of the whole team before the match · won = actual · ± = over/under in win-% points, 95% range · green = the comp wins more than its members say (overpowered together)')
                 : _balanceTab === 'statusUse'
-                ? '% ±CI = win rate of units that landed it · g = games · × = times applied · d = damage per application (ticks + hits on the debuffed / by the buffed) · k = kills · r = resisted · hover for more'
+                ? '% ±CI = win rate of units that landed it · g = games · × = times applied · rd = round ends it is still on, per fresh landing · d = damage per application (ticks + hits on the debuffed / by the buffed) · k = kills · t = turns it took · r = resisted · hover for more'
                 : _balanceTab === 'elementUse'
                 ? '% ±CI = win rate of units that used it · g = games · h = enemy hits · d/h = damage per hit · k = kills · w = hits on a weakness · hover for casts, resist, immune'
                 : _balanceTab === 'effectUse'
-                ? '% ±CI = win rate of units that used it · g = games · × = uses · d = damage of those hits (or amount healed / soaked / tiles moved) · k = kills'
+                ? '% ±CI = win rate of units that used it · g = games · × = uses · d = damage of those hits (or amount healed / soaked / tiles moved; reactions: squares or units reached) · k = kills · filter "react" for the element reactions'
                 : _balanceTab === 'spellUse'
                 ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
                 : _balanceTab === 'treeShapes'
@@ -63306,6 +63433,9 @@
                 // per-use numbers (raw counters are in stats.statusUse / elementUse / effectUse). fxMatches = matches
                 // recorded since tracking began.
                 fxMatches: s.fxMatches || 0,
+                fxRules: s.fxRules || null,   // THE RULES STAMP: the status / element rules these three tables were recorded under
+                fxBeforeMatches: (s.fxBefore && s.fxBefore.fxMatches) || 0,
+                reactions: _balReactionsOut(s.effectUse),
                 statuses: _balFxAnalysis(s.statusUse, b => {
                     const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
                     return {
@@ -63316,6 +63446,12 @@
                         dmgWhileWorn: b.dmgWhile || 0, killsWhileWorn: b.killsWhile || 0,
                         impactPerApply: b.applied ? Number((((b.dotDmg || 0) + (b.dmgWhile || 0)) / b.applied).toFixed(1)) : null,
                         comboHits: b.comboHits || 0, comboDmg: b.comboDmg || 0, hitsTurnedAway: b.blockedHits || 0,
+                        // 2026-11-08: landings by the board / weather, unit-rounds worn, rounds per landing, turns it took
+                        // (turn-skip statuses), times a reaction took it off
+                        envApplied: b.env || 0, roundsWorn: b.rounds || 0,
+                        freshApplied: b.fresh || 0,
+                        roundsPerApply: b.fresh ? Number(((b.rounds || 0) / b.fresh).toFixed(2)) : null,   // round ends still on, per fresh landing
+                        turnsLost: b.turnsLost || 0, cleansedByReaction: b.cleansed || 0,
                     };
                 }),
                 elements: _balFxAnalysis(s.elementUse, b => ({
@@ -63773,6 +63909,18 @@
             }
             return out;
         }
+        // THE REACTIONS in one list for the export: how often each fired, per match, and the win rate of the units that set it off
+        function _balReactionsOut(eff) {
+            const out = {};
+            const n = (_balanceStats && _balanceStats.fxMatches) || 0;
+            for (const k of Object.keys(eff || {})) {
+                if (!/^react_/.test(k)) continue;
+                const b = eff[k];
+                out[k.slice(6)] = { label: _BAL_FX_LABELS[k] || k, fired: b.n || 0, perMatch: n ? Number(((b.n || 0) / n).toFixed(3)) : null,
+                    games: b.games || 0, wr: b.games ? Number(((b.wins || 0) / b.games).toFixed(4)) : null, dmg: b.dmg || 0, kills: b.kills || 0 };
+            }
+            return out;
+        }
         function _balFxAnalysis(map, extra) {
             const out = {};
             for (const k of Object.keys(map || {})) {
@@ -63892,7 +64040,7 @@
                         .concat(cols.map(c => b[c] || 0)).join(','));
                 }
             };
-            fxCsv('status', _balanceStats.statusUse, ['applied', 'onEnemy', 'onAlly', 'resisted', 'blocked', 'dotDmg', 'dotKills', 'heal', 'dmgWhile', 'killsWhile', 'comboHits', 'comboDmg', 'blockedHits']);
+            fxCsv('status', _balanceStats.statusUse, ['applied', 'onEnemy', 'onAlly', 'env', 'resisted', 'blocked', 'dotDmg', 'dotKills', 'heal', 'dmgWhile', 'killsWhile', 'comboHits', 'comboDmg', 'blockedHits', 'fresh', 'rounds', 'turnsLost', 'cleansed']);
             fxCsv('element', _balanceStats.elementUse, ['casts', 'mp', 'hits', 'dmg', 'kills', 'weak', 'resist', 'immune', 'absorb']);
             fxCsv('effect', _balanceStats.effectUse, ['n', 'amt', 'dmg', 'kills']);
             const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
