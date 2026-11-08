@@ -3373,6 +3373,35 @@ art. Kill switch `window.EW_NO_RIOT_VFX = true` (or localStorage `ew_riotvfx` = 
   guest computes the same weights. Looks only.
 - Proof: /mnt/project-files/riot-vfx/phase-a/ (same VS-CPU match, `EW_NO_RIOT_VFX` on for the before shots).
 
+## THE RIOT PASS, phase B: the painted puffs + the streaks (2026-11-08, three-vfx.js)
+
+mondo said "go" on phase B of the plan (guide p.28-30: hand-painted shapes, concise detail, soft and sharp edges, a
+clear silhouette; fast bits get motion-blur shapes).
+
+- THE PUFFS: the 7 soft billows (`_drawBillow` piles of radial blobs + speckled erosion holes) are painted by `_RV_PAINT`
+  instead: `_rvPuff` = 3 flat value bands, each a scalloped `_rvLobed` outline (n scallops, each its own height, sharp
+  valleys), filled opaque, then ONE flat alpha for the whole puff (`destination-in`). smoke + dust-puff: light band
+  offset toward the top, soft underside (`under`), and `_RV_LIT` holds their spin to ±30° start / ±18°/s so the light
+  stays up (other auto-tumble sprites keep the full turn). smoke-soft: a soft rim (`rim` 0.28) so a Smoke Screen bank
+  still merges. poison-mist keeps its bubble rings, void-mist its dark core, shadow-wisp has a lit rim round a dark
+  centre. explosion-orange (the approved mock-up panel 1): dark-red rim, orange, yellow, a warm core under 92 % and 6
+  sharp shards, and it now draws NORMAL blend (`p._blend = 'nrm'` in spawn) so the rim and bands read and stacked
+  blasts don't add to flat white; the flashes beside it stay the glow.
+- Same canvas sizes (160/144/192) and colour families, so tints and blends behave the same. These 7 textures use
+  mipmaps (`LinearMipmapLinearFilter`, both painted states: the filter can't change after the first upload) so a far,
+  spinning crisp edge doesn't shimmer.
+- THE STREAKS: `_RV_STREAK` (ember 3.5, water-splash 3.5, sand-particle 3, ice-shard 3, debris / rock-debris /
+  mud-chunk 2.2 = the longest streak in widths) join THE CRAFT's velocity sparks as `_velSpark = 2` with their own cap
+  `p._vsMax`; below VS_DEADZONE they stay round. `_rvStreakRot` blends a tumbling chunk from its tumble onto its path as
+  it speeds up and back as it slows (no snap at the top of an arc). Kept / zone / decor / trail / floorAt / onLand
+  particles are left alone. Batched and fallback paths both.
+- SWITCH: `window.EW_NO_RIOT_VFX_B = true` (or localStorage `ew_riotvfx_b` = `off`) = the old billows, full tumble, no new
+  streaks; `EW_NO_RIOT_VFX` turns phases A and B off. Live: spawn() sees the flag flip and `_rvRepaintShapes` repaints the
+  7 canvases in place (`needsUpdate`).
+- Online: textures and spawn-time choices are each client's own, from the same relayed calls. Looks only.
+- Proof: /mnt/project-files/riot-vfx/phase-b/ (close-up puff sheet + same VS-CPU match, `EW_NO_RIOT_VFX_B` on for the
+  before rows).
+
 ## THE STEADY BOARD (2026-11-08, three-camera.js + battle.js)
 
 mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and back
