@@ -2633,6 +2633,7 @@ const ThreeRenderer = (function () {
         if (typeof ewPixelSheetUrl === 'function') url = ewPixelSheetUrl(url);   // THE ONE PIXEL GRID (sprites.js): a soft 1024 px sheet -> its 128 px bake
         var u = window._ewCorsBust ? window._ewCorsBust(url) : url;
         var tex = new THREE.Texture();
+        tex._ew_src = u;   // THE ONE PIXEL DENSITY: _hqOneDensity knows a terrain sheet by where it came from (a bitmap has no src)
         var isJPEG = /\.jpe?g($|\?)/i.test(u) || u.indexOf('data:image/jpeg') === 0;
         if (THREE.RGBFormat !== undefined) tex.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
         var rec = _alTrack('texture', u);   // THE ASSET LEDGER: a gate waits for this sheet
@@ -38874,9 +38875,13 @@ const ThreeRenderer = (function () {
             return m;
         };
         K.glow = _hzGlowMat;
-        K.box = function (w, h, d, mat, dens) { var geo = new THREE.BoxGeometry(w, h, d); _nrBoxUV(geo, w, h, d, ts, dens); return new THREE.Mesh(geo, mat); };
-        K.cyl = function (rT, rB, h, seg, mat) { var geo = new THREE.CylinderGeometry(rT, rB, h, seg, 1); _nrUV(geo, Math.max(1, Math.PI * (rT + rB) / ts), Math.max(1, h / ts)); return new THREE.Mesh(geo, mat); };
-        K.plane = function (w, h, mat) { var geo = new THREE.PlaneGeometry(w, h); _nrUV(geo, Math.max(1, w / ts), Math.max(1, h / ts)); return new THREE.Mesh(geo, mat); };
+        /* THE ONE PIXEL DENSITY (2026-11-07): the sheets tile per `ctx.sheet` when the caller gives one (an HQ room: the square,
+           3.5 m, like its field), else per tile as on the battle board. A building the kit stands after its sprite lands (after the
+           room's density pass) is born at the rule this way. */
+        var sheet = (ctx.sheet > 0) ? ctx.sheet : ts;
+        K.box = function (w, h, d, mat, dens) { var geo = new THREE.BoxGeometry(w, h, d); _nrBoxUV(geo, w, h, d, sheet, dens); return new THREE.Mesh(geo, mat); };
+        K.cyl = function (rT, rB, h, seg, mat) { var geo = new THREE.CylinderGeometry(rT, rB, h, seg, 1); _nrUV(geo, Math.max(1, Math.PI * (rT + rB) / sheet), Math.max(1, h / sheet)); return new THREE.Mesh(geo, mat); };
+        K.plane = function (w, h, mat) { var geo = new THREE.PlaneGeometry(w, h); _nrUV(geo, Math.max(1, w / sheet), Math.max(1, h / sheet)); return new THREE.Mesh(geo, mat); };
         K.at = function (m, x, y, z, ry) { m.position.set(x, y, z); if (ry) m.rotation.y = ry; return m; };
         /* which board side a point is off (for the occlusion groups) */
         K.side = function (x, z) {
@@ -62008,6 +62013,7 @@ const ThreeRenderer = (function () {
         var t, base = _hqTexByUrl[url];
         if (base) {
             t = new THREE.Texture();
+            t._ew_src = base._ew_src;   // THE ONE PIXEL DENSITY: the same file as its base
             t._ew_alRec = base._ew_alRec; _alJoin(base._ew_alRec);
             if (base.image) { t.image = base.image; t.needsUpdate = true; }
             else (base._ew_dependants = base._ew_dependants || []).push(t);
@@ -64249,7 +64255,7 @@ const ThreeRenderer = (function () {
            (undergrowth) so the border reads as a wood, not a picket of trunks. */
         var TK = null;
         if ((trees.length || S.forest) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {
-            try { TK = _nrKit(G, { ts: CM, bw: W, bh: Hh, rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
+            try { TK = _nrKit(G, { ts: CM, sheet: _hqSheetM(null) * U, bw: W, bh: Hh, rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the woods’ tree kit failed', e); TK = null; }
         }
         var plantTree = function (kind, h, px, pz, py) {
@@ -64351,6 +64357,7 @@ const ThreeRenderer = (function () {
     function _hqTerrainMat(info, S) {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
+        m._ew_triplanar = true;   // THE ONE PIXEL DENSITY: the field samples by world position (uTriTM = the sheet), never by its UVs
         if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
@@ -66949,6 +66956,72 @@ const ThreeRenderer = (function () {
         }
         return out;
     }
+    /* THE ONE PIXEL DENSITY (2026-11-07, mondo on Mount Shasta: "the issue is that there is not consistent pixel density. Why is
+       this wooden bridge look way more crisper than the grass and the dirt?" + "is it from stretching the terrain to fit over 4
+       squares instead of 1?"). Measured on the board (texels per world unit, the field = 1.00 = one 128 px sheet per 3.5 m square):
+       the grass is NOT stretched; it is the rest that was too fine. ONE SPRITE PER SQUARE (PR #840) moved only the field to the
+       square's size: every other piece the terrain room builds still tiled its sheet by TM, the 1.75 m model tile — the plank
+       decks (wood_planks 2.00), the stone bridge layer (rocks_5 2.00), the water (1.98), the city lots, walls, floats, kerbs — so
+       each showed 2 x 2 sheets per square, its texels a quarter the size of the grass beside it; small boxes that kept three's 0..1
+       UVs (a sheet per face, whatever the face's size) were finer still. This pass runs on the room's shell group once the terrain
+       is built: every mesh wearing a TERRAIN sheet (Assets/world/terrain/, by the file it came from) has its UVs scaled, per face
+       group, to the field's one sheet per `TS` (the square in world units) — measured on the mesh in world space, so a box, a
+       slab, a deck, a cylinder, a scaled piece all land on the same texel size. Left alone: the field itself (triplanar, already
+       the rule), cut-out decals (alphaTest: a manhole is one picture), clamped sheets, instanced / skinned meshes, GLB props (their
+       own textures), the horizon's world-scale pieces (_hqWorldUV's chosen metres). A geometry shared by two meshes is copied.
+       Off: window.EW_SHEET_ANY_DENSITY = true before the room builds. */
+    var _HQ_OD_RE = /\/Assets\/world\/terrain\//;
+    function _hqOdSheet(mat) {   // the material's map when it is a tiling terrain sheet this pass may re-scale, else null
+        var t = mat && mat.map;
+        if (!t || !t._ew_src || !_HQ_OD_RE.test(t._ew_src) || mat._ew_triplanar || mat.alphaTest > 0) return null;
+        return (t.wrapS === THREE.RepeatWrapping && t.wrapT === THREE.RepeatWrapping) ? t : null;
+    }
+    function _hqOneDensity(root, TS) {
+        if (!root || !(TS > 0) || (typeof window !== 'undefined' && window.EW_SHEET_ANY_DENSITY)) return 0;
+        var A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), E1 = new THREE.Vector3(), E2 = new THREE.Vector3();
+        var want = 1 / TS, n = 0;
+        root.updateMatrixWorld(true);
+        root.traverse(function (m) {
+            if (!m.isMesh || m.isInstancedMesh || m.isSkinnedMesh || !m.geometry || !m.material) return;
+            var arr = Array.isArray(m.material), g = m.geometry;
+            if (g._ew_wuvOwner) return;   // the horizon's world-scale pieces keep their chosen metres
+            var P = g.attributes.position, UV = g.attributes.uv; if (!P || !UV) return;
+            var I = g.index, tot = I ? I.count : P.count, mw = m.matrixWorld;
+            var groups = (g.groups && g.groups.length) ? g.groups : [{ start: 0, count: tot, materialIndex: 0 }];
+            /* measure every face group first: [vertex list, k] for each group that wears a sheet and is off the rule */
+            var todo = [];
+            groups.forEach(function (gr) {
+                var t = _hqOdSheet(arr ? m.material[gr.materialIndex || 0] : m.material); if (!t) return;
+                var rx = t.repeat.x || 1, ry = t.repeat.y || 1, ds = [], vs = [], end = Math.min(tot, gr.start + gr.count);
+                for (var f = gr.start; f + 2 < end; f += 3) {
+                    var i0 = I ? I.getX(f) : f, i1 = I ? I.getX(f + 1) : f + 1, i2 = I ? I.getX(f + 2) : f + 2;
+                    vs.push(i0, i1, i2);
+                    A.fromBufferAttribute(P, i0).applyMatrix4(mw); B.fromBufferAttribute(P, i1).applyMatrix4(mw); C.fromBufferAttribute(P, i2).applyMatrix4(mw);
+                    var wa = E1.subVectors(B, A).cross(E2.subVectors(C, A)).length();
+                    if (!(wa > 1e-6)) continue;
+                    var ua = Math.abs((UV.getX(i1) - UV.getX(i0)) * (UV.getY(i2) - UV.getY(i0)) - (UV.getX(i2) - UV.getX(i0)) * (UV.getY(i1) - UV.getY(i0))) * rx * ry;
+                    if (ua > 1e-12) ds.push(Math.sqrt(ua / wa));
+                }
+                if (!ds.length) return;
+                ds.sort(function (x, y) { return x - y; });
+                var k = want / ds[ds.length >> 1];
+                if (k > 0 && Math.abs(k - 1) >= 0.03) todo.push([vs, k]);
+            });
+            if (!todo.length) return;
+            if (g._ew_odMesh && g._ew_odMesh !== m) { g = g.clone(); m.geometry = g; UV = g.attributes.uv; }   // shared with a piece of another size: this one gets its own copy
+            var done = new Uint8Array(UV.count);
+            todo.forEach(function (td) { var vs = td[0], k = td[1]; for (var j = 0; j < vs.length; j++) { var v = vs[j]; if (done[v]) continue; done[v] = 1; UV.setXY(v, UV.getX(v) * k, UV.getY(v) * k); } });
+            g._ew_odMesh = m; UV.needsUpdate = true; n++;
+        });
+        return n;
+    }
+    /* the whole room once its builders are done (the walls, the doors, the climbs, the proc props come after the terrain) */
+    function _hqOneDensityRoom() {
+        var H = _hq; if (!H) return 0;
+        var TS = _hqSheetM(H.terrain || null) * _hqUnits(), n = 0;
+        try { n += _hqOneDensity(H.shellGroup, TS); n += _hqOneDensity(H.doorGroup, TS); n += _hqOneDensity(H.propGroup, TS); } catch (e) { console.warn('[HQ] the one pixel density failed', e); }
+        return n;
+    }
     function _hqBuildTerrain(room) {
         /* THE SLICE (OPEN_WORLD_PLAN §5.9 / Phase 11, 2026-09-27): the build is a generator — a room's own build (the card up)
            runs it to the end here; a stage neighbour (asked with _hqSliceAsk) gets the iterator and _hqStageBuildSlice resumes
@@ -67177,7 +67250,7 @@ const ThreeRenderer = (function () {
             else { lavaN++; lavaCx += f.pts[0][0]; lavaCz += f.pts[0][1]; lavaY = f.y; }
         });
         try {
-            var wOwn = _hqWaterOwners(info), wGeo = wOwn ? _hqWaterGeoms(info, wOwn.own, U, TM, wOwn.mode) : {};
+            var wOwn = _hqWaterOwners(info), wGeo = wOwn ? _hqWaterGeoms(info, wOwn.own, U, TS, wOwn.mode) : {};   // THE ONE PIXEL DENSITY: the water's sheet per square (TS), like the field
             Object.keys(wGeo).forEach(function (key) {
                 var B = wGeo[key]; if (!B.i.length) return;
                 var nrm = new Float32Array(B.p.length); for (var ni = 1; ni < nrm.length; ni += 3) nrm[ni] = 1;
@@ -67186,7 +67259,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
-            if (_hqGridWaterBuild(info, G, U, TM)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
+            if (_hqGridWaterBuild(info, G, U, TS)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
            DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
@@ -67332,7 +67405,7 @@ const ThreeRenderer = (function () {
         /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
         var TK = null;
         if ((info.trees.length || (info.thicket && info.thicket.length) || (S.forest && S.open) || (info.lots && info.lots.length) || (info.texb && typeof hqTexbPrism === 'function' && info.texb.some(hqTexbPrism))) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {   // THE LAYOUT (E5): a tree-walled plan's thicket needs the kit too
-            try { TK = _nrKit(G, { ts: TM, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
+            try { TK = _nrKit(G, { ts: TM, sheet: TS, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
         }
         if (TK && info.texb && info.texb.length) { try { _hqBuildTexPrisms(info, G, U, TK); } catch (e) { console.warn('[HQ] the prism buildings failed', e); } }
@@ -67417,6 +67490,7 @@ const ThreeRenderer = (function () {
                 cone.rotation.x = Math.PI; cone.position.set(sx * U, (S.h - len / 2 - 0.02) * U, sz * U); G.add(cone);
             }
         }
+        try { _hqOneDensity(G, TS); } catch (e) { console.warn('[HQ] the one pixel density failed', e); }   // THE ONE PIXEL DENSITY: every sheet in the room at the field's one sheet per square
         if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] terrain', roomId, nx + '×' + nz, 'trees', info.trees.length, 'scatter', info.scatter.length, 'fluids', info.fluids.length);
         })();
         if (sliced) return it;
@@ -71031,7 +71105,7 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             try {
                 var kinds = ['tree', 'tree_2', 'tree_3'];
-                var kit = _nrKit(g, { ts: 1.75 * U, bw: 8, bh: 8, rng: _mulberry32((0x6a4d + (_hqProcSeed++) * 131) >>> 0), hq: { w: 0, gap: 0, B: 1, tints: null } }, {});
+                var kit = _nrKit(g, { ts: 1.75 * U, sheet: _hqSheetM(null) * U, bw: 8, bh: 8, rng: _mulberry32((0x6a4d + (_hqProcSeed++) * 131) >>> 0), hq: { w: 0, gap: 0, B: 1, tints: null } }, {});
                 var t = _nrTree(kit, kinds[_hqProcSeed % kinds.length], { h: 2.4 });
                 if (t && t.parent !== g) g.add(t);
             } catch (e) {
@@ -84937,7 +85011,8 @@ const ThreeRenderer = (function () {
             try { _hqBuildDoors(copy); } catch (e) { console.warn('[HQ→battle] doors failed', e); }
             try { _hqBuildCounters(copy); } catch (e) { console.warn('[HQ→battle] counters failed', e); }
             try { _hqPlaceProps(copy); } catch (e) { console.warn('[HQ→battle] props failed', e); }
-            if (R.terrain && typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }   // the ladders / ropes / vines the tiers were reached by
+            if (R.terrain && typeof _hqBuildClimbs === 'function') { try { _hqBuildClimbs(copy); } catch (e) { console.warn('[HQ→battle] climbs failed', e); } }
+            _hqOneDensityRoom();   // THE ONE PIXEL DENSITY: every terrain sheet in the room at one sheet per square   // the ladders / ropes / vines the tiers were reached by
             }
             if (trueGround) { try { _hqShadowFlags(copy); } catch (e) {} }   // rev 3: the room casts and receives the key's shadow exactly as it did on the walk
         } finally { _hq = saved; }
@@ -85147,7 +85222,7 @@ const ThreeRenderer = (function () {
         function (room) { _hqBuildStairs(room); _hqBuildDesk(room); },
         function (room) { _hqBuildDoors(room); _hqBuildCounters(room); },
         function (room) { _hqSliceAsk = true; return _hqPlaceProps(room); },
-        function (room) { _hqBuildClimbs(room); _hqPlaceFinds(room); },
+        function (room) { _hqBuildClimbs(room); _hqPlaceFinds(room); _hqOneDensityRoom(); },   // THE ONE PIXEL DENSITY
         function (room) { try { _hqPlaceLightShafts(room); } catch (e) {} try { _hqBuildDecals(room); } catch (e) {} try { _hqBuildSafetySigns(room); } catch (e) {} try { _hqShadowFlags(room); } catch (e) {} },
         /* Phase 2 (THE DOOR JOIN): a closed room's own lamps, and — HQ_STAGE_RULES.nbPeople 'interior' — its cast, so the ward is
            lit and staffed through its open door (an outdoor part's crowd still comes out at the crossing) */
@@ -86835,6 +86910,7 @@ const ThreeRenderer = (function () {
         try { _hqBuildCounters(room); } catch (e) { console.error('[HQ] counters failed', e); }
         try { _hqPlaceProps(room); } catch (e) { console.error('[HQ] props failed', e); }
         try { _hqBuildClimbs(room); } catch (e) { console.error('[HQ] climbs failed', e); }   // THE CLIMB (2026-09-19): after the props — a box room's ladder heads on a platform's top
+        _hqOneDensityRoom();   // THE ONE PIXEL DENSITY: every terrain sheet in the room at one sheet per square
         try { _hqPlaceFinds(room); } catch (e) { console.error('[HQ] finds failed', e); }
         /* THE DEEP (2026-09-18): a room with a sea — the underwater look's pieces, the first frame's state */
         try { _hqSeaArm(room); } catch (e) { console.error('[HQ] sea failed', e); }
