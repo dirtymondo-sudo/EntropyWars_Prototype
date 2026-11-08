@@ -3340,3 +3340,35 @@ in blender. So ditch the blender fire+smoke, go back to what the game had before
   bake-vfx.py and docs/BLENDER_VFX_GUIDE.md (both marked RETIRED for spell VFX). Do NOT bring back sim-baked fire/smoke.
 - What replaces it: the Riot-guide VFX plan in this thread (readability, value/colour hierarchy, shape, timing), done in
   code with the existing painted sprites, no Blender.
+
+## THE RIOT PASS, phase A (2026-11-08)
+mondo 11-08 sent Riot's League VFX style guide and approved the plan (https://claude.ai/artifact/Y9TyT9NUqMHnyjXYcbmZGQ,
+phases A-D). Phase A = principles 1 (importance), 2 (primary vs secondary), 3 (value) and 6 (timing), all in code, no new
+art. Kill switch `window.EW_NO_RIOT_VFX = true` (or localStorage `ew_riotvfx` = `off`): the next spawn is the old look
+(the before shots use it in the same match).
+- WHO IS SPAWNING (three-vfx-effects.js `_rvCtx`): `fire()` runs as its spell (`stageInfo` weight + the stage palette's
+  `flash` colour; windup / burst / finish as `staged`, already tier-scaled), `projectile` / `beam` / `aoe` as the spell
+  they name, `fireBoltDirect` as its caller's spell or else a basic attack's shot (`light`). `_fxDelay` and `_fxSchedule`
+  carry it, so delayed and per-frame spawns keep it. three-vfx.js reads it through `ThreeVFXEffects._rvCtxNow`. Raw
+  `window.setTimeout` spawns, the module's own tick (zones, statuses, weather) and three-renderer / three-lightning spawns
+  outside a spell run without one: no importance, but roles / value / timing still apply.
+- three-vfx.js `_rvApply` (called in `spawn()` before the first write), table `_RV_W`:
+  light ×0.55 size / ×0.82 opacity / sat 0.78 / value 0.88 / linger cap 0.6 s; standard ×0.8 / ×0.92 / 0.9 / 0.95 / 0.9 s;
+  heavy ×1.05 / 1 / 1 / 1 / 1.3 s; ultimate ×1.35 / 1 / sat 1.12 / 1 / 1.8 s. Size + opacity on billboards only (sprite
+  pool); a ground decal's size is the area and stays. An ultimate's growth fades out for billboards over 1-2 tiles wide.
+- ROLES: `_RV_SEC_BIG` (smoke, smoke-soft, dust-puff, poison/void/frost-mist, shadow-wisp) opacity cap 0.35, sat ×0.7,
+  value ×0.85; `_RV_SEC_SMALL` (ember, sparkle, divine-sparkle) cap 0.6, sat ×0.7, value ×0.9. Both step back in depth
+  (`_rvBack`, batched path only): moved along the camera ray and scaled by the same ratio, so the screen picture is the same
+  but a body in front hides it; never further than the particle stands above its floor (`_rvFloorAt` = tileZ, memo 250 ms).
+- VALUE: `_RV_FLASH` (flash, muzzle-flash, holy-light, flame-hot) take the spell's light colour when untinted and their
+  brightest channel caps at 0.92; `_batchFlush` sums the flashes per 0.75-tile cell and scales a cell over 1.15 down
+  (`_RV_STACK`), so stacked flashes can't burn to flat white.
+- TIMING: size eases out (`_szPow` 2 unless `sizeEaseOut`), opacity holds 20 % of the life then smoothsteps away (`opHold`
+  wins), a flash pops and drops (ease-out fade), a fade-in smoothsteps. `_pColor`: past 45 % of the life the colour slides
+  darker (to 60 %) and greyer (35 %); fire sprites (`_RV_FIRE`) also lose green / blue, so they go yellow, orange, red.
+- Left alone: kept / zone / decor / trail / seek / orbit / descent / onComplete / floorAt / onLand particles, gore
+  (`blood*`), globs, quads (beams, slashes, speed lines), ground marks (`_RV_MARKS`: scorch, inkblot, spiderweb-1), wave
+  frames' colour. Non-batched fallback (`EW_NO_FX_BATCH`): everything but the depth step and the flash budget.
+- Online: every client spawns its own particles from the relayed calls (fire, the vfx3d-x siblings, the basic shot), so the
+  guest computes the same weights. Looks only.
+- Proof: /mnt/project-files/riot-vfx/phase-a/ (same VS-CPU match, `EW_NO_RIOT_VFX` on for the before shots).

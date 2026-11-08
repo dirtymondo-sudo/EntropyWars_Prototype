@@ -5,12 +5,20 @@ const ThreeVFXEffects = (function () {
     // A phase check alone cannot distinguish two battles or two previews.
     var _fxLifetime = 0, _fxDelays = new Set();
     var _fxDomOwners = new Set(), _fxTintOwner = null;
+    /* THE RIOT PASS (2026-11-08): the spell whose particles are being spawned right now ({ w: its staging weight, light:
+       its palette's flash colour, staged }) — three-vfx.js spawn() reads it (_rvCtxNow) to scale every particle by the
+       spell's importance. Set round fire() / projectile() / beam() / aoe() / fireBoltDirect() (the _rv wrappers at the
+       end of this file) and carried by every _fxDelay and _fxSchedule ticker, so a delayed or per-frame spawn still
+       knows whose it is. */
+    var _rvCtx = null;
     function _fxDelay(fn, ms) {
-        var lifetime = _fxLifetime;
+        var lifetime = _fxLifetime, rc = _rvCtx;
         var id = window.setTimeout(function () {
             _fxDelays.delete(id);
             if (lifetime !== _fxLifetime) return;
-            fn();
+            if (!rc) { fn(); return; }
+            var pv = _rvCtx; _rvCtx = rc;
+            try { fn(); } finally { _rvCtx = pv; }
         }, ms);
         _fxDelays.add(id);
         return id;
@@ -360,6 +368,7 @@ const ThreeVFXEffects = (function () {
         var theme = _resolveTheme(spellType, spellId, spellName);
 
         _projEffects.push({
+            _rv: _rvCtx,
             from: { x: from.x, y: from.y, z: fz },
             to: { x: to.x, y: to.y, z: tz },
             dx: dx / dist, dy: dy / dist, dz: dz / dist,
@@ -377,6 +386,7 @@ const ThreeVFXEffects = (function () {
         var dtMs = dt * 1000;
         for (var i = _projEffects.length - 1; i >= 0; i--) {
             var e = _projEffects[i];
+            _rvCtx = e._rv || null;
             e.elapsed += dtMs;
             var p = Math.min(e.elapsed / e.durMs, 1);
 
@@ -1378,8 +1388,9 @@ const ThreeVFXEffects = (function () {
     function isSandstorm3DActive() { return false; }
 
     function tick(dt) {
-        _tickProjectiles(dt);
-        _tickBolts(dt);
+        /* THE RIOT PASS: a flying projectile / bolt spawns its trail and head as the spell that threw it (entry._rv) */
+        var rvPrev = _rvCtx;
+        try { _tickProjectiles(dt); _tickBolts(dt); } finally { _rvCtx = rvPrev; }
         _tickPersistentZones(dt);
         _syncTileFlames(dt);
         _tickFlameBursts(dt);
@@ -5431,6 +5442,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         _boltEffects.push({
+            _rv: _rvCtx,
             from: { x: from.x, y: from.y, z: fz },
             to: { x: to.x, y: to.y, z: tz },
             dx: dx / dist, dy: dy / dist, dz: dz / dist,
@@ -5524,6 +5536,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
 
         _boltEffects.push({
+            _rv: _rvCtx,
             from: { x: from.x, y: from.y, z: fz },
             to: { x: to.x, y: to.y, z: tz },
             dx: dx / dist, dy: dy / dist, dz: dz / dist,
@@ -5555,6 +5568,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dtMs = dt * 1000;
         for (var i = _boltEffects.length - 1; i >= 0; i--) {
             var e = _boltEffects[i];
+            _rvCtx = e._rv || null;
             /* THE CRAFT: a bolt pulls a real 3D ribbon (a tracer draws its own streak) */
             if (e.elapsed === 0 && !e.tracer && typeof _crBoltRibbon === 'function') {
                 e.ribbon = !!_crBoltRibbon(e);
@@ -6038,6 +6052,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        unregisters it, and clearAll() drops every ticker at once. */
     var _fxTickers = [], _fxRaf = null, _fxPumping = false, _fxTickerEpoch = 0;
     function _fxSchedule(fn) {
+        var rc = _rvCtx;   // THE RIOT PASS: a ticker spawns as the spell that started it
+        if (rc) { var f0 = fn; fn = function () { var pv = _rvCtx; _rvCtx = rc; try { return f0(); } finally { _rvCtx = pv; } }; }
         _fxTickers.push(fn);
         if (_fxRaf === null && !_fxPumping) _fxRaf = requestAnimationFrame(_fxPump);
     }
@@ -62936,7 +62952,51 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fxDelay(function () { _shake(kind); }, hs);
     }
 
+    /* ── THE RIOT PASS (2026-11-08): who is spawning (see _rvCtx at the top; three-vfx.js "THE RIOT PASS") ──
+       fire() runs as its spell (the staging beats as `staged`: their tier already scaled them), projectile / beam / aoe
+       as the spell they name (else whoever called them), fireBoltDirect as its caller's spell, else a basic attack's
+       shot (light). The guest runs the same calls (online.js relays fire, the vfx3d-x siblings and the basic shot), so
+       Player 2 sees the same weights. Looks only: no rule reads any of it. */
+    var _RV_BASIC = { w: 'light', light: null, staged: false };
+    function _rvCtxFor(spellId, staged) {
+        if (!spellId || typeof spellId !== 'string') return null;
+        var si = null;
+        try { si = stageInfo(spellId); } catch (e) { si = null; }
+        if (!si) return null;
+        return { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged };
+    }
+    function _rvRun(c, fn, self, args) {
+        var pv = _rvCtx; _rvCtx = c;
+        try { return fn.apply(self, args); } finally { _rvCtx = pv; }
+    }
+    var _rvFire0 = fire;
+    fire = function (intent, spellId, params) {
+        var c = _rvCtxFor(spellId, intent === 'windup' || intent === 'burst' || intent === 'finish') || _rvCtx;
+        return _rvRun(c, _rvFire0, this, arguments);
+    };
+    var _rvProj0 = projectile;
+    projectile = function (fromTx, fromTy, toTx, toTy, spellType, spellId) { return _rvRun(_rvCtxFor(spellId) || _rvCtx, _rvProj0, this, arguments); };
+    var _rvBeam0 = beam;
+    beam = function (fromTx, fromTy, toTx, toTy, spellType, spellId) { return _rvRun(_rvCtxFor(spellId) || _rvCtx, _rvBeam0, this, arguments); };
+    var _rvAoe0 = aoe;
+    aoe = function (centerTx, centerTy, spellType, spellId) { return _rvRun(_rvCtxFor(spellId) || _rvCtx, _rvAoe0, this, arguments); };
+    var _rvBolt0 = fireBoltDirect;
+    fireBoltDirect = function (presetKey, params) { return _rvRun(_rvCtx || _RV_BASIC, _rvBolt0, this, arguments); };
+    /* the floor under a vfx px spot (three-vfx.js keeps an atmosphere particle above it when it steps back) */
+    var _rvFloorMemo = new Map(), _rvFloorAt0 = 0;
+    function _rvFloorAt(px, py) {
+        var now = performance.now();
+        if (now - _rvFloorAt0 > 250) { _rvFloorMemo.clear(); _rvFloorAt0 = now; }
+        var c = _cfg(), ts = c.tileSize || 128, st = ts + (c.tileGap || 0), pad = c.boardPadding || 2;
+        var ix = Math.round((px - pad - ts / 2) / st), iy = Math.round((py - pad - ts / 2) / st), k = ix * 4096 + iy;
+        var z = _rvFloorMemo.get(k);
+        if (z === undefined) { z = tileZ(ix, iy); _rvFloorMemo.set(k, z); }
+        return z;
+    }
+
     return {
+        _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
+        _rvFloorAt: _rvFloorAt,
 
         warmNextSheet: _warmNextSheet,   // THE SHEET WARM: ThreeRenderer makes + uploads the cached spell sheets ahead of the first cast
 
