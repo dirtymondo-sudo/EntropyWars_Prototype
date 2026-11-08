@@ -19177,7 +19177,7 @@
                 return `<tr class="${ed ? 'ed' : ''}"><td><b>${l}</b></td>${b.map((v, i) => `<td><input class="rce-in" type="number" value="${v}" data-f="band" data-k="${k}" data-i="${i}" title="${L[i]} from this base value up"></td>`).join('')}
                     <td class="slb2-dim">below ${b[3]}</td><td style="min-width:240px"><div class="rce-gdist">${bar}</div></td>
                     <td class="slb2-dim rce-small">${k === 'spd' || k === 'vision' || k === 'crt' ? 'same at every level' : 'S at L' + cap() + ' ≥ ' + l100[0] + ' · C ≥ ' + l100[3]}</td>
-                    <td><button class="slb2-tiny" data-act="bandSpread" data-v="${k}" title="S = the top fifth of the roster, A the next fifth, and so on">SPREAD EVENLY</button>${ed ? ` <button class="slb2-tiny" data-act="bandReset" data-v="${k}">RESET</button>` : ''}</td></tr>`;
+                    <td><button class="slb2-tiny" data-act="bandSpread" data-v="${k}" title="S = the top fifth of the roster, A the next fifth, and so on">SPREAD EVENLY</button> <button class="slb2-tiny" data-act="bandBell" data-v="${k}" title="THE BELL CURVE (how the game ships since 2026-11-08): S = the top tenth of the roster, A the next fifth, B the middle 40 %, C the next fifth, F the bottom tenth; tied races share a letter${k === 'spd' ? '. SPD letters are the move tiles, so this changes how far races walk' : ''}">BELL CURVE</button>${ed ? ` <button class="slb2-tiny" data-act="bandReset" data-v="${k}">RESET</button>` : ''}</td></tr>`;
             }).join('');
             return `<div class="rce-pad rce-prose">
                 <div class="rce-answer">
@@ -19188,7 +19188,7 @@
                 </div>
                 <h3>The bands (BASE values)</h3>
                 <table class="rce-table rce-gtable"><thead><tr><th>STAT</th><th>S ≥</th><th>A ≥</th><th>B ≥</th><th>C ≥</th><th>F</th><th>THE ROSTER</th><th>AT LEVEL ${cap()}</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it.</div>
+                <div class="slb2-hint">A race is the highest letter whose number its base reaches. Each band must be higher than the one after it. The game ships on a BELL CURVE (2026-11-08): S is the top tenth of the roster, A the next fifth, B the middle 40 %, C the next fifth, F the bottom tenth, so a letter means the same rank on every stat. SPD and VISION keep their own cuts because those letters are tiles. Press BELL CURVE on a row to re-cut it after a balance pass.</div>
                 ${moveBlock()}
             </div>`;
         }
@@ -19445,6 +19445,20 @@
                     const vals = races().map(x => base(x, v)).sort((p, q) => q - p), n = vals.length;
                     const q = f => vals[Math.min(n - 1, Math.max(0, Math.ceil(n * f) - 1))];
                     let b = [q(0.2), q(0.4), q(0.6), q(0.8)];
+                    for (let i = 1; i < 4; i++) if (b[i] >= b[i - 1]) b[i] = b[i - 1] - 1;
+                    M().setGlobal('grades', v, b);
+                });
+                /* THE BELL CURVE (2026-11-08, mondo): 10 / 20 / 40 / 20 / 10 % of the listed races. Each cut is the race value
+                   whose share of races at or above it comes closest to the target, so a block of tied races (56 races on
+                   CRT 26 %) all take one letter instead of being split. The shipped STAT_GRADE_BANDS were cut this way. */
+                else if (a === 'bandBell') W(() => {
+                    const vals = races().map(x => base(x, v)), n = vals.length; if (!n) return;
+                    const distinct = Array.from(new Set(vals)).sort((p, q) => q - p);
+                    const b = [0.1, 0.3, 0.7, 0.9].map(f => {
+                        let best = distinct[0], bd = Infinity;
+                        distinct.forEach(x => { const d = Math.abs(vals.filter(y => y >= x).length - n * f); if (d < bd - 1e-9) { bd = d; best = x; } });
+                        return best;
+                    });
                     for (let i = 1; i < 4; i++) if (b[i] >= b[i - 1]) b[i] = b[i - 1] - 1;
                     M().setGlobal('grades', v, b);
                 });

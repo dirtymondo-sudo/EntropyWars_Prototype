@@ -24877,19 +24877,28 @@ function evasionChanceFromStats(move) {
    (B straddles the roster average, S ≈ top decile).
    Deliberate NON-grades: MOV and RNG (tiny numbers with diamond footprints),
    CRT/EVA (already a % — a grade would double-encode). Grades are computed
-   from the FINAL displayed value, so gear/sub-job genuinely move letters. */
+   from the FINAL displayed value, so gear/sub-job genuinely move letters.
+   THE BELL CURVE (2026-11-08, mondo, after the balance loop PR #1049-#1063: "make it more like a bell curve" → "go
+   ahead"): the letter is the race's RANK in the playable roster, the same on every stat — S = the top ~10 % of the
+   races, A the next 20 %, B the middle 40 %, C the next 20 %, F the bottom ~10 %. The old even-step cuts made S mean
+   9 % of the roster on HP but 28 % on M ATK and half the roster on CRT (56 races sit on exactly 26 %). Ties share a
+   letter (each cut sits where the share comes closest to the target), so CRT stays lumpy: 26 % reads A. The cuts are
+   FIXED numbers baked from the roster on 11-08 (never recomputed live, so patching one race never moves another
+   race's letter); re-cut them after a balance pass with the race editor's GRADES tab > BELL CURVE.
+   SPD and VISION keep their old cuts on purpose: the SPD letter IS the move tiles (MOVE_SPD_RULE.follow) and the
+   VISION letter is one per tile seen, so those are rules, not rankings. Display only: no formula reads a letter. */
 const STAT_GRADE_LETTERS = ['S', 'A', 'B', 'C'];   // high → low, else F
 const STAT_GRADE_BANDS = {
   //        S     A     B     C   (else F)
-  hp:    [1507, 1190,  885,  593],   // race editor 2026-10-06 (mondo): every band re-cut to the new statlines
-  mp:    [ 220,  170,  130,   95],
-  atk:   [ 161,  120,   80,   39],
-  int:   [ 161,  120,   80,   39],
-  def:   [ 163,  124,   86,   47],
-  mdef:  [ 163,  124,   86,   47],
-  spd:   [ 163,  126,   88,   49],
+  hp:    [1500, 1180,  880,  678],   // THE BELL CURVE 2026-11-08 (10/20/40/20/10 of the 134 playable races); was 1507 1190 885 593
+  mp:    [ 225,  200,  115,   90],   // was 220 170 130 95
+  atk:   [ 160,  122,   65,   23],   // was 161 120 80 39
+  int:   [ 195,  159,   60,   20],   // was 161 120 80 39
+  def:   [ 170,  130,   79,   42],   // was 163 124 86 47
+  mdef:  [ 181,  146,   68,   33],   // was 163 124 86 47
+  spd:   [ 163,  126,   88,   49],   // KEPT: these cuts are the move tiles (MOVE_SPD_RULE.follow), not a ranking
   vision:[   6,    5,    4,    3],   // 2026-10-09: VISION (tiles, 2-6) replaced AWR
-  crt:   [  24,   20,   16,   12],   // CRT % (its own stat since 2026-10-09)
+  crt:   [  30,   26,   19,   13],   // CRT % (its own stat since 2026-10-09); THE BELL CURVE 2026-11-08 (56 races tie on 26 % = A); was 24 20 16 12
 };
 // One chip color per grade — the same visual language at every display site.
 const STAT_GRADE_COLORS = { S: '#f2c63c', A: '#3ddc84', B: '#4ecbe2', C: '#c8c8e4', F: '#ff5e5e' };
@@ -24918,11 +24927,31 @@ const STAT_GRADE_FACE = {
   C: 'linear-gradient(135deg, #f2c468 0%, #d99a3a 48%, #8c62c8 100%)',
   F: 'linear-gradient(135deg, #ff5e5e 0%, #d8244a 48%, #7a2cc4 100%)',
 };
-/* the gauge's share of the ring: a ruler stat is val / 100; HP / MP fill
-   against their S band (the top of the roster), so a 700-HP tank reads full */
+/* the gauge's share of the ring: THE BELL CURVE (2026-11-08) fills it by the value's RANK in the playable roster (the
+   same ruler the letter uses), so the top race reads full and the median race half. It used to be val / 100 on a
+   0-230 stat, which drew a full ring on every stat of 100+ (over half the roster). The roster's sorted base values are
+   cached per stat; statGradeRankReset() drops the cache when the race editor writes the stats. */
+const _STAT_GRADE_RANK = {};
+function statGradeRankReset() { Object.keys(_STAT_GRADE_RANK).forEach(k => { delete _STAT_GRADE_RANK[k]; }); }
+function _statGradeRoster(key) {
+  if (_STAT_GRADE_RANK[key]) return _STAT_GRADE_RANK[key];
+  if (typeof RACE_BASE_STATS === 'undefined') return null;
+  const list = (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES.length) ? AVAILABLE_RACES : Object.keys(RACE_BASE_STATS);
+  const s = list.filter(r => RACE_BASE_STATS[r]).map(r => Number(RACE_BASE_STATS[r][key]) || 0).sort((a, b) => a - b);
+  if (!s.length) return null;
+  _STAT_GRADE_RANK[key] = s;
+  return s;
+}
 function statGradePct(key, val) {
   const bands = STAT_GRADE_BANDS[key];
   if (!bands) return 0;
+  const s = _statGradeRoster(key);
+  if (s) {
+    const v = Number(val) || 0;
+    let below = 0, same = 0;
+    for (let i = 0; i < s.length; i++) { if (s[i] < v) below++; else if (s[i] === v) same++; else break; }
+    return Math.max(2, Math.min(100, Math.round(((below + same / 2) / s.length) * 100)));   // mid-rank: ties share one fill
+  }
   const full = (key === 'hp' || key === 'mp') ? bands[0] : key === 'vision' ? 6 : key === 'crt' ? 30 : 100;
   const v = Number(val) || 0;
   return Math.max(0, Math.min(100, Math.round((v / full) * 100)));
@@ -24951,17 +24980,17 @@ function statGradeChipHtml(key, val, opts) { return statGradeNodeHtml(key, val, 
    codex dossier, the in-battle INFO stat card and the quick-menu stat grid.
    Keep the numbers in sync with battle.js when formulas move. */
 const STAT_HELP = {
-  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round). Grades: S ≥1507 · A ≥1190 · B ≥885 · C ≥593 · F below.',
-  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry. Grades: S ≥220 · A ≥170 · B ≥130 · C ≥95 · F below.',
-  atk: 'ATK — physical power (S 161+ · A 120+ · B 80+ · C 39+ · F below). Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
-  int: 'M ATK — magic power (S 161+ · A 120+ · B 80+ · C 39+ · F below). Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
-  def: 'DEF — physical armor (S 163+ · A 124+ · B 86+ · C 47+ · F below). Soaks a flat share of every incoming basic attack and physical spell. Does nothing against magic damage.',
-  mdef: 'M DEF — magic armor (S 163+ · A 124+ · B 86+ · C 47+ · F below). Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
+  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round). Grades (rank in the roster): S ≥1500 · A ≥1180 · B ≥880 · C ≥678 · F below.',
+  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry. Grades (rank in the roster): S ≥225 · A ≥200 · B ≥115 · C ≥90 · F below.',
+  atk: 'ATK — physical power (S 160+ · A 122+ · B 65+ · C 23+ · F below). Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
+  int: 'M ATK — magic power (S 195+ · A 159+ · B 60+ · C 20+ · F below). Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
+  def: 'DEF — physical armor (S 170+ · A 130+ · B 79+ · C 42+ · F below). Soaks a flat share of every incoming basic attack and physical spell. Does nothing against magic damage.',
+  mdef: 'M DEF — magic armor (S 181+ · A 146+ · B 68+ · C 33+ · F below). Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
   spd: 'SPD — quickness. One letter = one movement tile: F (below 49) walks 1 · C (49+) 2 · B (88+) 3 · A (126+) 4 · S (163+) 5. Faster units also act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 90+) can leap 2-high walls instead of 1.',
   move: 'MOV — movement range in tiles, derived from SPD (SPD 1–25 → 1 · 26–40 → 2 · 41–60 → 3 · 61–80 → 4 · 81+ → 5), then modified by statuses, terrain and weather. The SECOND move of a turn covers only half the tiles (rounded up) and spends all remaining AP. Also feeds dodge chance (+1.8% EVA per MOV).',
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
   vision: 'VISION — how many tiles the unit sees (2 to 6; S 6 · A 5 · B 4 · C 3 · F 2). Walls and blocks still cut sight. A unit can only attack or cast at an enemy its team can see (its own vision or an ally’s) AND that it has line of sight to (spells that ignore line of sight still need the team to see the target). Blind drops vision to 1 and cuts the unit off from its allies’ sight. VISION 4+ also senses cloaked or smoke-hidden enemies from 2 tiles instead of 1.',
-  crt: 'CRT — critical hit chance on basic attacks, in percent — its own stat (S 24+ · A 20+ · B 16+ · C 12+ · F below). A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
+  crt: 'CRT — critical hit chance on basic attacks, in percent — its own stat (S 30+ · A 26+ · B 19+ · C 13+ · F below). A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
   eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker misses half the time, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 
@@ -24986,7 +25015,7 @@ const VISION_RULES = {
 
 Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP, VISION_RULES,
-  STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
+  STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeRankReset, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
   moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, RACE_MERGED, RACE_GENDER_SPELLS, raceGenderOffSpellIds, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
   TRAINING_PASSIVES, FAMILY_PASSIVES, ADAPTABLE_ROW_ID, loadoutBorrows, unitPassiveSum, unitPassiveMult, unitPassiveMax, CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitIsBroken, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
@@ -25937,10 +25966,11 @@ if (typeof window !== 'undefined') window.RACE_STAT_RANGE = RACE_STAT_RANGE;
 const RACE_PROFILE_KEYS = ['label', 'labelMale', 'labelFemale', 'types'];
 /* the stat text in STAT_HELP carries the bands; rewritten when the grades move */
 function statHelpRefreshGrades() {
+    if (typeof statGradeRankReset === 'function') statGradeRankReset();   // THE BELL CURVE: the ring re-reads the roster
     try {
         ['hp', 'mp'].forEach(k => {
             const b = STAT_GRADE_BANDS[k];
-            if (b && STAT_HELP[k]) STAT_HELP[k] = STAT_HELP[k].replace(/Grades: S ≥\d+ · A ≥\d+ · B ≥\d+ · C ≥\d+/, `Grades: S ≥${b[0]} · A ≥${b[1]} · B ≥${b[2]} · C ≥${b[3]}`);
+            if (b && STAT_HELP[k]) STAT_HELP[k] = STAT_HELP[k].replace(/Grades \(rank in the roster\): S ≥\d+ · A ≥\d+ · B ≥\d+ · C ≥\d+/, `Grades (rank in the roster): S ≥${b[0]} · A ≥${b[1]} · B ≥${b[2]} · C ≥${b[3]}`);
         });
         ['atk', 'int', 'def', 'mdef', 'crt'].forEach(k => {
             const b = STAT_GRADE_BANDS[k];
@@ -26308,6 +26338,7 @@ window.EWRaceMods = (function () {
     };
     function restoreAll() {
         if (!pristine) return;
+        statGradeRankReset();   // THE BELL CURVE: the stats go back, so the ring's roster cache goes too
         Object.keys(pristine.stats).forEach(r => { if (RACE_BASE_STATS[r]) _setKeys(RACE_BASE_STATS[r], pristine.stats[r]); });
         Object.keys(pristine.profiles).forEach(r => {
             const pr = RACE_PROFILES[r]; if (!pr) return;
