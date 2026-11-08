@@ -4831,3 +4831,19 @@ What was stale was the TELEMETRY around it (battle.js BALANCE LAB section):
   (fired, perMatch, games, wr) + `analysis.reactionsNeverFired`. _douseBurnOnUnit / _washGooOffUnit / _waterShortsOverclock / _thawFrozenUnit take an
   optional source unit; _soakUnit opts.src.
 - ai.js: the status value table still keyed the old id `soaked` (matched nothing after the rename) -> `wet`; EW_AI_VERSION v4.35.
+
+## THE BUILD SPLIT, THE CC TURNS, THE COMBO CREDIT (2026-11-08, mondo picked options 1, 2, 3: "i like 1, 2, and 3")
+battle.js BALANCE LAB section; telemetry only, no rule changed.
+- THE BUILD SPLIT: Status / Elements / Effects / Combos keep their all-builds totals plus a copy per ?v= build token in
+  `stats.fxByBuild[token]` (last 20 builds). `_balFxBuildDelta` (end of _balFoldFxMatch) adds the change since the last
+  match (`_balFxSnap`, taken in ensureBalanceStats after load / reset / the rules stamp). Build picker on those tabs
+  (`_balFxView`). Export: `analysis.fxByBuild[token]` = statuses / elements / effects / combos / reactions.
+- THE CC TURNS: state.js turn skip -> `_balTurnSkipped` also counts the unit's ledger `c.cc`; raceDetail gets ccGames,
+  ccTurns, ccTurnsLost (own counters, older rows carry none). Races tab row shows `cc` = share of its turns sat out; export
+  race detail ccTurnsLostPerGame / ccLossRate.
+- THE COMBO CREDIT: `_balSetter` notes who put each status on each unit this match (`_balFx.$set`, lab-only, never on the
+  unit; 'board' for a fresh landing with no unit). `_balComboPay(id, finisher, target, dmg)` = a pay-off: every
+  bonusVsStatus hit (per matched status), lightning on Wet (soakedShock / shortCircuit), frost flash-freezing Wet, sonic
+  breaking Frozen. Filed in `stats.comboUse[status]` as team / self / board / other + damage + kills (kills via the hit
+  record). Teammate combos also count per race (comboSetups, comboFinishes; Races tab hover, export race detail). New
+  Combos tab; export `analysis.combos`; CSV `combo` rows.
