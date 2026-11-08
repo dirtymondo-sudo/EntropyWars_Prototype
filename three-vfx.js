@@ -165,6 +165,14 @@ const ThreeVFX = (function () {
         if (_rvLsB === null) { _rvLsB = 'on'; try { if (localStorage.getItem('ew_riotvfx_b') === 'off') _rvLsB = 'off'; } catch (e) {} }
         return _rvLsB !== 'off';
     }
+    /* phase C (colour: the palette fix here, the team rims in three-renderer.js) has its own switch too:
+       EW_NO_RIOT_VFX_C / ew_riotvfx_c = off */
+    var _rvLsC = null;
+    function _rvColorOn() {
+        if (!_rvOn() || window.EW_NO_RIOT_VFX_C) return false;
+        if (_rvLsC === null) { _rvLsC = 'on'; try { if (localStorage.getItem('ew_riotvfx_c') === 'off') _rvLsC = 'off'; } catch (e) {} }
+        return _rvLsC !== 'off';
+    }
     function _rvCtx() {
         var E = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
         if (!E || typeof E._rvCtxNow !== 'function') return null;
@@ -961,13 +969,33 @@ const ThreeVFX = (function () {
             }
         },
     };
+    /* THE RIOT PASS, phase C (guide p.19-21: analogous colours; a complementary one only as the quiet secondary).
+       The palette audit (docs/notes/spells-vfx.md) found one clash: 'psi-pulse' (the psychic / mind mote, 95 uses)
+       was mint green and magenta at the same strength, the guide's Lulu "don't". Psychic is pink + violet (THE PSYCHIC
+       PASS), so the mote is now pink-violet with the mint kept as one faint ring. */
+    var _RV_PAINT_C = {
+        'psi-pulse': function (ctx, S) {
+            var c = S / 2;
+            _blob(ctx, c, c, S * 0.46,
+                  [[0, 'rgba(255,240,252,0.9)'], [0.3, 'rgba(250,170,240,0.6)'], [0.62, 'rgba(200,90,230,0.4)'], [1, 'rgba(130,40,170,0)']]);
+            for (var i = 1; i <= 3; i++) {
+                ctx.strokeStyle = i === 2 ? 'rgba(160,255,210,0.16)' : 'rgba(235,140,255,' + (0.65 - i * 0.12) + ')';
+                ctx.lineWidth = S * 0.022;
+                ctx.beginPath(); ctx.arc(c, c, S * (0.12 + i * 0.106), 0, 6.2832); ctx.stroke();
+            }
+        },
+    };
+    var _rvColorPainted = null;      // the state the phase C canvases were last painted in (null = not built yet)
+
     /* the puffs whose light band sits toward the top: their spin is held so the light stays up */
     var _RV_LIT = { 'smoke': 1, 'dust-puff': 1 };
     var _rvShapesPainted = null;     // the state the canvases were last painted in (null = not built yet)
     function _rvRepaintShapes() {
-        var on = _rvShapesOn();
-        _rvShapesPainted = on;
-        for (var k in _RV_PAINT) {
+        _rvShapesPainted = _rvShapesOn();
+        _rvColorPainted = _rvColorOn();
+        var keys = Object.keys(_RV_PAINT).concat(Object.keys(_RV_PAINT_C));
+        for (var ki = 0; ki < keys.length; ki++) {
+            var k = keys[ki];
             var def = _shapedHiResDefs[k], tex = _hiResTextures[k];
             if (!def || !tex || !tex.image || !tex.image.getContext) continue;
             var cvs = tex.image, ctx = cvs.getContext('2d');
@@ -1635,10 +1663,19 @@ const ThreeVFX = (function () {
                 def.draw = function (ctx, S) { if (_rvShapesOn()) _RV_PAINT[key](ctx, S); else oldDraw(ctx, S); };
             })(k, def.draw);
         }
+        /* phase C: the palette fixes paint while _rvColorOn() */
+        for (var kc in _RV_PAINT_C) {
+            var defc = _shapedHiResDefs[kc];
+            if (!defc) continue;
+            (function (key, oldDraw) {
+                defc.draw = function (ctx, S) { if (_rvColorOn()) _RV_PAINT_C[key](ctx, S); else oldDraw(ctx, S); };
+            })(kc, defc.draw);
+        }
     })();
 
     function _buildShapedHiRes() {
         _rvShapesPainted = _rvShapesOn();
+        _rvColorPainted = _rvColorOn();
         for (var key in _shapedHiResDefs) {
             var def = _shapedHiResDefs[key];
             var cvs = document.createElement('canvas');
@@ -3009,7 +3046,7 @@ const ThreeVFX = (function () {
         /* THE RIOT PASS phase B: a flipped switch repaints the puffs in place; a lit puff (smoke, dust) keeps its
            light band up (±30°, a slow roll) instead of a full random turn */
         var rvB = _rvShapesOn();
-        if (_rvShapesPainted !== null && rvB !== _rvShapesPainted) _rvRepaintShapes();
+        if (_rvShapesPainted !== null && (rvB !== _rvShapesPainted || _rvColorOn() !== _rvColorPainted)) _rvRepaintShapes();
         var rvLit = rvB && !!_RV_LIT[sprite];
         /* the painted explosion is a body, not a glow: drawn normally its dark-red rim and bands read, and stacked
            blasts no longer add up to flat white (guide p.13-17); its glow is the flash beside it */
