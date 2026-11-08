@@ -3423,3 +3423,28 @@ down after the attack landed), on the cinematic spell shot.
 - Harness: wrap GAME.doSpell (the AI calls it through window.GAME) to force the beam, block GAME.doMove for the forced
   caster, teleport with u.x/u.y + ThreeRenderer.invalidateUnits(); a temporary `window.__ewCam = camera` line in battle.js
   (never commit). Freezing the clock with a performance.now hack cancels the shot: record per frame instead.
+
+## THE CLEAR DROP (2026-11-08)
+mondo (Infernal Hurl on the Hell arena, the landing pick up): "for infernal hurl and other spells like it, the camera zooms out
+way too much and is too far over to the left", with a second shot framed by hand (caster, held body and landing squares close
+in, just right of the ability list). Two causes, measured in a real VS CPU match (Fallen Angel, Action Cam on, 1728x905):
+1. THE CLICKABLE PICK squeezed the whole landing ring into the strip right of the WIDEST panel (the low target/CANCEL panel), as if
+   it ran top to bottom, and filled 86% of that strip: the ring came out small at the far right.
+2. THE CLEAR BOARD (three-camera.js) craned the lens ~6 squares up over the arena's rock spires (gaze held on the focal): the
+   real view sat at 12.7° from vertical and 1.55x the eye distance the fit solved (asked 20°).
+Fix, battle.js `_clearDropFrame` (used by `_frameSpellTilePick` when opts.clearDrop, i.e. every THE DROP PICK frame: the sky throws
+To the Moon / Abduction Beam / Dragon Toss / Infernal Hurl, Teleport's landing, the tosses Horn Toss / Suplex / Fifty Times Its
+Weight): reads what really covers the screen panel by panel (`_clearDropCover`: the hrlg menus incl. the faded list, turn clock,
+scoreboard, match meta, prompt bar, desc bar, minimap) and searches the slide (cx -0.3..0.8, cy -0.25..0.35) and eye distance
+for the CLOSEST view with every lit square's corners on screen (CLEAR_DROP_EDGE 0.94) and each square's middle and inner face
+(CLEAR_DROP_FACE) out from under the panels (CLEAR_DROP_PAD_PX 10), head-room words on screen, never tighter than ±3 squares.
+Of views within CLEAR_DROP_NEAR (4%) of the closest it keeps the one with the most room round the lit squares (8 px steps), then
+the most centred. A toss's far ends are frame-only (`frameOnly`, shown, not required clear of panels). It then asks
+`ThreeCamera.boardLiftAt(cx, cy, fy, dist, tilt, yaw)` (new, read-only: THE CLEAR BOARD ground + steady body lift for a pose)
+and, while the crane would lift, solves again at the steeper tilt the lift lands on (up to 4 times), so the screen shows the
+fit. The slide rides `camera._clearFit.slide` and `_ewMenuSlide` uses it; the tilt rides the frame into moveTo and the refit.
+Result (same match, same panels): Infernal Hurl ring 45% → ~68% of the screen height, clear of the list / BACK / CANCEL, like
+his shot; Horn Toss zoom 0.56 → 0.93. Kill switch `window.EW_NO_CLEAR_DROP = true` (back to THE CLICKABLE PICK). Probe
+`window._clearDropState()`. Viewer-local camera, nothing relayed (a guest frames its own drop pick from state-sync).
+Proof /mnt/project-files/throw-camera/ (infernal_hurl_before_after.jpg, horn_toss_before_after.jpg). Teleport shares the sky
+path (solid) and was not driven on screen.

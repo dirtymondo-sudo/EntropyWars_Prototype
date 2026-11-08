@@ -27724,6 +27724,212 @@
                 return { x: camX, y: camY, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), fa, opts };
             } catch (e) { return null; }
         }
+        /* ══ THE CLEAR DROP (2026-11-08) ══ mondo (Infernal Hurl on the Hell arena, the landing pick up: "for infernal hurl
+           and other spells like it, the camera zooms out way too much and is too far over to the left", with a shot he
+           framed by hand: the caster, the held body and the landing squares close in, just right of the ability list).
+           THE CLICKABLE PICK squeezed the whole landing ring into the strip right of the WIDEST panel (the target panel low
+           down), as if that panel ran from the top of the screen to the bottom, and filled only 86% of that strip's middle:
+           a ring three squares each way came out tiny at the far right. Every square still has to stay clickable (C2), so
+           this frames the drop pick (THE DROP PICK: the sky throws, Teleport's landing, the tosses) against what really
+           covers the screen, panel by panel: the command menus (the faded list too: a click there backs out), the turn
+           clock, the scoreboard, the prompt bar, the minimap. It searches the slide (where the frame's middle goes on screen)
+           and the eye distance for the CLOSEST view that keeps every lit square's corners on screen and every square's
+           middle (and most of its face) out from under the panels, the bodies' words over their heads on screen too, never
+           tighter than ±3 squares (TILE_PICK_MIN_HALF). Of the near-closest views it keeps the one nearest the screen's
+           middle. The slide it picked rides the fit (camera._clearFit.slide) so the board rig lands exactly there.
+           Viewer-local camera only; kill switch EW_NO_CLEAR_DROP (back to THE CLICKABLE PICK's strip). */
+        const CLEAR_DROP_PAD_PX = 10;        // a square's middle stays this far from a panel's edge
+        const CLEAR_DROP_EDGE = 0.94;        // the lit squares' corners stay inside this share of the half-screen
+        const CLEAR_DROP_NEAR = 1.04;        // views within this of the closest count as equally close (the most centred wins)
+        const CLEAR_DROP_FACE = 0.3;         // and this share of the way to each corner of a square stays clear too
+        function _clearDropCover(cv) {
+            const out = [];
+            const pad = CLEAR_DROP_PAD_PX;
+            const push = el => {
+                const r = el.getBoundingClientRect();
+                if (r.width < 2 || r.height < 2 || r.right <= cv.left || r.left >= cv.right || r.bottom <= cv.top || r.top >= cv.bottom) return;
+                // (a panel still fading in counts already, as _menuFreeArea reads it: the refit only follows box changes)
+                out.push([(r.left - pad - cv.left) / cv.width * 2 - 1, (r.right + pad - cv.left) / cv.width * 2 - 1,
+                    1 - (r.bottom + pad - cv.top) / cv.height * 2, 1 - (r.top - pad - cv.top) / cv.height * 2]);
+            };
+            const rigs = document.getElementsByClassName('hrlg-rig');
+            for (let ri = 0; ri < rigs.length; ri++) {
+                rigs[ri].querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel > *, '
+                    + '.hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(push);
+            }
+            document.querySelectorAll('.ew-scoreboard, .ew-matchmeta, .ew-tc-icon, #battleSubtitleBar.visible > *, .ew-descbar-inner, #ewMinimap')
+                .forEach(push);
+            return out;
+        }
+        let _clearDropLast = null;   // probe: window._clearDropState()
+        window._clearDropState = () => _clearDropLast;
+        function _clearDropFrame(unit, tiles, opts) {
+            if (!unit || window.EW_NO_CLEAR_DROP) return null;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                    || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
+                const cvEl = document.getElementById('threeCanvas');
+                const cv = cvEl ? cvEl.getBoundingClientRect() : null;
+                if (!cv || !(cv.width > 80 && cv.height > 80)) return null;
+                const bd = ThreeCamera.getBaseDist();
+                const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+                if (!(bd > 0)) return null;
+                const set = (tiles || []).filter(tl => tl && Number.isFinite(tl.x) && Number.isFinite(tl.y));
+                if (!set.length) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+                const tanH = tanV * ((cam3 && cam3.aspect) || (cv.width / cv.height));
+                const yawDeg = camera._menuShot ? camera._menuShot.home.yaw
+                    : (Number.isFinite(camera._tyaw) ? camera._tyaw : (camera.yaw || 0));
+                const yw = yawDeg * Math.PI / 180, sY = Math.sin(yw), cY = Math.cos(yw);
+                const hAt = (x, y) => (typeof getHeightAt === 'function') ? (getHeightAt(x, y) || 0) : 0;
+                const all = set.concat([{ x: unit.x, y: unit.y, z: unit.z }]);
+                const cover = _clearDropCover(cv);
+                // no sub menu up: the board rig takes no slide (window._ewMenuSlide), so the frame is solved centred
+                const fa = _menuFreeArea(true, !!(opts && opts.solid));   // the same cover the slide's refit watches
+                const slides = fa.menu;
+                const E = CLEAR_DROP_EDGE;
+                const hw = cv.width / 2, hh = cv.height / 2;
+                const mh = ((opts && Number.isFinite(opts.minHalf)) ? opts.minHalf : TILE_PICK_MIN_HALF) * ts;
+                // the words over the heads of the bodies standing in the set (THE HEAD ROOM), measured once
+                const heads = [];
+                if (!window.EW_NO_HEAD_ROOM && ThreeRenderer.headRoomPx) {
+                    const inSet = new Set(all.map(tl => tl.x + ',' + tl.y));
+                    for (const u of (state.units || [])) {
+                        if (!u || u.dead || !inSet.has(u.x + ',' + u.y)) continue;
+                        const hr = { hw: 0 };
+                        const room = 2 * Math.min(cv.height * 0.3, ThreeRenderer.headRoomPx(u.id, hr) || 0) / cv.height;
+                        const lv = Number.isFinite(u.z) ? u.z : hAt(u.x, u.y);
+                        heads.push([u.x * ts + ts / 2, (Math.max(0, lv) + CONFIRM_FRAME_BODY) * ts, u.y * ts + ts / 2,
+                            room > 0 ? room : 0, 2 * Math.min(cv.width * 0.25, hr.hw || 0) / cv.width]);
+                    }
+                }
+                /* the closest clear view at one tilt: { d, cx, cy, camX, camY, fy } */
+                const solveAt = (tiltDeg) => {
+                    const t = tiltDeg * Math.PI / 180, sT = Math.sin(t), cT = Math.cos(t);
+                    const dX = -sT * sY, dY = -cT, dZ = -sT * cY;
+                    const uX = -cT * sY, uY = sT, uZ = -cT * cY;
+                    const rX = cY, rZ = -sY;
+                    // the focal: the middle of the set as the screen sees it (as THE RANGE FIT)
+                    let fx = 0, fz = 0;
+                    for (const tl of all) { fx += tl.x * ts + ts / 2; fz += tl.y * ts + ts / 2; }
+                    fx /= all.length; fz /= all.length;
+                    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+                    for (const tl of all) for (const ox of [-0.5, 0.5]) for (const oz of [-0.5, 0.5]) {
+                        const ax = (tl.x + 0.5 + ox) * ts - fx, az = (tl.y + 0.5 + oz) * ts - fz;
+                        const sx = ax * rX + az * rZ, sy = ax * uX + az * uZ;
+                        if (sx < xMin) xMin = sx; if (sx > xMax) xMax = sx;
+                        if (sy < yMin) yMin = sy; if (sy > yMax) yMax = sy;
+                    }
+                    const mx = (xMin + xMax) / 2, my = (yMin + yMax) / 2;
+                    fx += mx * rX + (-sY) * (my / Math.max(0.2, cT));
+                    fz += mx * rZ + (-cY) * (my / Math.max(0.2, cT));
+                    const camX = (fx - ts / 2) / ts, camY = (fz - ts / 2) / ts;
+                    const fy = (typeof camera._naturalElevAt === 'function') ? (camera._naturalElevAt(camX, camY) || 0) : 0;
+                    // every point as (right, up, along the gaze) from the focal: [sx, sy, along, keepClear, wordsUp, wordsSide]
+                    const P = [];
+                    const add = (wx, wy, wz, clear, up, side) => {
+                        const ax = wx - fx, ay = wy - fy, az = wz - fz;
+                        P.push([ax * rX + az * rZ, ax * uX + ay * uY + az * uZ, ax * dX + ay * dY + az * dZ, clear, up || 0, side || 0]);
+                    };
+                    for (let i = 0; i < all.length; i++) {
+                        // the last one is the caster's own square; a toss's far ends are only shown (never clicked)
+                        const tl = all[i], lit = i < all.length - 1 && !tl.frameOnly;
+                        const lv = Number.isFinite(tl.z) ? tl.z : hAt(tl.x, tl.y);
+                        const wy = Math.max(0, lv) * ts, cx = tl.x * ts + ts / 2, cz = tl.y * ts + ts / 2;
+                        for (const ox of [-0.5, 0.5]) for (const oz of [-0.5, 0.5]) {
+                            add(cx + ox * ts, wy, cz + oz * ts, false);                                   // on screen
+                            if (lit) add(cx + ox * ts * CLEAR_DROP_FACE * 2, wy, cz + oz * ts * CLEAR_DROP_FACE * 2, true);   // clear of panels
+                        }
+                        if (lit) add(cx, wy, cz, true);
+                    }
+                    add(fx - mh, fy, fz, false); add(fx + mh, fy, fz, false); add(fx, fy, fz - mh, false); add(fx, fy, fz + mh, false);
+                    for (const h of heads) add(h[0], h[1], h[2], false, h[3], h[4]);
+                    const fits = (cx, cy, dist) => {
+                        const a = cx * dist * tanH, b = cy * dist * tanV;
+                        for (const p of P) {
+                            const depth = dist + p[2];
+                            if (!(depth > ts * 0.3)) return false;
+                            const x = (p[0] + a) / (depth * tanH), y = (p[1] + b) / (depth * tanV);
+                            if (p[3]) {
+                                for (const r of cover) if (x > r[0] && x < r[1] && y > r[2] && y < r[3]) return false;
+                            } else if (Math.abs(x) + p[5] > E || y + p[4] > E || y < -E) return false;
+                        }
+                        return true;
+                    };
+                    // the closest each slide allows on screen alone (closed form, as THE RANGE FIT), then step back until clear
+                    const onScreenDist = (cx, cy) => {
+                        let d = 0;
+                        for (const p of P) {
+                            if (p[3]) continue;
+                            const mH = Math.max(0.05, E - p[5] - Math.abs(cx)), mVt = Math.max(0.05, E - p[4] - cy), mVb = Math.max(0.05, E + cy);
+                            d = Math.max(d, Math.abs(p[0]) / (tanH * mH) - p[2]);
+                            d = Math.max(d, (p[1] > 0 ? p[1] / (tanV * mVt) : -p[1] / (tanV * mVb)) - p[2]);
+                        }
+                        return d;
+                    };
+                    const dMax = bd / 0.25;
+                    const cxs = [], cys = [];
+                    if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
+                    else { cxs.push(0); cys.push(0); }
+                    let best = null;
+                    const found = [];
+                    for (const cx of cxs) for (const cy of cys) {
+                        let d = Math.max(ts * 1.5, onScreenDist(cx, cy));
+                        if (best && d > best * CLEAR_DROP_NEAR) continue;
+                        while (d < dMax && !fits(cx, cy, d)) d *= 1.04;
+                        if (d >= dMax) continue;
+                        found.push({ cx, cy, d });
+                        if (!best || d < best) best = d;
+                    }
+                    if (!found.length) return null;
+                    // of the near-closest views, the one whose lit squares sit furthest from every panel and screen edge (the
+                    // ring in the middle of the open part, as his own shot), then the one nearest the screen's middle
+                    const room = (f) => {
+                        const a = f.cx * f.d * tanH, b = f.cy * f.d * tanV;
+                        let m = Infinity;
+                        for (const p of P) {
+                            if (!p[3]) continue;
+                            const depth = f.d + p[2];
+                            const x = (p[0] + a) / (depth * tanH), y = (p[1] + b) / (depth * tanV);
+                            m = Math.min(m, (E - Math.abs(x)) * hw, (E - Math.abs(y)) * hh);
+                            for (const r of cover) {
+                                const ddx = Math.max(r[0] - x, 0, x - r[1]) * hw, ddy = Math.max(r[2] - y, 0, y - r[3]) * hh;
+                                m = Math.min(m, Math.hypot(ddx, ddy));
+                            }
+                        }
+                        return Math.round(m / 8);   // 8 px steps: a hair of room more never outweighs being centred
+                    };
+                    let pick = null;
+                    for (const f of found) {
+                        if (f.d > best * CLEAR_DROP_NEAR) continue;
+                        const rm = room(f), off = Math.hypot(f.cx, f.cy);
+                        if (!pick || rm > pick.rm || (rm === pick.rm && (off < pick.off - 1e-6 || (Math.abs(off - pick.off) < 1e-6 && f.d < pick.d)))) pick = { ...f, off, rm };
+                    }
+                    return { d: pick.d, cx: pick.cx, cy: pick.cy, camX, camY, fy, tilt: tiltDeg };
+                };
+                /* THE CLEAR BOARD would crane a lens over the Hell arena's spires several squares up (the gaze held on the
+                   focal), so the view landed steeper and ~1.5x further out than the fit. Ask the board rig what it would
+                   lift at the solved pose: when it would, solve again at the steeper tilt the lift lands on, which the
+                   crane then leaves alone (the same sight line), so the fit is what the screen shows. */
+                let sol = solveAt(TILE_PICK_TILT);
+                if (!sol) return null;
+                const liftOf = (o) => (ThreeCamera.boardLiftAt ? (+ThreeCamera.boardLiftAt(o.camX, o.camY, o.fy, o.d, o.tilt, yawDeg) || 0) : 0);
+                for (let it = 0; it < 4; it++) {
+                    const L = liftOf(sol);
+                    if (!(L > ts * 0.1)) break;
+                    const tr = sol.tilt * Math.PI / 180;
+                    const hz = sol.d * Math.sin(tr), vt = sol.d * Math.cos(tr) + L;
+                    const t2 = Math.max(2, Math.atan2(hz, vt) * 180 / Math.PI);
+                    const s2 = solveAt(t2);
+                    if (!s2) break;
+                    sol = s2;
+                }
+                _clearDropLast = { cx: sol.cx, cy: sol.cy, zoom: bd / sol.d, tilt: sol.tilt, lift: liftOf(sol), cover: cover.length, slides };
+                return { x: sol.camX, y: sol.camY, zoom: Math.max(0.15, Math.min(10.0, bd / sol.d)), tilt: sol.tilt, fa, opts,
+                    slide: slides ? { cx: sol.cx, cy: sol.cy } : null };
+            } catch (e) { return null; }
+        }
         /* THE REFIT ONLY WIDENS (mondo 2026-11-07: "weird quick little zoom ins and zoom outs before an attack like the
            camera is fighting itself"). THE CLEAR FRAME solves a pick's frame again as the armed panel slides in and as
            the forecast's words over the heads land and change (THE HEAD ROOM), up to three or four times in the first
@@ -27744,12 +27950,13 @@
             camera._clearFit = {
                 area: fr.fa,
                 solid: !!(fr.opts && fr.opts.solid),   // THE CLICKABLE PICK: the slide reads the same solid cover
+                slide: fr.slide || null,               // THE CLEAR DROP: the slide its frame was solved for
                 fit() {
                     const u = (state.units || []).find(v => v.id === uid && !v.dead);
-                    const f2 = u ? _tilePickFrame(u, tiles, null, fr.opts) : null;
+                    const f2 = u ? ((fr.opts && fr.opts.clearDrop && _clearDropFrame(u, tiles, fr.opts)) || _tilePickFrame(u, tiles, null, fr.opts)) : null;
                     if (!f2) return;
                     f2.zoom = _refitZoom(fr.zoom, f2.zoom);   // THE REFIT ONLY WIDENS
-                    camera.moveTo({ x: f2.x, y: f2.y, zoom: f2.zoom, tilt: TILE_PICK_TILT, duration: 360, easing: 'easeInOut',
+                    camera.moveTo({ x: f2.x, y: f2.y, zoom: f2.zoom, tilt: Number.isFinite(f2.tilt) ? f2.tilt : TILE_PICK_TILT, duration: 360, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true });
                     _tilePickArmRefit(u, tiles, f2);
                 }
@@ -27764,13 +27971,13 @@
             camera._preCineView = null;
             camera._cineShotId = null;
             camera._releaseCineSubject(420);
-            const _fr = _tilePickFrame(unit, tiles, null, opts);
+            const _fr = (opts && opts.clearDrop && _clearDropFrame(unit, tiles, opts)) || _tilePickFrame(unit, tiles, null, opts);
             const _fitZ = _fr ? _fr.zoom : _tilePickFitZoom((range || 3) + 1.5);
             const zoom = _fr ? _fitZ : Math.min(camera.zoom || _fitZ, _fitZ);
             camera.moveTo({
                 x: _fr ? _fr.x : unit.x, y: _fr ? _fr.y : unit.y, zoom,
-                // Same over-the-map overhead as the Move framing.
-                tilt: TILE_PICK_TILT,
+                // Same over-the-map overhead as the Move framing (THE CLEAR DROP may pitch it steeper, clear of the crane).
+                tilt: (_fr && Number.isFinite(_fr.tilt)) ? _fr.tilt : TILE_PICK_TILT,
                 duration: 380, easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
@@ -32020,9 +32227,10 @@
                     const subj = _clearSubjects();
                     if (subj && Number.isFinite(fa.l)) _cfSlide = { key: _clearSubjectKey(fa, subj), cx: _cfOut.cx };
                 } else {
-                    _cfOut.cx = (camera._clearFit || camera._menuShot) ? fa.cx : _clearSubjectSlide(fa);
+                    _cfOut.cx = (camera._clearFit && camera._clearFit.slide) ? camera._clearFit.slide.cx
+                        : (camera._clearFit || camera._menuShot) ? fa.cx : _clearSubjectSlide(fa);
                 }
-                _cfOut.cy = fa.cy;
+                _cfOut.cy = (camera._clearFit && camera._clearFit.slide) ? camera._clearFit.slide.cy : fa.cy;
                 return _cfOut;
             }
             // the action menu alone (a sub menu closed back to it): the plain framing, a frame fitted beside the sub
@@ -65346,7 +65554,7 @@
                     if (isInside(pk.x + dx, pk.y + dy)) tiles.push({ x: pk.x + dx, y: pk.y + dy });
                     // where the body can end up that way (the frame only; the board lights the ring above)
                     const ex = Math.max(0, Math.min(bw() - 1, pk.x + dx * n)), ey = Math.max(0, Math.min(bh() - 1, pk.y + dy * n));
-                    if ((dx || dy) && isInside(ex, ey)) tiles.push({ x: ex, y: ey });
+                    if ((dx || dy) && isInside(ex, ey)) tiles.push({ x: ex, y: ey, frameOnly: true });   // seen, never clicked
                 }
                 return { spell: sp, key: 'toss|' + unit.id + '|' + pk.id + '|' + sp.id, tiles };
             }
@@ -65371,7 +65579,8 @@
             /* THE CLICKABLE PICK (forced-movement playtest 2026-11-07 C2): a pick whose clicks land ANYWHERE in the frame (a
                teleport's landing, a sky throw's landing) is framed in the board left clear of the menus, never under them; a
                toss clicks only the ring round its victim (centred), so it keeps the near frame */
-            _frameSpellTilePick(unit, ph.tiles, ph.spell.throwRange || ph.spell.range || 3, { solid: ph.key.indexOf('toss|') !== 0 });
+            _frameSpellTilePick(unit, ph.tiles, ph.spell.throwRange || ph.spell.range || 3,
+                { solid: ph.key.indexOf('toss|') !== 0, clearDrop: true });   // THE CLEAR DROP: closest view, every square clickable
         }
         window._dropPickCamCheck = _dropPickCamCheck;
 
