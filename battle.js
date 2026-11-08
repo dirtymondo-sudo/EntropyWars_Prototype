@@ -39255,7 +39255,7 @@
                     // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
                     // solid for a turn (soak them first, then bring the cold).
                     // FROZEN IS FROZEN (mondo 2026-11-07): the real Frozen status, not a Stun.
-                    if (applyStatusPayload(target, { id: 'frozen', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit)) _balReactUse('flashFreeze', sourceUnit, target);
+                    if (applyStatusPayload(target, { id: 'frozen', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit)) { _balReactUse('flashFreeze', sourceUnit, target); _balComboPay('wet', sourceUnit, target, 0); }
                     // creaking ice locking solid with a deep "clunk"
                     playSfx('freezeSolid');
                 } else if (_comboEl === 'fire' && unitHasStatus(target, 'wet')) {
@@ -39281,6 +39281,7 @@
             // 🔊🧊 R11: the sonic hit broke the Frozen unit's ice (the ×1.5 is in _hitDamageMath) — the Frozen ends.
             if (_affEl === 'sonic' && damage > 0 && !_unitIsDown(target) && unitHasStatus(target, 'frozen')) {
                 clearStatus(target, 'frozen');
+                _balComboPay('frozen', sourceUnit, target, damage);   // before the Frozen comes off (the setter lookup reads it)
                 _balReactUse('sonicThaw', sourceUnit, target, 'frozen', 0, damage);
                 addLog(`🧊 ${_ctName(target)} is no longer Frozen.`);
             }
@@ -62179,6 +62180,7 @@
         let _balSpellCollector = null;
         const BALANCE_STATS_VERSION = 4;
         const BAL_FX_RULES = '2026-11-08 status + element rules';   // THE RULES STAMP (_balFxRulesCheck)
+        let _balFxSnap = null;   // THE BUILD SPLIT: the fx tables after the last match (_balFxBuildDelta)
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
         const BALANCE_MATCH_LOG_CAP = 2000; // raw per-match records kept for offline analysis + the team-adjusted fit (was 400; ~1.4 KB a match)
         const _BAL_TABS = [
@@ -62190,9 +62192,11 @@
             { id: 'statusUse', label: 'Status' },
             { id: 'elementUse', label: 'Elements' },
             { id: 'effectUse', label: 'Effects' },
+            { id: 'comboUse', label: 'Combos' },   // THE COMBO CREDIT (2026-11-08)
             { id: 'spread', label: 'Spread' },   // THE SPREAD (2026-10-29): forecast vs result, teammates taken out
         ];
-        const _BAL_FX_TABS = { statusUse: 1, elementUse: 1, effectUse: 1 };
+        const _BAL_FX_TABS = { statusUse: 1, elementUse: 1, effectUse: 1, comboUse: 1 };
+        let _balFxView = 'all';   // THE BUILD SPLIT: 'all' or a build token (the fx tabs' build picker)
         // Dashboard view state (survives the per-match re-render).
         let _balanceFilter = '';
         let _balanceFilterFocused = false;
@@ -62241,7 +62245,8 @@
                 buildTokens: {},
                 // Balance Lab (2026-10-25): status / element / effect telemetry (see _balRecordHit) + how many
                 // matches it covers (older matches carry none of it).
-                statusUse: {}, elementUse: {}, effectUse: {},
+                statusUse: {}, elementUse: {}, effectUse: {}, comboUse: {},
+                fxByBuild: {},   // THE BUILD SPLIT: { token: { fxMatches, statusUse, elementUse, effectUse, comboUse } }
                 fxMatches: 0,
                 // Balance Lab (2026-11-08, THE RULES STAMP): the status / element rules these three tables were recorded under;
                 // tables from older rules move to fxBefore (kept in the export, never deleted) — see _balFxRulesCheck
@@ -62260,7 +62265,7 @@
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse', 'raceDetail', 'spellCastGames', 'raceGamesByBuild']) {
+            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse', 'comboUse', 'fxByBuild', 'raceDetail', 'spellCastGames', 'raceGamesByBuild']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -62276,6 +62281,7 @@
             if (_balanceStats.fxMatches == null) _balanceStats.fxMatches = 0;
             if (!_balanceStats.forecastLive) _balanceStats.forecastLive = { n: 0, favWins: 0, favP: 0, brier: 0, last: null };
             _balFxRulesCheck(_balanceStats);
+            if (!_balFxSnap) _balFxSnap = _balFxTakeSnap(_balanceStats);   // THE BUILD SPLIT baseline (before any new event)
             _balanceStats.version = BALANCE_STATS_VERSION;
             return _balanceStats;
         }
@@ -62303,9 +62309,10 @@
                 s.fxBefore = { rules: s.fxRules || '2026-10-25 first tracking', fxMatches: s.fxMatches || 0, movedAt: Date.now(),
                     statusUse: st, elementUse: s.elementUse || {}, effectUse: s.effectUse || {} };
             }
-            s.statusUse = {}; s.elementUse = {}; s.effectUse = {};
+            s.statusUse = {}; s.elementUse = {}; s.effectUse = {}; s.comboUse = {}; s.fxByBuild = {};
             s.fxMatches = 0;
             s.fxRules = BAL_FX_RULES;
+            _balFxSnap = null;
         }
 
         // Mid-match narrative tracker (balance sim only): first blood, first
@@ -62415,7 +62422,7 @@
         function _balFxMark(u, kind, key) {
             if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2) || !key) return;
             if (!_balFx) _balFx = {};
-            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
+            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {}, cb: {} });
             L[kind][key] = 1;
         }
         /* THE RACE DETAIL (Balance Lab, mondo 2026-10-25: "what else can we add to the export to make it more useful"):
@@ -62426,11 +62433,11 @@
         function _balLedger(u) {
             if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2)) return null;
             if (!_balFx) _balFx = {};
-            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
+            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {}, cb: {} });
             if (!L.d) {
                 L.d = { basic: 0, spell: 0, dot: 0, other: 0 };
                 L.k = { basic: 0, spell: 0, dot: 0, other: 0 };
-                L.c = { dmg: 0, util: 0, mp: 0, turns: 0, dry: 0 };
+                L.c = { dmg: 0, util: 0, mp: 0, turns: 0, dry: 0, cc: 0, sc: 0, fc: 0 };   // cc = turns skipped to a status, sc / fc = teammate combos set up / finished
                 L.cs = {};
             }
             return L;
@@ -62476,6 +62483,11 @@
             if (ev === 'applied') {
                 r.applied++;
                 if (fresh) r.fresh++;   // landed on a unit that did not have it (not a re-landing / top-up)
+                // THE COMBO CREDIT: who put it on this unit (an enemy of it), or the board / weather on a fresh landing
+                if (tgt && tgt.id != null) {
+                    if (src && src.id != null && isEnemyUnit(src, tgt)) _balSetter(tgt, id, src.id);
+                    else if (fresh && !src) _balSetter(tgt, id, 'board');
+                }
                 if (src && tgt) {
                     if (isEnemyUnit(src, tgt)) r.onEnemy++; else r.onAlly++;
                 } else if (tgt && STATUS_DEFS[id]?.kind === 'buff') {
@@ -62502,6 +62514,8 @@
         function _balTurnSkipped(id, u) {
             if (!_balanceSimMode || !id || !u || (u.player !== 1 && u.player !== 2)) return;
             _balStatusRow(id).turnsLost++;
+            const L = _balLedger(u);   // THE CC TURNS (2026-11-08): per race, the turns its units sat out
+            if (L) L.c.cc++;
         }
         if (typeof window !== 'undefined') window._balTurnSkipped = _balTurnSkipped;
         /* THE REACTIONS (2026-11-08): one count per element / status reaction that fired (douse, wash, short, chemical fire,
@@ -62514,6 +62528,93 @@
             if (cleared && tgt && (tgt.player === 1 || tgt.player === 2)) _balStatusRow(cleared).cleansed++;
         }
         if (typeof window !== 'undefined') window._balReactUse = _balReactUse;
+        /* ═══ THE COMBO CREDIT (2026-11-08, mondo picked "who set up a status like Wet or Burn and which teammate cashed it
+           in") ═════════════════════════════════════════════════════════════════════════════════════════════════════
+           The lab notes who put each status on each unit this match (an id map in the per-match ledger, `_balFx.$set`,
+           never on the unit). A PAY-OFF is a hit that cashes a status in: a finisher's bonus vs that status (Shatter on
+           Frozen, every bonusVsStatus), lightning on a Wet body (Wet shock / Short Circuit), frost on a Wet body
+           (flash-freeze), a sonic hit breaking Frozen. Each pay-off files under the status as `team` (a teammate set it
+           up), `self` (the finisher set it up itself), `board` (water / rain / lava / weather did) or `other`. Per race:
+           setups a teammate cashed (sc) and teammate set-ups it cashed (fc). Table stats.comboUse, the Combos tab. */
+        function _balSetter(tgt, id, who) {
+            if (!_balanceSimMode || !tgt || tgt.id == null || !id) return;
+            if (!_balFx) _balFx = {};
+            const m = _balFx.$set || (_balFx.$set = {});
+            (m[tgt.id] || (m[tgt.id] = {}))[id] = who;
+        }
+        function _balSetterOf(tgt, id) {
+            const m = _balFx && _balFx.$set && _balFx.$set[tgt.id];
+            if (!m) return null;
+            if (m[id] != null) return m[id];
+            // a status that counts as this one (Corroded counts as Burn and Poison)
+            for (const k of Object.keys(m)) {
+                const ca = STATUS_DEFS[k] && STATUS_DEFS[k].countsAs;
+                if (Array.isArray(ca) && ca.includes(id) && unitHasStatus(tgt, k)) return m[k];
+            }
+            return null;
+        }
+        function _balComboRow(id) {
+            ensureBalanceStats();
+            const m = _balanceStats.comboUse || (_balanceStats.comboUse = {});
+            return m[id] || (m[id] = { payoffs: 0, team: 0, self: 0, board: 0, other: 0, dmg: 0, teamDmg: 0, kills: 0, teamKills: 0, games: 0, wins: 0 });
+        }
+        // fin's hit (dmg) cashed in status `id` on tgt. Returns { id, kind } for the kill credit, or null.
+        function _balComboPay(id, fin, tgt, dmg) {
+            if (!_balanceSimMode || !id || !fin || !tgt || !isEnemyUnit(fin, tgt)) return null;
+            const who = _balSetterOf(tgt, id);
+            const setter = (who != null && who !== 'board' && typeof unitFromId === 'function') ? unitFromId(who) : null;
+            const kind = who === 'board' ? 'board' : !setter ? 'other' : setter.id === fin.id ? 'self'
+                : (setter.player === fin.player ? 'team' : 'other');
+            const r = _balComboRow(id);
+            r.payoffs++; r[kind]++; r.dmg += dmg || 0;
+            if (kind === 'team') {
+                r.teamDmg += dmg || 0;
+                const Ls = _balLedger(setter), Lf = _balLedger(fin);
+                if (Ls) Ls.c.sc++;
+                if (Lf) Lf.c.fc++;
+                _balFxMark(setter, 'cb', id);
+            }
+            _balFxMark(fin, 'cb', id);
+            return { id, kind };
+        }
+
+        /* ═══ THE BUILD SPLIT (2026-11-08, mondo picked "separate status and reaction numbers for each balance pass") ═══
+           Status / Elements / Effects / Combos keep their all-builds totals AND a copy per build token (every ?v= bump is a
+           build, the same split the race numbers use): after each match the change since the last match lands on
+           stats.fxByBuild[token]. _balFxSnap = the tables as they stood after the last match (taken on load / reset). */
+        const _BAL_FX_TABLES = ['statusUse', 'elementUse', 'effectUse', 'comboUse'];
+        const BAL_FX_BUILDS_KEPT = 20;
+        function _balFxTakeSnap(s) {
+            const o = {};
+            for (const t of _BAL_FX_TABLES) o[t] = JSON.parse(JSON.stringify((s && s[t]) || {}));
+            return o;
+        }
+        function _balFxBuildDelta() {
+            const s = _balanceStats;
+            if (!s) return;
+            const snap = _balFxSnap || {};
+            const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown';
+            const byB = s.fxByBuild || (s.fxByBuild = {});
+            const B = byB[tok] || (byB[tok] = { fxMatches: 0, statusUse: {}, elementUse: {}, effectUse: {}, comboUse: {} });
+            B.fxMatches++;
+            for (const t of _BAL_FX_TABLES) {
+                const cur = s[t] || {}, old = snap[t] || {}, out = B[t] || (B[t] = {});
+                for (const k of Object.keys(cur)) {
+                    const c = cur[k], o = old[k] || {};
+                    for (const f of Object.keys(c)) {
+                        if (typeof c[f] !== 'number') continue;
+                        const d = c[f] - (typeof o[f] === 'number' ? o[f] : 0);
+                        if (!d) continue;
+                        const row = out[k] || (out[k] = {});
+                        row[f] = (row[f] || 0) + d;
+                    }
+                }
+            }
+            const toks = Object.keys(byB);
+            while (toks.length > BAL_FX_BUILDS_KEPT) delete byB[toks.shift()];
+            _balFxSnap = _balFxTakeSnap(s);
+        }
+
         // One effect use by unit u: amount (heal / shield / tiles) and the damage of the hit it rode.
         function _balEffect(u, key, amt, dmg) {
             if (!_balanceSimMode || !key) return;
@@ -62563,6 +62664,11 @@
                 for (const k of fx) _balEffect(src, k, 0, dmg);
                 rec.fx = fx;
                 if (hm && hm.bvsIds) for (const id of hm.bvsIds) { const sr = _balStatusRow(id); sr.comboHits++; sr.comboDmg += dmg; }
+                // THE COMBO CREDIT: the finisher bonus cashes its status; lightning on a Wet body cashes the Wet
+                const cb = [];
+                if (hm && hm.bvsIds) for (const id of hm.bvsIds) { const c = _balComboPay(id, src, tgt, dmg); if (c) cb.push(c); }
+                if (hm && (hm.reactNote === 'soakedShock' || hm.reactNote === 'shortCircuit')) { const c = _balComboPay('wet', src, tgt, dmg); if (c) cb.push(c); }
+                rec.cb = cb;
                 // what the target wears (anything but a buff: debuffs, Wet, Haunted…) / the buffs the attacker wears
                 for (const k of getActiveStatusKeys(tgt)) {
                     if (!STATUS_DEFS[k] || STATUS_DEFS[k].kind === 'buff') continue;
@@ -62581,6 +62687,7 @@
             if (rec.el) _balElemRow(rec.el).kills++;
             for (const k of rec.fx) _balEffectRow(k).kills++;
             for (const k of rec.st) _balStatusRow(k).killsWhile++;
+            for (const c of (rec.cb || [])) { const r = _balComboRow(c.id); r.kills++; if (c.kind === 'team') r.teamKills++; }
         }
         // One status tick (the end-of-round loop): its damage / heal, and the kill if it was lethal.
         function _balStatusTick(id, unit, hpLost, died) {
@@ -62605,7 +62712,7 @@
             _balFx = null;
             ensureBalanceStats();
             _balanceStats.fxMatches = (_balanceStats.fxMatches || 0) + 1;
-            if (!L) return;
+            if (!L) { _balFxBuildDelta(); return; }
             for (const u of (state.units || [])) {
                 if (u.player !== 1 && u.player !== 2) continue;
                 const led = L[u.id];
@@ -62614,6 +62721,7 @@
                 for (const k of Object.keys(led.s)) { const r = _balStatusRow(k); r.games++; r.wins += won; }
                 for (const k of Object.keys(led.el)) { const r = _balElemRow(k); r.games++; r.wins += won; }
                 for (const k of Object.keys(led.fx)) { const r = _balEffectRow(k); r.games++; r.wins += won; }
+                for (const k of Object.keys(led.cb || {})) { const r = _balComboRow(k); r.games++; r.wins += won; }
                 if (led.d && u.race) {
                     const m = _balanceStats.raceDetail;
                     const r = m[u.race] || (m[u.race] = { games: 0, wins: 0, turns: 0, dryTurns: 0, dmgCasts: 0, utilCasts: 0, mp: 0,
@@ -62623,6 +62731,12 @@
                     r.dmgCasts += led.c.dmg; r.utilCasts += led.c.util; r.mp += led.c.mp;
                     r.dmgBasic += led.d.basic; r.dmgSpell += led.d.spell; r.dmgDot += led.d.dot; r.dmgOther += led.d.other;
                     r.killsBasic += led.k.basic; r.killsSpell += led.k.spell; r.killsDot += led.k.dot; r.killsOther += led.k.other;
+                    // 2026-11-08: turns sat out to a turn-skip status, teammate combos set up (a teammate cashed it) / finished
+                    // (own games / turns counters: older matches in the row carry none of this)
+                    r.ccGames = (r.ccGames || 0) + 1; r.ccTurns = (r.ccTurns || 0) + led.c.turns;
+                    r.ccTurnsLost = (r.ccTurnsLost || 0) + (led.c.cc || 0);
+                    r.comboSetups = (r.comboSetups || 0) + (led.c.sc || 0);
+                    r.comboFinishes = (r.comboFinishes || 0) + (led.c.fc || 0);
                     // win rate of the units that CAST each spell (Spells tab = units that only fielded it)
                     for (const nm of Object.keys(led.cs)) {
                         const sc = _balanceStats.spellCastGames[nm] || (_balanceStats.spellCastGames[nm] = { games: 0, wins: 0 });
@@ -62630,6 +62744,7 @@
                     }
                 }
             }
+            _balFxBuildDelta();   // THE BUILD SPLIT: this match's change lands on its build's tables
         }
 
         /* Post-cast effect attribution: deployables deal their damage rounds
@@ -62722,7 +62837,7 @@
                 if (!raw) raw = await _aiStorageGet('ew-balance-stats-v3');
                 if (!raw) raw = await _aiStorageGet('ew-balance-stats-v2');
                 if (!raw) raw = await _aiStorageGet('ew-balance-stats-v1');
-                if (raw) _balanceStats = JSON.parse(raw);
+                if (raw) { _balanceStats = JSON.parse(raw); _balFxSnap = null; }
             } catch (e) { _balanceStats = null; }
             return ensureBalanceStats();
         }
@@ -62737,6 +62852,7 @@
 
         async function resetBalanceStats() {
             _balanceStats = _freshBalanceStats();
+            _balFxSnap = null;
             await saveBalanceStats();
         }
 
@@ -62922,10 +63038,20 @@
             let col = 'var(--muted)';
             if (!low) col = r.ciLo > 0.5 ? 'var(--green)' : (r.ciHi < 0.5 ? 'var(--red)' : 'var(--gold)');
             const ci = low ? '' : `<span style="color:var(--muted);font-weight:400">±${Math.round(r.ciHalf * 100)}</span>`;
+            /* THE CC TURNS + COMBO CREDIT (2026-11-08): on the Races tab, the share of its turns the race sat out to a
+               turn-skip status (Stun, Frozen…) and, on hover, the teammate combos it set up / finished per game */
+            let ccHtml = '', ccTip = '';
+            const det = (_balanceTab === 'races' && _balanceStats && _balanceStats.raceDetail) ? _balanceStats.raceDetail[r.key] : null;
+            if (det && det.ccGames) {
+                const all = (det.ccTurns || 0) + (det.ccTurnsLost || 0);
+                const ccPct = all ? Math.round(det.ccTurnsLost / all * 100) : 0;
+                ccHtml = `<span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:34px;text-align:right">${ccPct}%cc</span>`;
+                ccTip = ` · turns sat out to Stun / Frozen etc. ${det.ccTurnsLost} of ${all} (${ccPct}%) · teammate combos per game: set up ${((det.comboSetups || 0) / det.ccGames).toFixed(2)}, finished ${((det.comboFinishes || 0) / det.ccGames).toFixed(2)} (${det.ccGames} games tracked)`;
+            }
             const perf = showPerf
-                ? `<span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:58px;text-align:right">${r.kpg.toFixed(2)}k·${Math.round(r.survival * 100)}%s</span>`
+                ? `<span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:58px;text-align:right">${r.kpg.toFixed(2)}k·${Math.round(r.survival * 100)}%s</span>${ccHtml}`
                 : '';
-            return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}">
+            return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}${ccTip}">
                 <span class="bal-row-name">${_balEsc(r.key)}</span>
                 <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${pct}% ${ci}</span>
                 <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
@@ -63012,6 +63138,10 @@
                     r.kills = (b.dotKills || 0) + (b.killsWhile || 0);
                     const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
                     r.resistPct = tries ? ((b.resisted || 0) + (b.blocked || 0)) / tries : 0;
+                } else if (tab === 'comboUse') {
+                    const def = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[key]) || null;
+                    r.name = def ? `${def.icon || ''} ${def.label || key}` : key;
+                    r.uses = b.payoffs || 0;
                 } else if (tab === 'elementUse') {
                     const icon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[key]) || '';
                     r.name = key === '(none)' ? 'no element' : `${icon} ${key === 'earth' ? 'ground' : key}`;
@@ -63043,6 +63173,11 @@
                     + ` · tick damage ${b.dotDmg || 0} (${b.dotKills || 0} kills)${b.heal ? ` · tick healing ${b.heal}` : ''}`
                     + ` · ${r.kind === 'buff' ? 'damage the wearer dealt while worn' : 'damage the wearer took from enemies while worn'} ${b.dmgWhile || 0} (${b.killsWhile || 0} kills)`
                     + `${b.comboHits ? ` · combo finisher hits on it ${b.comboHits} for ${b.comboDmg || 0}` : ''}${b.blockedHits ? ` · hits turned away ${b.blockedHits}` : ''}`;
+            } else if (_balanceTab === 'comboUse') {
+                const pc = v => b.payoffs ? Math.round((v || 0) / b.payoffs * 100) : 0;
+                detail = `${b.payoffs || 0}× · ${pc(b.team)}% team · ${pc(b.self)}% self · ${per(b.dmg || 0, b.payoffs || 0)}d · ${b.kills || 0}k`;
+                tip += ` · pay-offs ${b.payoffs || 0}: set up by a teammate ${b.team || 0}, by the finisher itself ${b.self || 0}, by the board / weather ${b.board || 0}, other ${b.other || 0}`
+                    + ` · damage ${b.dmg || 0} (teammate set-ups ${b.teamDmg || 0}) · kills ${b.kills || 0} (teammate set-ups ${b.teamKills || 0})`;
             } else if (_balanceTab === 'elementUse') {
                 const wPct = b.hits ? Math.round((b.weak || 0) / b.hits * 100) : 0;
                 detail = `${b.hits || 0}h · ${per(b.dmg || 0, b.hits || 0)}d/h · ${b.kills || 0}k${r.key === '(none)' ? '' : ` · ${wPct}%w`}`;
@@ -63105,8 +63240,9 @@
                 }).join('');
             }
 
-            // Active breakdown tab.
-            const map = s[_balanceTab] || {};
+            // Active breakdown tab. THE BUILD SPLIT: the fx tabs read one build's tables when one is picked.
+            const _fxB = (_BAL_FX_TABS[_balanceTab] && _balFxView !== 'all') ? ((s.fxByBuild || {})[_balFxView] || null) : null;
+            const map = (_fxB ? _fxB[_balanceTab] : s[_balanceTab]) || {};
             const showPerf = _balanceTab !== 'spells';
             const filter = (_balanceFilter || '').trim().toLowerCase();
             const matchesFilter = k => !filter || String(k).toLowerCase().includes(filter);
@@ -63127,7 +63263,12 @@
                     ? fxRows.slice(0, 120).map(_balFxRowHtml).join('')
                     : `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'Nothing matches the filter.' : 'No data yet — this records from the next Balance Lab match on.'}</div>`;
                 const _fxb = s.fxBefore;
-                treeAggHtml = `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${s.fxMatches || 0} of ${totalM} matches carry this table: recorded under the 2026-11-08 status + element rules${_fxb && _fxb.fxMatches ? ` (${_fxb.fxMatches} older matches kept in the export as fxBefore)` : ''}</div>`;
+                const _tokNow = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown';
+                const _opts = [`<option value="all"${_balFxView === 'all' ? ' selected' : ''}>All builds · ${s.fxMatches || 0} matches</option>`]
+                    .concat(Object.keys(s.fxByBuild || {}).reverse().map(t => `<option value="${_balEsc(t)}"${_balFxView === t ? ' selected' : ''}>${_balEsc(t.replace(/-cors$/, ''))}${t === _tokNow ? ' (this build)' : ''} · ${(s.fxByBuild[t].fxMatches || 0)} matches</option>`));
+                treeAggHtml = `<div class="bal-controls" style="margin:0 0 4px"><span style="font-size:10px;color:var(--muted);white-space:nowrap">Build</span>`
+                    + `<select class="bal-filter" style="flex:1;min-width:0" onchange="_balFxView=this.value;renderBalanceDashboard()">${_opts.join('')}</select></div>`
+                    + `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${_fxB ? `${_fxB.fxMatches || 0} matches on this build` : `${s.fxMatches || 0} of ${totalM} matches carry this table`}: recorded under the 2026-11-08 status + element rules${!_fxB && _fxb && _fxb.fxMatches ? ` (${_fxb.fxMatches} older matches kept in the export as fxBefore)` : ''}</div>`;
             } else if (_balanceTab === 'spread') {
                 const sp = _balSpreadHtml(s, matchesFilter);
                 tableHtml = sp.table; treeAggHtml = sp.head; totalRows = sp.total; shownRows = sp.shown;
@@ -63196,6 +63337,8 @@
                 ? '% ±CI = win rate of units that landed it · g = games · × = times applied · rd = round ends it is still on, per fresh landing · d = damage per application (ticks + hits on the debuffed / by the buffed) · k = kills · t = turns it took · r = resisted · hover for more'
                 : _balanceTab === 'elementUse'
                 ? '% ±CI = win rate of units that used it · g = games · h = enemy hits · d/h = damage per hit · k = kills · w = hits on a weakness · hover for casts, resist, immune'
+                : _balanceTab === 'comboUse'
+                ? '% ±CI = win rate of units in a teammate combo on it (set-up or finisher) · g = games · × = pay-offs (a finisher bonus, lightning or frost on Wet, sonic on Frozen) · team / self = who set the status up · d = damage per pay-off · k = kills'
                 : _balanceTab === 'effectUse'
                 ? '% ±CI = win rate of units that used it · g = games · × = uses · d = damage of those hits (or amount healed / soaked / tiles moved; reactions: squares or units reached) · k = kills · filter "react" for the element reactions'
                 : _balanceTab === 'spellUse'
@@ -63204,6 +63347,8 @@
                 ? 'R = race row picks · T = Tier I/II/III/IV counts · % ±CI = win rate (Wilson-95)'
                 : _balanceTab === 'builds'
                 ? 'click a build to see its spell loadouts · % ±CI = win rate · g = games'
+                : _balanceTab === 'races'
+                ? '% ±CI = win rate (Wilson-95) · g = games · k = avg kills · s = survival · cc = share of its turns sat out to Stun / Frozen etc. · hover for teammate combos'
                 : showPerf
                 ? '% ±CI = win rate (Wilson-95) · g = games · k = avg kills · s = survival'
                 : '% = win rate of teams fielding the spell · g = games';
@@ -63322,6 +63467,12 @@
                         utilityCastShare: casts ? Number((det.utilCasts / casts).toFixed(3)) : null,
                         mpPerGame: Math.round(det.mp / det.games),
                         dmgShare: { basic: share(det.dmgBasic), spell: share(det.dmgSpell), dot: share(det.dmgDot), other: share(det.dmgOther) },
+                        // 2026-11-08: THE CC TURNS + THE COMBO CREDIT (teammate combos only)
+                        ccGames: det.ccGames || 0,
+                        ccTurnsLostPerGame: det.ccGames ? Number((det.ccTurnsLost / det.ccGames).toFixed(2)) : null,
+                        ccLossRate: det.ccGames && (det.ccTurns + det.ccTurnsLost) ? Number((det.ccTurnsLost / (det.ccTurns + det.ccTurnsLost)).toFixed(3)) : null,
+                        comboSetupsPerGame: det.ccGames ? Number((det.comboSetups / det.ccGames).toFixed(2)) : null,
+                        comboFinishesPerGame: det.ccGames ? Number((det.comboFinishes / det.ccGames).toFixed(2)) : null,
                         killsPerGame: {
                             basic: Number((det.killsBasic / det.games).toFixed(2)), spell: Number((det.killsSpell / det.games).toFixed(2)),
                             dot: Number((det.killsDot / det.games).toFixed(2)), other: Number((det.killsOther / det.games).toFixed(2)),
@@ -63447,34 +63598,17 @@
                 reactions: _balReactionsOut(s.effectUse),
                 // reactions the game has that never fired in these matches (a dead rule, or the CPU never sets it up)
                 reactionsNeverFired: Object.keys(_BAL_FX_LABELS).filter(k => /^react_/.test(k) && !((s.effectUse || {})[k] || {}).n).map(k => k.slice(6)),
-                statuses: _balFxAnalysis(s.statusUse, b => {
-                    const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
-                    return {
-                        kind: (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[b._k] && STATUS_DEFS[b._k].kind) || null,
-                        applied: b.applied || 0, onEnemy: b.onEnemy || 0, onAlly: b.onAlly || 0,
-                        resistRate: tries ? Number((((b.resisted || 0) + (b.blocked || 0)) / tries).toFixed(3)) : null,
-                        dotDmg: b.dotDmg || 0, dotKills: b.dotKills || 0, tickHeal: b.heal || 0,
-                        dmgWhileWorn: b.dmgWhile || 0, killsWhileWorn: b.killsWhile || 0,
-                        impactPerApply: b.applied ? Number((((b.dotDmg || 0) + (b.dmgWhile || 0)) / b.applied).toFixed(1)) : null,
-                        comboHits: b.comboHits || 0, comboDmg: b.comboDmg || 0, hitsTurnedAway: b.blockedHits || 0,
-                        // 2026-11-08: landings by the board / weather, unit-rounds worn, rounds per landing, turns it took
-                        // (turn-skip statuses), times a reaction took it off
-                        envApplied: b.env || 0, roundsWorn: b.rounds || 0,
-                        freshApplied: b.fresh || 0,
-                        roundsPerApply: b.fresh ? Number(((b.rounds || 0) / b.fresh).toFixed(2)) : null,   // round ends still on, per fresh landing
-                        turnsLost: b.turnsLost || 0, cleansedByReaction: b.cleansed || 0,
-                    };
-                }),
-                elements: _balFxAnalysis(s.elementUse, b => ({
-                    casts: b.casts || 0, mp: b.mp || 0, hits: b.hits || 0, dmg: b.dmg || 0, kills: b.kills || 0,
-                    dmgPerHit: b.hits ? Number(((b.dmg || 0) / b.hits).toFixed(1)) : null,
-                    dmgPerMp: b.mp ? Number(((b.dmg || 0) / b.mp).toFixed(2)) : null,
-                    weakRate: b.hits ? Number(((b.weak || 0) / b.hits).toFixed(3)) : null,
-                    weak: b.weak || 0, resist: b.resist || 0, immune: b.immune || 0, absorb: b.absorb || 0,
-                })),
-                effects: _balFxAnalysis(s.effectUse, b => ({
-                    uses: b.n || 0, amount: b.amt || 0, dmg: b.dmg || 0, kills: b.kills || 0,
-                    perUse: b.n ? Number((((b.amt || 0) || (b.dmg || 0)) / b.n).toFixed(1)) : null,
+                statuses: _balFxAnalysis(s.statusUse, _balStatusOut),
+                elements: _balFxAnalysis(s.elementUse, _balElemOut),
+                effects: _balFxAnalysis(s.effectUse, _balEffOut),
+                // THE COMBO CREDIT (2026-11-08): pay-offs per status, who set them up
+                combos: _balFxAnalysis(s.comboUse, _balComboOut),
+                // THE BUILD SPLIT (2026-11-08): the same four tables + the reactions, per build token
+                fxByBuild: Object.fromEntries(Object.keys(s.fxByBuild || {}).map(t => {
+                    const B = s.fxByBuild[t];
+                    return [t, { fxMatches: B.fxMatches || 0, statuses: _balFxAnalysis(B.statusUse, _balStatusOut),
+                        elements: _balFxAnalysis(B.elementUse, _balElemOut), effects: _balFxAnalysis(B.effectUse, _balEffOut),
+                        combos: _balFxAnalysis(B.comboUse, _balComboOut), reactions: _balReactionsOut(B.effectUse, B.fxMatches || 0) }];
                 })),
                 // 2026-10-25: the reads a balance pass needs first — see each helper
                 teamAdjusted: _balTeamAdjusted(s.matchLog || []),
@@ -63920,10 +64054,46 @@
             }
             return out;
         }
+        // The export's row readers for the fx tables (all builds and each build)
+        const _balStatusOut = b => {
+                    const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
+                    return {
+                        kind: (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[b._k] && STATUS_DEFS[b._k].kind) || null,
+                        applied: b.applied || 0, onEnemy: b.onEnemy || 0, onAlly: b.onAlly || 0,
+                        resistRate: tries ? Number((((b.resisted || 0) + (b.blocked || 0)) / tries).toFixed(3)) : null,
+                        dotDmg: b.dotDmg || 0, dotKills: b.dotKills || 0, tickHeal: b.heal || 0,
+                        dmgWhileWorn: b.dmgWhile || 0, killsWhileWorn: b.killsWhile || 0,
+                        impactPerApply: b.applied ? Number((((b.dotDmg || 0) + (b.dmgWhile || 0)) / b.applied).toFixed(1)) : null,
+                        comboHits: b.comboHits || 0, comboDmg: b.comboDmg || 0, hitsTurnedAway: b.blockedHits || 0,
+                        // 2026-11-08: landings by the board / weather, unit-rounds worn, rounds per landing, turns it took
+                        // (turn-skip statuses), times a reaction took it off
+                        envApplied: b.env || 0, roundsWorn: b.rounds || 0,
+                        freshApplied: b.fresh || 0,
+                        roundsPerApply: b.fresh ? Number(((b.rounds || 0) / b.fresh).toFixed(2)) : null,   // round ends still on, per fresh landing
+                        turnsLost: b.turnsLost || 0, cleansedByReaction: b.cleansed || 0,
+                    };
+                };
+        const _balElemOut = b => ({
+                    casts: b.casts || 0, mp: b.mp || 0, hits: b.hits || 0, dmg: b.dmg || 0, kills: b.kills || 0,
+                    dmgPerHit: b.hits ? Number(((b.dmg || 0) / b.hits).toFixed(1)) : null,
+                    dmgPerMp: b.mp ? Number(((b.dmg || 0) / b.mp).toFixed(2)) : null,
+                    weakRate: b.hits ? Number(((b.weak || 0) / b.hits).toFixed(3)) : null,
+                    weak: b.weak || 0, resist: b.resist || 0, immune: b.immune || 0, absorb: b.absorb || 0,
+                });
+        const _balEffOut = b => ({
+                    uses: b.n || 0, amount: b.amt || 0, dmg: b.dmg || 0, kills: b.kills || 0,
+                    perUse: b.n ? Number((((b.amt || 0) || (b.dmg || 0)) / b.n).toFixed(1)) : null,
+                });
+        const _balComboOut = b => ({
+            payoffs: b.payoffs || 0, byTeammate: b.team || 0, bySelf: b.self || 0, byBoard: b.board || 0, other: b.other || 0,
+            teamShare: b.payoffs ? Number(((b.team || 0) / b.payoffs).toFixed(3)) : null,
+            dmg: b.dmg || 0, dmgPerPayoff: b.payoffs ? Number(((b.dmg || 0) / b.payoffs).toFixed(1)) : null,
+            teamDmg: b.teamDmg || 0, kills: b.kills || 0, teamKills: b.teamKills || 0,
+        });
         // THE REACTIONS in one list for the export: how often each fired, per match, and the win rate of the units that set it off
-        function _balReactionsOut(eff) {
+        function _balReactionsOut(eff, nMatches) {
             const out = {};
-            const n = (_balanceStats && _balanceStats.fxMatches) || 0;
+            const n = nMatches != null ? nMatches : ((_balanceStats && _balanceStats.fxMatches) || 0);
             for (const k of Object.keys(eff || {})) {
                 if (!/^react_/.test(k)) continue;
                 const b = eff[k];
@@ -64054,6 +64224,7 @@
             fxCsv('status', _balanceStats.statusUse, ['applied', 'onEnemy', 'onAlly', 'env', 'resisted', 'blocked', 'dotDmg', 'dotKills', 'heal', 'dmgWhile', 'killsWhile', 'comboHits', 'comboDmg', 'blockedHits', 'fresh', 'rounds', 'turnsLost', 'cleansed']);
             fxCsv('element', _balanceStats.elementUse, ['casts', 'mp', 'hits', 'dmg', 'kills', 'weak', 'resist', 'immune', 'absorb']);
             fxCsv('effect', _balanceStats.effectUse, ['n', 'amt', 'dmg', 'kills']);
+            fxCsv('combo', _balanceStats.comboUse, ['payoffs', 'team', 'self', 'board', 'other', 'dmg', 'teamDmg', 'kills', 'teamKills']);
             const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
