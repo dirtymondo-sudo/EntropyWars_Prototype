@@ -7402,6 +7402,15 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .ms-crt:not(.ms-crt-forge) .ms-tty-assign h2 span { flex-basis: 100%; text-align: right; }
 .ms-crt:not(.ms-crt-forge) .ms-tty-assign h2 span { display: block !important; margin-top: 3px; }
 #squadDeskPage .sq-plate-faces, .sq-plate-faces { column-gap: 18px; }
+/* THE PLATE FITS (2026-11-07, mondo's "BigfootCatgirl" + the cut "NOT SAVED · RANDOM AGAIN FOR"): a unit name keeps to its
+   own slot (no min-content push into the next face) and the bottom line stays on one line; map.js _sqFitPlate shrinks the
+   names (one size for all four, two lines at most), the bottom line and then the faces until the words fit the plate the
+   UI Maker sized. A name never draws over its neighbour: the slots keep their column gap. */
+#squadDeskPage .sq-plate-slot, .sq-plate-slot { min-width: 0; }
+#squadDeskPage .sq-plate-slot em, .sq-plate-slot em { display: block; width: 100%; min-width: 0; max-width: 100%; }
+#squadDeskPage .sq-plate-foot, .sq-plate-foot { white-space: nowrap; overflow: visible; }
+#squadDeskPage .sq-plate-foot.sq-fit-wrap, .sq-plate-foot.sq-fit-wrap { white-space: normal; }
+#squadDeskPage .sq-plate-slot em.sq-fit-break, .sq-plate-slot em.sq-fit-break { overflow-wrap: anywhere; word-break: break-word; hyphens: auto; -webkit-hyphens: auto; }
 
 /* ── THE FIT (2026-11-06, playtest F2 + F3; mondo: no cut-off text, no sideways scrolls, redesign panels to fit) ──
    party-builder.js window.EWFitText shrinks the words of any box that clips them; these rules give the words the room
