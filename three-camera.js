@@ -363,6 +363,26 @@ const ThreeCamera = (function () {
         if (g > ey + 0.5) ey = g;
         return _sbLiftAt(fx, fy, fz, ex, ey, ez, clear);
     }
+    /* THE CLEAR DROP (2026-11-08, battle.js _clearDropFrame): how far THE CLEAR BOARD would crane the board rig's lens up
+       (world units, walls + the steady body half) over a pose a fit is about to ask for: focal tile (cx, cy) at height
+       fy, eye distance dist, tilt / yaw in degrees. A fit that ignores it frames for a lens the crane then lifts several
+       squares higher (the Hell arena's rock spires: ~1.5x further out than it solved). Read-only. */
+    function boardLiftAt(cx, cy, fy, dist, tiltDeg, yawDeg) {
+        if (typeof window !== 'undefined' && window.EW_NO_CLEAR_BOARD) return 0;
+        const ts = tileSize, clear = ts * 0.35;
+        const fx = cx * ts + ts / 2, fz = cy * ts + ts / 2;
+        const tr = tiltDeg * DEG2RAD, yr = yawDeg * DEG2RAD;
+        const dX = -Math.sin(tr) * Math.sin(yr), dY = -Math.cos(tr), dZ = -Math.sin(tr) * Math.cos(yr);
+        if (!(dY < -0.02) || !(dist > 0)) return 0;
+        const ex = fx - dist * dX, ez = fz - dist * dZ;
+        const ey0 = Math.max(fy - dist * dY, Math.min(fy, _groundYWorld(fx, fz)) + clear);
+        let ey = ey0;
+        const steady = _steadyOn();
+        const g = _boardSightFloor(fx, fy, fz, ex, ey, ez, clear, steady ? 1 : 3);
+        if (g > ey + 0.5) ey = g;
+        if (steady) ey += _sbLiftAt(fx, fy, fz, ex, ey, ez, clear);
+        return Math.max(0, ey - (fy - dist * dY));
+    }
     function _steadyBodyLift(cam, handHeld, fx, fy, fz, ex, ey, ez, clear) {
         const now = performance.now();
         if (handHeld) {
@@ -1838,6 +1858,7 @@ const ThreeCamera = (function () {
         guardCarryState,
         steadyBoardState,
         steadyCraneState,
+        boardLiftAt,
         FOV,
         NEAR,
         FAR
