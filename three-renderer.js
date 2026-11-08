@@ -9855,6 +9855,7 @@ const ThreeRenderer = (function () {
             }
         }
         if (state.traps) {
+            if (state.traps.length && _rvTeamRimsOn()) h = _hashInt(h, 900 + _viewerPlayerNum());   // THE RIOT PASS phase C: trap rims by seat
             for (var tpi = 0; tpi < state.traps.length; tpi++) {
                 var tp = state.traps[tpi];
                 h = _hashInt(h, 8); h = _hashInt(h, tp.x); h = _hashInt(h, tp.y);
@@ -11395,6 +11396,15 @@ const ThreeRenderer = (function () {
                 var tkey = 'dep_' + (idx++);
                 objectGroup.add(tmesh);
                 deployableMeshes.set(tkey, tmesh);
+                /* THE RIOT PASS phase C: the trap's tile ringed in its side's colours (yours cyan-blue, a revealed enemy
+                   trap pink-orange) */
+                var tRamp = _rvTeamRim(tpr.owner);
+                if (tRamp) {
+                    var tRim = _rvTrapRim(tpr.x, tpr.y, tRamp);
+                    tRim._ew_deployable = true; tRim._ew_groundDecal = true; tRim._ew_depX = tpr.x; tRim._ew_depY = tpr.y;
+                    objectGroup.add(tRim);
+                    deployableMeshes.set('dep_' + (idx++), tRim);
+                }
                 /* THE TRAPS PACK (2026-10-27): Snare's hidden snare is mondo's bear trap, laid open on its sigil (the owner's eyes only,
                    like the sigil) */
                 if (tpr.trapType === 'spike') {
@@ -46768,10 +46778,69 @@ const ThreeRenderer = (function () {
         return _zoneSkirtTex;
     }
 
+    /* ── THE RIOT PASS, phase C: TEAM RIMS (2026-11-08, Riot's League VFX style guide p.26; plan
+       https://claude.ai/artifact/Y9TyT9NUqMHnyjXYcbmZGQ) ─────────────────────────────────────────────────────────────
+       A zone, a delayed blast or a trap told only its spell by colour, so in PvP nobody could tell whose poison cloud
+       it was. Its RIM now tells the side, seen from the viewer's own seat: yours run cyan, blue, blue-violet; the other
+       side's run pink, red, orange (the guide's ally / enemy indicator ramps). The fill keeps the spell's colour, the
+       danger / heal icons stay. Every seat works its own sides out (getViewerPlayer: the online guest is player 2, a
+       hot-seat board follows the side to move), so it is never relayed. A mark with no owner keeps its old rim.
+       Off: window.EW_NO_RIOT_VFX_C = true, localStorage ew_riotvfx_c = 'off', or the whole pass (EW_NO_RIOT_VFX /
+       ew_riotvfx = 'off'). */
+    var _RV_RIM_ALLY  = [[0x1d, 0xee, 0xff], [0x1d, 0x63, 0xff], [0x60, 0x23, 0xfc]];
+    var _RV_RIM_ENEMY = [[0xfd, 0x16, 0x74], [0xfc, 0x0f, 0x2b], [0xf9, 0x59, 0x0f]];
+    var _rvRimLs = null;
+    function _rvTeamRimsOn() {
+        if (window.EW_NO_RIOT_VFX || window.EW_NO_RIOT_VFX_C) return false;
+        if (_rvRimLs === null) {
+            _rvRimLs = 'on';
+            try { if (localStorage.getItem('ew_riotvfx') === 'off' || localStorage.getItem('ew_riotvfx_c') === 'off') _rvRimLs = 'off'; } catch (e) {}
+        }
+        return _rvRimLs !== 'off';
+    }
+    /* the rim ramp for a mark owned by `owner` (a player number), or null (switch off / no owner) */
+    function _rvTeamRim(owner) {
+        if (owner == null || !(owner > 0) || !_rvTeamRimsOn()) return null;
+        return owner === _viewerPlayerNum() ? _RV_RIM_ALLY : _RV_RIM_ENEMY;
+    }
+    /* one colour of a rim ramp: u 0..1 runs the three stops (0 = first, 0.5 = middle, 1 = last) */
+    function _rvRimColor(ramp, u) {
+        var k = u <= 0.5 ? u * 2 : (u - 0.5) * 2, a = ramp[u <= 0.5 ? 0 : 1], b = ramp[u <= 0.5 ? 1 : 2];
+        return (Math.round(a[0] + (b[0] - a[0]) * k) << 16) | (Math.round(a[1] + (b[1] - a[1]) * k) << 8) | Math.round(a[2] + (b[2] - a[2]) * k);
+    }
+    /* the ramp's colour at a point on the border, by its angle round the centre: the ramp runs out and back, so it
+       closes on itself (no seam) */
+    function _rvRimAt(ramp, mx, my, cx, cy) {
+        var t = (Math.atan2(my - cy, mx - cx) + Math.PI) / (2 * Math.PI);
+        return _rvRimColor(ramp, 1 - Math.abs(2 * t - 1));
+    }
+    /* a trap's own tile ringed in its side's ramp (four draped edge ribbons) */
+    function _rvTrapRim(x, y, ramp) {
+        var ts = CONFIG.tileSize || BASE_TILE, g = new THREE.Group(), th = ts * 0.03;
+        var dirs = ['n', 'e', 's', 'w'];
+        for (var i = 0; i < 4; i++) {
+            var d = dirs[i];
+            var mx = d === 'w' ? x : d === 'e' ? x + 1 : x + 0.5, my = d === 'n' ? y : d === 's' ? y + 1 : y + 0.5;
+            var mat = new THREE.MeshBasicMaterial({ color: _rvRimAt(ramp, mx, my, x + 0.5, y + 0.5), transparent: true, opacity: 0.85,
+                depthWrite: false, side: THREE.DoubleSide });
+            var m = new THREE.Mesh(_drapeEdgeRibbonGeo(x, y, d, th, th), mat);
+            m.position.set(mx * ts, _drapedTileY(x, y, 0.65), my * ts);
+            m.renderOrder = 6;
+            g.add(m);
+        }
+        return g;
+    }
+
     function _renderZoneBorderGroup(info, color, opts) {
         opts = opts || {};
         var ts = CONFIG.tileSize || BASE_TILE;
         var pulseSpeed = opts.pulseSpeed || 0;
+        /* THE RIOT PASS phase C: a team rim (opts.rim = a ramp) colours the border by side, the fill keeps `color` */
+        var rim = opts.rim || null, rcx = 0, rcy = 0;
+        if (rim && info.tiles.length) {
+            for (var ci = 0; ci < info.tiles.length; ci++) { rcx += info.tiles[ci].x; rcy += info.tiles[ci].y; }
+            rcx = rcx / info.tiles.length + 0.5; rcy = rcy / info.tiles.length + 0.5;
+        }
 
         function _zPush(mesh, mat) {
             mesh._ew_overlay = 'zone';
@@ -46792,7 +46861,9 @@ const ThreeRenderer = (function () {
             _zPush(fillPlane, fillMat);
         }
 
-        var lineThickness = ts * 0.035;
+        /* a team rim is a touch wider and draws over the zone's own tile icons / danger cells (renderOrder 6),
+           so the side reads even on a blast whose every tile carries a red plate */
+        var lineThickness = ts * (rim ? 0.05 : 0.035);
         var lineHeight = 0.35;
         for (var ei = 0; ei < info.edges.length; ei++) {
             var e = info.edges[ei];
@@ -46805,23 +46876,26 @@ const ThreeRenderer = (function () {
                overlap and corners read as clean joints (no dots needed) */
             var posX = (e.dir === 'w') ? bx : (e.dir === 'e') ? bx + ts : bx + ts / 2;
             var posZ = (e.dir === 'n') ? bz : (e.dir === 's') ? bz + ts : bz + ts / 2;
+            var eCol = rim ? _rvRimAt(rim, posX / ts, posZ / ts, rcx, rcy) : color;
 
             var lineMat = new THREE.MeshBasicMaterial({
-                color: color, transparent: true, opacity: 0.9,
+                color: eCol, transparent: true, opacity: 0.9,
                 depthWrite: false, side: THREE.DoubleSide
             });
             /* THE DRAPED MARKERS: the rim rides the tile's surface along its edge */
             var lineMesh = new THREE.Mesh(_drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineThickness, lineThickness), lineMat);
             lineMesh.position.set(posX, _drapedTileY(e.x, e.y, lineHeight), posZ);
+            if (rim) lineMesh.renderOrder = 8;
             _zPush(lineMesh, lineMat);
 
             /* soft halo hugging the line (subtler than the old fat glow) */
             var glowMat = new THREE.MeshBasicMaterial({
-                color: color, transparent: true, opacity: 0.15,
+                color: eCol, transparent: true, opacity: rim ? 0.22 : 0.15,
                 depthWrite: false, side: THREE.DoubleSide
             });
             var glowMesh = new THREE.Mesh(_drapeEdgeRibbonGeo(e.x, e.y, e.dir, lineThickness * 4.5, ts * 0.04), glowMat);
             glowMesh.position.set(posX, _drapedTileY(e.x, e.y, lineHeight - 0.08), posZ);
+            if (rim) glowMesh.renderOrder = 7;
             _zPush(glowMesh, glowMat);
 
             /* Terrain-following skirt: when the ground steps up or down across
@@ -46838,7 +46912,7 @@ const ThreeRenderer = (function () {
                     var skTop = Math.max(yIn, yOut) + lineHeight * 0.5;
                     var skBot = Math.min(yIn, yOut) + 0.1;
                     var skirtMat = new THREE.MeshBasicMaterial({
-                        color: color, transparent: true, opacity: 0.55,
+                        color: eCol, transparent: true, opacity: 0.55,
                         map: _getZoneSkirtTex(),
                         depthWrite: false, side: THREE.DoubleSide
                     });
@@ -47091,16 +47165,17 @@ const ThreeRenderer = (function () {
             }
             return sig;
         }
-        var zKey = '';
+        /* THE RIOT PASS phase C: the team rims hang on the viewer's seat and each mark's owner */
+        var zKey = _rvTeamRimsOn() ? 'V' + _viewerPlayerNum() + '|' : '';
         for (var zi = 0; zi < zones.length; zi++) {
             var z = zones[zi];
             zKey += (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + ((z.radius != null ? z.radius : 1))
-                 + ':' + _zHeightSig(z.x, z.y, (z.radius != null ? z.radius : 1)) + '|';
+                 + ':' + _zHeightSig(z.x, z.y, (z.radius != null ? z.radius : 1)) + ':' + (z.ownerPlayer || 0) + '|';
         }
         for (var di = 0; di < delayed.length; di++) {
             var d = delayed[di];
             zKey += 'D:' + (d.spellName || 'del') + ':' + d.x + ',' + d.y + ':' + (d.aoeRadius || 1)
-                 + ':' + _zHeightSig(d.x, d.y, d.markedUnitId ? 0 : (d.aoeRadius || 1)) + '|';
+                 + ':' + _zHeightSig(d.x, d.y, d.markedUnitId ? 0 : (d.aoeRadius || 1)) + ':' + (d.sourcePlayer || 0) + '|';
         }
         if (zKey !== _lastZoneOverlayKey) {
             _lastZoneOverlayKey = zKey;
@@ -47121,7 +47196,8 @@ const ThreeRenderer = (function () {
                 var zr = (zz.radius != null ? zz.radius : 1);
                 var zcol = _ZONE_OVERLAY_NAMES[zz.spellName] || _ZONE_OVERLAY_COLORS[zz.type] || 0xdcc8a0;
                 var zInfo = _buildZoneBorderEdges(zz.x, zz.y, zr, _zoneMaskTiles(zz));
-                _renderZoneBorderGroup(zInfo, zcol);
+                var zRim = _rvTeamRim(zz.ownerPlayer);
+                _renderZoneBorderGroup(zInfo, zcol, zRim ? { rim: zRim } : undefined);
 
                 if (zz.spellName === 'Dimensional Web' || zz.spellName === 'Web Snare') {
                     _renderSpiderwebZoneOverlay(zInfo.tiles);
@@ -47148,7 +47224,7 @@ const ThreeRenderer = (function () {
                 var dr = dd.markedUnitId ? 0 : (dd.aoeRadius || 1);
                 var dInfo = _buildZoneBorderEdges(dd.x, dd.y, dr);
                 /* delayed blasts (Nuke etc.) blink faster — they're a countdown */
-                _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444, { pulseSpeed: 3.4 });
+                _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444, { pulseSpeed: 3.4, rim: _rvTeamRim(dd.sourcePlayer) });
                 _renderDangerCells(dInfo.tiles, !!dd.markedUnitId, 3.4);   // every footprint tile, not just the centre
             }
         }

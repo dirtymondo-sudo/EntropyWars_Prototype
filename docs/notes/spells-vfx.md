@@ -3373,6 +3373,68 @@ art. Kill switch `window.EW_NO_RIOT_VFX = true` (or localStorage `ew_riotvfx` = 
   guest computes the same weights. Looks only.
 - Proof: /mnt/project-files/riot-vfx/phase-a/ (same VS-CPU match, `EW_NO_RIOT_VFX` on for the before shots).
 
+## THE RIOT PASS, phase B: the painted puffs + the streaks (2026-11-08, three-vfx.js)
+
+mondo said "go" on phase B of the plan (guide p.28-30: hand-painted shapes, concise detail, soft and sharp edges, a
+clear silhouette; fast bits get motion-blur shapes).
+
+- THE PUFFS: the 7 soft billows (`_drawBillow` piles of radial blobs + speckled erosion holes) are painted by `_RV_PAINT`
+  instead: `_rvPuff` = 3 flat value bands, each a scalloped `_rvLobed` outline (n scallops, each its own height, sharp
+  valleys), filled opaque, then ONE flat alpha for the whole puff (`destination-in`). smoke + dust-puff: light band
+  offset toward the top, soft underside (`under`), and `_RV_LIT` holds their spin to ±30° start / ±18°/s so the light
+  stays up (other auto-tumble sprites keep the full turn). smoke-soft: a soft rim (`rim` 0.28) so a Smoke Screen bank
+  still merges. poison-mist keeps its bubble rings, void-mist its dark core, shadow-wisp has a lit rim round a dark
+  centre. explosion-orange (the approved mock-up panel 1): dark-red rim, orange, yellow, a warm core under 92 % and 6
+  sharp shards, and it now draws NORMAL blend (`p._blend = 'nrm'` in spawn) so the rim and bands read and stacked
+  blasts don't add to flat white; the flashes beside it stay the glow.
+- Same canvas sizes (160/144/192) and colour families, so tints and blends behave the same. These 7 textures use
+  mipmaps (`LinearMipmapLinearFilter`, both painted states: the filter can't change after the first upload) so a far,
+  spinning crisp edge doesn't shimmer.
+- THE STREAKS: `_RV_STREAK` (ember 3.5, water-splash 3.5, sand-particle 3, ice-shard 3, debris / rock-debris /
+  mud-chunk 2.2 = the longest streak in widths) join THE CRAFT's velocity sparks as `_velSpark = 2` with their own cap
+  `p._vsMax`; below VS_DEADZONE they stay round. `_rvStreakRot` blends a tumbling chunk from its tumble onto its path as
+  it speeds up and back as it slows (no snap at the top of an arc). Kept / zone / decor / trail / floorAt / onLand
+  particles are left alone. Batched and fallback paths both.
+- SWITCH: `window.EW_NO_RIOT_VFX_B = true` (or localStorage `ew_riotvfx_b` = `off`) = the old billows, full tumble, no new
+  streaks; `EW_NO_RIOT_VFX` turns phases A and B off. Live: spawn() sees the flag flip and `_rvRepaintShapes` repaints the
+  7 canvases in place (`needsUpdate`).
+- Online: textures and spawn-time choices are each client's own, from the same relayed calls. Looks only.
+- Proof: /mnt/project-files/riot-vfx/phase-b/ (close-up puff sheet + same VS-CPU match, `EW_NO_RIOT_VFX_B` on for the
+  before rows).
+
+## THE RIOT PASS, phase C: the palette audit + the team rims (2026-11-08, three-vfx.js + three-renderer.js)
+
+mondo: "continue phase c" (guide p.19-21: analogous colours inside a spell, a complementary one only as the quiet
+secondary; p.24-25: tell allies from enemies at a glance, ally cyan to blue, enemy pink-red to orange).
+
+- THE PALETTE AUDIT: every element's stage palette (three-vfx-effects.js `_STAGE_ARCHETYPES`) and the shared painted
+  sprites were checked against the guide's families. All sit inside one analogous family except ONE: `psi-pulse` (the
+  psychic / mind mote, 95 uses) painted mint green and magenta at the same strength (the guide's Lulu "don't"). Now
+  pink + violet (THE PSYCHIC PASS colours) with the mint kept as one faint ring (`_RV_PAINT_C` in three-vfx.js, live
+  repaint like phase B). In game the sprite's violet tint already greyed the mint, so the visible change is small: the
+  muddy blue-grey core and ring are gone. Kept on purpose: arcane stays violet (tech, mana and the ally rim own
+  cyan-blue), divine cream stays apart from aura gold, fire keeps red-orange-yellow, ice white-cyan, poison green.
+- THE TEAM RIMS (three-renderer.js): board marks show whose they are, from the VIEWER's seat. The fill keeps the spell's
+  colour; only the border changes. Ally `_RV_RIM_ALLY` cyan 1deeff -> blue 1d63ff -> violet 6023fc, enemy
+  `_RV_RIM_ENEMY` pink fd1674 -> red fc0f2b -> orange f9590f, laid round the mark by angle from its middle
+  (`_rvRimAt`, so a corner shows two of the three stops and a mark never reads as one flat line).
+  - zones (`state._activeZones`, ownerPlayer) and delayed blasts (`state._delayedSpells`, sourcePlayer):
+    `_renderZoneBorderGroup(info, color, { rim })` colours the line, halo (0.22) and cliff skirt; with a rim the line is
+    0.05 of a tile (was 0.035) and draws over the tile icons / red danger plates (line renderOrder 8, halo 7, the plates
+    are 6), otherwise a blast whose every tile carries a red plate hid it. The overlay key carries the viewer + owner.
+  - traps (`state.traps`, owner): `_rvTrapRim` = 4 draped edge ribbons round the trap's square beside its sigil, a
+    deployable like the sigil (the deployables hash carries the viewer). Only traps the viewer can see are drawn at
+    all (own + spotted), so a rim never gives a hidden trap away.
+  - `_rvTeamRim(owner)` -> null when there's no owner (weather, neutral marks keep their old border), else ally when
+    owner === `_viewerPlayerNum()` (online `_NET.myPlayer`; hot-seat both local -> the active player; else P1).
+- Online: no relay. Zones / blasts arrive in the snapshot, traps through `_guestTrapFilter`; each client works out its
+  own sides, so the guest sees its own marks cyan and the host's pink. Checked by switching the seat in a real match
+  (controllers both local, activePlayer 2); a real two-player game was not run.
+- SWITCH: `window.EW_NO_RIOT_VFX_C = true` (or localStorage `ew_riotvfx_c` = `off`) = old mote + no team rims (live);
+  `EW_NO_RIOT_VFX` turns A, B and C off.
+- Proof: /mnt/project-files/riot-vfx/phase-c/phaseC_team_rims_real_match.jpg (zones, delayed blasts, own trap, spotted
+  enemy trap: before / your side / P2's seat) + phaseC_psychic_mote_before_after.png.
+
 ## THE STEADY BOARD (2026-11-08, three-camera.js + battle.js)
 
 mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and back

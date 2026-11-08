@@ -157,6 +157,22 @@ const ThreeVFX = (function () {
         if (_rvLs === null) { _rvLs = 'on'; try { if (localStorage.getItem('ew_riotvfx') === 'off') _rvLs = 'off'; } catch (e) {} }
         return _rvLs !== 'off';
     }
+    /* phase B (the painted puffs + the motion streaks) has its own switch: EW_NO_RIOT_VFX_B / ew_riotvfx_b = off.
+       EW_NO_RIOT_VFX turns both phases off. */
+    var _rvLsB = null;
+    function _rvShapesOn() {
+        if (!_rvOn() || window.EW_NO_RIOT_VFX_B) return false;
+        if (_rvLsB === null) { _rvLsB = 'on'; try { if (localStorage.getItem('ew_riotvfx_b') === 'off') _rvLsB = 'off'; } catch (e) {} }
+        return _rvLsB !== 'off';
+    }
+    /* phase C (colour: the palette fix here, the team rims in three-renderer.js) has its own switch too:
+       EW_NO_RIOT_VFX_C / ew_riotvfx_c = off */
+    var _rvLsC = null;
+    function _rvColorOn() {
+        if (!_rvOn() || window.EW_NO_RIOT_VFX_C) return false;
+        if (_rvLsC === null) { _rvLsC = 'on'; try { if (localStorage.getItem('ew_riotvfx_c') === 'off') _rvLsC = 'off'; } catch (e) {} }
+        return _rvLsC !== 'off';
+    }
     function _rvCtx() {
         var E = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
         if (!E || typeof E._rvCtxNow !== 'function') return null;
@@ -257,6 +273,17 @@ const ThreeVFX = (function () {
         _pcTmp.b = (c.b + (l - c.b) * gr) * d;
         if (p._rvFade === 2) { _pcTmp.g *= 1 - 0.4 * k; _pcTmp.b *= 1 - 0.55 * k; }
         return _pcTmp;
+    }
+    /* phase B streak facing: a tumbling chunk turns from its tumble onto its path as it speeds up (a = streak
+       aspect) and back as it slows, so it never snaps at the top of its arc */
+    function _rvStreakRot(p, vel, a) {
+        if (!(p._spriteRot || p._spriteSpin)) return vel;
+        var f = (a - 1) / 0.8;
+        if (f >= 1) return vel;
+        var tum = (p._spriteRot + p._spriteSpin * (p.life / 1000)) * 0.017453293;
+        var d = (vel - tum) % 6.2831853;
+        if (d > 3.14159265) d -= 6.2831853; else if (d < -3.14159265) d += 6.2831853;
+        return tum + d * f;
     }
     /* how far (vfx px) a secondary particle steps back from the camera now: up to 0.3 tile, never past its own floor */
     function _rvBackOf(p) {
@@ -831,6 +858,158 @@ const ThreeVFX = (function () {
             ctx.restore();
         }
     }
+
+    /* ── THE RIOT PASS, phase B (2026-11-08): concise painted puffs (guide p.28-30) ───────────────────────────────────
+       The seven soft billows (smoke, smoke-soft, dust-puff, poison-mist, void-mist, shadow-wisp, explosion-orange) were
+       piles of radial blobs with speckled erosion holes: soft everywhere and noisy, the look the guide's "don't" slides
+       show. Each is now 3-4 FLAT value bands inside one scalloped silhouette with a crisp outer edge. Smoke and dust
+       carry their light band toward the top (their spin is held to ±30° so the light stays up) and fade softly
+       underneath; smoke-soft keeps a soft rim so a Smoke Screen bank still merges into one cloud; the explosion is a
+       dark-red rim, orange lobes, yellow, a warm core under 92 % and a few sharp shards. Same canvas sizes and the
+       same colour families as before, so tints and blends behave the same. The painted state follows _rvShapesOn()
+       live: flipping the switch repaints these canvases in place (_rvRepaintShapes). */
+    function _rvLobed(ctx, cx, cy, R, n, amp, ph, rot, rnd) {
+        /* n scallops, each its own height (rnd), meeting in sharp valleys: a cloud, not a flower */
+        var f = [], i;
+        for (i = 0; i < n; i++) f.push(rnd ? 0.5 + rnd() * 1.0 : 1);
+        var steps = n * 12;
+        ctx.beginPath();
+        for (i = 0; i <= steps; i++) {
+            var a = (i / steps) * 6.2832, u = a * n / 2 + ph;
+            var k = ((Math.floor(u / 3.14159265) % n) + n) % n;
+            var r = R * (1 + amp * f[k] * Math.pow(Math.abs(Math.sin(u)), 0.6));
+            var x = cx + Math.cos(a + rot) * r, y = cy + Math.sin(a + rot) * r * 0.92;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+    }
+    /* o: seed, lobes, amp, r0 (outer radius / S), dr (radius step per band), dx / dy (band offset per band / S),
+       bands (opaque colours, outer first), alpha (one flat alpha for the whole puff), under (0..1 soft underside),
+       rim (0..1 soft outer rim instead of a crisp one) */
+    function _rvPuff(ctx, S, o) {
+        var c = S / 2, rnd = _sRand(o.seed), ph = rnd() * 3, n = o.lobes || 5;
+        for (var b = 0; b < o.bands.length; b++) {
+            ctx.fillStyle = o.bands[b];
+            _rvLobed(ctx, c + b * S * (o.dx || 0), c + b * S * (o.dy || 0), S * (o.r0 - b * o.dr), n, o.amp || 0.3,
+                     ph + b * 0.8 + rnd() * 0.4, (o.rot || 0) + b * 0.35, rnd);
+            ctx.fill();
+        }
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-in';
+        if (o.rim) {
+            var rg = ctx.createRadialGradient(c, c, 0, c, c, S * o.r0 * (1 + (o.amp || 0.3)));
+            rg.addColorStop(0, 'rgba(0,0,0,' + o.alpha + ')');
+            rg.addColorStop(1 - o.rim, 'rgba(0,0,0,' + o.alpha + ')');
+            rg.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = rg;
+        } else {
+            ctx.fillStyle = 'rgba(0,0,0,' + o.alpha + ')';
+        }
+        ctx.fillRect(0, 0, S, S);
+        if (o.under) {
+            ctx.globalCompositeOperation = 'destination-out';
+            var g = ctx.createLinearGradient(0, S * 0.55, 0, S * 0.94);
+            g.addColorStop(0, 'rgba(0,0,0,0)');
+            g.addColorStop(1, 'rgba(0,0,0,' + o.under + ')');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, S, S);
+        }
+        ctx.restore();
+    }
+    var _RV_PAINT = {
+        'smoke': function (ctx, S) {
+            _rvPuff(ctx, S, { seed: 0x50B0, lobes: 5, amp: 0.32, r0: 0.31, dr: 0.075, dx: -0.03, dy: -0.045, alpha: 0.82, under: 0.8,
+                bands: ['rgb(40,36,35)', 'rgb(74,67,63)', 'rgb(118,109,102)'] });
+        },
+        'smoke-soft': function (ctx, S) {
+            _rvPuff(ctx, S, { seed: 0x50B1, lobes: 6, amp: 0.28, r0: 0.32, dr: 0.07, dy: -0.02, alpha: 0.6, rim: 0.28,
+                bands: ['rgb(116,110,103)', 'rgb(146,139,130)', 'rgb(178,170,160)'] });
+        },
+        'dust-puff': function (ctx, S) {
+            _rvPuff(ctx, S, { seed: 0xD05B, lobes: 6, amp: 0.3, r0: 0.31, dr: 0.075, dx: -0.03, dy: -0.045, alpha: 0.78, under: 0.75,
+                bands: ['rgb(124,107,82)', 'rgb(170,151,118)', 'rgb(212,196,164)'] });
+        },
+        'poison-mist': function (ctx, S) {
+            _rvPuff(ctx, S, { seed: 0x901B, lobes: 6, amp: 0.3, r0: 0.31, dr: 0.08, alpha: 0.72,
+                bands: ['rgb(34,92,26)', 'rgb(66,146,44)', 'rgb(122,208,80)'] });
+            var rnd = _sRand(0x9014), c = S / 2;
+            for (var i = 0; i < 4; i++) {
+                var a = rnd() * 6.2832, d = S * (0.08 + rnd() * 0.16);
+                ctx.strokeStyle = 'rgba(190,255,130,0.85)';
+                ctx.lineWidth = S * 0.012;
+                ctx.beginPath(); ctx.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, S * (0.022 + rnd() * 0.022), 0, 6.2832); ctx.stroke();
+            }
+        },
+        'void-mist': function (ctx, S) {
+            _rvPuff(ctx, S, { seed: 0x701B, lobes: 6, amp: 0.32, r0: 0.31, dr: 0.08, alpha: 0.75,
+                bands: ['rgb(84,36,126)', 'rgb(132,66,184)', 'rgb(40,14,66)'] });
+        },
+        'shadow-wisp': function (ctx, S) {
+            _rvPuff(ctx, S, { seed: 0x5AD8, lobes: 5, amp: 0.34, r0: 0.31, dr: 0.08, alpha: 0.8,
+                bands: ['rgb(70,50,92)', 'rgb(44,30,60)', 'rgb(24,15,34)'] });
+        },
+        'explosion-orange': function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0xB0B0), ph = 0.7;
+            var bands = [[0.30, 7, 0.35, 'rgba(150,34,14,0.8)'], [0.25, 7, 0.3, 'rgb(240,96,26)'],
+                         [0.18, 6, 0.28, 'rgb(255,170,48)'], [0.11, 5, 0.25, 'rgb(255,222,120)']];
+            for (var b = 0; b < bands.length; b++) {
+                ctx.fillStyle = bands[b][3];
+                _rvLobed(ctx, c, c, S * bands[b][0], bands[b][1], bands[b][2], ph + rnd() * 0.6, b * 0.3, rnd);
+                ctx.fill();
+            }
+            _blob(ctx, c, c, S * 0.08, [[0, 'rgba(242,232,196,0.95)'], [1, 'rgba(255,222,150,0)']]);
+            ctx.fillStyle = 'rgba(255,190,80,0.95)';
+            for (var i = 0; i < 6; i++) {
+                var a = i * 1.05 + rnd() * 0.4, r0 = S * 0.26, r1 = S * (0.40 + rnd() * 0.06);
+                ctx.beginPath();
+                ctx.moveTo(c + Math.cos(a - 0.07) * r0, c + Math.sin(a - 0.07) * r0);
+                ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
+                ctx.lineTo(c + Math.cos(a + 0.07) * r0, c + Math.sin(a + 0.07) * r0);
+                ctx.closePath(); ctx.fill();
+            }
+        },
+    };
+    /* THE RIOT PASS, phase C (guide p.19-21: analogous colours; a complementary one only as the quiet secondary).
+       The palette audit (docs/notes/spells-vfx.md) found one clash: 'psi-pulse' (the psychic / mind mote, 95 uses)
+       was mint green and magenta at the same strength, the guide's Lulu "don't". Psychic is pink + violet (THE PSYCHIC
+       PASS), so the mote is now pink-violet with the mint kept as one faint ring. */
+    var _RV_PAINT_C = {
+        'psi-pulse': function (ctx, S) {
+            var c = S / 2;
+            _blob(ctx, c, c, S * 0.46,
+                  [[0, 'rgba(255,240,252,0.9)'], [0.3, 'rgba(250,170,240,0.6)'], [0.62, 'rgba(200,90,230,0.4)'], [1, 'rgba(130,40,170,0)']]);
+            for (var i = 1; i <= 3; i++) {
+                ctx.strokeStyle = i === 2 ? 'rgba(160,255,210,0.16)' : 'rgba(235,140,255,' + (0.65 - i * 0.12) + ')';
+                ctx.lineWidth = S * 0.022;
+                ctx.beginPath(); ctx.arc(c, c, S * (0.12 + i * 0.106), 0, 6.2832); ctx.stroke();
+            }
+        },
+    };
+    var _rvColorPainted = null;      // the state the phase C canvases were last painted in (null = not built yet)
+
+    /* the puffs whose light band sits toward the top: their spin is held so the light stays up */
+    var _RV_LIT = { 'smoke': 1, 'dust-puff': 1 };
+    var _rvShapesPainted = null;     // the state the canvases were last painted in (null = not built yet)
+    function _rvRepaintShapes() {
+        _rvShapesPainted = _rvShapesOn();
+        _rvColorPainted = _rvColorOn();
+        var keys = Object.keys(_RV_PAINT).concat(Object.keys(_RV_PAINT_C));
+        for (var ki = 0; ki < keys.length; ki++) {
+            var k = keys[ki];
+            var def = _shapedHiResDefs[k], tex = _hiResTextures[k];
+            if (!def || !tex || !tex.image || !tex.image.getContext) continue;
+            var cvs = tex.image, ctx = cvs.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            try { def.draw(ctx, def.sz); } catch (e) { console.warn('[ThreeVFX] puff repaint failed: ' + k, e); }
+            tex.needsUpdate = true;
+        }
+    }
+    /* small fast bits that streak along their path (guide p.30), with the longest streak each may grow to.
+       Chunks and shards stay short; their tumble blends into the streak and back as they speed up and slow down. */
+    var _RV_STREAK = { 'ember': 3.5, 'water-splash': 3.5, 'sand-particle': 3, 'ice-shard': 3,
+                       'debris': 2.2, 'rock-debris': 2.2, 'mud-chunk': 2.2 };
 
     /* crisp flame tongue pointing UP: layered teardrop silhouettes with a
        wavering edge — outer body, mid heat, white-hot core */
@@ -1475,7 +1654,28 @@ const ThreeVFX = (function () {
         }},
     };
 
+    /* THE RIOT PASS phase B: the seven puff keys paint the new flat-band puff while _rvShapesOn(), else the old billow */
+    (function () {
+        for (var k in _RV_PAINT) {
+            var def = _shapedHiResDefs[k];
+            if (!def) continue;
+            (function (key, oldDraw) {
+                def.draw = function (ctx, S) { if (_rvShapesOn()) _RV_PAINT[key](ctx, S); else oldDraw(ctx, S); };
+            })(k, def.draw);
+        }
+        /* phase C: the palette fixes paint while _rvColorOn() */
+        for (var kc in _RV_PAINT_C) {
+            var defc = _shapedHiResDefs[kc];
+            if (!defc) continue;
+            (function (key, oldDraw) {
+                defc.draw = function (ctx, S) { if (_rvColorOn()) _RV_PAINT_C[key](ctx, S); else oldDraw(ctx, S); };
+            })(kc, defc.draw);
+        }
+    })();
+
     function _buildShapedHiRes() {
+        _rvShapesPainted = _rvShapesOn();
+        _rvColorPainted = _rvColorOn();
         for (var key in _shapedHiResDefs) {
             var def = _shapedHiResDefs[key];
             var cvs = document.createElement('canvas');
@@ -1487,7 +1687,9 @@ const ThreeVFX = (function () {
             var tex = new THREE.CanvasTexture(cvs);
             tex.premultiplyAlpha = false;
             tex.magFilter = THREE.LinearFilter;
-            tex.minFilter = THREE.LinearFilter;
+            /* a crisp puff edge shimmers when a far, spinning puff samples a 160 px canvas with no mip levels; these keep
+               their mips in both painted states (the filter can't change after the first upload) */
+            tex.minFilter = _RV_PAINT[key] ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
             tex.needsUpdate = true;
             _hiResTextures[key] = tex;
         }
@@ -2013,9 +2215,10 @@ const ThreeVFX = (function () {
                 var spd = Math.sqrt(sxv * sxv + syv * syv);
                 var a = 1 + (spd - VS_DEADZONE) * VS_K;
                 if (a > 1.02) {
-                    if (a > VS_MAX) a = VS_MAX;
+                    if (a > p._vsMax) a = p._vsMax;
                     sx = sz * Math.pow(a, 0.6); sy = sz * Math.pow(a, -0.4);
                     rot = Math.atan2(syv, sxv);
+                    if (p._velSpark === 2) rot = _rvStreakRot(p, rot, a);
                     cx = 0.5 + VS_LEAD * (1 - 1 / a);
                     vs = true;
                 }
@@ -2840,10 +3043,18 @@ const ThreeVFX = (function () {
            spin by default (shaped textures made identical-rotation spam
            obvious). Explicit spriteRot/spriteSpin always wins; flame
            tongues, glints and rings are NOT in the auto set on purpose. */
+        /* THE RIOT PASS phase B: a flipped switch repaints the puffs in place; a lit puff (smoke, dust) keeps its
+           light band up (±30°, a slow roll) instead of a full random turn */
+        var rvB = _rvShapesOn();
+        if (_rvShapesPainted !== null && (rvB !== _rvShapesPainted || _rvColorOn() !== _rvColorPainted)) _rvRepaintShapes();
+        var rvLit = rvB && !!_RV_LIT[sprite];
+        /* the painted explosion is a body, not a glow: drawn normally its dark-red rim and bands read, and stacked
+           blasts no longer add up to flat white (guide p.13-17); its glow is the flash beside it */
+        if (rvB && sprite === 'explosion-orange') p._blend = 'nrm';
         p._spriteRot = opts.spriteRot != null ? opts.spriteRot
-                     : (_AUTO_TUMBLE[sprite] ? _rn(0, 360) : 0);
+                     : (rvLit ? _rn(-30, 30) : (_AUTO_TUMBLE[sprite] ? _rn(0, 360) : 0));
         p._spriteSpin = opts.spriteSpin != null ? _rangePick(opts.spriteSpin)
-                      : (_AUTO_TUMBLE[sprite] ? _rn(-55, 55) : 0);
+                      : (rvLit ? _rn(-18, 18) : (_AUTO_TUMBLE[sprite] ? _rn(-55, 55) : 0));
         p._uvRect = _getUvRect(sprite);
 
         if (sprite === 'wave-1' || sprite === 'wave-anim') {
@@ -2935,6 +3146,16 @@ const ThreeVFX = (function () {
         p._velSpark = craft && poolType === 'sprite' && !!_VEL_SPARKS[sprite] &&
                       !opts.stretchVel && opts.spriteRot == null && opts.spriteSpin == null &&
                       !opts.seek && !opts.orbit && !opts.descent;
+        /* THE RIOT PASS phase B: embers, droplets, sand, shards and debris streak too (_velSpark 2: a shorter cap,
+           and a tumbling chunk blends between its tumble and the streak) */
+        p._vsMax = VS_MAX;
+        if (!p._velSpark && craft && poolType === 'sprite' && _RV_STREAK[sprite] && _rvShapesOn() &&
+            !opts.stretchVel && opts.spriteRot == null && opts.spriteSpin == null &&
+            !opts.seek && !opts.orbit && !opts.descent && !opts.trail && !opts.keep && !opts._zone && !opts.decor &&
+            !opts.floorAt && !opts.onLand) {
+            p._velSpark = 2;
+            p._vsMax = _RV_STREAK[sprite];
+        }
         p._keep = !!opts.keep;
         /* THE GORE: floorAt(x, y) → the floor height under a falling particle
            (null off the board); when it reaches it, onLand(x, y, z, p) runs
@@ -3117,9 +3338,9 @@ const ThreeVFX = (function () {
         var spd = Math.sqrt(sx * sx + sy * sy);
         var a = 1 + (spd - VS_DEADZONE) * VS_K;
         if (!(a > 1.02)) return false;
-        if (a > VS_MAX) a = VS_MAX;
+        if (a > p._vsMax) a = p._vsMax;
         entry.sprite.scale.set(sz * Math.pow(a, 0.6), sz * Math.pow(a, -0.4), 1);
-        entry.material.rotation = Math.atan2(sy, sx);
+        entry.material.rotation = p._velSpark === 2 ? _rvStreakRot(p, Math.atan2(sy, sx), a) : Math.atan2(sy, sx);
         if (entry.sprite.center) entry.sprite.center.x = 0.5 + VS_LEAD * (1 - 1 / a);
         return true;
     }
