@@ -79561,7 +79561,7 @@ const ThreeRenderer = (function () {
             var bb = fx.bubbles[bi]; if (bb.life <= 0) continue;
             bb.life -= dt; bb.sp.position.y += bb.vy * dt * U; bb.sp.position.x += Math.sin(now * 0.004 + bi) * bb.ox * dt * U;
             bb.sp.material.opacity = Math.min(0.55, bb.life * 0.6);
-            if (bb.life <= 0 || bb.sp.position.y / U > (landW ? _hqWaterYAt(bb.sp.position.x / U, bb.sp.position.z / U) : sea.y) - 0.1) { bb.life = 0; bb.sp.visible = false; }
+            if (bb.life <= 0 || bb.sp.position.y / U > _hqWaterYAt(bb.sp.position.x / U, bb.sp.position.z / U) - 0.1) { bb.life = 0; bb.sp.visible = false; }
         }
     }
     /* ── THE PROCS: the sea's kit (metres × U, front +Z, origin on the floor) ── */
