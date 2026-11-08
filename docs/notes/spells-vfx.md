@@ -3325,3 +3325,18 @@ Cam ON), per drawn frame, with `ThreeRenderer.unitScreenBox` on the target:
   `window.EW_NO_FLYER_AIM = true` (the old maths, used for the before shots).
 - Harness lesson: after a page reload the playtest harness is back in draw-on-demand, so an in-page canvas grab is
   black until `ph draw always`. Proof /mnt/project-files/dead-eye-flyer-camera/.
+
+## THE BLENDER FIRE + SMOKE REVERTED (2026-11-08)
+mondo 11-08, with Riot's VFX style guide (League of Legends, 2017; p.28 "Shape language"): the guide's INACCURATE example
+(photographic / simulated explosion textures with superfluous detail) "is the exact type of fire and smoke you tried to make
+in blender. So ditch the blender fire+smoke, go back to what the game had before."
+- Removed every Blender flipbook from the game: three-vfx.js THE FLIPBOOKS (sheet table, `_FB_KINDS` shared smoke /
+  smoke-soft / dust-puff / ember swap, THE SMOKE DISSIPATES dissolve tail, `flipbookReady/Info/Frame`, `EW_NO_FLIPBOOKS`)
+  and three-vfx-effects.js THE FLIPBOOK PILOT + THE SPELL SIMS (`_fbBlast`, `_fbSim`, `_fbTrail`, `_fbMeteorTail`, the
+  Meteor `fbMeteor_*` wrappers, the `ifNoFb` layer skip, Fireball's `fb` / `SIM` branches). PRs undone: #823, #828, #830,
+  #906, #919. three-vfx.js is byte-identical to its pre-#823 copy; Fireball's `_fpBurst` + flight and Meteor are the
+  pre-Blender code again (painted flame / explosion-orange blobs, painted smoke + embers, the original meteor tiles).
+- Kept, unused: the sheets on R2 (Assets/fx/sprites/fb_*.png, never delete R2 objects) and their repo copies,
+  bake-vfx.py and docs/BLENDER_VFX_GUIDE.md (both marked RETIRED for spell VFX). Do NOT bring back sim-baked fire/smoke.
+- What replaces it: the Riot-guide VFX plan in this thread (readability, value/colour hierarchy, shape, timing), done in
+  code with the existing painted sprites, no Blender.

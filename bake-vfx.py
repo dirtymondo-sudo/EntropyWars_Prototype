@@ -1,5 +1,8 @@
 """bake-vfx.py - spell VFX FLIPBOOKS baked in cloud Blender (repo-only tooling, 2026-11-03, the Blender pilot).
 
+RETIRED 2026-11-08 (mondo): the game no longer loads any flipbook; the Blender fire + smoke was removed (Riot VFX
+style guide p.28). Kept as history only. Notes: docs/notes/spells-vfx.md "THE BLENDER FIRE + SMOKE REVERTED".
+
 A real fire + smoke simulation (Blender Mantaflow) rendered by Cycles to transparent frames, then cut into one sheet
 (8 x 8 cells of 128 px) that three-vfx.js THE FLIPBOOKS plays over a particle's life. Output used by the game:
 Assets/fx/sprites/fb_explosion.png (R2: Assets/fx/sprites/). Notes: docs/notes/spells-vfx.md "THE FLIPBOOKS".
