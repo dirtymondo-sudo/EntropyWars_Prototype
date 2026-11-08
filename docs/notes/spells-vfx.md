@@ -3304,3 +3304,24 @@ Follow-up PR (same day, review finding): the fade's world offsets were only fill
 return glide started on the very next frame (the player's own potion, a small turn home) dropped the correction.
 `_frameGuardSolve` now stores them (`_fgCarry.last`) with each solve. Checked in the browser: the own-turn glide home
 reports `{mode:'fade'}` from its first frame and the eye pulls out 1.93 → 6.1 squares with no dip.
+
+## THE FLIGHT HEIGHT — sniper scope, bullet ride and end cap on flyers (2026-11-08, mondo: "Dead eye spell camera zoom in doesnt account for flyers") — battle.js
+Recorded in real VS CPU matches (my jetpack Cowboy with Dead Eye vs the CPU's Jellyfish / Valkraye / Vampire, Action
+Cam ON), per drawn frame, with `ThreeRenderer.unitScreenBox` on the target:
+- THE SCOPE (`cineSniperPov`, shared by Dead Eye, Take Aim, Precision Shot, Kneecap Shot, Railgun): three faults.
+  (1) a flying shooter's hover was added twice (cPx already holds it, eyePx added it again) so the aim sloped down;
+  (2) it aimed at the target's logic height, not the drawn body; (3) THE LEVEL LENS (`_cineTiltCap`, CINE_SHOT_TILT_MAX
+  90) clamps any look UP to dead level, so a grounded shooter's scope on a hovering Valkraye stared level under it
+  (target centre at y −371…−961 on a 720 screen). Now the eye = the shooter's drawn feet + 92 % height, the aim = the
+  target's drawn feet + 72 %, and when the aim is above the eye the eye RISES to the aim (level look across), so the
+  level-lens rule holds. Before/after, same match, flying Cowboy → flying Vampire: target centre y −8 (head cut) →
+  y 399-407 (dead centre). Higher-ground grounded targets get the same rise.
+- THE BULLET RIDE (`cineBulletCam`): the TPS pivot is the ground under the subject + `_tpsHeadLift`, so elevZ never
+  moved it — the ride sat at a standing shoulder under any flyer. The lift now starts at the shooter's hover and tweens
+  to the target's over the travel (own rAF, stops when another beat re-anchors). Grounded pairs unchanged.
+- THE END CAP (`cineEndCapReverse`, Railgun + every beam end cap): pivot lifted by the victim's hover; slopeBack reads
+  hover heights.
+- Helpers `_cineFeetPx` (unitElevationZ / tile ground) and `_cineDrawnFeetPx` (rendered feet). Kill switch:
+  `window.EW_NO_FLYER_AIM = true` (the old maths, used for the before shots).
+- Harness lesson: after a page reload the playtest harness is back in draw-on-demand, so an in-page canvas grab is
+  black until `ph draw always`. Proof /mnt/project-files/dead-eye-flyer-camera/.

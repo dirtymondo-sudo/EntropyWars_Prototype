@@ -31285,6 +31285,26 @@
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) bk = +ThreeRenderer.bodyScale() || 1; } catch (e) {}
             return Math.max(0.7 * bk, Math.min(2.4 * bk, k));
         }
+        /* THE FLIGHT HEIGHT (mondo 2026-11-08: "Dead eye spell camera zoom in doesnt account for flyers"). The shots that
+           ride BETWEEN two bodies (the scope, the bullet, the end cap) measured both ends from the ground under them, so a
+           flyer — the target hovering over its square, or a jetpack / levitating shooter — sat above (or under) the frame.
+           _cineFeetPx: the px a body's feet are at by the rules (unitElevationZ: flight hover, roofs, floors), a bare tile's
+           ground. _cineDrawnFeetPx: where the model's feet are DRAWN this frame (mid-hover, mid-bob), else the former. */
+        const _cineFeetPos = [0, 0, 0];
+        function _cineFeetPx(u) {
+            if (!u) return 0;
+            if (u.id != null && typeof unitElevationZ === 'function') return unitElevationZ(u) || 0;
+            return (typeof window._camGroundPx === 'function') ? (window._camGroundPx(Math.round(u.x), Math.round(u.y)) || 0) : 0;
+        }
+        function _cineDrawnFeetPx(u) {
+            if (u && u.id != null && !window.EW_NO_FLYER_AIM) {
+                try {
+                    if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos
+                        && ThreeRenderer.getUnitWorldPos(u.id, _cineFeetPos) && Number.isFinite(_cineFeetPos[1])) return _cineFeetPos[1];
+                } catch (e) {}
+            }
+            return _cineFeetPx(u);
+        }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
            false — leaving the caller on the legacy maths — when 3D is off. */
@@ -33690,15 +33710,36 @@
             }
             const zoom = _tpsZoomForBoomTiles(opts.dist ?? 2.2);
             const rise = ts * (opts.rise ?? 0.85);
-            _cineTpsAnchor({ x: from.x, y: from.y }, null);
+            const anchored = _cineTpsAnchor({ x: from.x, y: from.y }, null);
+            /* THE FLIGHT HEIGHT (2026-11-08): the rig's pivot is the ground under the shooter plus a lift, so the bullet
+               rode at a standing shoulder from end to end — under a jetpack shooter and under a hovering target, the round
+               (and the flyer it hits) above the top of the frame. The lift now starts at the shooter's hover and rides to
+               the target's over the travel; a grounded pair keeps the old height to the pixel. */
+            const fly0 = Math.max(0, _cineFeetPx(from) - px0), fly1 = Math.max(0, _cineFeetPx(to) - px1);
+            const flyLift = anchored && !window.EW_NO_FLYER_AIM && (fly0 > 0 || fly1 > 0);
+            const baseLift = camera._tpsHeadLift;
+            if (flyLift) camera._tpsHeadLift = baseLift + fly0;
             _cineHardCut({ x: from.x + dirx * 0.5 + shX, y: from.y + diry * 0.5 + shY,
-                zoom, tilt: opts.tilt ?? 86, yaw, elevZ: px0 + rise });
+                zoom, tilt: opts.tilt ?? 86, yaw, elevZ: px0 + rise + fly0 });
             _acChromeFlash('cut');
+            const travelMs = Math.max(actionMs(260), opts.travelMs ?? actionMs(110 * len));
             _cineBeatMove({
-                x: to.x + shX, y: to.y + shY, elevZ: px1 + rise,
-                duration: Math.max(actionMs(260), opts.travelMs ?? actionMs(110 * len)),
+                x: to.x + shX, y: to.y + shY, elevZ: px1 + rise + fly1,
+                duration: travelMs,
                 easing: 'linear', _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
+            if (flyLift && fly1 !== fly0) {
+                /* own tween, dropped the moment another beat re-anchors the rig (the hit's face cam) — the shared
+                   _cineTweenLift would keep writing the lift over it */
+                const subj = camera._tpsSubject, t0 = performance.now();
+                const step = () => {
+                    if (!camera._cineTps || camera._tpsSubject !== subj || !_cineBeatOk()) return;
+                    const k = Math.min(1, (performance.now() - t0) / travelMs);
+                    camera._tpsHeadLift = baseLift + fly0 + (fly1 - fly0) * k;
+                    if (k < 1) requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            }
             return true;
         }
 
@@ -34308,7 +34349,9 @@
             // Crane with the line: a shooter firing down from a ledge is UP
             // the slope this shot stares back into — without following it the
             // fixed pitch framed empty ground under them.
-            const slopeBack = Math.atan2(px0 - px, Math.max(ts * 0.5, len * ts)) * (180 / Math.PI);
+            const slopeBack = window.EW_NO_FLYER_AIM
+                ? Math.atan2(px0 - px, Math.max(ts * 0.5, len * ts)) * (180 / Math.PI)
+                : Math.atan2(Math.max(px0, _cineFeetPx(from)) - Math.max(px, _cineFeetPx(to)), Math.max(ts * 0.5, len * ts)) * (180 / Math.PI);
             /* BOARD-AWARE reverse (2026-09-13 — THE beam edge bug). The
                pivot used to sit 0.8 tiles PAST the victim and the eye a
                further 2.6 beyond — on a victim at the rim both were off the
@@ -34340,12 +34383,16 @@
                 dist = Math.max(1.7, dist - _short * 0.6);
                 tilt = Math.max(CINE_TILT_GUARD_MIN, tilt - Math.min(26, 10 + _short * 5));
             }
-            _cineTpsAnchor(_pv, null);
+            /* THE FLIGHT HEIGHT (2026-11-08): the stare back up the line pivots at the victim's hover, not the ground
+               under it (a standing shoulder there put a hovering victim over the top of the frame); a grounded victim keeps
+               the old pivot */
+            const _ecFly = window.EW_NO_FLYER_AIM ? 0 : Math.max(0, _cineFeetPx(to) - px);
+            if (_cineTpsAnchor(_pv, null) && _ecFly > 0) camera._tpsHeadLift += _ecFly;
             _cineHardCut({
                 x: _pv.x, y: _pv.y,
                 zoom: _tpsZoomForBoomTiles(dist),
                 tilt,
-                yaw: yawSide, elevZ: px + ts * 0.85
+                yaw: yawSide, elevZ: px + _ecFly + ts * 0.85
             });
             _acChromeFlash('cut');
             return true;
@@ -34530,22 +34577,37 @@
                     hT = (target.id != null && ThreeRenderer.getUnitVisualHeight(target.id)) || hT;
                 }
             } catch (e) {}
-            const eyePx = h * 0.92 + Math.max(0, (unitElevationZ(c) || 0)
-                - ((typeof window._camGroundPx === 'function') ? window._camGroundPx(c.x, c.y) : 0));
-            if (!_cineTpsAnchor(c, c, { liftPx: eyePx })) return false;
+            const gPx = (typeof window._camGroundPx === 'function') ? (window._camGroundPx(c.x, c.y) || 0) : 0;
+            let eyePx = h * 0.92 + Math.max(0, (unitElevationZ(c) || 0) - gPx);
             /* THE AIM (2026-09-14): at the target's HEAD, not its chest — the
                squint's slit is the middle of the frame, and a chest-centred
                aim put the face under the top lid (the "kneecap" look). The
                eyes sit a little above the aim so the whole body hangs in
                the slit with the face in its upper half. HIGHER tilt = up. */
             const squint = Math.max(0.08, Math.min(0.5, opts.squint ?? 0.24));
-            const aimPx = tPx + hT * 0.72;
-            const slopeDeg = Math.atan2(aimPx - (cPx + eyePx), len * ts) * (180 / Math.PI);
+            let aimPx = tPx + hT * 0.72;
+            let eyeAbs = cPx + eyePx;
+            if (!window.EW_NO_FLYER_AIM) {
+                /* THE FLIGHT HEIGHT (2026-11-08): the eye is where the lens really is — the ground under the shooter plus
+                   the pivot lift (ThreeCamera's first-person eye), and the shooter's own drawn feet (its hover) under 92 %
+                   of its height — and the aim is the target's DRAWN head. It added a flying shooter's hover twice
+                   (cPx already holds it), so a jetpack shooter's scope stared at the ground under the target, and it aimed
+                   at a hovering target's logic height, under the body the renderer draws. */
+                eyePx = Math.max(ts * 0.3, _cineDrawnFeetPx(c) + h * 0.92 - gPx);
+                eyeAbs = gPx + eyePx;
+                aimPx = _cineDrawnFeetPx(target) + hT * 0.72;
+                /* THE LEVEL LENS (CINE_SHOT_TILT_MAX) caps every spell shot at dead level, so a scope that had to look UP
+                   at a flyer stared level under it (the target over the top of the frame). The scope rises to the
+                   flyer instead: the eye climbs to the aim's height and looks across at it, level. */
+                if (aimPx > eyeAbs) { eyePx += aimPx - eyeAbs; eyeAbs = aimPx; }
+            }
+            if (!_cineTpsAnchor(c, c, { liftPx: eyePx })) return false;
+            const slopeDeg = Math.atan2(aimPx - eyeAbs, len * ts) * (180 / Math.PI);
             const tilt = Math.max(CINE_TILT_GUARD_MIN, Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg));
             camera._fpEye = true;
             camera._cineFpOwned = true;
             window._ewFpHideUid = c.id;
-            _cineHardCut({ x: c.x, y: c.y, zoom: 1, tilt, yaw: yawFwd, elevZ: cPx + eyePx });
+            _cineHardCut({ x: c.x, y: c.y, zoom: 1, tilt, yaw: yawFwd, elevZ: eyeAbs });
             _acChromeFlash('cut');
             /* THE SCOPE (2026-09-14): the lens opens WIDE (the naked eye down
                the range, wider than the board's own 45°) and narrows, in step
@@ -34557,7 +34619,7 @@
                a few degrees tighter than the start so the zoom reads. */
             const zoomMs = opts.zoomMs ?? 700;
             const wide = opts.wideFov ?? 62;
-            const distPx = Math.hypot(len * ts, aimPx - (cPx + eyePx));
+            const distPx = Math.hypot(len * ts, aimPx - eyeAbs);
             const slit = Math.max(0.2, 1 - 2 * squint);
             const fit = 2 * Math.atan((hT * 1.15) / (0.72 * slit) / (2 * Math.max(ts * 0.8, distPx))) * (180 / Math.PI);
             const endFov = Math.min(wide - 8, Math.max(opts.fov ?? 18, fit));
