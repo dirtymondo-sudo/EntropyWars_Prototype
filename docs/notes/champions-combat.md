@@ -4880,3 +4880,16 @@ spread over HP + the pool's damage stat (both when the pool mixes), each stat ca
 - PASS 4 RESULT (1,681 matches on token loop4-01): sd 5.5→5.2, MAD from 50 4.43→4.18, true spread ~2.0 pts (baseline 4.3). The 19 pass-4 races did not move measurably (0.02 pts per POWER, 3.8-pt misses = noise): the changes are now below what a 3-hour, 1,700-match lab can read, so THE LOOP STOPS HERE.
 - PASS 5 (token 20261108-loop5-01-cors), the one overshoot left: minotaur HP 1170→1160, ATK 107→99 (pass 3 raised it, it then read 55 % and 66 % over 216 games): split the difference back toward HP 1150 / ATK 96. Not re-measured.
 - END STATE: of the 23 changed races that started 8+ pts off 50, average distance 10.8 → 1.8 pts (each read since its last change). Races 8+ pts off: 24 → 2 (pooled read). Full table: /mnt/project-files/balance-loop-20261108/FINAL_TABLE.md. Every row comment in RACE_BASE_STATS says "LOOP PASS n".
+
+## THE BELL CURVE — race letter grades by rank (2026-11-08, mondo "more like a bell curve" → "go ahead", token 20261108-grades-01-cors)
+- Proposal + per-race table: /mnt/project-files/race-grades-20261108/GRADES_PROPOSAL.md. Finding: the 10-06 cuts were already even
+  steps (roster min..max / 5) and the balance loop flipped only 59/670 letters, but even steps made S = 9 % of the roster on HP,
+  28 % on M ATK and half the roster on CRT (56 races at exactly 26 %).
+- data.js STAT_GRADE_BANDS now = rank in the 134 playable races, 10/20/40/20/10 (S/A/B/C/F): hp 1500/1180/880/678, mp 225/200/115/90,
+  atk 160/122/65/23, int 195/159/60/20, def 170/130/79/42, mdef 181/146/68/33, crt 30/26/19/13. Each cut = the race value whose
+  share at-or-above comes closest to the target, so ties share a letter (CRT 26 % = A, only the 30 % race is S). Fixed numbers, not
+  live: re-cut after a balance pass with the race editor GRADES tab > BELL CURVE (ui.js `bandBell`, beside SPREAD EVENLY).
+- SPD + VISION cuts KEPT: SPD letters are the move tiles (MOVE_SPD_RULE.follow) and VISION is one letter per tile, so moving them is a rule change.
+- THE RING: statGradePct fills by mid-rank in the roster (top race full, median half) instead of val/100 (full on every 100+ stat).
+  Cache `_STAT_GRADE_RANK`, dropped by statGradeRankReset() in statHelpRefreshGrades + the race-mods restoreAll. The HUD stat bars read the same pct.
+- STAT_HELP band text updated (HP/MP now "Grades (rank in the roster): ..."; the refresh regex follows). Display only, no formula reads a letter.
