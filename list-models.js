@@ -99,6 +99,8 @@ const SOURCES = [
     { re: /Assets\/foilage\/OBJ\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0' },
     { re: /Assets\/foilage\/(FBX|Blends)\//, how: 'PACK', src: 'LowPoly nature · Quaternius · CC0 (the same trees as FBX / .blend; the game loads the OBJ)' },
     { re: /Assets\/foilage\/retrotreepack\//, how: 'PACK', src: 'Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files)' },
+    // 2026-11-08 (mondo bought it with the creator's coupon): the whole pack, one folder per pack category, not wired yet (MODEL_LIST §12b)
+    { re: /Assets\/world\/packs\/pizzadoggy_psx_mega_pack\//, how: 'PACK', src: 'PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files)' },
     { re: /Assets\/Metro_PSX\//, how: 'PACK', src: 'Metro PSX · Elbolilloduro · CC0' },
     { re: /Assets\/halloween\//, how: 'PACK', src: 'Halloween pack · Elbolilloduro · CC0' },
     { re: /Assets\/christmas\//, how: 'PACK', src: 'Christmas pack · Elbolilloduro' },

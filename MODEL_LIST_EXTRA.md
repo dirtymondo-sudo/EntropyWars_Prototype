@@ -346,3 +346,76 @@ Trailer `Fuse_box`; traffic cone ↔ exploration-objects `Cone`; city bench ↔ 
 radiation_sign, D17 planter); §10G G05 bow, G10 gold record, G11 gavel, G13 lipstick; the §10E items not named in its audit
 note; a far mountain range (§8b). Meshy only after mondo's OK on each, with the packs checked named on the to-do row.
 
+
+## 12b. THE PIZZA DOGGY PSX MEGA PACK — on R2, NOT wired yet (2026-11-08)
+
+mondo 11-08: "Found a coupon code from the creator of the psxmegapack ... see what all is in the pack and what can be used in the
+game and add the models to the model list and correct assets folders in the game bucket." (Thread "Add PSX Mega Pack models to
+the game".) He bought it; he dropped it unzipped in the art bucket `dirtymondo:inbox/psxmegapack/` (models/glb/<category>/ +
+textures/). It is the current PSX Mega Pack (592 models; the 2026-11-03 contents list in project files
+`asset-packs/contents-lists/pizzadoggy_psx-mega-pack_CONTENTS.txt` is an older 489-model version).
+
+**THE LICENCE (Pizza Doggy licence, the same one as the Retro Tree Pack; PDF in project files
+`asset-packs/contents-lists/pizzadoggy_LICENSE_AGREEMENT.pdf` and `dirtymondo:source/Assets/world/packs/pizzadoggy_psx_mega_pack/LICENSE_AGREEMENT.pdf`):**
+free for commercial + non-commercial games, modify freely, attribution appreciated ("Game Assets by Pizza Doggy", credited in
+data.js EW_CREDITS). NOT allowed: redistributing the files as standalone / downloadable files, putting them in an open-source
+project or asset pack, and ANY AI use: no Meshy (or any generator) from these models or their renders, not as reference, input or
+prompt. So: never feed a pack model, texture or screenshot of one to Meshy or any AI tool, and never put the pack files in the repo
+(the files live only on R2; the game loads them like any other model).
+
+**What the files are:** Blender glTF exports, every texture embedded in its GLB (no external files), no rigs, no animations, real
+metres (a wall module is 4 m wide x 3 m tall, a door 1 m, a chair 0.47 m), 8-18,074 triangles (median 206). PS1-style low-res
+textures; many models come in colour variants (`_1` ... `_4`). Lamps come as `_on` / `_off` pairs (the `_on` texture glows; the
+game still adds its own real light).
+
+**Where they are:** game bucket `ewmusicsfx`, `Assets/world/packs/pizzadoggy_psx_mega_pack/<category>/<pack file name>.glb`
+(the pack's own folders and file names, kept as they are). The loose `textures/` folder (215 PNGs, the same pictures the GLBs
+carry, plus 30 extra surface sheets) is pack SOURCE, kept private in `dirtymondo:source/Assets/world/packs/pizzadoggy_psx_mega_pack/textures/`.
+
+| category | on R2 | MB | what it is | where it fits (zones from ZONES_PLAN) |
+| --- | --- | --- | --- | --- |
+| `furniture` | 151 | 40.3 | armchairs, beds (+ frame), bedside tables, chairs (5 kinds), coffee / dinner / large tables, display cabinets, mattresses, pillows, shelves (6 kinds), sofas (4 kinds), TV tables, wardrobe | DOOR HQ offices + dorms, The Estate, Disaster City flats |
+| `modular_structures` | 108 | 77.2 | walls (plain / half / rounded corners / tunnel holes), arches, doorways (single / double / side / wide / half), loose doors, windows (glass, frame only, no glass, metal bars), elevators + elevator doorways, floor-ceiling tiles, pillars, beams, catwalk, stairs (4 kinds), toilet cabin, tunnels (straight / elbow / tee / cross / inclined), pipe holders | DOOR HQ rooms, H-Wing backrooms, The D.U.M.B., The Sewers |
+| `items_and_weapons` | 146 | 14.6 | ammo boxes + loose rounds, batteries, bandages, canned food, cash, keys + keycards (access levels 1-4), knives, pills, pistol (+ mags, suppressors), police baton, potions, poison, screwdrivers, shotgun shells, sword, syringe, flashlight, lighter, phones, walkie-talkie, ID cards, cassette / CD / floppy | room clutter, finds, spell props (pistol, sword, knife) |
+| `small_props` | 60 | 5.3 | books (+ open book), bricks, car battery, clocks, concrete block, crosses, jerrycans, keypads, padlocks, painting, photo frames, planter pots, cactus, cutlery, plate, sponges, toy bricks, TV remote, VHS tape, notebook, pen, pencil | table / shelf dressing everywhere |
+| `electronics_and_misc` | 43 | 5.0 | ceiling fans (light on / off, blades apart), PC + monitor + keyboards + mice + mouse pad, TVs, monitoring screen, outlets, light switches, elevator buttons / screen / sign, vents, handheld console + tablet | offices, the D.U.M.B. control rooms |
+| `large_props` | 36 | 8.1 | cardboard boxes, metal barrels (4), wooden crates, supply crates (full / empty), pipes (straight / corner / cross / valve holder), carpet, curtain rod, toilets, vending machine | Disaster City, The Sewers, The D.U.M.B., HQ storage |
+| `lighting` | 36 | 18.8 | ceiling lamps (5 kinds), floor / table lamps (lamp_1-5), each `_on` + `_off` | everywhere indoors |
+| `decals` | 4 | 0.1 | cobwebs (flat cards) | abandoned rooms, The Estate, H-Wing |
+
+**Skipped (not uploaded to the game bucket, kept in `dirtymondo:source/...` with the textures):** the 8 `*_fake_light_*` models
+(ceiling_lamp_1/2/mp_1_1 fake_light_1/2, fake_light_window_2_single/double). They are flat glowing cone / beam cards that fake a
+light; the game uses real lights (VISUAL RULES), so they don't fit. The older contents list also named `shotgun_1`, `sofa_2*`
+and the padlock knobs; this version of the pack has no such models (only a `shotgun_1.png` texture), so there was nothing to add.
+
+**Swap candidates (mondo's call; nothing swapped):** pack files whose NAME matches a Meshy model or a code stand-in in the game. The
+match is by name only: the licence forbids feeding the pack to AI, so no thread looked at renders of these; mondo picks by eye.
+
+| in the game now | made by | pack candidate(s) under `Assets/world/packs/pizzadoggy_psx_mega_pack/` |
+| --- | --- | --- |
+| `cardboard_box`, `cardboard_boxes` | Meshy AI | `large_props/cardboard_box_1`, `_2`, `_2_1` |
+| `cinder_block` | Meshy AI | `small_props/concrete_block_1` |
+| `clock` | Meshy AI | `small_props/clock_1`, `clock_2` |
+| `couples_bed`, `dorm_bed` | Meshy AI | `furniture/bed_1` ... `bed_5_4`, `bed_1_frame`, `old_mattress_mp_1` |
+| `coffee_table` | Meshy AI | `furniture/coffee_table_1` ... `_1_4` (square, not round) |
+| `folding_chair`, `cafeteria_chair`, `molded_chair` | Meshy AI | `furniture/chair_mp_1` ... `chair_mp_5_4` |
+| `curved_couch`, `curved_office_couch` | Meshy AI | `furniture/sofa_1` / `_3` / `_4` / `_5` (straight, not curved) |
+| `library_shelf`, `library_shelf_full` | Meshy AI | `furniture/shelf_mp_2` ... `shelf_mp_7_4`, `small_props/book_mp_1` ... `_10` |
+| `key`, `house_key` | Meshy AI | `items_and_weapons/key_mp_1` ... `key_mp_4_2` |
+| `pen`, `pencil`, `notebook_paper` | Meshy AI | `small_props/pen_mp_1`, `pencil_mp_1`, `notebook_1` |
+| `potted_plant`, `office_plant` | Meshy AI | `small_props/planter_pot_mp_1_full`, `potted_cactus_mp_1` |
+| `pipe_run` | Meshy AI | `large_props/pipe_1`, `_corner`, `_cross`, `_short` |
+| `vent_grille` | Meshy AI | `electronics_and_misc/vent_1` / `_2` / `_3` / `vent_mp_1` |
+| `vhs_tape` | Meshy AI | `small_props/vhs_tape_1` |
+| `wooden_cross`, `cross` (spell prop) | Meshy AI | `small_props/cross_1`, `cross_mp_2` |
+| `pistol` (spell prop + `lone_gun`) | Meshy AI | `items_and_weapons/pistol_mp_1` ... `_1_3` |
+| `desk_fan` | Meshy AI | none (the pack's fans are ceiling fans) |
+| door leaves (`leaf_office`, `leaf_hollow_core`, `leaf_shabby_wood`, ...) | Meshy AI | `modular_structures/door_1_loose` ... `door_mp_6_loose` |
+| `keypad` | code | `small_props/keypad_1`, `keypad_2` |
+| `cell_bars` | code | `modular_structures/bars_metal_1`, `_2`, `window_metal_bars_single` / `_double` |
+| `monitor_stack` | code | `electronics_and_misc/pc_monitor_mp_1`, `monitoring_screen_mp_1` |
+| `lost_shelf` | code | `furniture/shelf_mp_*` |
+| `world_clocks` | code | `small_props/clock_1`, `clock_2` |
+| `planter` (D17) | code | `small_props/planter_pot_mp_1_full` (a pot, not a long concrete planter) |
+| `false_window` | code | `modular_structures/window_2_single` ... (a whole wall piece with the window) |
+| `shag_rug` | code | `large_props/carpet_mp_1` |
