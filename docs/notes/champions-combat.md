@@ -4806,3 +4806,28 @@ and the deferred pan kept the hand angle (up to 170, the sky) and the hand zoom.
 - Proof: /mnt/project-files/turn-start-camera/ (hand zoom before/after, turn start during an orbit). Scan of all 576
   square × angle turn frames on the arena at the cap: lens ≥ 1.15 squares over the drawn ground. Tune TURN_FRAME_MIN_DIST if he
   wants the turn start closer / farther.
+
+## THE LAB AFTER THE STATUS + ELEMENT FIXES (2026-11-08, mondo: "After the status effect and element fixes you did, can you make sure the balance lab is still up to date and gives useful/relevant data")
+Audit: the lab plays the REAL engine (AI vs AI through doSpell / applyDamageToUnit / applyStatusPayload / the round-end
+ticks), so the 11-06/11-07 rules (full-round statuses, Frozen not Stun, one Wet, water puts out fire, kills land nothing,
+R1-R16, immune units skipped, badge = effect, graves survive respawn) all ran in it already; nothing in the lab copies a rule.
+What was stale was the TELEMETRY around it (battle.js BALANCE LAB section):
+- THE RULES STAMP (`BAL_FX_RULES`, `_balFxRulesCheck` in ensureBalanceStats): the Status / Elements / Effects tables recorded
+  before 11-08 measured the old rules (flash-freeze counted as Stun, a separate Soaked row, DoTs ticking once more, statuses
+  on killed units). On the first load those three tables move whole to `stats.fxBefore` (in the JSON export, old `soaked`
+  folded into `wet`; nothing deleted) and start over. Races / spells / casts / builds / match log / spread untouched (they
+  already split by build token). Subtitle on those tabs says how many older matches sit in fxBefore.
+- WET FROM WATER WAS NEVER COUNTED: `_soakUnit` sets the status directly (not applyStatusPayload), so water hits / rain /
+  wading never showed as Wet landings. Now a fresh soak files a Wet landing (credited to the water hit's caster).
+- New status columns: `env` (landed by the board / weather, no unit), `fresh` (landed on a unit that did not have it),
+  `rounds` (round ends it was still on, `_balStatusUptimeTick` at the top of _tickAllStatusDurations), `turnsLost` (state.js getNextBlitzUnit skip -> `window._balTurnSkipped`), `cleansed`
+  (taken off by a reaction). Row shows `rd` = rounds / fresh (a kill or cleanse ends it early) and `t` = turns it took. Export: envApplied, freshApplied, roundsWorn,
+  roundsPerApply, turnsLost, cleansedByReaction; CSV has the columns.
+- THE REACTIONS: `_balReactUse(key, src, tgt, cleared, amt, dmg)` files `effectUse['react_<key>']` (Effects tab, filter
+  "react"): douse, douseCorroded, washGoo, shortOverclock, chemicalFire, dried, flashFreeze, thaw, meltFrost, gooBurns,
+  cauterise, sonicThaw (with its damage), terrainFreeze, douseTile, lavaStone, iceShatter, iceMelt, lightningWater,
+  lightningMetal, wetConducts, forestFire, frostDouseTile, oilFire, bogBurns, crystalShatter, stormConducts, earthSmother,
+  natureRegrow, windFans, bleedDrips. Board / weather ones have no unit (count only). Export: `analysis.reactions`
+  (fired, perMatch, games, wr) + `analysis.reactionsNeverFired`. _douseBurnOnUnit / _washGooOffUnit / _waterShortsOverclock / _thawFrozenUnit take an
+  optional source unit; _soakUnit opts.src.
+- ai.js: the status value table still keyed the old id `soaked` (matched nothing after the rename) -> `wet`; EW_AI_VERSION v4.35.
