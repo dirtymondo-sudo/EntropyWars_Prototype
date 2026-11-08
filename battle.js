@@ -4176,6 +4176,7 @@
                 scheduleBoardRender();
                 addLog(`💎 The ${_lbl} detonates the crystal vein — ${veinTiles} tile${veinTiles !== 1 ? 's explode' : ' explodes'} into razor shards${cut ? `, slicing ${cut} unit${cut !== 1 ? 's' : ''}` : ''}!`);
             }
+            if (cracked + veinTiles) _balReactUse('quakeCracks', null, null, null, cracked + veinTiles);   // Balance Lab: the reaction count
             return cracked + veinTiles;
         }
         window.quakeShattersGround = quakeShattersGround;
