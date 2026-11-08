@@ -201,11 +201,15 @@ const ThreeCamera = (function () {
     const LENS_FLOOR_CLEAR_TILES = 0.2;   // the drawn lens's last-resort clearance (the rigs keep their own, larger ones)
     let _lensFloorHits = 0;               // probe: ThreeCamera.lensFloorHits()
     const _LENS_RING = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, 0.7071], [-0.7071, -0.7071]];
-    function _eyeFloorWorld(wx, wz) {
+    /* THE STEADY CRANE (2026-11-08): a spell shot's lens reads its footprint ring once per beat (the crane, decided on the
+       beat's target pose); frame by frame it only keeps out of the ground right round it (LENS_HARD_FOOT_TILES), so a
+       raised square passing under the ring's edge mid-glide no longer lifts the lens and drops it again */
+    const LENS_HARD_FOOT_TILES = 0.15;
+    function _eyeFloorWorld(wx, wz, ringTiles) {
         let g = _solidGroundYWorld(wx, wz);
         const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
         const off = W > 0 && H > 0 && (wx < 0 || wz < 0 || wx >= W * tileSize || wz >= H * tileSize);
-        const r = tileSize * (off ? LENS_FOOT_OFF_TILES : LENS_FOOT_TILES);
+        const r = tileSize * (off ? LENS_FOOT_OFF_TILES : (Number.isFinite(ringTiles) ? ringTiles : LENS_FOOT_TILES));
         for (let i = 0; i < _LENS_RING.length; i++) {
             const h = _solidGroundYWorld(wx + _LENS_RING[i][0] * r, wz + _LENS_RING[i][1] * r);
             if (h > g) g = h;
@@ -319,11 +323,12 @@ const ThreeCamera = (function () {
     let _sbLast = null;   // probe
     function _sbReset() { _sb = null; _sbLast = null; }
     function _sbEase(u) { u = Math.max(0, Math.min(1, u)); return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
-    function _sbApplied(now) {
-        if (!_sb) return 0;
-        if (!(_sb.dur > 0)) return _sb.to;
-        return _sb.from + (_sb.to - _sb.from) * _sbEase((now - _sb.t0) / _sb.dur);
+    function _heldApplied(o, now) {
+        if (!o) return 0;
+        if (!(o.dur > 0)) return o.to;
+        return o.from + (o.to - o.from) * _sbEase((now - o.t0) / o.dur);
     }
+    function _sbApplied(now) { return _heldApplied(_sb, now); }
     /* the controller's move: its id and where it is headed (a hand set without a new move still changes the target) */
     function _sbSig(cam) {
         const r = (v, k) => Number.isFinite(v) ? Math.round(v * k) : 'x';
@@ -390,6 +395,104 @@ const ThreeCamera = (function () {
         return _sbApplied(now);
     }
     function steadyBoardState() { return _sb ? { lift: _sbApplied(performance.now()), to: _sb.to, pending: _sb.pend, last: _sbLast } : null; }
+
+    /* ══ THE STEADY CRANE (2026-11-08) ══
+       mondo, with the Action Cam ON: "enemy used stasis beam on one of my units. The camera did this random motion where
+       it lifted upwards and back down, after the attack landed." Recorded on CPU Stasis Beams in a real match: a spell
+       shot's lens was lifted off the ground by rules judged again EVERY FRAME on the live, gliding pose — THE SIGHT LINE
+       (lines from the lens to the pivot and every guarded body, and THE LENS FOOTPRINT's ring round the lens) and the frame
+       guard's own "never inside the ground" ring after its slide. On the face cam and the victim beat a raised square
+       (the caster's high ground) passing under the edge of that 0.4-square ring lifted the lens ~2 squares and dropped it
+       again inside half a second, with no camera move asking for it; and the moment the shot ended, THE CLEAR ANGLE's
+       turn snapped back to the director's heading (the lens swung ~1 square round the target in one frame). Now:
+         • the crane (sight lines + footprint ring, judged where the frame guard will put the lens) is decided on the pose
+           the beat is HEADED TO (target pivot, distance, pitch, the clear angle's chosen heading) and rides the move's own
+           eased progress, so a beat rises or settles once, in step with its glide; a cut (the director's cut to the hit
+           unit) lands on it at once; at rest a new answer (a body flung on to a rise) must hold STEADY_HOLD_MS, then eases
+           over STEADY_EASE_MS; a finished shot's held frame keeps it;
+         • frame by frame a shot's lens only keeps out of the ground right round it (LENS_HARD_FOOT_TILES);
+         • a finished shot keeps its clear angle while its frame holds and eases it home with the guard's carried frame
+           (GUARD_CARRY_FADE_S) when the rig moves on; a cut home drops it.
+       The lowest lens (CINE_MIN_EYE_TILES over the subject's ground) stays live: it never moves inside a beat. Every spell
+       shot of every family, the player's and the CPU's casts; camera only, each viewer's own (host and guest run the same
+       rig on the same relayed shot). Kill switch: window.EW_NO_STEADY_CRANE = true (all three, as before). Probe:
+       ThreeCamera.steadyCraneState(). */
+    function _steadyCraneOn() { return !(typeof window !== 'undefined' && window.EW_NO_STEADY_CRANE); }
+    let _cr = null;       // { sig, from, to, t0, dur, glide, pend, pendT, lastCheck }
+    let _crCutAt = -1e9;
+    let _crLast = null;   // probe
+    function _crReset() { _cr = null; _crLast = null; }
+    /* the beat: the controller's move, the rig on its subject and where it is headed, the clear angle's heading */
+    function _crSig(cam) {
+        const r = (v, k) => Number.isFinite(v) ? Math.round(v * k) : 'x';
+        return (cam._moveGen | 0) + '|' + _fgCarryKey(cam) + '|' + r(cam._tx, 50) + ',' + r(cam._ty, 50) + '|' + Math.round(_caWant * 57.3);
+    }
+    /* live = the crane the live pose needs; atTarget() = the crane at the beat's target pose (null = no target pose) */
+    function _steadyCrane(cam, live, atTarget, cut) {
+        const now = performance.now();
+        _crCam = cam;
+        if (cut) _crCutAt = now;
+        /* a cut, or a new move right on a cut's heels (the director's cut, then its beat move): the lens lands on the
+           beat's crane at once — the cut hides it, and the beat then holds it */
+        const onCut = cut || now - _crCutAt < 150;
+        const sig = _crSig(cam);
+        const target = () => { let t = null; try { t = atTarget(); } catch (e) { t = null; } return Number.isFinite(t) ? t : live; };
+        if (!_cr || _cr.sig !== sig) {
+            const gliding = _sbGliding(cam, now);
+            const to = target();
+            const from = (_cr && !onCut) ? _crApplied(cam, now) : to;
+            let dur = 0, glide = null;
+            if (!onCut && Math.abs(to - from) > 0.5) {
+                dur = STEADY_EASE_MS;
+                /* on a glide the crane rides the move's own eased progress, so it rises / settles in step with the pose */
+                if (gliding && (cam._startTime || 0) + cam._duration - now >= STEADY_EASE_MS * 0.5) {
+                    glide = { start: cam._startTime || 0, dur: cam._duration, easing: cam._easing, e0: 0 };
+                    glide.e0 = _crProgress(cam, glide, now);
+                }
+            }
+            _cr = { sig, from, to, t0: now, dur, glide, pend: null, pendT: 0, lastCheck: now };
+            _crLast = { mode: onCut ? 'cut' : (gliding ? 'move' : 'beat'), lift: Math.round(to), live: Math.round(live) };
+        } else if (cut) {
+            /* a cut inside the beat lands on where the crane was going */
+            _cr.from = _cr.to; _cr.dur = 0; _cr.glide = null; _cr.pend = null;
+        } else if (cam._cineShotId != null && now - _cr.lastCheck >= STEADY_RECHECK_MS && !_sbGliding(cam, now)) {
+            /* the beat at rest: a change has to hold before the lens follows it (a finished shot's frame just holds) */
+            _cr.lastCheck = now;
+            const to = target();
+            const tol = tileSize * 0.1;
+            if (Math.abs(to - _cr.to) <= tol) _cr.pend = null;
+            else if (_cr.pend == null || Math.abs(to - _cr.pend) > tol) { _cr.pend = to; _cr.pendT = now; }
+            else if (now - _cr.pendT >= STEADY_HOLD_MS) {
+                _cr.from = _crApplied(cam, now); _cr.to = to; _cr.t0 = now; _cr.dur = STEADY_EASE_MS; _cr.glide = null; _cr.pend = null;
+                _crLast = { mode: 'rest', lift: Math.round(to), live: Math.round(live) };
+            }
+        }
+        const a = _crApplied(cam, now);
+        if (_crLast) _crLast.applied = Math.round(a);
+        return a;
+    }
+    function _crProgress(cam, g, now) {
+        const t = Math.max(0, Math.min(1, (now - g.start) / Math.max(1, g.dur)));
+        let e = t;
+        try { if (typeof cam._ease === 'function') e = cam._ease(t, g.easing); } catch (err) { e = t; }
+        return Number.isFinite(e) ? e : t;
+    }
+    function _crApplied(cam, now) {
+        const o = _cr;
+        if (!o) return 0;
+        if (o.glide) {
+            const g = o.glide, e = _crProgress(cam, g, now);
+            const k = g.e0 >= 0.999 ? 1 : Math.max(0, Math.min(1, (e - g.e0) / (1 - g.e0)));
+            return o.from + (o.to - o.from) * k;
+        }
+        return _heldApplied(o, now);
+    }
+    let _crCam = null;
+    function steadyCraneState() {
+        if (!_cr) return null;
+        return { lift: Math.round(_crCam ? _crApplied(_crCam, performance.now()) : _heldApplied(_cr, performance.now())), to: Math.round(_cr.to),
+            pending: _cr.pend == null ? null : Math.round(_cr.pend), glide: !!_cr.glide, last: _crLast };
+    }
 
     /* ══ THE FRAME GUARD (2026-10-05) — see sync() ══
        cam._frameGuard.points() → [[x, y, z], …] in world units: the bodies
@@ -621,7 +724,23 @@ const ThreeCamera = (function () {
     const CA_RECHECK_MS = 400;
     const CA_EASE_S = 0.22;
     let _caSig = '', _caShot = null, _caDelta = 0, _caWant = 0, _caAt = 0, _caSnapAt = 0, _caCost = 0, _caLast = null, _caT = 0;
-    function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; }
+    let _caHold = null;   // THE STEADY CRANE: a finished shot's angle { key, from, t0 }
+    function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; }
+    /* the shot is over but its frame holds (the CPU's parked last beat, a press-turn hold): the lens keeps the angle it
+       turned to (it used to swing back to the director's heading in one frame — a jump of up to 180° round the pivot),
+       and eases back over GUARD_CARRY_FADE_S, with the guard's carried frame, once the rig moves on (the glide home) */
+    function _caHoldStep(cam, nowS) {
+        if (!_initialized) { _caReset(); return 0; }   // a cut (the clean return home) drops it with the frame
+        const key = _fgCarryKey(cam);
+        if (!_caHold) _caHold = { key: key, from: _caDelta, t0: null };
+        if (_caHold.t0 == null && key !== _caHold.key) _caHold.t0 = nowS;
+        if (_caHold.t0 != null) {
+            const u = Math.max(0, Math.min(1, (nowS - _caHold.t0) / GUARD_CARRY_FADE_S));
+            _caDelta = _caHold.from * (1 - _sbEase(u));
+            if (u >= 1) _caReset();
+        }
+        return _caDelta;
+    }
     /* how badly a lens at (ex, ey, ez), aimed at (lx, ly, lz), is kept from the subjects ([{ id, x, z, foot, top, r, w }]
        world px): each subject's drawn box on screen covered by a nearer body's box (bodies = every drawn unit, the same
        shape), and its two sight lines (middle, head) walked against the solid columns */
@@ -682,7 +801,17 @@ const ThreeCamera = (function () {
         try { subs = (cam._frameGuard && typeof cam._frameGuard.subjects === 'function') ? cam._frameGuard.subjects() : null; } catch (e) { subs = null; }
         if (typeof window !== 'undefined' && window.EW_NO_CLEAR_ANGLE) { _caReset(); return 0; }
         /* the guard let go (its window ran out) while the shot still holds: the lens stays where it is — no snap back */
-        if (!subs || !subs.length) { if (_caShot !== cam._cineShotId) _caReset(); return _caDelta; }
+        if (!subs || !subs.length) {
+            if (_caShot !== cam._cineShotId || _caHold) {
+                if (_steadyCraneOn() && (_caHold || (_caDelta && cam._cineShotId == null))) {
+                    /* the next shot opened before the held angle went home: it eases home now */
+                    if (_caHold && cam._cineShotId != null && _caHold.t0 == null) _caHold.t0 = nowS;
+                    return _caHoldStep(cam, nowS);
+                }
+                _caReset();
+            }
+            return _caDelta;
+        }
         const ts = tileSize;
         /* only a beat ABOUT these bodies: its pivot near them (a bullet ride, a sky watch, a far god shot keep their own) */
         let cx = 0, cz = 0;
@@ -738,7 +867,8 @@ const ThreeCamera = (function () {
         }
         /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
            from the board, so its first beat eases in from the director's own yaw) */
-        if (newShot && !cut) _caDelta = 0;
+        if (newShot && !cut && !_caHold) _caDelta = 0;   // (a held angle eases on into the next shot's)
+        _caHold = null;
         if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
         else if (_caDelta !== _caWant) {
             const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
@@ -955,6 +1085,7 @@ const ThreeCamera = (function () {
         const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !cam._cineKeepSubject;
         /* THE CLEAR ANGLE (2026-10-29, see _clearAngle): a guarded spell shot turns round its pivot to an angle that sees
            the body it is about — the caster through the cast, the hit bodies from the cut on */
+        let caP = null, dA = 0;
         if (cam._cineTps && !cam._tpsCollide && !handHeld && !headTurn) {
             const tz = Number.isFinite(cam._tz) ? cam._tz : cam.zoom;
             const P = {
@@ -965,14 +1096,16 @@ const ThreeCamera = (function () {
                 tilt: Math.min(90, Number.isFinite(cam._tt) ? cam._tt : cam.tilt) * DEG2RAD,
                 dist: baseDist / Math.max(tz, 0.05) * sizeK
             };
-            const dA = _clearAngle(cam, P, performance.now() / 1000);
-            if (dA) {
-                yawRad += dA;
-                dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
-                dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
-                threeCamera.up.set(-Math.cos(tiltRad) * Math.sin(yawRad), Math.sin(tiltRad), -Math.cos(tiltRad) * Math.cos(yawRad));
-            }
-        } else if (_caSig) _caReset();
+            caP = P;
+            dA = _clearAngle(cam, P, performance.now() / 1000);
+        } else if (_caHold && !handHeld) dA = _caHoldStep(cam, performance.now() / 1000);   // a finished shot's angle eases home
+        else if (_caSig || _caHold) _caReset();
+        if (dA) {
+            yawRad += dA;
+            dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
+            dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
+            threeCamera.up.set(-Math.cos(tiltRad) * Math.sin(yawRad), Math.sin(tiltRad), -Math.cos(tiltRad) * Math.cos(yawRad));
+        }
         const dirHX = -Math.sin(yawRad);
         const dirHZ = -Math.cos(yawRad);
         let eyeX, eyeY, eyeZ;
@@ -1061,22 +1194,55 @@ const ThreeCamera = (function () {
         let sightRaised = false;
         if (cam._cineTps && !cam._tpsCollide) {
             const sightY = pivGroundY + Math.max(ts * 0.3, (pivY - pivGroundY) * 0.6);
-            let need = Math.max(pivGroundY + ts * CINE_MIN_EYE_TILES * _camBodyK(),
-                _sightLineFloor(pivX, sightY, pivZ, eyeX, eyeY, eyeZ, clear));
+            const minEye = pivGroundY + ts * CINE_MIN_EYE_TILES * _camBodyK();
             let gp = null;
             try { gp = (cam._frameGuard && typeof cam._frameGuard.points === 'function') ? cam._frameGuard.points() : null; } catch (e) { gp = null; }
-            if (gp && gp.length) {
-                /* the guard lists each body as a pair (low, high) — aim at its middle */
-                for (let i = 0; i + 1 < gp.length && i < 16; i += 2) {
-                    const a = gp[i], b = gp[i + 1];
-                    if (!a || !b) continue;
-                    const n2 = _sightLineFloor((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, eyeX, eyeY, eyeZ, clear);
-                    if (n2 > need) need = n2;
+            /* the highest the eye at (ex, ey, ez) must stand for its lines to the pivot (at sx, sz) and to every guarded body */
+            const lineNeed = (ex, ey, ez, sx, sz) => {
+                let n = _sightLineFloor(sx, sightY, sz, ex, ey, ez, clear);
+                if (gp && gp.length) {
+                    /* the guard lists each body as a pair (low, high) — aim at its middle */
+                    for (let i = 0; i + 1 < gp.length && i < 16; i += 2) {
+                        const a = gp[i], b = gp[i + 1];
+                        if (!a || !b) continue;
+                        const n2 = _sightLineFloor((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, ex, ey, ez, clear);
+                        if (n2 > n) n = n2;
+                    }
                 }
+                return n;
+            };
+            let need;
+            if (_steadyCraneOn() && !handHeld) {
+                /* THE STEADY CRANE: the lowest lens live, the sight-line crane decided per beat — judged where the lens
+                   will really stand: moved by the frame guard's correction (its last solve; none while it fades out) */
+                if (minEye > eyeY + 0.5) { eyeY = minEye; sightRaised = true; }
+                let gdx = 0, gdy = 0, gdz = 0;
+                if (_fgCarry && _fgCarry.last && !_fgCarry.fade && (cam._frameGuard || _fgCarryLast)) {
+                    gdx = _fgCarry.last[0]; gdy = _fgCarry.last[1]; gdz = _fgCarry.last[2];
+                    if (!Number.isFinite(gdx + gdy + gdz)) gdx = gdy = gdz = 0;
+                }
+                const liftAt = (ex, ey, ez, sx, sz) => Math.max(0, lineNeed(ex + gdx, ey + gdy, ez + gdz, sx, sz) - (ey + gdy));
+                const liveLift = liftAt(eyeX, eyeY, eyeZ, pivX, pivZ);
+                need = Math.max(minEye, eyeY + liveLift);
+                const P = caP;
+                const atTarget = () => {
+                    if (!P) return null;
+                    const yw = P.yaw + _caWant, sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
+                    const ex = P.px + P.dist * sinT * Math.sin(yw), ez = P.pz + P.dist * sinT * Math.cos(yw);
+                    let ey = pivY + P.dist * cosT;
+                    if (ey < pivGroundY + clear) ey = pivGroundY + clear;
+                    if (ey < minEye) ey = minEye;
+                    return liftAt(ex, ey, ez, P.px, P.pz);
+                };
+                const lift = _steadyCrane(cam, liveLift, atTarget, !_initialized);
+                if (lift > 0.5) { eyeY += lift; sightRaised = true; }
+            } else {
+                if (_cr) _crReset();
+                need = Math.max(minEye, lineNeed(eyeX, eyeY, eyeZ, pivX, pivZ));
+                if (need > eyeY + 0.5) { eyeY = need; sightRaised = true; }
             }
-            if (need > eyeY + 0.5) { eyeY = need; sightRaised = true; }
             if (need > floorY) floorY = Math.min(need, eyeY);
-        }
+        } else if (_cr) _crReset();
         /* THE CLEAR BOARD (2026-10-22, mondo after the second playtest: "fix the camera being inside walls"): on the board
            rig — the tactical view, the menu two-shot, a held action frame, a hand orbit — a lens that would sit inside a
            wall or a model, or look at its subject through a wall, cranes UP until it clears (_boardSightFloor). The gaze
@@ -1252,7 +1418,8 @@ const ThreeCamera = (function () {
             /* the guard's slide / dolly-back moved the eye sideways or
                back: never let it land inside the ground there */
             if (cam._cineTps && !cam._tpsCollide) {
-                const gy = _eyeFloorWorld(targetPosX, targetPosZ) + clear;
+                const gy = _steadyCraneOn() && !handHeld ? _eyeFloorWorld(targetPosX, targetPosZ, LENS_HARD_FOOT_TILES) + tileSize * LENS_FLOOR_CLEAR_TILES
+                    : _eyeFloorWorld(targetPosX, targetPosZ) + clear;
                 if (targetPosY < gy) { targetLookY += gy - targetPosY; targetPosY = gy; }
             }
         }
@@ -1343,7 +1510,8 @@ const ThreeCamera = (function () {
            window.EW_NO_LENS_FLOOR = true. */
         if (!cam._fpEye && !cam._tpsCollide && typeof state !== 'undefined' && state && state.phase === 'battle'
             && !(typeof window !== 'undefined' && window.EW_NO_LENS_FLOOR)) {
-            const lf = _eyeFloorWorld(_smoothPosX, _smoothPosZ) + tileSize * LENS_FLOOR_CLEAR_TILES;
+            const hard = cam._cineTps && !handHeld && _steadyCraneOn();   // THE STEADY CRANE: the shot's ring is the crane's
+            const lf = _eyeFloorWorld(_smoothPosX, _smoothPosZ, hard ? LENS_HARD_FOOT_TILES : undefined) + tileSize * LENS_FLOOR_CLEAR_TILES;
             if (Number.isFinite(lf) && _smoothPosY < lf) { _smoothPosY = lf; _lensFloorHits++; }
         }
         threeCamera.position.set(_smoothPosX, _smoothPosY, _smoothPosZ);
@@ -1669,6 +1837,7 @@ const ThreeCamera = (function () {
         frameGuardState,
         guardCarryState,
         steadyBoardState,
+        steadyCraneState,
         FOV,
         NEAR,
         FAR
