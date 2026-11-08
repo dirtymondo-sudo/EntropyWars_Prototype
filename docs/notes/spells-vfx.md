@@ -3402,6 +3402,39 @@ clear silhouette; fast bits get motion-blur shapes).
 - Proof: /mnt/project-files/riot-vfx/phase-b/ (close-up puff sheet + same VS-CPU match, `EW_NO_RIOT_VFX_B` on for the
   before rows).
 
+## THE RIOT PASS, phase C: the palette audit + the team rims (2026-11-08, three-vfx.js + three-renderer.js)
+
+mondo: "continue phase c" (guide p.19-21: analogous colours inside a spell, a complementary one only as the quiet
+secondary; p.24-25: tell allies from enemies at a glance, ally cyan to blue, enemy pink-red to orange).
+
+- THE PALETTE AUDIT: every element's stage palette (three-vfx-effects.js `_STAGE_ARCHETYPES`) and the shared painted
+  sprites were checked against the guide's families. All sit inside one analogous family except ONE: `psi-pulse` (the
+  psychic / mind mote, 95 uses) painted mint green and magenta at the same strength (the guide's Lulu "don't"). Now
+  pink + violet (THE PSYCHIC PASS colours) with the mint kept as one faint ring (`_RV_PAINT_C` in three-vfx.js, live
+  repaint like phase B). In game the sprite's violet tint already greyed the mint, so the visible change is small: the
+  muddy blue-grey core and ring are gone. Kept on purpose: arcane stays violet (tech, mana and the ally rim own
+  cyan-blue), divine cream stays apart from aura gold, fire keeps red-orange-yellow, ice white-cyan, poison green.
+- THE TEAM RIMS (three-renderer.js): board marks show whose they are, from the VIEWER's seat. The fill keeps the spell's
+  colour; only the border changes. Ally `_RV_RIM_ALLY` cyan 1deeff -> blue 1d63ff -> violet 6023fc, enemy
+  `_RV_RIM_ENEMY` pink fd1674 -> red fc0f2b -> orange f9590f, laid round the mark by angle from its middle
+  (`_rvRimAt`, so a corner shows two of the three stops and a mark never reads as one flat line).
+  - zones (`state._activeZones`, ownerPlayer) and delayed blasts (`state._delayedSpells`, sourcePlayer):
+    `_renderZoneBorderGroup(info, color, { rim })` colours the line, halo (0.22) and cliff skirt; with a rim the line is
+    0.05 of a tile (was 0.035) and draws over the tile icons / red danger plates (line renderOrder 8, halo 7, the plates
+    are 6), otherwise a blast whose every tile carries a red plate hid it. The overlay key carries the viewer + owner.
+  - traps (`state.traps`, owner): `_rvTrapRim` = 4 draped edge ribbons round the trap's square beside its sigil, a
+    deployable like the sigil (the deployables hash carries the viewer). Only traps the viewer can see are drawn at
+    all (own + spotted), so a rim never gives a hidden trap away.
+  - `_rvTeamRim(owner)` -> null when there's no owner (weather, neutral marks keep their old border), else ally when
+    owner === `_viewerPlayerNum()` (online `_NET.myPlayer`; hot-seat both local -> the active player; else P1).
+- Online: no relay. Zones / blasts arrive in the snapshot, traps through `_guestTrapFilter`; each client works out its
+  own sides, so the guest sees its own marks cyan and the host's pink. Checked by switching the seat in a real match
+  (controllers both local, activePlayer 2); a real two-player game was not run.
+- SWITCH: `window.EW_NO_RIOT_VFX_C = true` (or localStorage `ew_riotvfx_c` = `off`) = old mote + no team rims (live);
+  `EW_NO_RIOT_VFX` turns A, B and C off.
+- Proof: /mnt/project-files/riot-vfx/phase-c/phaseC_team_rims_real_match.jpg (zones, delayed blasts, own trap, spotted
+  enemy trap: before / your side / P2's seat) + phaseC_psychic_mote_before_after.png.
+
 ## THE STEADY BOARD (2026-11-08, three-camera.js + battle.js)
 
 mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and back
