@@ -65581,6 +65581,7 @@ const EW_CREDITS = {
             { role: 'Motion capture (the MOC2 animation library: plain idles + walks)', by: 'The 100STYLE Dataset - Ian Mason', what: 'Real-Time Style Modelling of Human Locomotion via Feature-Wise Transformations and Local Motion Phases (Mason, Starke, Komura 2022)', license: 'CC BY 4.0', source: 'https://www.ianxmason.com/100style' },
             { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
             { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
+            { role: 'PSX Mega Pack', by: 'Pizza Doggy', what: 'Game Assets by Pizza Doggy', license: 'Pizza Doggy licence (free for games, not CC0)', source: 'https://pizzadoggy.itch.io/psx-mega-pack' },
             { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
             { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
             { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
