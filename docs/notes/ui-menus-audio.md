@@ -2469,3 +2469,40 @@ two-line names pushed the bottom line out of it.
   size (the plate's UI Maker size is fixed px).
 - styles-base.css "THE PLATE FITS": slot `min-width: 0`, name `display:block; width:100%; min-width:0`, foot `nowrap`.
 - Shots: /mnt/project-files/team-plate-fit/.
+
+## THE TILE INFO PANEL (2026-11-08, mondo: "if i click on a tile, i want it to show the terrain texture and it list what effects it does ... inspect and move to can be little buttons underneath that on a row ... maybe it could have tabs at the top?")
+Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build it, open on the top thing".
+- A clicked square's quick menu (`tile|x,y`) is a `.quick` panel now (its list is the Quick action list piece, like a
+  unit's). Over the list: the TILE CARD (hud.js `TileCard`): the board's own ground sheet (three-renderer.js `tileSwatch`:
+  TERRAIN_SPRITES via `_ewSandUrl`, TERRAIN_BASE_TINT × state.terrainTints multiplied, the runoff sheet over it; one sheet
+  tile per square, pixelated) or the object's sprite, the name (ewFitLine, never "…": the old view tab's "POISO…" is gone),
+  height / squares away / ⏳ clock, the stats, the effect chips and the small BUTTONS.
+- The data: battle.js `tileEffectsAt(unit, x, y, z)` (window) reads the engine's own rules: TERRAIN_RULES fields
+  (moveCost, healMultiplier, def/range/vision, slide, blocksRanged, flyingOnly, turnStatus / enterStatus / turnHealPct /
+  turnMpPct), the row's endTurn run on a throwaway copy of the acting unit (`_terrainTurnTrial`: a flyer / adapted / immune
+  body sees its chip struck through), Wet water, ground fire, runoff, oil, ELEMENT_TERRAINS ×1.25, fuel / smother, spell
+  zones, the viewer's own or revealed traps, the clock. `words[]` = the description bar's sentence.
+- TABS (`TileTabs`, `_hrlgTileView`): TERRAIN · OBJECT · UNIT, ground up; it opens on the top thing (a unit, else a hard
+  object, else the ground; soft = walkable forest / open standing door opens on TERRAIN). A clicked unit's menu
+  (enemy|ally) gets the tabs of its square too (`_hrlgWithTileTabs`): TERRAIN shows the tile card + that square's buttons
+  (Inspect, Ward …) in place of the unit card; the unit's rows never change. The tab picked = module `_tileTabPick` keyed
+  by the panel key (viewer-local, never state, nothing relayed). Click, `[` / `]`, pad D-pad ← / → (state.js menu ctx,
+  `window._hrlgPad.tab`). A new tab puts the cursor on its first button. Fog: object / unit tabs only for things the
+  viewer sees (`_isTileVisibleToViewer`, `_shouldCameraFollowUnit`); enemy decoys stay the unit they fake.
+- BUTTONS = blades with `tbtn` + `ttabs` (`_TILE_BTN_IDS`: move, moveTowards, jump, takeoff-move, climb, inspect (gold),
+  ward, channel, build:dig, build:place; `attack:*` = ATTACK / CHOP on the object tab, a soft object's on both). They
+  stay in `blades` (cursor / wheel / pad step buttons first, then rows); the list skips them and TileCard draws them via
+  the same `mkBlade` (HorologeMenu). A drop price ("Move here (−24 HP)") is a red chip; a greyed button's reason sits
+  under it (subBelow). Spells + Place Capture Door stay rows.
+- Description bar: a button carries its tab's card (`cards.terrain` = name + coordinate + the words; `cards.object` =
+  `_objCardSpell`), so the bar reads the tab's full words; hovering a tab shows them too.
+- UI Maker: Layout pieces "Tile info panel" (`tcard`, panel layer `.hrlg-tc-bg` = `.hrlg-thead` so theme skins land) and
+  "Tile info tabs" (`ttabs`). The card follows the Unit info panel's move + size until it has its own (layoutCss); the tabs
+  follow the card's size and are pinned over whichever card is up each frame (`_ttabsPin`, QuickCone tick). Tabs wear the
+  theme's button / selected-button skins (battle surface roles). No stand-in (the unit info panel has none either).
+- `_tileQuickObjectInfo` rows carry `sprite` (sprites.js TURRET / 5G / seed / keg / bomb / torch / OBJECT_SPRITES.tree,
+  through ewAsset) and `stats` for the card.
+- Size: the card is 680 px wide (the unit card is 750) so a square's usual four buttons sit on ONE row and the card stays
+  short enough to clear the scoreboard at his shipped Unit info panel move (105, −48) × 0.75 (at 500 wide the buttons
+  wrapped onto two rows and the card's top touched the P1 HP bar at 1600×900).
+- Proof (2026-11-08, VS CPU arena, his shipped UI): /mnt/project-files/tile-info-panel/shots/.

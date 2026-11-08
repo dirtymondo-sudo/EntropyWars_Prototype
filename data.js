@@ -939,6 +939,7 @@ const TERRAIN_RULES = {
         moveCost: 1,
         blocksRanged: false,
         healMultiplier: 1,
+        turnStatus: { id: 'drowning', duration: 3, grows: true },   // read by endTurn + the tile info panel (battle.js tileEffectsAt)
         endTurn(unit) {
             if (unitIsDeepWaterAdapted(unit)) {
                 if (unit._drowningStacks) {
@@ -952,7 +953,7 @@ const TERRAIN_RULES = {
 
             unit._drowningStacks = (unit._drowningStacks || 0) + 1;
             const status = ensureUnitStatus(unit);
-            status.drowning = 3;
+            status.drowning = this.turnStatus.duration;
             return null;
         }
     },
@@ -1034,6 +1035,7 @@ const TERRAIN_RULES = {
         moveCost: 3,
         blocksRanged: false,
         healMultiplier: 0,
+        turnStatus: { id: 'burn', duration: 3, grows: true },   // read by endTurn + the tile info panel (battle.js tileEffectsAt)
         endTurn(unit) {
             if (unitIsLavaAdapted(unit)) {
                 if (unit._lavaBurnStacks) {
@@ -1060,7 +1062,7 @@ const TERRAIN_RULES = {
             // the burn tick damage (see burn.onRoundEnd).
             unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
             const status = ensureUnitStatus(unit);
-            status.burn = Math.max(status.burn || 0, 3);
+            status.burn = Math.max(status.burn || 0, this.turnStatus.duration);
             return null;
         }
     },
@@ -1082,9 +1084,14 @@ const TERRAIN_RULES = {
         moveCost: 2,
         blocksRanged: false,
         healMultiplier: 0.5,
+        /* THE BOG POISONS (mondo 2026-11-08: "of course poison bog should give poison"): ending a turn in the bog gives
+           the real POISON status (its own tick, cleanses, immunities) in place of the flat 12 HP sicken hit. Flyers
+           (map.js applyTerrainTurnEffects) and poison-proof bodies are spared. turnStatus = the one number the tile
+           info panel (battle.js tileEffectsAt) and the move ghost read too. */
+        turnStatus: { id: 'poison', duration: 2 },
         endTurn(unit) {
             if (unitIsPoisonTerrainImmune(unit)) return null;
-            return { type: 'damage', amount: 12, text: `${unitDisplayName(unit)} is sickened by poison terrain for` };
+            return { type: 'status', id: this.turnStatus.id, duration: this.turnStatus.duration };   // one log line: applyStatusPayload's "Poison Bog: X is POISONED"
         }
     },
     well: {
@@ -1523,9 +1530,10 @@ const TERRAIN_RULES = {
         moveCost: 2,
         blocksRanged: false,
         healMultiplier: 0.5,
+        turnStatus: { id: 'poison', duration: 2 },   // THE BOG POISONS (see poison above)
         endTurn(unit) {
             if (unitIsPoisonTerrainImmune(unit)) return null;
-            return { type: 'damage', amount: 12, text: `${unitDisplayName(unit)} is sickened by the poison bog for` };
+            return { type: 'status', id: this.turnStatus.id, duration: this.turnStatus.duration };   // one log line: applyStatusPayload's "Poison Bog: X is POISONED"
         }
     },
     rocks_1: {
@@ -1656,10 +1664,11 @@ const TERRAIN_RULES = {
            enterStatus) or ends a turn on it is Gooed — except flyers and the
            ooze itself (contactStatus 'goo'). */
         enterStatus: { id: 'goo', duration: 2 },
+        turnStatus: { id: 'goo', duration: 2 },   // read by endTurn + the tile info panel (battle.js tileEffectsAt)
         endTurn(unit) {
             if (typeof canFly === 'function' && canFly(unit)) return null;
             if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo') return null;
-            return { type: 'status', id: 'goo', duration: 2, text: `${unitDisplayName(unit)} is coated by the ooze` };
+            return { type: 'status', id: this.turnStatus.id, duration: this.turnStatus.duration, text: `${unitDisplayName(unit)} is coated by the ooze` };
         }
     },
     oil: {
@@ -1746,9 +1755,10 @@ const TERRAIN_RULES = {
         blocksRanged: false,
         healMultiplier: 1,
         visionBonus: 1,
+        turnMpPct: 0.15,   // MP restored at turn end (read by endTurn + the tile info panel)
         endTurn(unit) {
             if (!unit.maxMp || unit.mp >= unit.maxMp) return null;
-            const restore = Math.max(1, Math.floor(unit.maxMp * 0.15));
+            const restore = Math.max(1, Math.floor(unit.maxMp * this.turnMpPct));
             return { type: 'mana', amount: restore, text: `${unitDisplayName(unit)} draws power from the crystal formation:` };
         }
     },
@@ -1802,9 +1812,10 @@ const TERRAIN_RULES = {
         moveCost: 1,
         blocksRanged: false,
         healMultiplier: 2.0,
+        turnHealPct: 0.15,   // HP restored at turn end (read by endTurn + the tile info panel)
         endTurn(unit) {
             if (unit.hp >= unit.maxHp) return null;
-            const heal = Math.max(1, Math.floor(unit.maxHp * 0.15));
+            const heal = Math.max(1, Math.floor(unit.maxHp * this.turnHealPct));
             return { type: 'heal', amount: heal, text: `${unitDisplayName(unit)} is soothed by the healing spring for` };
         }
     },
@@ -1915,10 +1926,11 @@ const TERRAIN_RULES = {
         moveCost: 1,
         blocksRanged: false,
         healMultiplier: 0.5,
+        turnStatus: { id: 'poison', duration: 2 },   // read by endTurn + the tile info panel (battle.js tileEffectsAt)
         endTurn(unit) {
             if (!unit || unit.race === 'necromancer') return null;
             const status = ensureUnitStatus(unit);
-            if (!status.poison || status.poison < 2) status.poison = 2;
+            if (!status.poison || status.poison < this.turnStatus.duration) status.poison = this.turnStatus.duration;
             return null;
         }
     },

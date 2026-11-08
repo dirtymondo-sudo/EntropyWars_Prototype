@@ -3828,6 +3828,35 @@ const ThreeRenderer = (function () {
         return url ? getTexture(url) : null;
     }
 
+    /* THE TILE SWATCH (the tile info panel, 2026-11-08): the sheet + colour the board draws a square's ground with —
+       getTerrainTexture's own url (THE TWO SANDS), then TERRAIN_BASE_TINT and the map's state.terrainTints multiplied in
+       _evTintMat's order — and the runoff's liquid sheet when a spring's flow covers the square (map.js
+       getSurfaceTerrainAt, what the board shows there). hud.js _hrlgTileCard draws it as the card's picture. A key with
+       no sheet answers its map colour (data.js EW_TERRAIN_COLORS) so the picture is never empty. */
+    function tileSwatch(key, x, y) {
+        var spr = (typeof TERRAIN_SPRITES !== 'undefined' && key && TERRAIN_SPRITES[key]) ? TERRAIN_SPRITES[key] : null;
+        var url = spr ? _ewSandUrl(key, Array.isArray(spr) ? spr[0] : spr) : null;
+        var tint = null;
+        try {
+            var c = new THREE.Color(1, 1, 1);
+            var bt = (typeof TERRAIN_BASE_TINT !== 'undefined' && key) ? TERRAIN_BASE_TINT[key] : null;
+            var ut = (typeof state !== 'undefined' && state && state.terrainTints && key) ? state.terrainTints[key] : null;
+            if (bt) c.multiply(new THREE.Color(bt));
+            if (ut) c.multiply(new THREE.Color(ut));
+            if (bt || ut) tint = '#' + c.getHexString();
+        } catch (e) { tint = null; }
+        var flowUrl = null;
+        try {
+            var surf = (typeof getSurfaceTerrainAt === 'function' && x != null && y != null) ? getSurfaceTerrainAt(x, y) : key;
+            if (surf && surf !== key && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[surf]) {
+                var fs = TERRAIN_SPRITES[surf];
+                flowUrl = Array.isArray(fs) ? fs[0] : fs;
+            }
+        } catch (e) { flowUrl = null; }
+        var color = (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS && key) ? (window.EW_TERRAIN_COLORS[key] || null) : null;
+        return { key: key, url: url, tint: tint, flowUrl: flowUrl, color: color };
+    }
+
     function getObjectTexture(k) {
         var spr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[k] : null;
         return spr ? getTexture(spr.url) : null;
@@ -88782,6 +88811,7 @@ const ThreeRenderer = (function () {
         actionGlowStart, actionGlowBurst, actionGlowEnd, actionGlowKillAll,
 
         drawArrow3D, drawPathArrow3D, clearArrows3D, lookPreview, floatPreview,
+        tileSwatch,   // THE TILE SWATCH (the tile info panel)
         floatShows: function (text, kind) { return _floatShows(text, kind); },
 
         showGhostUnit, clearGhostUnit,

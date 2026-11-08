@@ -7310,6 +7310,11 @@
                     } else menuRepeatT = 0;
                     if (_just(pressed, 'confirm')) { hook.fire(); rumble(0.25, 0.35, 60); }
                     if (_just(pressed, 'cancel')) hook.crown();
+                    /* THE TILE INFO PANEL's tabs (hud.js): D-pad ← / → step them */
+                    if (hook.tabs > 1 && typeof hook.tab === 'function') {
+                        if (_just(pressed, 'menuLeft')) hook.tab(-1);
+                        else if (_just(pressed, 'menuRight')) hook.tab(1);
+                    }
                 } else if (ctx === 'aim') {
                     // board aiming: left stick / D-pad drive the SAME WASD +
                     // kb-cursor pipeline the keyboard uses; A = ENTER, B = back
