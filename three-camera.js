@@ -243,10 +243,13 @@ const ThreeCamera = (function () {
        it, unlike a spell shot's sight line). Capped, so a cliff at a unit's back
        can't throw the lens into the sky. */
     const BOARD_MAX_LIFT_TILES = 6;
+    /* THE STEADY BOARD (2026-11-08, see _steadyBodyLift): the bodies are read with a footprint that does not turn with the
+       model (the 6th argument), so a unit turning to face its attacker never moves the lens */
+    function _steadyOn() { return !(typeof window !== 'undefined' && window.EW_NO_STEADY_BOARD); }
     function _bodyTopYWorld(wx, wz) {
         if (typeof window !== 'undefined' && typeof window._camBodyTopPx === 'function') {
             try {
-                const g = window._camBodyTopPx(wx, wz, tileSize * 0.3);
+                const g = window._camBodyTopPx(wx, wz, tileSize * 0.3, undefined, undefined, _steadyOn());
                 if (Number.isFinite(g)) return g;
             } catch (e) {}
         }
@@ -257,17 +260,24 @@ const ThreeCamera = (function () {
     function _bodyTopNearLens(wx, wz, sx, sz) {
         if (typeof window !== 'undefined' && typeof window._camBodyTopPx === 'function') {
             try {
-                const g = window._camBodyTopPx(wx, wz, tileSize * 0.3, sx, sz);
+                const g = window._camBodyTopPx(wx, wz, tileSize * 0.3, sx, sz, _steadyOn());
                 if (Number.isFinite(g)) return g;
             } catch (e) {}
         }
         return -Infinity;
     }
-    function _boardSightFloor(sx, sy, sz, ex, ey, ez, clear) {
-        let need = Math.max(_eyeFloorWorld(ex, ez), _bodyTopYWorld(ex, ez)) + clear;
+    /* parts: 1 = the solid ground only, 2 = the bodies only, 3 (default) = both */
+    function _boardSightFloor(sx, sy, sz, ex, ey, ez, clear, parts) {
+        parts = parts || 3;
+        const withGround = !!(parts & 1), withBodies = !!(parts & 2);
+        let need = Math.max(withGround ? _eyeFloorWorld(ex, ez) : -Infinity, withBodies ? _bodyTopYWorld(ex, ez) : -Infinity) + clear;
         const hx = ex - sx, hz = ez - sz;
         const horiz = Math.hypot(hx, hz);
         const skip = tileSize * 0.7;
+        /* THE STEADY BOARD: only a body on the LENS half of the line fills the frame. Zoomed in, the boom is under three
+           squares long, so the old 2.5-square reach ran back to the subject's own neighbours (the victim beside the
+           midpoint of an attack) and craned the camera over a body that only hid the focal's feet. */
+        const nearReach = _steadyOn() ? Math.min(tileSize * BOARD_NEAR_BODY_TILES, horiz * 0.5) : tileSize * BOARD_NEAR_BODY_TILES;
         if (horiz > skip) {
             const n = Math.min(64, Math.max(4, Math.ceil(horiz / (tileSize / 4))));
             const m = tileSize * 0.45;   // a room wall piece stands a little proud of its column
@@ -278,10 +288,10 @@ const ThreeCamera = (function () {
                 const px = sx + hx * t, pz = sz + hz * t;
                 // off the board there is no column (the lookup would stretch the edge tile outward)
                 if (W > 0 && H > 0 && (px < 0 || pz < 0 || px >= W * tileSize || pz >= H * tileSize)) continue;
-                let g = _solidGroundYWorld(px, pz) + m;
+                let g = withGround ? _solidGroundYWorld(px, pz) + m : -Infinity;
                 /* THE NEAR BODY (wipeout playtest 2026-10-23: "the camera sat inside the Dragon / Nephilim"): a model on the
                    line close to the lens fills the frame with its x-ray even when the eye is just outside its footprint */
-                if ((1 - t) * horiz < tileSize * BOARD_NEAR_BODY_TILES) g = Math.max(g, _bodyTopNearLens(px, pz, sx, sz) + clear);
+                if (withBodies && (1 - t) * horiz < nearReach) g = Math.max(g, _bodyTopNearLens(px, pz, sx, sz) + clear);
                 if (g <= sy) continue;
                 const req = sy + (g - sy) / t;
                 if (req > need) need = req;
@@ -289,6 +299,97 @@ const ThreeCamera = (function () {
         }
         return Math.min(need, ey + tileSize * BOARD_MAX_LIFT_TILES);
     }
+
+    /* ══ THE STEADY BOARD (2026-11-08) ══
+       mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and
+       back down, after the attack landed." THE CLEAR BOARD's body half (the lens craned over a unit standing on the
+       line to the focal) was judged again EVERY FRAME on the live pose and the live drawn bodies: half way through the
+       attack's pan to the midpoint a body crossed the line and the lens rose ~3 squares and sank again in under a
+       second; a unit turning to face the hit (its footprint turns with it) or bobbing on its idle flipped it in and out.
+       The camera now never moves for a body on its own: the body lift is decided on the pose each camera move is
+       heading to (so a pan rises or settles as part of that one glide, never twice), and while the camera rests it
+       only changes when the new answer has held for STEADY_HOLD_MS (a unit that walks in and stays), then eases over
+       STEADY_EASE_MS. The ground half (walls, steps, tall props) stays live: it does not move. A hand drag / orbit keeps
+       the live answer (the player is moving it). Camera only, each viewer's own (host and guest run the same rig).
+       Kill switch: window.EW_NO_STEADY_BOARD = true. Probe: ThreeCamera.steadyBoardState(). */
+    const STEADY_RECHECK_MS = 250;
+    const STEADY_HOLD_MS = 700;
+    const STEADY_EASE_MS = 600;
+    let _sb = null;       // { sig, from, to, t0, dur, pend, pendT, lastCheck }
+    let _sbLast = null;   // probe
+    function _sbReset() { _sb = null; _sbLast = null; }
+    function _sbEase(u) { u = Math.max(0, Math.min(1, u)); return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
+    function _sbApplied(now) {
+        if (!_sb) return 0;
+        if (!(_sb.dur > 0)) return _sb.to;
+        return _sb.from + (_sb.to - _sb.from) * _sbEase((now - _sb.t0) / _sb.dur);
+    }
+    /* the controller's move: its id and where it is headed (a hand set without a new move still changes the target) */
+    function _sbSig(cam) {
+        const r = (v, k) => Number.isFinite(v) ? Math.round(v * k) : 'x';
+        return (cam._moveGen | 0) + '|' + r(cam._tx, 50) + ',' + r(cam._ty, 50) + '|' + r(cam._tz, 100) + '|' + r(cam._tt, 2) + '|' + r(cam._tyaw, 2);
+    }
+    function _sbGliding(cam, now) {
+        return !!(cam._rafId && cam._duration > 0 && now < (cam._startTime || 0) + cam._duration);
+    }
+    /* the body lift over a pose: focal (fx, fy, fz) and the eye the ground half already placed (ey) */
+    function _sbLiftAt(fx, fy, fz, ex, ey, ez, clear) {
+        return Math.max(0, _boardSightFloor(fx, fy, fz, ex, ey, ez, clear, 2) - ey);
+    }
+    /* the same at the pose the running move is headed to (the board rig: no TPS, no head turn past the horizon) */
+    function _sbLiftAtTarget(cam, clear) {
+        const ts = tileSize;
+        const tx = Number.isFinite(cam._tx) ? cam._tx : cam.x, ty = Number.isFinite(cam._ty) ? cam._ty : cam.y;
+        const tz = Number.isFinite(cam._tz) ? cam._tz : cam.zoom;
+        const tt = Number.isFinite(cam._tt) ? cam._tt : cam.tilt, tyaw = Number.isFinite(cam._tyaw) ? cam._tyaw : cam.yaw;
+        const fx = tx * ts + ts / 2, fz = ty * ts + ts / 2;
+        let fy = 0;
+        if (Number.isFinite(cam._tElev) && cam._tElev >= 0) fy = cam._tElev;
+        else if (typeof getHeightAt === 'function') { const h = getHeightAt(Math.round(tx), Math.round(ty)); if (h > 0) fy = h * ts * ELEV_STEP_RATIO; }
+        const tr = tt * DEG2RAD, yr = tyaw * DEG2RAD;
+        const dX = -Math.sin(tr) * Math.sin(yr), dY = -Math.cos(tr), dZ = -Math.sin(tr) * Math.cos(yr);
+        if (!(dY < -0.02)) return 0;
+        const dist = baseDist / Math.max(tz, 0.05);
+        const ex = fx - dist * dX, ez = fz - dist * dZ;
+        let ey = fy - dist * dY;
+        const fl = Math.min(fy, _groundYWorld(fx, fz)) + clear;
+        if (ey < fl) ey = fl;
+        const g = _boardSightFloor(fx, fy, fz, ex, ey, ez, clear, 1);
+        if (g > ey + 0.5) ey = g;
+        return _sbLiftAt(fx, fy, fz, ex, ey, ez, clear);
+    }
+    function _steadyBodyLift(cam, handHeld, fx, fy, fz, ex, ey, ez, clear) {
+        const now = performance.now();
+        if (handHeld) {
+            const l = _sbLiftAt(fx, fy, fz, ex, ey, ez, clear);
+            _sb = { sig: null, from: l, to: l, t0: now, dur: 0, pend: null, pendT: 0, lastCheck: now };
+            _sbLast = { mode: 'hand', lift: l };
+            return l;
+        }
+        const sig = _sbSig(cam);
+        if (!_sb || _sb.sig !== sig) {
+            /* a new move: the lift it lands on, reached on the move's own clock */
+            const gliding = _sbGliding(cam, now);
+            const cur = _sbApplied(now);
+            const to = gliding ? _sbLiftAtTarget(cam, clear) : _sbLiftAt(fx, fy, fz, ex, ey, ez, clear);
+            _sb = { sig, from: cur, to, t0: now, dur: gliding ? Math.max(0, (cam._startTime || 0) + cam._duration - now) : 0,
+                pend: null, pendT: 0, lastCheck: now };
+            _sbLast = { mode: 'move', lift: to };
+        } else if (now - _sb.lastCheck >= STEADY_RECHECK_MS && !_sbGliding(cam, now)) {
+            /* at rest: a change has to hold before the lens follows it */
+            _sb.lastCheck = now;
+            const to = _sbLiftAt(fx, fy, fz, ex, ey, ez, clear);
+            const tol = tileSize * 0.1;
+            if (Math.abs(to - _sb.to) <= tol) _sb.pend = null;
+            else if (_sb.pend == null || Math.abs(to - _sb.pend) > tol) { _sb.pend = to; _sb.pendT = now; }
+            else if (now - _sb.pendT >= STEADY_HOLD_MS) {
+                _sb.from = _sbApplied(now); _sb.to = to; _sb.t0 = now; _sb.dur = STEADY_EASE_MS; _sb.pend = null;
+                _sbLast = { mode: 'rest', lift: to };
+            }
+        }
+        return _sbApplied(now);
+    }
+    function steadyBoardState() { return _sb ? { lift: _sbApplied(performance.now()), to: _sb.to, pending: _sb.pend, last: _sbLast } : null; }
 
     /* ══ THE FRAME GUARD (2026-10-05) — see sync() ══
        cam._frameGuard.points() → [[x, y, z], …] in world units: the bodies
@@ -983,9 +1084,15 @@ const ThreeCamera = (function () {
            (above) and the occlusion fade; a look past the horizon keeps its head turn. Kill switch: EW_NO_CLEAR_BOARD. */
         if (!isTps && !headTurn && dirY < -0.02 && cam._cineShotId == null
             && !(typeof window !== 'undefined' && window.EW_NO_CLEAR_BOARD)) {
-            const need = _boardSightFloor(focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear);
+            const steady = _steadyOn();
+            const need = _boardSightFloor(focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear, steady ? 1 : 3);
             if (need > eyeY + 0.5) eyeY = need;
-        }
+            /* THE STEADY BOARD: the body half, decided per camera move and held while the camera rests */
+            if (steady) {
+                const lift = _steadyBodyLift(cam, handHeld, focalX, focalY, focalZ, eyeX, eyeY, eyeZ, clear);
+                if (lift > 0.5) eyeY += lift;
+            } else if (_sb) _sbReset();
+        } else if (_sb) _sbReset();
         /* ── SKY-GAZE LIFT (cinematic board shots only) ──
            The flat floor parks a sky-gazing eye a mere ⅓ tile over the
            ground, so a programmatic look UP at the sky (the zodiac/celestial
@@ -1561,6 +1668,7 @@ const ThreeCamera = (function () {
         seedState,
         frameGuardState,
         guardCarryState,
+        steadyBoardState,
         FOV,
         NEAR,
         FAR
