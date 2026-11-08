@@ -10285,8 +10285,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const spellApCost = _tqApCost(sp);
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
-    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced
-      && _tqCanAfford(actingUnit, sp);
+    const engineOk = _tqCanAfford(actingUnit, sp);   // full engine gate (move block, cooldown, materials …)
+    const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced && engineOk;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
 
     const spRange = sp.teleportDistance || sp.dashDistance || sp.range || 3;
