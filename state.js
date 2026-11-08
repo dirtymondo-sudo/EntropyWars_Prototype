@@ -1038,7 +1038,8 @@
                         window.ThreeVFXEffects.tileGlow(ds.x, ds.y, ds.x, ds.y, {
                             impactMs: Math.max(160, _impactDelay), lingerMs: 560,
                             radius: ds.aoeRadius || 0, hostile: true, noCaster: true,
-                            key: 'det' + ds.x + ',' + ds.y
+                            key: 'det' + ds.x + ',' + ds.y,
+                            spellId: ds.spellId || null   // THE RIOT PASS phase D: the blast's true-area line takes its spell's colour
                         });
                     } catch (e) {  }
                 }

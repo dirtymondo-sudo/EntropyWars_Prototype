@@ -22004,6 +22004,11 @@ const ThreeRenderer = (function () {
     function actionGlowBurst(key, opts) {
         var rec = _glowLive[key];
         if (!rec) return;
+        /* THE RIOT PASS phase D: the hit shows its true area — a line round the footprint's (seen) squares, an area
+           only (a beam / dash lane draws tile by tile and keeps its own look) */
+        if (opts && opts.edge != null && !rec.staggerMs && rec.entries.length > 1 && _rvTrueAreaOn()) {
+            try { _rvEdgeRing(rec.entries, opts.edge, opts.ew); } catch (e) {}
+        }
         actionGlowEnd(key, 80);
         _updateActionGlow();
     }
@@ -46831,6 +46836,123 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── THE RIOT PASS, phase D (2026-11-08, guide p.8-9 "accurate area" + p.36 "delayed effects show a timer") ──
+       THE TRUE AREA: on a cast's impact frame a thin line runs round the squares the hit lands on (the footprint the
+       cast glow armed, battle.js _spellGlowTiles = the damage shapes), in the spell's light colour, and is gone in about
+       half a second. THE COUNTDOWN: a delayed blast carries a ring that fills as its rounds run down (the round's own
+       progress: the share of the turn order that has spent its turn), full when it goes off.
+       Both ride what each client already has (the relayed staging beats, the synced state), so the guest draws its own.
+       Off: window.EW_NO_RIOT_VFX_D = true, localStorage ew_riotvfx_d = 'off', or the whole pass (EW_NO_RIOT_VFX). */
+    var _rvLsD = null;
+    function _rvTrueAreaOn() {
+        if (window.EW_NO_RIOT_VFX || window.EW_NO_RIOT_VFX_D) return false;
+        if (_rvLsD === null) {
+            _rvLsD = 'on';
+            try { if (localStorage.getItem('ew_riotvfx') === 'off' || localStorage.getItem('ew_riotvfx_d') === 'off') _rvLsD = 'off'; } catch (e) {}
+        }
+        return _rvLsD !== 'off';
+    }
+    var _rvEdgeRings = [];
+    var _RV_EDGE_MS = [400, 480, 580, 700];   // light · standard · heavy · ultimate
+    /* the outline of a set of tiles ({x,y}), drawn as draped edge ribbons; w = the spell's weight 0..3 */
+    function _rvEdgeRing(tiles, color, w) {
+        if (!highlightGroup || !tiles || tiles.length < 2) return;
+        var ts = CONFIG.tileSize || BASE_TILE, set = {}, i;
+        w = Math.max(0, Math.min(3, w | 0));
+        for (i = 0; i < tiles.length; i++) set[tiles[i].x + ',' + tiles[i].y] = 1;
+        var th = ts * (0.028 + 0.008 * w), g = new THREE.Group();
+        var mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+        /* a dark band under the line so it reads on any ground (a fire spell's orange on its own scorch) */
+        var dark = new THREE.MeshBasicMaterial({ color: 0x140a06, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+        var DIRS = [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]];
+        for (i = 0; i < tiles.length; i++) {
+            var t = tiles[i];
+            for (var d = 0; d < 4; d++) {
+                if (set[(t.x + DIRS[d][1]) + ',' + (t.y + DIRS[d][2])]) continue;
+                var dir = DIRS[d][0];
+                var mx = dir === 'w' ? t.x : dir === 'e' ? t.x + 1 : t.x + 0.5, my = dir === 'n' ? t.y : dir === 's' ? t.y + 1 : t.y + 0.5;
+                var b = new THREE.Mesh(_drapeEdgeRibbonGeo(t.x, t.y, dir, th * 2.8, th * 2.8), dark);
+                b.position.set(mx * ts, _drapedTileY(t.x, t.y, 0.5), my * ts);
+                b.renderOrder = 7;
+                g.add(b);
+                var m = new THREE.Mesh(_drapeEdgeRibbonGeo(t.x, t.y, dir, th, th), mat);
+                m.position.set(mx * ts, _drapedTileY(t.x, t.y, 0.6), my * ts);
+                m.renderOrder = 8;
+                g.add(m);
+            }
+        }
+        if (!g.children.length) { mat.dispose(); dark.dispose(); return; }
+        g._ew_overlay = 'actionGlow';
+        highlightGroup.add(g);
+        _rvEdgeRings.push({ g: g, mat: mat, dark: dark, col: new THREE.Color(color), t0: performance.now(), ms: _RV_EDGE_MS[w] });
+    }
+    var _rvEdgeTmp = null;
+    function _updateRvEdgeRings() {
+        if (!_rvEdgeRings.length) return;
+        var now = performance.now();
+        if (!_rvEdgeTmp) _rvEdgeTmp = new THREE.Color();
+        for (var i = _rvEdgeRings.length - 1; i >= 0; i--) {
+            var r = _rvEdgeRings[i], el = now - r.t0;
+            if (el >= r.ms || !highlightGroup) {
+                if (highlightGroup) highlightGroup.remove(r.g);
+                for (var c = 0; c < r.g.children.length; c++) r.g.children[c].geometry.dispose();
+                r.mat.dispose(); r.dark.dispose();
+                _rvEdgeRings.splice(i, 1);
+                continue;
+            }
+            /* on in 60 ms, held to 150 ms, eased out by the end; starts hot (a step toward white) and settles to the colour */
+            var o = el < 60 ? el / 60 : (el < 150 ? 1 : 1 - Math.pow((el - 150) / (r.ms - 150), 2));
+            r.mat.opacity = 0.95 * Math.max(0, o);
+            r.dark.opacity = 0.5 * Math.max(0, o);
+            r.mat.color.copy(r.col).lerp(_rvEdgeTmp.set(0xfff6e0), 0.45 * Math.max(0, 1 - el / 200));
+        }
+    }
+    /* how far a delayed blast is toward going off, 0..1: the rounds already waited plus this round's progress (the
+       turn order's alive units that have spent their turn), over the rounds it was set for */
+    function _rvDelayFill(dd) {
+        var sp = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID && dd.spellId) ? SPELL_BY_ID[dd.spellId] : null;
+        var left = Math.max(1, dd.roundsLeft || 1);
+        var total = Math.max(left, (sp && (dd.markedUnitId ? sp.markDelayRounds : sp.delayTurns)) || 1);
+        var ids = state._blitzTurnOrderIds || [], all = 0, done = 0;
+        for (var i = 0; i < ids.length; i++) {
+            var u = _unitById.get(ids[i]);
+            if (!u || u.dead || u._dying) continue;
+            all++;
+            if ((u.ap || 0) <= 0) done++;
+        }
+        var prog = all ? done / all : 0;
+        return Math.max(0, Math.min(1, (total - left + prog) / total));
+    }
+    /* the countdown ring: a dim track round the blast with the filled arc over it (clockwise from the top, as seen
+       from the board's south side), inside the footprint (never past its edge) and over its tallest square */
+    function _rvDelayRing(dd, tiles, fill) {
+        if (!highlightGroup) return;
+        var ts = CONFIG.tileSize || BASE_TILE, r = dd.markedUnitId ? 0 : (dd.aoeRadius || 1);
+        var outer = ts * (r + 0.5) * (r ? 0.84 : 0.9), wid = ts * (r ? 0.1 : 0.07), y = -Infinity;
+        for (var i = 0; i < tiles.length; i++) y = Math.max(y, _drapedTileY(tiles[i].x, tiles[i].y, 0.7));
+        if (!isFinite(y)) y = _drapedTileY(dd.x, dd.y, 0.7);
+        var cx = (dd.x + 0.5) * ts, cz = (dd.y + 0.5) * ts;
+        var add = function (geo, col, op, order) {
+            var mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
+            var m = new THREE.Mesh(geo, mat);
+            m.rotation.x = -Math.PI / 2;
+            m.position.set(cx, y, cz);
+            m.renderOrder = order;
+            m._ew_overlay = 'zone';
+            highlightGroup.add(m);
+            _zoneBorderMeshes.push(m);   // cleaned with the zone overlays; kept off _zoneBorderMats so it doesn't blink
+            return m;
+        };
+        add(new THREE.RingGeometry(outer - wid, outer, 64), 0x1a0d0a, 0.55, 7);
+        if (fill > 0.005) {
+            /* RingGeometry's angle runs counter-clockwise in its plane; laid flat (rotation.x -90°) that turns clockwise
+               seen from above, so start at the top (-z = PI/2) and sweep the negative way */
+            var hot = fill >= 0.75;
+            add(new THREE.RingGeometry(outer - wid * 0.86, outer - wid * 0.14, 64, 1, Math.PI / 2 - fill * Math.PI * 2, fill * Math.PI * 2),
+                hot ? 0xffd05a : 0xff7a3a, 0.95, 8);
+        }
+    }
+
     function _renderZoneBorderGroup(info, color, opts) {
         opts = opts || {};
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -47172,10 +47294,12 @@ const ThreeRenderer = (function () {
             zKey += (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + ((z.radius != null ? z.radius : 1))
                  + ':' + _zHeightSig(z.x, z.y, (z.radius != null ? z.radius : 1)) + ':' + (z.ownerPlayer || 0) + '|';
         }
+        var _rvD = _rvTrueAreaOn();
         for (var di = 0; di < delayed.length; di++) {
             var d = delayed[di];
             zKey += 'D:' + (d.spellName || 'del') + ':' + d.x + ',' + d.y + ':' + (d.aoeRadius || 1)
-                 + ':' + _zHeightSig(d.x, d.y, d.markedUnitId ? 0 : (d.aoeRadius || 1)) + ':' + (d.sourcePlayer || 0) + '|';
+                 + ':' + _zHeightSig(d.x, d.y, d.markedUnitId ? 0 : (d.aoeRadius || 1)) + ':' + (d.sourcePlayer || 0)
+                 + (_rvD ? ':' + Math.round(_rvDelayFill(d) * 48) : '') + '|';   // THE COUNTDOWN: rebuilt as a turn is spent
         }
         if (zKey !== _lastZoneOverlayKey) {
             _lastZoneOverlayKey = zKey;
@@ -47222,10 +47346,12 @@ const ThreeRenderer = (function () {
             for (var ddi = 0; ddi < delayed.length; ddi++) {
                 var dd = delayed[ddi];
                 var dr = dd.markedUnitId ? 0 : (dd.aoeRadius || 1);
-                var dInfo = _buildZoneBorderEdges(dd.x, dd.y, dr);
+                /* THE RIOT PASS phase D: a masked blast's border is its mask (state.js _detonateDelayedSpell blasts the mask) */
+                var dInfo = _buildZoneBorderEdges(dd.x, dd.y, dr, (_rvD && !dd.markedUnitId) ? _zoneMaskTiles(dd) : null);
                 /* delayed blasts (Nuke etc.) blink faster — they're a countdown */
                 _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444, { pulseSpeed: 3.4, rim: _rvTeamRim(dd.sourcePlayer) });
                 _renderDangerCells(dInfo.tiles, !!dd.markedUnitId, 3.4);   // every footprint tile, not just the centre
+                if (_rvD) { try { _rvDelayRing(dd, dInfo.tiles, _rvDelayFill(dd)); } catch (e) {} }   // THE COUNTDOWN
             }
         }
     }
@@ -49441,6 +49567,7 @@ const ThreeRenderer = (function () {
         _updatePreviewOverlayPulse();
         _syncHlGhosts();   // THE HIGHLIGHT GHOSTS: after every opacity write of the frame
         _updateActionGlow();
+        _updateRvEdgeRings();   // THE RIOT PASS phase D: the hit's true-area line
         _updateTerrainGhostPulse();
 
         _updateActionPlanPulse();

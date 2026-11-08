@@ -3435,6 +3435,42 @@ secondary; p.24-25: tell allies from enemies at a glance, ally cyan to blue, ene
 - Proof: /mnt/project-files/riot-vfx/phase-c/phaseC_team_rims_real_match.jpg (zones, delayed blasts, own trap, spotted
   enemy trap: before / your side / P2's seat) + phaseC_psychic_mote_before_after.png.
 
+## THE RIOT PASS, phase D: the true area + the delayed-blast timer + the Fire pass (2026-11-08, three-renderer.js + three-vfx-effects.js + three-vfx.js + state.js)
+
+mondo: "go" (plan phase D: guide p.36-38 "the visual is never bigger than the real area", p.40 Sion Q style timer,
+mock-up panels 2 + 7; then per-element passes, Fire first: Fireball, Meteor, Combust, Wall of Fire, Inferno).
+
+- THE TRUE-AREA LINE (three-renderer.js `_rvEdgeRing`): on an area spell's hit frame (actionGlowBurst, the relayed
+  burst beat, and every delayed detonation's tileGlow) a thin line in the spell's palette colour runs round the OUTER
+  edge of the real footprint (rec.entries = battle.js `_spellGlowTiles`, already fog-filtered), over a dark band so it
+  reads on fire scorch too. Weight by the spell's staging tier (`_rvEdgeOpts`: palette.ring, else flash; tier 0..3 ->
+  thicker + 400/480/580/700 ms). Starts warm-white, settles to the spell colour, fades by ~0.7 s. Only on footprints of
+  2+ squares, never on a staggered glow. Not a tile highlight: the 2026-10-18 "anticipation only" rule still holds
+  (gold glow before, gone at the hit); this is a VFX line at the hit, then gone.
+- THE AREA CLAMP (three-vfx-effects.js `_rvAreaFor` / `_rvAreaCap`, three-vfx.js `_rvAreaClamp`): the riot context now
+  carries the spell's area round the aim tile (reach = radius / mask bound + 0.5, kinds in `_RV_AREA_SKIP` and
+  aoeOriginSelf left out, radius >= 1 only). A shock ring, magic circle or pooled ground-ring sprite CENTRED on that
+  middle stops at the area's edge. Single-target spells are untouched by the generic clamp. `fireGeometry` (the
+  battle.js signature registry: marks, detonations, dashes) now runs inside its spell's context too. Meteor's landing
+  ring used a bare window.setTimeout (lost the context, rang 2.4 squares out); now `_fxDelay`, stops at the 3x3.
+- THE COUNTDOWN RING (three-renderer.js `_rvDelayRing` / `_rvDelayFill`): each delayed blast gets a flat ring over its
+  middle that fills clockwise from 12 o'clock as the rounds run down: whole rounds gone + the share of living units in
+  the turn order that have finished this round (ap <= 0), out of the blast's total (sp.delayTurns / markDelayRounds).
+  Dark track + orange arc, gold from 75%. Drawn with the zone borders (no blink). Marked-unit blasts follow the unit
+  like before. The blast's border now follows its real mask (`_zoneMaskTiles`) instead of the full square, so a
+  cross / ring blast shows its true shape.
+- THE FIRE PASS: Fireball's ground ring stops at the target's own square (was 0.95 x k of a tile, read as a splash);
+  Combust's fire circle 1.0 tile (was 1.6) and its ring 0.5 (was 1.1); the fire-bloom ring of fire stays inside the
+  footprint (`_fpStage` reach, `_fpMark` opts.reach); Meteor's rings held to its 3x3. Inferno (reach R + 0.45) and Wall
+  of Fire (one piece per wall square) already matched their areas: unchanged.
+- Online: no new relay. The line rides the relayed burst beat and the detonation tileGlow (state.js now passes the
+  blast's spellId for its colour); the countdown reads `state._delayedSpells` + `_blitzTurnOrderIds` from the snapshot;
+  each client draws its own. A real two-player game was not run.
+- SWITCH: `window.EW_NO_RIOT_VFX_D = true` (or localStorage `ew_riotvfx_d` = `off`) = no line, no clamp, no countdown,
+  old Fire sizes (live for new casts); `EW_NO_RIOT_VFX` turns A, B, C and D off.
+- Proof: /mnt/project-files/riot-vfx/phase-d/phaseD_true_area_real_match.jpg (Meteor falling + landing, Hailstorm,
+  before / after) + phaseD_countdown_ring_real_match.jpg (Orbital Strike: before / 1 of 8 units done / half / full).
+
 ## THE STEADY BOARD (2026-11-08, three-camera.js + battle.js)
 
 mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and back

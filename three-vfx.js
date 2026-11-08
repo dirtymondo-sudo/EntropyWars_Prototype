@@ -173,6 +173,28 @@ const ThreeVFX = (function () {
         if (_rvLsC === null) { _rvLsC = 'on'; try { if (localStorage.getItem('ew_riotvfx_c') === 'off') _rvLsC = 'off'; } catch (e) {} }
         return _rvLsC !== 'off';
     }
+    /* phase D (accurate area): a ground ring centred on an area spell's middle never grows past the area's edge
+       (guide p.8-9: the visual covers exactly the area of effect). The spell's area rides the riot context
+       (three-vfx-effects.js _rvAreaFor). Switch: EW_NO_RIOT_VFX_D / ew_riotvfx_d = off */
+    var _rvLsD = null;
+    function _rvAreaOn() {
+        if (!_rvOn() || window.EW_NO_RIOT_VFX_D) return false;
+        if (_rvLsD === null) { _rvLsD = 'on'; try { if (localStorage.getItem('ew_riotvfx_d') === 'off') _rvLsD = 'off'; } catch (e) {} }
+        return _rvLsD !== 'off';
+    }
+    var _RV_GROUND_RINGS = { 'shockwave': 1, 'halo-ring': 1, 'target-ring': 1, 'target-ring-blue': 1, 'target-ring-green': 1,
+        'target-ring-gold': 1, 'stun-ring': 1, 'ring-1': 1, 'ring-2': 1, 'ring-3': 1, 'ring-4': 1, 'ring-5': 1, 'ring-6': 1,
+        'ring-7': 1, 'wave-1': 1, 'wave-2': 1, 'wave-3': 1, 'wave-4': 1, 'wave-5': 1, 'wave-6': 1 };
+    function _rvAreaClamp(p, sprite, poolType) {
+        if (poolType !== 'world' || !_RV_GROUND_RINGS[sprite] || !_rvAreaOn()) return;
+        var ctx = _rvCtx(), A = ctx && ctx.area;
+        if (!A) return;
+        var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128, dx = p.x - A.px, dy = p.y - A.py;
+        if (dx * dx + dy * dy > ts * ts * 0.25) return;   // only a ring on the area's middle (a per-square ring keeps its size)
+        var cap = 2 * A.reach * ts;
+        if (p.size1 > cap) p.size1 = cap;
+        if (p.size0 > cap) p.size0 = cap;
+    }
     function _rvCtx() {
         var E = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
         if (!E || typeof E._rvCtxNow !== 'function') return null;
@@ -3181,6 +3203,7 @@ const ThreeVFX = (function () {
         }
 
         _rvApply(p, opts, sprite, poolType);   // THE RIOT PASS (importance, roles, value, timing)
+        _rvAreaClamp(p, sprite, poolType);     // THE RIOT PASS phase D (a centre ring stays inside the area)
 
         _setupMaterial(p);
 

@@ -9946,6 +9946,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var radius = opts.radiusPx != null ? opts.radiusPx : ts * 1.15;
+        radius = Math.min(radius, _rvAreaCap(tx, ty, ts) * 0.92);   // THE RIOT PASS phase D: inside the area (its glow ~1.0)
         var growMs = opts.growMs != null ? opts.growMs : 220;
         var holdMs = opts.holdMs != null ? opts.holdMs : 700;
         var fadeMs = opts.fadeMs != null ? opts.fadeMs : 260;
@@ -10014,6 +10015,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var r0 = opts.r0 != null ? opts.r0 : ts * 0.2;
         var r1 = opts.r1 != null ? opts.r1 : ts * 1.6;
         var ms = opts.ms != null ? opts.ms : 420;
+        /* THE RIOT PASS phase D: a ring on an area spell's middle stops at the area's edge */
+        var rvCap = _rvAreaCap(tx, ty, ts);
+        if (r1 > rvCap) { r1 = rvCap; if (r0 > r1 * 0.5) r0 = r1 * 0.5; }
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y + (opts.height != null ? opts.height : 6), wp.z);
@@ -20502,7 +20506,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 growMs: 180, holdMs: Math.max(200, (dm || 700) - 180), fadeMs: 320,
                 spin: 0.003,
             });
-            window.setTimeout(function() {
+            /* THE RIOT PASS phase D: _fxDelay (not a bare timer) so the landing ring still knows Meteor's area and stops at
+               the 3x3's edge instead of 2.4 squares out */
+            _fxDelay(function() {
                 if (_suppressed()) return;
                 _sigShockRing3D(tx, ty, { color: 0xffaa55, r1: ts0 * 2.4, ms: 520 });
                 _sigSpeedBurst3D(tx, ty, { color: 0xffcc88 });
@@ -23171,11 +23177,37 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (phase === 'burst') {
             var extra = Array.isArray(params.tiles) ? params.tiles
                 : (params.tx != null ? [{ x: params.tx, y: params.ty }] : null);
-            R.actionGlowBurst(key, { tiles: extra, caster: (sx != null ? { x: sx, y: sy } : null),
-                hostile: params.glowHostile != null ? !!params.glowHostile : undefined });
+            var bo = { tiles: extra, caster: (sx != null ? { x: sx, y: sy } : null),
+                hostile: params.glowHostile != null ? !!params.glowHostile : undefined };
+            _rvEdgeOpts(spellId, bo);   // THE RIOT PASS phase D: the true-area line's colour + weight
+            R.actionGlowBurst(key, bo);
             return;
         }
         if (phase === 'finish') R.actionGlowEnd(key, 420);
+    }
+
+    /* THE RIOT PASS, phase D (2026-11-08): the true-area line's look for a spell's impact frame (three-renderer.js
+       _rvEdgeRing draws it round the footprint): its palette's light colour, its staging weight 0..3. Nothing when the
+       pass is off. */
+    var _rvLsD = null;
+    function _rvDOn() {
+        if (typeof window === 'undefined' || window.EW_NO_RIOT_VFX || window.EW_NO_RIOT_VFX_D) return false;
+        if (_rvLsD === null) {
+            _rvLsD = 'on';
+            try { if (localStorage.getItem('ew_riotvfx') === 'off' || localStorage.getItem('ew_riotvfx_d') === 'off') _rvLsD = 'off'; } catch (e) {}
+        }
+        return _rvLsD !== 'off';
+    }
+    function _rvEdgeOpts(spellId, o) {
+        if (!_rvDOn() || !spellId) return o;
+        var info = null;
+        try { info = stageInfo(spellId); } catch (e) { info = null; }
+        if (!info) return o;
+        var pal = info.palette || {}, c = pal.ring;   // the palette's ring colour (its flash is the pale light, near white)
+        if (typeof c !== 'number' && typeof pal.flash === 'string' && /^#[0-9a-f]{6}$/i.test(pal.flash)) c = parseInt(pal.flash.slice(1), 16);
+        o.edge = (typeof c === 'number') ? c : 0xffd23d;
+        o.ew = _TIER_ORDER[info.weight] != null ? _TIER_ORDER[info.weight] : 1;
+        return o;
     }
 
     /* tileGlow(sx, sy, tx, ty, opts) — the non-spell entry point (basic
@@ -23208,8 +23240,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             autoEndMs: impactMs + lingerMs + 3000
         });
         if (!rec) return;
+        var burstOpts = {};
+        if (opts.spellId) _rvEdgeOpts(opts.spellId, burstOpts);   // THE RIOT PASS phase D: a detonation shows its true area too
         window.setTimeout(function () {
-            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.actionGlowBurst) ThreeRenderer.actionGlowBurst(key, {});
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.actionGlowBurst) ThreeRenderer.actionGlowBurst(key, burstOpts);
         }, impactMs);
         window.setTimeout(function () {
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.actionGlowEnd) ThreeRenderer.actionGlowEnd(key, 420);
@@ -59184,10 +59218,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         if (o.bloom) {
             var nb = 8 + 2 * rank;
+            /* THE RIOT PASS phase D: the ring of fire stops inside the squares the hit lands on (o.reach, from the middle) */
+            var br1 = ts * (1.0 + 0.35 * rank), br0 = ts * 0.25;
+            if (o.reach != null) { br1 = Math.min(br1, Math.max(ts * 0.3, o.reach * ts - ts * 0.18)); br0 = Math.min(br0, br1 * 0.7); }
             for (var b = 0; b < nb; b++) {
                 var hr = ts * rn(0.3, 0.42) * (1 + 0.15 * rank);
                 T.push(_fpVolMesh({ x: 0, y: -3, z: 0, h: hr, w: ts * 0.36, d: rn(0, 40), life: 560 + 60 * rank, ph: rn(0, 9),
-                    ring: { a: b / nb * Math.PI * 2, r0: ts * 0.25, r1: ts * (1.0 + 0.35 * rank), cx: 0, cz: 0 } }, F.g, pal));
+                    ring: { a: b / nb * Math.PI * 2, r0: br0, r1: br1, cx: 0, cz: 0 } }, F.g, pal));
             }
         }
         var total = o.bloomOnly ? 800 : Math.max(tail, 2300);
@@ -59245,7 +59282,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         _fxDelay(function () { if (!_suppressed()) _fpSmoke(F, 0, y * 0.8, 0, big ? 5 : 3, pal, { r: 20, s0: 28, s1: 80 }); }, 120);
         _fpEmbers(F, 0, y, 0, 10 * k, pal, { r: 10, v: 160, vz0: 40, vz1: 220, g: 120 });
-        _sigShockRing3D(tx, ty, { color: pal.flame, r0: ts * 0.1, r1: ts * 0.95 * k, ms: 320, height: ts * 0.3, torus: false, opacity: 0.55 });
+        /* THE RIOT PASS phase D: a one-body hit's ground ring stops at its own square's edge (it read as a splash) */
+        _sigShockRing3D(tx, ty, { color: pal.flame, r0: ts * 0.1, r1: _rvDOn() ? ts * 0.5 : ts * 0.95 * k, ms: 320, height: ts * 0.3, torus: false, opacity: 0.55 });
     }
     _PZ_SIGS.fpFireball = function (p, id) {
         var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY;
@@ -59287,7 +59325,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _fpCombust(tx, ty, pal) {
         if (!_pzSeen(tx, ty) || !_canSpawn()) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
-        var sg = _fpAdd(_fpSigilTex(), pal.hot), sig = _pzMesh(_fpDecalGeo(ts * 1.6), sg, F.g, 0, -1.2, 0); sig.renderOrder = 153;
+        var rvD = _rvDOn();   // THE RIOT PASS phase D: the fire circle and its ring stay on the victim's own square
+        var sg = _fpAdd(_fpSigilTex(), pal.hot), sig = _pzMesh(_fpDecalGeo(ts * (rvD ? 1.0 : 1.6)), sg, F.g, 0, -1.2, 0); sig.renderOrder = 153;
         var ry = Math.atan2(cd.x, cd.z), T = [
             /* the pillar: the grass fire grown tall (kept to the burning tile's own proportions, or its flames thin to
                needles), standing behind the victim from the lens — the body still draws over it */
@@ -59305,7 +59344,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             if (!popped && el >= 230) {
                 popped = true;
-                _sigShockRing3D(tx, ty, { color: pal.flame, r0: ts * 0.15, r1: ts * 1.1, ms: 360, height: 4, torus: false, opacity: 0.6 });
+                _sigShockRing3D(tx, ty, { color: pal.flame, r0: ts * 0.15, r1: rvD ? ts * 0.5 : ts * 1.1, ms: 360, height: 4, torus: false, opacity: 0.6 });
                 _fpEmbers(F, 0, ts * 1.8, 0, 26, pal, { r: 14, v: 140, vz0: 120, vz1: 300, g: 160, ml0: 800, ml1: 1400 });
             }
         });
@@ -59432,11 +59471,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var magic = !(d ? d.damageType === 'physical' : (_spellDefFor(spellId) || {}).damageType === 'physical');
         var bloom = info.archetype === 'fire' && rank >= 2 && magic;
         var key = params.glowKey || ('c' + params.sx + ',' + params.sy), foot = _fpFoot[key]; delete _fpFoot[key];
-        if (!d) { if (bloom) _fpMark([{ x: params.tx, y: params.ty }], rank, _FP, { bloom: true, bloomOnly: true }); return; }   /* a fire-named heavy hit with no element tag still swaps the orb for the ring */
+        /* THE RIOT PASS phase D: how far the footprint reaches from the hit tile (the bloom stays inside it) */
+        var reach = null;
+        if (_rvDOn() && (foot || d)) {   // no footprint known (a fire-named hit with no element tag): left as it was
+            reach = 0.5;
+            for (var fi = 0; foot && fi < foot.length; fi++) reach = Math.max(reach, Math.max(Math.abs(foot[fi].x - params.tx), Math.abs(foot[fi].y - params.ty)) + 0.5);
+        }
+        if (!d) { if (bloom) _fpMark([{ x: params.tx, y: params.ty }], rank, _FP, { bloom: true, bloomOnly: true, reach: reach }); return; }   /* a fire-named heavy hit with no element tag still swaps the orb for the ring */
         var tiles = foot ? foot.slice() : [];
         if (!tiles.some(function (t) { return t.x === params.tx && t.y === params.ty; })) tiles.unshift({ x: params.tx, y: params.ty });
         else tiles.sort(function (a, b) { return (b.x === params.tx && b.y === params.ty) - (a.x === params.tx && a.y === params.ty); });
-        _fpMark(tiles, rank, _fpPal(spellId), { bloom: bloom, skip: d.aoeOriginSelf && params.sx != null ? { x: params.sx, y: params.sy } : null });
+        _fpMark(tiles, rank, _fpPal(spellId), { bloom: bloom, reach: reach, skip: d.aoeOriginSelf && params.sx != null ? { x: params.sx, y: params.sy } : null });
     }
 
     /* ── the wiring ── */
@@ -62958,12 +63003,36 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        shot (light). The guest runs the same calls (online.js relays fire, the vfx3d-x siblings and the basic shot), so
        Player 2 sees the same weights. Looks only: no rule reads any of it. */
     var _RV_BASIC = { w: 'light', light: null, staged: false };
-    function _rvCtxFor(spellId, staged) {
+    function _rvCtxFor(spellId, staged, params, aoeRadius) {
         if (!spellId || typeof spellId !== 'string') return null;
         var si = null;
         try { si = stageInfo(spellId); } catch (e) { si = null; }
         if (!si) return null;
-        return { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged };
+        var c = { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged };
+        var A = _rvAreaFor(spellId, params, aoeRadius);
+        if (A) c.area = A;
+        return c;
+    }
+    /* phase D: the area a spell's hit covers, round the tile it lands on — { tx, ty, px, py (vfx px), reach (tiles from the
+       middle to the edge) } — for the kinds whose hit is a square / cross / mask round the aim tile (a lane, a dash, a
+       nova round the caster and a reach-wide barrage are left alone). Rings and circles centred on it stay inside it
+       (_sigShockRing3D, _sigMagicCircle3D, three-vfx.js _rvAreaClamp). */
+    var _RV_AREA_SKIP = { line: 1, linePush: 1, dash: 1, barrage: 1, splitBeam: 1, healAll: 1, manaRestoreAll: 1, warCry: 1 };
+    function _rvAreaFor(spellId, params, aoeRadius) {
+        if (!params || params.tx == null || params.ty == null || !_rvDOn()) return null;
+        var def = _spellDefFor(spellId);
+        if (!def || _RV_AREA_SKIP[def.kind] || def.aoeOriginSelf) return null;
+        var r = aoeRadius != null ? aoeRadius : (params.aoeRadius != null ? params.aoeRadius : (def.aoeRadius || 0));
+        if (def.aoeMask && typeof aoeMaskBound === 'function') { try { r = Math.max(r, aoeMaskBound(def.aoeMask)); } catch (e) {} }
+        if (!(r >= 1)) return null;
+        var c = tilePx(params.tx, params.ty);
+        return { tx: params.tx, ty: params.ty, px: c.x, py: c.y, reach: r + 0.5 };
+    }
+    /* the cap a ring centred at (tx, ty) gets from the spawning spell's area (px), or Infinity */
+    function _rvAreaCap(tx, ty, ts) {
+        var A = _rvCtx && _rvCtx.area;
+        if (!A || Math.abs(tx - A.tx) > 0.5 || Math.abs(ty - A.ty) > 0.5) return Infinity;
+        return A.reach * ts;
     }
     function _rvRun(c, fn, self, args) {
         var pv = _rvCtx; _rvCtx = c;
@@ -62971,8 +63040,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     var _rvFire0 = fire;
     fire = function (intent, spellId, params) {
-        var c = _rvCtxFor(spellId, intent === 'windup' || intent === 'burst' || intent === 'finish') || _rvCtx;
+        var c = _rvCtxFor(spellId, intent === 'windup' || intent === 'burst' || intent === 'finish', params) || _rvCtx;
         return _rvRun(c, _rvFire0, this, arguments);
+    };
+    /* the 3D signature registry called straight from battle.js (marks, detonations, dashes): it runs as its spell too */
+    var _rvGeom0 = fireGeometry;
+    fireGeometry = function (spellId, tx, ty, aoeRadius) {
+        var id = typeof spellId === 'string' ? spellId.split(':')[0] : spellId;
+        return _rvRun(_rvCtxFor(id, false, { tx: tx, ty: ty }, aoeRadius) || _rvCtx, _rvGeom0, this, arguments);
     };
     var _rvProj0 = projectile;
     projectile = function (fromTx, fromTy, toTx, toTy, spellType, spellId) { return _rvRun(_rvCtxFor(spellId) || _rvCtx, _rvProj0, this, arguments); };
