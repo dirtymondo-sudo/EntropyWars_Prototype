@@ -12656,10 +12656,11 @@
            twin — doMove/doJump apply it on arrival). Hazard terrain adds the
            FIRST end-of-round tick the tile will inflict if the unit stays:
            lava → escalating burn tick (TERRAIN_RULES.lava + burn.onRoundEnd),
-           deep water → drowning tick, poison bog → the flat sicken hit. Ticks
-           mirror the DoT pipeline's gap-1 level scaling (scaleByTargetLevel →
-           offenseScale(lvl, lvl)); the poison hit respects armor like its
-           applyDamageToUnit call does. Keep in lockstep with those rules. */
+           deep water → drowning tick. Ticks mirror the DoT pipeline's gap-1
+           level scaling (scaleByTargetLevel → offenseScale(lvl, lvl)). Keep in
+           lockstep with those rules. The poison bogs give the POISON status now
+           (THE BOG POISONS, mondo 2026-11-08): the ghost wears its badge
+           (predictTerrainStatusesAt) instead of the old flat sicken hit. */
         function predictMoveHazardDamage(unit, x, y, z) {
             if (!unit || unit.dead) return 0;
             let dmg = 0;
@@ -12684,13 +12685,6 @@
                 if (!_flies && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) {
                     const stacks = (unit._drowningStacks || 0) + 1;
                     dmg += Math.max(1, Math.round(Math.min(160, 24 + stacks * 24) * _sc));
-                }
-            } else if (terr === 'poison' || terr === 'poison_bog') {
-                if (!(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(unit))) {
-                    const _defSc = (typeof defenseScale === 'function') ? defenseScale(_lvl) : 1;
-                    const _arm = (typeof getEffectiveArmor === 'function')
-                        ? Math.round(getEffectiveArmor(unit, 'magic') * _defSc) : 0;
-                    dmg += Math.max(1, Math.round(12 * _sc) - _arm);
                 }
             }
             return Math.round(dmg);
@@ -12721,17 +12715,206 @@
                 for (const eff of list) {
                     const id = eff && (eff.id || eff);
                     if (typeof id !== 'string' || !STATUS_DEFS[id] || ids.includes(id)) continue;
-                    if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(unit, id)) continue;
-                    const _immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'immuneKind') : undefined;
-                    if (_immKind && STATUS_DEFS[id].kind === _immKind) continue;
-                    const _affEl = (typeof statusAffinityElement === 'function') ? statusAffinityElement(id, null) : null;
-                    const _aff = (_affEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(unit, _affEl) : null;
-                    if (_aff === 'immune' || _aff === 'absorb') continue;
+                    if (!_statusSticks(unit, id)) continue;
                     ids.push(id);
                 }
             }
             return ids;
         }
+        /* would status `id` take on `unit`? The applyStatusPayload immunities a preview can know ahead: a passive that
+           blocks it, an immune kind, the unit's element affinity (immune / absorb) */
+        function _statusSticks(unit, id) {
+            if (!unit || !id || !STATUS_DEFS[id]) return false;
+            if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(unit, id)) return false;
+            const _immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'immuneKind') : undefined;
+            if (_immKind && STATUS_DEFS[id].kind === _immKind) return false;
+            const _affEl = (typeof statusAffinityElement === 'function') ? statusAffinityElement(id, null) : null;
+            const _aff = (_affEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(unit, _affEl) : null;
+            return !(_aff === 'immune' || _aff === 'absorb');
+        }
+
+        /* ── THE TILE INFO PANEL (mondo 2026-11-08: "if i click on a tile, i want it to show the terrain texture and it
+           list what effects it does, if any ... similar to the unit info panel") ──
+           What a square does, read off the engine's own rules (never a second copy of them):
+             · its ground's row (data.js TERRAIN_RULES: moveCost, healMultiplier, the stat fields, turnStatus / turnHealPct /
+               turnMpPct / enterStatus). The row's own endTurn runs on a throwaway copy of `unit` (_terrainTurnTrial), so a
+               flyer / adapted / immune body sees exactly what the real tick (map.js applyTerrainTurnEffects) would do to it;
+             · ground fire (state.burningTiles: BURNING_TILE_DAMAGE + Burn, _burnUnitOnTile), water (Wet: _isWetTile,
+               tickWetUnits), the runoff over it (getLiquidFlowAt; lava runoff ticks the lava rule), spell zones
+               (predictZoneStatusesAt + the zone's tick), the ×ELEMENT_TERRAIN_MULT element boost (_elemTerrainLabelOf), fuel
+               and smother (_isFlammableTile / _tileSmothersFire), an oil slick, the 3-round clock (terrainTimerAt) and the
+               viewer's own (or revealed) traps.
+           Viewer-local, reads only state the guest's snapshot carries; nothing changes. hud.js draws it (_hrlgTileCard). */
+        function _tileGroundKey(x, y, z) {
+            return (typeof getTerrainAt3D === 'function' && z !== undefined && z !== null && state.boardColumns?.length > 0)
+                ? getTerrainAt3D(x, y, z) : getTerrainAt(x, y);
+        }
+        function _terrainTurnTrial(unit, rule) {
+            if (!unit || !rule || typeof rule.endTurn !== 'function') return null;
+            const st0 = Object.assign({}, unit.status || {});
+            const ghost = Object.assign(Object.create(Object.getPrototypeOf(unit) || Object.prototype), unit);
+            ghost.status = Object.assign({}, st0);
+            let res = null;
+            try { res = rule.endTurn(ghost); } catch (e) { return null; }
+            const gained = [];
+            for (const k of Object.keys(ghost.status || {})) {
+                if (STATUS_DEFS[k] && (Number(ghost.status[k]) || 0) > (Number(st0[k]) || 0)) gained.push(k);
+            }
+            if (res && res.type === 'status' && res.id && !gained.includes(res.id) && _statusSticks(unit, res.id)) gained.push(res.id);
+            return { res, gained };
+        }
+        /* the statuses ending a turn on (x, y) gives `unit` from the ground itself (not zones): its rule's tick, water's
+           Wet, ground fire's Burn. The move ghost wears them beside the zone badges (lava / deep water stay its red -N) */
+        function predictTerrainStatusesAt(unit, x, y, z) {
+            const out = [];
+            if (!unit || unit.dead || !isInside(x, y)) return out;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return out;
+            const _o = typeof getObjectAt === 'function' ? getObjectAt(x, y) : null;
+            const _or = _o && typeof getObjectRule === 'function' ? getObjectRule(_o) : null;
+            if (!(_or && _or.overridesGround)) {
+                let rule = getTerrainRule(_tileGroundKey(x, y, z));
+                const fl = (typeof liquidFamilyOf === 'function' && !liquidFamilyOf(_tileGroundKey(x, y, z)) && typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+                if (fl && fl.t === 'lava') rule = getTerrainRule('lava');
+                const tr = _terrainTurnTrial(unit, rule);
+                if (tr && !(rule.turnStatus && rule.turnStatus.grows)) tr.gained.forEach(id => { if (!out.includes(id)) out.push(id); });
+            }
+            if (_isWetTile(x, y) && _statusSticks(unit, 'wet') && !out.includes('wet')) out.push('wet');
+            if (_tileIsBurning(x, y) && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) && _statusSticks(unit, 'burn') && !out.includes('burn')) out.push('burn');
+            return out;
+        }
+        window.predictTerrainStatusesAt = predictTerrainStatusesAt;
+
+        /* everything the card shows for the square: { key, label, rule, z, stats[], chips[], words[], timer, flow }.
+           chip: { kind: 'status'|'hp'|'mp'|'elem'|'zone'|'trap'|'info', id?, el?, text, title, off? } — `off` = this unit is
+           spared (flying, adapted, immune): the card strikes it through. */
+        function tileEffectsAt(unit, x, y, z) {
+            if (!isInside(x, y)) return null;
+            const key = _tileGroundKey(x, y, z);
+            const rule = getTerrainRule(key);
+            const label = rule.label || String(key || 'Tile').replace(/_/g, ' ');
+            const stats = [], chips = [], words = [];
+            const air = !!(unit && typeof isUnitAirborne === 'function' && isUnitAirborne(unit));
+            const stLabel = (id) => (STATUS_DEFS[id] && (STATUS_DEFS[id].label || id)) || id;
+            const _obj = typeof getObjectAt === 'function' ? getObjectAt(x, y) : null;
+            const _objRule = _obj && typeof getObjectRule === 'function' ? getObjectRule(_obj) : null;
+            const _ground = !(_objRule && _objRule.overridesGround);
+            const fl = (typeof liquidFamilyOf === 'function' && !liquidFamilyOf(key) && typeof getLiquidFlowAt === 'function') ? getLiquidFlowAt(x, y) : null;
+            const flowRule = (fl && fl.t === 'lava') ? getTerrainRule('lava') : null;
+            const tickRule = flowRule || rule;
+
+            // ── the stats (always MOVE COST + HEALING, then whatever the row has) ──
+            if (rule.passable === false || rule.isVoid || rule.isBlank) stats.push({ k: 'MOVE', v: 'NO ENTRY', tone: 'dn' });
+            else stats.push({ k: 'MOVE COST', v: String(rule.moveCost != null ? rule.moveCost : 1), tone: (rule.moveCost || 1) > 1 ? 'dn' : (rule.moveCost === 0 ? 'up' : '') });
+            const hm = rule.healMultiplier != null ? rule.healMultiplier : 1;
+            stats.push({ k: 'HEALING', v: hm <= 0 ? 'NONE' : '×' + (+hm.toFixed(2)), tone: hm < 1 ? 'dn' : hm > 1 ? 'up' : '' });
+            if (rule.defBonus) stats.push({ k: 'DEF', v: (rule.defBonus > 0 ? '+' : '') + rule.defBonus, tone: rule.defBonus > 0 ? 'up' : 'dn' });
+            if (rule.rangeBonus) stats.push({ k: 'RNG', v: (rule.rangeBonus > 0 ? '+' : '') + rule.rangeBonus, tone: rule.rangeBonus > 0 ? 'up' : 'dn' });
+            const vis = (rule.visionBonus || 0) - (rule.reducesVision || 0);
+            if (vis) stats.push({ k: 'VIS', v: (vis > 0 ? '+' : '') + vis, tone: vis > 0 ? 'up' : 'dn' });
+            if (rule.slide) stats.push({ k: 'FOOTING', v: 'SLIDES', tone: 'dn' });
+            if (rule.blocksRanged) stats.push({ k: 'SHOTS', v: 'BLOCKED', tone: 'dn' });
+            if (rule.flyingOnly) stats.push({ k: 'ENTRY', v: 'FLYERS ONLY', tone: 'dn' });
+
+            // ── what ending a turn here does (the row's own tick, tried on this unit) ──
+            const trial = (unit && _ground && !air) ? _terrainTurnTrial(unit, tickRule) : null;
+            const gets = trial ? trial.gained : [];
+            const sts = [];
+            if (_ground) {
+                if (tickRule.turnStatus && tickRule.turnStatus.id) sts.push(tickRule.turnStatus);
+                if (tickRule.enterStatus && tickRule.enterStatus.id && !sts.some(q => q.id === tickRule.enterStatus.id)) sts.push(tickRule.enterStatus);
+            }
+            for (const ts of sts) {
+                const off = !!unit && !gets.includes(ts.id);
+                chips.push({ kind: 'status', id: ts.id, text: stLabel(ts.id).toUpperCase() + (ts.grows ? ' · GROWS' : ''), off,
+                    title: 'Ending a turn here gives ' + stLabel(ts.id) + ' (' + ts.duration + ' rounds)' + (ts.grows ? ', worse each turn you stay' : '') + (off ? '. Not this unit.' : '') });
+                words.push('Ending a turn here gives ' + stLabel(ts.id) + ' for ' + ts.duration + ' rounds' + (ts.grows ? ', worse each turn you stay' : '') + '.');
+            }
+            if (_ground && tickRule.turnHealPct) {
+                chips.push({ kind: 'hp', text: '+' + Math.round(tickRule.turnHealPct * 100) + '% HP AT TURN END', title: 'Ending a turn here restores ' + Math.round(tickRule.turnHealPct * 100) + '% of max HP' });
+                words.push('Ending a turn here restores ' + Math.round(tickRule.turnHealPct * 100) + '% of max HP.');
+            }
+            if (_ground && tickRule.turnMpPct) {
+                chips.push({ kind: 'mp', text: '+' + Math.round(tickRule.turnMpPct * 100) + '% MP AT TURN END', title: 'Ending a turn here restores ' + Math.round(tickRule.turnMpPct * 100) + '% of max MP' });
+                words.push('Ending a turn here restores ' + Math.round(tickRule.turnMpPct * 100) + '% of max MP.');
+            }
+            /* a tick the row gives only this unit (Thermal Regen basks in lava) or a damage tick */
+            if (trial && trial.res && trial.res.amount > 0) {
+                if (trial.res.type === 'heal' && !tickRule.turnHealPct) chips.push({ kind: 'hp', text: '+' + trial.res.amount + ' HP AT TURN END', title: 'This unit heals here at the end of its turn' });
+                else if (trial.res.type === 'damage') chips.push({ kind: 'hp', dmg: true, text: '−' + trial.res.amount + ' HP AT TURN END', title: 'Ending a turn here costs ' + trial.res.amount + ' HP' });
+            }
+            // ── water, fire, oil, the runoff ──
+            if (_isWetTile(x, y)) {
+                const off = !!unit && (air || !_statusSticks(unit, 'wet'));
+                chips.push({ kind: 'status', id: 'wet', text: 'WET', off, title: 'Standing in water leaves a body Wet (' + WET_ROUNDS + ' rounds)' + (off ? '. Not this unit.' : '') });
+                words.push('Standing in water leaves a body Wet for ' + WET_ROUNDS + ' rounds.');
+            }
+            if (_tileIsBurning(x, y)) {
+                const off = !!unit && (air || (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)));
+                chips.push({ kind: 'status', id: 'burn', text: 'ON FIRE · BURN', off, title: 'The ground is burning: ' + BURNING_TILE_DAMAGE + ' damage and Burn at the end of each round' + (off ? '. Not this unit.' : '') });
+                chips.push({ kind: 'hp', dmg: true, off, text: '−' + BURNING_TILE_DAMAGE + ' HP AT ROUND END', title: 'Standing in the flames at the end of a round' });
+                words.push('The ground is on fire: ' + BURNING_TILE_DAMAGE + ' damage and Burn to anyone standing in it at the end of each round.');
+            }
+            if (fl) {
+                const fr = getTerrainRule(fl.t === 'water' ? 'water' : fl.t);
+                chips.push({ kind: 'info', text: (fl.t === 'water' ? 'WATER' : (fr && fr.label ? fr.label : fl.t)).toUpperCase() + ' RUNOFF', title: 'Liquid running over this square from a spring nearby' });
+            }
+            if (typeof _isOilTile === 'function' && _isOilTile(x, y)) {
+                chips.push({ kind: 'info', text: 'BLOWS UP IN FIRE', title: 'Fire or lightning that touches the slick detonates all of it' });
+                words.push('Fire or lightning that touches this slick sets all of it off.');
+            }
+            // ── the element boost (ELEMENT_TERRAINS) ──
+            if (typeof ELEMENT_TERRAINS !== 'undefined') {
+                const mult = (typeof ELEMENT_TERRAIN_MULT === 'number') ? ELEMENT_TERRAIN_MULT : 1.25;
+                for (const el of Object.keys(ELEMENT_TERRAINS)) {
+                    let hit = null;
+                    try { hit = _elemTerrainLabelOf(ELEMENT_TERRAINS[el], x, y, false); } catch (e) { hit = null; }
+                    if (!hit) continue;
+                    chips.push({ kind: 'elem', el, text: el.toUpperCase() + ' SPELLS ×' + mult, title: el.charAt(0).toUpperCase() + el.slice(1) + ' spells hit ×' + mult + ' when the caster or the target stands here' });
+                    words.push(el.charAt(0).toUpperCase() + el.slice(1) + ' spells hit ×' + mult + ' when the caster or the target stands here.');
+                }
+            }
+            if (!_tileIsBurning(x, y)) {
+                if (typeof _tileSmothersFire === 'function' && _tileSmothersFire(x, y)) chips.push({ kind: 'info', text: 'PUTS OUT FIRE', title: 'Fire never takes here' });
+                else if (typeof _isFlammableTile === 'function' && _isFlammableTile(x, y)) chips.push({ kind: 'info', text: 'CATCHES FIRE', title: 'Ground fire spreads onto this square' });
+            }
+            // ── spell zones over it ──
+            for (const zone of (state._activeZones || [])) {
+                if (!zone || !_zoneCovers(zone, x, y)) continue;
+                const nm = zone.spellName || 'Zone';
+                const foe = !!unit && zone.ownerPlayer !== unit.player;
+                const left = zone.duration > 0 ? ' · ' + zone.duration + ' RND' : '';
+                chips.push({ kind: 'zone', text: nm.toUpperCase() + left, foe, title: nm + (zone.duration > 0 ? ' (' + zone.duration + ' rounds left)' : '') });
+                if (foe && zone.tickDamage > 0) chips.push({ kind: 'hp', dmg: true, text: '−' + zone.tickDamage + ' HP AT ROUND END', title: nm + ' hits every enemy inside at the end of each round' });
+            }
+            if (unit) for (const id of predictZoneStatusesAt(unit, x, y)) {
+                if (!chips.some(c => c.kind === 'status' && c.id === id)) chips.push({ kind: 'status', id, text: stLabel(id).toUpperCase(), title: 'A spell zone here gives ' + stLabel(id) });
+            }
+            // ── the viewer's own traps (or ones a scan revealed) ──
+            const vw = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (unit ? unit.player : 1);
+            for (const tp of (state.traps || [])) {
+                if (!tp || tp.x !== x || tp.y !== y) continue;
+                if (!(tp.owner === vw || (tp._revealedTo && tp._revealedTo[vw]))) continue;
+                chips.push({ kind: 'trap', text: (tp.owner === vw ? 'YOUR ' : 'ENEMY ') + String(tp.spellName || 'trap').toUpperCase(), title: (tp.spellName || 'A trap') + (tp.dmg ? ': ' + tp.dmg + ' damage when sprung' : '') });
+            }
+            if (rule.isNexus) chips.push({ kind: 'info', text: 'NEXUS', title: 'A Nexus tile' });
+
+            // ── the sentence for the description bar ──
+            if (rule.moveCost > 1) words.push('Moving in costs ' + rule.moveCost + '.');
+            if (hm <= 0) words.push('No healing works here.');
+            else if (hm !== 1) words.push('Healing here is ×' + (+hm.toFixed(2)) + '.');
+            if (rule.slide) words.push('Bodies slide across it.');
+            if (rule.blocksRanged) words.push('It blocks shots.');
+            const T = (typeof terrainTimerAt === 'function') ? terrainTimerAt(x, y) : null;
+            let timer = null;
+            if (T && T.n > 0) {
+                const back = T.o ? ((TERRAIN_RULES[T.o] && TERRAIN_RULES[T.o].label) || T.o) : null;
+                timer = { n: T.n, back };
+                words.push('A spell made it: ' + (back ? back + ' again' : 'it goes back') + ' in ' + T.n + ' round' + (T.n === 1 ? '' : 's') + '.');
+            }
+            if (air && chips.some(c => c.kind === 'status')) words.push('This unit is in the air: the ground does nothing to it.');
+            return { key, label, rule, z: (z === undefined ? null : z), stats, chips, words, timer, flow: fl ? fl.t : null };
+        }
+        window.tileEffectsAt = tileEffectsAt;
 
         let _moveHoverWalk = null;   // the hovered walk's { path, land } while its ghost is drawn (the walk's own "-N")
         /* Bundle the predictions for the ghost hologram. Returns null when
@@ -12749,6 +12932,8 @@
             } catch (e) {}
             try {
                 const zs = predictZoneStatusesAt(unit, x, y);
+                /* the ground's own statuses too (THE BOG POISONS, 2026-11-08: the bog's POISON, the ooze's Goo, water's Wet) */
+                predictTerrainStatusesAt(unit, x, y, z).forEach(id => { if (!zs.includes(id)) zs.push(id); });
                 if (zs.length) badges.st = zs;
             } catch (e) {}
             return (badges.eye || badges.dmg || badges.st) ? badges : null;

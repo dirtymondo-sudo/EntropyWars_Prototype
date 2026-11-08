@@ -4847,3 +4847,18 @@ battle.js BALANCE LAB section; telemetry only, no rule changed.
   breaking Frozen. Filed in `stats.comboUse[status]` as team / self / board / other + damage + kills (kills via the hit
   record). Teammate combos also count per race (comboSetups, comboFinishes; Races tab hover, export race detail). New
   Combos tab; export `analysis.combos`; CSV `combo` rows.
+
+## THE BOG POISONS (2026-11-08, mondo: "of course poison bog should give poison")
+- data.js TERRAIN_RULES `poison` + `poison_bog` (both labelled Poison Bog): ending a turn in the bog gives the real POISON
+  status for 2 rounds (`turnStatus: { id: 'poison', duration: 2 }`, endTurn returns a `status` result → map.js
+  applyTerrainTurnEffects → applyStatusPayload) in place of the flat 12 HP hit. Flyers and poison-proof bodies
+  (unitIsPoisonTerrainImmune) are spared as before. The tick is the round start (state.js beginBlitzRound →
+  applyTerrainTurnEffects), so a unit that ends its turn in the bog is Poisoned when the next round begins. One log line:
+  the result carries no `text`, applyStatusPayload writes "Poison Bog: X is POISONED" (a text made it two lines).
+  Proved in a real match: Bigfoot ended his turn in the bog, round 2 began with poison 2 on him.
+- The other ground ticks read their numbers off the row too (no number changed): deep_water turnStatus drowning 3 (grows),
+  lava burn 3 (grows), swamp goo 2, plague_flesh poison 2, healing_spring turnHealPct 0.15, crystal turnMpPct 0.15. The
+  tile info panel (battle.js tileEffectsAt) shows them from the same fields.
+- battle.js predictMoveHazardDamage lost the bog's flat −12; the move ghost wears the ground's statuses instead
+  (`predictTerrainStatusesAt`: the row's tick, Wet water, ground fire's Burn). ai.js hazard cost prices the bog like Plague
+  Flesh (the poison rounds it adds × the 32 tick).

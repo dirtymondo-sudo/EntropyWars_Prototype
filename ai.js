@@ -2746,7 +2746,7 @@
          lava        — the Burn it lights ticks min(200, 32 + 32 x stacks) at the round's end (stacks = rounds already
                        stood in it + 1), then the plain Burn (24) for its 2 rounds left (x0.6: dousing / cleansing)
          deep water  — Drowning ticks min(160, 24 + 24 x stacks), and -1 MOVE while it lasts
-         poison bog  — 12 a turn end (ignores DEF), healing taken x0.5
+         poison bog  — Poison for 2 rounds (32 a round), healing taken x0.5 (THE BOG POISONS, 11-08; was 12 a turn end)
          plague flesh— Poison for 2 rounds (32 a round) unless already poisoned that long
          black ooze  — Gooed 2 rounds (-1 MOVE, healing x0.5, magic taken x1.25)
          ground fire — 24 at the round's end + Burn 2 rounds
@@ -2788,9 +2788,13 @@
                 const stacks = (on ? (unit._drowningStacks || 0) : 0) + 1;
                 cost += _ghHit(unit, Math.min(160, 24 + 24 * stacks), null) + 10;
             }
-        } else if (terr === 'poison') {
+        } else if (terr === 'poison' || terr === 'poison_bog') {
+            /* THE BOG POISONS (mondo 2026-11-08): a turn ended in the bog gives the POISON status (data.js
+               TERRAIN_RULES turnStatus), costed like Plague Flesh's: the poison rounds it adds × the tick */
             if (!(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(unit))) {
-                cost += _ghHit(unit, 12, null) + ((unit.hp || 0) < (unit.maxHp || 0) ? 5 : 0);
+                const ps = (unit.status && unit.status.poison) || 0;
+                if (ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
+                cost += ((unit.hp || 0) < (unit.maxHp || 0) ? 5 : 0);
             }
         } else if (terr === 'plague_flesh') {
             const ps = (unit.status && unit.status.poison) || 0;
