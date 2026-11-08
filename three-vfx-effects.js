@@ -277,10 +277,6 @@ const ThreeVFXEffects = (function () {
     function _spawn(opts) {
         return window.ThreeVFX.spawn(opts);
     }
-    /* THE FLIPBOOKS (2026-11-03): true once the Blender sheet `key` is cut into frames (three-vfx.js) and not switched off */
-    function _fbReady(key) {
-        return !!(window.ThreeVFX && window.ThreeVFX.flipbookReady && window.ThreeVFX.flipbookReady(key));
-    }
 
     /* glow: the theme's light colour — drives the magic-orb / shock-ring
        signature layers and any additive tinting on the generic bursts. */
@@ -3169,8 +3165,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bats3D = null;
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
-            /* THE FLIPBOOKS: a painted layer a flipbook replaces steps aside once that sheet is ready */
-            if (layer.ifNoFb && _fbReady(layer.ifNoFb)) continue;
             if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
                 layer.anchor !== 'torso') continue;
             /* THE BATS (2026-10-27): the flat bat sprites give way to mondo's 3D bats (_batStage flies them) */
@@ -59224,19 +59218,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ════ FIREBALL — a roiling ball of fire (a white-hot heart, a halo, the grass fire streaming back off it)
        flies with a flame-and-smoke tail and bursts on the body ════ */
     EFFECTS['fpFireball_bolt'] = _pzDef('fpFireball', { pzOwn: true });
-    function _fpBurst(tx, ty, pal, big, fb) {
+    function _fpBurst(tx, ty, pal, big) {
         if (!_pzSeen(tx, ty) || !_canSpawn()) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, k = big ? 1.4 : 1, y = ts * 0.5;
         _pzP(F, 0, y, 0, { sprite: 'flash', tint: pal.light, ml: 130, size0: 40 * k, size1: 10, opacity0: 0.75 });
-        /* THE FLIPBOOK PILOT (fb): the Blender fire burst takes the painted fireball blobs' and smoke puffs' place */
-        if (fb) _fbSim(F, 'fbhit', { y: y, size: ts * 3.0 * k, ml: 1400, back: ts * 0.3, grow: 1.08 });
         for (var i = 0; i < 18 * k; i++) {
-            if (fb && !(i % 3)) continue;
             var a = rn(0, 6.28), e = rn(-0.4, 1), v = rn(120, 230) * k;
             _pzP(F, 0, y, 0, { sprite: i % 3 ? 'flame' : 'explosion-orange', tint: i % 3 ? null : pal.hot, ml: rn(300, 520), size0: rn(14, 22) * k, size1: rn(4, 8),
                 vx: Math.cos(a) * v * Math.cos(e), vy: Math.sin(a) * v * Math.cos(e), vz: Math.sin(e) * v + 40, gravity: -60, drag: 2.2, opacity0: 0.95 });
         }
-        if (!fb) _fxDelay(function () { if (!_suppressed()) _fpSmoke(F, 0, y * 0.8, 0, big ? 5 : 3, pal, { r: 20, s0: 28, s1: 80 }); }, 120);
+        _fxDelay(function () { if (!_suppressed()) _fpSmoke(F, 0, y * 0.8, 0, big ? 5 : 3, pal, { r: 20, s0: 28, s1: 80 }); }, 120);
         _fpEmbers(F, 0, y, 0, 10 * k, pal, { r: 10, v: 160, vz0: 40, vz1: 220, g: 120 });
         _sigShockRing3D(tx, ty, { color: pal.flame, r0: ts * 0.1, r1: ts * 0.95 * k, ms: 320, height: ts * 0.3, torus: false, opacity: 0.55 });
     }
@@ -59244,7 +59235,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY;
         if (tx == null || fx == null) return;
         var pal = _fpPal(id), ts0 = _cfg().tileSize || 128, ms = p.flyMs > 0 ? p.flyMs : 420;
-        _fxDelay(function () { if (!_suppressed() && !_catOff('spells')) _fpBurst(tx, ty, pal, false, id === 'fire1' && _fbSimReady('fbhit')); }, ms);
+        _fxDelay(function () { if (!_suppressed() && !_catOff('spells')) _fpBurst(tx, ty, pal, false); }, ms);
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
         var ball = new THREE.Group();
         var halo = _pzSpr(pal.flame, ts0 * 0.8, ball); halo.material.opacity = 0.85;
@@ -59253,19 +59244,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            down its own +z); lit before the throw so it leaves the hand already roaring */
         var CV = _fpVolMesh({ x: 0, y: 0, z: ts0 * 0.14, h: ts0 * 0.95, w: ts0 * 0.5, rx: -Math.PI / 2 + 0.35, d: -200, life: ms + 400, ph: rn(0, 9) }, ball, pal);
         var lastS = 0, lastF = 0;
-        /* THE SPELL SIMS: Fireball (fire1) flies the Blender flame ball (fbfly) in place of the halo + painted flames */
-        var SIM = id === 'fire1' ? _fbTrail(ball, 'fbfly', ts0 * 2.4, fx, fy, tx, ty, 0.5) : null;
-        if (SIM) { halo.visible = false; CV.m.visible = false; heart.scale.setScalar(ts0 * 0.18); }
         _pzFly(fx, fy, tx, ty, ball, { ms: ms, arc: 0.12, h0: ts0 * 0.62, h1: ts0 * 0.55, hideOnLand: true,
             spin: function (el, obj, t) {
-                if (SIM) { SIM.tick(el, obj, t); if (t >= 1) return; }
-                else { _fpVol(CV, el); if (t >= 1) CV.m.visible = false; }
-                var s = 1 + 0.12 * Math.sin(el * 0.07); halo.scale.setScalar(ts0 * 0.8 * s); heart.scale.setScalar(ts0 * (SIM ? 0.18 : 0.3) * (2 - s));
+                _fpVol(CV, el); if (t >= 1) CV.m.visible = false;
+                var s = 1 + 0.12 * Math.sin(el * 0.07); halo.scale.setScalar(ts0 * 0.8 * s); heart.scale.setScalar(ts0 * 0.3 * (2 - s));
                 var P = obj.parent && obj.parent.position;
                 if (!P || t >= 1) return;
                 var sp = _worldToSpawn(P);
-                if (!SIM && el - lastF > 16 && _canSpawn()) { lastF = el; _spawn({ x: sp.x + rn(-4, 4), y: sp.y + rn(-4, 4), z: sp.z + rn(-4, 4), mode: 'billboard', sprite: 'flame', ml: rn(220, 360), size0: rn(16, 24), size1: 4, vz: rn(10, 40), opacity0: 0.85, opacity1: 0 }); }
-                if (el - lastS > (SIM ? 90 : 55) && _canSpawn()) { lastS = el; _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'smoke', tint: pal.smoke, ml: rn(600, 900), size0: 14, size1: 44, vz: rn(15, 35), drag: 0.5, opacity0: SIM ? 0.22 : 0.32, opacity1: 0 }); }
+                if (el - lastF > 16 && _canSpawn()) { lastF = el; _spawn({ x: sp.x + rn(-4, 4), y: sp.y + rn(-4, 4), z: sp.z + rn(-4, 4), mode: 'billboard', sprite: 'flame', ml: rn(220, 360), size0: rn(16, 24), size1: 4, vz: rn(10, 40), opacity0: 0.85, opacity1: 0 }); }
+                if (el - lastS > 55 && _canSpawn()) { lastS = el; _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'smoke', tint: pal.smoke, ml: rn(600, 900), size0: 14, size1: 44, vz: rn(15, 35), drag: 0.5, opacity0: 0.32, opacity1: 0 }); }
             } });
     };
 
@@ -62915,129 +62902,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     };
     if (EFFECTS['raceTrickRoom_aura']) EFFECTS['raceTrickRoom_aura'] = Object.assign({}, EFFECTS['raceTrickRoom_aura'], { pzSig: 'f4TrickRoom' });
-
-    /* ═══ THE FLIPBOOK PILOT (2026-11-03, mondo: "Pilot on Fireball + Meteor") ═════════════════════════════════════
-       The first spells drawn with a Blender-baked flipbook (three-vfx.js THE FLIPBOOKS): a real fire + smoke sim
-       instead of painted blobs. ONLY Fireball (fire1, its burst in _fpBurst above) and Meteor (meteor) use it; every
-       other spell keeps its look until mondo has judged these two. Sheet not loaded / EW_NO_FLIPBOOKS → the old look.
-       Online: both run inside the relayed fire() intents, so the guest draws the same blasts; _pzSeen keeps fogged
-       tiles empty. The blast stands a little BEHIND the body from the lens, so the victim still draws over it. */
-    /* one blast in a frame F: o.y the blast's centre height, o.size the billboard, o.back how far behind the body */
-    /* THE SMOKE DISSIPATES (2026-11-05, mondo: the smoke "cuts off abruptly at the end"): the sheet ends on a thick cloud,
-       and the blast used to be let go at 70-85 % opacity right there, so it popped. Now o.ml / o.grow / o.op1 still
-       describe the sheet's part (same speed, same size and opacity where the sheet ends), and a TAIL is added after it
-       (`tail`, 0.45 of the new life by default): the last frame dissolves (three-vfx.js THE SMOKE DISSIPATES: the fringe
-       and wisps go first, the core last), keeps spreading, drifts up and eases to exactly 0. */
-    function _fbBlast(F, o) {
-        var info = window.ThreeVFX && window.ThreeVFX.flipbookInfo ? window.ThreeVFX.flipbookInfo('fb-explosion') : null;
-        if (!info || !_fbReady('fb-explosion')) return;
-        var cd = _nbCamDir(F), back = o.back || 0, sz = o.size;
-        var tail = o.tail != null ? o.tail : 0.45, tf = 1 - tail, grow = o.grow || 1.08;
-        _pzP(F, -cd.x * back + (o.dx || 0), o.y + sz * info.lift, -cd.z * back + (o.dz || 0), {
-            sprite: 'fb-explosion', ml: o.ml / tf, size0: sz, size1: sz * (1 + (grow - 1) / tf) * (1 + tail * 0.5),
-            fbFrom: o.fbFrom || 0, fbTo: o.fbTo != null ? o.fbTo : 1, opacity0: 1, opacity1: o.op1 != null ? o.op1 : 0.85,
-            fbTail: tail, fbRise: (F.ts || 1) * 0.3,
-            spriteRot: 0, spriteSpin: 0, keep: true });
-    }
-    /* THE SPELL SIMS (2026-11-05, mondo: "new blender vfx for fireball and meteor", each its own; three-vfx.js THE SPELL
-       SIMS): every sim is two flipbooks of ONE Blender sim, the lit smoke (normal blend) and the fire's own light (additive,
-       a hair nearer the lens so it draws over the smoke). The one-shot sheets end empty, so they play to the last frame
-       with no engine tail (fbTail 0) and need no opacity ramp. */
-    function _fbSimReady(key) { return _fbReady('fb-' + key + '-smoke') && _fbReady('fb-' + key + '-glow'); }
-    /* one blast in frame F: o.y = the height its centre sits at (0 = a ground blast's floor), o.size the billboard */
-    function _fbSim(F, key, o) {
-        if (!_fbSimReady(key)) return false;
-        var info = window.ThreeVFX.flipbookInfo('fb-' + key + '-smoke'), cd = _nbCamDir(F), sz = o.size, y = o.y + sz * (info.lift || 0);
-        ['smoke', 'glow'].forEach(function (pass, i) {
-            var b = (o.back || 0) - i * 2, op = i ? (o.glow != null ? o.glow : 1) : (o.smoke != null ? o.smoke : 1);
-            _pzP(F, -cd.x * b + (o.dx || 0), y, -cd.z * b + (o.dz || 0), {
-                sprite: 'fb-' + key + '-' + pass, ml: o.ml, size0: sz, size1: sz * (o.grow || 1.06), fbFrom: 0, fbTo: 1,
-                opacity0: op, opacity1: op, fbTail: 0, spriteRot: 0, spriteSpin: 0, keep: true });
-        });
-        return true;
-    }
-    /* a LOOPING sim flown with a body (fbfly / mtail): two sprites whose centre is the sheet's head, the trail turned on
-       screen to point back along the flight. Returns { tick(el, obj, t), sprites } or null (sheets not ready). */
-    function _fbTrail(parent, key, size, fx, fy, tx, ty, smokeOp) {
-        if (!_fbSimReady(key) || !window.ThreeVFX.flipbookFrame) return null;
-        var info = window.ThreeVFX.flipbookInfo('fb-' + key + '-smoke'), head = info.head || 0.75, sp = [];
-        ['smoke', 'glow'].forEach(function (pass, i) {
-            var m = new THREE.SpriteMaterial({ map: window.ThreeVFX.flipbookFrame('fb-' + key + '-' + pass, 0), transparent: true, opacity: 0,
-                blending: i ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false, depthTest: false });
-            var s = new THREE.Sprite(m); s.center.set(head, 0.5); s.scale.set(size, size, 1); s.renderOrder = 160 + i;
-            parent.add(s); sp.push(s);
-        });
-        var A = fx != null ? _worldPos(fx, fy) : null, B = tx != null ? _worldPos(tx, ty) : null, last = null, ang = null;
-        var v0 = new THREE.Vector3(), v1 = new THREE.Vector3(), f0 = Math.floor(Math.random() * info.frames);
-        function screenAng(pa, pb) {
-            var cam = _pzCam(); if (!cam) return null;
-            v0.copy(pa).project(cam); v1.copy(pb).project(cam);
-            var asp = (typeof window !== "undefined" && window.innerHeight) ? window.innerWidth / window.innerHeight : (cam.aspect || 1.6), dx = (v1.x - v0.x) * asp, dy = v1.y - v0.y;
-            return (dx * dx + dy * dy) > 1e-9 ? Math.atan2(dy, dx) : null;
-        }
-        return { sprites: sp, tick: function (el, obj, t, fade) {
-            var fi = f0 + Math.floor(el / 34);
-            for (var i = 0; i < 2; i++) {
-                var tex = window.ThreeVFX.flipbookFrame('fb-' + key + '-' + (i ? 'glow' : 'smoke'), fi);
-                if (tex && sp[i].material.map !== tex) { sp[i].material.map = tex; sp[i].material.needsUpdate = true; }
-                sp[i].material.opacity = (i ? 1 : (smokeOp != null ? smokeOp : 0.9)) * Math.min(1, el / 90) * (fade != null ? fade : 1) * (t >= 1 ? 0 : 1);
-            }
-            /* the flight's direction on screen: from the last frame's world position (or the from -> to line) */
-            var wp = new THREE.Vector3(); obj.getWorldPosition(wp);
-            var a = last ? screenAng(last, wp) : (A && B ? screenAng(new THREE.Vector3(A.x, A.y, A.z), new THREE.Vector3(B.x, B.y, B.z)) : null);
-            if (a != null) ang = ang == null ? a : ang + Math.atan2(Math.sin(a - ang), Math.cos(a - ang)) * 0.35;
-            if (ang != null) { sp[0].material.rotation = ang; sp[1].material.rotation = ang; }
-            last = wp;
-        } };
-    }
-    /* METEOR's burning tail (mtail): rides the falling rock of _spawnMeteorSphere3D down its own path (straight down from
-       900 px over dm ms, eased in), fogged tiles empty */
-    function _fbMeteorTail(tx, ty, dm) {
-        if (!_fbSimReady('mtail') || _suppressed() || _catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return;
-        var wp = _worldPos(tx, ty), ts = wp.ts, g = new THREE.Group(), holder = new THREE.Group();
-        g.add(holder); g.position.set(wp.x, wp.y + 900, wp.z);
-        var T = _fbTrail(holder, 'mtail', ts * 4.6, null, null, null, null);
-        if (!T) return;
-        _sigRunOwned(g, dm, function (el) {
-            var t = Math.min(1, el / dm);
-            g.position.y = wp.y + 900 * (1 - t * t);
-            T.tick(el, holder, t, Math.min(1, el / 120));
-        });
-    }
-    /* METEOR: one big blast where it lands, smaller ones on a few tiles of the strike (seen tiles only), and the
-       tiles' painted smoke puffs step aside (ifNoFb) */
-    if (EFFECTS['meteor_impact_tile'] && EFFECTS['meteor_descent'] && SPELL_MAP['meteor']) {
-        EFFECTS['fbMeteor_impact_tile'] = Object.assign({}, EFFECTS['meteor_impact_tile'], {
-            layers: EFFECTS['meteor_impact_tile'].layers.map(function (l) { return l.sprite === 'smoke' ? Object.assign({}, l, { ifNoFb: 'fb-mblast-smoke' }) : l; }) });
-        EFFECTS['fbMeteor_descent'] = Object.assign({}, EFFECTS['meteor_descent'], { impactTileEffect: 'fbMeteor_impact_tile' });
-        SPELL_MAP['meteor'] = Object.assign({}, SPELL_MAP['meteor'], { descent: 'fbMeteor_descent' });
-    }
-    if (_spell3DGeometry.meteor) {
-        var _fbMeteorGeom = _spell3DGeometry.meteor;
-        _spell3DGeometry.meteor = function (tx, ty, r, dm, tm) {
-            _fbMeteorGeom.apply(this, arguments);
-            _fbMeteorTail(tx, ty, dm || 700);
-            _fxDelay(function () {
-                if (_suppressed() || _catOff('spells') || !_fbSimReady('mblast') || !_canSpawn()) return;
-                var R = r != null ? r : 1;
-                if (_pzSeen(tx, ty)) {
-                    var F = _nrvFrame(tx, ty), ts = F.ts;
-                    _fbSim(F, 'mblast', { y: 0, size: ts * (3.4 + R * 1.2), ml: 2600, back: ts * 0.3, grow: 1.06 });
-                }
-                var tiles = [];
-                for (var dx = -R; dx <= R; dx++) for (var dy = -R; dy <= R; dy++) if ((dx || dy) && _pzSeen(tx + dx, ty + dy)) tiles.push({ x: tx + dx, y: ty + dy });
-                for (var i = tiles.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), tt = tiles[i]; tiles[i] = tiles[j]; tiles[j] = tt; }
-                tiles.slice(0, 4).forEach(function (t, n) {
-                    _fxDelay(function () {
-                        if (_suppressed() || !_canSpawn()) return;
-                        var Ft = _nrvFrame(t.x, t.y);
-                        _fbSim(Ft, 'mblast', { y: 0, size: Ft.ts * rn(1.4, 1.7), ml: rn(1600, 1900), back: Ft.ts * 0.15, smoke: 0.85 });
-                    }, 70 + n * rn(50, 90));
-                });
-            }, dm || 700);
-        };
-    }
-    /* ═════════ END THE FLIPBOOK PILOT ═════════ */
 
 
     /* ── THE JUICE HIT (2026-11-04, SPELL_DIRECTOR_PLAN Phase 7's missing half; mondo: "make the hit stops impactful, add

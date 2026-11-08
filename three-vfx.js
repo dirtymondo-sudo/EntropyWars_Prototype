@@ -437,173 +437,6 @@ const ThreeVFX = (function () {
         'inkblot':         _R2 + 'inkblot.png',
     };
 
-    /* ── THE FLIPBOOKS (2026-11-03, the Blender pilot; mondo picked "Pilot on Fireball + Meteor") ──────────────────────
-       A flipbook is a real fire + smoke SIMULATION baked offline in cloud Blender (Mantaflow, Cycles) to a sheet of
-       frames: the particle plays the movie over its life instead of growing one painted still. The sheet loads once
-       from R2 (Assets/fx/sprites/, repo copy in Assets/fx/sprites/) and is cut into one texture per frame at load,
-       so a flipbook particle is an ordinary pool particle whose sprite key steps 'fb-x#0' → 'fb-x#59' (no shader:
-       both renderers draw it, the instanced batch groups it by frame). Not loaded yet / failed / switched off →
-       spawn() returns null and the caller keeps its old look. opts.fbFrom / opts.fbTo (0..1) play part of the sheet.
-       Users (pilot only): Fireball's burst + Meteor's impact in three-vfx-effects.js "THE FLIPBOOK PILOT".
-       Kill-switch: window.EW_NO_FLIPBOOKS = true. Notes: docs/notes/spells-vfx.md "THE FLIPBOOKS". */
-    var _FLIPBOOKS = {
-        /* 60 frames of 128 px, 8 per row: a fireball that rolls, darkens to embers in smoke and rises. The blast's
-           centre sits 0.82 down the frame (the smoke climbs into the rest), so callers lift the sprite by `lift`. */
-        /* THE SPELL SIMS (2026-11-05, mondo: "new blender vfx for fireball and meteor", not one shared sheet): four
-           sims of their own, each in TWO passes of one sim (bake-vfx.py sim + sheet2): `-smoke` the lit smoke (normal
-           blend) and `-glow` the fire's own light (additive, drawn over it). The one-shot sheets END EMPTY (the sim's
-           own dissolve + a fade over the last quarter: last cell max alpha 0), so they play to the end with no tail.
-           fbhit = Fireball's hit (a yellow-orange ball that balloons and rolls up into grey smoke, 36 frames);
-           mblast = Meteor's ground blast (a red dome, a dust ring rolling out along the floor, a rising column, 60);
-           fbfly / mtail = LOOPS (24 frames, seamless) for the fireball in flight and the meteor's burning tail:
-           the trail runs to the cell's left, the head sits `head` across the cell (sprite centre there). The old
-           fb_explosion.png (the 11-03 pilot) stays on R2, unused. */
-        'fb-fbhit-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbhit_smoke.png?r=1',  cols: 6, frames: 36, cell: 128, blend: 'nrm', lift: 0.22 },
-        'fb-fbhit-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbhit_glow.png?r=1',   cols: 6, frames: 36, cell: 128, blend: 'add', lift: 0.22 },
-        'fb-mblast-smoke': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_smoke.png?r=2', cols: 8, frames: 60, cell: 128, blend: 'nrm', lift: 0.35 },
-        'fb-mblast-glow':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mblast_glow.png?r=1',  cols: 8, frames: 60, cell: 128, blend: 'add', lift: 0.35 },
-        'fb-fbfly-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbfly_smoke.png?r=1',  cols: 6, frames: 24, cell: 128, blend: 'nrm', head: 0.73 },
-        'fb-fbfly-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_fbfly_glow.png?r=1',   cols: 6, frames: 24, cell: 128, blend: 'add', head: 0.73 },
-        'fb-mtail-smoke':  { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mtail_smoke.png?r=1',  cols: 6, frames: 24, cell: 192, blend: 'nrm', head: 0.795 },
-        'fb-mtail-glow':   { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_mtail_glow.png?r=1',   cols: 6, frames: 24, cell: 192, blend: 'add', head: 0.795 },
-        /* THE SHARED KINDS (2026-11-03, mondo: "give them the same treatment"): a Mantaflow smoke puff (16 frames, lit
-           side baked to white so the kind's own colour tints it) and a Mantaflow flame flicker (16 frames, additive) */
-        /* ?r=N: these URLs carry no ?v= token, so bump r whenever a sheet is re-baked (players + the edge cache keep the old one) */
-        'fb-smoke': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_smoke.png?r=2', cols: 4, frames: 16, cell: 128, blend: 'nrm' },
-        'fb-ember': { url: 'https://cdn.entropywars.net/Assets/fx/sprites/fb_ember.png?r=2', cols: 4, frames: 16, cell: 64, blend: 'add' }
-    };
-    /* THE SHARED KINDS: every spawn of these old painted kinds (smoke ~130 uses, dust-puff ~220, ember ~170, game-wide)
-       plays the Blender sheet instead once it is cut, in a plain sprite-pool particle (not a world decal / quad).
-       The particle keeps its kind for everything else (colour, blend, thinning, tumble): `col` 'kind' = the kind's
-       _spriteMap colour tints the white smoke (the painted textures carried those same colours), 'own' = the flame
-       keeps its baked colours. `op` = under the painted texture's peak alpha (the sim's puff is solid edge to edge, so the same coverage needs less). `grow` widens the
-       sprite so the sim's puff fills what the painted billow filled. `jit` = a random start across the sheet. */
-    var _FB_KINDS = {
-        'smoke':      { fb: 'fb-smoke', col: 'kind', op: 0.65, grow: 1.5, jit: 0.12 },
-        'smoke-soft': { fb: 'fb-smoke', col: 'kind', op: 0.45, grow: 1.5, jit: 0.12 },
-        'dust-puff':  { fb: 'fb-smoke', col: 'kind', op: 0.6,  grow: 1.5, jit: 0.12 },
-        'ember':      { fb: 'fb-ember', col: 'own',  op: 1.0,  grow: 1.3, jit: 0.5, span: 0.5 }
-    };
-    /* THE SMOKE DISSIPATES (2026-11-05, mondo: the Blender smoke "cuts off abruptly at the end", "start all over"):
-       every sheet ENDS on dense smoke (fb_explosion's last frame is still solid in the core, fb_smoke's still 217/255), so
-       the old particle let go of a thick cloud and it blinked out. Now a flipbook particle can have a TAIL (`fbTail`, a
-       share of its life, default per kind below): the sheet plays over the life before it, then the last frame it reached
-       DISSOLVES the way real smoke does: thin wisps and the fringe go first, holes open in it, the dense core goes last,
-       it softens (blurs) and spreads, rises a little, and the opacity eases to exactly 0, so nothing is left to pop.
-       The dissolve steps are made once per frame on demand (`_fbDisKey`: 'fb-x#N~L', L = 1.._FB_DIS_LEVELS) from that
-       frame's own pixels + a fixed cloudy noise. `feather` (sheet def) = a soft fade at the cell's border, so a cloud
-       that touched the edge of the render box has no straight cut edge. */
-    var _FB_DIS_LEVELS = 8;
-    var _FB_TAIL_KIND = { 'fb-smoke': 0.35 };
-    var _FB_DIS_WARM = { 'fb-smoke': [15], 'fb-explosion': [36, 48, 59] };   // the frames tails end on (fbTo 1 / 0.6 / 0.8)
-    function _fbFeather(cv, frac) {
-        var C = cv.width, ctx = cv.getContext('2d'), im = ctx.getImageData(0, 0, C, C), d = im.data, F = Math.max(1, C * frac);
-        for (var y = 0; y < C; y++) for (var x = 0; x < C; x++) {
-            var e = Math.min(x + 0.5, y + 0.5, C - x - 0.5, C - y - 0.5) / F;
-            if (e >= 1) continue;
-            d[(y * C + x) * 4 + 3] *= e * e * (3 - 2 * e);
-        }
-        ctx.putImageData(im, 0, 0);
-    }
-    function _fbHash(x, y, s) { var h = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return h - Math.floor(h); }
-    /* a cloudy 0..1 noise for one cell (3 octaves of smooth value noise), fixed per frame so the holes stay put */
-    function _fbNoise(C, seed) {
-        var out = new Float32Array(C * C), oct = [[C / 5, 0.55], [C / 11, 0.3], [C / 24, 0.15]];
-        for (var o = 0; o < oct.length; o++) {
-            var g = oct[o][0], w = oct[o][1];
-            for (var y = 0; y < C; y++) for (var x = 0; x < C; x++) {
-                var fx = x / g, fy = y / g, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
-                tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
-                var a = _fbHash(ix, iy, seed + o), b = _fbHash(ix + 1, iy, seed + o), c = _fbHash(ix, iy + 1, seed + o), dd = _fbHash(ix + 1, iy + 1, seed + o);
-                out[y * C + x] += w * (a + (b - a) * tx + (c - a) * ty + (a - b - c + dd) * tx * ty);
-            }
-        }
-        return out;
-    }
-    var _fbDisNoise = {};
-    function _fbDisKey(frameKey, lvl) {
-        if (lvl <= 0) return frameKey;
-        var key = frameKey + '~' + lvl;
-        if (_hiResTextures[key]) return key;
-        var base = _hiResTextures[frameKey], src = base && base.image;
-        if (!src || !src.getContext) return frameKey;
-        try {
-            var C = src.width, e = lvl / _FB_DIS_LEVELS;
-            var cv = document.createElement('canvas'); cv.width = cv.height = C;
-            var ctx = cv.getContext('2d');
-            /* it softens and spreads as it thins (ctx.filter where the browser has it) */
-            if ('filter' in ctx) ctx.filter = 'blur(' + (e * C * 0.025).toFixed(2) + 'px)';
-            ctx.drawImage(src, 0, 0);
-            if ('filter' in ctx) ctx.filter = 'none';
-            var im = ctx.getImageData(0, 0, C, C), d = im.data;
-            var n = _fbDisNoise[frameKey] || (_fbDisNoise[frameKey] = _fbNoise(C, (frameKey.length * 13 + parseInt(frameKey.split('#')[1] || '0', 10) * 7) % 97));
-            /* density = the frame's own alpha + the noise: the thin fringe and the low-noise pockets go first, the core last */
-            var W = 0.3, th = e * (1 + W) - W;
-            for (var i = 0, j = 3; i < n.length; i++, j += 4) {
-                var a = d[j];
-                if (!a) continue;
-                var k = ((a / 255) * 0.6 + n[i] * 0.4 - th) / W;
-                d[j] = k >= 1 ? a : k <= 0 ? 0 : a * k * k * (3 - 2 * k);
-            }
-            ctx.putImageData(im, 0, 0);
-            var tex = new THREE.CanvasTexture(cv);
-            tex.premultiplyAlpha = false;
-            tex.magFilter = THREE.LinearFilter;
-            tex.minFilter = THREE.LinearFilter;
-            tex.needsUpdate = true;
-            _hiResTextures[key] = tex;
-            _spriteMap[key] = _spriteMap[frameKey];
-            return key;
-        } catch (err) { return frameKey; }
-    }
-    var _fbState = {};
-    function _fbOff() { return typeof window !== 'undefined' && !!window.EW_NO_FLIPBOOKS; }
-    function flipbookReady(key) { return !_fbOff() && !!_fbState[key] && _fbState[key] === 'ready'; }
-    function flipbookInfo(key) { return _FLIPBOOKS[key] || null; }
-    /* one cut frame's texture (a looping sheet on a sprite that flies with a body: THE SPELL SIMS' fbfly / mtail) */
-    function flipbookFrame(key, i) {
-        var def = _FLIPBOOKS[key];
-        if (!def || !flipbookReady(key)) return null;
-        return _hiResTextures[key + '#' + (((i | 0) % def.frames) + def.frames) % def.frames] || null;
-    }
-    function _fbLoadAll() {
-        if (_fbOff()) return;
-        Object.keys(_FLIPBOOKS).forEach(function (key) {
-            if (_fbState[key]) return;
-            var def = _FLIPBOOKS[key];
-            _fbState[key] = 'loading';
-            _spriteMap[key] = { r: 1, g: 1, b: 1, blend: def.blend };
-            var img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = function () {
-                try {
-                    var C = def.cell, sc = img.naturalWidth / (def.cols * C);
-                    for (var i = 0; i < def.frames; i++) {
-                        var cv = document.createElement('canvas');
-                        cv.width = cv.height = C;
-                        cv.getContext('2d').drawImage(img, (i % def.cols) * C * sc, Math.floor(i / def.cols) * C * sc, C * sc, C * sc, 0, 0, C, C);
-                        if (def.feather) { try { _fbFeather(cv, def.feather); } catch (fe) {} }
-                        var tex = new THREE.CanvasTexture(cv);
-                        tex.premultiplyAlpha = false;
-                        tex.magFilter = THREE.LinearFilter;
-                        tex.minFilter = THREE.LinearFilter;
-                        tex.needsUpdate = true;
-                        _hiResTextures[key + '#' + i] = tex;
-                        _spriteMap[key + '#' + i] = _spriteMap[key];
-                    }
-                    _fbState[key] = 'ready';
-                    /* THE SMOKE DISSIPATES: make the dissolve steps of the frames a tail usually ends on, a step per tick,
-                       so the first puff to fade doesn't build them mid-spell */
-                    var warm = [], wf = _FB_DIS_WARM[key] || [];
-                    wf.forEach(function (fi) { for (var lv = 1; lv <= _FB_DIS_LEVELS; lv++) warm.push([key + '#' + fi, lv]); });
-                    (function step() { var w = warm.shift(); if (!w) return; _fbDisKey(w[0], w[1]); setTimeout(step, 30); })();
-                } catch (e) { _fbState[key] = 'failed'; console.warn('[ThreeVFX] flipbook cut failed: ' + key, e); }
-            };
-            img.onerror = function () { _fbState[key] = 'failed'; console.warn('[ThreeVFX] flipbook failed to load: ' + key); };
-            img.src = window._ewCorsBust ? window._ewCorsBust(def.url) : def.url;
-        });
-    }
-
     /* ── Procedural wave sprites ─────────────────────────────────────────
        The old wave_1..6.png art no longer fits the game, so the six frames
        are drawn on a canvas instead of loaded from R2: concentric soft
@@ -1589,7 +1422,6 @@ const ThreeVFX = (function () {
         _buildProceduralHiRes();
 
         _loadImageSprites(ctx, cvs);
-        _fbLoadAll();   // THE FLIPBOOKS: the Blender sheets, cut into frame textures once they land
 
         console.log('[ThreeVFX] atlas built: ' + allKeys.length + ' sprites in ' +
                     ATLAS_SIZE + '×' + ATLAS_SIZE + ' atlas');
@@ -2727,17 +2559,11 @@ const ThreeVFX = (function () {
         if (!_initialized) return null;
 
         var sprite = opts.sprite || 'ember';
-        /* THE FLIPBOOKS: a sheet that is not cut yet (or is switched off) spawns nothing, so the caller's old look stays */
-        var fbDef = _FLIPBOOKS[sprite] || null;
-        if (fbDef && !flipbookReady(sprite)) return null;
         var mode   = opts.mode   || 'billboard';
         var sc     = _spriteColor(sprite);
         var isWorld = (sc.blend === 'world' || mode === 'world');
         var isNonSquare = (opts.w0 != null || opts.h0 != null);
         var isGlob = (sprite === 'blood-glob');
-        /* THE SHARED KINDS: smoke / smoke-soft / dust-puff / ember play their Blender sheet when it is cut */
-        var fbKind = (!fbDef && !isWorld && !isNonSquare && _FB_KINDS[sprite] && flipbookReady(_FB_KINDS[sprite].fb)) ? _FB_KINDS[sprite] : null;
-        if (fbKind) fbDef = _FLIPBOOKS[fbKind.fb];
 
         var poolType, slotIdx;
         var craft = !_craftOff();
@@ -2852,32 +2678,6 @@ const ThreeVFX = (function () {
             p._uvRect = _getUvRect(p.sprite);
         } else {
             p._animFrames = null;
-        }
-        p._fbSoft = !!fbKind;
-        if (fbKind) {
-            /* a shared kind: same kind colour as the painted texture had (it carried it), sized to fill like it */
-            if (fbKind.col === 'own') p._color = { r: 1, g: 1, b: 1, blend: sc.blend };
-            else if (p._tint) p._tint = { r: p._tint.r * sc.r, g: p._tint.g * sc.g, b: p._tint.b * sc.b };
-            p.opacity0 *= fbKind.op; p.opacity1 *= fbKind.op;
-            p.size0 *= fbKind.grow; p.size1 *= fbKind.grow;
-        }
-        if (fbDef) {
-            var fbA0 = fbKind ? (opts.fbFrom != null ? opts.fbFrom : Math.random() * fbKind.jit) : (opts.fbFrom || 0);
-            var fbB0 = fbKind ? (opts.fbTo != null ? opts.fbTo : (fbKind.span ? fbA0 + fbKind.span : 1)) : opts.fbTo;
-            p._fb = fbKind ? fbKind.fb : sprite;
-            p._fbA = Math.max(0, Math.min(1, fbA0));
-            p._fbB = Math.max(p._fbA, Math.min(1, fbB0 != null ? fbB0 : 1));
-            p._fbIdx = Math.min(fbDef.frames - 1, Math.floor(p._fbA * fbDef.frames));
-            p.sprite = p._fb + '#' + p._fbIdx;
-            p._uvRect = _getUvRect('ember');
-            /* THE SMOKE DISSIPATES: the tail where the last frame reached dissolves (opts.fbTail wins, 0 = none) */
-            var fbTl = opts.fbTail != null ? opts.fbTail : (_FB_TAIL_KIND[p._fb] || 0);
-            p._fbTail = Math.max(0, Math.min(0.8, +fbTl || 0));
-            p._fbRise = opts.fbRise || 0;
-            p._fbRose = false;
-        } else {
-            p._fb = null;
-            p._fbTail = 0;
         }
 
         if (opts.descent) {
@@ -3037,18 +2837,6 @@ const ThreeVFX = (function () {
        at the end instead of thinning from the first frame. */
     function _opAt(p, t) {
         var h = p._opHold;
-        /* THE SHARED KINDS: a smooth ease-out fade (no slope at either end) so the sim's own dissolve carries the end */
-        /* THE SMOKE DISSIPATES: in the tail the opacity eases from what it had at the sheet's end to exactly 0
-           (the dissolve steps thin it at the same time); before it, the old curve over the sheet's part of the life */
-        if (p._fbTail > 0) {
-            var tf = 1 - p._fbTail;
-            if (t > tf) {
-                var u = (t - tf) / p._fbTail, oe = p._fbSoft ? _lerp(p.opacity0, p.opacity1, tf * tf * (3 - 2 * tf)) : p.opacity1;
-                return oe * (1 - u * u * (3 - 2 * u));
-            }
-            if (!p._fbSoft) return _lerp(p.opacity0, p.opacity1, t / tf);
-        }
-        if (p._fbSoft) return _lerp(p.opacity0, p.opacity1, t * t * (3 - 2 * t));
         if (h > 0) return t <= h ? p.opacity0 : _lerp(p.opacity0, p.opacity1, (t - h) / (1 - h));
         return _lerp(p.opacity0, p.opacity1, t);
     }
@@ -3370,30 +3158,6 @@ const ThreeVFX = (function () {
                 var hPitch = Math.atan2(p.vz, Math.sqrt(p.vx * p.vx + p.vy * p.vy));
                 p._beamYawDeg = -(hYaw * 180 / Math.PI) + p._headingOffset;
                 p._beamPitchDeg = hPitch * 180 / Math.PI;
-            }
-
-            if (p._fb) {
-                /* THE FLIPBOOKS: the frame follows the particle's life across its slice of the sheet */
-                var fbd = _FLIPBOOKS[p._fb];
-                /* THE SMOKE DISSIPATES: the sheet plays over the life before the tail; in the tail its last frame dissolves */
-                var fbTf = 1 - (p._fbTail || 0), fbS = Math.min(1, t / fbTf);
-                var fbi = Math.min(fbd.frames - 1, Math.floor((p._fbA + (p._fbB - p._fbA) * fbS) * fbd.frames));
-                var fbLv = 0;
-                if (p._fbTail > 0 && t > fbTf) {
-                    var fbU = Math.min(1, (t - fbTf) / p._fbTail);
-                    fbLv = Math.min(_FB_DIS_LEVELS, 1 + Math.floor(fbU * _FB_DIS_LEVELS));
-                    if (!p._fbRose && p._fbRise) { p._fbRose = true; p.vz += p._fbRise; }
-                }
-                var fbKey = fbLv ? _fbDisKey(p._fb + '#' + fbi, fbLv) : p._fb + '#' + fbi;
-                if (fbKey !== p.sprite) {
-                    p._fbIdx = fbi;
-                    p.sprite = fbKey;
-                    if (!_batched) {
-                        var fbTex = _hiResTextures[p.sprite];
-                        var fbEnt = p.poolType === 'sprite' ? _spritePool[p.slotIdx] : p.poolType === 'world' ? _worldMeshPool[p.slotIdx] : p.poolType === 'quad' ? _quadMeshPool[p.slotIdx] : null;
-                        if (fbTex && fbEnt) { fbEnt.material.map = fbTex; fbEnt.material.needsUpdate = true; }
-                    }
-                }
             }
 
             if (p._animFrames) {
@@ -4286,7 +4050,7 @@ const ThreeVFX = (function () {
              setAmbientDensity: setAmbientDensity, getAmbientDensity: getAmbientDensity,
              hasActiveParticles: hasActiveParticles, flashLight: flashLight,
              fxStats: fxStats, quarksBurst: quarksBurst, _diag: _diag, _getScene: _getScene,
-             worldToVfx: worldToVfx, flipbookReady: flipbookReady, flipbookInfo: flipbookInfo, flipbookFrame: flipbookFrame };
+             worldToVfx: worldToVfx };
 })();
 
 window.ThreeVFX = ThreeVFX;

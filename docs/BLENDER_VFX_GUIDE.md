@@ -1,5 +1,9 @@
 # BLENDER VFX GUIDE — how to make spell VFX for Entropy Wars in Blender
 
+> **RETIRED 2026-11-08 (mondo):** the Blender fire + smoke flipbooks were removed from the game. Riot's VFX style guide p.28
+> names sim/photo fire and smoke the thing NOT to do. Kept as history only; do not bake spell VFX in Blender again.
+> Notes: docs/notes/spells-vfx.md "THE BLENDER FIRE + SMOKE REVERTED".
+
 Written 2026-11-05 (rewrite of the 11-03 draft that was lost with its machine; see "Why this was rewritten" at the end).
 Tool: `bake-vfx.py` (repo root). Game side: three-vfx.js THE FLIPBOOKS + three-vfx-effects.js. Notes: docs/notes/spells-vfx.md.
 Sources: the Blender 5.2 manual (Fluid / Mantaflow, Principled Volume, Force Fields, Particles, Geometry Nodes), the common
