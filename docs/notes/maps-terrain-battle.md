@@ -1031,6 +1031,28 @@ Three causes, all fixed. Token 20261107-pixelgrid-02-cors. R2: sprites.js, three
   Nearest sheets mipLevelCount 1, the field (LinearMipmapLinear) 8. Headless WebGPU screenshots come out black (canvas not captured), so
   the on-screen proof is the WebGL2 run.
 
+## THE ONE PIXEL DENSITY (2026-11-08, mondo on Mount Shasta: "there is not consistent pixel density. Why is this wooden bridge look way more crisper than the grass and the dirt?" + "is it from stretching the terrain to fit over 4 squares instead of 1? Maybe it should just go back to 1")
+
+Answer: the grass is NOT stretched. The field (`_hqTerrainMat`, triplanar `uTriTM = TS`) measures exactly 1 sheet per 3.5 m square
+(the one-sprite-per-square rule, PR #840). PR #840 moved only the field. Every other piece of the HQ engine board kept tiling by
+`TM = info.tile*U` (the 1.75 m MODEL tile), so decks, bridges, water, walls, door surrounds and the kit buildings drew 2x2 sheets per
+square (small trims finer still): 2x the texels per metre of the grass beside them = "crisper". Token 20261108-onedensity-01-cors.
+- **GOTCHA: TM vs TS.** TM (= tile, 1.75 m) is the size scale for models / pieces. TS (= `_hqSheetM(info)*U`, the 3.5 m square) is
+  the ONLY sheet scale. Never tile a terrain sheet by TM.
+- Fixed at source: `_hqWaterGeoms(... TS ...)` + `_hqGridWaterBuild(... TS)` (were TM); `_nrKit(ctx)` takes `ctx.sheet` (UV scale)
+  apart from `ctx.ts` (size), and the cave kit, the terrain kit and the proc kit pass the square.
+- **The one density pass** `_hqOneDensity(root, TS)`: every non-triplanar mesh whose map is an `Assets/world/terrain/` sheet with
+  Repeat wrap (textureLoader.load stamps `tex._ew_src`; `_hqTex` dependants copy it) has its median sheets-per-unit measured per
+  geometry group (array materials by materialIndex) and its UVs scaled so it is 1/TS (skips |k-1| < 3 %, instanced, skinned,
+  alphaTest leaves, `_ew_wuvOwner`; a geometry shared with another mesh is cloned first). Runs at the end of `_hqBuildTerrain` and,
+  via `_hqOneDensityRoom()`, over shellGroup + doorGroup + propGroup after `_hqBuildClimbs` (battle path, stage step, `_hqEnter`).
+  Kill switch `window.EW_SHEET_ANY_DENSITY = true`.
+- Audit (texels per world unit per mesh, WebGL2 headless): Shasta, Giza, Camelot, Cyberpunk: every terrain-sheet surface 1.00
+  (water 0.99 / 0.985) - was 2.0 on decks, bridge, water, walls, door surround, city roofs. Proof (bridge before/after):
+  /mnt/project-files/pixel-grid/bridge_density_before_after.jpg.
+- NOT covered: GLB props (their own textures / atlases, UVs can't be retiled), tree-model leaves, the horizon sea (`_hzTileUV`,
+  already 1 per square via HZ_TEX_DENSITY 0.5).
+
 ## THE CRISP CRYSTAL SHEET (2026-11-05, mondo: "figure out why the blue liquid texture you replaced the crystal texture with (crystal terrain, not the crystals) is so blurry. All pixel sprite 128x128 terrain tiles are supposed to have the same pixel density")
 
 - **Cause**: not the sampling (CORRECTED 11-07, THE ONE PIXEL GRID: the HQ engine's boards used _hzTex, linear-magnified). The crystal tile goes through the same getTexture path as every board tile (NearestFilter, one
