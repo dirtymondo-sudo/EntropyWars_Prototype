@@ -3344,7 +3344,8 @@ in blender. So ditch the blender fire+smoke, go back to what the game had before
 ## THE STEADY BOARD (2026-11-08, three-camera.js + battle.js)
 
 mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and back
-down, after the attack landed." His setup ships with the Action Cam OFF, so every spell plays on the tactical pan.
+down, after the attack landed." The shipped setup has the Action Cam OFF, so this first fix covered the tactical pan;
+he then said "but my action cam is on": the spell-shot side is THE STEADY CRANE below.
 
 - Cause (recorded per frame in a real VS CPU match, CPU Nordic-style caster forced onto Stasis Beam, zoom 2.2-2.3):
   THE CLEAR BOARD's body half (THE NEAR BODY: crane the board lens over a unit standing on the line to the focal) was
@@ -3362,3 +3363,31 @@ down, after the attack landed." His setup ships with the Action Cam OFF, so ever
 - Kill switch `window.EW_NO_STEADY_BOARD = true` (old behaviour exactly). Probe `ThreeCamera.steadyBoardState()`.
 - Proof: /mnt/project-files/stasis-beam-camera/stasis_camera_before_after.jpg (before: pitch dips to -68 on a CPU
   Stasis Beam; after: three casts flat at -50; parked pair at one spot: old craned ~6 squares, new keeps the angle).
+
+## THE STEADY CRANE (2026-11-08, three-camera.js)
+
+mondo, after THE STEADY BOARD: "but my action cam is on". Same complaint (enemy Stasis Beam, the camera lifted up and back
+down after the attack landed), on the cinematic spell shot.
+
+- Recorded every frame on CPU Stasis Beams in a real VS CPU match with the Action Cam on (caster forced onto the beam,
+  14 casts from 4 casters, a flying target included). Two faults, both on every spell shot:
+  1. The shot's lens was lifted off the ground by rules judged again every frame on the live, gliding pose: THE SIGHT
+     LINE (lines to the pivot and every guarded body, plus THE LENS FOOTPRINT's 0.4-square ring round the lens) and the
+     frame guard's post-slide "never inside the ground" ring (+0.45 square). On the face cam or the victim beat, the
+     caster's high ground passing under the ring's edge lifted the lens ~2 squares and dropped it within half a second,
+     with no camera call (3 of 8 old casts).
+  2. When the shot ended, THE CLEAR ANGLE reset (`newShot` on id -> null) and the lens swung ~0.7-1 square round the
+     target in one frame while the frame still held (5 of 8 old casts).
+- Fix: the crane (sight lines + footprint ring, judged at the frame guard's last offset) is decided on the beat's TARGET
+  pose (target pivot/zoom/tilt + the clear angle's want) and rides the controller's own eased progress
+  (`cam._ease`); a cut, or a move within 150 ms of one, lands on it at once; at rest a change must hold 700 ms then
+  eases 600 ms; once the shot is over the held frame keeps it. Frame by frame the shot's lens (guard clamp and the last
+  LENS FOOTPRINT clamp) only uses a 0.15-square ring + 0.2 square (`LENS_HARD_FOOT_TILES`). A finished shot keeps its
+  clear angle while its frame holds (`_caHold`, keyed like the guard carry), eases it home over GUARD_CARRY_FADE_S when
+  the rig moves on, drops it on a cut home. CINE_MIN_EYE_TILES stays live.
+- After the fix: 0 of 7 casts bobbed or swung. Camera only, each viewer's own (host and guest run the same rig).
+- Kill switch `window.EW_NO_STEADY_CRANE = true` (all of it, old behaviour). Probe `ThreeCamera.steadyCraneState()`.
+- Proof: /mnt/project-files/stasis-beam-camera/stasis_action_cam_before_after.jpg.
+- Harness: wrap GAME.doSpell (the AI calls it through window.GAME) to force the beam, block GAME.doMove for the forced
+  caster, teleport with u.x/u.y + ThreeRenderer.invalidateUnits(); a temporary `window.__ewCam = camera` line in battle.js
+  (never commit). Freezing the clock with a performance.now hack cancels the shot: record per frame instead.
