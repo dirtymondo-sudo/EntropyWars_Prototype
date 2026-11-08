@@ -1974,6 +1974,11 @@ function QuickCone() {
         if (els[0] !== watched[0] || els[1] !== watched[1]) { ro.disconnect(); watched = els; els.forEach(el => { if (el) ro.observe(el); }); }
       }
       _qpPinRoom(L);
+      /* THE TILE INFO PANEL: its card keeps clear of the screen's edge like the unit card; its tabs ride the card that is up */
+      const _tcd = document.querySelector('.hrlg-panel.quick.on > .hrlg-tcard');
+      if (_tcd) _qpKeepClear(_tcd, L);
+      const _tts = document.querySelector('.hrlg-panel.quick.on > .hrlg-ttabs');
+      if (_tts) _ttabsPin(_tts);
       if (typeof state === 'undefined' || !state || (state._enemyActionTargetId == null && _tcPeekId == null)) { hide(svg); return; }
       const head = document.querySelector('.hrlg-panel.quick.on > .hrlg-thead.qp');
       if (!head) { hide(svg); return; }
@@ -3975,6 +3980,144 @@ function _hrlgQuickCard(key, title, qv) {
   );
 }
 
+/* ── THE TILE INFO PANEL's card + tabs (the data: _hrlgTileView; the plan: THE TILE INFO PANEL above _hrlgTileView) ──
+   TileCard: the square's picture (the board's own sheet, one sheet tile per square, its tint; or the object's sprite), its
+   name (shrinks to fit, never an ellipsis), the facts (height, squares away, the ⏳ clock), the stats, the effect chips
+   (struck through when this unit is spared) and the small buttons (real blades: the same cursor, hover previews, AP pips,
+   ENDS TURN and ↳ MOVE tags). Its panel is its own layer (.hrlg-thead.hrlg-tc-bg) so every theme skin lands on it. It
+   sits where the unit info card sits (UI Maker: Layout > Tile info panel; it follows the Unit info panel's move + size
+   until it has its own). TileTabs: the tab strip, pinned over whichever card is up (_ttabsPin, also every frame in
+   QuickCone), as wide as that card. Viewer-local; nothing on state, nothing relayed. */
+function _tcChipEl(c, i) {
+  const SB = _HRLG_SB_COLORS;
+  let cls = 'hrlg-tc-chip ' + (c.kind || 'info') + (c.off ? ' off' : '') + (c.dmg ? ' dmg' : '') + (c.foe ? ' foe' : '');
+  const st = {};
+  let ic = null;
+  if (c.kind === 'status' && c.id) {
+    st.background = SB[c.id] || '#555';
+    const def = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[c.id] : null;
+    if (def && def.spriteSrc) ic = h('img', { src: def.spriteSrc, alt: '', draggable: false, onError: (e) => { e.currentTarget.style.display = 'none'; } });
+  } else if (c.kind === 'elem' && c.el) {
+    const u = typeof elementIconUrl === 'function' ? elementIconUrl(c.el) : null;
+    ic = u ? h('img', { src: u, alt: '', draggable: false, onError: (e) => { e.currentTarget.style.display = 'none'; } })
+      : h('span', null, (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[c.el]) || '');
+  }
+  return h('span', { key: i, className: cls, style: st, title: c.title || undefined }, ic, h('span', null, c.text));
+}
+function TileCard({ C, btns }) {
+  const ref = useRef(null);
+  const fit = () => { const el = ref.current; if (!el) return; const row = el.querySelector('.hrlg-tc-name'); if (row) ewFitLine(row, row.querySelector('.hrlg-view-tab-text'), 10); };
+  React.useLayoutEffect(fit);
+  useEffect(() => { ewFitLineOnFonts(fit); return () => { if (window._ewFitFns) window._ewFitFns.delete(fit); }; }, []);
+  const obj = (C.active === 'object' && C.objInfo) ? C.objInfo : null;
+  const eff = C.eff || {};
+  const act = (typeof state !== 'undefined' && state && state.units) ? state.units.find(u => u && u.id === state._blitzActiveUnitId) : null;
+  const dist = act ? Math.abs(act.x - C.tx) + Math.abs(act.y - C.ty) : null;
+  const awayTxt = dist == null ? null : dist === 0 ? 'YOUR SQUARE' : dist + (dist === 1 ? ' SQUARE AWAY' : ' SQUARES AWAY');
+  const coord = typeof coordLabel === 'function' ? coordLabel(C.tx, C.ty) : C.tx + ',' + C.ty;
+  /* the picture: the ground's sheet (tinted the way the board tints it, the runoff over it) or the object's sprite */
+  let pic;
+  if (obj) {
+    pic = h('div', { className: 'hrlg-tc-pic sprite' + (obj.sprite ? '' : ' glyph'), style: obj.sprite ? { backgroundImage: 'url("' + obj.sprite + '")' } : undefined },
+      obj.sprite ? null : h('span', { className: 'hrlg-tc-glyph' }, obj.icon || '◆'));
+  } else {
+    const sw = (C.tabs[0] && C.tabs[0].swatch) || {};
+    const ps = {};
+    if (sw.url) ps.backgroundImage = 'url("' + sw.url + '")';
+    if (sw.tint) ps.backgroundColor = sw.tint;
+    else if (!sw.url && sw.color) ps.backgroundColor = sw.color;
+    pic = h('div', { className: 'hrlg-tc-pic' + (sw.tint ? ' tint' : ''), style: ps },
+      sw.flowUrl ? h('div', { className: 'hrlg-tc-flow', style: { backgroundImage: 'url("' + sw.flowUrl + '")' } }) : null);
+  }
+  const ownTag = obj ? (obj.enemy ? 'ENEMY' : obj.neutral ? null : 'YOURS') : null;
+  const h0 = (typeof getHeightAt === 'function') ? getHeightAt(C.tx, C.ty) : 0;
+  const hgt = (C.tz != null && isFinite(+C.tz)) ? +C.tz : h0;
+  /* the object's spell badges (the same ones its spell row wears) */
+  let objBadges = null;
+  if (obj && obj.spellId && typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[obj.spellId]) {
+    try { const bl = _hrlgStatusBadges(SPELL_BY_ID[obj.spellId]); if (bl.length) objBadges = h('span', { className: 'hrlg-badges' }, bl.map(_hrlgBadgeEl)); } catch (e) { objBadges = null; }
+  }
+  const stats = obj ? (obj.stats || []) : (eff.stats || []);
+  const chips = obj ? [] : (eff.chips || []);
+  const hpPct = (obj && obj.hp != null && obj.maxHp > 0) ? Math.max(0, Math.min(100, obj.hp / obj.maxHp * 100)) : null;
+  return h('div', { ref, className: 'hrlg-tcard' + (obj ? ' obj' + (obj.enemy ? ' enemy' : obj.neutral ? '' : ' ally') : ' ground'), 'data-tab': C.active },
+    h('div', { className: 'hrlg-thead hrlg-tc-bg' + (obj ? (obj.enemy ? ' enemy' : obj.neutral ? '' : ' ally') : '') }),
+    pic,
+    h('div', { className: 'hrlg-tc-main' },
+      h('div', { className: 'hrlg-view-tab hrlg-tc-name' },
+        h('span', { className: 'hrlg-view-tab-icon', style: obj && obj.enemy ? { color: '#ee6655' } : undefined }, obj ? (obj.icon || '◆') : '⬚'),
+        h('span', { className: 'hrlg-view-tab-text' }, obj ? obj.name : (eff.label || 'Ground')),
+        ownTag ? h('span', { className: 'hrlg-tc-own ' + (obj.enemy ? 'enemy' : 'own') }, ownTag) : null,
+        h('span', { className: 'hrlg-view-tab-count' }, coord),
+      ),
+      obj && hpPct != null ? h('div', { className: 'hrlg-qv-row hrlg-tc-hp' },
+        h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
+        h('span', { className: 'hrlg-thp' },
+          h('span', { className: 'hrlg-thp-fill' + (obj.enemy ? ' foe' : ''), style: {
+            width: hpPct + '%', background: obj.enemy ? HP_ENEMY_FILL : HP_ALLY_FILL, boxShadow: obj.enemy ? HP_ENEMY_GLOW : HP_ALLY_GLOW } })),
+        h('span', { className: 'hrlg-qv-num' }, obj.hpLabel || (obj.hp + '/' + obj.maxHp))) : null,
+      h('div', { className: 'hrlg-tc-facts' },
+        h('div', null, [obj ? null : 'HEIGHT ' + hgt, awayTxt].filter(Boolean).join(' · ')),
+        (!obj && eff.timer) ? h('div', { className: 'tm' }, '⏳ ' + (eff.timer.back ? String(eff.timer.back).toUpperCase() + ' AGAIN' : 'BACK') + ' IN ' + eff.timer.n + (eff.timer.n === 1 ? ' ROUND' : ' ROUNDS')) : null,
+      ),
+      stats.length ? h('div', { className: 'hrlg-tc-stats' }, stats.map((s, i) => h('span', { key: i, className: 'hrlg-tc-st' + (s.tone ? ' ' + s.tone : '') },
+        h('b', null, s.k), h('i', null, String(s.v))))) : null,
+      (chips.length || objBadges) ? h('div', { className: 'hrlg-tc-fx' }, objBadges, chips.map(_tcChipEl)) : null,
+    ),
+    (btns && btns.length) ? h('div', { className: 'hrlg-tc-btns' }, btns) : null,
+  );
+}
+/* the tab strip sits right over the card that is up (the tile card, or a unit's card in any UI Maker arrangement: the
+   top-left of everything it draws) and takes that card's width; measured in the panel's own px (the menus' scale undone) */
+function _ttabsPin(tabs) {
+  if (!tabs || !tabs.isConnected) return;
+  const panel = tabs.parentElement;
+  if (!panel) return;
+  const card = panel.querySelector(':scope > .hrlg-tcard') || panel.querySelector(':scope > .hrlg-thead.qp');
+  if (!card) return;
+  let L = Infinity, T = Infinity, R = -Infinity;
+  const take = (el) => { const r = el.getBoundingClientRect(); if (r.width > 2 && r.height > 2) { if (r.left < L) L = r.left; if (r.top < T) T = r.top; if (r.right > R) R = r.right; } };
+  take(card);
+  if (card.classList.contains('qp')) for (const c of card.children) take(c);
+  if (!isFinite(L) || !isFinite(T)) return;
+  const pr = panel.getBoundingClientRect();
+  const k = panel.offsetWidth > 0 ? ((pr.width / panel.offsetWidth) || 1) : 1;
+  const tr = tabs.getBoundingClientRect();
+  const ts = tabs.offsetWidth > 0 ? ((tr.width / (tabs.offsetWidth * k)) || 1) : 1;
+  const left = Math.round((L - pr.left) / k), bottom = Math.round((pr.bottom - T) / k + 5), w = Math.max(200, Math.round((R - L) / k / ts));
+  const key = left + ',' + bottom + ',' + w;
+  if (tabs._ewPin === key) return;
+  tabs._ewPin = key;
+  tabs.style.left = left + 'px'; tabs.style.bottom = bottom + 'px'; tabs.style.width = w + 'px';
+}
+function TileTabs({ view }) {
+  const ref = useRef(null);
+  const fit = () => { const el = ref.current; if (!el) return; el.querySelectorAll('.hrlg-ttab').forEach(t => ewFitLine(t, t.querySelector('.hrlg-ttab-tx'), 8)); };
+  React.useLayoutEffect(() => { _ttabsPin(ref.current); fit(); });
+  useEffect(() => { ewFitLineOnFonts(fit); return () => { if (window._ewFitFns) window._ewFitFns.delete(fit); }; }, []);
+  return h('div', { ref, className: 'hrlg-ttabs', title: 'What is on this square, from the ground up. Click a tab, or press [ / ] (pad: ← / →)' },
+    view.tabs.map(t => {
+      const ic = {};
+      if (t.id === 'terrain' && t.swatch) {
+        if (t.swatch.url) ic.backgroundImage = 'url("' + t.swatch.url + '")';
+        if (t.swatch.tint) ic.backgroundColor = t.swatch.tint; else if (!t.swatch.url && t.swatch.color) ic.backgroundColor = t.swatch.color;
+      } else if (t.sprite) ic.backgroundImage = 'url("' + t.sprite + '")';
+      const bare = t.id !== 'terrain' && !t.sprite;
+      return h('div', {
+        key: t.id, 'data-tab': t.id,
+        className: 'hrlg-ttab' + (t.id === view.active ? ' on' : '') + (t.enemy ? ' enemy' : t.own ? ' own' : ''),
+        onClick: (e) => { e.stopPropagation(); _hrlgSetTileTab(view.key, t.id); },
+        onMouseEnter: (e) => { const c = view.cards[t.id]; if (c && typeof showSpellTooltip === 'function') showSpellTooltip(c, e.nativeEvent); },
+        onMouseLeave: () => { if (typeof hideSpellTooltip === 'function') hideSpellTooltip(); },
+      },
+        h('span', { className: 'hrlg-ttab-ic' + (t.id === 'terrain' ? ' ground' + (t.swatch && t.swatch.tint ? ' tint' : '') : (t.face ? ' face' : ' sprite')) }, bare ? (t.icon || '◆') : null,
+          bare ? null : h('i', { style: ic })),
+        h('span', { className: 'hrlg-ttab-tx' }, t.label),
+        (t.enemy || t.own) ? h('span', { className: 'hrlg-ttab-own' }, t.enemy ? 'ENEMY' : 'YOURS') : null,
+      );
+    }));
+}
+
 /* THE NAME FITS (playtest 2026-11-05 E4: "Jack-o'-Lantern…" in the unit panel, cut by an ellipsis). A line that holds a
    name never cuts it: when the words are wider than their box, the name's own font steps down until the whole line fits
    (never under minPx; the other words on the line keep their size). The UI Maker's font / size on the name is the start
@@ -4283,6 +4426,22 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     return () => { window._hrlgArrowsOwned = false; };
   }, [_arrowsOwned]);
   const fireSelRef = useRef(null);
+  /* THE TILE INFO PANEL's tabs: [ / ] (and the pad's D-pad ← / →, window._hrlgPad.tab) step them */
+  const tabStepRef = useRef(null);
+  const _actCard = activePanel ? activePanel.card : null;
+  tabStepRef.current = (d) => _hrlgStepTileTab(_actCard, d);
+  /* a new tab puts the cursor on its first button (the description bar then reads that tab's words); a tab with no
+     buttons hands the cursor back to the list's default row */
+  const _tabNow = _actCard ? _actCard.active : null;
+  const _tabPrev = useRef(_tabNow);
+  useEffect(() => {
+    if (_tabNow !== _tabPrev.current && _actCard) {
+      const fb = blades.find(b => b && b.tbtn && (b.available || b.forceLive)) || blades.find(b => b && b.tbtn);
+      camSrc.current = 'step';
+      setSelId(fb ? fb.id : null);
+    }
+    _tabPrev.current = _tabNow;
+  }, [_tabNow, viewKey]);
   useEffect(() => {
     const onKey = (e) => {
       const tag = (document.activeElement && document.activeElement.tagName) || '';
@@ -4293,6 +4452,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         cycleRef.current(e.key === 'ArrowDown' ? 1 : -1);
       } else if (e.key === 'Enter') {
         if (fireSelRef.current) fireSelRef.current();
+      } else if ((e.key === '[' || e.key === ']') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (tabStepRef.current && tabStepRef.current(e.key === ']' ? 1 : -1)) e.preventDefault();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -4335,6 +4496,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     cycle: (d) => cycleRef.current(d),
     fire: () => { if (fireSelRef.current) fireSelRef.current(); },
     crown: () => { if (crownRef.current) crownRef.current(); },
+    tabs: _actCard && _actCard.tabs ? _actCard.tabs.length : 0,
+    tab: (d) => !!(tabStepRef.current && tabStepRef.current(d)),
   };
   useEffect(() => () => { window._hrlgPad = null; }, []);
   /* THE NAME FITS: the unit's name in the panel shrinks to fit, never an ellipsis */
@@ -4592,7 +4755,30 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         // pending pick has no matching row (free board-click aim) does the
         // big standalone button appear above the list as a fallback.
         const _ckIdx = (isOn && confirm) ? p.blades.findIndex(b => b.check) : -1;
-        const _quick = /^(enemy|ally)\|/.test(p.key || '');
+        const _quick = /^(enemy|ally|tile)\|/.test(p.key || '');
+        /* one row of the panel (a list row, or one of THE TILE INFO PANEL's small buttons: same blade, same cursor) */
+        const mkBlade = (b, i) => h(HorologeBlade, {
+          key: b.id, b: b, idx: i,
+          sel: isOn && i === selIdx,
+          active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
+          muted: !isOn,
+          fireId: isOn ? fireId : null,
+          confirmBtn: (isOn && i === _ckIdx) ? confirm : null,
+          // Dimmed-parent rows are LIVE SHORTCUTS: clicking a usable row
+          // switches straight to that submenu/action (chooseActionMenu /
+          // setActionMode / setTool all re-arm cleanly from any view) —
+          // no more back-up-then-click-again two-step. Unusable rows
+          // still bubble to the panel click = plain back-up.
+          onFire: isOn ? fireBlade : (b2, e) => {
+            // END TURN / CANCEL never fire from a dimmed panel — a click
+            // meant as "back" must not end the turn. They bubble = back.
+            if (b2.id === 'end' || b2.id === 'cancel') return;
+            if (!b2.available && !b2.forceLive) return;
+            if (e && e.stopPropagation) e.stopPropagation();
+            fireBlade(b2);
+          },
+          onHover: isOn ? hoverBlade : () => {},
+        });
         return h('div', {
           key: p.key,
           className: 'hrlg-panel' + (isOn ? ' on' : ' bg') + (p.key === 'root' ? ' root' : '') + (p.key === 'tacParty' ? ' tacparty' : '') + (_quick ? ' quick' : ''),
@@ -4636,6 +4822,17 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
              built HERE (not in the prebuilt title node) so the hover-
              driven re-render refreshes the blinking forecast slice. */
           (() => {
+            /* THE TILE INFO PANEL: the square's tabs, then the card of the tab picked (the unit tab = the unit info card) */
+            const C = p.card;
+            if (C) {
+              const _cs = /^(enemy|ally)\|(.+)$/.exec(p.key || '');
+              const tabsEl = C.tabs.length > 1 ? h(TileTabs, { key: 'ttabs', view: C }) : null;
+              if (C.active === 'unit' && C.unit) {
+                return h(React.Fragment, null, tabsEl, _hrlgQuickCard(_cs ? p.key : (C.uSide + '|' + C.unit.id), p.title));
+              }
+              return h(React.Fragment, null, tabsEl, h(TileCard, { key: 'tcard', C,
+                btns: p.blades.map((b, i) => (b && b.tbtn) ? mkBlade(b, i) : null).filter(Boolean) }));
+            }
             const _qv = _hrlgQuickVitals(p.key);
             if (!p.title && !_qv) return null;
             const _side = /^(enemy|ally)\|(.+)$/.exec(p.key || '');
@@ -4653,29 +4850,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
               _qv && _hrlgQuickStats(p.key),
             );
           })(),
-          h('div', { className: 'hrlg-list' + ((isOn && p.blades.some(b => b && b.check)) ? ' has-pick' : ''), ref: isOn ? listRef : undefined },
-            p.blades.map((b, i) => h(HorologeBlade, {
-              key: b.id, b: b, idx: i,
-              sel: isOn && i === selIdx,
-              active: b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected),
-              muted: !isOn,
-              fireId: isOn ? fireId : null,
-              confirmBtn: (isOn && i === _ckIdx) ? confirm : null,
-              // Dimmed-parent rows are LIVE SHORTCUTS: clicking a usable row
-              // switches straight to that submenu/action (chooseActionMenu /
-              // setActionMode / setTool all re-arm cleanly from any view) —
-              // no more back-up-then-click-again two-step. Unusable rows
-              // still bubble to the panel click = plain back-up.
-              onFire: isOn ? fireBlade : (b2, e) => {
-                // END TURN / CANCEL never fire from a dimmed panel — a click
-                // meant as "back" must not end the turn. They bubble = back.
-                if (b2.id === 'end' || b2.id === 'cancel') return;
-                if (!b2.available && !b2.forceLive) return;
-                if (e && e.stopPropagation) e.stopPropagation();
-                fireBlade(b2);
-              },
-              onHover: isOn ? hoverBlade : () => {},
-            })),
+          h('div', { className: 'hrlg-list' + ((isOn && p.blades.some(b => b && b.check)) ? ' has-pick' : '') + (p.card && !p.blades.some(b => b && !b.tbtn) ? ' empty' : ''), ref: isOn ? listRef : undefined },
+            p.blades.map((b, i) => (b && b.tbtn) ? null : mkBlade(b, i)),   // the card's small buttons ride the card
           ),
         );
       }),
@@ -6774,6 +6950,7 @@ function ActionMenu({ st, hidden }) {
   const _mkPanel = (key, built, extra) => ({
     key, title: built.title || null,
     blades: extra ? [...built.blades, extra] : built.blades,
+    card: built.card || null,   // THE TILE INFO PANEL (the square's tabs + card)
   });
 
   let view = 'root', modeLabel = null;
@@ -6953,9 +7130,8 @@ function ActionMenu({ st, hidden }) {
     const _qtU = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
     const _qtAlly = !!(_qtU && _qtU.id !== unit.id
       && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, _qtU) : _qtU.player !== unit.player));
-    panels.push(_qtAlly
-      ? _mkPanel('ally|' + st._enemyActionTargetId, _hrlgAllyBlades(unit, st))
-      : _mkPanel('enemy|' + st._enemyActionTargetId, _hrlgEnemyBlades(unit, st)));
+    const _qtKey = (_qtAlly ? 'ally|' : 'enemy|') + st._enemyActionTargetId;
+    panels.push(_mkPanel(_qtKey, _hrlgWithTileTabs(unit, _qtU, _qtKey, _qtAlly ? _hrlgAllyBlades(unit, st) : _hrlgEnemyBlades(unit, st))));
     view = 'quick';
   } else if (st._tileActionTarget && !am) {
     panels.push(_mkPanel('tile|' + st._tileActionTarget.x + ',' + st._tileActionTarget.y, _hrlgTileBlades(unit, st))); view = 'quick';
@@ -9767,6 +9943,11 @@ function _turretDisplayName(t) {
   return name.replace(/^Deploy\s+/i, '');
 }
 
+/* a sprite for the tile info card's picture (sprites.js consts build the old Sprites/ keys: ewAsset moves them) */
+function _tileObjSprite(u) {
+  if (!u) return null;
+  return (typeof ewAsset === 'function') ? ewAsset(u) : u;
+}
 function _tileQuickObjectInfo(actingUnit, tx, ty) {
   const s = (typeof state !== 'undefined') ? state : null;
   if (!s) return null;
@@ -9819,10 +10000,19 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
         + _plural(tr.range || 3, 'tile') + ' and fires at the end of the round for '
         + (tr.dmg || 0) + ' damage.';
     }
+    /* the tile info card's picture + numbers (the same fields the words above read) */
+    const _isAura = !!(sp && sp.auraDebuff) || /5g/i.test(name);
+    const sprite = (tr.summon || tr.zombie) ? null
+      : _isAura ? (typeof FIVEG_TOWER_SPRITE_URL !== 'undefined' ? _tileObjSprite(FIVEG_TOWER_SPRITE_URL) : null)
+      : (typeof TURRET_SPRITE_URL !== 'undefined' ? _tileObjSprite(TURRET_SPRITE_URL) : null);
+    const stats = tr.summon ? [{ k: 'MOVE', v: tr.move || 3 }, { k: 'DMG', v: tr.dmg || 0 }]
+      : tr.zombie ? [{ k: 'RANGE', v: tr.range || 1 }, { k: 'DMG', v: tr.dmg || 0 }]
+      : _isAura ? [{ k: 'RANGE', v: tr.range || 4 }, { k: 'M DEF', v: '−' + ((sp && sp.auraDefReduction) || 8), tone: 'dn' }]
+      : [{ k: 'RANGE', v: tr.range || 3 }, { k: 'DMG', v: tr.dmg || 0 }, { k: 'FIRES', v: 'ROUND END' }];
     return {
       kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.summon && typeof _summonLook === 'function') ? _summonLook(tr.summon).icon : (tr.zombie || tr.summon) ? '🧟' : '🔧', enemy,
       hp: Math.max(0, Math.round(tr.hp)), maxHp: tr.maxHp || tr.hp,
-      hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc,
+      hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc, sprite, stats, spellId: tr.spellId || null,
     };
   }
 
@@ -9878,10 +10068,16 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
       desc = 'It restores ' + dep.auraHeal + ' HP to nearby units within '
         + _plural(dep.auraRadius || 1, 'tile') + ' each round while it stands.';
     } else desc = (sp && sp.desc) || 'A deployed structure. It blocks movement until destroyed.';
+    const _dn = String(dep.spellName || '');
+    const sprite = /keg/i.test(_dn) && typeof POWDER_KEG_SPRITE_URL !== 'undefined' ? _tileObjSprite(POWDER_KEG_SPRITE_URL)
+      : /bomb|mine|charge/i.test(_dn) && typeof BOMB_SPRITE_URL !== 'undefined' ? _tileObjSprite(BOMB_SPRITE_URL)
+      : /torch|ward/i.test(_dn) && typeof WARD_SPRITE_URL !== 'undefined' ? _tileObjSprite(WARD_SPRITE_URL) : null;
+    const stats = (dep.blastRadius > 0) ? [{ k: 'BLAST', v: dep.blastDmg || 0 }, { k: 'RADIUS', v: dep.blastRadius }]
+      : (dep.auraHeal > 0) ? [{ k: 'HEAL', v: '+' + dep.auraHeal, tone: 'up' }, { k: 'RANGE', v: dep.auraRadius || 1 }] : [];
     return {
       kind: 'deploy', name: dep.spellName || 'Object', icon: dep.isDecoy ? '🎭' : '📦', enemy,
       hp: Math.max(0, Math.round(dep.hp)), maxHp: dep.maxHp || dep.hp,
-      hpLabel: _mkHpLabel(dep.hp, dep.maxHp), desc,
+      hpLabel: _mkHpLabel(dep.hp, dep.maxHp), desc, sprite, stats, spellId: dep.spellId || null,
     };
   }
 
@@ -9895,7 +10091,10 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
       : sd.type === 'poison'
         ? 'A planted seed growing into a Toxin Tree that poisons nearby units each round. One hit destroys it before it matures.'
         : 'A parasitic seed — it latches onto units that come near and drains their HP each round. One hit destroys it.';
-    return { kind: 'seed', name, icon: '🌱', enemy, hp: null, maxHp: null, hpLabel: null, desc };
+    const _sdu = sd.type === 'heal' ? (typeof HEALING_SEED_SPRITE_URL !== 'undefined' ? HEALING_SEED_SPRITE_URL : null)
+      : sd.type === 'poison' ? (typeof POISON_SEED_SPRITE_URL !== 'undefined' ? POISON_SEED_SPRITE_URL : null)
+      : (typeof LEECH_SEED_SPRITE_URL !== 'undefined' ? LEECH_SEED_SPRITE_URL : null);
+    return { kind: 'seed', name, icon: '🌱', enemy, hp: null, maxHp: null, hpLabel: null, desc, sprite: _tileObjSprite(_sdu) };
   }
 
   // 🌳 Grown aura trees (Healing / Toxin / Leech) — checked BEFORE plain
@@ -9924,7 +10123,8 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     const isObjTree = !!(_treeObj && /^tree/.test(_treeObj));
     return {
       kind: 'tree', name: 'Tree', icon: '🌲', enemy: false, hp: null, maxHp: null, hpLabel: null,
-      soft: !isObjTree,
+      soft: !isObjTree, neutral: true,
+      sprite: (typeof OBJECT_SPRITES !== 'undefined' && OBJECT_SPRITES.tree) ? _tileObjSprite(OBJECT_SPRITES.tree.url) : null,
       desc: 'A fellable tree. Chopping it banks 1 lumber and 1 wood for your team and clears the cover it provides. One chop fells it.',
     };
   }
@@ -9945,27 +10145,94 @@ function _objCardSpell(objInfo, tx, ty) {
   };
 }
 
-// The clicked tile's actions as drum blades. Plain ground groups
-// movement → spells → attack → other; a tile with an OBJECT on it
-// (turret / Cube / deployed structure / seed) leads with the object
-// instead — its attack row first, the object's name + HP on the view
-// tab, and its description in the bottom bar.
-const TILE_INSPECT_GOLD = '#ffc83c';   // the tile menu's Inspect row (THE INSPECT ROW below)
-function _hrlgTileBlades(actingUnit, st) {
-  const target = st._tileActionTarget;
-  if (!target) return { title: null, blades: [] };
-  const tx = target.x, ty = target.y;
-  const actions = _computeTileActions(actingUnit, tx, ty, target.z);
-  const dist = Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
+// The clicked tile's actions as drum blades, under THE TILE INFO PANEL's card (below). The plain verbs (move, jump,
+// climb, inspect, ward, channel, dig, place block; the object's attack / chop) are the card's small buttons; spells and
+// item uses stay full rows. Plain ground groups movement → spells → attack → other; a tile with an OBJECT on it
+// (turret / Cube / deployed structure / seed) leads with the object instead.
+const TILE_INSPECT_GOLD = '#ffc83c';   // the tile menu's Inspect button (THE INSPECT ROW below)
 
-  const terrain = typeof getTerrainAt === 'function' ? getTerrainAt(tx, ty) : 'grass';
-  const tRule = typeof getTerrainRule === 'function' ? getTerrainRule(terrain) : { label: terrain };
-  const height = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
-  const posLabel = typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty;
-  const _tTimer = typeof terrainTimerAt === 'function' ? terrainTimerAt(tx, ty) : null;
+/* ── THE TILE INFO PANEL (mondo 2026-11-08: "if i click on a tile, i want it to show the terrain texture and it list
+   what effects it does, if any ... inspect and move to can be little buttons underneath that on a row ... Basically
+   making a section just for clicking on a terrain tile, similar to the unit info panel ... maybe it could have tabs at
+   the top? Like for the terrain, whatever is on the terrain, whether it be a deployable or a unit"; the plan + mockup
+   in the project files, approved "Build it, open on the top thing") ──
+   A clicked square, and a clicked unit's square, gets a card like the unit info panel with tabs from the ground up:
+   TERRAIN · OBJECT · UNIT. It opens on the top thing; soft things (walkable forest, an open standing door) open on
+   TERRAIN. A tab swaps only the card and its small buttons; the spell rows below never change. The tab picked is
+   viewer-local (this module value, never on state: nothing to sync or relay) and keyed by the panel, so a new click
+   opens on the top thing again. A tab click, [ / ] or the pad's D-pad ← / → switch tabs. Fog: the object / unit tabs
+   exist only for things the viewer sees (an enemy decoy stays the unit it fakes: _tileQuickObjectInfo skips it).
+   The card reads battle.js tileEffectsAt (the engine's own rules) and three-renderer.js tileSwatch (the board's sheet). */
+let _tileTabPick = { k: null, tab: null };
+const _TILE_BTN_IDS = { move: 1, moveTowards: 1, jump: 1, 'takeoff-move': 1, climb: 1, inspect: 1, ward: 1, channel: 1, 'build:dig': 1, 'build:place': 1 };
+function _hrlgSetTileTab(k, tab) {
+  if (_tileTabPick.k === k && _tileTabPick.tab === tab) return;
+  _tileTabPick = { k, tab };
+  if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
+  if (typeof playSfx === 'function') playSfx('uiCursorMove');
+  if (typeof markDirty === 'function') markDirty('hud');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+}
+/* step the open panel's tab ([ / ], the pad's ← / →) */
+function _hrlgStepTileTab(view, dir) {
+  if (!view || !view.tabs || view.tabs.length < 2) return false;
+  const i = view.tabs.findIndex(t => t.id === view.active);
+  const n = Math.max(0, Math.min(view.tabs.length - 1, i + dir));
+  if (n === i) return false;
+  _hrlgSetTileTab(view.key, view.tabs[n].id);
+  return true;
+}
+/* the square's card data: { key, tx, ty, tz, eff, objInfo, unit, tabs[], active, cards{} } */
+function _hrlgTileView(actingUnit, tx, ty, tz, opts) {
+  opts = opts || {};
+  const S = (typeof state !== 'undefined' && state) ? state : {};
+  let eff = null;
+  try { eff = (typeof window.tileEffectsAt === 'function') ? window.tileEffectsAt(actingUnit, tx, ty, tz) : null; } catch (e) { eff = null; }
+  if (!eff) {
+    const k = typeof getTerrainAt === 'function' ? getTerrainAt(tx, ty) : 'grass';
+    const r = typeof getTerrainRule === 'function' ? getTerrainRule(k) : { label: k };
+    eff = { key: k, label: r.label || k, rule: r, stats: [], chips: [], words: [], timer: null, flow: null };
+  }
+  let objInfo = _tileQuickObjectInfo(actingUnit, tx, ty);
+  if (objInfo && objInfo.enemy && S.fogOfWar && typeof _isTileVisibleToViewer === 'function' && !_isTileVisibleToViewer(tx, ty)) objInfo = null;
+  /* the unit on the square (never the one acting: its own card is the hero section) — only one the viewer can see */
+  let u = opts.unit || null;
+  if (!u) u = (S.units || []).find(q => q && !q.dead && q.x === tx && q.y === ty && (!actingUnit || q.id !== actingUnit.id)
+    && (typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(q))) || null;
+  let swatch = null;
+  try { swatch = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.tileSwatch) ? ThreeRenderer.tileSwatch(eff.key, tx, ty) : null; } catch (e) { swatch = null; }
+  if (!swatch) {
+    const spr = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[eff.key]) ? TERRAIN_SPRITES[eff.key] : null;
+    swatch = { key: eff.key, url: spr ? (Array.isArray(spr) ? spr[0] : spr) : null, tint: null, flowUrl: null, color: null };
+  }
+  const tabs = [{ id: 'terrain', label: eff.label, swatch }];
+  if (objInfo) tabs.push({ id: 'object', label: objInfo.name, enemy: !!objInfo.enemy, own: !objInfo.enemy && !objInfo.neutral, sprite: objInfo.sprite || null, icon: objInfo.icon });
+  let uSide = null, uPort = null;
+  if (u) {
+    uSide = (actingUnit && (typeof isEnemyUnit === 'function' ? isEnemyUnit(actingUnit, u) : u.player !== actingUnit.player)) ? 'enemy' : 'ally';
+    uPort = _hrlgPortraitData(u, actingUnit);
+    tabs.push({ id: 'unit', label: (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.race || 'Unit')), enemy: uSide === 'enemy', own: uSide === 'ally', sprite: uPort ? uPort.url : null, face: !!(uPort && uPort.isFace), icon: '☻' });
+  }
+  const key = opts.key || ('tile|' + tx + ',' + ty);
+  let active = u ? 'unit' : (objInfo && !objInfo.soft) ? 'object' : 'terrain';
+  if (_tileTabPick.k === key && tabs.some(t => t.id === _tileTabPick.tab)) active = _tileTabPick.tab;
+  /* the description bar's card per tab (the _objectCard path: name + a short line + the full words) */
+  const tDesc = (eff.words && eff.words.length) ? eff.words.join(' ') : 'No effects: nothing happens to a body that stands or ends its turn here.';
+  const cards = {
+    terrain: { id: 'tilecard:' + tx + ',' + ty + ':' + tDesc, name: eff.label, desc: tDesc, _objectCard: true,
+      _hpLine: (typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty) },
+    object: objInfo ? _objCardSpell(objInfo, tx, ty) : null,
+  };
+  return { key, tx, ty, tz, eff, objInfo, unit: u, uSide, uPort, tabs, active, cards };
+}
 
-  const objInfo = _tileQuickObjectInfo(actingUnit, tx, ty);
-  const objCard = objInfo ? _objCardSpell(objInfo, tx, ty) : null;
+/* the square's actions as blades: buttons carry tbtn + the tabs they ride (ttabs); rows are the rest */
+function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
+  const actions = _computeTileActions(actingUnit, tx, ty, tz);
+  const objInfo = view ? view.objInfo : _tileQuickObjectInfo(actingUnit, tx, ty);
+  const objCard = view ? view.cards.object : (objInfo ? _objCardSpell(objInfo, tx, ty) : null);
+  const tabCard = view ? (view.cards[view.active] || null) : null;
+  const hasObjTab = !!(view && view.tabs.some(t => t.id === 'object'));
   // which attack row is ABOUT the featured object (carries its card + HP)
   const _objAtkId = objInfo
     ? ({ tower: 'attack:tower', turret: 'attack:turret', deploy: 'attack:deploy', seed: 'attack:seed', tree: 'attack:tree', door: 'attack:door' })[objInfo.kind]
@@ -9985,8 +10252,8 @@ function _hrlgTileBlades(actingUnit, st) {
       : [..._grp('movement'), ..._grp('spells'), ..._grp('attack'), ..._grp('other')];
   /* THE INSPECT ROW (2026-10-27, mondo: "can we move inspect toward the top of the list when i click on a tile, either at
      the top or right under the move here/towards actions. Also make the inspect button a different color, like yellow or
-     gold"): Inspect rides right under the last Move here / Move towards / Take Off + Move row, or leads the list when the
-     tile has none, and wears gold (TILE_INSPECT_GOLD). Every other row keeps its order. */
+     gold"): Inspect rides right under the last Move here / Move towards / Take Off + Move button, or leads when the
+     tile has none, and wears gold (TILE_INSPECT_GOLD). Every other button keeps its order. */
   const _inspIdx = ordered.findIndex(a => a.id === 'inspect');
   if (_inspIdx >= 0) {
     const _insp = ordered.splice(_inspIdx, 1)[0];
@@ -9995,20 +10262,38 @@ function _hrlgTileBlades(actingUnit, st) {
     ordered.splice(_at, 0, _insp);
   }
 
-  const blades = ordered.map((a, i) => {
+  return ordered.map((a, i) => {
     const isObjAtk = !!(objCard && a.id === _objAtkId);
     const isApproach = !!a.moveTile && a.id !== 'moveTowards';
+    const isAtk = a.id.indexOf('attack:') === 0;
+    const tbtn = !!_TILE_BTN_IDS[a.id] || isAtk;
+    /* the tabs a button rides: an attack / chop on the object's tab (a soft object's on the ground's too, so a chop is
+       never one tab further than it used to be); Inspect on both; the rest on the ground's */
+    const ttabs = !tbtn ? null
+      : isAtk ? (hasObjTab ? (objInfo && objInfo.soft ? ['object', 'terrain'] : ['object']) : ['terrain'])
+      : a.id === 'inspect' ? ['terrain', 'object']
+      : ['terrain'];
+    /* a button's drop price ("Move here (−24 HP)", "… (fall −12 HP)") becomes a red chip on it; an attack button is
+       just ATTACK / CHOP (the card above names what it hits) */
+    let label = a.label, dropChip = null;
+    if (tbtn) {
+      const m = /^(.*?)\s*\((?:fall\s*)?−(\d+) HP\)$/.exec(a.label || '');
+      if (m) { label = m[1]; dropChip = { text: '−' + m[2] + ' HP', color: '#ff6b6b', title: 'What the drop costs' }; }
+      if (isAtk && hasObjTab) label = a.id === 'attack:tree' ? 'Chop' : 'Attack';
+    }
+    const card = a.spell || (isObjAtk ? objCard : (tbtn ? tabCard : null));
     return {
       id: 'ta:' + a.id + ':' + i,
+      tbtn, ttabs,
       icon: a.icon,
       iconColor: a.category === 'attack' ? '#ff5340' : (a.id.startsWith('captureDoor:') ? '#5ce0d0' : undefined),
       ...(a.id === 'inspect' ? { catColor: TILE_INSPECT_GOLD } : {}),
-      label: a.label,
+      label,
       available: a.available,
-      spell: a.spell || (isObjAtk ? objCard : null),
+      spell: card,
       // a spell row wears the Abilities list's own look (_hrlgSpellLook): icon, colour, badges, shape, power
-      ...(a.spell ? _hrlgSpellLook(a.spell) : (a.category === 'attack' ? { rows: true } : {})),
-      meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
+      ...(a.spell ? _hrlgSpellLook(a.spell) : ((a.category === 'attack' && !tbtn) ? { rows: true } : {})),
+      meta: (isObjAtk && objInfo.hpLabel && !tbtn) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : dropChip,
       // the Cube swing's forecast (battle.js getCubeAttackForecast — from the step's tile on a MOVE→ATK row), like the ATTACK list's Cube row
       ...((a.id === 'attack:tower' && a.available) ? (cf => (cf && cf.typical > 0) ? { power: { v: '≈−' + cf.typical + (cf.siege > 1 ? ' ×' + cf.siege : ''), color: EW.bad } } : {})(
         (() => { try {
@@ -10023,15 +10308,20 @@ function _hrlgTileBlades(actingUnit, st) {
       // here) wears the same "↳ MOVE" note as the enemy menu's plans.
       note: (isApproach && a.available) ? '↳ ' + _mtVerb(a.moveTile) : null,
       sub: !a.available ? (a.reason || 'Unavailable') : null,
+      subBelow: tbtn && !a.available,   // a greyed button says why on a second line
       fire: () => {
         hideSpellTooltip();
         if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
-        if (a.available && a.handler) a.handler();
+        if (a.available && a.handler) {
+          /* fired from a clicked unit's TERRAIN tab: that unit's quick menu closes like the tile menu does */
+          if (tbtn && typeof state !== 'undefined' && state) state._enemyActionTargetId = null;
+          a.handler();
+        }
       },
       hoverIn: (e) => {
         if (a.spell) showSpellTooltip(a.spell, e);
-        else if (isObjAtk) showSpellTooltip(objCard, e);
+        else if (card) showSpellTooltip(card, e);
         if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
         if (a.id === 'move' && a._slideZ !== undefined) _showTileMoveSlidePreview(actingUnit, tx, ty, a._slideZ);
         // THE TILE-MENU SPELL HOVER (2026-10-05, mondo: "if its an aoe it doesnt show its aoe preview when i hover
@@ -10056,45 +10346,34 @@ function _hrlgTileBlades(actingUnit, st) {
       },
     };
   });
+}
 
-  // No attack row carries the card (your OWN turret/Cube/keg, or the attack
-  // row got filtered out) → lead with a pure identity row so clicking the
-  // object still tells you what it is. Inert on purpose — it's a card.
-  // Soft cards (walkable forest) skip this: without a chop row the tile is
-  // just ground, and a "Tree" row above "Move here" would be in the way.
-  if (objCard && !objInfo.soft && !ordered.some(a => a.id === _objAtkId)) {
-    blades.unshift({
-      id: 'objcard',
-      icon: objInfo.icon,
-      label: objInfo.name,
-      available: true,
-      spell: objCard,
-      meta: objInfo.hpLabel ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
-      fire: () => {},
-      hoverIn: (e) => showSpellTooltip(objCard, e),
-      hoverOut: () => hideSpellTooltip(),
-    });
-  }
-  if (!blades.length) blades.push({ id: 'none', icon: '⬚', label: 'Nothing to do here', available: false });
+function _hrlgTileBlades(actingUnit, st) {
+  const target = st._tileActionTarget;
+  if (!target) return { title: null, blades: [] };
+  const tx = target.x, ty = target.y;
+  const view = _hrlgTileView(actingUnit, tx, ty, target.z, { key: 'tile|' + tx + ',' + ty });
+  const all = _hrlgTileActionBlades(actingUnit, tx, ty, target.z, view);
+  /* the cursor steps through the buttons first, then the rows (keyboard, wheel, pad) */
+  const btns = all.filter(b => b.tbtn && b.ttabs.indexOf(view.active) >= 0);
+  const rows = all.filter(b => !b.tbtn);
+  if (!btns.length && !rows.length) rows.push({ id: 'none', icon: '⬚', label: 'Nothing to do here', available: false });
+  /* the unit tab shows the unit info card: its name rides the card like a clicked unit's does */
+  const title = (view.active === 'unit' && view.unit) ? { text: view.tabs.find(t => t.id === 'unit').label } : null;
+  return { title, card: view, blades: [...btns, ...rows] };
+}
 
-  // Object tiles headline the OBJECT (icon + name + HP); plain ground — and
-  // walkable forest, where the tile is still mainly ground — keep the
-  // terrain readout.
-  const title = (objInfo && !objInfo.soft)
-    ? { node: h(React.Fragment, null,
-        h('span', { className: 'hrlg-view-tab-icon', style: objInfo.enemy ? { color: '#ee6655' } : undefined }, objInfo.icon),
-        h('span', { className: 'hrlg-view-tab-text' }, objInfo.name),
-        h('span', { className: 'hrlg-view-tab-count' },
-          (objInfo.hpLabel ? objInfo.hpLabel + ' · ' : '') + posLabel + ' · ' + dist + 't'),
-      ) }
-    : { node: h(React.Fragment, null,
-        h('span', { className: 'hrlg-view-tab-icon' }, '⬚'),
-        h('span', { className: 'hrlg-view-tab-text' }, tRule.label || terrain),
-        h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'
-          // ⏳ a changed tile: the rounds left before the map's own ground comes back (map.js state.terrainTimers)
-          + (_tTimer ? ' · ⏳' + _tTimer.n : '')),
-      ) };
-  return { title, blades };
+/* a clicked unit's quick menu (enemy / ally) gets the tabs of the square it stands on: on the TERRAIN (or OBJECT) tab the
+   tile card and that square's buttons (Inspect, Ward …) stand in for the unit card; the unit's own rows never change */
+function _hrlgWithTileTabs(actingUnit, tu, panelKey, built) {
+  if (!actingUnit || !tu || !built) return built;
+  let view = null;
+  try { view = _hrlgTileView(actingUnit, tu.x, tu.y, tu.z, { key: panelKey, unit: tu }); } catch (e) { view = null; }
+  if (!view) return built;
+  if (view.active === 'unit') return Object.assign({}, built, { card: view });
+  let btns = [];
+  try { btns = _hrlgTileActionBlades(actingUnit, tu.x, tu.y, tu.z, view).filter(b => b.tbtn && b.ttabs.indexOf(view.active) >= 0); } catch (e) { btns = []; }
+  return Object.assign({}, built, { card: view, blades: [...btns, ...(built.blades || [])] });
 }
 
 
@@ -12392,6 +12671,84 @@ function _hudHideCss() {
        look and every theme skin land on it), which the UI Maker can size, move, restyle or take away without the parts */
     :root:root:not(#qp-c):not(#qp-c):not(#qp-c):not(#qp-c) .hrlg-panel.quick > .hrlg-thead.qp { background: none !important; border: 0 !important; border-image: none !important; box-shadow: none !important; }
     .hrlg-panel.quick > .hrlg-thead.qp > .hrlg-qp-bg { position: absolute !important; inset: 0; margin: 0 !important; padding: 0 !important; z-index: -1 !important; display: block !important; pointer-events: none !important; animation: none !important; overflow: visible !important; }
+    /* ── THE TILE INFO PANEL (2026-11-08): the clicked square's card, in the unit info card's spot (its own UI Maker piece,
+       Tile info panel, which follows the Unit info panel until moved), and the tab strip over whichever card is up. Every
+       word fits: names shrink (ewFitLine), chips and buttons wrap onto another row, never an ellipsis or a sideways scroll.
+       680 wide (the unit card is 750) so a square's usual four buttons sit on ONE row ("little buttons underneath that on a
+       row") and the card stays short enough to clear the scoreboard. */
+    .hrlg-panel.quick > .hrlg-tcard {
+      position: absolute; right: calc(100% - 316px); bottom: var(--ew-qp-room, calc(100% + 6px)); z-index: 3;
+      width: var(--tc-w, 680px); margin: 0 7px 0 0; pointer-events: auto;
+      display: grid; grid-template-columns: var(--tc-pic, 108px) minmax(0, 1fr); grid-template-areas: "pic main" "btns btns";
+      font-family: 'IBM Plex Mono', monospace; color: #e8e4d8;
+    }
+    .hrlg-tcard > .hrlg-tc-bg { position: absolute !important; inset: 0; margin: 0 !important; padding: 0 !important; z-index: -1 !important; display: block !important; pointer-events: none !important; animation: none !important; }
+    .hrlg-tcard > .hrlg-tc-bg.ally { border-left-color: #2ed158; }
+    .hrlg-tc-pic {
+      grid-area: pic; position: relative; min-height: var(--tc-pic, 108px); overflow: hidden;
+      border-right: 1px solid #262233; background-color: #000;
+      background-repeat: repeat; background-size: var(--tc-pic, 108px) var(--tc-pic, 108px); background-position: left top;
+      image-rendering: pixelated;
+    }
+    .hrlg-tc-pic.tint { background-blend-mode: multiply; }
+    .hrlg-tc-pic.sprite { background-size: contain; background-repeat: no-repeat; background-position: center; background-color: rgba(0,0,0,0.55); }
+    .hrlg-tc-pic > .hrlg-tc-flow { position: absolute; inset: 0; background-size: var(--tc-pic, 108px) var(--tc-pic, 108px); background-repeat: repeat; opacity: 0.85; image-rendering: pixelated; }
+    .hrlg-tc-pic::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6), inset 0 0 18px rgba(0,0,0,0.55); }
+    .hrlg-tc-glyph { position: absolute; inset: 0; display: grid; place-items: center; font-size: 46px; line-height: 1; }
+    .hrlg-tc-main { grid-area: main; min-width: 0; display: flex; flex-direction: column; }
+    .hrlg-tcard .hrlg-tc-name { height: auto; min-height: 38px; }
+    .hrlg-tcard .hrlg-tc-name .hrlg-view-tab-text { overflow: visible; text-overflow: clip; flex: 0 1 auto; }
+    .hrlg-tc-own { flex: none; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 5px; border: 1px solid; line-height: 1.2; }
+    .hrlg-tc-own.enemy { color: #ffb0a8; border-color: #ff5a4a; background: #3a0d0d; }
+    .hrlg-tc-own.own { color: #a8f0b8; border-color: #2ed158; background: #0d3a1a; }
+    .hrlg-tc-hp { padding: 7px 14px 0 12px; }
+    .hrlg-tc-hp .hrlg-thp { flex: 1 1 auto; min-width: 60px; }
+    .hrlg-tc-facts { display: flex; flex-wrap: wrap; gap: 0 16px; padding: 6px 14px 0 12px; font-size: 10px; font-weight: 700; line-height: 1.6; letter-spacing: 0.08em; color: #a9a3c0; text-transform: uppercase; }
+    .hrlg-tc-facts .tm { color: #f2c46a; }
+    .hrlg-tc-stats { display: flex; flex-wrap: wrap; gap: 2px 16px; padding: 5px 14px 3px 12px; }
+    .hrlg-tc-st { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+    .hrlg-tc-st > b { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: #8a84a2; }
+    .hrlg-tc-st > i { font-size: 12px; font-weight: 700; font-style: normal; color: #fff; }
+    .hrlg-tc-st.up > i { color: #8ff0a8; }
+    .hrlg-tc-st.dn > i { color: #ff8a8a; }
+    .hrlg-tc-fx { display: flex; flex-wrap: wrap; gap: 4px 5px; padding: 4px 12px 9px 12px; }
+    .hrlg-tc-chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; white-space: nowrap;
+      font-size: 9px; font-weight: 700; line-height: 1; letter-spacing: 0.06em; color: #fff;
+      background: #26223a; border: 1px solid rgba(255,255,255,0.3); text-shadow: 0 1px 1px #000; box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+    .hrlg-tc-chip > img { width: 14px; height: 14px; image-rendering: pixelated; flex: none; }
+    .hrlg-tc-chip.hp { background: #14532d; border-color: #4ade80; }
+    .hrlg-tc-chip.dmg { background: #6e1620; border-color: #ff7a8a; }
+    .hrlg-tc-chip.mp { background: #1e3a8a; border-color: #60a5fa; }
+    .hrlg-tc-chip.elem { background: #0d0b15; border-color: #8a84a2; }
+    .hrlg-tc-chip.zone { background: #12321f; border-color: #2ed158; }
+    .hrlg-tc-chip.zone.foe { background: #3a0d0d; border-color: #ff5a4a; }
+    .hrlg-tc-chip.trap { background: #4a2e06; border-color: #f0a040; }
+    .hrlg-tc-chip.info { color: #d8d2ec; border-color: #5a5478; }
+    .hrlg-tc-chip.off { opacity: 0.45; text-decoration: line-through; }
+    .hrlg-tc-btns { grid-area: btns; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 8px; padding: 7px 10px 8px 14px; border-top: 1px solid #262233; background: rgba(0,0,0,0.28); }
+    .hrlg-tc-btns > .hrlg-blade { flex: 0 0 auto; height: auto; min-height: 32px; animation: none; }
+    .hrlg-tc-btns > .hrlg-blade > .hrlg-body { padding: 0 11px; gap: 6px; min-height: 32px; }
+    .hrlg-tc-btns > .hrlg-blade .hrlg-blabel { flex: 0 1 auto; font-size: 15px; }
+    .hrlg-tc-btns > .hrlg-blade .hrlg-cursor { margin: 0 -1px 0 -4px; }
+    .hrlg-list.empty { display: none !important; }
+    .hrlg-panel.quick > .hrlg-ttabs { position: absolute; left: 0; bottom: calc(var(--ew-qp-room, 100%) + 200px); z-index: 4; display: flex; gap: 5px; pointer-events: auto; transform-origin: 0 100%; }
+    .hrlg-ttab {
+      flex: 1 1 0; min-width: 0; position: relative; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px 0 5px; cursor: pointer; overflow: hidden;
+      background: linear-gradient(180deg, #17142a 0%, #0e0c18 100%); border: 1px solid #403a55; border-bottom-width: 2px; color: #8d87a6;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .hrlg-ttab:hover { color: #d8d2ec; border-color: #6a6290; }
+    .hrlg-ttab.on { color: #fff; background: linear-gradient(180deg, #2c2556 0%, #171233 100%); border-color: var(--hfc, #9d8cff); box-shadow: 0 0 12px var(--hfc-soft, rgba(150,130,255,0.35)), 0 2px 0 rgba(0,0,0,0.5); }
+    .hrlg-ttab-ic { flex: none; width: 20px; height: 20px; position: relative; display: grid; place-items: center; font-size: 14px; line-height: 1; border: 1px solid rgba(0,0,0,0.6); background: rgba(0,0,0,0.5); overflow: hidden; }
+    .hrlg-ttab-ic > i { position: absolute; inset: 0; background-size: cover; background-position: center; image-rendering: pixelated; }
+    .hrlg-ttab-ic.tint > i { background-blend-mode: multiply; }
+    .hrlg-ttab-ic.sprite > i { background-size: contain; background-repeat: no-repeat; }
+    .hrlg-ttab-tx { flex: 0 1 auto; min-width: 0; white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .hrlg-ttab-own { flex: none; margin-left: auto; font-size: 8px; font-weight: 700; letter-spacing: 0.08em; padding: 2px 4px; border: 1px solid; line-height: 1.2; }
+    .hrlg-ttab.enemy .hrlg-ttab-own { color: #ffb0a8; border-color: #ff5a4a; background: #3a0d0d; }
+    .hrlg-ttab.own .hrlg-ttab-own { color: #a8f0b8; border-color: #2ed158; background: #0d3a1a; }
     /* the portrait: a backing (fill, frame, the inner shading on ::after) with the sprite as its own layer on it */
     .hrlg-qp-port {
       position: relative; min-height: var(--qp-port, 108px); overflow: hidden;
@@ -16667,8 +17024,8 @@ const UIM_SURFACES = [
     scope: '#reactHudRoot',
     roles: {
       panel: '.hrlg-side, .hrlg-side-low, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
-      button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
-      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
+      button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot, .hrlg-ttab',
+      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover, .hrlg-ttab.on, .hrlg-ttab:hover',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
       hero: '.hrlg-side, .hrlg-side-low',
     },
@@ -16892,6 +17249,11 @@ const UIM_PIECES = [
   { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', score: true, def: { cx: 0, t: 10, w: 440, h: 64 } },
   { id: 'quick', group: 'Battle', label: 'Unit info panel', sel: '.hrlg-panel.quick > .hrlg-thead.qp', panelSel: '.hrlg-panel.quick > .hrlg-thead.qp > .hrlg-qp-bg', qp: true, origin: '100% 100%', def: { l: 220, b: 520, w: 520, h: 200 } },
+  /* THE TILE INFO PANEL (2026-11-08): the clicked square's card + its tab strip. The card sits where the unit info card sits
+     and follows the Unit info panel's move + size until it is moved or sized here (layoutCss); the tabs ride whichever card
+     is up (hud.js _ttabsPin), at the card's size until sized here */
+  { id: 'tcard', group: 'Battle', label: 'Tile info panel', sel: '.hrlg-panel.quick > .hrlg-tcard', panelSel: '.hrlg-panel.quick > .hrlg-tcard > .hrlg-tc-bg', origin: '100% 100%', def: { l: 220, b: 520, w: 680, h: 190 } },
+  { id: 'ttabs', group: 'Battle', label: 'Tile info tabs', sel: '.hrlg-panel.quick > .hrlg-ttabs', origin: '0 100%', def: { l: 220, b: 716, w: 680, h: 32 } },
   /* the quick action list on its own (2026-10-18, mondo: "just make the actions list its own separate thing") */
   { id: 'qlist', group: 'Battle', label: 'Quick action list', sel: '.hrlg-panel.quick > .hrlg-list', origin: '0 0', def: { l: 560, b: 130, w: 316, h: 300 } },
   /* the red BACK chip over every action list (mondo 2026-10-18: "let me move the red back button in the actions list
@@ -17116,6 +17478,16 @@ function layoutCss() {
     else if (o < 1) d.push(`filter: opacity(${o}) !important;`);
     if (d.length) css += `${pre(P.sel)} { ${d.join(' ')} }\n`;
   });
+  /* THE TILE INFO PANEL follows the Unit info panel (its move + size) until the Tile info panel piece has its own; the tab
+     strip takes the cards' size the same way (its spot is measured: _ttabsPin) */
+  const QC = db.layout.quick || {}, TCd = db.layout.tcard || {}, TTd = db.layout.ttabs || {};
+  const _mv = (L) => !!(+L.x || +L.y), _sz = (L) => L.s != null && +L.s !== 1;
+  { const d = [];
+    if (!_mv(TCd) && _mv(QC)) d.push(`translate: ${+QC.x || 0}px ${+QC.y || 0}px !important;`);
+    if (!_sz(TCd) && _sz(QC)) d.push(`scale: ${+QC.s} !important; transform-origin: 100% 100% !important;`);
+    if (d.length) css += `${pre('.hrlg-panel.quick > .hrlg-tcard')} { ${d.join(' ')} }\n`;
+    const cs = _sz(TCd) ? +TCd.s : _sz(QC) ? +QC.s : 1;
+    if (!_sz(TTd) && cs !== 1) css += `${pre('.hrlg-panel.quick > .hrlg-ttabs')} { scale: ${cs} !important; transform-origin: 0 100% !important; }\n`; }
   /* the quick action list's BACK chip rides with the list, plus its own move (the Back button piece) */
   const QL = db.layout.qlist || {}, QB = db.layout.qback || {};
   if (+QL.x || +QL.y) css += `${pre('.hrlg-panel.quick > .hrlg-backchip')} { translate: ${(+QL.x || 0) + (+QB.x || 0)}px ${(+QL.y || 0) + (+QB.y || 0)}px !important; }\n`;
