@@ -3340,3 +3340,25 @@ in blender. So ditch the blender fire+smoke, go back to what the game had before
   bake-vfx.py and docs/BLENDER_VFX_GUIDE.md (both marked RETIRED for spell VFX). Do NOT bring back sim-baked fire/smoke.
 - What replaces it: the Riot-guide VFX plan in this thread (readability, value/colour hierarchy, shape, timing), done in
   code with the existing painted sprites, no Blender.
+
+## THE STEADY BOARD (2026-11-08, three-camera.js + battle.js)
+
+mondo: "enemy used stasis beam on one of my units. The camera did this random motion where it lifted upwards and back
+down, after the attack landed." His setup ships with the Action Cam OFF, so every spell plays on the tactical pan.
+
+- Cause (recorded per frame in a real VS CPU match, CPU Nordic-style caster forced onto Stasis Beam, zoom 2.2-2.3):
+  THE CLEAR BOARD's body half (THE NEAR BODY: crane the board lens over a unit standing on the line to the focal) was
+  judged again every frame on the live pose and the live drawn bodies. Half way through the attack's pan to the
+  midpoint a body crossed the line and the lens rose ~3.5 squares (pitch -50 to -68) and sank again within a second.
+  The footprint test turned with the model, so a unit turning to face the hit or bobbing on its idle flipped it too;
+  zoomed in, the 2.5-square "near the lens" reach covered the whole boom, down to the subject's own neighbours.
+- Fix: the ground half (walls, steps, tall props) stays live. The body half is decided on the pose each camera move
+  is heading to and reached on that move's own clock (one glide, never a second bob); at rest it only changes when the
+  new answer holds STEADY_HOLD_MS 700 (then eases STEADY_EASE_MS 600); a hand drag/orbit keeps the live answer. Only
+  bodies on the lens half of the line count (min(2.5 squares, half the boom)). battle.js `_camBodyTopPx(..., steady)`
+  reads the footprint as the circle round its longest half axis (facing never changes it).
+- Covers every spell, attack, item, move and turn pan on the board rig, own and CPU turns, host and guest (camera
+  only, each viewer's own). Cine (Action Cam ON) shots never used the clear board (`_cineShotId`), so they are unchanged.
+- Kill switch `window.EW_NO_STEADY_BOARD = true` (old behaviour exactly). Probe `ThreeCamera.steadyBoardState()`.
+- Proof: /mnt/project-files/stasis-beam-camera/stasis_camera_before_after.jpg (before: pitch dips to -68 on a CPU
+  Stasis Beam; after: three casts flat at -50; parked pair at one spot: old craned ~6 squares, new keeps the angle).

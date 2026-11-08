@@ -14725,7 +14725,9 @@
         const _cbtFp = [0, 0, 0, 0, 0, 0, 0, 0], _cbtPos = [0, 0, 0];
         /* notX / notZ (optional): a body whose footprint covers that point is the subject itself and never counts (the
            sight line to a big model must not be "blocked" by its own wings — wipeout playtest 2026-10-23) */
-        window._camBodyTopPx = function (wx, wz, pad, notX, notZ) {
+        /* steady (THE STEADY BOARD, three-camera.js 2026-11-08): the drawn footprint read as the circle round its longest
+           half axis, so a body turning in place (facing its attacker, a hit reaction) never changes the answer */
+        window._camBodyTopPx = function (wx, wz, pad, notX, notZ, steady) {
             let top = -Infinity;
             try {
                 if (state.phase !== 'battle' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.getUnitWorldPos) return top;
@@ -14743,10 +14745,16 @@
                         const ax = (_cbtFp[6] - _cbtFp[2]) / 2, az = (_cbtFp[7] - _cbtFp[3]) / 2;
                         const bx = (_cbtFp[6] - _cbtFp[4]) / 2, bz = (_cbtFp[7] - _cbtFp[5]) / 2;
                         const la = Math.hypot(ax, az) || 1, lb = Math.hypot(bx, bz) || 1;
-                        inside = Math.abs((dx * ax + dz * az) / la) <= la + pad && Math.abs((dx * bx + dz * bz) / lb) <= lb + pad;
-                        if (inside && skipSubject) {
-                            const nx = notX - _cbtPos[0], nz = notZ - _cbtPos[2];
-                            isSubject = Math.abs((nx * ax + nz * az) / la) <= la && Math.abs((nx * bx + nz * bz) / lb) <= lb;
+                        if (steady) {
+                            const rr = Math.max(la, lb);
+                            inside = Math.hypot(dx, dz) <= rr + pad;
+                            if (inside && skipSubject) isSubject = Math.hypot(notX - _cbtPos[0], notZ - _cbtPos[2]) <= rr;
+                        } else {
+                            inside = Math.abs((dx * ax + dz * az) / la) <= la + pad && Math.abs((dx * bx + dz * bz) / lb) <= lb + pad;
+                            if (inside && skipSubject) {
+                                const nx = notX - _cbtPos[0], nz = notZ - _cbtPos[2];
+                                isSubject = Math.abs((nx * ax + nz * az) / la) <= la && Math.abs((nx * bx + nz * bz) / lb) <= lb;
+                            }
                         }
                     } else {
                         inside = Math.hypot(dx, dz) <= ts * 0.38 + pad;
