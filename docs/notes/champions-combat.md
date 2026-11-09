@@ -4948,3 +4948,53 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
   dropped on the result -> host "Opponent Reconnecting…" then "Request Rematch", guest kept its result, rematch played.
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
+
+## THE CAMERA SHOWS SOMETHING (2026-11-09, token 20261109-camnothing-01-cors) — battle.js, state.js, online.js
+mondo: "Still lots of camera issues, like the end of round camera focusing on nothing or action camera focusing on nothing
+... might be from when i move the camera around and then the automatic camera takes over, or it just seems like a lot of
+conflicting camera code." Recorded in real VS CPU matches (Action Cam ON, fog on, WebGL2 harness, a driver playing P1
+with real clicks plus random left-drag pans, right-drag orbits and wheel notches): every camera call with its stack, the
+pose and which visible units were on screen every 100 ms, every HP / death event with its screen position, the 3D rig's
+probes. Before: 24 of 99 HP / death events off screen in 10 rounds, the end-of-round read at the board's middle with 2-5
+of 8 units in frame. Six things, all camera only and viewer-local:
+- **THE FIELD FRAME** (`_fieldFrame`, `showEndOfRoundOverview(units)`): the round's board read went to the board's middle
+  square at the tour zoom (or the hand zoom: at 3× it showed two units and none of the regen numbers). It now centres on
+  the living units THIS screen can see (`_shouldCameraFollowUnit`), or on the units named by the beat (recovery: the
+  healed / MP units; field effects: the units touched), and widens just enough to hold them (feet + 1.2 levels of body,
+  margins 0.80 / 0.72), never wider than the default view at that pitch and never closer than the tour / hand zoom.
+  Heights are the camera's own (`_camFocalZAt` + `_getElevationPx`: terrain, floor, flight), and the frame names its
+  focal HEIGHT (`elevZ` = the group's middle): left to the tile under the focal it jumped three levels whenever that
+  tile held a flyer, and on a hill map the first version aimed at the board's edge. A
+  widened read sets `camera._eorWide`, so the next turn start lands back on the hand / rest zoom. Recovery's +HP / +MP
+  numbers now wait 520 ms when the camera has to travel there (the field effects beat already did). Kill switch
+  `window.EW_NO_FIELD_FRAME`; probe `window._fieldFrameState()`.
+- **THE CALM TOUR** (`showEndOfRoundOverviewSoon`, `EOR_READ_WAIT_MS` 560): the read after a status dive and the tour's
+  opening read are deferred a beat and dropped if another dive / the next turn takes the camera first, so the camera no
+  longer starts back to the middle and turns round half way.
+- **THE GLIDE SURVIVES THE HAND** (`camera.snap`): every wheel notch, orbit step, pan step and even the press of a plain
+  right-click (BACK) is a `snap()`, and a snap stopped whatever automatic glide was flying and dropped the pending return
+  home (a turn-start glide parked half way with the unit under the bottom edge; a glide out of a two-shot frozen at
+  pitch 63 / yaw 115). A hand snap now pins only the axes it names: the wheel pins the zoom, an orbit the angle, a pan
+  the position (state.js `_panSnap`: pans no longer repeat the zoom), and the glide finishes the rest. A wheel zoom also
+  keeps the pending return and the focal's height; `_orbitDown` / `_panBegin` no longer stop the camera on the press;
+  a return that came due while a button was held waits for the release (`_heldTries`). Kill switch
+  `window.EW_NO_GLIDE_KEEP`.
+- **THE SHOT KEEPS ITS LENS** (`camera._shotPlaying`, `_leaveShotForHand`, `_handGate`; state.js `_handGateStep`): a pan
+  during the CPU's Blessing shot moved the shot's pivot, killed its drift and cancelled the return, so the camera stayed
+  at pitch 84 / zoom 4.5 through the whole next turn; an orbit during a shot wrote the shot's heading into the resting
+  view; a wheel notch mid swoop played the cast from 0.64×. While a shot PLAYS (action resolving, a beat moving, the
+  impact hold) hand input does not move the camera (the wheel's zoom is still stored for the return). The hand's first
+  pan / orbit step on a shot frame that is no longer playing takes the camera home first (pre-shot pitch / heading, the
+  hand zoom if set) and the mouse drag starts again from there. Kill switch `window.EW_NO_SHOT_LENS`.
+- **THE HELD FRAME** (`camera._apply`, `_poseGen` / `_cineLiveGen`): `_apply` dropped the third-person shot rig on the
+  first frame after `_cineShotId` cleared. A shot that ended while its last drift was still turning (or got a wheel notch
+  in its held frame) lost the rig with the pose still the shot's: the board rig read it as a ground-level lens somewhere
+  else, the clear angle fell away, the lens craned up and swung ~90°, and that view stood for up to a second before the
+  return cut. The rig now stays until the pose really leaves the frame (`moveTo`, `_returnCut`, a positional / angle
+  snap, `setBoardCameraFocusPoint` bump `_poseGen`; 6 s cap). Kill switch `window.EW_NO_SHOT_HOLD`.
+- **THE TOUR FOR BOTH SEATS** (online.js): `eorFocusCamera` and `showEndOfRoundOverview` are host-wrapped and relayed
+  (`eor-focus`, fog-filtered per guest like `eor-shot-focus`; `eor-read`, the guest frames its OWN visible units), both
+  in `CAMERA_RELAY`. Not yet run with two seats.
+Not bugs (checked): the zodiac sky cinematic looks at the sky for 4-6 s by design; a hovering unit (Djinn) is centred on
+its body, so its ground square sits low in frame; fogged enemies' hits are off screen on purpose; a top-down strike shot
+frames the target, not the caster. Recorder + driver live in the playtest harness notes (`/mnt/project-files/camera-nothing-20261109/`).

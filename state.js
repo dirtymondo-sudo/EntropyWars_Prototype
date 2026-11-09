@@ -5963,8 +5963,26 @@
                     _panStartTy = t.ty;
                     _panStartZoom = t.zoom;
                 }
-                if (typeof camera !== 'undefined') camera._stop();
+                /* THE GLIDE SURVIVES THE HAND (battle.js camera.snap): the pan's first step pins the position and lets a
+                   running glide finish its angle and zoom (stopping it here froze a return home half way up) */
+                if (typeof camera !== 'undefined') { if (window.EW_NO_GLIDE_KEEP) camera._stop(); }
                 else if (typeof stopBoardCameraAnimation === 'function') stopBoardCameraAnimation();
+            }
+            /* THE SHOT KEEPS ITS LENS (2026-11-09, battle.js camera._handGate): a drag step during a playing action shot
+               is dropped ('wait'); the first step after it, or the first step on a finished shot's frame (the camera
+               has just been taken home), starts the drag again from the view the camera has now ('rebase'). */
+            let _handWaited = false;
+            function _handGateStep() {
+                if (typeof camera === 'undefined' || typeof camera._handGate !== 'function' || state.phase !== 'battle') return '';
+                const g = camera._handGate();
+                if (g === 'wait') { _handWaited = true; return 'wait'; }
+                if (g === 'left' || _handWaited) { _handWaited = false; return 'rebase'; }
+                return '';
+            }
+            // a pan names the position only (the zoom it used to repeat pinned a gliding zoom where the drag began)
+            function _panSnap(x, y) {
+                if (window.EW_NO_GLIDE_KEEP) camera.snap({ _force: true, x: x, y: y, zoom: _panStartZoom });
+                else camera.snap({ _force: true, x: x, y: y });
             }
             window.addEventListener('click', (e) => {
                 if (e.button === 0 && performance.now() < _swallowClickUntil) {
@@ -6034,6 +6052,9 @@
                 }
 
                 if (typeof camera !== 'undefined') {
+                    const _gs = _handGateStep();
+                    if (_gs === 'wait') return;
+                    if (_gs === 'rebase') { _panBegin(e); return; }
 
                     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
                         && typeof ThreeCamera !== 'undefined' && ThreeCamera.screenDeltaToWorldXZ) {
@@ -6043,7 +6064,7 @@
 
                             const tileX = _panStartCamX - delta.wx / ts;
                             const tileY = _panStartCamY - delta.wz / ts;
-                            camera.snap({ _force: true, x: tileX, y: tileY, zoom: _panStartZoom });
+                            _panSnap(tileX, tileY);
                             if (ThreeCamera.markUserInput) ThreeCamera.markUserInput();
                             return;
                         }
@@ -6064,7 +6085,7 @@
                     const stride = ts + gap;
                     const tileX = (newFocalPx - pad - ts / 2) / stride;
                     const tileY = (newFocalPy - pad - ts / 2) / stride;
-                    camera.snap({ _force: true, x: tileX, y: tileY, zoom: _panStartZoom });
+                    _panSnap(tileX, tileY);
                     return;
                 }
 
@@ -6136,7 +6157,10 @@
                 _tiltStartY = e.clientY;
                 _tiltStartDeg = state.dioramaTiltDeg ?? 50;
                 _yawStartDeg = state.dioramaYawDeg ?? 0;
-                if (typeof camera !== 'undefined') camera._stop();
+                /* THE GLIDE SURVIVES THE HAND (2026-11-09, battle.js camera.snap): the press alone no longer stops an
+                   automatic glide (a plain right-click is BACK, and it used to park the camera wherever the glide
+                   stood); the first real drag step is a snap(), which takes the angle and leaves the travel. */
+                if (typeof camera !== 'undefined' && window.EW_NO_GLIDE_KEEP) camera._stop();
             }
             _boardWheelParent.addEventListener('mousedown', (e) => _orbitDown(e, false));
             /* THE RIGHT-DRAG OVER THE MENU (mondo 2026-10-20: "the right click goes back in the menu even though i am
@@ -6154,6 +6178,17 @@
                 const dx = e.clientX - _tiltStartX;
                 const dy = e.clientY - _tiltStartY;
                 if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _tiltMoved = true;
+                // THE SHOT KEEPS ITS LENS: no orbit during a playing shot; after it the orbit starts again from the home view
+                if (_tiltMoved) {
+                    const _gs = _handGateStep();
+                    if (_gs === 'wait') return;
+                    if (_gs === 'rebase') {
+                        _tiltStartX = e.clientX; _tiltStartY = e.clientY;
+                        _tiltStartDeg = state.dioramaTiltDeg ?? 50;
+                        _yawStartDeg = state.dioramaYawDeg ?? 0;
+                        return;
+                    }
+                }
                 // Clamp pitch to [top-down .. craned up into the sky]. 0° is
                 // straight down, 90° is dead-level at the horizon, and past 90°
                 // the gaze pitches UP at the sky dome (the camera rides the
@@ -6317,7 +6352,8 @@
                 if (_nx === camera.x && _ny === camera.y) return _edgePanStop();
                 _edgeActive = true;
                 state._userPanning = true;
-                camera.snap({ _force: true, x: _nx, y: _ny, zoom: camera.zoom });
+                if (window.EW_NO_GLIDE_KEEP) camera.snap({ _force: true, x: _nx, y: _ny, zoom: camera.zoom });
+                else camera.snap({ _force: true, x: _nx, y: _ny });   // position only: a gliding zoom finishes its trip
             }
             requestAnimationFrame(_edgePanTick);
 

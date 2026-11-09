@@ -11034,7 +11034,7 @@
             // establishing shot every round. The camera never re-angles — every
             // move rides the player's resting tilt/yaw (see eorFocusCamera).
             function _restoreEorView() {
-                if (!state.cameraDisabled) showEndOfRoundOverview();
+                if (!state.cameraDisabled) showEndOfRoundOverviewSoon();   // THE CALM TOUR: dropped when the next beat dives first
             }
 
             function processNext() {
@@ -11569,7 +11569,7 @@
                 if (_visEvents.length === 1) {
                     eorFocusCamera(_visEvents[0].unit.x, _visEvents[0].unit.y);
                 } else {
-                    showEndOfRoundOverview();
+                    showEndOfRoundOverview(_visEvents.map(e => e.unit));   // THE FIELD FRAME: the units these effects touch
                 }
                 _fieldCamLead = 420;
             }
@@ -11763,8 +11763,15 @@
             // regen "+HP/+MP" reads at once (a storm follow may have pulled the
             // camera off to one side just before this).
             _eorPhaseLabel('End of Round — Recovery');
-            showEndOfRoundOverview();
+            /* THE FIELD FRAME: the units whose numbers pop. When the camera has to travel to that frame (it stood on the
+               last status dive — the +HP numbers used to pop a tenth of a second into an 800 ms glide, off screen), the
+               numbers wait for it, the way the field effects beat already leads its floats (_fieldCamLead). */
+            const _recLead = (window.EW_NO_FIELD_FRAME || state.cameraDisabled) ? 0
+                : (showEndOfRoundOverview([...healed, ...manaRestored].map(h => h && h.unit).filter(Boolean)) | 0);
+            if (window.EW_NO_FIELD_FRAME) showEndOfRoundOverview();
 
+            const _popHeals = () => {
+            if (state.phase !== 'battle' || state.winner) return;
             for (const h of healed) {
                 if (h.unit) {
                     const isVisible = _isUnitVisibleToViewer(h.unit, viewer);
@@ -11780,6 +11787,8 @@
                     showFloatingTextAtTile(h.tower.x, h.tower.y, `+${h.amount}`, 'heal', { durationMs: 1200 });
                 }
             }
+            };
+            if (_recLead > 0) window.setTimeout(_popHeals, _recLead); else _popHeals();
 
             /* THE MP BEAT (mondo 2026-10-21, the playtest's end-of-round pile-up: "yes" to the MP regen popping a beat
                after the HP regen): the +MP pops land EOR_MP_BEAT_MS after the +HP ones instead of on top of them. */
@@ -11802,7 +11811,7 @@
                     playSfx('manaRegen');
                 }
             };
-            if (_mpBeat > 0) window.setTimeout(_popMana, _mpBeat); else _popMana();
+            if (_mpBeat + _recLead > 0) window.setTimeout(_popMana, _mpBeat + _recLead); else _popMana();
 
             const unitCount = healed.filter(h => h.unit).length;
             const mpCount = manaRestored.length;
@@ -11816,7 +11825,7 @@
 
             window.setTimeout(() => {
                 if (onDone) onDone();
-            }, 900 + _mpBeat);
+            }, 900 + _mpBeat + _recLead);
         }
 
         function processPendingEarthquake(onDone) {
@@ -26073,12 +26082,28 @@
                    them needs to know the rig exists. (_tpsSubject is left
                    alone when Strike Mode's per-frame controller owns it via
                    _tpsCollide.) */
+                /* THE HELD FRAME (2026-11-09, recorded with the Action Cam on): a shot that ENDED while its last slow
+                   drift was still turning (or whose held frame got a wheel notch) lost the rig on the very next
+                   frame, with the pose still the shot's: the board rig read "pitch 84, zoom 4.5" as a ground-level
+                   lens somewhere else, the clear angle's turn fell away, the lens craned up and swung ~90° round,
+                   and that empty view stood for up to a second until the return cut home. The rig now stays with a
+                   finished shot's frame until the camera really leaves it (a new move, the cut home, a hand pan or
+                   orbit: _poseGen), so the drift finishes on the frame it was composed for. Kill switch
+                   window.EW_NO_SHOT_HOLD = true. */
+                if (this._cineShotId != null) { this._cineLiveGen = this._poseGen | 0; this._cineLiveAt = performance.now(); }
                 if (this._cineTps && this._cineShotId == null && !this._tpsHold) {
+                    const _heldFrame = this._cineLiveGen === (this._poseGen | 0)
+                        && performance.now() - (this._cineLiveAt || 0) < 6000
+                        && state.phase === 'battle' && !state.winner && !state._fullMapOverview
+                        && !(typeof window !== 'undefined' && window.EW_NO_SHOT_HOLD);
+                    if (!_heldFrame) {
                     this._cineTps = false;
+                    this._cineLiveGen = -1;
                     if (!this._tpsCollide) this._tpsSubject = null;
                     /* A sniper POV that ended with its shot hands the eye,
                        the hidden model and the FOV back (cineSniperPov). */
                     if (this._cineFpOwned) { try { _cineFpRelease(); } catch (e) {} }
+                    }
                 }
                 const ts = CONFIG.tileSize || BASE_TILE;
                 const gap = CONFIG.tileGap ?? 0;
@@ -26437,7 +26462,15 @@
                     this._autoSettleTimer = null;
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                     if (this._rafId || this._busy || this._cineShotId != null) return;
-                    if (state._userPanning || state._fullMapOverview) return;
+                    if (state._fullMapOverview) return;
+                    /* THE GLIDE SURVIVES THE HAND: a button held at the moment the return was due (a right-click on its way
+                       to BACK, an orbit not yet dragged) used to drop the return for good; it waits for the release now.
+                       A real hand pan / orbit is a snap(), which cancels this timer itself. */
+                    if (state._userPanning) {
+                        const _tries = (opts && opts._heldTries) | 0;
+                        if (_tries < 12 && !window.EW_NO_GLIDE_KEEP) this._armLevelSettle(250, { ...(opts || {}), _heldTries: _tries + 1 });
+                        return;
+                    }
                     if (_needPre) {
                         if (!this._preCineView) return;
                         if (_owner != null && state._blitzActiveUnitId != null && state._blitzActiveUnitId !== _owner) { _px2 = undefined; _py2 = undefined; }
@@ -26527,6 +26560,7 @@
                 const d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
                 if (Math.abs(d) <= RETURN_CUT_YAW_DEG) return false;
                 this._stop();
+                this._poseGen = (this._poseGen | 0) + 1;   // THE HELD FRAME: the cut home leaves the shot's frame
                 if (Number.isFinite(o.x)) this.x = this._tx = o.x;
                 if (Number.isFinite(o.y)) this.y = this._ty = o.y;
                 if (Number.isFinite(o.zoom)) this.zoom = this._tz = Math.max(0.15, Math.min(10.0, o.zoom));
@@ -26579,6 +26613,59 @@
                 return true;
             },
 
+            /* ══ THE SHOT KEEPS ITS LENS (2026-11-09) ══ mondo: "action camera focusing on nothing ... might be from when i
+               move the camera around and then the automatic camera takes over". Recorded: a left-drag pan during the
+               CPU's Blessing shot moved the shot's pivot, killed its drift and cancelled the return home, so the
+               camera stayed at the shot's pitch 84 and zoom 4.5 — a ground-level close-up — through the whole of
+               the next unit's turn (its attack played with one unit in frame); an orbit during a shot also wrote the
+               shot's heading into the resting view every later return lands on. Two rules:
+                 - while an action shot is PLAYING (its action still resolving, a beat still moving, the hit held),
+                   hand input does not move the camera at all; the wheel's zoom is still remembered for the return;
+                 - the hand's first pan / orbit step on a shot's frame that is no longer playing (the held frame
+                   before the return, a kept frame with AP left) takes the camera HOME first — the pitch, heading
+                   and zoom the shot left, the player's own wheel zoom if set — and the drag goes on from there.
+               Camera only, each viewer's own. Kill switch: window.EW_NO_SHOT_LENS = true. */
+            _poseGen: 0,
+            _cineLiveGen: -1,
+            _shotPlaying() {
+                if (typeof window !== 'undefined' && window.EW_NO_SHOT_LENS) return false;
+                if (this._cineShotId == null || state.phase !== 'battle') return false;
+                return !!(state._actionExecuting || this._rafId || _cineImpactHoldLeft() > 0);
+            },
+            _leaveShotForHand() {
+                if (typeof window !== 'undefined' && window.EW_NO_SHOT_LENS) return false;
+                if (state.phase !== 'battle' || state._fullMapOverview) return false;
+                const pre = this._preCineView;
+                const rig = !!(this._cineTps && !this._tpsHold && !this._tpsCollide);
+                if (!pre && !rig && this._cineShotId == null) return false;
+                const tilt = pre ? Math.min(pre.tilt, REST_TILT_MAX) : this._restTilt;
+                const yaw = pre ? pre.yaw : this._restYaw;
+                const dYaw = Math.abs((((yaw - this.yaw) % 360) + 540) % 360 - 180);
+                // already on the home angle with no shot rig on (a stale note of a view long since returned to): nothing to leave
+                if (!rig && Math.abs(this.tilt - tilt) < 2 && dYaw < 2) return false;
+                const zoom = isUserZoomEngaged() ? getUserZoomScale() : (pre && pre.zoom > 0 ? pre.zoom : getRestZoom());
+                this._stop();
+                if (this._autoSettleTimer) { clearTimeout(this._autoSettleTimer); this._autoSettleTimer = null; }
+                this._preCineView = null; this._cineShotId = null; this._cineKeepSubject = false; this._savedState = null;
+                try { _cineReleaseAllFx(); } catch (e) { /* cosmetic */ }
+                this.tilt = this._tt = tilt; this.yaw = this._tyaw = yaw;
+                this.zoom = this._tz = Math.max(0.15, Math.min(10.0, zoom));
+                this._elevOverride = this._tElev = -1; this._elevRelease = false;
+                this._panElevLatch = this._naturalElevAt(this.x, this.y);
+                this._tx = this.x; this._ty = this.y;
+                this._smoothInited = false;
+                this._poseGen = (this._poseGen | 0) + 1;
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
+                this._apply();
+                return true;
+            },
+            /* the mouse drags ask before every step: 'wait' = a shot is playing, drop the step; 'left' = the camera has
+               just come home from a shot's frame, start the drag again from this view; '' = carry on */
+            _handGate() {
+                if (this._shotPlaying()) return 'wait';
+                return this._leaveShotForHand() ? 'left' : '';
+            },
+
             /* THE HAND PAN LEAVES THE TWO-SHOT (mondo 2026-10-23: "panning the camera moves the camera angle real low to
                the ground as i pan across the map"). A hand pan is a snap() that names x/y only, so it kept a menu
                two-shot's low pitch, close zoom and raised focal (a target pick, the attack hold) and slid that ground-level
@@ -26602,20 +26689,56 @@
                 return this.zoom;
             },
 
+            /* ══ THE GLIDE SURVIVES THE HAND (2026-11-09) ══ mondo: "end of round camera focusing on nothing or action camera
+               focusing on nothing ... might be from when i move the camera around and then the automatic camera takes over".
+               Recorded in a real VS CPU match with hand pans, orbits and wheel zooms: every wheel notch, every orbit
+               step and even the press of a plain right-click (BACK) is a snap(), and a snap() stopped whatever
+               automatic glide was in flight where it stood and dropped the pending return home. A turn-start glide
+               touched by the wheel parked halfway to the unit (the unit under the bottom edge for 5 s); a glide out
+               of a menu two-shot touched by the wheel froze between the two views (pitch 63, yaw 115) and the next
+               hits landed off screen; a trackpad's momentum scroll kept doing it for a second after the fingers left.
+               A snap that names only the zoom and / or the angle now leaves the glide's travel alone: the camera
+               still arrives where the game was taking it, and only the axes the hand named are pinned to the hand's
+               value. A wheel zoom (zoom only) also keeps the pending return home and the focal's height. A hand PAN
+               (it names x / y) still takes the camera over outright. Kill switch: window.EW_NO_GLIDE_KEEP = true. */
             snap(opts) {
                 if (state.cameraDisabled && !opts._force) return;
-                this._stop();
+                // every hand input (wheel, drag pan, orbit, edge pan, pad, touch) arrives with _force; the game's own snaps never do
+                const _hand = !!opts._force;
+                /* THE SHOT KEEPS ITS LENS: nothing from the hand moves the camera while an action shot plays */
+                if (_hand && this._shotPlaying()) return;
+                const _noPos0 = opts.x === undefined && opts.y === undefined && opts.elevZ === undefined && opts.camZ === undefined;
+                const _zoomOnly0 = _noPos0 && opts.zoom !== undefined && opts.tilt === undefined && opts.yaw === undefined;
+                /* ...and the hand's first pan / orbit step on a finished shot's frame goes home first (the mouse drags
+                   do this themselves through _handGate and start again from the home view; this is the net for the
+                   other inputs — an orbit step computed from the shot's angle is dropped) */
+                if (_hand && !_zoomOnly0 && this._leaveShotForHand()) {
+                    if (opts.tilt !== undefined || opts.yaw !== undefined) return;
+                    if (opts.zoom !== undefined) { opts = { ...opts }; delete opts.zoom; }
+                }
                 this._clearFit = null;   // THE CLEAR FRAME: a hand pan / zoom / orbit owns the framing now
                 if (this._menuShot && state._userPanning && !state._userOrbiting
                     && (opts.x !== undefined || opts.y !== undefined) && opts.tilt === undefined && opts.yaw === undefined) {
                     opts = { ...opts, zoom: this._leaveMenuShotForPan() };
                 }
+                const _keepOn = !(typeof window !== 'undefined' && window.EW_NO_GLIDE_KEEP);
+                const _noPos = opts.x === undefined && opts.y === undefined && opts.elevZ === undefined && opts.camZ === undefined;
+                const _handAxes = _noPos && (opts.zoom !== undefined || opts.tilt !== undefined || opts.yaw !== undefined) && _keepOn;
+                const _zoomOnly = _handAxes && opts.tilt === undefined && opts.yaw === undefined;
+                // a hand PAN on a running glide pins only the position: the angle and the zoom finish their trip
+                const _handPan = _hand && _keepOn && !_noPos && opts.elevZ === undefined && opts.camZ === undefined;
+                const _keepGlide = (_handAxes || _handPan) && !!this._rafId && this._duration > 0;
+                if (!_keepGlide) this._stop();
+                if (!_zoomOnly) this._poseGen = (this._poseGen | 0) + 1;   // THE HELD FRAME: this leaves a finished shot's frame
 
                 // A snap is the user's (or a reset's) own reframe — a pending
                 // auto-settle firing after it would yank the view again.
-                if (this._autoSettleTimer) { clearTimeout(this._autoSettleTimer); this._autoSettleTimer = null; }
-                if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                this._busy = false;
+                // (THE GLIDE SURVIVES THE HAND: a wheel zoom reframes nothing but the zoom, so the return still comes.)
+                if (!_zoomOnly) {
+                    if (this._autoSettleTimer) { clearTimeout(this._autoSettleTimer); this._autoSettleTimer = null; }
+                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                }
+                if (!_keepGlide) this._busy = false;
                 if (opts.x    !== undefined) this.x    = opts.x;
                 if (opts.y    !== undefined) this.y    = opts.y;
                 if (opts.zoom !== undefined) this.zoom = opts.zoom;
@@ -26642,6 +26765,16 @@
                 // unit's facing — a unit keeps the direction it last moved,
                 // attacked or cast toward; only gameplay actions change it.
                 if (opts.camZ !== undefined) this.camZ = opts.camZ;
+                if (_keepGlide) {
+                    // THE GLIDE SURVIVES THE HAND: the running glide keeps its travel (x / y / height and every axis the
+                    // hand did not name); the named axes ride the hand's value from here on
+                    if (opts.x !== undefined) this._fromX = this._tx = this.x;
+                    if (opts.y !== undefined) this._fromY = this._ty = this.y;
+                    if (opts.zoom !== undefined) this._fromZ = this._tz = this.zoom;
+                    if (opts.tilt !== undefined) this._fromT = this._tt = this.tilt;
+                    if (opts.yaw !== undefined) { this._fromYaw = this._tyaw = this.yaw; this._yawDelta = 0; }
+                } else {
+                if (!_zoomOnly) {   // a wheel zoom never changes the focal's height (a held two-shot stays at chest height)
                 this._elevOverride = opts.elevZ ?? -1;
                 this._elevRelease = false;
                 // A programmatic reposition (reset, focus snap, explicit height)
@@ -26653,10 +26786,12 @@
                     && (opts.x !== undefined || opts.y !== undefined || this._elevOverride >= 0)) {
                     this._panElevLatch = null;
                 }
+                }
 
                 this._tx = this.x; this._ty = this.y; this._tz = this.zoom;
                 this._tt = this.tilt; this._tyaw = this.yaw; this._tcz = this.camZ;
                 this._tElev = this._elevOverride;
+                }
 
                 if (opts._force) {
                     this._smoothInited = false;
@@ -26680,6 +26815,9 @@
                 // still the camera's last move (the fit itself re-arms it after its own move)
                 this._clearFit = null;
                 this._moveGen = (this._moveGen | 0) + 1;   // THE NEAR FRAME: solve the menu slide again for this move
+                // THE HELD FRAME: a move begun under a live shot is the shot's own; any other leaves a finished shot's frame
+                this._poseGen = (this._poseGen | 0) + 1;
+                if (this._cineShotId != null) { this._cineLiveGen = this._poseGen; this._cineLiveAt = performance.now(); }
                 /* THE MENU CAMERA: the first camera move after a menu two-shot that
                    is not itself a menu shot leaves it — whatever it doesn't name
                    (tilt, yaw, zoom) comes back from the tactical view the shot left,
@@ -27424,6 +27562,7 @@
             camera._tx = x; camera._ty = y; camera._tz = zoom;
             camera._elevOverride = -1; camera._tElev = -1;
             camera._panElevLatch = null;
+            camera._poseGen = (camera._poseGen | 0) + 1;   // THE HELD FRAME
             camera._apply();
         }
         function setBoardZoomState(z) { camera._updateZoomState(z); }
@@ -31193,7 +31332,133 @@
         // round-to-round. getFullMapZoom() fits the flat board; a small margin
         // keeps nameplates + the foreshortened near edge inside the frame.
         const EOR_OVERVIEW_MARGIN = 0.92;
-        function showEndOfRoundOverview() {
+        /* ══ THE FIELD FRAME (2026-11-09) ══ mondo: "the end of round camera focusing on nothing ... (like nothing/no one
+           is important on screen)". Recorded over ten rounds of a real VS CPU match: the round's board read (this
+           function, issued 2-4 times every end of round: the opening shot, after the status dives, the field effects,
+           the recovery) was a pan to the middle SQUARE OF THE BOARD at the tour zoom, or at the hand zoom when one was
+           engaged. On a 12×12 arena fought along one edge that frame held 2-5 of 8 units; with a hand zoom of 3× it
+           held the empty middle, and every round's +HP / +MP numbers, the respawns and half the status ticks played
+           off screen. The board read now frames THE FIELD: every living unit this screen can see (fog and concealment
+           judged per viewer, like every camera move), bodies included, centred on the group and pulled back just far
+           enough to hold them all. It never comes closer than the tour's own zoom (or the hand zoom), and never pulls
+           further out than the tactical default: on a huge board the group's middle is kept and the far stragglers
+           are let go. A hand zoom that is tighter than the field is widened for the tour only; state.userZoomScale is
+           untouched and the next turn start lands back on it (camera._eorWide makes a CPU's opening apply it too).
+           Viewer-local, so the guest's relayed tour frames the guest's own field. Kill switch: EW_NO_FIELD_FRAME. */
+        const FIELD_FRAME_MARGIN_H = 0.80;   // share of the half-frame the field may fill sideways (portraits left, log right)
+        const FIELD_FRAME_MARGIN_V = 0.72;   // and up / down (the score bar, the plates and the numbers over the heads)
+        const FIELD_FRAME_BODY = 1.2;        // a body's height in tile levels, kept in the frame with its feet
+        function _fieldFrame(tiltDeg, yawDeg, list) {
+            try {
+                if (typeof window !== 'undefined' && window.EW_NO_FIELD_FRAME) return null;
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive || !ThreeRenderer.isActive()
+                    || typeof ThreeCamera === 'undefined' || !ThreeCamera.getBaseDist) return null;
+                const bd = ThreeCamera.getBaseDist();
+                if (!(bd > 0)) return null;
+                const us = (list || state.units || []).filter(u => u && !u.dead && !u._dying
+                    && Number.isFinite(u.x) && Number.isFinite(u.y) && _shouldCameraFollowUnit(u)
+                    && !(typeof isUnitOutOfRealmView === 'function' && isUnitOutOfRealmView(u)));
+                if (!us.length) return null;
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const cam3 = ThreeCamera.getCamera ? ThreeCamera.getCamera() : null;
+                const tanV = Math.tan((ThreeCamera.getFOV ? ThreeCamera.getFOV() : 45) * Math.PI / 360);
+                const tanH = tanV * ((cam3 && cam3.aspect) || (16 / 9));
+                const t = Math.max(5, Math.min(85, tiltDeg)) * Math.PI / 180, yw = (yawDeg || 0) * Math.PI / 180;
+                const sT = Math.sin(t), cT = Math.cos(t), sY = Math.sin(yw), cY = Math.cos(yw);
+                // the rig's basis (three-camera.js sync): gaze, screen-up, screen-right (level)
+                const dX = -sT * sY, dY = -cT, dZ = -sT * cY;
+                const uX = -cT * sY, uY = sT, uZ = -cT * cY;
+                const rX = cY, rZ = -sY;
+                // each body's feet where the camera's own focal would stand for it (terrain / floor / flight height, in
+                // the board's elevation scale — the same numbers camera._naturalElevAt uses), and its head above them
+                const elevPx = (typeof window._getElevationPx === 'function') ? window._getElevationPx : (lv => lv * ts);
+                const pts = [];
+                for (const u of us) {
+                    const rx = Math.round(u.x), ry = Math.round(u.y);
+                    let lv = 0;
+                    try { lv = (typeof _camFocalZAt === 'function') ? (_camFocalZAt(rx, ry, u) || 0)
+                        : ((typeof getHeightAt === 'function') ? (getHeightAt(rx, ry) || 0) : 0); } catch (e) { lv = 0; }
+                    const py = lv > 0 ? (elevPx(lv) || 0) : 0;
+                    const cx = u.x * ts + ts / 2, cz = u.y * ts + ts / 2;
+                    pts.push([cx, py, cz], [cx, py + FIELD_FRAME_BODY * ts, cz]);
+                }
+                // centre the focal on the group as the screen sees it, then solve the eye distance that holds every point
+                let fx = 0, fz = 0;
+                for (const p of pts) { fx += p[0]; fz += p[2]; }
+                fx /= pts.length; fz /= pts.length;
+                /* the focal's HEIGHT is the group's own middle, named to the camera (elevZ): left to the tile under the
+                   focal it jumped three levels whenever that tile held a flyer, and the ground units fell out of frame */
+                let dist = 0, fy = 0;
+                for (const p of pts) fy += p[1];
+                fy /= pts.length;
+                const xLo = ts / 2, xHi = ((bw() || 1) - 1) * ts + ts / 2, zLo = ts / 2, zHi = ((bh() || 1) - 1) * ts + ts / 2;
+                const LAST = 4;
+                for (let pass = 0; pass <= LAST; pass++) {
+                    // the focal stays on the board (the distance below is always solved for the focal really used)
+                    fx = Math.max(xLo, Math.min(xHi, fx)); fz = Math.max(zLo, Math.min(zHi, fz));
+                    dist = 0;
+                    for (const p of pts) {
+                        const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
+                        const along = ax * dX + ay * dY + az * dZ;
+                        const need = Math.max(Math.abs(ax * rX + az * rZ) / (FIELD_FRAME_MARGIN_H * tanH),
+                            Math.abs(ax * uX + ay * uY + az * uZ) / (FIELD_FRAME_MARGIN_V * tanV)) - along;
+                        if (need > dist) dist = need;
+                    }
+                    dist = Math.max(dist, ts * 2);
+                    if (pass === LAST) break;
+                    // where the group sits in that frame: slide the focal by the middle of its screen box
+                    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+                    for (const p of pts) {
+                        const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
+                        const depth = dist + ax * dX + ay * dY + az * dZ;
+                        if (!(depth > 1)) continue;
+                        const nx = (ax * rX + az * rZ) / (depth * tanH), ny = (ax * uX + ay * uY + az * uZ) / (depth * tanV);
+                        if (nx < xMin) xMin = nx; if (nx > xMax) xMax = nx;
+                        if (ny < yMin) yMin = ny; if (ny > yMax) yMax = ny;
+                    }
+                    if (!Number.isFinite(xMin + xMax + yMin + yMax)) break;
+                    const mx = (xMin + xMax) / 2 * dist * tanH, my = (yMin + yMax) / 2 * dist * tanV;
+                    if (Math.abs(mx) < ts * 0.05 && Math.abs(my) < ts * 0.05) break;
+                    // along screen-right by mx, along ground-forward (-sY, -cY) by my / cT — never more than the
+                    // group's own reach in one step (a low lens turns a small screen offset into a long ground slide)
+                    let sx = mx * rX + (-sY) * (my / Math.max(0.2, cT)), sz = mx * rZ + (-cY) * (my / Math.max(0.2, cT));
+                    const sl = Math.hypot(sx, sz), cap = ts * 3;
+                    if (sl > cap) { sx *= cap / sl; sz *= cap / sl; }
+                    fx += sx; fz += sz;
+                }
+                const out = { x: (fx - ts / 2) / ts, y: (fz - ts / 2) / ts, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), n: us.length, elev: fy };
+                if (!Number.isFinite(out.x + out.y + out.zoom)) return null;
+                // the focal stays on the board
+                out.x = Math.max(0, Math.min((bw() || 1) - 1, out.x));
+                out.y = Math.max(0, Math.min((bh() || 1) - 1, out.y));
+                return out;
+            } catch (e) { return null; }
+        }
+        let _fieldFrameLast = null;
+        window._fieldFrameState = function () { return _fieldFrameLast; };
+        /* THE CALM TOUR (2026-11-09, same recording): the tour re-issued the board read between beats, so a round with a
+           burn and a zone went board read (0.5 s) → dive → board read and, in the same frame, the next dive: four
+           moves where two do, and with the field frame each of those would be a zoom out and back in. A board read
+           that only bridges two beats (the opening shot, the return after the status dives) now waits EOR_READ_WAIT_MS
+           and is dropped when the next beat's own camera move (a dive, the recovery's read) arrives first, so the
+           camera goes straight from subject to subject and pulls back once, when the whole field's numbers pop. */
+        const EOR_READ_WAIT_MS = 560;
+        let _eorReadTimer = null;
+        function _eorReadCancel() { if (_eorReadTimer) { clearTimeout(_eorReadTimer); _eorReadTimer = null; } }
+        function showEndOfRoundOverviewSoon() {
+            if (_skipVisuals() || state.cameraDisabled) return;
+            if (typeof window !== 'undefined' && window.EW_NO_FIELD_FRAME) { showEndOfRoundOverview(); return; }
+            _eorReadCancel();
+            _eorReadTimer = setTimeout(() => {
+                _eorReadTimer = null;
+                if (state.phase !== 'battle' || state.winner || state._blitzActiveUnitId != null) return;
+                if (typeof _roundAdvanceInProgress !== 'undefined' && !_roundAdvanceInProgress) return;
+                if (state._userPanning || camera._cineShotId != null) return;
+                showEndOfRoundOverview();
+            }, EOR_READ_WAIT_MS);
+        }
+        function showEndOfRoundOverview(units, opts) {   // opts.relayed: the guest's replay (online.js eor-read)
+            _eorReadCancel();
             if (_skipVisuals() || state.cameraDisabled) return;
             /* Mystery Dungeon: the camera never leaves the party — an
                establishing crane over the maze every six steps would both
@@ -31219,17 +31484,34 @@
             // read is a pan to the centre at the tour's own focus zoom, not a pull back to the whole map
             // (getFullMapZoom × EOR_OVERVIEW_MARGIN / the 20-row floor).
             const _fitZoom = getEorFocusZoom();
+            // THE FIELD FRAME: the living units this screen can see, not the board's middle square
+            const _tourZoom = isUserZoomEngaged() ? _uz : _fitZoom;
+            let _ovX = Math.floor(bw() / 2), _ovY = Math.floor(bh() / 2), _ovZoom = _tourZoom;
+            const _ff = _fieldFrame(_ovTilt, camera._restYaw, (units && units.length) ? units : null)
+                || ((units && units.length) ? _fieldFrame(_ovTilt, camera._restYaw, null) : null);
+            if (_ff) {
+                _ovX = _ff.x; _ovY = _ff.y;
+                const _widest = Math.min(_tourZoom, getDefaultZoomAtTilt(_ovTilt));
+                _ovZoom = Math.max(_widest, Math.min(_tourZoom, _ff.zoom));
+                if (_ovZoom < _tourZoom - 0.01) camera._eorWide = true;   // the next turn start lands back on the hand / rest zoom
+            }
+            _fieldFrameLast = _ff ? { x: _ovX, y: _ovY, zoom: _ovZoom, fit: _ff.zoom, tour: _tourZoom, n: _ff.n } : null;
+            // how long a caller should let the camera travel before it pops numbers (0 = it is about there already)
+            const _lead = (Math.hypot(camera.x - _ovX, camera.y - _ovY) > 1.2 || Math.abs(camera.zoom - _ovZoom) > _ovZoom * 0.2
+                || Math.abs(camera.tilt - _ovTilt) > 12) ? 520 : 0;
             camera.moveTo({
-                x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
-                zoom: isUserZoomEngaged() ? _uz : _fitZoom,
+                x: _ovX, y: _ovY,
+                zoom: _ovZoom,
                 tilt: _ovTilt,
                 yaw: camera._restYaw,
                 // Long, gentle pull-back: the overview is re-issued between
                 // several EOR beats, and a short tween made each re-issue read
                 // as a "reset jerk" instead of one continuous glide.
                 duration: 800, easing: 'easeInOut',
+                ...((_ff && _ff.elev > 0) ? { elevZ: _ff.elev } : {}),   // THE FIELD FRAME: the group's own height
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
+            return _lead;
         }
 
         // ── End-of-round camera director ──
@@ -31254,6 +31536,7 @@
                 getDefaultZoomAtTilt(_dstTilt) * EOR_FOCUS_ZOOM_MULT));
         }
         function eorFocusCamera(x, y, opts = {}) {
+            _eorReadCancel();   // THE CALM TOUR: this beat's dive replaces a board read that was only bridging to it
             if (_skipVisuals() || state.cameraDisabled) return;
             camera.moveTo({
                 x, y,
@@ -31332,6 +31615,7 @@
         // state.js beats (detonations, storms, buffered round events) reach
         // these through globals — expose them explicitly for clarity.
         window.eorFocusCamera = eorFocusCamera;
+        window.showEndOfRoundOverview = showEndOfRoundOverview;
         window.playEorShotFocus = playEorShotFocus;
         window.getEorFocusZoom = getEorFocusZoom;
         window._eorPhaseLabel = _eorPhaseLabel;
@@ -59740,7 +60024,7 @@
                     //      zodiac shift / celestial events (sky cinematic).
                     //  11. Pending earthquake — frame the epicentre, then shake.
                     //  12. First unit's activation pan — back to gameplay.
-                    showEndOfRoundOverview();
+                    showEndOfRoundOverviewSoon();   // THE CALM TOUR: the opening read waits for the first beat's own move
 
                     processEndOfRoundStatuses(function _afterStatusPhase() {
                     if (state.winner || _eorMine !== _eorChainGen) return;
@@ -65270,7 +65554,10 @@
             // between plain turns, but inheriting a beat-2 CLOSE-UP
             // meant the camera chased the next unit across the map at
             // action-shot magnification until something else fixed it.
-            const _cineZoomActive = camera._cineShotId != null || camera._preCineView != null;
+            // THE FIELD FRAME: the end-of-round board read pulled back past the hand / rest zoom — this opening lands back on it
+            const _eorWide = !!camera._eorWide;
+            camera._eorWide = false;
+            const _cineZoomActive = camera._cineShotId != null || camera._preCineView != null || _eorWide;
             camera._cineShotId = null;
             const baseZoom = getUserZoomScale();
 
