@@ -104,6 +104,8 @@ const SOURCES = [
     { re: /Assets\/Metro_PSX\//, how: 'PACK', src: 'Metro PSX · Elbolilloduro · CC0' },
     { re: /Assets\/halloween\//, how: 'PACK', src: 'Halloween pack · Elbolilloduro · CC0' },
     { re: /Assets\/christmas\//, how: 'PACK', src: 'Christmas pack · Elbolilloduro' },
+    // THE PACK ROADS (2026-11-09): every piece of Elbolilloduro's Roads pack, one GLB each (bake-roads.py; data.js HQ_CATALOGUE_ROADS)
+    { re: /Assets\/world\/packs\/elbolilloduro\/roads\//, how: 'PACK', src: 'Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads)' },
     // THE MESHY SWAP (2026-11-03): one piece cut out of an Elbolilloduro pack scene by Claude in Blender (bake-pack-pieces.py), Assets/misc/ebd_<pack>_<item>.glb
     { re: /Assets\/misc\/ebd_buildings_/, how: 'PACK', src: 'Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS)' },
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },
@@ -222,7 +224,7 @@ const KIT = H.assets.models;
 const BASES = {
     misc: CDN + 'Assets/misc/', weapons: CDN + 'Assets/weapons/', rt: CDN + 'Assets/foilage/retrotreepack/GLB/',
     ocean: CDN + 'Assets/oceanic/', animals: CDN + 'Assets/animals/', instruments: CDN + 'Assets/instruments/',
-    traps: CDN + 'Assets/traps/', chess: CDN + 'Assets/chess/', psxmp: CDN + 'Assets/world/packs/pizzadoggy_psx_mega_pack/',
+    traps: CDN + 'Assets/traps/', chess: CDN + 'Assets/chess/', psxmp: CDN + 'Assets/world/packs/pizzadoggy_psx_mega_pack/', asset: CDN + 'Assets/',
 };
 const R3 = read('three-renderer.js');
 const XMAS_FILE = (R3.match(/var _XMAS_FILE = '([^']+)'/) || [, 'Christmas.dae'])[1];
