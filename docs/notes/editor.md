@@ -1016,3 +1016,14 @@ Everything in the model list should be available in the map editor". Thread "Mak
   snowy streets (Roads.dae nodes, base 'xmas'). The Meshy road_straight / road_turn rows stay.
 - Proof: editor MODELS search "road" lists Misc 2 + Roads 118; road pieces, a PSX bed and sofa placed by real clicks lie flat on
   the ground facing the eye (project files editor-all-models/).
+
+### THE SQUARE TURN + THE THUMBNAILS + THE WHOLE NAMES (2026-11-09, mondo: "they are being placed diagonally on the gird at an angle where rotating them wont make them straight, and yeah i cant see their little thumbnails and the names get cut off")
+- `square: true` on a catalogue row (every Roads row, PSX modular_structures, the ebd `_bld_` pieces) = editor.js palDrop snaps its
+  first facing to the nearest 90° whatever the eye's heading or the turn snap ("free" placed at the eye's own 114°).
+- editor.js turnSel: R / Shift+R on a prop / feature / door sitting off the turn-snap grid first turns it ONTO the grid (114 → 135,
+  then 90, 45 ...), so any piece placed at an odd angle can be straightened.
+- Thumbnails never drew: ThreeRenderer.hq.propPreview loads queued behind the world's model queue and hit the 20 s timeout. Now
+  propPreview loads with `front: true` (three-renderer.js `_scheduleModelLoad(..., front)` → pri 0, `_mqFront` lifts an already
+  queued job), timeout 45 s, and editor.js thumbFill queues the tiles bottom-up so the LIFO pump draws the top tiles first.
+- styles-editor.css `.ed-tile span` wraps (two lines, no ellipsis); road labels shortened ("straight 9.6×4.2 m"). The 1-9 hotbar
+  slots (`.ed-hs`) are 96 px wide, 46 px tall and wrap their names too (key hint + toast moved up to clear them).
