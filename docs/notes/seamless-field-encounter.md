@@ -1090,3 +1090,24 @@ mondo: "in the training room, i used meteor but the floor does not deform and th
   field (`_fieldDeformRestoreMesh`). Kill-switch `window.EW_NO_MARKS_DEFORM` (the old flat paint).
 - Arenas only become their room after `hqArenaUpgrade` (VS CPU's gate, the labs): a harness that calls `applyGameMode` alone plays
   the voxel board, which never had this bug. Shots: /mnt/project-files/meteor-crater-floor/.
+
+## THE TRUE DRAPE — no old-terrain slivers at changed squares (2026-11-09, three-renderer.js)
+mondo on Bohemian Grove Arena (Firefox, ?ew_gpu=webgpu): "when terrain gets changed and deformed, there are little seams/edges
+where it's still the old terrain ... this sliver of grass where it should be sand". Reproduced: dig 3×3 + paint desert gives
+hard green strips along every crater wall and bank; also water in a crater and sand painted over a natural mound.
+- Cause: the changed-terrain skins (THE SKINS `_fieldPatchGeo` with `ground: gDry`, liquids `_liqBlendGeo`) draped on every
+  OTHER vertex (S=4 per square over the 0.5 m lattice) and read the EXACT deform drop, while the room's floor mesh is linear
+  over its lattice triangles. Under a convex rim the skin's straight edge dipped under the floor, at a concave foot the floor
+  rose over it, so the old floor poked through as strips (ray probe: floor up to 7 px over the sheet).
+- Fix "THE TRUE DRAPE" (block after `_fieldDeformDug`): skins draped at `DRAPE_SKIN_SEGS` 8 (every lattice node);
+  `_fieldGroundSampler(..., drawn, out)` reads the floor as DRAWN (`_fieldMeshFix` triangle mix, `_fieldDeformDyDrawn` drop at
+  lattice nodes, ctx from `_fieldDrawnCtx`); `_trueDrapeCell` per square: liquid mode runs `_drapeCliffCut` on natural heights
+  (dig walls no longer cut), dry mode cuts only clamped reads and skips single triangles across a natural sheer rise
+  (`DRAPE_SHEER_RISE` 3 levels/node step; 1.2 gave checker noise) so the room's own cliff face shows; POKE lifts a quad by the
+  worst floor-over-sheet at 3×3 interior samples (spread ≥ 0.05 tile, cap 0.25 tile), shared per vertex (max) so no hairlines.
+  Free reads (no ±clamp, field fallback when hqTerrainFeet is null) stopped green humps on mound tops. THE FALLS ignore the dig drop.
+- Same textures/pixel density, nothing rebaked. Every terrain change uses these two builders, so all of them get it.
+- Cost: cold skin rebuild ~170 ms vs ~80 on headless llvmpipe (warm ~70). Switch `window.EW_NO_TRUE_DRAPE = true` (then bump
+  `GAME.state._terrainVersion`).
+- Proof (WebGL2 headless, not real WebGPU on screen): /mnt/project-files/terrain-slivers/. Left: the natural mound's cliff face
+  shows the room's own cliff sheet as a stepped band (by design), two tiny leaf flecks at its crest.
