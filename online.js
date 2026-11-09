@@ -1619,6 +1619,37 @@
             };
         }
 
+        /* THE TOUR FOR BOTH SEATS (2026-11-09, RULE #2; mondo: "the end of round camera focusing on nothing"). The end of
+           round runs on the HOST only, and of its camera only the shot focus above was relayed: the guest's camera sat
+           on whatever its last turn left while the status ticks, the field effects and the round's +HP / +MP numbers
+           played somewhere else. The host now relays each dive (battle.js eorFocusCamera) and each board read
+           (showEndOfRoundOverview, THE FIELD FRAME); the guest gates a dive on its own fog and frames its OWN field
+           (the units its screen can see), so nothing a seat cannot see is ever sent a position for. */
+        if (typeof window.eorFocusCamera === 'function') {
+            const _origEorFocusCamera = window.eorFocusCamera;
+            window.eorFocusCamera = function(x, y, opts) {
+                var r = _origEorFocusCamera(x, y, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (!(opts && opts.relayed) && Number.isFinite(x) && Number.isFinite(y)
+                    && (_netOn && _isHost() || _ewRecOn())) {
+                    _emit('relay', { type: 'eor-focus', x: x, y: y,
+                        duration: (opts && Number.isFinite(opts.duration)) ? opts.duration : null });
+                }
+                return r;
+            };
+        }
+        if (typeof window.showEndOfRoundOverview === 'function') {
+            const _origShowEndOfRoundOverview = window.showEndOfRoundOverview;
+            window.showEndOfRoundOverview = function(units, opts) {
+                var r = _origShowEndOfRoundOverview(units, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (!(opts && opts.relayed) && (_netOn && _isHost() || _ewRecOn())) {
+                    _emit('relay', { type: 'eor-read' });
+                }
+                return r;
+            };
+        }
+
         /* Turn-handoff sweep ("Your Turn" / "Opponent's Turn"). The blitz
            engine only runs on the HOST, so without this relay the guest
            NEVER sees the handoff announcement — one of the biggest "online
@@ -4883,6 +4914,23 @@
                         }
                     }
 
+                    /* THE TOUR FOR BOTH SEATS (see the host wrappers above): a dive onto a tile this seat can't see moves
+                       no camera; the board read frames this seat's own field */
+                    if (data.type === 'eor-focus' && _ewMirrorView()
+                        && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+                        var _efVis = !st || !st.fogOfWar
+                            || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(data.x, data.y));
+                        if (_efVis && typeof window.eorFocusCamera === 'function') {
+                            try {
+                                window.eorFocusCamera(data.x, data.y,
+                                    { duration: Number.isFinite(data.duration) ? data.duration : undefined, relayed: true });
+                            } catch (e) {}
+                        }
+                    }
+                    if (data.type === 'eor-read' && _ewMirrorView() && typeof window.showEndOfRoundOverview === 'function') {
+                        try { window.showEndOfRoundOverview(null, { relayed: true }); } catch (e) {}
+                    }
+
                     if (data.type === 'player-turn-announce' && _ewMirrorView()) {
                         if (typeof window.showPlayerTurnAnnounce === 'function' && data.player) {
                             var _ptaUnit = null;
@@ -6448,6 +6496,7 @@
                         case 'storm-lightning-fx':
                         case 'key-fx':
                         case 'eor-shot-focus':
+                        case 'eor-focus':
                             if (!tv(data.x, data.y)) return null;
                             break;
                         case 'det-cine':
@@ -7178,7 +7227,7 @@
                camera themselves (free-cam mode for filming trailers). */
             var CAMERA_RELAY = {
                 'camera-events': 1, 'cam-action-settle': 1, 'dash-cam-follow': 1,
-                'unit-fall-follow': 1, 'spell-focus-cam': 1, 'eor-shot-focus': 1
+                'unit-fall-follow': 1, 'spell-focus-cam': 1, 'eor-shot-focus': 1, 'eor-focus': 1, 'eor-read': 1
             };
 
             /* ── IndexedDB (localStorage's ~5MB quota is too small for this) ── */
