@@ -419,6 +419,82 @@ function beginRecovery(room, code, role, socketId) {
     io.to(code).emit('player-rejoined', { role, socketId, recoveryId: recovery.id, matchId: room._matchId });
 }
 
+// ── THE SEAT HOLD (PvP playtest 2026-11-09 B3 + B2) ─────────────────────────
+// A dropped seat gets REJOIN_GRACE_MS to come back. A RELOADING page (F5) can't
+// rejoin until its whole boot has run, and on a weak PC that boot outlasted the
+// 90 s window, so the match was forfeited while the page was still loading; a
+// page busy building a board misses the socket heartbeat the same way.
+// Now a page in an online battle POSTs /api/seat-hold every 15 s from a worker
+// thread (index.html THE SEAT HOLD), which keeps running while the main thread
+// is busy, and a reloading page starts it from its first script, before any big
+// script downloads (pagehide sends one too). Each hold keeps the seat RELOAD_HOLD_MS from now,
+// never past RELOAD_HOLD_CAP_MS after the drop (never under the 90 s grace), and
+// the other seat's countdown follows the new deadline. A page that dies stops
+// pinging, so its seat runs out RELOAD_HOLD_MS after the last ping.
+// After the result, a dropped seat keeps its result for POST_MATCH_HOLD_MS
+// (rejoin-room hands it the terminal snapshot) instead of the room closing.
+const REJOIN_GRACE_MS = 90 * 1000;
+const RELOAD_HOLD_MS = 75 * 1000;
+const RELOAD_HOLD_CAP_MS = 8 * 60 * 1000;
+const POST_MATCH_HOLD_MS = 5 * 60 * 1000;
+
+function remainingSecondsOf(dc) {
+    return Math.max(0, Math.ceil((dc.deadline - Date.now()) / 1000));
+}
+// (Re)arms one absent seat's forfeit timer for its current deadline. The timer
+// re-checks the deadline when it fires, so an extension never forfeits early.
+function armDisconnectDeadline(room, code, pending, dc) {
+    if (dc.timer) clearTimeout(dc.timer);
+    dc.timer = setTimeout(() => {
+        if (rooms.get(code) !== room || room._disconnected !== pending ||
+            pending[dc.role] !== dc || room[dc.role] !== dc.socketId ||
+            room._matchEnded || room._resultProcessed) return;
+        if (Date.now() < dc.deadline - 50) return armDisconnectDeadline(room, code, pending, dc);
+        clearDisconnectDeadlines(room);
+
+        const role = dc.role;
+        console.log(`[IO] ${role} failed to rejoin room ${code} — forfeit`);
+        const forfeitPlayer = role === 'host' ? 1 : 2;
+        io.to(code).emit('match-forfeit', { forfeitPlayer: forfeitPlayer, role: role });
+        // A disconnect-forfeit is a real loss: record the ELO for the
+        // remaining player instead of letting the leaver escape rating-free.
+        applyRankedElo(room, code, forfeitPlayer === 1 ? 2 : 1, 'disconnect-forfeit');
+        replayEnd(room, 'forfeit', { forfeitPlayer });
+        rooms.delete(code);
+    }, Math.max(0, dc.deadline - Date.now()));
+}
+// A reloading seat says it is coming back: keep its seat longer (see above).
+function holdSeat(room, code, role) {
+    const now = Date.now();
+    if (!room._holds) room._holds = {};
+    room._holds[role] = now + RELOAD_HOLD_MS;
+    const dc = room._disconnected && room._disconnected[role];
+    if (!dc) return { ok: true, held: true, remainingSeconds: Math.ceil(RELOAD_HOLD_MS / 1000) };
+    const want = Math.min(dc.at + RELOAD_HOLD_CAP_MS, now + RELOAD_HOLD_MS);
+    if (want > dc.deadline) {
+        dc.deadline = want;
+        armDisconnectDeadline(room, code, room._disconnected, dc);
+        const other = role === 'host' ? room.guest : room.host;
+        if (other) io.to(other).emit('opponent-hold', { role, remainingSeconds: remainingSecondsOf(dc) });
+    }
+    return { ok: true, held: true, remainingSeconds: remainingSecondsOf(dc) };
+}
+// sendBeacon posts text/plain; fetch posts JSON. Read the token either way.
+app.post('/api/seat-hold', httpRateLimit('seat-hold', 30, 12), express.text({ type: 'text/plain', limit: '2kb' }), (req, res) => {
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = null; } }
+    const code = body && typeof body.roomCode === 'string' ? body.roomCode.toUpperCase().trim() : '';
+    const token = body && body.rejoinToken;
+    const room = code && rooms.get(code);
+    const role = room && room.rejoinTokens && typeof token === 'string'
+        ? ['host', 'guest'].find(seat => room.rejoinTokens[seat] === token) : null;
+    // stop: nothing left to hold (no room, a stale token, a decided match). Before the host's
+    // match-started the answer is only "not yet", and the page keeps pinging.
+    if (!role || room._matchEnded || room._resultProcessed) return res.json({ ok: false, stop: true });
+    if (!room._matchStarted) return res.json({ ok: false });
+    res.json(holdSeat(room, code, role));
+});
+
 function generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
     let code = '';
@@ -2320,7 +2396,10 @@ io.on('connection', (socket) => {
         if (role && room._matchEnded && room._terminalSnapshot && !findRoomBySocket(socket.id) &&
             !io.sockets.sockets.has(room[role])) {
             room[role] = socket.id;
+            if (room._postMatchTimer) { clearTimeout(room._postMatchTimer); room._postMatchTimer = null; }
+            room._rematchVotes = null;   // a vote from before the drop was cast to the other socket
             socket.join(code);
+            console.log(`[IO] ${role} rejoined room ${code} post-match as ${socket.id}`);
             if (typeof callback === 'function') callback({ ok: true, role, myPlayer: role === 'host' ? 1 : 2,
                 matchId: room._matchId, result: room._terminalSnapshot });
             io.to(code).emit('result-rejoined', { matchId: room._matchId, role });
@@ -2340,6 +2419,7 @@ io.on('connection', (socket) => {
             room.guest = socket.id;
         }
         delete room._disconnected[role];
+        if (room._holds) delete room._holds[role];
         const waiting = Object.values(room._disconnected)[0];
         if (!waiting) room._disconnected = null;
 
@@ -2357,6 +2437,10 @@ io.on('connection', (socket) => {
         // application acknowledgement remains a separate recovery step.
         if (!waiting) beginRecovery(room, code, role, socket.id);
     });
+
+    // Leaving on purpose (the result screen's Main Menu): the next disconnect
+    // closes a finished room at once instead of holding the seat (THE RESULT HOLD).
+    socket.on('leave-room', () => { socket._ewLeaving = true; });
 
     socket.on('disconnect', () => {
         console.log(`[IO] Disconnected: ${socket.id}`);
@@ -2392,43 +2476,56 @@ io.on('connection', (socket) => {
         // a departure now is someone leaving the result screen, not a
         // forfeit. Close the room cleanly — postMatch tells the remaining
         // client to keep its result screen instead of reloading.
+        // THE RESULT HOLD (PvP playtest 2026-11-09 B2): a seat that DROPS on
+        // the result screen (a frozen weak PC misses the 60 s heartbeat, a
+        // reload) keeps its result and the rematch for POST_MATCH_HOLD_MS:
+        // rejoin-room hands it the terminal snapshot. The room closes at
+        // once only when nobody is left, and a seat that leaves on purpose
+        // (Main Menu) sends 'leave-room' first, which closes it at once.
         if (room._matchEnded || room._resultProcessed) {
             clearDisconnectDeadlines(room);
-            console.log(`[IO] ${role} left room ${code} post-match — closing room`);
-            socket.to(code).emit('player-disconnected', { role, reconnectable: false, postMatch: true });
-            replayEnd(room, 'closed');
-            rooms.delete(code);
+            const otherSeat = role === 'host' ? room.guest : room.host;
+            const otherLive = !!(otherSeat && io.sockets.sockets.has(otherSeat));
+            if (!otherLive || !room._terminalSnapshot || socket._ewLeaving) {
+                if (room._postMatchTimer) clearTimeout(room._postMatchTimer);
+                console.log(`[IO] ${role} left room ${code} post-match — closing room`);
+                socket.to(code).emit('player-disconnected', { role, reconnectable: false, postMatch: true });
+                replayEnd(room, 'closed');
+                rooms.delete(code);
+                return;
+            }
+            console.log(`[IO] ${role} dropped from room ${code} post-match — result kept ${POST_MATCH_HOLD_MS / 1000}s`);
+            socket.to(code).emit('player-disconnected', { role, reconnectable: true, postMatch: true,
+                remainingSeconds: Math.ceil(POST_MATCH_HOLD_MS / 1000) });
+            if (room._postMatchTimer) clearTimeout(room._postMatchTimer);
+            const leftId = socket.id;
+            room._postMatchTimer = setTimeout(() => {
+                room._postMatchTimer = null;
+                if (rooms.get(code) !== room || room[role] !== leftId || !room._matchEnded) return;
+                console.log(`[IO] ${role} never came back to room ${code} post-match — closing room`);
+                io.to(code).emit('player-disconnected', { role, reconnectable: false, postMatch: true });
+                replayEnd(room, 'closed');
+                rooms.delete(code);
+            }, POST_MATCH_HOLD_MS);
             return;
         }
 
-        console.log(`[IO] ${role} disconnected from room ${code} — 90s rejoin window`);
+        // A page that already said it is reloading (pagehide beacon / the boot
+        // script, see holdSeat) starts with its longer hold.
+        const now = Date.now();
+        const held = room._holds && room._holds[role] > now ? room._holds[role] : 0;
+        const deadline = Math.max(now + REJOIN_GRACE_MS, Math.min(now + RELOAD_HOLD_CAP_MS, held));
+        console.log(`[IO] ${role} disconnected from room ${code} — ${Math.round((deadline - now) / 1000)}s rejoin window`);
 
-        socket.to(code).emit('player-disconnected', { role, reconnectable: true });
-        replayWrite(room, { t: Date.now(), e: 'disconnect', role });
+        socket.to(code).emit('player-disconnected', { role, reconnectable: true,
+            remainingSeconds: Math.ceil((deadline - now) / 1000) });
+        replayWrite(room, { t: now, e: 'disconnect', role });
 
         if (!room._disconnected) room._disconnected = {};
         if (room._disconnected[role]) return; // duplicate notification cannot extend grace
         const pending = room._disconnected;
-        const dc = pending[role] = {
-            role,
-            socketId: socket.id,
-            deadline: Date.now() + 90 * 1000,
-            timer: setTimeout(() => {
-                if (rooms.get(code) !== room || room._disconnected !== pending ||
-                    pending[role] !== dc || room[role] !== dc.socketId ||
-                    room._matchEnded || room._resultProcessed) return;
-                clearDisconnectDeadlines(room);
-
-                console.log(`[IO] ${role} failed to rejoin room ${code} — forfeit`);
-                const forfeitPlayer = role === 'host' ? 1 : 2;
-                io.to(code).emit('match-forfeit', { forfeitPlayer: forfeitPlayer, role: role });
-                // A disconnect-forfeit is a real loss: record the ELO for the
-                // remaining player instead of letting the leaver escape rating-free.
-                applyRankedElo(room, code, forfeitPlayer === 1 ? 2 : 1, 'disconnect-forfeit');
-                replayEnd(room, 'forfeit', { forfeitPlayer });
-                rooms.delete(code);
-            }, 90 * 1000)
-        };
+        const dc = pending[role] = { role, socketId: socket.id, at: now, deadline, timer: null };
+        armDisconnectDeadline(room, code, pending, dc);
     });
 });
 

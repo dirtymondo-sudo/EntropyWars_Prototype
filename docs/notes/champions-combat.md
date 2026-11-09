@@ -4909,3 +4909,42 @@ spread over HP + the pool's damage stat (both when the pool mixes), each stat ca
   Found + fixed in the forge: under the pixel theme (Press Start 2P 13 px) the 36 px `.pb-stat-val` box spilled every 3-digit stat
   4 px and HP 1160 18 px into its bar. styles-base.css: box = max(36px, 3.2em); party-builder.js adds `long` to 4+ character numbers
   (10 px, same box), so bars stay lined up. Shots: /mnt/project-files/race-grades-20261108/shots/.
+
+## ONLINE DROPS: THE DISCONNECT WIN, THE SEAT HOLD, THE RESULT HOLD (2026-11-09, PvP playtest B2/B3/B4)
+Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: /mnt/project-files/pvp-disconnect-20261109/.
+- **THE DISCONNECT WIN (B4):** online.js `triggerOnlineForfeitWin` called `showVictoryScreen`, which exists in no file, so the
+  server's disconnect forfeit only logged "Player 1 wins!" and the board stayed up. It now ends the match like the pause
+  menu's FORFEIT: `state.winner` + `checkWin()` → `finalizeMatch` → result screen, then the host broadcasts. A guest whose
+  HOST never came back ends its own mirror the same way (`_guestResultShown` set so the mirror path can't open it twice).
+  Before the battle starts (builder / loading) it keeps the old reload. The server deleted the room with the forfeit, so
+  the winner's rematch button then reads "Opponent Left" (disabled).
+- **THE SEAT HOLD (B3):** a reloading page can't rejoin until its whole boot ran (~115 s on the sandbox GPU), past the
+  server's 90 s window, and in the sandbox the boot held the page's main thread for minutes (a page timer never fired,
+  the socket only reconnected after the forfeit; a host building the board on the same box missed the 60 s socket
+  heartbeat and was forfeited the same way). index.html's second inline script (right after boot telemetry) defines
+  `window._ewSeatHoldStart(room, token)` / `_ewSeatHoldStop()`: a Blob WORKER POSTs `/api/seat-hold` every 15 s (a worker
+  thread keeps running while the main thread is busy). It starts at once on a page that holds a sessionStorage rejoin
+  token (the reload), and online.js's 2 s net-status interval starts it for every online battle and stops it at the
+  result / Main Menu; the server answering `stop` (match decided, room gone, stale token) ends it; online.js also sends
+  one with `sendBeacon` on `pagehide`. server.js `holdSeat`: each ping keeps a DROPPED seat 75 s from now
+  (`RELOAD_HOLD_MS`), never past 8 min after the drop (`RELOAD_HOLD_CAP_MS`), never under the 90 s grace, so a closed
+  tab still forfeits at 90 s. A ping that lands before the server saw the socket die is kept in `room._holds`. The other
+  seat gets `opponent-hold` and its banner reads "Player 2's game is busy or reloading — holding their seat…" with the
+  new count. The reconnect banner counts off a DEADLINE now (a busy page used to skip ticks: "88-90 for two minutes"),
+  and a reloading page's own banner follows `window._ewSeatHold`. Forfeit timers: `armDisconnectDeadline` (re-arms when
+  the deadline moved).
+- **THE RESULT HOLD (B2):** server.js closed the room on ANY post-match disconnect, so a guest that froze on the podium
+  (missed the 60 s heartbeat) got "Unable to rejoin" over its result and no rematch. Now a post-match DROP keeps the room
+  `POST_MATCH_HOLD_MS` (5 min) while the other seat is still there; rejoin-room's existing result branch hands the terminal
+  snapshot back. A page that still shows its result keeps it (the snapshot is the guest's fogged view, never laid over the
+  host); a reloaded page restores it. The other seat's rematch button reads "Opponent Reconnecting…", then "Request
+  Rematch" again on `result-rejoined` (votes from before the drop are void on both sides). Leaving on purpose (Main Menu)
+  emits `leave-room` first, so that still closes the room at once ("Opponent Left"). A post-match rejoin that fails
+  retries 4× 5 s apart, then only says "Room Closed" on the button: it never covers the result screen.
+- PROVEN 11-09 in two real Chromium pages (one browser each, local server.js, online.js served from the repo):
+  guest closed its tab mid-match -> host VICTORY at ~93 s with "Opponent Left"; host closed its tab -> guest VICTORY;
+  guest F5 with online.js held 130 s (rejoin at 2 min 48 s) -> host banner "Player 2's game is busy or reloading",
+  rejoin + recovery, both seats in sync, and a second drop while the guest built the board was held too; guest socket
+  dropped on the result -> host "Opponent Reconnecting…" then "Request Rematch", guest kept its result, rematch played.
+- Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
+  inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
