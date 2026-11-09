@@ -4961,7 +4961,10 @@ of 8 units in frame. Six things, all camera only and viewer-local:
   square at the tour zoom (or the hand zoom: at 3× it showed two units and none of the regen numbers). It now centres on
   the living units THIS screen can see (`_shouldCameraFollowUnit`), or on the units named by the beat (recovery: the
   healed / MP units; field effects: the units touched), and widens just enough to hold them (feet + 1.2 levels of body,
-  margins 0.80 / 0.72), never wider than the default view at that pitch and never closer than the tour / hand zoom. A
+  margins 0.80 / 0.72), never wider than the default view at that pitch and never closer than the tour / hand zoom.
+  Heights are the camera's own (`_camFocalZAt` + `_getElevationPx`: terrain, floor, flight), and the frame names its
+  focal HEIGHT (`elevZ` = the group's middle): left to the tile under the focal it jumped three levels whenever that
+  tile held a flyer, and on a hill map the first version aimed at the board's edge. A
   widened read sets `camera._eorWide`, so the next turn start lands back on the hand / rest zoom. Recovery's +HP / +MP
   numbers now wait 520 ms when the camera has to travel there (the field effects beat already did). Kill switch
   `window.EW_NO_FIELD_FRAME`; probe `window._fieldFrameState()`.

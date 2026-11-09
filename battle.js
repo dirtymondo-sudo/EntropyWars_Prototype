@@ -31369,21 +31369,33 @@
                 const dX = -sT * sY, dY = -cT, dZ = -sT * cY;
                 const uX = -cT * sY, uY = sT, uZ = -cT * cY;
                 const rX = cY, rZ = -sY;
-                const hAt = (x, y) => (typeof getHeightAt === 'function') ? (getHeightAt(x, y) || 0) : 0;
+                // each body's feet where the camera's own focal would stand for it (terrain / floor / flight height, in
+                // the board's elevation scale — the same numbers camera._naturalElevAt uses), and its head above them
+                const elevPx = (typeof window._getElevationPx === 'function') ? window._getElevationPx : (lv => lv * ts);
                 const pts = [];
                 for (const u of us) {
-                    const lv = Math.max(0, Number.isFinite(u.z) ? u.z : hAt(u.x, u.y));
+                    const rx = Math.round(u.x), ry = Math.round(u.y);
+                    let lv = 0;
+                    try { lv = (typeof _camFocalZAt === 'function') ? (_camFocalZAt(rx, ry, u) || 0)
+                        : ((typeof getHeightAt === 'function') ? (getHeightAt(rx, ry) || 0) : 0); } catch (e) { lv = 0; }
+                    const py = lv > 0 ? (elevPx(lv) || 0) : 0;
                     const cx = u.x * ts + ts / 2, cz = u.y * ts + ts / 2;
-                    pts.push([cx, lv * ts, cz], [cx, (lv + FIELD_FRAME_BODY) * ts, cz]);
+                    pts.push([cx, py, cz], [cx, py + FIELD_FRAME_BODY * ts, cz]);
                 }
                 // centre the focal on the group as the screen sees it, then solve the eye distance that holds every point
                 let fx = 0, fz = 0;
                 for (const p of pts) { fx += p[0]; fz += p[2]; }
                 fx /= pts.length; fz /= pts.length;
+                /* the focal's HEIGHT is the group's own middle, named to the camera (elevZ): left to the tile under the
+                   focal it jumped three levels whenever that tile held a flyer, and the ground units fell out of frame */
                 let dist = 0, fy = 0;
-                for (let pass = 0; pass < 3; pass++) {
-                    const camX = (fx - ts / 2) / ts, camY = (fz - ts / 2) / ts;
-                    fy = (typeof camera._naturalElevAt === 'function') ? (camera._naturalElevAt(camX, camY) || 0) : 0;
+                for (const p of pts) fy += p[1];
+                fy /= pts.length;
+                const xLo = ts / 2, xHi = ((bw() || 1) - 1) * ts + ts / 2, zLo = ts / 2, zHi = ((bh() || 1) - 1) * ts + ts / 2;
+                const LAST = 4;
+                for (let pass = 0; pass <= LAST; pass++) {
+                    // the focal stays on the board (the distance below is always solved for the focal really used)
+                    fx = Math.max(xLo, Math.min(xHi, fx)); fz = Math.max(zLo, Math.min(zHi, fz));
                     dist = 0;
                     for (const p of pts) {
                         const ax = p[0] - fx, ay = p[1] - fy, az = p[2] - fz;
@@ -31393,7 +31405,7 @@
                         if (need > dist) dist = need;
                     }
                     dist = Math.max(dist, ts * 2);
-                    if (pass === 2) break;
+                    if (pass === LAST) break;
                     // where the group sits in that frame: slide the focal by the middle of its screen box
                     let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
                     for (const p of pts) {
@@ -31407,11 +31419,14 @@
                     if (!Number.isFinite(xMin + xMax + yMin + yMax)) break;
                     const mx = (xMin + xMax) / 2 * dist * tanH, my = (yMin + yMax) / 2 * dist * tanV;
                     if (Math.abs(mx) < ts * 0.05 && Math.abs(my) < ts * 0.05) break;
-                    // along screen-right by mx, along ground-forward (-sY, -cY) by my / cT
-                    fx += mx * rX + (-sY) * (my / Math.max(0.2, cT));
-                    fz += mx * rZ + (-cY) * (my / Math.max(0.2, cT));
+                    // along screen-right by mx, along ground-forward (-sY, -cY) by my / cT — never more than the
+                    // group's own reach in one step (a low lens turns a small screen offset into a long ground slide)
+                    let sx = mx * rX + (-sY) * (my / Math.max(0.2, cT)), sz = mx * rZ + (-cY) * (my / Math.max(0.2, cT));
+                    const sl = Math.hypot(sx, sz), cap = ts * 3;
+                    if (sl > cap) { sx *= cap / sl; sz *= cap / sl; }
+                    fx += sx; fz += sz;
                 }
-                const out = { x: (fx - ts / 2) / ts, y: (fz - ts / 2) / ts, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), n: us.length };
+                const out = { x: (fx - ts / 2) / ts, y: (fz - ts / 2) / ts, zoom: Math.max(0.15, Math.min(10.0, bd / dist)), n: us.length, elev: fy };
                 if (!Number.isFinite(out.x + out.y + out.zoom)) return null;
                 // the focal stays on the board
                 out.x = Math.max(0, Math.min((bw() || 1) - 1, out.x));
@@ -31493,6 +31508,7 @@
                 // several EOR beats, and a short tween made each re-issue read
                 // as a "reset jerk" instead of one continuous glide.
                 duration: 800, easing: 'easeInOut',
+                ...((_ff && _ff.elev > 0) ? { elevZ: _ff.elev } : {}),   // THE FIELD FRAME: the group's own height
                 _fogAllowed: true, _allowZoomChange: true, _bypassCap: true
             });
             return _lead;
