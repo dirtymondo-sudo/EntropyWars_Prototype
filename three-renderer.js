@@ -15073,10 +15073,18 @@ const ThreeRenderer = (function () {
             _mqStart(_mqJobs.shift());
         }
     }
-    function _scheduleModelLoad(start, url, bg, drop) {
+    /* THE THUMBNAILS (2026-11-09, mondo: "i cant see their little thumbnails"): the editor's palette pictures (hq.propPreview) asked
+       for their file through the scene lane, BEHIND every file the world had queued (hundreds of Meshy files on entering the
+       editor), so each picture gave up after its 20 s wait and the tiles stayed "…". `front` = the rig lane (0): it starts now
+       and never waits for a slot or the sheets. One picture is asked at a time, so the lane never floods. */
+    function _mqFront(url) {
+        for (var i = 0; i < _mqJobs.length; i++) if (_mqJobs[i].url === url && !_mqJobs[i].started) { _mqJobs[i].pri = 0; _mqPump(); return true; }
+        return false;
+    }
+    function _scheduleModelLoad(start, url, bg, drop, front) {
         if (typeof window === 'undefined' || !window.EW_PERF_LOW) {
             if (typeof window !== 'undefined' && window.EW_NO_MODEL_QUEUE) { start(function () {}); return; }
-            _mqJobs.push({ start: start, url: url || null, pri: _mqPriority(url, bg), seq: _mqSeq++, started: false, drop: drop || null });
+            _mqJobs.push({ start: start, url: url || null, pri: front ? 0 : _mqPriority(url, bg), seq: _mqSeq++, started: false, drop: drop || null });
             _mqPump();
             return;
         }
@@ -35586,6 +35594,7 @@ const ThreeRenderer = (function () {
             if (onFail) (e.fcbs || (e.fcbs = [])).push(onFail);
             _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
             if (!bg) _bgPromote(e._ewPiece || url);   // a real request for a file the warm queued starts it now
+            if (opts && opts.front) _mqFront(e._ewPiece || url);   // THE THUMBNAILS (2026-11-09): an editor picture jumps the queue
             return;
         }
         /* THE METRO PACK: `<file>#<node>[,<node>…]` = pieces of one file — the file loads (and is cached) once under its own
@@ -35669,7 +35678,7 @@ const ThreeRenderer = (function () {
             } catch (ex) { failed(); }
         }
         attempt(url, false);
-        }, url, bg, _onDrop);
+        }, url, bg, _onDrop, !!(opts && opts.front));
     }
 
     /* THE ONE LOADER PER FILE (SPELL_DIRECTOR_PLAN §12 "the loader gap", 2026-09-24 — the user's rule: one model per
@@ -36069,7 +36078,7 @@ const ThreeRenderer = (function () {
             }
             if (opts.onDone) opts.onDone(g, s, bb);
             landed();
-        });
+        }, opts.front ? { front: true } : undefined);   // THE THUMBNAILS (2026-11-09): an editor picture jumps the queue
         inCall = false;
         return g;
     }
@@ -87673,11 +87682,11 @@ const ThreeRenderer = (function () {
                 if (cat.pack && _carPackOn()) { var pdone = false, pinst = _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng({ x: 0, z: 0 }), onDone: function () { if (!pdone) { pdone = true; cb(pinst); } } }); setTimeout(function () { if (!pdone) { pdone = true; cb(null); } }, 20000); return; }   // THE CAR PACK
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
                 var fitSpan = cat.span != null && cat.h == null, done = false;
-                var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
+                var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick, front: true,
                     onDone: function (g) { if (done) return; done = true;
                         var ak = cat.skin ? _animalKeyOfUrl(_hqModelUrl(cat)) : null, t0 = Date.now();   // THE HORSES: a coat's picture waits for its sheets
                         var go = function () { if (ak && !_animalSkinReady(ak) && Date.now() - t0 < 15000) { setTimeout(go, 150); return; } cb(inst); }; setTimeout(go, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
-                setTimeout(function () { if (!done) { done = true; cb(null); } }, 20000);
+                setTimeout(function () { if (!done) { done = true; cb(null); } }, 45000);   // (the file now jumps the queue; a big one on a slow line still gets 45 s)
             } catch (e) { cb(null); }
         },
         treePreview: function (kind, cb) {
