@@ -1506,3 +1506,20 @@ real R2 sheets by slowing sand.png: blocks black with the sheet in flight. Fix: 
 disposed; sheets stay in `_hzTexCache`), called from `ThreeVFXEffects.warmSpellLibrary` and from the battle loading card (battle.js,
 inside the asset gate, so a beach board's own desert sheet is warmed too: keyed kind + `_ewSandPart('desert')`). Proof shots:
 /mnt/project-files/playtest-mechanics-20261107/pyramid-black-fix/. Any NEW spell monument kind is covered automatically.
+
+## THE LATE SHEETS (2026-11-09, mondo on the Heaven Arena: "what are these black squares on heaven?")
+WebGPU (`?ew_gpu=webgpu`, and the node renderer on WebGL 2) drew Heaven Arena's cloud-path squares solid black with soft edges
+(the path blend). Classic WebGL was fine. Cause: a terrain room's field is one triplanar material whose cliff / path / painted
+sheets live in its NODE GRAPH (`_ewNodeTag` D → `_ewNodeTerrain`), not in a material slot. three r186 re-reads a render
+object's bindings only when its material observer sees a change, and the observer watches the slots (map, emissiveMap…), so a
+sheet still loading at the field's first draw was bound as three's empty placeholder texture and never re-bound when it landed.
+A sheet some other mesh wears as `map` got uploaded through that mesh; heaven's path (`cloud_2.png`, 1024², drawn by nothing
+else) never did. Probe: `r._textures.get(D.path)` → `isDefaultTexture: true`, `version 0` while the texture was at version 1.
+Same scan (9 arenas, node renderer on WebGL 2, before): Giza's path (`dirt_2`) and Camelot's path (`cobblestone`) were black
+too; Shasta, Stonehenge, Hell, Babel, Olympus, Derelict clean (their sheets landed first or are worn elsewhere).
+Fix (three-renderer.js `_ewNodeLayer`): `r._nodes.needsRefresh` is wrapped — a render object whose material carries `_ewNode`
+gets one FULL refresh whenever the id/version signature of its node sheets (`_ewNodeSheets(D)`: every texture in D, arrays too)
+changed since its last refresh, so the landed sheet is uploaded and bound. The WebGPU render bundles (`_ewBunMat`) now hash the
+same node sheets, so a static bundle re-records (and refreshes) when one lands. Covers every hooked material with its own
+sheets (terrain, fluid wave sheets, painted grids), every board, room and walk. Classic WebGL never runs this code.
+Proof: /mnt/project-files/heaven-black-squares/ (before/after, node renderer on WebGL 2; headless WebGPU frames are black).
