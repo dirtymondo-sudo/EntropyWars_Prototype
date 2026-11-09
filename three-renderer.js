@@ -33363,6 +33363,7 @@ const ThreeRenderer = (function () {
     /* THE LIGHT RULES (2026-09-20): data.js HQ_LIGHT_RULES merged over the renderer's defaults — the cycle the
        building wears, the cap on a look's night grade, the floors under every room's fill. Keep the keys in step. */
     var HQ_LIGHT_DEFAULT = { cycle: 'day', nightCap: 0.45, ambientFloor: 0.7, fillColor: 0x9fb4d0, fill: 0.14, whiteDay: 0.75,
+        bounce: { amount: 0.6, color: 0x8a847a },   // THE BOUNCE (2026-11-09): a closed room's hemisphere ground = its floor's light thrown back up
         open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
         /* THE PREMIUM POLISH (2026-09-21): the shadow map, the key rig per kind, the AO, the height fog, the atmosphere — data.js owns the numbers */
         shadows: { on: true, mapLow: 1024, mapHigh: 2048, bias: -0.0005, normalBias: 2.4, pad: 4, everyN: 1, hero: { on: true, map: 512, bias: -0.004, keys: 'torch|brazier|campfire|furnace|hearth|forge|pyre|candelabra|lava' } },
@@ -33427,6 +33428,7 @@ const ThreeRenderer = (function () {
         o.key = Object.assign({}, HQ_LIGHT_DEFAULT.key, R.key || {});
         o.keyLamp = Object.assign({}, HQ_LIGHT_DEFAULT.keyLamp, R.keyLamp || {});
         o.nightFill = Object.assign({}, HQ_LIGHT_DEFAULT.nightFill, R.nightFill || {});
+        o.bounce = Object.assign({}, HQ_LIGHT_DEFAULT.bounce, R.bounce || {});
         return o;
     }
     function _sceneLookOf(look, name) {
@@ -74186,6 +74188,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell, G = _hq.propGroup, D = _hqData();
         var isBox = room.kind === 'box';
         _hq.tabletops = [];
+        var litRows = null;   // THE CEILING LAMPS FIRST: the rows that get a prop light when the room asks for more than it has
         var placeOne = function (p) {   // THE TERRAIN ROOM (2026-09-17): the compiler's scatter stands like any floor prop
             var cat = D.catalogue[p.key], Hrec = _hq;   // (the room record this prop stands in — a stage neighbour's own, whatever _hq is when its file lands)
             if (!cat || (!cat.file && !cat.proc && !(cat.pack && _carPackOn()))) return;   // THE CAR PACK: a pack-only row needs the pack
@@ -74270,7 +74273,7 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
-                if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX) {
+                if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
                     var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, cat.light.intensity != null ? cat.light.intensity : 0.6, (cat.light.dist || 6) * U, 2);
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
                     if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
@@ -74358,6 +74361,21 @@ const ThreeRenderer = (function () {
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
+        /* THE CEILING LAMPS FIRST (2026-11-09, mondo: "the inside of the mall is all black"): the room's HQ_PROP_LIGHT_MAX prop lights
+           went to the first rows that asked, so the mall's two table lava lamps, two floor lamps and six slot machines took all ten and
+           its nine saucers and sputniks over the atrium hung dark. When a room asks for more lights than it has left, the ceiling
+           lamps win, then row order as before (a room with no ceiling lamp keeps exactly the lights it had); the rest keep their glow sprites. */
+        litRows = null;
+        (function () {
+            var left = HQ_PROP_LIGHT_MAX - (_hq.propLights || 0), cands = [];
+            rows.forEach(function (p, i) {
+                var c = p && D.catalogue[p.key]; if (!c || !c.proc || !c.light) return;
+                cands.push({ p: p, i: i, s: (c.ceil || p.ceil) ? 1 : 0 });
+            });
+            if (cands.length <= left) return;
+            cands.sort(function (a, b) { return (b.s - a.s) || (a.i - b.i); });
+            litRows = new Set(cands.slice(0, Math.max(0, left)).map(function (c) { return c.p; }));
+        })();
         for (var ri = 0; ri < rows.length; ri++) { placeOne(rows[ri]); if ((ri & 3) === 3 && _hqSliceDue()) yield; }
         try { _hqSeatTabletops(); } catch (e) { console.warn('[HQ] seat pass', e); }   // the procedural furniture is in; the GLBs re-run it as they land
         })();
@@ -83440,7 +83458,7 @@ const ThreeRenderer = (function () {
                 });
             } else {
                 var amb = _hqMoodAmb(S, LR), kwF = _hqWhiteIn(room);   // THE LIFT (2026-10-24): the walk's own numbers; THE WHITE ROOMS
-                field.hemi = { sky: 0xd9d2c0, ground: 0x1c1a1e, intensity: 0.5 * amb * kwF };
+                field.hemi = { sky: 0xd9d2c0, ground: _hqBoxHemiG(room).getHex(), intensity: 0.5 * amb * kwF };   // THE BOUNCE
                 /* THE KEY LIGHT (2026-10-24): the walk's key strength (HQ_LIGHT_RULES.key.box / shell.rig, _hqLightArm) — the fight used to
                    keep the pre-rig 0.22 × mood, so the same room read darker in a fight than on the walk */
                 var rigB = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
@@ -85804,6 +85822,18 @@ const ThreeRenderer = (function () {
         var amb = _hqMoodAmb(S, LRb), kw = _hqWhiteIn(room);   // THE WHITE ROOMS
         return { hemiI: 0.5 * amb * kw, keyI: 0.22 * amb * kw, fillI: LRb.fill * amb };
     }
+    /* THE BOUNCE (2026-11-09, mondo in Disaster City's mall: "the inside of the mall is all black"): a closed box room's hemisphere
+       ground colour was a fixed near-black (0x1c1a1e), so every face that looks down (the ceiling, a gallery's underside, the top
+       of a 12 m wall) took no light but the few lamps near it, and a big hall read black above the walker's head. The ground half
+       is now the room's own floor colour (shell.floorColor, else HQ_LIGHT_RULES.bounce.color) × bounce.amount over that black:
+       a white terrazzo hall lights its roof, a dark cave floor throws back little. One rule for the walk, a door join's blend and
+       a fight in the room (_hqEnter, _hqIndoorLightVals, the field rig). */
+    function _hqBoxHemiG(room) {
+        var S = (room && room.shell) || {}, B = _hqLightRules().bounce || {};
+        var c = new THREE.Color(0x1c1a1e), k = Math.max(0, Math.min(1, +B.amount || 0));
+        if (k > 0) c.lerp(new THREE.Color(S.floorColor != null ? S.floorColor : (B.color != null ? B.color : 0x8a847a)), k);
+        return c;
+    }
     /* a closed box room's own lamps (the fluorescents at shell.light / shell.lights, a warm pool at each desk lamp) — _hqEnter
        hangs them on the scene; a stage neighbour hangs them in its part (Phase 2: the ward is lit through its open door) */
     function _hqBoxRoomLamps(room, sc) {
@@ -86684,7 +86714,7 @@ const ThreeRenderer = (function () {
             return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
         }
         var bx = _hqBoxLightVals(room), S = room.shell || {}, kb = Object.assign({}, (LR.key && LR.key.box) || {}, S.rig || {});
-        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: new THREE.Color(0x1c1a1e), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity * _hqWhiteIn(room) : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
+        return { hemiC: new THREE.Color(0xd9d2c0), hemiG: _hqBoxHemiG(room), hemiI: bx.hemiI, keyC: new THREE.Color(kb.color != null ? kb.color : 0xe8ecf5), keyI: kb.intensity != null ? +kb.intensity * _hqWhiteIn(room) : bx.keyI, fillC: new THREE.Color(LR.fillColor), fillI: bx.fillI };
     }
     function _hqStageBlendStart(H, fromRoom, toRoom, fromId, toId) {
         var st = H.stage;
@@ -87110,7 +87140,7 @@ const ThreeRenderer = (function () {
             /* THE FLOOR (2026-09-20): a room's mood may dim the fill, never below HQ_LIGHT_RULES.ambientFloor — the
                torches carry the vibe, the key + a cool fill keep every face readable */
             var LRb = _hqLightRules(), bxV = _hqBoxLightVals(room);
-            _hq.hemiLight = new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, bxV.hemiI); sc.add(_hq.hemiLight);   // (THE STAGE eases it at a door join's crossing)
+            _hq.hemiLight = new THREE.HemisphereLight(0xd9d2c0, _hqBoxHemiG(room), bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
             var bxk = new THREE.DirectionalLight(0xe8ecf5, bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
             var bxf = new THREE.DirectionalLight(LRb.fillColor, bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
             _hqBoxRoomLamps(room, sc);
