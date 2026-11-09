@@ -6606,12 +6606,6 @@
 
                         if (!myTurn) {
 
-                            /* PvP playtest 2026-11-09 F2: an aim the guest still had armed when its turn went (the host's
-                               clock backstop, a snapshot racing the guest's own timeout) leaves its forecast badges and
-                               footprint on the board — they come off with the aim */
-                            if ((savedUI.actionMode || savedUI.selectedTool) && typeof window.clearSpellAimPreviews === 'function') {
-                                try { window.clearSpellAimPreviews(); } catch (e) {}
-                            }
                             st.actionMode = null;
                             st.actionMenuView = 'root';
                             st.selectedTool = null;
@@ -6687,6 +6681,14 @@
                                 }
                             }
                         }
+                    }
+                    /* PvP playtest 2026-11-09 F2: an aim the guest had armed when its turn went (the shot clock, the host's
+                       backstop, a one-click cast that ended the turn, the next unit auto-selected) left its forecast badges
+                       ("−570") and footprint on the board for rounds — the aim was dropped above, its previews never were.
+                       They come off with the aim. */
+                    if ((savedUI.actionMode || savedUI.selectedTool) && !st.actionMode && !st.selectedTool
+                        && typeof window.clearSpellAimPreviews === 'function') {
+                        try { window.clearSpellAimPreviews(); } catch (e) {}
                     }
                     st._guestPrevActivePlayer = st.activePlayer;
                     st._guestPrevActiveUnitId = st._blitzActiveUnitId;
