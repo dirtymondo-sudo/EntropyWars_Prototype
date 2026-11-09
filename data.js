@@ -24945,14 +24945,17 @@ function _statGradeRoster(key) {
 function statGradePct(key, val) {
   const bands = STAT_GRADE_BANDS[key];
   if (!bands) return 0;
-  const s = _statGradeRoster(key);
+  /* SPD + VISION keep their tile letters (not a ranking), so their ring keeps a straight ruler too: a rank ring there
+     drew a VISION 3 "C" more than half full (49 races see 3) — the letter and the ring disagreed (seen on screen 11-09) */
+  const s = (key === 'spd' || key === 'vision') ? null : _statGradeRoster(key);
   if (s) {
     const v = Number(val) || 0;
     let below = 0, same = 0;
     for (let i = 0; i < s.length; i++) { if (s[i] < v) below++; else if (s[i] === v) same++; else break; }
     return Math.max(2, Math.min(100, Math.round(((below + same / 2) / s.length) * 100)));   // mid-rank: ties share one fill
   }
-  const full = (key === 'hp' || key === 'mp') ? bands[0] : key === 'vision' ? 6 : key === 'crt' ? 30 : 100;
+  if (key === 'vision') return Math.max(2, Math.min(100, Math.round(((Number(val) || 0) - 1) * 20)));   // 2..6 tiles = the F..S fifths, so the ring matches the letter
+  const full = (key === 'hp' || key === 'mp' || key === 'spd') ? bands[0] : key === 'vision' ? 6 : key === 'crt' ? 30 : 100;   // SPD fills against its S cut (163), not 100
   const v = Number(val) || 0;
   return Math.max(0, Math.min(100, Math.round((v / full) * 100)));
 }

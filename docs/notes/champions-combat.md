@@ -4890,6 +4890,6 @@ spread over HP + the pool's damage stat (both when the pool mixes), each stat ca
   share at-or-above comes closest to the target, so ties share a letter (CRT 26 % = A, only the 30 % race is S). Fixed numbers, not
   live: re-cut after a balance pass with the race editor GRADES tab > BELL CURVE (ui.js `bandBell`, beside SPREAD EVENLY).
 - SPD + VISION cuts KEPT: SPD letters are the move tiles (MOVE_SPD_RULE.follow) and VISION is one letter per tile, so moving them is a rule change.
-- THE RING: statGradePct fills by mid-rank in the roster (top race full, median half) instead of val/100 (full on every 100+ stat).
+- THE RING: statGradePct fills by mid-rank in the roster (top race full, median half) instead of val/100 (full on every 100+ stat). SPD + VISION keep a straight ruler so ring and letter agree (VISION 2..6 = 20..100 %, SPD val/163); on-screen check 11-09 caught VISION 3 "C" drawn 56 % full (PR follow-up, token 20261109-grades-02-cors).
   Cache `_STAT_GRADE_RANK`, dropped by statGradeRankReset() in statHelpRefreshGrades + the race-mods restoreAll. The HUD stat bars read the same pct.
 - STAT_HELP band text updated (HP/MP now "Grades (rank in the roster): ..."; the refresh regex follows). Display only, no formula reads a letter.
