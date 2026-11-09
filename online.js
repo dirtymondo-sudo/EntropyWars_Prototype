@@ -4519,6 +4519,10 @@
                         ewToast('Your opponent failed to reconnect — you win by forfeit!', 5000);
                         if (typeof window.triggerOnlineForfeitWin === 'function') {
                             window.triggerOnlineForfeitWin(forfeitPlayer);
+                            /* the server closed the room with the forfeit: no rematch with nobody (the result screen
+                               sets its button a moment after it opens, so this lands after it) */
+                            NET.connected = false;
+                            setTimeout(function() { if (_ewPostMatch()) _ewSetRematchBtn('Opponent Left', true); }, 1500);
                         } else {
 
                             if (typeof addLog === 'function') addLog('Opponent forfeited (disconnect timeout). You win!');

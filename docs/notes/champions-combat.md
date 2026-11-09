@@ -4916,7 +4916,8 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
   server's disconnect forfeit only logged "Player 1 wins!" and the board stayed up. It now ends the match like the pause
   menu's FORFEIT: `state.winner` + `checkWin()` → `finalizeMatch` → result screen, then the host broadcasts. A guest whose
   HOST never came back ends its own mirror the same way (`_guestResultShown` set so the mirror path can't open it twice).
-  Before the battle starts (builder / loading) it keeps the old reload.
+  Before the battle starts (builder / loading) it keeps the old reload. The server deleted the room with the forfeit, so
+  the winner's rematch button then reads "Opponent Left" (disabled).
 - **THE SEAT HOLD (B3):** a reloading page can't rejoin until its whole boot ran (~115 s on the sandbox GPU), past the
   server's 90 s window, and in the sandbox the boot held the page's main thread for minutes (a page timer never fired,
   the socket only reconnected after the forfeit; a host building the board on the same box missed the 60 s socket
@@ -4940,5 +4941,10 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
   Rematch" again on `result-rejoined` (votes from before the drop are void on both sides). Leaving on purpose (Main Menu)
   emits `leave-room` first, so that still closes the room at once ("Opponent Left"). A post-match rejoin that fails
   retries 4× 5 s apart, then only says "Room Closed" on the button: it never covers the result screen.
+- PROVEN 11-09 in two real Chromium pages (one browser each, local server.js, online.js served from the repo):
+  guest closed its tab mid-match -> host VICTORY at ~93 s with "Opponent Left"; host closed its tab -> guest VICTORY;
+  guest F5 with online.js held 130 s (rejoin at 2 min 48 s) -> host banner "Player 2's game is busy or reloading",
+  rejoin + recovery, both seats in sync, and a second drop while the guest built the board was held too; guest socket
+  dropped on the result -> host "Opponent Reconnecting…" then "Request Rematch", guest kept its result, rematch played.
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
