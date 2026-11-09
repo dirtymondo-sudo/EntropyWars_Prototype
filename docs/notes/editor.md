@@ -1025,4 +1025,5 @@ Everything in the model list should be available in the map editor". Thread "Mak
 - Thumbnails never drew: ThreeRenderer.hq.propPreview loads queued behind the world's model queue and hit the 20 s timeout. Now
   propPreview loads with `front: true` (three-renderer.js `_scheduleModelLoad(..., front)` → pri 0, `_mqFront` lifts an already
   queued job), timeout 45 s, and editor.js thumbFill queues the tiles bottom-up so the LIFO pump draws the top tiles first.
-- styles-editor.css `.ed-tile span` wraps (two lines, no ellipsis); road labels shortened ("straight 9.6×4.2 m").
+- styles-editor.css `.ed-tile span` wraps (two lines, no ellipsis); road labels shortened ("straight 9.6×4.2 m"). The 1-9 hotbar
+  slots (`.ed-hs`) are 96 px wide, 46 px tall and wrap their names too (key hint + toast moved up to clear them).
