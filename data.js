@@ -63872,6 +63872,10 @@ const HQ_LIGHT_RULES = {
     /* THE WHITE DAYLIGHT (2026-11-03, mondo: "can we just make light not 130% too?"): an open room whose floor is a white sheet
        (sprites.js TERRAIN_WHITE_SHEETS) wears its sky light (the hemisphere + the sun / moon key) × whiteDay; fixed per room, never read off the screen */
     whiteDay: 0.75,
+    /* THE BOUNCE (2026-11-09, mondo: "the inside of the mall is all black"): a CLOSED box room's hemisphere ground colour is its own
+       floor's light thrown back up — shell.floorColor (else `color`) mixed `amount` of the way over the old near-black 0x1c1a1e — so a
+       ceiling, a gallery's underside and the top of a tall wall read; a dark floor throws back little (three-renderer.js _hqBoxHemiG) */
+    bounce: { amount: 0.6, color: 0x8a847a },
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */

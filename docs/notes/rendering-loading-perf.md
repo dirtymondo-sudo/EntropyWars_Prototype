@@ -1523,3 +1523,23 @@ changed since its last refresh, so the landed sheet is uploaded and bound. The W
 same node sheets, so a static bundle re-records (and refreshes) when one lands. Covers every hooked material with its own
 sheets (terrain, fluid wave sheets, painted grids), every board, room and walk. Classic WebGL never runs this code.
 Proof: /mnt/project-files/heaven-black-squares/ (before/after, node renderer on WebGL 2; headless WebGPU frames are black).
+
+## THE BOUNCE + THE CEILING LAMPS FIRST (2026-11-09, mondo in Disaster City's mall: "the inside of the mall is all black")
+His shot (Firefox, `?ew_gpu=webgpu`): the mall's floor lit, the ceiling, the gallery undersides and the top of the 12 m walls
+near-black, only the lava lamps and the saucer glow sprites showing. Two causes, neither in the mall's data (unchanged since 09-30):
+1. **The hemisphere ground colour.** A closed box room's HemisphereLight ground half was a fixed near-black `0x1c1a1e`, so every
+   face that looks down took only the lamps near it. A 3.4 m office is lit by its fluorescent; the mall's 96 × 64 × 12 m hall
+   is not. Probe: setting the ground colour white took the ceiling from ~20 to ~85 (8-bit) on screen; doubling the hemisphere
+   intensity changed nothing there. Fix: `_hqBoxHemiG(room)` = `0x1c1a1e` lerped `HQ_LIGHT_RULES.bounce.amount` (0.6) toward
+   the room's `shell.floorColor` (else `bounce.color` 0x8a847a; 112 of 122 closed rooms have a floorColor). Read by `_hqEnter`'s
+   box branch, `_hqIndoorLightVals` (a door join's blend) and the field rig (a fight in the room). A dark floor throws back
+   little, so caves and crypts stay dark. Open rooms, bays and the round hall keep their own rigs.
+2. **The prop light budget.** `HQ_PROP_LIGHT_MAX` (10) went to the first rows that asked: the mall's 2 table lava lamps,
+   2 floor lava lamps and 6 slot machines took all ten, so its 6 saucer pendants and 3 sputnik lamps (the room's overhead
+   light) hung unlit. `_hqPlaceProps` now ranks the light rows when a room asks for more than it has left: ceiling lamps
+   (`cat.ceil` / `p.ceil`) first, then row order. Only the mall lost ceiling lamps (scan of every room); Agartha's crystal city
+   and the inner sun ask for >10 but have no ceiling lamps, so they keep exactly the lights they had.
+Checked: every mall area, H-Wing's floor and a DOOR HQ room (the cafeteria) on the node renderer on WebGL 2 (headless WebGPU is
+black). Harness note: in headless swiftshader a freshly entered big room draws floors / the walker black for minutes while
+its shaders compile (they are skipped until ready); shoot each view twice and keep the second. Proof:
+/mnt/project-files/mall-black-interior/.
