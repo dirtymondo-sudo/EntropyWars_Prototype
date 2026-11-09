@@ -993,6 +993,10 @@
             backToMainMenu = function() {
                 if (_isOnline()) {
                     var N = window._NET;
+                    /* leaving on purpose: the server closes a finished room at once instead of holding this seat
+                       (server.js THE RESULT HOLD); the packet goes out ahead of the disconnect */
+                    try { if (N && N.socket && N.socket.connected) N.socket.emit('leave-room'); } catch (e) {}
+                    try { if (window._ewSeatHoldStop) window._ewSeatHoldStop(); } catch (e) {}   // THE SEAT HOLD
                     try { if (N && N.socket) N.socket.disconnect(); } catch (e) {}
                     if (N) {
                         N.online = false;
@@ -1038,18 +1042,28 @@
             }
         };
 
+        /* THE DISCONNECT WIN (PvP playtest 2026-11-09 B4): the server forfeits a seat that never came back. This
+           used to call showVictoryScreen, which exists nowhere, so the log said "Player 1 wins!" while the board
+           stayed up for good. It ends the match the way the pause menu's FORFEIT does: the winner on state, then
+           checkWin -> finalizeMatch -> the result screen. On the host the engine owns the match; on a guest whose
+           host never came back there is no engine left to send the result, so the guest ends its own mirror. */
         window.triggerOnlineForfeitWin = function(forfeitPlayer) {
-
             var winner = forfeitPlayer === 1 ? 2 : 1;
-            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (disconnect timeout). Player ' + winner + ' wins!');
-
-            if (typeof _origForfeit === 'function' && _isHost()) {
-
-                state.matchResult = { winner: winner, reason: 'forfeit' };
-                if (typeof showVictoryScreen === 'function') {
-                    showVictoryScreen(winner);
-                }
+            if (!state || state.winner || state._winCondition === 'draw') return;
+            if (state.phase !== 'battle') {
+                /* still on the loading screen / builder: there is no match to score — the old reload path */
+                if (typeof addLog === 'function') addLog('Opponent forfeited (disconnect timeout).');
+                setTimeout(function() { window.location.reload(); }, 5000);
+                return;
             }
+            try { if (typeof clearAiSafetyTimer === 'function') clearAiSafetyTimer(); } catch (e) {}
+            state.aiThinking = false;
+            state.winner = winner;
+            state.matchResult = { winner: winner, reason: 'forfeit' };
+            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (disconnect timeout). Player ' + winner + ' wins!');
+            if (_isGuest()) state._guestResultShown = true;   // the mirror's own result path must not open it twice
+            checkWin();
+            if (_isHost() && window._broadcastState) { try { window._broadcastState(); } catch (e) {} }
         };
 
         /* ── THE ARENAS ONLINE (2026-10-06, mondo: "why is online pvp using the old voxel maps and not the new arena maps?") ──
@@ -3896,17 +3910,47 @@
                     '<span id="reconnectCountdown" style="font-size:1.05rem;color:#dc3c82;font-weight:bold;min-width:36px;text-align:right;">' + seconds + 's</span>';
                 document.body.appendChild(banner);
                 _reconnectOverlay = banner;
-                var remaining = seconds;
+                /* the count runs off a DEADLINE, not a tick counter (PvP playtest 2026-11-09 B3: a page busy
+                   booting skipped ticks, the count sat at 88-90 for two minutes and even went back up), and
+                   the server can move the deadline (opponent-hold) */
+                _reconnectDeadline = Date.now() + seconds * 1000;
                 _reconnectTimer = setInterval(function() {
-                    remaining--;
+                    /* a reloading page's own banner follows the seat its boot keeps holding (index.html THE SEAT HOLD) */
+                    var hold = window._ewSeatHold;
+                    if (oppLabel === 'Reconnecting' && hold && hold.ok && hold.at)
+                        _reconnectDeadline = Math.max(_reconnectDeadline, hold.at + hold.remainingSeconds * 1000);
+                    var remaining = Math.ceil((_reconnectDeadline - Date.now()) / 1000);
                     var cd = document.getElementById('reconnectCountdown');
                     if (cd) cd.textContent = Math.max(0, remaining) + 's';
+                    /* this page's own seat is still being held (a page just back from a long stall reads the worker's
+                       queued answers a moment later): the server's verdict, not this count, ends it */
+                    if (isSelf && remaining <= -5 && hold && hold.running && hold.ok && Date.now() - hold.at < 30000) return;
                     if (remaining <= -5) {
                         clearInterval(_reconnectTimer);
                         _reconnectTimer = null;
                         _recoveryFailure('The connection did not recover. Please return to the main menu.');
                     }
                 }, 1000);
+            }
+            var _reconnectDeadline = 0;
+            /* moves a live banner's deadline (and, given, its message) — THE SEAT HOLD */
+            function _setReconnectDeadline(seconds, msg) {
+                if (!_reconnectTimer) return;
+                _reconnectDeadline = Date.now() + seconds * 1000;
+                var cd = document.getElementById('reconnectCountdown');
+                if (cd) cd.textContent = Math.max(0, Math.ceil(seconds)) + 's';
+                if (msg && _reconnectOverlay && _reconnectOverlay.children[1]) _reconnectOverlay.children[1].textContent = msg;
+            }
+            /* the match on this page is decided (a winner, or a draw) — THE RESULT HOLD */
+            function _ewPostMatch() {
+                var st = window._gameState;
+                return !!(st && (st.winner || st._winCondition === 'draw'));
+            }
+            function _ewSetRematchBtn(text, disabled) {
+                var b = document.getElementById('nextMatchBtn');
+                if (!b) return;
+                b.textContent = text;
+                b.disabled = !!disabled;
             }
 
             function _hideReconnectOverlay(keepPaused) {
@@ -4027,12 +4071,26 @@
                 NET.socket.on('connect', function() {
 
                     if (NET._wasInMatch && NET.rejoinToken && NET.roomCode) {
+                        _emitRejoin(0);
+                    } else {
+                        onReady();
+                    }
+                });
+
+                /* THE RESULT HOLD (PvP playtest 2026-11-09 B2): a seat that drops on the result screen keeps its
+                   result on the server (server.js POST_MATCH_HOLD_MS). Coming back, a page that still shows the
+                   result keeps its own screen; one that reloaded restores it from the server's terminal snapshot.
+                   A post-match rejoin that fails never covers the result with "Unable to rejoin": the server may
+                   not have seen the old socket die yet, so it retries a few times, then only the rematch is off. */
+                function _emitRejoin(tries) {
                         var attempt = ++_recoveryAttempt, rejoinSocket = NET.socket, rejoinRoom = NET.roomCode;
                         NET.socket.emit('rejoin-room', {
                             roomCode: NET.roomCode,
                             rejoinToken: NET.rejoinToken
                         }, function(resp) {
                             if (attempt !== _recoveryAttempt || NET.socket !== rejoinSocket || NET.roomCode !== rejoinRoom || !NET.online) return;
+                            /* THE SEAT HOLD: a seat the server refused has nothing left to hold */
+                            if (!(resp && resp.ok) && !_ewPostMatch()) { try { if (window._ewSeatHoldStop) window._ewSeatHoldStop(); } catch (e) {} }
                             if (resp && resp.ok) {
                                 console.log('[NET] Rejoined room ' + NET.roomCode + ' as ' + resp.role);
                                 NET.matchId = resp.matchId;
@@ -4052,6 +4110,16 @@
                                     _showReconnectOverlay('Restoring match', RECOVERY_WAIT_S);
                                 }
                                 NET._wasInMatch = false;
+                                if (resp.result && _ewPostMatch()) {
+                                    /* this page still holds its result screen: keep it (the terminal snapshot is
+                                       the GUEST'S fogged view — never laid over the host's own state) */
+                                    _hideReconnectOverlay();
+                                    NET.connected = true;
+                                    NET._rematchState = null;
+                                    _ewSetRematchBtn('Request Rematch', false);
+                                    ewToast('Reconnected.', 2000);
+                                    return;
+                                }
                                 if (resp.result) {
                                     if (_applyRemoteState(resp.result)) {
                                         _hideReconnectOverlay();
@@ -4062,15 +4130,27 @@
                                 ewToast(resp.waitingForOpponent ? 'Connected — waiting for your opponent.' : 'Connected — restoring the match.', 2000);
                             } else {
                                 console.log('[NET] Rejoin failed:', resp && resp.error);
+                                if (_ewPostMatch()) {
+                                    if (tries < 4) {
+                                        setTimeout(function() {
+                                            if (NET.online && NET.socket === rejoinSocket && rejoinSocket.connected && NET.roomCode === rejoinRoom &&
+                                                !NET.connected) _emitRejoin(tries + 1);
+                                        }, 5000);
+                                        return;
+                                    }
+                                    NET._wasInMatch = false;
+                                    NET.connected = false;
+                                    _hideReconnectOverlay();
+                                    _ewSetRematchBtn('Room Closed', true);
+                                    ewToast('The room has closed — a rematch is no longer possible.', 4000);
+                                    return;
+                                }
                                 ewToast('Failed to rejoin: ' + (resp && resp.error || 'unknown'), 4000);
                                 NET._wasInMatch = false;
                                 _recoveryFailure('Unable to rejoin this match. Please start a new match.');
                             }
                         });
-                    } else {
-                        onReady();
-                    }
-                });
+                }
 
                 NET.socket.on('disconnect', function(reason) {
                     if (NET.online && !NET._recoveryFailed) {
@@ -4080,6 +4160,12 @@
                         console.log('[NET] Own socket disconnected:', reason);
                         NET.connected = false;
                         NET._wasInMatch = true;
+                        if (_ewPostMatch()) {
+                            /* the result stays on screen; only the rematch waits for the socket */
+                            _ewSetRematchBtn('Reconnecting…', true);
+                            ewToast('Connection lost — reconnecting…', 3000);
+                            return;
+                        }
                         _showReconnectOverlay('You', 90);
 
                     }
@@ -4241,12 +4327,15 @@
                     var st = window._gameState;
                     if (data.postMatch || (st && st.winner)) {
                         NET.connected = false;
-                        ewToast('Your opponent left the match.', 4000);
-                        var rmBtn = document.getElementById('nextMatchBtn');
-                        if (rmBtn) {
-                            rmBtn.disabled = true;
-                            rmBtn.textContent = 'Opponent Left';
+                        NET._rematchState = null;
+                        if (data.postMatch && data.reconnectable) {
+                            /* THE RESULT HOLD: they dropped, their seat is kept — the rematch waits for them */
+                            ewToast('Your opponent lost connection — waiting for them to come back.', 4000);
+                            _ewSetRematchBtn('Opponent Reconnecting…', true);
+                            return;
                         }
+                        ewToast('Your opponent left the match.', 4000);
+                        _ewSetRematchBtn('Opponent Left', true);
                         return;
                     }
 
@@ -4259,7 +4348,14 @@
 
                     NET.connected = false;
                     var oppLabel = data.role === 'host' ? 'Player 1' : 'Player 2';
-                    _showReconnectOverlay(oppLabel, 90);
+                    _showReconnectOverlay(oppLabel, data.remainingSeconds || 90);
+                });
+                /* THE SEAT HOLD (PvP playtest 2026-11-09 B3): the absent seat's page is reloading and asked the
+                   server to keep its seat longer — the countdown follows the server's new deadline */
+                NET.socket.on('opponent-hold', function(data) {
+                    if (!NET.online || !data || !(data.remainingSeconds > 0) || !_reconnectOverlay || _ewPostMatch()) return;
+                    var oppL = data.role === 'host' ? 'Player 1' : 'Player 2';
+                    _setReconnectDeadline(data.remainingSeconds, '⚠️ ' + oppL + '\'s game is busy or reloading — holding their seat…');
                 });
 
                 NET.socket.on('player-rejoined', _beginSnapshotRecovery);
@@ -4294,7 +4390,13 @@
                 });
                 NET.socket.on('result-rejoined', function(data) {
                     var st = window._gameState;
-                    if (NET.online && !NET._recoveryFailed && data && data.matchId === NET.matchId && st && st.winner) NET.connected = true;
+                    if (NET.online && !NET._recoveryFailed && data && data.matchId === NET.matchId && st && st.winner) {
+                        NET.connected = true;
+                        /* both seats are back on the result: votes cast before the drop are void on the server too */
+                        NET._rematchState = null;
+                        if (data.role !== NET.role) ewToast('Your opponent is back.', 2500);
+                        _ewSetRematchBtn('Request Rematch', false);
+                    }
                 });
                 NET.socket.on('match-generation', function(data) {
                     if (!NET.online || !data || typeof data.matchId !== 'string') return;
@@ -6835,6 +6937,14 @@
             };
 
             setInterval(function() {
+                /* THE SEAT HOLD (index.html): an online battle keeps a worker telling the server this page is alive, so a
+                   page busy building a board or reloading keeps its seat past the socket's heartbeat; off at the result */
+                try {
+                    var _hs = window._gameState;
+                    var _holdOn = NET.online && NET.rejoinToken && NET.roomCode && _hs && _hs.phase === 'battle' && !_ewPostMatch() && !NET._recoveryFailed;
+                    if (_holdOn && typeof window._ewSeatHoldStart === 'function') window._ewSeatHoldStart(NET.roomCode, NET.rejoinToken);
+                    else if (!_holdOn && !NET._wasInMatch && !NET._recovering && window._ewSeatHold && window._ewSeatHold.running && window._ewSeatHoldStop) window._ewSeatHoldStop();
+                } catch (e) {}
                 if (!NET.online) return;
                 var ind = document.getElementById('netStatusIndicator');
                 if (!ind) {
@@ -6870,6 +6980,16 @@
                 if (ind.style.right !== right + 'px') ind.style.right = right + 'px';
             }, 2000);
 
+            /* THE SEAT HOLD (PvP playtest 2026-11-09 B3): a page that unloads mid-match (F5, a crashed tab)
+               tells the server at once that it is coming back, so the seat is held while the new page boots
+               (server.js holdSeat; index.html's first script keeps it held). */
+            window.addEventListener('pagehide', function() {
+                try {
+                    if (!NET.online || !NET.rejoinToken || !NET.roomCode || _ewPostMatch() || !navigator.sendBeacon) return;
+                    navigator.sendBeacon('/api/seat-hold', JSON.stringify({ roomCode: NET.roomCode, rejoinToken: NET.rejoinToken }));
+                } catch (e) {}
+            });
+
             try {
                 var savedToken = sessionStorage.getItem('ew_rejoinToken');
                 var savedRoom = sessionStorage.getItem('ew_rejoinRoom');
@@ -6886,7 +7006,12 @@
                     NET.role = savedRole;
                     NET._wasInMatch = true;
                     NET.online = true;
-                    _showReconnectOverlay('Reconnecting', 90);
+                    /* THE SEAT HOLD: index.html's first script already asked the server to keep this seat while
+                       the page booted; count the deadline it answered with */
+                    var _hold = window._ewSeatHold, _holdS = 90;
+                    if (_hold && _hold.ok && _hold.remainingSeconds > 0 && _hold.at)
+                        _holdS = Math.max(5, Math.round(_hold.remainingSeconds - (Date.now() - _hold.at) / 1000));
+                    _showReconnectOverlay('Reconnecting', _holdS);
                     _connectSocket(function() {
 
                     });
