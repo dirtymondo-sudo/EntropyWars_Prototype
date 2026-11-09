@@ -347,7 +347,9 @@ radiation_sign, D17 planter); §10G G05 bow, G10 gold record, G11 gavel, G13 lip
 note; a far mountain range (§8b). Meshy only after mondo's OK on each, with the packs checked named on the to-do row.
 
 
-## 12b. THE PIZZA DOGGY PSX MEGA PACK — on R2, NOT wired yet (2026-11-08)
+## 12b. THE PIZZA DOGGY PSX MEGA PACK — on R2, every model placeable in the editor since 2026-11-09 (2026-11-08)
+
+**2026-11-09 (mondo: "Everything in the model list should be available in the map editor"):** every one of the 584 GLBs is a catalogue row now (data.js HQ_CATALOGUE_ALL, keys `psx_<file>`, editor MODELS groups "PSX Mega Pack · <category>", the file's own real-metre size). None is placed in a game room; the swap candidates below still wait on mondo.
 
 mondo 11-08: "Found a coupon code from the creator of the psxmegapack ... see what all is in the pack and what can be used in the
 game and add the models to the model list and correct assets folders in the game bucket." (Thread "Add PSX Mega Pack models to

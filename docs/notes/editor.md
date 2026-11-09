@@ -991,3 +991,28 @@ from the editor".
 ## THE PACK BUILDINGS IN THE LOOK LIST (2026-11-03, the coded-shapes thread)
 A BUILDING's Look (`bldKey`) can be one of data.js HQ_PACK_BUILDINGS (the Buildings pack's ten shop blocks): the whole model stands in
 the box, its height its own at the box's width. Notes: maps-terrain-battle.md "THE CODED SHAPES OUT" round 4.
+
+## THE WHOLE MODEL LIST IN THE EDITOR + THE PACK ROADS (2026-11-09)
+mondo: "the only road in the editor is the messed up meshy road. Werent there some roads in some of the assetsw packs we have now?
+Everything in the model list should be available in the map editor". Thread "Make every model list asset placeable in editor".
+- RULE: every model file in MODEL_LIST.md / R2_MODEL_FILES.json that can stand in a room is a DOOR_HQ.catalogue row, so the MODELS tab
+  places it. A new model on R2 = a catalogue row in the same PR (or a TREES kind for a tree).
+- data.js HQ_CATALOGUE_ALL (721 rows): the PSX Mega Pack (584, `psx_<file>`, base 'psxmp'), the Elbolilloduro pieces no row named (22),
+  the Meshy props / decor / hand props / spell props that no row named (old swapped-out originals included), the Halloween ghost.
+  `base: 'asset'` = `file` is the bucket path under Assets/ (data.js hqCatalogueFilePath + HQ_PALETTE_RULES.folders.asset,
+  three-renderer.js _hqModelUrl + the held-prop url, three-vfx-effects.js the two catalogue url builders, list-models.js BASES).
+  `group` on a row = its palette group (hqPaletteGroup reads it first); `label` = the name the palette shows (hqPalette).
+  Sizes: pack files are real metres, so `h` (or `span` when flat) = the file's own bounds read from its glTF header; Meshy files are
+  unit-sized, so each carries a size picked by hand. No row is placed in a room and no row changes a rule.
+- HQ_TREE_KINDS tree_21 … tree_51: the 31 old OBJ trees (birches, bare birches, bare trees, pines, leafy) the TREES tab lacked.
+- Left out on purpose: meshy_decor files a proc row already wears, traps "-colonly" collision shells, the stairs kit sheets (BUILD
+  stairs cut them), FBX / DAE / .blend / OBJ copies of a GLB that is in, eagle.glb (raw upload; eagle_rigged is the animal), the
+  creator's clothes / hair / bodies, the animation libraries (races + cast = PEOPLE).
+- THE PACK ROADS: data.js HQ_CATALOGUE_ROADS (group "Roads", 118 rows, keys roads_<a_straight|b_ramp|c_bend|d_bend_ramp|e_junction|f_bridge|g_sign>_<nnn> so the palette lists straights first; xmas_road*). Elbolilloduro's free Roads pack (CC0, itch roads-procedural,
+  project files asset-packs/elbolilloduro/roads-procedural/Roads.rar) cut by `bake-roads.py` (bpy 5.2 module; the .blend's textures
+  are re-pointed through the pack's Roads.dae material table) into R2 Assets/world/packs/elbolilloduro/roads/: road_000-023
+  straights (2 / 4.4 / 9.6 / 21 m long, six widths: 000-015 kerbed with pavements, 016-023 flat), 024-035 ramps up 2 m, 036-047
+  bends, 048-059 ramped bends, 060-071 junctions, bridge_000-018 spans, sign_000-014 road signs. Plus the Christmas pack's 12
+  snowy streets (Roads.dae nodes, base 'xmas'). The Meshy road_straight / road_turn rows stay.
+- Proof: editor MODELS search "road" lists Misc 2 + Roads 118; road pieces, a PSX bed and sofa placed by real clicks lie flat on
+  the ground facing the eye (project files editor-all-models/).

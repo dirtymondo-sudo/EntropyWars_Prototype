@@ -14594,7 +14594,7 @@ const ThreeRenderer = (function () {
         if (hold.grip && !hold.open) { try { seat = _gripFrame(m, bone, hold); } catch (_sf) { seat = null; console.warn('[3D] grip seat failed', _sf); } }   // THE GRIP, THE SEAT
         if (seat) { inner.quaternion.copy(seat.q); inner.position.copy(seat.p); }
         var target = ((hold.h != null ? hold.h : hold.span != null ? hold.span : (cat.h || cat.span)) || 1) * pxm;   // (the door gun: HQ_PORTAL_RULES.gun.span — the board read the catalogue's 0.62 before 2026-11-02)
-        var url = (cat.base === 'psxmp') ? _hqModelUrl(cat) : (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/fx/spell_props/)
+        var url = (cat.base === 'psxmp' || cat.base === 'asset') ? _hqModelUrl(cat) : (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/fx/spell_props/)
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g, sc, bb) {
                 g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
@@ -62865,6 +62865,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'chess') return _R2_CHESS + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHESS SET (2026-10-29): a piece (or a game) of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'psxmp') return _R2_PSXMP + entry.file.split('/').map(encodeURIComponent).join('/');   // THE PSX MEGA PACK (2026-11-08)
+        if (entry.base === 'asset') return 'https://cdn.entropywars.net/Assets/' + entry.file.split('/').map(encodeURIComponent).join('/');   // THE WHOLE MODEL LIST (2026-11-09): `file` = the bucket path under Assets/ (data.js HQ_CATALOGUE_ALL / HQ_CATALOGUE_ROADS)
         if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
         if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
         if (entry.base === 'instruments') return _R2_INSTRUMENTS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE INSTRUMENTS (2026-10-27)
