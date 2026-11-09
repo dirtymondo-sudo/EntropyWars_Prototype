@@ -1925,7 +1925,8 @@
         .ed-tile img, .ed-tile .ed-thw, .ed-tile .ed-thg { display: block; width: 100%; height: 56px; object-fit: contain; background: rgba(0,0,0,0.35); border-radius: 2px; margin-bottom: 2px; }
         .ed-tile .ed-thw, .ed-tile .ed-thg { line-height: 56px; text-align: center; color: #56687a; font-size: 18px; font-weight: 600; }
         .ed-tile .ed-thw { font-size: 12px; }
-        .ed-tile span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* THE WHOLE NAME (2026-11-09, mondo: "the names get cut off"): a tile's name wraps onto as many lines as it needs, never an ellipsis */
+        .ed-tile span { display: block; white-space: normal; overflow-wrap: anywhere; line-height: 1.15; min-height: 2.3em; text-align: center; }
         .ed-tile:hover { border-color: rgba(111,211,255,0.6); }
         .ed-tile.on { border-color: #ffd84a; background: rgba(255,216,74,0.14); }
         .ed-status .ed-warn { color: #ffb05a; }

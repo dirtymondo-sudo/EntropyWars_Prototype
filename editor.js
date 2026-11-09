@@ -2060,6 +2060,13 @@
         var hits = ED.sel.map(selRow).filter(Boolean); if (!editable()) return;
         if (!hits.length) { toast('CLICK A THING FIRST, THEN R TURNS IT', 1600); return; }
         var a = Core.rowAnchor(hits[0].row), step = [], live = true;
+        /* THE SQUARE TURN (2026-11-09): a thing standing off the step's grid (face 114, a 45° turn) turns ONTO the grid first
+           (114 → 135, or 114 → 90 the other way), so the 45° buttons / R always square it up; the rest of the pick turns with it */
+        var f0 = +hits[0].row.face, st = Math.abs(deg);
+        if (deg && isFinite(f0) && (hits[0].list === 'props' || hits[0].list === 'terrain.features' || hits[0].list === 'doors')) {
+            var off = ((f0 % st) + st) % st;
+            if (off > 0.01 && st - off > 0.01) deg = deg > 0 ? Math.round((st - off) * 100) / 100 : -Math.round(off * 100) / 100;
+        }
         hits.forEach(function (h) {
             if (h.list === 'doors' && h.row.wall && h.row.wall !== 'free') return;
             var after = Core.rowTransform(h.row, { rot: deg, px: a.x, pz: a.z });
@@ -4063,7 +4070,13 @@
             commit([{ path: basePath().concat(['spawn']), before: Core.clone(r.spawn), after: { x: x, z: z, face: face, level: 0 } }], 'move the spawn', { noReload: true });
             spawnPlace(); drawSet(null); return;
         }
-        var row = W.hqPaletteRow(e, x, z, faceEye()), O = ED.opts;
+        /* THE SQUARE TURN (2026-11-09, mondo: road pieces went down "diagonally on the grid at an angle where rotating them wont make
+           them straight"): a thing still faces you, but on the TURN SNAP's steps (15° by default), and a catalogue row marked `square`
+           (the pack roads, the PSX Mega Pack's walls / floors) always on a right angle, whatever the snap */
+        var fc = faceEye(), sq = e.list === 'props' && ((DOOR_HQ.catalogue[e.row && e.row.key] || {}).square);
+        var fst = sq ? 90 : (+ED.rotSnap || 0);
+        if (fst > 0) fc = (Math.round(fc / fst) * fst) % 360;
+        var row = W.hqPaletteRow(e, x, z, fc), O = ED.opts;
         /* E6: the size it goes down at (the TREES tab: SIZE and VARY; MODELS: SIZE ×) */
         if (row.k === 'tree' || row.k === 'grove') {
             var th = (+O.treeSize || 0) ? +O.treeSize / treeTile() : (row.k === 'tree' ? treeDefH(row) : 0);   // tiles
@@ -4238,7 +4251,7 @@
         if (kind === 'tree') { var T = (W.HQ_TREE_KINDS || {})[key]; return k + '|' + (T ? (T.model || ('chess:' + T.chess + (T.dark ? ':dark' : ''))) : ''); }
         return k;
     }
-    function thumbFill(P) { P.querySelectorAll('[data-th]').forEach(function (b) { thumbWant(b.getAttribute('data-th')); }); }
+    function thumbFill(P) { Array.prototype.slice.call(P.querySelectorAll('[data-th]')).reverse().forEach(function (b) { thumbWant(b.getAttribute('data-th')); }); }   // (asked bottom-up: the newest ask goes first, so the TOP tile draws first, 2026-11-09)
     function thumbWant(k) {
         if (TH.off || !k || TH.mem[k] || TH.mem[k] === null) return;
         var i = TH.want.indexOf(k); if (i >= 0) TH.want.splice(i, 1);
