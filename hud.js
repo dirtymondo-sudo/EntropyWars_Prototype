@@ -1212,6 +1212,20 @@ window._entropyOrbsFly = function(player, amount, sourceUnit) {
   }
 };
 
+/* THE TICKING TIMER (PvP playtest 2026-11-09 F1: the host's scoreboard read "00:26" while the guest's read "01:22" —
+   the time was worked out only when the HUD re-rendered, and the guest re-renders on every snapshot while the host
+   only re-renders on a game event): the timer ticks itself once a second while the fight is on, on every seat. */
+function SbClock({ startTime, live }) {
+  const [, setN] = useState(0);
+  useEffect(() => {
+    if (!live) return undefined;
+    const id = setInterval(() => setN(n => (n + 1) | 0), 1000);
+    return () => clearInterval(id);
+  }, [live]);
+  const elapsed = startTime ? Math.max(0, Math.floor((Date.now() - startTime) / 1000)) : 0;
+  return String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
+}
+
 function Scoreboard({ st }) {
   if (!st) return null;
 
@@ -1306,9 +1320,6 @@ function Scoreboard({ st }) {
 
   const mode = _getModeInfo(st);
 
-  const elapsed = st.startTime ? Math.floor((Date.now() - st.startTime) / 1000) : 0;
-  const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-  const secs = String(elapsed % 60).padStart(2, '0');
 
   const roundLimit = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
   /* the round counter steps past the limit to end the match: never show R21/20 once time is up */
@@ -1335,7 +1346,8 @@ function Scoreboard({ st }) {
   const sbLook = window._ewSbLook || {};
   const showMode = isSuddenDeath || sbLook.mode !== false;
   const capEl = scoreCaption && sbLook.cap !== false && h('span', { key: 'cap', className: 'ew-sb-cap', style: { color: EW_T.inkDim, letterSpacing: '0.16em' }}, scoreCaption);
-  const timeEl = sbLook.time !== 'off' && h('span', { key: 'time', className: 'ew-sb-time', style: { fontWeight: 700, color: EW_T.ink }}, mins + ':' + secs);
+  const timeEl = sbLook.time !== 'off' && h('span', { key: 'time', className: 'ew-sb-time', style: { fontWeight: 700, color: EW_T.ink }},
+    h(SbClock, { startTime: st.startTime, live: st.phase === 'battle' && !st.winner }));
   const roundEl = sbLook.round !== 'off' && h('span', { key: 'round', className: 'ew-sb-round' },
     'R', h('span', { className: 'ew-sb-rnum', style: {
       fontFamily: serif, fontSize: 12, fontWeight: 600, color: EW.time,

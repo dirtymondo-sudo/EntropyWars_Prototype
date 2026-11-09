@@ -2506,3 +2506,15 @@ Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build
   short enough to clear the scoreboard at his shipped Unit info panel move (105, −48) × 0.75 (at 500 wide the buttons
   wrapped onto two rows and the card's top touched the P1 HP bar at 1600×900).
 - Proof (2026-11-08, VS CPU arena, his shipped UI): /mnt/project-files/tile-info-panel/shots/.
+
+## ONLINE PvP small fixes (2026-11-09, PvP playtest F1/F2/F3/F4/F5/F9)
+- F3 online.js `_gvLogShows`: a line naming only the guest's own units (no other seat's unit) skips the tile check (a blinded unit's
+  "jumps from B1 to D1!" reached the guest; proven live with a blinded Shaman's jump).
+- F4 battle.js delayed mark line ("marks G7 with … Detonates in N rounds") goes out with addLog `o.zone` + `o.anon` like a zone:
+  every log, "Someone marks …" for a seat that can't see the caster.
+- F5 battle.js `_clickSeat()`: every one-argument refusal / click-prompt addLog followed by `playErrorSfx` (185 lines) goes to the
+  acting seat only (blitz active unit's player, else activePlayer). New refusal lines: pass `_clickSeat()` as the 2nd arg.
+- F2: `_shotClockExpired` clears selectedTool, the spell pick and every aim preview; the guest's `_applyRemoteState` clears the
+  aim previews whenever a snapshot drops an aim the guest had armed (a one-click cast ending the turn too).
+- F9 online.js `_startOnlineRematch`: host puts the room's rounds back into `_customRoundLimit` (startMatch spends it once).
+- F1 hud.js `SbClock`: the scoreboard timer ticks itself once a second while the fight is on (the host only re-rendered on events).

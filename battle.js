@@ -2313,7 +2313,7 @@
             // spent) so the AI marks the spell failed and humans get feedback.
             const tower = !target ? towerAt(x, y) : null;
             if (tower && tower.owner !== unit.player) {
-                addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`);
+                addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`, _clickSeat());
                 playErrorSfx();
                 return { handled: true, returnVal: 0 };
             }
@@ -2417,7 +2417,7 @@
 
             // No valid target
             if (!target || isAllyUnit(target, unit)) {
-                addLog('Choose an enemy target for that spell.');
+                addLog('Choose an enemy target for that spell.', _clickSeat());
                 playErrorSfx();
                 return { handled: true, returnVal: 0 };
             }
@@ -7602,7 +7602,7 @@
 
             // Cubes are immune to ALL spells by design — only basic attacks
             // damage them. Reject cleanly (no MP/AP spent).
-            addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`);
+            addLog(`⬡ The Cube shrugs off ${_ctSp(spell.name)} — only physical strikes damage it.`, _clickSeat());
             playErrorSfx();
             return { handled: true, returnVal: 0 };
         }
@@ -8665,7 +8665,7 @@
             const errMsg = opts.errorMsg || 'Choose a living ally for that spell.';
             const allowDead = !!opts.allowDead;
             if (!target || isEnemyUnit(target, unit) || (!allowDead && target.dead)) {
-                addLog(errMsg);
+                addLog(errMsg, _clickSeat());
                 playErrorSfx();
                 return null;
             }
@@ -43975,7 +43975,7 @@
             /* SIMUL: trading executes instantly — not plannable yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
-                addLog('🤝 Trading is not available in Simul mode (yet).');
+                addLog('🤝 Trading is not available in Simul mode (yet).', _clickSeat());
                 playErrorSfx();
                 return;
             }
@@ -43987,7 +43987,7 @@
             // vice versa) resolves to the unit actually clicked.
             const target = ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y);
             if (!target || !canTradeWithUnit(unit, target)) {
-                addLog('Choose a nearby living ally to trade with.');
+                addLog('Choose a nearby living ally to trade with.', _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -44631,6 +44631,18 @@
                 if (!_isUnitVisibleToViewer(caster, p)) seats.push(p);
             }
             return seats.length ? seats : null;
+        }
+        /* THE CLICK SEAT (PvP playtest 2026-11-09 F5: the host's "Swing Door: pick the hinge …" refusal turned up in the
+           GUEST's log): a refusal or a click prompt (the lines the error sound follows) is the clicking seat's alone. The
+           seat = the player of the unit acting now (the blitz active unit; the active player otherwise) — on the host
+           that is the guest while a guest click runs. 0 = nobody known: the line stays public, as before. */
+        function _clickSeat() {
+            try {
+                const id = state._blitzActiveUnitId;
+                const u = id != null ? (state.units || []).find(x => x && x.id === id) : null;
+                const p = (u && u.player) || state.activePlayer;
+                return (p === 1 || p === 2) ? p : undefined;
+            } catch (e) { return undefined; }
         }
         function addLog(msg, vis, hp, o) {
             if (!msg) return;
@@ -53916,7 +53928,7 @@
             if (!sel || !sel.options[i]) return;
             const picked = sel.options.filter(o => o.on).length;
             if (!sel.options[i].on && picked >= 3) {
-                addLog('The party is full — 4 delvers max (leader + 3).');
+                addLog('The party is full — 4 delvers max (leader + 3).', _clickSeat());
                 playErrorSfx();
                 return;
             }
@@ -58880,7 +58892,7 @@
                     z = m ? m.z : undefined;
                 }
                 if (!jumpTiles.some(t => t.x === step.x && t.y === step.y && (z == null || t.z === z))) {
-                    addLog('Invalid jump target.');
+                    addLog('Invalid jump target.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -58901,7 +58913,7 @@
                 if (!canUnitAct(unit)) { addLog('No AP left to plan an attack.'); return 0; }
                 const valid = _getAttackValidTargets(unit) || [];
                 const hit = valid.find(v => v.x === step.x && v.y === step.y);
-                if (!hit) { addLog('No valid attack target there.'); playErrorSfx(); return 0; }
+                if (!hit) { addLog('No valid attack target there.', _clickSeat()); playErrorSfx(); return 0; }
                 const t = hit.unit || null;
                 plan.steps.push({ type: 'attack', x: step.x, y: step.y, z: step.z, targetId: t ? t.id : null });
                 spendAllAP(unit);
@@ -58918,19 +58930,19 @@
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 if (!spell) { addLog('No spell selected.'); return 0; }
                 if (spell.kind === 'skyThrow' || spell.kind === 'teleport' || _kindMeta(spell).twoClick) {
-                    addLog(`🌀 ${_ctSp(spell.name)} cannot be planned in Simul mode (yet).`);
+                    addLog(`🌀 ${_ctSp(spell.name)} cannot be planned in Simul mode (yet).`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
-                if (!canAffordSpell(unit, spell)) { addLog(`Cannot plan ${_ctSp(spell.name)} right now.`); playErrorSfx(); return 0; }
-                if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) { addLog('Not enough MP.'); playErrorSfx(); return 0; }
+                if (!canAffordSpell(unit, spell)) { addLog(`Cannot plan ${_ctSp(spell.name)} right now.`, _clickSeat()); playErrorSfx(); return 0; }
+                if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) { addLog('Not enough MP.', _clickSeat()); playErrorSfx(); return 0; }
                 let x = step.x, y = step.y, z = step.z;
                 if (isSpellSelfCast(spell)) { x = unit.x; y = unit.y; z = unit.z; }
                 const isLineDir = spell.kind === 'line' || spell.kind === 'linePush';
                 if (!isSpellSelfCast(spell) && !isLineDir) {
                     // THE ONE AIM RULE: the plan takes what the cast takes (spellAimProblem = doSpell's aim gates).
                     if (spellAimProblem(unit, spell, x, y, z)) {
-                        addLog('Spell target is out of range.');
+                        addLog('Spell target is out of range.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -65462,7 +65474,7 @@
 
             if (!canUseItemNow(unit, itemKey)) {
                 const itemName = ITEM_RULES[itemKey]?.name || 'That item';
-                addLog(`${itemName} cannot be used right now.`);
+                addLog(`${itemName} cannot be used right now.`, _clickSeat());
                 playErrorSfx();
                 markDirty('log', 'selectedUnit');
                 renderIfDirty();
@@ -66871,7 +66883,7 @@
             if (mode === 'build') {
                 const _bProblem = _buildActionProblem(unit);
                 if (_bProblem) {
-                    addLog(`Build: ${_bProblem}.`);
+                    addLog(`Build: ${_bProblem}.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
@@ -70695,7 +70707,7 @@
             const legal = jumpTiles.some(t => t.x === x && t.y === y && t.z === z);
             if (!legal) {
                 if (!state.autoPlayers?.[unit.player]) {
-                    addLog('Invalid jump target.');
+                    addLog('Invalid jump target.', _clickSeat());
                     playErrorSfx();
                 }
                 return false;
@@ -70972,12 +70984,12 @@
            host runs both legs. */
         function doClimb(unit, x, y, z) {
             if (climbBlockedReason(unit)) {
-                if (!state.autoPlayers?.[unit?.player]) { addLog(`${unit ? _ctName(unit) : 'That unit'} can't climb right now.`); playErrorSfx(); }
+                if (!state.autoPlayers?.[unit?.player]) { addLog(`${unit ? _ctName(unit) : 'That unit'} can't climb right now.`, _clickSeat()); playErrorSfx(); }
                 return false;
             }
             const c = _climbPick(unit, x, y, z);
             if (!c) {
-                if (!state.autoPlayers?.[unit.player]) { addLog('Nothing to climb there.'); playErrorSfx(); }
+                if (!state.autoPlayers?.[unit.player]) { addLog('Nothing to climb there.', _clickSeat()); playErrorSfx(); }
                 return false;
             }
             if (c.viaMove) {
@@ -73060,7 +73072,7 @@
             {
                 const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
                 if (_actBlock) {
-                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -73159,7 +73171,7 @@
             const _isSkyTelescopeTarget = unitHasTelescope(unit) && getSectionForUnit(unit) === 'earth' && true &&
                 state.units.some(u => !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above' && u.x === x && u.y === y);
             if (visionGatesTargeting(unit) && !isInVision(unit, x, y, (_clickedTarget && _clickedTarget.z != null) ? _clickedTarget.z : undefined) && !_isSkyTelescopeTarget) {
-                addLog(outOfSightMessage(unit, x, y));
+                addLog(outOfSightMessage(unit, x, y), _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -73219,7 +73231,7 @@
                 const _tdD = Math.abs(unit.x - _atkDecoy.x) + Math.abs(unit.y - _atkDecoy.y);
                 if (_tdD >= 1 && _tdD <= getEffectiveRange(unit)
                     && !isRangeBlockedByTerrain(unit.x, unit.y, _atkDecoy.x, _atkDecoy.y, unit.z)) {
-                    addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctSp(_atkDecoy.spellName || 'the decoy')} can be attacked!`);
+                    addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctSp(_atkDecoy.spellName || 'the decoy')} can be attacked!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -73229,7 +73241,7 @@
                 const _tntD = combatDist(unit.x, unit.y, unit.z ?? 0, _atkTaunter.x, _atkTaunter.y, _atkTaunter.z ?? 0);
                 if (_tntD >= 1 && _tntD <= getEffectiveRange(unit)
                     && !isRangeBlockedByTerrain(unit.x, unit.y, _atkTaunter.x, _atkTaunter.y, unit.z)) {
-                    addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctName(_atkTaunter)} can be attacked!`);
+                    addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctName(_atkTaunter)} can be attacked!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -74252,7 +74264,7 @@
             /* SIMUL: inspect executes instantly — not plannable yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
-                addLog('🔍 Inspect is not available in Simul mode (yet).');
+                addLog('🔍 Inspect is not available in Simul mode (yet).', _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -74547,7 +74559,7 @@
             const checkMode = (mode === 'land') ? 'descend' : mode;
             const check = canChangeAltitude(unit, checkMode);
             if (!check.ok) {
-                addLog(check.reason);
+                addLog(check.reason, _clickSeat());
                 if (typeof playErrorSfx === 'function') playErrorSfx();
                 return 0;
             }
@@ -74567,7 +74579,7 @@
                 // disagree about the altitude the unit ends up at.
                 const newZ = _resolveTakeoffZ(unit);
                 if (newZ === null) {
-                    addLog('No room to climb — the airspace above is occupied.');
+                    addLog('No room to climb — the airspace above is occupied.', _clickSeat());
                     if (typeof playErrorSfx === 'function') playErrorSfx();
                     return 0;
                 }
@@ -74597,7 +74609,7 @@
                 // the nearest free adjacent ground tile rather than stacking.
                 const _finalZ = resolveDescentCollision(unit, newZ, { byLabel: `as ${unitDisplayName(unit)} lands` });
                 if (_finalZ === null) {
-                    addLog('No room to land — the ground below is blocked.');
+                    addLog('No room to land — the ground below is blocked.', _clickSeat());
                     if (typeof playErrorSfx === 'function') playErrorSfx();
                     return 0;
                 }
@@ -74701,7 +74713,7 @@
         function doReshape(unit, mode) {
             const check = canReshapeTile(unit, mode);
             if (!check.ok) {
-                addLog(check.reason);
+                addLog(check.reason, _clickSeat());
                 if (typeof playErrorSfx === 'function') playErrorSfx();
                 return 0;
             }
@@ -74923,14 +74935,14 @@
             tool = tool || state._buildTool || 'dig';
             const coarse = _buildActionProblem(unit);
             if (coarse) {
-                addLog(`Build: ${coarse}.`);
+                addLog(`Build: ${coarse}.`, _clickSeat());
                 playErrorSfx();
                 return 0;
             }
             const info = {};
             const problem = _buildProblem(unit, tool, x, y, info);
             if (problem) {
-                addLog(`Build: ${problem}.`);
+                addLog(`Build: ${problem}.`, _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -75680,7 +75692,7 @@
             /* SIMUL: detonation is a damaging action — not plannable yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
-                addLog('💥 Detonate is not available in Simul mode (yet).');
+                addLog('💥 Detonate is not available in Simul mode (yet).', _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -75690,7 +75702,7 @@
             }
             const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
             if (!ownedBombs.length) {
-                addLog('No bombs on the field to detonate.');
+                addLog('No bombs on the field to detonate.', _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -76190,7 +76202,7 @@
                one-unit-per-order planning model yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
-                addLog('🤝 Combo attacks are not available in Simul mode (yet).');
+                addLog('🤝 Combo attacks are not available in Simul mode (yet).', _clickSeat());
                 playErrorSfx();
                 return 0;
             }
@@ -76220,12 +76232,12 @@
 
             if (isOffensive) {
                 if (!target || target.player === initiator.player) {
-                    addLog('Choose an enemy target for the combo attack.');
+                    addLog('Choose an enemy target for the combo attack.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (d < 1 || d > comboRange) {
-                    addLog('Combo target is out of range.');
+                    addLog('Combo target is out of range.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -76542,7 +76554,7 @@
             {
                 const _actBlock = unitActionBlockKey(unit);
                 if (_actBlock) {
-                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
@@ -76582,17 +76594,17 @@
             const _itRule = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[_itKey]) || {};
             if (_itBase === 'healPotion') {
                 if ((unit.items[_itKey] || 0) <= 0) {
-                    addLog(`No ${_itRule.name || 'healing potions'} left.`);
+                    addLog(`No ${_itRule.name || 'healing potions'} left.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
-                    addLog(`Choose a living friendly unit for ${_itRule.name || 'Healing Potion'}.`);
+                    addLog(`Choose a living friendly unit for ${_itRule.name || 'Healing Potion'}.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (target.hp >= target.maxHp) {
-                    addLog(`${_ctName(target)} is already at full HP.`);
+                    addLog(`${_ctName(target)} is already at full HP.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
@@ -76691,22 +76703,22 @@
                 }
             } else if (_itBase === 'manaPotion') {
                 if ((unit.items[_itKey] || 0) <= 0) {
-                    addLog(`No ${_itRule.name || 'mana potions'} left.`);
+                    addLog(`No ${_itRule.name || 'mana potions'} left.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
-                    addLog(`Choose a living friendly unit for ${_itRule.name || 'Mana Potion'}.`);
+                    addLog(`Choose a living friendly unit for ${_itRule.name || 'Mana Potion'}.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (target.maxMp <= 0) {
-                    addLog('That target has no MP to restore.');
+                    addLog('That target has no MP to restore.', _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (target.mp >= target.maxMp) {
-                    addLog('That target is already at full MP.');
+                    addLog('That target is already at full MP.', _clickSeat());
                     playErrorSfx();
                     return;
                 }
@@ -76789,17 +76801,17 @@
                 }
             } else if (state.selectedTool === 'scanner') {
                 if (unit.items.scanner <= 0) {
-                    addLog('No scanners left.');
+                    addLog('No scanners left.', _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (chebyshev > 0) {
-                    addLog('Scanner currently centers on the acting unit.');
+                    addLog('Scanner currently centers on the acting unit.', _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (unitHasStatus(unit, 'jammed')) {
-                    addLog(`${_ctName(unit)} cannot use Scanner while jammed.`);
+                    addLog(`${_ctName(unit)} cannot use Scanner while jammed.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
@@ -76926,18 +76938,18 @@
                 const baneKey = state.selectedTool;
                 const baneRule = ITEM_RULES[baneKey];
                 if ((unit.items[baneKey] || 0) <= 0) {
-                    addLog(`No ${baneRule.name} left.`);
+                    addLog(`No ${baneRule.name} left.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 if (!target || isAllyUnit(target, unit) || target.dead) {
-                    addLog(`Choose a living enemy for ${baneRule.name}.`);
+                    addLog(`Choose a living enemy for ${baneRule.name}.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
                 const baneRange = getEffectiveRange(unit, { item: true }) + 2;
                 if (chebyshev > baneRange) {
-                    addLog(`Target is out of range for ${baneRule.name}.`);
+                    addLog(`Target is out of range for ${baneRule.name}.`, _clickSeat());
                     playErrorSfx();
                     return;
                 }
@@ -77833,7 +77845,7 @@
             {
                 const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
                 if (_actBlock) {
-                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    addLog(`${_ctName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -77883,7 +77895,7 @@
                 _gunDoorAim = doorGunAimResolve(unit, spell, x, y, { auto: _gdAuto });
                 if (_gunDoorAim.error) {
                     if (state.controllers?.[unit.player] !== CTRL.AI) {
-                        addLog(`${_ctSp(spell.name)}: pick an empty tile within ${getEffectiveSpellRange(unit, spell) || spell.range || 4} you can see.`);
+                        addLog(`${_ctSp(spell.name)}: pick an empty tile within ${getEffectiveSpellRange(unit, spell) || spell.range || 4} you can see.`, _clickSeat());
                         playErrorSfx();
                     }
                     if (_gunDoorPick(spell)) clearSpellPick();
@@ -77917,7 +77929,7 @@
                 const _visEnemies = state.units.filter(u =>
                     !u.dead && !u._dying && isEnemyUnit(u, unit) && _isUnitVisibleToViewer(u, unit.player));
                 if (!_visEnemies.length) {
-                    addLog(`${_ctName(unit)} smells no blood — no visible enemies to hunt.`);
+                    addLog(`${_ctName(unit)} smells no blood — no visible enemies to hunt.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -77938,7 +77950,7 @@
             /* THE ESCAPE PICK: the clicked landing rides past the self-cast snap to the escape branch */
             const _escPick = (spell.kind === 'escape' && Number.isFinite(x) && Number.isFinite(y)) ? { x, y, z } : null;
             if (_escPick && (escapeLandingFor(unit, spell, x, y) || {}).blocked) {
-                addLog('Destination tile must be unoccupied.');   // the blink's own refusal (a hidden body stands there)
+                addLog('Destination tile must be unoccupied.', _clickSeat());   // the blink's own refusal (a hidden body stands there)
                 playErrorSfx();
                 return 0;
             }
@@ -78033,7 +78045,7 @@
                 if (!_doorOrg) {
                     if (!_silentReject) {
                         addLog(spell.kind === 'doorExit' ? 'EXIT: the target must stand on or beside one of your open doors.'
-                            : `${spell.name}: no open door beside you delivers there.`);
+                            : `${spell.name}: no open door beside you delivers there.`, _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
@@ -78047,7 +78059,7 @@
             if (!_doorOrg && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim) {   // 🚪 a standing door's aim already judged reach, sight and fog
                 if (!_aimReach.inRange) {
                     if (!_silentReject) {
-                        addLog('Spell target is out of range.');
+                        addLog('Spell target is out of range.', _clickSeat());
                         playErrorSfx();
                     }
                     state._teleportingUnitId = null;
@@ -78059,7 +78071,7 @@
                 // gate (like teleport) — _spellAimReach.losBlocked holds the rule.
                 if (_aimReach.losBlocked()) {
                     if (!_silentReject) {
-                        addLog('Terrain blocks the spell path.');
+                        addLog('Terrain blocks the spell path.', _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
@@ -78083,7 +78095,7 @@
                 const _sw = swingDoorResolve(unit, spell, x, y, { auto: _auto });
                 if (_sw.error || (_sw.victim && isUnitRealmShieldedFrom(_sw.victim, unit))) {
                     if (!_silentReject) {
-                        addLog(`${_ctSp(spell.name)}: pick the hinge — an empty tile beside an enemy you can see.`);
+                        addLog(`${_ctSp(spell.name)}: pick the hinge — an empty tile beside an enemy you can see.`, _clickSeat());
                         playErrorSfx();
                     }
                     delete unit._swingHinge;
@@ -78103,7 +78115,7 @@
                 const _cryTgt = unitAt(x, y);
                 if (_cryTgt && isEnemyUnit(_cryTgt, unit) && unitCryptidHiddenFrom(_cryTgt, unit.player)) {
                     if (!_silentReject) {
-                        addLog(`📷 ${_ctName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`);
+                        addLog(`📷 ${_ctName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`, _clickSeat());
                         playErrorSfx();
                     }
                     state._teleportingUnitId = null;
@@ -78113,7 +78125,7 @@
                 // aimed at only by its partner.
                 if (_cryTgt && isUnitRealmShieldedFrom(_cryTgt, unit)) {
                     if (!_silentReject) {
-                        addLog(`🌑 ${_ctName(_cryTgt)} is beyond reach in the Shadow Realm.`);
+                        addLog(`🌑 ${_ctName(_cryTgt)} is beyond reach in the Shadow Realm.`, _clickSeat());
                         playErrorSfx();
                     }
                     state._teleportingUnitId = null;
@@ -78258,7 +78270,7 @@
             if (spell.throwAnyDirection && spell.kind === 'displacement' && !_throwResolved) {
                 const _thT = unitAt(x, y, z) || unitAt(x, y);
                 if (!_thT || _thT.dead || !isEnemyUnit(_thT, unit)) {
-                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: choose an enemy to throw.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: choose an enemy to throw.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
                 state._spellPick1 = { id: _thT.id, spellId: spell.id, x: _thT.x, y: _thT.y };
@@ -78286,7 +78298,7 @@
                     && Math.abs(unit.x - tx) + Math.abs(unit.y - ty) <= _ppReach;
                 const _pk = _ppAuto ? null : _gunDoorPick(spell);
                 if (!_ppOk(x, y)) {
-                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: pick an empty tile within ${_ppReach}.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: pick an empty tile within ${_ppReach}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
                 if (!_ppAuto && !_pk) {
@@ -78301,7 +78313,7 @@
                 if (_pk && _pk.x === x && _pk.y === y) { clearSpellPick(); return 0; }
                 _pairPick = _pk ? { x: _pk.x, y: _pk.y } : _doorNearSpot(unit, { x, y });
                 if (!_pairPick || !_ppOk(_pairPick.x, _pairPick.y) || (_pairPick.x === x && _pairPick.y === y)) {
-                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: the first tile is no longer free.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: the first tile is no longer free.`, _clickSeat()); playErrorSfx(); }
                     clearSpellPick();
                     return 0;
                 }
@@ -78320,7 +78332,7 @@
                 if (!_pk1 || (_pkT && _pkT.id === _pk1.id)) {
                     if (!_pkT || !_twoClickTeamOk(unit, _pkT, _pkTeams[0])) {
                         if (!_silentReject) {
-                            addLog(`${_ctSp(spell.name)}: choose ${_pkWord(_pkTeams[0])} first, then ${_pkWord(_pkTeams[1])}.`);
+                            addLog(`${_ctSp(spell.name)}: choose ${_pkWord(_pkTeams[0])} first, then ${_pkWord(_pkTeams[1])}.`, _clickSeat());
                             playErrorSfx();
                         }
                         state._teleportingUnitId = null;
@@ -78336,7 +78348,7 @@
                        the cast never waits on a second list with nothing in it */
                     if (!_twoClickHasPartner(unit, spell, _pkT)) {
                         if (!_silentReject) {
-                            addLog(`${_ctSp(spell.name)}: no ${_pkTeams[1] === 'ally' ? 'ally' : 'other enemy'} in reach to pair with ${_ctName(_pkT)}${spell.pairRange ? ` (within ${spell.pairRange} tiles of it)` : ''}.`);
+                            addLog(`${_ctSp(spell.name)}: no ${_pkTeams[1] === 'ally' ? 'ally' : 'other enemy'} in reach to pair with ${_ctName(_pkT)}${spell.pairRange ? ` (within ${spell.pairRange} tiles of it)` : ''}.`, _clickSeat());
                             playErrorSfx();
                         }
                         state._teleportingUnitId = null;
@@ -78357,14 +78369,14 @@
                 // within pairRange of the first pick.
                 if (!_pkT || !_twoClickTeamOk(unit, _pkT, _pkTeams[1])) {
                     if (!_silentReject) {
-                        addLog(`${_ctSp(spell.name)}: now choose ${_pkWord(_pkTeams[1])} (not ${_ctName(_pk1)}).`);
+                        addLog(`${_ctSp(spell.name)}: now choose ${_pkWord(_pkTeams[1])} (not ${_ctName(_pk1)}).`, _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
                 }
                 if (spell.pairRange && (Math.abs(_pkT.x - _pk1.x) + Math.abs(_pkT.y - _pk1.y)) > spell.pairRange) {
                     if (!_silentReject) {
-                        addLog(`${_ctSp(spell.name)}: the two must be within ${spell.pairRange} tiles of each other.`);
+                        addLog(`${_ctSp(spell.name)}: the two must be within ${spell.pairRange} tiles of each other.`, _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
@@ -78660,7 +78672,7 @@
                 const _rndPool = _randomTargetPool(unit, spell, _rndRider);
                 if (!_rndPool.length) {
                     if (!_silentReject) {
-                        addLog(`${_ctSp(spell.name)}: no ${_rndRider.scope === 'units' ? 'unit' : 'enemy'} in range and in sight to hit.`);
+                        addLog(`${_ctSp(spell.name)}: no ${_rndRider.scope === 'units' ? 'unit' : 'enemy'} in range and in sight to hit.`, _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
@@ -78914,7 +78926,7 @@
             } else if (spell.kind === 'debuff') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Choose an enemy target for that spell.');
+                    addLog('Choose an enemy target for that spell.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79080,12 +79092,12 @@
             } else if (spell.kind === 'revive') {
                 const target = state.units.find(u => u.player === unit.player && u.dead && u.x === x && u.y === y);
                 if (!target) {
-                    addLog('Choose a fallen ally tile to revive.');
+                    addLog('Choose a fallen ally tile to revive.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (spell.oneRevivePerUnitPerMatch && target.reviveLocked) {
-                    addLog(`${_ctName(target)} cannot be revived again this match.`);
+                    addLog(`${_ctName(target)} cannot be revived again this match.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79132,7 +79144,7 @@
                 if (!corpse) {
                     const _covered = corpseRemainsBodies().some(c => c.x === x && c.y === y);
                     addLog(_covered ? "Those remains are covered — Raise the Dead needs their square empty."
-                        : "Target a fallen unit's remains — an ally's gravestone or an enemy's bones.");
+                        : "Target a fallen unit's remains — an ally's gravestone or an enemy's bones.", _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79172,7 +79184,7 @@
                    per spell (maxActivePerCaster) — a new call dismisses the old. */
                 const _sd = spell.summonDef || {};
                 if (!summonTileFree(x, y)) {
-                    addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`);
+                    addLog(`${_ctSp(spell.name)}: pick an empty tile beside you.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79220,7 +79232,7 @@
                 // Allies may stand on a bomb tile — only the caster's own bombs
                 // are safe to share a tile with (enemy bombs still trigger on step).
                 if (state.bombs.some(b => b.x === x && b.y === y)) {
-                    addLog('There is already a bomb on that tile.');
+                    addLog('There is already a bomb on that tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79295,24 +79307,24 @@
                 }
             } else if (spell.kind === 'placeMirror') {
                 if (unitAt(x, y, z) || unitAt(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ the Cube fills its tile
-                    addLog('Cannot fold a prism onto an occupied tile.');
+                    addLog('Cannot fold a prism onto an occupied tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (typeof isInside === 'function' && !isInside(x, y)) {
-                    addLog('Cannot place a prism there.');
+                    addLog('Cannot place a prism there.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (typeof isTerrainPassable === 'function' && !isTerrainPassable(x, y)) {
-                    addLog('Cannot place a prism on impassable terrain.');
+                    addLog('Cannot place a prism on impassable terrain.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.mirrors) state.mirrors = [];
                 if (!state._mirrorFreq) state._mirrorFreq = { 1: 0, 2: 0 };
                 if (state.mirrors.some(m => m.x === x && m.y === y)) {
-                    addLog('There is already a prism on that tile.');
+                    addLog('There is already a prism on that tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79351,7 +79363,7 @@
                 state._tunePick = null;
                 const _next = (_pick != null && _pick >= 0 && _pick < MIRROR_FREQS.length) ? (_pick | 0) : (_cur + 1) % MIRROR_FREQS.length;
                 if (_next === _cur) {
-                    if (!_silentReject) { addLog(`The lattice is already tuned to ${MIRROR_FREQS[_cur].glyph} ${MIRROR_FREQS[_cur].label}.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`The lattice is already tuned to ${MIRROR_FREQS[_cur].glyph} ${MIRROR_FREQS[_cur].label}.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
                 unit.mp -= effectiveSpellCost;
@@ -79373,7 +79385,7 @@
             } else if (spell.kind === 'pulseLattice' && spell.shatterPrisms) {
                 /* THE SPELL AUDIT Batch D: Shatter the Lattice — any number of prisms, linked or not */
                 if (!(state.mirrors || []).some(m => m.owner === unit.player && m.hp > 0)) {
-                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you have no prisms standing.`); playErrorSfx(); }
+                    if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you have no prisms standing.`, _clickSeat()); playErrorSfx(); }
                     return 0;
                 }
                 playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
@@ -79389,12 +79401,12 @@
             } else if (spell.kind === 'pulseLattice') {
                 const _pNet = computeMirrorNetwork(unit.player);
                 if (_pNet.count < 3) {
-                    addLog('The lattice needs at least 3 linked prisms to pulse.');
+                    addLog('The lattice needs at least 3 linked prisms to pulse.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!_pNet.beamTiles.size && !_pNet.volumeTiles.size) {
-                    addLog('No prism is linked to another — align them on a row or column first.');
+                    addLog('No prism is linked to another — align them on a row or column first.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79419,7 +79431,7 @@
                 // a `trapSize` row is a footprint (the trapdoor's 2×2).
                 const _tfp = _trapFootprint(x, y, spell.trapSize || 1, unit);
                 if (_tfp.problem) {
-                    addLog(`${_ctSp(spell.name)}: ${_tfp.problem}.`);
+                    addLog(`${_ctSp(spell.name)}: ${_tfp.problem}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79476,7 +79488,7 @@
                 if (_placementStruck && typeof checkWin === 'function') checkWin();
             } else if (spell.kind === 'scan') {
                 if (unitHasStatus(unit, 'jammed')) {
-                    addLog(`${_ctName(unit)} cannot emit Scan Pulse while jammed.`);
+                    addLog(`${_ctName(unit)} cannot emit Scan Pulse while jammed.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79538,7 +79550,7 @@
                 completionDelay = actionMs(800);
             } else if (spell.kind === 'summonWeather') {
                 if (!isInside(x, y)) {
-                    addLog('Choose a tile on the map.');
+                    addLog('Choose a tile on the map.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79627,7 +79639,7 @@
 
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Choose an enemy target for that spell.');
+                    addLog('Choose an enemy target for that spell.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79904,7 +79916,7 @@
                 /* THE SEEN NOVA (playtest 2026-11-07 F): a no-damage self nova (Demonic Roar) with no enemy the caster's
                    side sees in reach is refused before any MP or cooldown is spent */
                 if (spell.aoeOriginSelf && _selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
-                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -79953,14 +79965,14 @@
                 // click could still reach here and used to burn 55 MP on a nova
                 // that hit nothing.
                 if (spell.hitsWetOnly && _barrageTargets(unit, spell).length === 0) {
-                    addLog(`${_ctSp(spell.name)}: no enemies are standing in water.`);
+                    addLog(`${_ctSp(spell.name)}: no enemies are standing in water.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 /* THE SEEN NOVA (playtest 2026-11-07 F): no enemy the caster's side sees in reach = no cast, before any
                    MP or cooldown is spent (the rows read NO TARGET; this catches a board click) */
                 if (_selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
-                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80058,7 +80070,7 @@
             else if (spell.kind === 'steal') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || target.dead || isAllyUnit(target, unit)) {
-                    addLog('Choose an enemy to rob.');
+                    addLog('Choose an enemy to rob.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80108,7 +80120,7 @@
             else if (spell.kind === 'cleanseArea') {
                 const _caDist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                 if (!isInside(x, y) || _caDist > getEffectiveSpellRange(unit, spell)) {
-                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`);
+                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80152,7 +80164,7 @@
                 // with nothing on them (map clicks bypass the target drum).
                 const _clPre = (unitAt(x, y, z) || unitAt(x, y));
                 if (_clPre && !spellTargetUsableOn(unit, spell, _clPre)) {
-                    addLog(`${_ctName(_clPre)} has no debuffs to cleanse${spell.statStageBoost ? ' and no room to rise' : ''}.`);
+                    addLog(`${_ctName(_clPre)} has no debuffs to cleanse${spell.statStageBoost ? ' and no room to rise' : ''}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80182,7 +80194,7 @@
             else if (spell.kind === 'displacement') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target.');
+                    addLog('Invalid target.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80449,7 +80461,7 @@
                 // twin, protecting every entry point (board clicks, quick
                 // menus, online relays) before MP/AP are spent.
                 if (spell.aoeOriginSelf && (spell.dmg || 0) > 0 && !_selfNovaHasTarget(unit, spell)) {
-                    addLog(`${_ctSp(spell.name)}: no target in the blast pattern from here!`);
+                    addLog(`${_ctSp(spell.name)}: no target in the blast pattern from here!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80493,7 +80505,7 @@
                     : (!target || isAllyUnit(target, unit));
                 if (_plBad) {
                     if (!_silentReject) {
-                        addLog(_plAlly ? `${_ctSp(spell.name)}: choose a friendly unit to haul in.` : 'Invalid target for pull.');
+                        addLog(_plAlly ? `${_ctSp(spell.name)}: choose a friendly unit to haul in.` : 'Invalid target for pull.', _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
@@ -80785,7 +80797,7 @@
                     : (!target || isAllyUnit(target, unit));
                 if (_swBad) {
                     if (!_silentReject) {
-                        addLog(spell.allyOnly ? `${_ctSp(spell.name)}: choose a friendly unit to swap with.` : 'Invalid target for swap.');
+                        addLog(spell.allyOnly ? `${_ctSp(spell.name)}: choose a friendly unit to swap with.` : 'Invalid target for swap.', _clickSeat());
                         playErrorSfx();
                     }
                     return 0;
@@ -80894,12 +80906,12 @@
                    kind means EXTRA activations (Enthrall ×2 vs Charmed). */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`);
+                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (target._isBoss) {
-                    addLog(`${_ctName(target)}'s will is too vast to steal.`);
+                    addLog(`${_ctName(target)}'s will is too vast to steal.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -80961,12 +80973,12 @@
                    (CINE_SEQUENCES.raceShadowRealm). */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`);
+                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (target._isBoss) {
-                    addLog(`${_ctName(target)} cannot be dragged into the realm.`);
+                    addLog(`${_ctName(target)} cannot be dragged into the realm.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81019,7 +81031,7 @@
                 const second = (unitAt(x, y, z) || unitAt(x, y));
                 clearSpellPick();
                 if (!first || !second) {
-                    addLog(`${_ctSp(spell.name)} lost its target.`);
+                    addLog(`${_ctSp(spell.name)} lost its target.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81077,12 +81089,12 @@
                 const receiver = (unitAt(x, y, z) || unitAt(x, y));
                 clearSpellPick();
                 if (!giver || !receiver) {
-                    addLog(`${_ctSp(spell.name)} lost its target.`);
+                    addLog(`${_ctSp(spell.name)} lost its target.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if ((receiver.hp || 0) >= (receiver.maxHp || 0)) {
-                    addLog(`${_ctName(receiver)} is already at full HP.`);
+                    addLog(`${_ctName(receiver)} is already at full HP.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81128,7 +81140,7 @@
                    the remains consumed (no revive, no raising). */
                 const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (!corpse) {
-                    addLog("Target an enemy's remains — a fallen enemy's bones.");
+                    addLog("Target an enemy's remains — a fallen enemy's bones.", _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81405,7 +81417,7 @@
                 /* THE SEEN NOVA (playtest 2026-11-07 F): a no-damage self pull (Round Up) with no enemy the caster's side
                    sees in reach is refused before any MP or cooldown is spent */
                 if (spell.aoeOriginSelf && _selfNovaEnemyOnly(spell) && _selfNovaSeenVictims(unit, spell).length === 0) {
-                    addLog(`${_ctSp(spell.name)}: no enemies in range.`);
+                    addLog(`${_ctSp(spell.name)}: no enemies in range.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81471,7 +81483,7 @@
             else if (spell.kind === 'splitBeam') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target.');
+                    addLog('Invalid target.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81577,7 +81589,12 @@
                     demolishesBuildings: !!spell.demolishesBuildings
                 });
                 _sigVfxGeom(spell.id + ':mark', x, y, 0, { onlyPlayer: unit.player, fromX: unit.x, fromY: unit.y });
-                addLog(`${_ctName(unit)} marks ${coordLabel(x, y)} with ${_ctSp(spell.name)}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`);
+                /* PvP playtest 2026-11-09 F4: a fogged Marksman's Fire for Effect on the guest Cyborg's own tile drew its ring on
+                   the guest's board but wrote no line there (the caster's name dropped the whole line). Every board draws
+                   every delayed ring, so the mark line goes to every log like a zone's, as "Someone marks …" to a seat
+                   that can't see the caster. */
+                const _dlTail = `marks ${coordLabel(x, y)} with ${_ctSp(spell.name)}! Detonates in ${delay} round${delay > 1 ? 's' : ''}.`;
+                addLog(`${_ctName(unit)} ${_dlTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_dlTail}` });
                 showFloatingTextForUnit(unit, `${spell.name}!`, 'streak', { durationMs: 1000 });
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
@@ -81615,7 +81632,7 @@
                     && _dOcc.player !== unit.player
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_dOcc)));
                 if ((_dOcc && !_dContact) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ the Cube fills its tile
-                    addLog('Cannot deploy on an occupied tile.');
+                    addLog('Cannot deploy on an occupied tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81753,7 +81770,7 @@
                    toggle, no Slam; whoever ends a move on one steps out of
                    the other. */
                 if (!doorTileFree(x, y) || doorAt(unit.x, unit.y)) {
-                    addLog(`${_ctSp(spell.name)}: that tile is taken.`);
+                    addLog(`${_ctSp(spell.name)}: that tile is taken.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81781,9 +81798,9 @@
                 const _dMan = (ax, ay) => Math.abs(unit.x - ax) + Math.abs(unit.y - ay);
                 const _dReach = getEffectiveSpellRange(unit, spell) || DOOR_RULES.toggleRange;
                 if (_dTarget) {
-                    if (_dTarget.owner !== unit.player) { if (!_silentReject) { addLog('That is not your door.'); playErrorSfx(); } return 0; }
-                    if (_dTarget.fixed) { if (!_silentReject) { addLog('That gate has no leaf to shut.'); playErrorSfx(); } return 0; }
-                    if (_dMan(x, y) > _dReach) { if (!_silentReject) { addLog('That door is too far to reach.'); playErrorSfx(); } return 0; }
+                    if (_dTarget.owner !== unit.player) { if (!_silentReject) { addLog('That is not your door.', _clickSeat()); playErrorSfx(); } return 0; }
+                    if (_dTarget.fixed) { if (!_silentReject) { addLog('That gate has no leaf to shut.', _clickSeat()); playErrorSfx(); } return 0; }
+                    if (_dMan(x, y) > _dReach) { if (!_silentReject) { addLog('That door is too far to reach.', _clickSeat()); playErrorSfx(); } return 0; }
                     const _free = !!(typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'doorFreeToggle'))
                         && doorsBeside(unit).some(d => d.id === _dTarget.id) && unit._doorFreeRound !== (state.round || 0);
                     _spellFocusCamera(unit, x, y);
@@ -81794,12 +81811,12 @@
                     completionDelay = actionMs(350);
                 } else {
                     if (!doorTileFree(x, y) || _dMan(x, y) > _dReach) {
-                        if (!_silentReject) { addLog(`Knock Knock: pick an EMPTY tile within ${_dReach} — the far door opens there.`); playErrorSfx(); }
+                        if (!_silentReject) { addLog(`Knock Knock: pick an EMPTY tile within ${_dReach} — the far door opens there.`, _clickSeat()); playErrorSfx(); }
                         return 0;
                     }
                     const _near = _doorNearSpot(unit, { x, y });
                     if (!_near) {
-                        if (!_silentReject) { addLog('Knock Knock: no free tile beside you for the near door.'); playErrorSfx(); }
+                        if (!_silentReject) { addLog('Knock Knock: no free tile beside you for the near door.', _clickSeat()); playErrorSfx(); }
                         return 0;
                     }
                     playSfx('uiConfirm');
@@ -81821,7 +81838,7 @@
                 /* BREAKING AND ENTERING: come through beside the enemy and
                    strike from behind (the rear rider is armed by spell.rearAttack). */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
-                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Choose an enemy to break in on.'); playErrorSfx(); } return 0; }
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Choose an enemy to break in on.', _clickSeat()); playErrorSfx(); } return 0; }
                 const f = getUnitFacing(target);
                 const _cands = [];
                 for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -81834,7 +81851,7 @@
                 }
                 _cands.sort((a, b) => a.w - b.w);
                 const land = _cands[0];
-                if (!land) { if (!_silentReject) { addLog('No room beside that enemy to come through.'); playErrorSfx(); } return 0; }
+                if (!land) { if (!_silentReject) { addLog('No room beside that enemy to come through.', _clickSeat()); playErrorSfx(); } return 0; }
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx('teleport');
@@ -81891,7 +81908,7 @@
                 /* SPECIAL DELIVERY: the package flies out of the twin (the
                    door-origin gate above found it: _doorOrg). */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
-                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Choose an enemy to deliver to.'); playErrorSfx(); } return 0; }
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Choose an enemy to deliver to.', _clickSeat()); playErrorSfx(); } return 0; }
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
@@ -81922,10 +81939,10 @@
                    beside the twin take the hit and a radial push, allies are
                    pushed only. */
                 const door = doorAt(x, y);
-                if (!door || door.owner !== unit.player) { if (!_silentReject) { addLog('Slam: pick one of your doors.'); playErrorSfx(); } return 0; }
-                if (door.fixed) { if (!_silentReject) { addLog('That gate has no leaf to slam.'); playErrorSfx(); } return 0; }
+                if (!door || door.owner !== unit.player) { if (!_silentReject) { addLog('Slam: pick one of your doors.', _clickSeat()); playErrorSfx(); } return 0; }
+                if (door.fixed) { if (!_silentReject) { addLog('That gate has no leaf to slam.', _clickSeat()); playErrorSfx(); } return 0; }
                 const twin = doorTwin(door);
-                if (!twin) { if (!_silentReject) { addLog('Slam: that door has no twin left.'); playErrorSfx(); } return 0; }
+                if (!twin) { if (!_silentReject) { addLog('Slam: that door has no twin left.', _clickSeat()); playErrorSfx(); } return 0; }
                 playSfx('uiConfirm');
                 const _slShot = _spellFocusCamera(unit, twin.x, twin.y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
@@ -81973,9 +81990,9 @@
                    dropped where it stood; STATUS_DEFS.exited.onRemove brings it
                    back out of the twin (window._doorExitReturn), Staggered. */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
-                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('EXIT: choose an enemy.'); playErrorSfx(); } return 0; }
-                if (target._isBoss || target.isBoss || target._isCube) { if (!_silentReject) { addLog('EXIT: that one does not fit through a door.'); playErrorSfx(); } return 0; }
-                if (unitHasStatus(target, 'exited')) { if (!_silentReject) { addLog('EXIT: already filed.'); playErrorSfx(); } return 0; }
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('EXIT: choose an enemy.', _clickSeat()); playErrorSfx(); } return 0; }
+                if (target._isBoss || target.isBoss || target._isCube) { if (!_silentReject) { addLog('EXIT: that one does not fit through a door.', _clickSeat()); playErrorSfx(); } return 0; }
+                if (unitHasStatus(target, 'exited')) { if (!_silentReject) { addLog('EXIT: already filed.', _clickSeat()); playErrorSfx(); } return 0; }
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx('teleport');
@@ -82004,7 +82021,7 @@
                    drops out of the friendly door FARTHEST from it (a free tile
                    there), else beside the agent. */
                 const target = (unitAt(x, y, z) || unitAt(x, y));
-                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Trapdoor: choose an enemy.'); playErrorSfx(); } return 0; }
+                if (!target || target.dead || isAllyUnit(target, unit)) { if (!_silentReject) { addLog('Trapdoor: choose an enemy.', _clickSeat()); playErrorSfx(); } return 0; }
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
@@ -82235,7 +82252,7 @@
                 const _pbInfo = {};
                 const _pbProblem = _placeBlockProblem(unit, spell, x, y, _pbInfo);
                 if (_pbProblem) {
-                    addLog(`${_ctSp(spell.name)}: ${_pbProblem}.`);
+                    addLog(`${_ctSp(spell.name)}: ${_pbProblem}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -82244,7 +82261,7 @@
                 const _pbEnemyOcc = _pbInfo.enemyOcc || null;
                 const _pbShoveTo = _pbInfo.shoveTo || null;
                 if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
-                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}.`);
+                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -82306,12 +82323,12 @@
                 if (!plan) {
                     addLog(spell.structure === 'bridgeSpan'
                         ? 'Aim the bridge at water or a gap — it spans away from you to the far shore.'
-                        : 'No room to raise that structure there.');
+                        : 'No room to raise that structure there.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (spell.materialCost && !spendMaterials(unit.player, spell.materialCost)) {
-                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}.`);
+                    addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -82885,7 +82902,7 @@
                     const _grSelfOnly = !!spell.selfPullOnly;
                     const _grUnitAnchor = _grSelfOnly && target && target.id !== unit.id;
                     if (_grSelfOnly && target && target.id === unit.id) {
-                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: aim the hook at a tile, a wall or a unit — not yourself.`); playErrorSfx(); }
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: aim the hook at a tile, a wall or a unit — not yourself.`, _clickSeat()); playErrorSfx(); }
                         return 0;
                     }
                     if (!_grSelfOnly && target && isEnemyUnit(target, unit)) {
@@ -82996,7 +83013,7 @@
                         const moved = _grLand ? _grLand.moved : 0;
                         const cx = _grLand ? _grLand.x : unit.x, cy = _grLand ? _grLand.y : unit.y;
                         if (moved === 0) {
-                            if (!_silentReject) { addLog(_grSelfOnly ? `${_ctSp(spell.name)}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.'); playErrorSfx(); }
+                            if (!_silentReject) { addLog(_grSelfOnly ? `${_ctSp(spell.name)}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.', _clickSeat()); playErrorSfx(); }
                             return 0;
                         }
                         playSfx('uiConfirm');
@@ -83049,7 +83066,7 @@
                         addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grUnitAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
                         completionDelay = _grReelAt + _grSlideMs + actionMs(280);
                     } else {
-                        addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');
+                        addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -83057,7 +83074,7 @@
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (!target || isAllyUnit(target, unit)) {
-                        addLog('Choose an adjacent enemy to plunder.');
+                        addLog('Choose an adjacent enemy to plunder.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -83111,13 +83128,13 @@
 
                     const lastSpell = state._lastSpellCast;
                     if (!lastSpell) {
-                        addLog('No spell has been cast yet this match to mimic.');
+                        addLog('No spell has been cast yet this match to mimic.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
                     const mimicSpell = getSpellById(lastSpell.spellId);
                     if (!mimicSpell) {
-                        addLog('Cannot mimic that spell.');
+                        addLog('Cannot mimic that spell.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -83160,7 +83177,7 @@
                    whatever the caster's own Inspect reach — same footprint (getInspectFootprint), same Keys / loot / bombs. */
                 const _fsDist = Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y));
                 if (!isInside(x, y) || _fsDist > getEffectiveSpellRange(unit, spell)) {
-                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`);
+                    addLog(`${_ctSp(spell.name)}: that tile is out of range.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83182,7 +83199,7 @@
 
             else if (spell.kind === 'remoteView') {
                 if (!isInside(x, y)) {
-                    addLog('Choose a tile to reveal.');
+                    addLog('Choose a tile to reveal.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83222,12 +83239,12 @@
                     if (spell.teleportAnyUnit) {
 
                         if (!teleTarget) {
-                            addLog('Choose a unit to teleport first.');
+                            addLog('Choose a unit to teleport first.', _clickSeat());
                             playErrorSfx();
                             return 0;
                         }
                         if (teleTarget.id === unit.id && unitMoveBlockedByStatus(unit)) {   // THE MOVE BLOCK ON SPELLS
-                            addLog(`${_ctName(unit)} is ${(moveBlockWord(unit) || 'Rooted').toLowerCase()} and cannot move: warp another unit.`);
+                            addLog(`${_ctName(unit)} is ${(moveBlockWord(unit) || 'Rooted').toLowerCase()} and cannot move: warp another unit.`, _clickSeat());
                             playErrorSfx();
                             return 0;
                         }
@@ -83267,14 +83284,14 @@
                     const _tpSurfs = (typeof getWalkableSurfaces === 'function' && state.boardColumns?.length) ? getWalkableSurfaces(x, y) : [];
                     const _tpLandZ = (_tpSurfs.length > 1 && z !== undefined && z !== null && _tpSurfs.indexOf(z) >= 0) ? z : null;
                     if (_tpLandZ !== null ? unitAt(x, y, _tpLandZ) : unitAt(x, y)) {
-                        addLog('Destination tile must be unoccupied.');
+                        addLog('Destination tile must be unoccupied.', _clickSeat());
                         playErrorSfx();
                         _tpDrop();
                         return 0;
                     }
                     if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))   // ⬡ never into the Cube
                         || (typeof fieldCellRock === 'function' && fieldCellRock(x, y))) {   // THE SOLID WALL: a sign's / wall's hidden column is no landing (2026-11-03)
-                        addLog('Cannot teleport there.');
+                        addLog('Cannot teleport there.', _clickSeat());
                         playErrorSfx();
                         _tpDrop();
                         return 0;
@@ -83282,14 +83299,14 @@
                     /* wave C: onlyTerrain (Icky Surprise) — destinations are
                        that terrain only; LOS never mattered for teleports. */
                     if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) {
-                        addLog(`${_ctSp(spell.name)}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`);
+                        addLog(`${_ctSp(spell.name)}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`, _clickSeat());
                         playErrorSfx();
                         _tpDrop();
                         return 0;
                     }
                     /* B4 (mondo 2026-10-29): Mirror Blink lands next to one of your prisms, anywhere on the board */
                     if (spell.prismBlink && !prismBlinkTileOk(unit, spell, x, y)) {
-                        addLog(`${_ctSp(spell.name)}: land next to one of your prisms.`);
+                        addLog(`${_ctSp(spell.name)}: land next to one of your prisms.`, _clickSeat());
                         playErrorSfx();
                         _tpDrop();
                         return 0;
@@ -83298,7 +83315,7 @@
                     const destDist = Math.abs(unit.x - x) + Math.abs(unit.y - y);
                     const _tpEffRange = getEffectiveSpellRange(unit, spell);
                     if (destDist > _tpEffRange) {
-                        addLog('Destination is out of teleport range.');
+                        addLog('Destination is out of teleport range.', _clickSeat());
                         playErrorSfx();
                         _tpDrop();
                         return 0;
@@ -83308,7 +83325,7 @@
                        covers the second click). */
                     if (spell.needsLoS && destDist >= 1
                         && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0))) {
-                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you need a clear line to that tile.`); playErrorSfx(); }
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you need a clear line to that tile.`, _clickSeat()); playErrorSfx(); }
                         _tpDrop();
                         return 0;
                     }
@@ -83441,12 +83458,12 @@
 
             else if (spell.kind === 'warpRune') {
                 if (unitAt(x, y)) {
-                    addLog('Choose an empty tile for the Warp Rune.');
+                    addLog('Choose an empty tile for the Warp Rune.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!isInside(x, y) || !isTerrainPassable(x, y)) {
-                    addLog('Cannot place a rune there.');
+                    addLog('Cannot place a rune there.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83476,13 +83493,13 @@
             else if (spell.kind === 'seedHeal') {
                 const terrain = getTerrainAt(x, y);
                 if (terrain === 'mountain' || terrain === 'lava') {
-                    addLog(`Healing Seed cannot be planted on ${terrain} tiles.`);
+                    addLog(`Healing Seed cannot be planted on ${terrain} tiles.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.plantedSeeds) state.plantedSeeds = [];
                 if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'heal')) {
-                    addLog('There is already a healing seed on that tile.');
+                    addLog('There is already a healing seed on that tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83544,13 +83561,13 @@
             else if (spell.kind === 'seedPoison') {
                 const terrain = getTerrainAt(x, y);
                 if (terrain === 'mountain' || terrain === 'lava') {
-                    addLog(`Poison Seed cannot be planted on ${terrain} tiles.`);
+                    addLog(`Poison Seed cannot be planted on ${terrain} tiles.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.plantedSeeds) state.plantedSeeds = [];
                 if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'poison')) {
-                    addLog('There is already a poison seed on that tile.');
+                    addLog('There is already a poison seed on that tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83605,7 +83622,7 @@
             else if (spell.kind === 'lifeDrain') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`);
+                    addLog(`Choose an enemy target for ${_ctSp(spell.name)}.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83678,13 +83695,13 @@
             else if (spell.kind === 'leechSeed') {
                 const terrain = getTerrainAt(x, y);
                 if (terrain === 'mountain' || terrain === 'lava') {
-                    addLog(`Leech Seed cannot be planted on ${terrain} tiles.`);
+                    addLog(`Leech Seed cannot be planted on ${terrain} tiles.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.plantedSeeds) state.plantedSeeds = [];
                 if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'leech')) {
-                    addLog('There is already a leech seed on that tile.');
+                    addLog('There is already a leech seed on that tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83754,7 +83771,7 @@
                 const _gdFaceX = _gunDoorAim ? _gunDoorAim.faceX : 0, _gdFaceY = _gunDoorAim ? _gunDoorAim.faceY : 0;
                 if (_gunDoorPick(spell)) state._spellPick1 = null;
                 if (!_gunDoorDefOfSpell(spell) || !doorTileFree(x, y)) {
-                    addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
+                    addLog(`${_ctSp(spell.name)}: the tile is no longer free.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83776,7 +83793,7 @@
                     const _gdoor = doorGunPlace(unit, spell, x, y, _gdFaceX, _gdFaceY);
                     if (!_gdoor) {
                         unit.mp += effectiveSpellCost;
-                        addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
+                        addLog(`${_ctSp(spell.name)}: the tile is no longer free.`, _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -83787,12 +83804,12 @@
 
             else if (spell.kind === 'deployTurret') {
                 if (unitAt(x, y)) {
-                    addLog('Choose an empty tile for the turret.');
+                    addLog('Choose an empty tile for the turret.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ not inside the Cube
-                    addLog('Cannot place a turret there.');
+                    addLog('Cannot place a turret there.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83808,7 +83825,7 @@
                     addLog(`Oldest ${_ctSp(spell.name)} at ${coordLabel(oldest.x, oldest.y)} dismantled to make room.`);
                 }
                 if (state.turrets.some(t => t.x === x && t.y === y)) {
-                    addLog('There is already a turret on that tile.');
+                    addLog('There is already a turret on that tile.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83870,7 +83887,7 @@
 
             else if (spell.kind === 'buildBridge') {
                 if (getTerrainAt(x, y) !== 'deep_water') {
-                    addLog('Build Bridge can only target deep water tiles.');
+                    addLog('Build Bridge can only target deep water tiles.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84063,12 +84080,12 @@
             else if (spell.kind === 'guard') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
-                    addLog('Choose a living ally to protect with Chivalry.');
+                    addLog('Choose a living ally to protect with Chivalry.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (target.id === unit.id) {
-                    addLog('Chivalry protects an ally, not yourself.');
+                    addLog('Chivalry protects an ally, not yourself.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84093,12 +84110,12 @@
             else if (spell.kind === 'encore') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isEnemyUnit(target, unit) || target.dead) {
-                    addLog('Choose a living ally for Encore.');
+                    addLog('Choose a living ally for Encore.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (target.id === unit.id) {
-                    addLog(`${_ctName(unit)} cannot Encore themselves.`);   // no job name (THE JOBS REMOVAL 2026-09-27)
+                    addLog(`${_ctName(unit)} cannot Encore themselves.`, _clickSeat());   // no job name (THE JOBS REMOVAL 2026-09-27)
                     playErrorSfx();
                     return 0;
                 }
@@ -84106,13 +84123,13 @@
                 if (!unitEncoreReady(target)) {
                     addLog(target._respawnSitOutRound === state.round
                         ? `${_ctName(target)} is sitting out this round after respawning. Encore targets units that have acted.`
-                        : `${_ctName(target)} hasn't acted yet this round. Encore targets units that are done.`);
+                        : `${_ctName(target)} hasn't acted yet this round. Encore targets units that are done.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
 
                 if (target._encoreThisRound) {
-                    addLog(`${_ctName(target)} already received an Encore this round.`);
+                    addLog(`${_ctName(target)} already received an Encore this round.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84142,19 +84159,19 @@
 
                 const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                 if (dist < 1 || dist > getEffectiveSpellRange(unit, spell)) {
-                    addLog('Destination out of dash range.');
+                    addLog('Destination out of dash range.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
-                    addLog('Cannot dash to impassable terrain.');
+                    addLog('Cannot dash to impassable terrain.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (dashOnlyMoves(spell)) {   // 🏃 Sprint runs to an empty tile — it never shoves a body aside
                     const _dashBody = unitAt(x, y);
                     if (_dashBody && !_dashBody.dead && _dashBody.id !== unit.id) {
-                        addLog(`${spell.name} needs an empty tile.`);
+                        addLog(`${spell.name} needs an empty tile.`, _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -84457,24 +84474,24 @@
             else if (spell.kind === 'skyDrop') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target for Sky Drop.');
+                    addLog('Invalid target for Sky Drop.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                 if (dist > (getEffectiveSpellRange(unit, spell) || 1)) {
-                    addLog('Target out of range.');
+                    addLog('Target out of range.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
-                    addLog('Only flying units can use this ability.');
+                    addLog('Only flying units can use this ability.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                    addLog('Too wounded to fly! (below 25% HP)');
+                    addLog('Too wounded to fly! (below 25% HP)', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84483,7 +84500,7 @@
                 // dirt. Reject cleanly (menus grey this via getSpellBlockReason).
                 if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                    addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                    addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84584,12 +84601,12 @@
                     const throwRange = spell.throwRange || 3;
                     const throwDist = Math.abs(x - throwTarget.x) + Math.abs(y - throwTarget.y);
                     if (throwDist < 1 || throwDist > throwRange) {
-                        addLog('Throw destination out of range.');
+                        addLog('Throw destination out of range.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
                     if (!isInside(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
-                        addLog('Invalid throw destination.');
+                        addLog('Invalid throw destination.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -84733,18 +84750,18 @@
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
                     if (!target || isAllyUnit(target, unit)) {
-                        addLog('Invalid grab target.');
+                        addLog('Invalid grab target.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
                     const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                     if (dist > (getEffectiveSpellRange(unit, spell) || 1)) {
-                        addLog('Target out of grab range.');
+                        addLog('Target out of grab range.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
                     if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
-                        addLog('Only flying units can use this ability.');
+                        addLog('Only flying units can use this ability.', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -84753,13 +84770,13 @@
                     // by super gravity) must not grab from the dirt.
                     if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
                         && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                        addLog('Too wounded to fly! (below 25% HP)');
+                        addLog('Too wounded to fly! (below 25% HP)', _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
                     if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
                         && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                        addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                        addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`, _clickSeat());
                         playErrorSfx();
                         return 0;
                     }
@@ -84808,24 +84825,24 @@
             else if (spell.kind === 'skySlam') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target for Sky Slam.');
+                    addLog('Invalid target for Sky Slam.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                 if (dist > (getEffectiveSpellRange(unit, spell) || 1)) {
-                    addLog('Target out of range.');
+                    addLog('Target out of range.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (spell.requiresFlight && typeof canFly === 'function' && !canFly(unit)) {
-                    addLog('Only flying units can use this ability.');
+                    addLog('Only flying units can use this ability.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                    addLog('Too wounded to fly! (below 25% HP)');
+                    addLog('Too wounded to fly! (below 25% HP)', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84834,7 +84851,7 @@
                 // dirt. Reject cleanly (menus grey this via getSpellBlockReason).
                 if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                    addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                    addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84959,13 +84976,13 @@
             else if (spell.kind === 'leapStrike') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Invalid target for Leap Strike.');
+                    addLog('Invalid target for Leap Strike.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 const dist = Math.abs(x - unit.x) + Math.abs(y - unit.y);
                 if (dist > (getEffectiveSpellRange(unit, spell) || 2)) {
-                    addLog('Target out of range.');
+                    addLog('Target out of range.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -84973,7 +84990,7 @@
                 const casterZ = getUnitStandingHeight(unit);
                 const targetZ = getUnitStandingHeight(target);
                 if (casterZ <= targetZ) {
-                    addLog('Must be above the target to use this ability.');
+                    addLog('Must be above the target to use this ability.', _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -85571,6 +85588,12 @@
             state.actionMode = null;
             state.actionMenuView = 'root';
             state.pendingTarget = null;
+            /* PvP playtest 2026-11-09 F2: the guest Cyborg's armed To the Moon kept its red "−570" forecast badge on DOOR
+               Agent for rounds after the clock ended the turn — the aim went, its previews stayed. The armed tool and every
+               aim preview (footprint, forecast badges, arrows) come off with it, on whichever seat timed out. */
+            state.selectedTool = null;
+            if (typeof clearSpellPick === 'function') { try { clearSpellPick(); } catch (e) {} }
+            if (typeof window.clearSpellAimPreviews === 'function') { try { window.clearSpellAimPreviews(); } catch (e) {} }
             if (_hostBackstop) {
                 // run it the way a relayed guest END TURN runs (online.js _executeRemoteAction), then sync the guest
                 const _savedRA = state._remoteAction;
