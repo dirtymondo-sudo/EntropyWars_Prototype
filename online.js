@@ -1938,6 +1938,11 @@
                 window._NET._waitingForOpponent = false;
                 window._NET._autoStartFired = false;
                 window._NET._chessRolledFor = null;   // THE CHESS POSITIONS: the next match rolls its own position
+                /* PvP playtest 2026-11-09 F9: a 5-round room's rematch ran "R1/12" — the room's rounds went into
+                   _customRoundLimit once, at room entry (_enterOnlineMode), and the first startMatch spent it; the
+                   rematch fell back to the mode's own limit. The room's own rounds go back in for every rematch. */
+                var _rmFc = (!window._NET.ranked && window._NET.friendlyConfig) || null;
+                if (_rmFc && _rmFc.rounds) state._customRoundLimit = _rmFc.rounds;
                 state.showPlayer2Builder = true;
                 state.matchNumber = (state.matchNumber || 1) + 1;
                 render();
@@ -6022,16 +6027,21 @@
                 if (e && typeof e === 'object' && e.zn) return true;   // a zone's cast line (battle.js addLog o.zone): the guest's board draws every zone
                 var msg = String(typeof e === 'string' ? e : (e && e.m) || '').replace(/<[^>]+>/g, '').replace(/[\uE000-\uE00F]/g, '');
                 if (!msg) return true;
-                var hidden = false, own = false, us = st.units || [];
+                var hidden = false, own = false, foe = false, us = st.units || [];
                 for (var i = 0; i < us.length; i++) {
                     var u = us[i];
                     if (!u) continue;
                     var nm = typeof unitDisplayName === 'function' ? unitDisplayName(u) : u.name;
                     if (!nm || msg.indexOf(nm) < 0) continue;
                     if (u.player === v.gp) own = true;
-                    else if (v.hidden[u.id]) hidden = true;
+                    else { foe = true; if (v.hidden[u.id]) hidden = true; }
                 }
                 if (hidden && !own) return false;
+                /* PvP playtest 2026-11-09 F3: a blinded Barbarella's own "teleports from G6 to H8." never reached the guest — a
+                   Blind unit doesn't see its own tiles. A line about the guest's own units only (no other seat's unit named)
+                   tells it where its own units went, which its board shows anyway: no tile check (battle.js _logFogVisible,
+                   the guest's own rule, never checks a tile on a line that names no enemy). */
+                if (own && !foe) return true;
                 var W = (typeof bw === 'function') ? bw() : 99, H = (typeof bh === 'function') ? bh() : 99, m;
                 _GV_COORD.lastIndex = 0;
                 while ((m = _GV_COORD.exec(msg)) !== null) {
@@ -6671,6 +6681,14 @@
                                 }
                             }
                         }
+                    }
+                    /* PvP playtest 2026-11-09 F2: an aim the guest had armed when its turn went (the shot clock, the host's
+                       backstop, a one-click cast that ended the turn, the next unit auto-selected) left its forecast badges
+                       ("−570") and footprint on the board for rounds — the aim was dropped above, its previews never were.
+                       They come off with the aim. */
+                    if ((savedUI.actionMode || savedUI.selectedTool) && !st.actionMode && !st.selectedTool
+                        && typeof window.clearSpellAimPreviews === 'function') {
+                        try { window.clearSpellAimPreviews(); } catch (e) {}
                     }
                     st._guestPrevActivePlayer = st.activePlayer;
                     st._guestPrevActiveUnitId = st._blitzActiveUnitId;
