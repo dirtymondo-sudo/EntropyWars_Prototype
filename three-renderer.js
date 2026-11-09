@@ -44083,6 +44083,44 @@ const ThreeRenderer = (function () {
             if (nm && nm !== material) { try { _ewNodeDress(nm, material); } catch (e) { console.warn('[ThreeRenderer] node layer: ' + material.type + ' kept plain', e); } }
             return nm;
         };
+        /* THE LATE SHEETS (2026-11-09, mondo on the Heaven Arena: "what are these black squares on heaven?" — the cloud paths drew
+           solid black on WebGPU): three re-binds a render object's textures only when its material observer sees a change, and the
+           observer watches the material's own slots (map, emissiveMap…). A hooked material's own sheets (_ewNodeTag's D: the
+           terrain's cliff / path / painted sheets, a fluid's wave sheets) live in its node graph, so a sheet still loading at the
+           object's first draw was bound as three's empty placeholder and never re-bound when it landed (heaven's path sheet,
+           cloud_2.png, is drawn by nothing else, so nothing else ever uploaded it). Here an object whose node sheets changed
+           version since it last refreshed gets one full refresh: its bindings re-read, the sheet uploads, the paths show. WebGPU
+           and WebGL 2 alike; the classic renderer never comes here. */
+        var N = r._nodes, nr = N && N.needsRefresh;
+        if (typeof nr === 'function' && !N._ew_lateSheets) {
+            N._ew_lateSheets = true;
+            N.needsRefresh = function (ro) {
+                var v = nr.apply(this, arguments), m = ro && ro.material, D = m && m._ewNode;
+                if (!D || v === 2) { if (D && ro) ro._ew_nsSig = _ewNodeSheetSig(D); return v; }
+                var s = _ewNodeSheetSig(D);
+                if (ro._ew_nsSig === s) return v;
+                ro._ew_nsSig = s;
+                return 2;   // RenderObjectRefreshType.FULL
+            };
+        }
+    }
+    /* a node material's own sheets (textures in its _ewNodeTag data, arrays too), listed once per data object */
+    function _ewNodeSheets(D) {
+        if (D._ew_sheets) return D._ew_sheets;
+        var out = [];
+        for (var k in D) {
+            if (k === '_ew_sheets') continue;
+            var v = D[k];
+            if (v && v.isTexture) out.push(v);
+            else if (Array.isArray(v)) for (var i = 0; i < v.length; i++) if (v[i] && v[i].isTexture) out.push(v[i]);
+        }
+        try { Object.defineProperty(D, '_ew_sheets', { value: out, enumerable: false, configurable: true }); } catch (e) {}
+        return out;
+    }
+    function _ewNodeSheetSig(D) {
+        var L = _ewNodeSheets(D), s = 0;
+        for (var i = 0; i < L.length; i++) s = (Math.imul(s, 31) + L[i].id * 7 + (L[i].version | 0)) | 0;
+        return s;
     }
     /* once a frame, before the outer render: the shared plain objects → the node uniforms */
     function _ewNodeTick() {
@@ -44516,6 +44554,7 @@ const ThreeRenderer = (function () {
        pipelines are ready. Rooms need nothing baked: the signature follows whatever the room holds. */
     var _ewBun = { marked: [], epoch: 0, objs: 0, recs: 0, recDraws: 0, recRate: 0, rateAt: 0, rateN: 0, aid: 0, inRec: 0, setup: false,
         used: new WeakMap(), frees: 0, lampG: 0, why: { tree: 0, values: 0, frees: 0, lamps: 0, lod: 0, cold: 0, rests: 0 }, whyRate: null, whyAt: 0, whyN: null, ms: 0, msN: 0, msAvg: 0 };
+    var _EW_BUN_NONE = [];
     var _EW_BUN_TEX = ['map', 'emissiveMap', 'normalMap', 'alphaMap', 'aoMap', 'lightMap', 'bumpMap', 'roughnessMap', 'metalnessMap', 'specularMap', 'envMap', 'gradientMap', 'matcap'];
     function _ewBunOff() {
         try { return !!window.EW_NO_BUNDLES || /[?&]ew_bundles=0\b/.test(location.search); } catch (e) { return false; }
@@ -44704,6 +44743,13 @@ const ThreeRenderer = (function () {
         var h = _ewBunMix(m.id, m.version), v = 0;
         h = _ewBunMix(h, (m.visible ? 1 : 0) + (m.transparent ? 2 : 0) + (m.depthWrite ? 4 : 0) + (m.depthTest ? 8 : 0) + (m.side << 4) + (m.blending << 6));
         for (var t = 0; t < _EW_BUN_TEX.length; t++) { var tx = m[_EW_BUN_TEX[t]]; if (tx && tx.isTexture) { h = _ewBunMix(h, tx.id); h = _ewBunMix(h, tx.version); } }
+        /* THE NODE SHEETS (2026-11-09, mondo on the Heaven Arena: "what are these black squares on heaven?"): a node material's own
+           sheets (_ewNodeTag's D: the terrain's cliff / path / painted sheets, a fluid's wave sheets) sit in its node graph, not in a
+           material slot, so a sheet that landed after its group was recorded (cloud_2.png, the heaven's cloud paths) never re-recorded
+           the bundle and the recording kept three's empty placeholder (black). With THE LATE SHEETS (_ewNodeLayer) the re-record
+           refreshes the objects' bindings too */
+        var nt = m._ewNode ? _ewNodeSheets(m._ewNode) : _EW_BUN_NONE;
+        for (var t2 = 0; t2 < nt.length; t2++) { h = _ewBunMix(h, nt[t2].id); h = _ewBunMix(h, nt[t2].version); }
         v = _ewBunMix(v, Math.round((m.opacity == null ? 1 : m.opacity) * 1000));
         if (m.color && m.color.isColor) v = _ewBunMix(v, m.color.getHex());
         if (m.emissive && m.emissive.isColor) v = _ewBunMix(v, m.emissive.getHex());
