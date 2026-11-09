@@ -3202,6 +3202,10 @@
         // levelStatGains, 20% floor), so casts-per-pool rises with level.
         // NEVER level-scale this — 1-MP spells are not a JRPG thing.
         function getSpellMpCostFor(unit, spell) {
+            /* THE PAID GRAB (PvP playtest 2026-11-09 B1): a sky throw holding its body already paid at the grab, so the
+               throw itself costs nothing more: every menu keeps its row armable (it read "NO MP" when the grab spent
+               the last of the MP) and the throw click's own MP gate agrees. A back-out still refunds the grab. */
+            if (unit && spell && unit._skyThrowGrab && spell.kind === 'skyThrow' && unit._skyThrowGrab.spellId === spell.id) return 0;
             let base = Number((spell && spell.cost) || 0);
             if (base > 0 && isEarthZodiacActive() && isTerraformSpell(spell)) {
                 base = Math.max(1, Math.round(base * EARTH_RESONANCE_COST_MULT));
@@ -48792,6 +48796,12 @@
            true when the click is handled here; false leaves it to online.js (tile / free-aim casts). */
         window._ewGuestBoardPick = function (actingUnit, x, y, z, clickedUnit) {
             if (!actingUnit || state._actionExecuting) return false;
+            /* THE GUEST LANDING CLICK (PvP playtest 2026-11-09 B1): a held sky throw names a landing square, never a row
+               of a target list (an empty lit square was refused "out of reach"): the solo click's own branch */
+            if (actionModeNeedsTargetConfirm() && actingUnit._skyThrowGrab && state._skyThrowHighlight) {
+                _skyThrowLandingClick(actingUnit, x, y);
+                return true;
+            }
             if (_boardBodyPick(actingUnit, x, y, clickedUnit) || _groundAimPick(actingUnit, x, y)) return true;   // THE BODY IS THE PICK / THE TILE IS THE GROUND (host and guest alike)
             const mode = state.actionMode;
             if (mode === 'attack') {
@@ -67751,6 +67761,34 @@
            Callers that set the latch and called the do* function bare could
            wedge ALL input with no recovery (hoisted out of clickTile
            2026-07-15 so setTool / selectTargetFromMenu funnel through too). */
+        /* THE LANDING CLICK: a held sky throw's board click names where the body lands, one click, whatever the menu
+           view. Shared by the solo click (clickTile) and an online guest's click (window._ewGuestBoardPick), so the
+           guest's lit landing squares take the click exactly like the host's (PvP playtest 2026-11-09 B1). */
+        function _skyThrowLandingClick(actingUnit, x, y) {
+            const hl = state._skyThrowHighlight;
+            const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
+            if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) {
+                /* The grab already cost MP — never cancel it (or reselect
+                   another unit) on a stray click; just nudge the player
+                   back to the highlighted ring. Right-click/BACK cancels. */
+                addLog('Pick a highlighted tile to throw them to.', actingUnit.player);
+                playErrorSfx();
+                return;
+            }
+            // Valid throw destination → resolve the throw on this single click.
+            // (No pendingTarget "click twice to confirm" step: the player already
+            // confirmed by grabbing, and the throw tiles are highlighted.)
+            state.pendingTarget = null;
+            state._actionExecuting = true;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearAoePreview();
+            clearHoveredTarget();
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+            scheduleBoardRender();
+            return _execAction(() => doSpell(actingUnit, x, y, state._clickedZ));
+        }
+
         function _execAction(fn) {
             let result;
             try {
@@ -68004,28 +68042,7 @@
             if (_hasSkyGrab || (needsConfirm && (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets'))) {
 
                 if (_hasSkyGrab) {
-                    const hl = state._skyThrowHighlight;
-                    const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
-                    if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) {
-                        /* The grab already cost MP — never cancel it (or reselect
-                           another unit) on a stray click; just nudge the player
-                           back to the highlighted ring. Right-click/BACK cancels. */
-                        addLog('Pick a highlighted tile to throw them to.', actingUnit.player);
-                        playErrorSfx();
-                        return;
-                    }
-                    // Valid throw destination → resolve the throw on this single click.
-                    // (No pendingTarget "click twice to confirm" step: the player already
-                    // confirmed by grabbing, and the throw tiles are highlighted.)
-                    state.pendingTarget = null;
-                    state._actionExecuting = true;
-                    if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                    clearAoePreview();
-                    clearHoveredTarget();
-                    clearSpellRangePreview();
-                    clearAttackRangePreview();
-                    scheduleBoardRender();
-                    return _execAction(() => doSpell(actingUnit, x, y, state._clickedZ));
+                    return _skyThrowLandingClick(actingUnit, x, y);
                 } else {
                     let validTargets;
                     let _etcSpell = null;

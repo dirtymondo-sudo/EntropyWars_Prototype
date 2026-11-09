@@ -1936,6 +1936,18 @@ Covers every `kind: 'skyThrow'` row (To the Moon, Abduction Beam, Dragon Toss, I
   (`_releaseSkyThrowGrab`: another action, reselect, turn change) refunds it too. online.js routes the guest's
   cancel to the host (`fn: 'cancelSkyThrowGrab'`). A pick-a-unit teleport forgets its picked unit on back-out.
 
+### THE GUEST HELD PICK (2026-11-09, PvP playtest B1: the online GUEST's To the Moon grabbed, no landing squares, "NO MP" on re-arm, only END TURN got out)
+- Cause: the grab (and Teleport's unit pick) run on the HOST; the host's engine re-arms ITS own UI keys (actionMode /
+  actionMenuView / selectedTool are guest-local, never synced), and online.js sent the guest back to the root menu after
+  every relayed cast. The guest also refused its lit landing click ("off the target list" in `_ewGuestBoardPick`).
+- online.js `_guestHeldPickStep` ('sky' = grab, 'tp' = Teleport's unit pick, 'tpCancel'): the doSpell wrapper and the
+  clickTile confirm branch keep the spell armed (`_guestHoldSpellArmed`: spell mode, 'spells' view, no target list) and
+  set `window._ewGuestHeldPick`; `_applyRemoteState` calls `_guestArmHeldPick` once the snapshot carries the grab /
+  `_teleportingUnitId` (expires after 5 s if the host refused; any other setTool / setActionMode / back-out drops it).
+- battle.js `_skyThrowLandingClick` = the landing click, shared by clickTile and `_ewGuestBoardPick` (guest).
+- battle.js `getSpellMpCostFor`: a sky throw holding its body costs 0 (THE PAID GRAB), so its row never greys "NO MP"
+  after the grab spent the last MP. Back-outs still refund `mpPaid`.
+
 ## THE BATTLE CLIMB (2026-10-20, mondo: "Did climbing ever get added to the game? ... in battle" → yes to design/CLIMB_MECHANIC_DESIGN.md's recommended answers)
 battle.js (after doJump) `getClimbTilesFrom` / `getClimbTiles` / `doClimb` / `_startClimb` / `knockOffClimber` /
 `processClimbArrival`; data.js STATUS_DEFS `climbing`.

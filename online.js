@@ -326,6 +326,20 @@
                                 if (_fbKind === 'attack' && typeof window._ewMenuAtkPending === 'function') window._ewMenuAtkPending(actingUnit, x, y, sentPendingTarget.z);
                             }
 
+                            /* THE GUEST HELD PICK (PvP playtest 2026-11-09): a confirmed pick step (Teleport's unit) keeps the
+                               spell armed for the landing click; the host's pick arrives by state-sync */
+                            var _cfSpell = null, _cfStep = null;
+                            if (sentActionMode === 'spell' && actingUnit) {
+                                _cfSpell = (actingUnit.spells || []).concat(actingUnit._raceAbilities || [])
+                                    .find(function(s) { return s && s.name === state.selectedTool; }) || null;
+                                _cfStep = _guestHeldPickStep(actingUnit, _cfSpell, x, y);
+                            }
+                            if (_cfStep) {
+                                window._ewGuestHeldPick = (_cfStep === 'tpCancel') ? null
+                                    : { unitId: actingUnit.id, tool: _cfSpell.name, kind: _cfStep, t: Date.now() };
+                                _guestHoldSpellArmed(_cfSpell.name);
+                                return;
+                            }
                             state.actionMode = null;
                             state.actionMenuView = 'root';
                             state.selectedTool = null;
@@ -418,6 +432,8 @@
         setTool = function(mode, toolName) {
             if (!_isOnline() || state._remoteAction) return _origSetTool(mode, toolName);
             if (state.activePlayer !== _myPlayer()) return;
+            /* THE GUEST HELD PICK: another pick before the grab / unit pick arrived drops the wait for it */
+            if (window._ewGuestHeldPick && !(mode === 'spell' && window._ewGuestHeldPick.tool === toolName)) window._ewGuestHeldPick = null;
 
             _origSetTool(mode, toolName);
             if (_isGuest()) {
@@ -435,6 +451,7 @@
         setActionMode = function(mode) {
             if (!_isOnline() || state._remoteAction) return _onlineOrigSetActionMode(mode);
             if (state.activePlayer !== _myPlayer()) return;
+            if (window._ewGuestHeldPick && mode !== 'spell') window._ewGuestHeldPick = null;   // THE GUEST HELD PICK (above)
 
             _onlineOrigSetActionMode(mode);
             if (_isGuest()) {
@@ -627,6 +644,14 @@
                     _tcDoorPick = null;
                 }
             } catch (e) { _tcPick = null; }
+            /* THE GUEST HELD PICK (PvP playtest 2026-11-09 B1: the guest's To the Moon grabbed, then no landing squares,
+               "NO MP" on the re-arm, only END TURN got out). A sky throw's GRAB (To the Moon, Abduction Beam, Dragon
+               Toss, Infernal Hurl) and Teleport's UNIT pick are engine steps the host runs: they file the held body
+               (unit._skyThrowGrab + state._skyThrowHighlight / state._teleportingUnitId) and the spell stays armed for
+               the second click. That arming is UI the host set on ITS state, so the guest went to the root menu and
+               its next board click was nobody's pick. The guest keeps the spell armed instead, and re-arms it once
+               the held pick arrives by state-sync (_guestArmHeldPick). */
+            var _heldPickStep = _guestHeldPickStep(unit, _tcSpell, x, y);
             _guestActionFeedback('spell', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool,
                 partnerId: _tcPick ? _tcPick.id : null,
@@ -635,11 +660,73 @@
                 tuneTo: (state._tunePick != null) ? state._tunePick : null });
             state._tunePick = null;
             if (_tcPick || _tcDoorPick) state._spellPick1 = null;
+            if (_heldPickStep) {
+                /* THE GUEST HELD PICK: nothing resolved yet: the spell stays armed (the board is the drum) */
+                window._ewGuestHeldPick = (_heldPickStep === 'tpCancel') ? null
+                    : { unitId: unit.id, tool: _tcSpell.name, kind: _heldPickStep, t: Date.now() };
+                _guestHoldSpellArmed(_tcSpell.name);
+                return 0;
+            }
+            window._ewGuestHeldPick = null;
             /* the host's finishAction resets ITS menu; the guest's menu is local UI, so a relayed cast or placement
                lands the guest on the root action menu too (mondo 2026-10-08: no staying in place-prism mode) */
             _guestMenuToRoot();
             return 1200;
         };
+
+        /* THE GUEST HELD PICK: is this click a pick step the host's engine only files (the spell stays armed)?
+           'sky' = a sky throw's grab, 'tp' = Teleport's unit pick, 'tpCancel' = clicking the picked unit again. */
+        function _guestHeldPickStep(unit, spell, x, y) {
+            try {
+                if (!unit || !spell) return null;
+                if (spell.kind === 'skyThrow' && !unit._skyThrowGrab) return 'sky';
+                if (spell.kind === 'teleport' && spell.teleportAnyUnit) {
+                    if (state._teleportingUnitId == null) return 'tp';
+                    /* clicking the held unit again un-picks it (the engine's cancel): the spell stays armed */
+                    var held = (state.units || []).find(function(u) { return u && u.id === state._teleportingUnitId; });
+                    if (held && held.x === x && held.y === y) return 'tpCancel';
+                }
+            } catch (e) {}
+            return null;
+        }
+        /* THE GUEST HELD PICK: the guest's spell stays armed for its second click (the landing / destination), the
+           way the host's engine leaves its own: spell mode, the board as the drum, no target list. */
+        function _guestHoldSpellArmed(toolName) {
+            state.actionMode = 'spell';
+            state.actionMenuView = 'spells';
+            state.selectedTool = toolName;
+            state.pendingTarget = null;
+            state._spellCycleTargets = [];
+            state._spellCycleIndex = 0;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            try { if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit'); } catch (e) {}
+            try { renderBattleSelectionUI({ includeBoard: false }); } catch (e) {}
+            if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+        }
+        /* Called after each state-sync on the guest: once the host's snapshot carries the held pick the guest asked for
+           (the grabbed body, the picked unit), the spell is armed again for the second click, whatever churn of menus
+           happened in between. A pick the host refused (out of reach, no MP) just expires. */
+        function _guestArmHeldPick() {
+            var hp = window._ewGuestHeldPick;
+            if (!hp) return;
+            var st = window._gameState;
+            if (!st || st.phase !== 'battle' || st.winner || st.activePlayer !== _myPlayer()) { window._ewGuestHeldPick = null; return; }
+            var u = (st.units || []).find(function(v) { return v && v.id === hp.unitId && !v.dead; });
+            if (!u || st._blitzActiveUnitId !== u.id) { window._ewGuestHeldPick = null; return; }
+            var held = hp.kind === 'sky'
+                ? !!(u._skyThrowGrab && st._skyThrowHighlight && (st._skyThrowHighlight.casterId == null || st._skyThrowHighlight.casterId === u.id))
+                : st._teleportingUnitId != null;
+            if (!held) {
+                if (Date.now() - hp.t > 5000) window._ewGuestHeldPick = null;
+                return;
+            }
+            window._ewGuestHeldPick = null;
+            st.selectedUnitId = u.id;
+            _guestHoldSpellArmed(hp.tool);
+        }
+        window._guestArmHeldPick = _guestArmHeldPick;
 
         /* A guest's move / jump is relayed, so the engine's own "back to the
            root menu" (finishMoveAt / the jump landing) only runs on the host.
@@ -892,6 +979,7 @@
                 if (!_isOnline() || state._remoteAction) return _origCancelSkyThrowGrab(unit);
                 if (_isHost()) return _hostRunAndSync(_origCancelSkyThrowGrab, [unit]);
                 if (!_guestOwnsAction(unit)) return false;
+                window._ewGuestHeldPick = null;   // THE GUEST HELD PICK: backed out, nothing to wait for
                 _origCancelSkyThrowGrab(unit);
                 _emit('game-action', { type: 'engine', fn: 'cancelSkyThrowGrab', unitId: unit.id });
                 return true;
@@ -6674,6 +6762,10 @@
                     }
                     st._guestPrevActivePlayer = st.activePlayer;
                     st._guestPrevActiveUnitId = st._blitzActiveUnitId;
+                    /* THE GUEST HELD PICK: the grab / unit pick the guest asked for has arrived → its spell is armed for the second click */
+                    if (window._ewGuestHeldPick && typeof window._guestArmHeldPick === 'function') {
+                        try { window._guestArmHeldPick(); } catch (e) {}
+                    }
 
                     var appEl = document.querySelector('.app');
                     if (appEl) {
