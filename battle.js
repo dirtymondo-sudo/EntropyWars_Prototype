@@ -2608,7 +2608,7 @@
                     });
                     /* a single-target knockback's own move line, before what its landing did (forced movement playtest
                        2026-11-07, one line per forced move) */
-                    if (!_isTackle && _logPushMove(_ctSp(spell.name), target, slide)) _logHoist(_pkM0);
+                    if (!_isTackle && _logPushMove(_ctSp(spell.name), target, slide, null, unit)) _logHoist(_pkM0);
                     if (_isTackle && slide) {
                         const hitObstacle = slide.hitWall || slide.hitUnits.length > 0;
                         if (slide.moved > 0) {
@@ -2625,12 +2625,12 @@
                                before the lines its landing wrote (Knight into lava); a knight's L move isn't "down the line" */
                             const _tkN = _fmNet(slide);
                             if (_tkN > 0) {
-                                addLog(`${_ctName(unit)} carries ${_ctName(target)} ${_tkN} tile${_tkN !== 1 ? 's' : ''}${spell.chessPiece === 'knight' ? '' : ' down the line'} to ${coordLabel(slide.landX, slide.landY)}!`);
+                                addLog(`${_ctName(unit)} carries ${_ctName(target)} ${_tkN} tile${_tkN !== 1 ? 's' : ''}${spell.chessPiece === 'knight' ? '' : ' down the line'} to ${coordLabel(slide.landX, slide.landY)}!`, undefined, undefined, { actor: unit });
                                 _logHoist(_pkM0);
                             }
                         }
                         if (hitObstacle && !target.dead) {
-                            addLog(`${_ctName(target)} is slammed into an obstacle by ${_ctSp(spell.name)}!`);
+                            addLog(`${_ctName(target)} is slammed into an obstacle by ${_ctSp(spell.name)}!`, undefined, undefined, { actor: unit });
                             if (spell.collisionBonus) {
                                 applyDamageToUnit(target, spell.collisionBonus, `${spell.name} collision: `, {
                                     sourceUnit: unit, damageType: spell.damageType || 'physical', ignoreArmor: true, consumeMarked: false,
@@ -6017,7 +6017,7 @@
             applyDamageToUnit(mover, dmg, `${unitDisplayName(mover)} slams into ${what}: `, {
                 ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
             });
-            addLog(rebound ? `🎱 ${_ctName(mover)} slams into ${what} and rebounds!` : `🎱 ${_ctName(mover)} slams into ${what}!`);
+            addLog(rebound ? `🎱 ${_ctName(mover)} slams into ${what} and rebounds!` : `🎱 ${_ctName(mover)} slams into ${what}!`, undefined, undefined, opts.byUnit ? { actor: opts.byUnit } : undefined);
         }
 
         /* ⚔️ THE AUTO ATTACK: the unit that strikes a body `byUnit`'s push / pull drives into `occ`, or null for the old
@@ -7874,7 +7874,7 @@
                             perStepMs: 120, delayMs: actionMs(320), _struck: _aaStruck
                         });
                         /* forced movement playtest 2026-11-07 (M1 / P4: Wing Attack, Resonance Pulse): each push its own line */
-                        if (_logPushMove(_ctSp(spell.name), target, _apR)) {
+                        if (_logPushMove(_ctSp(spell.name), target, _apR, null, unit)) {
                             _logHoist(_apM);
                             if (opts.stats) opts.stats.pushed = (opts.stats.pushed || 0) + 1;
                         }
@@ -7959,7 +7959,7 @@
                 if (_hn > 0) {
                     pulledN++;
                     /* the haul reads before what its landing did, with where it ended (forced movement playtest 2026-11-07) */
-                    addLog(`${_ctName(t)} is hauled ${_fmTiles(_hn, r.landX, r.landY)} by ${_ctSp(spell.name)}!`);
+                    addLog(`${_ctName(t)} is hauled ${_fmTiles(_hn, r.landX, r.landY)} by ${_ctSp(spell.name)}!`, undefined, undefined, { actor: unit });
                     _logHoist(_hm);
                 }
             }
@@ -8609,7 +8609,7 @@
                         perStepMs: 120, delayMs: actionMs(320), _struck: _lpStruck
                     });
                     /* forced movement playtest 2026-11-07 (M1: Gale, Tsunami): the push's own line, before what its landing did */
-                    if (_logPushMove(_ctSp(spell.name), hit, _lpSlide)) _logHoist(_lpM0);
+                    if (_logPushMove(_ctSp(spell.name), hit, _lpSlide, null, unit)) _logHoist(_lpM0);
                     const _lpPinM = _logMark();
                     /* Phase 5 wave A (2026-09-08): pin riders (Piercing Arrow).
                        A victim that slams a wall or a bystander takes
@@ -44654,8 +44654,14 @@
                the line judged after the Shaman was already hidden): the line goes to exactly these seats and nobody else,
                judged by the writer at the moment it happened (_logVisible here, online.js _gvLogShows for the guest). */
             const sn = (o && Array.isArray(o.seats)) ? o.seats.filter(p => (p | 0) > 0) : null;
-            const entry = (vis === 1 || vis === 2 || hp || zn || sn) ? { m: msg } : msg;
+            /* o.actor (PvP playtest 2026-11-09, the guest's "Cyborg hurls DOOR Agent 3 tiles to E8." never showed: the
+               landing was in the guest's fog): the seat whose action this line is (a unit or a player number). That
+               seat always gets it, whatever its fog: a player's own throw / push / pull / teleport is never hidden from
+               them. Every other seat judges it as before (_logVisible here, online.js _gvLogShows for the guest). */
+            const ac = (o && o.actor) ? ((typeof o.actor === 'object') ? (o.actor.player | 0) : (o.actor | 0)) : 0;
+            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0) ? { m: msg } : msg;
             if (vis === 1 || vis === 2) entry.v = vis;
+            if (ac > 0) entry.a = ac;
             if (hp) entry.h = hp;
             if (zn) entry.zn = 1;
             if (sn) entry.sn = sn;
@@ -44806,11 +44812,11 @@
             return `${n} tile${n !== 1 ? 's' : ''} to ${coordLabel(x, y)}`;
         }
         /* a push's own line: "Gale knocks Bigfoot 2 tiles back to E5." (nothing when the body didn't move off its tile) */
-        function _logPushMove(lead, target, res, verb) {
+        function _logPushMove(lead, target, res, verb, actor) {
             const n = _fmNet(res);
             if (!(n > 0) || !target) return false;
             const lx = res.landX != null ? res.landX : res.x, ly = res.landY != null ? res.landY : res.y;
-            addLog(`${lead} ${verb || 'knocks'} ${_ctName(target)} ${verb ? '' : 'back '}${_fmTiles(n, lx, ly)}.`);
+            addLog(`${lead} ${verb || 'knocks'} ${_ctName(target)} ${verb ? '' : 'back '}${_fmTiles(n, lx, ly)}.`, undefined, undefined, actor ? { actor } : undefined);
             return true;
         }
 
@@ -44842,6 +44848,7 @@
                 if (state.fogOfWar) return v === viewer;
                 return true;
             }
+            if (entry && typeof entry === 'object' && entry.a && entry.a === viewer) return true;   // addLog o.actor: this seat's own action
 
             return _logFogVisible(entry);
         }
@@ -74472,7 +74479,7 @@
                 occupant.x = t.x;
                 occupant.y = t.y;
                 occupant.z = tz;
-                addLog(`${_ctName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
+                addLog(`${_ctName(occupant)} is knocked aside to ${coordLabel(t.x, t.y)}${opts.byLabel ? ' ' + opts.byLabel : ''}!`, undefined, undefined, { actor: unit });
                 showFloatingTextForUnit(occupant, 'PUSHED!', 'streak', { durationMs: 800 });
                 if (typeof animateDisplacement === 'function') animateDisplacement(occupant, fx, fy, t.x, t.y, 180, { stagger: true });
                 _applyKnockbackHazard(occupant, { dirX: t.x - fx, dirY: t.y - fy });   // ⛓ knocked aside onto whatever waits there (🧭 with that heading)
@@ -80252,7 +80259,7 @@
                         element: classifySpellElement(spell)
                     });
                     _logPushMove(_ctName(unit), target, slide,
-                        spell.throwAnyDirection ? 'tosses' : spell.arcThrow ? 'hurls' : null);
+                        spell.throwAnyDirection ? 'tosses' : spell.arcThrow ? 'hurls' : null, unit);
                     if (hitObstacle) {
                         /* E7: the slam's share of the hit, as a number (the bonus rides the one hit, so it is that hit's part) */
                         const _dpDealt = Math.max(0, _dpBefore - ((target.hp || 0) + (target.shield || 0)));
@@ -80695,7 +80702,7 @@
                 {
                     const _plNet = _fmNet(_pullSlide);
                     if (_plNet > 0) {
-                        addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${_fmTiles(_plNet, _pullSlide.landX, _pullSlide.landY)}.`);
+                        addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${_fmTiles(_plNet, _pullSlide.landX, _pullSlide.landY)}.`, undefined, undefined, { actor: unit });
                         _logHoist(_plMSlide);
                     }
                 }
@@ -81929,7 +81936,7 @@
                     if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: _dvFrom.x, fromY: _dvFrom.y });
                     applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
                     if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                    addLog(`🚪 Signature required: ${_ctName(target)} takes the package out of the door at ${coordLabel(_dvFrom.x, _dvFrom.y)} — from behind.`);
+                    addLog(`🚪 Signature required: ${_ctName(target)} takes the package out of the door at ${coordLabel(_dvFrom.x, _dvFrom.y)} — from behind.`, undefined, undefined, { actor: unit });
                 }, _dvTravel);
                 completionDelay = _dvTravel + actionMs(500);
             }
@@ -82011,7 +82018,7 @@
                     window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     window._doorGeom('raceExit', target.x, target.y, { fromX: unit.x, fromY: unit.y });
                     if (!_skipVisuals()) { _vfxTeleport(target.x, target.y, _doorOrg ? _doorOrg.x : target.x, _doorOrg ? _doorOrg.y : target.y); showFloatingTextForUnit(target, '🚪 EXITED', 'debuff'); }
-                    addLog(`🚪 Extradimensional Incident Transfer: ${_ctName(unit)} files ${_ctName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`);
+                    addLog(`🚪 Extradimensional Incident Transfer: ${_ctName(unit)} files ${_ctName(target)} out through the door at ${coordLabel(_doorOrg ? _doorOrg.x : x, _doorOrg ? _doorOrg.y : y)}. Sign here.`, undefined, undefined, { actor: unit });
                 }
                 completionDelay = actionMs(700);
             }
@@ -82071,7 +82078,7 @@
                                 playSfx('teleport');
                                 window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
                                 if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
-                                addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`);
+                                addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`, undefined, undefined, { actor: unit });
                                 _doorTouched();
                             }, _tdDelay);
                             _tdEnd = _tdDelay + actionMs(500);
@@ -83406,7 +83413,8 @@
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)}${spell.id === 'raceLandOnYourFeet' ? ' and lands on their feet' : ''}.`
                         : tUnit === unit
                             ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
-                            : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+                            : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`,
+                        undefined, undefined, { actor: unit });   // the caster's own blink always reads in its own log (PvP 11-09)
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
                     /* THE SPELL AUDIT Batch D: `arrivalStageBoost` (+ `arrivalStageRounds`) — the mover's stat stages on
                        landing (Land on Your Feet: +1 DEF for 1 round) */
@@ -84318,7 +84326,7 @@
                             destOccupant.x = pushTo.x;
                             destOccupant.y = pushTo.y;
                             if (typeof nearestWalkableZ === 'function') destOccupant.z = nearestWalkableZ(pushTo.x, pushTo.y, destOccupant.z);
-                            addLog(`${_ctName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
+                            addLog(`${_ctName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`, undefined, undefined, { actor: unit });
                             showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
                             animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180, { stagger: true });
                             _applyKnockbackHazard(destOccupant, { dirX: Math.sign(pushTo.x - _dashPushFromX), dirY: Math.sign(pushTo.y - _dashPushFromY) });   // ⛓ knocked aside onto whatever waits there (🧭 with that heading)
@@ -84340,7 +84348,7 @@
                                 entry.unit.x = prevTile.x;
                                 entry.unit.y = prevTile.y;
                                 if (typeof nearestWalkableZ === 'function') entry.unit.z = nearestWalkableZ(prevTile.x, prevTile.y, entry.unit.z);
-                                addLog(`${_ctName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
+                                addLog(`${_ctName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`, undefined, undefined, { actor: unit });
                                 showFloatingTextForUnit(entry.unit, 'SHIFTED!', 'streak', { durationMs: 800 });
                                 animateDisplacement(entry.unit, _shiftFromX, _shiftFromY, prevTile.x, prevTile.y, 180);
                                 _applyKnockbackHazard(entry.unit, { dirX: Math.sign(prevTile.x - _shiftFromX), dirY: Math.sign(prevTile.y - _shiftFromY) });   // ⛓ 🧭 shoved back onto whatever waits there
@@ -84645,7 +84653,7 @@
                                 sourceUnit: unit, damageType: 'physical',
                                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                             });
-                            addLog(`${_ctName(throwTarget)} is hurled into ${_ctName(collisionTarget)}! Collision!`);
+                            addLog(`${_ctName(throwTarget)} is hurled into ${_ctName(collisionTarget)}! Collision!`, undefined, undefined, { actor: unit });
                             /* damage floats come from applyDamageToUnit; keep only
                                the flavor callout on the struck bystander */
                             showFloatingTextForUnit(collisionTarget, `COLLISION!`, 'streak', { durationMs: 900 });
@@ -84702,7 +84710,7 @@
                         triggerTerrainSpellReaction(unit, spell, [{ x, y }]);
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         /* forced movement playtest 2026-11-07 E4: "hurls Halfdemon 3 tiles!" came after the defeat lines */
-                        addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${_fmTiles(throwDist, x, y)}!${deltaLabel}`);
+                        addLog(`${_ctName(unit)} hurls ${_ctName(throwTarget)} ${_fmTiles(throwDist, x, y)}!${deltaLabel}`, undefined, undefined, { actor: unit });
                         _logHoist(_thM0);
                         scheduleBoardRender();
                     };
