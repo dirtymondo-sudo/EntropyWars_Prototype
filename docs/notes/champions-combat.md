@@ -4893,3 +4893,7 @@ spread over HP + the pool's damage stat (both when the pool mixes), each stat ca
 - THE RING: statGradePct fills by mid-rank in the roster (top race full, median half) instead of val/100 (full on every 100+ stat). SPD + VISION keep a straight ruler so ring and letter agree (VISION 2..6 = 20..100 %, SPD val/163); on-screen check 11-09 caught VISION 3 "C" drawn 56 % full (PR follow-up, token 20261109-grades-02-cors).
   Cache `_STAT_GRADE_RANK`, dropped by statGradeRankReset() in statHelpRefreshGrades + the race-mods restoreAll. The HUD stat bars read the same pct.
 - STAT_HELP band text updated (HP/MP now "Grades (rank in the roster): ..."; the refresh regex follows). Display only, no formula reads a letter.
+- ON-SCREEN CHECK 11-09 (token 20261109-grades-03-cors): forge (party builder) + battle unit card show the new letters, nothing cut off.
+  Found + fixed in the forge: under the pixel theme (Press Start 2P 13 px) the 36 px `.pb-stat-val` box spilled every 3-digit stat
+  4 px and HP 1160 18 px into its bar. styles-base.css: box = max(36px, 3.2em); party-builder.js adds `long` to 4+ character numbers
+  (10 px, same box), so bars stay lined up. Shots: /mnt/project-files/race-grades-20261108/shots/.

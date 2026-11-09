@@ -2168,7 +2168,7 @@ function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, grad
       zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
       zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
     gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-stat-disc' }, look.g),
-    h('span', { className: 'pb-stat-val', style: { color: valColor, whiteSpace: 'nowrap' } }, ...((typeof suffix === 'string' || !suffix) ? [val + (suffix || '')] : [val, suffix])),
+    h('span', { className: 'pb-stat-val' + (String(val).length + (typeof suffix === 'string' ? suffix.length : 0) >= 4 ? ' long' : ''), style: { color: valColor, whiteSpace: 'nowrap' } }, ...((typeof suffix === 'string' || !suffix) ? [val + (suffix || '')] : [val, suffix])),   // `long`: a 4+ character number shrinks to fit its box (styles-base.css, 2026-11-09)
     h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%` } })),
     h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
@@ -2189,7 +2189,7 @@ function VitalBar({ label, val, max, vital, zodiacMod, delta, tip, gradeKey, sta
       zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
       zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
     gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-stat-disc' }, look.g),
-    h('span', { className: 'pb-stat-val', style: { color: valColor } }, val),
+    h('span', { className: 'pb-stat-val' + (String(val).length >= 4 ? ' long' : ''), style: { color: valColor } }, val),   // HP 1160: the 4-digit vital shrinks to fit (2026-11-09)
     h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%`, background: vd.fill, boxShadow: vd.glow } })),
     h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }

@@ -5367,6 +5367,12 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-stat.compact .pb-grade-ring i { font-size: 10px; }
 .pb-grade-ring.none { width: var(--gsz); height: var(--gsz); }
 .pb-stat-val { width: 36px; text-align: left; font-weight: 700; font-size: 13px; flex-shrink: 0; font-family: 'Cormorant SC', serif; font-variant-numeric: tabular-nums; }
+/* the forge number fits its digits (2026-11-09, grades check): under the pixel themes (Press Start 2P, 13 px a digit) a 36 px
+   box spilled every 3-digit stat 4 px into its bar and HP 1160 18 px. The box now holds 3 digits (3.2em), a 4+ character
+   number (party-builder.js adds `long`) drops to 10 px so it fits the same box and the bars stay lined up, and the box
+   still grows rather than spill if a theme's font is wider still. */
+.pb-stat-val { width: auto; min-width: max(36px, 3.2em); }
+.pb-stat-val.long { font-size: 10px; min-width: max(36px, 4.16em); }   /* 10 px x 4.16em = the 41.6 px of a 13 px 3.2em box */
 .pb-stat-delta { width: 26px; text-align: right; font-size: 9px; font-weight: 700; flex-shrink: 0; }
 .pb-foot-badge { border: 1px solid var(--ph-line); border-radius: 999px; padding: 8px 16px 6px; background: rgba(0,0,0,0.3); }
 /* AFFINITIES: six type discs; WEAK = a red ring, RESIST = a green ring, the vessel's own type filled */
