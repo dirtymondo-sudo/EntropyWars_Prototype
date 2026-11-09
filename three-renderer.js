@@ -83302,13 +83302,16 @@ const ThreeRenderer = (function () {
            a dug cell's shape is the bowl's (_fieldDeformDyAt), a raise is a block (the cell's delta, flat) */
         /* THE EARTHWORK MOUND: a mound cell's top is the swell's (_fieldMoundPlanLive), and its bank reaches into the cells beside
            it; `bare` = the room's own ground with any dig, no raise (the mound's mesh lays itself on it) */
-        var fn = function (wx, wz, x, y, refY, bare) {
+        /* THE DRAWN GROUND (2026-11-09): `drawn` reads the ground the way the floor MESH is drawn (THE TRUE DRAPE, _liqDrapeSampler),
+           `out` (an object) gets the dig's share of the answer in out.dy */
+        var fn = function (wx, wz, x, y, refY, bare, drawn, out) {
+            if (out) { out.dy = 0; out.cl = false; }
             var row = G.tops[y]; var top = row ? row[x] : null;
             if (top === null || top === undefined) return null;
             /* THE TWO FLOORS: a two-floor cell answers for the floor nearest refY (a plate / a ring / a walk under the deck reads the ground) */
             var onLow = false;
             if (refY !== undefined && refY !== null && G.lows) { var fl = G.floorNear(x, y, refY); if (fl && fl.low) { top = fl.m; onLow = true; } }
-            var dug = (typeof _fieldDeformDug === 'function') && _fieldDeformDug();   // typeof: the highlights-conform test evals the block alone
+            var dug = (drawn && drawn.plan !== undefined) ? !!(drawn.plan && drawn.plan.dug.length) : ((typeof _fieldDeformDug === 'function') && _fieldDeformDug());   // typeof: the highlights-conform test evals the block alone
             var mnd = (!bare && typeof _fieldMoundPlanLive === 'function') ? _fieldMoundPlanLive() : null;
             if (!feet && !dug && !onLow && !(mnd && mnd.has[x + ',' + y]) && !bare) return null;
             var base = G.floorY + top * G.s;
@@ -83319,13 +83322,21 @@ const ThreeRenderer = (function () {
                 var rx = wx * T.C / ts + T.x0, rz = wz * T.C / ts + T.z0;   // battle px → room metres (the matrix's rule, inverted)
                 var m = null;
                 try { m = hqTerrainFeet(info, rx, rz, top); } catch (e) { m = null; }
+                /* THE TRUE DRAPE: a dry sheet lies on the floor as drawn, where a walker from the cell's level could not stand too (a
+                   bank too steep to climb, a hump) — the field itself, never a block's mass, the void or past the room */
+                if ((m === null || m === undefined) && out && out.free && typeof _hqTFieldAt === 'function') {
+                    try { if (!_hqTOutside(info, rx, rz) && !(info.void && hqTerrainVoidAt(info, rx, rz)) && !hqTerrainSolidAt(info, rx, rz, 0)) m = _hqTFieldAt(info, rx, rz); } catch (e) { m = null; }
+                }
                 if (m === null || m === undefined || !isFinite(m)) m = top;
+                else if (drawn) m += _fieldMeshFix(info, rx, rz, m);   // THE TRUE DRAPE: the mesh's own triangles, not the sampled field's bilinear mix
                 var dy = (m - top) * G.s, cap = HL_FIELD_MAX_DY * ts;
-                if (dy > cap) dy = cap; else if (dy < -cap) dy = -cap;
+                /* out.cl: THE TRUE DRAPE's sign of a cliff past the reach; out.free: a dry sheet reads the cell's ground wherever it lies */
+                if (!(out && out.free)) { if (dy > cap) { dy = cap; if (out) out.cl = true; } else if (dy < -cap) { dy = -cap; if (out) out.cl = true; } }
                 base += dy;
             }
             if (onLow) return base;   // a deck cell is never dug or raised (THE NO-DEFORM FLAG 'B')
-            var d = G.deltaAt(x, y), dgy = dug ? _fieldDeformDyAt(wx, wz) : 0;
+            var d = G.deltaAt(x, y), dgy = dug ? (drawn ? _fieldDeformDyDrawn(wx, wz, drawn) : _fieldDeformDyAt(wx, wz)) : 0;
+            if (out) out.dy = dgy;
             if (bare) return base + dgy;
             if (mnd && mnd.has[x + ',' + y]) return base + dgy + mnd.dyAt(wx / ts, wz / ts);   // the cell beside keeps its plate flat (its bank foot covers the plate's edge, as a wall's face did)
             return base + (d > 0 ? d * G.elev : 0) + dgy;
@@ -83861,6 +83872,105 @@ const ThreeRenderer = (function () {
         return plan.dyAt(wx / G.ts, wz / G.ts);
     }
     function _fieldDeformDug() { var plan = _fieldDeformPlanLive(); return !!(plan && plan.dug.length); }
+    /* ══ THE TRUE DRAPE (2026-11-09, mondo on Bohemian Grove Arena: "when terrain gets changed and deformed, there are little
+       seams/edges where it's still the old terrain, like how there is this sliver of grass where it should be sand on that edge") ══
+       A spell's sheet on the true ground (THE SKINS: sand, ice, scorch, rubble …; the liquids' SHORE BLEND) is draped over the
+       room's floor a highlight's lift above it. Two reads made the floor rise THROUGH it along every crater wall and bank, a hard
+       green strip with sand both sides: (1) the sheet read the ground at every other vertex and laid the ones between at their
+       neighbours' mean — on the rim of a dig (convex) that mean sits under the ground; (2) it read the dig's bowl EXACTLY
+       (_fieldDeformDyAt), while the floor mesh takes the bowl only at its own lattice nodes (every 0.5 m) and draws straight
+       between them — at the wall's foot (concave) the drawn floor stands over the exact curve. Now the drape reads the ground as
+       the mesh draws it (the bowl at the lattice nodes, mixed by the field's own triangles a, c, b / b, c, d; the field's
+       triangles for the sampled heights too, _fieldMeshFix), at EVERY vertex, finer (DRAPE_SKIN_SEGS a square), and a quad
+       where the floor still stands over the sheet between its vertices (sampled 3 × 3 inside it) is lifted by that much (THE POKE).
+       THE CLIFF LINE is read on the ground WITHOUT the dig: a crater's wall is the changed cell's own ground and wears its
+       sheet; only the room's own sheer faces still stop it. Off: window.EW_NO_TRUE_DRAPE (the old read). */
+    var DRAPE_SKIN_SEGS = 8, DRAPE_POKE_STEEP = 0.05, DRAPE_POKE_MAX = 0.25;
+    var DRAPE_SHEER_RISE = 3;   // a dry sheet leaves out a quad steeper than this (rise over run, ~72°): the room's own sheer face, never a bank
+    function _trueDrapeOn() { return !(typeof window !== 'undefined' && window.EW_NO_TRUE_DRAPE); }
+    /* the field mesh's triangle mix of the sampled heights less the bilinear mix hqTerrainFeet read (room metres) — only where the
+       read IS the sampled field (m), never a wall's top, a deck or a flight */
+    function _fieldMeshFix(info, rx, rz, m) {
+        if (!info || !info.H || !(info.res > 0) || typeof _hqTFieldAt !== 'function') return 0;
+        var fx = (rx - info.x0) / info.res, fz = (rz - info.z0) / info.res, i = Math.floor(fx), j = Math.floor(fz), nx = info.nx;
+        if (i < 0 || j < 0 || i > nx - 2 || j > info.nz - 2) return 0;
+        var tx = fx - i, tz = fz - j, H = info.H, a = H[j * nx + i], b = H[j * nx + i + 1], c = H[(j + 1) * nx + i], d = H[(j + 1) * nx + i + 1];
+        var bil = (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
+        if (Math.abs(m - bil) > 0.01) return 0;
+        var tri = (tx + tz <= 1) ? a + (b - a) * tx + (c - a) * tz : d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
+        return tri - bil;
+    }
+    /* the dig's drop under a battle-frame point as the floor mesh DRAWS it (px, ≤ 0): the bowl at the field's lattice nodes, mixed by
+       the field's triangles; a box room's floor (no lattice) the exact bowl */
+    /* one build's read of the lattice (the plan, the field, the matrix) — read once, not per sample */
+    function _fieldDrawnCtx() {
+        var plan = _fieldDeformPlanLive(), G = _fieldGround(), info = null;
+        if (G && G.R.terrain && typeof hqTerrainInfo === 'function') { try { info = hqTerrainInfo(G.R.roomId); } catch (e) { info = null; } }
+        return { plan: plan || null, G: G, info: (info && info.res > 0 && G && G.R.T && G.R.T.C > 0) ? info : null };
+    }
+    function _fieldDeformDyDrawn(wx, wz, ctx) {
+        ctx = ctx || _fieldDrawnCtx();
+        var plan = ctx.plan; if (!plan || !plan.dug.length) return 0;
+        var G = ctx.G; if (!G) return 0;
+        var ts = G.ts, info = ctx.info;
+        if (!info) return plan.dyAt(wx / ts, wz / ts);
+        var T = G.R.T, k = ts / T.C, res = info.res;   // battle px per room metre
+        var fx = (wx / k + T.x0 - info.x0) / res, fz = (wz / k + T.z0 - info.z0) / res, i = Math.floor(fx), j = Math.floor(fz), tx = fx - i, tz = fz - j;
+        var at = function (ii, jj) { return plan.dyAt((info.x0 + ii * res - T.x0) * k / ts, (info.z0 + jj * res - T.z0) * k / ts); };
+        if (tx + tz <= 1) { var a = at(i, j); return a + (at(i + 1, j) - a) * tx + (at(i, j + 1) - a) * tz; }
+        var d = at(i + 1, j + 1); return d + (at(i, j + 1) - d) * (1 - tx) + (at(i + 1, j) - d) * (1 - tz);
+    }
+    /* one cell's drape: read(u, v, out) → the ground (px) under tile point (u, v), or null, with out.dy = the dig's share of it.
+       → { gh: heights ((S+1)² row-major, null = no read), cut: THE CLIFF LINE's flags or null, up: THE POKE's extra lift or null } */
+    function _trueDrapeCell(cx, cy, S, ts, read, dry) {
+        var S1 = S + 1, n = S1 * S1, gh = new Array(n), nat = new Array(n), dy = new Array(n), o = { dy: 0, cl: false, free: !!dry }, i, j, k, cut = null, skip = null;
+        for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+            i = j * S1 + k; o.dy = 0; o.cl = false;
+            var g = read(cx + k / S, cy + j / S, o);
+            if (g === null || g === undefined || !isFinite(g)) { gh[i] = null; nat[i] = null; dy[i] = 0; continue; }
+            gh[i] = g; dy[i] = o.dy || 0; nat[i] = g - dy[i];
+            if (dry && o.cl) (cut || (cut = new Uint8Array(n)))[i] = 1;   // a cliff past the drape's reach: the read is held, never drawn
+        }
+        if (!dry) {
+            /* a liquid: THE CLIFF LINE as ever (it stops at the room's own sheer edge, held level; THE FALLS pour down the face) — read
+               on the ground without the dig: the dig's walls are the cell's own ground */
+            cut = _drapeCliffCut(nat, S, ts / S);
+            if (cut) for (i = 0; i < n; i++) if (cut[i] && nat[i] !== null) gh[i] = nat[i] + dy[i];
+        } else {
+            /* a dry sheet (sand, ice, scorch …) is the cell's ground: it lies on every walkable part of the cell, the top of a ledge
+               and its foot alike, and its banks, and leaves out only the quads that stand on the room's own SHEER face (steeper than
+               DRAPE_SHEER_RISE without the dig) — the room's cliff sheet shows there, as it did; never a held sheet over the drop */
+            var lim = (ts / S) * DRAPE_SHEER_RISE;
+            for (j = 0; j < S; j++) for (k = 0; k < S; k++) {
+                var p0 = j * S1 + k, q0 = p0 + 1, r0 = p0 + S1, s0 = r0 + 1, np = nat[p0], nq = nat[q0], nr = nat[r0], ns = nat[s0];
+                if (np === null || nq === null || nr === null || ns === null) continue;
+                /* per triangle (p, r, q = 1, q, r, s = 2): the face's line steps half as coarse as a whole quad */
+                var dg = Math.abs(nq - nr) > lim * Math.SQRT2;
+                var t1 = dg || Math.abs(np - nq) > lim || Math.abs(np - nr) > lim, t2 = dg || Math.abs(nr - ns) > lim || Math.abs(nq - ns) > lim;
+                if (t1 || t2) (skip || (skip = new Uint8Array(S * S)))[j * S + k] = (t1 ? 1 : 0) | (t2 ? 2 : 0);
+            }
+        }
+        var up = null, thr = DRAPE_POKE_STEEP * ts, cap = DRAPE_POKE_MAX * ts;
+        for (j = 0; j < S; j++) for (k = 0; k < S; k++) {
+            var p = j * S1 + k, q = p + 1, r = p + S1, s = r + 1, hp = gh[p], hq = gh[q], hr = gh[r], hs = gh[s];
+            if (hp === null || hq === null || hr === null || hs === null) continue;
+            if (cut && (cut[p] || cut[q] || cut[r] || cut[s])) continue;
+            if (skip && skip[j * S + k]) continue;
+            if (Math.max(hp, hq, hr, hs) - Math.min(hp, hq, hr, hs) < thr) continue;
+            var worst = 0;
+            for (var a = 1; a <= 3; a++) for (var b = 1; b <= 3; b++) {
+                var fu = b / 4, fv = a / 4;
+                var hsk = (fu + fv <= 1) ? hp + (hq - hp) * fu + (hr - hp) * fv : hs + (hr - hs) * (1 - fu) + (hq - hs) * (1 - fv);   // the sheet's triangles p, r, q / q, r, s
+                o.dy = 0; var g2 = read(cx + (k + fu) / S, cy + (j + fv) / S, o);
+                if (g2 !== null && g2 !== undefined && isFinite(g2) && g2 - hsk > worst) worst = g2 - hsk;
+            }
+            if (!(worst > 0)) continue;
+            if (worst > cap) worst = cap;
+            up = up || new Float32Array(n);
+            if (worst > up[p]) up[p] = worst; if (worst > up[q]) up[q] = worst; if (worst > up[r]) up[r] = worst; if (worst > up[s]) up[s] = worst;
+        }
+        return { gh: gh, cut: cut, up: up, skip: skip };
+    }
     /* the room's floor meshes in the battle: a terrain room's field, a box room's floor plane(s) — never the outer ground,
        a site's apron, the backdrop or the strata's own pieces */
     function _fieldFloorMeshes() {
@@ -84263,15 +84373,16 @@ const ThreeRenderer = (function () {
        (x, y) or null (THE DRAPE, as _liqBlendGeo) }. → a BufferGeometry (group 0 the core, group 1 the fringe) or null */
     function _fieldPatchGeo(G, cells, yOf, o) {
         if (!cells.length) return null;
-        var ts = G.ts, S = FIELD_PATCH_SEGS, in_ = {}, i, c;
+        var td = !!o.ground && _trueDrapeOn();   // THE TRUE DRAPE: finer, every vertex read, the poke lifted
+        var ts = G.ts, S = td ? DRAPE_SKIN_SEGS : FIELD_PATCH_SEGS, in_ = {}, i, c;
         /* THE DRAPE ON THE DRY SKINS (2026-10-18, mondo on Skinwalker Ranch: ice with "weird edge blending and flickering ... needs
            the same fix the liquids had"): a skin was flat at each cell's one top, so on rolling true ground the ground rose through
            it in jagged triangles, met it at a hair's depth and shimmered, and a neighbour a third of a level off was a hard square
            edge. With o.ground the sheet lies on the ground under every vertex, a neighbour across a slope wears the fade, and the
            board's edge fades the sheet out — THE DRAPE's rules for the liquids. */
-        var gAt = function (u, v, x, y, ref) {
+        var gAt = function (u, v, x, y, ref, out) {
             if (!o.ground) return null;
-            var g = o.ground(u * ts, v * ts, x, y, ref);
+            var g = o.ground(u * ts, v * ts, x, y, ref, out);
             return (g === null || g === undefined || !isFinite(g)) ? null : g;
         };
         for (i = 0; i < cells.length; i++) in_[cells[i].x + ',' + cells[i].y] = true;
@@ -84327,9 +84438,14 @@ const ThreeRenderer = (function () {
                 a.push(al); if (al > 0.01) any = true;
             }
             if (!any) return 0;
-            /* THE DRAPE: the ground read at every other vertex, the ones between their neighbours' mean (read too where one has none) */
-            var gh = null;
-            if (o.ground) {
+            /* THE DRAPE: the ground read at every other vertex, the ones between their neighbours' mean (read too where one has none);
+               THE TRUE DRAPE: every vertex, as the floor mesh draws it, the poke lifted */
+            var gh = null, gUp = null, gSkip = null;
+            if (td) {
+                var tdc = tdOf(cx, cy, top);
+                gh = tdc.gh; gUp = tdUpOf(cx, cy); gSkip = tdc.skip;
+                if (tdc.cut) for (j = 0; j < tdc.cut.length; j++) if (tdc.cut[j]) a[j] = 0;
+            } else if (o.ground) {
                 gh = new Array(S1 * S1);
                 for (j = 0; j <= S; j += 2) for (k = 0; k <= S; k += 2) gh[j * S1 + k] = gAt(cx + k / S, cy + j / S, cx, cy, top);
                 for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
@@ -84347,7 +84463,7 @@ const ThreeRenderer = (function () {
             for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
                 u = cx + k / S; v = cy + j / S;
                 var wx = u * ts, wz = v * ts, gy = gh ? gh[j * S1 + k] : null;
-                pos.push(wx, (gy !== null ? gy : top) + lift, wz); nrm.push(0, 1, 0);
+                pos.push(wx, (gy !== null ? gy : top) + lift + (gUp ? gUp[j * S1 + k] : 0), wz); nrm.push(0, 1, 0);
                 if (o.cellUV) uv.push(k / S, 1 - j / S);   // a liquid's sheets: one per cell (its base sheet clamps), its flow and caustics are world space already
                 else uv.push((wx - ox) / rep + 0.5, 0.5 - (wz - oz) / rep);
                 col.push(1, 1, 1, a[j * S1 + k]);
@@ -84355,11 +84471,38 @@ const ThreeRenderer = (function () {
             }
             for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
                 var p = v0 + j2 * (S + 1) + k2, q = p + 1, r = p + S + 1, s2 = r + 1;
+                var sk = gSkip ? gSkip[j2 * S + k2] : 0;   // THE TRUE DRAPE: a triangle on the room's own sheer face is left out
+                if (sk === 3) continue;
                 if (!solidCell && a[p - v0] < 0.01 && a[q - v0] < 0.01 && a[r - v0] < 0.01 && a[s2 - v0] < 0.01) continue;
-                idx.push(p, r, q, q, r, s2);
+                if (!(sk & 1)) idx.push(p, r, q);
+                if (!(sk & 2)) idx.push(q, r, s2);
             }
             return 1;
         };
+        /* THE TRUE DRAPE: every cell's drape first, so a vertex two cells share takes the larger POKE lift of the two (a lift on one
+           side only opened a hairline step on the border, the floor seen through it) */
+        var tdC = {}, tdUp = {};
+        var tdOf = function (cx, cy, top) {
+            var ck = cx + ',' + cy; if (tdC[ck]) return tdC[ck];
+            return (tdC[ck] = _trueDrapeCell(cx, cy, S, ts, function (uu, vv, out) { return gAt(uu, vv, cx, cy, top, out); }, !o.cellUV));
+        };
+        var tdUpOf = function (cx, cy) {
+            var out = null;
+            for (var jj = 0; jj <= S; jj++) for (var kk = 0; kk <= S; kk++) { var w = tdUp[(cx * S + kk) + ',' + (cy * S + jj)]; if (w > 0) { out = out || new Float32Array(S1 * S1); out[jj * S1 + kk] = w; } }
+            return out;
+        };
+        if (td) {
+            var tdAll = [];
+            for (i = 0; i < cells.length; i++) { c = cells[i]; var tq = yOf(c.x, c.y); if (tq !== null && tq !== undefined) tdAll.push([c.x, c.y, tq]); }
+            for (i = 0; i < fringe.length; i++) { c = fringe[i]; tdAll.push([c.x, c.y, yOf(c.x, c.y)]); }
+            tdAll.forEach(function (e) {
+                var r = tdOf(e[0], e[1], e[2]); if (!r.up) return;
+                for (var jj = 0; jj <= S; jj++) for (var kk = 0; kk <= S; kk++) {
+                    var w = r.up[jj * S1 + kk]; if (!(w > 0)) continue;
+                    var vk = (e[0] * S + kk) + ',' + (e[1] * S + jj); if (!(tdUp[vk] >= w)) tdUp[vk] = w;
+                }
+            });
+        }
         for (i = 0; i < cells.length; i++) { c = cells[i]; var t0 = yOf(c.x, c.y); if (t0 !== null && t0 !== undefined) quadCell(c.x, c.y, t0, !!o.solid); }
         var coreN = idx.length;
         for (i = 0; i < fringe.length; i++) { c = fringe[i]; quadCell(c.x, c.y, yOf(c.x, c.y), false); }
@@ -84405,7 +84548,8 @@ const ThreeRenderer = (function () {
        → a BufferGeometry (position / normal / uv per cell / color rgba) or null */
     function _liqBlendGeo(G, cells, yOf, o) {
         if (!cells || !cells.length) return null;
-        var W = G.W, H = G.H, S = LIQ_SEGS, near = 0.3 * G.elev, ts = G.ts, lift = o.lift || 0, i, c;
+        var td = !!o.ground && _trueDrapeOn();   // THE TRUE DRAPE: finer, every vertex read, the poke lifted
+        var W = G.W, H = G.H, S = td ? DRAPE_SKIN_SEGS : LIQ_SEGS, near = 0.3 * G.elev, ts = G.ts, lift = o.lift || 0, i, c;
         var inB = {}; for (i = 0; i < cells.length; i++) inB[cells[i].x + ',' + cells[i].y] = true;
         var body = function (x, y) { return !!inB[x + ',' + y]; };
         var inD = null; if (o.deep) { inD = {}; for (i = 0; i < o.deep.length; i++) inD[o.deep[i].x + ',' + o.deep[i].y] = true; }
@@ -84419,9 +84563,9 @@ const ThreeRenderer = (function () {
            neighbour whose top differed by a third of a level read as a wall, so the shore stopped dead on a cell's square edge. With
            o.ground the sheet lies on the ground under every vertex, and a neighbour is a fringe when the ground runs on across the
            border between them (a slope), a hard edge only where it breaks (a cliff, a wall). */
-        var gAt = function (u, v, x, y, ref) {
+        var gAt = function (u, v, x, y, ref, out) {
             if (!o.ground) return null;
-            var g = o.ground(u * ts, v * ts, x, y, ref);
+            var g = o.ground(u * ts, v * ts, x, y, ref, out);
             return (g === null || g === undefined || !isFinite(g)) ? null : g;
         };
         var lvl = {}, fringeOk = function (x, y) {
@@ -84464,6 +84608,24 @@ const ThreeRenderer = (function () {
         }
         var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
         var S1 = S + 1;
+        /* THE TRUE DRAPE: every cell's drape first, so a vertex two cells share takes the larger POKE lift (no hairline step) */
+        var tdC = {}, tdUp = {};
+        var tdOf = function (cc) {
+            var ck = cc.x + ',' + cc.y; if (tdC[ck]) return tdC[ck];
+            return (tdC[ck] = _trueDrapeCell(cc.x, cc.y, S, ts, function (uu, vv, out) { return gAt(uu, vv, cc.x, cc.y, cc.top, out); }));
+        };
+        var tdUpOf = function (cx, cy) {
+            var out = null;
+            for (var jj = 0; jj <= S; jj++) for (var kk = 0; kk <= S; kk++) { var w = tdUp[(cx * S + kk) + ',' + (cy * S + jj)]; if (w > 0) { out = out || new Float32Array(S1 * S1); out[jj * S1 + kk] = w; } }
+            return out;
+        };
+        if (td) draw.forEach(function (cc) {
+            var r = tdOf(cc); if (!r.up) return;
+            for (var jj = 0; jj <= S; jj++) for (var kk = 0; kk <= S; kk++) {
+                var w = r.up[jj * S1 + kk]; if (!(w > 0)) continue;
+                var vk = (cc.x * S + kk) + ',' + (cc.y * S + jj); if (!(tdUp[vk] >= w)) tdUp[vk] = w;
+            }
+        });
         for (i = 0; i < draw.length; i++) {
             c = draw[i];
             var a = [], any = false, j, k, u, v;
@@ -84478,8 +84640,12 @@ const ThreeRenderer = (function () {
             if (!any) continue;
             /* THE DRAPE: the ground under the sheet, read at every other vertex (about the floor mesh's own spacing), the ones
                between are their neighbours' mean (read too where a neighbour has no ground: a wall's foot) */
-            var gh = null;
-            if (o.ground) {
+            var gh = null, gUp = null;
+            if (td) {
+                var tdc = tdOf(c);
+                gh = tdc.gh; gUp = tdUpOf(c.x, c.y);
+                if (tdc.cut) for (j = 0; j < tdc.cut.length; j++) if (tdc.cut[j]) a[j] = 0;
+            } else if (o.ground) {
                 gh = new Array(S1 * S1);
                 for (j = 0; j <= S; j += 2) for (k = 0; k <= S; k += 2) gh[j * S1 + k] = gAt(c.x + k / S, c.y + j / S, c.x, c.y, c.top);
                 for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
@@ -84499,7 +84665,7 @@ const ThreeRenderer = (function () {
             for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
                 u = c.x + k / S; v = c.y + j / S;
                 var gy = gh ? gh[j * S1 + k] : null;
-                pos.push(u * ts, (gy !== null ? gy : c.top) + lift, v * ts); nrm.push(0, 1, 0); uv.push(k / S, 1 - j / S); col.push(1, 1, 1, a[j * S1 + k]);
+                pos.push(u * ts, (gy !== null ? gy : c.top) + lift + (gUp ? gUp[j * S1 + k] : 0), v * ts); nrm.push(0, 1, 0); uv.push(k / S, 1 - j / S); col.push(1, 1, 1, a[j * S1 + k]);
                 nV++;
             }
             for (var j2 = 0; j2 < S; j2++) for (var k2 = 0; k2 < S; k2++) {
@@ -84587,13 +84753,18 @@ const ThreeRenderer = (function () {
     var _liqDrape = { key: null, plan: null, map: null };
     function _liqDrapeSampler() {
         var key = _fieldGroundCache.key, plan = (typeof _fieldDeformPlanLive === 'function') ? _fieldDeformPlanLive() : null;
-        if (_liqDrape.key !== key || _liqDrape.plan !== plan || !_liqDrape.map || _liqDrape.map.size > 200000) { _liqDrape.key = key; _liqDrape.plan = plan; _liqDrape.map = new Map(); }
-        var M = _liqDrape.map;
-        return function (wx, wz, x, y, ref) {
-            var mk = wx + ',' + wz + ',' + x + ',' + y + ',' + ref, g = M.get(mk);
-            if (g !== undefined) return g;
-            g = _fieldGroundSampleAt(wx, wz, x, y, ref); if (g === undefined || (g !== null && !isFinite(g))) g = null;
-            M.set(mk, g);
+        var tdOn = _trueDrapeOn();
+        if (_liqDrape.key !== key || _liqDrape.plan !== plan || _liqDrape.td !== tdOn || !_liqDrape.map || _liqDrape.map.size > 400000) { _liqDrape.key = key; _liqDrape.plan = plan; _liqDrape.td = tdOn; _liqDrape.map = new Map(); }
+        var M = _liqDrape.map, fn = (_fieldGroundArmed && tdOn) ? _fieldGroundSampler() : null, o = { dy: 0, cl: false }, ctx = fn ? _fieldDrawnCtx() : null;
+        /* THE TRUE DRAPE: the ground as the floor mesh draws it; `out` (an object) gets the dig's share in out.dy */
+        return function (wx, wz, x, y, ref, out) {
+            var fr = !!(out && out.free), mk = wx + ',' + wz + ',' + x + ',' + y + ',' + ref + (fr ? 'f' : ''), e = M.get(mk), g;
+            if (e !== undefined) { if (out) { out.dy = e[1]; out.cl = e[2]; } return e[0]; }
+            o.dy = 0; o.cl = false; o.free = fr;
+            g = fn ? fn(wx, wz, x, y, ref, false, ctx, o) : _fieldGroundSampleAt(wx, wz, x, y, ref);
+            if (g === undefined || (g !== null && !isFinite(g))) g = null;
+            e = [g, g === null ? 0 : (o.dy || 0), !!o.cl]; M.set(mk, e);
+            if (out) { out.dy = e[1]; out.cl = e[2]; }
             return g;
         };
     }
@@ -84913,7 +85084,7 @@ const ThreeRenderer = (function () {
         }
     }
     function _fieldFallBuild(G, cells, grp, ts) {
-        var gS = _liqDrapeSampler(), lift = 0.9 + HL_FIELD_LIFT * ts, minDrop = 0.5 * G.elev, N = 24, span = ts * 0.98;
+        var gS = _liqDrapeSampler(), lift = 0.9 + HL_FIELD_LIFT * ts, minDrop = 0.5 * G.elev, N = 24, span = ts * 0.98, td = _trueDrapeOn(), fo = { dy: 0 };
         var byKey = {}, keys = Object.keys(cells);
         for (var i = 0; i < keys.length; i++) {
             var A = cells[keys[i]];
@@ -84923,8 +85094,9 @@ const ThreeRenderer = (function () {
                 /* the ground along the line from A's middle to B's: the edge is the steepest break */
                 var hs = [];
                 for (var si = 0; si <= N; si++) {
-                    var t = si / N, inA = t < 0.5, g = gS((A.x + 0.5 + dx * t) * ts, (A.y + 0.5 + dy * t) * ts, inA ? A.x : B.x, inA ? A.y : B.y, inA ? A.top : B.top);
-                    hs.push((g === null || g === undefined) ? (inA ? A.top : B.top) : g);
+                    var t = si / N, inA = t < 0.5, g = gS((A.x + 0.5 + dx * t) * ts, (A.y + 0.5 + dy * t) * ts, inA ? A.x : B.x, inA ? A.y : B.y, inA ? A.top : B.top, fo);
+                    /* THE TRUE DRAPE: a dig's wall is no sheer edge — both sheets drape down the bowl, so the break is read without the dig */
+                    hs.push((g === null || g === undefined) ? (inA ? A.top : B.top) : g - (td ? (fo.dy || 0) : 0));
                 }
                 var best = -1, bestDrop = 0;
                 for (si = 0; si < N; si++) { var dr = hs[si] - hs[si + 1]; if (dr > bestDrop) { bestDrop = dr; best = si; } }
@@ -85107,7 +85279,7 @@ const ThreeRenderer = (function () {
                        a Fissure cell's lava lies flat on its bed — the drape read the rim's height on the cell's edge vertices and
                        pulled the sheet up every wall. The walls are the strata's own sides (the room's bed). */
                     var gGap = (typeof state !== 'undefined' && state && state.gapTiles) ? state.gapTiles : null;
-                    var gFn = gGap ? function (wx, wz, x, y, ref) { return gGap[x + ',' + y] ? null : gFn0(wx, wz, x, y, ref); } : gFn0;
+                    var gFn = gGap ? function (wx, wz, x, y, ref, out) { return gGap[x + ',' + y] ? null : gFn0(wx, wz, x, y, ref, out); } : gFn0;
                     var parts = [{ key: bk, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 0.9 + gLift, ground: gFn }), order: LIQ_BLEND_ORDER }];
                     if (deeps[bk] && deeps[bk].length) parts.push({ key: 'deep_water', over: true, geo: _liqBlendGeo(bG, bodies[bk], bY, { lift: 1.05 + gLift, deep: deeps[bk], near: deeps[bk], ground: gFn }), order: LIQ_BLEND_ORDER + 1 });
                     parts.forEach(function (pt) {
@@ -85130,7 +85302,7 @@ const ThreeRenderer = (function () {
                 if (!fluid && !rq) {
                     var gS = _liqDrapeSampler();   // THE WALL TOPS: a monument cell keeps its floor's flat sheet (the ground read there is the stone's top)
                     var gGapD = (typeof state !== 'undefined' && state && state.gapTiles) ? state.gapTiles : null;   // THE GAP's floor: flat on its bed, never up its walls (as the liquids)
-                    gDry = function (wx, wz, x, y, ref) { return (monFloor(x, y) !== null || (gGapD && gGapD[x + ',' + y])) ? null : gS(wx, wz, x, y, ref); };
+                    gDry = function (wx, wz, x, y, ref, out) { return (monFloor(x, y) !== null || (gGapD && gGapD[x + ',' + y])) ? null : gS(wx, wz, x, y, ref, out); };
                     dLift = HL_FIELD_LIFT * ts;
                 }
                 _fieldPatchRuns(byKey[bk]).forEach(function (run) {
