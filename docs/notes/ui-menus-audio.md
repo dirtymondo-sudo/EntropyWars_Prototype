@@ -2518,3 +2518,17 @@ Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build
   aim previews whenever a snapshot drops an aim the guest had armed (a one-click cast ending the turn too).
 - F9 online.js `_startOnlineRematch`: host puts the room's rounds back into `_customRoundLimit` (startMatch spends it once).
 - F1 hud.js `SbClock`: the scoreboard timer ticks itself once a second while the fight is on (the host only re-rendered on events).
+
+## ONLINE: own throw / forced-move / teleport lines in fog (2026-11-09, PvP playtest leftover after PR #1073)
+- Bug: "Cyborg hurls DOOR Agent 3 tiles to E8." never reached the thrower's own log when the landing square sat in that seat's
+  fog (guest: online.js `_gvLogShows` tile check; host: battle.js `_logFogVisible`, same rule). Push lines led by a spell name
+  ("Gale knocks Bigfoot 2 tiles back to E5.") also dropped once the pushed enemy ended hidden.
+- Fix: battle.js `addLog(msg, vis, hp, { actor })` (a unit or a player number) writes `entry.a`; `_logVisible` and `_gvLogShows`
+  always pass a line whose `a` is the viewer's seat. Every other seat judges it as before (no new leak to the opponent).
+- Tagged: `_logPushMove(lead, target, res, verb, actor)` (knockbacks, line pushes, AoE pushes, arc hurls/tosses), the sky-throw
+  hurl + its collision line, pulls, AoE hauls, Tackle carries + obstacle slam, slide slams (`opts.byUnit`), teleport-other,
+  dash knock-asides / shove-backs, descent knock-aside, Trapdoor / door transfer / package lines. Not tagged on purpose: weather
+  flings, aura-tree pushes, Door Gun maws (nobody's own action). A NEW forced-move/teleport line passes `{ actor: unit }`.
+- Proof (2026-11-09, online friendly, 2 Chromium seats, Mount Shasta 10x10, real menu clicks): host Sedan To the Moon -> Gnome to
+  C6 in the host's fog, and guest Gnome To the Moon -> Bigfoot to C6 in the guest's fog; each seat's own line shows, the same
+  line untagged is judged hidden. Shots: /mnt/project-files/own-throw-log-fog-20261109/.

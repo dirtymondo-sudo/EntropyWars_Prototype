@@ -6218,6 +6218,10 @@
             function _gvLogShows(v, st, e) {
                 if (e && typeof e === 'object' && Array.isArray(e.sn)) return e.sn.indexOf(v.gp) >= 0;   // battle.js addLog o.seats
                 if (e && typeof e === 'object' && (e.v === 1 || e.v === 2)) return e.v === v.gp;
+                /* PvP playtest 2026-11-09: the guest's own throw ("Cyborg hurls DOOR Agent 3 tiles to E8.") never reached it
+                   when the landing sat in its fog. A line battle.js addLog tagged with the guest's seat (o.actor) is the
+                   guest's own action: it always goes out, like the guest's own board shows the throw. */
+                if (e && typeof e === 'object' && e.a && e.a === v.gp) return true;
                 if (e && typeof e === 'object' && e.zn) return true;   // a zone's cast line (battle.js addLog o.zone): the guest's board draws every zone
                 var msg = String(typeof e === 'string' ? e : (e && e.m) || '').replace(/<[^>]+>/g, '').replace(/[\uE000-\uE00F]/g, '');
                 if (!msg) return true;
