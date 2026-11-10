@@ -1604,6 +1604,17 @@ mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps t
   move the window (it moved Gobekli's 9×9). Re-cut only when cmp shows changed cells.
 - **Holo Sim** (`facility_holosim`, third PR): every `holo` block a cube (risers 3.5 m, pylons 7 m, terraces 3.5 / 7 / 10.5 / 14 m), gallery
   + its racks and consoles 10.5 m, emitter orbs y 14, the hall 10.5 → 17.5 m. Board identical, own pick untouched.
+- **Second third, fourth PR** (after the polish PR #1085): Mars `cydonia`, Moon `mare`, Lodge `halls`, Haunted `grounds` (spec rows: `levelM: 3.5`
+  on the HQ_AREA_SPECS row), Fairy Forest `glade`, D.U.M.B. `motorpool` (literal rooms: in `terrain`). Mapped by the level a height read
+  on the old rule from floor 0 (1.2-2.95 m → 3.5, 2.95-4.7 → 7, 4.7+ → 10.5; under 1.2 m kept): plateaus, ramps h0/h1, bridges y, rails y,
+  walls y / lift, props + npcs y (an offset on a ledge kept: 3.96 → 7.76). Hills, far ridges, dips, the Lodge's sunk cellar, ghost walls
+  under real-size props (Lodge shelves 2.6 m) stay. Closed rooms got the same 3.5 m of ceiling: Lodge 5 → 8.5 m, motor pool 6 → 9.5 m.
+  Moon: the crater's two `ridge` rows 1.6 → 3.5 m and w 4.4 → 5.2 (a smoothstep ridge 3.5 m tall on 4.4 m is steeper than the walker's
+  limit and its straight squares fell out). Haunted: the stairs 0.8 → 3.5 and 0 → 3.5 start one square later (x0 −38.5, z0 −31.5) so
+  their lower square stays level 0. All six: boards cell-for-cell at 12 / 9 / 10 / 11, picks NOT re-cut.
+- **What a `levelM` room changes off the board**: walk slope limits ×2 mean some rock banks / rims that refused the walker now carry it
+  (Mars +20 squares, Moon +43, traps never more); a ramp's middle squares can read one level different (tierMin stays 1.2 m); a deck
+  3.5 m up has walkable floor under it (Lodge's minstrels' walk). scratch `rdiff.py` lists these; `lift.py` does the mapping.
 - **Nothing to raise**: Hollow Earth (its level squares are a 0.3 m deck and the real-size `riser_1` prop), Heaven, Lookingglass.
 - **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
   own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
