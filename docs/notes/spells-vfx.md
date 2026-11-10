@@ -3675,3 +3675,11 @@ The leftover of pass 2: the lens slid about a square on its own after a hit on ~
   to centre that ally.
 Viewer-local camera state; the guest runs the same guard on its relayed shots and numbers (it has no cast forecast, so its
 landing comes from the logical tile once the state sync moves it). Nothing new is relayed (RULE #2).
+Recorded: the 58 spells still flagged after pass 2 (whose cast went off) plus 28 clean ones re-recorded on pass 3: 25 of the
+flagged are now clean (AUTO MOVE 45 -> 25, CUT AWAY 10 -> 0, HIT UNSEEN 5 -> 1), 1 of the 28 clean picked up a 1-square
+guard growth (Marrowstorm: its fourth body's number lands late). Whole game: 832 of 876 clean casts (807 after pass 2, 120
+before the grammar); table /mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md. Still left: leap / drop attacks
+ride the caster's jump (Divine Swoop, Feral Dive, Descending Wrath), the clear angle's 20-30° nudge round a blocking body
+(Space Disco, Round Up), guard steps under 1.6 squares (strike family ~1 square: the eye's floor under a push-in), short
+re-framing glides right after some opening cuts, and the board camera still easing from the target preview when a bespoke
+shot opens late (Colossal Crush, Crop Circle, Headshot).
