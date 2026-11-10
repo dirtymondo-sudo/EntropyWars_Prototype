@@ -1677,3 +1677,13 @@ stonehenge, strip, technoticlan, vatican.
   320 x 200 until `_ewAssetLedger.pending()` is 0, then 1280 x 800). Before / after sheets: /mnt/project-files/battle-maps-last-third/.
 - **Left**: the odd sizes (9, 11) of Stonehenge, Strip, Shasta, Skinwalker, Saturn, Singularity are still found windows off the
   board. No ledge heights changed (THE FULL LEDGES thread switches these rooms after this merge, ghost levels as listed above).
+
+## THE BOARD IS THE PLACE, part 2 — North Pole, Mount Olympus, Flying Dutchman (2026-11-10, data.js)
+The three maps of the last third that already had a laid board got cover only (same thread, same ask). Every size re-cut and fits.
+- **North Pole** — THE TREE LOT: the workshop's stair stood in the board's north-west corner (levels 1, 1, 2, 2) with nothing
+  opposite. The south-east corner now holds the same steps turned round: two big presents (`xmas_gift` h 1.3 / 1.4) and four
+  decorated trees (`xmas_tree` h 4.6) on ghost blocks 1.3 / 4.2. The bench moved off the squares.
+- **Mount Olympus** — THE FIRES AND THE WATCHERS: four braziers inside the colonnades at (3,4) (8,4) (3,7) (8,7) (ghost 1.3) and
+  four `angel_statue` outside them at (0,3) (0,8) (11,3) (11,8) (ghost 2.8).
+- **Flying Dutchman** — THE CARGO: four crate stacks (`psx_wooden_crate_1..4` h 1.7, ghost 1.7) at (2,4) (2,7) (9,4) (9,7); a chest
+  or a skull pile on each of the four hatch covers (decor, y 1.25).
