@@ -1543,3 +1543,50 @@ Checked: every mall area, H-Wing's floor and a DOOR HQ room (the cafeteria) on t
 black). Harness note: in headless swiftshader a freshly entered big room draws floors / the walker black for minutes while
 its shaders compile (they are skipped until ready); shoot each view twice and keep the second. Proof:
 /mnt/project-files/mall-black-interior/.
+
+## THE FRAME RATE PLAN 1 (2026-11-10, mondo: "proceed with plan 1")
+The options doc (11 options, 3 plans; https://claude.ai/artifact/EZN4WmV1dJCm6uFB3sn3GA) named four fixes that change
+nothing on screen. Three shipped, one was built, measured and taken out. Every one is the viewer's own drawing: nothing
+is relayed, online is untouched. Measured on the node renderer with `?ew_gpu=webgl2`, 1280x720, software raster (counts
+are true, milliseconds are the sandbox's).
+
+- **THE ZERO STRENGTH** (three-post.js `_ngSig`). Both AO looks of the node chain are an exact identity at strength 0
+  (the shipped `ew_polish.ssaoStrength`), yet the half-size AO pass and its full-size mix drew every frame. At 0 the
+  chain is now the set without AO: key `smaa|off|-DF`, 8 passes in place of 9. The slider brings the passes back the
+  frame it moves. Node chain only (WebGPU / webgl2): the classic chain's N8AO floors its intensity at 0.5, so 0 is NOT
+  an identity there and it is left alone. Off: `window.EW_AO_AT_ZERO = true`.
+- **THE STILL TORCH** (three-renderer.js `_hqHeroGate`, the hero light's six-sided map). The map is HELD while no shown
+  caster inside the light's reach has changed: which pieces cast is hashed exactly (any change redraws, then 1.5 s of
+  redraws), where each stands (a rigid piece's world matrix, a body's every bone) is compared with where it stood when
+  the map was last drawn, and the map redraws once a piece has moved further than a QUARTER of one texel of the map at
+  its distance. A shader-moved piece (wind, grass, fluid) always redraws. It redraws every second regardless. The read
+  runs at the end of the frame's own matrix walk (`_hqWalkHook`, the draw that carries the shadow pulse; a mirror's
+  render is skipped), so a piece that moved this frame is read where it now stands. The node bridge (`ewDraw`) and the
+  classic renderer (`shadow.autoUpdate`) both honour `light._ew_heroHold`. The fight never holds.
+  Off: `window.EW_HERO_SHADOW_EVERY_FRAME = true`. Counts: `ThreeRenderer.hq.dev.heroShadow()`.
+  WHAT IT REALLY GAINS (smaller than the doc said): held, the Main Hall drops from 1,000 draws / 2.49 M triangles to
+  878 / 1.62 M. But it only rests when nothing in the light's reach (7 to 8 m) moves a quarter texel:
+    - nobody in reach: rests all but the once-a-second refresh;
+    - a standing body breathes at 6 to 14 cm/s (hands), an orb bobs at 27 cm/s: the dungeon with the player 6 m, an
+      agent 6.6 m and an orb 7.5 m from the torch rested 21 % of frames at a 60 fps step;
+    - the MAIN HALL never rests: its hero light is a floor lava lamp (the key list has `lava`), whose four wax blobs are
+      opaque casters moving 3 to 26 units from the bulb, and Locke stands 1.2 m from it.
+  The real saving for a lived-in room is the static / moving split of the map (the doc's option 5, for the sun and the
+  torch alike): draw the still casters once, redraw only the movers each frame.
+- **THE RESTING HUD** (hud.js `_hudResting`, three-renderer.js `_wmMenuRects`). The quick cone's loop (sub menu dodge,
+  list room, BACK chip, pinned room) and the world-text fade's menu boxes measured the page every frame. They now run
+  every frame only while something may move: 700 ms after any pointer / key / wheel / touch / resize / scroll, a CSS
+  transition or animation starting or ending, a DOM change (children, text, class, style, hidden), with a gamepad, the
+  UI Maker, the zoom cone or an enemy action showing. Otherwise every 150 ms. Ignored as wakes (they tick on their own
+  clock and move no box): the 3D plates' layer, the perf lens, the dial's second hand `.hrlg-sec`, the match timer.
+  Proof: 178 boxes of the action menu and 290 of the Abilities list land in the same place resting or not (one 0.1 px
+  difference on an arrow that bobs). An idle turn fires no wake at all. Gain: about 0.85 ms of layout reads a frame on
+  the sandbox CPU, less on his. Off: `window.EW_HUD_NO_REST = true`. Counts: `window._ewHudRest()`.
+- **THE STILL MATRICES: NOT SHIPPED.** A scene walk that kept an object's matrices while its position / quaternion /
+  scale / matrix / world matrix read as they did when last made was exact (458,557 comparisons against three's own
+  walk in a fight and in the Main Hall, 0 differences) and gained nothing: comparing the 37 numbers costs what three
+  spends composing and multiplying (0.60 to 0.70 ms a walk against 0.62 to 0.67 ms, 3,542 objects). The time is the
+  walk over the objects, not the arithmetic. A real gain needs still props to leave the walk altogether
+  (`matrixAutoUpdate = false` at build, with every mover named: doors, kicks, sways, the editor), which is its own job.
+  Also learned: the walk's scene is matrix-walked about 5 times a frame (each shadow and mirror render walks it again).
+- battle.js `_menuFreeArea` already ran at most 8 times a second: left alone.
