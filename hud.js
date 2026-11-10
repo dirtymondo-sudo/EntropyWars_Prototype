@@ -1964,6 +1964,81 @@ function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
    turn order icon to the panel's big portrait (or the card's left edge with the portrait off). Measured every frame
    (both ends move: the column re-spaces, the panel slides in, the UI Maker moves either), drawn straight into the SVG
    (no React render per frame). The look: window._ewQpCone (UI Maker, Layout > Unit info panel). Viewer-local. */
+/* THE RESTING HUD (2026-11-10, the frame rate plan, fix 4). The loop below measures the page every frame (the sub menu's
+   dodge, the list's room and ceiling, the BACK chip, the pinned room): forced layout reads on every frame, nearly all
+   of them with the menu standing exactly where it stood the frame before. The HUD is AWAKE, and the loop runs every frame
+   exactly as before, for HUD_REST_AFTER_MS after any sign that something on the page may move: a pointer, key, wheel or
+   touch event, a resize or scroll, a CSS transition or animation starting or ending (awake for its whole run), any DOM
+   change (children, text, class, style, hidden) outside the layers that tick on their own clock and move no box (the
+   3D plates, the dial's second hand, the match timer's digits), a connected gamepad, the UI Maker, or the zoom cone
+   showing. With none of those it RESTS and the loop runs every HUD_REST_EVERY_MS. three-renderer.js's
+   world-text fade (_wmMenuRects) rests on the same switch. Viewer-local.
+   Off: window.EW_HUD_NO_REST = true (live). window._ewHudRest() = the counts. */
+const HUD_REST_AFTER_MS = 700, HUD_REST_EVERY_MS = 150;
+const _hudRest = { armed: false, awakeTill: 0, ranAt: 0, ran: 0, skipped: 0, wakes: {}, obs: null };
+function _hudWake(why, ms) {
+  const t = performance.now() + (ms > 0 ? ms : HUD_REST_AFTER_MS);
+  if (t > _hudRest.awakeTill) _hudRest.awakeTill = t;
+  _hudRest.wakes[why] = (_hudRest.wakes[why] || 0) + 1;
+}
+function _hudRestChurn(n) {   // a node inside a layer that is rewritten on its own clock and moves no box (the 3D plates, the perf overlay, the dial's second hand, the match timer's digits)
+  if (!n) return true;
+  if (n.nodeType !== 1) n = n.parentNode;
+  if (!n || n.nodeType !== 1) return true;
+  if (n._ewRestChurn === undefined) n._ewRestChurn = !!(n.closest && n.closest('#css2dOverlay, .ewPerfLens, .ew-qp-cone, #ewFpsCounter, .hrlg-sec, #gameTimer, .ew-sb-time'));
+  return n._ewRestChurn;
+}
+function _hudRestArm() {
+  if (_hudRest.armed || typeof window === 'undefined' || typeof document === 'undefined') return;
+  _hudRest.armed = true;
+  const opt = { capture: true, passive: true };
+  ['pointermove', 'pointerdown', 'pointerup', 'keydown', 'keyup', 'wheel', 'touchstart', 'touchmove', 'touchend', 'scroll', 'focusin'].forEach(ev =>
+    window.addEventListener(ev, () => _hudWake('input'), opt));
+  window.addEventListener('resize', () => _hudWake('resize'), opt);
+  /* a transition or an animation: awake from its start to its end (its own length off the element, read once at the start) */
+  const _runLen = (e, kind) => {
+    let ms = 0;
+    try {
+      const cs = getComputedStyle(e.target), sec = (v) => Math.max(0, ...String(v || '0s').split(',').map(x => { x = x.trim(); return x.endsWith('ms') ? parseFloat(x) : parseFloat(x) * 1000; }).filter(isFinite));
+      if (kind === 't') ms = sec(cs.transitionDuration) + sec(cs.transitionDelay);
+      else { const it = String(cs.animationIterationCount || '1'); ms = /infinite/.test(it) ? 0 : (sec(cs.animationDuration) * Math.max(1, ...it.split(',').map(parseFloat).filter(isFinite)) + sec(cs.animationDelay)); }
+    } catch (x) {}
+    return Math.min(8000, ms) + HUD_REST_AFTER_MS;
+  };
+  ['transitionrun', 'transitionstart'].forEach(ev => window.addEventListener(ev, (e) => { if (!_hudRestChurn(e.target)) _hudWake('transition', _runLen(e, 't')); }, opt));
+  window.addEventListener('animationstart', (e) => { if (!_hudRestChurn(e.target)) _hudWake('animation', _runLen(e, 'a')); }, opt);
+  ['transitionend', 'transitioncancel', 'animationend', 'animationcancel'].forEach(ev => window.addEventListener(ev, (e) => { if (!_hudRestChurn(e.target)) _hudWake('transition'); }, opt));
+  if (typeof MutationObserver === 'function' && document.body) {
+    _hudRest.obs = new MutationObserver((recs) => {
+      for (let i = 0; i < recs.length; i++) if (!_hudRestChurn(recs[i].target)) { _hudWake('dom'); return; }
+    });
+    _hudRest.obs.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  }
+  _hudWake('start', 3000);
+}
+/* true = the HUD rests and this frame's measuring can be skipped; `own` = a caller with its own clock (the world-text fade) */
+function _hudResting(own) {
+  if (typeof window === 'undefined' || window.EW_HUD_NO_REST) return false;
+  if (!_hudRest.armed) { _hudRestArm(); return false; }
+  const now = performance.now();
+  let awake = now < _hudRest.awakeTill;
+  if (!awake) {
+    try {
+      if (document.documentElement.className.indexOf('uim-') >= 0) awake = true;
+      else if (typeof state !== 'undefined' && state && state._enemyActionTargetId != null) awake = true;
+      else if (_tcPeekId != null) awake = true;
+      else if (navigator.getGamepads) { const gp = navigator.getGamepads(); for (let i = 0; gp && i < gp.length; i++) if (gp[i] && gp[i].connected) { awake = true; break; } }
+    } catch (e) { awake = true; }
+  }
+  if (own) return !awake;
+  if (awake || now - _hudRest.ranAt >= HUD_REST_EVERY_MS) { _hudRest.ranAt = now; _hudRest.ran++; return false; }
+  _hudRest.skipped++;
+  return true;
+}
+if (typeof window !== 'undefined') {
+  window._ewHudResting = _hudResting;
+  window._ewHudRest = () => ({ awake: performance.now() < _hudRest.awakeTill, ran: _hudRest.ran, skipped: _hudRest.skipped, wakes: Object.assign({}, _hudRest.wakes) });
+}
 function QuickCone() {
   const ref = useRef(null);
   useEffect(() => {
@@ -1975,6 +2050,7 @@ function QuickCone() {
     let watched = [];
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      if (_hudResting()) return;   // THE RESTING HUD: nothing on the page has moved, measure at the resting rate
       _subDodge();
       _listRoom();
       _listDescDodge();
