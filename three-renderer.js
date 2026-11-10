@@ -83216,13 +83216,16 @@ const ThreeRenderer = (function () {
         if (!R || (R.cave && !(R.field && R.field.caveGround)) || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         if (typeof hqFieldGroundOn === 'function' ? !hqFieldGroundOn() : !!(typeof window !== 'undefined' && window.EW_HQ_NO_TRUE_GROUND)) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         var ts = CONFIG.tileSize || BASE_TILE;
-        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer + '|' + (R.build | 0);   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read (THE CHESS POSITIONS: a re-rastered field too)
+        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer + '|' + (R.build | 0) + ((typeof window !== 'undefined' && window.EW_HALF_BLOCK) ? '|hb' : '');   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read (THE CHESS POSITIONS: a re-rastered field too)
         if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
         var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
-        /* THE BIG SQUARES (2026-10-28): on a board of bigger squares a level is still the room's 1.75 m (data.js THE TIER RULE), so a
-           dig / a raise / a flyer's clearance steps 1.75 m of the room, never a whole square */
+        /* THE FULL BLOCK (2026-11-10, mondo: "Build only builds half a tile up now"): a dig / a raise steps ONE WHOLE SQUARE of the
+           board it is on (a cube, as on every column board), on big squares too — it stepped the room's 1.75 m there since THE BIG
+           SQUARES (2026-10-28), half a 3.5 m square. A flyer's clearance stays the body's own 1.75 m (`airElev`): the bodies did not
+           grow with the squares. Kill-switch window.EW_HALF_BLOCK (the 1.75 m step again). */
         var _tileM = (typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75;
-        if (R.T.C > _tileM + 1e-6) elev *= _tileM / R.T.C;
+        var airElev = elev;
+        if (R.T.C > _tileM + 1e-6) { airElev = elev * _tileM / R.T.C; if (typeof window !== 'undefined' && window.EW_HALF_BLOCK) elev = airElev; }
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
@@ -83234,7 +83237,7 @@ const ThreeRenderer = (function () {
                 return row.map(function (t, x) { var li = lr[x]; if (li === null || li === undefined || t === null || t === undefined) return t; var d = _hqLotStandY(R.roomId, li); return (d !== null) ? d : t; });
             });
         }
-        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, skyTops: Array.isArray(R.field.skyTops) ? R.field.skyTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, skyTops: Array.isArray(R.field.skyTops) ? R.field.skyTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, airElev: airElev, floorY: _hqBattleRoomFloorY(R, ts),
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -83405,7 +83408,7 @@ const ThreeRenderer = (function () {
             if (sm !== null && sm !== undefined && isFinite(sm)) top = sm;
         }
         if (tz !== undefined && tz !== null) {
-            if (tz > eh + 1e-6) top += (tz - eh) * G.elev;   // in the air over the cell: the clearance rides the real top
+            if (tz > eh + 1e-6) top += (tz - eh) * G.airElev;   // in the air over the cell: the clearance rides the real top (the body's 1.75 m a level, THE FULL BLOCK)
         }
         return top;
     }
