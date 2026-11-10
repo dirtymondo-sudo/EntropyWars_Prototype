@@ -106,6 +106,7 @@ const ThreeCamera = (function () {
     function snapImmediate() {
         if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it
         _initialized = false;
+        _caCutPend = true; _caSnapAt = performance.now() / 1000; _caCutFrame = _caFrameNo;   // THE SHOT GRAMMAR: the clear angle picks with this cut
         _fgCarry = null;   // THE GUARD'S HAND-OFF: a cut starts its frame clean
     }
 
@@ -744,8 +745,16 @@ const ThreeCamera = (function () {
     const CA_RECHECK_MS = 400;
     const CA_EASE_S = 0.22;
     const CA_EASE_GRAMMAR_S = 0.55;   // THE SHOT GRAMMAR: a mid-beat turn (a body now blocked) is slow, never a whip
+    const CA_MIDBEAT_MAX = 30;        // …and small: mid-beat the lens drifts at most this far off the cut's angle (a pull
+                                      // that bunches the bodies up made it re-pick 160° round in the middle of the push-in)
     let _caSig = '', _caShot = null, _caDelta = 0, _caWant = 0, _caAt = 0, _caSnapAt = 0, _caCost = 0, _caLast = null, _caT = 0;
     let _caHold = null;   // THE STEADY CRANE: a finished shot's angle { key, from, t0 }
+    let _caCutPend = false, _caCutWant = 0, _caCutFrame = -1, _caFrameNo = 0;
+    /* the drawn-frame counter (a rAF tick ahead of the render loop): "same frame" = nothing drawn since the cut */
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        const _caTick = () => { _caFrameNo++; window.requestAnimationFrame(_caTick); };
+        window.requestAnimationFrame(_caTick);
+    }   // THE SHOT GRAMMAR: a cut the clear angle has not picked for yet (see _clearAngle)
     function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; }
     /* the shot is over but its frame holds (the CPU's parked last beat, a press-turn hold): the lens keeps the angle it
        turned to (it used to swing back to the director's heading in one frame — a jump of up to 180° round the pivot),
@@ -844,10 +853,23 @@ const ThreeCamera = (function () {
         const ids = subs.map(s => s.id).join(',');
         const sig = cam._cineShotId + '|' + ids + '|' + Math.round(P.yaw * 57.3) + '|' + Math.round(P.tilt * 57.3)
             + '|' + Math.round(P.px / ts * 4) + '|' + Math.round(P.pz / ts * 4) + '|' + Math.round(P.dist / ts * 4);
-        const cut = !_initialized;
-        if (cut) _caSnapAt = nowS;
+        const _sgC = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+        /* THE SHOT GRAMMAR (2026-11-10): the angle is picked AT a cut and lands with it. A director's cut is consumed by
+           the sync its own camera._apply() runs, often before the rig has armed the frame guard (no bodies yet): the cut
+           stays pending and the first pick with bodies IN THE SAME FRAME (nothing drawn since the cut — battle.js
+           re-syncs when the guard is armed right after a cut) is the cut's pick. A pick in a later frame is a mid-beat
+           one: it used to land as a second cut a frame later (a flurry) or ease the lens round up to 135° just after the
+           cut; now it may only drift slowly, CA_MIDBEAT_MAX at most from the cut's own angle, for a blocked view. */
+        const sameFrame = _sgC && _caFrameNo === _caCutFrame;
+        const cut = !_initialized || (_sgC && _caCutPend && sameFrame);
+        _caCutPend = false;
+        if (!_initialized) _caSnapAt = nowS;
         const newShot = _caShot !== cam._cineShotId;
         const resig = sig !== _caSig;
+        /* a re-pick on the cut's heels (its bodies changed before anything was drawn) belongs to the cut too, but keeps the
+           cut's own pick unless that is clearly worse; EW_NO_SHOT_GRAMMAR = the old 0.15 s window */
+        const onHeels = !cut && resig && (_sgC ? sameFrame : nowS - _caSnapAt < 0.15);
+        const atCut = cut || onHeels;
         const recheck = (nowS - _caAt) * 1000 >= CA_RECHECK_MS;
         if (resig || recheck || newShot) {
             _caAt = nowS;
@@ -855,7 +877,7 @@ const ThreeCamera = (function () {
                 /* a beat about something else; mid-beat (a flung body) the held angle stays — under THE SHOT GRAMMAR a glide
                    off the subjects keeps it too (it only goes back to the director's own heading on a cut) */
                 const _sgA = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
-                if (newShot || (_sgA ? cut : resig)) _caWant = 0;
+                if (newShot || (_sgA ? atCut : resig)) { _caWant = 0; if (_sgA) _caCutWant = 0; }
             } else {
                 const clear = ts * 0.45;
                 const sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
@@ -876,31 +898,36 @@ const ThreeCamera = (function () {
                    swing the lens up to 55° on its own a moment after the cut. Mid-beat it only turns for a clearly better
                    view of a body that is now blocked, and then slowly. EW_NO_SHOT_GRAMMAR = the old re-pick. */
                 const _sg = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
-                const held = (newShot || (_sg ? cut : resig)) ? 0 : _caWant;
+                const held = (_sg ? (cut || (newShot && !onHeels)) : (newShot || resig)) ? 0 : _caWant;
                 const heldCost = costOf(held, Infinity);
                 let best = held, bestCost = heldCost;
                 if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2) {
                     for (const dd of CA_CANDS) {
                         const d = dd * DEG2RAD;
                         if (Math.abs(d - held) < 1e-3) continue;
+                        if (_sg && !atCut && Math.abs(d - (newShot ? 0 : _caCutWant)) > (CA_MIDBEAT_MAX + 1) * DEG2RAD) continue;
                         const c = costOf(d, bestCost);
                         if (c < bestCost - 1e-3) { best = d; bestCost = c; }
                     }
                 }
                 /* a recheck in the middle of a beat only turns a lens that is now blocked, and only for a clearly better one */
-                if (!newShot && !(_sg ? cut : resig) && !(bestCost < heldCost - 0.8)) best = held;
+                if (_sg ? !atCut : (!newShot && !resig)) { if (!(bestCost < heldCost - 0.8)) best = held; }
+                if (_sg && onHeels && !(bestCost < heldCost - 0.3)) best = held;   // the cut's own pick stays unless clearly worse
                 _caWant = best;
+                if (_sg && (atCut || newShot)) _caCutWant = atCut ? best : 0;   // mid-beat drift is bounded from the cut's own pick
                 _caCost = Math.min(bestCost, heldCost);
             }
-            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId };   // id: whose pick this is (battle.js THE CLEAN OPEN)
+            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId, cut: cut, heels: onHeels, dt: Math.round((nowS - _caSnapAt) * 1000) };   // id: whose pick this is (battle.js THE CLEAN OPEN)
             _caSig = sig;
         }
         /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
            from the board, so its first beat eases in from the director's own yaw) */
         if (newShot && !cut && !_caHold) _caDelta = 0;   // (a held angle eases on into the next shot's)
         _caHold = null;
-        if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
-        else if (_caDelta !== _caWant) {
+        if (_sgC ? atCut : (cut || (resig && nowS - _caSnapAt < 0.15))) {
+            if (_sgC && _initialized && Math.abs(_caWant - _caDelta) > 0.005) _initialized = false;   // lands as part of the cut (not drawn yet)
+            _caDelta = _caWant;
+        } else if (_caDelta !== _caWant) {
             const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
             const _ease = (typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR) ? CA_EASE_S : CA_EASE_GRAMMAR_S;
             _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / _ease));
