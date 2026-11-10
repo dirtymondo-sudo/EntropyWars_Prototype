@@ -1572,6 +1572,17 @@ mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps t
   cover blocks 1.4 → 3.5 m. Board: same squares and levels at all four sizes; the two obelisk tops read level 2 (were 3). Room-wide:
   the pyramids' 3.5 m steps read 1 / 2 / 3 (were 2 / 3 / 3), walkable squares unchanged, 0 traps. Not looked at in exploration on
   screen (stairs are twice as steep).
+- **THE WALK RULES OF A FULL-LEDGE ROOM** (same day, second PR): `hqTerrainRulesFor(room)` scales HQ_TERRAIN_RULES `maxSlope`, `cliffFrom`
+  and `cliffTo` by levelM / 1.75 for a `levelM` room (hqTerrainAdopt + hqTerrainCompile). So a twice-as-tall cliff or stair stands
+  exactly where the old one did: a terrace edge NO LONGER has to sit on a square line and a stair keeps its authored run. Giza's
+  causeways are back at their authored 9 m; its obelisk ghosts 5.0 → 8.4 m (level 3 again). Giza's 12 board gains one walkable corner
+  square (11,0); every other size is the original board.
+- **Gobekli** (`site_prebuilt_gobekli_tell`): the pit 1.75 → 3.5 m deep (plateaus, stair h0, pedestals −3.2), 12 corner blocks + 2
+  benches 3.5 m, lesser pillar ghosts 8.4 m, braziers y 3.5. **Hell** (`site_prebuilt_hell_walkways`): the four daises 8.9 → 11 m
+  (floor 7.5). Both: boards cell-for-cell the original at 12 / 9 / 10 / 11, so the picks were NOT re-cut.
+- **Never re-cut the picks when the boards compare identical** (scratch `cmp.js <site…>` with DATA_BEFORE=<old data.js>): a re-bake can
+  move the window (it moved Gobekli's 9×9). Re-cut only when cmp shows changed cells.
+- **Nothing to raise**: Hollow Earth (its level squares are a 0.3 m deck and the real-size `riser_1` prop), Heaven, Lookingglass.
 - **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
   own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
 
