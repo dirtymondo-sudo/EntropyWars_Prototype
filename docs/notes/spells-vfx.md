@@ -3608,8 +3608,9 @@ Known leftovers (not the grammar): a knocked-back SECOND body can slide out at t
 (AUTO MOVE / CUT AWAY on Big Kick, Wing Attack, Tsunami); party buffs pop their numbers at the cast, before the party shot.
 
 ### THE SHOT GRAMMAR, pass 2 (2026-11-10, from the after run of all 885 spells)
-Before the grammar 116 of 829 recorded casts were clean, after it 712 of 810 (per-spell table:
-/mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md). Pass 2 fixes the shared causes of the leftovers:
+Before the grammar 118 of 867 recorded casts were clean, after PR #1094 763 of 868 (per-spell table:
+/mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md; the 105 flagged + 30 clean spells re-recorded on pass 2:
+43 of the flagged now clean, 1 of the 30 clean picked up a small guard drift). Pass 2 fixes the shared causes of the leftovers:
 - THE NUMBER WAITS FOR THE LENS (`_shotGNumberWaits` / `_shotGWaitTick`, in `_realShowFloatingTextAtTile_impl` before the
   guard note): a NON-damage number (buff, heal, shield, status, MP...) on a body outside the live shot's letterbox waits until
   the lens shows that body (also past the shot's end: its last frame can hold ~1 s before the cut home) or
@@ -3627,6 +3628,10 @@ Before the grammar 116 of 829 recorded casts were clean, after it 712 of 810 (pe
   40-50° while they zoomed, then the hit cut threw the arc away).
 - `camera._returnCut` measures the turn home from the DRAWN heading (logical yaw + `ThreeCamera.clearAngleState().delta`):
   the held clear-angle offset easing out made a "17°" glide home swing 39° while it craned out and zoomed out ×8.
-Still left (not camera grammar): drop / leap attacks land the victim just under the bottom letterbox bar (Descending
-Wrath, Predator Drop, Divine Swoop); a knocked-back second body slides out while the guard follows the first; two-step
-casts (Horn Toss, Fifty Times Its Weight, Swing Door) and remains / high-ground spells need a setup the recorder does not make.
+Still left: the frame guard's own correction eases in over ~0.4 s after a hit (AUTO MOVE, ~45 spells, about 1 square; the
+next step would land it with the cut), the clear angle's 30° unblock nudge on shield casts, drop / leap attacks land the
+victim just under the bottom letterbox bar (Descending Wrath, Predator Drop, Divine Swoop, Feral Dive), a knocked-back
+second body slides out while the guard follows the first (Tsunami, Gale, Body Check). Recorder limits, not the camera:
+two-step casts (Horn Toss, Fifty Times Its Weight, Swing Door, Suplex) and remains / high-ground / chess spells need a setup
+the recorder does not make. Recorder + analyser: /mnt/project-files/spell-camera-20261110/tools (sc-an.js skips a held
+number's first call and judges a number on the first frame drawn after it pops).
