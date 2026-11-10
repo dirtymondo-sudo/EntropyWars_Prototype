@@ -3546,3 +3546,52 @@ his shot; Horn Toss zoom 0.56 → 0.93. Kill switch `window.EW_NO_CLEAR_DROP = t
 `window._clearDropState()`. Viewer-local camera, nothing relayed (a guest frames its own drop pick from state-sync).
 Proof /mnt/project-files/throw-camera/ (infernal_hurl_before_after.jpg, horn_toss_before_after.jpg). Teleport shares the sky
 path (solid) and was not driven on screen.
+
+## THE SHOT GRAMMAR — every spell shot cuts or moves, never both (2026-11-10, battle.js + three-camera.js)
+mondo: "a lot of times the camera spins around/pans when a cut would be better, or vice versa ... spazzing out bc its trying
+to zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... it will cut too early
+away from the spell landing or the person taking damage ... completely rethink these spell animation camera shots".
+The grammar (approved by mondo 11-10, memory `spell-camera-grammar-20261110`): four shots (CAST, HIT, FOLLOW, REVEAL); cut
+OR move, never both; no move a cut throws away; the shot opens with a cut; cut on the release, land on the impact; hold the
+hit >= 1 s; a kill keeps the close-up; cuts >= 0.5 s apart, no jump cuts; auto helpers decide AT the cut; one cut home.
+
+What the recordings showed (every spell recorded with Action Cam on, the real HUD cast, every drawn frame logged; tools
+/mnt/project-files/spell-camera-20261110/tools, table /mnt/project-files/spell-camera-20261110/):
+1. ENTRY SWOOP: every rig's opening beat was a 380-560 ms glide from the board view to the caster that turned up to 180°,
+   zoomed x3-15, tilted and panned at once, then the shot cut away anyway.
+2. The windup drift orbited 12° while it pushed in (turn + zoom).
+3. AUTO TURN: THE CLEAR ANGLE re-picked from the director's heading on every sig change (a push-in, a refit, a new body) and
+   eased the lens 50-160° round on its own, mid-beat, a moment after a cut. Its pick for a cut also came a frame late (the
+   cut is consumed by the sync camera._apply() runs, before the rig arms the frame guard): a second cut 16-110 ms later.
+4. The groundAoe 'print' pull-back turned + zoomed + tilted after the hit, then the return cut threw it away.
+5. The kill confirm cut from the dying body back to the caster.
+6. multiHit alternated ±60° re-angle cuts every 180 ms.
+7. The return home glided (turn + tilt + zoom + pan) when it turned less than 60°.
+
+The fix lives under every shot (rigs, family directors, bespoke sequences, kit shots, VFX retargets all move through
+_cineBeatMove / _cineHardCut), nothing per spell:
+- battle.js `_shotGrammarMove` (in _cineBeatMove): a glide that turns > SHOT_GRAMMAR_TURN (40°) together with a zoom / pan /
+  tilt, turns > 75° alone, crash-zooms across the board, or is the shot's opening reframe, is a CUT to its end frame. A
+  FOLLOW (`_sgFollow`: `_cineRetargetShot` riding a thrown / dashing body) stays a glide. A reframing glide that cannot land
+  before the shot ends is not started.
+- `_shotGrammarCut` (in _cineHardCut): a cut that barely changes the frame is a 300 ms glide; a cut the shot ends within
+  SHOT_GRAMMAR_MIN_CUT_MS (500) of is dropped; a cut within 500 ms of the last waits (a cut in the same frame replaces it).
+- HOLD THE HIT `_shotGNoteRead` (from the floating-number layer, so the guest runs it off the relayed numbers): a number on a
+  body that is not the caster locks it for SHOT_GRAMMAR_READ_MS (1 s) and holds the way home (`_cineHoldImpactFor`). A beat
+  that looks away or pulls out wide waits for the read (`_shotGDefer`, with the beats issued in the same turn; a newer beat
+  replaces it); a beat that only re-angles the body being read is dropped (multiHit's flurry now holds one angle).
+- The self-cast's opening (`_cineOpenBeat`, a camera.moveTo the beat layer never saw) cuts when it reframes (`_shotGOpenIsCut`).
+- The windup drift is a push-in only; `_spellDirKillConfirm` no longer cuts off a death.
+- `_shotGAdvanceGuard`: a cut within 250 ms before the frame guard's own cast -> travel -> hit switch moves the guard on with
+  the cut; `_cineArmFrameGuard` re-syncs (camera._apply) when the rig cut in the same task, so the clear angle picks the
+  cut's angle for the right bodies before the cut is drawn.
+- `camera._returnIsBusy`: a return home that turns > 25° with a pan / tilt / zoom, or pans > 2 squares with a crane, cuts.
+- three-camera.js THE CLEAR ANGLE: picks at a cut (pending until the first pick with bodies in the SAME drawn frame,
+  `_caFrameNo` / `_caCutFrame`), lands with it (the smoother snaps); later picks are mid-beat: only for a blocked view
+  (0.8 better), at most CA_MIDBEAT_MAX (30°) from the cut's own angle, eased over CA_EASE_GRAMMAR_S (0.55 s).
+Viewer-local camera code; host and guest run the same rigs on the relayed shot, the read lock comes off the numbers both
+draw, nothing new is relayed (RULE #2). Kill switch `window.EW_NO_SHOT_GRAMMAR = true` (the old behaviour, both files).
+Probe `window._shotGrammarState()` (seq, beats, cuts, the read lock, the shot's end, the last 20 decisions);
+`ThreeCamera.clearAngleState()` now carries cut / heels / dt.
+Known leftovers (not the grammar): a knocked-back SECOND body can slide out at the frame edge while the frame guard follows
+(AUTO MOVE / CUT AWAY on Big Kick, Wing Attack, Tsunami); party buffs pop their numbers at the cast, before the party shot.
