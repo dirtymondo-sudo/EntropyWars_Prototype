@@ -3635,3 +3635,43 @@ second body slides out while the guard follows the first (Tsunami, Gale, Body Ch
 two-step casts (Horn Toss, Fifty Times Its Weight, Swing Door, Suplex) and remains / high-ground / chess spells need a setup
 the recorder does not make. Recorder + analyser: /mnt/project-files/spell-camera-20261110/tools (sc-an.js skips a held
 number's first call and judges a number on the first frame drawn after it pops).
+
+### THE SHOT GRAMMAR, pass 3: the frame guard decides at the cut (2026-11-10)
+The leftover of pass 2: the lens slid about a square on its own after a hit on ~50 spells (AUTO MOVE). Instrumented runs
+(`_ewFrameGuard().solve` + FOV per frame) found four shared causes, all fixed in the shared camera code:
+- THE LENS COMES BACK ON THE CUT (three-camera.js `setFOVAtCut` / `fovAtCut` / `_fovAtCutTick`, battle.js
+  `cineDollyZoomRelease`): the control family's Vertigo push (`cineDollyZoom(-11, …)`) and the executions' lens tricks gave
+  the lens back on a 220 ms timer: FOV 34° → 45° in one frame while the shot still held the victim, then the frame guard
+  (which had dollied back for the narrow lens) let go and the eye slid 1.1 squares in (Cordyceps, Brainwash, Eyes Go Black,
+  Into The Sack). The release now names the lens to come back to; the next cut (`snapImmediate`) restores it on its own
+  frame, a shot that ends on a glide eases it back over 0.45 s, 8 s without a cut eases it too, the battle ending restores
+  it at once. While a restore waits, `setFOV` sets its destination (like the swoop's rule) and the next lens trick takes it
+  as its base. The sniper POV's first-person lens still goes back at once (`{ now: true }`). A release stops the running
+  tween (`_cineDzGen`). Kill switch `window.EW_NO_LENS_AT_CUT = true`.
+- THE GUARD HOLDS ITS FRAME (three-camera.js `_fgSolve(…, H)`, `_fgHold`, `_fgBeatKey` = the hand-off key + a cut
+  counter): within one beat (one rig on one subject aimed one way, since the last cut) the correction only grows; the slide
+  stays put unless a body needs it moved. It used to re-solve from scratch every frame and relax the moment a body's need
+  shrank (a lens widening, a number's body leaving, a push-in ending). Probe: `frameGuardState().held`. Kill switch
+  `window.EW_NO_GUARD_HOLD = true`.
+- THE LANDING IN THE HIT FRAME (battle.js `_cineGuardLandingPts`, `_cineCastCtx.moves` from `forecastSpellPlan`'s
+  `plan.moves`, `G.moves`): a pushed / pulled / thrown victim keeps its landing tile in frame from the hit on (the forecast
+  landing, or its logical tile once the logic moved it, so chained knocks count), and a body lifted more than half a square
+  off its ground (`unitElevationZ`) keeps that ground in frame. It was: the hit cut framed the body where it stood and
+  ~600 ms later the guard slid 1-2 squares after it (Gale, Fire Hose, Tsunami, Sonic Breaker, Wing Gust, Body Check, Stone
+  Drop). Kill switch `window.EW_NO_GUARD_LANDING = true`.
+- THE GUARD CUTS (three-camera.js `_guardStepCheck`, battle.js `camera._guardMayCut`): a correction that jumps 1.6+
+  squares inside 0.15 s (the hit beginning while the lens held the travel or the caster, with no cut of its own: Probe,
+  High Noon, Chivalry, Stone Drop's lift) lands as a cut on the same angle when the grammar allows a cut (half a second from
+  the last cut and from the shot's end; it counts as the shot's cut and logs "guard cut"). Smaller jumps still ease in (a
+  cut that small on the same angle is a jump cut). `snapImmediate({ guard: true })` keeps the hold and skips the clear
+  angle's re-pick (it already ran for that frame). Kill switch `window.EW_NO_GUARD_CUT = true`. Probe
+  `ThreeCamera.guardCutState()` ({ at, sq, cut: false = refused }).
+- THE CUT'S OWN FRAME (three-camera.js `_snapFrame`, battle.js `_cineGuardNoteHit`): a cut is drawn on the next render, so
+  every sync in the rAF frame of the cut snaps again (`camera._apply()` runs `sync` at once and the render then skips its
+  own), and a number popping in the same task as the cut re-syncs: the party shield numbers that pop with the self-cast
+  hero shot's cut are framed by the cut instead of the guard sliding back two squares a frame later.
+- A body noted by a number mid-shot is never the frame's subject (`G.armed`): only a body the shot was armed with gets the
+  primary windows (CINE_GUARD_HIT_HIGH / LOW), so the first ally number of a party buff no longer pulls the hero shot round
+  to centre that ally.
+Viewer-local camera state; the guest runs the same guard on its relayed shots and numbers (it has no cast forecast, so its
+landing comes from the logical tile once the state sync moves it). Nothing new is relayed (RULE #2).

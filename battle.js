@@ -26595,6 +26595,22 @@
                and panned 3 squares) is the "zoom in/out and spin/rotate/pan at the same time" mondo named — it cuts too.
                A return that only cranes out over the same spot, or is already close, keeps its glide.
                EW_NO_SHOT_GRAMMAR = the yaw-only rule. */
+            /* THE GUARD CUTS (2026-11-10, three-camera.js _guardStepCheck): the frame guard's correction jumped more than a
+               square (the hit landing while the lens held the travel, a body coming into the shot) — it lands as a CUT on
+               the same angle when the shot grammar allows one here (half a second from the last cut and from the shot's
+               end), and that counts as the shot's cut; otherwise it eases in. EW_NO_GUARD_CUT = always ease. */
+            _guardMayCut(sq) {
+                if (window.EW_NO_GUARD_CUT || this._cineShotId == null || !_shotGrammarLive()) return false;
+                const now = performance.now(), gap = actionMs(SHOT_GRAMMAR_MIN_CUT_MS);
+                if (_shotG.lastCutAt > 0 && now - _shotG.lastCutAt < gap) return false;
+                const endAt = _shotGEndAt();
+                if (endAt > 0 && now + gap > endAt) return false;
+                _shotG.lastCutAt = now; _shotG.cuts++;
+                _shotGLog('guard cut ' + (+sq || 0).toFixed(2) + ' sq');
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate({ guard: true });
+                return true;
+            },
+
             _returnIsBusy(o, turn) {
                 if (window.EW_NO_SHOT_GRAMMAR) return false;
                 const pan = (Number.isFinite(o.x) && Number.isFinite(o.y)) ? Math.hypot(o.x - this.x, o.y - this.y) : 0;
@@ -33685,8 +33701,49 @@
             };
             const all = G.phase === 'all';
             if (G.phase === 'cast' || all || (G.phase === 'hit' && G.keepCaster)) add(G.casterId, true);
-            if (G.phase === 'hit' || all) { let first = true; G.hit.forEach(id => { add(id, false, first); first = false; }); }
+            if (G.phase === 'hit' || all) {
+                let first = true;
+                G.hit.forEach(id => {
+                    const pr = first && (!G.armed || G.armed.has(id));
+                    add(id, false, pr);
+                    if (pr) first = false;
+                    if (!window.EW_NO_GUARD_LANDING) _cineGuardLandingPts(G, id, pts);
+                });
+            }
             return pts.length ? pts : null;
+        }
+        /* THE LANDING IN THE HIT FRAME (2026-11-10, spell camera rethink pass 3): a knocked-back body used to be framed
+           where it stood, so ~600 ms after the hit cut the frame guard slid after it 1-2 squares as it flew (recorded:
+           Gale, Fire Hose, Tsunami, Sonic Breaker, Wing Gust, Body Check). A guarded victim that is going somewhere — the
+           cast's forecast landing, or a logical tile the drawn body has not reached yet (a chained knock) — keeps that
+           spot in frame too, so the hit's frame already holds the whole flight and the guard holds still while it plays.
+           Kill switch: window.EW_NO_GUARD_LANDING = true. */
+        function _cineGuardLandingPts(G, id, pts) {
+            const u = (state.units || []).find(x => x.id === id);
+            if (!u || u.dead || !_cineActorVisible(u)) return;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let ok = false;
+            try { ok = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, _cineGuardPos)); } catch (e) { ok = false; }
+            if (!ok) return;
+            const m = G.moves ? G.moves.get(id) : null;
+            /* the logic already moved it (the forecast's start tile is behind it): the truth is its tile; else the forecast */
+            let lx = u.x, ly = u.y;
+            if (m && u.x === m.fromX && u.y === m.fromY) { lx = m.x; ly = m.y; }
+            const wx = lx * ts + ts / 2, wz = ly * ts + ts / 2;
+            /* …and a body lifted off its ground (a lift-and-drop, a toss — not a flyer at its own height) keeps the ground it
+               comes down on in frame, so the frame holds the rise and the fall instead of riding them */
+            let gy = _cineGuardPos[1];
+            try {
+                const ez = (typeof unitElevationZ === 'function') ? unitElevationZ(u) : null;
+                if (Number.isFinite(ez) && _cineGuardPos[1] - ez > ts * 0.5) gy = ez;
+            } catch (e) {}
+            if (Math.hypot(wx - _cineGuardPos[0], wz - _cineGuardPos[2]) < ts * 0.5 && gy === _cineGuardPos[1]) return;
+            let h = ts * 0.95;
+            try { if (ThreeRenderer.getUnitVisualHeight) h = ThreeRenderer.getUnitVisualHeight(u.id) || h; } catch (e) {}
+            let _bk = 1;
+            try { if (ThreeRenderer.bodyScale) _bk = Math.min(1, +ThreeRenderer.bodyScale() || 1); } catch (e) {}
+            pts.push([wx, gy + h * 0.12, wz]);
+            pts.push([wx, gy + h + ts * 0.35 * _bk, wz, CINE_GUARD_HEAD_ROOM]);
         }
         /* o: { seq, cine (false = the tactical pan, keyed to the board camera
            sequence), caster, victimIds, castUntilMs (the caster is guarded
@@ -33703,6 +33760,14 @@
                 until: performance.now() + Math.max(0, o.totalMs || 0) + actionMs(150),
                 timers: []
             };
+            /* THE GUARD HOLDS ITS FRAME (2026-11-10): the body the shot is about is one the shot was armed with — a number
+               that pops mid-shot keeps its body in frame but never makes it the frame's subject (a party shield's first
+               ally number used to pull the self-cast hero shot two squares back to centre that ally) */
+            G.armed = new Set(G.hit);
+            /* THE LANDING IN THE HIT FRAME: the cast's forecast landings (a push, a pull, a hurl) */
+            const _cc = _cineCastCtx;
+            G.moves = (_cc && _cc.moves && _cc.moves.length && _cc.casterId === casterId && performance.now() - _cc.at < 6000)
+                ? new Map(_cc.moves.map(m => [m.id, m])) : null;
             G.api = { points: () => _cineGuardPoints(G), subjects: () => _cineGuardSubjects(G), bodies: _cineGuardBodies };
             if (!o.all) {
                 const castUntil = Math.max(0, o.castUntilMs || 0);
@@ -33730,8 +33795,14 @@
             if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
             const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
             if (!u || u.id === G.casterId) return;
+            const fresh = !G.hit.has(u.id) || (G.phase !== 'all' && G.phase !== 'hit');
             G.hit.add(u.id);
             if (G.phase !== 'all') G.phase = 'hit';
+            /* THE CUT'S OWN FRAME (three-camera.js): a number in the same task as the shot's cut (nothing drawn since) re-syncs,
+               so the cut is drawn already framing this body instead of sliding to it a frame later */
+            if (fresh && G.cine && _shotG.cutThisTask && camera._cineShotId === G.seq && _shotGrammarLive() && typeof camera._apply === 'function') {
+                try { camera._apply(); } catch (e) {}
+            }
         }
         /* The bodies a shot is about: the relayed list when the host sent one
            (the guest frames exactly what the host does), else the shot's own
@@ -34533,16 +34604,26 @@
            the boom tweens the other, so the subject holds size and the WORLD
            stretches. Restores the renderer's own FOV on release. */
         let _cineFovBase = null;
+        let _cineDzGen = 0;   // a release (or a newer zoom) stops the running tween writing the lens
+        /* THE LENS COMES BACK ON THE CUT (three-camera.js): the lens to come back to — a restore still waiting for its cut
+           is it, not the narrowed lens on screen */
+        function _cineFovBaseNow(TC) {
+            const p = (TC.fovAtCut && !window.EW_NO_LENS_AT_CUT) ? TC.fovAtCut() : null;
+            return p != null ? p : TC.getFOV();
+        }
         function cineDollyZoom(fovDelta, ms, opts = {}) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
-            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (_cineFovBase == null) _cineFovBase = _cineFovBaseNow(TC);
+            if (TC.setFOVAtCut) TC.setFOVAtCut(null);   // this zoom owns the lens now; its own release names the way back
             const base = _cineFovBase;
+            const gen = ++_cineDzGen;
             const dur = Math.max(120, Number(ms) || 600);
             const t0 = performance.now();
             const zoom0 = camera._tz;
             const zoomMult = opts.zoomMult != null ? opts.zoomMult : 1;
             const step = () => {
+                if (gen !== _cineDzGen) return;
                 if (state.phase !== 'battle') { cineDollyZoomRelease(); return; }
                 const k = Math.min(1, (performance.now() - t0) / dur);
                 const e = k * k * (3 - 2 * k);
@@ -34553,14 +34634,23 @@
                     camera._apply();
                 }
                 if (k < 1) requestAnimationFrame(step);
-                else if (opts.hold !== true) window.setTimeout(cineDollyZoomRelease, opts.holdMs ?? 220);
+                else if (opts.hold !== true) window.setTimeout(() => { if (gen === _cineDzGen) cineDollyZoomRelease(); }, opts.holdMs ?? 220);
             };
             requestAnimationFrame(step);
         }
-        function cineDollyZoomRelease() {
+        /* THE LENS COMES BACK ON THE CUT (2026-11-10, three-camera.js): the release names the lens to come back to and
+           the next cut puts it back (a shot that ends on a glide eases it back along the glide) — it used to jump back in
+           one frame mid-hold, and the frame guard then slid the eye a square to re-frame the victim. opts.now = at once
+           (the sniper's first-person eye leaving, the battle over); EW_NO_LENS_AT_CUT = always at once. */
+        function cineDollyZoomRelease(opts) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
+            _cineDzGen++;
             if (_cineFovBase != null && TC && TC.setFOV) {
-                try { TC.setFOV(_cineFovBase); } catch (e) {}
+                const now = !!(opts && opts.now) || state.phase !== 'battle' || window.EW_NO_LENS_AT_CUT || !TC.setFOVAtCut;
+                try {
+                    if (now) { if (TC.setFOVAtCut) TC.setFOVAtCut(null); TC.setFOV(_cineFovBase); }
+                    else TC.setFOVAtCut(_cineFovBase);
+                } catch (e) {}
             }
             _cineFovBase = null;
         }
@@ -35539,7 +35629,9 @@
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
-            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (_cineFovBase == null) _cineFovBase = _cineFovBaseNow(TC);
+            if (TC.setFOVAtCut) TC.setFOVAtCut(null);
+            const gen = ++_cineDzGen;   // a dolly zoom still running stops writing the lens (and a release stops this one)
             if (opts.fromFov != null) { try { TC.setFOV(opts.fromFov); } catch (err) {} }
             const from = TC.getFOV();
             const dur = Math.max(60, Number(ms) || 500);
@@ -35547,7 +35639,7 @@
             const inout = opts.ease === 'inout';
             const step = () => {
                 _cineFovRaf = null;
-                if (!_cineBeatOk(sequenceId)) return;
+                if (gen !== _cineDzGen || !_cineBeatOk(sequenceId)) return;
                 const k = Math.min(1, (performance.now() - t0) / dur);
                 const e = inout ? (k * k * (3 - 2 * k)) : (1 - Math.pow(1 - k, 3));
                 try { TC.setFOV(from + (toFov - from) * e); } catch (err) {}
@@ -35638,7 +35730,7 @@
                 window._ewFpHideUid = null;
             }
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
-            cineDollyZoomRelease();
+            cineDollyZoomRelease({ now: true });   // the scope's lens never outlives the first-person eye
         }
 
         /* ═══════════════════════════════════════════════════════════════════
@@ -38443,6 +38535,9 @@
                         for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !h.support && !ids.includes(h.unit.id)) ids.push(h.unit.id);   // a body only healed keeps the support shot's own framing
                         for (const m of plan.moves) if (m && m.unit && m.unit.id !== unit.id && !ids.includes(m.unit.id)) ids.push(m.unit.id);
                         _cineCastCtx.hitIds = ids;
+                        /* THE LANDING IN THE HIT FRAME: where each pushed / pulled / thrown body ends up */
+                        _cineCastCtx.moves = plan.moves.filter(m => m && m.unit && m.unit.id !== unit.id && Number.isFinite(m.x) && Number.isFinite(m.y)
+                            && (m.x !== m.fromX || m.y !== m.fromY)).map(m => ({ id: m.unit.id, x: m.x, y: m.y, fromX: m.fromX, fromY: m.fromY }));
                     }
                 } catch (e) {}
             }
