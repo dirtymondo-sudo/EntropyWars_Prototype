@@ -15192,6 +15192,8 @@
             /* THE FRAME GUARD: a number on a unit during a live spell shot →
                that unit stays in frame for the rest of the shot. */
             if (_cineGuard) _cineGuardNoteHit(x, y, kind, opts);
+            /* THE SHOT GRAMMAR: the camera holds on that body while its number is read */
+            _shotGNoteRead(x, y, kind, opts);
 
             /* Record juice (plan §5.2 #1): a damage number that beats the
                VIEWER's own Biggest Hit board grows, glows and kicks the
@@ -25774,6 +25776,8 @@
            for the killing-blow finisher below. */
         function _acChromeFlash(kind) {
             if (!_acChromeEl || !_acChromeState) return;
+            /* THE SHOT GRAMMAR: the white cut frame only rides a cut that happened (a held / dropped / glided cut flashes nothing) */
+            if (kind === 'cut' && typeof _shotG !== 'undefined' && _shotG.noCutAt && performance.now() - _shotG.noCutAt < 2) return;
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
             f.classList.remove('pop', 'cut');
@@ -33209,6 +33213,12 @@
            (a long-standing descent-cam bug, fixed here for the new beats). */
         function _cineBeatMove(opts) {
             if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's move claims the shot
+            /* THE SHOT GRAMMAR (2026-11-10): a glide that is really a cut cuts, a glide nobody will see land is not
+               started, a move off a body whose number is up waits for the read */
+            if (opts && !opts._sgPass && _shotGrammarLive()) {
+                if (_shotG.bundle && !opts._sgDeferred) { _shotG.bundle.items.push([_cineBeatMove, opts]); return; }
+                if (_shotGrammarMove(opts) !== 'go') return;
+            }
             const _keep = boardCameraResetTimer;
             boardCameraResetTimer = null;
             camera.moveTo(opts);
@@ -33222,6 +33232,13 @@
            (the 2D _apply smoother and ThreeCamera's damped follow) to jump. */
         function _cineHardCut(opts) {
             if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's cut claims the shot
+            /* THE SHOT GRAMMAR (2026-11-10): a cut that barely changes the frame glides, a cut off a body whose number
+               is up waits for the read, a cut nobody will see is dropped */
+            if (opts && !opts._sgPass && _shotGrammarLive()) {
+                if (_shotG.bundle && !opts._sgDeferred) { _shotG.noCutAt = performance.now(); _shotG.bundle.items.push([_cineHardCut, opts]); return; }
+                if (_shotGrammarCut(opts) !== 'go') return;
+            }
+            if (camera._cineShotId != null) { _shotG.lastCutAt = performance.now(); _shotG.cuts++; }
             camera._stop();
             camera.x = camera._tx = opts.x ?? camera._tx;
             camera.y = camera._ty = opts.y ?? camera._ty;
@@ -33234,6 +33251,154 @@
             if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
             camera._apply();
         }
+
+        /* ═══ THE SHOT GRAMMAR (2026-11-10) ═══════════════════════════════════
+           mondo: "there are a lot of times when the camera spins around/pans when a cut would be better, or vice versa
+           ... zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... it will
+           cut too early away from the spell landing or the person taking damage ... completely rethink these spell
+           animation camera shots". Every spell shot's moves and cuts — the three rigs, the family directors, the bespoke
+           sequences, the kit shots, the VFX retargets — go through _cineBeatMove / _cineHardCut, so the grammar lives
+           HERE, once, under all of them (memory spell-camera-grammar-20261110, docs/notes/spells-vfx.md "THE SHOT
+           GRAMMAR"):
+           · CUT OR MOVE, NEVER BOTH: a glide that turns more than SHOT_GRAMMAR_TURN and also zooms / pans / tilts, or
+             turns more than SHOT_GRAMMAR_TURN_ALONE on its own, or crash-zooms across the board, is a CUT to its end
+             frame. The shot's first beat is a cut unless the lens is already nearly there (no more swoop from the
+             board view round to the caster's face). A FOLLOW (a retarget riding a thrown / dashing body) stays a glide.
+           · NO JUMP CUTS: a cut that barely changes the frame is a short glide.
+           · NO MOVE A CUT THROWS AWAY: a glide that cannot land before the shot ends is not started; a cut that would
+             be on screen for less than SHOT_GRAMMAR_MIN_CUT_MS is dropped.
+           · HOLD THE HIT: from a number popping on a body (not the caster's own), the camera stays on that body for
+             SHOT_GRAMMAR_READ_MS: a beat that looks elsewhere, pulls out wide or swings round waits for the read (with
+             the beats issued alongside it), then plays if the shot still has room; a newer beat replaces it.
+           Kill switch: window.EW_NO_SHOT_GRAMMAR = true. Probe: window._shotGrammarState(). */
+        const SHOT_GRAMMAR_TURN = 40;
+        const SHOT_GRAMMAR_TURN_ALONE = 75;
+        const SHOT_GRAMMAR_READ_MS = 1000;
+        const SHOT_GRAMMAR_MIN_CUT_MS = 450;
+        const _shotG = { seq: null, beats: 0, cuts: 0, lastCutAt: 0, noCutAt: 0, lock: null, gen: 0, bundle: null, log: [] };
+        function _shotGrammarLive() {
+            if (window.EW_NO_SHOT_GRAMMAR) return false;
+            if (camera._cineShotId == null || state.phase !== 'battle' || state.cameraDisabled || _skipVisuals()) return false;
+            if (_shotG.seq !== camera._cineShotId) {
+                _shotG.seq = camera._cineShotId; _shotG.beats = 0; _shotG.cuts = 0; _shotG.lastCutAt = 0;
+                _shotG.lock = null; _shotG.gen++; _shotG.bundle = null;
+            }
+            return true;
+        }
+        function _shotGLog(msg) {
+            const L = _shotG.log;
+            L.push(Math.round(performance.now()) + ' #' + _shotG.seq + ' ' + msg);
+            if (L.length > 60) L.splice(0, L.length - 60);
+        }
+        const _sgNorm = a => ((a % 360) + 540) % 360 - 180;
+        /* the frame a beat (isCut false: a moveTo — unnamed axes keep the glide's target) or a cut asks for, and how
+           far it is from the frame the lens shows now */
+        function _shotGFrame(o, isCut) {
+            const tgt = (k, live) => (camera[k] !== undefined && Number.isFinite(camera[k])) ? camera[k] : live;
+            const x = o.x ?? tgt('_tx', camera.x), y = o.y ?? tgt('_ty', camera.y);
+            const yaw = o.yaw ?? (isCut ? camera.yaw : tgt('_tyaw', camera.yaw));
+            const tilt = (o.tilt !== undefined) ? Math.min(CINE_SHOT_TILT_MAX, o.tilt) : (isCut ? camera.tilt : tgt('_tt', camera.tilt));
+            let zoom = isCut ? camera.zoom : tgt('_tz', camera.zoom);
+            if (o.zoom !== undefined && (isCut || o._allowZoomChange)) zoom = o.zoom;
+            const z0 = Math.max(0.05, camera.zoom), z1 = Math.max(0.05, zoom);
+            return { x, y, yaw, tilt, zoom,
+                turn: Math.abs(_sgNorm(yaw - camera.yaw)), tiltD: Math.abs(tilt - camera.tilt),
+                zr: Math.max(z1 / z0, z0 / z1), zoomOut: z1 < z0, pan: Math.hypot(x - camera.x, y - camera.y) };
+        }
+        function _shotGEndAt() {
+            const e = camera._cineShotEnd;
+            const shotEnd = (e && e.seq === camera._cineShotId) ? e.at : 0;
+            const hold = window.EW_NO_IMPACT_HOLD ? 0 : (camera._impactHoldUntil || 0);
+            return Math.max(shotEnd, hold);
+        }
+        /* a number popped on a body while a spell shot is live: the frame holds on it for the read (called from the
+           floating-number layer, which the guest runs off the host's relayed numbers — RULE #2) */
+        function _shotGNoteRead(x, y, kind, opts) {
+            if (!_shotGrammarLive()) return;
+            if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.id === camera._cineShotUnitId || !_cineActorVisible(u)) return;
+            const now = performance.now();
+            if (!_shotG.lock || now >= _shotG.lock.until) _shotG.lock = { ids: new Set(), until: 0 };
+            _shotG.lock.ids.add(u.id);
+            _shotG.lock.until = Math.max(_shotG.lock.until, now + actionMs(SHOT_GRAMMAR_READ_MS));
+            _cineHoldImpactFor(actionMs(SHOT_GRAMMAR_READ_MS));   // …and the way home waits for it too (every rig, not only the offensive)
+        }
+        /* would this frame leave a body whose number is still being read? */
+        function _shotGLeavesRead(f, isCut, o) {
+            const L = _shotG.lock;
+            if (!L || performance.now() >= L.until || (o && o._sgFollow)) return false;
+            let near = Infinity;
+            for (const id of L.ids) {
+                const u = (state.units || []).find(v => v.id === id);
+                if (u) near = Math.min(near, Math.hypot(f.x - u.x, f.y - u.y));
+            }
+            if (near === Infinity) return false;
+            if (near > 2.2) return true;                        // it looks somewhere else
+            if (f.zoomOut && f.zr > 1.3) return true;           // it pulls out wide off the hit
+            if (isCut ? f.turn > 25 : f.turn > 30) return true; // it swings round / re-angles the hit
+            return false;
+        }
+        /* hold a beat (and the beats issued with it in this same turn) until `ms` from now; a newer beat replaces it */
+        function _shotGDefer(fn, o, ms, why) {
+            const gen = ++_shotG.gen, seq = camera._cineShotId;
+            const items = [[fn, o]];
+            _shotG.bundle = { gen, items };
+            Promise.resolve().then(() => { if (_shotG.bundle && _shotG.bundle.gen === gen) _shotG.bundle = null; });
+            _shotGLog(why + ' waits ' + Math.round(ms) + 'ms');
+            window.setTimeout(() => {
+                if (_shotG.gen !== gen || camera._cineShotId !== seq || !_shotGrammarLive()) return;
+                for (const [f, op] of items) f({ ...op, _sgDeferred: true });
+            }, Math.max(0, ms));
+        }
+        /* a beat's glide: 'go' (moveTo it), or handled here (cut / held / dropped) */
+        function _shotGrammarMove(o) {
+            const f = _shotGFrame(o, false);
+            const now = performance.now(), dur = Math.max(100, o.duration ?? 400);
+            const first = _shotG.beats === 0;
+            const reframes = f.turn >= 25 || f.zr >= 1.35 || f.pan >= 1.0 || f.tiltD >= 10;
+            if (_shotGLeavesRead(f, false, o)) { _shotGDefer(_cineBeatMove, o, _shotG.lock.until - now, 'move off the hit'); return 'held'; }
+            const endAt = _shotGEndAt();
+            if (!first && reframes && endAt > 0 && now + dur * 0.75 > endAt) { _shotGLog('glide dropped: the shot ends first'); return 'dropped'; }
+            _shotG.beats++;
+            _shotG.gen++;
+            if (!o._sgFollow) {
+                const cutIt = (f.turn > SHOT_GRAMMAR_TURN && (f.zr > 1.3 || f.pan > 1.2 || f.tiltD > 12))
+                    || f.turn > SHOT_GRAMMAR_TURN_ALONE
+                    || (f.zr > 2.2 && (f.pan > 1.5 || f.tiltD > 12))
+                    || (first && (f.turn > 25 || f.zr > 1.6 || f.pan > 2.5));
+                if (cutIt) {
+                    _shotGLog('glide -> cut (turn ' + Math.round(f.turn) + ', zoom x' + f.zr.toFixed(2) + ', pan ' + f.pan.toFixed(1) + (first ? ', opening' : '') + ')');
+                    _cineHardCut({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw,
+                        elevZ: o.elevZ ?? -1, _sgPass: true });
+                    return 'cut';
+                }
+            }
+            return 'go';
+        }
+        /* a hard cut: 'go', or handled here (glide / held / dropped) */
+        function _shotGrammarCut(o) {
+            const f = _shotGFrame(o, true);
+            const now = performance.now();
+            if (_shotGLeavesRead(f, true, o)) { _shotG.noCutAt = now; _shotGDefer(_cineHardCut, o, _shotG.lock.until - now, 'cut off the hit'); return 'held'; }
+            const endAt = _shotGEndAt();
+            if (_shotG.beats > 0 && endAt > 0 && now + actionMs(SHOT_GRAMMAR_MIN_CUT_MS) > endAt) { _shotG.noCutAt = now; _shotGLog('cut dropped: the shot ends first'); return 'dropped'; }
+            const first = _shotG.beats === 0;
+            _shotG.beats++;
+            _shotG.gen++;
+            if (!first && f.turn < 15 && f.tiltD < 8 && f.zr < 1.25 && f.pan < 0.9) {
+                _shotG.noCutAt = now;
+                _shotGLog('jump cut -> glide');
+                _cineBeatMove({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw, elevZ: o.elevZ ?? -1,
+                    duration: actionMs(300), easing: 'easeInOut', _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: true, _sgPass: true });
+                return 'glide';
+            }
+            return 'go';
+        }
+        window._shotGrammarState = () => ({ off: !!window.EW_NO_SHOT_GRAMMAR, seq: _shotG.seq, beats: _shotG.beats, cuts: _shotG.cuts,
+            read: (_shotG.lock && performance.now() < _shotG.lock.until) ? { ids: [..._shotG.lock.ids], left: Math.round(_shotG.lock.until - performance.now()) } : null,
+            endIn: Math.round(_shotGEndAt() - performance.now()), log: _shotG.log.slice(-20) });
 
         /* ═══ THE FRAME GUARD (2026-10-05) ═══════════════════════════════════
            "The action camera completely misses the target" — a flyer framed at
@@ -33409,6 +33574,8 @@
             }
             _cineGuard = G;
             camera._frameGuard = G.api;
+            /* THE SHOT GRAMMAR: every rig arms the guard with its shot's length — the grammar's "will this be seen" clock */
+            if (G.cine && o.seq != null) camera._cineShotEnd = { seq: o.seq, at: performance.now() + Math.max(0, o.totalMs || 0) };
             return G;
         }
         /* A number popped on a unit during the live shot: that unit was hit,
@@ -33834,8 +34001,10 @@
                         if (!(_cz > 0) || !Number.isFinite(_cy)) return;
                         if (Math.abs(((camera.yaw - _cy) % 360 + 540) % 360 - 180) > 2 || Math.abs(camera.zoom / _cz - 1) > 0.04) return;   // a beat is moving
                         if (Math.hypot((camera._tx ?? camera.x) - sx, (camera._ty ?? camera.y) - sy) > 1.2) return;   // not on the caster
+                        /* THE SHOT GRAMMAR (2026-11-10): a push-in only — the 12° orbit that rode with it made the hold a
+                           two-axis move the cut then threw away (EW_NO_SHOT_GRAMMAR keeps the orbit) */
                         _cineBeatMove({
-                            zoom: _cz * 1.16, yaw: _cy + _sideSign * 12,
+                            zoom: _cz * 1.16, ...(window.EW_NO_SHOT_GRAMMAR ? { yaw: _cy + _sideSign * 12 } : {}),
                             duration: Math.max(actionMs(300), cutMs - _dFrom - actionMs(40)), easing: 'linear',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: fogAllowed || undefined
                         });
@@ -33971,6 +34140,7 @@
                 px = z > 0 ? window._getElevationPx(z) : 0;
             }
             _cineBeatMove({
+                _sgFollow: true,   // THE SHOT GRAMMAR: a retarget rides the action (a ricochet, a flung body): it glides, even off a hit
                 x: point.x, y: point.y,
                 elevZ: px + ts * CINE_FOCAL_RISE + (opts.elevPx || 0),
                 ...(opts.zoom !== undefined ? { zoom: opts.zoom, _allowZoomChange: true } : {}),
@@ -35773,6 +35943,9 @@
         /* The kill confirm: a heavy / ultimate hit that killed gets the glam
            cam on the caster, inside the window. */
         function _spellDirKillConfirm(c) {
+            /* THE SHOT GRAMMAR (2026-11-10, rule 7): a kill keeps the close-up on the body (mondo: "after death close-up
+               glide, no cut") — the cut back to the caster's glam left the death half a second in */
+            if (!window.EW_NO_SHOT_GRAMMAR) return;
             if (c.weight !== 'heavy' && c.weight !== 'ultimate') return;
             const at = c.impact + Math.min(actionMs(460), Math.round(c.timings.targetHold * 0.45));
             c.at(at, () => {

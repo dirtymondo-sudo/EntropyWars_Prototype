@@ -743,6 +743,7 @@ const ThreeCamera = (function () {
     const CA_CANDS = [0, 30, -30, 55, -55, 80, -80, 110, -110, 145, -145, 180];
     const CA_RECHECK_MS = 400;
     const CA_EASE_S = 0.22;
+    const CA_EASE_GRAMMAR_S = 0.55;   // THE SHOT GRAMMAR: a mid-beat turn (a body now blocked) is slow, never a whip
     let _caSig = '', _caShot = null, _caDelta = 0, _caWant = 0, _caAt = 0, _caSnapAt = 0, _caCost = 0, _caLast = null, _caT = 0;
     let _caHold = null;   // THE STEADY CRANE: a finished shot's angle { key, from, t0 }
     function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; }
@@ -851,7 +852,10 @@ const ThreeCamera = (function () {
         if (resig || recheck || newShot) {
             _caAt = nowS;
             if (!about) {
-                if (resig || newShot) _caWant = 0;   // a beat about something else; mid-beat (a flung body) the held angle stays
+                /* a beat about something else; mid-beat (a flung body) the held angle stays — under THE SHOT GRAMMAR a glide
+                   off the subjects keeps it too (it only goes back to the director's own heading on a cut) */
+                const _sgA = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+                if (newShot || (_sgA ? cut : resig)) _caWant = 0;
             } else {
                 const clear = ts * 0.45;
                 const sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
@@ -866,7 +870,13 @@ const ThreeCamera = (function () {
                     return _caOccl(e[0], Math.max(e[1], P.floorY), e[2], P.px, P.py, P.pz, subs, bodies, clear, stopAt)
                         + Math.abs(d) / Math.PI * 1.2;
                 };
-                const held = resig || newShot ? 0 : _caWant;
+                /* THE SHOT GRAMMAR (2026-11-10, mondo: the camera "is spazzing out bc its trying to zoom in/out and spin/rotate/pan
+                   at the same time"): the angle is picked AT a cut (or a new shot) and kept through the beat — a drift, a
+                   push-in, a refit of the pivot or a new body in the hit used to re-pick from the director's own heading and
+                   swing the lens up to 55° on its own a moment after the cut. Mid-beat it only turns for a clearly better
+                   view of a body that is now blocked, and then slowly. EW_NO_SHOT_GRAMMAR = the old re-pick. */
+                const _sg = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+                const held = (newShot || (_sg ? cut : resig)) ? 0 : _caWant;
                 const heldCost = costOf(held, Infinity);
                 let best = held, bestCost = heldCost;
                 if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2) {
@@ -878,7 +888,7 @@ const ThreeCamera = (function () {
                     }
                 }
                 /* a recheck in the middle of a beat only turns a lens that is now blocked, and only for a clearly better one */
-                if (!resig && !newShot && !(bestCost < heldCost - 0.8)) best = held;
+                if (!newShot && !(_sg ? cut : resig) && !(bestCost < heldCost - 0.8)) best = held;
                 _caWant = best;
                 _caCost = Math.min(bestCost, heldCost);
             }
@@ -892,7 +902,8 @@ const ThreeCamera = (function () {
         if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
         else if (_caDelta !== _caWant) {
             const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
-            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / CA_EASE_S));
+            const _ease = (typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR) ? CA_EASE_S : CA_EASE_GRAMMAR_S;
+            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / _ease));
             if (Math.abs(_caWant - _caDelta) < 0.002) _caDelta = _caWant;
         }
         _caT = nowS;
