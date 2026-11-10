@@ -1557,3 +1557,21 @@ half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build blo
   room (grow-room.js grew the plan only, "every height stayed") + THE TIER RULE at the square's scale so the levels stay the same.
   Asked mondo (thread "Fix Build raising tiles only half a step").
 
+## THE FULL LEDGES — a room's own metres per level, ledges a whole square tall (2026-11-10, data.js)
+mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps that need it".
+- **The rule**: `terrain.levelM: 3.5` on a room → `hqFieldLevelRules(roomId)` gives THE TIER RULE a 3.5 m step for that room
+  (hqFieldRasterTerrain's ground / deck / sheet tiers, hqFieldRoofTier for roofs and open-sky tops, hqFieldSolidEdges' wall heights).
+  tierMin stays 1.2 m. Bands: level 1 = 1.2-4.7 m, level 2 = 4.7-8.2 m, level 3 = 8.2 m up. A room without `levelM` is untouched.
+- **Switching a room** (hand work, per room): `levelM: 3.5`, then every visible ledge at 3.5 / 7 / 10.5 m for level 1 / 2 / 3
+  (plateaus, cover-block walls, stair `h0`/`h1`, rail `y` / pts y, decks; ghost walls under props the same, they are invisible so
+  only the level matters; a bridge over walked ground is forced to ground + 2, draw it 7 m up). A terrace edge must sit ON a square
+  line: with a 3.5 m cliff a square holding a strip of the terrace turns unwalkable (Giza's 9 m causeways became 7 m). Stairs keep a
+  run of one square or more (walker slope limit 1.0). Then compare the board (scratch `board.js <map>`: level:height per square) and
+  the whole room lattice (`reach.js <room>`, DATA_FILE=<main copy> for the before) and re-cut the picks at 12 / 9 / 10 / 11.
+- **Giza** (`site_prebuilt_giza_plateau`): causeway terraces + west arm + pier 1.8 → 3.5 m, their stairs, the handrails, the four
+  cover blocks 1.4 → 3.5 m. Board: same squares and levels at all four sizes; the two obelisk tops read level 2 (were 3). Room-wide:
+  the pyramids' 3.5 m steps read 1 / 2 / 3 (were 2 / 3 / 3), walkable squares unchanged, 0 traps. Not looked at in exploration on
+  screen (stairs are twice as steep).
+- **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
+  own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
+
