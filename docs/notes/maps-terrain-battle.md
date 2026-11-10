@@ -1582,6 +1582,8 @@ mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps t
   (floor 7.5). Both: boards cell-for-cell the original at 12 / 9 / 10 / 11, so the picks were NOT re-cut.
 - **Never re-cut the picks when the boards compare identical** (scratch `cmp.js <site…>` with DATA_BEFORE=<old data.js>): a re-bake can
   move the window (it moved Gobekli's 9×9). Re-cut only when cmp shows changed cells.
+- **Holo Sim** (`facility_holosim`, third PR): every `holo` block a cube (risers 3.5 m, pylons 7 m, terraces 3.5 / 7 / 10.5 / 14 m), gallery
+  + its racks and consoles 10.5 m, emitter orbs y 14, the hall 10.5 → 17.5 m. Board identical, own pick untouched.
 - **Nothing to raise**: Hollow Earth (its level squares are a 0.3 m deck and the real-size `riser_1` prop), Heaven, Lookingglass.
 - **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
   own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.

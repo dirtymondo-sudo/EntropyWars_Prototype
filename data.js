@@ -63568,11 +63568,14 @@ HQ_ARENA_RULES.own = HQ_ARENA_RULES.own || {};
    wall (the racks, the monitors, the console's amber lamp), two dark monoliths stand by the west wall.
    2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): the squares are 3.5 m (the hall 63 m, was 31.5 m on 1.75 m squares) — every
    square-sized piece doubled in plan (the blocks, the terraces, the plates: terrain `tile`, ceilTile, wallTile), the heights kept
-   in battle levels (1.75 m each); the arch, the gallery, the monoliths and the props stay their real size against their walls. */
+   in battle levels (1.75 m each); the arch, the gallery, the monoliths and the props stay their real size against their walls.
+   THE FULL LEDGES (2026-11-10, mondo: "fix all of the maps that need it"): a level is a whole 3.5 m square (terrain.levelM), so
+   every block is a cube again: risers 3.5 m, pylons 7 m, terraces 3.5 / 7 / 10.5 / 14 m, the gallery 10.5 m, the hall 17.5 m
+   (5 squares) so the corner emitters keep their one square of air. */
 DOOR_HQ.rooms.facility_holosim = {
     label: 'ROOM 404 · THE HOLO SIM', sub: 'ARCANE ENGINEERING · THE FLOOR IS A PROJECTION', kind: 'box',
     shell: {
-        w: 63, d: 63, h: 10.5, wallH: 10.5, dadoH: 0.12, open: false, edge: 'walls',
+        w: 63, d: 63, h: 17.5, wallH: 17.5, dadoH: 0.12, open: false, edge: 'walls',
         floor: 'holo', wall: 'holo', dado: 'holo_red', trim: 'gunmetal', ceiling: 'holo', apron: 'holo', skirt: 'holo',
         floorColor: 0xffffff, wallColor: 0xd8f4ff, dadoColor: 0xffffff, ceilColor: 0x9ab8c8, ceilTile: 3.5, wallTile: 3.5,
         pipes: false, strips: false,
@@ -63583,45 +63586,45 @@ DOOR_HQ.rooms.facility_holosim = {
         fog: { color: 0x050912, density: 0.012 },
     },
     terrain: {
-        floor: 'holo', cliff: 'holo', path: 'holo', base: 0, noise: { amp: 0, scale: 8 }, crag: false, tile: 3.5,   // tile: one holo plate per 3.5 m square
+        floor: 'holo', cliff: 'holo', path: 'holo', base: 0, noise: { amp: 0, scale: 8 }, crag: false, tile: 3.5, levelM: 3.5,   // tile: one holo plate per 3.5 m square
         bed: { side: 'gunmetal', floor: 'holo' },
         features: [
             /* THE BOARD's cover (board squares x, y → x0 = −12.25 + 3.5 x, z0 = −12.25 + 3.5 y): the four risers, the two pylons */
-            { k: 'wall', x0: -5.25, z0: -5.25, x1: -5.25, z1: -5.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 5.25, z0: 5.25, x1: 5.25, z1: 5.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 12.25, z0: -8.75, x1: 12.25, z1: -8.75, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -12.25, z0: 8.75, x1: -12.25, z1: 8.75, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -12.25, z0: -1.75, x1: -12.25, z1: -1.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -5.25, z0: -5.25, x1: -5.25, z1: -5.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 5.25, z0: 5.25, x1: 5.25, z1: 5.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 12.25, z0: -8.75, x1: 12.25, z1: -8.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -12.25, z0: 8.75, x1: -12.25, z1: 8.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -12.25, z0: -1.75, x1: -12.25, z1: -1.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, t: 3.5, h: 7, key: 'holo', rail: false },
             /* THE TERRACES: rings of blocks round each corner square, 4 levels up in the corner, 1 at the foot */
-            { k: 'wall', x0: 29.75, z0: -29.75, x1: 29.75, z1: -29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: 26.25, z0: -29.75, x1: 26.25, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: -26.25, x1: 29.75, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 22.75, z0: -29.75, x1: 22.75, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: -22.75, x1: 26.25, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 19.25, z0: -29.75, x1: 19.25, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: -19.25, x1: 22.75, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 29.75, x1: 29.75, z1: 29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: 26.25, z0: 29.75, x1: 26.25, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 26.25, x1: 29.75, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 22.75, z0: 29.75, x1: 22.75, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 22.75, x1: 26.25, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 19.25, z0: 29.75, x1: 19.25, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 19.25, x1: 22.75, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 29.75, x1: -29.75, z1: 29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: -26.25, z0: 29.75, x1: -26.25, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 26.25, x1: -29.75, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -22.75, z0: 29.75, x1: -22.75, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 22.75, x1: -26.25, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -19.25, z0: 29.75, x1: -19.25, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 19.25, x1: -22.75, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -29.75, x1: -29.75, z1: -29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: -26.25, z0: -29.75, x1: -26.25, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -26.25, x1: -29.75, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -22.75, z0: -29.75, x1: -22.75, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -22.75, x1: -26.25, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -19.25, z0: -29.75, x1: -19.25, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -19.25, x1: -22.75, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -29.75, x1: 29.75, z1: -29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: 26.25, z0: -29.75, x1: 26.25, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -26.25, x1: 29.75, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 22.75, z0: -29.75, x1: 22.75, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -22.75, x1: 26.25, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 19.25, z0: -29.75, x1: 19.25, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -19.25, x1: 22.75, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 29.75, x1: 29.75, z1: 29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: 26.25, z0: 29.75, x1: 26.25, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 26.25, x1: 29.75, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 22.75, z0: 29.75, x1: 22.75, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 22.75, x1: 26.25, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 19.25, z0: 29.75, x1: 19.25, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 19.25, x1: 22.75, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 29.75, x1: -29.75, z1: 29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: -26.25, z0: 29.75, x1: -26.25, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 26.25, x1: -29.75, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -22.75, z0: 29.75, x1: -22.75, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 22.75, x1: -26.25, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -19.25, z0: 29.75, x1: -19.25, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 19.25, x1: -22.75, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -29.75, x1: -29.75, z1: -29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: -26.25, z0: -29.75, x1: -26.25, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -26.25, x1: -29.75, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -22.75, z0: -29.75, x1: -22.75, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -22.75, x1: -26.25, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -19.25, z0: -29.75, x1: -19.25, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -19.25, x1: -22.75, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
             /* THE ARCH (north wall): two pillars, the lintel over them, the two door leaves shut in the frame */
             { k: 'wall', x0: -2.45, z0: -31.05, x1: -2.45, z1: -31.05, t: 0.9, h: 5.6, key: 'gunmetal', rail: false },
             { k: 'wall', x0: 2.45, z0: -31.05, x1: 2.45, z1: -31.05, t: 0.9, h: 5.6, key: 'gunmetal', rail: false },
@@ -63629,7 +63632,7 @@ DOOR_HQ.rooms.facility_holosim = {
             { k: 'wall', x0: -1.95, z0: -31.37, x1: -0.06, z1: -31.37, t: 0.12, h: 4.55, key: 'aluminium', rail: false },
             { k: 'wall', x0: 0.06, z0: -31.37, x1: 1.95, z1: -31.37, t: 0.12, h: 4.55, key: 'aluminium', rail: false },
             /* THE GALLERY (east wall): the operators' deck three levels up, railed */
-            { k: 'bridge', x0: 30.2, z0: -5.25, x1: 30.2, z1: 5.25, w: 2.6, y: 5.25, thick: 0.3, key: 'gunmetal', rails: true },
+            { k: 'bridge', x0: 30.2, z0: -5.25, x1: 30.2, z1: 5.25, w: 2.6, y: 10.5, thick: 0.3, key: 'gunmetal', rails: true },
             /* THE MONOLITHS (west wall) */
             { k: 'wall', x0: -29.65, z0: -3.9, x1: -29.65, z1: -3.1, t: 0.6, h: 6.4, key: 'obsidian', rail: false },
             { k: 'wall', x0: -29.65, z0: 3.1, x1: -29.65, z1: 3.9, t: 0.6, h: 6.4, key: 'obsidian', rail: false },
@@ -63639,16 +63642,16 @@ DOOR_HQ.rooms.facility_holosim = {
     doors: [], counters: [], npcSpots: [], agents: [],
     props: [
         /* the emitters: an orb on each corner's top block (the room's coloured light falls from them) */
-        { key: 'floating_orb', x: 29.75, z: -29.75, y: 7 }, { key: 'floating_orb', x: 29.75, z: 29.75, y: 7 },
-        { key: 'floating_orb', x: -29.75, z: 29.75, y: 7 }, { key: 'floating_orb', x: -29.75, z: -29.75, y: 7 },
+        { key: 'floating_orb', x: 29.75, z: -29.75, y: 14 }, { key: 'floating_orb', x: 29.75, z: 29.75, y: 14 },
+        { key: 'floating_orb', x: -29.75, z: 29.75, y: 14 }, { key: 'floating_orb', x: -29.75, z: -29.75, y: 14 },
         /* the arch's panel */
         { key: 'retro_control_panel', x: 3.9, z: -30.65, face: 180 },
         /* the operators: racks and monitors on the wall, the console at the rail, two chairs */
-        { key: 'server_rack', wall: 'e', z: -4.2, mount: 5.25 }, { key: 'server_rack', wall: 'e', z: -3.4, mount: 5.25 },
-        { key: 'monitor_stack', wall: 'e', z: 0, mount: 5.25 },
-        { key: 'server_rack', wall: 'e', z: 3.4, mount: 5.25 }, { key: 'server_rack', wall: 'e', z: 4.2, mount: 5.25 },
-        { key: 'retro_console', x: 29.55, z: -1.4, y: 5.25, face: 270 }, { key: 'retro_console', x: 29.55, z: 1.4, y: 5.25, face: 270 },
-        { key: 'computer_chair_blue', x: 30.65, z: -1.4, y: 5.25, face: 270 }, { key: 'computer_chair_grey', x: 30.65, z: 1.4, y: 5.25, face: 270 },
+        { key: 'server_rack', wall: 'e', z: -4.2, mount: 10.5 }, { key: 'server_rack', wall: 'e', z: -3.4, mount: 10.5 },
+        { key: 'monitor_stack', wall: 'e', z: 0, mount: 10.5 },
+        { key: 'server_rack', wall: 'e', z: 3.4, mount: 10.5 }, { key: 'server_rack', wall: 'e', z: 4.2, mount: 10.5 },
+        { key: 'retro_console', x: 29.55, z: -1.4, y: 10.5, face: 270 }, { key: 'retro_console', x: 29.55, z: 1.4, y: 10.5, face: 270 },
+        { key: 'computer_chair_blue', x: 30.65, z: -1.4, y: 10.5, face: 270 }, { key: 'computer_chair_grey', x: 30.65, z: 1.4, y: 10.5, face: 270 },
         /* the projector between the monoliths */
         { key: 'star_projector', x: -29.35, z: 0, face: 90 },
     ],
