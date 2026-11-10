@@ -35656,22 +35656,88 @@
             });
             return true;
         }
+        /* THE SHIELD'S OWN FRAME (2026-11-10, mondo: "Bligblog used pupil shield and the camera jumps all over the place"):
+           opts.units = the bodies the cast reached. The pull-back then frames the caster and THOSE, not every ally within
+           `radius` of the caster (a shield lands round its TARGET tile, and a Single Ally shield on one body: Pupil Shield
+           on two units pulled back to the middle of the whole party). opts.yaw = the angle the pull-back is seen from.
+           Kill switch: window.EW_NO_SHIELD_FRAME = true. */
         function cinePartyFit(caster, radius, opts = {}) {
             if (!caster) return false;
             const r = Math.max(2, radius || 3);
             let x0 = caster.x, x1 = caster.x, y0 = caster.y, y1 = caster.y;
-            for (const u of (state.units || [])) {
+            const reached = (Array.isArray(opts.units) && !window.EW_NO_SHIELD_FRAME) ? opts.units : null;
+            for (const u of (reached || state.units || [])) {
                 if (!u || u.dead || u._dying || u.id === caster.id) continue;
-                const ally = (typeof isAllyUnit === 'function') ? isAllyUnit(u, caster) : (u.player === caster.player);
-                if (!ally) continue;
-                if (Math.max(Math.abs(u.x - caster.x), Math.abs(u.y - caster.y)) > r) continue;
+                if (!reached) {
+                    const ally = (typeof isAllyUnit === 'function') ? isAllyUnit(u, caster) : (u.player === caster.player);
+                    if (!ally) continue;
+                    if (Math.max(Math.abs(u.x - caster.x), Math.abs(u.y - caster.y)) > r) continue;
+                }
                 if (!_cineActorVisible(u)) continue;
                 x0 = Math.min(x0, u.x); x1 = Math.max(x1, u.x);
                 y0 = Math.min(y0, u.y); y1 = Math.max(y1, u.y);
             }
             const span = Math.max(x1 - x0, y1 - y0) + 3;
             return cineGodShot({ x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, span,
-                { tilt: opts.tilt ?? 46, cut: opts.cut ?? false, duration: opts.duration ?? 420 });
+                { tilt: opts.tilt ?? 46, cut: opts.cut ?? false, duration: opts.duration ?? 420,
+                  yaw: (Number.isFinite(opts.yaw) && !window.EW_NO_SHIELD_FRAME) ? opts.yaw : undefined });
+        }
+        /* THE CLEAN OPEN (2026-11-10, mondo: "Bligblog used pupil shield and the camera jumps all over the place"): a self /
+           support shot opens on the caster's HERO angle, which stands in FRONT of the caster: from the player's own view
+           that is up to 180° round the body, and the ~400 ms opening glide whipped the lens through the arc while it also
+           pushed in and pitched down (recorded: 125° at 485°/s for a caster facing up the board). THE CLEAR ANGLE may turn
+           the lens further still: teammates standing where the hero lens goes (a party deployed in a row, the caster facing
+           along it) sent it 80-110° more round him, eased in on top of the glide (the reported cast: 104° at up to 570°/s).
+           The same rule as THE CLEAN RETURN: an opening that has to turn more than RETURN_CUT_YAW_DEG CUTS to the hero
+           angle; a smaller turn keeps its glide. The clear angle's pick for the beat is known on the shot's first frames,
+           so a glide that turns out to be over the limit becomes the cut there. Camera only, viewer-local (the guest runs
+           the same rigs on the relayed shot). pose = { x, y, zoom, tilt, yaw, elevZ }; viaBeat = the rig moves with
+           _cineBeatMove. Kill switch: window.EW_NO_OPEN_CUT = true. */
+        function _cineOpenBeat(pose, ms, sequenceId, viaBeat) {
+            const glide = () => {
+                const m = { ...pose, duration: ms, easing: 'easeInOut', _allowZoomChange: true, _bypassCap: true, _fogAllowed: true };
+                if (viaBeat) _cineBeatMove(m); else camera.moveTo(m);
+            };
+            if (window.EW_NO_OPEN_CUT) return glide();
+            if (_cineYawGap(pose.yaw, camera.yaw) > RETURN_CUT_YAW_DEG) return _cineHardCut(pose);
+            const lens0 = _cineLensYaw();
+            glide();
+            if (typeof ThreeCamera === 'undefined' || !ThreeCamera.clearAngleState) return;
+            let n = 0;
+            const late = () => {
+                if (camera._cineShotId !== sequenceId || state.phase !== 'battle' || state.cameraDisabled) return;
+                if (_cineYawGap(camera._tyaw, pose.yaw) > 0.5) return;   // a later beat already turned the lens elsewhere
+                let ca = null;
+                try { ca = ThreeCamera.clearAngleState(); } catch (e) { ca = null; }
+                if (!ca || ca.id !== sequenceId) { if (++n < 6) requestAnimationFrame(late); return; }
+                if (_cineYawGap(pose.yaw + (ca.want || 0), lens0) > RETURN_CUT_YAW_DEG) _cineHardCut(pose);
+            };
+            requestAnimationFrame(late);
+        }
+        /* degrees between two yaws (0..180), and the yaw the lens really stands at (the pose's yaw + THE CLEAR ANGLE's turn) */
+        function _cineYawGap(a, b) {
+            if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+            return Math.abs(((((a - b) % 360) + 540) % 360) - 180);
+        }
+        function _cineLensYaw() {
+            let d = 0;
+            try { const ca = (typeof ThreeCamera !== 'undefined' && ThreeCamera.clearAngleState) ? ThreeCamera.clearAngleState() : null; if (ca && Number.isFinite(ca.delta)) d = ca.delta; } catch (e) {}
+            return (camera.yaw || 0) + d;
+        }
+        /* the bodies a shield cast reaches, read the way doSpell reads them (kind 'shield' = the one ally on the target
+           tile, kind 'aoeShield' = aoeShieldAlliesOf round the target tile); null = not a shield (the radius rule stays) */
+        function _cineShieldReach(c) {
+            const sp = c && c.spell, cs = c && c.caster;
+            if (!sp || !cs) return null;
+            try {
+                const t = (c.self || sp.aoeOriginSelf || !c.target) ? cs : c.target;
+                if (sp.kind === 'shield') {
+                    const u = (t.id != null) ? c.live(t) : ((typeof unitAt === 'function') ? unitAt(t.x, t.y) : null);
+                    return u ? [u] : [];
+                }
+                if (sp.kind === 'aoeShield' && typeof aoeShieldAlliesOf === 'function') return aoeShieldAlliesOf(cs, sp, t.x, t.y) || [];
+            } catch (e) {}
+            return null;
         }
         CINE_SHOTS.lowTile = (ctx, o) => cineLowTile(ctx.center || ctx.target, ctx.caster, o);
         CINE_SHOTS.orbit = (ctx, o) => cineOrbit(ctx.subject || ctx.caster, (o && o.deg) || 60, actionMs((o && o.ms) || 700), o);
@@ -35955,8 +36021,21 @@
             partyCry(c) {
                 c.at(c.cut, () => {
                     if (c.row.payoff) return c.payoff();
+                    /* THE SHIELD'S OWN FRAME (2026-11-10): a shield pulls back onto the units it reached, and every party
+                       pull-back is seen from the angle the player was already looking from (the view the shot left), so
+                       the face beat's swing is undone once and the glide home after it is a short slide, not a third turn */
+                    const _home = camera._preCineView;
+                    const _hy = (_home && Number.isFinite(_home.yaw)) ? _home.yaw : undefined;
+                    /* ...and when that angle is more than RETURN_CUT_YAW_DEG round from where the lens stands now (the
+                       hero angle in front of a caster who faces up the board), the pull-back CUTS there: no whip round
+                       the body while the frame also widens */
                     cinePartyFit(c.caster, (c.spell.aoeRadius || c.spell.radius || 3) + 1,
-                        { duration: Math.min(480, c.raw(c.left(c.cut))) });
+                        { duration: Math.min(480, c.raw(c.left(c.cut))), units: _cineShieldReach(c), yaw: _hy,
+                          /* the player's own pitch too: the pull-back IS their view, moved onto the receivers (and at
+                             the resting pitch THE CLEAR ANGLE leaves a wide frame alone: it turned this one 55° to
+                             uncover one teammate behind another, which the glide home then had to undo) */
+                          tilt: (!window.EW_NO_SHIELD_FRAME && _hy !== undefined && Number.isFinite(_home.tilt)) ? Math.min(46, _home.tilt) : undefined,
+                          cut: (!window.EW_NO_SHIELD_FRAME && _hy !== undefined && _cineYawGap(_hy, _cineLensYaw()) > RETURN_CUT_YAW_DEG) ? true : undefined });
                 }, 'rally');
             },
             /* Debuffs — the world looks down on the victim: the face cam and
@@ -77598,14 +77677,13 @@
                 const cz = _unitElevZ(unit);
                 casterPx = cz > 0 ? window._getElevationPx(cz) : 0;
             }
-            camera.moveTo({
+            /* THE CLEAN OPEN (2026-11-10, see _cineOpenBeat): a big turn into the hero angle is a cut, not a whip */
+            _cineOpenBeat({
                 x: unit.x, y: unit.y,
                 zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
                 tilt: CINE_FACE_TILT, yaw,
-                elevZ: casterPx + ts * CINE_FOCAL_RISE,
-                duration: actionMs(420), easing: 'easeInOut',
-                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
-            });
+                elevZ: casterPx + ts * CINE_FOCAL_RISE
+            }, actionMs(420), sequenceId, false);
             // Slow dolly-in while the charge builds — the lens leaning in as
             // the power gathers, releasing when the aura pops (~640ms, where
             // the staging burst now lands for self-casts). Heal-flavored
@@ -77807,21 +77885,21 @@
             const _selfLand = !!(target._landUnit && target._landUnit.id === unit.id);
             const _vGap0 = Math.abs(tgtPx - casterPx) / ts;
             // BEAT 1 — the giver: face the caster while they wind up the gift.
-            _cineBeatMove(_selfLand ? {
+            if (_selfLand) _cineBeatMove({
                 x: unit.x + (dx / len) * Math.min(1.2, len * 0.35), y: unit.y + (dy / len) * Math.min(1.2, len * 0.35),
                 zoom: Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES), _tpsZoomFitTiles(2.6 + _vGap0, len + 2.2)),
                 tilt: CINE_FACE_TILT, yaw: yawFwd + CINE_CAM_YAW_OFFSET * 2,
                 elevZ: casterPx + ts * CINE_FOCAL_RISE,
                 duration: actionMs(380), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
-            } : {
+            });
+            /* THE CLEAN OPEN (2026-11-10, see _cineOpenBeat): the giver's hero angle too — a big turn into it is a cut */
+            else _cineOpenBeat({
                 x: unit.x + (dx / len) * 0.1, y: unit.y + (dy / len) * 0.1,
                 zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
                 tilt: CINE_FACE_TILT, yaw: yawFwd + 180 - CINE_CAM_YAW_OFFSET,
-                elevZ: casterPx + ts * CINE_FOCAL_RISE,
-                duration: actionMs(380), easing: 'easeInOut',
-                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
-            });
+                elevZ: casterPx + ts * CINE_FOCAL_RISE
+            }, actionMs(380), sequenceId, true);
 
             let _supBeat2 = () => {}, _supCutMs = sourceHold;
             if (_supHeal) {
