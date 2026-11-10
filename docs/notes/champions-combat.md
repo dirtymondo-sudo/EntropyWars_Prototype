@@ -4998,3 +4998,36 @@ of 8 units in frame. Six things, all camera only and viewer-local:
 Not bugs (checked): the zodiac sky cinematic looks at the sky for 4-6 s by design; a hovering unit (Djinn) is centred on
 its body, so its ground square sits low in frame; fogged enemies' hits are off screen on purpose; a top-down strike shot
 frames the target, not the caster. Recorder + driver live in the playtest harness notes (`/mnt/project-files/camera-nothing-20261109/`).
+
+## THE CLEAN OPEN + THE SHIELD'S OWN FRAME (2026-11-10, token 20261110-cleanopen-01-cors)
+
+mondo: "Bligblog used pupil shield and the camera jumps all over the place, have no idea whats going on with the camera".
+Recorded per frame on a real VS CPU cast (Action Cam on, 10x10 Mount Shasta, the party deployed in a row): in under 3 s the
+lens turned 205 degrees (96 one way at up to 570 deg/s, then 110 back) over three moves. Three causes, all camera only:
+
+1. **The opening whip.** A self / support shot opens on the caster's hero angle, IN FRONT of the caster: up to 180 degrees
+   round the body from the player's view, taken as a ~400 ms glide that also pushed in and pitched down (125 degrees for a
+   caster facing up the board). THE CLEAR ANGLE added 80-110 more when teammates stood where the hero lens goes (caster
+   facing along his own row), eased in on top of the glide.
+   Fix `_cineOpenBeat(pose, ms, sequenceId, viaBeat)` (battle.js, used by `_playSelfCastHeroShot` and the non-landing beat 1
+   of `_playSupportCineShot`): the rule of THE CLEAN RETURN applied to the opening. A turn over `RETURN_CUT_YAW_DEG` (60)
+   CUTS to the hero angle; a smaller one keeps the glide. The clear angle's pick is read on the shot's first frames
+   (`ThreeCamera.clearAngleState().id` = the shot it belongs to, the one line added to three-camera.js), and a glide that
+   turns out to be over the limit becomes the cut there. Kill switch `window.EW_NO_OPEN_CUT`.
+2. **The party pull-back framed the wrong units.** kinds `shield` / `aoeShield` run the `partyCry` director, whose
+   `cinePartyFit` framed every ally within `(aoeRadius || radius || 3) + 1` of the CASTER: Pupil Shield (aoeRadius 0 = the
+   3x3 round its TARGET tile, `aoeShieldAlliesOf`) pulled back to the middle of the whole party; a Single Ally shield too.
+   Fix `_cineShieldReach(c)`: the units the shield reaches, read the way doSpell reads them; `cinePartyFit(..., { units })`
+   frames the caster and those. War cries keep the radius rule.
+3. **The pull-back took a third angle.** It kept the hero beat's yaw (+ a clear-angle turn), so the return home was one
+   more swing. Now every party pull-back is seen from the view the shot left (`camera._preCineView` yaw, and its pitch
+   capped at 46 so the clear angle leaves the wide frame alone), and it CUTS there when the lens stands more than 60
+   degrees away (`_cineLensYaw()` = pose yaw + clear-angle turn). The glide home is then a short slide.
+   Kill switch for 2 + 3: `window.EW_NO_SHIELD_FRAME`.
+
+Result, old (kill switches) against new in the same match, degrees the lens GLIDED round: Pupil Shield self facing up the
+board 125+ -> 0, self facing along the row 144-157 -> 0, on an ally two squares away 149-214 -> 0, on the next square
+164-179 -> 0; Fortify self / ally, War Cry, Luminous Shield -> 0; Heal on an ally 71 -> 13; Shake It Off 41 -> 9. The shot is
+now: cut to the close-up, cut back to the player's own angle on the shielded units, short slide home.
+Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
+seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
