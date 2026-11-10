@@ -1615,6 +1615,23 @@ mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps t
 - **What a `levelM` room changes off the board**: walk slope limits ×2 mean some rock banks / rims that refused the walker now carry it
   (Mars +20 squares, Moon +43, traps never more); a ramp's middle squares can read one level different (tierMin stays 1.2 m); a deck
   3.5 m up has walkable floor under it (Lodge's minstrels' walk). scratch `rdiff.py` lists these; `lift.py` does the mapping.
+- **Last third, fifth PR** (after the polish PRs #1086 / #1089). Two new room flags beside `levelM` (spec rows pass them too):
+  - `ghostM: 1.75` — THE REAL-SIZE PROPS (`hqFieldGhostRules`): a square whose top is a GHOST block (a prop's stand-in: a sarsen 4.2 m,
+    a trilithon 6 m, a tree, a car) counts by the 1.75 m step, so prop cover keeps the level its real height always read while the
+    ground and drawn pieces count whole squares. hqFieldRaster marks the square `ghostTop`, hqFieldRasterTerrain reads `c.src.ghostTop`.
+    Agartha / Atlantis (first third) do not use it: their ghosts were authored at 3.5 m for level 1.
+  - `walkM: 1.75` — the room keeps the PLAIN walk rules (`hqTerrainRulesFor`): for natural rooms whose rock banks would open up under
+    the doubled slope limit. Pick per room whichever changes fewer squares (scratch `sw.sh`): Singularity, Shasta, Saturn use it;
+    Olympus, North Pole, Technoticlan, Flying Dutchman, Stonehenge do not.
+  - Raised (lift.py `--auto`, levels by the old rule, a stepped stack kept as a ladder 3.5 / 7 / 10.5): Stonehenge (bank, barrows),
+    Singularity (drawn obsidian 2.2 → 3.5, 4.2 → 7; terraces), Technoticlan (court walls + stand 3.5, altars 3.5, pyramid 3.5 / 7 / 10.5),
+    Shasta, Olympus (fire plinths 1.2 → 3.5, dais 7, loft 7), Saturn (shelves; 11×11's west ramp starts at z 25.5), North Pole (loft 7,
+    terraces 3.5; the 1 m deck stays), Flying Dutchman (decks 1.5 → 3.5, poop 7, bulwarks + gun ports + hatch crates follow; the six
+    deck stairs are 2.7 m long now so their lower square keeps level 0). All: boards identical at 12 / 9 / 10 / 11, picks not re-cut.
+  - Left as they are (board cover is real-size props / buildings only): Stadium (stand treads), Vatican, Strip (roofs are buildings),
+    Skinwalker (its 3.2 m mesa already reads level 2; no ramp keeps the 9 / 11 boards' squares at 7 m).
+- **A ramp's squares**: with tierMin fixed at 1.2 m a ramp to a 3.5 m ledge crosses level 1 earlier. When a board holds the ramp, start
+  the ramp later (shorter, steeper) until the compare is clean; never re-cut the pick for it.
 - **Nothing to raise**: Hollow Earth (its level squares are a 0.3 m deck and the real-size `riser_1` prop), Heaven, Lookingglass.
 - **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
   own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
