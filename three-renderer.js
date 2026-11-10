@@ -20142,6 +20142,9 @@ const ThreeRenderer = (function () {
     var _wmRects = [], _wmAt = -1;
     function _wmMenuRects(now) {
         if (now >= _wmAt && now - _wmAt < 3) return _wmRects;   // the plates and the Nexus counter share one measure a frame
+        /* THE RESTING HUD (2026-11-10, hud.js): while nothing on the page has moved, the menu's boxes are the ones measured
+           up to 150 ms ago; any input, DOM change or transition wakes the every-frame measure again */
+        if (now >= _wmAt && now - _wmAt < 150 && typeof window._ewHudResting === 'function' && window._ewHudResting(true)) return _wmRects;
         _wmAt = now; _wmRects = [];
         if (window.EW_NO_MENU_FADE || !_parentEl || typeof document === 'undefined') return _wmRects;
         var P = _parentEl.getBoundingClientRect(), out = _wmRects;
@@ -46295,6 +46298,7 @@ const ThreeRenderer = (function () {
                     if (l._ew_rigSpare) { l.shadow.autoUpdate = false; l.shadow.needsUpdate = false; continue; }   // THE ONE RIG: a dark spare sun never draws its map
                     r._ew_shadowLights = true;
                     l.shadow.autoUpdate = auto;
+                    if (l._ew_heroHold) { l.shadow.needsUpdate = false; continue; }   // THE STILL TORCH: nothing in its reach changed, its six sides keep
                     if (pulse) l.shadow.needsUpdate = true;
                 }
             }
@@ -49699,6 +49703,7 @@ const ThreeRenderer = (function () {
                dirties it (the shadow map is light-space). See the caveat notes
                in ROADMAP §4 — GLB idle anims, day/night easing, turret arms,
                flying bob, tower cubes and fog fades all count as motion. */
+            if (_hq && _hq.heroLit && _hq.heroLit._ew_gate) _hqHeroRelease(_hq.heroLit);   // THE STILL TORCH is the walk's: a fight in the room pulses the torch map as it always did
             if (renderer.shadowMap && renderer.shadowMap.enabled) {
                 /* THE STATIC SHADOW (SEAMLESS_FIELD_PLAN §8.3 step 6, 2026-09-22): under a true-ground field the depth pass
                    draws the whole handed-over room, so it refreshes on a LANDING / a piece change / a terrain edit
@@ -81902,6 +81907,183 @@ const ThreeRenderer = (function () {
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
     }
+    /* the walk's scene tells ONE waiting reader when its world matrices are this frame's (THE STILL TORCH reads its
+       casters where they stand now, not where the last frame left them): three's own walk, untouched, then the reader */
+    function _hqWalkHook(sc) {
+        if (!sc || sc._ew_walkHook) return sc;
+        sc._ew_walkHook = true;
+        var own = sc.updateMatrixWorld;
+        sc.updateMatrixWorld = function (force) {
+            own.call(this, force);
+            if (this._ew_afterWalk) { var f = this._ew_afterWalk; this._ew_afterWalk = null; f(); }
+        };
+        return sc;
+    }
+    /* THE STILL TORCH (2026-11-10, the frame rate plan, fix 2). The hero light (a torch, a brazier, a campfire, a lava
+       lamp ...) casts into a six-sided map, and the walk's pulse redrew all six sides every frame: the Main Hall drew 715
+       of its 1,025 calls and 2.0 of its 2.7 M triangles in depth maps with nobody walking. The light stands still, so its
+       map only goes stale when something that casts inside its reach changes. Each walk frame, at the end of the scene's
+       first matrix walk (so a piece that moved this frame is read where it now stands), this reads every shown caster in
+       reach:
+         - a piece whose own shader moves it (the wind, the grass, the kelp, a fluid) counts as moving: the map redraws
+           that frame exactly as before;
+         - WHICH pieces cast (their ids, geometries, morph weights, instance lists) is one number: any change at all
+           redraws, and the map then keeps redrawing for HERO_STILL_MS (a sheet or a shader that lands late);
+         - WHERE each piece stands (a rigid piece's world matrix, a body's every bone) is compared with where it stood
+           when the map was last drawn: the map redraws once a piece has carried its flesh further than HERO_TEXEL of
+           ONE texel of this map at that distance. A walking body, a swinging door, a lava lamp's wax beside its own
+           bulb redraw every frame as before; a standing body's breathing or a far orb's bob redraw a few times a
+           second, since they move their shadow by less than the map can hold between those redraws.
+       While nothing asks, the map is HELD (its six sides are not redrawn); it still redraws every HERO_REFRESH_MS. The
+       light's own place, reach and map size are in the number too. Only the hero light: the sun's map pulses as it did.
+       The fight never holds (renderFrame clears the hold).
+       Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
+    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35;
+    var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
+    var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '' };
+    var _heroBodies = [];
+    function _heroMix(h, f) { _heroF64[0] = f; h = Math.imul(h ^ _heroU32[0], 16777619); return Math.imul(h ^ _heroU32[1], 16777619); }
+    function _heroLiveMat(m) {
+        if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (_heroLiveMat(m[i])) return true; return false; }
+        if (!m) return false;
+        return !!(m.isShaderMaterial || m._ew_wind || m.positionNode || (m._ewNode && m._ewNode.k !== 'terrain'));
+    }
+    /* has this matrix carried what hangs on it (within `extW` world units of its origin) past `tol` since `snap[j..]`? */
+    function _heroMatMoved(e, snap, j, tol, extW) {
+        var dx = e[12] - snap[j + 9], dy = e[13] - snap[j + 10], dz = e[14] - snap[j + 11];
+        var d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (!(d <= tol)) return true;   // (a NaN reads as moved)
+        var m = 0, a;   // the turn: what hangs round the origin swings with the axes
+        a = e[0] - snap[j]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[1] - snap[j + 1]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[2] - snap[j + 2]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[4] - snap[j + 3]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[5] - snap[j + 4]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[6] - snap[j + 5]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[8] - snap[j + 6]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[9] - snap[j + 7]; if (a < 0) a = -a; if (a > m) m = a;
+        a = e[10] - snap[j + 8]; if (a < 0) a = -a; if (a > m) m = a;
+        if (m > 0) {
+            var s = Math.sqrt(Math.min(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10]));
+            if (!(s > 1e-9) || !(d + 3 * m * extW / s <= tol)) return true;
+        }
+        return false;
+    }
+    function _heroMatKeep(e, snap, j) {
+        snap[j] = e[0]; snap[j + 1] = e[1]; snap[j + 2] = e[2]; snap[j + 3] = e[4]; snap[j + 4] = e[5]; snap[j + 5] = e[6];
+        snap[j + 6] = e[8]; snap[j + 7] = e[9]; snap[j + 8] = e[10]; snap[j + 9] = e[12]; snap[j + 10] = e[13]; snap[j + 11] = e[14];
+    }
+    /* a body on bones (every bone) or a rigid piece (its own matrix): past `tol` since the map was last drawn? (no record = yes) */
+    function _heroBodyMoved(o, tol, extW) {
+        var snap = o._ew_heroSnap;
+        if (!o.isSkinnedMesh) return !snap || snap.length !== 12 || _heroMatMoved(o.matrixWorld.elements, snap, 0, tol, extW);
+        var sk = o.skeleton, bones = sk.bones;
+        if (!snap || snap.length !== bones.length * 12 || o._ew_heroSk !== sk) return true;
+        for (var i = 0, j = 0; i < bones.length; i++, j += 12) if (_heroMatMoved(bones[i].matrixWorld.elements, snap, j, tol, extW)) return true;
+        return false;
+    }
+    function _heroBodyKeep(o) {
+        var snap = o._ew_heroSnap;
+        if (!o.isSkinnedMesh) { if (!snap || snap.length !== 12) snap = o._ew_heroSnap = new Float64Array(12); _heroMatKeep(o.matrixWorld.elements, snap, 0); return; }
+        var sk = o.skeleton, bones = sk.bones;
+        if (!snap || snap.length !== bones.length * 12) snap = o._ew_heroSnap = new Float64Array(bones.length * 12);
+        o._ew_heroSk = sk;
+        for (var i = 0, j = 0; i < bones.length; i++, j += 12) _heroMatKeep(bones[i].matrixWorld.elements, snap, j);
+    }
+    function _hqHeroRelease(L) {
+        if (!L) return;
+        if (L._ew_heroHold) L._ew_heroHold = false;
+        if (L.shadow && L.shadow.autoUpdate === false && L._ew_heroAuto) { L.shadow.autoUpdate = true; L._ew_heroAuto = false; }
+    }
+    function _hqHeroGate(H, now) {
+        var L = H.heroLit, ST = _heroStat;
+        if (!L || !L.isLight || !L.shadow) return;
+        if (!L.castShadow || !L.visible || window.EW_HERO_SHADOW_EVERY_FRAME || !H.ready) { _hqHeroRelease(L); return; }
+        if (typeof _fieldGroundLive === 'function' && _fieldGroundLive()) { _hqHeroRelease(L); return; }   // a fight stands in the room: its own gate pulses
+        for (var up = L; up && up !== H.scene; up = up.parent) {}
+        if (!up) { _hqHeroRelease(L); return; }   // the light is not in the walk's scene this frame
+        var G = L._ew_gate || (L._ew_gate = { list: null, listAt: -1e9, sig: 0, since: now, drawnAt: -1e9 });
+        /* the list of casters, read again every HERO_LIST_MS (a piece that lands joins the map within that) */
+        if (!G.list || now - G.listAt > HERO_LIST_MS) {
+            var list = [];
+            H.scene.traverse(function (o) {
+                if (!o.isMesh || !o.castShadow) return;
+                var g = o.geometry; if (!g) return;
+                if (!g.boundingSphere) { try { g.computeBoundingSphere(); } catch (e) {} }
+                list.push(o);
+            });
+            G.list = list; G.listAt = now;
+        }
+        var le = L.matrixWorld.elements, lx = le[12], ly = le[13], lz = le[14];
+        var reach = (L.distance > 0) ? L.distance : ((L.shadow.camera && L.shadow.camera.far) || 1e9);
+        var mapW = L.shadow.mapSize.width || 512, nearW = (L.shadow.camera && L.shadow.camera.near) || 0, U = _hqUnits();
+        /* one texel of a 90-degree side, `d` from the light, is never narrower than 2 d / (sqrt 3 x the side's width) */
+        var texelPer = 2 / (1.7320508 * mapW), fleshW = HERO_FLESH_M * U;
+        var h = 2166136261 | 0, moving = false, drift = false, n = 0, list2 = G.list, bodies = _heroBodies; bodies.length = 0;
+        h = _heroMix(h, lx); h = _heroMix(h, ly); h = _heroMix(h, lz); h = _heroMix(h, reach); h = _heroMix(h, mapW);
+        for (var i = 0; i < list2.length; i++) {
+            var o = list2[i], g2 = o.geometry, bs = g2 && g2.boundingSphere;
+            if (!bs || !o.castShadow) continue;
+            var e = o.matrixWorld.elements, c = bs.center;
+            var wx = e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12], wy = e[1] * c.x + e[5] * c.y + e[9] * c.z + e[13], wz = e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14];
+            var sx = e[0] * e[0] + e[1] * e[1] + e[2] * e[2], sy = e[4] * e[4] + e[5] * e[5] + e[6] * e[6], sz = e[8] * e[8] + e[9] * e[9] + e[10] * e[10];
+            var rad = bs.radius * Math.sqrt(Math.max(sx, sy, sz));
+            if (o.isInstancedMesh || o.isSkinnedMesh) rad = 1e9;   // the copies stand wherever their own matrices put them; a body wherever its bones do
+            var dx = wx - lx, dy = wy - ly, dz = wz - lz, lim = reach + rad;
+            if (rad < 1e8 && dx * dx + dy * dy + dz * dz > lim * lim) continue;
+            var shown = true, q = o;
+            for (; q && q !== H.scene; q = q.parent) if (!q.visible) { shown = false; break; }
+            if (!shown || !q) continue;
+            if (o.isSkinnedMesh && o.skeleton && o.skeleton.bones && o.skeleton.bones.length) {
+                /* the body's nearest bone to the light: out of reach = not this map's; else its texel there is the measure */
+                var bn = o.skeleton.bones, near2 = Infinity;
+                for (var b = 0; b < bn.length; b++) { var be = bn[b].matrixWorld.elements, bx = be[12] - lx, by = be[13] - ly, bz = be[14] - lz, d2 = bx * bx + by * by + bz * bz; if (d2 < near2) near2 = d2; }
+                var nearD = Math.sqrt(near2) - fleshW;
+                if (nearD > reach) continue;
+                n++;
+                h = Math.imul(h ^ o.id, 16777619); h = Math.imul(h ^ g2.id, 16777619);
+                if (o.morphTargetInfluences) for (var mi = 0; mi < o.morphTargetInfluences.length; mi++) h = _heroMix(h, o.morphTargetInfluences[mi]);
+                if (_heroLiveMat(o.material)) { moving = true; continue; }
+                bodies.push(o);
+                if (!drift && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) drift = true;
+                continue;
+            }
+            n++;
+            if (_heroLiveMat(o.material)) { moving = true; continue; }
+            h = Math.imul(h ^ o.id, 16777619); h = Math.imul(h ^ g2.id, 16777619);
+            if (o.morphTargetInfluences) for (var mj = 0; mj < o.morphTargetInfluences.length; mj++) h = _heroMix(h, o.morphTargetInfluences[mj]);
+            if (rad < 1e8) {
+                bodies.push(o);
+                if (!drift && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz) - rad, nearW, 0.05 * U), rad + Math.sqrt((wx - e[12]) * (wx - e[12]) + (wy - e[13]) * (wy - e[13]) + (wz - e[14]) * (wz - e[14])))) drift = true;
+                continue;
+            }
+            for (var k = 0; k < 16; k++) h = _heroMix(h, e[k]);   // an instanced list: its own matrix exactly
+            if (o.isInstancedMesh) { h = Math.imul(h ^ (o.count | 0), 16777619); if (o.instanceMatrix) h = Math.imul(h ^ (o.instanceMatrix.version | 0), 16777619); }
+        }
+        var changed = h !== G.sig;
+        if (changed) { G.sig = h; G.since = now; }
+        var hold = !moving && !drift && !changed && (now - G.since) >= HERO_STILL_MS && (now - G.drawnAt) < HERO_REFRESH_MS;
+        /* the map draws this frame (the walk's pulse is up): this is where each body stands in it */
+        var pulse = !renderer || !renderer.shadowMap || renderer.shadowMap.autoUpdate !== false || !!renderer.shadowMap.needsUpdate;
+        if (!hold && pulse) { G.drawnAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
+        bodies.length = 0;
+        L._ew_heroHold = hold;
+        /* the classic WebGL renderer reads the light's own switch: off + no pulse of its own = this light's map is skipped */
+        if (hold) { if (L.shadow.autoUpdate !== false) { L.shadow.autoUpdate = false; L._ew_heroAuto = true; } L.shadow.needsUpdate = false; }
+        else if (L._ew_heroAuto) { L.shadow.autoUpdate = true; L._ew_heroAuto = false; }
+        ST.frames++; if (hold) ST.held++; else ST.drawn++;
+        if (moving) ST.moving++; if (changed) ST.changed++; if (drift) ST.drift++;
+        ST.inReach = n; ST.casters = list2.length;
+        ST.why = hold ? 'held' : (moving ? 'a mover in reach' : (changed ? 'a piece changed' : (drift ? 'a body moved' : ((now - G.since) < HERO_STILL_MS ? 'settling' : 'refresh'))));
+    }
+    function _hqHeroAfterWalk() {
+        var H = _hq; if (!H || !H.heroLit || !H.heroLit.isLight) return;
+        /* a draw that carries no shadow pulse (a mirror's own render of the room) redraws no map: wait for the frame's own */
+        var sm = renderer && renderer.shadowMap;
+        if (sm && sm.autoUpdate === false && !sm.needsUpdate && H.scene && !H.scene._ew_afterWalk) { H.scene._ew_afterWalk = _hqHeroAfterWalk; return; }
+        try { _hqHeroGate(H, performance.now()); }
+        catch (e) { _hqHeroRelease(H.heroLit); if (!H._heroGateWarned) { H._heroGateWarned = true; console.warn('[HQ] the still torch check failed: the torch map redraws every frame', e); } }
+    }
     function _hqShadowTick(H, dt) {
         var SH = H.shadows; if (!SH || !renderer || !renderer.shadowMap) return;
         var L = SH.light, pl = H.player, U = _hqUnits();
@@ -82598,6 +82780,7 @@ const ThreeRenderer = (function () {
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         _ewRimTick(H.sky ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
+        if (H.heroLit && H.heroLit.isLight) { if (H.scene._ew_afterWalk === _hqHeroAfterWalk) { H.scene._ew_afterWalk = null; try { _hqHeroGate(H, performance.now()); } catch (e) { _hqHeroRelease(H.heroLit); } } H.scene._ew_afterWalk = _hqHeroAfterWalk; }   // THE STILL TORCH: read at the end of this frame's first matrix walk (a frame that never walked reads here)
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
@@ -87245,7 +87428,7 @@ const ThreeRenderer = (function () {
         _hq = Object.assign({
             opts: opts, host: opts.host, profile: opts.profile || null,
             snap: null,   // THE SLIDE (Delivery 6): the walker + the native easing onto their cells before the cut
-            scene: new THREE.Scene(), camera: null,
+            scene: _hqWalkHook(new THREE.Scene()), camera: null,   // THE STILL TORCH reads at the end of the scene's matrix walk
             player: null, sky: null,
             ride: null,   /* SKATEBOARDING (9.8, 2026-09-15): the rider (_hqRideArm) — the rails / ramps registers are the part's (_hqPartFields) */
             vehicle: null,   /* THE DEEP (2026-09-18): the vehicle you are aboard (the moored ones are the part's) */
@@ -88160,6 +88343,9 @@ const ThreeRenderer = (function () {
             scene: function () { return scene; },
             /* the WebGL renderer (shader diagnostics from a probe — THE WORLD, 2026-09-13) */
             renderer: function () { return renderer; },
+            /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
+            /* THE STILL TORCH: how many walk frames held the hero light's map, and why the last one did or did not */
+            heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqInst: function () { return _hqInstStats(_hq); },
