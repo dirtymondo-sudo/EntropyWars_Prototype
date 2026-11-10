@@ -71323,10 +71323,10 @@ const ThreeRenderer = (function () {
             var cob = _hqMat('cobblestone', 1, 1, { color: 0xc8c0b0, shininess: 4 });
             var flatUV = function (geo) { var p = geo.attributes.position, uv = geo.attributes.uv; for (var i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / (1.2 * U), p.getY(i) / (1.2 * U)); uv.needsUpdate = true; return geo; };
             var path = new THREE.Mesh(flatUV(new THREE.RingGeometry(4.6 * U, 6.2 * U, 48)), cob);
-            path.rotation.x = -Math.PI / 2; path.position.y = 0.006 * U; g.add(path);
+            path.rotation.x = -Math.PI / 2; path.position.y = 0.03 * U; g.add(path);   // 0.006 -> 0.03 (2026-11-10): the floor showed through the stones in patches from a battle camera's height
             var inner = new THREE.Mesh(flatUV(new THREE.RingGeometry(1.7 * U, 2.4 * U, 40)), cob);
-            inner.rotation.x = -Math.PI / 2; inner.position.y = 0.006 * U; g.add(inner);
-            [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { var spoke = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.4 * U), _hqMat('cobblestone', 1, 2, { color: 0xc8c0b0, shininess: 4 })); spoke.rotation.x = -Math.PI / 2; spoke.rotation.z = a; spoke.position.set(Math.sin(a) * 3.5 * U, 0.007 * U, -Math.cos(a) * 3.5 * U); g.add(spoke); });
+            inner.rotation.x = -Math.PI / 2; inner.position.y = 0.03 * U; g.add(inner);
+            [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { var spoke = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.4 * U), _hqMat('cobblestone', 1, 2, { color: 0xc8c0b0, shininess: 4 })); spoke.rotation.x = -Math.PI / 2; spoke.rotation.z = a; spoke.position.set(Math.sin(a) * 3.5 * U, 0.034 * U, -Math.cos(a) * 3.5 * U); g.add(spoke); });
             var hedge = _hqMat('leaves_2', 2, 1, { color: 0x5a7a3a, shininess: 4 });
             var n = 28, R = 7.0;
             for (var i = 0; i < n; i++) {
@@ -71558,15 +71558,18 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
             return g;
         },
-        crystal_cluster: function (U) {
+        crystal_cluster: function (U, p) {
             /* THE CRYSTAL MODELS (2026-11-02, mondo: the crystal cones out of the game) → THE GEMS (2026-11-02): each placed
                cluster is its own gem (seeded per prop) grown in that gem's habit, the soft glow over it in the gem's colour */
             var g = new THREE.Group();
             var seed = (_hqProcSeed++) * 1.9;
             var rnd = _gemRng(Math.floor(seed * 7919) + 101);
             var gem = _gemPick(rnd);
-            g.add(_gemCluster(rnd, 1.35 * U, gem));
-            var glow = _hzGlowSprite(2.2 * U, _GEMS[gem].color, 0.28, 0, 0, 0); glow.position.y = 0.7 * U; g.add(glow);
+            /* THE GREAT CRYSTALS (2026-11-10, the battle map polish): a row's own `h` grows the cluster (a board's cover on a 3.5 m square:
+               the 1.4 m gem read as a speck there); no `h` = the 1.4 m cluster it always was */
+            var gs = (p && +p.h > 0) ? (+p.h / 1.4) : 1;
+            g.add(_gemCluster(rnd, 1.35 * gs * U, gem));
+            var glow = _hzGlowSprite(2.2 * gs * U, _GEMS[gem].color, 0.28, 0, 0, 0); glow.position.y = 0.7 * gs * U; g.add(glow);
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; glow.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
             return g;
         },

@@ -36,6 +36,8 @@
 // room until it fits, then rerun:   node bake-arenas.js prebuilt_giza   (and --size 9 / 10 / 11 for the same site)
 // THE ARENA'S PLACE (2026-10-20, the voxel maps remade as rooms): HQ_ARENA_RULES.within[site] = { room, x, z, r } — a site whose map was
 // built for its board (Göbekli Tepe's ENCLOSURE E) is cut only from that room, from windows whose centre lies within r metres of (x, z).
+// `rs: { 12: 2.6 }` on a within row: that size's own radius.
+// `sizes: [12, 10]` on a within row (2026-11-10, Stonehenge's circle): the place holds only for those sizes; the others are searched over the whole site.
 // THE OWN ARENAS (2026-10-20, mondo: "all of those voxel maps remade as new maps"): `--own [mapId…]` re-reads the boards a map's
 // own room was BUILT for (data.js HQ_ARENA_RULES.own — the room and its window are hand-placed, nothing is searched): it rasters the
 // window at the map's size, checks the house tiles are flat open floor and both spawn rows join, prints the grid and rewrites that
@@ -290,7 +292,9 @@ for (const site of (APPLY ? [] : sites)) {
     /* a room built as the site's battle map (`arenaRoom: true` — Hell's walkways) is scanned first, then the entry part, then the rest by size */
     const built = rooms.filter(r => (ROOMS[r] || {}).arenaRoom);
     let order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
-    const place = WITHIN[site] || null;
+    const place0 = WITHIN[site] || null;
+    let place = (place0 && Array.isArray(place0.sizes) && !place0.sizes.includes(S)) ? null : place0;
+    if (place && place.rs && place.rs[S] != null) place = Object.assign({}, place, { r: place.rs[S] });   // a size's own radius (2026-11-10, Technoticlan: the 12 is the whole ball court)   // THE PLACE'S SIZES (2026-11-10, Stonehenge): a place that names `sizes` holds only those; the other sizes search the site as ever
     if (place) order = order.filter(r => r === place.room);
     const sqM = sb.hqArenaSquareM(site), sq = Math.abs(sqM - ev('HQ_CAVE_CELL')) > 1e-9 ? sqM : null;   // THE BIG SQUARES (2026-10-28): the Strip's 3.5 m
     let got = null;

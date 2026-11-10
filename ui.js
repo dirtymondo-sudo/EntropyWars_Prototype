@@ -7990,7 +7990,17 @@
             const nametagMode = state.nametagMode || 'name';
             const fxaaOn = typeof ThreePost!=='undefined'&&ThreePost.isFXAAEnabled&&ThreePost.isFXAAEnabled();
             const aaMode = (typeof ThreePost!=='undefined'&&ThreePost.getAA) ? ThreePost.getAA() : (fxaaOn ? 'fxaa' : 'off');   // THE POST PASS 7.5: off / FXAA / SMAA
-            const isNativePixel = typeof window==='undefined'||window._ewPixelRatio!==1;
+            /* THE RENDER SCALE (2026-11-10): one stored ratio, two rows. Fast = ratio 1 and Native = the screen's own, as they
+               always were; a share in between lights neither of them, and the Render Scale row below shows which share is on. */
+            const _rsInfo = (typeof ThreePost!=='undefined'&&ThreePost.getRenderScale) ? ThreePost.getRenderScale() : null;
+            const rsNative = _rsInfo ? _rsInfo.native : Math.min((typeof window!=='undefined'&&window.devicePixelRatio)||1,2);
+            const rsRatio = (typeof window!=='undefined'&&window._ewPixelRatio>0) ? window._ewPixelRatio : (_rsInfo ? _rsInfo.ratio : rsNative);
+            const isFastPixel = rsRatio===1;
+            const isNativePixel = !isFastPixel && Math.abs(rsRatio-rsNative)<0.011;
+            const rsSteps = (_rsInfo&&_rsInfo.steps) || [0.5,0.67,0.75,0.85,1];
+            const rsShare = rsRatio/rsNative;
+            let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
+            const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
                so the sheet shows what is worn — a box reads the way the picture looks */
             const wornCin = (!looksOn && typeof ThreePost!=='undefined'&&ThreePost.getWornCinematicState) ? ThreePost.getWornCinematicState() : null;
@@ -8196,9 +8206,18 @@
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>
                         <div class="pm-seg-group">
-                            <button class="pm-seg-btn${!isNativePixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(1);${RJ}">Fast</button>
+                            <button class="pm-seg-btn${isFastPixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(1);${RJ}">Fast</button>
                             <button class="pm-seg-btn${isNativePixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(Math.min(window.devicePixelRatio||1,2));${RJ}">Native</button>
                         </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Render Scale</span>
+                        <div class="pm-seg-group">
+                            ${rsSteps.map((k,i)=>`<button class="pm-seg-btn${rsOn===i ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRenderScale)ThreePost.setRenderScale(${k});${RJ}">${Math.round(k*100)}%</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">${rsSize}the 3D picture's share of your screen's own resolution: lower runs faster and softer, menus and text stay sharp</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>

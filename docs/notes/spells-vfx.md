@@ -1606,6 +1606,17 @@ there should be lots of blood. Is there more than one death animation that can b
   meshes = 64 draws). EW_NO_FX_BATCH keeps the old 64 meshes. Particle records = 512 + 256 (the stains live in the
   world pool); stains are `decor`: a full pool recycles them first.
 
+## THE BLOOD WHERE THE HIT LANDS — throws (2026-11-10)
+mondo: "used infernal hurl to throw someone but their blood splatter was on the tile they were originally on, not the
+tile they got thrown to". battle.js `_applyThrowLanding` (kind `skyThrow`: Infernal Hurl, Abduction Beam, Rocket Toss,
+Dragon Toss) pays the damage on the impact frame one line BEFORE it writes the body's new tile, and applyDamageToUnit
+fired the blood at `target.x/y` = the grab tile. Now the two throw hits (plain landing + the collision) pass
+`bloodAt: { x, y }` (the landing) and applyDamageToUnit's two `_vfxBlood` calls use it. Display only; the damage maths
+still runs from the old tile as before. Online: fireBlood is relayed with its tile, so the guest gets the landing too.
+Audit of the rest of forced movement: resolveForcedSlide writes the tile before its slam damage; pushes / tackles hit
+first and then slide (blood where it was hit); Sky Drop lands on its own tile; Trapdoor hits, then drops the body
+through; the storm fling does no hit of its own. Proof /mnt/project-files/throw-blood-20261110/ (tools/throw.js).
+
 ## THE FALL FROM THE AIR — midair deaths (2026-10-22)
 mondo: "if a unit dies in the air their blood splat stays floating in the air, please fix. Consider a separate death
 animation and blood for units that die in the air since they would have to fall to the ground too". Display only: no

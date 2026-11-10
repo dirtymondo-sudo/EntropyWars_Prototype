@@ -1590,3 +1590,22 @@ are true, milliseconds are the sandbox's).
   (`matrixAutoUpdate = false` at build, with every mover named: doors, kicks, sways, the editor), which is its own job.
   Also learned: the walk's scene is matrix-walked about 5 times a frame (each shadow and mirror render walks it again).
 - battle.js `_menuFreeArea` already ran at most 8 times a second: left alone.
+
+## THE RENDER SCALE (2026-11-10, the frame rate plan 2; mondo picked "Plan 2: Render Scale setting")
+Video settings gains a **Render Scale** row: 50 % / 67 % / 75 % / 85 % / 100 % of the screen's own resolution
+(min(devicePixelRatio, 2), what "Native" always meant). The 3D picture is drawn at that share and the browser stretches
+it to the window; the HUD, menus and all text are DOM and keep full sharpness. Pixels drawn: 85 % = 72 %, 75 % = 56 %,
+67 % = 45 %, 50 % = 25 %. Every screen pass of the post chain and every lit pixel pays per pixel, so on a Retina screen
+this is the largest single GPU lever in the game.
+- three-post.js `setRenderScale(share)` / `getRenderScale()` ({ratio, native, share, steps, w, h}); both go through the
+  existing `setPixelRatio`, so ONE stored value (`ew_pixelRatio`, the absolute ratio) and one live path (renderer +
+  post chain resize). The default is unchanged (Native, or 1 on the low preset): nothing looks different until he picks.
+- ui.js: the **Pixel Ratio** row stays (Fast = ratio 1, Native = 100 %); a share in between lights neither of its
+  buttons and the Render Scale row shows which share is on. Its hint reads the size being drawn ("drawing 1536 × 864").
+- Applies to the game's main renderer: battle, exploration, the editor. The small preview canvases (look preview, float
+  preview, the creator viewer) keep their own ratio. Viewer-local: nothing relayed.
+- Proof (node renderer, `?ew_gpu=webgl2`, emulated Retina 1024 × 576 @2x, software raster, where the frame time follows
+  the pixel count as a fill-bound GPU's does): 100 % 2048 × 1152 801 ms a frame, 75 % 1536 × 864 534 ms, 67 %
+  1372 × 771 467 ms, 50 % 1024 × 576 336 ms. Every step clicked in the pause menu's Video tab; the walk redraws at the
+  new size too. Screens: /mnt/project-files/perf-webgpu-20261109/render-scale/.
+- The F3 lens's Resolution row is still the session-only preview (it can also go ABOVE the cap, uncapped Native).
