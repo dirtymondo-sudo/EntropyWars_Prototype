@@ -1633,6 +1633,11 @@ camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project
   the four scattered pieces that had landed on the board. THE FULL LEDGES: levelM 3.5, every terrace of the room at 3.5 / 7 m (was 1.6 /
   2.4 / 3.0 / 3.6 / 6.2), the adit passage door y 2.4 -> 3.5; walkable squares of the room unchanged, 0 traps. Not walked in exploration
   on screen.
+- Batch 2 (same thread): Giza got four date palms (`tree` kind 'palm', r 1.3) at (3,4) (8,7) (9,2) (2,9), heights untouched (the full
+  ledges thread owns them). Hollow Earth got the two old trees' twins at (0,3) (2,2); no pin there (its rock stack stands in the
+  house columns, so the 9 / 11 cut elsewhere), and `gen.solid` is no use in a `rooms` gen (it grows a rim, not a square).
+  Hell, Heaven, Göbekli Tepe: already the same from both ends, left alone. Looking-Glass: the pieces are HQ_LG_CHESS, his three
+  chess positions, left alone.
 
 ## THE BOARD IS THE PLACE — nine arenas re-laid for PvP (2026-11-10, data.js + bake-arenas.js)
 mondo: "make improvements to all of the battle maps (12x12) ... replacing a terrain texture, redesigning the layout, making the map look
