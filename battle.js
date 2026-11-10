@@ -15189,6 +15189,9 @@
                     if (state.fogOfWar && state.activePlayer !== _viewer && !_isTileVisibleToViewer(x, y)) return;
                 }
             }
+            /* THE NUMBER WAITS FOR THE LENS (shot grammar): a buff / heal / shield / status number on a body the live
+               spell shot has not framed yet pops when the lens shows that body (or the shot ends) */
+            if (!opts._sgWaited && _shotGNumberWaits(x, y, textValue, kind, opts)) return;
             /* THE FRAME GUARD: a number on a unit during a live spell shot →
                that unit stays in frame for the rest of the shot. */
             if (_cineGuard) _cineGuardNoteHit(x, y, kind, opts);
@@ -26561,7 +26564,16 @@
                it reads as the end of the shot); a smaller turn keeps its glide. Camera only, viewer-local. */
             _returnCut(o) {
                 if (!o || !Number.isFinite(o.yaw) || !Number.isFinite(this.yaw)) return false;
-                const d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
+                let d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
+                /* THE SHOT GRAMMAR, pass 2: the lens is DRAWN turned by the clear angle's held offset, which eases out on
+                   a glide home — the turn the player sees runs from the drawn heading (recorded: a return the rig
+                   measured as 17° swung the lens 39° while it craned out 44° and zoomed out ×8) */
+                if (!window.EW_NO_SHOT_GRAMMAR) {
+                    try {
+                        const ca = (typeof ThreeCamera !== 'undefined' && ThreeCamera.clearAngleState) ? ThreeCamera.clearAngleState() : null;
+                        if (ca && Number.isFinite(ca.delta) && ca.delta) d = ((((o.yaw - (this.yaw + ca.delta)) % 360) + 540) % 360) - 180;
+                    } catch (e) {}
+                }
                 if (Math.abs(d) <= RETURN_CUT_YAW_DEG && !this._returnIsBusy(o, Math.abs(d))) return false;
                 this._stop();
                 this._poseGen = (this._poseGen | 0) + 1;   // THE HELD FRAME: the cut home leaves the shot's frame
@@ -33231,7 +33243,9 @@
                started, a move off a body whose number is up waits for the read */
             if (opts && !opts._sgPass && _shotGrammarLive()) {
                 if (_shotG.bundle && !opts._sgDeferred) { _shotG.bundle.items.push([_cineBeatMove, opts]); return; }
-                if (_shotGrammarMove(opts) !== 'go') return;
+                const v = _shotGrammarMove(opts);
+                if (v && typeof v === 'object') opts = { ...opts, ...v };   // pass 2: a drift clamped to SHOT_GRAMMAR_DRIFT_MAX
+                else if (v !== 'go') return;
             }
             const _keep = boardCameraResetTimer;
             boardCameraResetTimer = null;
@@ -33294,6 +33308,13 @@
         const SHOT_GRAMMAR_TURN_ALONE = 75;
         const SHOT_GRAMMAR_READ_MS = 1000;
         const SHOT_GRAMMAR_MIN_CUT_MS = 500;
+        /* THE SHOT GRAMMAR, pass 2 (2026-11-10, the after run of all 885 spells): a glide must land and HOLD its frame
+           this long before the shot ends (a god shot that landed 60-200 ms before the cut home was thrown away), and a
+           drift that is kept as a glide turns at most SHOT_GRAMMAR_DRIFT_MAX (the windup orbits turned 40-50° while they
+           zoomed, then a cut threw the arc away) */
+        const SHOT_GRAMMAR_LAND_HOLD_MS = 400;
+        const SHOT_GRAMMAR_DRIFT_MAX = 24;
+        const SHOT_GRAMMAR_NUMBER_WAIT_MS = 3000;
         const _shotG = { seq: null, beats: 0, cuts: 0, lastCutAt: 0, noCutAt: 0, lock: null, gen: 0, bundle: null, log: [], cutThisTask: false };
         function _shotGrammarLive() {
             if (window.EW_NO_SHOT_GRAMMAR) return false;
@@ -33343,6 +33364,68 @@
             _shotG.lock.until = Math.max(_shotG.lock.until, now + actionMs(SHOT_GRAMMAR_READ_MS));
             _cineHoldImpactFor(actionMs(SHOT_GRAMMAR_READ_MS));   // …and the way home waits for it too (every rig, not only the offensive)
         }
+        /* THE NUMBER WAITS FOR THE LENS (2026-11-10, the after run of all 885 spells): a party buff, a shield or a
+           drain's heal popped its numbers at the cast on bodies the shot had not framed yet — the shot opens with a cut
+           on the caster and the party shot comes ~640 ms later, so "+2 ATK" on three allies played to an empty frame
+           (War Cry, Rally Command, Iron Bulwark, Shield Bash, the drains' heal on the caster while the lens is on the
+           victim...), and the frame guard and the read lock then chased those off-screen numbers (the lens backed off
+           the caster on its own, the party shot was held back 360 ms). A NON-DAMAGE number on a body outside the shot's
+           frame now waits until the lens shows that body (the party shot, the cut home) or SHOT_GRAMMAR_NUMBER_WAIT_MS
+           passes, and pops then (with its guard note and read). A damage number never waits:
+           the hit lands with it. Viewer-local: each seat waits on its own lens (the guest's numbers come in on the
+           floating-text relay and run this same layer — RULE #2). Kill switch: window.EW_NO_NUMBER_WAIT = true. */
+        const _SG_HIT_TEXT_KINDS = new Set(['damage', 'crit', 'overkill', 'dodge', 'miss', 'protect-block', 'block', 'record', 'record-near']);
+        const _sgWaitQ = [];
+        let _sgWaitTimer = 0;
+        function _shotGBodyInFrame(x, y, uid) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.worldToScreen || typeof ThreeCamera === 'undefined') return true;
+                const cam = ThreeCamera.getCamera && ThreeCamera.getCamera();
+                const cv = ThreeRenderer.getCanvas && ThreeRenderer.getCanvas();
+                if (!cam || !cv || !cv.clientWidth || !cv.clientHeight) return true;
+                cam.updateMatrixWorld();   // a cut this same tick has moved the lens but not drawn yet
+                const W = cv.clientWidth, H = cv.clientHeight;
+                let sx, sy;
+                /* the middle of the drawn body (its model's feet-to-top box), else a chest-high point over the tile */
+                const b = (uid != null && ThreeRenderer.unitScreenBox) ? ThreeRenderer.unitScreenBox(uid) : null;
+                if (b) { const r = cv.getBoundingClientRect(); sx = b.x - r.left; sy = b.y - r.top; }
+                else {
+                    const s = ThreeRenderer.worldToScreen(x, y, (CONFIG.tileSize || BASE_TILE) * 0.45);
+                    if (!s) return false;      // behind the lens
+                    sx = s.x; sy = s.y;
+                }
+                return sx >= W * 0.03 && sx <= W * 0.97 && sy >= H * 0.11 && sy <= H * 0.89;   // inside the letterbox
+            } catch (e) { return true; }
+        }
+        function _shotGNumberWaits(x, y, text, kind, opts) {
+            if (window.EW_NO_NUMBER_WAIT || !_shotGrammarLive()) return false;
+            if ((opts && opts._dmgAmt > 0) || _SG_HIT_TEXT_KINDS.has(kind)) return false;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.dead || _shotGBodyInFrame(x, y, u.id)) return false;
+            _sgWaitQ.push({ x, y, text, kind, opts: { ...(opts || {}), _sgWaited: true }, seq: camera._cineShotId, uid: u.id,
+                until: performance.now() + actionMs(SHOT_GRAMMAR_NUMBER_WAIT_MS) });
+            _shotGLog('number on ' + u.id + ' waits for the lens');
+            if (!_sgWaitTimer) _sgWaitTimer = window.setTimeout(_shotGWaitTick, 50);
+            return true;
+        }
+        function _shotGWaitTick() {
+            _sgWaitTimer = 0;
+            const now = performance.now();
+            for (let i = 0; i < _sgWaitQ.length;) {
+                const q = _sgWaitQ[i];
+                const u = (state.units || []).find(v => v.id === q.uid);
+                if (u && !u.dead && Number.isFinite(u.x) && Number.isFinite(u.y)) { q.x = u.x; q.y = u.y; }   // it rides a body that moved
+                /* (it keeps waiting past the shot's end: the last frame can hold ~1 s before the cut home shows the body) */
+                const over = now >= q.until || state.phase !== 'battle' || window.EW_NO_NUMBER_WAIT;
+                if (over || _shotGBodyInFrame(q.x, q.y, u && !u.dead ? u.id : null)) {
+                    _sgWaitQ.splice(i, 1);
+                    try { if (state.phase === 'battle') _realShowFloatingTextAtTile(q.x, q.y, q.text, q.kind, q.opts); } catch (e) {}
+                    continue;
+                }
+                i++;
+            }
+            if (_sgWaitQ.length) _sgWaitTimer = window.setTimeout(_shotGWaitTick, 50);
+        }
         /* would this frame leave a body whose number is still being read? */
         function _shotGLeavesRead(f, isCut, o) {
             const L = _shotG.lock;
@@ -33382,7 +33465,9 @@
             if (lv === 'turn') { _shotGLog('re-angle of the hit dropped'); return 'dropped'; }
             if (lv) { _shotGDefer(_cineBeatMove, o, _shotG.lock.until - now, 'move off the hit'); return 'held'; }
             const endAt = _shotGEndAt();
-            if (!first && reframes && endAt > 0 && now + dur * 0.75 > endAt) { _shotGLog('glide dropped: the shot ends first'); return 'dropped'; }
+            /* (pass 2: it must land AND hold its frame SHOT_GRAMMAR_LAND_HOLD_MS before the shot ends — a pull-out that
+               lands 200 ms before the cut home only shows the cut throwing it away) */
+            if (!first && reframes && endAt > 0 && now + dur + actionMs(SHOT_GRAMMAR_LAND_HOLD_MS) > endAt) { _shotGLog('glide dropped: the shot ends first'); return 'dropped'; }
             _shotG.beats++;
             _shotG.gen++;
             if (!o._sgFollow) {
@@ -33395,6 +33480,12 @@
                     _cineHardCut({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw,
                         elevZ: o.elevZ ?? -1, _sgPass: true });
                     return 'cut';
+                }
+                /* a drift turns at most SHOT_GRAMMAR_DRIFT_MAX (pass 2): the glide keeps its way round, less far */
+                if (o.yaw !== undefined && f.turn > SHOT_GRAMMAR_DRIFT_MAX) {
+                    const dy = _sgNorm(f.yaw - camera.yaw);
+                    _shotGLog('drift ' + Math.round(f.turn) + '° -> ' + SHOT_GRAMMAR_DRIFT_MAX + '°');
+                    return { yaw: camera.yaw + Math.sign(dy) * SHOT_GRAMMAR_DRIFT_MAX };
                 }
             }
             return 'go';

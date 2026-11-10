@@ -3606,3 +3606,27 @@ Probe `window._shotGrammarState()` (seq, beats, cuts, the read lock, the shot's 
 `ThreeCamera.clearAngleState()` now carries cut / heels / dt.
 Known leftovers (not the grammar): a knocked-back SECOND body can slide out at the frame edge while the frame guard follows
 (AUTO MOVE / CUT AWAY on Big Kick, Wing Attack, Tsunami); party buffs pop their numbers at the cast, before the party shot.
+
+### THE SHOT GRAMMAR, pass 2 (2026-11-10, from the after run of all 885 spells)
+Before the grammar 116 of 829 recorded casts were clean, after it 712 of 810 (per-spell table:
+/mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md). Pass 2 fixes the shared causes of the leftovers:
+- THE NUMBER WAITS FOR THE LENS (`_shotGNumberWaits` / `_shotGWaitTick`, in `_realShowFloatingTextAtTile_impl` before the
+  guard note): a NON-damage number (buff, heal, shield, status, MP...) on a body outside the live shot's letterbox waits until
+  the lens shows that body (also past the shot's end: its last frame can hold ~1 s before the cut home) or
+  SHOT_GRAMMAR_NUMBER_WAIT_MS (3 s) passes, then pops with its guard note and read. It
+  was: the shot opens on the caster, the party buff / shield numbers popped on the allies at the cast to an empty frame (War
+  Cry, Rally Command, Iron Bulwark, Shield Bash, Astral Barrier...), the frame guard then backed the lens off the caster on
+  its own and the read lock held the party shot back; a drain's heal on the caster popped while the lens was on the victim.
+  Damage numbers never wait. Viewer-local (the guest's relayed numbers run the same layer). Kill switch
+  `window.EW_NO_NUMBER_WAIT = true`. The in-frame test projects the middle of the drawn body
+  (`ThreeRenderer.unitScreenBox`, after `cam.updateMatrixWorld()` so a cut in the same tick counts) inside 3-97% x 11-89%
+  of the canvas.
+- A reframing glide must land and hold SHOT_GRAMMAR_LAND_HOLD_MS (400) before the shot ends, or it is not started (the
+  debuff family's god-shot pull-out landed 60-200 ms before the cut home).
+- A drift kept as a glide turns at most SHOT_GRAMMAR_DRIFT_MAX (24°), same way round (the windup orbits `_capOrbit` turned
+  40-50° while they zoomed, then the hit cut threw the arc away).
+- `camera._returnCut` measures the turn home from the DRAWN heading (logical yaw + `ThreeCamera.clearAngleState().delta`):
+  the held clear-angle offset easing out made a "17°" glide home swing 39° while it craned out and zoomed out ×8.
+Still left (not camera grammar): drop / leap attacks land the victim just under the bottom letterbox bar (Descending
+Wrath, Predator Drop, Divine Swoop); a knocked-back second body slides out while the guard follows the first; two-step
+casts (Horn Toss, Fifty Times Its Weight, Swing Door) and remains / high-ground spells need a setup the recorder does not make.
