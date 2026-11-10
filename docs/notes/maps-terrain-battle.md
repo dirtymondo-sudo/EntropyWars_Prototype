@@ -1539,3 +1539,24 @@ hole clean through the stone wall — debris everywhere!", then "🎱 Golem slam
 - Proof (real menus, WebGL2, staged with `_ewShotRecApi.place` + a copied spell row):
   /mnt/project-files/playtest-mechanics-20261107/solid-wall-smash/ (before: Haymaker on a Yeti; after: Telekinetic Slam on a
   Juggernaut, column 0-8 intact, no crash line).
+
+## THE BATTLE MAP POLISH, second third (2026-11-10, mondo: "make improvements to all of the battle maps (12x12) ... AAA presentation and polish")
+Share of this thread: dumb, fairy_forest, giza, gobekli, haunted, heaven, hell, hollow_earth, lodge, lookingglass, mars, moon.
+Every board stays a cut of its own room; the room is edited, a `HQ_ARENA_RULES.within` pin holds every size on the spot, then
+`node bake-holes.js <room>` and `node bake-arenas.js prebuilt_<site> [--size 9|10|11]`.
+- THE HOUSE COLUMNS: keep board columns 4..7 clear and flat from end to end (and the middle 4x4). The 12 only needs rows 0, 1,
+  10, 11 there plus the 2x2 nexus, but the 9 / 10 / 11 cut the same spot half a square off and need their own house rows. Every
+  house tile must be level 0, so a board cannot have its spawns on the high ground round a pit.
+- Fair = the same from both ends: (x, y) -> (11-x, 11-y), or a top/bottom mirror.
+- Cover that the lattice reads: a `tree` on a square centre (r 1.3), `gen.solid` rows in a plan gen ({x, z, r: 1.72} one square,
+  {x0, z0, x1, z1, w: 3.4} a run of squares), a `plateau` (1.4..1.75 = level 1), a `ridge` through square centres. Props are
+  not read. Anything forced open erases a `gen.solid`: the plaza disc (plazaR), `gen.open`, a `path` (+ pathGrow), every prop
+  (1.2 m) and NPC spot. Scratch check: put a solid on all 144 squares and raster, the squares that stay rock can hold one.
+- A `dip` takes a POSITIVE h (the code subtracts it). The Moon / Mars "craters" with a negative h are mounds.
+- A plateau square under a `bridge` reads one level too high (Mars: keep stubs off the arch's row).
+- Fairy Forest: 18 trees on square centres (they stood inside walkable squares), two knolls, two fae paths, groves moved off.
+- The Lodge: 8 piers, two galleries (1.4), four bookcase blocks on a bare 144-square floor. plazaR 8.
+- Moon: board on the big crater (now a shallow real bowl), two rim ridges (1.6), six boulders.
+- Mars: board on the canyon floor under the arch between the mesas; two rock walls, two shelves, four stubs (1.6). plazaR 6.
+- D.U.M.B.: the maze between the hall and the bays opened into THE CONCOURSE, four concrete blocks, a 4-square avenue.
+- The Haunted House: the hedge that cut the board in two has a 4-square avenue; a second hedge line answers it south of the plot.
