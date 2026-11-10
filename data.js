@@ -43517,7 +43517,7 @@ const DOOR_HQ = {
                court (three tiers up a built stair on the south face), hall F down to THE SPHINX's court (the loop: causeway ⇄ pyramid ⇄ dig ⇄ Khafre ⇄ sphinx ⇄
                causeway). Dead ends: MENKAURE's court (two tiers up a built stair) off the sphinx's, side room 1 (TRENCH II) off the door's
                court. The doors never see each other (room 1's wall stands on the line). */
-            terrain: { res: 1,
+            terrain: { res: 1, levelM: 3.5,
                 floor: 'desert', cliff: 'bricks_1', path: 'dirt_2',
                 noise: { amp: 0, scale: 20 }, crag: false,
                 features: [
@@ -43553,15 +43553,15 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 33.25, z: 87.5, w: 17.5, d: 7, h: -1.0, sink: true, edge: 0.3 },                                // TRENCH II, sunk
                     /* the stairs pass (2026-10-05): THE CAUSEWAY raised 1.8 m (up a wide flight from the door's court, down a flight to the
                        paws), its west arm north over room 1 to a pier across a 2 m gap and a flight onto the pyramid's tier 1 */
-                    { k: 'plateau', x: 0, z: 64.75, w: 9, d: 31.5, h: 1.8, edge: 0.3 },
-                    { k: 'plateau', x: -21.5, z: 52.5, w: 85, d: 9, h: 1.8, edge: 0.3 },
-                    { k: 'ramp', x0: 0, z0: 91, x1: 0, z1: 80.5, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
-                    { k: 'rail', pts: [[0, 90.6, 0.14], [0, 81.65, 1.66]], model: 'pipe', block: false },                          // its centre handrail
-                    { k: 'ramp', x0: 31.5, z0: 52.5, x1: 21, z1: 52.5, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
-                    { k: 'plateau', x: -59.5, z: 45.5, w: 7, d: 14, h: 1.8, edge: 0.3 },                                            // the west arm
-                    { k: 'plateau', x: -59.5, z: 29.75, w: 7, d: 10.5, h: 1.8, edge: 0.3 },                                         // the pier
-                    { k: 'rail', x0: -59.5, z0: 34.7, x1: -59.5, z1: 38.8, y: 1.8, model: 'pipe', block: false },                      // across the gap
-                    { k: 'ramp', x0: -59.5, z0: 24.5, x1: -59.5, z1: 17.5, w: 7, h0: 1.8, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
+                    { k: 'plateau', x: 0, z: 64.75, w: 7, d: 31.5, h: 3.5, edge: 0.3 },
+                    { k: 'plateau', x: -21.5, z: 52.5, w: 85, d: 7, h: 3.5, edge: 0.3 },
+                    { k: 'ramp', x0: 0, z0: 91, x1: 0, z1: 80.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
+                    { k: 'rail', pts: [[0, 90.6, 0.27], [0, 81.65, 3.23]], model: 'pipe', block: false },                          // its centre handrail
+                    { k: 'ramp', x0: 31.5, z0: 52.5, x1: 21, z1: 52.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
+                    { k: 'plateau', x: -59.5, z: 45.5, w: 7, d: 14, h: 3.5, edge: 0.3 },                                            // the west arm
+                    { k: 'plateau', x: -59.5, z: 29.75, w: 7, d: 10.5, h: 3.5, edge: 0.3 },                                         // the pier
+                    { k: 'rail', x0: -59.5, z0: 34.7, x1: -59.5, z1: 38.8, y: 3.5, model: 'pipe', block: false },                      // across the gap
+                    { k: 'ramp', x0: -59.5, z0: 24.5, x1: -59.5, z1: 17.5, w: 7, h0: 3.5, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
                     { k: 'rail', x0: -62.8, z0: 38.7, x1: -62.8, z1: 49.1, model: 'parapet' }, { k: 'rail', x0: -56.2, z0: 38.7, x1: -56.2, z1: 49.1, model: 'parapet' },
                     { k: 'rail', x0: -56.2, z0: 49.2, x1: -44, z1: 49.2, model: 'parapet' },
                     { k: 'rail', arc: { x: -71.75, z: 33.25, r: 2.2, a0: 180, a1: 360 }, model: 'pipe', block: false },                  // round the obelisks' feet
@@ -43587,8 +43587,8 @@ const DOOR_HQ = {
                     /* THE OPEN PLATEAU's board (the sand in front of the sphinx, the causeway along its west side; 180° twins about (17.5, 77)):
                        four fallen casing blocks of the dressed stone (one square deep, two long, 1.4 m) and two obelisks on one-square ghost
                        blocks (props are not fight squares) */
-                    { k: 'wall', x0: 25.5, z0: 71.75, x1: 29.0, z1: 71.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 6.0, z0: 82.25, x1: 9.5, z1: 82.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },
-                    { k: 'wall', x0: 6.0, z0: 65.75, x1: 9.5, z1: 65.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 25.5, z0: 88.25, x1: 29.0, z1: 88.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 25.5, z0: 71.75, x1: 29.0, z1: 71.75, h: 3.5, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 6.0, z0: 82.25, x1: 9.5, z1: 82.25, h: 3.5, t: 2.8, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 6.0, z0: 65.75, x1: 9.5, z1: 65.75, h: 3.5, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 25.5, z0: 88.25, x1: 29.0, z1: 88.25, h: 3.5, t: 2.8, key: 'bricks_1', rail: false },
                     { k: 'wall', x0: 33.25, z0: 61.25, x1: 33.25, z1: 61.25, h: 5.0, t: 2.4, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 92.75, x1: 1.75, z1: 92.75, h: 5.0, t: 2.4, key: 'bricks_1', ghost: true, rail: false },
                 ],
             },
@@ -61579,6 +61579,15 @@ function hqFieldStrataOn() {
 /* THE TIER RULE (delivery 2's, tested now): the LEVEL a surface at topM stands at over the reference floor refM.
    A rooftop, a bridge deck, a plateau, a gallery slab = a real ledge = a level (the high-ground bonus, the LOS
    step); a hill's shoulder under tierMin = the floor. */
+/* THE FULL LEDGES (2026-11-10, mondo: "there are some maps where it looks like there are raised tiles but they are only half a tile
+   up"): a room whose terrain says `levelM` (3.5 = one big square) counts ONE LEVEL PER `levelM` METRES of rise in place of the battle
+   tile's 1.75 m, so a ledge built a whole square tall is level 1 (as a Build block stands), two squares level 2. tierMin stays 1.2 m:
+   level 1 = 1.2 .. 4.7 m, level 2 = 4.7 .. 8.2 m, level 3 = from 8.2 m (author them 3.5 / 7 / 10.5). Roofs, open-sky tops and the
+   custom boards' wall heights count the same way. null = the room keeps the 1.75 m step. */
+function hqFieldLevelRules(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId], m = r && r.terrain ? +r.terrain.levelM : 0;
+    return (m > 0) ? { ground: Object.assign({}, HQ_FIELD_RULES.ground, { step: m }) } : null;
+}
 function hqFieldTierOf(topM, refM, rules, down) {
     const G = (rules && rules.ground) || HQ_FIELD_RULES.ground;
     const d = (+topM || 0) - (+refM || 0);
@@ -62091,8 +62100,8 @@ function hqFieldRockTopOf(ti, src) {
     return isFinite(hi) ? Math.round(hi * 1000) / 1000 : null;
 }
 /* the roof's level: THE TIER RULE over the window's floor, uncapped (tierMax is the floor's own rule) */
-function hqFieldRoofTier(topM, refM) {
-    const G = HQ_FIELD_RULES.ground, d = (+topM || 0) - (+refM || 0);
+function hqFieldRoofTier(topM, refM, rules) {
+    const G = (rules && rules.ground) || HQ_FIELD_RULES.ground, d = (+topM || 0) - (+refM || 0);
     if (!(d >= G.tierMin)) return 0;
     return Math.max(1, Math.min(HQ_FIELD_ROOF_RULES.levelMax, 1 + Math.floor((d - G.tierMin) / G.step)));
 }
@@ -62144,12 +62153,12 @@ function hqFieldSkyTopOf(ti, c) {
 function hqFieldSkyApply(R) {
     if (!R || !R.cells || !R.terrain || R._skyApplied || !hqFieldSkyOn()) return R;
     R._skyApplied = true;
-    const ref = (R.ref != null) ? R.ref : 0;
+    const ref = (R.ref != null) ? R.ref : 0, skyRules = hqFieldLevelRules(R.room);
     R.cells.forEach(row => row.forEach(c => {
         if (!c || !c.rock) return;
         let top = null; try { top = hqFieldSkyTopOf(R.info, c); } catch (err) { top = null; }
         if (top == null) return;
-        c.sky = true; c.skyTop = top; c.tile = hqFieldRoofTier(top, ref);
+        c.sky = true; c.skyTop = top; c.tile = hqFieldRoofTier(top, ref, skyRules);
     }));
     return R;
 }
@@ -62180,6 +62189,7 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
         }
         cells.push(row);
     }
+    const tierRules = hqFieldLevelRules(ti.roomId);   // THE FULL LEDGES: the room's own metres per level
     if (!isFinite(ref)) ref = 0;
     /* THE FIELD IS THE ROOM (§3.6 / §2 rule 4): the reference is the room's MAIN FLOOR — the median IN top — so a pit in a whole
        room never lifts the rest of it a level; a real ledge under it is one level down */
@@ -62188,13 +62198,13 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const c = cells[y][x];
         if (c.in) {
-            c.tile = hqFieldTierOf(c.top, ref, null, feet); maxIn = Math.max(maxIn, c.tile);
+            c.tile = hqFieldTierOf(c.top, ref, tierRules, feet); maxIn = Math.max(maxIn, c.tile);
             /* THE TWO FLOORS: the deck's level — its own tier, and never under two levels over the ground (the engine's headroom:
                the body under a slab fills the two cells over its floor; the slab hugs the top of its cell) */
-            if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, null, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
+            if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, tierRules, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
         }
         else if (c.hazard) {
-            c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref) : HQ_FIELD_RULES.fluidMin;
+            c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref, tierRules) : HQ_FIELD_RULES.fluidMin;
             /* 🌋 THE LAVA PITS (2026-10-20, Hell's walkways): in a room whose terrain says `pits`, a lava cell under the floor stands at
                its TRUE depth (`pits.levels` under the window's floor, else the sheet's own drop in squares; at most base − 1 — the
                bed's floor), marked `c.pit` (the arena bake's own bookkeeping). Only the depth reaches the fight: a fall into one is the
@@ -62213,7 +62223,7 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const c = cells[y][x]; if (!c.rock || !c.src) continue;
         let rf = null; try { rf = hqFieldRoofOf(ti, c.src); } catch (err) { rf = null; }
-        if (rf) { rf.tile = hqFieldRoofTier(rf.top, ref); c.roof = rf; c.rockTop = rf.top; }
+        if (rf) { rf.tile = hqFieldRoofTier(rf.top, ref, tierRules); c.roof = rf; c.rockTop = rf.top; }
         else { try { c.rockTop = hqFieldRockTopOf(ti, c.src); } catch (err) { c.rockTop = null; } }
     }
     const walls = solid ? hqFieldSolidEdges(ti, cells, W, H) : null;
@@ -62250,7 +62260,7 @@ function hqFieldSolidCell(ti) {
 }
 function hqFieldSolidEdges(ti, cells, W, H) {
     const info = ti.src; if (!info || !info.walls || !info.walls.length) return [];
-    const C = ti.C, G = HQ_FIELD_RULES.ground, pad = 0.15, step = 0.1;
+    const C = ti.C, G = (hqFieldLevelRules(ti.roomId) || HQ_FIELD_RULES).ground, pad = 0.15, step = 0.1;
     const n = Math.max(5, Math.ceil(C * 0.9 / 0.15));   // lines across the edge, ≤ 0.15 m apart (a doorway's gap is never stepped over)
     const floorOf = (c) => c.in ? (+c.top || 0) : (c.hazard && c.sheet != null) ? +c.sheet : null;
     const out = [];
@@ -62848,7 +62858,7 @@ const HQ_ARENA_RULES = {
     picks: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":42,"oz":50,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"020211111111111111111126020211111111111111111411020212121111111111111111020211111111111111111111020211111111111112121111020211111111111111111111020211111111111111111111020212121111111111111111020211111111111111111111020211111111111112121111010411111111111111111111010111111111111111111111","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":42,"oz":50,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"020211111111111111111125020211111111111111111311020212121111111111111111020211111111111111111111020211111111111112121111020211111111111111111111020211111111111111111111020212121111111111111111020211111111111111111111020211111111111112121111010311111111111111111111010111111111111111111111","sq":3.5},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":0,"oz":0,"base":"marble_light","open":1,"keys":["cloud_gap","marble_light","cloud_2"],"cells":"000000001111111100000000000011111111111111110000002121111111111111212100002100000021210000002100111111002111112100111111111111211111111121111111111111211111111121111111111111002111112100111111002100000021210000002100002121111111111111212100000011111111111111110000000000001111111100000000","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","sq":3.5,"pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160404161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
@@ -62929,7 +62939,7 @@ const HQ_ARENA_RULES = {
     picks10: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":20,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010111111121111111111111111111010101010101010101013401010101010101010101010101010101343434010101010101010134343401010101340101010101010101010101010101010101010101010101111101010101010101011121","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":35,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101011111120202010101011111110101010101011111110101010101010111111101010101010111141101010101010101011401010101010101010101040101010101010101010401010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111114021212111111111111110211111111111111111102111111111111121211021111111111111111110211111111111111111102121211111111111111021111111111111111110211111111111112121104111111111111111111","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111113021212111111111111110211111111111111111102111111111111121211021111111111111111110211111111111111111102121211111111111111021111111111111111110211111111111112121103111111111111111111","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":7,"oz":7,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"00111111111111111100111124111111112411111100000011110000001111110012111112001111111111111111111111111111111111111111111111110012111112001111110000001111000000111111241111111124111100111111111111111100","sq":3.5,"pits":"1000000001000000000001110011100010000100000000000000000000000010000100011100111000000000001000000001","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"01010101010101010101010101010101011111010101010101010111110101010101010101010101010101010101242424240101010101012424242401010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101030302011111010101010101020202020201010101010101010111010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101111111111111111111","sq":3.5},
@@ -62968,7 +62978,7 @@ const HQ_ARENA_RULES = {
     picks11: {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010101010101010101013434340101010101010101013434340101010101340101010101010101010101010101010101010101010101010111110101010101010101011121","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101010111110101010101010101011111010101010101010111111101010101010101111111010404010101010111111101010101010101111411010101010101010101140101010101010101010101040101010101010101010104010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111114110212121111111111111111021111111111111111111102111111111111121211110211111111111111111111021111111111111111111102121211111111111111110211111111111111111111021111111111111212111104111111111111111111110111111111111111111111","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111113110212121111111111111111021111111111111111111102111111111111121211110211111111111111111111021111111111111111111102121211111111111111110211111111111111111111021111111111111212111103111111111111111111110111111111111111111111","sq":3.5},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101011616160101010101010101161616160101010101160416161616010101010101010101010101010101010101210101010101010101010121010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010303020111110101010101010102020202020101010101010101010111010101010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101010101111111111111111111111101010101010101010101","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101","sq":3.5},
