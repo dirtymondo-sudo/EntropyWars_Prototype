@@ -3529,6 +3529,12 @@ const ThreePost = (function () {
         if (aa === 'smaa' && !P.mods.smaa) aa = P.mods.fxaa ? 'fxaa' : 'off';
         if (aa === 'fxaa' && !P.mods.fxaa) aa = 'off';
         var ao = (_ssaoPass && _ssaoPass.enabled) ? ((_ssaoMode() === 'n8ao' && P.mods.gtao && cam && cam.isPerspectiveCamera) ? 'gtao' : 'classic') : 'off';
+        /* THE ZERO STRENGTH (2026-11-10, the frame rate plan, fix 1): both AO looks of this chain multiply the frame by
+           mix(1, ao, strength) / 1 - occ * strength, which is exactly 1 at strength 0 (the shipped setup's value), yet the
+           half-size AO pass and its full-size mix still drew every frame. At 0 the set is the one without AO: two passes
+           fewer, the same picture. _ssaoApply writes the strength each frame before this runs, so the slider brings the
+           passes back the frame it moves. The row and the setting stay. Off: window.EW_AO_AT_ZERO = true (live). */
+        if (ao !== 'off' && !(_ssaoPass.aoMat.uniforms.uStrength.value > 0) && !(typeof window !== 'undefined' && window.EW_AO_AT_ZERO)) ao = 'off';
         var bloom = !!(_bloomPass && _bloomPass.enabled && P.mods.bloom), dof = !!(_dofPassH && _dofPassH.enabled);
         var frame = !!((_cinematicPass && _cinematicPass.enabled) || (_retroPass && _retroPass.enabled) || _aeEnabled());
         return { aa: aa, ao: ao, bloom: bloom, dof: dof, frame: frame, cam: ao === 'gtao' ? cam : null,

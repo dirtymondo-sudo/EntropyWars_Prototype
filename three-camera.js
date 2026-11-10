@@ -882,7 +882,7 @@ const ThreeCamera = (function () {
                 _caWant = best;
                 _caCost = Math.min(bestCost, heldCost);
             }
-            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot };
+            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId };   // id: whose pick this is (battle.js THE CLEAN OPEN)
             _caSig = sig;
         }
         /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
