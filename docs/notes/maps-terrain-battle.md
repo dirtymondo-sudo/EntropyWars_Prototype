@@ -816,7 +816,8 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
   to 1.75 / C (0.5 on the Strip; 1 again at deactivate) — the units, their plates / floats / held gun, the Cube, turrets + summons,
   graves + bone piles are body-sized. `ThreeRenderer.bodyScale()` is read by three-vfx-effects.js `unitZBoost` (the torso every bolt /
   beam aims at) and battle.js `_cineSizeK` (the cinematic boom's clamp is in bodies). The true ground's level step (`_fieldGround`
-  elev) is 1.75 m of the room on big squares (a dig / a raise / a flyer's clearance). A walk runs at the body's own pace (per-square
+  elev) WAS 1.75 m of the room on big squares (a dig / a raise / a flyer's clearance); since THE FULL BLOCK (2026-11-10, below) a dig /
+  a raise steps one whole square and only the flyer's clearance (`airElev`) stays 1.75 m. A walk runs at the body's own pace (per-square
   time ÷ the body scale).
 - **The camera** (battle.js `_framingBodyK`): every automatic framing built from "N visible rows" (`computeZoomForVisibleTiles`,
   `_zoomForVisibleTilesAtTilt` — the default / turn / rest zooms, the auto-zoom floor) frames N × 1.75 m of ground, so the units fill the
@@ -1539,3 +1540,20 @@ hole clean through the stone wall — debris everywhere!", then "🎱 Golem slam
 - Proof (real menus, WebGL2, staged with `_ewShotRecApi.place` + a copied spell row):
   /mnt/project-files/playtest-mechanics-20261107/solid-wall-smash/ (before: Haymaker on a Yeti; after: Telekinetic Slam on a
   Juggernaut, column 0-8 intact, no crash line).
+
+## THE FULL BLOCK — Build / dig step a whole square on big squares (2026-11-10, three-renderer.js)
+mondo: "Build only builds half a tile up now, and there are some maps where it looks like there are raised tiles but they are only
+half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build block's top stood 0.496 square over its neighbour.
+- Cause: not a regression of the drape (PR #1071). Since THE BIG SQUARES (10-28) `_fieldGround` halved the strata step on 3.5 m
+  squares (`elev *= 1.75 / C`: "a level is still the room's 1.75 m"), so every dig / raise was half a cube.
+- Fix: `G.elev` = one whole square on every board (raise +1.000, two blocks +2.000, dig −1.000 measured through tileTopY); the
+  strata columns, the deform plan, mounds, skins and liquids all read `G.elev`, so they follow. `G.airElev` keeps the old 1.75 m
+  step for a flyer's clearance only (`_fieldGroundTopAt`'s "in the air over the cell"): bodies did not grow with the squares.
+  Renderer only, no rule changed, both online seats draw it the same. Kill-switch `window.EW_HALF_BLOCK = true` (before a battle).
+- NOT fixed here, the maps' own ledges: a room's natural level is its real height (THE TIER RULE: level 1 from 1.2 m, +1 per 1.75 m),
+  drawn at room scale. Survey of every 12×12 arena (scratch script: hqArenaUpgrade + field.tops vs levels): level 1 stands
+  1.1-2.2 m = 0.32-0.63 of a 3.5 m square on ~30 maps (Giza 28 squares, Revenge 52, Gobekli 30, Technoticlan 28, Saturn 29,
+  Bermuda 26, Moon 23 ...), level 2 ≈ 3 m = 0.86, level 3 ≈ 4-5 m. Making those full squares = doubling the terrain heights in each
+  room (grow-room.js grew the plan only, "every height stayed") + THE TIER RULE at the square's scale so the levels stay the same.
+  Asked mondo (thread "Fix Build raising tiles only half a step").
+
