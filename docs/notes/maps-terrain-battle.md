@@ -1644,6 +1644,12 @@ camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project
   the four scattered pieces that had landed on the board. THE FULL LEDGES: levelM 3.5, every terrace of the room at 3.5 / 7 m (was 1.6 /
   2.4 / 3.0 / 3.6 / 6.2), the adit passage door y 2.4 -> 3.5; walkable squares of the room unchanged, 0 traps. Not walked in exploration
   on screen.
+- **Atlantis** (the temple's pool court, window x -35..7, z -7..35, pinned in HQ_ARENA_RULES.within): the old board had the oracle's
+  pool off centre and its cover on one side. The pool, oracle, rail arc and fish moved 3.5 m north (z 17.5 -> 14) so the pool sits on the
+  board's middle rows; now alike from both spawn rows: a 2 x 3 stone block beside each spawn row, a 5.5 m column on each corner of the
+  pool court, an angel statue (h 3.8) at each end of the west bench wall, braziers off the spawn lane. Two giant clams and the ocean
+  rocks tried first: the clam proc ignores `h`, the rocks drew black, so neither is used. THE FULL LEDGES: levelM 3.5, every 1.2 / 2.4
+  ledge 3.5, every 3.6 ledge 7, oracle plateau 8.4. Not walked in exploration on screen.
 - Batch 2 (same thread): Giza got four date palms (`tree` kind 'palm', r 1.3) at (3,4) (8,7) (9,2) (2,9), heights untouched (the full
   ledges thread owns them). Hollow Earth got the two old trees' twins at (0,3) (2,2); no pin there (its rock stack stands in the
   house columns, so the 9 / 11 cut elsewhere), and `gen.solid` is no use in a `rooms` gen (it grows a rim, not a square).
