@@ -1694,6 +1694,42 @@ camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project
   (3 and 8 x 2 and 9), the road straight up the middle (it wandered over one half) and its east branch south of the board, the room's
   two scatter rows `off` the board. levelM 3.5 (the tiers were 3.5 m already). A `block` prop's rect does NOT make its squares
   solid in the battle raster: a house needs its ghost block.
+- **Camelot** (THE OUTER WARD, pinned at (-14, 0): window x -35..7, z -21..21): the board is THE LISTS now. The 12 x 12 lay across
+  the ward's corner with the stand and the tilt on one half. Now the tilt rail runs down the middle line, a stand on each long side
+  (the south one is new, `front: [0, -1]`), the sword in the stone (h 2.8) on the knoll west of the nexus, a `camping_tent` and an
+  `armour_stand` on each half, a brazier before each spawn corner, all on ghost blocks; the horses stand west of the board; the
+  ward's paths go round the lists; the scatter rows `off` it. No levelM here (the wall walk and the towers get their 6 m from
+  hqCurtainWall / hqCastleTower, off the board).
+- **Bermuda Triangle** (THE ISLAND, same window): levelM 3.5 and the two rock plateaus 1.5 -> 3.5 m (a full ledge each, they were
+  half a square), a `ship_wreck` and a `fighter_jet` sunk in the lagoon off the two long sides (the Triangle's missing craft).
+- **Bohemian Grove** (pinned at (-10.5, -17.5): window x -31.5..10.5, z -38.5..3.5): the board lies between THE MOUND and THE LAKE.
+  It was cut across the stage with the owl's mound on one end. Now: the mound's second lobe fills cols 0..2 on both halves (a stair
+  up from the south, the old one from the north), the lake fills cols 9..11, a jetty out from each half (rows 4 and 7), the stage
+  moved one square north off the board, `gen.open` clears the redwoods off the squares, the creek ends before the board. levelM 3.5
+  (the tiers 2.2 / 2.4 / 2.6 / 3.4 -> 3.5, 6.4 -> 7).
+- **Area 51** (THE FLIGHTLINE, pinned at (0, 10.5): window x -21..21, z -10.5..31.5): the board is RUNWAY 33. The tower, the gantry
+  and the east apron stood on one team's half, the other half was bare dirt. The board moved south across the runway (the nexus on
+  its centre line); the tower's fire escape now climbs its west side and the apron is one square shallower, so both are backdrop.
+  On the middle line the recovered `saucer_lg` (2 x 2) east of the nexus and a `car_truck` west of it; on each half a
+  `military_tank` (west), a `car_truck` (east), a `school_bus` down the west edge, `meshy_sandbags` before each spawn corner (3 and
+  8 x 2 and 9); a cross of asphalt (gate road + taxiway); `gen.open` clears the berms; scatter `off`. levelM 3.5 (deck / gantry /
+  apron 3 -> 3.5, cab 6 -> 7, mast 8 -> 10.5).
+- **Cyberpunk City** (THE GRID, pinned at (0, 0): window x -21..21, z -21..21): the board is THE HOLO-PLAZA (it sat 10.5 m north:
+  one spawn row between buildings, the other on open street, the parked cars drew but blocked nothing). Centred on the projector's
+  mound the four city blocks are the corners, a half-turn twin of each other. The parked cars are cover on ghost blocks (1.6 m):
+  one in each cross-street parking lane (1..2 x 4 and 9..10 x 7, span 6.4), one beside each spawn row (8 x 0, 3 x 11; they stood ON
+  the rows), a `bus_shelter` on each side (3 x 1, 8 x 10). The street scatter rows keep `off` the boulevard's squares. THE SKYWAY
+  deck is still P2's north-east corner (cols 10..11, rows 1..3) and the south-west corner is a plain block: the one thing not
+  alike. No levelM (a generated city: the full ledges thread's call).
+  The loop's traffic still drives over the south spawn row (it drove over the north rows of the old window).
+- **Downtown** (THE COLLAPSE's lot, same window, pinned at (-24.5, -14)): the overpass landing, its stair and the wrecks were all on
+  one team's half. The landing is THE TERRACE now, x -15.75..-5.25, z -21..-7 (four rows alike about the middle line, cols 9..10
+  + half of 8 and 11), a stair up from each half (rows 4 and 7; both start at x -21 so cols 4..7 stay flat for the 9 x 9), the
+  lot's west block is a `bld` plateau on the middle line (3..4 x 5..6; `gen.open` bands took the two generated lots), the rubble
+  mound stays on the middle line, a wrecked or parked car on a 1.6 m ghost block before each spawn corner (3 and 8 x 2 and 9).
+  A `bld` plateau taller than 6 m is a walkable top above level 3: the bake passes it but the LAUNCH's fit (hqArenaUpgrade,
+  topMax) refuses the window and the fight never opens. Check every size headless before shooting:
+  `hqArenaUpgrade(hqArenaSizedId(site, S), { compile: true })` must return true (the thread's fit.js). No levelM.
 - Batch 2 (same thread): Giza got four date palms (`tree` kind 'palm', r 1.3) at (3,4) (8,7) (9,2) (2,9), heights untouched (the full
   ledges thread owns them). Hollow Earth got the two old trees' twins at (0,3) (2,2); no pin there (its rock stack stands in the
   house columns, so the 9 / 11 cut elsewhere), and `gen.solid` is no use in a `rooms` gen (it grows a rim, not a square).
