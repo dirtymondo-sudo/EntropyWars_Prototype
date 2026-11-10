@@ -1541,6 +1541,26 @@ hole clean through the stone wall — debris everywhere!", then "🎱 Golem slam
   /mnt/project-files/playtest-mechanics-20261107/solid-wall-smash/ (before: Haymaker on a Yeti; after: Telekinetic Slam on a
   Juggernaut, column 0-8 intact, no crash line).
 
+## THE BATTLE MAP POLISH, second third (2026-11-10, mondo: "make improvements to all of the battle maps (12x12) ... AAA presentation and polish")
+Share of this thread: dumb, fairy_forest, giza, gobekli, haunted, heaven, hell, hollow_earth, lodge, lookingglass, mars, moon.
+Every board stays a cut of its own room; the room is edited, a `HQ_ARENA_RULES.within` pin holds every size on the spot, then
+`node bake-holes.js <room>` and `node bake-arenas.js prebuilt_<site> [--size 9|10|11]`.
+- THE HOUSE COLUMNS: keep board columns 4..7 clear and flat from end to end (and the middle 4x4). The 12 only needs rows 0, 1,
+  10, 11 there plus the 2x2 nexus, but the 9 / 10 / 11 cut the same spot half a square off and need their own house rows. Every
+  house tile must be level 0, so a board cannot have its spawns on the high ground round a pit.
+- Fair = the same from both ends: (x, y) -> (11-x, 11-y), or a top/bottom mirror.
+- Cover that the lattice reads: a `tree` on a square centre (r 1.3), `gen.solid` rows in a plan gen ({x, z, r: 1.72} one square,
+  {x0, z0, x1, z1, w: 3.4} a run of squares), a `plateau` (1.4..1.75 = level 1), a `ridge` through square centres. Props are
+  not read. Anything forced open erases a `gen.solid`: the plaza disc (plazaR), `gen.open`, a `path` (+ pathGrow), every prop
+  (1.2 m) and NPC spot. Scratch check: put a solid on all 144 squares and raster, the squares that stay rock can hold one.
+- A `dip` takes a POSITIVE h (the code subtracts it). The Moon / Mars "craters" with a negative h are mounds.
+- A plateau square under a `bridge` reads one level too high (Mars: keep stubs off the arch's row).
+- Fairy Forest: 18 trees on square centres (they stood inside walkable squares), two knolls, two fae paths, groves moved off.
+- The Lodge: 8 piers, two galleries (1.4), four bookcase blocks on a bare 144-square floor. plazaR 8.
+- Moon: board on the big crater (now a shallow real bowl), two rim ridges (1.6), six boulders.
+- Mars: board on the canyon floor under the arch between the mesas; two rock walls, two shelves, four stubs (1.6). plazaR 6.
+- D.U.M.B.: the maze between the hall and the bays opened into THE CONCOURSE, four concrete blocks, a 4-square avenue.
+- The Haunted House: the hedge that cut the board in two has a 4-square avenue; a second hedge line answers it south of the plot.
 ## THE FULL BLOCK — Build / dig step a whole square on big squares (2026-11-10, three-renderer.js)
 mondo: "Build only builds half a tile up now, and there are some maps where it looks like there are raised tiles but they are only
 half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build block's top stood 0.496 square over its neighbour.
@@ -1619,3 +1639,62 @@ camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project
   pool court, an angel statue (h 3.8) at each end of the west bench wall, braziers off the spawn lane. Two giant clams and the ocean
   rocks tried first: the clam proc ignores `h`, the rocks drew black, so neither is used. THE FULL LEDGES: levelM 3.5, every 1.2 / 2.4
   ledge 3.5, every 3.6 ledge 7, oracle plateau 8.4. Not walked in exploration on screen.
+- Batch 2 (same thread): Giza got four date palms (`tree` kind 'palm', r 1.3) at (3,4) (8,7) (9,2) (2,9), heights untouched (the full
+  ledges thread owns them). Hollow Earth got the two old trees' twins at (0,3) (2,2); no pin there (its rock stack stands in the
+  house columns, so the 9 / 11 cut elsewhere), and `gen.solid` is no use in a `rooms` gen (it grows a rim, not a square).
+  Hell, Heaven, Göbekli Tepe: already the same from both ends, left alone. Looking-Glass: the pieces are HQ_LG_CHESS, his three
+  chess positions, left alone.
+
+## THE BOARD IS THE PLACE — nine arenas re-laid for PvP (2026-11-10, data.js + bake-arenas.js)
+mondo: "make improvements to all of the battle maps (12x12) ... replacing a terrain texture, redesigning the layout, making the map look
+more realistic, replacing or adding better props, removing props. Anything to make the maps look better or be better for PvP combat."
+This thread's share (the last third by site id): northpole, olympus, revenge, saturn, shasta, singularity, skinwalker, stadium,
+stonehenge, strip, technoticlan, vatican.
+- **The problem**: most of these 12 x 12s were a window the bake found in a room built for walking: cover on one team's side only, a
+  stair or a ramp in an end zone, props that drew on the board but blocked nothing, or a bare field.
+- **The pattern** (Olympus / Göbekli's): the board is one named place of the room, `HQ_ARENA_RULES.within[site]` pins the window on
+  it, and every piece of cover is laid on the 3.5 m squares so row r and row 11 - r hold the same thing. A prop that must block
+  stands on a hidden block: `{ k: 'wall', ..., ghost: true, rail: false }` (never drawn) + the prop row with `floor: true`.
+  Ghost heights in these rooms (1.75 m levels): 1.3-2.9 = level 1, 4.2 = level 2, 5-6 = level 3, never over 6 (a walkable top
+  above level 3 fails the walled fit). The spawn apron (cols 3..8, rows 0..1 and 10..11) and the house stay bare.
+- **bake-arenas.js**: a within row may name `sizes: [12, 10]` (the place holds only for those sizes; the others search the site as
+  ever) and `rs: { 12: 2.6 }` (a size's own radius). An odd size cannot sit centred on a board laid for the 12.
+- **gen.open** (rooms / city plans): `open: [{ x, z, r }]` discs or `{ x0, z0, x1, z1, w }` bands clear the plan's own trees and
+  banks off the board (Shasta, Skinwalker, Saturn, Singularity). A thin band (w 3.5) did not clear; one wide band or a disc does.
+- **Stonehenge** — THE CIRCLE IS THE BOARD: the brick-wall "sarsens" are 16 real `sarsen` stones on the ring, four `trilithon`
+  arms round the nexus, the great trilithon on the west side (h 6.0, the tape y 7.4), four bluestones. 12 + 10 inside the circle.
+- **Football Stadium** — THE PITCH IS THE BOARD: centred on the Δ logo; two ambulances, eight crates, four flood masts along the
+  sidelines (centre cover broke the smaller sizes). Every size.
+- **Vatican City** — THE NAVE IS THE BOARD: 16 pews in four blocks either side of the carpet, the eight nave columns as tall blocks,
+  the candle rings and the confessionals off the squares. Every size.
+- **The Strip** — THE PLAZA IS THE BOARD: the one fountain in the nexus is two basins either side, two parked cars, two bus
+  shelters, two carts, two palms. The plaza's `open` r 11 and the path w 21 stay (wider erased the storefront lots). 12 + 10.
+- **Technoticlan** — THE COURT IS THE BOARD: the ball court turned north-south (walls = columns 3 and 8, rows 3..8), a team in each
+  end zone, THE STAND the west column with a stair up each end off the board (the gallery and its stair stood on one side only),
+  idols, braziers on the walls' ends and by the altar, skull racks. The 12 pinned (rs), the others within 10 m.
+- **Mount Shasta** — THE MEADOW IS THE BOARD: the meadow cleared (gen.open band), the creek straight down column 1 with the plank
+  on the centre line, six pines, six boulders (`cave_stone` h 2.6), four logs, two snags. 12 + 10.
+- **Skinwalker Ranch** — THE CIRCLE IS THE BOARD: the big crop circle moved half a square to (-7, 7) and is the board; the mesa's
+  ramp moved to its west face (it stood on a spawn), the windbreak trees and a trailer moved off; dead trees, cows, a wreck, the
+  ranch truck, logs. 12 + 10.
+- **Saturn** — THE HEXAGON IS THE BOARD: x -21..21, z -38.5..3.5, a team under the north wall and one in the open south face. The
+  eye's bowl 1.6 → 0.6 m (a 1.6 m bowl under the nexus put both teams a level above it: no fit), the shelf's stair moved outside
+  the north-west wall, the slanted walls a one-level step across the four corners (ghost blocks fill the squares a wall only
+  clips), asteroids, crystals, the lander, the pod, the dish. The 12 only.
+- **Singularity** — THE ORBIT IS THE BOARD: the plaza on the drop's south lip; ten drawn obsidian blocks (the room's cliff sheet) in
+  four arcs round the nexus + a tall pair on each flank, crystals, two stones; the way down into the drop starts at the board's
+  north edge. 12 + 10.
+- **Proof**: scratch `shots.js` (a copy of playtest_maps.js: REPO = which checkout serves the scripts, POSES top/iso, loads at
+  320 x 200 until `_ewAssetLedger.pending()` is 0, then 1280 x 800). Before / after sheets: /mnt/project-files/battle-maps-last-third/.
+- **Left**: the odd sizes (9, 11) of Stonehenge, Strip, Shasta, Skinwalker, Saturn, Singularity are still found windows off the
+  board. No ledge heights changed (THE FULL LEDGES thread switches these rooms after this merge, ghost levels as listed above).
+
+## THE BOARD IS THE PLACE, part 2 — North Pole, Mount Olympus, Flying Dutchman (2026-11-10, data.js)
+The three maps of the last third that already had a laid board got cover only (same thread, same ask). Every size re-cut and fits.
+- **North Pole** — THE TREE LOT: the workshop's stair stood in the board's north-west corner (levels 1, 1, 2, 2) with nothing
+  opposite. The south-east corner now holds the same steps turned round: two big presents (`xmas_gift` h 1.3 / 1.4) and four
+  decorated trees (`xmas_tree` h 4.6) on ghost blocks 1.3 / 4.2. The bench moved off the squares.
+- **Mount Olympus** — THE FIRES AND THE WATCHERS: four braziers inside the colonnades at (3,4) (8,4) (3,7) (8,7) (ghost 1.3) and
+  four `angel_statue` outside them at (0,3) (0,8) (11,3) (11,8) (ghost 2.8).
+- **Flying Dutchman** — THE CARGO: four crate stacks (`psx_wooden_crate_1..4` h 1.7, ghost 1.7) at (2,4) (2,7) (9,4) (9,7); a chest
+  or a skull pile on each of the four hatch covers (decor, y 1.25).
