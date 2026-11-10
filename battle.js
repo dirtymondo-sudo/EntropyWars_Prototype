@@ -39981,7 +39981,11 @@
                     /* THE GORE: the spray flies away from the attacker; a kill pumps
                        from the dying body's own neck (primitives only: the relay) */
                     const _bloodSrc = (sourceUnit && sourceUnit.id !== target.id) ? sourceUnit : null;
-                    _vfxBlood(target.x, target.y, _bloodTier, {
+                    /* THE BLOOD WHERE THE HIT LANDS (2026-11-10, mondo: Infernal Hurl's "blood splatter was on the tile
+                       they were originally on, not the tile they got thrown to"): a throw pays its damage on the impact
+                       frame, one line before the body's tile changes, so the caller names the landing (opts.bloodAt) */
+                    const _bloodAt = (opts.bloodAt && Number.isFinite(opts.bloodAt.x) && Number.isFinite(opts.bloodAt.y)) ? opts.bloodAt : target;
+                    _vfxBlood(_bloodAt.x, _bloodAt.y, _bloodTier, {
                         damage: finalDamage,
                         hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0,
                         fromX: _bloodSrc ? _bloodSrc.x : null,
@@ -39990,7 +39994,8 @@
                     });
                 } else if (target.hp <= 0) {
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
-                    _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
+                    const _bloodAt2 = (opts.bloodAt && Number.isFinite(opts.bloodAt.x) && Number.isFinite(opts.bloodAt.y)) ? opts.bloodAt : target;
+                    _vfxBlood(_bloodAt2.x, _bloodAt2.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
                 if (sourceUnit && typeNote && !(_sink && _sink.hits > 1)) {
                     const dlg = [];
@@ -85012,7 +85017,8 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true,   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                bloodAt: { x, y }   // THE BLOOD WHERE THE HIT LANDS: the body is on the landing tile
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -85058,7 +85064,8 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true,   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                bloodAt: { x, y }   // THE BLOOD WHERE THE HIT LANDS: the body is on the landing tile
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
