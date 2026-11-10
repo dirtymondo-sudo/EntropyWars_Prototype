@@ -1650,6 +1650,33 @@ camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project
   pool court, an angel statue (h 3.8) at each end of the west bench wall, braziers off the spawn lane. Two giant clams and the ocean
   rocks tried first: the clam proc ignores `h`, the rocks drew black, so neither is used. THE FULL LEDGES: levelM 3.5, every 1.2 / 2.4
   ledge 3.5, every 3.6 ledge 7, oracle plateau 8.4. Not walked in exploration on screen.
+- **Reach rule found on Antarctica**: the bake's reach treats every cover square as a wall, so a ring of cover seals a pocket and
+  the pocket counts as solid (tents at 3 x 4 / 3 x 7 + a container at 2 x 5..6 sealed nine squares a side; the 9 x 9 then failed
+  the cap). Leave a one-square way into every flank yard. The 9 x 9's egress rows land on rows 4 and 7 of cols 4..7: nothing there.
+- **Antarctica** (THE STATION YARD, same window): was two ridges, two containers and two 1.3 m pods. Now a camp, alike from both
+  spawn rows: a 3.5 m pressure ridge on each flank of each end (0..2 and 9..11 x 3 and 8), a container on each flank of the middle
+  (1 and 10 x 5..6), four `camping_tent` round the house (3 and 8 x 4 and 7), a sleeper pod h 2.6 before each spawn corner (3 and 8 x
+  2 and 9), a `dish` h 4.4 behind each container (0 x 5, 11 x 6), a flood mast off all four corners. THE FULL LEDGES: levelM 3.5;
+  deck / walkways / drill rig / east ridge 2.4 / 2.2 -> 3.5, mast plinth / hull / ice shelf 3.2 / 3.0 / 4.0 -> 7, ice wall 6 -> 10.5,
+  the collar door (links, antarctica_derelict) y 3 -> 7. Walkable squares of the room unchanged, 0 traps.
+- **Spaceship** (derelict, THE DECK, same window): the crate blocks drew black (`gunmetal`) and stood 1.25 m. hqDeckPlan now
+  `crateH: 3.5, crateKey: 'urban:MetalCorrugatedPainted1a', rise: 3.5` (bridge and engine housing 6.7 m, their flights, props, npc,
+  the hull's window band and stern light lifted with them), levelM 3.5. New cover: a torn `hullplate` h 4.5 beside each breach
+  (8 x 4, 8 x 7) and an `escapepod` at 0 x 5 and 0 x 6, on ghost blocks. Walkable squares unchanged.
+- **CERN** (THE DETECTOR HALL, pinned at (73.5, 0): window x 52.5..94.5, z -21..21): the old 12 x 12 was cut off-centre across the
+  hall's west wall, the catwalks hung over a spawn row, and the gantry, the long stair and the beam dump stood on one team's side.
+  Re-laid alike from both spawn rows: the catwalks one square wide on the walls (off the board), a flight up to them along the west
+  wall from each side of the middle (col 0), a 3 x 3 gantry in each east corner (8..10 x 1..3 and 8..10) with a two-square flight to
+  the middle (col 9), THE BEAM DUMP (7 m, 2 x 2: 2..3 x 5..6) west of the nexus, THE BEAM (the orb) east of it on the middle line, a
+  `meshy_tesla_coil` h 4 at 3 x 2 and 3 x 9, the skate pipe as one run 3.5 m up across each half, a bulb over each quarter. The
+  landing in the south-west corner is now the south catwalk's west end. levelM 3.5 (catwalks / gantries 3.2 -> 3.5; the control
+  room's 1.2 m floor left as it was).
+- **Tower of Babel** (THE OPEN TOWN's square, same window): the four brick cubes are four `babel_house_small` (the model is 3.54 m
+  tall at span 7, so its roof IS the level-1 top of a hidden 2 x 2 block), the two low stacks are a 2 x 2 stack of fired bricks
+  (3.5 m) on each flank of the middle, four date palms round the nexus (3 and 8 x 4 and 7), a brazier h 2.2 before each spawn corner
+  (3 and 8 x 2 and 9), the road straight up the middle (it wandered over one half) and its east branch south of the board, the room's
+  two scatter rows `off` the board. levelM 3.5 (the tiers were 3.5 m already). A `block` prop's rect does NOT make its squares
+  solid in the battle raster: a house needs its ghost block.
 - Batch 2 (same thread): Giza got four date palms (`tree` kind 'palm', r 1.3) at (3,4) (8,7) (9,2) (2,9), heights untouched (the full
   ledges thread owns them). Hollow Earth got the two old trees' twins at (0,3) (2,2); no pin there (its rock stack stands in the
   house columns, so the 9 / 11 cut elsewhere), and `gen.solid` is no use in a `rooms` gen (it grows a rim, not a square).
