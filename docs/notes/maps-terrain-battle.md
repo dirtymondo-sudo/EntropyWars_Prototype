@@ -816,7 +816,8 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
   to 1.75 / C (0.5 on the Strip; 1 again at deactivate) — the units, their plates / floats / held gun, the Cube, turrets + summons,
   graves + bone piles are body-sized. `ThreeRenderer.bodyScale()` is read by three-vfx-effects.js `unitZBoost` (the torso every bolt /
   beam aims at) and battle.js `_cineSizeK` (the cinematic boom's clamp is in bodies). The true ground's level step (`_fieldGround`
-  elev) is 1.75 m of the room on big squares (a dig / a raise / a flyer's clearance). A walk runs at the body's own pace (per-square
+  elev) WAS 1.75 m of the room on big squares (a dig / a raise / a flyer's clearance); since THE FULL BLOCK (2026-11-10, below) a dig /
+  a raise steps one whole square and only the flyer's clearance (`airElev`) stays 1.75 m. A walk runs at the body's own pace (per-square
   time ÷ the body scale).
 - **The camera** (battle.js `_framingBodyK`): every automatic framing built from "N visible rows" (`computeZoomForVisibleTiles`,
   `_zoomForVisibleTilesAtTilt` — the default / turn / rest zooms, the auto-zoom floor) frames N × 1.75 m of ground, so the units fill the
@@ -1560,3 +1561,50 @@ Every board stays a cut of its own room; the room is edited, a `HQ_ARENA_RULES.w
 - Mars: board on the canyon floor under the arch between the mesas; two rock walls, two shelves, four stubs (1.6). plazaR 6.
 - D.U.M.B.: the maze between the hall and the bays opened into THE CONCOURSE, four concrete blocks, a 4-square avenue.
 - The Haunted House: the hedge that cut the board in two has a 4-square avenue; a second hedge line answers it south of the plot.
+## THE FULL BLOCK — Build / dig step a whole square on big squares (2026-11-10, three-renderer.js)
+mondo: "Build only builds half a tile up now, and there are some maps where it looks like there are raised tiles but they are only
+half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build block's top stood 0.496 square over its neighbour.
+- Cause: not a regression of the drape (PR #1071). Since THE BIG SQUARES (10-28) `_fieldGround` halved the strata step on 3.5 m
+  squares (`elev *= 1.75 / C`: "a level is still the room's 1.75 m"), so every dig / raise was half a cube.
+- Fix: `G.elev` = one whole square on every board (raise +1.000, two blocks +2.000, dig −1.000 measured through tileTopY); the
+  strata columns, the deform plan, mounds, skins and liquids all read `G.elev`, so they follow. `G.airElev` keeps the old 1.75 m
+  step for a flyer's clearance only (`_fieldGroundTopAt`'s "in the air over the cell"): bodies did not grow with the squares.
+  Renderer only, no rule changed, both online seats draw it the same. Kill-switch `window.EW_HALF_BLOCK = true` (before a battle).
+- NOT fixed here, the maps' own ledges: a room's natural level is its real height (THE TIER RULE: level 1 from 1.2 m, +1 per 1.75 m),
+  drawn at room scale. Survey of every 12×12 arena (scratch script: hqArenaUpgrade + field.tops vs levels): level 1 stands
+  1.1-2.2 m = 0.32-0.63 of a 3.5 m square on ~30 maps (Giza 28 squares, Revenge 52, Gobekli 30, Technoticlan 28, Saturn 29,
+  Bermuda 26, Moon 23 ...), level 2 ≈ 3 m = 0.86, level 3 ≈ 4-5 m. Making those full squares = doubling the terrain heights in each
+  room (grow-room.js grew the plan only, "every height stayed") + THE TIER RULE at the square's scale so the levels stay the same.
+  Asked mondo (thread "Fix Build raising tiles only half a step").
+
+## THE FULL LEDGES — a room's own metres per level, ledges a whole square tall (2026-11-10, data.js)
+mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps that need it".
+- **The rule**: `terrain.levelM: 3.5` on a room → `hqFieldLevelRules(roomId)` gives THE TIER RULE a 3.5 m step for that room
+  (hqFieldRasterTerrain's ground / deck / sheet tiers, hqFieldRoofTier for roofs and open-sky tops, hqFieldSolidEdges' wall heights).
+  tierMin stays 1.2 m. Bands: level 1 = 1.2-4.7 m, level 2 = 4.7-8.2 m, level 3 = 8.2 m up. A room without `levelM` is untouched.
+- **Switching a room** (hand work, per room): `levelM: 3.5`, then every visible ledge at 3.5 / 7 / 10.5 m for level 1 / 2 / 3
+  (plateaus, cover-block walls, stair `h0`/`h1`, rail `y` / pts y, decks; ghost walls under props the same, they are invisible so
+  only the level matters; a bridge over walked ground is forced to ground + 2, draw it 7 m up). A terrace edge must sit ON a square
+  line: with a 3.5 m cliff a square holding a strip of the terrace turns unwalkable (Giza's 9 m causeways became 7 m). Stairs keep a
+  run of one square or more (walker slope limit 1.0). Then compare the board (scratch `board.js <map>`: level:height per square) and
+  the whole room lattice (`reach.js <room>`, DATA_FILE=<main copy> for the before) and re-cut the picks at 12 / 9 / 10 / 11.
+- **Giza** (`site_prebuilt_giza_plateau`): causeway terraces + west arm + pier 1.8 → 3.5 m, their stairs, the handrails, the four
+  cover blocks 1.4 → 3.5 m. Board: same squares and levels at all four sizes; the two obelisk tops read level 2 (were 3). Room-wide:
+  the pyramids' 3.5 m steps read 1 / 2 / 3 (were 2 / 3 / 3), walkable squares unchanged, 0 traps. Not looked at in exploration on
+  screen (stairs are twice as steep).
+- **THE WALK RULES OF A FULL-LEDGE ROOM** (same day, second PR): `hqTerrainRulesFor(room)` scales HQ_TERRAIN_RULES `maxSlope`, `cliffFrom`
+  and `cliffTo` by levelM / 1.75 for a `levelM` room (hqTerrainAdopt + hqTerrainCompile). So a twice-as-tall cliff or stair stands
+  exactly where the old one did: a terrace edge NO LONGER has to sit on a square line and a stair keeps its authored run. Giza's
+  causeways are back at their authored 9 m; its obelisk ghosts 5.0 → 8.4 m (level 3 again). Giza's 12 board gains one walkable corner
+  square (11,0); every other size is the original board.
+- **Gobekli** (`site_prebuilt_gobekli_tell`): the pit 1.75 → 3.5 m deep (plateaus, stair h0, pedestals −3.2), 12 corner blocks + 2
+  benches 3.5 m, lesser pillar ghosts 8.4 m, braziers y 3.5. **Hell** (`site_prebuilt_hell_walkways`): the four daises 8.9 → 11 m
+  (floor 7.5). Both: boards cell-for-cell the original at 12 / 9 / 10 / 11, so the picks were NOT re-cut.
+- **Never re-cut the picks when the boards compare identical** (scratch `cmp.js <site…>` with DATA_BEFORE=<old data.js>): a re-bake can
+  move the window (it moved Gobekli's 9×9). Re-cut only when cmp shows changed cells.
+- **Holo Sim** (`facility_holosim`, third PR): every `holo` block a cube (risers 3.5 m, pylons 7 m, terraces 3.5 / 7 / 10.5 / 14 m), gallery
+  + its racks and consoles 10.5 m, emitter orbs y 14, the hall 10.5 → 17.5 m. Board identical, own pick untouched.
+- **Nothing to raise**: Hollow Earth (its level squares are a 0.3 m deck and the real-size `riser_1` prop), Heaven, Lookingglass.
+- **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
+  own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
+
