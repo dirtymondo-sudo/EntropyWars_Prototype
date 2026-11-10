@@ -4396,6 +4396,27 @@ const ThreePost = (function () {
         }
     }
 
+    /* THE RENDER SCALE (2026-11-10, the frame rate plan 2; mondo picked "Plan 2: Render Scale setting"). The 3D picture is
+       drawn at a share of the screen's own resolution and the browser stretches it to the window; the HUD, the menus and
+       every piece of text are DOM and stay at full sharpness. A Retina screen draws 4 pixels for every one of a plain
+       screen, and every screen pass of the post chain pays for each of them, so this is the largest single lever on the
+       GPU: 75 % draws 56 % of the pixels, 67 % draws 45 %, 50 % a quarter. The share is of min(devicePixelRatio, 2), the
+       ratio "Native" always meant. One stored value (ew_pixelRatio, the absolute ratio, as the Pixel Ratio row always
+       wrote it): Fast is still ratio 1 and Native still 100 %. Viewer-local. */
+    var RENDER_SCALES = [0.5, 0.67, 0.75, 0.85, 1];
+    function _nativeRatio() { return Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2); }
+    function setRenderScale(share, persist) {
+        var k = parseFloat(share);
+        if (isNaN(k) || k <= 0) return;
+        setPixelRatio(_nativeRatio() * Math.min(1, k), persist);
+    }
+    function getRenderScale() {
+        var n = _nativeRatio(), r = n;
+        try { r = (_renderer && _renderer.getPixelRatio) ? _renderer.getPixelRatio() : ((typeof window !== 'undefined' && window._ewPixelRatio) || n); } catch (e) {}
+        var el = _renderer && _renderer.domElement;
+        return { ratio: r, native: n, share: r / n, steps: RENDER_SCALES.slice(), w: el ? el.width : 0, h: el ? el.height : 0 };
+    }
+
     function dispose() {
 
         if (_wardLightGroup) {
@@ -4654,6 +4675,8 @@ const ThreePost = (function () {
         isFXAAEnabled: isFXAAEnabled,
         setAA: setAA, getAA: getAA,
         setPixelRatio: setPixelRatio,
+        setRenderScale: setRenderScale,
+        getRenderScale: getRenderScale,
         syncLighting: syncLighting,
         setShadowFrame: setShadowFrame,
         isLightingEasing: isLightingEasing,
