@@ -3608,7 +3608,7 @@ Known leftovers (not the grammar): a knocked-back SECOND body can slide out at t
 (AUTO MOVE / CUT AWAY on Big Kick, Wing Attack, Tsunami); party buffs pop their numbers at the cast, before the party shot.
 
 ### THE SHOT GRAMMAR, pass 2 (2026-11-10, from the after run of all 885 spells)
-Before the grammar 118 of 867 recorded casts were clean, after PR #1094 763 of 868 (per-spell table:
+Before the grammar 120 of 877 recorded casts were clean, after PR #1094 770 of 876, with pass 2 807 of 876 (per-spell table:
 /mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md; the 105 flagged + 30 clean spells re-recorded on pass 2:
 43 of the flagged now clean, 1 of the 30 clean picked up a small guard drift). Pass 2 fixes the shared causes of the leftovers:
 - THE NUMBER WAITS FOR THE LENS (`_shotGNumberWaits` / `_shotGWaitTick`, in `_realShowFloatingTextAtTile_impl` before the
