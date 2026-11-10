@@ -43517,7 +43517,7 @@ const DOOR_HQ = {
                court (three tiers up a built stair on the south face), hall F down to THE SPHINX's court (the loop: causeway ⇄ pyramid ⇄ dig ⇄ Khafre ⇄ sphinx ⇄
                causeway). Dead ends: MENKAURE's court (two tiers up a built stair) off the sphinx's, side room 1 (TRENCH II) off the door's
                court. The doors never see each other (room 1's wall stands on the line). */
-            terrain: { res: 1,
+            terrain: { res: 1, levelM: 3.5,
                 floor: 'desert', cliff: 'bricks_1', path: 'dirt_2',
                 noise: { amp: 0, scale: 20 }, crag: false,
                 features: [
@@ -43553,15 +43553,15 @@ const DOOR_HQ = {
                     { k: 'plateau', x: 33.25, z: 87.5, w: 17.5, d: 7, h: -1.0, sink: true, edge: 0.3 },                                // TRENCH II, sunk
                     /* the stairs pass (2026-10-05): THE CAUSEWAY raised 1.8 m (up a wide flight from the door's court, down a flight to the
                        paws), its west arm north over room 1 to a pier across a 2 m gap and a flight onto the pyramid's tier 1 */
-                    { k: 'plateau', x: 0, z: 64.75, w: 9, d: 31.5, h: 1.8, edge: 0.3 },
-                    { k: 'plateau', x: -21.5, z: 52.5, w: 85, d: 9, h: 1.8, edge: 0.3 },
-                    { k: 'ramp', x0: 0, z0: 91, x1: 0, z1: 80.5, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
-                    { k: 'rail', pts: [[0, 90.6, 0.14], [0, 81.65, 1.66]], model: 'pipe', block: false },                          // its centre handrail
-                    { k: 'ramp', x0: 31.5, z0: 52.5, x1: 21, z1: 52.5, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
-                    { k: 'plateau', x: -59.5, z: 45.5, w: 7, d: 14, h: 1.8, edge: 0.3 },                                            // the west arm
-                    { k: 'plateau', x: -59.5, z: 29.75, w: 7, d: 10.5, h: 1.8, edge: 0.3 },                                         // the pier
-                    { k: 'rail', x0: -59.5, z0: 34.7, x1: -59.5, z1: 38.8, y: 1.8, model: 'pipe', block: false },                      // across the gap
-                    { k: 'ramp', x0: -59.5, z0: 24.5, x1: -59.5, z1: 17.5, w: 7, h0: 1.8, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
+                    { k: 'plateau', x: 0, z: 64.75, w: 7, d: 31.5, h: 3.5, edge: 0.3 },
+                    { k: 'plateau', x: -21.5, z: 52.5, w: 85, d: 7, h: 3.5, edge: 0.3 },
+                    { k: 'ramp', x0: 0, z0: 91, x1: 0, z1: 80.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
+                    { k: 'rail', pts: [[0, 90.6, 0.27], [0, 81.65, 3.23]], model: 'pipe', block: false },                          // its centre handrail
+                    { k: 'ramp', x0: 31.5, z0: 52.5, x1: 21, z1: 52.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
+                    { k: 'plateau', x: -59.5, z: 45.5, w: 7, d: 14, h: 3.5, edge: 0.3 },                                            // the west arm
+                    { k: 'plateau', x: -59.5, z: 29.75, w: 7, d: 10.5, h: 3.5, edge: 0.3 },                                         // the pier
+                    { k: 'rail', x0: -59.5, z0: 34.7, x1: -59.5, z1: 38.8, y: 3.5, model: 'pipe', block: false },                      // across the gap
+                    { k: 'ramp', x0: -59.5, z0: 24.5, x1: -59.5, z1: 17.5, w: 7, h0: 3.5, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'bricks_1' },
                     { k: 'rail', x0: -62.8, z0: 38.7, x1: -62.8, z1: 49.1, model: 'parapet' }, { k: 'rail', x0: -56.2, z0: 38.7, x1: -56.2, z1: 49.1, model: 'parapet' },
                     { k: 'rail', x0: -56.2, z0: 49.2, x1: -44, z1: 49.2, model: 'parapet' },
                     { k: 'rail', arc: { x: -71.75, z: 33.25, r: 2.2, a0: 180, a1: 360 }, model: 'pipe', block: false },                  // round the obelisks' feet
@@ -43587,8 +43587,8 @@ const DOOR_HQ = {
                     /* THE OPEN PLATEAU's board (the sand in front of the sphinx, the causeway along its west side; 180° twins about (17.5, 77)):
                        four fallen casing blocks of the dressed stone (one square deep, two long, 1.4 m) and two obelisks on one-square ghost
                        blocks (props are not fight squares) */
-                    { k: 'wall', x0: 25.5, z0: 71.75, x1: 29.0, z1: 71.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 6.0, z0: 82.25, x1: 9.5, z1: 82.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },
-                    { k: 'wall', x0: 6.0, z0: 65.75, x1: 9.5, z1: 65.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 25.5, z0: 88.25, x1: 29.0, z1: 88.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 25.5, z0: 71.75, x1: 29.0, z1: 71.75, h: 3.5, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 6.0, z0: 82.25, x1: 9.5, z1: 82.25, h: 3.5, t: 2.8, key: 'bricks_1', rail: false },
+                    { k: 'wall', x0: 6.0, z0: 65.75, x1: 9.5, z1: 65.75, h: 3.5, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 25.5, z0: 88.25, x1: 29.0, z1: 88.25, h: 3.5, t: 2.8, key: 'bricks_1', rail: false },
                     { k: 'wall', x0: 33.25, z0: 61.25, x1: 33.25, z1: 61.25, h: 5.0, t: 2.4, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 92.75, x1: 1.75, z1: 92.75, h: 5.0, t: 2.4, key: 'bricks_1', ghost: true, rail: false },
                 ],
             },
@@ -62180,6 +62180,9 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
         }
         cells.push(row);
     }
+    /* THE FULL LEDGES (pilot, 2026-11-10): a room whose terrain says `levelM` counts one level per `levelM` metres of rise (3.5 = one
+       big square a level, as a Build block stands), in place of the battle tile's 1.75 m */
+    const tierRules = (pitRoom && pitRoom.terrain && +pitRoom.terrain.levelM > 0) ? { ground: Object.assign({}, HQ_FIELD_RULES.ground, { step: +pitRoom.terrain.levelM }) } : null;
     if (!isFinite(ref)) ref = 0;
     /* THE FIELD IS THE ROOM (§3.6 / §2 rule 4): the reference is the room's MAIN FLOOR — the median IN top — so a pit in a whole
        room never lifts the rest of it a level; a real ledge under it is one level down */
@@ -62188,10 +62191,10 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const c = cells[y][x];
         if (c.in) {
-            c.tile = hqFieldTierOf(c.top, ref, null, feet); maxIn = Math.max(maxIn, c.tile);
+            c.tile = hqFieldTierOf(c.top, ref, tierRules, feet); maxIn = Math.max(maxIn, c.tile);
             /* THE TWO FLOORS: the deck's level — its own tier, and never under two levels over the ground (the engine's headroom:
                the body under a slab fills the two cells over its floor; the slab hugs the top of its cell) */
-            if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, null, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
+            if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, tierRules, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
         }
         else if (c.hazard) {
             c.tile = (c.sheet != null && c.sheet >= ref) ? hqFieldTierOf(c.sheet, ref) : HQ_FIELD_RULES.fluidMin;
