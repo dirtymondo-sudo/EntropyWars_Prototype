@@ -44890,41 +44890,51 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'marble_light', cliff: 'marble_light', path: 'marble_light',
                 noise: { amp: 0 }, crag: false,
-                res: 0.5,   // the field sampled every quarter metre: the tiers' edges stay on their squares' edges (0.5 m smeared them into a slope)
+                levelM: 3.5, res: 0.5,   // THE FULL LEDGES (2026-11-10): a level per 3.5 m, the dais and the side terraces 3.5 m, the back terrace 7 m, the oracle 8.4 m (level 3 starts at 8.2)   // the field sampled every quarter metre: the tiers' edges stay on their squares' edges (0.5 m smeared them into a slope)
                 features: [
                     /* THE SQUARES (2026-10-26, mondo: "redesign the maps with the square grid in mind"): every tier, flight and rail below sits
                        on THE FIELD's squares (edges at k × 1.75 m from the centre) — the dais 8 × 5 squares, the flights 2 squares wide with
                        both ends on square lines, the oracle a 2 × 2 drum in a 6-square pool (both on the square corner at 0, 8.75) */
-                    { k: 'plateau', x: 0, z: -19.75, w: 28.6, d: 19.1, h: 1.2, edge: 0.2 },                                          // THE DAIS (its back 0.5 m under the terraces)
-                    { k: 'ramp', x0: 0, z0: 3.5, x1: 0, z1: -10.5, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.4 },            // its stair (4 squares long, 2 wide)
-                    { k: 'pool', x: 0, z: 17.5, r: 10.5, y: -0.3, depth: 0.7 },                                                  // THE ORACLE POOL (waded)
-                    { k: 'plateau', x: 0, z: 17.5, r: 4.1, h: 5.5, edge: 0.6 },                                                 // THE ORACLE (the tape) — after the pool: it rises out of it
+                    { k: 'plateau', x: 0, z: -19.75, w: 28.6, d: 19.1, h: 3.5, edge: 0.2 },                                          // THE DAIS (its back 0.5 m under the terraces)
+                    { k: 'ramp', x0: 0, z0: 3.5, x1: 0, z1: -10.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.4 },            // its stair (4 squares long, 2 wide)
+                    { k: 'pool', x: 0, z: 14, r: 10.5, y: -0.3, depth: 0.7 },                                                  // THE ORACLE POOL (waded)
+                    { k: 'plateau', x: 0, z: 14, r: 4.1, h: 8.4, edge: 0.6 },                                                 // THE ORACLE (the tape) — after the pool: it rises out of it
                     { k: 'rail', x0: -13.75, z0: -27.65, x1: -5.25, z1: -27.65 }, { k: 'rail', x0: 5.25, z0: -27.65, x1: 13.75, z1: -27.65 },
                     /* THE TERRACES stepped round the dais: the side terraces (2.4) behind the colonnades, each up a flight from the floor and a
                        flight from the dais; the back terrace (3.6) in two halves over the dais, each up a flight from its side terrace, a 2-square
                        gap between them over the dais's alcove (1.2) with a pipe rail laid across it; parapets on the inner edges */
-                    { k: 'plateau', x: -28.5, z: -21.5, w: 15, d: 29, h: 2.4, edge: 0.2 }, { k: 'plateau', x: 28.5, z: -21.5, w: 15, d: 29, h: 2.4, edge: 0.2 },
-                    { k: 'plateau', x: -12.25, z: -32, w: 18.1, d: 8.6, h: 3.6, edge: 0.1 }, { k: 'plateau', x: 12.25, z: -32, w: 18.1, d: 8.6, h: 3.6, edge: 0.1 },
-                    { k: 'plateau', x: 0, z: -31.5, w: 9, d: 9, h: 1.2, edge: 0.3 },   // the alcove (its sides 0.5 m under the terraces, its front on the dais)
-                    { k: 'ramp', x0: -24.5, z0: 3.5, x1: -24.5, z1: -7, w: 7, h0: 0, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
-                    { k: 'ramp', x0: 24.5, z0: 3.5, x1: 24.5, z1: -7, w: 7, h0: 0, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
-                    { k: 'ramp', x0: -10.5, z0: -17.5, x1: -21, z1: -17.5, w: 7, h0: 1.2, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
-                    { k: 'ramp', x0: 10.5, z0: -17.5, x1: 21, z1: -17.5, w: 7, h0: 1.2, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'plateau', x: -28.5, z: -21.5, w: 15, d: 29, h: 3.5, edge: 0.2 }, { k: 'plateau', x: 28.5, z: -21.5, w: 15, d: 29, h: 3.5, edge: 0.2 },
+                    { k: 'plateau', x: -12.25, z: -32, w: 18.1, d: 8.6, h: 7, edge: 0.1 }, { k: 'plateau', x: 12.25, z: -32, w: 18.1, d: 8.6, h: 7, edge: 0.1 },
+                    { k: 'plateau', x: 0, z: -31.5, w: 9, d: 9, h: 3.5, edge: 0.3 },   // the alcove (its sides 0.5 m under the terraces, its front on the dais)
+                    { k: 'ramp', x0: -24.5, z0: 3.5, x1: -24.5, z1: -7, w: 7, h0: 0, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'ramp', x0: 24.5, z0: 3.5, x1: 24.5, z1: -7, w: 7, h0: 0, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'ramp', x0: -10.5, z0: -17.5, x1: -21, z1: -17.5, w: 7, h0: 3.5, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'ramp', x0: 10.5, z0: -17.5, x1: 21, z1: -17.5, w: 7, h0: 3.5, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
                     /* those four flights' parapets as grinds only (free to step off) */
-                    { k: 'rail', x0: -28, z0: 3.5, x1: -28, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: -21, z0: 3.5, x1: -21, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'rail', x0: 28, z0: 3.5, x1: 28, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: 21, z0: 3.5, x1: 21, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'rail', x0: -10.5, z0: -21, x1: -21, z1: -21, y0: 1.2, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: -10.5, z0: -14, x1: -21, z1: -14, y0: 1.2, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'rail', x0: 10.5, z0: -21, x1: 21, z1: -21, y0: 1.2, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: 10.5, z0: -14, x1: 21, z1: -14, y0: 1.2, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'ramp', x0: -28, z0: -31.5, x1: -21, z1: -31.5, w: 7, h0: 2.4, h1: 3.6, stairs: true, edge: 0.4 },
-                    { k: 'ramp', x0: 28, z0: -31.5, x1: 21, z1: -31.5, w: 7, h0: 2.4, h1: 3.6, stairs: true, edge: 0.4 },
-                    { k: 'rail', x0: -5, z0: -31.5, x1: 5, z1: -31.5, y: 3.6, model: 'pipe', block: false },
-                    { k: 'rail', x0: -21, z0: -28, x1: -3.5, z1: -28, y: 3.6, model: 'parapet' }, { k: 'rail', x0: 3.5, z0: -28, x1: 21, z1: -28, y: 3.6, model: 'parapet' },
-                    { k: 'rail', x0: -21.4, z0: -27.6, x1: -21.4, z1: -21, y: 2.4, model: 'parapet' }, { k: 'rail', x0: -21.4, z0: -14, x1: -21.4, z1: -7.75, y: 2.4, model: 'parapet' },
-                    { k: 'rail', x0: 21.4, z0: -27.6, x1: 21.4, z1: -21, y: 2.4, model: 'parapet' }, { k: 'rail', x0: 21.4, z0: -14, x1: 21.4, z1: -7.75, y: 2.4, model: 'parapet' },
+                    { k: 'rail', x0: -28, z0: 3.5, x1: -28, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: -21, z0: 3.5, x1: -21, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'rail', x0: 28, z0: 3.5, x1: 28, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: 21, z0: 3.5, x1: 21, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'rail', x0: -10.5, z0: -21, x1: -21, z1: -21, y0: 3.5, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: -10.5, z0: -14, x1: -21, z1: -14, y0: 3.5, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'rail', x0: 10.5, z0: -21, x1: 21, z1: -21, y0: 3.5, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: 10.5, z0: -14, x1: 21, z1: -14, y0: 3.5, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'ramp', x0: -28, z0: -31.5, x1: -21, z1: -31.5, w: 7, h0: 3.5, h1: 7, stairs: true, edge: 0.4 },
+                    { k: 'ramp', x0: 28, z0: -31.5, x1: 21, z1: -31.5, w: 7, h0: 3.5, h1: 7, stairs: true, edge: 0.4 },
+                    { k: 'rail', x0: -5, z0: -31.5, x1: 5, z1: -31.5, y: 7, model: 'pipe', block: false },
+                    { k: 'rail', x0: -21, z0: -28, x1: -3.5, z1: -28, y: 7, model: 'parapet' }, { k: 'rail', x0: 3.5, z0: -28, x1: 21, z1: -28, y: 7, model: 'parapet' },
+                    { k: 'rail', x0: -21.4, z0: -27.6, x1: -21.4, z1: -21, y: 3.5, model: 'parapet' }, { k: 'rail', x0: -21.4, z0: -14, x1: -21.4, z1: -7.75, y: 3.5, model: 'parapet' },
+                    { k: 'rail', x0: 21.4, z0: -27.6, x1: 21.4, z1: -21, y: 3.5, model: 'parapet' }, { k: 'rail', x0: 21.4, z0: -14, x1: 21.4, z1: -7.75, y: 3.5, model: 'parapet' },
                     /* skate rails: round the oracle pool, down the middle of the dais stair */
-                    { k: 'rail', arc: { x: 0, z: 17.5, r: 11.1, a0: 30, a1: 330 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 14, r: 11.1, a0: 30, a1: 330 }, model: 'pipe', block: false },
                     { k: 'rail', x0: 0, z0: 3.25, x1: 0, z1: -10.5, model: 'pipe', block: false },
-                    { k: 'wall', x0: -24.5, z0: 4, x1: -24.5, z1: 24, h: 0.5, t: 1, key: 'marble_light' },                       // the bench wall (a grind; drawn 1.75 … 12.25)
+                    { k: 'wall', x0: -24.5, z0: 7.5, x1: -24.5, z1: 20.5, h: 0.5, t: 1, key: 'marble_light' },
+                    /* THE BATTLE MAP POLISH (2026-11-10): the board (x -35..7, z -7..35) reads the same from both spawn rows. The oracle and its pool
+                       moved 3.5 m north (z 17.5 -> 14: the pool on rows 3..8, the board's own middle); the two flights at the north spawn row get their
+                       twins at the south one (two marble blocks, a level up: the west one three squares long, the middle one two, clear of the vault
+                       door); two columns of the colonnade stand at the blocks' ends (west of the lane, they stood IN the spawn lane), a statue
+                       beside each, facing the lane. Ghost blocks under every piece (3.5 m = a level, 7 m = two) */
+                    { k: 'wall', x0: -26.25, z0: 26.25, x1: -26.25, z1: 33.25, h: 3.5, t: 3.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -22.75, z0: 26.25, x1: -22.75, z1: 33.25, h: 3.5, t: 3.5, key: 'marble_light', rail: false },
+                    { k: 'wall', x0: -1.75, z0: 26.25, x1: -1.75, z1: 29.75, h: 3.5, t: 3.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 1.75, z0: 26.25, x1: 1.75, z1: 29.75, h: 3.5, t: 3.5, key: 'marble_light', rail: false },
+                    { k: 'wall', x0: -26.25, z0: 5.25, x1: -26.25, z1: 5.25, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -26.25, z0: 22.75, x1: -26.25, z1: 22.75, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+                    { k: 'wall', x0: 26.25, z0: 5.25, x1: 26.25, z1: 5.25, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 26.25, z0: 22.75, x1: 26.25, z1: 22.75, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+                    { k: 'wall', x0: -22.75, z0: 8.75, x1: -22.75, z1: 8.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: 19.25, x1: -22.75, z1: 19.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false },                       // the bench wall (a grind; drawn 1.75 … 12.25)
                 ],
             },
             doors: [
@@ -44942,24 +44952,25 @@ const DOOR_HQ = {
             props: [
                 /* THE OCEAN PACK (2026-10-27): three fish round the oracle in its pool, their backs AT the −0.29 surface (the pool's water is opaque —
                    the on-screen check), shells on the rim */
-                { key: 'ocean_clownfish', x: 0, z: 17.5, y: -0.85, hover: 0.5, swim: { r: 7.2, v: 0.6, bob: 0.05 } },
-                { key: 'ocean_dory',      x: 0, z: 17.5, y: -0.85, hover: 0.5, swim: { r: 8.8, v: 0.7, bob: 0.05, dir: -1 } },
-                { key: 'ocean_fish_3',    x: 0, z: 17.5, y: -0.85, hover: 0.5, swim: { r: 6, v: 0.5, bob: 0.05 } },
-                { key: 'ocean_conch', x: -10.85, z: 25.2, face: 40 }, { key: 'ocean_starfish', x: 11.8, z: 24.1, face: 10 }, { key: 'ocean_sand_dollar_2', x: 10.15, z: 8.8, face: 70 },
+                { key: 'ocean_clownfish', x: 0, z: 14, y: -0.85, hover: 0.5, swim: { r: 7.2, v: 0.6, bob: 0.05 } },
+                { key: 'ocean_dory',      x: 0, z: 14, y: -0.85, hover: 0.5, swim: { r: 8.8, v: 0.7, bob: 0.05, dir: -1 } },
+                { key: 'ocean_fish_3',    x: 0, z: 14, y: -0.85, hover: 0.5, swim: { r: 6, v: 0.5, bob: 0.05 } },
+                { key: 'ocean_conch', x: -10.85, z: 21.7, face: 40 }, { key: 'ocean_starfish', x: 11.8, z: 20.6, face: 10 }, { key: 'ocean_sand_dollar_2', x: 10.15, z: 5.3, face: 70 },
                 { key: 'royal_throne',    x: 0, z: -22, face: 0 },                                                               // on the dais (the front measured off the mesh)
                 { key: 'brazier',         x: -10.25, z: -13 }, { key: 'brazier', x: 10.25, z: -13 },                                    // the dais's fires
-                { key: 'brazier',         x: -15.75, z: 29.75 }, { key: 'brazier', x: 15.75, z: 29.75 },                        // the pool's
+                { key: 'brazier',         x: -5.25, z: 26.25 }, { key: 'brazier', x: 5.25, z: 26.25 }, { key: 'brazier', x: -5.25, z: 1.75 }, { key: 'brazier', x: 5.25, z: 1.75 },   // the pool's four (the south pair stood on the board's spawn lane)
                 { key: 'crystal_cluster', x: -32, z: -33 }, { key: 'crystal_cluster', x: 32, z: -33 },
                 { key: 'greek_column',    x: -19.25, z: -26.25 }, { key: 'greek_column', x: 19.25, z: -26.25 },                 // the colonnade (each on its square)
                 { key: 'greek_column',    x: -19.25, z: -8.75 }, { key: 'greek_column', x: 19.25, z: -8.75 },
-                { key: 'greek_column',    x: -19.25, z: 8.75 }, { key: 'greek_column', x: 19.25, z: 8.75 },
-                { key: 'greek_column',    x: -19.25, z: 22.75 }, { key: 'greek_column', x: 19.25, z: 22.75 },
+                { key: 'greek_column',    x: -26.25, z: 5.25, h: 5.5, floor: true }, { key: 'greek_column', x: 26.25, z: 5.25, h: 5.5, floor: true },   // THE BATTLE MAP POLISH: the pool's four columns, 5.5 m, a square west / east of the lane
+                { key: 'greek_column',    x: -26.25, z: 22.75, h: 5.5, floor: true }, { key: 'greek_column', x: 26.25, z: 22.75, h: 5.5, floor: true },
+                { key: 'angel_statue', x: -22.75, z: 8.75, h: 3.8, face: 90, floor: true }, { key: 'angel_statue', x: -22.75, z: 19.25, h: 3.8, face: 90, floor: true },
                 { key: 'stained_glass',   wall: 'w', z: -12 }, { key: 'stained_glass', wall: 'w', z: 12 },                          // the windows onto the dark water
                 { key: 'stained_glass',   wall: 'e', z: -16 }, { key: 'stained_glass', wall: 'e', z: 16 },
                 { key: 'holy_tapestry',   wall: 'n', x: 0 },                                                                     // over the dais, between the two seams
                 { key: 'sea_chest',       x: 26.25, z: 15.75, face: 250 },
                 { key: 'skull_pile',      x: -29.75, z: 29.75, face: 40 },
-                { key: 'paper_sheet',     x: 3.75, z: -16, y: 1.21, face: 140 },                                                     // the oracle's last answer, on the dais
+                { key: 'paper_sheet',     x: 3.75, z: -16, y: 3.51, face: 140 },                                                     // the oracle's last answer, on the dais
             ],
             agents: [],
             npcSpots: [
@@ -62844,6 +62855,7 @@ const HQ_ARENA_RULES = {
         prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 2.5 },   // r 6 → 2.5 (2026-11-03): with the ring wall gone a wider window scored the open ledge over the designed board — the 12 × 12 stays on the pit (66.5..108.5), an odd size half a square off
         prebuilt_derelict: { room: 'site_prebuilt_derelict_deck', x: -7, z: 0, r: 3 },   // THE SHIP (2026-10-28): across the wings and the hull, the nexus on the hull, a team on each wing
         prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },
+        prebuilt_atlantis: { room: 'site_prebuilt_atlantis_temple', x: -14, z: 14, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): the board laid west of the oracle pool (the room is alike east and west: an unpinned bake took the east half, where the board's pieces are not)
         prebuilt_antarctica: { room: 'site_prebuilt_antarctica_station', x: 0, z: 31.5, r: 2.6 },   // THE OPEN ICE (2026-11-03): every size on THE STATION YARD
         prebuilt_northpole: { room: 'site_prebuilt_northpole_village', x: -28, z: 14, r: 2.6 },   // THE OPEN VILLAGE (2026-11-03): every size between the workshop and the plaza, the two cottages either side
         prebuilt_giza: { room: 'site_prebuilt_giza_plateau', x: 17.5, z: 77, r: 2.6 },   // THE OPEN PLATEAU (2026-11-03): every size on the sand in front of the sphinx, the causeway along its west side
@@ -62879,7 +62891,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160404161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":7,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101111101111111111111111111111101010101010101010101111101010101010101010101111101010101010101010101111101020111110101010101111101020202020201010101111101010101011101010101111101010101010101010101111101010101010101010101111101010101010111010101111101010101010101010101111101","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102020101010101020201010102020101010101010101010101010101010101010101010101010101010111111111010101010101011111111111010101010101011111040411010101010101011111040411010101010101011111111111010101010101010111111111010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102020101010101020201010102020101010101020201010103010101010111111111010101020101011111111111010101010101011111040411010101010101011111040411010101020101011111111111010103010101010111111111010102020101010101020201010102020101010101020201010102020101010101010101","sq":3.5},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101010111111111030301010101010111111111030301010101010111110101010101010101010111110303010101010101010111110303020201010101010111110101010101010101010111110202030301010101010111110101030301010101011111110101010101010111111111010303010101010111110101010303110101010111110101010101","sq":3.5},
         prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"020201010111110101010101020204010111110101040101010101010111110101010101010104010111110101040101010101010111110101010101010104010111110101040101010104010111110101040101010101010111110101010101010104010111110101040101010101010111110101010101010104010111110101040202010101010111110101010202","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101150101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101150101010101010101010101150101010101010101010101151501010101010101010101151515010101010101010101151515010101010101010101011501010101010101010101010101010101010101151515010101010101010101","sq":3.5},
@@ -62920,7 +62932,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"010101010101010101010101010101011111010101010101011111010101010101010101010101010101242424010101010101242424010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":12,"oz":13,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"020202010101011111010111010101011111010101010101011111010101010101011111010101110101011111010101010101011111010101010101011111111111111111111111010101010101011111","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":11,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010101010101010101010101010101010111010101010101011111010101010101011111010101010101011111010101010101011111010101010101010111010101010101010101010101010101010101","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010202010101010102010202010101010102010301010101011111010102010101111111010101010101111104010101010101111104010102010101111111010301010101011111010202010101010102","sq":3.5},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":33,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101111111010101010101111101010101010101111103010101010101111103010101010101111101010101010101111102010101010101111101010101010111111101010101111111110103","sq":3.5},
         prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"010101111101010101040101111101010401010101111101010101040101111101010401040101111101010401010101111101010101040101111101010401010101111101010101040101111101010402","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":16,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"011401010101010101011401010101010101011401010101010101010101010101010101020101010101010101010101010101010101011401010101010101011401010101010101011414010101010101","sq":3.5},
@@ -62959,7 +62971,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"01010101010101010101010101010101011111010101010101010111110101010101010101010101010101010101242424240101010101012424242401010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101030302011111010101010101020202020201010101010101010111010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101111111111111111111","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010202010101010101010101010101010101010101010101010101111111010101010101111111110101010101011111040401010101010111110404010101010101111111110101010101010111111101010101010101010101","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010202010101010102020103010101010111111101010201010111111111010101010101111104040101010101011111040401010201010111111111010301010101011111110102020101010101020201020201010101010202","sq":3.5},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":32,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"03010101010101111111030101010101011111010101010101010111110301010101010101111103020101010101011111010101010101010111110203010101010101111101030101010101111111010101010111111111010301010101111101010103","sq":3.5},
         prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02040101111101010401010101011111010101010104010111110101040101010101111101010101010401011111010104010104010111110101040101010101111101010101010401011111010104010101010111110101010101040101111101010402","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":16,"oz":12,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010101011501010101010101010115010101010101010101151501010101010101011515150101010101010115151501010101010101011501010101010101010101010101010101011501010101010101010115010101010101010101","sq":3.5},
@@ -62997,7 +63009,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101011616160101010101010101161616160101010101160416161616010101010101010101010101010101010101210101010101010101010121010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010303020111110101010101010102020202020101010101010101010111010101010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101010101111111111111111111111101010101010101010101","sq":3.5},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020201010101010202010102020101010101010101010101010101010101010101010101010101111111010101010101011111111101010101010101111104040101010101010111110404010101010101011111111101010101010101011111110101010101010101010101","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020201010101010202010102020101010101020201010301010101011111110101010201010111111111010101010101011111040401010101010101111104040101010201010111111111010103010101010111111101010202010101010102020101020201010101010202","sq":3.5},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"01010101010101011111110303010101010101111111030301010101010111110101010101010101011111030101010101010101111103020201010101010111110101010101010101011111020303010101010101111101030301010101011111110101010101011111111101030101010101111101010103","sq":3.5},
         prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02010101111101010101010204010111110101040101010101011111010101010101040101111101010401010101010111110101010101010401011111010104010101040101111101010401010101010111110101010101010401011111010104010101010101111101010101010104010111110101040202","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":6,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101020202030101010101010102020202010101010101011502020201010101010101010101020101010101010101010102010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011501010101010101010101","sq":3.5},
