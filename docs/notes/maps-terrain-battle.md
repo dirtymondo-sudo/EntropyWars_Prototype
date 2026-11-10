@@ -1588,3 +1588,28 @@ mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps t
 - **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
   own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
 
+
+## THE BATTLE MAP POLISH, first third (2026-11-10, mondo: "make improvements to all of the battle maps (12x12) ... replacing a terrain texture, redesigning the layout, making the map look more realistic, replacing or adding better props, removing props ... AAA presentation and polish")
+Three threads share the 35 site arenas by site id: this one has agartha, antarctica, area51, atlantis, babel, bermuda, bohemian_grove,
+camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project-files/battle-map-polish/first-third/.
+- **WHAT A BOARD'S MIDDLE CAN HOLD (read before laying any board out)**: all four sizes (12 / 11 / 10 / 9) are cut from the same
+  squares, and each size's house (spawn rows, egress rows, the nexus, and the APRON one square round the spawn rows) must fit. On the 12's
+  grid that leaves: columns 4..7 flat on rows 0..3 and 8..11 and on the nexus rows; columns 3 and 8 at most ONE level on rows 0..3 and
+  7..11 (an apron takes one level); two levels or more only on columns 0..2 and 9..11, or columns 3 / 8 on rows 4..6. A bake that prints
+  "KEEPS ITS OLD PICK" for a size means the layout broke that size's house: fix the layout, never ship the stale pick. Scratch tool
+  that prints the house of every size on the 12 grid: battle-map-polish/first-third/tools/cons.js.
+- **THE CLEAR BOARD**: a scatter row's `off: [x0, z0, x1, z1]` (data.js hqTerrainCompile) drops the pieces that would land in that
+  rectangle; every other piece of the row stays where it stood (the piece is dropped, not re-rolled). Use it for the board's rectangle:
+  a loose stone on a fight square reads as cover and blocks nothing.
+- **THE GREAT CRYSTALS**: `crystal_cluster` reads its row's `h` (three-renderer.js proc; 1.4 m without one). The 1.4 m gem was a speck
+  on a 3.5 m square.
+- **garden_ring**: its stones sat 6 mm over the floor and the floor showed through in patches from a battle camera; 3 cm now.
+- **HQ_AREA_SPECS rows take `levelM`** (hqAreaRoom passes it to the room's terrain).
+- **Agartha** (THE PLAZA, same window x -21..21, z -7..35): the old board had its 12 cover squares on the two edges and nothing in the
+  middle six columns; two 14 m garden rings (hedges units walked through), the fountain, two benches, a riser and two signs stood on
+  fight squares. Now, alike from both spawn rows and both flanks: a gate of two 5.5 m columns before each spawn row, four 4.5 m crystals
+  round the nexus, a 2 m crystal on each flank lane, a 2 x 2 marble dais on the west and east edges with a column at each end. The
+  fountain (and its rail) stands north of the board, the garden rings, benches, riser and signs south of it; nothing was deleted except
+  the four scattered pieces that had landed on the board. THE FULL LEDGES: levelM 3.5, every terrace of the room at 3.5 / 7 m (was 1.6 /
+  2.4 / 3.0 / 3.6 / 6.2), the adit passage door y 2.4 -> 3.5; walkable squares of the room unchanged, 0 traps. Not walked in exploration
+  on screen.
