@@ -1042,7 +1042,7 @@ def bake_checker(seed=361):
 
 
 # ── THE DAMASK (damask): the lodge's wallpaper — a mirrored flower in a half-drop repeat, tone on tone in a deep red, a faint sheen ─
-def bake_damask(seed=371, cols=3, rows=2):
+def bake_damask(seed=371, cols=3, rows=2, lo=0x5a2325, hi=0x86433d, heart=0x6d4a2c):
     yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
     cw, rh = N / cols, N / rows
     def motif(ox, oy):
@@ -1058,8 +1058,8 @@ def bake_damask(seed=371, cols=3, rows=2):
     m = np.clip(a + b, 0, 1)
     m = _blur(np.repeat(m[..., None], 3, -1), 1.2)[..., 0]
     fine = fft_noise(N, 100, 400, seed + 3, 0.0); macro = fft_noise(N, 1, 5, seed + 4, 0.6)
-    rgb = lerp(hexc(0x5a2325), hexc(0x86433d), m * 0.95)   # (a lodge wall stands in shade: a step over the first bake)
-    rgb = lerp(rgb, hexc(0x6d4a2c), np.clip(m - 0.85, 0, 1) * 0.6)                 # the flower's raised heart, a little gold
+    rgb = lerp(hexc(lo), hexc(hi), m * 0.95)   # (a lodge wall stands in shade: a step over the first bake)
+    rgb = lerp(rgb, hexc(heart), np.clip(m - 0.85, 0, 1) * 0.6)                 # the flower's raised heart, a little gold
     rgb *= (1.0 + 0.04 * macro + 0.02 * fine)[..., None]
     return settle(_blur(rgb, 0.5), 0.95, 0.95)
 
@@ -1079,6 +1079,216 @@ def bake_carpet(seed=381):
     return settle(_blur(rgb, 0.45), 0.9, 0.95)
 
 
+# ══ THE ROLLOUT batch 3 (2026-11-11): the rooms' sheets — DOOR HQ's rooms and the zone rooms (his pixel sheets that had no calm twin) ══
+
+# ── THE DUNGEON (dungeon, dungeon_2, dungeon_3, dungeon_4): damp dressed stone in courses, olive-grey, moss and wet in the joints.
+#    His carved faces, grates and skulls are the busy part: the calm sheet is the stone only ──────────────────────────────────────
+def bake_dungeon(seed=441):
+    return bake_blocks(seed, rows=7, wlo=0.2, whi=0.38, a=0x55554a, b=0x737260, joint=0x2e2d24, moss=1.0)
+
+
+# ── THE TILES (tilefloor = 4 x 4 to a square, tilefloor_2 = 8 x 8): glazed ceramic a step under white, grey grout with a little
+#    grime in it, a soft glaze sheen per tile, a faint stain here and there ───────────────────────────────────────────────────────
+def bake_tiles(seed=451, n=4, a=0xa4a5a1, b=0xb2b3ae, grout=0x77756e):
+    ID, ED, u, v, cnt = panel_grid(n, n, seed)
+    tn = per_id(ID, cnt, seed + 1)
+    macro = fft_noise(N, 1, 5, seed + 2, 0.6); fine = fft_noise(N, 100, 400, seed + 3, 0.0)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.3 * tn + 0.25 * macro, 0, 1))
+    rgb *= (0.97 + 0.05 * np.clip(1.0 - (u + v) * 0.5, 0, 1))[..., None]          # the glaze: brighter toward each tile's lit corner
+    rgb *= (1.0 + 0.012 * fine)[..., None]
+    gw = 2.2 if n <= 4 else 1.6
+    jt = np.clip((gw - ED) / 1.2, 0, 1)
+    grime = np.clip(fft_noise(N, 3, 14, seed + 4, 0.6) * 1.5 + 0.5, 0, 1)
+    rgb = lerp(rgb, hexc(grout) * (0.85 + 0.25 * grime)[..., None], jt)
+    rgb *= (1.0 - 0.06 * np.clip((gw + 1.5 - ED) / 1.5, 0, 1) * (1 - jt))[..., None]   # the tile's rounded edge
+    stain = np.clip(fft_noise(N, 2, 10, seed + 5, 0.6) * 2.0 - 0.9, 0, 1)
+    rgb = lerp(rgb, rgb * np.array([0.93, 0.91, 0.86]), stain * 0.5)
+    return settle(_blur(rgb, 0.45), 0.9, 1.0)
+
+
+def bake_tiles_small(seed=461):
+    return bake_tiles(seed, n=8)
+
+
+# ── THE PLASTER (drywall_2, drywall_3, drywall_4): an old cream plaster wall — soft water stains, hairline cracks, and here and there
+#    a patch broken away to the brick under it (his sheets' broken patches, far fewer and quieter) ─────────────────────────────
+def bake_plaster(seed=471):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 30; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 30
+    F1, F2, _ = worley(N, 5, seed + 3, (wx, wy))
+    macro = fft_noise(N, 1, 5, seed + 4, 0.6); mott = fft_noise(N, 8, 30, seed + 5, 0.5); fine = fft_noise(N, 100, 400, seed + 6, 0.0)
+    rgb = lerp(hexc(0xa39a88), hexc(0xb6ad99), np.clip(0.5 + 0.35 * mott + 0.25 * macro, 0, 1))
+    rgb *= (1.0 + 0.02 * fine)[..., None]
+    stain = np.clip(fft_noise(N, 2, 9, seed + 7, 0.6) * 2.0 - 0.8, 0, 1)
+    rgb = lerp(rgb, rgb * np.array([0.9, 0.86, 0.76]), stain * 0.55)
+    crack = np.exp(-((F2 - F1) / 0.01) ** 2) * np.clip(fft_noise(N, 3, 10, seed + 8, 0.5) * 2.6 - 0.9, 0, 1)
+    rgb = lerp(rgb, hexc(0x5e574c), crack * 0.5)
+    # the broken patches: brick in courses, a dark lip where the plaster breaks off, a lit edge on the far side
+    hn = fft_noise(N, 2, 5, seed + 9, 0.6) + 0.18 * fft_noise(N, 20, 60, seed + 10, 0.3)
+    hn = hn / (hn.std() + 1e-9)
+    hole = np.clip((hn - 1.45) * 4.0, 0, 1)                                          # a few big patches broken away to the brick
+    ID, ED, U, RW, n = course_cells(N, 18, N * 0.1, N * 0.17, seed + 11)
+    tn = per_id(ID, n, seed + 12)
+    brick = lerp(hexc(0x8a5640), hexc(0xa0684c), np.clip(0.5 + 0.4 * tn + 0.2 * mott, 0, 1))
+    brick = lerp(brick, hexc(0xa29a8a), np.clip((3.2 - ED) / 1.6, 0, 1))                   # lime mortar between the courses
+    rgb = lerp(rgb, brick, hole)
+    lip = np.clip(np.roll(np.roll(hole, -2, 0), -2, 1) - hole, 0, 1)
+    rgb *= (1.0 - 0.35 * np.clip(hole * (1 - np.roll(np.roll(hole, 2, 0), 2, 1)) * 3, 0, 1))[..., None]
+    rgb = lerp(rgb, rgb * 1.12, lip * 0.6)
+    return settle(_blur(rgb, 0.5), 0.85, 0.9)
+
+
+# ── THE WALLPAPER (wallpaper): an old papered wall — yellowed cream, a faint pinstripe, the paper's own fibre, a little foxing ──────
+def bake_wallpaper(seed=481):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    macro = fft_noise(N, 1, 5, seed + 1, 0.6); fibre = aniso_noise(N, 20, 300, seed + 2, 1.0, 0.08, 0.3); fine = fft_noise(N, 100, 400, seed + 3, 0.0)
+    rgb = lerp(hexc(0xaba084), hexc(0xb9ad8f), np.clip(0.5 + 0.3 * macro + 0.2 * fibre, 0, 1))
+    k = 16
+    ph = (xx / N * k) % 1.0
+    pin = np.exp(-((ph - 0.5) / 0.035) ** 2) + 0.5 * np.exp(-((ph - 0.62) / 0.02) ** 2)
+    rgb = lerp(rgb, hexc(0x978866), np.clip(pin, 0, 1) * 0.35)
+    rgb *= (1.0 + 0.015 * fine)[..., None]
+    fox = np.clip(fft_noise(N, 10, 40, seed + 4, 0.4) * 3.0 - 2.0, 0, 1)
+    rgb = lerp(rgb, hexc(0x7d6a4a), fox * 0.35)
+    return settle(_blur(rgb, 0.4), 0.9, 0.95)
+
+
+# ── THE PATCHWORK CARPET (carpet_2 muted, carpet_3 bright): squares of wool pile six to a square each way (his count), each its own
+#    colour, a dark seam between them; the bright one in his colours with the saturation taken down ───────────────────────────────
+def bake_patchwork(seed=491, cols=(0x4a4a2e, 0x4a3426, 0x3c3f45, 0x645432, 0x3d4829, 0x55352a, 0x4a4036, 0x3a3a30), sat=0.9, n=6):
+    rng = np.random.default_rng(seed)
+    ID, ED, u, v, cnt = panel_grid(n, n, seed)
+    pick = np.zeros(cnt, dtype=int)
+    for i in range(cnt):                                                       # no two neighbours the same colour
+        r, c = divmod(i, n); bad = set()
+        if c > 0: bad.add(pick[i - 1])
+        if r > 0: bad.add(pick[i - n])
+        if c == n - 1: bad.add(pick[i - c])
+        if r == n - 1: bad.add(pick[c])
+        opts = [k for k in range(len(cols)) if k not in bad]
+        pick[i] = opts[rng.integers(0, len(opts))]
+    pal = np.array([hexc(c) for c in cols])
+    rgb = pal[pick][ID]
+    pile = fft_noise(N, 150, 480, seed + 1, 0.0); tuft = fft_noise(N, 40, 140, seed + 2, 0.3); macro = fft_noise(N, 1, 6, seed + 3, 0.6)
+    rgb *= (1.0 + 0.08 * pile + 0.06 * tuft + 0.05 * macro)[..., None]
+    rgb *= (1.0 + 0.05 * per_id(ID, cnt, seed + 4))[..., None]
+    seam = np.clip((2.0 - ED) / 1.5, 0, 1)
+    rgb = lerp(rgb, rgb * 0.55, seam)
+    wear = np.clip(fft_noise(N, 2, 8, seed + 5, 0.6) * 2.0 - 0.8, 0, 1)
+    rgb = lerp(rgb, lum(rgb)[..., None] * np.array([1.0, 0.97, 0.92]) + 0.02, wear * 0.25)
+    return settle(_blur(rgb, 0.45), sat, 0.95)
+
+
+def bake_patchwork_bright(seed=501):
+    return bake_patchwork(seed, cols=(0x7a2a24, 0x2a4470, 0x2c6038, 0x8a7a2c, 0x54386e, 0x8a5226, 0x2a6262, 0x7a6a50), sat=0.72)
+
+
+# ── THE GOLD DAMASK (damask_2): the damask's flower in old gold on a brown ground ───────────────────────────────────────────────
+def bake_damask_gold(seed=511):
+    return bake_damask(seed, lo=0x3e2a18, hi=0x7a5e30, heart=0x8a6c38)
+
+
+# ── THE LEATHER (leather): hides sewn together — each piece its own brown, a pebbled grain and soft creases, dark seams with a
+#    stitched hem beside them, a few brass studs ────────────────────────────────────────────────────────────────────────────────
+def bake_leather(seed=521):
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 25; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 25
+    F1, F2, ID = worley(N, 5, seed + 3, (wx, wy))
+    tn = np.random.default_rng(seed + 4).uniform(-1, 1, 25)[ID] * 1.4
+    pebble = fft_noise(N, 120, 400, seed + 5, 0.0); crease = fft_noise(N, 20, 80, seed + 6, 0.4); macro = fft_noise(N, 1, 5, seed + 7, 0.6)
+    rgb = lerp(hexc(0x452a1a), hexc(0x66402a), np.clip(0.5 + 0.35 * tn + 0.2 * crease + 0.15 * macro, 0, 1))
+    rgb *= (1.0 + 0.05 * pebble)[..., None]
+    rgb *= relief(crease * 2.0, 0.4)[..., None]
+    e = F2 - F1
+    rgb *= (0.9 + 0.1 * np.clip(e / 0.08, 0, 1) ** 0.6)[..., None]               # each piece domes a little toward its middle
+    rgb = lerp(rgb, hexc(0x1e120a), np.exp(-(e / 0.012) ** 2))
+    dash = ((np.sin(xx * 0.5) + np.sin(yy * 0.5)) > 0.0).astype(np.float64)
+    hem = np.exp(-((e - 0.045) / 0.012) ** 2)
+    rgb = lerp(rgb, hexc(0x9a7a52), hem * dash * 0.75)                              # the stitched hem beside each seam
+    img = to_img(rgb).convert('RGBA')
+    img = Image.alpha_composite(img, stones(rng, 40, 6.0, 8.0, [hexc(0x8a7444), hexc(0x7e6a3c)], 245).filter(ImageFilter.GaussianBlur(0.5)))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.45))).astype(np.float64) / 255.0
+    return settle(rgb, 0.9, 0.95)
+
+
+# ── THE CANOPY (forest, forest_2, tree): the wood seen from above — tree crowns built like the cloud heads (crowns on crowns, lit
+#    from the north-west, deep shade down between them), the hedge's leaves for their texture ──────────────────────────────────────
+def bake_canopy(seed=531):
+    crowns = bake_cloud(seed, lit=0x5a7438, mid=0x34492a, shade=0x111a0e)
+    leaf = bake_hedge(seed + 1)
+    tex = lum(leaf); tex = tex / (tex.mean() + 1e-9)
+    rgb = crowns * np.clip(0.55 + 0.45 * tex, 0.4, 1.6)[..., None]
+    return settle(rgb, 0.9, 0.95)
+
+
+# ── THE FOREST FLOOR (dark_woods): the haunted wood's floor — the roots' dark earth going to moss in patches ─────────────────────
+def bake_forestfloor(seed=541):
+    roots = bake_roots(seed)
+    moss = bake_darkgrass(seed + 1)
+    m = np.clip(fft_noise(N, 2, 9, seed + 2, 0.6) * 1.8 + 0.4, 0, 1) * np.clip(0.75 + fft_noise(N, 20, 70, seed + 3, 0.4), 0, 1)
+    rgb = lerp(roots, moss, np.clip(m, 0, 1) * 0.8) * 1.15
+    return settle(rgb, 0.9, 0.95)
+
+
+# ── THE PURPLE GRASS (purple_grass): the Looking Glass meadow — the calm grass, its green turned to a muted violet ─────────────────
+def hue_turn(rgb, deg):
+    """turn the hue by deg (YIQ chroma rotation: luminance kept)"""
+    T = np.array([[0.299, 0.587, 0.114], [0.596, -0.274, -0.322], [0.211, -0.523, 0.312]]); Ti = np.linalg.inv(T)
+    a = np.radians(deg); R = np.array([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    return np.clip(rgb @ (Ti @ R @ T).T, 0, 1)
+
+
+def bake_purplegrass(seed=551):
+    rgb = hue_turn(bake_grass(seed), 165)
+    return settle(rgb * 1.05, 0.95, 1.0)
+
+
+# ── THE PAVING (road): an old road of big irregular flags — grey-beige stones, each its own tone, earth and a little grass in the
+#    joints ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def bake_paving(seed=561, a=0x5f5b52, b=0x767165, joint=0x372f25):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 22; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 22
+    F1, F2, ID = worley(N, 6, seed + 3, (wx, wy))
+    tn = np.random.default_rng(seed + 4).uniform(-1, 1, 36)[ID]
+    mid = fft_noise(N, 6, 30, seed + 5, 0.5); face = fft_noise(N, 16, 70, seed + 6, 0.4); fine = fft_noise(N, 90, 320, seed + 7, 0.1)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.35 * tn + 0.2 * mid + 0.15 * face + 0.1 * fine, 0, 1))
+    rgb *= relief(face * 2.0 + fine * 0.5, 0.5)[..., None]
+    e = F2 - F1
+    rgb *= (0.8 + 0.2 * np.clip(e / 0.14, 0, 1) ** 0.7)[..., None]
+    jt = np.clip((0.05 - e) / 0.025, 0, 1)
+    rgb = lerp(rgb, hexc(joint) * (0.9 + 0.2 * fine)[..., None], jt)
+    g = jt * np.clip(fft_noise(N, 3, 14, seed + 8, 0.6) * 2.4 + 0.2, 0, 1)
+    rgb = lerp(rgb, hexc(0x45532c), np.clip(g, 0, 1) * 0.7)
+    return settle(_blur(rgb, 0.5), 0.85, 0.9)
+
+
+# ── THE RUINS (ruins): fallen masonry on old earth — broken beige blocks and chips half sunk in the trodden ground ─────────────────
+def bake_ruins(seed=571):
+    rng = np.random.default_rng(seed)
+    img = to_img(np.clip(bake_dirt(seed) * 1.25, 0, 1)).convert('RGBA')
+    cols = [hexc(0x9a8e76), hexc(0xa69a82), hexc(0x8c826c), hexc(0xb0a48a)]
+    img = Image.alpha_composite(img, stones(rng, 90, 36, 72, cols, 250).filter(ImageFilter.GaussianBlur(1.0)))
+    img = Image.alpha_composite(img, stones(rng, 260, 12, 26, cols, 240).filter(ImageFilter.GaussianBlur(0.8)))
+    img = Image.alpha_composite(img, stones(rng, 700, 3, 8, cols, 220).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, blades(rng, 2200, 5, 13, [hexc(0x3e4c26), hexc(0x4a5a2e)], 0.4, 1))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.45))).astype(np.float64) / 255.0
+    return settle(rgb, 0.9, 0.9)
+
+
+# ── THE VOID (void): deep space — a near-black navy, faint nebula wisps in blue and wine, a sparse field of dim stars ──────────────
+def bake_void(seed=581):
+    rng = np.random.default_rng(seed)
+    macro = fft_noise(N, 1, 6, seed + 1, 0.8); wisp = fft_noise(N, 3, 20, seed + 2, 0.7); wisp2 = fft_noise(N, 3, 20, seed + 3, 0.7)
+    rgb = lerp(hexc(0x06070d), hexc(0x0d1020), np.clip(0.5 + 0.5 * macro, 0, 1))
+    rgb = lerp(rgb, hexc(0x1c2b55), np.clip(wisp * 1.6 - 0.3, 0, 1) * 0.45)
+    rgb = lerp(rgb, hexc(0x3a1a36), np.clip(wisp2 * 1.6 - 0.5, 0, 1) * 0.35)
+    star = np.zeros((N, N))
+    xs = rng.integers(0, N, 900); ys = rng.integers(0, N, 900); bri = rng.uniform(0.15, 0.6, 900) ** 2
+    star[ys, xs] = bri
+    star = _blur(np.repeat(star[..., None], 3, -1), 0.6)[..., 0] * 3.0
+    rgb = rgb + np.clip(star, 0, 1)[..., None] * np.array([0.85, 0.88, 1.0])
+    return np.clip(rgb, 0, 1)
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else '.'
     only = sys.argv[2].split(',') if len(sys.argv) > 2 else None
@@ -1095,7 +1305,12 @@ def main():
               ('calm_crystal_1', bake_crystal), ('calm_flesh_1', bake_flesh), ('calm_concrete_1', bake_concrete), ('calm_gilt_1', bake_gilt),
               ('calm_flagstone_1', bake_flagstone), ('calm_castle_1', bake_castle), ('calm_checker_1', bake_checker), ('calm_damask_1', bake_damask),
               ('calm_carpet_1', bake_carpet), ('calm_marsdust_1', bake_marsdust), ('calm_sandstone_1', bake_sandstone),
-              ('calm_moonviolet_1', bake_moonviolet), ('calm_marblemint_1', bake_marblemint)]
+              ('calm_moonviolet_1', bake_moonviolet), ('calm_marblemint_1', bake_marblemint),
+              # THE ROLLOUT batch 3 (2026-11-11): the rooms' sheets (DOOR HQ + the zone rooms)
+              ('calm_dungeon_1', bake_dungeon), ('calm_tiles_1', bake_tiles), ('calm_tiles_small_1', bake_tiles_small), ('calm_plaster_1', bake_plaster),
+              ('calm_wallpaper_1', bake_wallpaper), ('calm_patchwork_1', bake_patchwork), ('calm_patchwork_bright_1', bake_patchwork_bright),
+              ('calm_damask_gold_1', bake_damask_gold), ('calm_leather_1', bake_leather), ('calm_canopy_1', bake_canopy), ('calm_forestfloor_1', bake_forestfloor),
+              ('calm_purplegrass_1', bake_purplegrass), ('calm_paving_1', bake_paving), ('calm_ruins_1', bake_ruins), ('calm_void_1', bake_void)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:

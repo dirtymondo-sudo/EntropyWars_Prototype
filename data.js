@@ -63945,6 +63945,22 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_moonviolet: ['calm_moonviolet_1.png', 'moon_3', 'Violet moon dust'],   // the Singularity's floor: his moon_3 wore the room's violet there
         calm_marblemint: ['calm_marblemint_1.png', 'marble_light', 'Mint marble'],   // Agartha's floor: his marble_light wore the crystal city's mint there
         calm_sandstone:  ['calm_sandstone_1.png', 'bricks_1', 'Sandstone flags'],   // Babel's floor: his bricks_1 wore the room's tan there
+        /* THE ROLLOUT batch 3 (2026-11-11): the rooms' sheets — DOOR HQ's rooms and the zone rooms */
+        calm_dungeon:    ['calm_dungeon_1.png', 'dungeon', 'Dungeon stone'],
+        calm_tiles:      ['calm_tiles_1.png', 'tilefloor', 'White tiles'],
+        calm_tiles_small: ['calm_tiles_small_1.png', 'tilefloor_2', 'Small white tiles'],
+        calm_plaster:    ['calm_plaster_1.png', 'drywall_2', 'Old plaster'],
+        calm_wallpaper:  ['calm_wallpaper_1.png', 'wallpaper', 'Old wallpaper'],
+        calm_patchwork:  ['calm_patchwork_1.png', 'carpet_2', 'Patchwork carpet'],
+        calm_patchwork_bright: ['calm_patchwork_bright_1.png', 'carpet_3', 'Bright patchwork'],
+        calm_damask_gold: ['calm_damask_gold_1.png', 'damask_2', 'Gold damask'],
+        calm_leather:    ['calm_leather_1.png', 'leather', 'Sewn leather'],
+        calm_canopy:     ['calm_canopy_1.png', 'forest', 'Tree canopy'],
+        calm_forestfloor: ['calm_forestfloor_1.png', 'dark_woods', 'Forest floor'],
+        calm_purplegrass: ['calm_purplegrass_1.png', 'purple_grass', 'Purple grass'],
+        calm_paving:     ['calm_paving_1.png', 'road', 'Old paving'],
+        calm_ruins:      ['calm_ruins_1.png', 'ruins', 'Ruins rubble'],
+        calm_void:       ['calm_void_1.png', 'void', 'Deep space'],
     },
     of: {
         grass: 'calm_grass', grass_2: 'calm_grass', grass_3: 'calm_grass', grass_4: 'calm_grass',
@@ -63973,6 +63989,16 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         gold: 'calm_gilt', gold_2: 'calm_gilt', gold_3: 'calm_gilt',
         bricks_1: 'calm_flagstone', bricks_2: 'calm_castle', castle_wall: 'calm_castle',
         checkerboard: 'calm_checker', damask: 'calm_damask', carpet_4: 'calm_carpet',
+        /* batch 3: the rooms. His 8 painted DOOR HQ sheets (concrete, drywall, carpet, stone, terrazzo, teal, oxblood, ceiling) are not
+           pixel sheets and stay: a room shell reads them first (_hqTex), so a key below only changes where his PIXEL sheet was drawn */
+        dungeon: 'calm_dungeon', dungeon_2: 'calm_dungeon', dungeon_3: 'calm_dungeon', dungeon_4: 'calm_dungeon',
+        tilefloor: 'calm_tiles', tilefloor_2: 'calm_tiles_small',
+        drywall: 'calm_plaster', drywall_2: 'calm_plaster', drywall_3: 'calm_plaster', drywall_4: 'calm_plaster', drywall_5: 'calm_plaster',
+        wallpaper: 'calm_wallpaper', carpet: 'calm_carpet', carpet_2: 'calm_patchwork', carpet_3: 'calm_patchwork_bright',
+        damask_2: 'calm_damask_gold', damask_3: 'calm_damask', checkerboard_2: 'calm_checker', checkerboard_3: 'calm_checker',
+        leather: 'calm_leather', leather_2: 'calm_leather',
+        forest: 'calm_canopy', forest_2: 'calm_canopy', dark_woods: 'calm_forestfloor', purple_grass: 'calm_purplegrass',
+        road: 'calm_paving', ruins: 'calm_ruins', void: 'calm_void',
     },
     /* a calm sheet wears its own colour (no room floorColor), so where a room's colour made his sheet into another ground, the place
        names the calm sheet that ground is: Mars's tan moon dust, the Singularity's violet-black floor, Babel's sandstone */
@@ -63984,7 +64010,8 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
     sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow', prebuilt_mars: 'mars', prebuilt_singularity: 'singularity', prebuilt_babel: 'babel', prebuilt_agartha: 'agartha' },
     noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1,
               calm_sand: 1, calm_sand_beach: 1, calm_moon: 1, calm_mars: 1, calm_cloud: 1, calm_storm: 1, calm_gravel: 1, calm_roots: 1, calm_rockygrass: 1,
-              calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1, calm_marsdust: 1, calm_moonviolet: 1, calm_marblemint: 1 },
+              calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1, calm_marsdust: 1, calm_moonviolet: 1, calm_marblemint: 1,
+              calm_plaster: 1, calm_leather: 1, calm_canopy: 1, calm_forestfloor: 1, calm_purplegrass: 1, calm_paving: 1, calm_ruins: 1, calm_void: 1 },
 };
 /* the terrain a texture key plays by: a calm sheet picked by name plays as the key it stands in for; every other key is itself */
 function hqRuleKeyOf(k) { const S = (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN) ? CALM_TERRAIN.sheets : null; return (k && S && S[k]) ? S[k][1] : k; }

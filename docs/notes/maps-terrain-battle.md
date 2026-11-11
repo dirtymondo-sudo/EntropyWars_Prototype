@@ -1920,3 +1920,18 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   Area 51 path) and the DOOR HQ texture names (`concrete`, `training_floor`, `holo`…) = batch 3. fog_wall (the hazard) keeps fog.png.
 - Spell ground in this batch: Plaguefield (plague_flesh), Shield Wall (castle_wall), Sacred Geometry (crystal), Poison Swamp
   (poison), Goo Shot / the Blob's trail (swamp).
+
+### BATCH 3 (2026-11-11): the rooms — DOOR HQ's rooms and the zone rooms
+- The survey (/mnt/project-files/calm-rollout-20261111/batch3/survey.md): his PIXEL sheets still worn in rooms with no calm twin.
+  NOT pixel sheets, left as they are: his 8 painted DOOR HQ tileables (concrete, drywall, carpet, stone, terrazzo, teal, oxblood,
+  ceiling — _hqTex reads DOOR_HQ.textures FIRST, so a room shell keeps them even where the same name has a calm twin), the
+  code-drawn holo / holo_red / training_floor, the urban:* pack.
+- 15 sheets (bake-calm-terrain.py batch 3 makers): dungeon stone (dungeon 1-4: the stone only, his carvings / grates / skulls are
+  the busy part), white tiles 4x4 + 8x8 (tilefloor, tilefloor_2), old plaster with a few patches broken to the brick (drywall,
+  drywall_2-5), old wallpaper (wallpaper), patchwork carpet muted + bright (carpet_2, carpet_3; six to a square, no two neighbours
+  alike), gold damask (damask_2; bake_damask takes its colours now, defaults = calm_damask_1 byte-identical), sewn leather (leather,
+  leather_2), tree canopy (forest, forest_2: the cloud heads in greens with the hedge's leaves), forest floor (dark_woods: roots going
+  to moss), purple grass (purple_grass: the calm grass, hue turned), old paving (road), ruins rubble (ruins), deep space (void).
+  Mapped to the existing ones: carpet -> red carpet, damask_3 -> damask, checkerboard_2/3 -> marble checks.
+- Left for batch 4 (the old voxel boards): tree (forest.png under the tree tiles), rubble, rocks_2/4, healing_spring, sanctuary,
+  nexus, igloo, the sky keys.
