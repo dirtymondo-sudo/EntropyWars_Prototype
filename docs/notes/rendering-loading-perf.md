@@ -1641,5 +1641,9 @@ Both fixes change what a pixel COMPUTES, not what it shows; nothing is relayed, 
   `needsUpdate`, or the old program is reused and the comparison measures nothing (it did, once).
 - HOW TO TIME A FRAME HERE: rAF intervals quantise to 16.7 ms and half the rAFs draw nothing; `gl.finish()` returns at
   once in Chrome. Time from the frame's first `renderer.render` to a 1-pixel `readPixels` of the screen instead (+-5 %).
-- NOT DONE, needs mondo's word because the picture changes: on the classic chain AO strength 0 still draws N8AO at
-  intensity 0.5 (`Math.max(0.5, strength * 2.5)`), 7 of the 15 renders. Asked in the thread.
+- **THE ZERO STRENGTH ON THE CLASSIC CHAIN** (2026-11-11, mondo tapped "Turn it off at 0"; three-post.js `_ppAoLive`).
+  The pmndrs chain drew N8AO at intensity 0.5 even at AO strength 0 (`Math.max(0.5, strength * 2.5)`). At strength 0
+  its AO passes (N8AO, or the classic AO + multiply) now rest, as the node chain's do: 15 renders a frame -> 8, the fight
+  frame 376 ms -> 330 ms (12 %, software raster, switch flipped live). The picture loses a faint contact shading. N8AO is
+  not even downloaded until the slider goes above 0. Off, live: `window.EW_AO_AT_ZERO = true` (the node chain's switch).
+  Screens: /mnt/project-files/perf-pvp-demo-20261110/ao_off_at_zero_{old,new}.jpg.
