@@ -2831,8 +2831,37 @@ const ThreeRenderer = (function () {
                 THREE.SpotLight = class extends SL { constructor(color, intensity, distance, angle, penumbra, decay) { super(color, intensity, distance, angle, penumbra, decay === undefined ? 1 : decay); } };
                 THREE.SpotLight._ewLegacyDecay = true;
             }
+            _ewLightReachPatch(SC);
             return true;
         } catch (e) { console.warn('[ThreeRenderer] the legacy light patch failed', e); return false; }
+    }
+    /* THE LIGHT'S REACH (2026-11-10, the PvP demo's frame rate; the classic renderer). Every lit pixel ran the whole light
+       maths (the fall-off, then Lambert / Blinn-Phong / the PBR lobes) for EVERY point and spot light in the scene: a fight
+       has 13 point lights, of which 5 are dark spares at intensity 0 (kept so the shaders never rebuild) and 8 are unit
+       lights that reach 2.5 squares, so nearly every pixel computed 13 lights to add 13 zeros. Now a point light is skipped
+       for a pixel when its colour is black, or when the pixel is past its `distance` (with a decay above 0: exactly where
+       the fall-off above returns 0); a spot light when three's own directLight.visible (colour after fall-off and cone is
+       not black) is false. What is skipped added exactly 0, so the picture is the same (proof: 6 of 921,600 pixels moved by
+       one step of 255, the compiler's rounding). Measured on the Mount Shasta Arena's ground alone, software raster:
+       148 ms a frame -> 115 ms (all point lights hidden: 108 ms). Chunk patch, so it is read ONCE at load: every light on
+       every pixel again with localStorage ew_lightsEveryPixel = '1' (or window.EW_LIGHTS_EVERY_PIXEL = true before the
+       game's scripts), then reload. The node renderer has its own lamp list (WEBGPU_PLAN W9) and is not touched. */
+    function _ewLightReachPatch(SC) {
+        try {
+            var every = false;
+            try { every = (typeof window !== 'undefined' && window.EW_LIGHTS_EVERY_PIXEL === true) || (typeof localStorage !== 'undefined' && localStorage.getItem('ew_lightsEveryPixel') === '1'); } catch (e0) {}
+            var lf = SC.lights_fragment_begin || '';
+            if (every || lf.indexOf('EW_LIGHT_REACH') >= 0) return;
+            var call = 'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );';
+            var parts = lf.split(call);   // in order: the point lights, the spot lights, the sun lights, the directional lights
+            var head = 'pointLight = pointLights[ i ];\n\t\tgetPointLightInfo', decl = 'PointLight pointLight;';
+            if (parts.length !== 5 || parts[0].indexOf(head) < 0 || parts[0].indexOf(decl) < 0 || parts[1].indexOf('getSpotLightInfo') < 0 || (SC.lights_pars_begin || '').indexOf('light.visible = ( light.color != vec3( 0.0 ) );') < 0) {
+                console.warn('[ThreeRenderer] the light reach patch did not find its anchors in three.js ' + THREE.REVISION + ' — every light on every pixel, as before'); return;
+            }
+            var point = parts[0].replace(decl, decl + '\n\tvec3 ewLV;')
+                .replace(head, 'pointLight = pointLights[ i ];\n\t\tewLV = pointLight.position - geometryPosition;\n\t\tif ( pointLight.color != vec3( 0.0 ) && ( pointLight.distance <= 0.0 || pointLight.decay <= 0.0 || dot( ewLV, ewLV ) < pointLight.distance * pointLight.distance ) ) {\n\t\tgetPointLightInfo');
+            SC.lights_fragment_begin = '// EW_LIGHT_REACH\n' + point + call + '\n\t\t}' + parts[1] + 'if ( directLight.visible ) ' + call + parts[2] + call + parts[3] + call + parts[4];
+        } catch (e) { console.warn('[ThreeRenderer] the light reach patch failed', e); }
     }
     _ewLegacyLightPatch();
     /* ══ THE UNIT POP (2026-10-16, mondo: "make the units/characters pop a little more compared to the ground and objects
@@ -44058,7 +44087,7 @@ const ThreeRenderer = (function () {
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
-        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), fflow: F(new THREE.Vector2()), dressed: {} };
+        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
         /* THE ONE FOG (2026-10-12): three keys every lit build on the fog NODE, and a fog node reads one fog object, so each
@@ -44143,7 +44172,7 @@ const ThreeRenderer = (function () {
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
-        U.ftime.value = _fluidTimeUniform.value; U.ftile.value = _fluidTileUniform.value;
+        U.ftime.value = _fluidTimeUniform.value; U.ftile.value = _fluidTileUniform.value; U.triCut.value = _hqTriCutU.value;
         if (_fluidFlowUniform.value) U.fflow.value.copy(_fluidFlowUniform.value);
     }
     /* a node material's diffuse colour × f(), after three's own (colour, map, vertex colour, opacity, alpha test) */
@@ -44229,17 +44258,29 @@ const ThreeRenderer = (function () {
             var wp = T.positionWorld, w = T.abs(T.normalize(T.normalWorldGeometry)).toVar();
             w.assign(w.mul(w).mul(w).mul(w)); w.divAssign(w.x.add(w.y).add(w.z).add(0.0001));
             var uy = wp.xz.div(TM), ux = wp.zy.div(TM), uz = wp.xy.div(TM);
-            var tri = function (t, s) { return T.texture(t, uy.mul(s)).mul(w.y).add(T.texture(t, ux.mul(s)).mul(w.x)).add(T.texture(t, uz.mul(s)).mul(w.z)); };
+            /* THE WEIGHTED SHEETS (see _hqTerrainMat): a read with no weight is skipped; derivatives are made outside the branches */
+            var cut = _ewNodeU.triCut, uyv = T.vec2(uy).toVar(), uxv = T.vec2(ux).toVar(), uzv = T.vec2(uz).toVar();
+            var gyx = T.dFdx(uyv).toVar(), gyy = T.dFdy(uyv).toVar(), gxx = T.dFdx(uxv).toVar(), gxy = T.dFdy(uxv).toVar(), gzx = T.dFdx(uzv).toVar(), gzy = T.dFdy(uzv).toVar();
+            var tri = function (t, s, gate) {
+                var o = T.vec4(0).toVar();
+                var body = function () {
+                    T.If(w.y.greaterThan(cut), function () { o.addAssign(T.texture(t, uyv.mul(s)).grad(gyx.mul(s), gyy.mul(s)).mul(w.y)); });
+                    T.If(w.x.greaterThan(cut), function () { o.addAssign(T.texture(t, uxv.mul(s)).grad(gxx.mul(s), gxy.mul(s)).mul(w.x)); });
+                    T.If(w.z.greaterThan(cut), function () { o.addAssign(T.texture(t, uzv.mul(s)).grad(gzx.mul(s), gzy.mul(s)).mul(w.z)); });
+                };
+                if (gate) T.If(gate.greaterThan(cut), body); else body();
+                return o;
+            };
             var tint = function (v, t) { return t ? v.mul(T.vec4(t.r, t.g, t.b, 1)) : v; };   // THE SHEET LOOKS (2026-10-24)
+            var bl = T.attribute('aBlend', 'vec2');
             var c = tint(tri(map, 1), D.tFloor).toVar();
-            var cliff = tint(tri(D.cliff || map, D.cliffK || 1), D.tCliff), path = tint(tri(D.path || map, 1), D.tPath);
+            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, bl.x), D.tCliff), path = tint(tri(D.path || map, 1, bl.y), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
-                pal.forEach(function (t, i) { pc.addAssign(T.texture(t, uy).mul(W[i])); pw.addAssign(W[i]); });
+                pal.forEach(function (t, i) { T.If(W[i].greaterThan(cut), function () { pc.addAssign(T.texture(t, uyv).grad(gyx, gyy).mul(W[i])); }); pw.addAssign(W[i]); });
                 T.If(pw.greaterThan(0.001), function () { c.assign(T.mix(c, pc.div(pw), T.clamp(pw, 0, 1))); });
             }
-            var bl = T.attribute('aBlend', 'vec2');
             c.assign(T.mix(c, path, bl.y));
             c.assign(T.mix(c, cliff.mul(T.vec4(0.92, 0.92, 0.92, 1)), bl.x));
             c.rgb.mulAssign(T.attribute('aAO', 'float'));
@@ -64622,6 +64663,13 @@ const ThreeRenderer = (function () {
         var L = _hqSheetLook(info), mine = !!(f.side || own);
         return { key: f.side || own || info.cliff, zoom: (f.sideZoom != null) ? _hqZoomOf(f.sideZoom) : (mine ? 1 : L.cliffZoom), tint: (f.sideTint != null) ? _hqTintOf(f.sideTint) : (mine ? null : L.cliff) };
     }
+    /* THE WEIGHTED SHEETS (2026-11-10, the PvP demo's frame rate): the field's shader read all three sheets (floor, cliff, path) on
+       all three world axes, and every painted sheet, for every pixel: 9 to 17 filtered reads (8x anisotropic), though on flat
+       ground only ONE has any weight (the floor from above; the side axes weigh 0, the cliff and path blends are 0). A read whose
+       weight is under 0.0005 (a twentieth of one percent: under an eighth of one colour step) is now skipped. The reads sit in
+       branches, so each takes the mip level from derivatives made OUTSIDE the branch (textureGrad): the same level the plain
+       read picked. Both renderers (the node look: _ewNodeTerrain). Back to every read: window.EW_TERRAIN_ALL_SAMPLES = true (live). */
+    var _hqTriCutU = { get value() { return (typeof window !== 'undefined' && window.EW_TERRAIN_ALL_SAMPLES) ? -1 : 0.0005; }, set value(v) {} };
     function _hqTerrainMat(info, S) {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
@@ -64648,7 +64696,7 @@ const ThreeRenderer = (function () {
                 pf += 'varying vec3 vPaintA;\nvarying vec3 vPaintB;\nvarying vec3 vPaintC;\n';
                 var W = ['vPaintA.x', 'vPaintA.y', 'vPaintA.z', 'vPaintB.x', 'vPaintB.y', 'vPaintB.z', 'vPaintC.x', 'vPaintC.y'];
                 pb = ' float pW = 0.0; vec4 pCol = vec4(0.0);\n';
-                palTex.forEach(function (t, i) { pb += ' pCol += texture2D( tPaint' + i + ', triUy ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
+                palTex.forEach(function (t, i) { pb += ' if ( ' + W[i] + ' > uTriCut ) pCol += textureGrad( tPaint' + i + ', triUy, triGyX, triGyY ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
                 pb += ' if ( pW > 0.001 ) texelColor = mix( texelColor, pCol / pW, clamp( pW, 0.0, 1.0 ) );\n';
             }
             sh.vertexShader = pv + sh.vertexShader;
@@ -64663,11 +64711,12 @@ const ThreeRenderer = (function () {
             sh.vertexShader = 'attribute vec2 aBlend;\nattribute float aAO;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
                 .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = texture2D( tCliff, triUy * uCliffK ) * triW.y + texture2D( tCliff, triUx * uCliffK ) * triW.x + texture2D( tCliff, triUz * uCliffK ) * triW.z;\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = texture2D( tPath, triUy ) * triW.y + texture2D( tPath, triUx ) * triW.x + texture2D( tPath, triUz ) * triW.z;\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+            sh.uniforms.uTriCut = _hqTriCutU;   // THE WEIGHTED SHEETS (below)
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += textureGrad( map, triUy, triGyX, triGyY ) * triW.y; if ( triW.x > uTriCut ) texelColor += textureGrad( map, triUx, triGxX, triGxY ) * triW.x; if ( triW.z > uTriCut ) texelColor += textureGrad( map, triUz, triGzX, triGzY ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n if ( vBlend.x > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += textureGrad( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK ) * triW.y; if ( triW.x > uTriCut ) cliffColor += textureGrad( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK ) * triW.x; if ( triW.z > uTriCut ) cliffColor += textureGrad( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += textureGrad( tPath, triUy, triGyX, triGyY ) * triW.y; if ( triW.x > uTriCut ) pathColor += textureGrad( tPath, triUx, triGxX, triGxY ) * triW.x; if ( triW.z > uTriCut ) pathColor += textureGrad( tPath, triUz, triGzX, triGzY ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri' + (palTex.length ? 'P' + palTex.length : ''); };
+        m.customProgramCacheKey = function () { return 'hqTerrainTri2' + (palTex.length ? 'P' + palTex.length : ''); };
         _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
