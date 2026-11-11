@@ -860,6 +860,7 @@ const ThreeRenderer = (function () {
        SHARED uniform objects, which every highlight material points at (its x-ray twin and the node renderer's twin read
        the same objects), so one write restyles the whole board. Defaults draw every tile exactly as before. Each one is a
        multiplier over the per-type recipe (HL_FILL / HL_EDGE_GLOW), so the tiers keep their order. */
+    var HL_BASE_FRAC = 0.92, HL_SIZE_MAX = 1.12;   // THE TILES TOUCH (see _hlCover)
     var _hlLookU = {
         uLkLine: { value: 1 }, uLkEdge: { value: 1 }, uLkHalo: { value: 1 }, uLkHot: { value: 1 }, uLkFill: { value: 1 },
         uLkBright: { value: 1 }, uLkOp: { value: 1 }, uLkPulse: { value: 1 }, uLkSpeed: { value: 1 }, uLkSize: { value: 1 },
@@ -922,7 +923,7 @@ const ThreeRenderer = (function () {
         for (var k in src) { var hx = _lookHex(src[k]); if (hx !== null) cols[k] = hx; }
         _tileLookC = { line: num(L.line, 0, 4, 1), edge: num(L.edge, 0, 3, 1), halo: num(L.halo, 0, 4, 1), hot: num(L.hot, 0, 3, 1),
             fill: num(L.fill, 0, 3, 1), bright: num(L.bright, 0.2, 2.5, 1), opacity: num(L.opacity, 0.05, 1.5, 1), pulse: num(L.pulse, 0, 8, 1),
-            speed: num(L.speed, 0, 6, 1), size: num(L.size, 0.4, 1.08, 1), round: num(L.round, 0, 0.5, 0), lineCol: _lookHex(L.lineCol), cols: cols };
+            speed: num(L.speed, 0, 6, 1), size: num(L.size, 0.4, HL_SIZE_MAX, 1), round: num(L.round, 0, 0.5, 0), lineCol: _lookHex(L.lineCol), cols: cols };
         _tileLookCV = v;
         return _tileLookC;
     }
@@ -941,11 +942,39 @@ const ThreeRenderer = (function () {
         if (!U.uLkLineCol.value) U.uLkLineCol.value = new THREE.Color(0xffffff);
         U.uLkLine.value = L.line; U.uLkEdge.value = L.edge; U.uLkHalo.value = L.halo; U.uLkHot.value = L.hot; U.uLkFill.value = L.fill;
         U.uLkBright.value = L.bright; U.uLkOp.value = L.opacity; U.uLkPulse.value = L.pulse; U.uLkSpeed.value = L.speed;
-        U.uLkSize.value = L.size; U.uLkRound.value = L.round;
+        U.uLkSize.value = Math.min(1, L.size); U.uLkRound.value = L.round;
         if (L.lineCol !== null) U.uLkLineCol.value.setHex(L.lineCol);
         U.uLkLineOwn.value = L.lineCol !== null ? 1 : 0;
         _hlMatCache.forEach(_hlPaintMat);
         _hlPaint(scene);
+        _hlRefit(scene);
+    }
+    /* THE TILES TOUCH (2026-11-11, mondo: "i cant make the tiles big enough that they touch at the edges. There is always
+       a little gap no matter what i do with the tile highlight and edge settings"). Every highlight plate was a mesh
+       HL_BASE_FRAC (0.92) of its square, and the UI Maker's Size only drew the frame INSIDE that mesh: past 1 it cropped
+       the outline and the 8% gap stayed. Now Size past 1 grows the plate itself: 1 = the game's 92%, 1.08 = the whole
+       square (neighbours touch), up to HL_SIZE_MAX they overlap a little. Under 1 the shader shrinks the frame as before.
+       A plate is BUILT at its cover (the drape samples the ground at the real footprint, so it follows slopes and steps);
+       a plate already on the board when the slider moves is scaled to the new cover (_hlRefit) until its next rebuild.
+       Plates whose own frame is already wider (the cursor 0.98, the acting tile 0.96) never shrink. Small markers
+       (under 0.9 of a square) are not highlight plates and keep their size. */
+    function _hlCover(frac) {
+        if (!(frac >= 0.9)) return frac;
+        var sz = _tileLook().size;
+        return sz > 1 ? Math.max(frac, HL_BASE_FRAC + (sz - 1)) : frac;
+    }
+    /* remember a plate's own frame + the cover it was built at (flat = a laid-down PlaneGeometry: it grows in x / y) */
+    function _hlFit(mesh, frac, built, flat) {
+        if (mesh) mesh.userData.ewHlFit = { f: frac, b: built, p: !!flat };
+        return mesh;
+    }
+    function _hlRefit(root) {
+        if (root) root.traverse(function (o) {
+            var d = o.userData && o.userData.ewHlFit;
+            if (!d) return;
+            var k = _hlCover(d.f) / d.b;
+            if (d.p) o.scale.set(k, k, 1); else o.scale.set(k, 1, k);
+        });
     }
     /* a highlight material in its situation's colour now */
     function _hlPaintMat(m) {
@@ -4062,10 +4091,8 @@ const ThreeRenderer = (function () {
        WATER: a dark, see-through body (the bed shows a little) whose surface normal moves — three octaves of value noise sliding
        at different speeds and directions, in squares (uFluidTile), so a pool and a brook ripple as one sheet — the room's own lights
        give the sun glints off it (Phong, tight highlight), and the sky's sheen rises toward grazing angles (Schlick fresnel). No
-       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava (a cooling basalt crust, glowing seams)
-       one sheet per square, slowly warped so the crust creeps, the seams glowing from the sheet's own heat with a slow pulse; the
-       crust stays dark (environment value), only the heat is bright. On WebGPU the extras are skipped: the water is its flat colour,
-       the lava its sheet + the sheet as its glow. */
+       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava_2 (melt with crust rafts) slid in two copies on the fluid clock, the melt glowing from its own colour (THE MOLTEN LAVA, in
+       _calmFluidMat). On WebGPU the lava is the same (_ewNodeCalmFluid); the water there is its flat colour. */
     var _CALM_NOISE_GLSL =
         'float cHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }\n' +
         'float cNoise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);\n' +
@@ -4092,14 +4119,22 @@ const ThreeRenderer = (function () {
             var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL;
             var f = head + sh.fragmentShader;
             if (lava) {
+                /* THE MOLTEN LAVA (v2, mondo: "doesnt really look lava-y ... all brown ... isnt even moving"): calm_lava_2 is melt with
+                   crust rafts on it. Two copies slide on the fluid clock like the old lava (PR #782): copy B, turned and at another scale,
+                   runs the other way, nudges copy A's lookup a little (the rafts' edges flow) and makes the melt's glow swell and fade
+                   as it passes. The melt (red-dominant texels) glows from its own colour; the crust stays dark. Same maths on WebGPU
+                   (_ewNodeCalmFluid). */
                 f = f.replace('#include <map_fragment>',
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
-                    'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
-                    '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
-                    'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
-                    'diffuseColor.rgb *= cLa * 0.9;\n')
-                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow;\n');
+                    '#ifdef USE_MAP\n' +
+                    ' vec3 cLb = texture2D(map, vec2(cP.y, -cP.x) * 0.37 + vec2(-cT * 0.015, cT * 0.022)).rgb;\n' +
+                    ' vec3 cLa = texture2D(map, cP * 0.5 + vec2(cT * 0.020, cT * 0.013) + (cLb.rg - vec2(0.49, 0.23)) * 0.035).rgb;\n' +
+                    '#else\n vec3 cLa = vec3(0.6, 0.2, 0.05), cLb = cLa;\n#endif\n' +
+                    'float cMelt = smoothstep(0.1, 0.32, cLa.r - cLa.b);\n' +
+                    'float cHb = dot(cLb, vec3(0.299, 0.587, 0.114));\n' +
+                    'diffuseColor.rgb = diffuse * cLa * mix(0.9, 0.35, cMelt);\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cMelt * uCalmGlow * (0.75 + 0.5 * cHb);\n');
             } else {
                 f = f.replace('#include <map_fragment>',
                     '#include <map_fragment>\n' +
@@ -4118,6 +4153,7 @@ const ThreeRenderer = (function () {
         };
         mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
         mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
+        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow });   // WEBGPU: the same lava (_ewNodeCalmFluid)
         return mat;
     }
 
@@ -19241,10 +19277,11 @@ const ThreeRenderer = (function () {
                empty body — the default "this is who's acting" marker. Rides
                the unit group so walks/knockbacks carry it automatically. */
             var _selSegs = 1;   // rev 2: flat on a field too
-            var selTile = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.96, ts * 0.96, _selSegs, _selSegs),
+            var _selCov = _hlCover(0.96);   // THE TILES TOUCH
+            var selTile = _hlFit(new THREE.Mesh(
+                new THREE.PlaneGeometry(ts * _selCov, ts * _selCov, _selSegs, _selSegs),
                 _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 }, 'acting')
-            );
+            ), 0.96, _selCov, true);
             selTile.rotation.x = -Math.PI / 2;
             selTile.position.y = SELECTED_RING_OFFSET - 0.15;
             selTile.renderOrder = RING_RENDER_ORDER;   // THE RINGS ABOVE: over the highlights
@@ -21430,11 +21467,12 @@ const ThreeRenderer = (function () {
     var _hlSharedGeoTs = 0;
 
     function _getSharedHlGeo(ts) {
-        if (_hlSharedGeo && _hlSharedGeoTs === ts) return _hlSharedGeo;
+        var side = ts * _hlCover(HL_BASE_FRAC);   // THE TILES TOUCH
+        if (_hlSharedGeo && _hlSharedGeoTs === side) return _hlSharedGeo;
         if (_hlSharedGeo) _hlSharedGeo.dispose();
-        _hlSharedGeo = new THREE.PlaneGeometry(ts * 0.92, ts * 0.92);
+        _hlSharedGeo = new THREE.PlaneGeometry(side, side);
         _hlSharedGeo._ew_shared = true;
-        _hlSharedGeoTs = ts;
+        _hlSharedGeoTs = side;
         return _hlSharedGeo;
     }
 
@@ -21597,6 +21635,7 @@ const ThreeRenderer = (function () {
     }
     function _makeHlTile(hx, hy, mat, frac, yOff, z) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        var cov = _hlCover(frac);   // THE TILES TOUCH: the plate is built at the UI Maker's Size
         /* Multi-floor columns: a highlight for a walkable surface BELOW the
            column top (the ocean floor under a cloud platform, the ground under
            a bridge) must sit at ITS OWN floor — draping it over the roof above
@@ -21630,21 +21669,21 @@ const ThreeRenderer = (function () {
                 /* THE TWO FLOORS (2026-10-16): the ground under a field's deck — the plate drapes that ground at its real top */
                 var _lowY = _fieldTwoFloorAt(hx, hy) ? _fieldSurfaceY(hx, hy, z) : null;
                 if (_lowY !== null) {
-                    var lowMesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac, _lowY), subMat);
+                    var lowMesh = _hlFit(new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, cov, _lowY), subMat), frac, cov);
                     lowMesh.renderOrder = 2;
                     lowMesh.position.set(hx * ts + ts / 2, _lowY + (yOff || 0) + HL_FIELD_LIFT * ts, hy * ts + ts / 2);
                     lowMesh._ew_lowFloor = true;
                     return lowMesh;
                 }
-                var subGeo = (frac === 0.92) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * frac, ts * frac);
-                var sub = new THREE.Mesh(subGeo, subMat);
+                var subGeo = (frac === HL_BASE_FRAC) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * cov, ts * cov);
+                var sub = _hlFit(new THREE.Mesh(subGeo, subMat), frac, cov, true);
                 sub.rotation.x = -Math.PI / 2;
                 sub.renderOrder = 2;
                 sub.position.set(hx * ts + ts / 2, z * ts * ELEV_STEP_RATIO + yOff, hy * ts + ts / 2);
                 return sub;
             }
         }
-        var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
+        var mesh = _hlFit(new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, cov), mat), frac, cov);
         if (mesh.geometry._ew_rotY !== undefined) mesh.rotation.y = mesh.geometry._ew_rotY;
         /* On a walkable roof, tileTopY is the roof-standing height but the roof
            mesh itself is drawn a hair above it, so lift the highlight clear of
@@ -21677,9 +21716,13 @@ const ThreeRenderer = (function () {
        tex: true (the drape's v runs the other way from a laid-down PlaneGeometry) and optionally uvRot (radians). */
     function _drapedTileMesh(hx, hy, frac, mat, yOff, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        var geo = _buildDrapeGeo(hx, hy, ts, frac);
+        /* THE TILES TOUCH: a highlight plate (the cursor, the underfoot tile) takes the UI Maker's Size; a textured marker never */
+        var isHl = !!(mat && mat.fragmentShader === _hlFragmentShader && !(opts && opts.tex));
+        var cov = isHl ? _hlCover(frac) : frac;
+        var geo = _buildDrapeGeo(hx, hy, ts, cov);
         if (opts && opts.tex) _drapeTexUv(geo, opts.uvRot || 0);
         var m = new THREE.Mesh(geo, mat);
+        if (isHl) _hlFit(m, frac, cov);
         if (m.geometry._ew_rotY !== undefined) m.rotation.y = m.geometry._ew_rotY;
         m.position.set(hx * ts + ts / 2, _drapedTileY(hx, hy, yOff), hy * ts + ts / 2);
         return m;
@@ -23580,7 +23623,8 @@ const ThreeRenderer = (function () {
         });
         /* the tiles: every situation the board paints, each with the board's own recipe */
         var plate = function (c, rw, mat, y, frac) {
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * (frac || 0.92), ts * (frac || 0.92)), mat);
+            var pf = frac || HL_BASE_FRAC, pc = _hlCover(pf);   // THE TILES TOUCH
+            var m = _hlFit(new THREE.Mesh(new THREE.PlaneGeometry(ts * pc, ts * pc), mat), pf, pc, true);
             m.rotation.x = -Math.PI / 2; m.position.copy(at(c, rw, y || 0.6)); m.renderOrder = 2; sc.add(m); return m;
         };
         var typed = function (c, rw, type) { var R = _hlRecipe(type); plate(c, rw, _makeHlMaterial(R.color, R.opacity, R.edgeGlow, R.dotCount, R.style, _hlKindOfType(type))); };
@@ -23638,7 +23682,7 @@ const ThreeRenderer = (function () {
             _hlGlobalTime.value = t;
             _hlLookSync();
             var tv = window._ewTileLookV || 0, av = window._ewArrowLookV || 0;
-            if (tv !== seenT) { seenT = tv; _hlPaint(sc); }
+            if (tv !== seenT) { seenT = tv; _hlPaint(sc); _hlRefit(sc); }
             if (av !== seenA) { seenA = av; buildArrows(); }
             _arrowTick(sink.meshes, sink.dots, t);
             /* the glow breathes as it gathers toward the hit */
@@ -24510,12 +24554,14 @@ const ThreeRenderer = (function () {
         /* THE TWO FLOORS (2026-10-16): the cursor on the ground under a field's deck lies on that ground */
         var _hvLow = _fieldTwoFloorAt(tx, ty) ? _fieldSurfaceY(tx, ty, _hvZ) : null;
         if (_hvLow !== null) {
-            var lm = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95, _hvLow), hMat);
+            var _hvCov = _hlCover(0.95);
+            var lm = _hlFit(new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, _hvCov, _hvLow), hMat), 0.95, _hvCov);
             lm.renderOrder = 2;
             lm.position.set(tx * ts + ts / 2, _hvLow + 0.5 + HL_FIELD_LIFT * ts, ty * ts + ts / 2);
             return lm;
         }
-        var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
+        var _hvC2 = _hlCover(0.95);
+        var m = _hlFit(new THREE.Mesh(new THREE.PlaneGeometry(ts * _hvC2, ts * _hvC2), hMat), 0.95, _hvC2, true);
         m.rotation.x = -Math.PI / 2;
         m.renderOrder = 2;
         m.position.set(tx*ts+ts/2, _hvZ * ts * ELEV_STEP_RATIO + 0.5, ty*ts+ts/2);
@@ -35266,11 +35312,14 @@ const ThreeRenderer = (function () {
        shader extras do not (plain colour + sheet there). */
     var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
     var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', lava: 'calm_lava_1.png' };
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_2.png',
+                         scorched: 'calm_scorched_1.png' };
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
     /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
        sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
-    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82], drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
+                  tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
+                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0 };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmOn() {
         try {
@@ -44979,6 +45028,27 @@ const ThreeRenderer = (function () {
         if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
+    /* THE CALM GROUND's lava on WebGPU (_calmFluidMat, THE MOLTEN LAVA): the same two sliding copies of calm_lava_2, the same melt
+       mask and glow. The calm water keeps its flat colour here (its ripple normal is the classic hook's). */
+    function _ewNodeCalmFluid(nm, m, D) {
+        var U = _ewNodeU, T = U.T;
+        if (!D.lava || !m.map || !m.map.isTexture) return;
+        var map = m.map, glow = T.float(D.glow || 1.25);
+        var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
+        var lbOf = function (p) { return T.texture(map, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(U.ftime.mul(-0.015), U.ftime.mul(0.022)))).rgb; };
+        var LA = T.Fn(function () {
+            var p = cpos().toVar(), lb = lbOf(p).toVar();
+            var la = T.texture(map, p.mul(0.5).add(T.vec2(U.ftime.mul(0.020), U.ftime.mul(0.013))).add(lb.rg.sub(T.vec2(0.49, 0.23)).mul(0.035))).rgb.toVar();
+            return T.vec4(la, T.smoothstep(0.1, 0.32, la.r.sub(la.b)));
+        })();
+        var HB = T.Fn(function () { return T.dot(lbOf(cpos().toVar()), T.vec3(0.299, 0.587, 0.114)); })();
+        var base = Object.getPrototypeOf(nm).setupDiffuseColor;
+        nm.setupDiffuseColor = function (builder) {
+            base.call(this, builder);
+            T.diffuseColor.rgb.assign(T.materialReference('color', 'color').mul(LA.rgb).mul(T.mix(T.float(0.9), T.float(0.35), LA.w)));
+        };
+        nm.emissiveNode = LA.rgb.mul(LA.w).mul(glow).mul(HB.mul(0.5).add(0.75));
+    }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
     var _ewNodeRefs = new Map();
     function _ewNodeRef(o, init) {
@@ -45193,6 +45263,7 @@ const ThreeRenderer = (function () {
         }
         else if (D && D.k === 'terrain') _ewNodeTerrain(nm, m, D);
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
+        else if (D && D.k === 'calmfluid') _ewNodeCalmFluid(nm, m, D);   // THE CALM GROUND
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
         if (m.ewCol === 'on') { C.ewcol = (C.ewcol || 0) + 1; _ewNodeCol(nm); }   // THE CLOTH COLLISION (after the skinning)
@@ -65325,7 +65396,8 @@ const ThreeRenderer = (function () {
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
-        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(_CALM.floorT), cliff: new THREE.Color().fromArray(_CALM.cliffT), path: new THREE.Color().fromArray(_CALM.pathT) } : _hqSheetLook(info);
+        var cT = calm ? ((_CALM.tints && _CALM.tints[info.floor]) || _CALM) : null;
+        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(cT.floorT), cliff: new THREE.Color().fromArray(cT.cliffT), path: new THREE.Color().fromArray(cT.pathT) } : _hqSheetLook(info);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };

@@ -50462,7 +50462,9 @@
         // computed as if the caster already stood on the approach tile (line
         // beams and self-origin blasts read the caster's position).
         function _spellApproachAoeTiles(spell, unit, castX, castY, tx, ty) {
-            const isHeal = !!spell && ['heal', 'healAll', 'zoneHeal', 'selfHeal', 'revive', 'cleanse', 'cleanseArea'].includes(spell.kind);
+            /* THE AIM SIDE (data.js spellAimSide, 2026-11-11): green = it helps and deals no damage, whatever its kind */
+            const isHeal = !!spell && (typeof spellAimSide === 'function' ? spellAimSide(spell) === 'help'
+                : ['heal', 'healAll', 'zoneHeal', 'selfHeal', 'revive', 'cleanse', 'cleanseArea'].includes(spell.kind));
             const _hit = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
             const hi = isHeal ? 0x33ff33 : _hit, lo = isHeal ? 0x22cc22 : _hit;
             let fp = [];
