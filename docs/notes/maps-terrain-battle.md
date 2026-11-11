@@ -1894,3 +1894,29 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - The three "(Calm)" test maps stay (now the same look as their originals).
 - Batches left: 2 = the other 27 arenas + ooze / poison / plague flesh / crystal / castle-wall spell ground; 3 = DOOR HQ indoor
   sheets + the other liquids; 4 = the voxel boards + the 2D view.
+
+### BATCH 2 (2026-11-11): the other 27 arenas + the spell ground
+- 21 sheets (bake-calm-terrain.py, rerun = byte-identical): sand (desert) + beach sand, moon (moon / moon_2 / moon_3), mars
+  (mars / mars_2), cloud (cloud / cloud_2 / cloud_thick, puffs on puffs), storm (storm), gravel (dirt_4), roots (wasteland),
+  rocky grass (grass_rocky), dark moor grass (grass_dark_fantasy), cave floor (cave_floor), dark rock (cave_wall / rock_wall_2 /
+  rocks_1 / rocks_dark_fantasy), crystal (crystal), flesh (flesh / flesh_2 / flesh_3 / plague_flesh), concrete (concrete_floor /
+  urban_street), gilt (gold / gold_2 / gold_3); patterned, on the plain grid: flagstones (bricks_1, 4x4 slabs), castle brick
+  (bricks_2 / castle_wall), marble checks (checkerboard, his 6x6 count), damask (damask, half-drop), red carpet (carpet_4).
+  Four place sheets: Mars floor dust, violet moon dust (the Singularity), sandstone flags (Babel), mint marble (Agartha).
+- THE ROOM COLOUR: a calm sheet ignores shell.floorColor (batch 1), so where a room's colour MADE his sheet another ground, the
+  place table names that ground: Mars moon_2 (× tan) → calm_marsdust, the Singularity's moon_3 (× violet 0x5a4a78) → calm_moonviolet (first calm_cavefloor: same value but the violet was gone),
+  Babel's bricks_1 (× tan) → calm_sandstone, Agartha's marble_light (× mint 0xbfe8c8) → calm_marblemint. tools: the survey printed every arena's floorColor / tints next to its keys; the
+  rest only shade the same ground (grass greens, a cream checker) and keep the sheet's own colour.
+- VALUES moved on the real boards: castle brick up to his bricks_2 value (L 0.36, Walls of Camelot read near-black), damask up a
+  step (the lodge walls stand in shade), clouds up twice to L 0.82 (Heaven's cloud deck read as dust at L 0.62 and 0.70; his cloud_2 x the room's 0xeef0ff shows 187-199 on screen), beach sand down to
+  L 0.58 (blew out on Bermuda in daylight), Mars dust warmer and a step darker (read pale beige against his orange-brown floor:
+  sheet mean now 122/82/58), sandstone flags down to his bricks_1 x the room's 0xd8a878 (93/69/43; now 110/85/60). Lesson again: sample the floor on HIS board's screenshot and the calm one, same spot, before shipping.
+- THE TWO SANDS: _calmKeyOf turns desert → calm_sand_beach where _ewSandBeach() (Bermuda), so the beach keeps its pale sand.
+- THE CALM LIQUIDS: _CALM.liquids = [colour, opacity, glow] for poison, poison_bog, purple_bog, swamp (the black ooze), oil, blood
+  (the first poison green, 0x34561a, read as grass on Stonehenge: poison is now an acid green with a faint glow of its own);
+  _buildFluidTopMat sends them to _calmFluidMat on a calm board, so they move and glint like the calm water in their own colour
+  (WebGPU: _ewNodeCalmWater reads the material colour). His Liquid_* sheets stay for the pixel look and the editor.
+- LEFT AS THEY ARE: the urban:* pack (his own painted, already photo-like and muted: Cyberpunk, Strip, Downtown, D.U.M.B., CERN,
+  Area 51 path) and the DOOR HQ texture names (`concrete`, `training_floor`, `holo`…) = batch 3. fog_wall (the hazard) keeps fog.png.
+- Spell ground in this batch: Plaguefield (plague_flesh), Shield Wall (castle_wall), Sacred Geometry (crystal), Poison Swamp
+  (poison), Goo Shot / the Blob's trail (swamp).
