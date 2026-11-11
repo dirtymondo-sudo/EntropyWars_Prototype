@@ -20127,6 +20127,15 @@
 
         function _meTerrainBg(terrainKey) {
             if (!terrainKey) return '';
+            /* THE CALM LOOK (the rollout batch 4, 2026-11-11): the voxel editor's flat grid and its palette show the sheet the board
+               draws — the key's calm twin (data.js CALM_TERRAIN) unless window.EW_NO_CALM_LOOK; his pixel sheet otherwise */
+            try {
+                const CT = (typeof CALM_TERRAIN !== 'undefined') ? CALM_TERRAIN : null;
+                if (CT && CT.sheets && !window.EW_NO_CALM_LOOK) {
+                    const c = CT.sheets[terrainKey] ? terrainKey : (CT.of && CT.of[terrainKey]);
+                    if (c && CT.sheets[c]) return `url('${CT.base + CT.sheets[c][0]}')`;
+                }
+            } catch (e) {}
             if (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) {
                 return `url('${TERRAIN_SPRITES[terrainKey][0]}')`;
             }

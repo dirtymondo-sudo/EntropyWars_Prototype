@@ -1951,3 +1951,18 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   stays in the editor as "Obsidian, no veins" (calm_obsidian_plain -> calm_obsidian_1.png). Undo = point calm_obsidian back at _1.
 - Proof: room shots with /tmp hqproof (boot ?hq, then window._hqEnter({room, quiet:true, from:'walk'}); ThreeRenderer is a
   script const, NOT window.ThreeRenderer — check it with typeof).
+
+### BATCH 4 (2026-11-11): the old voxel boards + the 2D view
+- Survey: 52 of his 156 TERRAIN_SPRITES keys had no calm twin. Left as they are: the liquids (water / deep_water drawn by the
+  calm water; poison, bogs, swamp, oil, blood = _CALM.liquids), holo / holo_red / training_floor (code-drawn), fog_wall,
+  barrier_passage, cloud_gap (black), and the editor-only material sheets no board wears (enamel_2, fur 1-3, tigerfur 1-2, skin,
+  rubber_2's twin aside, damask_4, floral 1-2, latticegarden, noise).
+- 5 new sheets (bake-calm-terrain.py batch 4 makers): rubble (rubble_1-3: broken concrete lumps, a few brick-brown, a few missing),
+  ice blocks (igloo), copper plate (copper: sixteen riveted plates, green patina out of the seams), rubber mat (rubber, rubber_2:
+  black non-slip bars), healing spring (healing_spring: clear teal, lily pads, a few small flowers).
+- Mapped onto existing calm sheets: rubble_4 / sky_ruin -> ruins, bridge -> planks, tree -> canopy (same forest.png as forest),
+  mushroom (rock.png) -> rock, rocks_2 / rocks_4 / chasm -> dark rock, urban_wall -> concrete, dirt_slope -> dirt,
+  diamond -> crystal, brokenglass -> ice, sanctuary (+ _church / _shop) -> flagstones, nexus (+ _cave / _sky) -> sandstone flags.
+- THE 2D VIEW: the old voxel editor (map.js, FILE menu of the editor) drew his pixel sheets on its flat grid and palette
+  (_meTerrainBg). It now shows the calm twin (the sheet the board draws) unless window.EW_NO_CALM_LOOK. The tile info card
+  already went through _ewSandUrl (calm first). His pixel sheets stay in the editor.js picker (TERRAIN family).

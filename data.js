@@ -63955,6 +63955,12 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_patchwork:  ['calm_patchwork_1.png', 'carpet_2', 'Patchwork carpet'],
         calm_patchwork_bright: ['calm_patchwork_bright_1.png', 'carpet_3', 'Bright patchwork'],
         calm_patchwork_retro: ['calm_patchwork_retro_1.png', 'carpet_4', 'Retro patchwork carpet'],   // H-Wing: his symbol carpet's colours, no symbols
+        // THE ROLLOUT batch 4 (2026-11-11): the old voxel boards' last pixel sheets
+        calm_rubble:    ['calm_rubble_1.png', 'rubble_1', 'Rubble'],
+        calm_iceblocks: ['calm_iceblocks_1.png', 'igloo', 'Ice blocks'],
+        calm_copper:    ['calm_copper_1.png', 'copper', 'Copper plate'],
+        calm_rubber:    ['calm_rubber_1.png', 'rubber', 'Rubber mat'],
+        calm_spring:    ['calm_spring_1.png', 'healing_spring', 'Healing spring'],
         calm_damask_gold: ['calm_damask_gold_1.png', 'damask_2', 'Gold damask'],
         calm_leather:    ['calm_leather_1.png', 'leather', 'Sewn leather'],
         calm_canopy:     ['calm_canopy_1.png', 'forest', 'Tree canopy'],
@@ -63991,6 +63997,13 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         gold: 'calm_gilt', gold_2: 'calm_gilt', gold_3: 'calm_gilt',
         bricks_1: 'calm_flagstone', bricks_2: 'calm_castle', castle_wall: 'calm_castle',
         checkerboard: 'calm_checker', damask: 'calm_damask', carpet_4: 'calm_patchwork_retro',
+        /* batch 4 (11-11): the voxel boards' last pixel sheets (cloud_gap, fog_wall, barrier_passage, the liquids and the holo floors stay) */
+        rubble_1: 'calm_rubble', rubble_2: 'calm_rubble', rubble_3: 'calm_rubble', rubble_4: 'calm_ruins', igloo: 'calm_iceblocks',
+        copper: 'calm_copper', rubber: 'calm_rubber', rubber_2: 'calm_rubber', healing_spring: 'calm_spring', bridge: 'calm_planks',
+        tree: 'calm_canopy', mushroom: 'calm_rock', rocks_2: 'calm_darkrock', rocks_4: 'calm_darkrock', chasm: 'calm_darkrock',
+        urban_wall: 'calm_concrete', dirt_slope: 'calm_dirt', sky_ruin: 'calm_ruins', diamond: 'calm_crystal', brokenglass: 'calm_ice',
+        sanctuary: 'calm_flagstone', sanctuary_church: 'calm_flagstone', sanctuary_shop: 'calm_flagstone',
+        nexus: 'calm_sandstone', nexus_cave: 'calm_sandstone', nexus_sky: 'calm_sandstone',
         /* batch 3: the rooms. His 8 painted DOOR HQ sheets (concrete, drywall, carpet, stone, terrazzo, teal, oxblood, ceiling) are not
            pixel sheets and stay: a room shell reads them first (_hqTex), so a key below only changes where his PIXEL sheet was drawn */
         dungeon: 'calm_dungeon', dungeon_2: 'calm_dungeon', dungeon_3: 'calm_dungeon', dungeon_4: 'calm_dungeon',
@@ -64010,7 +64023,7 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
              babel: { bricks_1: 'calm_sandstone' },
              agartha: { marble: 'calm_marblemint', marble_2: 'calm_marblemint', marble_light: 'calm_marblemint' } },
     sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow', prebuilt_mars: 'mars', prebuilt_singularity: 'singularity', prebuilt_babel: 'babel', prebuilt_agartha: 'agartha' },
-    noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1, calm_obsidian_plain: 1,
+    noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1, calm_obsidian_plain: 1, calm_rubble: 1, calm_spring: 1,
               calm_sand: 1, calm_sand_beach: 1, calm_moon: 1, calm_mars: 1, calm_cloud: 1, calm_storm: 1, calm_gravel: 1, calm_roots: 1, calm_rockygrass: 1,
               calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1, calm_marsdust: 1, calm_moonviolet: 1, calm_marblemint: 1,
               calm_plaster: 1, calm_leather: 1, calm_canopy: 1, calm_forestfloor: 1, calm_purplegrass: 1, calm_paving: 1, calm_ruins: 1, calm_void: 1 },
