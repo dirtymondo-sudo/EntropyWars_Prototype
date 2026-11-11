@@ -481,6 +481,18 @@ half turn so the wrap lands on a cell edge. The rest of the sky is unchanged. Ch
 shader (before/after) on WebGL and a WebGPU battle shot at the zodiac view. The zenith pinch (all azimuths meet at
 straight up) is untouched.
 
+## THE LIQUID STAYS ON ITS SQUARES (2026-11-11, mondo: "a regular line spell on flat terrain shouldnt make a whole 3x3 of
+liquid, just a 1x3 ... whatever the aoe of the spell is is what tiles the liquid should be")
+Replaces the spring halo of THE LIQUIDS LIKE MINECRAFT below. map.js `_recomputeLiquidFlow`: liquid lies on the squares a
+spell (or weather, a melt) put it on and never creeps over level ground. Kept: it runs down onto any strictly lower
+neighbour and on down every further drop; and it fills a HOLE (`_liquidInHole`: the level floor it lies on has higher
+ground or the board edge on every side, no lower square, at most LIQUID_HOLE_CAP 16 squares; walls and props are not a
+hole's side; a map's own settled pool never grows over its own floor). `liquidRunsOnto(sx,sy,nx,ny)` is the one rule the
+flow map and battle.js forecastSpellPlan share; doSpell's hit pass still pulls the first ring of runoff (now only a drop
+or a hole floor) into the hit. The flow record's `d` is always 1 (no thinning fan); `_LIQUID_SPREADS` only names the
+families that run. Ground fire has its own spread (flammable squares) and was not touched. Spell text fixed: Poison Swamp,
+Call of the Deep. Browser proof: /mnt/project-files/liquid-spread-20261111/.
+
 ## THE LIQUIDS LIKE MINECRAFT (2026-10-15, mondo: "How is there a cube of poison and its not spreading ... make sure spells
 are changing the terrain of the block on the ground, not placing a liquid block on top")
 Causes: (1) a liquid repainted the TOP VOXEL of a raised column (a crate, a cliff top) and the column renderer drew that voxel

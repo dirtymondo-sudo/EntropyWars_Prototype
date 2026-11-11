@@ -42627,7 +42627,7 @@
                         }
                     }
                 }
-                /* the spring's level-ground halo (doSpell pulls the first ring of fresh flow into the hit pass) */
+                /* the spring's runoff (doSpell pulls the first ring of fresh flow, down a drop or over a hole's floor, into the hit pass) */
                 const fam = (typeof liquidFamilyOf === 'function') ? liquidFamilyOf(tt) : null;
                 if (fam && !spell.elevationFlood && typeof _LIQUID_SPREADS !== 'undefined' && _LIQUID_SPREADS[fam]) {
                     for (const t of springs) {
@@ -42635,8 +42635,8 @@
                         for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                             const nx = t.x + ddx, ny = t.y + ddy;
                             if (!isInside(nx, ny) || seen.has(nx + ',' + ny)) continue;
-                            if (typeof _liquidFlowCanEnter === 'function' && !_liquidFlowCanEnter(nx, ny)) continue;
-                            if (getBaseHeightAt(nx, ny) > sh) continue;
+                            /* (2026-11-11) no level halo any more: the liquid only runs down a drop or fills the hole it lies in (map.js liquidRunsOnto) */
+                            if (typeof liquidRunsOnto === 'function' ? !liquidRunsOnto(t.x, t.y, nx, ny) : getBaseHeightAt(nx, ny) >= sh) continue;
                             add(nx, ny);
                         }
                     }
@@ -83443,9 +83443,9 @@
                         if (current === t) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tx, ty, t); return false; }   // ⏳ back to 3 rounds
                         if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
                         /* 🌊 Spell-conjured liquid is a SPRING (map.js liquid
-                           spread): overfull, so it overflows one tile onto
-                           level ground and runs downhill — a lone poison cube
-                           with no flow can't happen. Basin fills
+                           spread): it runs down any drop beside it and fills a
+                           hole it lies in (2026-11-11: no level halo any more,
+                           the liquid is the spell's own squares). Basin fills
                            (elevationFlood) and interior-floor paints are
                            settled pools instead and don't pass the flag. */
                         if (spring && typeof liquidFamilyOf === 'function' && liquidFamilyOf(t)) {
@@ -83596,8 +83596,8 @@
 
                     /* 🌊 Fresh liquid claims everything it SPREADS over, not
                        just the painted source tiles: pull the first ring of
-                       derived flow (the spring's level-ground halo and/or the
-                       runoff pouring off a ledge) into affectedTiles so the
+                       derived flow (the runoff pouring off a ledge, or over the
+                       floor of a hole) into affectedTiles so the
                        spell's damage/status pass covers the whole splash. Flow
                        is already recomputed lazily off the terrain bump above. */
                     if (typeof liquidFamilyOf === 'function' && typeof getLiquidFlowAt === 'function'
