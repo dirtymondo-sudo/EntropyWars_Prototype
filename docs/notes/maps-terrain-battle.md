@@ -1920,3 +1920,34 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   Area 51 path) and the DOOR HQ texture names (`concrete`, `training_floor`, `holo`…) = batch 3. fog_wall (the hazard) keeps fog.png.
 - Spell ground in this batch: Plaguefield (plague_flesh), Shield Wall (castle_wall), Sacred Geometry (crystal), Poison Swamp
   (poison), Goo Shot / the Blob's trail (swamp).
+
+### BATCH 3 (2026-11-11): the rooms — DOOR HQ's rooms and the zone rooms
+- The survey (/mnt/project-files/calm-rollout-20261111/batch3/survey.md): his PIXEL sheets still worn in rooms with no calm twin.
+  NOT pixel sheets, left as they are: his 8 painted DOOR HQ tileables (concrete, drywall, carpet, stone, terrazzo, teal, oxblood,
+  ceiling — _hqTex reads DOOR_HQ.textures FIRST, so a room shell keeps them even where the same name has a calm twin), the
+  code-drawn holo / holo_red / training_floor, the urban:* pack.
+- 15 sheets (bake-calm-terrain.py batch 3 makers): dungeon stone (dungeon 1-4: the stone only, his carvings / grates / skulls are
+  the busy part), white tiles 4x4 + 8x8 (tilefloor, tilefloor_2), old plaster with a few patches broken to the brick (drywall,
+  drywall_2-5), old wallpaper (wallpaper), patchwork carpet muted + bright (carpet_2, carpet_3; six to a square, no two neighbours
+  alike), gold damask (damask_2; bake_damask takes its colours now, defaults = calm_damask_1 byte-identical), sewn leather (leather,
+  leather_2), tree canopy (forest, forest_2: the cloud heads in greens with the hedge's leaves), forest floor (dark_woods: roots going
+  to moss), purple grass (purple_grass: the calm grass, hue turned), old paving (road), ruins rubble (ruins), deep space (void).
+  Mapped to the existing ones: carpet -> red carpet, damask_3 -> damask, checkerboard_2/3 -> marble checks.
+- Left for batch 4 (the old voxel boards): tree (forest.png under the tree tiles), rubble, rocks_2/4, healing_spring, sanctuary,
+  nexus, igloo, the sky keys.
+- Value pass before shipping (his sheet's mean vs calm's): canopy lifted to a step under his lime (lit 0x7e9c46), gold damask
+  lifted (lo 0x4e2c1a / hi 0xa07a3c), deep space got his nebula back muted (blue / plum / rust wisps, 1400 stars), purple grass x1.18.
+  White tiles sit at L 0.66 against his 0.90 on purpose (the batch 1 lesson: light sheets blow out under the room lights).
+- Where they are worn (35 rooms): shell floor/wall/dado/trim/ceiling and terrain floor/path. e.g. bathroom/locker/kitchen/pool/
+  tank tiles; dungeon/ritual/sacrifice/oubliette/catacombs/Camelot dungeon stone; haunted rooms plaster + forest-floor trim;
+  H-Wing wallpaper/plaster/patchwork; Vatican library leather + damask + patchwork path; Looking Glass sea purple grass;
+  observatorium deep-space ceiling; Fairy Forest redwoods canopy floor.
+- THE RETRO PATCHWORK (11-11): carpet_4 (his symbol carpet: H-Wing lobby + floor, the Vatican basilica path) went to the plain
+  red carpet in batch 2, losing the H-Wing's colours; now -> calm_patchwork_retro (his teal / olive / mustard / rust / plum as
+  plain patches, five to a square, no symbols). calm_carpet stays in the editor and keeps carpet.
+- Purple grass got soft olive tufts (his green clumps, ~1 in 8 by quantile of a 7-16 cycle noise, shaded by the grass blades).
+- THE OBSIDIAN VEINS (11-11, the thread's card, recommended option while he decides): calm_obsidian -> calm_obsidian_2.png = the
+  same stones with faint lava in some joints (bake_obsidian_veins: the worley gap lit where a slow noise says so). The plain one
+  stays in the editor as "Obsidian, no veins" (calm_obsidian_plain -> calm_obsidian_1.png). Undo = point calm_obsidian back at _1.
+- Proof: room shots with /tmp hqproof (boot ?hq, then window._hqEnter({room, quiet:true, from:'walk'}); ThreeRenderer is a
+  script const, NOT window.ThreeRenderer — check it with typeof).
