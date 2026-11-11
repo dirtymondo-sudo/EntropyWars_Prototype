@@ -407,7 +407,7 @@ def bake_sand(seed=61, beach=False):
     grain = fft_noise(N, 150, 450, seed + 5, 0.0)
     macro = fft_noise(N, 1, 4, seed + 6, 0.6)
     if beach:
-        a, b = hexc(0xa89c80), hexc(0xbdb093)
+        a, b = hexc(0x968a6f), hexc(0xa99d81)   # (the rollout, 11-11: a step under the first bake, which read white on Bermuda in daylight)
     else:
         a, b = hexc(0xa47c3e), hexc(0xc29755)
     rgb = lerp(a, b, np.clip(0.5 + 0.45 * macro + 0.12 * grain, 0, 1))
