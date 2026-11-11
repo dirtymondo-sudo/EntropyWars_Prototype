@@ -5194,7 +5194,7 @@ function spellTargetChip(sp) {
   }
   const k = sp.kind || '';
   if (k === 'cannibalize') {
-    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen enemy's remains — their bones" };
+    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — an enemy's bones or an ally's gravestone" };
   }
   if (k === 'raiseDead') {
     return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
@@ -7812,6 +7812,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   // every other target — grey the row with the real reason instead of letting
   // the click (or the move-then-attack) bounce off the engine.
   let atkTauntLock = null;
+  /* 💋 Charm (mondo 2026-11-10, rule 7 B): the charmer cannot be attacked or cast at — the row greys with the reason */
+  const _qCharmer = (typeof getCharmer === 'function') ? getCharmer(actingUnit) : null;
+  const atkCharmLock = !!(_qCharmer && targetUnit && _qCharmer.id === targetUnit.id);
   if (typeof getTauntTargeter === 'function') {
     const _aT = getTauntTargeter(actingUnit);
     if (_aT && _aT.id !== targetUnit.id) {
@@ -7825,7 +7828,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
     }
   }
-  if (atkTauntLock) {
+  if (atkCharmLock) {
+    actions.push({
+      id: 'attack', label: 'Attack', icon: '⚔', apCost: G.AP_COST_ACTION || 1, moveTile: null, preview: null, typeNote: '',
+      available: false,
+      reason: '💋 Charmed — cannot attack ' + (typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : 'the charmer'),
+    });
+  } else if (atkTauntLock) {
     actions.push({
       id: 'attack',
       label: 'Attack',
@@ -7984,6 +7993,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // to the challenger while the challenger is castable-at — doSpell rejects
     // any other enemy (after the approach move, too). Mirror its gate and drop
     // the row instead of letting the click bounce.
+    if (atkCharmLock && typeof _kindMeta === 'function') {   // 💋 no unit-targeted offensive cast at the charmer
+      const _cm = _kindMeta(sp);
+      if (_cm.offensive && !_cm.tileTargeted && !_cm.directional) continue;
+    }
     if (targetUnit && typeof getTauntTargeter === 'function' && typeof _kindMeta === 'function') {
       const _qTaunter = getTauntTargeter(actingUnit);
       if (_qTaunter && _qTaunter.id !== targetUnit.id) {
@@ -18373,7 +18386,10 @@ const BTN_MENUS = [
   { id: 'hq', label: 'HQ pause menu', surf: 'explore', back: { sel: '#hqPage .hq-btn[data-cmd="party"], #hqPage .hq-panel-actions .hq-btn[data-party-act^="circuit:"], #hqPage .hq-circ-tools .hq-btn[data-party-act^="circuit:"]', skin: 1, what: '◂ PARTY / ◂ THE PARTY, and ◂ DONE on a vessel\'s spells' } },
   { id: 'profile', label: 'Profile + leaderboard', surf: '', back: { sel: 'button.ew-back:not(.ms-tty-btn)', what: '← Back on the profile, the leaderboard and the community maps' } },
   { id: 'pages', label: 'Other pages', surf: '', back: { sel: '#mdCharPage .ms-back-btn, #challengePickPage .ms-back-btn, #campaignCharCreatePage .ms-back-btn, #campaignMapPage .ms-back-btn, #mapEditorPage .ms-back-btn, #cshopOverlay .ms-back-btn, .cpb-back-btn, #backToLobbyBtn, #creditsPage .ms-back-btn, .me-hud-back', what: '← Back on the character, challenge and campaign pages, a challenge level\'s briefing, the campaign shop, the credits, the map editor (and its ← over the map) and the old team setup' } },
-  { id: 'results', label: 'Victory / defeat', surf: 'results', back: { sel: '#resultOverlay #startOverBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Back to Map' } },
+  /* end screens 2026-11-10: MAIN MENU is a BACK (red) and the next-match / rematch button a CONFIRM (green), like every menu */
+  { id: 'results', label: 'Victory / defeat', surf: 'results',
+    back: { sel: '#resultOverlay #startOverBtn, #resultOverlay #mainMenuBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Main Menu / Back to Map' },
+    confirm: { sel: '#resultOverlay #nextMatchBtn', skin: 1, what: 'Find Next Match / Request Rematch / Accept Rematch' } },
   { id: 'dialog', label: 'Pop-up questions', surf: 'dialog',
     back: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave, #uiDialogOverlay .trade-footer [data-trade-action="cancel"], .ew-banner-box .ew-banner-btn.secondary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave', what: 'Cancel on the "are you sure?" boxes, the save / load box and the trade' },
     confirm: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take, #uiDialogOverlay .trade-footer [data-trade-action="confirm"], .ew-banner-box .ew-banner-btn.primary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take', what: 'Confirm on the "are you sure?" boxes, Save on the save box, Confirm Trade' } },
@@ -22046,7 +22062,8 @@ const BTN_SAMPLE = (() => {
     'back-pages': page('mdCharPage', '', back),
     'back-hq': '<div class="uim-w" id="hqPage"><div class="uim-w hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button></div></div>',
     'back-profile': '<button class="ew-back" style="background: rgba(255,255,255,0.06); border: 1px solid #3a3550; color: #8a849c; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-family: DotGothic16, monospace">← Back</button>',
-    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button></div></div>',
+    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button><button id="mainMenuBtn">Main Menu</button></div></div>',
+    'confirm-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="nextMatchBtn" class="primary">Request Rematch</button></div></div>',
     'back-dialog': dlg('pickup-btn-leave', '✕', 'Cancel'),
     'confirm-dialog': dlg('pickup-btn-take', '✓', 'Confirm'),
   };

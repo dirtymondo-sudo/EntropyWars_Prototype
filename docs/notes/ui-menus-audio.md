@@ -2532,3 +2532,49 @@ Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build
 - Proof (2026-11-09, online friendly, 2 Chromium seats, Mount Shasta 10x10, real menu clicks): host Sedan To the Moon -> Gnome to
   C6 in the host's fog, and guest Gnome To the Moon -> Bigfoot to C6 in the guest's fog; each seat's own line shows, the same
   line untagged is judged hidden. Shots: /mnt/project-files/own-throw-log-fog-20261109/.
+
+## THE END SCREENS: result, forfeit, rematch, pause camera (2026-11-10, PvP demo pass item 6)
+- Readability (styles-cinematic.css "THE END SCREENS READ"): `.vic-subtitle` + `.vic-match-info` each sit on a dark square window;
+  `.vic-sheets` gets a dark backing under the theme's plate (his glass theme left Hazard Pay rows on the bare board); the kicker
+  has a shadow; online (`.result-overlay.vic-online`) the head starts under the room chip. Under 620 px tall the case stamp is
+  `zoom: 0.5` so it never lands on the head's lines.
+- Forfeit on the record: battle.js `_forfeitMark(by, how)` writes `state._forfeit = { by, how }` (how = quit | disconnect | timer),
+  cleared on every line that clears `_winCondition`. Set by `forfeitMatch`, online.js relay case 'forfeit' and
+  `triggerOnlineForfeitWin(forfeitPlayer, reason)`. Plain data, rides the snapshot to the guest; no rule reads it. The result screen
+  adds the fact `🏳 FORFEIT` and a subtitle that says who ("You forfeited the match." / "Your opponent forfeited the match." /
+  "... did not reconnect in time ..." / "... held the turn too long ..."). Never key it on `state.startTime`: each seat has its own.
+- F5 (11-05): a profile still named "Player" reads "You hold the field." / "You are defeated."; a named profile keeps its name.
+- Rematch line: battle.js `_vicRematchNote(text, tone)` = `#vicRematchNote` over the command bar (the bar is 26 px taller online).
+  online.js `_ewSetRematchBtn(text, disabled, note, tone)` writes it with every button state; tones call (green, pulses) / wait
+  (gold) / off (red). The waiting button now reads "✓ Rematch Requested"; the sentence is in the line.
+- Buttons: hud.js BTN_MENUS 'results' gained `#mainMenuBtn` as a BACK and `#nextMatchBtn` as a CONFIRM, so the shipped red / green
+  apply (stand-in `confirm-results`).
+- Offline result after an online one: the bar's words come back ("Find Next Match", Back to Party Builder shown); online.js main
+  menu teardown marks the session offline BEFORE the socket drops (its 'disconnect' wrote "Reconnecting…" on the bar) and removes
+  `#netStatusIndicator`; the 1 s status loop removes a chip with no session (PvP playtest F8).
+- "Unable to rejoin" window (`_recoveryFailure`): a square window with a red button, and `room-full` removes a stale one (a page
+  reloaded on a closed room kept it over its whole next match).
+- Narrow result (under 900 wide / 520 tall): no sideways scroll on the bar; a long label breaks inside its own button.
+- F4 (11-05) three-camera.js EWCine: `#ewCineHint` key line while the mouse flies the camera or a path plays (exempt from hudHide),
+  EXIT is red (`.ew-cine-btn.back`), Esc with the mouse still held frees it. DOM only: in no photo or video.
+- Proof (2 Chromium seats, friendly TDM, real clicks; 1280x720, 1280x540, 800x500): /mnt/project-files/end-screens-20261110/.
+  Not viewed: WebGPU, Firefox, a real 90 s closed tab from a second machine (the guest page was navigated away instead).
+
+## THE DEMO (2026-11-10, mondo: the PvP demo set; "everyone can start off with the same 16 and can unlock up to 32")
+data.js DEMO_RULES = { on, starters[16], unlocks[16], arenas[9 site ids] } + demoModeOn / setDemoMode / demoRaceIn / demoRaceFree /
+demoArenaIn / demoRacePool. An optional FILTER: nothing is removed from AVAILABLE_RACES, the spells or the maps.
+- The switch: Settings > Demo (out of battle), `?demo=1` / `?demo=0` (remembered in localStorage `ew_demo_mode`), or the shipped
+  default DEMO_RULES.on (false). `on: true` ships the whole game as the demo, and the server's Quick Play pool then follows
+  (it reads hqArenaPvpPool at boot).
+- Roster: isUnitOwned counts the 16 starters as owned; isUnitUnlocked = in the 32 AND owned, in every scope. The 16 unlocks are
+  bought the way units already are (the Shop: one must have fallen to you in a match, then ACCT_UNIT_PRICE or a free token). The
+  forge lists the 32 (party-builder.js rosterEntries), the Shop lists the 32 ('demo' lock reason for the rest), the CPU's picks
+  and random rolls stay inside the 32 (state.js cpu3DRaceForSlot, randomizeIdentity, the hard draft).
+- Arenas: match-select.js deals the demo sites' ARENA cards + the Training Room and the Holo Sim (never a site's own console, a
+  desk with pre.allow, or Clash's stage); hqArenaPvpPool deals the seven arena sites online. The Training Room and the Holo Sim are
+  8×8 VS CPU boards: an online room only deals 9–12 boards.
+- Online: the host's switch rides friendly-config (`demo`), the guest reads NET._roomDemo. A squad with a champ outside the
+  roster (or a locked unlock) does not lock in (_ewSquadAutoLock says which); the squad desk flags it "Not in the Demo"; the host's
+  party-config guard refuses it (state.js teamDemoBarredRaces).
+Proof (headless WebGL, VS CPU desk + forge with ?demo=1, and ?demo=0 unchanged): /mnt/project-files/demo-set-20261110/.
+Not run with two seats.

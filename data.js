@@ -7343,12 +7343,12 @@ const RACE_ABILITIES = {
           desc: 'The rot takes hold: a Single Enemy in melee joins the horde for its next 2 activations — yours to move and swing, melee only, with +1 ATK and +1 SPD stage. Applies Infected. Shambling Horde hits Infected targets harder. Bosses cannot be infected.' },
         /* §6.18 Cannibalize (Phase 5 wave B, 2026-09-08): corpse-targeted
            (the raiseDead targeting, `cannibalize` kind) — eat an ENEMY's unconsumed
-           remains within 2 tiles (enemyRemainsOnly, playtest 2026-11-07 H6): heal 35% max HP, the corpse's respawn
+           remains within 2 tiles (an ally's too since 2026-11-10, mondo's rule 1 B; never the feeder's own grave): heal 35% max HP, the corpse's respawn
            timer +2 rounds, the remains are gone (no revive, no raising). */
         { id: 'raceCannibalize', tier: 2, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Cannibalize',
           type: 'heal', cost: 25, range: 2, apCost: 1,
           kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
-          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 35% of max HP and, while that enemy is still down, delays its respawn by 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too. The remains are consumed.' },
+          desc: 'Feeds on a fallen unit\'s remains within 2 tiles: an enemy\'s bones or an ally\'s gravestone. Heals 35% of max HP and, while that unit is still down, delays its respawn by 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', tier: 2, families: ['zombie'], spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceOutbreak', upgradesBlock: ['upWiden'], tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -7526,7 +7526,7 @@ const RACE_ABILITIES = {
         { id: 'sigPixiePrank', name: 'Pixie Prank', tier: 1, families: ['pixie'], cost: 25, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
           statusEffects: [{ id: 'minimize', duration: 2 }],
-          desc: 'A tap of the wand and they are pocket-sized. A Single Enemy within 4 tiles is Minimized for 2 rounds: −2 ATK stages. Cooldown: 2 rounds.' },
+          desc: 'A tap of the wand and they are pocket-sized. A Single Enemy within 4 tiles is Minimized for 2 rounds: −2 ATK stages, and it dodges basic attacks 25% of the time. Cooldown: 2 rounds.' },
         { id: 'sigFireflySwarm', name: 'Firefly Swarm', tier: 3, families: ['pixie'], cost: 75, apCost: 1, spellType: 'anomaly',
           vfxElement: 'light', element: 'lightning', type: 'damage', kind: 'splitBeam', damageType: 'magic', dmg: 120, range: 4,
           splitCount: 3, splitDmg: 60, splitRadius: 2, bonusVsStatus: { status: 'minimize', mult: 1.5 },
@@ -10203,7 +10203,7 @@ const RACE_ABILITIES = {
           type: 'heal', tier: 3, families: ['ghoulish'], cost: 20, range: 2, apCost: 1, cooldownRounds: 2,
           kind: 'cannibalize', healPct: 0.5, corpseDelay: 2,   // THE SPELL AUDIT Batch D: corpse-gated, like Cannibalize
           statStageBoost: { atk: 1 },
-          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and, while that enemy is still down, its respawn is delayed 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too.' },
+          desc: 'Feeds on a fallen unit\'s remains within 2 tiles: an enemy\'s bones or an ally\'s gravestone. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and, while that unit is still down, its respawn is delayed 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too.' },
         SHARED_POISON_SWAMP,
     ],
     'gnome': [
@@ -12507,7 +12507,9 @@ const STATUS_DEFS = {
     /* 😱 Feared: hard CC. At its next activation the unit spends its move
        fleeing the source (_fearSourceId; battle.js _fearFleeMove picks the
        reachable tile farthest from it) and can neither attack nor cast —
-       the activation ends after the flight. 1 round. Terror Pounce ×1.5. */
+       the activation ends after the flight, and so does the fear (mondo
+       2026-11-10, rule 10 B: one flee ends it whatever its length; a
+       cornered unit that could not run keeps it). Terror Pounce ×1.5. */
     feared: {
         icon: '😱',
         glyph: '😱',
@@ -13392,9 +13394,10 @@ const STATUS_DEFS = {
         kind: 'debuff',
         category: 'status',
         stack: 'replace',
-        // Head over heels: a charmed unit can't move or act (its AI valuation
-        // and resist entry always treated it as hard CC — now it actually is).
+        // Head over heels: a charmed unit can't move, and (mondo 2026-11-10, rule 7 B) can't attack or
+        // cast at its charmer (battle.js getCharmer, _charmSourceId); everything else it may still do.
         blockMove: true,
+        onRemove(unit) { if (unit) delete unit._charmSourceId; },
         iconSrc: createStatusIconDataUri('💋', '#3a1a2a', '#ffd6e8', '#d45a8a')
     },
     /* (sirenSong deleted 2026-08-10 — the "lured 1 tile at end of round"
@@ -13550,7 +13553,7 @@ const STATUS_LIBRARY_DESCS = {
     haunted:   'Wracked by a restless spirit: takes 28 base damage at the end of every round (DEF and M DEF ignored). Boo hits Haunted targets harder.',
     corroded:  'Eaten by chemical fire: takes 44 base damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff. Burn and Poison together become Corroded, and fire on a poison bog corrodes everyone in it. Water puts the fire out and leaves the Poison.',
     grievous:  'A wound that will not close: healing received is halved.',
-    feared:    'Paralysed with fear: no attacks, no spells. Every activation while it lasts is spent fleeing from what frightened it (a 1-round fear = one flee).',
+    feared:    'Paralysed with fear: no attacks, no spells. Its next activation is spent fleeing from what frightened it, and the fear ends with that flight. A unit with nowhere to run cowers and stays Feared.',
     possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',
     infected:  'The rot spreads: the zombie\'s player controls the unit for 4 activations — melee only, but +1 ATK and +1 SPD stage.',
     stoneform: 'Turned to stone: cannot move or act (the turn is skipped) and immune to all damage, regenerating 15% max HP a round. Cannot be cleansed or dispelled.',
@@ -13590,11 +13593,11 @@ const STATUS_LIBRARY_DESCS = {
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
     scanner:   'Scanned — this unit is revealed and tracked.',
     invisible: 'Cannot be seen or directly targeted by enemies. Attacking, an attack spell or taking a hit from an enemy reveals it; moving, buffs and heals do not.',
-    charm:     'Beguiled: cannot move at all while it lasts, but can still attack and cast. Evasion drops to zero.',
+    charm:     'Beguiled: cannot move at all while it lasts, and cannot attack or cast at the unit that charmed it. It can still attack and cast at anyone else. Evasion drops to zero.',
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
-    minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts.',
+    minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
     statLock:  'Stats are locked and cannot be raised or lowered.',
     quickened: 'Light on their feet: +1 move while it lasts.',
     hexed:     'Cursed: every move, jump, climb or spell cast feeds the hex and deals 36 base damage. Basic attacks do not.',
@@ -13723,6 +13726,65 @@ const ACCT_STARTER_UNITS = [
   'honda civic',    // the Sedan
 ];
 
+/* ══ THE DEMO (mondo 2026-11-10: the PvP demo set — "everyone can start off with the same 16 and can unlock up to 32") ══════════
+   An OPTIONAL filter, never a deletion: with the Demo switch on, the roster is these 32 champs and the map lists deal these
+   arenas; with it off the whole game is there as before. Nothing in AVAILABLE_RACES, the spell lists or the maps is touched.
+     starters  the 16 every player fields from the first match (owned by everyone while the Demo is on)
+     unlocks   the 16 more a player unlocks the way units are already unlocked (the Shop: ACCT_UNIT_PRICE / a free token)
+     arenas    the site ids the map lists deal (the 12×12 arenas of seven sites + the Training Room and the Holo Sim, which
+               are 8×8 VS CPU boards: an online room only deals 9–12 boards, so online plays the seven)
+     on        the SHIPPED default. false = off for everyone until a browser turns it on (Settings > Display > Demo, or
+               ?demo=1 / ?demo=0 in the address); true = the whole game ships as the demo (the server's Quick Play pool reads
+               hqArenaPvpPool, so it deals the demo arenas too).
+   Online the HOST's switch decides for the room (it rides friendly-config as `demo`; a guest reads NET._roomDemo).
+   The reads: demoModeOn() · demoRaceIn(race) · demoRaceFree(race) · demoArenaIn(mapId) · demoRacePool(list). */
+const DEMO_RULES = {
+    on: false,
+    starters: ['knight', 'zombie', 'bigfoot', 'door agent', 'catgirl', 'shadow entity', 'robinhood', 'martian',
+               'djinn', 'mummy', 'angel', 'mermaid', 'grey', 'mothman', 'honda civic', 'quarterback'],
+    unlocks:  ['general', 'nephilim', 'ki fighter', 'king kong', 'goatman', 'mantid', 'cosmic wraith', 'anubis',
+               'professor', 'starfish', 'dreameater', 'hippie', 'mushroom girl', 'ai', 'glitch', 'sidekick'],
+    arenas:   ['prebuilt_training', 'prebuilt_holosim', 'prebuilt_lookingglass', 'prebuilt_fairy_forest', 'prebuilt_technoticlan',
+               'prebuilt_stonehenge', 'prebuilt_revenge', 'prebuilt_northpole', 'prebuilt_hell'],
+};
+(function _demoBootRead() {   // the browser's own switch: ?demo=1|0 wins and is remembered, else the stored choice
+    if (typeof window === 'undefined') return;
+    try {
+        const q = (typeof location !== 'undefined' && location && typeof location.search === 'string') ? /[?&]demo=([01])\b/.exec(location.search) : null;
+        if (q) { window._ewDemoMode = q[1] === '1'; try { localStorage.setItem('ew_demo_mode', q[1]); } catch (e) {} return; }
+        const s = localStorage.getItem('ew_demo_mode');
+        if (s === '1' || s === '0') window._ewDemoMode = s === '1';
+    } catch (e) {}
+})();
+function demoModeOn() {
+    if (typeof window === 'undefined') return !!DEMO_RULES.on;
+    try { const N = window._NET; if (N && N.online && N.role === 'guest' && typeof N._roomDemo === 'boolean') return N._roomDemo; } catch (e) {}
+    if (typeof window._ewDemoMode === 'boolean') return window._ewDemoMode;
+    return !!DEMO_RULES.on;
+}
+function setDemoMode(on) {
+    if (typeof window === 'undefined') return;
+    window._ewDemoMode = !!on;
+    try { localStorage.setItem('ew_demo_mode', on ? '1' : '0'); } catch (e) {}
+}
+const _demoKey = r => String((r && typeof r === 'object' ? r.race : r) || '').toLowerCase();
+function demoRaceFree(race) { return DEMO_RULES.starters.indexOf(_demoKey(race)) >= 0; }
+function demoRaceIn(race) { const k = _demoKey(race); return DEMO_RULES.starters.indexOf(k) >= 0 || DEMO_RULES.unlocks.indexOf(k) >= 0; }
+/* a map id (a site, its `_delta` arena or a `_NxN_delta` cut) belongs to a demo site */
+function demoArenaIn(mapId) {
+    const id = String(mapId || '');
+    if (typeof EW_MAP_META !== 'undefined') { const row = EW_MAP_META.find(m => m && m.id === id); if (row && row.voxel) return false; }   // a site's old "Δ · voxel" board is not its arena
+    const site = (typeof hqSiteId === 'function') ? hqSiteId(id) : id.replace(/(_\d+x\d+)?_delta$/, '');
+    return DEMO_RULES.arenas.indexOf(site) >= 0 || DEMO_RULES.arenas.indexOf(id) >= 0;
+}
+/* a pool of races cut to the demo roster while the Demo is on (the CPU's picks, the random rolls); never an empty pool */
+function demoRacePool(list) {
+    if (!demoModeOn() || !Array.isArray(list)) return list;
+    const cut = list.filter(demoRaceIn);
+    return cut.length ? cut : list;
+}
+if (typeof window !== 'undefined') { window.DEMO_RULES = DEMO_RULES; window.demoModeOn = demoModeOn; window.setDemoMode = setDemoMode; window.demoRaceIn = demoRaceIn; window.demoRaceFree = demoRaceFree; window.demoArenaIn = demoArenaIn; window.demoRacePool = demoRacePool; }
+
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
 // campaign economy and are intentionally excluded here.
 const ACCT_PVP_MODES = ['arena', 'tdm', 'clash'];
@@ -13761,6 +13823,7 @@ function _ownedProfileRead() {
 function isUnitOwned(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
+  if (demoModeOn() && demoRaceFree(raceKey)) return true;   // THE DEMO: the 16 starters are everyone's
   const prof = _ownedProfileRead();
   const acct = prof ? prof.account : null;
   /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
@@ -13774,6 +13837,9 @@ function isUnitOwned(raceKey) {
 function isUnitUnlocked(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
+  /* THE DEMO: the roster is the 32 — the 16 starters free, the 16 unlocks once they are on the account (isUnitOwned),
+     online and VS CPU alike; nothing outside the 32 is fielded while the switch is on */
+  if (demoModeOn()) return demoRaceIn(raceKey) && isUnitOwned(raceKey);
   if (unitRosterScope() === 'all') return true;   // THE ROSTER LOCK: online / the classic VS CPU / the range = the whole roster
   return isUnitOwned(raceKey);
 }
@@ -24858,14 +24924,16 @@ const CAMPAIGN_REGION_THEMES = {
    VISION replaced it — and every race's CRT was seeded with exactly the
    percent its old AWR gave, so no crit odds moved.)
    Combat context on top (battle.js): a crit deals ×1.8 damage
-   (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
+   (Gunslinger ×2.0); back-arc attacks can't be dodged; a Minimized
+   target dodges at the 25% cap (mondo 2026-11-10); a blinded
    attacker misses half the time; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
 function critChanceFromStats(crt) {
   return Math.max(0, Math.min(1, (Number(crt) || 0) / 100));
 }
+const EVASION_CAP = 0.25;   // the top dodge: the formula's cap, and what a Minimized unit dodges at (battle.js getEvasionChance)
 function evasionChanceFromStats(move) {
-  return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
+  return Math.min(EVASION_CAP, 0.06 + Math.min(0.10, (move || 0) * 0.018));
 }
 
 /* ── STAT LETTER GRADES (2026-08-29 stat rework, STAT_REWORK.md) ───────────
@@ -27640,7 +27708,7 @@ const TUTORIAL_LESSONS = [
               allow: ['move', 'attack', 'end'],
               goal: { type: 'attack', unit: 'p1-0', target: 'p2-0', arc: 'back' } },
             { id: 'guard', title: 'OVERWATCH',
-              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to finish a move inside SCOPE\'s range takes a reaction shot.',
+              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to end up inside SCOPE\'s range, however it got there, takes a reaction shot.',
               hint: 'GUARD',
               focus: { hud: 'guard' }, allow: ['guard', 'move', 'end'],
               goal: { type: 'guard', unit: 'p1-1' } },
@@ -29765,7 +29833,7 @@ const DOOR_HQ = {
           b: { site: 'prebuilt_saturn', part: 'hexagon', wall: 'n', x: -10, y: 2.4, sub: 'THE DOCKING SHELF · THE COLLAR' },   // THE AREAS (2026-09-18): on THE HEXAGON; AREA CONTENT D3 (2026-09-19): ON THE DOCKING SHELF — a door you climb to
           why: 'the second collar opens onto the hexagon plateau; the ship swings past Saturn on every orbit', note: 'mind the ring plane', draft: true },
         { id: 'antarctica_derelict', route: 'lunar', leaf: 'leaf_bulkhead',   // 2026-09-18 (the user: "Antarctica is where the Spaceship is"): docked on the same collar — a third course
-          a: { site: 'prebuilt_antarctica', part: 'station', wall: 'n', x: -0.4, y: 3.0, sub: 'THE HULL IN THE ICE · THE COLLAR' },   // THE AREAS (2026-09-18): on THE STATION; AREA CONTENT D3 (2026-09-19): ON THE HULL rising out of the ice — a door you climb to
+          a: { site: 'prebuilt_antarctica', part: 'station', wall: 'n', x: -0.4, y: 7, sub: 'THE HULL IN THE ICE · THE COLLAR' },   // THE AREAS (2026-09-18): on THE STATION; AREA CONTENT D3 (2026-09-19): ON THE HULL rising out of the ice — a door you climb to
           b: { site: 'prebuilt_derelict', part: 'airlock', door: 'collar' },
           why: 'the ship is IN the ice — the hull under the station is the same hull the airlock is in; the collar opens on the crevasse it was found in', note: 'the ice creaks', draft: true },
         { id: 'mars_derelict', route: 'lunar', leaf: 'leaf_bulkhead',   // THE AREAS (2026-09-18): the rover bay's hatch to the Moon was a plain door; Mars is a COURSE on the ship's collar now (the fourth)
@@ -30217,7 +30285,7 @@ const DOOR_HQ = {
           note: 'LEVEL −6', draft: true },
         { id: 'cave_agartha', route: 'undercroft', way: 'tunnel',   // THE PASSAGES (2026-10-01): the adit runs on through the rock
           a: { site: 'prebuilt_hollow_earth', part: 'adit', wall: 's', x: 0 },
-          b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'n', x: -10, y: 2.4 },   // THE AREAS (2026-09-18): the adit comes out in THE CRYSTAL CITY; AREA CONTENT D3 (2026-09-19): ON THE ADIT TERRACE — a door you climb to
+          b: { site: 'prebuilt_agartha', part: 'crystalcity', wall: 'n', x: -10, y: 3.5 },   // THE AREAS (2026-09-18): the adit comes out in THE CRYSTAL CITY; AREA CONTENT D3 (2026-09-19): ON THE ADIT TERRACE — a door you climb to
           why: 'the adit the crystal city cut toward the cave and stopped one metre short of; something opened the last metre from this side',
           note: 'one metre, from this side', draft: true },
         /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: two draughts inside the cave (R4: the vent's, the blast chamber's, the adit's and the mouth's earned exits) */
@@ -37860,7 +37928,18 @@ const DOOR_HQ = {
                        ],
                        open: [{ x: 0, z: 0, r: 11 }] },                                                                                            // THE FOUNTAIN PLAZA
                 features: [
-                    { k: 'pool', x: 0, z: 0, r: 3.4, y: 0, depth: 0.4 },                                                                          // THE FOUNTAIN (waded; the timer is in the chapel)
+                    /* THE PLAZA IS THE BOARD (2026-11-10, mondo: "improvements to all of the battle maps ... redesigning the layout ... better for PvP"): the arena
+                       was cut seven metres north of the plaza, the fountain off to one side of it and one team's cars the only cover. Now the board is the
+                       plaza itself (x -21..21, z -21..21 on its 3.5 m squares, HQ_ARENA_RULES.within): a team on each back lane, the boulevard across the
+                       middle, the nexus on the plaza's centre and THE FOUNTAIN as two basins either side of it (waded, four squares each). The cover: a
+                       parked car on each side of the boulevard (two squares), a bus shelter and a vendor's cart each, two tall palms. Each piece stands on
+                       the paving over a GHOST block (the fight's and the walker's, never drawn) and turns into its twin about the centre, with the
+                       storefronts' corners that already did. */
+                    { k: 'pool', x: -10.5, z: 0, r: 2.7, y: 0, depth: 0.4 }, { k: 'pool', x: 10.5, z: 0, r: 2.7, y: 0, depth: 0.4 },                 // THE FOUNTAIN: its two basins (waded; the timer is in the chapel)
+                    { k: 'wall', x0: -15.75, z0: -5.25, x1: -12.25, z1: -5.25, h: 1.5, t: 1.9, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 5.25, x1: 15.75, z1: 5.25, h: 1.5, t: 1.9, key: 'urban:ConcreteStriped2a', ghost: true, rail: false },   // the parked cars
+                    { k: 'wall', x0: 8.75, z0: -8.75, x1: 8.75, z1: -8.75, h: 2.6, t: 1.6, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 8.75, x1: -8.75, z1: 8.75, h: 2.6, t: 1.6, key: 'urban:ConcreteStriped2a', ghost: true, rail: false },   // the bus shelters
+                    { k: 'wall', x0: 1.75, z0: -8.75, x1: 1.75, z1: -8.75, h: 1.9, t: 1.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, { k: 'wall', x0: -1.75, z0: 8.75, x1: -1.75, z1: 8.75, h: 1.9, t: 1.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false },   // the vendors' carts
+                    { k: 'wall', x0: -8.75, z0: -8.75, x1: -8.75, z1: -8.75, h: 5.0, t: 1.2, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 8.75, x1: 8.75, z1: 8.75, h: 5.0, t: 1.2, key: 'urban:ConcreteStriped2a', ghost: true, rail: false },   // the palms
                     { k: 'plateau', x: 28.875, z: 29.125, w: 8.75, d: 5.75, h: 2.4, edge: 0.35 },                                                             // THE VALET DECK (in the south-east block, off the back lane)
                     { k: 'ramp', x0: 17.5, z0: 28, x1: 25.2, z1: 28, w: 3.5, h0: 0, h1: 2.4 },                                                    // the valet's ramp up to it (its last 0.7 m inside the deck) — GRID-FIT (2026-10-26): the deck x 24.5..33.25, z 26.25..32 (the wall); the ramp two squares wide on z 26.25..29.75, its foot on x 17.5
                     { k: 'rail', x0: 17.9, z0: 29.45, x1: 24.5, z1: 29.45 },                                                                         // a railing down the ramp's side
@@ -37924,18 +38003,20 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'car_cadillac',    x: -16.625, z: -6.125, face: 90 },                        // the boulevard's parking lanes
-                { key: 'car_taxi',        x: 11.375, z: 6.125, face: 270 },
+                { key: 'car_cadillac',    x: -14, z: -5.25, face: 90, floor: true },                        // the boulevard's parking lanes — THE PLAZA IS THE BOARD (2026-11-10): the two by the plaza on their ghost blocks, twins about the centre
+                { key: 'car_taxi',        x: 14, z: 5.25, face: 270, floor: true },
                 { key: 'car_cadillac',    x: 34.125, z: -6.125, face: 90 },
                 { key: 'car_suv',         x: -34, z: 5.2, face: 270 },
-                { key: 'bus_shelter',     x: 8.5, z: -8.8, face: 0 },                          // the boulevard's stop (the opening to the road)
+                { key: 'bus_shelter',     x: 8.75, z: -8.75, face: 0, span: 3.4, floor: true }, { key: 'bus_shelter', x: -8.75, z: 8.75, face: 180, span: 3.4, floor: true },   // the boulevard's stops, one a side (the opening to the road)
+                { key: 'hot_dog_stand',   x: 1.75, z: -8.75, face: 0, floor: true }, { key: 'hot_dog_stand', x: -1.75, z: 8.75, face: 180, floor: true },   // THE PLAZA IS THE BOARD: the vendors' carts on the plaza's kerbs
+                { key: 'palm_tree',       x: -8.75, z: -8.75, h: 6.0, floor: true }, { key: 'palm_tree', x: 8.75, z: 8.75, h: 6.0, floor: true },                    // and its two palms
                 { key: 'brazier',         x: -40.5, z: 26.0 },                                 // the back lane's barrel fire (the room's own light)
                 { key: 'railing_1m',      x: 29, z: 29.8, face: 0 },                           // THE PARK RULE's catalogue rail on the valet deck (the terrain's rails are the grind)
                 { key: 'quarter_pipe',    x: 31.5, z: 30.4, face: 180 },                       // the deck's quarter pipe (SKATEBOARDING 9.8)
-                { key: 'quarter_pipe',    x: -8, z: 8.5, face: 0 },                            // and one on the plaza's south edge
-                { key: 'riser_2',         x: 18.375, z: 9.625, face: 90 },                           // a loading dock's riser on the boulevard's south sidewalk
+                { key: 'quarter_pipe',    x: -29.75, z: 8.5, face: 0 },                            // and one on the boulevard's south sidewalk, west of the plaza (THE PLAZA IS THE BOARD: off the board)
+                { key: 'riser_2',         x: 29.75, z: 9.625, face: 90 },                           // a loading dock's riser on the boulevard's south sidewalk
                 { key: 'slot_machine',    x: -13.5, z: -24.6, face: 180 }, { key: 'slot_machine', x: -6.5, z: -24.6, face: 180 },   // the chapel's neighbours' machines spilling onto the forecourt
-                { key: 'wet_floor_sign',  x: 4.0, z: 4.2, face: 200 },                         // by the fountain
+                { key: 'wet_floor_sign',  x: 12.25, z: 4.4, face: 200 },                         // by the fountain (its east basin)
                 { key: 'traffic_barrel',  x: 30.5, z: -25.0 }, { key: 'traffic_cone', x: 32.25, z: -25.0 },   // the lane's works (on its sidewalk — 2026-11-02 STREET FURNITURE: they stood 1.4 m into the lane, at the cross street's crossing)
             ],
             agents: [],
@@ -38970,7 +39051,8 @@ const DOOR_HQ = {
                            { pts: [[-40, 29], [-40, 64]], w: 6 },                                                                                                 // WEST DOCK LANE (the ring's south-west corner → the waterfront, over the canal)
                            { pts: [[40, 29], [40, 64]], w: 6 },                                                                                                   // EAST DOCK LANE
                        ],
-                       open: [{ x: 0, z: 0, r: 12 },                                                                                                              // THE PLAZA
+                       open: [{ x0: -17.5, z0: -10.5, x1: -10.5, z1: -10.5, w: 7 }, { x0: -35, z0: -14, x1: -28, z1: -14, w: 14 },   /* THE BATTLE MAP POLISH: the lot's east block gave its ground to THE TERRACE's south half */
+                              { x: 0, z: 0, r: 12 },                                                                                                              // THE PLAZA
                               { x: -40, z: -64, r: 13 },                                                                                                          // MARKET SQUARE (D2)
                               { x: 48, z: -64, r: 11 }, { x: 48, z: -79, r: 9 },                                                                                  // CHURCH SQUARE + THE CHURCHYARD (the church stands in it)
                               { x0: -100, z0: 79, x1: 100, z1: 79, w: 22 }] },   /* Phase 7: to past the edge — the quay meets the harbour */                                                                                    // THE QUAY (the open apron south of the waterfront: the cranes, the siding, the basin, the flooded quay)
@@ -38985,10 +39067,19 @@ const DOOR_HQ = {
                        it, the walker on it looks down on both. It lands on THE WEST LANDING, a 3 m tier in the north-west block's corner, whose
                        stair comes up an alley off the ring road's south sidewalk (the ramp rule: 10.3 m for 3 m, ending 0.7 m inside the tier). ═══ */
                     { k: 'bridge', x0: -5.95, z0: -19.25, x1: 18.2, z1: -19.25, w: 3.5, y: 3.0 },                                     // THE OVERPASS over THE AVENUE (west landing ⇄ the parking deck)
-                    { k: 'plateau', x: -10.5, z: -19.25, w: 10.5, d: 10.5, h: 3.0, edge: 0.35 },                                      // THE WEST LANDING (x −15.75..−5.25, z −24.5..−14 — GRID-FIT 2026-10-26: 6 × 6 squares; the overpass two squares wide on z −21..−17.5)
+                    { k: 'plateau', x: -10.5, z: -14, w: 10.5, d: 14, h: 3.0, edge: 0.35 },   /* THE BATTLE MAP POLISH (2026-11-10): THE TERRACE, x −15.75..−5.25, z −21..−7 (it was z −24.5..−14, all of it on one team's half of the fight's board): four rows alike about the board's middle line z −14, a stair up from each half */
+                    { k: 'ramp', x0: -21, z0: -8.75, x1: -15.05, z1: -8.75, w: 3.5, h0: 0, h1: 3.0, stairs: true },                     // THE SOUTH STAIR (the overpass stair's twin, off the cross street's sidewalk)
+                    { k: 'plateau', x: -31.5, z: -14, w: 7, d: 7, h: 6.0, edge: 0.3, bld: { style: 'office' } },                          // the lot's west block, moved onto the middle line (3..4 x 5..6 on the board; it stood on the south half only)
+                                                         // THE WEST LANDING (x −15.75..−5.25, z −24.5..−14 — GRID-FIT 2026-10-26: 6 × 6 squares; the overpass two squares wide on z −21..−17.5)
                     { k: 'path', pts: [[-26.25, -24.2], [-26.25, -18]], w: 3.5 },                                                            // THE OVERPASS ALLEY off the ring road's sidewalk
-                    { k: 'ramp', x0: -26.25, z0: -19.25, x1: -15.05, z1: -19.25, w: 3.5, h0: 0, h1: 3.0, stairs: true },                    // THE OVERPASS STAIR up to the landing (its last 0.7 m inside the tier)
-                    { k: 'rail', x0: -14.4, z0: -22.9, x1: -7.6, z1: -22.9 },                                                        // the landing's rail (the drop to the ring road side — 1.6 m inside the edge)   // the deck's edge rail (the grind)
+                    { k: 'ramp', x0: -21, z0: -19.25, x1: -15.05, z1: -19.25, w: 3.5, h0: 0, h1: 3.0, stairs: true },                    // THE OVERPASS STAIR up to the landing (its last 0.7 m inside the tier)
+                    { k: 'rail', x0: -6.85, z0: -16.6, x1: -6.85, z1: -7.6 },                                                        // the landing's rail (the drop to the ring road side — 1.6 m inside the edge)   // the deck's edge rail (the grind)
+                    /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): the fight's 12 x 12 is THE COLLAPSE's lot
+                       (x -45.5..-3.5, z -35..7, HQ_ARENA_RULES.within), the ring road under one spawn row, the cross street under the
+                       other. Alike from both now: THE TERRACE with a stair from each half on the east flank, two small blocks on the
+                       west moved onto the middle line, the rubble mound on the middle line, a wrecked car on a ghost block before each spawn corner (3 and 8 x 2
+                       and 9). */
+                    { k: 'wall', x0: -15.75, z0: -26.25, x1: -15.75, z1: -26.25, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false }, { k: 'wall', x0: -33.25, z0: -26.25, x1: -33.25, z1: -26.25, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -1.75, x1: -15.75, z1: -1.75, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false }, { k: 'wall', x0: -33.25, z0: -1.75, x1: -33.25, z1: -1.75, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false },
                     { k: 'hill', x: -20, z: -14, r: 5.5, h: 1.5, open: true },                                                      // THE COLLAPSE — the rubble mound where the tower came down (inside the north-west block)
                     { k: 'plateau', x: -29.5, z: 15, w: 7, d: 8, h: 4.0, edge: 0.3, bld: { style: 'office' } },                                               // THE ROOFTOP (the tape's; the door gun's) — flush with the ring road's west sidewalk
                     { k: 'path', pts: [[0, -5], [0, 5]], w: 21 },                                                                   // THE PLAZA is pavement (THE URBAN PACK, 2026-09-17): the path sheet over the open square — the cars' routes break at ±8, the walker crosses it
@@ -39112,14 +39203,14 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* the parked cars on the kerbs (the catalogue's vehicle rows; the traffic drives the road between them) */
-                { key: 'car_cop',       x: -14.5, z: -4.0, face: 90 },                      // the cross street's north parking lane
+                { key: 'car_cop',       x: -15.75, z: -1.75, face: 90, floor: true }, { key: 'car_taxi', x: -33.25, z: -1.75, face: 270, floor: true },   // THE BATTLE MAP POLISH: cover before the south spawn corners                      // the cross street's north parking lane
                 { key: 'car_suv',       x: 11.0, z: 4.0, face: 270 },                       // the south lane (rev 8: west of the loading dock's riser, off its landing)
                 { key: 'car_cadillac',  x: 4.375, z: -23.625, face: 0 },                          // the avenue's east lane (rev 8: south of the deck ramp's run-up band)
                 { key: 'car_suv',       x: -4.0, z: 16, face: 180 },
                 { key: 'car_ambulance', x: -84, z: -10.2, face: 90 },                       // at the tower's side street — the evacuation
                 { key: 'car_cadillac',  x: 14.5, z: -4.0, face: 90 },                       // the cross street's north lane, east (rev 8: it parked in the deck ramp's run-up)
-                { key: 'crashed_car',     x: -17.5, z: -21.5, face: 300 },                   // THE SECOND PASS (2026-09-17): the wrecks — two under the collapse, one on the chicane
-                { key: 'crashed_car_2',   x: -26.0, z: -8.5, face: 60 },
+                { key: 'crashed_car',     x: -15.75, z: -26.25, face: 300, floor: true },   // THE BATTLE MAP POLISH: the two wrecks are the cover before the north spawn corners                   // THE SECOND PASS (2026-09-17): the wrecks — two under the collapse, one on the chicane
+                { key: 'crashed_car_2',   x: -33.25, z: -26.25, face: 60, floor: true },
                 { key: 'crashed_car_2',   x: 35.0, z: -1.5, face: 40 },
                 { key: 'traffic_barrel',  x: 33.0, z: 2.6 }, { key: 'traffic_barrel', x: 37.0, z: -4.4 },
                 { key: 'bus_shelter',     x: 6.3, z: -22.0, face: 270 },                     // the avenue's stops (the opening to the road)
@@ -39587,15 +39678,24 @@ const DOOR_HQ = {
                     { k: 'pool', x: -60, z: 62, r: 3.2, rz: 2.6, y: -4, depth: 0.35 },                                                  // THE LOWER PUDDLE (waded)
                     /* the furniture (the kerb rule: on the sidewalks) */
                     { k: 'scatter', key: 'vending_machine', n: 4, x: -43, z: 12, r: 8, seed: 7 },                                     // THE MARKET's machines
-                    { k: 'scatter', key: 'city_bin', n: 26, seed: 3 },
-                    { k: 'scatter', key: 'fire_hydrant', n: 14, seed: 4 },
+                    /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): THE BOARD IS THE HOLO-PLAZA. The fight's
+                       12 x 12 (x -21..21, z -21..21, HQ_ARENA_RULES.within) is centred on the projector's mound, the boulevard down its
+                       middle, a city block in each corner (it sat 10.5 m north: one spawn row between buildings, the other on open
+                       street). The parked cars are cover now, each on a ghost block of its own squares, a twin for each across the
+                       plaza: a car in each cross-street parking lane (2 squares), a car and a bus stop beside each spawn row. The
+                       street clutter keeps off the boulevard's squares. */
+                    { k: 'wall', x0: -15.75, z0: -5.25, x1: -12.25, z1: -5.25, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 5.25, x1: 15.75, z1: 5.25, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false },   // under the parked cars (1..2 x 4 and 9..10 x 7)
+                    { k: 'wall', x0: 8.75, z0: -19.25, x1: 8.75, z1: -19.25, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 19.25, x1: -8.75, z1: 19.25, h: 1.6, t: 3.5, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false },   // under the cars by the spawn rows (8 x 0 and 3 x 11)
+                    { k: 'wall', x0: -8.75, z0: -15.75, x1: -8.75, z1: -15.75, h: 1.6, t: 2.4, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 15.75, x1: 8.75, z1: 15.75, h: 1.6, t: 2.4, key: 'urban:ConcreteUnderTiles1', ghost: true, rail: false },   // under the bus stops (3 x 1 and 8 x 10)
+                    { k: 'scatter', key: 'city_bin', n: 26, seed: 3, off: [-10.5, -21, 10.5, 21] },
+                    { k: 'scatter', key: 'fire_hydrant', n: 14, seed: 4, off: [-10.5, -21, 10.5, 21] },
                     { k: 'scatter', key: 'hot_dog_stand', n: 2, seed: 61, r0: 0.9 },                                              // THE 2026-09-22 BATCH: the noodle carts' cousins on the kerbs
-                    { k: 'scatter', key: 'traffic_cone', n: 14, seed: 5 },
+                    { k: 'scatter', key: 'traffic_cone', n: 14, seed: 5, off: [-10.5, -21, 10.5, 21] },
                     { k: 'scatter', key: 'street_drain', n: 16, seed: 6 },
-                    { k: 'scatter', key: 'signpost', n: 12, seed: 8 },
-                    { k: 'scatter', key: 'park_bench', n: 10, seed: 9 },
-                    { k: 'scatter', key: 'cardboard_boxes', n: 16, seed: 10 },
-                    { k: 'scatter', key: 'traffic_barrel', n: 10, seed: 11 },
+                    { k: 'scatter', key: 'signpost', n: 12, seed: 8, off: [-10.5, -21, 10.5, 21] },
+                    { k: 'scatter', key: 'park_bench', n: 10, seed: 9, off: [-10.5, -21, 10.5, 21] },
+                    { k: 'scatter', key: 'cardboard_boxes', n: 16, seed: 10, off: [-10.5, -21, 10.5, 21] },
+                    { k: 'scatter', key: 'traffic_barrel', n: 10, seed: 11, off: [-10.5, -21, 10.5, 21] },
                 ],
                 traffic: [
                     { pts: [[-34, -24], [34, -24], [34, -4], [26, 4], [34, 12], [34, 24], [10, 24], [-4, 18], [-34, 24], [-34, 4]], loop: true, n: 7, speed: 8.5, lane: 2.3, kinds: ['cybercar', 'taxi', 'copcar', 'cybercar', 'taxi', 'truck', 'suv'] },
@@ -39616,14 +39716,14 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'car_cyber',       x: -14.5, z: -4.0, face: 90 },                        // the cross street's north parking lane
-                { key: 'car_taxi',      x: 11.375, z: 4.375, face: 270 },                       // rev 8: west of the loading dock's riser, off its landing                         // the south lane
-                { key: 'car_taxi',        x: 4.0, z: -20, face: 0 },                            // the boulevard's east lane
-                { key: 'car_cyber',       x: -4.0, z: 18, face: 180 },
+                { key: 'car_cyber',       x: -14, z: -5.25, face: 90, span: 6.4, floor: true },                        // the cross street's north parking lane
+                { key: 'car_taxi',      x: 14, z: 5.25, face: 270, span: 6.4, floor: true },                       // rev 8: west of the loading dock's riser, off its landing                         // the south lane
+                { key: 'car_taxi',        x: 8.75, z: -19.25, face: 0, floor: true },   // (THE BATTLE MAP POLISH: beside the spawn row, it stood on it)                            // the boulevard's east lane
+                { key: 'car_cyber',       x: -8.75, z: 19.25, face: 180, floor: true },
                 { key: 'car_cop',         x: 4.0, z: 30, face: 0 },
                 { key: 'crashed_car_2',   x: -4.0, z: -30, face: 160 },                        // the wreck on the boulevard — the rain got it
                 { key: 'traffic_barrel',  x: -1.5, z: -33 }, { key: 'traffic_cone', x: -6.0, z: -27 },
-                { key: 'bus_shelter',     x: 6.3, z: 14.0, face: 270 },                         // the boulevard's stop (the opening to the road)
+                { key: 'bus_shelter',     x: 8.75, z: 15.75, face: 270, floor: true }, { key: 'bus_shelter', x: -8.75, z: -15.75, face: 90, floor: true },   // (THE BATTLE MAP POLISH: a stop on each side of the plaza, off the boulevard's squares)                         // the boulevard's stop (the opening to the road)
                 { key: 'bus_shelter',     x: -6.3, z: -30.0, face: 90 },
                 { key: 'slot_machine',    x: -47.5, z: 8.4, face: 180 }, { key: 'slot_machine', x: -49.5, z: 8.4, face: 180 },   // the pachinko parlour spilling onto the alley (the machines' own light; 2026-11-02 STREET FURNITURE: off the siding's road)
                 { key: 'brazier',         x: -47.5, z: 12.0 },                                  // the market's barrel fire (the room's own light; 2026-11-02 STREET FURNITURE: in the market alley's mouth, it burned in the siding's road)
@@ -40003,6 +40103,15 @@ const DOOR_HQ = {
                     { k: 'wall', x0: 10.8, z0: -28, x1: 20.7, z1: -28, h: 0.55, t: 0.3, key: 'marble' },
                     /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE ROOD SCREEN — a carved screen across the chancel's east half (the crypt door sees the nave's doors no more, R3) */
                     { k: 'wall', x0: -19.25, z0: -22.75, x1: 19.25, z1: -22.75, h: 4.1, t: 3.5, key: 'marble' },   // the chancel is entered round its ends (x ±10.5..±14); the rood loft sits on it (a one-square block: a thin screen on a line would be walked through on the battle board)
+                    /* THE NAVE IS THE BOARD (2026-11-10, mondo: "improvements to all of the battle maps ... redesigning the layout ... better for PvP"): the arena
+                       was cut with the north side's backs against the rood screen and the south side standing inside the front pews, and nothing on
+                       it stopped a step or a sight line (a pew or a column is only drawn: the fight reads the floor). Now the board is the middle of
+                       the nave (x -21..21, z -10.5..31.5 on its 3.5 m squares, HQ_ARENA_RULES.within): the aisle four squares wide from end to end, the
+                       crossing across the middle (the nexus on it), four blocks of pews (a step up: cover you can stand on) and the nave's eight
+                       columns in two even rows (10.5 m apart, solid). A GHOST block under each pew and column (the fight's and the walker's, never
+                       drawn). The south half is the north half mirrored, and the east the west: both sides fight the same nave. */
+                    { k: 'wall', x0: -15.75, z0: -5.25, x1: -15.75, z1: -5.25, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -5.25, x1: 15.75, z1: -5.25, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 5.25, x1: -15.75, z1: 5.25, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 5.25, x1: 15.75, z1: 5.25, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 15.75, x1: -15.75, z1: 15.75, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 15.75, x1: 15.75, z1: 15.75, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 26.25, x1: -15.75, z1: 26.25, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 26.25, x1: 15.75, z1: 26.25, h: 5.0, t: 1.2, key: 'marble', ghost: true, rail: false },   // the nave's columns
+                    { k: 'wall', x0: -12.25, z0: 1.75, x1: -8.75, z1: 1.75, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 1.75, x1: 12.25, z1: 1.75, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 5.25, x1: -8.75, z1: 5.25, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 5.25, x1: 12.25, z1: 5.25, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 15.75, x1: -8.75, z1: 15.75, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 15.75, x1: 12.25, z1: 15.75, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 19.25, x1: -8.75, z1: 19.25, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 19.25, x1: 12.25, z1: 19.25, h: 1.3, t: 1.0, key: 'marble', ghost: true, rail: false },   // the pews
                     { k: 'path', pts: [[0, 50], [0, -24.5]], w: 6 },                                             // THE AISLE
                     { k: 'path', pts: [[-22.75, -36.75], [22.75, -36.75]], w: 3.5 },                                           // across the chancel
                 ],
@@ -40031,28 +40140,22 @@ const DOOR_HQ = {
                 { key: 'holy_tapestry',  wall: 'e', z: -2, mount: 3.4 },
                 { key: 'holy_tapestry',  wall: 'n', x: -11, mount: 3.4 },
                 { key: 'holy_tapestry',  wall: 'n', x: 11, mount: 3.4 },
+                /* THE NAVE IS THE BOARD (2026-11-10): the pews in four blocks either side of the aisle, two squares wide and two rows deep, the crossing
+                   open between them; each pew on its ghost block (`floor: true`). The front blocks are the carved pews, the back blocks the plain ones. */
+                { key: 'catholic_pew', x: -12.25, z: 1.75, face: 0, floor: true }, { key: 'catholic_pew', x: -8.75, z: 1.75, face: 0, floor: true }, { key: 'catholic_pew', x: 8.75, z: 1.75, face: 0, floor: true }, { key: 'catholic_pew', x: 12.25, z: 1.75, face: 0, floor: true }, { key: 'catholic_pew', x: -12.25, z: 5.25, face: 0, floor: true }, { key: 'catholic_pew', x: -8.75, z: 5.25, face: 0, floor: true }, { key: 'catholic_pew', x: 8.75, z: 5.25, face: 0, floor: true }, { key: 'catholic_pew', x: 12.25, z: 5.25, face: 0, floor: true },
+                { key: 'church_pew', x: -12.25, z: 15.75, face: 0, floor: true }, { key: 'church_pew', x: -8.75, z: 15.75, face: 0, floor: true }, { key: 'church_pew', x: 8.75, z: 15.75, face: 0, floor: true }, { key: 'church_pew', x: 12.25, z: 15.75, face: 0, floor: true }, { key: 'church_pew', x: -12.25, z: 19.25, face: 0, floor: true }, { key: 'church_pew', x: -8.75, z: 19.25, face: 0, floor: true }, { key: 'church_pew', x: 8.75, z: 19.25, face: 0, floor: true }, { key: 'church_pew', x: 12.25, z: 19.25, face: 0, floor: true },
                 { key: 'church_pew',     x: -5.25, z: 36.75, face: 0 },                              // THE PEWS: the back rows
                 { key: 'church_pew',     x: 5.25, z: 36.75, face: 0 },
                 { key: 'church_pew',     x: -5.25, z: 33.25, face: 0 },
                 { key: 'church_pew',     x: 5.25, z: 33.25, face: 0 },
-                { key: 'church_pew',     x: -5.25, z: 29.75, face: 0 },
-                { key: 'church_pew',     x: 5.25, z: 29.75, face: 0 },
-                { key: 'church_pew',     x: -5.25, z: 26.25, face: 0 },
-                { key: 'church_pew',     x: 5.25, z: 26.25, face: 0 },
-                { key: 'catholic_pew',   x: -5.25, z: 19.25, face: 0 },                             // the front rows, past the crossing
-                { key: 'catholic_pew',   x: 5.25, z: 19.25, face: 0 },
-                { key: 'catholic_pew',   x: -5.25, z: 15.75, face: 0 },
-                { key: 'catholic_pew',   x: 5.25, z: 15.75, face: 0 },
-                { key: 'catholic_pew',   x: -5.25, z: 12.25, face: 0 },
-                { key: 'catholic_pew',   x: 5.25, z: 12.25, face: 0 },
-                { key: 'greek_column',   x: -15.75, z: 33.25, h: 8.5 },                               // THE NAVE'S COLUMNS (8.5 m — the catalogue's 3.6 was a garden ornament under the vault)
-                { key: 'greek_column',   x: 15.75, z: 33.25, h: 8.5 },
-                { key: 'greek_column',   x: -15.75, z: 15.75, h: 8.5 },
-                { key: 'greek_column',   x: 15.75, z: 15.75, h: 8.5 },
-                { key: 'greek_column',   x: -15.75, z: 1.75, h: 8.5 },
-                { key: 'greek_column',   x: 15.75, z: 1.75, h: 8.5 },
-                { key: 'greek_column',   x: -15.75, z: -15.75, h: 8.5 },
-                { key: 'greek_column',   x: 15.75, z: -15.75, h: 8.5 },
+                { key: 'greek_column',   x: -15.75, z: 26.25, h: 8.5, floor: true },                               // THE NAVE'S COLUMNS (8.5 m — the catalogue's 3.6 was a garden ornament under the vault)
+                { key: 'greek_column',   x: 15.75, z: 26.25, h: 8.5, floor: true },
+                { key: 'greek_column',   x: -15.75, z: 15.75, h: 8.5, floor: true },
+                { key: 'greek_column',   x: 15.75, z: 15.75, h: 8.5, floor: true },
+                { key: 'greek_column',   x: -15.75, z: 5.25, h: 8.5, floor: true },
+                { key: 'greek_column',   x: 15.75, z: 5.25, h: 8.5, floor: true },
+                { key: 'greek_column',   x: -15.75, z: -5.25, h: 8.5, floor: true },
+                { key: 'greek_column',   x: 15.75, z: -5.25, h: 8.5, floor: true },
                 { key: 'greek_column',   x: -29.75, z: -12.25, h: 4.1 },                              // THE COLONNADES under the galleries' edges
                 { key: 'greek_column',   x: 29.75, z: -12.25, h: 4.1 },
                 { key: 'greek_column',   x: -29.75, z: -1.75, h: 4.1 },
@@ -40081,8 +40184,8 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: 12.25, z: 40.25 },
                 { key: 'candle_ring',    x: -15.75, z: -40.25 },
                 { key: 'candle_ring',    x: 15.75, z: -40.25 },
-                { key: 'candle_ring',    x: -5.25, z: 22.75 },                                     // the candles at the crossing and at the altar steps (ten lights — the cap)
-                { key: 'candle_ring',    x: 5.25, z: 22.75 },
+                { key: 'candle_ring',    x: -12.25, z: 33.25 },                                     // the candles at the crossing and at the altar steps (ten lights — the cap)
+                { key: 'candle_ring',    x: 12.25, z: 33.25 },
                 { key: 'candle_ring',    x: -8.75, z: -22.75 },
                 { key: 'candle_ring',    x: 8.75, z: -22.75 },
                 { key: 'stained_glass',  wall: 'w', z: -12, h: 5.5, mount: 7.0 },                 // THE WINDOWS, high in the 16 m walls
@@ -40091,8 +40194,8 @@ const DOOR_HQ = {
                 { key: 'stained_glass',  wall: 'e', z: -12, h: 5.5, mount: 7.0 },
                 { key: 'stained_glass',  wall: 'e', z: 8, h: 5.5, mount: 7.0 },
                 { key: 'stained_glass',  wall: 'e', z: 28, h: 5.5, mount: 7.0 },
-                { key: 'confessional_booth', x: -21, z: 20, face: 90 },                        // the confessionals in the side aisles
-                { key: 'confessional_booth', x: 21, z: 20, face: 270 },
+                { key: 'confessional_booth', x: -24.5, z: 19.25, face: 90 },                        // the confessionals in the side aisles
+                { key: 'confessional_booth', x: 24.5, z: 19.25, face: 270 },
                 { key: 'paper_sheet',    x: 5.225, z: 47.125, y: 0.01, face: 30 },                    // a form by the door: MASS — WHICH
                 { key: 'instrument_harp', x: -17.2, z: -25.2, face: 135 }, { key: 'instrument_harp', x: 17.2, z: -25.2, face: 225 }, { key: 'instrument_cello', x: -13.2, z: -35.6, face: 160 }, { key: 'instrument_cello_bow', x: -10.375, z: -33.825, rot: 20 },   // THE INSTRUMENTS (2026-10-27): the angels' harps by the statues and a cello beside the podium
             ],
@@ -41031,7 +41134,8 @@ const DOOR_HQ = {
                 floor: 'grass_2', cliff: 'castle_wall', path: 'cobblestone',
                 noise: { amp: 0, scale: 8 },
                 features: [
-                    { k: 'hill', x: -18.375, z: -23.625, r: 7.875, h: 0.8 },                                                             // THE SWORD'S KNOLL
+                    { k: 'hill', x: -5.25, z: 0, r: 4.2, h: 0.8 },   // THE BATTLE MAP POLISH (2026-11-10): the knoll moved onto the board's middle line, east of the nexus
+                    //                                                             // THE SWORD'S KNOLL
                     { k: 'stream', pts: [[-58.625, -59.5], [-58.625, 35.875], [58.625, 35.875], [58.625, -59.5]], w: 7.55, y: -0.3, depth: 2.0, key: 'deep_water', bank: 0.6 },   // THE MOAT (never entered; water and banks inside a 5-square band on square lines)
                     /* THE SQUARES (2026-10-26, mondo: "redesign the maps with the square grid in mind"): the wall-walk is two battle squares
                        wide (3.5 m) with both faces on square lines (west x −47.25..−43.75, east 43.75..47.25, south z 22.75..26.25, north
@@ -41096,9 +41200,21 @@ const DOOR_HQ = {
                     { k: 'rail', x0: 3.5, z0: -44, x1: 3.5, z1: -8, model: 'pipe', block: false },
                     { k: 'rail', arc: { x: -16.625, z: -45.875, r: 3.4, a0: 30, a1: 330 }, model: 'pipe', block: false },
                     /* THE LISTS: the stand (three rows, high to low) and THE TILT down the middle (the grind) */
-                    { k: 'wall', x0: -35.875, z0: -11.375, x1: -18.375, z1: -11.375, y: 1.26, t: 1.75, key: 'wood', tier: true, seat: 0xa83030, front: [0, 1], rail: false },
-                    { k: 'wall', x0: -35.875, z0: -9.625, x1: -18.375, z1: -9.625, y: 0.84, t: 1.75, key: 'wood', tier: true, seat: 0xa83030, front: [0, 1], rail: false },
-                    { k: 'wall', x0: -35.875, z0: -7.875, x1: -18.375, z1: -7.875, y: 0.42, t: 1.75, key: 'wood', tier: true, seat: 0x3048a8, front: [0, 1], rail: false },
+                    /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): THE LISTS ARE THE BOARD. The fight's 12 x 12 is
+                       cut about the tilt (x -35..7, z -21..21, HQ_ARENA_RULES.within), alike from both spawn rows: the tilt on the middle
+                       line west of the nexus, a stand each side of it (four squares long: the house columns stay clear), the sword in
+                       the stone on its knoll on the middle line east of the nexus, a pavilion and an armour stand on each side of it, a
+                       brazier in each east corner of each spawn row. The old board was the bare lawn north of the lists with the knoll
+                       under one team's spawn. */
+                    { k: 'wall', x0: -34.125, z0: -11.375, x1: -21.875, z1: -11.375, y: 1.26, t: 1.75, key: 'wood', tier: true, seat: 0xa83030, front: [0, 1], rail: false },
+                    { k: 'wall', x0: -34.125, z0: -9.625, x1: -21.875, z1: -9.625, y: 0.84, t: 1.75, key: 'wood', tier: true, seat: 0xa83030, front: [0, 1], rail: false },
+                    { k: 'wall', x0: -34.125, z0: -7.875, x1: -21.875, z1: -7.875, y: 0.42, t: 1.75, key: 'wood', tier: true, seat: 0x3048a8, front: [0, 1], rail: false },
+                    { k: 'wall', x0: -34.125, z0: 11.375, x1: -21.875, z1: 11.375, y: 1.26, t: 1.75, key: 'wood', tier: true, seat: 0x3048a8, front: [0, -1], rail: false },   // the south stand (the twin, facing north)
+                    { k: 'wall', x0: -34.125, z0: 9.625, x1: -21.875, z1: 9.625, y: 0.84, t: 1.75, key: 'wood', tier: true, seat: 0x3048a8, front: [0, -1], rail: false },
+                    { k: 'wall', x0: -34.125, z0: 7.875, x1: -21.875, z1: 7.875, y: 0.42, t: 1.75, key: 'wood', tier: true, seat: 0xa83030, front: [0, -1], rail: false },
+                    { k: 'wall', x0: -5.25, z0: -1.75, x1: -5.25, z1: 1.75, h: 2.2, t: 2.4, key: 'castle_wall', ghost: true, rail: false },   // under the sword in the stone (8 x 5..6)
+                    { k: 'wall', x0: -5.25, z0: -12.25, x1: -5.25, z1: -12.25, h: 2.2, t: 2.4, key: 'castle_wall', ghost: true, rail: false }, { k: 'wall', x0: -5.25, z0: 12.25, x1: -5.25, z1: 12.25, h: 2.2, t: 2.4, key: 'castle_wall', ghost: true, rail: false }, { k: 'wall', x0: 5.25, z0: -5.25, x1: 5.25, z1: -5.25, h: 2.2, t: 2.4, key: 'castle_wall', ghost: true, rail: false }, { k: 'wall', x0: 5.25, z0: 5.25, x1: 5.25, z1: 5.25, h: 2.2, t: 2.4, key: 'castle_wall', ghost: true, rail: false },   // under the pavilions (8 x 2, 8 x 9) and the armour stands (11 x 4, 11 x 7)
+                    { k: 'wall', x0: -5.25, z0: -19.25, x1: -5.25, z1: -19.25, h: 1.3, t: 2.4, key: 'castle_wall', ghost: true, rail: false }, { k: 'wall', x0: 5.25, z0: -19.25, x1: 5.25, z1: -19.25, h: 1.3, t: 2.4, key: 'castle_wall', ghost: true, rail: false }, { k: 'wall', x0: -5.25, z0: 19.25, x1: -5.25, z1: 19.25, h: 1.3, t: 2.4, key: 'castle_wall', ghost: true, rail: false }, { k: 'wall', x0: 5.25, z0: 19.25, x1: 5.25, z1: 19.25, h: 1.3, t: 2.4, key: 'castle_wall', ghost: true, rail: false },   // under the braziers (8 and 11 x 0 and 11)
                     { k: 'wall', x0: -36.625, z0: 0, x1: -17.625, z1: 0, h: 1.2, t: 0.25, key: 'wood' },
                     /* the paths: the approach, the gate, THE AVENUE to the hall, the keep's, the postern's, the towers', the stairs', the track outside the moat */
                     { k: 'path', pts: [[0, 60], [0, 42]], w: 7 },
@@ -41106,10 +41222,10 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, 20], [0, -57]], w: 3.5 },
                     { k: 'path', pts: [[0, -30], [-35.2, -30], [-35.2, -57]], w: 2.6 },
                     { k: 'path', pts: [[0, -39.375], [28.875, -39.375], [28.875, -60]], w: 1.75 },
-                    { k: 'path', pts: [[0, 12], [-38, 12], [-41.6, 18.8]], w: 1.8 },
+                    { k: 'path', pts: [[0, 14.875], [-38, 14.875], [-41.6, 18.8]], w: 1.8 },
                     { k: 'path', pts: [[0, 12], [38, 12], [42.3, 18.6]], w: 1.8 },
                     { k: 'path', pts: [[29, -44], [38, -47], [41.4, -50.8]], w: 1.8 },
-                    { k: 'path', pts: [[-12, 12], [-22, -15.75], [-28, -15.75]], w: 1.6 },
+                    { k: 'path', pts: [[0, -22.75], [-24.5, -22.75], [-28, -15.75]], w: 1.6 },   // round the north of the lists (it ran across them)
                     { k: 'path', pts: [[12, 12], [22, 3.5], [28, 3.5]], w: 1.6 },
                     { k: 'path', pts: [[-66, -56], [-66, 48], [66, 48], [66, -56]], w: 2.4 },
                     /* THE ORCHARD (the east court) */
@@ -41123,8 +41239,8 @@ const DOOR_HQ = {
                     { k: 'tree', x: -69.125, z: -2.625, kind: 'tree_3', h: 6.2, r: 0.7 }, { k: 'tree', x: -69.125, z: 9.625, kind: 'tree_3', h: 5.6, r: 0.7 }, { k: 'tree', x: -69.125, z: 39.375, kind: 'tree_2', h: 5.8, r: 0.7 },
                     { k: 'tree', x: 69.125, z: -49.875, kind: 'tree_3', h: 5.8, r: 0.7 }, { k: 'tree', x: 69.125, z: -37.625, kind: 'tree_2', h: 5.5, r: 0.7 }, { k: 'tree', x: 69.125, z: -25.375, kind: 'tree_3', h: 6.0, r: 0.7 },
                     { k: 'tree', x: 69.125, z: -13.125, kind: 'tree_3', h: 5.6, r: 0.7 }, { k: 'tree', x: 69.125, z: -2.625, kind: 'tree_2', h: 5.8, r: 0.7 }, { k: 'tree', x: 69.125, z: 9.625, kind: 'tree_3', h: 6.0, r: 0.7 }, { k: 'tree', x: 69.125, z: 39.375, kind: 'tree_3', h: 5.5, r: 0.7 },
-                    { k: 'scatter', key: 'fern', n: 10, seed: 5 },
-                    { k: 'scatter', key: 'cave_stone', n: 4, seed: 7 },
+                    { k: 'scatter', key: 'fern', n: 10, seed: 5, off: [-35, -21, 7, 21] },
+                    { k: 'scatter', key: 'cave_stone', n: 4, seed: 7, off: [-35, -21, 7, 21] },
                 ],
                 marks: [
                     /* THE LISTS: the sanded ground, the chalk round it */
@@ -41151,17 +41267,17 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE GATEHOUSE: the braziers inside the gate, the stocks, the sign on the approach */
-                { key: 'brazier',        x: -4.375, z: 18.375 }, { key: 'brazier', x: 4.375, z: 18.375 },
-                { key: 'stocks',         x: -9.625, z: 14.875, face: 90 },
+                { key: 'brazier',        x: -5.25, z: 19.25, floor: true }, { key: 'brazier', x: 5.25, z: 19.25, floor: true }, { key: 'brazier', x: -5.25, z: -19.25, floor: true }, { key: 'brazier', x: 5.25, z: -19.25, floor: true },   // THE BATTLE MAP POLISH: on their squares, and their twins at the board's north end
+                { key: 'stocks',         x: 9.625, z: 14.875, face: 270 },   // off the board (east of the gate)
                 { key: 'signpost',       x: -4.375, z: 49.875 },
                 /* THE BAILEY: the sword in the stone on its knoll, the lists' pavilions, the gardens by the hall, the braziers at the doors */
-                { key: 'sword_stone',    x: -18.375, z: -23.625, face: 150 },
-                { key: 'camping_tent',   x: -42.875, z: -2.625, face: 90 }, { key: 'camping_tent', x: -11.375, z: -2.625, face: 270 },
-                { key: 'armour_stand',   x: -37.625, z: -13.125, face: 180 }, { key: 'armour_stand', x: -16.625, z: -13.125, face: 180 },
+                { key: 'sword_stone',    x: -5.25, z: 0, face: 90, h: 2.8, floor: true },
+                { key: 'camping_tent',   x: -42.875, z: -2.625, face: 90 }, { key: 'camping_tent', x: -5.25, z: -12.25, face: 270, floor: true }, { key: 'camping_tent', x: -5.25, z: 12.25, face: 270, floor: true },
+                { key: 'armour_stand',   x: -37.625, z: -13.125, face: 180 }, { key: 'armour_stand', x: 5.25, z: -5.25, face: 270, h: 2.4, floor: true }, { key: 'armour_stand', x: 5.25, z: 5.25, face: 270, h: 2.4, floor: true },
                 /* THE HORSES (2026-10-27, mondo's horses): the jousters' mounts at the two ends of the tilt, one each side of it, and a
-                   third by the west pavilion — all north of the arena's squares (its window ends at z −3.5) */
-                { key: 'horse',          x: -38.5, z: 1.6, face: 90 }, { key: 'horse_black', x: -15.6, z: -1.4, face: 270 },
-                { key: 'horse_brown',    x: -33.5, z: 4.4, face: 200 },
+                   third by the west pavilion — all at the tilt's west end, off the board (its window starts at x −35) */
+                { key: 'horse',          x: -38.5, z: 1.6, face: 90 }, { key: 'horse_black', x: -38.5, z: -1.6, face: 90 },
+                { key: 'horse_brown',    x: -40, z: 6.4, face: 200 },
                 { key: 'fountain',       x: -16.625, z: -45.875 },
                 { key: 'park_bench',     x: -16.625, z: -41.125, face: 0 }, { key: 'park_bench', x: -21.875, z: -45.875, face: 90 },
                 { key: 'planter',        x: 9.625, z: -49.875 }, { key: 'planter', x: -9.625, z: -49.875 }, { key: 'planter', x: 9.625, z: -34.125 }, { key: 'planter', x: -9.625, z: -34.125 },
@@ -41946,12 +42062,14 @@ const DOOR_HQ = {
             sub: 'RUNWAY 33 · THE TOWER · THE PENS · THE LIGHTS GO ROUND ALL NIGHT',
             kind: 'box', site: 'prebuilt_area51', part: 'flightline',
             shell: hqAirbaseShell({ w: 96, d: 72, plate: { x: 0, z: 34.8, y: 4.4 } }),   // 2× EVERYWHERE (2026-10-28): 64 → 72 m deep so its 11×11 fits on 3.5 m squares
-            terrain: {
+            terrain: { levelM: 3.5,   // THE FULL LEDGES (2026-11-10): the tower deck, the gantry and the east apron 3.5 m, the cab 7 m, the mast 10.5 m
                 floor: 'dirt_4', cliff: 'wasteland', path: 'urban:PlasterWallPainted1b',                                 // the asphalt is the city's own sheet
                 noise: { amp: 0.12, scale: 7 },
-                gen: { kind: 'rooms', seed: 33, loops: 3, thicket: false, wallH: 1.6, rMin: 7, rMax: 12, open: [{ x: 0, z: -26, r: 7 }, { x: 0, z: -14, r: 7 }, { x: 0, z: -2, r: 7 }] },   // Phase 5: the gate road runs clear of the berms              // the aprons joined by taxiways; the solid = the blast berms
+                gen: { kind: 'rooms', seed: 33, loops: 3, thicket: false, wallH: 1.6, rMin: 7, rMax: 12, open: [{ x: 0, z: -26, r: 7 }, { x: 0, z: -14, r: 7 }, { x: 0, z: -2, r: 7 }, { x: 0, z: 10.5, r: 30 }] },   // (the last disc: THE BATTLE MAP POLISH, the board's ground clear of the berms)   // Phase 5: the gate road runs clear of the berms              // the aprons joined by taxiways; the solid = the blast berms
                 features: [
-                    { k: 'path', pts: [[-46, 10], [46, 10]], w: 9 },                                                     // RUNWAY 33
+                    { k: 'path', pts: [[-46, 10.5], [46, 10.5]], w: 7 },   // (two squares wide on the board's middle line since THE BATTLE MAP POLISH)
+                    { k: 'path', pts: [[0, 10.5], [0, 33]], w: 10 }, { k: 'path', pts: [[18, 10.5], [18, -10.5]], w: 5 },   // the cross of asphalt: the gate road on south over the runway, the taxiway on north to the east apron
+                    //                                                     // RUNWAY 33
                     { k: 'path', pts: [[0, -36], [0, 10]], w: 10 },                                                      // THE GATE ROAD (Phase 5: in from the gate, the north edge x 0)
                     { k: 'path', pts: [[18, 35], [18, 10]], w: 5 },                                                      // the taxiway from the hangar's big door
                     { k: 'path', pts: [[-30, 35], [-30, 10]], w: 4 },                                                    // the yard gate's lane
@@ -41961,32 +42079,43 @@ const DOOR_HQ = {
                     /* GRID FIT (2026-10-26): the tower, the gantry, the east apron and the revetments on the battle squares (1.75 m):
                        edges on square lines, stairs 1 or 2 squares wide with their foot on a line and their head 0.4 m under the rim,
                        never steeper than before; the gap from the gantry to the apron is one square */
-                    { k: 'plateau', x: -11.375, z: -16.625, w: 15.75, d: 8.75, h: 3.0, edge: 0.15 },                    // (its south edge on z -12.25: the stair's foot stays off the arena's spawn row)
-                    { k: 'plateau', x: -10.5, z: -17.5, r: 3.5, h: 6.0, edge: 0.15 },                                   // the cab
-                    { k: 'ramp', x0: -15.75, z0: -3.5, x1: -15.75, z1: -12.95, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
-                    { k: 'rail', pts: [[-15.75, -3.1, 0], [-15.75, -12.65, 3.0]], model: 'pipe', block: false },
+                    { k: 'plateau', x: -11.375, z: -16.625, w: 15.75, d: 8.75, h: 3.5, edge: 0.15 },                    // (its south edge on z -12.25: the stair's foot stays off the arena's spawn row)
+                    { k: 'plateau', x: -10.5, z: -17.5, r: 3.5, h: 7, edge: 0.15 },                                   // the cab
+                    { k: 'ramp', x0: -29.75, z0: -15.75, x1: -19.6, z1: -15.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'fire_escape', edge: 0.15 },
+                    { k: 'rail', pts: [[-29.4, -15.75, 0], [-19.9, -15.75, 3.5]], model: 'pipe', block: false },   // (THE BATTLE MAP POLISH: the fire escape climbs the tower's west side; it ran south onto the board)
                     { k: 'climb', x: -14.2, z: -16.625, face: 90, look: 'ladder' },
                     { k: 'rail', arc: { x: -10.5, z: -17.5, r: 3.15, a0: 300, a1: 600 }, model: 'balusters_b' },
                     { k: 'rail', x0: -13.8, z0: -12.6, x1: -3.9, z1: -12.6, model: 'balusters_b' },
                     { k: 'rail', x0: -18.85, z0: -20.65, x1: -3.9, z1: -20.65, model: 'balusters_b' },
                     { k: 'rail', x0: -3.85, z0: -20.6, x1: -3.85, z1: -17.8, model: 'balusters_b' },
                     { k: 'rail', x0: -3.85, z0: -13.7, x1: -3.85, z1: -12.65, model: 'balusters_b' },
-                    { k: 'bridge', x0: -5.25, z0: -15.75, x1: 10.5, z1: -15.75, w: 3.5, y: 3.0, key: 'urban:MetalSubwayGrill1a' },
-                    { k: 'rail', x0: 10.15, z0: -15.75, x1: 12.6, z1: -15.75, y: 3.0, model: 'pipe', block: false },   // across the gap (one square)
-                    { k: 'plateau', x: 19.25, z: -13.125, w: 14, d: 8.75, h: 3.0, edge: 0.15 },                         // the east apron
-                    { k: 'ramp', x0: 23.625, z0: -1.75, x1: 23.625, z1: -9.45, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: -5.25, z0: -15.75, x1: 10.5, z1: -15.75, w: 3.5, y: 3.5, key: 'urban:MetalSubwayGrill1a' },
+                    { k: 'rail', x0: 10.15, z0: -15.75, x1: 12.6, z1: -15.75, y: 3.5, model: 'pipe', block: false },   // across the gap (one square)
+                    { k: 'plateau', x: 19.25, z: -14.35, w: 14, d: 7, h: 3.5, edge: 0.15 },                         // the east apron
+                    { k: 'ramp', x0: 23.625, z0: -3.5, x1: 23.625, z1: -11.2, w: 1.75, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.15 },
                     { k: 'rail', x0: 12.65, z0: -17.15, x1: 25.85, z1: -17.15, model: 'balusters_b' },
-                    { k: 'rail', x0: 25.9, z0: -17.1, x1: 25.9, z1: -10.2, model: 'balusters_b' },
-                    { k: 'rail', x0: 12.65, z0: -9.1, x1: 22.35, z1: -9.1, model: 'pipe' },                             // the apron's front ledge (a grind)
-                    { k: 'plateau', x: -7.875, z: -16.625, r: 0.875, h: 8.0, edge: 0.25 },                              // THE MAST on the tower (the tape — the door gun's)
+                    { k: 'rail', x0: 25.9, z0: -17.1, x1: 25.9, z1: -11.95, model: 'balusters_b' },
+                    { k: 'rail', x0: 12.65, z0: -11.2, x1: 22.35, z1: -11.2, model: 'pipe' },                             // the apron's front ledge (a grind)
+                    { k: 'plateau', x: -7.875, z: -16.625, r: 0.875, h: 10.5, edge: 0.25 },                              // THE MAST on the tower (the tape — the door gun's)
                     { k: 'wall', x0: -40.25, z0: -8.75, x1: -28, z1: -8.75, h: 1.5, t: 0.6, key: 'wasteland' },          // the revetments
                     { k: 'wall', x0: 28, z0: -8.75, x1: 40.25, z1: -8.75, h: 1.5, t: 0.6, key: 'wasteland' },
                     { k: 'wall', x0: 28, z0: -19.25, x1: 28, z1: -8.75, h: 1.5, t: 0.6, key: 'wasteland' },
                     { k: 'dip', x: 30, z: 22, r: 5, h: 1.8 },                                                            // the crater nobody filed
                     { k: 'wall', x0: 0, z0: 24.5, x1: 14, z1: 24.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the taxiway's kerb (a grind)
-                    { k: 'scatter', key: 'traffic_barrel', n: 6, seed: 1 },
-                    { k: 'scatter', key: 'cinder_block', n: 8, seed: 2 },
-                    { k: 'scatter', key: 'traffic_cone', n: 6, seed: 3 },
+                    { k: 'scatter', key: 'traffic_barrel', n: 6, seed: 1, off: [-21, -10.5, 21, 31.5] },
+                    { k: 'scatter', key: 'cinder_block', n: 8, seed: 2, off: [-21, -10.5, 21, 31.5] },
+                    { k: 'scatter', key: 'traffic_cone', n: 6, seed: 3, off: [-21, -10.5, 21, 31.5] },
+                    /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): THE BOARD IS RUNWAY 33. The fight's 12 x 12
+                       (x -21..21, z -10.5..31.5, HQ_ARENA_RULES.within) lies across the runway, the nexus on its centre line, alike from
+                       both spawn rows; the tower, the gantry and the east apron stand north of it as the backdrop (they stood on one
+                       team's half, the other half was bare). On the middle line: the recovered saucer east of the nexus, a truck west
+                       of it (2 x 2 squares each). Each half: a tank on the west flank, a truck on the east, a crew bus down the west
+                       edge, sandbags before the spawn corners. Every piece on a ghost block of its own squares. */
+                    { k: 'wall', x0: 14, z0: 10.5, x1: 14, z1: 10.5, h: 3.5, t: 7, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: -14, z0: 10.5, x1: -14, z1: 10.5, h: 3.5, t: 7, key: 'wasteland', ghost: true, rail: false },   // under the saucer (9..10 x 5..6) and the middle truck (1..2 x 5..6)
+                    { k: 'wall', x0: -15.75, z0: 1.75, x1: -12.25, z1: 1.75, h: 3.5, t: 3.5, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 19.25, x1: -12.25, z1: 19.25, h: 3.5, t: 3.5, key: 'wasteland', ghost: true, rail: false },   // under the tanks (1..2 x 3 and 8)
+                    { k: 'wall', x0: 12.25, z0: 1.75, x1: 15.75, z1: 1.75, h: 3.5, t: 3.5, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 19.25, x1: 15.75, z1: 19.25, h: 3.5, t: 3.5, key: 'wasteland', ghost: true, rail: false },   // under the east trucks (9..10 x 3 and 8)
+                    { k: 'wall', x0: -19.25, z0: -8.75, x1: -19.25, z1: -1.75, h: 3.5, t: 3.5, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 22.75, x1: -19.25, z1: 29.75, h: 3.5, t: 3.5, key: 'wasteland', ghost: true, rail: false },   // under the crew buses (0 x 0..2 and 9..11)
+                    { k: 'wall', x0: -8.75, z0: -1.75, x1: -8.75, z1: -1.75, h: 1.6, t: 2.4, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: -1.75, x1: 8.75, z1: -1.75, h: 1.6, t: 2.4, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 22.75, x1: -8.75, z1: 22.75, h: 1.6, t: 2.4, key: 'wasteland', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 22.75, x1: 8.75, z1: 22.75, h: 1.6, t: 2.4, key: 'wasteland', ghost: true, rail: false },   // under the sandbags (3 and 8 x 2 and 9)
                 ],
             },
             doors: [
@@ -42011,10 +42140,14 @@ const DOOR_HQ = {
             props: [
                 /* THE TOWER: the beacon on it, the rail; the mast stands beside it, unclimbed */
                 { key: 'floating_orb',    x: -11.375, z: -14.875, face: 0 },                                             // THE BEACON (the near weenie: the light on the tower that is not a light)
-                { key: 'flood_mast',      x: -40, z: 2 }, { key: 'flood_mast', x: 40, z: 16 }, { key: 'flood_mast', x: 6, z: -26 }, { key: 'flood_mast', x: 6, z: 28 },   // the floodlights round the aprons
+                { key: 'flood_mast',      x: -40, z: 2 }, { key: 'flood_mast', x: 40, z: 16 }, { key: 'flood_mast', x: 6, z: -26 }, { key: 'flood_mast', x: 22.75, z: 33.25 }, { key: 'flood_mast', x: -22.75, z: 33.25 }, { key: 'flood_mast', x: 22.75, z: -12.25 },   // the floodlights round the aprons
                 { key: 'railing_1m',      x: -9.625, z: -14.875, face: 0 },
                 /* THE APRONS: the crew bus, the shelter, the fire truck, the truck, the wreck in its pen */
-                { key: 'school_bus',      x: -20, z: 24, face: 0 },
+                { key: 'school_bus',      x: -19.25, z: 26.25, face: 0, floor: true }, { key: 'school_bus', x: -19.25, z: -5.25, face: 180, floor: true },   // THE BATTLE MAP POLISH: the crew buses down the board's west edge
+                { key: 'saucer_lg', x: 14, z: 10.5, span: 7, floor: true }, { key: 'car_truck', x: -14, z: 10.5, face: 90, span: 7, floor: true },   // the saucer and the truck on the runway
+                { key: 'military_tank', x: -14, z: 1.75, face: 90, floor: true }, { key: 'military_tank', x: -14, z: 19.25, face: 90, floor: true },
+                { key: 'car_truck', x: 14, z: 1.75, face: 270, span: 7, floor: true }, { key: 'car_truck', x: 14, z: 19.25, face: 270, span: 7, floor: true },
+                { key: 'meshy_sandbags', x: -8.75, z: -1.75, h: 1.6, floor: true }, { key: 'meshy_sandbags', x: 8.75, z: -1.75, h: 1.6, floor: true }, { key: 'meshy_sandbags', x: -8.75, z: 22.75, h: 1.6, floor: true }, { key: 'meshy_sandbags', x: 8.75, z: 22.75, h: 1.6, floor: true },
                 { key: 'bus_shelter',     x: -26, z: 27, face: 0 },
                 { key: 'car_truck',       x: -36, z: 20, face: 90 },
                 { key: 'fire_truck',      x: 40, z: -24, face: 90 },
@@ -42022,9 +42155,9 @@ const DOOR_HQ = {
                 /* THE 2026-09-22 BATCH: the armour in the two pens behind the revetments, the F22 on RUNWAY 33's east end, nose down the runway (−x) */
                 { key: 'military_tank',   x: -34, z: -14, face: 0 }, { key: 'military_tank', x: 34, z: -14, face: 0 },
                 { key: 'fighter_jet',     x: 34, z: 10, face: 270 },
-                { key: 'signpost',        x: 10, z: 26 },
+                { key: 'signpost',        x: 10, z: 33 },
                 { key: 'warning_tape',    x: 18, z: 5.5, face: 0 },
-                { key: 'quarter_pipe',    x: 10, z: 20, face: 90 }, { key: 'quarter_pipe', x: 26, z: 20, face: 270 },  // THE PARK RULE: the half pipe on the apron
+                { key: 'quarter_pipe',    x: 26, z: 30, face: 90 }, { key: 'quarter_pipe', x: 42, z: 30, face: 270 },  // THE PARK RULE: the half pipe on the apron
                 /* THE TRAILERS PAST THE FENCE (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): the Trailer Park's
                    trailers one by one on the desert past the open edge (the outer ground), their doors to the base, clear of the gate road */
                 { key: 'trailer_home_1',  x: -30, z: -42.5, face: 180 }, { key: 'trailer_home_3', x: -13, z: -43, face: 180 },
@@ -42185,8 +42318,8 @@ const DOOR_HQ = {
             label: 'D.U.M.B. · LEVEL P3',   // 2026-09-18 (the user: "connect them or call it P2 or something"): the motor pool is the parking level UNDER the garage — P1 the garage, P2 the stair H-Wing took, P3 the level the panel never had; THE RAMP joins them (links.garage_motorpool)
             sub: 'THE MOTOR POOL · UNDER THE GARAGE · THE TRAM · THE TUNNEL EVERY BASE IS ON',
             kind: 'box', site: 'prebuilt_dumb', part: 'motorpool',
-            shell: hqBunkerShell({ w: 128, d: 80, h: 6.0, wallH: 6.0, plate: { x: 0, z: -37.6, y: 3.4 }, floorColor: 0xa8acb0 }),
-            terrain: {
+            shell: hqBunkerShell({ w: 128, d: 80, h: 9.5, wallH: 9.5, plate: { x: 0, z: -37.6, y: 3.4 }, floorColor: 0xa8acb0 }),
+            terrain: { levelM: 3.5,
                 /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT in concrete, the parking level as a drawn plan. THE HALL
                    along the north (the tram on its rails, THE PLATFORM in two halves either side of the stair door's gap) and THE
                    BAYS south with the cars, joined by three passages: the west one and the east one (each with THE GANTRY's room
@@ -42195,9 +42328,18 @@ const DOOR_HQ = {
                    off their east end. Two loops (hall ⇄ west passage ⇄ bays ⇄ middle, and the same by the east). */
                 floor: 'urban:ConcreteStriped2b', cliff: 'urban:ConcreteStriped1c', path: 'urban:TileGeneric2a',
                 noise: { amp: 0, scale: 10 }, crag: false,
-                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:ConcreteStriped1c', rim: 0, forceGrow: -0.6 },
+                /* THE BATTLE MAP POLISH (2026-11-10): THE CONCOURSE is the board. The maze of passages between THE HALL and THE BAYS is opened into one concourse (the
+                   `space` row below) with four concrete blocks left standing (gen.solid): a four-square avenue down the middle and a lane round each block, the
+                   same from both ends (the signal gantry is the south-west block's corner, the north-east block answers it). HQ_ARENA_RULES.within pins every
+                   size here; columns 4..7 stay clear for the 9/10/11 house rows. */
+                gen: { kind: 'plan', look: 'walls', wallKey: 'urban:ConcreteStriped1c', rim: 0, forceGrow: -0.6,
+                       solid: [{ x0: -15.75, z0: -12.25, x1: -15.75, z1: -5.25, w: 3.8 }, { x0: -12.25, z0: -12.25, x1: -12.25, z1: -5.25, w: 3.8 }, { x0: -8.75, z0: -12.25, x1: -8.75, z1: -5.25, w: 3.8 },
+                               { x0: 8.75, z0: -12.25, x1: 8.75, z1: -8.75, w: 3.8 }, { x0: 12.25, z0: -12.25, x1: 12.25, z1: -8.75, w: 3.8 }, { x0: 15.75, z0: -12.25, x1: 15.75, z1: -8.75, w: 3.8 }, { x0: 19.25, z0: -12.25, x1: 19.25, z1: -8.75, w: 3.8 },
+                               { x0: 8.75, z0: 5.25, x1: 8.75, z1: 12.25, w: 3.8 }, { x0: 12.25, z0: 5.25, x1: 12.25, z1: 12.25, w: 3.8 }, { x0: 15.75, z0: 5.25, x1: 15.75, z1: 12.25, w: 3.8 },
+                               { x0: -12.25, z0: 8.75, x1: -12.25, z1: 12.25, w: 3.8 }, { x0: -8.75, z0: 8.75, x1: -8.75, z1: 12.25, w: 3.8 }] },
                 features: [
                     /* THE ROOMS */
+                    { k: 'space', x: 0, z: 0, w: 43.2, d: 30 },                          // THE CONCOURSE (the board: the hall's south edge to the bays' north edge)
                     { k: 'space', x: 0, z: -25, w: 108, d: 22 },                       // THE HALL (the platform along its north side, the tram's rails)
                     { k: 'space', x: 12, z: 24, w: 64, d: 24 },                          // THE BAYS
                     { k: 'space', x: -17, z: 10, w: 10, d: 8 },                          // the signal gantry's alcove on the bays' north wall
@@ -42231,27 +42373,27 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -37.2, z0: -29, x1: -23.2, z1: -29 }, { k: 'rail', x0: 23.2, z0: -29, x1: 48, z1: -29 },   // the platform's edge rail (the grind)
                     /* THE WEST DECK (2026-10-05, the stairs pass): the hall's west end at 2.6, up a steel flight off the platform; a 3 m
                        gap south of it to THE WEST GANTRY (a jump, a pipe across it to grind), a railing on its open edges */
-                    { k: 'plateau', x: -49, z: -28, w: 21, d: 21, h: 2.6, edge: 0.15 },
-                    { k: 'ramp', x0: -28, z0: -33.25, x1: -39.3, z1: -33.25, w: 3.5, h0: 1.0, h1: 2.6, stairs: true, model: 'fire_escape' },
+                    { k: 'plateau', x: -49, z: -28, w: 21, d: 21, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: -28, z0: -33.25, x1: -39.3, z1: -33.25, w: 3.5, h0: 1.0, h1: 3.5, stairs: true, model: 'fire_escape' },
                     { k: 'rail', pts: [[-49.7, -18.1], [-39.1, -18.1], [-39.1, -25.6]], model: 'balusters_b' },
-                    { k: 'rail', x0: -54.25, z0: -18.3, x1: -54.25, z1: -9.7, y: 2.6, model: 'pipe', block: false },
-                    { k: 'plateau', x: -17.5, z: 10.5, r: 3.5, h: 4.4, edge: 0.15 },                                  // THE SIGNAL GANTRY (the tape — the door gun's)
+                    { k: 'rail', x0: -54.25, z0: -18.3, x1: -54.25, z1: -9.7, y: 3.5, model: 'pipe', block: false },
+                    { k: 'plateau', x: -17.5, z: 10.5, r: 3.5, h: 7, edge: 0.15 },                                  // THE SIGNAL GANTRY (the tape — the door gun's)
                     { k: 'wall', x0: 3.5, z0: 31.5, x1: 24.5, z1: 31.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb ledge the cars park against
                     { k: 'path', pts: [[0, 34], [0, 24], [-6, 24], [-6, -1], [6, -1], [6, -20], [0, -20], [0, -34]], w: 4.4 },   // the painted lane lift → tram
                     { k: 'path', pts: [[-42, 0], [-30, 0], [-30, -20]], w: 4 },                                                      // the tunnel's lane from the west gantry
                     { k: 'path', pts: [[42, 0], [30, 0], [30, -20]], w: 4 },                                                         // … and from the east
                     /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE TWO GANTRIES — the tunnel doors stand 2.6 m up on freight gantries
                        against the end walls (a door you climb to = an earned exit, R4), each up its own stair, now each in its own room */
-                    { k: 'plateau', x: -56, z: 0, w: 14, d: 21, h: 2.6, edge: 0.15 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
-                    { k: 'ramp', x0: -35, z0: 0, x1: -49.8, z1: 0, w: 7, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // its stair, two squares wide: the passage's width (L 7.4 ≥ 5.9; ends 0.4 m inside)
-                    { k: 'plateau', x: 56, z: 0, w: 14, d: 21, h: 2.6, edge: 0.15 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
-                    { k: 'ramp', x0: 35, z0: 0, x1: 49.8, z1: 0, w: 7, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'plateau', x: -56, z: 0, w: 14, d: 21, h: 3.5, edge: 0.15 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
+                    { k: 'ramp', x0: -35, z0: 0, x1: -49.8, z1: 0, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // its stair, two squares wide: the passage's width (L 7.4 ≥ 5.9; ends 0.4 m inside)
+                    { k: 'plateau', x: 56, z: 0, w: 14, d: 21, h: 3.5, edge: 0.15 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
+                    { k: 'ramp', x0: 35, z0: 0, x1: 49.8, z1: 0, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     { k: 'rail', x0: -61.2, z0: -8.8, x1: -55.2, z1: -8.8 }, { k: 'rail', x0: 55.2, z0: -8.8, x1: 61.2, z1: -8.8 },   // the gantries' side rails (the grind)
                     /* THE EAST LEVEL (2026-10-05, the stairs pass): side room 2 raised to 2.6 and joined to THE EAST GANTRY by a passage at
                        2.6; a wide flight up from the bays with a free pipe handrail down its middle (the loop: bays, up, the gantry, its stair, the east passage) */
-                    { k: 'plateau', x: 57.75, z: 26.25, w: 17.5, d: 17.5, h: 2.6, edge: 0.15 },
-                    { k: 'plateau', x: 56, z: 15.75, w: 7, d: 10.5, h: 2.6, edge: 0.15 },
-                    { k: 'ramp', x0: 35, z0: 28, x1: 49.8, z1: 28, w: 7, h0: 0, h1: 2.6, stairs: true, model: 'precast' },
+                    { k: 'plateau', x: 57.75, z: 26.25, w: 17.5, d: 17.5, h: 3.5, edge: 0.15 },
+                    { k: 'plateau', x: 56, z: 15.75, w: 7, d: 10.5, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: 35, z0: 28, x1: 49.8, z1: 28, w: 7, h0: 0, h1: 3.5, stairs: true, model: 'precast' },
                     { k: 'rail', pts: [[36, 28, 0.18], [48.8, 28, 2.42]], model: 'pipe', block: false },
                     /* the bays' skate rails: a low double rail, and a pipe bent round THE SIGNAL GANTRY */
                     { k: 'rail', x0: 28, z0: 18.8, x1: 40, z1: 18.8, model: 'double', block: false },
@@ -42913,7 +43055,7 @@ const DOOR_HQ = {
                                    floor: 'urban:ConcreteStriped2d', wall: 'urban:ConcreteStriped2a', dado: 'urban:MetalCorrugatedPainted1a', ceiling: 'urban:ConcreteStriped2e',
                                    floorColor: 0xa8b0bc, wallColor: 0xb0b8c4, dadoColor: 0x6a8098, ceilColor: 0x8a94a4,
                                    mood: { lamp: 0x6ac8ff, glow: 0x4ab0ff, strip: 0xbfe6ff, light: 0xd0e6ff, ambient: 0.42 }, fog: { color: 0x061018, density: 0.02 }, look: HQ_ROOM_LOOKS.cern }),
-            terrain: { res: 1,
+            terrain: { res: 1, levelM: 3.5,   // THE FULL LEDGES (2026-11-10): a level per 3.5 m, the catwalks and the gantries 3.5 m, the beam dump 7 m
                 /* THE FIELD (LEVEL_DESIGN_PLAN L6, 2026-09-30): a LAYOUT (walls look). THE RING is one loop of hall rows (hall A, 5 m,
                    an octagon: straight sides north, east, south and west, 45° corners), the centre solid (the machine). THE DETECTOR HALL
                    is the big room of interest on the east side, the ring running through it (THE BEAM, THE GANTRY, THE BEAM DUMP);
@@ -42946,27 +43088,32 @@ const DOOR_HQ = {
                     /* THE GANTRY over the detector, up its stair; THE CATWALKS (3.2) round the hall's north, east and south walls over the
                        racks and over the ring, down a second flight to a landing in the south-west corner; a skate rail laid across the
                        hall from the gantry to the landing, a curved rail round the beam dump */
-                    { k: 'plateau', x: 82.25, z: -12.25, w: 10.5, d: 10.5, h: 3.2, edge: 0.3 },                             // GRID FIT (2026-10-26): 3 × 3 squares (a square clear of the east catwalk, as before)
-                    { k: 'ramp', x0: 82.25, z0: 10.5, x1: 82.25, z1: -7.8, w: 3.5, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.3 },   // one square wide; its head 0.4 m under the gantry's rim
-                    { k: 'rail', x0: 77.15, z0: -17.3, x1: 77.15, z1: -7.6, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 77.2, z0: -7.15, x1: 80.3, z1: -7.15, y: 3.2, model: 'glass' }, { k: 'rail', x0: 84.2, z0: -7.15, x1: 87.3, z1: -7.15, y: 3.2, model: 'glass' },
-                    { k: 'plateau', x: 50.75, z: 22.75, w: 10.5, d: 10.5, h: 3.2, edge: 0.3 },                             // the landing
-                    { k: 'ramp', x0: 54.25, z0: 0, x1: 54.25, z1: 18.3, w: 3.5, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.3 },
-                    { k: 'bridge', x0: 49, z0: -21, x1: 98, z1: -21, w: 7, y: 3.2, rails: false },                      // the north catwalk (2 squares wide)
-                    { k: 'bridge', x0: 94.5, z0: -24.5, x1: 94.5, z1: 24.5, w: 7, y: 3.2, rails: false },                 // the east catwalk
-                    { k: 'bridge', x0: 52.5, z0: 21, x1: 98, z1: 21, w: 7, y: 3.2, rails: false },                       // the south catwalk
-                    { k: 'rail', x0: 50.1, z0: -17.65, x1: 76.9, z1: -17.65, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 91.15, z0: -17.35, x1: 91.15, z1: 17.35, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 56.2, z0: 17.65, x1: 90.9, z1: 17.65, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 78.6, z0: -8, x1: 52.65, z1: 18.5, y: 3.2, model: 'pipe', block: false },                 // across the hall
-                    { k: 'rail', arc: { x: 70, z: 14, r: 4.6, a0: 90, a1: 270 }, model: 'pipe', block: false },               // round the beam dump
+                    /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): the hall re-laid as the fight's board
+                       (x 52.5..94.5, z -21..21 on its 3.5 m squares, HQ_ARENA_RULES.within), alike from both spawn rows. The board was cut
+                       off-centre across the west wall with one gantry, one stair and the beam dump on one team's side. Now: THE CATWALKS
+                       one square wide on the north, east and south walls (off the board: they hid the spawn rows), a flight up to them
+                       along the west wall from each side of the middle; a GANTRY (3 x 3 squares, 3.5 m) in each east corner of the board
+                       with a short flight down to the middle; THE BEAM DUMP (7 m) west of the nexus and THE BEAM east of it, both on the
+                       middle line; a coil before each west corner; a pipe run 3.5 m up across each half (the skate rail's line). */
+                    { k: 'plateau', x: 85.75, z: -12.25, w: 10.5, d: 10.5, h: 3.5, edge: 0.3 }, { k: 'plateau', x: 85.75, z: 12.25, w: 10.5, d: 10.5, h: 3.5, edge: 0.3 },   // the two gantries (squares 8..10 x 1..3 and 8..10 x 8..10)
+                    { k: 'ramp', x0: 85.75, z0: 0, x1: 85.75, z1: -7.3, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 }, { k: 'ramp', x0: 85.75, z0: 0, x1: 85.75, z1: 7.3, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 },   // their flights (square 9 x 4..7)
+                    { k: 'ramp', x0: 54.25, z0: -3.5, x1: 54.25, z1: -21.3, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 }, { k: 'ramp', x0: 54.25, z0: 3.5, x1: 54.25, z1: 21.3, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 },   // the west flights up to the catwalks (square 0)
+                    { k: 'bridge', x0: 49, z0: -22.75, x1: 98, z1: -22.75, w: 3.5, y: 3.5, rails: false },                 // the north catwalk
+                    { k: 'bridge', x0: 96.25, z0: -24.5, x1: 96.25, z1: 24.5, w: 3.5, y: 3.5, rails: false },              // the east catwalk
+                    { k: 'bridge', x0: 49, z0: 22.75, x1: 98, z1: 22.75, w: 3.5, y: 3.5, rails: false },                  // the south catwalk
+                    { k: 'rail', x0: 56.4, z0: -20.85, x1: 94.3, z1: -20.85, y: 3.5, model: 'glass' },
+                    { k: 'rail', x0: 94.35, z0: -20.6, x1: 94.35, z1: 20.6, y: 3.5, model: 'glass' },
+                    { k: 'rail', x0: 56.4, z0: 20.85, x1: 94.3, z1: 20.85, y: 3.5, model: 'glass' },
+                    { k: 'rail', x0: 80.3, z0: -12.25, x1: 56.2, z1: -12.25, y: 3.5, model: 'pipe', block: false }, { k: 'rail', x0: 80.3, z0: 12.25, x1: 56.2, z1: 12.25, y: 3.5, model: 'pipe', block: false },   // across each half
+                    { k: 'rail', arc: { x: 63, z: 0, r: 4.6, a0: 90, a1: 270 }, model: 'pipe', block: false },                // round the beam dump
+                    { k: 'wall', x0: 64.75, z0: -12.25, x1: 64.75, z1: -12.25, h: 3.5, t: 2.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }, { k: 'wall', x0: 64.75, z0: 12.25, x1: 64.75, z1: 12.25, h: 3.5, t: 2.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false },   // under the coils (3 x 2, 3 x 9)
                     /* THE CONTROL ROOM and its service bay raised (1.2), up a short flight in each doorway */
                     { k: 'plateau', x: 2, z: -90.8, w: 38, d: 16.4, h: 1.2, edge: 0.3 },
                     { k: 'plateau', x: -26.5, z: -90.5, w: 13, d: 15, h: 1.2, edge: 0.3 },
                     { k: 'plateau', x: -18.5, z: -94.6, w: 7, d: 6.8, h: 1.2, edge: 0.3 },
                     { k: 'ramp', x0: -13.6, z0: -78.8, x1: -13.6, z1: -84, w: 4.8, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.3 },
                     { k: 'ramp', x0: 17.6, z0: -78.8, x1: 17.6, z1: -84, w: 4.8, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.3 },
-                    { k: 'plateau', x: 70, z: 14, r: 3.5, h: 4.2, edge: 0.3 },                                       // THE BEAM DUMP (the tape — the door gun's): 2 squares across, on a square's corner, clear of the south catwalk and of the 11×11 arena's spawn row
+                    { k: 'plateau', x: 63, z: 0, r: 3.5, h: 7, edge: 0.3 },                                       // THE BEAM DUMP (the tape — the door gun's): 2 squares across, on a square's corner, clear of the south catwalk and of the 11×11 arena's spawn row
                     { k: 'wall', x0: -7, z0: -84, x1: 7, z1: -84, h: 0.45, t: 0.8, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
                     { k: 'path', pts: [[0, 98], [0, 76]], w: 4 }, { k: 'path', pts: [[-98, 0], [-76, 0]], w: 4 },
                     { k: 'path', pts: [[-26, -74], [26, -74], [74, -26], [74, 26], [26, 74], [-26, 74], [-74, 26], [-74, -26], [-26, -74]], w: 2.8 },   // the beamline's rubber walkway round the ring
@@ -42978,14 +43125,14 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE DETECTOR HALL: the racks round the beam, the orb, the gantry's desk */
-                { key: 'floating_orb',    x: 78.875, z: 1.75, face: 0 },                                                      // THE BEAM (the near weenie: the one lit thing at the end of the tunnel)
+                { key: 'floating_orb',    x: 82.25, z: 0, face: 0 }, { key: 'meshy_tesla_coil', x: 64.75, z: -12.25, h: 4, floor: true }, { key: 'meshy_tesla_coil', x: 64.75, z: 12.25, h: 4, floor: true },                                                      // THE BEAM (the near weenie: the one lit thing at the end of the tunnel)
                 { key: 'server_rack',     x: 61.25, z: -22.75, face: 0, mount: 0 }, { key: 'server_rack', x: 68.25, z: -22.75, face: 0, mount: 0 }, { key: 'server_rack', x: 78.875, z: -22.75, face: 0, mount: 0 }, { key: 'server_rack', x: 89.25, z: -22.75, face: 0, mount: 0 },
                 { key: 'server_rack',     x: 61.25, z: 22.75, face: 180, mount: 0 }, { key: 'server_rack', x: 89.25, z: 22.75, face: 180, mount: 0 },
-                { key: 'steel_table',     x: 85.875, z: -12.25, face: 0 }, { key: 'crt_terminal', x: 85.875, z: -12.25, y: 0.76, face: 0 },
+                { key: 'steel_table',     x: 89.6, z: -16.1, face: 0, y: 3.5 }, { key: 'crt_terminal', x: 89.6, z: -16.1, y: 4.26, face: 0 },
                 { key: 'radiation_sign',  x: 95, z: 8, face: 270, mount: 1.7 }, { key: 'radiation_sign', x: 52.75, z: -7.9, face: 90, mount: 1.7 },
-                { key: 'warning_tape',    x: 78.875, z: 8.75, face: 0 },
-                { key: 'bare_bulb',       x: 64, z: -12, ceil: true }, { key: 'bare_bulb', x: 87.75, z: 12, ceil: true },
-                { key: 'railing_1m',      x: 78.2, z: -12.25, face: 90 },
+                { key: 'warning_tape',    x: 78.75, z: 0, face: 0 },
+                { key: 'bare_bulb',       x: 64, z: -12, ceil: true }, { key: 'bare_bulb', x: 87.75, z: 12, ceil: true }, { key: 'bare_bulb', x: 64, z: 12, ceil: true }, { key: 'bare_bulb', x: 87.75, z: -12, ceil: true },
+                { key: 'railing_1m',      x: 80.7, z: -16, face: 90, y: 3.5 },
                 { key: 'security_camera', x: 95.2, z: -20, face: 225, mount: 2.55 },
                 /* THE CONTROL ROOM at the north of the ring */
                 { key: 'steel_table',     x: -8, z: -88, face: 0 }, { key: 'steel_table', x: 8, z: -88, face: 0 },
@@ -43004,7 +43151,7 @@ const DOOR_HQ = {
             agents: [],
             npcSpots: [
                 { x: -10, z: -84, face: 0, race: 'ai', say: ['“Beam on.” “Since when?” “Since always. It is a very patient beam.”', '“Do not say portal.” “I did not.” “The terminals log the thought.”'] },
-                { x: 72, z: 8, face: 300, race: 'mad scientist', say: ['“Twenty-seven kilometres.” “This is a hundred metres.” “This is the part they let you walk. It is round; that is the important part.”'] },
+                { x: 58.5, z: 22.6, face: 0, race: 'mad scientist', say: ['“Twenty-seven kilometres.” “This is a hundred metres.” “This is the part they let you walk. It is round; that is the important part.”'] },
                 { x: 45, z: 57, face: 135, race: 'glitch', say: ['“Round.” “Yes.” “Round.” “Yes.” “R̶o̶u̶n̶d̶.”'] },
             ],
             onlineSpots: [],
@@ -43138,7 +43285,7 @@ const DOOR_HQ = {
                Dead ends: side room 1 (the small barrow) off hall D, side room 2 (the east barrow) off hall G, side room 3 (the second
                trilithon) east of the circle. The doors never see each other (hall A sits east of the line, the ley space is walled off
                from the circle). */
-            terrain: {
+            terrain: { levelM: 3.5, ghostM: 1.75,
                 floor: 'grass_2', cliff: 'rock_wall_1', path: 'dirt',
                 noise: { amp: 0, scale: 18 }, crag: false,
                 gen: { kind: 'plan', look: 'rock', wallH: 3.4, jitter: 0.1, topNoise: 0.3, rim: 0, forceGrow: -0.8 },   // THE LAYOUT: the plain's chalk, a bank drawn by hand
@@ -43168,51 +43315,48 @@ const DOOR_HQ = {
                     /* the stairs pass (2026-10-05): THE BANK raised 1.8 m as a crisp ring in five lengths, broken at the lanes (a 2.5 m gap
                        at hall A and at hall C, a rail across each), a stone flight up from the ditch onto each, a board fence on the
                        outer rim; the avenue's two banks raised the same, from the ring out toward the heel stone (a gap between them, rails across) */
-                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 73, a1: 167.5, h0: 1.8, h1: 1.8, edge: 0.15 },
-                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 173.3, a1: 260, h0: 1.8, h1: 1.8, edge: 0.15 },
-                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 265.6, a1: 305, h0: 1.8, h1: 1.8, edge: 0.15 },
-                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 336, a1: 392, h0: 1.8, h1: 1.8, edge: 0.15 },
-                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 37, a1: 57, h0: 1.8, h1: 1.8, edge: 0.15 },
-                    { k: 'ramp', x0: 31.5, z0: 21, x1: 42, z1: 21, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
-                    { k: 'ramp', x0: -24.5, z0: 28, x1: -24.5, z1: 42, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
-                    { k: 'ramp', x0: -35, z0: -10.5, x1: -45.5, z1: -10.5, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
-                    { k: 'ramp', x0: 0, z0: -35, x1: 0, z1: -45.5, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 49, a0: 166.5, a1: 174.3 }, y: 1.8, model: 'pipe', block: false },   // across hall A's gap
-                    { k: 'rail', arc: { x: 0, z: 0, r: 49, a0: 259, a1: 266.6 }, y: 1.8, model: 'pipe', block: false },     // across hall C's gap
-                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 73, a1: 167.5 }, y: 1.8, model: 'ranch' },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 173.3, a1: 260 }, y: 1.8, model: 'ranch' },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 265.6, a1: 305 }, y: 1.8, model: 'ranch' },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 336, a1: 386 }, y: 1.8, model: 'ranch' },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 44, a1: 57 }, y: 1.8, model: 'ranch' },
-                    { k: 'plateau', x: 35.24, z: -59.06, w: 37, d: 6, rot: -52.1, h: 1.8, edge: 0.15 },
-                    { k: 'plateau', x: 42.26, z: -48.54, w: 29, d: 6, rot: -52.1, h: 1.8, edge: 0.15 },
-                    { k: 'ramp', x0: 24.5, z0: -29.75, x1: 38.5, z1: -29.75, w: 3.5, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
-                    { k: 'rail', x0: 33, z0: -51.32, x1: 37.74, z1: -47.62, y: 1.8, model: 'pipe', block: false }, { k: 'rail', x0: 40.36, z0: -60.78, x1: 45.1, z1: -57.1, y: 1.8, model: 'pipe', block: false },   // across the avenue
+                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 73, a1: 167.5, h0: 3.5, h1: 3.5, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 173.3, a1: 260, h0: 3.5, h1: 3.5, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 265.6, a1: 305, h0: 3.5, h1: 3.5, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 336, a1: 392, h0: 3.5, h1: 3.5, edge: 0.15 },
+                    { k: 'spiral', x: 0, z: 0, r0: 45.5, r1: 52.5, a0: 37, a1: 57, h0: 3.5, h1: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: 31.5, z0: 21, x1: 42, z1: 21, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: -24.5, z0: 28, x1: -24.5, z1: 42, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: -35, z0: -10.5, x1: -45.5, z1: -10.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'ramp', x0: 0, z0: -35, x1: 0, z1: -45.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 49, a0: 166.5, a1: 174.3 }, y: 3.5, model: 'pipe', block: false },   // across hall A's gap
+                    { k: 'rail', arc: { x: 0, z: 0, r: 49, a0: 259, a1: 266.6 }, y: 3.5, model: 'pipe', block: false },     // across hall C's gap
+                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 73, a1: 167.5 }, y: 3.5, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 173.3, a1: 260 }, y: 3.5, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 265.6, a1: 305 }, y: 3.5, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 336, a1: 386 }, y: 3.5, model: 'ranch' },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 52.4, a0: 44, a1: 57 }, y: 3.5, model: 'ranch' },
+                    { k: 'plateau', x: 35.24, z: -59.06, w: 37, d: 6, rot: -52.1, h: 3.5, edge: 0.15 },
+                    { k: 'plateau', x: 42.26, z: -48.54, w: 29, d: 6, rot: -52.1, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: 24.5, z0: -29.75, x1: 38.5, z1: -29.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },
+                    { k: 'rail', x0: 33, z0: -51.32, x1: 37.74, z1: -47.62, y: 3.5, model: 'pipe', block: false }, { k: 'rail', x0: 40.36, z0: -60.78, x1: 45.1, z1: -57.1, y: 3.5, model: 'pipe', block: false },   // across the avenue
                     /* THE BARROWS: kerbed drums with crisp sides (built, never banks), each up a built stair */
-                    { k: 'plateau', x: -77, z: 45.5, r: 14, h: 1.8, edge: 0.15 },                                                   // THE KING BARROW
-                    { k: 'ramp', x0: -77, z0: 66.5, x1: -77, z1: 56, w: 7, h0: 0, h1: 1.8, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair (was the chalk cut)
-                    { k: 'plateau', x: 77, z: 59.5, r: 10.8, h: 1.2, edge: 0.15 },                                                    // the east barrow
-                    { k: 'ramp', x0: 77, z0: 73.5, x1: 77, z1: 66.5, w: 7, h0: 0, h1: 1.2, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
+                    { k: 'plateau', x: -77, z: 45.5, r: 14, h: 3.5, edge: 0.15 },                                                   // THE KING BARROW
+                    { k: 'ramp', x0: -77, z0: 66.5, x1: -77, z1: 56, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair (was the chalk cut)
+                    { k: 'plateau', x: 77, z: 59.5, r: 10.8, h: 3.5, edge: 0.15 },                                                    // the east barrow
+                    { k: 'ramp', x0: 77, z0: 73.5, x1: 77, z1: 66.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
                     { k: 'plateau', x: -101.5, z: -38.5, r: 7, h: 1.0, edge: 0.15 },                                                // the small barrow
                     { k: 'ramp', x0: -91, z0: -38.5, x1: -98, z1: -38.5, w: 7, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair
-                    { k: 'plateau', x: -57.75, z: -80.5, w: 31.5, d: 14, h: 1.6, edge: 0.15 },                                           // THE LONG BARROW, west of the ley door
-                    { k: 'ramp', x0: -31.5, z0: -80.5, x1: -42, z1: -80.5, w: 7, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair, at the east end
-                    { k: 'wall', x0: 19.25, z0: 5.25, x1: 19.25, z1: 8.75, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: 15.75, z0: 12.25, x1: 15.75, z1: 15.75, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: 5.25, z0: 19.25, x1: 12.25, z1: 19.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: -5.25, z0: 19.25, x1: -12.25, z1: 19.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: -15.75, z0: 15.75, x1: -15.75, z1: 12.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: -19.25, z0: 8.75, x1: -19.25, z1: 5.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: -19.25, z0: -5.25, x1: -19.25, z1: -8.75, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: -15.75, z0: -12.25, x1: -15.75, z1: -15.75, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: -12.25, z0: -19.25, x1: -5.25, z1: -19.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: 15.75, z0: -15.75, x1: 15.75, z1: -12.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: 19.25, z0: -8.75, x1: 19.25, z1: -5.25, h: 4.2, t: 3.5, key: 'rock_wall_1' },   // THE SARSEN CIRCLE
-                    { k: 'wall', x0: 12.25, z0: 8.75, x1: 8.75, z1: 8.75, h: 6.0, t: 3.5, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
-                    { k: 'wall', x0: 1.75, z0: 12.25, x1: -1.75, z1: 12.25, h: 6.0, t: 3.5, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
-                    { k: 'wall', x0: -8.75, z0: 8.75, x1: -12.25, z1: 8.75, h: 6.0, t: 3.5, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
-                    { k: 'wall', x0: -12.25, z0: 1.75, x1: -12.25, z1: -1.75, h: 6.0, t: 3.5, key: 'rock_wall_1' },   // THE TRILITHON HORSESHOE
-                    { k: 'plateau', x: 0, z: 12.25, w: 7, d: 3.5, h: 6.6, edge: 0.15 },                                           // THE GREAT TRILITHON (the tape — the door gun's)
+                    { k: 'plateau', x: -57.75, z: -80.5, w: 31.5, d: 14, h: 3.5, edge: 0.15 },                                           // THE LONG BARROW, west of the ley door
+                    { k: 'ramp', x0: -31.5, z0: -80.5, x1: -42, z1: -80.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'rock_wall_1' },   // its stair, at the east end
+                    /* THE CIRCLE IS THE BOARD (2026-11-10, mondo: "improvements to all of the battle maps ... redesigning the layout, making the map look
+                       more realistic, replacing or adding better props"): the sarsen circle and the horseshoe were brick-sheet wall blocks and the arena
+                       was cut from the empty grass north-east of them. Now the stones are the Meshy standing stones and trilithons (props below, each on
+                       the floor over a GHOST block: the fight's and the walker's, never drawn) and the board is the circle itself (x -21..21, z -21..21 on
+                       its 3.5 m squares, HQ_ARENA_RULES.within). THE SARSEN CIRCLE: sixteen uprights, four a quarter, the north and south lanes six
+                       squares wide (the spawn rows and their apron), the east and west lanes two. THE TRILITHON HORSESHOE: five trilithons, two squares each, open to
+                       the east; THE GREAT TRILITHON at its back (the tape on its lintel). Four bluestones between the two. The north half is the south
+                       half mirrored: both sides fight the same stones. */
+                    { k: 'wall', x0: -12.25, z0: -19.25, x1: -12.25, z1: -19.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -15.75, x1: -15.75, z1: -15.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: -8.75, x1: -19.25, z1: -8.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: -5.25, x1: -19.25, z1: -5.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 19.25, x1: -12.25, z1: 19.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 15.75, x1: -15.75, z1: 15.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 8.75, x1: -19.25, z1: 8.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 5.25, x1: -19.25, z1: 5.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false },   // THE SARSEN CIRCLE (west half)
+                    { k: 'wall', x0: 12.25, z0: -19.25, x1: 12.25, z1: -19.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -15.75, x1: 15.75, z1: -15.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: -8.75, x1: 19.25, z1: -8.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: -5.25, x1: 19.25, z1: -5.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 19.25, x1: 12.25, z1: 19.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 15.75, x1: 15.75, z1: 15.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 8.75, x1: 19.25, z1: 8.75, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 5.25, x1: 19.25, z1: 5.25, h: 4.2, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false },   // THE SARSEN CIRCLE (east half)
+                    { k: 'wall', x0: -8.75, z0: -8.75, x1: -5.25, z1: -8.75, h: 6.0, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 5.25, z0: -8.75, x1: 8.75, z1: -8.75, h: 6.0, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 8.75, x1: -5.25, z1: 8.75, h: 6.0, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 5.25, z0: 8.75, x1: 8.75, z1: 8.75, h: 6.0, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false },   // THE TRILITHON HORSESHOE (its four arms)
+                    { k: 'wall', x0: -12.25, z0: -1.75, x1: -12.25, z1: 1.75, h: 6.0, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false },   // THE GREAT TRILITHON at the horseshoe's back (the tape on its lintel — the door gun's)
+                    { k: 'wall', x0: -12.25, z0: -12.25, x1: -12.25, z1: -12.25, h: 2.6, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -12.25, x1: 12.25, z1: -12.25, h: 2.6, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 12.25, x1: -12.25, z1: 12.25, h: 2.6, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 12.25, x1: 12.25, z1: 12.25, h: 2.6, t: 1.2, key: 'rock_wall_1', ghost: true, rail: false },   // the bluestones
                     { k: 'rail', x0: -40, z0: 70.8, x1: -16, z1: 70.8 },                                                            // the visitors' rail (the grind), along hall B
                     { k: 'path', pts: [[0, 96], [0, 76], [8, 70], [8, 48]], w: 5.2 },                                             // from the bay door
                     { k: 'path', pts: [[16, -16], [56, -76]], w: 9.2 },                                                              // THE AVENUE, north-east
@@ -43228,7 +43372,11 @@ const DOOR_HQ = {
                 /* the stones: the trilithon GLB twice outside the circle, the bluestones, the heel stone, the slaughter stone fallen */
                 { key: 'trilithon',      x: -62, z: 27, face: 0 }, { key: 'trilithon', x: 80, z: -20, face: 180 },
                 { key: 'sarsen',         x: 52, z: -68, face: 40, h: 4.8 },                                                          // THE HEEL STONE, leaning up the avenue
-                { key: 'sarsen',         x: 15.75, z: -5.25, face: 20 }, { key: 'sarsen', x: 5.25, z: 15.75, face: 200 }, { key: 'sarsen', x: -15.75, z: 8.75, face: 300 }, { key: 'sarsen', x: -15.75, z: -5.25, face: 90 }, { key: 'sarsen', x: -5.25, z: -15.75, face: 150 },   // the bluestones
+                /* THE CIRCLE IS THE BOARD (2026-11-10): every stone a model on its ghost block (`floor: true`: on the grass, never on the block) */
+                { key: 'sarsen', x: -12.25, z: -19.25, face: 212, h: 4.4, floor: true }, { key: 'sarsen', x: -15.75, z: -15.75, face: 225, h: 4.4, floor: true }, { key: 'sarsen', x: -19.25, z: -8.75, face: 246, h: 4.4, floor: true }, { key: 'sarsen', x: -19.25, z: -5.25, face: 255, h: 4.4, floor: true }, { key: 'sarsen', x: -12.25, z: 19.25, face: 328, h: 4.4, floor: true }, { key: 'sarsen', x: -15.75, z: 15.75, face: 315, h: 4.4, floor: true }, { key: 'sarsen', x: -19.25, z: 8.75, face: 294, h: 4.4, floor: true }, { key: 'sarsen', x: -19.25, z: 5.25, face: 285, h: 4.4, floor: true }, { key: 'sarsen', x: 12.25, z: -19.25, face: 148, h: 4.4, floor: true }, { key: 'sarsen', x: 15.75, z: -15.75, face: 135, h: 4.4, floor: true }, { key: 'sarsen', x: 19.25, z: -8.75, face: 114, h: 4.4, floor: true }, { key: 'sarsen', x: 19.25, z: -5.25, face: 105, h: 4.4, floor: true }, { key: 'sarsen', x: 12.25, z: 19.25, face: 32, h: 4.4, floor: true }, { key: 'sarsen', x: 15.75, z: 15.75, face: 45, h: 4.4, floor: true }, { key: 'sarsen', x: 19.25, z: 8.75, face: 66, h: 4.4, floor: true }, { key: 'sarsen', x: 19.25, z: 5.25, face: 75, h: 4.4, floor: true },   // THE SARSEN CIRCLE
+                { key: 'trilithon', x: -7.0, z: -8.75, face: 0, floor: true }, { key: 'trilithon', x: 7.0, z: -8.75, face: 0, floor: true }, { key: 'trilithon', x: -7.0, z: 8.75, face: 0, floor: true }, { key: 'trilithon', x: 7.0, z: 8.75, face: 0, floor: true },   // THE TRILITHON HORSESHOE
+                { key: 'trilithon', x: -12.25, z: 0, face: 90, span: 6.9, floor: true },   // THE GREAT TRILITHON
+                { key: 'sarsen', x: -12.25, z: -12.25, face: 20, h: 2.6, floor: true }, { key: 'sarsen', x: 12.25, z: -12.25, face: 200, h: 2.6, floor: true }, { key: 'sarsen', x: -12.25, z: 12.25, face: 300, h: 2.6, floor: true }, { key: 'sarsen', x: 12.25, z: 12.25, face: 150, h: 2.6, floor: true }, { key: 'sarsen', x: 26.25, z: 1.75, face: 90, h: 2.6 },   // the bluestones (four on the board between the circle and the horseshoe, the fifth outside the east lane)
                 { key: 'fallen_log',     x: 29.75, z: -33.25, face: 30 },                                                                  // THE SLAUGHTER STONE (the fallen one)
                 /* the plain: the fires, the rail, the signs */
                 { key: 'campfire',       x: -12.35, z: 52.725 },
@@ -43551,6 +43699,8 @@ const DOOR_HQ = {
                     { k: 'rail', x0: -52.5, z0: -91, x1: -21, z1: -91 },                                                             // … and east
                     { k: 'plateau', x: 28, z: -87.5, w: 21, d: 7, h: -1.0, sink: true, edge: 0.3 },                              // TRENCH I, sunk
                     { k: 'plateau', x: 33.25, z: 87.5, w: 17.5, d: 7, h: -1.0, sink: true, edge: 0.3 },                                // TRENCH II, sunk
+                    /* THE BATTLE MAP POLISH (2026-11-10): four date palms on the board's sand, one square each, the same from both ends (cover between the blocks; columns 4..7 stay clear) */
+                    { k: 'tree', x: 8.75, z: 71.75, kind: 'palm', h: 4.6, r: 1.3 }, { k: 'tree', x: 26.25, z: 82.25, kind: 'palm', h: 4.4, r: 1.3 }, { k: 'tree', x: 29.75, z: 64.75, kind: 'palm', h: 5, r: 1.3 }, { k: 'tree', x: 5.25, z: 89.25, kind: 'palm', h: 4.8, r: 1.3 },
                     /* the stairs pass (2026-10-05): THE CAUSEWAY raised 1.8 m (up a wide flight from the door's court, down a flight to the
                        paws), its west arm north over room 1 to a pier across a 2 m gap and a flight onto the pyramid's tier 1 */
                     { k: 'plateau', x: 0, z: 64.75, w: 9, d: 31.5, h: 3.5, edge: 0.3 },
@@ -43646,7 +43796,7 @@ const DOOR_HQ = {
                and hall B back round to the square (loop 2). Dead ends: side room 1 off hall B, side room 2 off the foot's north-west
                corner. The ley's mouth — THE FOUNDATION SHAFT — is in the foot's north apron west of the stair; the doors never see
                each other (hall A is offset east). */
-            terrain: { res: 1,
+            terrain: { res: 1, levelM: 3.5,   // THE FULL LEDGES (2026-11-10): the tiers were 3.5 m already; a level is now 3.5 m
                 floor: 'bricks_1', cliff: 'bricks_1', path: 'desert',
                 noise: { amp: 0, scale: 16 }, crag: false,
                 features: [
@@ -43694,17 +43844,23 @@ const DOOR_HQ = {
                     { k: 'wall', x0: -92.75, z0: -40.25, x1: -92.75, z1: -19.25, h: 1.0, t: 3.5, key: 'bricks_1' },                            // THE BRICK STACKS (the grinds)
                     { k: 'wall', x0: 89.25, z0: 22.75, x1: 110.25, z1: 22.75, h: 1.0, t: 3.5, key: 'bricks_1' },
                     { k: 'wall', x0: -50.75, z0: 89.25, x1: -29.75, z1: 89.25, h: 1.0, t: 3.5, key: 'bricks_1' },
-                    { k: 'path', pts: [[0, 106], [0, 84], [10, 80], [10, 52]], w: 6 },                                             // from the barn door to the foot
-                    { k: 'path', pts: [[10, 52], [68, 52], [68, -94], [0, -94]], w: 5.2 },                                         // round the foot to the north stair
+                    { k: 'path', pts: [[0, 106], [0, 47]], w: 7 },   // THE BATTLE MAP POLISH: straight up the board's middle (it wandered across one team's half)
+                    //                                             // from the barn door to the foot
+                    { k: 'path', pts: [[0, 94.5], [68, 94.5], [68, -94], [0, -94]], w: 5.2 },                                         // round the foot to the north stair
                     { k: 'path', pts: [[0, -94], [-20, -102]], w: 4.8 },                                                            // to the foundation shaft
                     { k: 'path', pts: [[-16, 92], [-68, 84], [-68, 60], [-92, 60]], w: 4.8 },                                     // to the kiln
-                    { k: 'scatter', key: 'cave_stone', n: 10, seed: 10 },
-                    { k: 'scatter', key: 'cinder_block', n: 14, seed: 11 },                                                       // the fired bricks
-                    /* THE OPEN TOWN's board (the square between the tower's foot and the barn door, 180° twins about (0, 70)): four brick houses,
-                       two squares by two, 3 m, either side of the barn door's path, and two brick stacks (1.4 m) */
-                    { k: 'wall', x0: -17.5, z0: 56, x1: -17.5, z1: 56, h: 3.0, t: 7.0, key: 'bricks_1', rail: false }, { k: 'wall', x0: 17.5, z0: 84, x1: 17.5, z1: 84, h: 3.0, t: 7.0, key: 'bricks_1', rail: false },
-                    { k: 'wall', x0: 17.5, z0: 63, x1: 17.5, z1: 63, h: 3.0, t: 7.0, key: 'bricks_1', rail: false }, { k: 'wall', x0: -17.5, z0: 77, x1: -17.5, z1: 77, h: 3.0, t: 7.0, key: 'bricks_1', rail: false },
-                    { k: 'wall', x0: -20.0, z0: 68.25, x1: -15.0, z1: 68.25, h: 1.4, t: 2.8, key: 'bricks_1', rail: false }, { k: 'wall', x0: 15.0, z0: 71.75, x1: 20.0, z1: 71.75, h: 1.4, t: 2.8, key: 'bricks_1', rail: false },   // two brick stacks between them
+                    { k: 'scatter', key: 'cave_stone', n: 10, seed: 10, off: [-21, 49, 21, 91] },
+                    { k: 'scatter', key: 'cinder_block', n: 14, seed: 11, off: [-21, 49, 21, 91] },                                                       // the fired bricks
+                    /* THE OPEN TOWN's board — THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): the square between
+                       the tower's foot and the barn door (x -21..21, z 49..91), alike from both spawn rows and both flanks. The four brick
+                       cubes are four of the town's own mud-brick houses (props, two squares by two, in the corners), the two low stacks
+                       are a 2 x 2 stack of fired bricks (3.5 m, walked) on each flank of the middle, four date palms stand round the
+                       nexus, a brazier (on a one-square ghost block) before each corner of each spawn row, the road runs straight up
+                       the middle. */
+                    { k: 'wall', x0: -19.25, z0: 68.25, x1: -15.75, z1: 68.25, h: 3.5, t: 3.5, key: 'bricks_1', rail: false }, { k: 'wall', x0: -19.25, z0: 71.75, x1: -15.75, z1: 71.75, h: 3.5, t: 3.5, key: 'bricks_1', rail: false }, { k: 'wall', x0: 15.75, z0: 68.25, x1: 19.25, z1: 68.25, h: 3.5, t: 3.5, key: 'bricks_1', rail: false }, { k: 'wall', x0: 15.75, z0: 71.75, x1: 19.25, z1: 71.75, h: 3.5, t: 3.5, key: 'bricks_1', rail: false },   // the brick stacks (0..1 and 10..11 x 5..6)
+                    { k: 'wall', x0: -17.5, z0: 56, x1: -17.5, z1: 56, h: 3.5, t: 7, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 17.5, z0: 56, x1: 17.5, z1: 56, h: 3.5, t: 7, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: -17.5, z0: 84, x1: -17.5, z1: 84, h: 3.5, t: 7, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 17.5, z0: 84, x1: 17.5, z1: 84, h: 3.5, t: 7, key: 'bricks_1', ghost: true, rail: false },   // under the houses (0..1 and 10..11 x 1..2 and 9..10)
+                    { k: 'tree', x: -8.75, z: 64.75, r: 1.3, kind: 'palm' }, { k: 'tree', x: 8.75, z: 64.75, r: 1.3, kind: 'palm' }, { k: 'tree', x: -8.75, z: 75.25, r: 1.3, kind: 'palm' }, { k: 'tree', x: 8.75, z: 75.25, r: 1.3, kind: 'palm' },   // the palms (3 and 8 x 4 and 7)
+                    { k: 'wall', x0: -8.75, z0: 57.75, x1: -8.75, z1: 57.75, h: 2.2, t: 2.4, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 57.75, x1: 8.75, z1: 57.75, h: 2.2, t: 2.4, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 82.25, x1: -8.75, z1: 82.25, h: 2.2, t: 2.4, key: 'bricks_1', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 82.25, x1: 8.75, z1: 82.25, h: 2.2, t: 2.4, key: 'bricks_1', ghost: true, rail: false },   // under the braziers (3 and 8 x 2 and 9)
                 ],
             },
             doors: [],   // the south wall at x 0 is THE BAY DOOR (siteRooms.entry); THE FOUNDATION SHAFT on the north wall is links.babel_ley
@@ -43725,6 +43881,8 @@ const DOOR_HQ = {
                 { key: 'sea_chest',      x: 100, z: 32, face: 300 },
                 /* THE MUD-BRICK HOUSES (2026-11-05, mondo OK'd the Meshy concepts; the town rim is deleted): one house per spot along the
                    roads, doors to the road, clear of every arena size, the doors and the natives */
+                { key: 'babel_house_small', x: -17.5, z: 56, face: 90, floor: true }, { key: 'babel_house_small', x: 17.5, z: 56, face: 270, floor: true }, { key: 'babel_house_small', x: -17.5, z: 84, face: 90, floor: true }, { key: 'babel_house_small', x: 17.5, z: 84, face: 270, floor: true },   // THE BATTLE MAP POLISH: the board's four houses, each on the corner of its four squares over a 2 x 2 ghost block as tall as its roof (the model is 3.54 m at span 7: the roof is level 1, walked)
+                { key: 'brazier', x: -8.75, z: 57.75, h: 2.2, floor: true }, { key: 'brazier', x: 8.75, z: 57.75, h: 2.2, floor: true }, { key: 'brazier', x: -8.75, z: 82.25, h: 2.2, floor: true }, { key: 'brazier', x: 8.75, z: 82.25, h: 2.2, floor: true },
                 { key: 'babel_house_stair', x: -16, z: -90, face: 0 }, { key: 'babel_house_small', x: 24, z: -84, face: 0 },
                 { key: 'babel_house_row', x: 14, z: -104, face: 180 }, { key: 'babel_house_yard', x: 78, z: -100, face: 270 },
                 { key: 'babel_house_small', x: -58, z: 54, face: 270 }, { key: 'babel_house_row', x: -44, z: 78, face: 180 },
@@ -43735,7 +43893,7 @@ const DOOR_HQ = {
                 { x: 68, z: -24, face: 270, race: 'giant', say: ['“We carried the bricks.” “All of them?” “The big ones. The small ones were yours.”', '“The crane never lifted the load.” “Why?” “The word for LIFT went first.”'] },
                 { x: -86, z: 42, face: 100, race: 'golem', say: ['“Fired. Fired. Fired.” “The bricks?” “Everybody.”'] },
                 { x: -16, z: -98, face: 60, race: 'antperson', say: ['“The shaft goes under the tower.” “The foundation?” “The tower was put on the line. The line was not asked.”'] },
-                { x: 12, z: 66, face: 320, race: 'conspiracy theorist', say: ['“One language.” “Before?” “After. It is one word. Listen.”', '“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”'] },
+                { x: 12, z: 95, face: 320, race: 'conspiracy theorist', say: ['“One language.” “Before?” “After. It is one word. Listen.”', '“Genesis eleven.” “The chapter?” “The floor. There is no floor eleven.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -44528,7 +44686,7 @@ const DOOR_HQ = {
                 mood: { lamp: 0xfff1c8, glow: 0x7fe0ea, strip: 0xdff0ff, light: 0xfff6e0, ambient: 0.7, night: 0 },
                 sky: { night: 0, tint: 0x8fd4f0, tintAmt: 0.16, stars: 0.2, nebula: 0, day: 1, clouds: 0.22, fog: { color: 0xc4ecf8, amount: 0.3, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'sea', density: 0.55,
                        landmarks: [{ kind: 'waterspout', id: 'prebuilt_bermuda', deg: 32, dist: 0.8, y: -0.02, s: 0.8, label: 'THE WATERSPOUT' }] } }),
-            terrain: {
+            terrain: { levelM: 3.5,   // THE FULL LEDGES (2026-11-10): the two rock tables a whole square tall
                 floor: 'desert', cliff: 'rocks_5', path: 'wood_planks',
                 base: -4.0, noise: { amp: 0.5, scale: 18 }, crag: false,
                 sea: { y: 0, key: 'water', field: true },
@@ -44543,7 +44701,7 @@ const DOOR_HQ = {
                     { k: 'hill', x: 15.75, z: 15.75, r: 2.8, h: 2.2 }, { k: 'hill', x: -15.75, z: -15.75, r: 2.8, h: 2.2 },
                     { k: 'hill', x: -19.25, z: -5.25, r: 2.6, h: 2.0 }, { k: 'hill', x: 19.25, z: 5.25, r: 2.6, h: 2.0 },          // at the water's edge
                     /* the granite shelves (2 × 2 squares each, one level up: the high ground, climbed onto; the rock painted on) */
-                    { k: 'plateau', x: 14, z: -7, r: 7, rz: 7, h: 1.5, edge: 0.3, dome: 0.12 }, { k: 'plateau', x: -14, z: 7, r: 7, rz: 7, h: 1.5, edge: 0.3, dome: 0.12 },
+                    { k: 'plateau', x: 14, z: -7, r: 7, rz: 7, h: 3.5, edge: 0.3, dome: 0.12 }, { k: 'plateau', x: -14, z: 7, r: 7, rz: 7, h: 3.5, edge: 0.3, dome: 0.12 },
                     /* the palms (each on a square's centre; a blocker on the walk, a blocked square in a fight) */
                     { k: 'tree', x: -15.75, z: -5.25, kind: 'palm', h: 3.6, r: 0.45 }, { k: 'tree', x: 15.75, z: 5.25, kind: 'palm', h: 3.4, r: 0.45 },
                     { k: 'tree', x: 5.25, z: -12.25, kind: 'palm', h: 3.2, r: 0.45 }, { k: 'tree', x: -5.25, z: 12.25, kind: 'palm', h: 3.5, r: 0.45 },
@@ -44574,6 +44732,7 @@ const DOOR_HQ = {
                 { key: 'asteroid_a', x: 8.75, z: -1.75, y: -0.1, span: 6.0, face: 200 }, { key: 'asteroid_b', x: 8.2, z: 1.6, y: -0.1, span: 4.0, face: 290 },
                 { key: 'asteroid_a', x: -15.75, z: -15.75, y: -0.1, span: 5.2, face: 70 }, { key: 'asteroid_a', x: 15.75, z: 15.75, y: -0.1, span: 5.2, face: 250 },
                 { key: 'asteroid_b', x: -19.25, z: -5.25, y: -0.3, span: 4.8, face: 140 }, { key: 'asteroid_b', x: 19.25, z: 5.25, y: -0.3, span: 4.8, face: 320 },
+                { key: 'ship_wreck', x: -40, z: -14, y: -1.2, face: 35 }, { key: 'fighter_jet', x: 38, z: 26, y: -1.1, face: 205 },   // THE BATTLE MAP POLISH (2026-11-10): what the Triangle took, in the lagoon either side of the island (off the board)
                 { key: 'rowboat', x: 49.7, z: 5.7, y: -0.2, face: 90 },                                              // moored at the pier's end
                 { key: 'sea_buoy', x: 62, z: -24, y: 0.32 }, { key: 'sea_buoy', x: -60, z: 28, y: 0.32 }, { key: 'sea_buoy', x: 16, z: 66, y: 0.32 },
                 { key: 'palmisle', x: -60, z: -60, y: -0.5, face: 40 },                                               // a palm islet out to the north-west
@@ -44890,41 +45049,51 @@ const DOOR_HQ = {
             terrain: {
                 floor: 'marble_light', cliff: 'marble_light', path: 'marble_light',
                 noise: { amp: 0 }, crag: false,
-                res: 0.5,   // the field sampled every quarter metre: the tiers' edges stay on their squares' edges (0.5 m smeared them into a slope)
+                levelM: 3.5, res: 0.5,   // THE FULL LEDGES (2026-11-10): a level per 3.5 m, the dais and the side terraces 3.5 m, the back terrace 7 m, the oracle 8.4 m (level 3 starts at 8.2)   // the field sampled every quarter metre: the tiers' edges stay on their squares' edges (0.5 m smeared them into a slope)
                 features: [
                     /* THE SQUARES (2026-10-26, mondo: "redesign the maps with the square grid in mind"): every tier, flight and rail below sits
                        on THE FIELD's squares (edges at k × 1.75 m from the centre) — the dais 8 × 5 squares, the flights 2 squares wide with
                        both ends on square lines, the oracle a 2 × 2 drum in a 6-square pool (both on the square corner at 0, 8.75) */
-                    { k: 'plateau', x: 0, z: -19.75, w: 28.6, d: 19.1, h: 1.2, edge: 0.2 },                                          // THE DAIS (its back 0.5 m under the terraces)
-                    { k: 'ramp', x0: 0, z0: 3.5, x1: 0, z1: -10.5, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.4 },            // its stair (4 squares long, 2 wide)
-                    { k: 'pool', x: 0, z: 17.5, r: 10.5, y: -0.3, depth: 0.7 },                                                  // THE ORACLE POOL (waded)
-                    { k: 'plateau', x: 0, z: 17.5, r: 4.1, h: 5.5, edge: 0.6 },                                                 // THE ORACLE (the tape) — after the pool: it rises out of it
+                    { k: 'plateau', x: 0, z: -19.75, w: 28.6, d: 19.1, h: 3.5, edge: 0.2 },                                          // THE DAIS (its back 0.5 m under the terraces)
+                    { k: 'ramp', x0: 0, z0: 3.5, x1: 0, z1: -10.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.4 },            // its stair (4 squares long, 2 wide)
+                    { k: 'pool', x: 0, z: 14, r: 10.5, y: -0.3, depth: 0.7 },                                                  // THE ORACLE POOL (waded)
+                    { k: 'plateau', x: 0, z: 14, r: 4.1, h: 8.4, edge: 0.6 },                                                 // THE ORACLE (the tape) — after the pool: it rises out of it
                     { k: 'rail', x0: -13.75, z0: -27.65, x1: -5.25, z1: -27.65 }, { k: 'rail', x0: 5.25, z0: -27.65, x1: 13.75, z1: -27.65 },
                     /* THE TERRACES stepped round the dais: the side terraces (2.4) behind the colonnades, each up a flight from the floor and a
                        flight from the dais; the back terrace (3.6) in two halves over the dais, each up a flight from its side terrace, a 2-square
                        gap between them over the dais's alcove (1.2) with a pipe rail laid across it; parapets on the inner edges */
-                    { k: 'plateau', x: -28.5, z: -21.5, w: 15, d: 29, h: 2.4, edge: 0.2 }, { k: 'plateau', x: 28.5, z: -21.5, w: 15, d: 29, h: 2.4, edge: 0.2 },
-                    { k: 'plateau', x: -12.25, z: -32, w: 18.1, d: 8.6, h: 3.6, edge: 0.1 }, { k: 'plateau', x: 12.25, z: -32, w: 18.1, d: 8.6, h: 3.6, edge: 0.1 },
-                    { k: 'plateau', x: 0, z: -31.5, w: 9, d: 9, h: 1.2, edge: 0.3 },   // the alcove (its sides 0.5 m under the terraces, its front on the dais)
-                    { k: 'ramp', x0: -24.5, z0: 3.5, x1: -24.5, z1: -7, w: 7, h0: 0, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
-                    { k: 'ramp', x0: 24.5, z0: 3.5, x1: 24.5, z1: -7, w: 7, h0: 0, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
-                    { k: 'ramp', x0: -10.5, z0: -17.5, x1: -21, z1: -17.5, w: 7, h0: 1.2, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
-                    { k: 'ramp', x0: 10.5, z0: -17.5, x1: 21, z1: -17.5, w: 7, h0: 1.2, h1: 2.4, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'plateau', x: -28.5, z: -21.5, w: 15, d: 29, h: 3.5, edge: 0.2 }, { k: 'plateau', x: 28.5, z: -21.5, w: 15, d: 29, h: 3.5, edge: 0.2 },
+                    { k: 'plateau', x: -12.25, z: -32, w: 18.1, d: 8.6, h: 7, edge: 0.1 }, { k: 'plateau', x: 12.25, z: -32, w: 18.1, d: 8.6, h: 7, edge: 0.1 },
+                    { k: 'plateau', x: 0, z: -31.5, w: 9, d: 9, h: 3.5, edge: 0.3 },   // the alcove (its sides 0.5 m under the terraces, its front on the dais)
+                    { k: 'ramp', x0: -24.5, z0: 3.5, x1: -24.5, z1: -7, w: 7, h0: 0, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'ramp', x0: 24.5, z0: 3.5, x1: 24.5, z1: -7, w: 7, h0: 0, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'ramp', x0: -10.5, z0: -17.5, x1: -21, z1: -17.5, w: 7, h0: 3.5, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
+                    { k: 'ramp', x0: 10.5, z0: -17.5, x1: 21, z1: -17.5, w: 7, h0: 3.5, h1: 3.5, stairs: true, rails: false, edge: 0.4 },
                     /* those four flights' parapets as grinds only (free to step off) */
-                    { k: 'rail', x0: -28, z0: 3.5, x1: -28, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: -21, z0: 3.5, x1: -21, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'rail', x0: 28, z0: 3.5, x1: 28, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: 21, z0: 3.5, x1: 21, z1: -7, y0: 0, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'rail', x0: -10.5, z0: -21, x1: -21, z1: -21, y0: 1.2, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: -10.5, z0: -14, x1: -21, z1: -14, y0: 1.2, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'rail', x0: 10.5, z0: -21, x1: 21, z1: -21, y0: 1.2, y1: 2.4, model: 'parapet', block: false }, { k: 'rail', x0: 10.5, z0: -14, x1: 21, z1: -14, y0: 1.2, y1: 2.4, model: 'parapet', block: false },
-                    { k: 'ramp', x0: -28, z0: -31.5, x1: -21, z1: -31.5, w: 7, h0: 2.4, h1: 3.6, stairs: true, edge: 0.4 },
-                    { k: 'ramp', x0: 28, z0: -31.5, x1: 21, z1: -31.5, w: 7, h0: 2.4, h1: 3.6, stairs: true, edge: 0.4 },
-                    { k: 'rail', x0: -5, z0: -31.5, x1: 5, z1: -31.5, y: 3.6, model: 'pipe', block: false },
-                    { k: 'rail', x0: -21, z0: -28, x1: -3.5, z1: -28, y: 3.6, model: 'parapet' }, { k: 'rail', x0: 3.5, z0: -28, x1: 21, z1: -28, y: 3.6, model: 'parapet' },
-                    { k: 'rail', x0: -21.4, z0: -27.6, x1: -21.4, z1: -21, y: 2.4, model: 'parapet' }, { k: 'rail', x0: -21.4, z0: -14, x1: -21.4, z1: -7.75, y: 2.4, model: 'parapet' },
-                    { k: 'rail', x0: 21.4, z0: -27.6, x1: 21.4, z1: -21, y: 2.4, model: 'parapet' }, { k: 'rail', x0: 21.4, z0: -14, x1: 21.4, z1: -7.75, y: 2.4, model: 'parapet' },
+                    { k: 'rail', x0: -28, z0: 3.5, x1: -28, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: -21, z0: 3.5, x1: -21, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'rail', x0: 28, z0: 3.5, x1: 28, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: 21, z0: 3.5, x1: 21, z1: -7, y0: 0, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'rail', x0: -10.5, z0: -21, x1: -21, z1: -21, y0: 3.5, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: -10.5, z0: -14, x1: -21, z1: -14, y0: 3.5, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'rail', x0: 10.5, z0: -21, x1: 21, z1: -21, y0: 3.5, y1: 3.5, model: 'parapet', block: false }, { k: 'rail', x0: 10.5, z0: -14, x1: 21, z1: -14, y0: 3.5, y1: 3.5, model: 'parapet', block: false },
+                    { k: 'ramp', x0: -28, z0: -31.5, x1: -21, z1: -31.5, w: 7, h0: 3.5, h1: 7, stairs: true, edge: 0.4 },
+                    { k: 'ramp', x0: 28, z0: -31.5, x1: 21, z1: -31.5, w: 7, h0: 3.5, h1: 7, stairs: true, edge: 0.4 },
+                    { k: 'rail', x0: -5, z0: -31.5, x1: 5, z1: -31.5, y: 7, model: 'pipe', block: false },
+                    { k: 'rail', x0: -21, z0: -28, x1: -3.5, z1: -28, y: 7, model: 'parapet' }, { k: 'rail', x0: 3.5, z0: -28, x1: 21, z1: -28, y: 7, model: 'parapet' },
+                    { k: 'rail', x0: -21.4, z0: -27.6, x1: -21.4, z1: -21, y: 3.5, model: 'parapet' }, { k: 'rail', x0: -21.4, z0: -14, x1: -21.4, z1: -7.75, y: 3.5, model: 'parapet' },
+                    { k: 'rail', x0: 21.4, z0: -27.6, x1: 21.4, z1: -21, y: 3.5, model: 'parapet' }, { k: 'rail', x0: 21.4, z0: -14, x1: 21.4, z1: -7.75, y: 3.5, model: 'parapet' },
                     /* skate rails: round the oracle pool, down the middle of the dais stair */
-                    { k: 'rail', arc: { x: 0, z: 17.5, r: 11.1, a0: 30, a1: 330 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: 0, z: 14, r: 11.1, a0: 30, a1: 330 }, model: 'pipe', block: false },
                     { k: 'rail', x0: 0, z0: 3.25, x1: 0, z1: -10.5, model: 'pipe', block: false },
-                    { k: 'wall', x0: -24.5, z0: 4, x1: -24.5, z1: 24, h: 0.5, t: 1, key: 'marble_light' },                       // the bench wall (a grind; drawn 1.75 … 12.25)
+                    { k: 'wall', x0: -24.5, z0: 7.5, x1: -24.5, z1: 20.5, h: 0.5, t: 1, key: 'marble_light' },
+                    /* THE BATTLE MAP POLISH (2026-11-10): the board (x -35..7, z -7..35) reads the same from both spawn rows. The oracle and its pool
+                       moved 3.5 m north (z 17.5 -> 14: the pool on rows 3..8, the board's own middle); the two flights at the north spawn row get their
+                       twins at the south one (two marble blocks, a level up: the west one three squares long, the middle one two, clear of the vault
+                       door); two columns of the colonnade stand at the blocks' ends (west of the lane, they stood IN the spawn lane), a statue
+                       beside each, facing the lane. Ghost blocks under every piece (3.5 m = a level, 7 m = two) */
+                    { k: 'wall', x0: -26.25, z0: 26.25, x1: -26.25, z1: 33.25, h: 3.5, t: 3.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -22.75, z0: 26.25, x1: -22.75, z1: 33.25, h: 3.5, t: 3.5, key: 'marble_light', rail: false },
+                    { k: 'wall', x0: -1.75, z0: 26.25, x1: -1.75, z1: 29.75, h: 3.5, t: 3.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 1.75, z0: 26.25, x1: 1.75, z1: 29.75, h: 3.5, t: 3.5, key: 'marble_light', rail: false },
+                    { k: 'wall', x0: -26.25, z0: 5.25, x1: -26.25, z1: 5.25, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -26.25, z0: 22.75, x1: -26.25, z1: 22.75, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+                    { k: 'wall', x0: 26.25, z0: 5.25, x1: 26.25, z1: 5.25, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 26.25, z0: 22.75, x1: 26.25, z1: 22.75, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+                    { k: 'wall', x0: -22.75, z0: 8.75, x1: -22.75, z1: 8.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: 19.25, x1: -22.75, z1: 19.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false },                       // the bench wall (a grind; drawn 1.75 … 12.25)
                 ],
             },
             doors: [
@@ -44942,24 +45111,25 @@ const DOOR_HQ = {
             props: [
                 /* THE OCEAN PACK (2026-10-27): three fish round the oracle in its pool, their backs AT the −0.29 surface (the pool's water is opaque —
                    the on-screen check), shells on the rim */
-                { key: 'ocean_clownfish', x: 0, z: 17.5, y: -0.85, hover: 0.5, swim: { r: 7.2, v: 0.6, bob: 0.05 } },
-                { key: 'ocean_dory',      x: 0, z: 17.5, y: -0.85, hover: 0.5, swim: { r: 8.8, v: 0.7, bob: 0.05, dir: -1 } },
-                { key: 'ocean_fish_3',    x: 0, z: 17.5, y: -0.85, hover: 0.5, swim: { r: 6, v: 0.5, bob: 0.05 } },
-                { key: 'ocean_conch', x: -10.85, z: 25.2, face: 40 }, { key: 'ocean_starfish', x: 11.8, z: 24.1, face: 10 }, { key: 'ocean_sand_dollar_2', x: 10.15, z: 8.8, face: 70 },
+                { key: 'ocean_clownfish', x: 0, z: 14, y: -0.85, hover: 0.5, swim: { r: 7.2, v: 0.6, bob: 0.05 } },
+                { key: 'ocean_dory',      x: 0, z: 14, y: -0.85, hover: 0.5, swim: { r: 8.8, v: 0.7, bob: 0.05, dir: -1 } },
+                { key: 'ocean_fish_3',    x: 0, z: 14, y: -0.85, hover: 0.5, swim: { r: 6, v: 0.5, bob: 0.05 } },
+                { key: 'ocean_conch', x: -10.85, z: 21.7, face: 40 }, { key: 'ocean_starfish', x: 11.8, z: 20.6, face: 10 }, { key: 'ocean_sand_dollar_2', x: 10.15, z: 5.3, face: 70 },
                 { key: 'royal_throne',    x: 0, z: -22, face: 0 },                                                               // on the dais (the front measured off the mesh)
                 { key: 'brazier',         x: -10.25, z: -13 }, { key: 'brazier', x: 10.25, z: -13 },                                    // the dais's fires
-                { key: 'brazier',         x: -15.75, z: 29.75 }, { key: 'brazier', x: 15.75, z: 29.75 },                        // the pool's
+                { key: 'brazier',         x: -5.25, z: 26.25 }, { key: 'brazier', x: 5.25, z: 26.25 }, { key: 'brazier', x: -5.25, z: 1.75 }, { key: 'brazier', x: 5.25, z: 1.75 },   // the pool's four (the south pair stood on the board's spawn lane)
                 { key: 'crystal_cluster', x: -32, z: -33 }, { key: 'crystal_cluster', x: 32, z: -33 },
                 { key: 'greek_column',    x: -19.25, z: -26.25 }, { key: 'greek_column', x: 19.25, z: -26.25 },                 // the colonnade (each on its square)
                 { key: 'greek_column',    x: -19.25, z: -8.75 }, { key: 'greek_column', x: 19.25, z: -8.75 },
-                { key: 'greek_column',    x: -19.25, z: 8.75 }, { key: 'greek_column', x: 19.25, z: 8.75 },
-                { key: 'greek_column',    x: -19.25, z: 22.75 }, { key: 'greek_column', x: 19.25, z: 22.75 },
+                { key: 'greek_column',    x: -26.25, z: 5.25, h: 5.5, floor: true }, { key: 'greek_column', x: 26.25, z: 5.25, h: 5.5, floor: true },   // THE BATTLE MAP POLISH: the pool's four columns, 5.5 m, a square west / east of the lane
+                { key: 'greek_column',    x: -26.25, z: 22.75, h: 5.5, floor: true }, { key: 'greek_column', x: 26.25, z: 22.75, h: 5.5, floor: true },
+                { key: 'angel_statue', x: -22.75, z: 8.75, h: 3.8, face: 90, floor: true }, { key: 'angel_statue', x: -22.75, z: 19.25, h: 3.8, face: 90, floor: true },
                 { key: 'stained_glass',   wall: 'w', z: -12 }, { key: 'stained_glass', wall: 'w', z: 12 },                          // the windows onto the dark water
                 { key: 'stained_glass',   wall: 'e', z: -16 }, { key: 'stained_glass', wall: 'e', z: 16 },
                 { key: 'holy_tapestry',   wall: 'n', x: 0 },                                                                     // over the dais, between the two seams
                 { key: 'sea_chest',       x: 26.25, z: 15.75, face: 250 },
                 { key: 'skull_pile',      x: -29.75, z: 29.75, face: 40 },
-                { key: 'paper_sheet',     x: 3.75, z: -16, y: 1.21, face: 140 },                                                     // the oracle's last answer, on the dais
+                { key: 'paper_sheet',     x: 3.75, z: -16, y: 3.51, face: 140 },                                                     // the oracle's last answer, on the dais
             ],
             agents: [],
             npcSpots: [
@@ -45395,34 +45565,40 @@ const DOOR_HQ = {
                 noise: { amp: 0.14, scale: 7 },
                 /* THE FLOOR PLAN: the cut rows through the corn — clearings joined by winding rows; the bank is the standing corn (1.9 m,
                    over the walker's head), the windbreak on it thin dead trees; the mask alone is the wall (a bump is not a wall) */
-                gen: { kind: 'rooms', seed: 512, loops: 3, rMin: 5, rMax: 9, wallH: 1.9, spacing: 3.6, kinds: ['tree_5', 'tree_6', 'tree_5', 'tree_2'], maxTrees: 160, grow: 2 },
+                gen: { kind: 'rooms', seed: 512, loops: 3, rMin: 5, rMax: 9, wallH: 1.9, spacing: 3.6, kinds: ['tree_5', 'tree_6', 'tree_5', 'tree_2'], maxTrees: 160, grow: 2,
+                       open: [{ x0: -29.5, z0: 7, x1: 15.5, z1: 7, w: 45 }, { x: 21, z: -6, r: 7 }] },   // open: THE CIRCLE IS THE BOARD (2026-11-10) — the board's square, the moved trailer's clearing
                 features: [
                     /* THE FARMYARD: the flat by the stable door, the track north into the corn */
-                    { k: 'path', pts: [[0, 42], [0, 24], [-4, 8], [-6, -12], [0, -32]], w: 4.8 },
-                    { k: 'path', pts: [[-6, -12], [-28, -16], [-32, -36]], w: 3.6 },                                 // to the house's dead tree
-                    { k: 'path', pts: [[-6, -12], [16, -20], [16, -36]], w: 3.6 },                                    // to the grove's gate
+                    { k: 'path', pts: [[0, 42], [0, 29], [-7, 21], [-7, -14], [-18, -21], [-30, -28]], w: 4.8 },   // THE CIRCLE IS THE BOARD (2026-11-10): straight through the circle, then round to the mesa's ramp
+                    { k: 'path', pts: [[-7, -14], [-28, -16], [-32, -36]], w: 3.6 },                                 // to the house's dead tree
+                    { k: 'path', pts: [[-7, -14], [16, -20], [16, -36]], w: 3.6 },                                    // to the grove's gate
                     { k: 'path', pts: [[0, -32], [-8, -38]], w: 3.6 },                                              // to the Lodge's door
                     { k: 'path', pts: [[0, 24], [28, 20], [44, 4]], w: 3.6 },                                       // to the east gates (the graveyard, the western — held)
                     /* THE CIRCLES: this season's, three of them — flattened dirt rings in the corn (the ranch's, and the pasture's is the same hand) */
-                    { k: 'dip', x: -8.75, z: 5.25, r: 17, h: 0.12 },
-                    { k: 'path', pts: hqRingPts(-8.75, 5.25, 14.4, 28), w: 3.2 },
-                    { k: 'path', pts: hqRingPts(-8.75, 5.25, 7.2, 20), w: 2.8 },
-                    { k: 'path', pts: [[-8.75, 5.25], [-8.75, -9.15]], w: 2.4 },
+                    /* THE CIRCLE IS THE BOARD (2026-11-10, mondo: "make improvements to all of the battle maps ... redesigning the layout ... better for PvP combat"):
+                       the big circle is the 12 x 12 (x -28..14, z -14..28), its heart under the nexus, the standing corn in the board's four corners.
+                       The mesa's ramp moved to its west face (it stood on one team's spawn). */
+                    { k: 'dip', x: -7, z: 7, r: 17, h: 0.12 },
+                    { k: 'path', pts: hqRingPts(-7, 7, 14.4, 28), w: 3.2 },
+                    { k: 'path', pts: hqRingPts(-7, 7, 7.2, 20), w: 2.8 },
+                    
                     { k: 'path', pts: hqRingPts(30, -16, 6, 18), w: 2.6 },
                     { k: 'path', pts: hqRingPts(-32, 20, 4.8, 16), w: 2.4 },
                     /* THE STOCK POND, waded */
                     { k: 'pool', x: 24.5, z: 24.5, r: 7, y: -0.25, depth: 0.6 },
                     /* THE MESA: the observation mesa, the cattle ramp up its south face — the near weenie at the end of the track's sightline */
                     { k: 'plateau', x: -3.5, z: -28, r: 11.4, h: 3.2, edge: 0.4 },
-                    { k: 'ramp', x0: -5.25, z0: -3.5, x1: -5.25, z1: -17.5, w: 4.7, h0: 0, h1: 3.2 },
+                    { k: 'ramp', x0: -29.75, z0: -28, x1: -14.5, z1: -28, w: 4.7, h0: 0, h1: 3.2 },
                     /* THE BUTTE: no way up on foot — the tape on top is the door gun's */
                     { k: 'plateau', x: 36.75, z: -29.75, r: 5.25, h: 4.4, edge: 0.35 },
                     /* THE FENCE LINE: two lengths of split-rail the rider jumps onto and grinds, the corral gap between */
                     { k: 'wall', x0: -45.5, z0: 31.5, x1: -17.5, z1: 31.5, h: 1.0 },
                     { k: 'wall', x0: -10.5, z0: 31.5, x1: 10.5, z1: 31.5, h: 1.0 },
                     /* AREA CONTENT D4 (2026-09-20): THE WINDBREAK — five trees on the stable door's sightlines (R3: from the bay you see one gate, not three) */
-                    { k: 'tree', x: -19.25, z: -8.75, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: 8.75, z: -8.75, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: -5.25, z: 33.25, kind: 'tree_2', h: 6.0, r: 0.8 },
-                    { k: 'tree', x: -22.75, z: -8.75, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: 8.75, z: -22.75, kind: 'tree', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: -19.25, z: -17.5, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: 15.75, z: -8.75, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: -5.25, z: 33.25, kind: 'tree_2', h: 6.0, r: 0.8 },
+                    { k: 'tree', x: -26.25, z: -17.5, kind: 'tree_3', h: 6.5, r: 0.8 },
+                    /* the board's cover (blocks never drawn; the prop on each is the look), the same in each team's half */
+                    { k: 'wall', x0: -15.75, z0: -1.75, x1: -15.75, z1: -1.75, h: 4.2, t: 1.2, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: -1.75, x1: 1.75, z1: -1.75, h: 4.2, t: 1.2, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 15.75, x1: -15.75, z1: 15.75, h: 4.2, t: 1.2, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 15.75, x1: 1.75, z1: 15.75, h: 4.2, t: 1.2, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: -1.75, x1: -22.75, z1: -1.75, h: 1.5, t: 1.8, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: 15.75, x1: -22.75, z1: 15.75, h: 1.5, t: 1.8, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: -1.75, x1: 8.75, z1: -1.75, h: 1.3, t: 1.4, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 15.75, x1: 8.75, z1: 15.75, h: 1.3, t: 1.4, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: 5.25, x1: -22.75, z1: 8.75, h: 1.5, t: 2, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 5.25, x1: 8.75, z1: 8.75, h: 2.4, t: 2.4, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 1.75, x1: -8.75, z1: 1.75, h: 1.3, t: 1.4, key: 'grass_2', ghost: true, rail: false }, { k: 'wall', x0: -5.25, z0: 12.25, x1: -5.25, z1: 12.25, h: 1.3, t: 1.4, key: 'grass_2', ghost: true, rail: false }, { k: 'tree', x: 8.75, z: -22.75, kind: 'tree', h: 6.5, r: 0.8 },
                     { k: 'rail', x0: 28, z0: 8, x1: 44, z1: 8, h: 0.9 },                                            // the cattle chute's top rail
                     { k: 'grove', n: 5, kinds: ['tree_5', 'tree_6'], seed: 512 },
                     { k: 'scatter', key: 'dead_snag', n: 2, seed: 513 },
@@ -45435,15 +45611,19 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'ritual_circle',  x: -8.75, z: 5.25, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
+                { key: 'ritual_circle',  x: -7, z: 7, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
                 /* THE TRAILERS (2026-11-03, mondo: the rim's town "obviously" goes in the site rooms): three of the Trailer Park's trailers in
                    the cut rows' clearings, off the tracks and every arena size, doors to the circles */
-                { key: 'trailer_home_4', x: -49.5, z: -22.5, face: 90 }, { key: 'trailer_home_6', x: 10, z: -9.5, face: 180 }, { key: 'trailer_home_2', x: 24, z: -33.5, face: 270 },
+                { key: 'trailer_home_4', x: -49.5, z: -22.5, face: 90 }, { key: 'trailer_home_6', x: 21, z: -6, face: 180 }, { key: 'trailer_home_2', x: 24, z: -33.5, face: 270 },
                 { key: 'cave_torch',     x: 6.8, z: 36.8 },
                 { key: 'cave_torch',     x: -6.8, z: 36.8 },
                 { key: 'cave_torch',     x: 19.2, z: -15.2 },
                 { key: 'cave_torch',     x: -26.25, z: -5.25 },
                 { key: 'cave_torch',     x: 41.2, z: 12.8 },
+                /* THE CIRCLE IS THE BOARD (2026-11-10): the board's cover — dead trees, the herd's cows, a wrecked car, the ranch truck, fallen logs */
+                { key: 'dead_snag', x: -15.75, z: -1.75, floor: true }, { key: 'dead_snag', x: 1.75, z: -1.75, floor: true }, { key: 'dead_snag', x: -15.75, z: 15.75, floor: true }, { key: 'dead_snag', x: 1.75, z: 15.75, floor: true },
+                { key: 'cow', x: -22.75, z: -1.75, face: 60, floor: true }, { key: 'cow', x: -22.75, z: 15.75, face: 120, floor: true }, { key: 'fallen_log', x: 8.75, z: -1.75, face: 0, floor: true }, { key: 'fallen_log', x: 8.75, z: 15.75, face: 0, floor: true }, { key: 'fallen_log', x: -8.75, z: 1.75, face: 90, floor: true }, { key: 'fallen_log', x: -5.25, z: 12.25, face: 90, floor: true },
+                { key: 'crashed_car', x: -22.75, z: 7, face: 0, floor: true }, { key: 'car_truck', x: 8.75, z: 7, face: 180, span: 6.8, floor: true },
                 { key: 'campfire',       x: 15.375, z: 29.525 },                                                  // the ranch hands' fire, out
                 { key: 'signpost',       x: 5.25, z: 19.25, face: 200 },                                        // THE HOUSE · THE LODGE · THE GROVE · THE WOODS (that way)
                 { key: 'railing_1m',     x: -15.75, z: 33.25, face: 90 },                                       // the corral gate's post rail (the park rule's rail)
@@ -48872,7 +49052,7 @@ function hqAreaRoom(mapId, A) {
     ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
     const gen = A.gen ? Object.assign({}, A.gen) : null;
     if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
-    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, A.float ? { float: JSON.parse(JSON.stringify(A.float)) } : {}, A.void ? { void: Object.assign({}, A.void) } : {}, A.res ? { res: A.res } : {}, { features: features });   // A.float: THE FLOATING GROUND (three-renderer.js _hqFieldFloats — a rock underside, or THE HULL)
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.levelM ? { levelM: A.levelM } : {}, A.ghostM ? { ghostM: A.ghostM } : {}, A.walkM ? { walkM: A.walkM } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, A.float ? { float: JSON.parse(JSON.stringify(A.float)) } : {}, A.void ? { void: Object.assign({}, A.void) } : {}, A.res ? { res: A.res } : {}, { features: features });   // A.float: THE FLOATING GROUND (three-renderer.js _hqFieldFloats — a rock underside, or THE HULL)
     const label = String(meta.label || id).toUpperCase();
     const room = {
         label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
@@ -48947,7 +49127,7 @@ function hqDeckPlan(rows, o) {
         if (at(x, y) !== 'w' || at(x - 1, y) === 'w') continue;
         let x1 = x; while (at(x1 + 1, y) === 'w') x1++;
         const cz = r3(o.z0 + (y + 0.5) * C);
-        out.push({ k: 'wall', x0: r3(o.x0 + (x + 0.5) * C), z0: cz, x1: r3(o.x0 + (x1 + 0.5) * C), z1: cz, h: o.crateH || 1.25, t: C, key: o.crateKey || 'gunmetal', rail: false });
+        out.push(Object.assign({ k: 'wall', x0: r3(o.x0 + (x + 0.5) * C), z0: cz, x1: r3(o.x0 + (x1 + 0.5) * C), z1: cz, h: o.crateH || 1.25, t: C, key: o.crateKey || 'gunmetal', rail: false }, o.crateTint ? { tint: o.crateTint } : {}));
     }
     return out;
 }
@@ -49172,6 +49352,15 @@ const HQ_AREA_SPECS = {
             { k: 'wall', x0: -37.90, z0: 62.40, x1: -43.27, z1: 55.40, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -43.27, z0: 55.40, x1: -46.65, z1: 47.25, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -46.65, z0: 47.25, x1: -47.80, z1: 38.50, y: 10.5, t: 12, ghost: true, rail: false },
             { k: 'wall', x0: -47.80, z0: -38.50, x1: -46.65, z1: -47.25, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -46.65, z0: -47.25, x1: -43.27, z1: -55.40, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -43.27, z0: -55.40, x1: -37.90, z1: -62.40, y: 10.5, t: 12, ghost: true, rail: false },
             { k: 'wall', x0: -37.90, z0: -62.40, x1: -30.90, z1: -67.77, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -30.90, z0: -67.77, x1: -22.75, z1: -71.15, y: 10.5, t: 12, ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: -71.15, x1: -14.00, z1: -72.30, y: 10.5, t: 12, ghost: true, rail: false },
+            /* THE PITCH IS THE BOARD (2026-11-10, mondo: "improvements to all of the battle maps ... redesigning the layout ... adding better props"): the arena was
+               cut hard against the west stand (its first row down one edge) on bare grass with no cover at all. Now it is the middle of the pitch (x -21..21,
+               z -21..21 on its 3.5 m squares, the Δ logo under the nexus; HQ_ARENA_RULES.within, every size) and Disaster City's stadium is what a stadium
+               becomes: an ambulance parked on each sideline (two squares), eight supply crates, four flood masts. The middle of the pitch stays open
+               (six squares wide, the house lanes of every board size); the cover is down the two sidelines. Each piece stands on the grass over a GHOST
+               block (the fight's and the walker's, never drawn) and turns into its twin about the centre spot, so both ends play the same pitch. */
+            { k: 'wall', x0: -15.75, z0: -8.75, x1: -15.75, z1: -5.25, h: 2.4, t: 2.2, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 5.25, x1: 15.75, z1: 8.75, h: 2.4, t: 2.2, key: 'concrete_floor', ghost: true, rail: false },   // the ambulances
+            { k: 'wall', x0: -12.25, z0: -15.75, x1: -12.25, z1: -15.75, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 15.75, x1: 12.25, z1: 15.75, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: -1.75, x1: -8.75, z1: -1.75, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 1.75, x1: 8.75, z1: 1.75, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 5.25, x1: -12.25, z1: 5.25, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -5.25, x1: 12.25, z1: -5.25, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 12.25, x1: -15.75, z1: 12.25, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -12.25, x1: 15.75, z1: -12.25, h: 1.7, t: 1.6, key: 'concrete_floor', ghost: true, rail: false },   // the supply crates
+            { k: 'wall', x0: -19.25, z0: 1.75, x1: -19.25, z1: 1.75, h: 6.0, t: 1.2, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: -1.75, x1: 19.25, z1: -1.75, h: 6.0, t: 1.2, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 15.75, x1: -12.25, z1: 15.75, h: 6.0, t: 1.2, key: 'concrete_floor', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -15.75, x1: 12.25, z1: -15.75, h: 6.0, t: 1.2, key: 'concrete_floor', ghost: true, rail: false },   // the flood masts
             { k: 'climb', x: -9.625, z: -64.75, face: 0, look: 'ladder', y0: 6.3, y1: 10.5 },
             { k: 'climb', x: 40.25, z: 0.875, face: 90, look: 'ladder', y0: 6.3, y1: 10.5 },
             { k: 'climb', x: -9.625, z: 64.75, face: 180, look: 'ladder', y0: 6.3, y1: 10.5 },
@@ -49195,6 +49384,10 @@ const HQ_AREA_SPECS = {
                 /* THE PLAYERS' TUNNEL: the kit carts, the cones */
                 { key: 'traffic_cone', x: -4.375, z: -51.625 }, { key: 'traffic_cone', x: 4.375, z: -51.625 }, { key: 'traffic_cone', x: -4.375, z: -60.375 }, { key: 'traffic_cone', x: 4.375, z: -60.375 },
          { key: 'instrument_drum', x: -3, z: 49, face: 0 }, { key: 'instrument_drum', x: 3, z: 49, face: 0 }, { key: 'instrument_guitar', x: 0, z: 49.4, face: 0 },   // THE INSTRUMENTS (2026-10-27): the half-time band's kit by the south end zone
+                /* THE PITCH IS THE BOARD (2026-11-10): the ambulances, the crates, the masts — each on its ghost block */
+                { key: 'car_ambulance', x: -15.75, z: -7.0, face: 0, floor: true }, { key: 'car_ambulance', x: 15.75, z: 7.0, face: 180, floor: true },
+                { key: 'psx_wooden_crate_3', x: -12.25, z: -15.75, face: 0, h: 1.7, floor: true }, { key: 'psx_wooden_crate_3', x: 12.25, z: 15.75, face: 180, h: 1.7, floor: true }, { key: 'psx_wooden_crate_2', x: -8.75, z: -1.75, face: 90, h: 1.7, floor: true }, { key: 'psx_wooden_crate_2', x: 8.75, z: 1.75, face: 270, h: 1.7, floor: true }, { key: 'psx_wooden_crate_4', x: -12.25, z: 5.25, face: 0, h: 1.7, floor: true }, { key: 'psx_wooden_crate_4', x: 12.25, z: -5.25, face: 180, h: 1.7, floor: true }, { key: 'psx_wooden_crate_5', x: -15.75, z: 12.25, face: 90, h: 1.7, floor: true }, { key: 'psx_wooden_crate_5', x: 15.75, z: -12.25, face: 270, h: 1.7, floor: true },
+                { key: 'flood_mast', x: -19.25, z: 1.75, face: 90, floor: true }, { key: 'flood_mast', x: 19.25, z: -1.75, face: 270, floor: true }, { key: 'flood_mast', x: -12.25, z: 15.75, face: 45, floor: true }, { key: 'flood_mast', x: 12.25, z: -15.75, face: 225, floor: true },
                 { key: 'cardboard_boxes', x: 4.375, z: -63.875 }, { key: 'traffic_barrel', x: -4.375, z: -63.875 }],
         npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' },
                    { x: -39.6, z: -12, y: 6.3, face: 90, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' },
@@ -49206,7 +49399,7 @@ const HQ_AREA_SPECS = {
        from THE PRIEST HOUSE to THE MARKET TERRACE — the bridge layer, the canal waded under it), THE BALL COURT with its stand, THE
        OBSERVATORY up its long ramp or a chain, and THE LEY TERRACE on the north wall with the line's other stair standing ON it (a door
        you climb to); XIBALBA = a DRAUGHT under the ball court's west wall. Every tier is reached two ways. */
-    prebuilt_technoticlan: { grown: 2, part: 'templecity', label: 'THE TEMPLE CITY', sub: 'THE CAUSEWAY · THE CANAL · THE BALL COURT · THE PYRAMID', w: 144, d: 124, night: 1, look: 'tell', fogD: 0.02,
+    prebuilt_technoticlan: { grown: 2, levelM: 3.5, ghostM: 1.75, part: 'templecity', label: 'THE TEMPLE CITY', sub: 'THE CAUSEWAY · THE CANAL · THE BALL COURT · THE PYRAMID', w: 144, d: 124, night: 1, look: 'tell', fogD: 0.02,
         parti: 'A causeway from the door to a pyramid that was climbed once a year, past a ball court where the losing side knew the rules; the other stair is under all of it.', typology: 'processional',
         floor: 'cobblestone', cliff: 'bricks_3', path: 'cobblestone', floorColor: 0x8fb0b8, cliffColor: 0x7aa0a8,
         noise: { amp: 0, scale: 9 },
@@ -49222,17 +49415,17 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: 28, z0: 0, x1: 28, z1: -14, w: 7, y: 0.25 }, { k: 'deck', x0: -54.25, z0: 0, x1: -54.25, z1: -14, w: 3.5, y: 0.3 },
             /* THE CAUSEWAY (2.5): a stair up the causeway's hall from the plaza, then a raised span north to the pyramid's forecourt in two parts — a one-square gap over the canal
                (a rail across it) — the bridge layer (the plank still crosses under it) */
-            { k: 'ramp', x0: 28, z0: 14, x1: 28, z1: 0, w: 7, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },   // THE OPEN TEMPLE CITY: its own railings (the hall's walls are gone)
-            { k: 'bridge', x0: 28, z0: 0, x1: 28, z1: -3.5, w: 7, y: 2.5 }, { k: 'bridge', x0: 28, z0: -7, x1: 28, z1: -14, w: 7, y: 2.5 },
-            { k: 'rail', x0: 28, z0: -2.9, x1: 28, z1: -7.6, y: 2.5, model: 'pipe', block: false },                                   // across the gap
+            { k: 'ramp', x0: 28, z0: 14, x1: 28, z1: 0, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },   // THE OPEN TEMPLE CITY: its own railings (the hall's walls are gone)
+            { k: 'bridge', x0: 28, z0: 0, x1: 28, z1: -3.5, w: 7, y: 3.5 }, { k: 'bridge', x0: 28, z0: -7, x1: 28, z1: -14, w: 7, y: 3.5 },
+            { k: 'rail', x0: 28, z0: -2.9, x1: 28, z1: -7.6, y: 3.5, model: 'pipe', block: false },                                   // across the gap
             /* THE PYRAMID: tier 1 (2.5) and its forecourt up a flight either side from the court (or over the causeway), tier 2 (5.0) up THE GREAT STAIR from the forecourt or THE OTHER STAIR on the west flank, the hand-holds up both east faces, THE TEMPLE (7.5, the tape — the door gun's) */
-            { k: 'plateau', x: 28, z: -45.5, w: 49, d: 35, h: 2.5, edge: 0.1 }, { k: 'plateau', x: 28, z: -42, w: 21, d: 21, h: 5.0, edge: 0.1 }, { k: 'plateau', x: 28, z: -42, w: 14, d: 7, h: 7.5, edge: 0.1 },
-            { k: 'plateau', x: 28, z: -21.5, w: 21, d: 15, h: 2.5, edge: 0.1 },                                                   // the forecourt (its back 0.5 m under tier 1: no seam)
-            { k: 'ramp', x0: 3.5, z0: -21, x1: 17.5, z1: -21, w: 7, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
-            { k: 'ramp', x0: 52.5, z0: -21, x1: 38.5, z1: -21, w: 7, h0: 0, h1: 2.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
-            { k: 'ramp', x0: 28, z0: -21, x1: 28, z1: -31.5, w: 7, h0: 2.5, h1: 5.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'plateau', x: 28, z: -45.5, w: 49, d: 35, h: 3.5, edge: 0.1 }, { k: 'plateau', x: 28, z: -42, w: 21, d: 21, h: 7, edge: 0.1 }, { k: 'plateau', x: 28, z: -42, w: 14, d: 7, h: 10.5, edge: 0.1 },
+            { k: 'plateau', x: 28, z: -21.5, w: 21, d: 15, h: 3.5, edge: 0.1 },                                                   // the forecourt (its back 0.5 m under tier 1: no seam)
+            { k: 'ramp', x0: 3.5, z0: -21, x1: 17.5, z1: -21, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'ramp', x0: 52.5, z0: -21, x1: 38.5, z1: -21, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'ramp', x0: 28, z0: -21, x1: 28, z1: -31.5, w: 7, h0: 3.5, h1: 7, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'rail', pts: [[28, -21.4, 2.6], [28, -30.9, 4.86]], model: 'pipe', block: false },                                  // its centre handrail
-            { k: 'ramp', x0: 3.5, z0: -42, x1: 17.5, z1: -42, w: 7, h0: 2.5, h1: 5.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'ramp', x0: 3.5, z0: -42, x1: 17.5, z1: -42, w: 7, h0: 3.5, h1: 7, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: 51.9, z: -36.75, face: 270, look: 'wall' }, { k: 'climb', x: 37.9, z: -40.25, face: 270, look: 'wall' },   // a climb's LINE stands 0.3 m INSIDE the tier's nominal edge
             { k: 'rail', x0: 17.9, z0: -14.4, x1: 24.5, z1: -14.4, model: 'parapet' }, { k: 'rail', x0: 31.5, z0: -14.4, x1: 38.1, z1: -14.4, model: 'parapet' },
             { k: 'rail', x0: 17.9, z0: -28, x1: 17.9, z1: -24.5, model: 'parapet' }, { k: 'rail', x0: 17.9, z0: -17.5, x1: 17.9, z1: -14.4, model: 'parapet' },
@@ -49240,13 +49433,13 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: 3.9, z0: -28.6, x1: 17.5, z1: -28.6, model: 'parapet' }, { k: 'rail', x0: 38.5, z0: -28.6, x1: 52.1, z1: -28.6, model: 'parapet' },
             { k: 'rail', x0: 17.9, z0: -32.1, x1: 24.5, z1: -32.1, model: 'parapet' }, { k: 'rail', x0: 31.5, z0: -32.1, x1: 38.1, z1: -32.1, model: 'parapet' },
             /* THE AQUEDUCT: THE PRIEST HOUSE (3.0) north of the canal — a stair from the east, a rope up its north face — and THE MARKET TERRACE (3.0) south of it — a stair from the east, a vine up its west face — joined by a level span the canal is waded under (the bridge layer) */
-            { k: 'plateau', x: -24.5, z: -24.5, w: 14, d: 14, h: 3.0, edge: 0.1 },
-            { k: 'ramp', x0: -7, z0: -24.5, x1: -17.5, z1: -24.5, w: 7, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'plateau', x: -24.5, z: -24.5, w: 14, d: 14, h: 7, edge: 0.1 },
+            { k: 'ramp', x0: -7, z0: -24.5, x1: -17.5, z1: -24.5, w: 7, h0: 0, h1: 7, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: -26.25, z: -30.9, face: 180, look: 'rope' },
-            { k: 'plateau', x: -24.5, z: 7, w: 14, d: 14, h: 3.0, edge: 0.1 },
-            { k: 'ramp', x0: -7, z0: 7, x1: -17.5, z1: 7, w: 7, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'plateau', x: -24.5, z: 7, w: 14, d: 14, h: 7, edge: 0.1 },
+            { k: 'ramp', x0: -7, z0: 7, x1: -17.5, z1: 7, w: 7, h0: 0, h1: 7, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: -30.9, z: 8.75, face: 90, look: 'vine' },
-            { k: 'deck', x0: -24.5, z0: -17.5, x1: -24.5, z1: 0, w: 7, y: 3.0, over: true },
+            { k: 'deck', x0: -24.5, z0: -17.5, x1: -24.5, z1: 0, w: 7, y: 7, over: true },
             { k: 'rail', x0: -30.9, z0: -18.1, x1: -28, z1: -18.1, model: 'parapet' }, { k: 'rail', x0: -21, z0: -18.1, x1: -18.1, z1: -18.1, model: 'parapet' },
             { k: 'rail', x0: -30.9, z0: -30.9, x1: -30.9, z1: -18.1, model: 'parapet' }, { k: 'rail', x0: -30.9, z0: -30.9, x1: -28, z1: -30.9, model: 'parapet' }, { k: 'rail', x0: -24.5, z0: -30.9, x1: -18.1, z1: -30.9, model: 'parapet' },
             { k: 'rail', x0: -18.1, z0: -30.9, x1: -18.1, z1: -28, model: 'parapet' }, { k: 'rail', x0: -18.1, z0: -21, x1: -18.1, z1: -18.1, model: 'parapet' },
@@ -49254,46 +49447,57 @@ const HQ_AREA_SPECS = {
             { k: 'rail', x0: -30.9, z0: 0.6, x1: -30.9, z1: 7, model: 'parapet' }, { k: 'rail', x0: -30.9, z0: 10.5, x1: -30.9, z1: 13.4, model: 'parapet' },
             { k: 'rail', x0: -18.1, z0: 0.6, x1: -18.1, z1: 3.5, model: 'parapet' }, { k: 'rail', x0: -18.1, z0: 10.5, x1: -18.1, z1: 13.4, model: 'parapet' },
             /* THE BALL COURT: the two walls (the grind) and THE STAND (2.4) at its west end with its gallery along the court's north side — a stair down the gallery's east end, a ladder up its north face, a ladder on the stand's court face */
-            { k: 'wall', x0: -54.25, z0: 33.25, x1: -36.75, z1: 33.25, h: 2.2, t: 3.5, key: 'bricks_3' }, { k: 'wall', x0: -54.25, z0: 50.75, x1: -36.75, z1: 50.75, h: 2.2, t: 3.5, key: 'bricks_3' },   // one-square blocks (a thin wall on a line would be walked through on the battle board)
-            { k: 'plateau', x: -63, z: 40.25, w: 14, d: 24.5, h: 2.4, edge: 0.1 },
-            { k: 'plateau', x: -59.5, z: 28, w: 21, d: 7, h: 2.4, edge: 0.1 },                                              // the gallery
-            { k: 'ramp', x0: -38.5, z0: 28, x1: -49, z1: 28, w: 7, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
-            { k: 'climb', x: -61.25, z: 25.1, face: 180, look: 'ladder' },
+            /* THE COURT IS THE BOARD (2026-11-10, mondo: "make improvements to all of the battle maps ... redesigning the layout ... better for PvP combat"):
+               the court turned to run north-south under the 12 x 12 (x -59.5..-17.5, z 17.5..59.5): its two walls are the board's columns 3 and 8
+               (rows 3..8), the alley between them the four spawn columns with a team in each end zone and the nexus on the centre line; THE STAND
+               is the board's west column (rows 3..8), a stair up each end of it off the board (the old gallery and its stair stood on one team's
+               side only). The mirror row of every square holds the same thing. */
+            { k: 'wall', x0: -47.25, z0: 29.75, x1: -47.25, z1: 47.25, h: 3.5, t: 3.5, key: 'bricks_3' }, { k: 'wall', x0: -29.75, z0: 29.75, x1: -29.75, z1: 47.25, h: 3.5, t: 3.5, key: 'bricks_3' },   // one-square blocks (a thin wall on a line would be walked through on the battle board)
+            { k: 'plateau', x: -63, z: 38.5, w: 14, d: 21, h: 3.5, edge: 0.1 },
+            { k: 'ramp', x0: -63, z0: 21, x1: -63, z1: 28, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },   // the stand's two stairs, one up each end
+            { k: 'ramp', x0: -63, z0: 56, x1: -63, z1: 49, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: -56.6, z: 40.25, face: 270, look: 'ladder' },
-            { k: 'rail', x0: -69.4, z0: 25.1, x1: -63, z1: 25.1, model: 'parapet' }, { k: 'rail', x0: -59.5, z0: 25.1, x1: -49.4, z1: 25.1, model: 'parapet' },
-            { k: 'rail', x0: -69.4, z0: 51.9, x1: -56.6, z1: 51.9, model: 'parapet' },
+            { k: 'rail', x0: -69.4, z0: 28.6, x1: -66.5, z1: 28.6, model: 'parapet' }, { k: 'rail', x0: -59.5, z0: 28.6, x1: -56.6, z1: 28.6, model: 'parapet' },
+            { k: 'rail', x0: -69.4, z0: 48.4, x1: -66.5, z1: 48.4, model: 'parapet' }, { k: 'rail', x0: -59.5, z0: 48.4, x1: -56.6, z1: 48.4, model: 'parapet' },
             /* THE OPEN TEMPLE CITY's board (the ball court and the plaza east of it): two altar platforms (one square by two, 1.4 m) */
-            { k: 'plateau', x: -22.75, z: 24.5, w: 3.5, d: 7, h: 1.4, edge: 0.1 }, { k: 'plateau', x: -22.75, z: 52.5, w: 3.5, d: 7, h: 1.4, edge: 0.1 }, { k: 'rail', x0: -56.6, z0: 35.3, x1: -56.6, z1: 38.5, model: 'parapet' }, { k: 'rail', x0: -56.6, z0: 42, x1: -56.6, z1: 49, model: 'parapet' },
+            { k: 'plateau', x: -22.75, z: 24.5, w: 3.5, d: 7, h: 3.5, edge: 0.1 }, { k: 'plateau', x: -22.75, z: 52.5, w: 3.5, d: 7, h: 3.5, edge: 0.1 }, { k: 'rail', x0: -56.6, z0: 28.6, x1: -56.6, z1: 38.5, model: 'parapet' }, { k: 'rail', x0: -56.6, z0: 42, x1: -56.6, z1: 48.4, model: 'parapet' },
+            /* the board's cover (never drawn: the prop on each is the look): the two idols on the west flank, the two braziers by the east altar, a skull rack in each half of the alley */
+            { k: 'wall', x0: -54.25, z0: 26.25, x1: -54.25, z1: 26.25, h: 2.9, t: 1.4, key: 'bricks_3', ghost: true, rail: false }, { k: 'wall', x0: -54.25, z0: 50.75, x1: -54.25, z1: 50.75, h: 2.9, t: 1.4, key: 'bricks_3', ghost: true, rail: false },
+            { k: 'wall', x0: -22.75, z0: 33.25, x1: -22.75, z1: 33.25, h: 1.3, t: 1.2, key: 'bricks_3', ghost: true, rail: false }, { k: 'wall', x0: -22.75, z0: 43.75, x1: -22.75, z1: 43.75, h: 1.3, t: 1.2, key: 'bricks_3', ghost: true, rail: false },
+            { k: 'wall', x0: -43.75, z0: 33.25, x1: -43.75, z1: 33.25, h: 1.3, t: 1.3, key: 'bricks_3', ghost: true, rail: false }, { k: 'wall', x0: -33.25, z0: 43.75, x1: -33.25, z1: 43.75, h: 1.3, t: 1.3, key: 'bricks_3', ghost: true, rail: false },
             /* THE OBSERVATORY (4.2): the long stair down from the north wall's side, a chain up its east face, a curved railing round its rim */
-            { k: 'plateau', x: -57.75, z: -33.25, r: 8.75, h: 4.2, edge: 0.15 },
-            { k: 'ramp', x0: -57.75, z0: -59.5, x1: -57.75, z1: -42, w: 3.5, h0: 0, h1: 4.2, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'plateau', x: -57.75, z: -33.25, r: 8.75, h: 7, edge: 0.15 },
+            { k: 'ramp', x0: -57.75, z0: -59.5, x1: -57.75, z1: -42, w: 3.5, h0: 0, h1: 7, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: -49.6, z: -33.25, face: 270, look: 'chain' },
             { k: 'rail', arc: { x: -57.75, z: -33.25, r: 8.15, a0: 30, a1: 77 }, model: 'parapet' }, { k: 'rail', arc: { x: -57.75, z: -33.25, r: 8.15, a0: 103, a1: 330 }, model: 'parapet' },
             /* THE LEY TERRACE (2.0) against the north wall — the other stair's frame stands ON it (a door you climb to): a stair from the west, the hand-holds up its south face */
-            { k: 'plateau', x: -12.25, z: -56, w: 17.5, d: 14, h: 2.0, edge: 0.1 },   // its east end runs on past the court's wall (x −4), as it did
-            { k: 'ramp', x0: -35, z0: -56, x1: -21, z1: -56, w: 7, h0: 0, h1: 2.0, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
+            { k: 'plateau', x: -12.25, z: -56, w: 17.5, d: 14, h: 3.5, edge: 0.1 },   // its east end runs on past the court's wall (x −4), as it did
+            { k: 'ramp', x0: -35, z0: -56, x1: -21, z1: -56, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'cobblestone' },
             { k: 'climb', x: -15.75, z: -49.6, face: 0, look: 'wall' },
             { k: 'rail', x0: -20.4, z0: -49.6, x1: -17.5, z1: -49.6, model: 'parapet' }, { k: 'rail', x0: -14, z0: -49.6, x1: -6.6, z1: -49.6, model: 'parapet' },
             { k: 'scatter', key: 'obelisk', n: 3, seed: 7 }, { k: 'scatter', key: 't_pillar', n: 5, seed: 4 }, { k: 'scatter', key: 'cave_stone', n: 6, seed: 3 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 },
             { k: 'scatter', key: 'palm_tree', n: 5, seed: 9 }, { k: 'scatter', key: 'menhir', n: 3, seed: 5 }, { k: 'scatter', key: 'brazier', n: 4, seed: 6 },
         ],
-        props: [{ key: 'riser_1', x: 5.25, z: 33.25 }, { key: 'brazier', x: 19.25, z: -11.325 }, { key: 'brazier', x: 36.75, z: -11.325 }, { key: 'brazier', x: 18.525, z: -32.525, y: 5.0 }, { key: 'brazier', x: 37.475, z: -32.525, y: 5.0 }, { key: 'brazier', x: 18.525, z: -51.475, y: 5.0 }, { key: 'brazier', x: 37.475, z: -51.475, y: 5.0 },
-                { key: 'stone_altar', x: 26.25, z: -44.475, y: 7.5 }, { key: 'candle_ring', x: 29.75, z: -39.525, y: 7.5 }, { key: 'skull_pile', x: 43.75, z: -29.275, y: 2.5 }, { key: 'demon_statue', x: 8.75, z: -29.275, y: 2.5, face: 180 }, { key: 'demon_statue', x: 47.25, z: -29.275, y: 2.5, face: 180 },
-                { key: 'skull_pile', x: -50.75, z: 40.25 }, { key: 'skull_pile', x: -36.75, z: 40.25 }, { key: 'stocks', x: -43.75, z: 36.75, face: 180 }, { key: 'folding_chair', x: -62.75, z: 43.75, y: 2.4, face: 90 }, { key: 'folding_chair', x: -62.75, z: 36.75, y: 2.4, face: 90 },
-                { key: 'sarcophagus', x: -30.425, z: -26.25, y: 3.0, face: 90 }, { key: 'lectern', x: -22.75, z: -22.75, y: 3.0, face: 90 }, { key: 'candle_ring', x: -30.425, z: -22.75, y: 3.0 },
-                { key: 'cardboard_boxes', x: -30.425, z: 12.675, y: 3.0 }, { key: 'sea_chest', x: -18.575, z: 1.325, y: 3.0 }, { key: 'planter', x: -30.425, z: 5.25, y: 3.0 },
-                { key: 'ritual_circle', x: -57.75, z: -33.25, y: 4.2 }, { key: 'brass_telescope', x: -61.25, z: -36.75, y: 4.2, face: 0 }, { key: 'sea_chest', x: -54.25, z: -29.75, y: 4.2 },
-                { key: 'obelisk', x: -15.75, z: -54.25, y: 2.0 }, { key: 'signpost', x: 5.25, z: 29.75 }, { key: 'signpost', x: -12.25, z: -15.75 }, { key: 'campfire', x: 5.25, z: 22.75 }, { key: 'campfire', x: -47.25, z: 23.475 },
-                { key: 'park_bench', x: 8.75, z: 19.25, face: 180 }, { key: 'lesson_sign', x: 22.75, z: 19.25, face: 180, lesson: 'climb' }, { key: 'stone_altar', x: -43.75, z: 43.75 }, { key: 'cave_stone', x: 57.75, z: -43.75 }, { key: 'palm_tree', x: 57.75, z: 33.25 }, { key: 'palm_tree', x: 61.25, z: 50.75 }],
+        props: [{ key: 'riser_1', x: 5.25, z: 33.25 }, { key: 'brazier', x: 19.25, z: -11.325 }, { key: 'brazier', x: 36.75, z: -11.325 }, { key: 'brazier', x: 18.525, z: -32.525, y: 7 }, { key: 'brazier', x: 37.475, z: -32.525, y: 7 }, { key: 'brazier', x: 18.525, z: -51.475, y: 7 }, { key: 'brazier', x: 37.475, z: -51.475, y: 7 },
+                { key: 'stone_altar', x: 26.25, z: -44.475, y: 10.5 }, { key: 'candle_ring', x: 29.75, z: -39.525, y: 10.5 }, { key: 'skull_pile', x: 43.75, z: -29.275, y: 3.5 }, { key: 'demon_statue', x: 8.75, z: -29.275, y: 3.5, face: 180 }, { key: 'demon_statue', x: 47.25, z: -29.275, y: 3.5, face: 180 },
+                { key: 'skull_pile', x: -43.75, z: 33.25, floor: true }, { key: 'skull_pile', x: -33.25, z: 43.75, floor: true }, { key: 'skull_pile', x: -22.75, z: 24.5, y: 3.5 }, { key: 'skull_pile', x: -22.75, z: 52.5, y: 3.5 }, { key: 'stocks', x: -50.75, z: 38.5, face: 90 },   // THE COURT IS THE BOARD (2026-11-10): a skull rack in each half of the alley and on each altar platform, the stocks on the west flank
+                { key: 'demon_statue', x: -54.25, z: 26.25, face: 90, floor: true }, { key: 'demon_statue', x: -54.25, z: 50.75, face: 90, floor: true }, { key: 'brazier', x: -22.75, z: 33.25, floor: true }, { key: 'brazier', x: -22.75, z: 43.75, floor: true },
+                { key: 'brazier', x: -47.25, z: 29.75, y: 3.5 }, { key: 'brazier', x: -47.25, z: 47.25, y: 3.5 }, { key: 'brazier', x: -29.75, z: 29.75, y: 3.5 }, { key: 'brazier', x: -29.75, z: 47.25, y: 3.5 },   // a fire on each end of the court's walls
+                { key: 'folding_chair', x: -62.75, z: 43.75, y: 3.5, face: 90 }, { key: 'folding_chair', x: -62.75, z: 36.75, y: 3.5, face: 90 },
+                { key: 'sarcophagus', x: -30.425, z: -26.25, y: 7, face: 90 }, { key: 'lectern', x: -22.75, z: -22.75, y: 7, face: 90 }, { key: 'candle_ring', x: -30.425, z: -22.75, y: 7 },
+                { key: 'cardboard_boxes', x: -30.425, z: 12.675, y: 7 }, { key: 'sea_chest', x: -18.575, z: 1.325, y: 7 }, { key: 'planter', x: -30.425, z: 5.25, y: 7 },
+                { key: 'ritual_circle', x: -57.75, z: -33.25, y: 7 }, { key: 'brass_telescope', x: -61.25, z: -36.75, y: 7, face: 0 }, { key: 'sea_chest', x: -54.25, z: -29.75, y: 7 },
+                { key: 'obelisk', x: -15.75, z: -54.25, y: 3.5 }, { key: 'signpost', x: 5.25, z: 29.75 }, { key: 'signpost', x: -12.25, z: -15.75 }, { key: 'campfire', x: 5.25, z: 22.75 }, { key: 'campfire', x: -47.25, z: 14 },
+                { key: 'park_bench', x: 8.75, z: 19.25, face: 180 }, { key: 'lesson_sign', x: 22.75, z: 19.25, face: 180, lesson: 'climb' }, { key: 'stone_altar', x: -22.75, z: 38.5, face: 90 }, { key: 'cave_stone', x: 57.75, z: -43.75 }, { key: 'palm_tree', x: 57.75, z: 33.25 }, { key: 'palm_tree', x: 61.25, z: 50.75 }],
         npcSpots: [{ x: 1.75, z: 26.25, face: 40, race: 'annunaki', say: '“The calendar did not end. It was turned over.”' }, { x: 29.75, z: 33.25, face: 250, race: 'reptilian', say: '“The ball court is not a game. The losing side knows that.”' },
-                   { x: -57.75, z: -29.75, y: 4.2, face: 180, race: 'annunaki', say: '“Venus rises there. Every eight years it is exactly where the wall says, and every eight years somebody is surprised.”' }],
+                   { x: -57.75, z: -29.75, y: 7, face: 180, race: 'annunaki', say: '“Venus rises there. Every eight years it is exactly where the wall says, and every eight years somebody is surprised.”' }],
         lines: ['“Which stair is the other stair?” “Both of them.”'] },
     /* ROOM 88 · AGARTHA · THE CRYSTAL CITY (AREA CONTENT D3, 2026-09-19 — brought up to the cave): white terraces under the lit crystal roof
        — THE LOWER TERRACE up a stair or a vine, THE UPPER TERRACE up a stair or a rope, THE GALLERY (a level span, the bridge layer) from it
        to THE BALCONY with its ladder —, THE LAKE with its bridge and THE PIER's wall (the grind), THE CRYSTAL FOREST's tier up a stair or a
        vine, THE SPIRE's tape over the lake (the door gun's), THE ADIT TERRACE on the north wall with the cave's adit standing ON it (a door
        you climb to), and THREE DRAUGHTS — Lemuria's, the pole's and the temple city's: every entrance to the inner earth comes out here. */
-    prebuilt_agartha: { plazaR: 11, res: 1, part: 'crystalcity', label: 'THE CRYSTAL CITY', sub: 'THE TERRACES · THE LAKE · THE SPIRE', w: 132, d: 112, night: 1, look: 'cave', fogD: 0.024,
+    prebuilt_agartha: { plazaR: 11, res: 1, levelM: 3.5, part: 'crystalcity', label: 'THE CRYSTAL CITY', sub: 'THE TERRACES · THE LAKE · THE SPIRE', w: 132, d: 112, night: 1, look: 'cave', fogD: 0.024,
         parti: 'A city of white terraces under a roof of lit crystal, where every hidden way into the inner earth comes out on a different terrace; the sun is inside.', typology: 'terraces',
         floor: 'marble_light', cliff: 'rocks_dark_fantasy', path: 'marble_light', floorColor: 0xbfe8c8, cliffColor: 0x8a9a88,
         noise: { amp: 0, scale: 14 },
@@ -49305,63 +49509,65 @@ const HQ_AREA_SPECS = {
             { k: 'deck', x0: 14, z0: -22.75, x1: 52.5, z1: -22.75, w: 3.5, y: 0.3 },
             { k: 'rail', x0: 17.776, z0: -24.3, x1: 48.724, z1: -24.3, y: 0.3, model: 'pipe', block: false },
             { k: 'wall', x0: 21, z0: -7, x1: 38.5, z1: -7, h: 0.55, t: 1, key: 'marble_light' },
-            { k: 'plateau', x: 12.25, z: -33.25, r: 5.55, h: 6.2, edge: 0.3 },
+            { k: 'plateau', x: 12.25, z: -33.25, r: 5.55, h: 7, edge: 0.3 },
             /* a curved skate rail round the plaza's fountain, open on the four sides */
-            { k: 'rail', arc: { x: 0, z: 6, r: 3.0, a0: 25, a1: 65 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 6, r: 3.0, a0: 115, a1: 155 }, model: 'pipe', block: false },
-            { k: 'rail', arc: { x: 0, z: 6, r: 3.0, a0: 205, a1: 245 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 6, r: 3.0, a0: 295, a1: 335 }, model: 'pipe', block: false },
+            { k: 'rail', arc: { x: 0, z: -14, r: 3.0, a0: 25, a1: 65 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: -14, r: 3.0, a0: 115, a1: 155 }, model: 'pipe', block: false },
+            { k: 'rail', arc: { x: 0, z: -14, r: 3.0, a0: 205, a1: 245 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: -14, r: 3.0, a0: 295, a1: 335 }, model: 'pipe', block: false },   // the fountain stands north of the board now (z 6 -> -14)
             /* THE TERRACES, one upper district: THE LOWER TERRACE (1.6) up its stair from the east or the vine on its south face; THE UPPER TERRACE (3.6) up its stair or the rope on its south face;
                THE GALLERY east from it to THE BALCONY (3.6) in two spans with a 2.5 m gap (a rail across it); the balcony down a stair to THE ADIT TERRACE (2.4) or its ladder; glass railings on every edge */
-            { k: 'plateau', x: -48.25, z: -23.25, w: 33.5, d: 32.5, h: 1.6, edge: 0.3 },
-            { k: 'ramp', x0: -21, z0: -14, x1: -31.5, z1: -14, w: 7, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
+            { k: 'plateau', x: -48.25, z: -23.25, w: 33.5, d: 32.5, h: 3.5, edge: 0.3 },
+            { k: 'ramp', x0: -21, z0: -14, x1: -31.5, z1: -14, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
             { k: 'climb', x: -36.75, z: -7.55, face: 0, look: 'vine' },
-            { k: 'plateau', x: -57, z: -30.25, w: 14.6, d: 19.1, h: 3.6, edge: 0.3 },
-            { k: 'ramp', x0: -38.5, z0: -33.25, x1: -49, z1: -33.25, w: 3.5, h0: 1.6, h1: 3.6, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
+            { k: 'plateau', x: -57, z: -30.25, w: 14.6, d: 19.1, h: 7, edge: 0.3 },
+            { k: 'ramp', x0: -38.5, z0: -33.25, x1: -49, z1: -33.25, w: 3.5, h0: 3.5, h1: 7, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
             { k: 'climb', x: -57.75, z: -21.3, face: 0, look: 'rope' },
-            { k: 'plateau', x: -22.75, z: -29.75, w: 10.5, d: 17.5, h: 3.6, edge: 0.3 },                                              // the balcony
-            { k: 'deck', x0: -51.4, z0: -26.25, x1: -38.5, z1: -26.25, w: 3.5, y: 3.6, over: true }, { k: 'deck', x0: -35, z0: -26.25, x1: -26.6, z1: -26.25, w: 3.5, y: 3.6, over: true },
-            { k: 'rail', x0: -38.8, z0: -26.25, x1: -34.7, z1: -26.25, y: 3.6, model: 'pipe', block: false },                                // across the gallery's gap
+            { k: 'plateau', x: -22.75, z: -29.75, w: 10.5, d: 17.5, h: 7, edge: 0.3 },                                              // the balcony
+            { k: 'deck', x0: -51.4, z0: -26.25, x1: -38.5, z1: -26.25, w: 3.5, y: 7, over: true }, { k: 'deck', x0: -35, z0: -26.25, x1: -26.6, z1: -26.25, w: 3.5, y: 7, over: true },
+            { k: 'rail', x0: -38.8, z0: -26.25, x1: -34.7, z1: -26.25, y: 7, model: 'pipe', block: false },                                // across the gallery's gap
             { k: 'climb', x: -22.75, z: -21.3, face: 0, look: 'ladder' },
-            { k: 'ramp', x0: -22.75, z0: -49, x1: -22.75, z1: -38.5, w: 3.5, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
+            { k: 'ramp', x0: -22.75, z0: -49, x1: -22.75, z1: -38.5, w: 3.5, h0: 3.5, h1: 7, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
             { k: 'rail', x0: -31.8, z0: -36.9, x1: -31.8, z1: -17.7, model: 'glass' }, { k: 'rail', x0: -31.8, z0: -10.3, x1: -31.8, z1: -7.565, model: 'glass' },
             { k: 'rail', x0: -62.585, z0: -7.55, x1: -38.525, z1: -7.55, model: 'glass' }, { k: 'rail', x0: -34.975, z0: -7.55, x1: -31.8, z1: -7.55, model: 'glass' },
             { k: 'rail', x0: -49.65, z0: -31.3, x1: -49.65, z1: -28.2, model: 'glass' }, { k: 'rail', x0: -62.7, z0: -21.3, x1: -60.05, z1: -21.3, model: 'glass' }, { k: 'rail', x0: -56.7, z0: -21.3, x1: -49.65, z1: -21.3, model: 'glass' },
             { k: 'rail', x0: -27.7, z0: -38.2, x1: -27.7, z1: -28.2, model: 'glass' }, { k: 'rail', x0: -27.7, z0: -24.3, x1: -27.7, z1: -21.309, model: 'glass' },
             { k: 'rail', x0: -27.685, z0: -21.3, x1: -24.425, z1: -21.3, model: 'glass' }, { k: 'rail', x0: -21.075, z0: -21.3, x1: -17.815, z1: -21.3, model: 'glass' }, { k: 'rail', x0: -17.8, z0: -38.2, x1: -17.8, z1: -21.309, model: 'glass' },
             /* THE ADIT TERRACE (2.4) against the north wall — the cave's adit stands ON it (a door you climb to): a stair from the south (a centre handrail), the stair up to the balcony, the hand-holds up its south face */
-            { k: 'plateau', x: -11.25, z: -50.75, w: 33.5, d: 10.5, h: 2.4, edge: 0.3 },
-            { k: 'ramp', x0: -10.5, z0: -31.5, x1: -10.5, z1: -45.5, w: 7, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
-            { k: 'rail', pts: [[-10.5, -31.706, 0.07], [-10.5, -45.191, 2.3]], model: 'pipe', block: false },                                    // its centre handrail
+            { k: 'plateau', x: -11.25, z: -50.75, w: 33.5, d: 10.5, h: 3.5, edge: 0.3 },
+            { k: 'ramp', x0: -10.5, z0: -31.5, x1: -10.5, z1: -45.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
+            { k: 'rail', pts: [[-10.5, -31.706, 0.07], [-10.5, -45.191, 3.4]], model: 'pipe', block: false },                                    // its centre handrail
             { k: 'climb', x: -1.75, z: -45.8, face: 0, look: 'wall' },
             { k: 'rail', x0: -17.3, z0: -45.8, x1: -14.2, z1: -45.8, model: 'glass' }, { k: 'rail', x0: -6.8, z0: -45.8, x1: -3.525, z1: -45.8, model: 'glass' }, { k: 'rail', x0: 0.05, z0: -45.8, x1: 3.2, z1: -45.8, model: 'glass' },
             /* THE CRYSTAL FOREST (3.0): a stair from the plaza, a vine up its north face, glass railings round it */
-            { k: 'plateau', x: 40.25, z: 31.5, w: 17.5, d: 21, h: 3.0, edge: 0.3 },
-            { k: 'ramp', x0: 17.5, z0: 28, x1: 31.5, z1: 28, w: 7, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
+            { k: 'plateau', x: 40.25, z: 31.5, w: 17.5, d: 21, h: 3.5, edge: 0.3 },
+            { k: 'ramp', x0: 17.5, z0: 28, x1: 31.5, z1: 28, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.3, key: 'marble_light', railing: 'glass' },
             { k: 'climb', x: 40.25, z: 21.3, face: 180, look: 'vine' },
             { k: 'rail', x0: 31.8, z0: 21.3, x1: 31.8, z1: 24.4, model: 'glass' }, { k: 'rail', x0: 31.8, z0: 31.8, x1: 31.8, z1: 41.7, model: 'glass' }, { k: 'rail', x0: 31.763, z0: 41.7, x1: 48.737, z1: 41.7, model: 'glass' },
             { k: 'rail', x0: 31.763, z0: 21.3, x1: 38.5, z1: 21.3, model: 'glass' }, { k: 'rail', x0: 42, z0: 21.3, x1: 48.737, z1: 21.3, model: 'glass' }, { k: 'rail', x0: 48.7, z0: 21.315, x1: 48.7, z1: 41.685, model: 'glass' },
             { k: 'rail', x0: -59.5, z0: -3.5, x1: -42, z1: -3.5 },
-            /* THE OPEN CRYSTAL CITY's board (THE PLAZA, 180° twins about (0, 14)): two marble low walls (two squares, 1.4 m), two crystal clusters
-               and two greek columns on one-square ghost blocks (props are not fight squares) */
-            { k: 'wall', x0: 14.25, z0: -1.75, x1: 20.75, z1: -1.75, h: 1.4, t: 2.8, key: 'marble_light', rail: false }, { k: 'wall', x0: -20.75, z0: 29.75, x1: -14.25, z1: 29.75, h: 1.4, t: 2.8, key: 'marble_light', rail: false },
-            { k: 'wall', x0: 19.25, z0: 5.25, x1: 19.25, z1: 5.25, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 22.75, x1: -19.25, z1: 22.75, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false },
-            { k: 'wall', x0: -15.75, z0: -5.25, x1: -15.75, z1: -5.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 33.25, x1: 15.75, z1: 33.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false },
-            { k: 'wall', x0: -15.75, z0: 15.75, x1: -15.75, z1: 15.75, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 12.25, x1: 15.75, z1: 12.25, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false },
-            { k: 'wall', x0: -12.25, z0: 26.25, x1: -12.25, z1: 26.25, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, h: 1.3, t: 2.4, key: 'marble_light', ghost: true, rail: false },
-            { k: 'wall', x0: -12.25, z0: 1.75, x1: -12.25, z1: 1.75, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 26.25, x1: 12.25, z1: 26.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false },
-            { k: 'wall', x0: -19.25, z0: 12.25, x1: -19.25, z1: 12.25, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 15.75, x1: 19.25, z1: 15.75, h: 3.6, t: 2.4, key: 'marble_light', ghost: true, rail: false },
-            { k: 'scatter', key: 'crystal_cluster', n: 10, seed: 5 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'greek_column', n: 4, seed: 8 }, { k: 'scatter', key: 'menhir', n: 3, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 12 },
+            /* THE PLAZA's board (THE BATTLE MAP POLISH, 2026-11-10, mondo: "improvements to all of the battle maps ... redesigning the layout ... better
+               for PvP combat"): the same board (x -21..21, z -7..35), laid out again, alike from both spawn rows and both flanks. A gate of two
+               columns before each spawn row, four great crystals round the nexus (they break the long sight lines the bare middle had), a small
+               crystal on each flank lane, and a marble dais two squares by two on the west and east edges (one level up, a column at each end).
+               Every piece stands on the middle of its own square on a one-square ghost block (props are not fight squares). THE FULL LEDGES: the room counts a level per 3.5 m (levelM), the dais is 3.5 m, the ghost blocks 3.5 m (level 1: the gates, the crystals — the 9 / 10 / 11 boards' spawn aprons reach them, an apron takes one level at most) and 7 m (the four edge columns) */
+            { k: 'wall', x0: -19.25, z0: 12.25, x1: -15.75, z1: 12.25, h: 3.5, t: 3.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -19.25, z0: 15.75, x1: -15.75, z1: 15.75, h: 3.5, t: 3.5, key: 'marble_light', rail: false },
+            { k: 'wall', x0: 15.75, z0: 12.25, x1: 19.25, z1: 12.25, h: 3.5, t: 3.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 15.75, z0: 15.75, x1: 19.25, z1: 15.75, h: 3.5, t: 3.5, key: 'marble_light', rail: false },   // the two dais: two rows a square thick each, side by side
+            { k: 'wall', x0: -8.75, z0: 1.75, x1: -8.75, z1: 1.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 1.75, x1: 8.75, z1: 1.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 26.25, x1: -8.75, z1: 26.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 26.25, x1: 8.75, z1: 26.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 8.75, x1: -19.25, z1: 8.75, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 8.75, x1: 19.25, z1: 8.75, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 19.25, x1: -19.25, z1: 19.25, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 19.25, x1: 19.25, z1: 19.25, h: 7, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -8.75, z0: 8.75, x1: -8.75, z1: 8.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 8.75, x1: 8.75, z1: 8.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 19.25, x1: -8.75, z1: 19.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 19.25, x1: 8.75, z1: 19.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'wall', x0: -15.75, z0: 1.75, x1: -15.75, z1: 1.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 1.75, x1: 15.75, z1: 1.75, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 26.25, x1: -15.75, z1: 26.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 26.25, x1: 15.75, z1: 26.25, h: 3.5, t: 2.4, key: 'marble_light', ghost: true, rail: false },
+            { k: 'scatter', key: 'crystal_cluster', n: 10, seed: 5, off: [-21, -7, 21, 35] }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2, off: [-21, -7, 21, 35] }, { k: 'scatter', key: 'greek_column', n: 4, seed: 8, off: [-21, -7, 21, 35] }, { k: 'scatter', key: 'menhir', n: 3, seed: 6, off: [-21, -7, 21, 35] }, { k: 'scatter', key: 'fern', n: 6, seed: 12, off: [-21, -7, 21, 35] },
         ],
-        props: [{ key: 'crystal_cluster', x: 19.25, z: 5.25, floor: true }, { key: 'crystal_cluster', x: -19.25, z: 22.75, floor: true }, { key: 'greek_column', x: -15.75, z: -5.25, floor: true }, { key: 'greek_column', x: 15.75, z: 33.25, floor: true },   // THE OPEN CRYSTAL CITY: the plaza's cover
-                { key: 'crystal_cluster', x: -15.75, z: 15.75, floor: true }, { key: 'crystal_cluster', x: 15.75, z: 12.25, floor: true }, { key: 'greek_column', x: -19.25, z: 12.25, floor: true }, { key: 'greek_column', x: 19.25, z: 15.75, floor: true },
-                { key: 'crystal_cluster', x: -12.25, z: 26.25, floor: true }, { key: 'crystal_cluster', x: 12.25, z: 1.75, floor: true }, { key: 'greek_column', x: -12.25, z: 1.75, floor: true }, { key: 'greek_column', x: 12.25, z: 26.25, floor: true },
-                { key: 'riser_1', x: 10.25, z: 24.25 }, { key: 'crystal_cluster', x: 12.25, z: -33.25, y: 6.2 }, { key: 'fountain', x: 0, z: 6 }, { key: 'crystal_cluster', x: 44, z: 24.25, y: 3.0 }, { key: 'crystal_cluster', x: 36, z: 31.75, y: 3.0 }, { key: 'crystal_cluster', x: 42, z: 34, y: 3.0 },
-                { key: 'park_bench', x: -8, z: 24.25, face: 0 }, { key: 'park_bench', x: 8, z: 24.25, face: 0 }, { key: 'garden_ring', x: -10.75, z: 6 }, { key: 'garden_ring', x: 10.75, z: 6 }, { key: 'planter', x: -7, z: 42 }, { key: 'planter', x: 7, z: 50 },
-                { key: 'lectern', x: -56, z: -28, y: 3.6, face: 180 }, { key: 'brass_telescope', x: -59.25, z: -24.75, y: 3.6, face: 0 }, { key: 'brazier', x: -44, z: -10.25, y: 1.6 }, { key: 'brazier', x: -59.75, z: -10.25, y: 1.6 }, { key: 'sea_chest', x: -21, z: -28, y: 3.6 },
-                { key: 'stone_altar', x: -10.25, z: -52.25, y: 2.4 }, { key: 'brazier', x: -17.75, z: -48, y: 2.4 }, { key: 'brazier', x: -2, z: -48, y: 2.4 }, { key: 'candle_ring', x: -36, z: -16, y: 1.6 },
-                { key: 'greek_column', x: 52.25, z: -3.75 }, { key: 'greek_column', x: 10.25, z: -10.25 }, { key: 'signpost', x: 5.75, z: 20 }, { key: 'lesson_sign', x: -14, z: 18, face: 180, lesson: 'climb' }, { key: 'potted_plant', x: 54, z: 16 }, { key: 'potted_plant', x: -52.25, z: 24.25 },
+        props: [{ key: 'greek_column', x: -8.75, z: 1.75, floor: true, h: 5.5 }, { key: 'greek_column', x: 8.75, z: 1.75, floor: true, h: 5.5 }, { key: 'greek_column', x: -8.75, z: 26.25, floor: true, h: 5.5 }, { key: 'greek_column', x: 8.75, z: 26.25, floor: true, h: 5.5 }, { key: 'greek_column', x: -19.25, z: 8.75, floor: true, h: 5.5 }, { key: 'greek_column', x: 19.25, z: 8.75, floor: true, h: 5.5 }, { key: 'greek_column', x: -19.25, z: 19.25, floor: true, h: 5.5 }, { key: 'greek_column', x: 19.25, z: 19.25, floor: true, h: 5.5 },   // THE PLAZA's board: the two gates and the dais ends (5.5 m columns: a square is 3.5 m)
+                { key: 'crystal_cluster', x: -8.75, z: 8.75, floor: true, h: 4.5 }, { key: 'crystal_cluster', x: 8.75, z: 8.75, floor: true, h: 4.5 }, { key: 'crystal_cluster', x: -8.75, z: 19.25, floor: true, h: 4.5 }, { key: 'crystal_cluster', x: 8.75, z: 19.25, floor: true, h: 4.5 },   // the four great crystals round the nexus
+                { key: 'crystal_cluster', x: -15.75, z: 1.75, floor: true, h: 2 }, { key: 'crystal_cluster', x: 15.75, z: 1.75, floor: true, h: 2 }, { key: 'crystal_cluster', x: -15.75, z: 26.25, floor: true, h: 2 }, { key: 'crystal_cluster', x: 15.75, z: 26.25, floor: true, h: 2 },   // a small crystal on each flank lane
+                /* off the board (they stood on fight squares and blocked nothing there): the fountain and its rail north of it, the two garden rings, the benches, the riser and the signs south of it */
+                { key: 'riser_1', x: 14, z: 47 }, { key: 'crystal_cluster', x: 12.25, z: -33.25, y: 7 }, { key: 'fountain', x: 0, z: -14 }, { key: 'crystal_cluster', x: 44, z: 24.25, y: 3.5 }, { key: 'crystal_cluster', x: 36, z: 31.75, y: 3.5 }, { key: 'crystal_cluster', x: 42, z: 34, y: 3.5 },
+                { key: 'park_bench', x: -10, z: 39, face: 0 }, { key: 'park_bench', x: 10, z: 39, face: 0 }, { key: 'garden_ring', x: -22, z: 46.5 }, { key: 'garden_ring', x: 22, z: 46.5 }, { key: 'planter', x: -7, z: 42 }, { key: 'planter', x: 7, z: 50 },
+                { key: 'lectern', x: -56, z: -28, y: 7, face: 180 }, { key: 'brass_telescope', x: -59.25, z: -24.75, y: 7, face: 0 }, { key: 'brazier', x: -44, z: -10.25, y: 3.5 }, { key: 'brazier', x: -59.75, z: -10.25, y: 3.5 }, { key: 'sea_chest', x: -21, z: -28, y: 7 },
+                { key: 'stone_altar', x: -10.25, z: -52.25, y: 3.5 }, { key: 'brazier', x: -17.75, z: -48, y: 3.5 }, { key: 'brazier', x: -2, z: -48, y: 3.5 }, { key: 'candle_ring', x: -36, z: -16, y: 3.5 },
+                { key: 'greek_column', x: 52.25, z: -3.75 }, { key: 'greek_column', x: 10.25, z: -10.25 }, { key: 'signpost', x: 5.75, z: 37.5 }, { key: 'lesson_sign', x: -14, z: 37.5, face: 180, lesson: 'climb' }, { key: 'potted_plant', x: 54, z: 16 }, { key: 'potted_plant', x: -52.25, z: 24.25 },
                 { key: 'cave_stone', x: 56, z: 40 }, { key: 'cave_stone', x: -59.25, z: 51 }, { key: 'crystal_cluster', x: 56, z: -50 }, { key: 'crystal_cluster', x: -56, z: 37 }, { key: 'campfire', x: -44, z: 36 }],
         npcSpots: [{ x: -6, z: 24, face: 30, race: 'nordic', say: '“The crystals keep the time. Ours, not yours.”' }, { x: 8, z: -16, face: 90, race: 'machine elves', say: '“The adit was cut from both sides and met. That should not happen.”' },
-                   { x: -42, z: -12, y: 1.6, face: 90, race: 'nordic', say: '“Three ways in that nobody built, and one stair. Guess which one gets used.”' }],
+                   { x: -42, z: -12, y: 3.5, face: 90, race: 'nordic', say: '“Three ways in that nobody built, and one stair. Guess which one gets used.”' }],
         lines: ['“Where is the sun?” “Inside.”'] },
     /* ROOM 90S · ANTARCTICA · THE STATION (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the traverse from the bay door past
        THE HUTS on their deck (a ramp, a ladder, the hand-holds), THE RADIO MAST's plinth (a ladder, a chain), THE MELT POOL (waded), THE
@@ -49369,7 +49575,7 @@ const HQ_AREA_SPECS = {
        stair or a rope, THE DRILL RIG by a chain or a ladder, THE ICE WALL's tape (the door gun's) — and THE HULL rising out of the ice on
        the north wall with the ship's collar standing ON it (a door you climb to: a stair up its east side, a ladder on its west);
        THE POLAR OPENING = a DRAUGHT in the west wall, Byrd's tunnel to the crystal city. */
-    prebuilt_antarctica: { plazaR: 11, res: 1, part: 'station', label: 'THE STATION', sub: 'THE HUTS · THE CREVASSE · THE ICE WALL · THE COLLAR', w: 140, d: 112, look: 'white', fogD: 0.028,
+    prebuilt_antarctica: { plazaR: 11, res: 1, levelM: 3.5, part: 'station', label: 'THE STATION', sub: 'THE HUTS · THE CREVASSE · THE ICE WALL · THE COLLAR', w: 140, d: 112, look: 'white', fogD: 0.028,
         parti: 'A research station on the ice over a hull nobody drilled for; the crevasse runs across the whole traverse, the only way over it is a plank, and the only way down is the collar.', typology: 'traverse',
         floor: 'marble_light', cliff: 'ice_1', path: 'ice_1', floorColor: 0xe4f2fc, cliffColor: 0xbfe0ff,
         noise: { amp: 0, scale: 16 },
@@ -49386,108 +49592,127 @@ const HQ_AREA_SPECS = {
                HQ_ARENA_RULES.within): two pressure ridges of ice (1.4 m, walkable high ground, three squares each), two freight containers
                (3.0 m, two squares each) and two fuel tanks on the ice (iso_tank on a one-square ghost block, 1.3 m). Every piece turns into
                its twin about the centre; the middle lane stays open for the house at every size */
-            { k: 'wall', x0: -20.5, z0: 22.75, x1: -11, z1: 22.75, h: 1.4, t: 2.8, key: 'ice_1' }, { k: 'wall', x0: 11, z0: 40.25, x1: 20.5, z1: 40.25, h: 1.4, t: 2.8, key: 'ice_1' },   // the ridges (squares 0..2 × 3, 9..11 × 8)
-            { k: 'wall', x0: -12.25, z0: 32, x1: -12.25, z1: 38, h: 3.0, t: 2.6, key: 'urban:MetalCorrugatedPainted1a', rail: false }, { k: 'wall', x0: 12.25, z0: 25, x1: 12.25, z1: 31, h: 3.0, t: 2.6, key: 'urban:MetalCorrugatedPainted1a', rail: false },   // the containers (2 × 6..7, 9 × 4..5)
-            { k: 'wall', x0: -8.75, z0: 29.75, x1: -8.75, z1: 29.75, h: 1.3, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 33.25, x1: 8.75, z1: 33.25, h: 1.3, t: 2.4, key: 'metal', ghost: true, rail: false },   // under the fuel tanks (3 × 5, 8 × 6)
+            /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): the yard was two ridges, two containers and two
+               1.3 m pods on 144 squares. Now a camp, alike from both spawn rows: a pressure ridge (3.5 m, one level, walkable) on each
+               flank of each end (squares 0..2 and 9..11 of rows 3 and 8), a freight container on each flank of the middle (1 and 10 x 5..6),
+               four expedition tents round the house (3 and 8 x 4 and 7), a sleeper pod (2.6 m) before each spawn row's corners (3 and 8 x
+               2 and 9) and a radio dish behind each container (0 x 5, 11 x 6). Props stand on one-square ghost blocks. */
+            { k: 'wall', x0: -19.25, z0: 22.75, x1: -12.25, z1: 22.75, h: 3.5, t: 3.5, key: 'ice_1' }, { k: 'wall', x0: 12.25, z0: 22.75, x1: 19.25, z1: 22.75, h: 3.5, t: 3.5, key: 'ice_1' },
+            { k: 'wall', x0: -19.25, z0: 40.25, x1: -12.25, z1: 40.25, h: 3.5, t: 3.5, key: 'ice_1' }, { k: 'wall', x0: 12.25, z0: 40.25, x1: 19.25, z1: 40.25, h: 3.5, t: 3.5, key: 'ice_1' },
+            { k: 'wall', x0: -15.75, z0: 30, x1: -15.75, z1: 33, h: 3.0, t: 2.6, key: 'urban:MetalCorrugatedPainted1a', rail: false }, { k: 'wall', x0: 15.75, z0: 30, x1: 15.75, z1: 33, h: 3.0, t: 2.6, key: 'urban:MetalCorrugatedPainted1a', rail: false },   // the containers
+            { k: 'wall', x0: -8.75, z0: 26.25, x1: -8.75, z1: 26.25, h: 2.2, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 26.25, x1: 8.75, z1: 26.25, h: 2.2, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 36.75, x1: -8.75, z1: 36.75, h: 2.2, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 36.75, x1: 8.75, z1: 36.75, h: 2.2, t: 2.4, key: 'metal', ghost: true, rail: false },   // under the tents
+            { k: 'wall', x0: -8.75, z0: 19.25, x1: -8.75, z1: 19.25, h: 2.6, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 19.25, x1: 8.75, z1: 19.25, h: 2.6, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 43.75, x1: -8.75, z1: 43.75, h: 2.6, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 43.75, x1: 8.75, z1: 43.75, h: 2.6, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 29.75, x1: -19.25, z1: 29.75, h: 4.4, t: 2.4, key: 'metal', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 33.25, x1: 19.25, z1: 33.25, h: 4.4, t: 2.4, key: 'metal', ghost: true, rail: false },   // under the pods and the dishes
             /* THE DECK the huts stand on: a module on stilts (2.4) — the steel stair from the plaza up the west hall (a pipe rail down
                it), a ladder on its north face, the hand-holds up its south; a walkway north from it through the hall to the mast's plinth
                (a jump up onto it) */
-            { k: 'bridge', x0: -52.5, z0: 5.25, x1: -24.5, z1: 5.25, w: 17.5, y: 2.4, key: 'metal' },
-            { k: 'ramp', x0: -14, z0: 3.5, x1: -25.9, z1: 3.5, w: 7, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.3 },
-            { k: 'rail', pts: [[-13.6, 3.5, 0], [-25.9, 3.5, 2.4]], model: 'pipe', block: false },
-            { k: 'climb', x: -40.25, z: -3.2, y1: 2.4, face: 180, look: 'ladder' }, { k: 'climb', x: -40.25, z: 13.7, y1: 2.4, face: 0, look: 'wall' },
-            { k: 'bridge', x0: -47.25, z0: 10.5, x1: -47.25, z1: 28, w: 3.5, y: 2.4, key: 'metal' },
+            { k: 'bridge', x0: -52.5, z0: 5.25, x1: -24.5, z1: 5.25, w: 17.5, y: 3.5, key: 'metal' },
+            { k: 'ramp', x0: -14, z0: 3.5, x1: -25.9, z1: 3.5, w: 7, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 },
+            { k: 'rail', pts: [[-13.6, 3.5, 0], [-25.9, 3.5, 3.5]], model: 'pipe', block: false },
+            { k: 'climb', x: -40.25, z: -3.2, y1: 3.5, face: 180, look: 'ladder' }, { k: 'climb', x: -40.25, z: 13.7, y1: 3.5, face: 0, look: 'wall' },
+            { k: 'bridge', x0: -47.25, z0: 10.5, x1: -47.25, z1: 28, w: 3.5, y: 3.5, key: 'metal' },
             /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south, a rail round its top */
-            { k: 'plateau', x: -50.75, z: 33.25, r: 5.25, h: 3.2, edge: 0.3 }, { k: 'climb', x: -50.75, z: 28.3, face: 180, look: 'ladder' }, { k: 'climb', x: -50.75, z: 38.2, face: 0, look: 'chain' },
+            { k: 'plateau', x: -50.75, z: 33.25, r: 5.25, h: 7, edge: 0.3 }, { k: 'climb', x: -50.75, z: 28.3, face: 180, look: 'ladder' }, { k: 'climb', x: -50.75, z: 38.2, face: 0, look: 'chain' },
             { k: 'rail', arc: { x: -50.75, z: 33.25, r: 4.9, a0: 70, a1: 165 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -50.75, z: 33.25, r: 4.9, a0: 195, a1: 340 }, model: 'balusters_b' },
             /* THE EAST MODULE on stilts (2.4) over the ridges' yard: the steel stair up from the plaza, the walkway east through the hall
                over the melt pool, a 2.5 m gap (a pipe rail across it), the steel stair down to the yard */
-            { k: 'ramp', x0: 0, z0: 8.75, x1: 14, z1: 8.75, w: 3.5, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.3 },
-            { k: 'bridge', x0: 14, z0: 8.75, x1: 38.5, z1: 8.75, w: 3.5, y: 2.4, key: 'metal' },
-            { k: 'rail', x0: 38.1, z0: 8.75, x1: 42.4, z1: 8.75, y: 2.4, model: 'pipe', block: false },
-            { k: 'bridge', x0: 42, z0: 8.75, x1: 59.5, z1: 8.75, w: 10.5, y: 2.4, key: 'metal' },
-            { k: 'ramp', x0: 54.25, z0: 24.5, x1: 54.25, z1: 12.6, w: 3.5, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.3 },
+            { k: 'ramp', x0: 0, z0: 8.75, x1: 14, z1: 8.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 },
+            { k: 'bridge', x0: 14, z0: 8.75, x1: 38.5, z1: 8.75, w: 3.5, y: 3.5, key: 'metal' },
+            { k: 'rail', x0: 38.1, z0: 8.75, x1: 42.4, z1: 8.75, y: 3.5, model: 'pipe', block: false },
+            { k: 'bridge', x0: 42, z0: 8.75, x1: 59.5, z1: 8.75, w: 10.5, y: 3.5, key: 'metal' },
+            { k: 'ramp', x0: 54.25, z0: 24.5, x1: 54.25, z1: 12.6, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'steel', edge: 0.3 },
             /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) in the east yard */
             { k: 'pool', x: 33.25, z: 5.25, r: 5.25, depth: 0.6, key: 'water', bank: 1.6 },
-            { k: 'wall', x0: 24.5, z0: 24.5, x1: 49, z1: 24.5, h: 0.9, t: 1.2, key: 'ice_1' }, { k: 'wall', x0: 40, z0: 42, x1: 56, z1: 26, h: 2.2, t: 1.2, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
+            { k: 'wall', x0: 24.5, z0: 24.5, x1: 49, z1: 24.5, h: 0.9, t: 1.2, key: 'ice_1' }, { k: 'wall', x0: 40, z0: 42, x1: 56, z1: 26, h: 3.5, t: 1.2, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
             /* THE CREVASSE (never entered) and the one plank across it */
             { k: 'stream', pts: [[-71, -25], [-16, -24], [6, -22], [28, -25], [71, -24]], w: 7.2, depth: 0.55, key: 'deep_water' },   // THE OPEN ICE: wall to wall (the plank the only way over)
             { k: 'deck', x0: 5.25, z0: -14, x1: 5.25, z1: -28, w: 3.5, y: 0.2 },
             /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side (behind the ice wall), a ladder on its west face */
-            { k: 'plateau', x: -1.75, z: -51.75, w: 31.5, d: 12.5, h: 3.0, edge: 0.3 },
-            { k: 'ramp', x0: 28, z0: -50.75, x1: 14, z1: -50.75, w: 3.5, h0: 0, h1: 3.0, stairs: true, built: true, model: 'steel', edge: 0.3, key: 'marble_light' },
+            { k: 'plateau', x: -1.75, z: -51.75, w: 31.5, d: 12.5, h: 7, edge: 0.3 },
+            { k: 'ramp', x0: 28, z0: -50.75, x1: 14, z1: -50.75, w: 3.5, h0: 0, h1: 7, stairs: true, built: true, model: 'steel', edge: 0.3, key: 'marble_light' },
             { k: 'rail', x0: -17.106, z0: -45.85, x1: 6.366, z1: -45.85, model: 'balusters_b' },
             { k: 'climb', x: -17.2, z: -50.75, face: 90, look: 'ladder' },
             /* THE ICE SHELF (4.0): the long stair from the east, a rope down its south face */
-            { k: 'plateau', x: -56, z: -40.25, w: 21, d: 17.5, h: 4.0, edge: 0.3 },
-            { k: 'ramp', x0: -28, z0: -40.25, x1: -45.5, z1: -40.25, w: 3.5, h0: 0, h1: 4.0, stairs: true, built: true, model: 'grate', edge: 0.3, key: 'marble_light' },
+            { k: 'plateau', x: -56, z: -40.25, w: 21, d: 17.5, h: 7, edge: 0.3 },
+            { k: 'ramp', x0: -28, z0: -40.25, x1: -45.5, z1: -40.25, w: 3.5, h0: 0, h1: 7, stairs: true, built: true, model: 'grate', edge: 0.3, key: 'marble_light' },
             { k: 'climb', x: -54.25, z: -31.8, face: 0, look: 'rope' },
             /* THE ICE WALL (6.0, the tape — the door gun's) and THE DRILL RIG (2.2) east of it — a chain up its south face, a ladder on its west */
-            { k: 'plateau', x: 38.5, z: -42, w: 28, d: 7, h: 6.0, edge: 0.3 },
-            { k: 'plateau', x: 61.25, z: -40.25, r: 5.25, h: 2.2, edge: 0.3 }, { k: 'climb', x: 61.25, z: -35.3, face: 0, look: 'chain' }, { k: 'climb', x: 56.3, z: -40.25, face: 90, look: 'ladder' },
+            { k: 'plateau', x: 38.5, z: -42, w: 28, d: 7, h: 10.5, edge: 0.3 },
+            { k: 'plateau', x: 61.25, z: -40.25, r: 5.25, h: 3.5, edge: 0.3 }, { k: 'climb', x: 61.25, z: -35.3, face: 0, look: 'chain' }, { k: 'climb', x: 56.3, z: -40.25, face: 90, look: 'ladder' },
             { k: 'rail', x0: -52.5, z0: 14, x1: -45.7, z1: 14 },
             { k: 'scatter', key: 'cave_stone', n: 6, seed: 6, x: 22, z: -44, r: 14 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3, x: -48, z: 38, r: 10 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9, x: 42, z: 22, r: 12 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2, x: -45, z: -40, r: 9 },   // THE OPEN ICE: each row in its own yard, off THE STATION YARD
         ],
-        props: [{ key: 'railing_1m', x: -29.464, z: 13.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 10, z: -45.8, face: 0, y: 3.0 }, { key: 'railing_1m', x: -52.25, z: -31.8, face: 0, y: 4.0 }, { key: 'riser_1', x: 40, z: 50 },
-                { key: 'cot', x: -37.408, z: 5.25, y: 2.4, face: 90 }, { key: 'cot', x: -37.408, z: 10.75, y: 2.4, face: 90 }, { key: 'cot', x: -37.408, z: -0.25, y: 2.4, face: 90 }, { key: 'sea_chest', x: -43.366, z: 12.6, y: 2.4 }, { key: 'steel_table', x: -31.475, z: 10.75, y: 2.4 }, { key: 'crt_terminal', x: -31.75, z: 9, y: 3.16 },
-                { key: 'retro_radio', x: -31.75, z: 7.2, y: 3.16 }, { key: 'folding_chair', x: -33.04, z: 12.7, y: 2.4, face: 0 }, { key: 'mini_fridge', x: -41.69, z: -2.5, y: 2.4 }, { key: 'cardboard_boxes', x: -26.193, z: -1.9, y: 2.4 },
-                { key: 'flood_mast', x: -50.75, z: 33.25, y: 3.2 }, { key: 'boiler', x: -58, z: 28 }, { key: 'traffic_barrel', x: -40, z: 42 }, { key: 'traffic_barrel', x: -42, z: 44 }, { key: 'laundry_cart', x: -30, z: 18 },
+        props: [{ key: 'railing_1m', x: -29.464, z: 13.7, face: 0, y: 3.5 }, { key: 'railing_1m', x: 10, z: -45.8, face: 0, y: 7 }, { key: 'railing_1m', x: -52.25, z: -31.8, face: 0, y: 7 }, { key: 'riser_1', x: 40, z: 50 },
+                { key: 'cot', x: -37.408, z: 5.25, y: 3.5, face: 90 }, { key: 'cot', x: -37.408, z: 10.75, y: 3.5, face: 90 }, { key: 'cot', x: -37.408, z: -0.25, y: 3.5, face: 90 }, { key: 'sea_chest', x: -43.366, z: 12.6, y: 3.5 }, { key: 'steel_table', x: -31.475, z: 10.75, y: 3.5 }, { key: 'crt_terminal', x: -31.75, z: 9, y: 4.26 },
+                { key: 'retro_radio', x: -31.75, z: 7.2, y: 4.26 }, { key: 'folding_chair', x: -33.04, z: 12.7, y: 3.5, face: 0 }, { key: 'mini_fridge', x: -41.69, z: -2.5, y: 3.5 }, { key: 'cardboard_boxes', x: -26.193, z: -1.9, y: 3.5 },
+                { key: 'flood_mast', x: -50.75, z: 33.25, y: 7 }, { key: 'boiler', x: -58, z: 28 }, { key: 'traffic_barrel', x: -40, z: 42 }, { key: 'traffic_barrel', x: -42, z: 44 }, { key: 'laundry_cart', x: -30, z: 18 },
                 { key: 'signpost', x: -6, z: 8.5 }, { key: 'signpost', x: 8, z: -36 }, { key: 'campfire', x: -56, z: 43 }, { key: 'campfire', x: 12, z: -38.25 }, { key: 'lesson_sign', x: -11, z: 8.5, face: 180, lesson: 'climb' },
                 { key: 'car_truck', x: 28, z: 34, face: 90 }, { key: 'car_suv', x: 30, z: 44, face: 60 }, { key: 'flood_mast', x: 57, z: 45.25 }, { key: 'flood_mast', x: -59.75, z: -50 }, { key: 'flood_mast', x: 48, z: -52.25 },
-                { key: 'iso_tank', x: 61.25, z: -40.25, y: 2.2 }, { key: 'warning_tape', x: 54, z: -36 }, { key: 'warning_tape', x: 64, z: -37 }, { key: 'sea_chest', x: -56, z: -44, y: 4.0 }, { key: 'brass_telescope', x: -59.75, z: -38.25, y: 4.0, face: 90 },
-                { key: 'sea_chest', x: 6, z: -52.25, y: 3.0 }, { key: 'lone_gun', x: -6, z: -52.25, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 8, z: -13 }, { key: 'traffic_cone', x: 1, z: -31.25 }, { key: 'traffic_cone', x: 7, z: -31.25 },
-                { key: 'cave_stone', x: 26, z: -43, y: 6.0 }, { key: 'cardboard_boxes', x: 57, z: -2 }, { key: 'cinder_block', x: -28, z: 45.75 },
-                { key: 'iso_tank', x: -8.75, z: 29.75, floor: true }, { key: 'iso_tank', x: 8.75, z: 33.25, face: 180, floor: true }, { key: 'flood_mast', x: -22.75, z: 12.25 }, { key: 'flood_mast', x: 22.75, z: 50.75 }],   // THE STATION YARD: the fuel tanks on their ghost blocks, a light mast off two corners
+                { key: 'iso_tank', x: 61.25, z: -40.25, y: 3.5 }, { key: 'warning_tape', x: 54, z: -36 }, { key: 'warning_tape', x: 64, z: -37 }, { key: 'sea_chest', x: -56, z: -44, y: 7 }, { key: 'brass_telescope', x: -59.75, z: -38.25, y: 7, face: 90 },
+                { key: 'sea_chest', x: 6, z: -52.25, y: 7 }, { key: 'lone_gun', x: -6, z: -52.25, y: 7, face: 180 }, { key: 'wet_floor_sign', x: 8, z: -13 }, { key: 'traffic_cone', x: 1, z: -31.25 }, { key: 'traffic_cone', x: 7, z: -31.25 },
+                { key: 'cave_stone', x: 26, z: -43, y: 10.5 }, { key: 'cardboard_boxes', x: 57, z: -2 }, { key: 'cinder_block', x: -28, z: 45.75 },
+                { key: 'iso_tank', x: -8.75, z: 19.25, h: 2.6, floor: true }, { key: 'iso_tank', x: 8.75, z: 19.25, h: 2.6, floor: true }, { key: 'iso_tank', x: -8.75, z: 43.75, h: 2.6, face: 180, floor: true }, { key: 'iso_tank', x: 8.75, z: 43.75, h: 2.6, face: 180, floor: true },
+                { key: 'camping_tent', x: -8.75, z: 26.25, face: 90, floor: true }, { key: 'camping_tent', x: 8.75, z: 26.25, face: 270, floor: true }, { key: 'camping_tent', x: -8.75, z: 36.75, face: 90, floor: true }, { key: 'camping_tent', x: 8.75, z: 36.75, face: 270, floor: true },
+                { key: 'dish', x: -19.25, z: 29.75, h: 4.4, face: 90, floor: true }, { key: 'dish', x: 19.25, z: 33.25, h: 4.4, face: 270, floor: true },
+                { key: 'flood_mast', x: -22.75, z: 12.25 }, { key: 'flood_mast', x: 22.75, z: 50.75 }, { key: 'flood_mast', x: 22.75, z: 12.25 }, { key: 'flood_mast', x: -22.75, z: 50.75 }],   // THE STATION YARD: the fuel tanks on their ghost blocks, a light mast off two corners
         npcSpots: [{ x: -6, z: 5, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 8, z: -40, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
-                   { x: -35.422, z: 10, y: 2.4, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
+                   { x: -35.422, z: 10, y: 3.5, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
     /* ROOM 14179 · MOUNT SHASTA · THE SLOPES (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the mountain climbs from THE MEADOW at
        the bay door to THE SNOWLINE at the woods' frame (a door you climb to), THE SHELF up a trail with THE LOOKOUT's ladder on it, THE SADDLE
        up a stair with THE CRAG's rope off it, THE SUMMIT's tape seen from both (the door gun's), and LEMURIA under all of it — a draught in the
        west wall the ranger will not talk about. Every tier is reached two ways (a stair AND a rope; a trail AND the hand-holds). */
-    prebuilt_shasta: { grown: 2, part: 'slopes', label: 'THE SLOPES', sub: 'THE MEADOW · THE FALLS · THE SHELF · THE SNOWLINE', w: 132, d: 120, look: 'woods', fogD: 0.024,
+    prebuilt_shasta: { grown: 2, levelM: 3.5, ghostM: 1.75, walkM: 1.75, part: 'slopes', label: 'THE SLOPES', sub: 'THE MEADOW · THE FALLS · THE SHELF · THE SNOWLINE', w: 132, d: 120, look: 'woods', fogD: 0.024,
         parti: 'The mountain climbs from the meadow at the door to the snowline at the frame, and Lemuria is under all of it.', typology: 'switchback',
         floor: 'grass_2', cliff: 'cliff', path: 'dirt', floorColor: 0x6f9a52, cliffColor: 0xa8b0b8,
-        gen: { kind: 'rooms', seed: 14179, loops: 3, rMin: 6, rMax: 11, wallH: 1.7, kinds: ['pine', 'pine', 'tree_2', 'pine'], spacing: 3.0, maxTrees: 220, grow: 2 }, noise: { amp: 0.14, scale: 8 },
+        gen: { kind: 'rooms', seed: 14179, loops: 3, rMin: 6, rMax: 11, wallH: 1.7, kinds: ['pine', 'pine', 'tree_2', 'pine'], spacing: 3.0, maxTrees: 220, grow: 2, open: [{ x0: -22, z0: 24.5, x1: 22, z1: 24.5, w: 44 }] }, noise: { amp: 0.14, scale: 8 },   // open: THE MEADOW IS THE BOARD (2026-11-10)
         forest: { depth: 12, spacing: 3.2, rows: 2.8, start: 1.6, kinds: ['pine', 'pine', 'tree_2'] },
         plaza: { x: 0, z: 24 }, plazaR: 11,
         features: [
             { k: 'hill', x: 0, z: -28, r: 32, h: 2.2 },                                                            // the mountain's flank rising north (short of the meadow)
             /* THE SHELF (3.6) up the trail, THE LOOKOUT (6.4) up its ladder, the hand-holds on the shelf's south face = the second way up */
-            { k: 'plateau', x: 33.25, z: -8.75, r: 16.05, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 33.25, z0: 24.5, x1: 33.25, z1: 7, w: 4.7, h0: 0, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'plateau', x: 43.75, z: -19.25, r: 5.85, h: 6.4, edge: 0.4 }, { k: 'climb', x: 38.1, z: -19.25, face: 90, look: 'ladder' },
+            { k: 'plateau', x: 33.25, z: -8.75, r: 16.05, h: 7, edge: 0.4 }, { k: 'ramp', x0: 33.25, z0: 24.5, x1: 33.25, z1: 7, w: 4.7, h0: 0, h1: 7, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'plateau', x: 43.75, z: -19.25, r: 5.85, h: 10.5, edge: 0.4 }, { k: 'climb', x: 38.1, z: -19.25, face: 90, look: 'ladder' },
             { k: 'climb', x: 22.75, z: 3.25, face: 0, look: 'wall' },   // on the shelf's south rim (a climb's line stands ≤ 0.3 m off its mass — the head scan breaks on the first flat step)
             /* (2026-10-05) a ranch rail round the shelf's rim (open at the trail's steps, the hand-holds, the ridge steps and the lookout),
                the ridge steps up from the flank path onto the shelf's west rim */
             { k: 'rail', arc: { x: 33.25, z: -8.75, r: 15.35, a0: -45, a1: 15 }, model: 'ranch' }, { k: 'rail', arc: { x: 33.25, z: -8.75, r: 15.35, a0: 75, a1: 165 }, model: 'ranch' }, { k: 'rail', arc: { x: 33.25, z: -8.75, r: 15.35, a0: 235, a1: 290 }, model: 'ranch' },
-            { k: 'ramp', x0: 7, z0: -15.75, x1: 21, z1: -15.75, w: 3.5, h0: 1.35, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'ramp', x0: 7, z0: -15.75, x1: 21, z1: -15.75, w: 3.5, h0: 2.6, h1: 7, stairs: true, model: 'forest', edge: 0.2 },
             /* THE FALLS' pool under THE SADDLE (2.4) — a stair up its east flank, a rope up its south face; THE CRAG (4.8) off it by a rope; THE SUMMIT (7.2, the tape) on THE SNOWLINE (4.4, the frame's door) */
             { k: 'pool', x: -2, z: -12, r: 6.4, depth: 0.9, key: 'water', bank: 2 },
-            { k: 'plateau', x: -22.75, z: -22.75, r: 16.65, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -15.75, z0: 3.5, x1: -15.75, z1: -10.5, w: 4.7, h0: 0, h1: 2.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'plateau', x: -22.75, z: -22.75, r: 16.65, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -15.75, z0: 3.5, x1: -15.75, z1: -10.5, w: 4.7, h0: 0, h1: 3.5, stairs: true, model: 'forest', edge: 0.2 },
             { k: 'climb', x: -29.75, z: -8.3, face: 0, look: 'rope' },
-            { k: 'plateau', x: -43.75, z: -26.25, r: 9.05, h: 4.8, edge: 0.4 }, { k: 'climb', x: -36.2, z: -24.5, face: 270, look: 'rope' },
-            { k: 'plateau', x: -17.5, z: -52.5, w: 36.8, d: 15.8, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -14, z0: -28, x1: -14, z1: -45.5, w: 7, h0: 2.4, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'plateau', x: -43.75, z: -26.25, r: 9.05, h: 7, edge: 0.4 }, { k: 'climb', x: -36.2, z: -24.5, face: 270, look: 'rope' },
+            { k: 'plateau', x: -17.5, z: -52.5, w: 36.8, d: 15.8, h: 7, edge: 0.4 }, { k: 'ramp', x0: -14, z0: -28, x1: -14, z1: -45.5, w: 7, h0: 3.5, h1: 7, stairs: true, model: 'forest', edge: 0.2 },
             { k: 'climb', x: -0.2, z: -54.25, face: 270, look: 'rope' },
-            { k: 'plateau', x: -28, z: -42, r: 7.6, h: 7.2, edge: 0.4 },
+            { k: 'plateau', x: -28, z: -42, r: 7.6, h: 10.5, edge: 0.4 },
             { k: 'rail', x0: -32, z0: -45.9, x1: -17.8, z1: -45.9, model: 'ranch' }, { k: 'rail', x0: -10.2, z0: -45.9, x1: -0.8, z1: -45.9, model: 'ranch' },   // (open at the stair's head)
             /* THE NORTH LEDGE (2026-10-05): a 4.4 m rock ledge a 2.5 m gap east of the snowline (a rail across it, the rope's foot under it),
                up a long timber stair from the north-east hollow */
-            { k: 'plateau', x: 8.75, z: -50.75, w: 11.1, d: 11.1, h: 4.4, edge: 0.4 },
-            { k: 'ramp', x0: 38.5, z0: -50.75, x1: 14, z1: -50.75, w: 4.7, h0: 0, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'rail', x0: 0.4, z0: -50.75, x1: 3.1, z1: -50.75, y: 4.4, model: 'pipe', block: false },
+            { k: 'plateau', x: 8.75, z: -50.75, w: 11.1, d: 11.1, h: 7, edge: 0.4 },
+            { k: 'ramp', x0: 38.5, z0: -50.75, x1: 14, z1: -50.75, w: 4.7, h0: 0, h1: 7, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', x0: 0.4, z0: -50.75, x1: 3.1, z1: -50.75, y: 7, model: 'pipe', block: false },
             { k: 'rail', x0: 4.1, z0: -55.4, x1: 13.4, z1: -55.4, model: 'ranch' },
             /* THE CREEK off the falls (waded) and the plank over it by the meadow; the corral wall the rider grinds */
-            { k: 'stream', pts: [[-6, -5], [-18, 12], [-12, 28], [-22, 54]], w: 4.4, depth: 0.6, key: 'water' },
-            { k: 'deck', x0: -24.5, z0: 33.25, x1: -7, z1: 33.25, w: 3.5, y: 0.35 },
-            { k: 'wall', x0: 7, z0: 38.5, x1: 24.5, z1: 38.5, h: 0.9, t: 0.5, key: 'wood' },
-            { k: 'path', pts: [[0, 24], [32, 24], [32, 22.8]], w: 4.8 }, { k: 'path', pts: [[0, 24], [-14, 12], [-14, 0]], w: 5.2 }, { k: 'path', pts: [[0, 24], [12, -4], [4, -44], [2.4, -54]], w: 4.4 },
-            { k: 'path', pts: [[-14, 12], [-40, 16], [-57, 16]], w: 4.8 }, { k: 'path', pts: [[-2, 24], [-24, 44]], w: 4 },
+            { k: 'stream', pts: [[-6, -5], [-12, 0], [-15.75, 3.5], [-15.75, 45.5], [-22, 54]], w: 3.5, depth: 0.6, key: 'water' },
+            { k: 'deck', x0: -21, z0: 24.5, x1: -10.5, z1: 24.5, w: 7, y: 0.35 },
+            { k: 'wall', x0: 7, z0: 47.25, x1: 24.5, z1: 47.25, h: 0.9, t: 0.5, key: 'wood' },
+            /* THE MEADOW IS THE BOARD (2026-11-10, mondo: "make improvements to all of the battle maps ... redesigning the layout ... better for PvP combat"):
+               the 12 x 12 is the meadow (x -21..21, z 3.5..45.5), cleared of the wood's own trees. The creek runs straight down its second
+               column with the plank bridge on the centre line; pines, boulders and fallen logs stand on its squares, the same in each
+               team's half (row r and row 11 - r). Each stands on a block that is never drawn (the model is the look). */
+            { k: 'wall', x0: -8.75, z0: 15.75, x1: -8.75, z1: 15.75, h: 5, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 33.25, x1: -8.75, z1: 33.25, h: 5, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 15.75, x1: 15.75, z1: 15.75, h: 5, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 33.25, x1: 15.75, z1: 33.25, h: 5, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 5.25, x1: 19.25, z1: 5.25, h: 5, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 43.75, x1: 19.25, z1: 43.75, h: 5, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 22.75, x1: -12.25, z1: 22.75, h: 2.4, t: 2.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 26.25, x1: -12.25, z1: 26.25, h: 2.4, t: 2.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 15.75, x1: 1.75, z1: 15.75, h: 2.4, t: 2.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 33.25, x1: 1.75, z1: 33.25, h: 2.4, t: 2.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 12.25, x1: 12.25, z1: 12.25, h: 2.4, t: 2.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 36.75, x1: 12.25, z1: 36.75, h: 2.4, t: 2.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 12.25, x1: -12.25, z1: 12.25, h: 1.3, t: 1.4, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 36.75, x1: -12.25, z1: 36.75, h: 1.3, t: 1.4, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 19.25, x1: 8.75, z1: 19.25, h: 1.3, t: 1.4, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 29.75, x1: 8.75, z1: 29.75, h: 1.3, t: 1.4, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 22.75, x1: 19.25, z1: 22.75, h: 4.2, t: 1.2, key: 'cliff', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 26.25, x1: 19.25, z1: 26.25, h: 4.2, t: 1.2, key: 'cliff', ghost: true, rail: false },
+            { k: 'path', pts: [[0, 24], [32, 24], [32, 22.8]], w: 4.8 }, { k: 'path', pts: [[0, 24], [-8.75, 12], [-12.25, 1]], w: 5.2 }, { k: 'path', pts: [[0, 24], [12, -4], [4, -44], [2.4, -54]], w: 4.4 },
+            { k: 'path', pts: [[0, 24.5], [-22, 24.5], [-40, 16], [-57, 16]], w: 4.8 }, { k: 'path', pts: [[-2, 24], [-24, 44]], w: 4 },
             { k: 'grove', x: -40, z: 44, r: 16, n: 7, kinds: ['pine', 'pine', 'tree_2'] }, { k: 'grove', x: 48, z: 40, r: 14, n: 6, kinds: ['pine', 'tree_2'] }, { k: 'grove', x: 16, z: -36, r: 14, n: 5, kinds: ['pine'] },
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 }, { k: 'scatter', key: 'stump', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 4 }, { k: 'scatter', key: 'dead_snag', n: 3, seed: 6 },
         ],
-        props: [{ key: 'railing_1m', x: 29.25, z: -22.575, face: 0, y: 3.6 }, { key: 'railing_1m', x: -23.875, z: -46.925, face: 0, y: 4.4 }, { key: 'riser_1', x: 12, z: 28 }, { key: 'campfire', x: -8.75, z: 22.75 }, { key: 'signpost', x: 5.25, z: 29.75 },
-         { key: 'instrument_drum', x: 20.4, z: 4.8, face: 250 }, { key: 'instrument_guitar_lying', x: 18.6, z: 9.6, rot: 30 }, { key: 'instrument_tambourine', x: 16.8, z: 12.475, rot: 10 }, { key: 'instrument_seed_pod', x: 21.8, z: 9.2, rot: 80 },   // THE INSTRUMENTS (2026-10-27): a drum circle on the meadow, off the arena squares
-                { key: 'signpost', x: 22, z: -26, y: 3.6 }, { key: 'park_bench', x: -5.25, z: 15.75, face: 0 }, { key: 'lesson_sign', x: 16, z: 6, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 43.75, z: -19.25, y: 6.4 }, { key: 'cave_stone', x: -43.75, z: -26.25, y: 4.8 }],
+        props: [{ key: 'railing_1m', x: 29.25, z: -22.575, face: 0, y: 7 }, { key: 'railing_1m', x: -23.875, z: -46.925, face: 0, y: 7 }, { key: 'riser_1', x: 26, z: 28 }, { key: 'campfire', x: 12.25, z: 24.5 }, { key: 'signpost', x: -1.75, z: 47.25 },
+         /* THE MEADOW IS THE BOARD (2026-11-10): the board's pines, boulders, logs and snags (each on its hidden block) */
+         { key: 'pine', x: -8.75, z: 15.75, floor: true, rot: 24 }, { key: 'pine', x: -8.75, z: 33.25, floor: true, rot: 119 }, { key: 'pine', x: 15.75, z: 15.75, floor: true, rot: 283 }, { key: 'pine', x: 15.75, z: 33.25, floor: true, rot: 18 }, { key: 'pine', x: 19.25, z: 5.25, floor: true, rot: 47 }, { key: 'pine', x: 19.25, z: 43.75, floor: true, rot: 328 },
+         { key: 'cave_stone', x: -12.25, z: 22.75, h: 2.6, floor: true, rot: 101 }, { key: 'cave_stone', x: -12.25, z: 26.25, h: 2.6, floor: true, rot: 172 }, { key: 'cave_stone', x: 1.75, z: 15.75, h: 2.6, floor: true, rot: 171 }, { key: 'cave_stone', x: 1.75, z: 33.25, h: 2.6, floor: true, rot: 166 }, { key: 'cave_stone', x: 12.25, z: 12.25, h: 2.6, floor: true, rot: 259 }, { key: 'cave_stone', x: 12.25, z: 36.75, h: 2.6, floor: true, rot: 36 },
+         { key: 'fallen_log', x: -12.25, z: 12.25, face: 90, floor: true }, { key: 'fallen_log', x: -12.25, z: 36.75, face: 90, floor: true }, { key: 'fallen_log', x: 8.75, z: 19.25, face: 0, floor: true }, { key: 'fallen_log', x: 8.75, z: 29.75, face: 0, floor: true }, { key: 'dead_snag', x: 19.25, z: 22.75, floor: true }, { key: 'dead_snag', x: 19.25, z: 26.25, floor: true },
+         { key: 'instrument_drum', x: 20.4, z: 48.8, face: 250 }, { key: 'instrument_guitar_lying', x: 18.6, z: 53.6, rot: 30 }, { key: 'instrument_tambourine', x: 16.8, z: 56.475, rot: 10 }, { key: 'instrument_seed_pod', x: 21.8, z: 53.2, rot: 80 },   // THE INSTRUMENTS (2026-10-27): a drum circle on the meadow, off the arena squares
+                { key: 'signpost', x: 22, z: -26, y: 7 }, { key: 'park_bench', x: 15.75, z: 24.5, face: 270 }, { key: 'lesson_sign', x: 24.5, z: 7, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 43.75, z: -19.25, y: 10.5 }, { key: 'cave_stone', x: -43.75, z: -26.25, y: 7 }],
         npcSpots: [{ x: 12, z: 24, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 34, z: -16, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' },
                    { x: -20, z: -20, face: 90, race: 'yeti', say: '“The rope is older than the mountain. The knots are newer.”' }],
         lines: ['“How high?” “Fourteen thousand one hundred and seventy-nine. The sign is honest.”'] },
@@ -49495,7 +49720,7 @@ const HQ_AREA_SPECS = {
        stair (or up the carved flank), THE HIGH TERRACE over the west court (a stair, and a cloud bridge from the dais) with Heaven's gate of cloud
        standing ON it — a door you climb to —, THE LIGHTNING SPIRE's tape seen from the terrace (the door gun's), THE FORGE's lava under THE ANVIL
        TERRACE with THE LOFT up a chain, the stepping clouds off the court, the Lodge's painting on the north wall */
-    prebuilt_olympus: { grown: 2, part: 'summit', label: 'THE SUMMIT', sub: 'THE COURT · THE THRONE · THE FORGE · THE SPIRE', w: 124, d: 104, look: 'heaven', fogD: 0.022,
+    prebuilt_olympus: { grown: 2, levelM: 3.5, ghostM: 1.75, part: 'summit', label: 'THE SUMMIT', sub: 'THE COURT · THE THRONE · THE FORGE · THE SPIRE', w: 124, d: 104, look: 'heaven', fogD: 0.022,
         outer: { keep: 1, lift: -26 },   // OPEN WORLD Phase 6 (2026-09-27): the summit stands 60 m up — the ground past its field falls away (the switchbacks' face below it is on the stage)
         parti: 'A marble court on a cloud where every stair goes up to a throne nobody sits in, and the lightning comes from below.', typology: 'hub',
         floor: 'marble_light', cliff: 'cloud_thick', path: 'gold', floorColor: 0xf8f8f2, cliffColor: 0xf0eee8,
@@ -49511,62 +49736,66 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 12 }, plazaR: 11,
         features: [
             /* THE THRONE DAIS (3.0): the stair up its front, the carved flank's hand-holds up its east side */
-            { k: 'plateau', x: -1.75, z: -28, w: 24.5, d: 14, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 0, z0: -10.5, x1: 0, z1: -21, w: 7, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'plateau', x: -1.75, z: -28, w: 24.5, d: 14, h: 7, edge: 0.15 },
+            { k: 'ramp', x0: 0, z0: -10.5, x1: 0, z1: -21, w: 7, h0: 0, h1: 7, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
             { k: 'climb', x: 10.9, z: -29.75, face: 270, look: 'wall' },
-            { k: 'wall', x0: -14.6, z0: -20.9, x1: -3.5, z1: -20.9, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 3.5, z0: -20.9, x1: 11.1, z1: -20.9, y: 3.0, t: 0.5, key: 'marble_light', rail: false },   // its marble faces, flush with the top (the stair and the hand-holds between)
-            { k: 'wall', x0: -14.6, z0: -35.1, x1: 11.1, z1: -35.1, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -14.1, z0: -35.1, x1: -14.1, z1: -20.9, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
-            { k: 'wall', x0: 10.6, z0: -35.1, x1: 10.6, z1: -31.55, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 10.6, z0: -27.95, x1: 10.6, z1: -20.9, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
+            { k: 'wall', x0: -14.6, z0: -20.9, x1: -3.5, z1: -20.9, y: 7, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 3.5, z0: -20.9, x1: 11.1, z1: -20.9, y: 7, t: 0.5, key: 'marble_light', rail: false },   // its marble faces, flush with the top (the stair and the hand-holds between)
+            { k: 'wall', x0: -14.6, z0: -35.1, x1: 11.1, z1: -35.1, y: 7, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -14.1, z0: -35.1, x1: -14.1, z1: -20.9, y: 7, t: 0.5, key: 'marble_light', rail: false },
+            { k: 'wall', x0: 10.6, z0: -35.1, x1: 10.6, z1: -31.55, y: 7, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 10.6, z0: -27.95, x1: 10.6, z1: -20.9, y: 7, t: 0.5, key: 'marble_light', rail: false },
             { k: 'rail', x0: -13.5, z0: -21.6, x1: -3.5, z1: -21.6, model: 'balusters_b' }, { k: 'rail', x0: 3.5, z0: -21.6, x1: 10, z1: -21.6, model: 'balusters_b' },   // its balustrade (the bridge's mouth, the hand-holds and the stair left open)
             { k: 'rail', x0: -13.5, z0: -30.9, x1: -13.5, z1: -21.6, model: 'balusters_b' }, { k: 'rail', x0: -9.508, z0: -34.5, x1: 9.99, z1: -34.5, model: 'balusters_b' },
             { k: 'rail', x0: 10, z0: -34.5, x1: 10, z1: -31.55, model: 'balusters_b' }, { k: 'rail', x0: 10, z0: -27.95, x1: 10, z1: -21.6, model: 'balusters_b' },
             /* THE HIGH TERRACE (3.0) against the west wall — the gate of cloud stands on it; a stair up from the west court, a cloud bridge over from the dais */
-            { k: 'plateau', x: -43.75, z: -39.1, w: 38.5, d: 22.2, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: -35, z0: -17.5, x1: -35, z1: -28, w: 7, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'deck', x0: -12.6, z0: -33.25, x1: -24.7, z1: -33.25, w: 3.5, y: 3.0, over: true },
+            { k: 'plateau', x: -43.75, z: -39.1, w: 38.5, d: 22.2, h: 7, edge: 0.15 },
+            { k: 'ramp', x0: -35, z0: -17.5, x1: -35, z1: -28, w: 7, h0: 0, h1: 7, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'deck', x0: -12.6, z0: -33.25, x1: -24.7, z1: -33.25, w: 3.5, y: 7, over: true },
             /* THE LIGHTNING SPIRE (6.6, the tape — the door gun's) in the west court, seen from the terrace */
-            { k: 'plateau', x: -40.25, z: -8.75, r: 5.55, h: 6.6, edge: 0.15 },
+            { k: 'plateau', x: -40.25, z: -8.75, r: 5.55, h: 10.5, edge: 0.15 },
             /* THE FORGE (lava, never entered) under THE ANVIL TERRACE (2.2) up its stair; THE LOFT (5.0) up Hephaestus's chain */
             { k: 'pool', x: 40.25, z: -1.75, r: 8.75, depth: 0.55, key: 'lava', bank: 2 },   // against the room's north wall, under the anvil terrace; a shallow bed under a sheet the walker never enters (the canal rule: a deep bank leaves a ledge = a rescue scar)
-            { k: 'plateau', x: 44.25, z: -31.5, w: 25.5, d: 36.2, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: 24.5, z0: -24.5, x1: 31.5, z1: -24.5, w: 7, h0: 0, h1: 2.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'plateau', x: 47.25, z: -40.25, r: 5.25, h: 5.0, edge: 0.15 }, { k: 'climb', x: 42.6, z: -40.25, face: 90, look: 'chain' },
-            { k: 'ramp', x0: 47.25, z0: -24.5, x1: 47.25, z1: -35, w: 3.5, h0: 2.2, h1: 5.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE LOFT's stair from the anvil terrace
+            { k: 'plateau', x: 44.25, z: -31.5, w: 25.5, d: 36.2, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: 24.5, z0: -24.5, x1: 31.5, z1: -24.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'plateau', x: 47.25, z: -40.25, r: 5.25, h: 7, edge: 0.15 }, { k: 'climb', x: 42.6, z: -40.25, face: 90, look: 'chain' },
+            { k: 'ramp', x0: 47.25, z0: -24.5, x1: 47.25, z1: -35, w: 3.5, h0: 3.5, h1: 7, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE LOFT's stair from the anvil terrace
             { k: 'rail', arc: { x: 47.25, z: -40.25, r: 4.65, a0: 30, a1: 150 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 47.25, z: -40.25, r: 4.65, a0: 210, a1: 252 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 47.25, z: -40.25, r: 4.65, a0: 288, a1: 320 }, model: 'balusters_b' },   // (open on the north wall's side)
             { k: 'rail', x0: 32.1, z0: -48.982, x1: 32.1, z1: -28.4, model: 'balusters_b' }, { k: 'rail', x0: 32.1, z0: -20.6, x1: 32.1, z1: -14.018, model: 'balusters_b' },   // the anvil terrace's balustrade
             { k: 'rail', arc: { x: 40.25, z: -1.75, r: 11.15, a0: 100, a1: 152 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 40.25, z: -1.75, r: 11.15, a0: 208, a1: 260 }, model: 'pipe', block: false },   // skate rails round the lava, either side of its lip
-            { k: 'wall', x0: 31.4, z0: -49, x1: 31.4, z1: -28.4, y: 2.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 31.4, z0: -20.6, x1: 31.4, z1: -14, y: 2.2, t: 0.5, key: 'marble_light', rail: false },   // its marble face on the stair's strip
+            { k: 'wall', x0: 31.4, z0: -49, x1: 31.4, z1: -28.4, y: 3.5, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 31.4, z0: -20.6, x1: 31.4, z1: -14, y: 3.5, t: 0.5, key: 'marble_light', rail: false },   // its marble face on the stair's strip
             /* THE LOWER COURT (1.2) up its stair — or a rope over its lip from the west court; the stepping clouds (float) up hall A to the dais's west side */
-            { k: 'plateau', x: -33.25, z: 19.25, w: 26.1, d: 26.1, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: -24.1, z0: -3.5, x1: -24.1, z1: 6.8, w: 3.5, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE OPEN SUMMIT: its stair up from the west court (off the court's board)
+            { k: 'plateau', x: -33.25, z: 19.25, w: 26.1, d: 26.1, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: -24.1, z0: -3.5, x1: -24.1, z1: 6.8, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE OPEN SUMMIT: its stair up from the west court (off the court's board)
             { k: 'climb', x: -33.25, z: 7.4, face: 180, look: 'rope' },
-            { k: 'wall', x0: -45.5, z0: 6.7, x1: -35.05, z1: 6.7, y: 1.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -31.45, z0: 6.7, x1: -28, z1: 6.7, y: 1.2, t: 0.5, key: 'marble_light', rail: false },   // its marble lip on the west court (the rope between)
-            { k: 'plateau', x: -24.5, z: -9.5, r: 3.5, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -27, z: -16.5, r: 4.4, h: 2.0, edge: 0.3, float: true },   // THE OPEN SUMMIT: off the court's board (its west edge x -21) { k: 'plateau', x: -21, z: -21, r: 3.5, h: 3.0, edge: 0.3, float: true },
-            { k: 'rail', x0: -18.3, z0: -22.75, x1: -13.2, z1: -22.75, y: 3.0, model: 'pipe', block: false },                              // across the last cloud's gap to the dais
+            { k: 'wall', x0: -45.5, z0: 6.7, x1: -35.05, z1: 6.7, y: 3.5, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -31.45, z0: 6.7, x1: -28, z1: 6.7, y: 3.5, t: 0.5, key: 'marble_light', rail: false },   // its marble lip on the west court (the rope between)
+            { k: 'plateau', x: -24.5, z: -9.5, r: 3.5, h: 2.3, edge: 0.3, float: true }, { k: 'plateau', x: -27, z: -16.5, r: 4.4, h: 4.6, edge: 0.3, float: true },   // THE OPEN SUMMIT: off the court's board (its west edge x -21) { k: 'plateau', x: -21, z: -21, r: 3.5, h: 7, edge: 0.3, float: true },
+            { k: 'rail', x0: -18.3, z0: -22.75, x1: -13.2, z1: -22.75, y: 7, model: 'pipe', block: false },                              // across the last cloud's gap to the dais
             /* THE COLONNADE WALK (1.2): the colonnade's west half raised to the lower court's level, joined to it by its walk; a stair down at its east end (a centre handrail) and one down into side room 1 */
-            { k: 'plateau', x: -33.25, z: 43.75, w: 52.5, d: 10.5, h: 1.2, edge: 0.15 },
-            { k: 'plateau', x: -35, z: 36.75, w: 7, d: 10.5, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: 0, z0: 45.5, x1: -7, z1: 45.5, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'plateau', x: -33.25, z: 43.75, w: 52.5, d: 10.5, h: 3.5, edge: 0.15 },
+            { k: 'plateau', x: -35, z: 36.75, w: 7, d: 10.5, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: 0, z0: 45.5, x1: -7, z1: 45.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
             { k: 'rail', pts: [[-0.438, 45.5, 0.07], [-6.562, 45.5, 1.13]], model: 'pipe', block: false },                                      // its centre handrail
-            { k: 'ramp', x0: -52.5, z0: 31.5, x1: -52.5, z1: 38.5, w: 7, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'ramp', x0: -52.5, z0: 31.5, x1: -52.5, z1: 38.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
             /* THE COURT OF THE TWELVE (2026-11-03, THE OPEN SUMMIT — the court's board, x -21..21, z -10.5..31.5 on its 3.5 m squares, centre
                (0, 10.5), HQ_ARENA_RULES.within): the Twelve's columns in two rows of six either side of the court (x ±12.25, one square each,
                5 m: a ghost block under each — the fight's and the walker's, never drawn; the column stands on the floor, `floor: true`), the
                middle lane open for the house at every size, two marble plinths (1.2) at the far corners. Every piece turns into its twin about the centre (the two sides fight the same court) */
             { k: 'wall', x0: -12.25, z0: -5.25, x1: -12.25, z1: -5.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 1.75, x1: -12.25, z1: 1.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 8.75, x1: -12.25, z1: 8.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 12.25, x1: -12.25, z1: 12.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 19.25, x1: -12.25, z1: 19.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 26.25, x1: -12.25, z1: 26.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -5.25, x1: 12.25, z1: -5.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 8.75, x1: 12.25, z1: 8.75, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 12.25, x1: 12.25, z1: 12.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 19.25, x1: 12.25, z1: 19.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 26.25, x1: 12.25, z1: 26.25, h: 5.0, t: 1.2, key: 'marble_light', ghost: true, rail: false },
-            { k: 'plateau', x: -17.5, z: -7, w: 7.9, d: 7.9, h: 1.2, edge: 0.15 }, { k: 'plateau', x: 17.5, z: 28, w: 7.9, d: 7.9, h: 1.2, edge: 0.15 },   // the two plinths (squares 0..1 × 0..1 and 10..11 × 10..11)
+            { k: 'plateau', x: -17.5, z: -7, w: 7.9, d: 7.9, h: 3.5, edge: 0.15 }, { k: 'plateau', x: 17.5, z: 28, w: 7.9, d: 7.9, h: 3.5, edge: 0.15 },
+            /* THE FIRES AND THE WATCHERS (2026-11-10, mondo: "make improvements to all of the battle maps ... adding better props ... better for PvP combat"):
+               four braziers inside the colonnades and four statues outside them (each on a block never drawn), the same in each team's half */
+            { k: 'wall', x0: -8.75, z0: 5.25, x1: -8.75, z1: 5.25, h: 1.3, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 5.25, x1: 8.75, z1: 5.25, h: 1.3, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 15.75, x1: -8.75, z1: 15.75, h: 1.3, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 15.75, x1: 8.75, z1: 15.75, h: 1.3, t: 1.2, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 1.75, x1: -19.25, z1: 1.75, h: 2.8, t: 1.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: 19.25, x1: -19.25, z1: 19.25, h: 2.8, t: 1.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 1.75, x1: 19.25, z1: 1.75, h: 2.8, t: 1.4, key: 'marble_light', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: 19.25, x1: 19.25, z1: 19.25, h: 2.8, t: 1.4, key: 'marble_light', ghost: true, rail: false },   // the two plinths (squares 0..1 × 0..1 and 10..11 × 10..11)
             { k: 'wall', x0: 31.5, z0: 10.5, x1: 49, z1: 10.5, h: 1.0, t: 0.6, key: 'marble_light' },                  // the balustrade on the lava's lip (the grind)
             { k: 'path', pts: [[0, 44], [0, -8]], w: 6.4 }, { k: 'path', pts: [[-54, 44], [48, 44]], w: 4.4 },
             /* THE OPEN SUMMIT: the scatter keeps off THE COURT OF THE TWELVE (with the walls gone it landed on the board) — each row in its own court; one garden ring
                (14 m across: five of them piled up on the open marble) between the forge and the colonnade */
             { k: 'scatter', key: 'white_cloud', n: 4, seed: 4, x: -44, z: 2, r: 13 }, { k: 'scatter', key: 'garden_ring', n: 1, seed: 7, x: 36, z: 26, r: 1 }, { k: 'scatter', key: 'armour_stand', n: 4, seed: 9, x: 44, z: -31, r: 11 }, { k: 'scatter', key: 'brazier', n: 3, seed: 5, x: -44, z: -40, r: 11 },
         ],
-        props: [{ key: 'railing_1m', x: -28, z: -32.225, face: 0, y: 3.0 }, { key: 'riser_1', x: 52, z: 22 }, { key: 'royal_throne', x: 0, z: -30, y: 3.0, face: 180 }, { key: 'brazier', x: 24.5, z: -8.75 },
-                { key: 'angel_statue', x: -40.25, z: -8.75, y: 6.6 }, { key: 'stone_altar', x: 42, z: -26, y: 2.2 }, { key: 'lectern', x: -6, z: -30, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: 35 }, { key: 'armour_stand', x: 47.25, z: -40.25, y: 5.0 }, { key: 'park_bench', x: -32, z: 20, y: 1.2, face: 180 },
+        props: [{ key: 'brazier', x: -8.75, z: 5.25, floor: true }, { key: 'brazier', x: 8.75, z: 5.25, floor: true }, { key: 'brazier', x: -8.75, z: 15.75, floor: true }, { key: 'brazier', x: 8.75, z: 15.75, floor: true }, { key: 'angel_statue', x: -19.25, z: 1.75, face: 90, floor: true }, { key: 'angel_statue', x: -19.25, z: 19.25, face: 90, floor: true }, { key: 'angel_statue', x: 19.25, z: 1.75, face: 270, floor: true }, { key: 'angel_statue', x: 19.25, z: 19.25, face: 270, floor: true },   // THE FIRES AND THE WATCHERS (2026-11-10)
+                { key: 'railing_1m', x: -28, z: -32.225, face: 0, y: 7 }, { key: 'riser_1', x: 52, z: 22 }, { key: 'royal_throne', x: 0, z: -30, y: 7, face: 180 }, { key: 'brazier', x: 24.5, z: -8.75 },
+                { key: 'angel_statue', x: -40.25, z: -8.75, y: 10.5 }, { key: 'stone_altar', x: 42, z: -26, y: 3.5 }, { key: 'lectern', x: -6, z: -30, y: 7, face: 180 }, { key: 'fountain', x: 0, z: 35 }, { key: 'armour_stand', x: 47.25, z: -40.25, y: 7 }, { key: 'park_bench', x: -32, z: 20, y: 3.5, face: 180 },
                 /* the colonnade's columns (on its north side) and the court's */
-                { key: 'greek_column', x: -42, z: 41.2, y: 1.2 }, { key: 'greek_column', x: -28, z: 41.2, y: 1.2 }, { key: 'greek_column', x: -18, z: 41.2, y: 1.2 }, { key: 'greek_column', x: -11, z: 41.2, y: 1.2 },
+                { key: 'greek_column', x: -42, z: 41.2, y: 3.5 }, { key: 'greek_column', x: -28, z: 41.2, y: 3.5 }, { key: 'greek_column', x: -18, z: 41.2, y: 3.5 }, { key: 'greek_column', x: -11, z: 41.2, y: 3.5 },
                 { key: 'greek_column', x: 8, z: 41.2 }, { key: 'greek_column', x: 20, z: 41.2 }, { key: 'greek_column', x: 32, z: 41.2 }, { key: 'greek_column', x: 42, z: 41.2 },
-         { key: 'instrument_harp', x: 6.4, z: -30.8, y: 3.0, face: 180 }, { key: 'instrument_harp', x: -30, z: -37, face: 120 }, { key: 'instrument_drum', x: -32.4, z: -33.8, face: 110 },   // THE INSTRUMENTS (2026-10-27): the court's harp beside the throne, the angel's harp and a drum by the west end
+         { key: 'instrument_harp', x: 6.4, z: -30.8, y: 7, face: 180 }, { key: 'instrument_harp', x: -30, z: -37, face: 120 }, { key: 'instrument_drum', x: -32.4, z: -33.8, face: 110 },   // THE INSTRUMENTS (2026-10-27): the court's harp beside the throne, the angel's harp and a drum by the west end
                 /* THE COURT OF THE TWELVE: the Twelve's columns on their ghost blocks (two rows of six either side of the court) */
                 { key: 'greek_column', x: -12.25, z: -5.25, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 1.75, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 8.75, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 12.25, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 19.25, h: 5.0, floor: true }, { key: 'greek_column', x: -12.25, z: 26.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: -5.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 1.75, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 8.75, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 12.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 19.25, h: 5.0, floor: true }, { key: 'greek_column', x: 12.25, z: 26.25, h: 5.0, floor: true }],
         npcSpots: [{ x: -6, z: 20, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 24, z: 12, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
@@ -49577,11 +49806,12 @@ const HQ_AREA_SPECS = {
        layer); THE PYRAMID's two tiers (the stair, a ladder, the hand-holds up its faces), THE ROVER BAY's mesa on the north wall with the ship's
        collar standing ON it (a door you climb to), THE FACE's tape over the west crater (the door gun's — seen from the west mesa), and THE
        FACE'S MOUTH: a draught in the west wall the greys bored to the far side of the Moon. Every tier is reached two ways. */
-    prebuilt_mars: { part: 'cydonia', label: 'CYDONIA', sub: 'THE CANYON · THE MESAS · THE PYRAMID · THE FACE', w: 144, d: 120, night: 1, look: 'tell', fogD: 0.02,
+    prebuilt_mars: { levelM: 3.5, part: 'cydonia', label: 'CYDONIA', sub: 'THE CANYON · THE MESAS · THE PYRAMID · THE FACE', w: 144, d: 120, night: 1, look: 'tell', fogD: 0.02,
         parti: 'A canyon between two mesas under the Face; the arch joins them over your head, and the collar stands on the third mesa at the end of the rover\'s tracks.', typology: 'pearls',
         floor: 'moon_2', cliff: 'mars_2', path: 'moon_2', floorColor: 0xc88a5a, cliffColor: 0xa86048,
-        gen: { kind: 'plan', look: 'rock', keep: true, wallH: 2.6, rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, open: [{ x: -44, z: -30, r: 16 }, { x: -62, z: -28, r: 10 }, { x: -48, z: -3, r: 9 }] }, noise: { amp: 0.2, scale: 14 },   // the third open circle: the strip between the west mesa's north cliff and a rock bank was a pocket (a rescue ramp) — forced open
-        plaza: { x: 0, z: 16 }, plazaR: 11,
+        gen: { kind: 'plan', look: 'rock', keep: true, wallH: 2.6, rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, open: [{ x: -44, z: -30, r: 16 }, { x: -62, z: -28, r: 10 }, { x: -48, z: -3, r: 9 }],
+               solid: [{ x: -12.25, z: -8.75, r: 1.72 }, { x: -12.25, z: -5.25, r: 1.72 }, { x: 12.25, z: 12.25, r: 1.72 }, { x: 12.25, z: 15.75, r: 1.72 }] }, noise: { amp: 0.2, scale: 14 },   // the third open circle: the strip between the west mesa's north cliff and a rock bank was a pocket (a rescue ramp) — forced open
+        plaza: { x: 0, z: 16 }, plazaR: 6,
         /* OLYMPUS MONS' cone peak removed 2026-11-03 (mondo: the cone mountains "look terrible") */
         features: [
             /* THE WEST MESA (3.2): the long ramp up its south side, a rope on its east face, the hand-holds on its north — THE BASE CAMP stands on it */
@@ -49609,27 +49839,33 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[10.7, -18.24], [22.5, -19.66], [16.74, -34.82], [22.7, -40.8], [31.42, -44.64]], w: 6.9 },
             { k: 'hall', pts: [[-26.58, -34.44], [-17.16, -25.84], [-19.08, -16.9], [-31.04, -7.66], [-25.5, 1.06]], w: 7 },
             { k: 'hall', pts: [[10.7, -18.24], [-0.68, -17.78], [-12.98, -19.08], [-16.2, -3.28], [-25.5, 1.06]], w: 6.54 },
-            { k: 'plateau', x: -40.25, z: 10.5, w: 31.5, d: 21, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: -38.5, z0: 38.5, x1: -38.5, z1: 20.2, w: 7, h0: 0, h1: 3.2 },   // GRID FIT (2026-10-26): every edge on a battle-square line, the ramp 2 squares wide (its head runs 0.4 m under the rim's blend)
+            { k: 'plateau', x: -40.25, z: 10.5, w: 31.5, d: 21, h: 7, edge: 0.4 }, { k: 'ramp', x0: -38.5, z0: 38.5, x1: -38.5, z1: 20.2, w: 7, h0: 0, h1: 7 },   // GRID FIT (2026-10-26): every edge on a battle-square line, the ramp 2 squares wide (its head runs 0.4 m under the rim's blend)
             { k: 'climb', x: -24.8, z: 8.75, face: 270, look: 'rope' }, { k: 'climb', x: -36.75, z: 0.3, face: 180, look: 'wall' },
             /* THE EAST MESA (3.2): the stair down its north side, the hand-holds up its south face, a chain on its east */
-            { k: 'plateau', x: 40.25, z: 8.75, w: 38.5, d: 17.5, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: 42, z0: -17.5, x1: 42, z1: 0.8, w: 7, h0: 0, h1: 3.2, stairs: true },
+            { k: 'plateau', x: 40.25, z: 8.75, w: 38.5, d: 17.5, h: 7, edge: 0.4 }, { k: 'ramp', x0: 42, z0: -17.5, x1: 42, z1: 0.8, w: 7, h0: 0, h1: 7, stairs: true },
             { k: 'climb', x: 43.75, z: 17.2, face: 0, look: 'wall' }, { k: 'climb', x: 59.2, z: 8.75, face: 270, look: 'chain' },
+            /* THE BATTLE MAP POLISH (2026-11-10): THE CANYON is the board. The 12 squares are pinned on the canyon floor under the arch, between the two mesas
+               (HQ_ARENA_RULES.within); the rock spur that cut the floor in two is opened (the `space` row), two rock walls (gen.solid, two squares each), two
+               low shelves (1.6, two squares by three) and four one-square mesa stubs (1.6) stand the same from both ends. Columns 4..7 stay clear for the 9/10/11 house rows. */
+            { k: 'space', x: 0, z: 3.5, w: 45, d: 45 },
+            { k: 'plateau', x: -17.5, z: -8.75, w: 7.3, d: 10.8, h: 3.5, edge: 0.15 }, { k: 'plateau', x: 17.5, z: 15.75, w: 7.3, d: 10.8, h: 3.5, edge: 0.15 },
+            { k: 'plateau', x: 8.75, z: -5.25, w: 3.8, d: 3.8, h: 3.5, edge: 0.15 }, { k: 'plateau', x: -8.75, z: -1.75, w: 3.8, d: 3.8, h: 3.5, edge: 0.15 }, { k: 'plateau', x: 8.75, z: 8.75, w: 3.8, d: 3.8, h: 3.5, edge: 0.15 }, { k: 'plateau', x: -8.75, z: 12.25, w: 3.8, d: 3.8, h: 3.5, edge: 0.15 },
             /* THE ARCH: a natural bridge from mesa to mesa over the canyon floor (the bridge layer — the plaza is under it) */
-            { k: 'bridge', x0: -28, z0: 5.25, x1: 24.5, z1: 5.25, w: 3.5, y: 3.2 },   // one square wide, a square onto each mesa
+            { k: 'bridge', x0: -28, z0: 5.25, x1: 24.5, z1: 5.25, w: 3.5, y: 7 },   // one square wide, a square onto each mesa
             /* THE CRATERS */
-            { k: 'dip', x: -16, z: -20, r: 12, h: -1.6 }, { k: 'dip', x: 62, z: -18, r: 7, h: -1.2 }, { k: 'dip', x: 52, z: 40, r: 9, h: -1.4 },
+            { k: 'dip', x: -16, z: -24.5, r: 12, h: -1.6 }, { k: 'dip', x: 62, z: -18, r: 7, h: -1.2 }, { k: 'dip', x: 52, z: 40, r: 9, h: -1.4 },
             /* THE PYRAMID: the lower tier (2.4) up THE GREAT STAIR on its south face or the hand-holds on its east; the upper tier (4.8) up the second flight
                off the landing, a ladder on its west face or the hand-holds on its east; a handrail down the middle of both flights */
-            { k: 'plateau', x: 35, z: -40.25, w: 28, d: 24.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 35, z0: -14, x1: 35, z1: -28.8, w: 7, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: 35, z: -40.25, w: 28, d: 24.5, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: 35, z0: -14, x1: 35, z1: -28.8, w: 7, h0: 0, h1: 3.5, stairs: true },
             { k: 'climb', x: 48.7, z: -40.25, face: 270, look: 'wall' },
-            { k: 'plateau', x: 35, z: -45.5, w: 14, d: 7, h: 4.8, edge: 0.4 }, { k: 'climb', x: 28.3, z: -43.75, face: 90, look: 'ladder' }, { k: 'climb', x: 41.7, z: -43.75, face: 270, look: 'wall' },
-            { k: 'ramp', x0: 35, z0: -31.5, x1: 35, z1: -42.8, w: 7, h0: 2.4, h1: 4.8, stairs: true },
+            { k: 'plateau', x: 35, z: -45.5, w: 14, d: 7, h: 10.5, edge: 0.4 }, { k: 'climb', x: 28.3, z: -43.75, face: 90, look: 'ladder' }, { k: 'climb', x: 41.7, z: -43.75, face: 270, look: 'wall' },
+            { k: 'ramp', x0: 35, z0: -31.5, x1: 35, z1: -42.8, w: 7, h0: 3.5, h1: 10.5, stairs: true },
             { k: 'rail', pts: [[35, -14.8, 0.13], [35, -28, 2.27]], model: 'pipe', block: false }, { k: 'rail', pts: [[35, -32.3, 2.57], [35, -41.4, 4.5]], model: 'pipe', block: false },
             /* THE ROVER BAY's mesa (2.6) on the north wall — the collar stands ON it: a stair up its east end, the hand-holds on its south face, a rope on its west */
-            { k: 'plateau', x: -8.75, z: -54.25, w: 31.5, d: 10.5, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: 24.5, z0: -56, x1: 6.2, z1: -56, w: 7, h0: 0, h1: 2.6, stairs: true },
+            { k: 'plateau', x: -8.75, z: -54.25, w: 31.5, d: 10.5, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: 24.5, z0: -56, x1: 6.2, z1: -56, w: 7, h0: 0, h1: 3.5, stairs: true },
             { k: 'climb', x: -15.75, z: -49.3, face: 0, look: 'wall' }, { k: 'climb', x: -24.2, z: -54.25, face: 90, look: 'rope' },
             /* THE FACE (6.4, the tape — a flat top: the door gun wants an open face; seen from the west mesa) */
-            { k: 'plateau', x: -43.75, z: -29.75, r: 8.75, h: 6.4, edge: 0.4 },   // 5 squares across, centred on a square
+            { k: 'plateau', x: -43.75, z: -29.75, r: 8.75, h: 10.5, edge: 0.4 },   // 5 squares across, centred on a square
             { k: 'ridge', pts: [[-68, -8], [-48, -12], [-28, -4]], w: 8, h: 1.2 },
             { k: 'rail', x0: 17.5, z0: -24.5, x1: 17.5, z1: -3.5 },
             /* THE ROVER'S TRACKS: the plaza to the mesas, the pyramid, the bay, the face's mouth */
@@ -49637,23 +49873,23 @@ const HQ_AREA_SPECS = {
             { k: 'path', pts: [[0, 16], [12, -20], [23, -55]], w: 5.2 }, { k: 'path', pts: [[0, 16], [-20, 0], [-60, -16], [-66, -28]], w: 4.8 }, { k: 'path', pts: [[12, -20], [-8, -40], [-8, -47]], w: 4.4 },
             { k: 'scatter', key: 'cave_stone', n: 10, seed: 4 }, { k: 'scatter', key: 'traffic_barrel', n: 4, seed: 7 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -28.25, z: 19.15, face: 0, y: 3.2 }, { key: 'railing_1m', x: 40.25, z: 18.3, face: 0, y: 3.2 }, { key: 'railing_1m', x: -8.75, z: -48.2, face: 0, y: 2.6 }, { key: 'riser_1', x: 12, z: 28 },
+        props: [{ key: 'railing_1m', x: -28.25, z: 19.15, face: 0, y: 7 }, { key: 'railing_1m', x: 40.25, z: 18.3, face: 0, y: 7 }, { key: 'railing_1m', x: -8.75, z: -48.2, face: 0, y: 3.5 }, { key: 'riser_1', x: 12, z: 28 },
                 /* THE BASE CAMP on the west mesa */
-                { key: 'cot', x: -50, z: 8, y: 3.2, face: 90 }, { key: 'cot', x: -50, z: 13, y: 3.2, face: 90 }, { key: 'steel_table', x: -38, z: 14.3, y: 3.2 }, { key: 'crt_terminal', x: -38, z: 14.3, y: 3.96 }, { key: 'retro_radio', x: -38, z: 13.5, y: 3.96 },
-                { key: 'folding_chair', x: -38, z: 16.3, y: 3.2, face: 0 }, { key: 'sea_chest', x: -44, z: 18, y: 3.2 }, { key: 'mini_fridge', x: -52, z: 18, y: 3.2 }, { key: 'cardboard_boxes', x: -32, z: 6, y: 3.2 }, { key: 'flood_mast', x: -48, z: 4, y: 3.2 },
-                { key: 'signpost', x: -28.75, z: 17.05, y: 3.2 }, { key: 'brass_telescope', x: -27, z: 12, y: 3.2, face: 270 },
+                { key: 'cot', x: -50, z: 8, y: 7, face: 90 }, { key: 'cot', x: -50, z: 13, y: 7, face: 90 }, { key: 'steel_table', x: -38, z: 14.3, y: 7 }, { key: 'crt_terminal', x: -38, z: 14.3, y: 7.76 }, { key: 'retro_radio', x: -38, z: 13.5, y: 7.76 },
+                { key: 'folding_chair', x: -38, z: 16.3, y: 7, face: 0 }, { key: 'sea_chest', x: -44, z: 18, y: 7 }, { key: 'mini_fridge', x: -52, z: 18, y: 7 }, { key: 'cardboard_boxes', x: -32, z: 6, y: 7 }, { key: 'flood_mast', x: -48, z: 4, y: 7 },
+                { key: 'signpost', x: -28.75, z: 17.05, y: 7 }, { key: 'brass_telescope', x: -27, z: 12, y: 7, face: 270 },
                 /* THE SURVEY on the east mesa */
-                { key: 'flood_mast', x: 52, z: 4, y: 3.2 }, { key: 'iso_tank', x: 28, z: 12, y: 3.2 }, { key: 'iso_tank', x: 31, z: 13, y: 3.2 }, { key: 'warning_tape', x: 48, z: 14 }, { key: 'signpost', x: 26.25, z: 1.75, y: 3.2 }, { key: 'sea_chest', x: 33.25, z: 1.75, y: 3.2 },
-                { key: 'cave_stone', x: 48, z: 8, y: 3.2 },
+                { key: 'flood_mast', x: 52, z: 4, y: 7 }, { key: 'iso_tank', x: 28, z: 12, y: 7 }, { key: 'iso_tank', x: 31, z: 13, y: 7 }, { key: 'warning_tape', x: 48, z: 14 }, { key: 'signpost', x: 26.25, z: 1.75, y: 7 }, { key: 'sea_chest', x: 33.25, z: 1.75, y: 7 },
+                { key: 'cave_stone', x: 48, z: 8, y: 7 },
                 /* THE ROVER BAY on the collar's mesa */
-                { key: 'mars_rover', x: -16, z: -54, y: 2.6, face: 100 }, { key: 'cardboard_boxes', x: 0, z: -57, y: 2.6 }, { key: 'sea_chest', x: -22, z: -57, y: 2.6 }, { key: 'iso_tank', x: 3, z: -51, y: 2.6 }, { key: 'warning_tape', x: 8, z: -48 },
+                { key: 'mars_rover', x: -16, z: -54, y: 3.5, face: 100 }, { key: 'cardboard_boxes', x: 0, z: -57, y: 3.5 }, { key: 'sea_chest', x: -22, z: -57, y: 3.5 }, { key: 'iso_tank', x: 3, z: -51, y: 3.5 }, { key: 'warning_tape', x: 8, z: -48 },
                 { key: 'flood_mast', x: 26.25, z: -57.75 }, { key: 'traffic_cone', x: 22, z: -51 }, { key: 'traffic_cone', x: 16, z: -51 },
                 /* THE PYRAMID's camp and the canyon floor */
                 { key: 'signpost', x: 29.75, z: -12.25 }, { key: 'campfire', x: 16, z: 24 }, { key: 'mars_rover', x: 10, z: 24, face: 220 }, { key: 'signpost', x: -6, z: 28 }, { key: 'lesson_sign', x: -12, z: 20, face: 180, lesson: 'climb' },
-                { key: 'cave_stone', x: 36, z: -45.6, y: 4.8 }, { key: 'flood_mast', x: 52, z: -52 }, { key: 'cardboard_boxes', x: 47.25, z: -33.25, y: 2.4 }, { key: 'folding_chair', x: 43.75, z: -47.25, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 22.75, z: -26.25 },
+                { key: 'cave_stone', x: 36, z: -45.6, y: 10.5 }, { key: 'flood_mast', x: 52, z: -52 }, { key: 'cardboard_boxes', x: 47.25, z: -33.25, y: 3.5 }, { key: 'folding_chair', x: 43.75, z: -47.25, y: 3.5, face: 0 }, { key: 'traffic_barrel', x: 22.75, z: -26.25 },
                 { key: 'cave_stone', x: -56, z: -20 }, { key: 'cave_stone', x: -60, z: -40 }, { key: 'cinder_block', x: -64, z: 36 }, { key: 'traffic_cone', x: -4, z: -52 }, { key: 'cave_stone', x: 60, z: 28 }],
-        npcSpots: [{ x: 6, z: 12, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 37, z: -44, y: 4.8, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' },
-                   { x: -44, z: 10, y: 3.2, face: 90, race: 'grey', say: '“The face is a face from up here. From the ground it is a hill. From orbit it is a face again. Pick one.”' },
+        npcSpots: [{ x: 6, z: 12, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 37, z: -44, y: 10.5, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' },
+                   { x: -44, z: 10, y: 7, face: 90, race: 'grey', say: '“The face is a face from up here. From the ground it is a hill. From orbit it is a face again. Pick one.”' },
                    { x: -60, z: -24, face: 60, race: 'martian', say: '“The mouth goes to the Moon. Do not ask which side.”' }],
         lines: ['“The dust is finer on the far side.” “Of what?”'] },
     /* ROOM 1969 · THE MOON · THE MARE (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the sea of dust round THE BIG CRATER, THE LANDER
@@ -49661,10 +49897,14 @@ const HQ_AREA_SPECS = {
        north wall with the ship's collar standing ON it (a stair, a ladder, a rope — a door you climb to) and THE CATWALK from it to THE ANTENNA
        PLATFORM under THE RIM (the tape — the door gun's, seen from the platform), THE OVERLOOK mound over the crater, and THE FAR SIDE: a draught
        in the west wall that comes out under the Face on Mars. Every tier is reached two ways. */
-    prebuilt_moon: { part: 'mare', label: 'THE MARE', sub: 'THE LANDER · THE CRATER · THE TERRACE · THE RIM', w: 132, d: 112, night: 1, look: 'tell', fogD: 0.014,
+    prebuilt_moon: { levelM: 3.5, part: 'mare', label: 'THE MARE', sub: 'THE LANDER · THE CRATER · THE TERRACE · THE RIM', w: 132, d: 112, night: 1, look: 'tell', fogD: 0.014,
         parti: 'A sea of dust round one big crater; the lander in the middle, the collar on a terrace you climb to, the rim over everything and the far side under the west wall.', typology: 'bowl',
         floor: 'moon', cliff: 'moon_3', path: 'moon_2', floorColor: 0xc8ccd8, cliffColor: 0x989cb0,
-        gen: { kind: 'plan', look: 'rock', keep: true, wallH: 2, rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, open: [{ x: -60, z: 24, r: 10 }] }, noise: { amp: 0.14, scale: 12 },
+        /* THE BATTLE MAP POLISH (2026-11-10): THE CRATER is the board. The big crater is a real bowl now (its dip row read as a 2.4 m mound: a `dip` takes a
+           POSITIVE h), the 12 squares are pinned on its centre (HQ_ARENA_RULES.within), the two rock spurs that stood in the bowl are opened, and six moon
+           boulders (gen.solid, one square each, the same from both ends) stand on the plain round it. Columns 4..7 stay clear for the 9/10/11 house rows. */
+        gen: { kind: 'plan', look: 'rock', keep: true, wallH: 2, rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, open: [{ x: -60, z: 24, r: 10 }, { x: 36.75, z: 14, r: 3.4 }, { x: 50.75, z: 12.25, r: 2.6 }],
+               solid: [{ x: 15.75, z: -12.25, r: 1.72 }, { x: 47.25, z: -12.25, r: 1.72 }, { x: 15.75, z: 19.25, r: 1.72 }, { x: 47.25, z: 19.25, r: 1.72 }, { x: 12.25, z: 5.25, r: 1.72 }, { x: 50.75, z: 1.75, r: 1.72 }] }, noise: { amp: 0.14, scale: 12 },
         plaza: { x: 0, z: 16 }, plazaR: 11,
         features: [
             /* THE BIG CRATER (a bowl the walker drops into and climbs out of) and THE SMALL CRATER */
@@ -49687,24 +49927,24 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[-10, -52.8], [-15.28, -46.08], [-17.7, -36.92], [-33.24, -38.94], [-32.18, -26.82]], w: 6.06 },
             { k: 'hall', pts: [[20.76, -24.5], [11.48, -17], [16.76, -7], [12.72, 1.4], [14.66, 10.84]], w: 7.12 },
             { k: 'hall', pts: [[47.42, 33.74], [38.52, 29.04], [25.2, 30.64], [16.18, 26.1], [14.66, 10.84]], w: 6.88 },
-            { k: 'dip', x: 34, z: 4, r: 18, h: -2.4 }, { k: 'dip', x: -40, z: -34, r: 9, h: -1.4 },
+            { k: 'dip', x: 31.5, z: 3.5, r: 11, h: 0.9 }, { k: 'ridge', pts: [[22.75, -5.25], [19.25, -1.75], [19.25, 1.75], [19.25, 5.25], [19.25, 8.75], [22.75, 12.25]], w: 5.2, h: 3.5 }, { k: 'ridge', pts: [[40.25, 12.25], [43.75, 8.75], [43.75, 5.25], [43.75, 1.75], [43.75, -1.75], [40.25, -5.25]], w: 5.2, h: 3.5 }, { k: 'dip', x: -40, z: -34, r: 9, h: -1.4 },
             /* THE LANDING PAD (1.3): the steps up from the west, a ladder on its south face — THE LANDER stands on it */
-            { k: 'plateau', x: -5.25, z: -8.75, r: 8.75, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -21, z0: -7, x1: -11.9, z1: -7, w: 7, h0: 0, h1: 1.3, stairs: true, model: 'concrete' }, { k: 'climb', x: -5.25, z: -0.3, face: 0, look: 'ladder' },   // GRID FIT (2026-10-26): 5 squares across on a square's centre, the steps 2 squares wide on its lines
+            { k: 'plateau', x: -5.25, z: -8.75, r: 8.75, h: 3.5, edge: 0.35 }, { k: 'ramp', x0: -21, z0: -7, x1: -11.9, z1: -7, w: 7, h0: 0, h1: 3.5, stairs: true, model: 'concrete' }, { k: 'climb', x: -5.25, z: -0.3, face: 0, look: 'ladder' },   // GRID FIT (2026-10-26): 5 squares across on a square's centre, the steps 2 squares wide on its lines
             /* THE BOULDER SHELF (1.4): a ramp from the east, the hand-holds on its north face — THE HABITAT stands on it */
-            { k: 'plateau', x: -36.75, z: 19.25, r: 12.25, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -10.5, z0: 21, x1: -26.2, z1: 21, w: 7, h0: 0, h1: 1.4 }, { k: 'climb', x: -36.75, z: 7.3, face: 180, look: 'wall' },
+            { k: 'plateau', x: -36.75, z: 19.25, r: 12.25, h: 3.5, edge: 0.35 }, { k: 'ramp', x0: -10.5, z0: 21, x1: -26.2, z1: 21, w: 7, h0: 0, h1: 3.5 }, { k: 'climb', x: -36.75, z: 7.3, face: 180, look: 'wall' },
             /* THE DISH's platform (3.4): a steel stair up its south side, a ladder on its north face, a chain on its east */
-            { k: 'plateau', x: -50.75, z: -12.25, r: 5.25, h: 3.4, edge: 0.35 }, { k: 'climb', x: -50.75, z: -17.2, face: 180, look: 'ladder' }, { k: 'climb', x: -45.8, z: -12.25, face: 270, look: 'chain' },
-            { k: 'ramp', x0: -50.75, z0: 10.5, x1: -50.75, z1: -7.9, w: 3.5, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
+            { k: 'plateau', x: -50.75, z: -12.25, r: 5.25, h: 7, edge: 0.35 }, { k: 'climb', x: -50.75, z: -17.2, face: 180, look: 'ladder' }, { k: 'climb', x: -45.8, z: -12.25, face: 270, look: 'chain' },
+            { k: 'ramp', x0: -50.75, z0: 10.5, x1: -50.75, z1: -7.9, w: 3.5, h0: 0, h1: 7, stairs: true, model: 'fire_escape' },
             /* THE TERRACE (2.4) on the north wall — the collar stands ON it: the stair up its south face, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -10.5, z: -50.75, w: 28, d: 10.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -10.5, z0: -24.5, x1: -10.5, z1: -46.9, w: 7, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: -10.5, z: -50.75, w: 28, d: 10.5, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -10.5, z0: -24.5, x1: -10.5, z1: -46.9, w: 7, h0: 0, h1: 3.5, stairs: true },
             { k: 'climb', x: 3.2, z: -50.75, face: 270, look: 'ladder' }, { k: 'climb', x: -24.2, z: -50.75, face: 90, look: 'rope' },
             /* THE ANTENNA PLATFORM (2.4) under THE RIM, a ladder on its south face; THE CATWALK from the terrace to it (the bridge layer) */
-            { k: 'plateau', x: 33.25, z: -50.75, r: 5.25, h: 2.4, edge: 0.35 }, { k: 'climb', x: 33.25, z: -45.8, face: 0, look: 'ladder' },
-            { k: 'bridge', x0: 0, z0: -50.75, x1: 31.5, z1: -50.75, w: 3.5, y: 2.4 },   // one square wide, a square onto the terrace and onto the platform
+            { k: 'plateau', x: 33.25, z: -50.75, r: 5.25, h: 3.5, edge: 0.35 }, { k: 'climb', x: 33.25, z: -45.8, face: 0, look: 'ladder' },
+            { k: 'bridge', x0: 0, z0: -50.75, x1: 31.5, z1: -50.75, w: 3.5, y: 3.5 },   // one square wide, a square onto the terrace and onto the platform
             /* THE RIM (5.6, the tape — the door gun's; seen from the antenna platform) */
-            { k: 'plateau', x: 31.5, z: -36.75, w: 42, d: 10.5, h: 5.6, edge: 0.4 },
+            { k: 'plateau', x: 31.5, z: -36.75, w: 42, d: 10.5, h: 10.5, edge: 0.4 },
             /* THE OVERLOOK (3.0) over the big crater: a ramp from the west, a rope on its north face */
-            { k: 'plateau', x: 52.5, z: 31.5, r: 7, h: 3.0, edge: 0.35 }, { k: 'ramp', x0: 28, z0: 31.5, x1: 46.9, z1: 31.5, w: 7, h0: 0, h1: 3.0 }, { k: 'climb', x: 52.5, z: 24.8, face: 180, look: 'rope' },
+            { k: 'plateau', x: 52.5, z: 31.5, r: 7, h: 7, edge: 0.35 }, { k: 'ramp', x0: 28, z0: 31.5, x1: 46.9, z1: 31.5, w: 7, h0: 0, h1: 7 }, { k: 'climb', x: 52.5, z: 24.8, face: 180, look: 'rope' },
             /* THE MASS DRIVER's rail (the grind) along the south and THE RIDGE in the north-west */
             { k: 'wall', x0: -56, z0: 45.5, x1: -17.5, z1: 45.5, h: 0.9, t: 0.6, key: 'moon_3' },
             { k: 'ridge', pts: [[-66, -44], [-52, -50], [-38, -42]], w: 10, h: 1.6 },
@@ -49713,30 +49953,30 @@ const HQ_AREA_SPECS = {
             { k: 'path', pts: [[-10, -4], [-24, -8], [-48, -20]], w: 4.8 }, { k: 'path', pts: [[-10, -27], [12, -44], [32, -45]], w: 4.4 }, { k: 'path', pts: [[-16, 20], [-32, 36], [-36, 42]], w: 4.4 },
             { k: 'scatter', key: 'cave_stone', n: 12, seed: 69 }, { k: 'scatter', key: 'traffic_cone', n: 4, seed: 11 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -36.75, z: 30.3, face: 180, y: 1.4 }, { key: 'railing_1m', x: -10.5, z: -44.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 52.5, z: 37.7, face: 180, y: 3.0 }, { key: 'riser_1', x: 12, z: 28 },
+        props: [{ key: 'railing_1m', x: -36.75, z: 30.3, face: 180, y: 3.5 }, { key: 'railing_1m', x: -10.5, z: -44.7, face: 0, y: 3.5 }, { key: 'railing_1m', x: 52.5, z: 37.7, face: 180, y: 7 }, { key: 'riser_1', x: 12, z: 28 },
                 /* THE LANDER on its pad, the flag, the rover */
-                { key: 'lunar_lander', x: -5.25, z: -8.75, y: 1.3, face: 200 }, { key: 'signpost', x: 1.75, z: -12.25, y: 1.3 }, { key: 'mars_rover', x: 12.25, z: 22.75, face: 250 }, { key: 'cardboard_boxes', x: -8.75, z: -1.75, y: 1.3 },
+                { key: 'lunar_lander', x: -5.25, z: -8.75, y: 3.5, face: 200 }, { key: 'signpost', x: 1.75, z: -12.25, y: 3.5 }, { key: 'mars_rover', x: 12.25, z: 22.75, face: 250 }, { key: 'cardboard_boxes', x: -8.75, z: -1.75, y: 3.5 },
                 /* THE HABITAT on the boulder shelf */
-                { key: 'cot', x: -43.25, z: 15.25, y: 1.4, face: 90 }, { key: 'cot', x: -44, z: 21, y: 1.4, face: 90 }, { key: 'steel_table', x: -30.875, z: 25.125, y: 1.4 }, { key: 'crt_terminal', x: -30.875, z: 25.125, y: 2.16 }, { key: 'retro_radio', x: -32, z: 22.4, y: 2.16 },
-                { key: 'folding_chair', x: -30.875, z: 27.125, y: 1.4, face: 0 }, { key: 'mini_fridge', x: -40, z: 27, y: 1.4 }, { key: 'sea_chest', x: -28, z: 16, y: 1.4 }, { key: 'iso_tank', x: -38, z: 12, y: 1.4 }, { key: 'iso_tank', x: -41.75, z: 13.75, y: 1.4 },
-                { key: 'flood_mast', x: -29.75, z: 26.25, y: 1.4 }, { key: 'lesson_sign', x: -16, z: 24, face: 90, lesson: 'climb' },
+                { key: 'cot', x: -43.25, z: 15.25, y: 3.5, face: 90 }, { key: 'cot', x: -44, z: 21, y: 3.5, face: 90 }, { key: 'steel_table', x: -30.875, z: 25.125, y: 3.5 }, { key: 'crt_terminal', x: -30.875, z: 25.125, y: 4.26 }, { key: 'retro_radio', x: -32, z: 22.4, y: 4.26 },
+                { key: 'folding_chair', x: -30.875, z: 27.125, y: 3.5, face: 0 }, { key: 'mini_fridge', x: -40, z: 27, y: 3.5 }, { key: 'sea_chest', x: -28, z: 16, y: 3.5 }, { key: 'iso_tank', x: -38, z: 12, y: 3.5 }, { key: 'iso_tank', x: -41.75, z: 13.75, y: 3.5 },
+                { key: 'flood_mast', x: -29.75, z: 26.25, y: 3.5 }, { key: 'lesson_sign', x: -16, z: 24, face: 90, lesson: 'climb' },
                 /* THE DISH on its platform, the terrace, the antenna, the overlook */
-                { key: 'flood_mast', x: -50.75, z: -12.25, y: 3.4 }, { key: 'sea_chest', x: -54.25, z: -12.25, y: 3.4 }, { key: 'cardboard_boxes', x: -18, z: -54, y: 2.4 }, { key: 'sea_chest', x: 0, z: -54, y: 2.4 }, { key: 'iso_tank', x: -6, z: -55, y: 2.4 },
-                { key: 'warning_tape', x: -16, z: -46 }, { key: 'flood_mast', x: 33.25, z: -50.75, y: 2.4 }, { key: 'brass_telescope', x: 54.25, z: 33.25, y: 3.0, face: 270 }, { key: 'cave_stone', x: 32, z: -36, y: 5.6 },
+                { key: 'flood_mast', x: -50.75, z: -12.25, y: 7 }, { key: 'sea_chest', x: -54.25, z: -12.25, y: 7 }, { key: 'cardboard_boxes', x: -18, z: -54, y: 3.5 }, { key: 'sea_chest', x: 0, z: -54, y: 3.5 }, { key: 'iso_tank', x: -6, z: -55, y: 3.5 },
+                { key: 'warning_tape', x: -16, z: -46 }, { key: 'flood_mast', x: 33.25, z: -50.75, y: 3.5 }, { key: 'brass_telescope', x: 54.25, z: 33.25, y: 7, face: 270 }, { key: 'cave_stone', x: 32, z: -36, y: 10.5 },
                 /* the floor */
                 { key: 'signpost', x: -6, z: 28 }, { key: 'signpost', x: 24, z: 36 }, { key: 'traffic_barrel', x: -20, z: -24 }, { key: 'traffic_barrel', x: -16, z: 38 }, { key: 'traffic_barrel', x: 40, z: -24 }, { key: 'warning_tape', x: -60, z: 28 },
                 { key: 'cave_stone', x: -56, z: 40 }, { key: 'cave_stone', x: 52, z: 48 }, { key: 'cave_stone', x: 60, z: -16 }, { key: 'cave_stone', x: -40, z: -34 }, { key: 'cinder_block', x: 8, z: 44 }, { key: 'traffic_cone', x: -15.75, z: -30.25 }],
-        npcSpots: [{ x: -6, z: 24, face: 30, race: 'grey', say: '“The footprint was there in the previous frame. You were not.”' }, { x: -40, z: 24, y: 1.4, face: 90, race: 'men in black', say: '“The habitat is rated for six. There are two of us. Do not ask about the other four.”' },
-                   { x: 33.25, z: -50.75, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -56, z: 28, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
+        npcSpots: [{ x: -6, z: 24, face: 30, race: 'grey', say: '“The footprint was there in the previous frame. You were not.”' }, { x: -40, z: 24, y: 3.5, face: 90, race: 'men in black', say: '“The habitat is rated for six. There are two of us. Do not ask about the other four.”' },
+                   { x: 33.25, z: -50.75, y: 3.5, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -56, z: 28, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
         lines: ['“One small step.” “For whom?”'] },
     /* ROOM 23 · BOHEMIAN GROVE · THE GROVE (AREA CONTENT D3, 2026-09-19 — brought up to the cave): THE LAKE in the redwoods with THE STAGE across
        it (a ramp and a vine), THE MOUND up its stair or its vine with THE OWL over it (the tape — the door gun's, seen from the stage), THE WEST
        TERRACE with the owl's gate standing ON it (a stair and a rope — a door you climb to), THE TREEHOUSE (a ladder and a vine), THE CREEK under
        the fallen redwood, THE DOCK onto the lake, THE CAMP's tents, and THE MEMBERS' TUNNEL: a draught in the east wall to the Lodge. */
-    prebuilt_bohemian_grove: { part: 'grove', label: 'THE GROVE', sub: 'THE LAKE · THE STAGE · THE MOUND · THE OWL', w: 132, d: 116, night: 1, look: 'woods', fogD: 0.028,
+    prebuilt_bohemian_grove: { levelM: 3.5, part: 'grove', label: 'THE GROVE', sub: 'THE LAKE · THE STAGE · THE MOUND · THE OWL', w: 132, d: 116, night: 1, look: 'woods', fogD: 0.028,
         parti: 'A lake in the redwoods you walk round: the stage across it, the owl over it, the members\' gate up a terrace, and a tunnel under the lawn nobody admits to.', typology: 'ring',
         floor: 'grass_2', cliff: 'dirt', path: 'dirt', floorColor: 0x6a9458, cliffColor: 0x8a7458,
-        gen: { kind: 'plan', look: 'trees', keep: true, kinds: ['tree_3','tree','tree_3','tree_2'], rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, spacing: 3, treeGap: 2.5, depth: 3, maxTrees: 330, open: [{ x: 60, z: 24, r: 10 }] }, noise: { amp: 0.14, scale: 16 },
+        gen: { kind: 'plan', look: 'trees', keep: true, kinds: ['tree_3','tree','tree_3','tree_2'], rim: 2.4, forceGrow: 1.6, pathGrow: 2.2, spacing: 3, treeGap: 2.5, depth: 3, maxTrees: 330, open: [{ x: 60, z: 24, r: 10 }, { x: -10.5, z: -17.5, r: 30 }] }, noise: { amp: 0.14, scale: 16 },
         forest: { depth: 12, spacing: 3.0, rows: 2.6, start: 1.6, kinds: ['tree_3', 'tree', 'tree_2'] },
         plaza: { x: 0, z: 16 }, plazaR: 11,
         features: [
@@ -49764,63 +50004,68 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[-7.28, -12.46], [-16.74, -9.08], [-27.08, -7.38], [-35.52, -2], [-42.6, 5.94]], w: 6.56 },
             { k: 'hall', pts: [[-26.3, 29.12], [-18.86, 37.58], [-7.34, 36.88], [0.52, 44.34], [11.08, 45.82]], w: 5.04 },
             { k: 'hall', pts: [[50.02, 29.92], [36.18, 23.82], [26.24, 27.32], [23.32, 48], [11.08, 45.82]], w: 5.02 },
-            { k: 'pool', x: 16, z: -16, r: 18, rz: 12, depth: 1.0, key: 'water', bank: 2.4 },
-            { k: 'stream', pts: [[-66, -52], [-40, -48], [-16, -36], [-2, -26]], w: 4, depth: 0.6, key: 'water' },
+            /* THE BATTLE MAP POLISH (2026-11-10, mondo: "AAA presentation and polish"): BETWEEN THE MOUND AND THE LAKE. The fight's board
+               (x -31.5..10.5, z -38.5..3.5, HQ_ARENA_RULES.within) is alike from both spawn rows: THE MOUND is a long ridge down the
+               whole west flank (a second lobe south of the first, the stair moved to its new south end), THE LAKE lies on the east
+               flank about the board's middle line with a jetty either side of it, the land between them holds the nexus. The old
+               board had the mound and the lake on one team's side and a bare lawn on the other's. */
+            { k: 'pool', x: 18, z: -17.5, r: 18, rz: 12, depth: 1.0, key: 'water', bank: 2.4 },
+            { k: 'stream', pts: [[-66, -52], [-40, -48], [-24, -42]], w: 4, depth: 0.6, key: 'water' },   // THE CREEK now ends north of the board (it crossed one team's corner)
             { k: 'deck', x0: -26.25, z0: -52.5, x1: -26.25, z1: -38.5, w: 3.5, y: 0.35 },
-            { k: 'deck', x0: -3.5, z0: -8.75, x1: 10.5, z1: -8.75, w: 3.5, y: 0.3 },
+            { k: 'deck', x0: -3.5, z0: -22.75, x1: 10.5, z1: -22.75, w: 3.5, y: 0.3 }, { k: 'deck', x0: -3.5, z0: -12.25, x1: 10.5, z1: -12.25, w: 3.5, y: 0.3 },   // the two jetties (8..11 x 4 and 7)
             /* THE STAGE (1.4) across the water: the ramp from the east, a vine on its south face */
-            { k: 'plateau', x: 14, z: -42, w: 28, d: 14, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: 38.5, z0: -42, x1: 28, z1: -42, w: 8.2, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.2 }, { k: 'climb', x: 12.25, z: -35.3, face: 0, look: 'vine' },
-            { k: 'rail', x0: 1, z0: -35.3, x1: 10.5, z1: -35.3, model: 'ranch' }, { k: 'rail', x0: 17.5, z0: -35.3, x1: 27.2, z1: -35.3, model: 'ranch' },   // the stage's front rail (open at the vine and the lectern)
+            { k: 'plateau', x: 14, z: -45.5, w: 28, d: 14, h: 3.5, edge: 0.35 }, { k: 'ramp', x0: 38.5, z0: -45.5, x1: 28, z1: -45.5, w: 8.2, h0: 0, h1: 3.5, stairs: true, model: 'wood', edge: 0.2 }, { k: 'climb', x: 12.25, z: -38.8, face: 0, look: 'vine' },   // a square north (off the board's corner)
+            { k: 'rail', x0: 1, z0: -38.8, x1: 10.5, z1: -38.8, model: 'ranch' }, { k: 'rail', x0: 17.5, z0: -38.8, x1: 27.2, z1: -38.8, model: 'ranch' },   // the stage's front rail (open at the vine and the lectern)
             /* THE MOUND (2.6): the stair up its south side, a vine on its east face, a rope on its north; THE OWL (6.4, the tape) on it */
-            { k: 'plateau', x: -35, z: -24.5, r: 14.9, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -35, z0: 3.5, x1: -35, z1: -10.5, w: 7, h0: 0, h1: 2.6, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'rail', pts: [[-35, 2.7, 0.15], [-35, -9.7, 2.45]], model: 'pipe', block: false },   // its centre handrail
+            { k: 'plateau', x: -35, z: -24.5, r: 14.9, h: 3.5, edge: 0.4 }, { k: 'plateau', x: -35, z: -10.5, r: 14.9, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -35, z0: 17.5, x1: -35, z1: 3.5, w: 7, h0: 0, h1: 3.5, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', pts: [[-35, 16.7, 0.15], [-35, 4.3, 3.3]], model: 'pipe', block: false },   // its centre handrail
             /* a ranch rail round the mound's rim, open at the stair, the vine, the rope and the log bridge */
-            { k: 'rail', arc: { x: -35, z: -24.5, r: 13.5, a0: 20, a1: 70 }, model: 'ranch' }, { k: 'rail', arc: { x: -35, z: -24.5, r: 13.5, a0: 110, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: -35, z: -24.5, r: 13.5, a0: 250, a1: 340 }, model: 'ranch' },
+            { k: 'rail', arc: { x: -35, z: -10.5, r: 13.5, a0: 20, a1: 70 }, model: 'ranch' }, { k: 'rail', arc: { x: -35, z: -24.5, r: 13.5, a0: 110, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: -35, z: -24.5, r: 13.5, a0: 250, a1: 340 }, model: 'ranch' },
             { k: 'climb', x: -20.7092, z: -22.6878, face: 270, look: 'vine' }, { k: 'climb', x: -36.7926, z: -38.9433, face: 180, look: 'rope' },
-            { k: 'plateau', x: -36.75, z: -26.25, r: 5.55, h: 6.4, edge: 0.4 },
+            { k: 'plateau', x: -36.75, z: -26.25, r: 5.55, h: 7, edge: 0.4 },
             /* THE WEST TERRACE (2.2) on the west wall — the owl's gate stands ON it: the stair from the north, a rope on its south face */
-            { k: 'plateau', x: -59.5, z: -1.75, w: 15.8, d: 26.3, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -59.5, z0: -31.5, x1: -59.5, z1: -14, w: 7, h0: 0, h1: 2.2, stairs: true, model: 'forest', edge: 0.2 }, { k: 'climb', x: -57.75, z: 11.05, face: 0, look: 'rope' },
+            { k: 'plateau', x: -59.5, z: -1.75, w: 15.8, d: 26.3, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -59.5, z0: -31.5, x1: -59.5, z1: -14, w: 7, h0: 0, h1: 3.5, stairs: true, model: 'forest', edge: 0.2 }, { k: 'climb', x: -57.75, z: 11.05, face: 0, look: 'rope' },
             /* THE LOG BRIDGE (2026-10-05): from the mound's south-west rim over the lawn to the terrace's north-east corner, ranch rails either side */
-            { k: 'bridge', x0: -38.5, z0: -12.25, x1: -56, z1: -12.25, w: 3.5, y: 2.4, key: 'wood_planks', rails: false },
-            { k: 'rail', x0: -42, z0: -13.8, x1: -52.8, z1: -13.8, y: 2.4, model: 'ranch' }, { k: 'rail', x0: -42, z0: -10.7, x1: -52.8, z1: -10.7, y: 2.4, model: 'ranch' },
+            { k: 'bridge', x0: -49.4, z0: -12.25, x1: -56, z1: -12.25, w: 3.5, y: 3.5, key: 'wood_planks', rails: false },
+            { k: 'rail', x0: -49.6, z0: -13.8, x1: -52.8, z1: -13.8, y: 3.5, model: 'ranch' }, { k: 'rail', x0: -49.6, z0: -10.7, x1: -52.8, z1: -10.7, y: 3.5, model: 'ranch' },
             { k: 'rail', x0: -65.2, z0: -13.2, x1: -65.2, z1: 8.5, model: 'ranch' },
             /* THE TREEHOUSE (3.4) round the old redwood: a ladder on its west face, a vine on its south */
-            { k: 'plateau', x: 43.75, z: 26.25, r: 5.55, h: 3.4, edge: 0.35 }, { k: 'tree', x: 43.75, z: 26.25, kind: 'tree_3', h: 9, r: 0.5 }, { k: 'climb', x: 38.65, z: 26.25, face: 90, look: 'ladder' }, { k: 'climb', x: 43.75, z: 31.35, face: 0, look: 'vine' },
+            { k: 'plateau', x: 43.75, z: 26.25, r: 5.55, h: 3.5, edge: 0.35 }, { k: 'tree', x: 43.75, z: 26.25, kind: 'tree_3', h: 9, r: 0.5 }, { k: 'climb', x: 38.65, z: 26.25, face: 90, look: 'ladder' }, { k: 'climb', x: 43.75, z: 31.35, face: 0, look: 'vine' },
             /* the second treehouse (2026-10-05) a 2 m gap north of it (a rail across), up a timber stair from the west */
-            { k: 'plateau', x: 43.75, z: 12.25, r: 5.55, h: 3.4, edge: 0.35 }, { k: 'tree', x: 43.75, z: 12.25, kind: 'tree_3', h: 9, r: 0.5 },
-            { k: 'ramp', x0: 21, z0: 12.25, x1: 38.5, z1: 12.25, w: 3.5, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'rail', x0: 43.75, z0: 21.6, x1: 43.75, z1: 16.9, y: 3.4, model: 'pipe', block: false },
+            { k: 'plateau', x: 43.75, z: 12.25, r: 5.55, h: 3.5, edge: 0.35 }, { k: 'tree', x: 43.75, z: 12.25, kind: 'tree_3', h: 9, r: 0.5 },
+            { k: 'ramp', x0: 21, z0: 12.25, x1: 38.5, z1: 12.25, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', x0: 43.75, z0: 21.6, x1: 43.75, z1: 16.9, y: 3.5, model: 'pipe', block: false },
             /* THE HOLLOW east of the lake, THE FENCE along the lawn (the grind) */
             { k: 'dip', x: 48, z: 0, r: 7, h: -1.2 },
             { k: 'wall', x0: -3.5, z0: 3.5, x1: 28, z1: 3.5, h: 0.9, t: 0.4, key: 'wood' },
             /* THE TRAILS */
-            { k: 'path', pts: [[0, 16], [-36, 4], [-36, 0]], w: 4.8 }, { k: 'path', pts: [[0, 16], [-24, 12], [-55, -16], [-59, -26]], w: 4.8 }, { k: 'path', pts: [[0, 16], [36, 8], [44, -24], [46, -42]], w: 4.8 },
+            { k: 'path', pts: [[0, 16], [-30, 20], [-36, 18]], w: 4.8 }, { k: 'path', pts: [[0, 16], [-24, 12], [-55, -16], [-59, -26]], w: 4.8 }, { k: 'path', pts: [[0, 16], [36, 8], [44, -24], [46, -42]], w: 4.8 },
             { k: 'path', pts: [[0, 16], [-18, 0], [-28, -20], [-28, -54], [-12, -54]], w: 4.8 }, { k: 'path', pts: [[0, 16], [36, 16], [44, 28], [60, 24]], w: 4.8 }, { k: 'path', pts: [[36, 16], [40, 36]], w: 4 },
             /* THE SCREEN (R3): redwoods on the west terrace's two sightlines — the bay's and the tunnel's — so the owl's gate sees one door at most */
             { k: 'tree', x: -29.75, z: 26.25, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: -26.25, z: 33.25, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: 50.75, z: 22.75, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: 54.25, z: 22.75, kind: 'tree_3', h: 9, r: 0.6 },
             { k: 'grove', x: -48, z: 40, r: 14, n: 6, kinds: ['tree_3', 'tree_3', 'tree'] }, { k: 'grove', x: 52, z: -16, r: 12, n: 5, kinds: ['tree_3', 'tree'] },
-            { k: 'scatter', key: 'campfire', n: 2, seed: 23 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 5 }, { k: 'scatter', key: 'fern', n: 10, seed: 6 }, { k: 'scatter', key: 'stump', n: 5, seed: 9 },
+            { k: 'scatter', key: 'campfire', n: 2, seed: 23, off: [-31.5, -38.5, 10.5, 3.5] }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 5, off: [-31.5, -38.5, 10.5, 3.5] }, { k: 'scatter', key: 'fern', n: 10, seed: 6, off: [-31.5, -38.5, 10.5, 3.5] }, { k: 'scatter', key: 'stump', n: 5, seed: 9, off: [-31.5, -38.5, 10.5, 3.5] },
         ],
-        props: [{ key: 'railing_1m', x: 14, z: -34.2, face: 0, y: 1.4 }, { key: 'railing_1m', x: -54.5, z: 11.3, face: 0, y: 2.2 }, { key: 'riser_1', x: -12.25, z: 22.75 },
+        props: [{ key: 'railing_1m', x: 14, z: -37.7, face: 0, y: 3.5 }, { key: 'railing_1m', x: -54.5, z: 11.3, face: 0, y: 3.5 }, { key: 'riser_1', x: -12.25, z: 22.75 },
                 /* THE OWL's altar on the mound */
-                { key: 'stone_altar', x: -36, z: -19, y: 2.6 }, { key: 'brazier', x: -30, z: -18, y: 2.6 }, { key: 'brazier', x: -42, z: -18, y: 2.6 }, { key: 'menhir', x: -44, z: -26, y: 2.6 }, { key: 'menhir', x: -28, z: -28, y: 2.6 },
+                { key: 'stone_altar', x: -36, z: -19, y: 3.5 }, { key: 'brazier', x: -32.5, z: -18, y: 3.5 }, { key: 'brazier', x: -42, z: -18, y: 3.5 }, { key: 'menhir', x: -44, z: -26, y: 3.5 }, { key: 'menhir', x: -33, z: -30, y: 3.5 },
                 /* THE STAGE and the audience on the south bank */
-                { key: 'lectern', x: 14, z: -40, y: 1.4, face: 180 }, { key: 'retro_speakers', x: 4.5, z: -44.5, y: 1.4 }, { key: 'retro_speakers', x: 23.5, z: -44.5, y: 1.4 }, { key: 'sea_chest', x: 22.5, z: -45.5, y: 1.4 }, { key: 'retro_radio', x: 5.5, z: -45.5, y: 1.4 },
-                { key: 'folding_chair', x: -5.25, z: -1.75, face: 0 }, { key: 'folding_chair', x: -1.75, z: -1.75, face: 0 }, { key: 'folding_chair', x: 1.75, z: -1.75, face: 0 }, { key: 'folding_chair', x: 5.25, z: -1.75, face: 0 }, { key: 'folding_chair', x: 8.75, z: -1.75, face: 0 }, { key: 'folding_chair', x: 12.25, z: -1.75, face: 0 },
+                { key: 'lectern', x: 14, z: -43.5, y: 3.5, face: 180 }, { key: 'retro_speakers', x: 4.5, z: -48, y: 3.5 }, { key: 'retro_speakers', x: 23.5, z: -48, y: 3.5 }, { key: 'sea_chest', x: 22.5, z: -49, y: 3.5 }, { key: 'retro_radio', x: 5.5, z: -49, y: 3.5 },
+                { key: 'folding_chair', x: -5.25, z: 5.25, face: 0 }, { key: 'folding_chair', x: -1.75, z: 5.25, face: 0 }, { key: 'folding_chair', x: 1.75, z: 5.25, face: 0 }, { key: 'folding_chair', x: 5.25, z: 5.25, face: 0 }, { key: 'folding_chair', x: 8.75, z: 5.25, face: 0 }, { key: 'folding_chair', x: 12.25, z: 5.25, face: 0 },
                 { key: 'park_bench', x: 8.75, z: 22.75, face: 180 }, { key: 'park_bench', x: -12.25, z: 8.75, face: 0 }, { key: 'park_bench', x: 28, z: 24, face: 270 }, { key: 'park_bench', x: -48, z: 16, face: 90 },
                 /* THE CAMP east of the lawn: the members' tents */
                 { key: 'camping_tent', x: 40, z: 44, face: 200 }, { key: 'camping_tent', x: 52, z: 40, face: 230 }, { key: 'camping_tent', x: 48, z: 52, face: 180 }, { key: 'campfire', x: 44, z: 40 }, { key: 'carnival_tent', x: -30, z: 30, face: 90 }, { key: 'cardboard_boxes', x: 56, z: 48 }, { key: 'sea_chest', x: 36, z: 50 },
                 { key: 'ticket_booth', x: 8, z: 48, face: 180 }, { key: 'signpost', x: -5.25, z: 29.75 }, { key: 'signpost', x: -22.75, z: 8.75 }, { key: 'signpost', x: 22.8, z: 8.4 }, { key: 'lesson_sign', x: 12.25, z: 26.25, face: 180, lesson: 'climb' },
                 /* THE TREEHOUSE, THE DOCK, the creek */
-                { key: 'brass_telescope', x: 46.75, z: 24.25, y: 3.4, face: 180 }, { key: 'sea_chest', x: 41.35, z: 28.65, y: 3.4 }, { key: 'wooden_cross', x: -24, z: -44 }, { key: 'stump', x: -32, z: -54 }, { key: 'fallen_log', x: 52, z: -4 },
+                { key: 'brass_telescope', x: 46.75, z: 24.25, y: 3.5, face: 180 }, { key: 'sea_chest', x: 41.35, z: 28.65, y: 3.5 }, { key: 'wooden_cross', x: -24, z: -44 }, { key: 'stump', x: -32, z: -54 }, { key: 'fallen_log', x: 52, z: -4 },
                 { key: 'cave_stone', x: -56, z: -40 }, { key: 'cave_stone', x: 60, z: -28 }, { key: 'campfire', x: -52, z: 24 }, { key: 'signpost', x: 58, z: 20 }],
-        npcSpots: [{ x: -6, z: 24, face: 30, race: 'politician', say: '“Weaving spiders, come not here.”' }, { x: 14, z: -40, y: 1.4, face: 0, race: 'fortune teller', say: '“The owl blinks once. Count from there.”' },
-                   { x: 44, z: 36, face: 300, race: 'politician', say: '“The tunnel under the lawn goes to the Lodge. There is no tunnel under the lawn.”' }, { x: -56, z: 4, y: 2.2, face: 90, race: 'conspiracy theorist', say: '“The owl\'s gate is up here so the owl can count you on the way out.”' }],
+        npcSpots: [{ x: -6, z: 24, face: 30, race: 'politician', say: '“Weaving spiders, come not here.”' }, { x: 14, z: -40, y: 3.5, face: 0, race: 'fortune teller', say: '“The owl blinks once. Count from there.”' },
+                   { x: 44, z: 36, face: 300, race: 'politician', say: '“The tunnel under the lawn goes to the Lodge. There is no tunnel under the lawn.”' }, { x: -56, z: 4, y: 3.5, face: 90, race: 'conspiracy theorist', say: '“The owl\'s gate is up here so the owl can count you on the way out.”' }],
         lines: ['“Members only.” “I am a member.” “Of what?”'] },
     /* ROOM 1225 · THE NORTH POLE · THE VILLAGE (AREA CONTENT D3, 2026-09-19): THE WORKSHOP's deck runs to the west wall with the hearth ON it and
        THE LOFT up its ladder, THE FROZEN LAKE with its floes, THE ICE WALL the rider grinds, THE SLEDGE HILL under THE ICE SHELF's rope, THE DRIFT
        the sleigh road leaves from (a door you climb to) with THE POLE's cairn (the tape, the door gun's) seen from it, the gift stacks */
-    prebuilt_northpole: { grown: 2, part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE DRIFT · THE POLE', w: 128, d: 104, night: 1, look: 'white', fogD: 0.026,
+    prebuilt_northpole: { grown: 2, levelM: 3.5, ghostM: 1.75, part: 'village', label: 'THE VILLAGE', sub: 'THE WORKSHOP · THE FROZEN LAKE · THE DRIFT · THE POLE', w: 128, d: 104, night: 1, look: 'white', fogD: 0.026,
         parti: 'A workshop village on a frozen lake; the sleigh road leaves north over the drift where the pole stands.', typology: 'pearls',
         floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
         noise: { amp: 0, scale: 7 },
@@ -49835,13 +50080,17 @@ const HQ_AREA_SPECS = {
             { k: 'wall', x0: -3.9, z0: 28, x1: -3.9, z1: 32, h: 3.0, t: 0.8, key: 'wood_planks', rail: false }, { k: 'wall', x0: 3.9, z0: 28, x1: 3.9, z1: 32, h: 3.0, t: 0.8, key: 'wood_planks', rail: false },   // THE BAY GATE's posts
             { k: 'wall', x0: -43.75, z0: 15.75, x1: -43.75, z1: 15.75, h: 5.0, t: 10.2, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 12.25, x1: -12.25, z1: 12.25, h: 5.0, t: 10.2, key: 'wood_planks', ghost: true, rail: false },   // THE COTTAGES' blocks
             { k: 'wall', x0: -8.75, z0: 29.75, x1: -8.75, z1: 29.75, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -47.25, z0: -1.75, x1: -47.25, z1: -1.75, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false },   // the two sleighs' squares
+            /* THE TREE LOT (2026-11-10, mondo: "make improvements to all of the battle maps ... adding better props ... better for PvP combat"): the workshop's stair
+               stands in the board's north-west corner (levels 1, 1, 2, 2), so the south-east corner gets the same steps turned round: two
+               big presents and four decorated trees (each on a block never drawn) */
+            { k: 'wall', x0: -19.25, z0: 22.75, x1: -19.25, z1: 22.75, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 22.75, x1: -15.75, z1: 22.75, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 22.75, x1: -12.25, z1: 22.75, h: 4.2, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 22.75, x1: -8.75, z1: 22.75, h: 4.2, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 26.25, x1: -8.75, z1: 26.25, h: 4.2, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 19.25, x1: -8.75, z1: 19.25, h: 4.2, t: 2.4, key: 'wood_planks', ghost: true, rail: false },
             { k: 'wall', x0: -40.25, z0: 33.25, x1: -40.25, z1: 33.25, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -5.25, x1: -15.75, z1: -5.25, h: 1.3, t: 2.4, key: 'wood_planks', ghost: true, rail: false },   // two more snowmen's squares
             /* THE WORKSHOP's deck (1.0) to the west wall — the hearth stands on it; the steps up from the plaza, the ice-block hand-holds up its south lip; THE LOFT (3.4) up the ladder */
             { k: 'plateau', x: -42.5, z: -1.75, w: 43, d: 24.5, h: 1.0, edge: 0.15 },
             { k: 'ramp', x0: -14, z0: 0, x1: -21, z1: 0, w: 7, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'climb', x: -36.75, z: 9.9, face: 0, look: 'wall' },
-            { k: 'plateau', x: -50.75, z: 5.25, r: 5.25, h: 3.4, edge: 0.15 }, { k: 'climb', x: -50.75, z: 0.6, face: 180, look: 'ladder' },
-            { k: 'ramp', x0: -35, z0: 5.25, x1: -45.5, z1: 5.25, w: 3.5, h0: 1.0, h1: 3.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: 'r' },   // the loft's stair off the deck (its railing on the south side)
+            { k: 'plateau', x: -50.75, z: 5.25, r: 5.25, h: 7, edge: 0.15 }, { k: 'climb', x: -50.75, z: 0.6, face: 180, look: 'ladder' },
+            { k: 'ramp', x0: -35, z0: 5.25, x1: -45.5, z1: 5.25, w: 3.5, h0: 1.0, h1: 7, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: 'r' },   // the loft's stair off the deck (its railing on the south side)
             { k: 'rail', arc: { x: -50.75, z: 5.25, r: 4.65, a0: 118, a1: 340 }, model: 'ranch' },   // round the loft's rim (the stair and the ladder left open)
             { k: 'ramp', x0: -31.5, z0: -21, x1: -31.5, z1: -14, w: 7, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },     // the back steps from the sledge yard's hall
             { k: 'rail', x0: -63.386, z0: 9.9, x1: -37.38, z1: 9.9, model: 'ranch' }, { k: 'rail', x0: -33.286, z0: 9.9, x1: -21.614, z1: 9.9, model: 'ranch' },
@@ -49852,34 +50101,35 @@ const HQ_AREA_SPECS = {
             { k: 'rail', arc: { x: 38.5, z: 3.5, r: 13.2, a0: 100, a1: 158 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 38.5, z: 3.5, r: 13.2, a0: 202, a1: 250 }, model: 'pipe', block: false },   // skate rails round the lake's south shore
             { k: 'wall', x0: 3.5, z0: -21, x1: 17.5, z1: -21, h: 3.2, t: 0.8, key: 'ice_1' },
             /* THE DRIFT (2.2) up its stair — the sleigh road's door stands on it; THE POLE's cairn (6.2, the tape) off its west edge, seen from the drift */
-            { k: 'plateau', x: 28, z: -38.5, w: 28, d: 21, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: 28, z0: -17.5, x1: 28, z1: -28, w: 7, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'plateau', x: 28, z: -38.5, w: 28, d: 21, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: 28, z0: -17.5, x1: 28, z1: -28, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
             { k: 'rail', pts: [[28, -17.838, 0.07], [28, -27.492, 2.1]], model: 'pipe', block: false },                                  // its centre handrail
             { k: 'climb', x: 41.4, z: -36.75, face: 270, look: 'rope' },
-            { k: 'plateau', x: 5.25, z: -33.25, r: 5.55, h: 6.2, edge: 0.15 },
+            { k: 'plateau', x: 5.25, z: -33.25, r: 5.55, h: 10.5, edge: 0.15 },
             { k: 'rail', x0: 14.6, z0: -28.6, x1: 24.3, z1: -28.6, model: 'ranch' }, { k: 'rail', x0: 31.7, z0: -28.6, x1: 41.4, z1: -28.6, model: 'ranch' },
             /* THE WALKWAY (2.2): the drift's level carried west along the north wall behind the cairn (a 2.5 m gap from the drift, a rail across it) and through the hall to the sledge
                yard — a stair down into the yard by the cairn, a stair down into the sledge yard at its west end */
-            { k: 'plateau', x: 0, z: -47.25, w: 21, d: 10.5, h: 2.2, edge: 0.15 },
-            { k: 'rail', x0: 9.9, z0: -45.5, x1: 14, z1: -45.5, y: 2.2, model: 'pipe', block: false },                                    // across the gap
-            { k: 'plateau', x: -12.25, z: -38.75, w: 17.5, d: 7.5, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: -5.25, z0: -24.5, x1: -5.25, z1: -35, w: 3.5, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: -31.5, z0: -38.5, x1: -21, z1: -38.5, w: 7, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },   // THE OPEN VILLAGE: its own railings (the hall's walls are gone)
+            { k: 'plateau', x: 0, z: -47.25, w: 21, d: 10.5, h: 3.5, edge: 0.15 },
+            { k: 'rail', x0: 9.9, z0: -45.5, x1: 14, z1: -45.5, y: 3.5, model: 'pipe', block: false },                                    // across the gap
+            { k: 'plateau', x: -12.25, z: -38.75, w: 17.5, d: 7.5, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: -5.25, z0: -24.5, x1: -5.25, z1: -35, w: 3.5, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -31.5, z0: -38.5, x1: -21, z1: -38.5, w: 7, h0: 0, h1: 3.5, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },   // THE OPEN VILLAGE: its own railings (the hall's walls are gone)
             { k: 'rail', x0: -1.216, z0: -42.6, x1: 9.836, z1: -42.6, model: 'ranch' }, { k: 'rail', x0: -4.1, z0: -41.4, x1: -4.1, z1: -35.6, model: 'ranch' },
             { k: 'rail', x0: -20.37, z0: -35.6, x1: -7.2, z1: -35.6, model: 'ranch' },
             /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank */
             { k: 'hill', x: -40, z: -32, r: 14, h: 2.0 },
-            { k: 'plateau', x: -47.25, z: -36.75, r: 9.35, h: 4.0, edge: 0.15 }, { k: 'climb', x: -39.1, z: -36.75, face: 270, look: 'rope' },
+            { k: 'plateau', x: -47.25, z: -36.75, r: 9.35, h: 7, edge: 0.15 }, { k: 'climb', x: -39.1, z: -36.75, face: 270, look: 'rope' },
             /* the meltwater from the lake down the gift yard, a plank over it */
             { k: 'stream', pts: [[36, 10], [36, 42]], w: 3.6, depth: 0.5, key: 'water' },
             { k: 'deck', x0: 31.5, z0: 36.75, x1: 42, z1: 36.75, w: 3.5, y: 0.3 },
             /* THE GIFT STACK (1.3) — a crate pile with a ladder up it */
-            { k: 'plateau', x: 50.75, z: 33.25, w: 11.7, d: 11.7, h: 1.3, edge: 0.15 }, { k: 'climb', x: 46.1, z: 33.25, face: 90, look: 'ladder' },
+            { k: 'plateau', x: 50.75, z: 33.25, w: 11.7, d: 11.7, h: 3.5, edge: 0.15 }, { k: 'climb', x: 46.1, z: 33.25, face: 90, look: 'ladder' },
             { k: 'grove', x: -26, z: 37, r: 10, n: 5, kinds: ['xmas_pine'] }, { k: 'grove', x: 44, z: -21, r: 4, n: 2, kinds: ['xmas_pine'] },   // THE CHRISTMAS PACK: the same spots, the pack's snowy pine
             { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
-        props: [{ key: 'riser_1', x: 12, z: 18 }, { key: 'campfire', x: 6, z: 20 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
-                { key: 'sea_chest', x: -36, z: 0, y: 1.0 }, { key: 'sea_chest', x: -50.75, z: 5.25, y: 3.4 }, { key: 'park_bench', x: -8, z: 20, face: 0 }, { key: 'candle_ring', x: 28, z: -40, y: 2.2 }, { key: 'cardboard_boxes', x: 50, z: 32, y: 1.3 }, { key: 'signpost', x: -4, z: 4 },
+        props: [{ key: 'riser_1', x: 12, z: 18 }, { key: 'campfire', x: 6, z: 20 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 10.5 },
+                { key: 'sea_chest', x: -36, z: 0, y: 1.0 }, { key: 'sea_chest', x: -50.75, z: 5.25, y: 7 }, { key: 'park_bench', x: -3.5, z: 20, face: 0 }, { key: 'xmas_gift', x: -19.25, z: 22.75, h: 1.3, floor: true, rot: 200 }, { key: 'xmas_gift_2', x: -15.75, z: 22.75, h: 1.4, floor: true, rot: 250 }, { key: 'xmas_tree', x: -12.25, z: 22.75, h: 4.6, floor: true, rot: 300 }, { key: 'xmas_tree_plain', x: -8.75, z: 22.75, h: 4.6, floor: true, rot: 350 }, { key: 'xmas_tree', x: -8.75, z: 26.25, h: 4.6, floor: true, rot: 10 }, { key: 'xmas_tree_plain', x: -8.75, z: 19.25, h: 4.6, floor: true, rot: 330 },   // THE TREE LOT (2026-11-10)
+                { key: 'candle_ring', x: 28, z: -40, y: 3.5 }, { key: 'cardboard_boxes', x: 50, z: 32, y: 3.5 }, { key: 'signpost', x: -4, z: 4 },
                 { key: 'cardboard_boxes', x: 58, z: -44 }, { key: 'cardboard_box', x: 59, z: -40 },
                 /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): every piece stands off the North Pole arena's windows (the board's cells are
                    baked from this room, x −25 … −4), so no fight square changes. THE PLAZA's tree with the presents under it */
@@ -49899,7 +50149,7 @@ const HQ_AREA_SPECS = {
                 /* the snowmen: the lake's west shore, the pole's yard under the drift, the sledge yard's far corner */
                 { key: 'xmas_snowman', x: 24, z: -9.575, face: 330 }, { key: 'xmas_snowman_2', x: 18.4, z: -26, face: 20 }, { key: 'xmas_snowman_3', x: -55, z: -26, face: 120 },
                 /* THE GIFT STACK's presents (on top, round the cardboard), two more on the yard's floor, the plain tree in its corner */
-                { key: 'xmas_gift_2', x: 48, z: 28.425, y: 1.3, face: 10 }, { key: 'xmas_gift_3', x: 52.6, z: 34.8, y: 1.3, face: -25 }, { key: 'xmas_gift', x: 52.8, z: 28.525, y: 1.3, face: 40 },
+                { key: 'xmas_gift_2', x: 48, z: 28.425, y: 3.5, face: 10 }, { key: 'xmas_gift_3', x: 52.6, z: 34.8, y: 3.5, face: -25 }, { key: 'xmas_gift', x: 52.8, z: 28.525, y: 3.5, face: 40 },
                 { key: 'xmas_gift_4', x: 55.325, z: 41.525, face: 15 }, { key: 'xmas_gift', x: 54.425, z: 42.025, face: -30 },
                 { key: 'xmas_tree_plain', x: 29, z: 41.325, h: 2.8 },
                 /* the bay door's hall: a wreath either side */
@@ -50015,12 +50265,13 @@ const HQ_AREA_SPECS = {
        saloon door onto the corn to the east leg, which comes down into THE BAR — the loop THE HALLS ⇄ THE LIBRARY ⇄ side room 2 ⇄ hall A ⇄
        THE BAR ⇄ THE HALLS; THE WINE CELLAR (sunk, a built stair down) a dead end off the east leg; side room 1 (THE MEMBERS' TUNNEL) a dead
        end behind THE BAR. The four doors stand in four different places and none sees another. Every tier is built: crisp edges, built flights. */
-    prebuilt_lodge: { grown: 2, part: 'halls', label: 'THE HALLS', sub: 'THE SANCTUM · THE GALLERY · THE HIGH TABLE · MEMBERS ONLY', w: 116, d: 92, open: false, h: 5.0, look: 'greathall',
+    prebuilt_lodge: { grown: 2, levelM: 3.5, part: 'halls', label: 'THE HALLS', sub: 'THE SANCTUM · THE GALLERY · THE HIGH TABLE · MEMBERS ONLY', w: 116, d: 92, open: false, h: 8.5, look: 'greathall',
         parti: 'A sanctum behind a screen, two galleries facing each other over the round table with a walk between them, and the bar where the members say what the sanctum does not.', typology: 'halls',
         floor: 'checkerboard', cliff: 'damask', path: 'wood', floorColor: 0xd8ccb0, cliffColor: 0x6a2438, wallSheet: 'damask', ceiling: 'wood', crag: false,
         fog: { color: 0x1a0c10, density: 0.02 }, mood: { light: 0xffd8a0, strip: 0xffc890, ambient: 0.34 }, noise: { amp: 0, scale: 8 },
-        gen: { kind: 'plan', look: 'walls', wallKey: 'damask', rim: 0, forceGrow: -0.3 },
-        plaza: { x: 0, z: 26 }, plazaR: 11,   // L6: the marker in THE HALLS (the plaza's open disc stays inside the drawn room)
+        gen: { kind: 'plan', look: 'walls', wallKey: 'damask', rim: 0, forceGrow: -0.3,
+               solid: [{ x: -15.75, z: 8.75, r: 1.72 }, { x: 15.75, z: 8.75, r: 1.72 }, { x: -15.75, z: 40.25, r: 1.72 }, { x: 15.75, z: 40.25, r: 1.72 }, { x: -8.75, z: 19.25, r: 1.72 }, { x: 8.75, z: 19.25, r: 1.72 }, { x: -8.75, z: 29.75, r: 1.72 }, { x: 8.75, z: 29.75, r: 1.72 }] },   // THE HALLS' eight piers (2026-11-10): one square's column each, the hall's own wall to the ceiling
+        plaza: { x: 0, z: 24.5 }, plazaR: 8,   // (2026-11-10: on the nexus, its open disc inside the four piers) L6: the marker in THE HALLS (the plaza's open disc stays inside the drawn room)
         features: [
             /* THE ROOMS */
             { k: 'space', x: 0, z: 24, w: 44, d: 44 },                          // THE HALLS (the way in: the bay door, the marker) — 22 × 22 m since 2026-10-06, the 12×12 arena's floor (was 14 × 15)
@@ -50039,54 +50290,67 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[46, -24], [52, -24]], w: 4.8 },                                         // the east leg ⇄ THE WINE CELLAR's stair
             { k: 'hall', pts: [[46, 18], [46, 22]], w: 5.2 },                                            // THE BAR ⇄ side room 1
             /* THE WEST GALLERY (2.2) against the sanctum's west wall: the stair up its south end, a ladder on its east face, the bell rope on its north end */
-            { k: 'plateau', x: -16, z: -22, w: 12, d: 20, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: -16, z0: -6, x1: -16, z1: -13.4, w: 4.8, h0: 0, h1: 2.2, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
+            { k: 'plateau', x: -16, z: -22, w: 12, d: 20, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: -16, z0: -6, x1: -16, z1: -13.4, w: 4.8, h0: 0, h1: 3.5, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
             { k: 'climb', x: -10.6, z: -28, face: 270, look: 'ladder' }, { k: 'climb', x: -16, z: -31.4, face: 180, look: 'rope' },
             /* THE ORGAN LOFT (2.2) against the east wall: THE MINSTRELS' WALK from the gallery (a level span, the bridge layer), a ladder on its north face, the organ's pipe on its south */
-            { k: 'plateau', x: 16, z: -22, w: 12, d: 20, h: 2.2, edge: 0.15 }, { k: 'bridge', x0: -11.4, z0: -18, x1: 11.4, z1: -18, w: 4, y: 2.2 },
+            { k: 'plateau', x: 16, z: -22, w: 12, d: 20, h: 3.5, edge: 0.15 }, { k: 'bridge', x0: -11.4, z0: -18, x1: 11.4, z1: -18, w: 4, y: 3.5 },
             { k: 'climb', x: 16, z: -31.4, face: 180, look: 'ladder' }, { k: 'climb', x: 12.6, z: -12.6, face: 0, look: 'pipe' },
             /* the loft's own timber stair up from the sanctum floor (the way round: up the gallery, over the walk, down the loft) */
-            { k: 'ramp', x0: 18.8, z0: -2.8, x1: 18.8, z1: -13.4, w: 4.4, h0: 0, h1: 2.2, stairs: true, model: 'wood', edge: 0.15 },
+            { k: 'ramp', x0: 18.8, z0: -2.8, x1: 18.8, z1: -13.4, w: 4.4, h0: 0, h1: 3.5, stairs: true, model: 'wood', edge: 0.15 },
             /* the walk's railings, the loft's west rail, a pipe laid across from gallery to loft (the grind over the gap), a pipe round the table */
-            { k: 'rail', x0: -10.4, z0: -19.8, x1: 10.4, z1: -19.8, y: 2.2, model: 'balusters_b' }, { k: 'rail', x0: -10.4, z0: -16.2, x1: 10.4, z1: -16.2, y: 2.2, model: 'balusters_b' },
-            { k: 'rail', x0: 10.5, z0: -31.5, x1: 10.5, z1: -27.5, y: 2.2, model: 'balusters_b' },
-            { k: 'rail', x0: -11, z0: -24.5, x1: 11, z1: -24.5, y: 2.2, model: 'pipe', block: false },
+            { k: 'rail', x0: -10.4, z0: -19.8, x1: 10.4, z1: -19.8, y: 3.5, model: 'balusters_b' }, { k: 'rail', x0: -10.4, z0: -16.2, x1: 10.4, z1: -16.2, y: 3.5, model: 'balusters_b' },
+            { k: 'rail', x0: 10.5, z0: -31.5, x1: 10.5, z1: -27.5, y: 3.5, model: 'balusters_b' },
+            { k: 'rail', x0: -11, z0: -24.5, x1: 11, z1: -24.5, y: 3.5, model: 'pipe', block: false },
             { k: 'rail', arc: { x: 0, z: -12, r: 4.8, a0: 210, a1: 510 }, model: 'pipe', block: false },
             /* THE HIGH TABLE (3.9, the tape — the door gun's; 1.7 m over the galleries, out of a jump's reach) */
-            { k: 'plateau', x: 0, z: -30, w: 8, d: 6, h: 3.9, edge: 0.15 },
+            { k: 'plateau', x: 0, z: -30, w: 8, d: 6, h: 7, edge: 0.15 },
             /* THE SCREEN across the sanctum's mouth */
             { k: 'wall', x0: -6, z0: -6, x1: 6, z1: -6, h: 2.2, t: 0.3, key: 'wood' },
             /* THE MEZZANINE (2.6) over the bar's north end: the stair up its west end (along the bar's west wall), a ladder on its south face, the panelling's hand-holds on its east */
-            { k: 'plateau', x: 34, z: -9, w: 18, d: 10, h: 2.6, edge: 0.15 },
-            { k: 'ramp', x0: 27.4, z0: 7.2, x1: 27.4, z1: -5.4, w: 4.8, h0: 0, h1: 2.6, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
-            { k: 'rail', x0: 33.5, z0: -4.5, x1: 37.5, z1: -4.5, y: 2.6, model: 'balusters_b' },                            // the mezzanine's rail
+            { k: 'plateau', x: 34, z: -9, w: 18, d: 10, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: 27.4, z0: 7.2, x1: 27.4, z1: -5.4, w: 4.8, h0: 0, h1: 3.5, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
+            { k: 'rail', x0: 33.5, z0: -4.5, x1: 37.5, z1: -4.5, y: 3.5, model: 'balusters_b' },                            // the mezzanine's rail
             { k: 'climb', x: 39, z: -4.6, face: 0, look: 'ladder' }, { k: 'climb', x: 42.4, z: -9, face: 270, look: 'wall' },
             { k: 'wall', x0: 31, z0: 12, x1: 43, z1: 12, h: 1.1, t: 0.4, key: 'wood' },                            // THE BAR (the grind)
             /* THE STACKS (2.4) along the library's south wall: the stair up its west end, the library ladder on its north face, a pipe at its east end */
-            { k: 'plateau', x: -42, z: 25, w: 24, d: 6, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: -51.8, z0: 10, x1: -51.8, z1: 23.4, w: 4.4, h0: 0, h1: 2.4, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
+            { k: 'plateau', x: -42, z: 25, w: 24, d: 6, h: 3.5, edge: 0.15 },
+            { k: 'ramp', x0: -51.8, z0: 10, x1: -51.8, z1: 23.4, w: 4.4, h0: 0, h1: 3.5, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
             { k: 'climb', x: -38, z: 22.6, face: 180, look: 'ladder' }, { k: 'climb', x: -30.6, z: 25, face: 270, look: 'pipe' },
             /* THE WINE CELLAR (−1.6, sunk: a built retaining edge) and the built stair down into it from the east leg */
             { k: 'plateau', x: 37, z: -29.2, w: 18, d: 15.2, h: -1.6, edge: 0.15, sink: true },
             { k: 'ramp', x0: 48, z0: -24, x1: 35, z1: -24, w: 4.8, h0: 0, h1: -1.6, stairs: true, model: 'wood', built: true, edge: 0.15, key: 'wood' },
-            { k: 'rail', x0: -8, z0: 18, x1: -8, z1: 36, model: 'pipe', block: false },                                                  // a skate rail in THE HALLS
+            /* THE HALLS — THE FIGHT'S BOARD (2026-11-10, THE BATTLE MAP POLISH — mondo: "make improvements to all of the battle maps ... redesigning
+               the layout ... adding better props ... be better for PvP combat"): the hall was 144 bare squares. It is a lodge hall now, laid on its
+               own 3.5 m squares (square (bx, by) → x = −19.25 + 3.5 bx, z = 5.25 + 3.5 by; P2 on row 0, north): eight timber PIERS to the ceiling
+               (one square each: 1,1 / 10,1 / 1,10 / 10,10 in the corners, 3,4 / 8,4 / 3,7 / 8,7 at the galleries' ends), two MEMBERS' GALLERIES
+               (a timber dais one battle level up, squares 1..2 × 4..7 and 9..10 × 4..7, either side of the nexus) and four BOOKCASES beside the
+               ways out of the spawn zones (3,2 / 8,2 / 3,9 / 8,9 — two full shelves back to back on a one-square ghost block). Every piece has
+               its twin both across the hall and end to end, so the two sides fight over the same ground; columns 4..7 stay open from end to
+               end (the spawn zones, their way out and the nexus of every board size). */
+            { k: 'plateau', x: -14, z: 24.5, w: 7.3, d: 14.3, h: 3.5, edge: 0.15 }, { k: 'plateau', x: 14, z: 24.5, w: 7.3, d: 14.3, h: 3.5, edge: 0.15 },   // the galleries
+            { k: 'wall', x0: -8.75, z0: 12.25, x1: -8.75, z1: 12.25, h: 2.6, t: 2.4, key: 'wood', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 12.25, x1: 8.75, z1: 12.25, h: 2.6, t: 2.4, key: 'wood', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: 36.75, x1: -8.75, z1: 36.75, h: 2.6, t: 2.4, key: 'wood', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: 36.75, x1: 8.75, z1: 36.75, h: 2.6, t: 2.4, key: 'wood', ghost: true, rail: false },   // under the bookcases
+            { k: 'rail', x0: -20.1, z0: 18, x1: -20.1, z1: 36, model: 'pipe', block: false },                                            // a skate rail in THE HALLS (2026-11-10: along the west wall, off the board's pieces)
             { k: 'scatter', key: 'office_chair', n: 4, seed: 33 }, { k: 'scatter', key: 'potted_plant', n: 4, seed: 3 },
         ],
-        props: [{ key: 'railing_1m', x: -10.075, z: -23, face: 90, y: 2.2 }, { key: 'railing_1m', x: 10.075, z: -26, face: 90, y: 2.2 }, { key: 'railing_1m', x: 32, z: -4.075, face: 180, y: 2.6 }, { key: 'railing_1m', x: -44, z: 22.075, face: 0, y: 2.4 }, { key: 'riser_1', x: 10, z: 34 },
+        props: [{ key: 'railing_1m', x: -10.075, z: -23, face: 90, y: 3.5 }, { key: 'railing_1m', x: 10.075, z: -26, face: 90, y: 3.5 }, { key: 'railing_1m', x: 32, z: -4.075, face: 180, y: 3.5 }, { key: 'railing_1m', x: -44, z: 22.075, face: 0, y: 3.5 },
                 /* THE SANCTUM: the round table under the walk, the lectern on the high table, the braziers, the knights at the screen */
-                { key: 'round_table', x: 0.0667, z: -12 }, { key: 'lectern', x: 0, z: -30, y: 3.9, face: 180 }, { key: 'brazier', x: -6, z: -36.175 }, { key: 'brazier', x: 6, z: -36.175 }, { key: 'armour_stand', x: -9, z: -7, face: 90 }, { key: 'armour_stand', x: 9, z: -7, face: 270 },
-                { key: 'royal_throne', x: 16, z: -26, y: 2.2, face: 180 }, { key: 'candle_ring', x: -16, z: -20, y: 2.2 }, { key: 'pocket_watch', x: 0.8667, z: -12.4, y: 1.25 }, { key: 'manila_folders', x: -0.5333, z: -11.6, y: 1.25 }, { key: 'candle_ring', x: 0, z: -21.325 },
+                { key: 'round_table', x: 0.0667, z: -12 }, { key: 'lectern', x: 0, z: -30, y: 7, face: 180 }, { key: 'brazier', x: -6, z: -36.175 }, { key: 'brazier', x: 6, z: -36.175 }, { key: 'armour_stand', x: -9, z: -7, face: 90 }, { key: 'armour_stand', x: 9, z: -7, face: 270 },
+                { key: 'royal_throne', x: 16, z: -26, y: 3.5, face: 180 }, { key: 'candle_ring', x: -16, z: -20, y: 3.5 }, { key: 'pocket_watch', x: 0.8667, z: -12.4, y: 1.25 }, { key: 'manila_folders', x: -0.5333, z: -11.6, y: 1.25 }, { key: 'candle_ring', x: 0, z: -21.325 },
                 /* THE BAR: the counter, the couches, the members' table */
                 { key: 'mobius_bar', x: 36, z: 2, face: 0 }, { key: 'curved_couch', x: 49, z: 12, face: 180 }, { key: 'coffee_table', x: 48.7333, z: 6.9 }, { key: 'retro_radio', x: 48.7333, z: 6.9, y: 0.46 }, { key: 'solo_cup', x: 47.9333, z: 6.6, y: 0.46 }, { key: 'table_lamp', x: 45.6, z: -13.275, y: 0 },
-                { key: 'globe_lamp', x: 54, z: 17.275 }, { key: 'candle_ring', x: 30, z: -9, y: 2.6 }, { key: 'teal_chair', x: 33, z: -12.375, y: 2.6, face: 200 }, { key: 'coffee_table', x: 29, z: -12.575, y: 2.6 }, { key: 'brass_telescope', x: 41.575, z: -7.2, y: 2.6, face: 120 },
+                { key: 'globe_lamp', x: 54, z: 17.275 }, { key: 'candle_ring', x: 30, z: -9, y: 3.5 }, { key: 'teal_chair', x: 33, z: -12.375, y: 3.5, face: 200 }, { key: 'coffee_table', x: 29, z: -12.575, y: 3.5 }, { key: 'brass_telescope', x: 41.575, z: -7.2, y: 3.5, face: 120 },
                 { key: 'cash_register', x: 34.5, z: 2, y: 1.05 }, { key: 'coffee_mug', x: 37.5, z: 2, y: 1.05 },
                 /* THE LIBRARY: the shelves on the stacks and along the north wall, the reading table */
-                { key: 'library_shelf_full', x: -48, z: 25, y: 2.4, face: 180 }, { key: 'library_shelf_full', x: -36, z: 25, y: 2.4, face: 180 }, { key: 'library_shelf_full', x: -51, z: 0.725, face: 0 }, { key: 'library_shelf_full', x: -30, z: 0.725, face: 0 },
+                { key: 'library_shelf_full', x: -48, z: 25, y: 3.5, face: 180 }, { key: 'library_shelf_full', x: -36, z: 25, y: 3.5, face: 180 }, { key: 'library_shelf_full', x: -51, z: 0.725, face: 0 }, { key: 'library_shelf_full', x: -30, z: 0.725, face: 0 },
                 { key: 'steel_table', x: -38.1667, z: 11.8333 }, { key: 'papers_a', x: -37.6667, z: 11.8333, y: 0.76 }, { key: 'desk_lamp', x: -39.1667, z: 11.3333, y: 0.76 }, { key: 'office_chair', x: -38, z: 16, face: 0 }, { key: 'globe_lamp', x: -28, z: 4 },
                 /* THE WINE CELLAR: the 322 basement */
                 { key: 'sea_chest', x: 31, z: -32, y: -1.6 }, { key: 'sea_chest', x: 41, z: -34, y: -1.6 }, { key: 'skull_pile', x: 36, z: -35.375, y: -1.6 }, { key: 'candle_ring', x: 36, z: -30, y: -1.6 }, { key: 'cardboard_boxes', x: 44.625, z: -31, y: -1.6 },
                 /* THE HALLS */
-                { key: 'lesson_sign', x: 8, z: 22, face: 200, lesson: 'climb' }, { key: 'umbrella_stand', x: -19, z: 43 }, { key: 'potted_plant', x: 19, z: 43 }, { key: 'office_plant', x: -52, z: -32 }, { key: 'wet_floor_sign', x: 42, z: 39 }],
+                { key: 'lesson_sign', x: 20.3, z: 22.75, face: 270, lesson: 'climb' }, { key: 'umbrella_stand', x: -19, z: 43 },
+                /* THE HALLS' BOOKCASES (2026-11-10): back to back on their ghost blocks, beside the ways out of the spawn zones */
+                { key: 'library_shelf_full', x: -9.37, z: 12.25, face: 270, floor: true }, { key: 'library_shelf_full', x: -8.13, z: 12.25, face: 90, floor: true }, { key: 'library_shelf_full', x: 8.13, z: 12.25, face: 270, floor: true }, { key: 'library_shelf_full', x: 9.37, z: 12.25, face: 90, floor: true }, { key: 'library_shelf_full', x: -9.37, z: 36.75, face: 270, floor: true }, { key: 'library_shelf_full', x: -8.13, z: 36.75, face: 90, floor: true }, { key: 'library_shelf_full', x: 8.13, z: 36.75, face: 270, floor: true }, { key: 'library_shelf_full', x: 9.37, z: 36.75, face: 90, floor: true },
+                { key: 'riser_1', x: 19.6, z: 34, face: 90 }, { key: 'potted_plant', x: 19, z: 43 }, { key: 'office_plant', x: -52, z: -32 }, { key: 'wet_floor_sign', x: 42, z: 39 }],
         npcSpots: [{ x: 6, z: 16, face: 210, race: 'politician', say: '“The thirty-third degree is a floor. The lodge has thirty-two.”' }, { x: 44, z: 2, face: 270, race: 'general', say: '“The painting has the lights on. We have asked it to stop.”' },
                    { x: 34, z: -10, face: 180, race: 'men in black', say:   /* 2026-09-20: onto the mezzanine's flat top */ '“You did not see the tunnel. There is no tunnel. Redwood is a cologne.”' }, { x: -44, z: 16, face: 90, race: 'conspiracy theorist', say: '“Every book on the top shelf is about the bottom shelf.”' }],
         lines: ['“Members only.” “Both ways.”'] },
@@ -50096,34 +50360,40 @@ const HQ_AREA_SPECS = {
        — the survey camp — under THE JET (a floating shard: a ladder, a chain); THE ORBIT's three floating stones; THE OBSERVATORY LEDGE on the
        north wall with the observatorium's screen standing ON it (a stair, a ladder, a chain — a door you climb to, seen from the floor); THE
        ACCRETION RIM (the tape — the door gun's); the drop's frame from Saturn on the north wall, nineteen metres from the screen */
-    prebuilt_singularity: { grown: 2, part: 'horizon', label: 'THE HORIZON', sub: 'THE DROP · THE ACCRETION RIM · ZERO VOLUME', w: 124, d: 120, night: 1, look: 'abyss', fogD: 0.026,
+    prebuilt_singularity: { grown: 2, levelM: 3.5, ghostM: 1.75, walkM: 1.75, part: 'horizon', label: 'THE HORIZON', sub: 'THE DROP · THE ACCRETION RIM · ZERO VOLUME', w: 124, d: 120, night: 1, look: 'abyss', fogD: 0.026,
         parti: 'A bowl that falls to the point at its centre; every shelf and shard on the plateau leans toward the drop, and the screen watches it from the ledge.', typology: 'bowl',
         floor: 'moon_3', cliff: 'obsidian', path: 'crystal', floorColor: 0x5a4a78, cliffColor: 0x1c1428,
-        gen: { kind: 'rooms', seed: 0, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false, open: [{ x: 46, z: 2, r: 8 }, { x: 30, z: -2, r: 7 }], grow: 2 }, noise: { amp: 0.2, scale: 6 },   // the open circles: the terrace's south foot and the gap between the orbit's stones were pockets (rescue ramps); an open room's plan is `rooms` (a cave plan grows rock only under a ceiling — hq-floor-plan's rule); the obsidian banks are the solid
+        gen: { kind: 'rooms', seed: 0, loops: 3, rMin: 7, rMax: 13, wallH: 3.0, thicket: false, open: [{ x: 46, z: 2, r: 8 }, { x: 30, z: -2, r: 7 }, { x0: -22, z0: 24.5, x1: 22, z1: 24.5, w: 44 }], grow: 2 }, noise: { amp: 0.2, scale: 6 },   // the open circles: the terrace's south foot and the gap between the orbit's stones were pockets (rescue ramps); an open room's plan is `rooms` (a cave plan grows rock only under a ceiling — hq-floor-plan's rule); the obsidian banks are the solid
         plaza: { x: 0, z: 20 }, plazaR: 11,
         features: [
             { k: 'dip', x: 0, z: -16, r: 18, h: 4.0, open: true },                                                   // THE DROP (a dip's h is its DEPTH)
-            { k: 'ramp', x0: 0, z0: 10.5, x1: 0, z1: -3.5, w: 7, h0: 0, h1: -2.6 },                               // the way down into it (and out) — GRID FIT (2026-10-26): 2 squares wide, on the squares' lines
-            { k: 'plateau', x: 35, z: -31.5, r: 7, h: 6.0, edge: 0.4 },                                        // THE ACCRETION RIM (the tape)
+            { k: 'ramp', x0: 0, z0: 3.5, x1: 0, z1: -7, w: 7, h0: 0, h1: -2.0 },
+            /* THE ORBIT IS THE BOARD (2026-11-10, mondo: "make improvements to all of the battle maps ... redesigning the layout ... better for PvP combat"):
+               the 12 x 12 is the plaza on the drop's south lip (x -21..21, z 3.5..45.5; the way down starts at its north edge now, it stood
+               in one team's end zone). Obsidian shards stand round the nexus in four arcs, a tall pair on each flank, crystals in the
+               corners — the same in each team's half. */
+            { k: 'wall', x0: -8.75, z0: 15.75, x1: -8.75, z1: 15.75, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: -12.25, z0: 19.25, x1: -12.25, z1: 19.25, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: 8.75, z0: 15.75, x1: 8.75, z1: 15.75, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: 12.25, z0: 19.25, x1: 12.25, z1: 19.25, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: -12.25, z0: 29.75, x1: -12.25, z1: 29.75, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: -8.75, z0: 33.25, x1: -8.75, z1: 33.25, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: 12.25, z0: 29.75, x1: 12.25, z1: 29.75, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: 8.75, z0: 33.25, x1: 8.75, z1: 33.25, h: 3.5, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: -19.25, z0: 22.75, x1: -19.25, z1: 26.25, h: 7, t: 3.5, key: 'obsidian' }, { k: 'wall', x0: 19.25, z0: 22.75, x1: 19.25, z1: 26.25, h: 7, t: 3.5, key: 'obsidian' },
+            { k: 'wall', x0: -15.75, z0: 12.25, x1: -15.75, z1: 12.25, h: 2, t: 1.4, key: 'obsidian', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 12.25, x1: 15.75, z1: 12.25, h: 2, t: 1.4, key: 'obsidian', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: 36.75, x1: -15.75, z1: 36.75, h: 2, t: 1.4, key: 'obsidian', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: 36.75, x1: 15.75, z1: 36.75, h: 2, t: 1.4, key: 'obsidian', ghost: true, rail: false }, { k: 'wall', x0: -1.75, z0: 19.25, x1: -1.75, z1: 19.25, h: 1.3, t: 1.6, key: 'obsidian', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 29.75, x1: 1.75, z1: 29.75, h: 1.3, t: 1.6, key: 'obsidian', ghost: true, rail: false },                               // the way down into it (and out) — GRID FIT (2026-10-26): 2 squares wide, on the squares' lines
+            { k: 'plateau', x: 35, z: -31.5, r: 7, h: 10.5, edge: 0.4 },                                        // THE ACCRETION RIM (the tape)
             /* THE WEST SHELF (2.2): the ramp up its south side, the hand-holds on its east face */
-            { k: 'plateau', x: -38.5, z: -7, r: 10.5, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -38.5, z0: 17.5, x1: -38.5, z1: 2.3, w: 7, h0: 0, h1: 2.2 },
+            { k: 'plateau', x: -38.5, z: -7, r: 10.5, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -38.5, z0: 17.5, x1: -38.5, z1: 2.3, w: 7, h0: 0, h1: 3.5 },
             { k: 'climb', x: -28.6, z: -7, face: 270, look: 'wall' },
             /* THE NEAR LENS (3.4): the ramp up from the shelf, a rope on its west face */
-            { k: 'plateau', x: -40.25, z: -36.75, r: 8.75, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -36.75, z0: -14, x1: -36.75, z1: -30.1, w: 3.5, h0: 2.2, h1: 3.4 },
+            { k: 'plateau', x: -40.25, z: -36.75, r: 8.75, h: 7, edge: 0.4 }, { k: 'ramp', x0: -36.75, z0: -14, x1: -36.75, z1: -30.1, w: 3.5, h0: 3.5, h1: 7 },
             { k: 'climb', x: -48.4, z: -36.75, face: 90, look: 'rope' },
             /* THE FAR LENS (3.4): THE LENSING ARC from the near lens (a level span, the bridge layer), a chain on its east face, the stair down its south side —
                GRID FIT (2026-10-26): the far lens 2 m south so the arc runs straight along one row of squares, lens to lens */
-            { k: 'plateau', x: -21, z: -42, r: 7, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -38.5, z0: -40.25, x1: -24.5, z1: -40.25, w: 3.5, y: 3.4 },
-            { k: 'climb', x: -14.6, z: -42, face: 270, look: 'chain' }, { k: 'ramp', x0: -22.75, z0: -21, x1: -22.75, z1: -36.4, w: 3.5, h0: 0, h1: 3.4, stairs: true },
+            { k: 'plateau', x: -21, z: -42, r: 7, h: 7, edge: 0.4 }, { k: 'bridge', x0: -38.5, z0: -40.25, x1: -24.5, z1: -40.25, w: 3.5, y: 7 },
+            { k: 'climb', x: -14.6, z: -42, face: 270, look: 'chain' }, { k: 'ramp', x0: -22.75, z0: -21, x1: -22.75, z1: -36.4, w: 3.5, h0: 0, h1: 7, stairs: true },
             /* THE EAST TERRACE (2.4): the stair up its south side, the hand-holds on its west face — the survey camp on it */
-            { k: 'plateau', x: 49, z: 15.75, w: 21, d: 17.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 49, z0: 42, x1: 49, z1: 23.7, w: 7, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: 49, z: 15.75, w: 21, d: 17.5, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: 49, z0: 42, x1: 49, z1: 23.7, w: 7, h0: 0, h1: 3.5, stairs: true },
             { k: 'climb', x: 39.1, z: 15.75, face: 90, look: 'wall' },
             /* THE JET (4.6, a floating shard): a ladder on its south face, a chain on its west */
-            { k: 'plateau', x: 50.75, z: -5.25, r: 5.25, h: 4.6, edge: 0.4, float: true }, { k: 'climb', x: 50.75, z: -0.6, face: 0, look: 'ladder' }, { k: 'climb', x: 46.1, z: -5.25, face: 90, look: 'chain' },
+            { k: 'plateau', x: 50.75, z: -5.25, r: 5.25, h: 7, edge: 0.4, float: true }, { k: 'climb', x: 50.75, z: -0.6, face: 0, look: 'ladder' }, { k: 'climb', x: 46.1, z: -5.25, face: 90, look: 'chain' },
             /* THE ORBIT: three floating stones round the drop's east rim */
-            { k: 'plateau', x: 24.5, z: 10.5, r: 3.5, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 31.5, z: 3.5, r: 3.5, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 28, z: -7, r: 3.5, h: 2.2, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
+            { k: 'plateau', x: 24.5, z: 10.5, r: 3.5, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 31.5, z: 3.5, r: 3.5, h: 2.2, edge: 0.3, float: true }, { k: 'plateau', x: 28, z: -7, r: 3.5, h: 3.5, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
             /* THE OBSERVATORY LEDGE (2.4) on the north wall — the screen stands ON it: the stair up its east end, a ladder on its south face, a chain on its west end */
-            { k: 'plateau', x: 26.25, z: -54.25, w: 31.5, d: 17.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 59.5, z0: -50.75, x1: 41.2, z1: -50.75, w: 3.5, h0: 0, h1: 2.4, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
+            { k: 'plateau', x: 26.25, z: -54.25, w: 31.5, d: 17.5, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: 59.5, z0: -50.75, x1: 41.2, z1: -50.75, w: 3.5, h0: 0, h1: 3.5, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
             { k: 'climb', x: 19.25, z: -46.1, face: 0, look: 'ladder' }, { k: 'climb', x: 11.1, z: -50.75, face: 90, look: 'chain' },
             { k: 'rail', x0: -49, z0: 24.5, x1: -24.5, z1: 24.5 }, { k: 'rail', x0: 17.5, z0: 31.5, x1: 35, z1: 31.5 },
             /* THE PATHS: round the drop's west to Saturn's frame, east to the ledge's stair, the terrace, the shelf */
@@ -50131,22 +50401,24 @@ const HQ_AREA_SPECS = {
             { k: 'path', pts: [[0, 20], [24, 36], [48, 40]], w: 4.8 }, { k: 'path', pts: [[-24, 16], [-38, 16]], w: 4.8 }, { k: 'path', pts: [[-24, -24], [-22, -22]], w: 4.4 },
             { k: 'scatter', key: 'crystal_cluster', n: 9, seed: 1 }, { k: 'scatter', key: 'cave_stone', n: 8, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: 28, z: -44.775, face: 0, y: 2.4 }, { key: 'railing_1m', x: 48, z: 7.875, face: 0, y: 2.4 }, { key: 'railing_1m', x: -42.225, z: -28.905, face: 0, y: 3.4 }, { key: 'riser_1', x: 16, z: 28 },
+        props: [{ key: 'railing_1m', x: 28, z: -44.775, face: 0, y: 3.5 }, { key: 'railing_1m', x: 48, z: 7.875, face: 0, y: 3.5 }, { key: 'railing_1m', x: -42.225, z: -28.905, face: 0, y: 7 }, { key: 'riser_1', x: 26, z: 28 },
+                /* THE ORBIT IS THE BOARD (2026-11-10): the board's crystals and stones (each on its hidden block) */
+                { key: 'crystal_cluster', x: -15.75, z: 12.25, h: 2.2, floor: true }, { key: 'crystal_cluster', x: 15.75, z: 12.25, h: 2.2, floor: true }, { key: 'crystal_cluster', x: -15.75, z: 36.75, h: 2.2, floor: true }, { key: 'crystal_cluster', x: 15.75, z: 36.75, h: 2.2, floor: true }, { key: 'asteroid_b', x: -1.75, z: 19.25, span: 2.2, floor: true, rot: 60 }, { key: 'asteroid_a', x: 1.75, z: 29.75, span: 2.2, floor: true, rot: 200 },
                 { key: 'floating_orb', x: 0, z: -16, y: -3.4 },                                                   // the point, at the bottom of the drop
                 /* THE OBSERVATORY LEDGE: the projector, the tanks, the screen's watchers */
-                { key: 'star_projector', x: 20, z: -54, y: 2.4 }, { key: 'iso_tank', x: 36.75, z: -58.475, y: 2.4 }, { key: 'iso_tank', x: 40.725, z: -55.225, y: 2.4 }, { key: 'brass_telescope', x: 15, z: -50, y: 2.4, face: 160 }, { key: 'steel_table', x: 24, z: -49, y: 2.4 },
-                { key: 'crt_terminal', x: 24, z: -49, y: 3.16 }, { key: 'signpost', x: 33, z: -47.225, y: 2.4 },
+                { key: 'star_projector', x: 20, z: -54, y: 3.5 }, { key: 'iso_tank', x: 36.75, z: -58.475, y: 3.5 }, { key: 'iso_tank', x: 40.725, z: -55.225, y: 3.5 }, { key: 'brass_telescope', x: 15, z: -50, y: 3.5, face: 160 }, { key: 'steel_table', x: 24, z: -49, y: 3.5 },
+                { key: 'crt_terminal', x: 24, z: -49, y: 4.26 }, { key: 'signpost', x: 33, z: -47.225, y: 3.5 },
                 /* THE EAST TERRACE: the survey camp */
-                { key: 'cot', x: 43.75, z: 19.25, y: 2.4, face: 90 }, { key: 'cot', x: 43.75, z: 15.75, y: 2.4, face: 90 }, { key: 'steel_table', x: 52, z: 17.7333, y: 2.4 }, { key: 'crt_terminal', x: 52, z: 17.7333, y: 3.16 }, { key: 'retro_radio', x: 52, z: 16.9333, y: 3.16 },
-                { key: 'folding_chair', x: 52, z: 13, y: 2.4, face: 0 }, { key: 'flood_mast', x: 55, z: 22.775, y: 2.4 }, { key: 'sea_chest', x: 47.25, z: 12.25, y: 2.4 }, { key: 'brass_telescope', x: 39.875, z: 12.25, y: 2.4, face: 250 },
+                { key: 'cot', x: 43.75, z: 19.25, y: 3.5, face: 90 }, { key: 'cot', x: 43.75, z: 15.75, y: 3.5, face: 90 }, { key: 'steel_table', x: 52, z: 17.7333, y: 3.5 }, { key: 'crt_terminal', x: 52, z: 17.7333, y: 4.26 }, { key: 'retro_radio', x: 52, z: 16.9333, y: 4.26 },
+                { key: 'folding_chair', x: 52, z: 13, y: 3.5, face: 0 }, { key: 'flood_mast', x: 55, z: 22.775, y: 3.5 }, { key: 'sea_chest', x: 47.25, z: 12.25, y: 3.5 }, { key: 'brass_telescope', x: 39.875, z: 12.25, y: 3.5, face: 250 },
                 /* THE LENSES, THE SHELF, THE JET */
-                { key: 'crystal_cluster', x: -42, z: -38, y: 3.4 }, { key: 'crystal_cluster', x: -23.225, z: -47.675, y: 3.4 }, { key: 'telescope', x: -20, z: -43.75, y: 3.4, face: 30 }, { key: 'crystal_cluster', x: -38, z: -12, y: 2.2 }, { key: 'signpost', x: -32, z: -4, y: 2.2 },
-                { key: 'crystal_cluster', x: 50.75, z: -5.25, y: 4.6 }, { key: 'cave_stone', x: 28, z: -7, y: 2.2 },
+                { key: 'crystal_cluster', x: -42, z: -38, y: 7 }, { key: 'crystal_cluster', x: -23.225, z: -47.675, y: 7 }, { key: 'telescope', x: -20, z: -43.75, y: 7, face: 30 }, { key: 'crystal_cluster', x: -38, z: -12, y: 3.5 }, { key: 'signpost', x: -32, z: -4, y: 3.5 },
+                { key: 'crystal_cluster', x: 50.75, z: -5.25, y: 7 }, { key: 'cave_stone', x: 28, z: -7, y: 3.5 },
                 /* THE PLATEAU: the warning tape round the drop, the beacons, the stones */
-                { key: 'warning_tape', x: 1.75, z: 5.25 }, { key: 'warning_tape', x: -16, z: -4 }, { key: 'warning_tape', x: 16, z: -4 }, { key: 'flood_mast', x: -13.225, z: 8.75 }, { key: 'flood_mast', x: 13.225, z: 8.75 }, { key: 'lesson_sign', x: 8.75, z: 22.75, face: 200, lesson: 'climb' },
+                { key: 'warning_tape', x: 5.25, z: 1.75 }, { key: 'warning_tape', x: -16, z: -4 }, { key: 'warning_tape', x: 16, z: -4 }, { key: 'flood_mast', x: -13.225, z: 1.75 }, { key: 'flood_mast', x: 13.225, z: 1.75 }, { key: 'lesson_sign', x: 8.75, z: 22.75, face: 200, lesson: 'climb' },
                 { key: 'cave_stone', x: -52, z: 12 }, { key: 'cave_stone', x: 52, z: -44 }, { key: 'cave_stone', x: -8.75, z: 40.25 }, { key: 'signpost', x: -16, z: -52 }, { key: 'cardboard_boxes', x: 54, z: -40 }],
-        npcSpots: [{ x: -6, z: 28, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }, { x: 46, z: 18, y: 2.4, face: 250, race: 'watcher', say: '“The camp is upstream of the drop. Everything is upstream of the drop.”' },
-                   { x: -23, z: -44, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 30, z: -50, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
+        npcSpots: [{ x: -6, z: 28, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }, { x: 46, z: 18, y: 3.5, face: 250, race: 'watcher', say: '“The camp is upstream of the drop. Everything is upstream of the drop.”' },
+                   { x: -23, z: -44, y: 7, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 30, z: -50, y: 3.5, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
         lines: ['“Where does it go?” “Down. Only down.”'] },
     /* ROOM 6 · SATURN · THE HEXAGON (AREA CONTENT D3, 2026-09-19): the plateau under the rings — six low storm walls in the storm's shape
        (the grind) round THE EYE (a bowl), THE DOCKING SHELF on the north wall with the ship's collar standing ON it (a stair up its south face,
@@ -50154,59 +50426,69 @@ const HQ_AREA_SPECS = {
        TERRACE up its ramp with THE RIM WALK above it on the west wall where the drop's frame stands (the stair off the terrace, a chain, a
        ladder — the frame is seen from the whole plateau), THE SHARD'S FOOT under THE RING SHARD (the tape — the door gun's), THE RING GRAINS
        (three floating stones) stepping up from the eye's rim */
-    prebuilt_saturn: { grown: 2, part: 'hexagon', label: 'THE HEXAGON', sub: 'THE PLATEAU · THE STORM WALLS · THE EYE · THE RING SHARD', w: 140, d: 120, night: 1, look: 'observatory', fogD: 0.02,
+    prebuilt_saturn: { grown: 2, levelM: 3.5, ghostM: 1.75, walkM: 1.75, part: 'hexagon', label: 'THE HEXAGON', sub: 'THE PLATEAU · THE STORM WALLS · THE EYE · THE RING SHARD', w: 140, d: 120, night: 1, look: 'observatory', fogD: 0.02,
         parti: 'A plateau under the rings where the storm has built a six-sided wall round its own eye; every tier stands off the hexagon like a spoke, and the collar and the drop\'s frame are up on the rim, where the ship and the arithmetic both end.', typology: 'ring',
         floor: 'mars_2', cliff: 'storm', path: 'moon_3', floorColor: 0xc8a060, cliffColor: 0x7a6a58,
-        gen: { kind: 'rooms', seed: 6, loops: 3, rMin: 8, rMax: 14, wallH: 2.2, thicket: false, open: [{ x: -52, z: -4, r: 8 }, { x: 44, z: -12, r: 7 }, { x: 50, z: 42, r: 8 }, { x: 28, z: -52, r: 6 }], grow: 2 }, noise: { amp: 0.14, scale: 8 },   // the open circles: the strip between the terrace and the rim walk, the shard foot's south side, the south-east corner by the rover, the spoke's east foot (pockets the solver cut rescue ramps out of otherwise)
+        gen: { kind: 'rooms', seed: 6, loops: 3, rMin: 8, rMax: 14, wallH: 2.2, thicket: false, open: [{ x: -52, z: -4, r: 8 }, { x: 44, z: -12, r: 7 }, { x: 50, z: 42, r: 8 }, { x: 28, z: -52, r: 6 }, { x: 0, z: -17.5, r: 22 }, { x: -19.25, z: -35, r: 6.5 }, { x: 19.25, z: 0, r: 6.5 }], grow: 2 }, noise: { amp: 0.14, scale: 8 },   // the open circles: the strip between the terrace and the rim walk, the shard foot's south side, the south-east corner by the rover, the spoke's east foot (pockets the solver cut rescue ramps out of otherwise)
         plaza: { x: 0, z: 20 }, plazaR: 11,
         features: [
             /* THE HEXAGON (open on the south face) round THE EYE — a dip's h is its DEPTH */
             { k: 'wall', x0: 24.5, z0: -17.5, x1: 10.5, z1: 3.5, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -10.5, z0: 3.5, x1: -24.5, z1: -17.5, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -24.5, z0: -17.5, x1: -10.5, z1: -38.5, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -10.5, z0: -38.5, x1: 10.5, z1: -38.5, h: 4.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 10.5, z0: -38.5, x1: 24.5, z1: -17.5, h: 1.0, t: 0.6, key: 'storm' },   // the north segment is THE EYE WALL (4 m): the collar's shelf is not seen from the way in (R3). GRID FIT (2026-10-26): every corner on a square's corner, the flat sides on square lines, each slanted side 4 squares across by 6 down
-            { k: 'dip', x: 0, z: -17.5, r: 10, h: 1.6, open: true },
+            { k: 'dip', x: 0, z: -17.5, r: 10, h: 0.6, open: true },
+            /* THE HEXAGON IS THE BOARD (2026-11-10, mondo: "make improvements to all of the battle maps ... redesigning the layout ... better for PvP combat"):
+               the 12 x 12 is the hexagon itself (x -21..21, z -38.5..3.5), a team under its north wall and a team in its open south face, the eye
+               under the nexus. The slanted walls are a one-level step across the board's four corners (the hidden blocks fill the squares a
+               slanted wall only clips); asteroids, crystals, the lander, the pod and the dish stand on its squares, the same in each team's half. */
+            { k: 'wall', x0: -19.25, z0: -22.75, x1: -19.25, z1: -22.75, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -33.25, x1: -15.75, z1: -33.25, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: -33.25, x1: -12.25, z1: -33.25, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: -22.75, x1: 19.25, z1: -22.75, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -33.25, x1: 15.75, z1: -33.25, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -33.25, x1: 12.25, z1: -33.25, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -19.25, z0: -12.25, x1: -19.25, z1: -12.25, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -1.75, x1: -15.75, z1: -1.75, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: -1.75, x1: -12.25, z1: -1.75, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 19.25, z0: -12.25, x1: 19.25, z1: -12.25, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -1.75, x1: 15.75, z1: -1.75, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -1.75, x1: 12.25, z1: -1.75, h: 1, t: 3.5, key: 'storm', ghost: true, rail: false },
+            { k: 'wall', x0: -8.75, z0: -26.25, x1: -8.75, z1: -26.25, h: 2.6, t: 2.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: -26.25, x1: 8.75, z1: -26.25, h: 2.6, t: 2.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -8.75, z0: -8.75, x1: -8.75, z1: -8.75, h: 2.6, t: 2.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 8.75, z0: -8.75, x1: 8.75, z1: -8.75, h: 2.6, t: 2.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -22.75, x1: -15.75, z1: -22.75, h: 2, t: 1.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -15.75, z0: -12.25, x1: -15.75, z1: -12.25, h: 2, t: 1.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -22.75, x1: 15.75, z1: -22.75, h: 2, t: 1.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 15.75, z0: -12.25, x1: 15.75, z1: -12.25, h: 2, t: 1.4, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: -19.25, x1: -12.25, z1: -15.75, h: 2.9, t: 2.6, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -19.25, x1: 12.25, z1: -19.25, h: 2.2, t: 2.2, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -15.75, x1: 12.25, z1: -15.75, h: 2.4, t: 1.6, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: -1.75, z0: -22.75, x1: -1.75, z1: -22.75, h: 1.3, t: 1.6, key: 'storm', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: -12.25, x1: 1.75, z1: -12.25, h: 1.3, t: 1.6, key: 'storm', ghost: true, rail: false },   // THE HEXAGON IS THE BOARD (2026-11-10): 1.6 → 0.6 (the eye is the nexus's hollow; a 1.6 m bowl put the two teams a level over it)
             /* THE RING SHARD (6.0, the tape — the door gun's) and THE SHARD'S FOOT (3.0) under its south side: the stair up its east end, a chain on its west face, the hand-holds on its south */
-            { k: 'plateau', x: 40.25, z: -35, w: 17.5, d: 7, h: 6.0, edge: 0.4 },   // turned onto the squares' axes (was 25°)
-            { k: 'plateau', x: 40.25, z: -22.75, w: 17.5, d: 10.5, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 63, z0: -22.75, x1: 48.2, z1: -22.75, w: 3.5, h0: 0, h1: 3.0, stairs: true },
+            { k: 'plateau', x: 40.25, z: -35, w: 17.5, d: 7, h: 10.5, edge: 0.4 },   // turned onto the squares' axes (was 25°)
+            { k: 'plateau', x: 40.25, z: -22.75, w: 17.5, d: 10.5, h: 7, edge: 0.4 }, { k: 'ramp', x0: 63, z0: -22.75, x1: 48.2, z1: -22.75, w: 3.5, h0: 0, h1: 7, stairs: true },
             { k: 'climb', x: 32.1, z: -22.75, face: 90, look: 'chain' }, { k: 'climb', x: 40.25, z: -18.1, face: 0, look: 'wall' },
             /* THE WEST TERRACE (2.0): the ramp up its south side, the hand-holds on its east face, a rope on its north */
-            { k: 'plateau', x: -43.75, z: 5.25, r: 12.25, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -42, z0: 28, x1: -42, z1: 15.8, w: 7, h0: 0, h1: 2.0 },
+            { k: 'plateau', x: -43.75, z: 5.25, r: 12.25, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -42, z0: 25.5, x1: -42, z1: 15.8, w: 7, h0: 0, h1: 3.5 },
             { k: 'climb', x: -32.1, z: 5.25, face: 270, look: 'wall' }, { k: 'climb', x: -43.75, z: -6.4, face: 180, look: 'rope' },
             /* THE RIM WALK (4.2) on the west wall — the drop's frame stands ON it: the stair up from the terrace, a chain on its east face, a ladder on its south */
-            { k: 'plateau', x: -57.75, z: -28, w: 24.5, d: 28, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -47.25, z0: -3.5, x1: -47.25, z1: -14.8, w: 3.5, h0: 2.0, h1: 4.2, stairs: true },
+            { k: 'plateau', x: -57.75, z: -28, w: 24.5, d: 28, h: 7, edge: 0.4 }, { k: 'ramp', x0: -47.25, z0: -3.5, x1: -47.25, z1: -14.8, w: 3.5, h0: 3.5, h1: 7, stairs: true },
             { k: 'climb', x: -46.1, z: -33.25, face: 270, look: 'chain' }, { k: 'climb', x: -60, z: -13.4, face: 0, look: 'ladder' },
             /* THE DOCKING SHELF (2.4) on the north wall — the collar stands ON it: the stair up its south face at the door's own x, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -10.5, z: -52.5, w: 28, d: 14, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -10.5, z0: -24.5, x1: -10.5, z1: -46.3, w: 7, h0: 0, h1: 2.4, stairs: true },
+            { k: 'plateau', x: -10.5, z: -52.5, w: 28, d: 14, h: 3.5, edge: 0.4 }, { k: 'ramp', x0: -22.75, z0: -31.5, x1: -22.75, z1: -46.3, w: 3.5, h0: 0, h1: 3.5, stairs: true },   // THE HEXAGON IS THE BOARD (2026-11-10): outside the hexagon's north-west wall (it climbed out of one team's end zone)
             { k: 'climb', x: 2.9, z: -54.25, face: 270, look: 'ladder' }, { k: 'climb', x: -23.9, z: -54.25, face: 90, look: 'rope' },
             /* THE SPOKE (2.4) east of the shelf, a chain up its south face; THE RING PLANE from the shelf to it (a level span, the bridge layer) */
-            { k: 'plateau', x: 21, z: -49, r: 7, h: 2.4, edge: 0.35 }, { k: 'climb', x: 21, z: -42.6, face: 0, look: 'chain' },
-            { k: 'bridge', x0: 0, z0: -50.75, x1: 17.5, z1: -50.75, w: 3.5, y: 2.4 },   // one square wide, a square onto the shelf and onto the spoke
+            { k: 'plateau', x: 21, z: -49, r: 7, h: 3.5, edge: 0.35 }, { k: 'climb', x: 21, z: -42.6, face: 0, look: 'chain' },
+            { k: 'bridge', x0: 0, z0: -50.75, x1: 17.5, z1: -50.75, w: 3.5, y: 3.5 },   // one square wide, a square onto the shelf and onto the spoke
             /* THE RING GRAINS: three floating stones stepping up off the eye's east rim */
-            { k: 'plateau', x: 21, z: 7, r: 3.5, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 28, z: 0, r: 3.5, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 31.5, z: -10.5, r: 3.5, h: 2.2, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
+            { k: 'plateau', x: 21, z: 7, r: 3.5, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 28, z: 0, r: 3.5, h: 2.2, edge: 0.3, float: true }, { k: 'plateau', x: 31.5, z: -10.5, r: 3.5, h: 3.5, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
             { k: 'wall', x0: -24.5, z0: 35, x1: -7, z1: 35, h: 3.2, t: 0.6, key: 'storm' }, { k: 'rail', x0: 7, z0: 35, x1: 28, z1: 35 },   // THE OUTER TOOTH (3.2 m, the grind on its top): the frame on the rim walk is not seen from the way in (R3)
             /* THE PATHS: into the eye; round the hexagon's west to the terrace's ramp and on to the shelf's stair; round its east to the shard foot's stair */
             { k: 'path', pts: [[0, 20], [0, -16]], w: 5.2 }, { k: 'path', pts: [[0, 20], [-24, 16], [-44, 26]], w: 5.2 },
-            { k: 'path', pts: [[-24, 16], [-32, -16], [-32, -40], [-10, -29]], w: 4.8 }, { k: 'path', pts: [[-32, -40], [-40, -56]], w: 4.4 },
+            { k: 'path', pts: [[-24, 16], [-32, -16], [-32, -40], [-22.75, -31]], w: 4.8 }, { k: 'path', pts: [[-32, -40], [-40, -56]], w: 4.4 },
             { k: 'path', pts: [[0, 20], [32, 24], [60, 4], [60.6, -22]], w: 4.8 }, { k: 'path', pts: [[60, 4], [32, -12], [22, -40]], w: 4.4 },
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 6 }, { k: 'scatter', key: 'crystal_cluster', n: 6, seed: 66 },
         ],
-        props: [{ key: 'railing_1m', x: -10.5, z: -45.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: -54, z: -14.775, face: 0, y: 4.2 }, { key: 'railing_1m', x: -42, z: 16.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 15.75, z: 29.75 },
+        props: [{ key: 'railing_1m', x: -10.5, z: -45.7, face: 0, y: 3.5 }, { key: 'railing_1m', x: -54, z: -14.775, face: 0, y: 7 }, { key: 'railing_1m', x: -42, z: 16.6, face: 0, y: 3.5 }, { key: 'riser_1', x: 15.75, z: 29.75 },
                 /* THE DOCKING SHELF: the collar's gear */
-                { key: 'iso_tank', x: -21.775, z: -57.775, y: 2.4 }, { key: 'iso_tank', x: -16, z: -57.825, y: 2.4 }, { key: 'steel_table', x: -2.7, z: -57.775, y: 2.4 }, { key: 'crt_terminal', x: -2.7, z: -57.775, y: 3.16 }, { key: 'retro_radio', x: -1.8, z: -57.775, y: 3.16 },
-                { key: 'flood_mast', x: 2.275, z: -58.275, y: 2.4 }, { key: 'warning_tape', x: -18, z: -47.425, y: 2.4 }, { key: 'signpost', x: -1, z: -47.225, y: 2.4 }, { key: 'sea_chest', x: -22.775, z: -58.275, y: 2.4 },
+                { key: 'iso_tank', x: -21.775, z: -57.775, y: 3.5 }, { key: 'iso_tank', x: -16, z: -57.825, y: 3.5 }, { key: 'steel_table', x: -2.7, z: -57.775, y: 3.5 }, { key: 'crt_terminal', x: -2.7, z: -57.775, y: 4.26 }, { key: 'retro_radio', x: -1.8, z: -57.775, y: 4.26 },
+                { key: 'flood_mast', x: 2.275, z: -58.275, y: 3.5 }, { key: 'warning_tape', x: -18, z: -47.425, y: 3.5 }, { key: 'signpost', x: -1, z: -47.225, y: 3.5 }, { key: 'sea_chest', x: -22.775, z: -58.275, y: 3.5 },
                 /* THE SPOKE */
-                { key: 'brass_telescope', x: 23, z: -49, y: 2.4, face: 200 }, { key: 'lone_gun', x: 19.6, z: -46, y: 2.4 },
+                { key: 'brass_telescope', x: 23, z: -49, y: 3.5, face: 200 }, { key: 'lone_gun', x: 19.6, z: -46, y: 3.5 },
                 /* THE RIM WALK: the drop's watchers */
-                { key: 'telescope', x: -62, z: -24, y: 4.2, face: 100 }, { key: 'star_projector', x: -65.75, z: -37.5, y: 4.2 }, { key: 'cave_stone', x: -52, z: -38, y: 4.2 }, { key: 'signpost', x: -60, z: -36, y: 4.2 }, { key: 'flood_mast', x: -67, z: -17, y: 4.2 }, { key: 'sea_chest', x: -65.25, z: -38.5, y: 4.2 }, { key: 'warning_tape', x: -52, z: -24, y: 4.2 },
+                { key: 'telescope', x: -62, z: -24, y: 7, face: 100 }, { key: 'star_projector', x: -65.75, z: -37.5, y: 7 }, { key: 'cave_stone', x: -52, z: -38, y: 7 }, { key: 'signpost', x: -60, z: -36, y: 7 }, { key: 'flood_mast', x: -67, z: -17, y: 7 }, { key: 'sea_chest', x: -65.25, z: -38.5, y: 7 }, { key: 'warning_tape', x: -52, z: -24, y: 7 },
                 /* THE WEST TERRACE: the survey camp */
-                { key: 'cot', x: -50, z: 8, y: 2.0, face: 90 }, { key: 'cot', x: -50, z: 2, y: 2.0, face: 90 }, { key: 'steel_table', x: -40, z: 9, y: 2.0 }, { key: 'crt_terminal', x: -40, z: 9, y: 2.76 }, { key: 'folding_chair', x: -40, z: 4.8, y: 2.0, face: 0 }, { key: 'flood_mast', x: -52.325, z: -2.525, y: 2.0 }, { key: 'crystal_cluster', x: -37, z: -2, y: 2.0 }, { key: 'cardboard_boxes', x: -36.75, z: 1.75, y: 2.0 },
+                { key: 'cot', x: -50, z: 8, y: 3.5, face: 90 }, { key: 'cot', x: -50, z: 2, y: 3.5, face: 90 }, { key: 'steel_table', x: -40, z: 9, y: 3.5 }, { key: 'crt_terminal', x: -40, z: 9, y: 4.26 }, { key: 'folding_chair', x: -40, z: 4.8, y: 3.5, face: 0 }, { key: 'flood_mast', x: -52.325, z: -2.525, y: 3.5 }, { key: 'crystal_cluster', x: -37, z: -2, y: 3.5 }, { key: 'cardboard_boxes', x: -36.75, z: 1.75, y: 3.5 },
                 /* THE SHARD'S FOOT */
-                { key: 'iso_tank', x: 45, z: -25, y: 3.0 }, { key: 'crystal_cluster', x: 35.6, z: -25, y: 3.0 }, { key: 'warning_tape', x: 40, z: -18.875, y: 3.0 }, { key: 'signpost', x: 35, z: -19.075, y: 3.0 },
+                { key: 'iso_tank', x: 45, z: -25, y: 7 }, { key: 'crystal_cluster', x: 35.6, z: -25, y: 7 }, { key: 'warning_tape', x: 40, z: -18.875, y: 7 }, { key: 'signpost', x: 35, z: -19.075, y: 7 },
                 /* THE PLATEAU: the warning tape round the eye, the beacons at the hexagon's mouth, the rover, the stones */
-                { key: 'warning_tape', x: 0, z: 4 }, { key: 'warning_tape', x: -12.25, z: -5.25 }, { key: 'warning_tape', x: 12.25, z: -5.25 }, { key: 'flood_mast', x: -12.25, z: 12.25 }, { key: 'flood_mast', x: 12.25, z: 12.25 }, { key: 'lesson_sign', x: 8.75, z: 22.75, face: 200, lesson: 'climb' },
+                { key: 'warning_tape', x: 0, z: 5.25 }, { key: 'warning_tape', x: -12.25, z: 5.25 }, { key: 'warning_tape', x: 12.25, z: 5.25 },
+                /* THE HEXAGON IS THE BOARD (2026-11-10): the board's cover (each on its hidden block) */
+                { key: 'asteroid_a', x: -8.75, z: -26.25, span: 3.2, floor: true, rot: 20 }, { key: 'asteroid_b', x: 8.75, z: -26.25, span: 3.2, floor: true, rot: 140 }, { key: 'asteroid_b', x: -8.75, z: -8.75, span: 3.2, floor: true, rot: 250 }, { key: 'asteroid_a', x: 8.75, z: -8.75, span: 3.2, floor: true, rot: 80 },
+                { key: 'crystal_cluster', x: -15.75, z: -22.75, h: 2.2, floor: true }, { key: 'crystal_cluster', x: -15.75, z: -12.25, h: 2.2, floor: true }, { key: 'crystal_cluster', x: 15.75, z: -22.75, h: 2.2, floor: true }, { key: 'crystal_cluster', x: 15.75, z: -12.25, h: 2.2, floor: true },
+                { key: 'lunar_lander', x: -12.25, z: -17.5, floor: true }, { key: 'escapepod', x: 12.25, z: -19.25, face: 250, floor: true }, { key: 'dish', x: 12.25, z: -15.75, face: 270, floor: true }, { key: 'asteroid_b', x: -1.75, z: -22.75, span: 2.2, floor: true, rot: 60 }, { key: 'asteroid_a', x: 1.75, z: -12.25, span: 2.2, floor: true, rot: 200 }, { key: 'flood_mast', x: -12.25, z: 12.25 }, { key: 'flood_mast', x: 12.25, z: 12.25 }, { key: 'lesson_sign', x: 8.75, z: 22.75, face: 200, lesson: 'climb' },
                 { key: 'mars_rover', x: 48, z: 24, face: 300 }, { key: 'brass_telescope', x: -8.75, z: 29.75, face: 160 }, { key: 'cardboard_boxes', x: 54, z: -44 }, { key: 'cardboard_box', x: 50, z: -47 }, { key: 'cave_stone', x: -52, z: 44 }, { key: 'cave_stone', x: 52, z: 44 }, { key: 'cave_stone', x: -12, z: -44 }, { key: 'crystal_cluster', x: 40, z: 4 }, { key: 'crystal_cluster', x: -18, z: 44 }, { key: 'signpost', x: 29.75, z: 22.75 }, { key: 'sea_chest', x: 60, z: -36 }],
-        npcSpots: [{ x: -6, z: 28, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }, { x: -46, z: 6, y: 2.0, face: 250, race: 'grey', say: '“The camp is upwind of the eye. The eye is upwind of everything else.”' },
-                   { x: -60, z: -32, y: 4.2, face: 90, race: 'watcher', say: '“The frame on the rim has nothing in it. Do not look at what is in it.”' }, { x: 24, z: -51, y: 2.4, face: 270, race: 'android', say: '“The collar seals. Then the ship is here or it is not. There is no third reading.”' }],
+        npcSpots: [{ x: -6, z: 28, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }, { x: -46, z: 6, y: 3.5, face: 250, race: 'grey', say: '“The camp is upwind of the eye. The eye is upwind of everything else.”' },
+                   { x: -60, z: -32, y: 7, face: 90, race: 'watcher', say: '“The frame on the rim has nothing in it. Do not look at what is in it.”' }, { x: 24, z: -51, y: 3.5, face: 270, race: 'android', say: '“The collar seals. Then the ship is here or it is not. There is no third reading.”' }],
         lines: ['“Mind the ring plane.” “Which side?”'] },
-    prebuilt_haunted: { plazaR: 11, res: 1, part: 'grounds', label: 'THE GROUNDS', sub: 'THE DRIVE · THE FAMILY PLOT · THE CRYPT · THE GAZEBO · THE TREEHOUSE', w: 124, d: 112, night: 1, look: 'haunted', fogD: 0.03,
+    prebuilt_haunted: { plazaR: 11, res: 1, levelM: 3.5, part: 'grounds', label: 'THE GROUNDS', sub: 'THE DRIVE · THE FAMILY PLOT · THE CRYPT · THE GAZEBO · THE TREEHOUSE', w: 124, d: 112, night: 1, look: 'haunted', fogD: 0.03,
         parti: 'A drive up to a porch that is higher than it was, past a plot with your name on it, a crypt you can stand on, and a treehouse nobody remembers building.', typology: 'pearls',
         floor: 'grass_dark_fantasy', cliff: 'dirt_2', path: 'dirt_2', floorColor: 0x76906a, cliffColor: 0x76665a,
         /* THE LAWN BY DAY (2026-10-28, mondo: "why is the map so dark but the sky is bright and sunny?"): the lawn and the banks were
@@ -50221,7 +50503,13 @@ const HQ_AREA_SPECS = {
            lawn; west of the round the pond garden (THE FOOTBRIDGE onto the round, THE TREEHOUSE). Loops: the carriage loop;
            gate ⇄ lawn ⇄ churchyard ⇄ east drive ⇄ round ⇄ gate; forecourt ⇄ terrace ⇄ churchyard ⇄ east drive ⇄ forecourt;
            gate ⇄ pond garden ⇄ footbridge ⇄ round ⇄ gate. */
-        gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'trees', kinds: ['pine'], treeH: [5.2, 6.6], treeGap: 1.45, depth: 5, seed: 13, rim: 0, forceGrow: -0.6 }, noise: { amp: 0, scale: 14 },
+        /* THE BATTLE MAP POLISH (2026-11-10): the board (the coach house's yard and THE FAMILY PLOT) was cut in two by one long hedge with a single gap at its
+           east end. The hedge between the yard and the plot now has a four-square avenue through its middle (gen.open), and a second hedge line answers it
+           south of the plot (gen.solid), so the board is three bands with the same two gaps from either end; the east hedge keeps its gap.
+           HQ_ARENA_RULES.within pins every size here; columns 4..7 stay clear for the 9/10/11 house rows. */
+        gen: { minIsland: 8.8, edge: 0.6, pathGrow: 2.2, kind: 'plan', look: 'trees', kinds: ['pine'], treeH: [5.2, 6.6], treeGap: 1.45, depth: 5, seed: 13, rim: 0, forceGrow: -0.6,
+               open: [{ x0: -36.75, z0: -26.25, x1: -26.25, z1: -26.25, w: 3.4 }, { x0: -15.75, z0: -8.75, x1: -15.75, z1: 1.75, w: 3.4 }, { x0: -19.25, z0: -5.25, x1: -19.25, z1: -1.75, w: 3.4 }],
+               solid: [{ x0: -47.25, z0: -8.75, x1: -40.25, z1: -8.75, w: 3.4 }, { x0: -22.75, z0: -8.75, x1: -19.25, z1: -8.75, w: 3.4 }, { x0: -22.75, z0: 1.75, x1: -19.25, z1: 1.75, w: 3.4 }] }, noise: { amp: 0, scale: 14 },
         forest: { depth: 11, spacing: 3.4, rows: 2.8, start: 1.6, kinds: ['tree_5', 'tree_6'] },
         plaza: { x: 0, z: 16 },
         features: [
@@ -50248,78 +50536,78 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[28, -25], [28, -17]], w: 6 },
             { k: 'hall', pts: [[17, -52], [23, -52]], w: 4.8 },                              // under the east bridge
             /* THE PORCH (1.6) under the front door: the timber steps up from the forecourt (a handrail down the middle), the ivy up its west side */
-            { k: 'plateau', x: 0, z: -47.25, w: 28.6, d: 18.1, h: 1.6, edge: 0.3 },
-            { k: 'ramp', x0: 0, z0: -28, x1: 0, z1: -38.5, w: 7, h0: 0, h1: 1.6, stairs: true, edge: 0.3, built: true, model: 'wood', key: 'wood', side: 'wood' },
+            { k: 'plateau', x: 0, z: -47.25, w: 28.6, d: 18.1, h: 3.5, edge: 0.3 },
+            { k: 'ramp', x0: 0, z0: -28, x1: 0, z1: -38.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, model: 'wood', key: 'wood', side: 'wood' },
             { k: 'rail', pts: [[0, -28.9, 0.12], [0, -37.85, 1.48]], model: 'pipe', block: false },
             { k: 'climb', x: -13.9, z: -43.75, face: 90, look: 'vine' },
-            { k: 'rail', x0: 3.5, z0: -38.9, x1: 7, z1: -38.9, y: 1.6, model: 'balusters_b' }, { k: 'rail', x0: 10.5, z0: -38.9, x1: 14, z1: -38.9, y: 1.6, model: 'balusters_b' },
+            { k: 'rail', x0: 3.5, z0: -38.9, x1: 7, z1: -38.9, y: 3.5, model: 'balusters_b' }, { k: 'rail', x0: 10.5, z0: -38.9, x1: 14, z1: -38.9, y: 3.5, model: 'balusters_b' },
             /* THE BALCONY (3.6) either side of the front door: a timber stair up each wing off the porch, a bridge off each wing over the hedge —
                west to the coach house roof, east to the terrace's upper deck */
-            { k: 'plateau', x: -10.5, z: -52.5, w: 7, d: 7, h: 3.6, edge: 0.3 }, { k: 'plateau', x: 10.5, z: -52.5, w: 7, d: 7, h: 3.6, edge: 0.3 },
-            { k: 'ramp', x0: -8.75, z0: -38.5, x1: -8.75, z1: -49, w: 3.5, h0: 1.6, h1: 3.6, stairs: true, edge: 0.3, model: 'wood' },
-            { k: 'ramp', x0: 8.75, z0: -38.5, x1: 8.75, z1: -49, w: 3.5, h0: 1.6, h1: 3.6, stairs: true, edge: 0.3, model: 'wood' },
-            { k: 'rail', x0: -14, z0: -49.15, x1: -10.5, z1: -49.15, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: -7.15, z0: -55.9, x1: -7.15, z1: -49.1, y: 3.6, model: 'balusters_b' },
-            { k: 'rail', x0: 10.5, z0: -49.15, x1: 14, z1: -49.15, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 7.15, z0: -55.9, x1: 7.15, z1: -49.1, y: 3.6, model: 'balusters_b' },
-            { k: 'bridge', x0: -10.5, z0: -50.75, x1: -38.5, z1: -50.75, w: 3.5, y: 3.6 },
-            { k: 'bridge', x0: 10.5, z0: -50.75, x1: 42, z1: -50.75, w: 3.5, y: 3.6 },
+            { k: 'plateau', x: -10.5, z: -52.5, w: 7, d: 7, h: 7, edge: 0.3 }, { k: 'plateau', x: 10.5, z: -52.5, w: 7, d: 7, h: 7, edge: 0.3 },
+            { k: 'ramp', x0: -8.75, z0: -38.5, x1: -8.75, z1: -49, w: 3.5, h0: 3.5, h1: 7, stairs: true, edge: 0.3, model: 'wood' },
+            { k: 'ramp', x0: 8.75, z0: -38.5, x1: 8.75, z1: -49, w: 3.5, h0: 3.5, h1: 7, stairs: true, edge: 0.3, model: 'wood' },
+            { k: 'rail', x0: -14, z0: -49.15, x1: -10.5, z1: -49.15, y: 7, model: 'balusters_b' }, { k: 'rail', x0: -7.15, z0: -55.9, x1: -7.15, z1: -49.1, y: 7, model: 'balusters_b' },
+            { k: 'rail', x0: 10.5, z0: -49.15, x1: 14, z1: -49.15, y: 7, model: 'balusters_b' }, { k: 'rail', x0: 7.15, z0: -55.9, x1: 7.15, z1: -49.1, y: 7, model: 'balusters_b' },
+            { k: 'bridge', x0: -10.5, z0: -50.75, x1: -38.5, z1: -50.75, w: 3.5, y: 7 },
+            { k: 'bridge', x0: 10.5, z0: -50.75, x1: 42, z1: -50.75, w: 3.5, y: 7 },
             /* THE FAMILY PLOT (0.8) up its steps, the upper plot (2.0) along its west side up a second flight (a grind rail on its lip), its stair down
                north into the coach house's yard (the plot's middle stays level: the arena) */
             { k: 'plateau', x: -36.75, z: -12.25, r: 12.25, h: 0.8, edge: 0.3 },
             { k: 'ramp', x0: -14, z0: -12.25, x1: -24.5, z1: -12.25, w: 3.5, h0: 0, h1: 0.8, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'plateau', x: -47.25, z: -19.25, w: 11.1, d: 11.1, h: 2.0, edge: 0.3 },
-            { k: 'ramp', x0: -35, z0: -15.75, x1: -42, z1: -15.75, w: 3.5, h0: 0.8, h1: 2.0, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: -50.75, z0: -35, x1: -50.75, z1: -24.5, w: 3.5, h0: 0, h1: 2.0, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'rail', x0: -42.15, z0: -24.1, x1: -42.15, z1: -17.6, y: 2.0, model: 'pipe', block: false },
+            { k: 'plateau', x: -47.25, z: -19.25, w: 11.1, d: 11.1, h: 3.5, edge: 0.3 },
+            { k: 'ramp', x0: -38.5, z0: -15.75, x1: -42, z1: -15.75, w: 3.5, h0: 0.8, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: -50.75, z0: -31.5, x1: -50.75, z1: -24.5, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: -42.15, z0: -24.1, x1: -42.15, z1: -17.6, y: 3.5, model: 'pipe', block: false },
             /* THE CRYPT (2.6): the mausoleum block — the ivy up its west face, a 2.5 m gap east to the churchyard walk (two rails across it); the churchyard wall (the grind) with its gate onto the lawn */
-            { k: 'plateau', x: 35, z: 0, w: 14, d: 14, h: 2.6, edge: 0.3 }, { k: 'climb', x: 28.55, z: -2.375, face: 90, look: 'vine' },
-            { k: 'wall', x0: 28, z0: -7, x1: 42, z1: -7, y: 2.6, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: 28, z0: 7, x1: 42, z1: 7, y: 2.6, t: 1, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
-            { k: 'wall', x0: 28, z0: -7, x1: 28, z1: -3.5, y: 2.6, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: 28, z0: 0, x1: 28, z1: 7, y: 2.6, t: 1, key: 'bricks_2', rail: false },   // (the ivy between)
-            { k: 'wall', x0: 42, z0: -7, x1: 42, z1: 7, y: 2.6, t: 1, key: 'bricks_2', rail: false },
+            { k: 'plateau', x: 35, z: 0, w: 14, d: 14, h: 3.5, edge: 0.3 }, { k: 'climb', x: 28.55, z: -2.375, face: 90, look: 'vine' },
+            { k: 'wall', x0: 28, z0: -7, x1: 42, z1: -7, y: 3.5, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: 28, z0: 7, x1: 42, z1: 7, y: 3.5, t: 1, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
+            { k: 'wall', x0: 28, z0: -7, x1: 28, z1: -3.5, y: 3.5, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: 28, z0: 0, x1: 28, z1: 7, y: 3.5, t: 1, key: 'bricks_2', rail: false },   // (the ivy between)
+            { k: 'wall', x0: 42, z0: -7, x1: 42, z1: 7, y: 3.5, t: 1, key: 'bricks_2', rail: false },
             { k: 'wall', x0: 17.5, z0: 17.5, x1: 28, z1: 17.5, h: 1.2, t: 1.2, key: 'bricks_2' }, { k: 'wall', x0: 35, z0: 17.5, x1: 49, z1: 17.5, h: 1.2, t: 1.2, key: 'bricks_2' },
-            { k: 'rail', x0: 41.45, z0: -5.875, x1: 49.3, z1: -5.875, y: 2.6, model: 'pipe', block: false }, { k: 'rail', x0: 41.45, z0: 5.875, x1: 49.3, z1: 5.875, y: 2.6, model: 'pipe', block: false },
+            { k: 'rail', x0: 41.45, z0: -5.875, x1: 49.3, z1: -5.875, y: 3.5, model: 'pipe', block: false }, { k: 'rail', x0: 41.45, z0: 5.875, x1: 49.3, z1: 5.875, y: 3.5, model: 'pipe', block: false },
             /* THE CHURCHYARD WALK (2.6) along the east side: a stair up north onto the terrace, a stair down south onto the lawn (a handrail down its middle) */
-            { k: 'plateau', x: 54.25, z: 1.75, w: 10.5, d: 31.5, h: 2.6, edge: 0.3 },   // (runs on into the hedge, so no ditch along it)
-            { k: 'ramp', x0: 54.25, z0: -24.5, x1: 54.25, z1: -14, w: 3.5, h0: 1.4, h1: 2.6, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: 52.5, z0: 31.5, x1: 52.5, z1: 17.5, w: 7, h0: 0, h1: 2.6, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'plateau', x: 54.25, z: 1.75, w: 10.5, d: 31.5, h: 3.5, edge: 0.3 },   // (runs on into the hedge, so no ditch along it)
+            { k: 'ramp', x0: 54.25, z0: -24.5, x1: 54.25, z1: -14, w: 3.5, h0: 3.5, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: 52.5, z0: 31.5, x1: 52.5, z1: 17.5, w: 7, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
             { k: 'rail', pts: [[52.5, 18.2, 2.45], [52.5, 30.35, 0.15]], model: 'pipe', block: false },
-            { k: 'rail', x0: 49.15, z0: -13.7, x1: 49.15, z1: -7.1, y: 2.6, model: 'parapet' }, { k: 'rail', x0: 49.15, z0: 7.1, x1: 49.15, z1: 14, y: 2.6, model: 'parapet' },
+            { k: 'rail', x0: 49.15, z0: -13.7, x1: 49.15, z1: -7.1, y: 3.5, model: 'parapet' }, { k: 'rail', x0: 49.15, z0: 7.1, x1: 49.15, z1: 14, y: 3.5, model: 'parapet' },
             /* THE GAZEBO: the deck (0.6) up two steps round the roof (5.6, the tape — the door gun's), a balustrade round the deck (open to the gate and the steps) */
             { k: 'plateau', x: 33.25, z: 29.75, r: 8.75, h: 0.6, edge: 0.3 },
             { k: 'ramp', x0: 33.25, z0: 45.5, x1: 33.25, z1: 38.5, w: 3.5, h0: 0, h1: 0.6, stairs: true, edge: 0.3, built: true, key: 'wood', side: 'wood' },
-            { k: 'plateau', x: 33.25, z: 29.75, r: 5.55, h: 5.6, edge: 0.3 },
+            { k: 'plateau', x: 33.25, z: 29.75, r: 5.55, h: 10.5, edge: 0.3 },
             { k: 'rail', arc: { x: 33.25, z: 29.75, r: 8.55, a0: 200, a1: 335 }, y: 0.6, model: 'balusters_b' }, { k: 'rail', arc: { x: 33.25, z: 29.75, r: 8.55, a0: 25, a1: 160 }, y: 0.6, model: 'balusters_b' },
             /* THE TERRACE (1.4) along the east side: a stair, the hand-holds up its west face, the balustrade on it (the grind); its upper deck (3.6) up a stair along the east */
-            { k: 'plateau', x: 50.75, z: -38.5, w: 25.7, d: 29.2, h: 1.4, edge: 0.3 },   // (runs on into the hedge, so no ditch along it)
-            { k: 'ramp', x0: 24.5, z0: -36.75, x1: 38.5, z1: -36.75, w: 3.5, h0: 0, h1: 1.4, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'plateau', x: 50.75, z: -38.5, w: 25.7, d: 29.2, h: 3.5, edge: 0.3 },   // (runs on into the hedge, so no ditch along it)
+            { k: 'ramp', x0: 24.5, z0: -36.75, x1: 38.5, z1: -36.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
             { k: 'climb', x: 38.55, z: -29.375, face: 90, look: 'wall' },
             { k: 'wall', x0: 42, z0: -31.5, x1: 49, z1: -31.5, h: 0.9, t: 0.8, key: 'bricks_2' },
-            { k: 'plateau', x: 50.75, z: -50.75, w: 24.5, d: 10.5, h: 3.6, edge: 0.3 },   // (runs on into the hedge)
-            { k: 'ramp', x0: 57.75, z0: -35, x1: 57.75, z1: -45.5, w: 3.5, h0: 1.4, h1: 3.6, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'rail', x0: 38.65, z0: -45.65, x1: 56, z1: -45.65, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 38.65, z0: -45.65, x1: 38.65, z1: -48.9, y: 3.6, model: 'balusters_b' },
+            { k: 'plateau', x: 50.75, z: -50.75, w: 24.5, d: 10.5, h: 7, edge: 0.3 },   // (runs on into the hedge)
+            { k: 'ramp', x0: 57.75, z0: -35, x1: 57.75, z1: -45.5, w: 3.5, h0: 3.5, h1: 7, stairs: true, edge: 0.3, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: 38.65, z0: -45.65, x1: 56, z1: -45.65, y: 7, model: 'balusters_b' }, { k: 'rail', x0: 38.65, z0: -45.65, x1: 38.65, z1: -48.9, y: 7, model: 'balusters_b' },
             /* THE COACH HOUSE roof (3.6) in its yard: the ladder on its east end, the rope down its south face, the west bridge onto its north end */
-            { k: 'plateau', x: -45.5, z: -47.25, w: 21, d: 17.5, h: 3.6, edge: 0.3 }, { k: 'climb', x: -35.55, z: -43.75, face: 270, look: 'ladder' }, { k: 'climb', x: -43.75, z: -39.05, face: 0, look: 'rope' },
-            { k: 'wall', x0: -35, z0: -49, x1: -35, z1: -45.5, y: 3.6, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: -35, z0: -42, x1: -35, z1: -38.5, y: 3.6, t: 1, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
-            { k: 'wall', x0: -56, z0: -38.5, x1: -45.5, z1: -38.5, y: 3.6, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: -42, z0: -38.5, x1: -35, z1: -38.5, y: 3.6, t: 1, key: 'bricks_2', rail: false },
+            { k: 'plateau', x: -45.5, z: -47.25, w: 21, d: 17.5, h: 7, edge: 0.3 }, { k: 'climb', x: -35.55, z: -43.75, face: 270, look: 'ladder' }, { k: 'climb', x: -43.75, z: -39.05, face: 0, look: 'rope' },
+            { k: 'wall', x0: -35, z0: -49, x1: -35, z1: -45.5, y: 7, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: -35, z0: -42, x1: -35, z1: -38.5, y: 7, t: 1, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
+            { k: 'wall', x0: -56, z0: -38.5, x1: -45.5, z1: -38.5, y: 7, t: 1, key: 'bricks_2', rail: false }, { k: 'wall', x0: -42, z0: -38.5, x1: -35, z1: -38.5, y: 7, t: 1, key: 'bricks_2', rail: false },
             /* THE POND with THE FOOTBRIDGE, a curved rail round its north side */
             { k: 'pool', x: -29.75, z: 22.75, r: 8.75, depth: 0.6, key: 'water', bank: 1.6 },
             { k: 'deck', x0: -42, z0: 22.75, x1: -17.5, z1: 22.75, w: 3.5, y: 0.4 },
             { k: 'rail', arc: { x: -29.75, z: 22.75, r: 9.875, a0: 285, a1: 435 }, model: 'pipe', block: false },
             /* THE TREEHOUSE (3.2) in the old oak in the pond garden: a ladder and a rope; a bridge east to the lookout (3.2), its timber stair down onto the drive */
-            { k: 'plateau', x: -43.75, z: 36.75, r: 5.25, h: 3.2, edge: 0.3 }, { k: 'climb', x: -38.8, z: 36.75, face: 270, look: 'ladder' }, { k: 'climb', x: -43.75, z: 41.7, face: 0, look: 'rope' },
-            { k: 'plateau', x: -24.5, z: 38.5, w: 7, d: 7, h: 3.2, edge: 0.3 },
-            { k: 'bridge', x0: -42, z0: 36.75, x1: -24.5, z1: 36.75, w: 3.5, y: 3.2 },
-            { k: 'ramp', x0: -3.5, z0: 36.75, x1: -21, z1: 36.75, w: 3.5, h0: 0, h1: 3.2, stairs: true, edge: 0.3, model: 'wood' },
-            { k: 'rail', x0: -27.85, z0: 41.85, x1: -21.15, z1: 41.85, y: 3.2, model: 'ranch' }, { k: 'rail', x0: -27.85, z0: 38.65, x1: -27.85, z1: 41.85, y: 3.2, model: 'ranch' },
-            { k: 'rail', x0: -27.85, z0: 35.15, x1: -21.15, z1: 35.15, y: 3.2, model: 'ranch' },
+            { k: 'plateau', x: -43.75, z: 36.75, r: 5.25, h: 7, edge: 0.3 }, { k: 'climb', x: -38.8, z: 36.75, face: 270, look: 'ladder' }, { k: 'climb', x: -43.75, z: 41.7, face: 0, look: 'rope' },
+            { k: 'plateau', x: -24.5, z: 38.5, w: 7, d: 7, h: 7, edge: 0.3 },
+            { k: 'bridge', x0: -42, z0: 36.75, x1: -24.5, z1: 36.75, w: 3.5, y: 7 },
+            { k: 'ramp', x0: -3.5, z0: 36.75, x1: -21, z1: 36.75, w: 3.5, h0: 0, h1: 7, stairs: true, edge: 0.3, model: 'wood' },
+            { k: 'rail', x0: -27.85, z0: 41.85, x1: -21.15, z1: 41.85, y: 7, model: 'ranch' }, { k: 'rail', x0: -27.85, z0: 38.65, x1: -27.85, z1: 41.85, y: 7, model: 'ranch' },
+            { k: 'rail', x0: -27.85, z0: 35.15, x1: -21.15, z1: 35.15, y: 7, model: 'ranch' },
             { k: 'scatter', key: 'menhir', n: 8, seed: 13 }, { k: 'scatter', key: 'dead_snag', n: 5, seed: 4 }, { k: 'scatter', key: 'stump', n: 4, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 9 },
             { k: 'scatter', key: 'cave_stone', n: 4, seed: 3 }, { k: 'scatter', key: 'garden_ring', n: 3, seed: 7 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 5 },
         ],
         doors: [{ id: 'house', wall: 'n', x: 0, y: 1.6, leaf: 'leaf_wooden', label: 'THE HAUNTED HOUSE · THE HALL', sub: 'THE FRONT DOOR · GO IN',
                   action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
                   desc: 'The front door at the top of the porch steps. It is open a crack. It was not, a moment ago.' }],
-        props: [{ key: 'railing_1m', x: -12.25, z: -39.75, face: 0, y: 1.6 }, { key: 'railing_1m', x: 25.85, z: 29.875, face: 90, y: 0.6 }, { key: 'railing_1m', x: -43.75, z: -39.85, face: 0, y: 3.6 }, { key: 'riser_1', x: 10, z: 24.25 },
-                { key: 'hollow_dead_tree', x: -50.75, z: -19.25, y: 2.0, face: 120 }, { key: 'angel_statue', x: -33.25, z: -15.75, y: 0.8, face: 90 },
-                { key: 'sarcophagus', x: 36.75, z: 12.25, face: 90 }, { key: 'sarcophagus', x: 52.55, z: 0, y: 2.6, face: 0 }, { key: 'demon_statue', x: 36.75, z: 1.875, y: 2.6, face: 180 },
+        props: [{ key: 'railing_1m', x: -12.25, z: -39.75, face: 0, y: 3.5 }, { key: 'railing_1m', x: 25.85, z: 29.875, face: 90, y: 0.6 }, { key: 'railing_1m', x: -43.75, z: -39.85, face: 0, y: 7 }, { key: 'riser_1', x: 10, z: 24.25 },
+                { key: 'hollow_dead_tree', x: -50.75, z: -19.25, y: 3.5, face: 120 }, { key: 'angel_statue', x: -33.25, z: -15.75, y: 0.8, face: 90 },
+                { key: 'sarcophagus', x: 36.75, z: 12.25, face: 90 }, { key: 'sarcophagus', x: 52.55, z: 0, y: 3.5, face: 0 }, { key: 'demon_statue', x: 36.75, z: 1.875, y: 3.5, face: 180 },
                 { key: 'cave_torch', x: -12.25, z: -36.75 }, { key: 'cave_torch', x: 12.25, z: -36.75 }, { key: 'cave_torch', x: 28, z: 16 }, { key: 'cave_torch', x: -43.75, z: 26.325 },
                 { key: 'planter', x: -9, z: -34 }, { key: 'planter', x: 9, z: -34 }, { key: 'garden_tree', x: -50.75, z: 29.875 }, { key: 'garden_tree', x: 20, z: 48 }, { key: 'hollow_tree', x: 48, z: 40 },
                 { key: 'park_bench', x: -8, z: 24.25, face: 0 }, { key: 'park_bench', x: 24.25, z: 40, face: 180 }, { key: 'signpost', x: 6, z: 24.25 }, { key: 'stocks', x: 19.125, z: 5.25, face: 180 },
@@ -50328,7 +50616,7 @@ const HQ_AREA_SPECS = {
                    on the outer ground past the treeline, west, east and south of the grounds (side on: its long wall to the grounds) */
                 { key: 'abandoned_house', x: -86, z: -14, face: 0 }, { key: 'abandoned_house', x: 86, z: 18, face: 180 }, { key: 'abandoned_house', x: -34, z: 80, face: 90 }],
         npcSpots: [{ x: -6, z: 24, face: 30, race: 'ghost', say: '“The house is not haunted. The grounds are. The house is where we go to get away from it.”' }, { x: -32, z: -16, y: 0.8, face: 160, race: 'ghoul', say: '“Every stone in the plot has your surname. Most of them are spelled right.”' },
-                   { x: 48, z: -38, y: 1.4, face: 270, race: 'vampire', say: '“The terrace was for watching the drive. Nobody comes up the drive. We watch anyway.”' }],
+                   { x: 48, z: -38, y: 3.5, face: 270, race: 'vampire', say: '“The terrace was for watching the drive. Nobody comes up the drive. We watch anyway.”' }],
         lines: ['“Which floor?” “The one hotels leave out.”'] },
     /* ROOM 180 · HOLLOW EARTH · THE INNER SUN (AREA CONTENT D3, 2026-09-19): the country under the crust, lit from the middle — THE SUN on its
        spire (the tape — the door gun's) over THE TERRACE (a stair, the hand-holds, a vine), THE CRUST LEDGE on the north wall with the cave's mouth
@@ -50366,7 +50654,9 @@ const HQ_AREA_SPECS = {
             { k: 'plateau', x: -38.5, z: 21, r: 10.8, h: 2.6, edge: 0.8 }, { k: 'ramp', x0: -10.5, z0: 21, x1: -28, z1: 21, w: 7, h0: 0, h1: 2.6 },
             { k: 'climb', x: -38.5, z: 10.65, face: 180, look: 'vine' },
             { k: 'rail', x0: -24.7, z0: 48, x1: -4.05, z1: 48 }, { k: 'rail', x0: 20.5, z0: 44, x1: 40, z1: 44 },
-            { k: 'tree', x: 33.25, z: 33.25, kind: 'tree_4', h: 7.0, r: 0.8 }, { k: 'tree', x: 26.25, z: 36.75, kind: 'tree_4', h: 6.5, r: 0.8 },   // THE OLD TREES on the lake's south shore: the polar crack is not seen from the way in (R3)
+            { k: 'tree', x: 33.25, z: 33.25, kind: 'tree_4', h: 7.0, r: 0.8 }, { k: 'tree', x: 26.25, z: 36.75, kind: 'tree_4', h: 6.5, r: 0.8 },
+            { k: 'tree', x: -5.25, z: 15.75, kind: 'tree_4', h: 7.0, r: 0.8 }, { k: 'tree', x: 1.75, z: 12.25, kind: 'tree_4', h: 6.5, r: 0.8 },   // THE BATTLE MAP POLISH (2026-11-10): the two old trees' twins across the board
+              // THE OLD TREES on the lake's south shore: the polar crack is not seen from the way in (R3)
             /* THE PATHS: up the terrace; round the lake's west to the forest's stair and the ledge's; west to the seat, the steps, the overhang's ladder and the shelf; round the lake's south to the polar crack */
             { k: 'path', pts: [[0, 16], [0, 3]], w: 5.2 }, { k: 'path', pts: [[0, 16], [20, 6], [16, -36], [20, -53], [-10, -29.8]], w: 4.8 },
             { k: 'path', pts: [[0, 16], [-17.2, 20]], w: 4.8 }, { k: 'path', pts: [[0, 16], [-20, 8], [-26, -8], [-26, -32], [-32, -52]], w: 4.8 }, { k: 'path', pts: [[-26, -20], [-43, -20]], w: 4.4 },
@@ -50406,7 +50696,7 @@ const HQ_AREA_SPECS = {
        kind 'starship'): the plan's own silhouette as the ship's sides, its belly, the round keel under the hull, the engine bells and
        the pods' nacelles astern, the lit edge strips, the bridge's windows, the running lights. THE VOYAGE as before. Every arena size is
        cut across the wings and the hull (HQ_ARENA_RULES.within.prebuilt_derelict). */
-    prebuilt_derelict: { plazaR: 11, res: 1, part: 'deck', label: 'THE DECK', sub: 'THE HULL · THE WINGS · THE ENGINES · THE BREACH', w: 124, d: 100, night: 1, look: 'observatory', fogD: 0.016,
+    prebuilt_derelict: { plazaR: 11, res: 1, levelM: 3.5, part: 'deck', label: 'THE DECK', sub: 'THE HULL · THE WINGS · THE ENGINES · THE BREACH', w: 124, d: 100, night: 1, look: 'observatory', fogD: 0.016,
         parti: 'A ship with its wings spread in the dark: the hull runs from the engines to the bridge, the wings carry the crews out to the docking booms at their tips, and between the pieces there is nothing at all.', typology: 'corridor',
         floor: 'aluminium', cliff: 'gunmetal', path: 'aluminium', floorColor: 0x8e98a2, cliffColor: 0x5a6068,
         noise: { amp: 0, scale: 18 }, crag: false,
@@ -50414,8 +50704,8 @@ const HQ_AREA_SPECS = {
         float: { hull: { kind: 'starship', deck: 3.2, plate: 0.8, tip: 0.45, keel: { z: 0, half: 7, depth: 5.2 },
                          bells: [{ z: -3.5, r: 1.35 }, { z: 3.5, r: 1.35 }],
                          pods: [{ x0: -60.4, x1: -34.1, z: -22.75, r: 1.45 }, { x0: -60.4, x1: -34.1, z: 22.75, r: 1.45 }],
-                         windows: [{ x: 42.7, z0: -6, z1: 6, y: 4.35 }],
-                         lights: [{ x: -31.8, z: -42.4, y: 3.35, color: 0xff3a30 }, { x: -31.8, z: 42.4, y: 3.35, color: 0x40ff70 }, { x: 60, z: 0, y: 3.35, color: 0xffffff }, { x: -60, z: 0, y: 5.1, color: 0xffffff }] } },
+                         windows: [{ x: 42.7, z0: -6, z1: 6, y: 5.2 }],
+                         lights: [{ x: -31.8, z: -42.4, y: 3.35, color: 0xff3a30 }, { x: -31.8, z: 42.4, y: 3.35, color: 0x40ff70 }, { x: 60, z: 0, y: 3.35, color: 0xffffff }, { x: -60, z: 0, y: 6.85, color: 0xffffff }] } },
         voyage: true,
         plaza: { x: -7, z: 0 },   // the nexus: the middle of every arena cut
         spawn: { x: -12.25, z: 43.75, face: 0 },   // on the starboard boom, by the bay door
@@ -50429,7 +50719,7 @@ const HQ_AREA_SPECS = {
             { k: 'text', text: '426', x: -19.25, z: -31.5, size: 2.2, color: 0xc8d0da, a: 0.6 }, { k: 'text', text: '426', x: -19.25, z: 31.5, size: 2.2, color: 0xc8d0da, a: 0.6 },
         ],
         features: [
-            /* THE PLAN: '.' open space · 'o' the deck (3.2) · '1' one level up (4.95) · 'w' a crate block (1.25 over the deck) */
+            /* THE PLAN: '.' open space · 'o' the deck (3.2) · '1' one level up (6.7) · 'w' a crate block (3.5 over the deck) */
             ...hqDeckPlan([
             '.............ooo....................',
             '.............ooo....................',
@@ -50459,25 +50749,31 @@ const HQ_AREA_SPECS = {
             '.........ooooooo....................',
             '.............ooo....................',
             '.............ooo....................',
-            ], { C: 3.5, x0: -63, z0: -49, h: 3.2, rise: 1.75, proud: 0.7, crateH: 1.25, crateKey: 'gunmetal' }),
+            ], { C: 3.5, x0: -63, z0: -49, h: 3.2, rise: 3.5, proud: 0.7, crateH: 3.5, crateKey: 'urban:MetalCorrugatedPainted1a', crateTint: '#ffffff' }),   // THE BATTLE MAP POLISH + THE FULL LEDGES (2026-11-10): a level is a whole 3.5 m square (the bridge and the engine housing 6.7 m, the crate blocks 3.5 m over the deck), the crates in painted corrugated steel under their own tint (the room's wall colour drew them black)
+            /* THE BATTLE MAP POLISH (2026-11-10): the wreck's own cover on the board, alike from both wings: a torn hull plate beside each
+               breach (squares 8 x 4 and 8 x 7) and an escape pod on each side of the port-side crate block's outboard edge (0 x 5, 0 x 6),
+               each on a one-square ghost block */
+            { k: 'wall', x0: 1.75, z0: -5.25, x1: 1.75, z1: -5.25, h: 3.5, t: 2.4, key: 'gunmetal', ghost: true, rail: false }, { k: 'wall', x0: 1.75, z0: 5.25, x1: 1.75, z1: 5.25, h: 3.5, t: 2.4, key: 'gunmetal', ghost: true, rail: false },
+            { k: 'wall', x0: -26.25, z0: -1.75, x1: -26.25, z1: -1.75, h: 3.5, t: 2.4, key: 'gunmetal', ghost: true, rail: false }, { k: 'wall', x0: -26.25, z0: 1.75, x1: -26.25, z1: 1.75, h: 3.5, t: 2.4, key: 'gunmetal', ghost: true, rail: false },
             /* the steel flights: up the engine housing from the hull, up the bridge from the hull (the hull's whole width: no stair cheek on a deck square) */
-            { k: 'ramp', x0: -35, z0: 0, x1: -45.4, z1: 0, w: 14, h0: 3.2, h1: 4.95, stairs: true, model: 'steel', edge: 0.3 },
-            { k: 'ramp', x0: 21, z0: 0, x1: 27.9, z1: 0, w: 14, h0: 3.2, h1: 4.95, stairs: true, model: 'steel', edge: 0.3 },
+            { k: 'ramp', x0: -35, z0: 0, x1: -45.4, z1: 0, w: 14, h0: 3.2, h1: 6.7, stairs: true, model: 'steel', edge: 0.3 },
+            { k: 'ramp', x0: 21, z0: 0, x1: 27.9, z1: 0, w: 14, h0: 3.2, h1: 6.7, stairs: true, model: 'steel', edge: 0.3 },
         ],
         doors: [{ id: 'airlock', wall: 'n', x: -12, y: 3.2, leaf: 'leaf_bulkhead', wide: true, label: 'THE SPACESHIP · THE AIRLOCK', sub: 'THE AIRLOCK · GO IN',
                   action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
                   desc: 'The airlock, at the end of the port boom. It cycles on its own, which the manual says it cannot.' }],
-        props: [{ key: 'flood_mast', x: -29.75, z: -40.25, y: 3.2 }, { key: 'flood_mast', x: -29.75, z: 40.25, y: 3.2 }, { key: 'flood_mast', x: -57.75, z: -22.75, y: 3.2 }, { key: 'flood_mast', x: -57.75, z: 22.75, y: 3.2 },
+        props: [{ key: 'hullplate', x: 1.75, z: -5.25, y: 3.2, h: 4.5, face: 0 }, { key: 'hullplate', x: 1.75, z: 5.25, y: 3.2, h: 4.5, face: 180 }, { key: 'escapepod', x: -26.25, z: -1.75, y: 3.2, face: 270 }, { key: 'escapepod', x: -26.25, z: 1.75, y: 3.2, face: 270 },   // THE BATTLE MAP POLISH: the board's cover
+                { key: 'flood_mast', x: -29.75, z: -40.25, y: 3.2 }, { key: 'flood_mast', x: -29.75, z: 40.25, y: 3.2 }, { key: 'flood_mast', x: -57.75, z: -22.75, y: 3.2 }, { key: 'flood_mast', x: -57.75, z: 22.75, y: 3.2 },
                 { key: 'iso_tank', x: -49, z: -22.75, face: 0, y: 3.2 }, { key: 'iso_tank', x: -49, z: 22.75, face: 0, y: 3.2 },
                 { key: 'lunar_lander', x: -15.75, z: -36.75, y: 3.2 }, { key: 'mars_rover', x: -15.75, z: 36.75, face: 90, y: 3.2 },
                 { key: 'robot_arm', x: -22.75, z: -29.75, face: 0, y: 3.2 }, { key: 'robot_arm', x: -22.75, z: 29.75, face: 180, y: 3.2 },
                 { key: 'pipe_run', x: -47.25, z: -8.75, y: 3.2 }, { key: 'pipe_run', x: -47.25, z: 8.75, y: 3.2 },
-                { key: 'steel_table', x: 38.5, z: -3.5, face: 0, y: 4.95 }, { key: 'crt_terminal', x: 38.5, z: -3.5, y: 5.71 }, { key: 'lone_gun', x: 40.25, z: 3.5, y: 4.95 },
+                { key: 'steel_table', x: 38.5, z: -3.5, face: 0, y: 6.7 }, { key: 'crt_terminal', x: 38.5, z: -3.5, y: 7.46 }, { key: 'lone_gun', x: 40.25, z: 3.5, y: 6.7 },
                 { key: 'globe_lamp', x: -33.25, z: -5.25, y: 3.2 }, { key: 'globe_lamp', x: 22.75, z: 5.25, y: 3.2 },
                 { key: 'sea_chest', x: -54.25, z: -19.25, y: 3.2 }, { key: 'sea_chest', x: -54.25, z: 19.25, y: 3.2 },
                 { key: 'cot', x: -54.25, z: -12.25, face: 90, y: 3.2 }, { key: 'cot', x: -50.75, z: -12.25, face: 90, y: 3.2 },
                 { key: 'wet_floor_sign', x: -22.75, z: -40.25, y: 3.2 }, { key: 'broom', x: -54.25, z: 12.25, y: 3.2 }, { key: 'mop_bucket', x: -50.75, z: 12.25, y: 3.2 }],
-        npcSpots: [{ x: -40.25, z: -8.75, y: 3.2, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: 35, z: 3.5, y: 4.95, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' }],
+        npcSpots: [{ x: -40.25, z: -8.75, y: 3.2, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: 35, z: 3.5, y: 6.7, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' }],
         lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
     /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK — THE NEW MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps
        ... design them with square tiles in mind ... dont delete these voxel maps though, some of them still look good like the dutchman,
@@ -50492,7 +50788,7 @@ const HQ_AREA_SPECS = {
        walk and in every fight on her deck, faster every round. The masts, the capstan and the helm are terrain TREES (each holds its
        squares; the hull draws them, not the foliage kit). The arena (bake-arenas.js) is the 12 × 12 across the waist, the teams at the
        port and starboard bulwarks; the old voxel Δ stays pickable in VS CPU (HQ_ARENA_RULES.voxelKeep). */
-    prebuilt_revenge: { grown: 2, part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE QUARTERDECK · THE POOP', w: 119, d: 49, night: 1, look: 'galleon', fogD: 0.007,
+    prebuilt_revenge: { grown: 2, levelM: 3.5, ghostM: 1.75, part: 'deck', label: 'THE MAIN DECK', sub: 'THE FORECASTLE · THE WAIST · THE QUARTERDECK · THE POOP', w: 119, d: 49, night: 1, look: 'galleon', fogD: 0.007,
         sea: { y: -4.2, key: 'water', field: true },
         outer: { m: 320 },   // the sea's sheet runs 320 m past the rails, to the horizon the far roster sails on (a float plate builds no outer ground)
         float: { hull: { kind: 'galleon', draft: 3.8, bow: 19, stern: 1 } },
@@ -50504,16 +50800,16 @@ const HQ_AREA_SPECS = {
         spawn: { x: 45.5, z: 21.2, face: 0 },
         features: [
             /* THE QUARTERDECK (+1.5, aft), THE POOP over its stern (+3.0), THE FORECASTLE (+1.5, fore) — edges on the square lines */
-            { k: 'plateau', x: -38.5, z: 0, w: 49, d: 56, h: 1.5, edge: 0.15 },   // GRID-FIT (2026-10-26): its overhang past the stern on a square line too
-            { k: 'plateau', x: -54.25, z: 0, w: 17.5, d: 56, h: 3.0, edge: 0.15 },
-            { k: 'plateau', x: 38.5, z: 0, w: 49, d: 56, h: 1.5, edge: 0.15 },
+            { k: 'plateau', x: -38.5, z: 0, w: 49, d: 56, h: 3.5, edge: 0.15 },   // GRID-FIT (2026-10-26): its overhang past the stern on a square line too
+            { k: 'plateau', x: -54.25, z: 0, w: 17.5, d: 56, h: 7, edge: 0.15 },
+            { k: 'plateau', x: 38.5, z: 0, w: 49, d: 56, h: 3.5, edge: 0.15 },
             /* the built flights: two up each castle's break from the waist (a square wide, on the egress rows' outer squares), two up the poop's break */
-            { k: 'ramp', x0: -7, z0: -15.75, x1: -14.1, z1: -15.75, w: 3.5, h0: 0, h1: 1.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: -7, z0: 15.75, x1: -14.1, z1: 15.75, w: 3.5, h0: 0, h1: 1.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: 7, z0: -15.75, x1: 14.1, z1: -15.75, w: 3.5, h0: 0, h1: 1.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: 7, z0: 15.75, x1: 14.1, z1: 15.75, w: 3.5, h0: 0, h1: 1.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: -38.5, z0: -22.75, x1: -45.6, z1: -22.75, w: 3.5, h0: 1.5, h1: 3.0, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },   // GRID-FIT: on the outer square row (was straddling two)
-            { k: 'ramp', x0: -38.5, z0: 22.75, x1: -45.6, z1: 22.75, w: 3.5, h0: 1.5, h1: 3.0, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -11.4, z0: -15.75, x1: -14.1, z1: -15.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -11.4, z0: 15.75, x1: -14.1, z1: 15.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: 11.4, z0: -15.75, x1: 14.1, z1: -15.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: 11.4, z0: 15.75, x1: 14.1, z1: 15.75, w: 3.5, h0: 0, h1: 3.5, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -42.9, z0: -22.75, x1: -45.6, z1: -22.75, w: 3.5, h0: 3.5, h1: 7, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },   // GRID-FIT: on the outer square row (was straddling two)
+            { k: 'ramp', x0: -42.9, z0: 22.75, x1: -45.6, z1: 22.75, w: 3.5, h0: 3.5, h1: 7, stairs: true, built: true, model: 'wood', edge: 0.15, key: 'wood_planks' },
             /* THE MASTS, THE CAPSTAN, THE HELM (terrain trees: each holds its squares — the mainmast and the capstan two squares each on the waist) */
             { k: 'tree', x: -8.75, z: 0, kind: 'mast', r: 0.9, h: 31 },     // THE MAINMAST
             { k: 'tree', x: 8.75, z: 0, kind: 'capstan', r: 0.8, h: 1.1 },   // THE CAPSTAN
@@ -50521,30 +50817,33 @@ const HQ_AREA_SPECS = {
             { k: 'tree', x: -33.25, z: 0, kind: 'mast', r: 0.8, h: 22 },    // THE MIZZEN
             { k: 'tree', x: -50.75, z: 0, kind: 'helm', r: 0.8, h: 1.7 },   // THE HELM (the wheel, facing the bow)
             /* THE CARGO on the waist: four lashed crates (one level, cover), a square each */
-            { k: 'wall', x0: -5.25, z0: -8.75, x1: -5.25, z1: -8.75, h: 1.25, t: 3.5, key: 'wood', rail: false },   // GRID-FIT: each crate fills its square exactly (a zero-length block row, t one square)
-            { k: 'wall', x0: -5.25, z0: 8.75, x1: -5.25, z1: 8.75, h: 1.25, t: 3.5, key: 'wood', rail: false },
-            { k: 'wall', x0: 5.25, z0: -8.75, x1: 5.25, z1: -8.75, h: 1.25, t: 3.5, key: 'wood', rail: false },
-            { k: 'wall', x0: 5.25, z0: 8.75, x1: 5.25, z1: 8.75, h: 1.25, t: 3.5, key: 'wood', rail: false },
+            { k: 'wall', x0: -5.25, z0: -8.75, x1: -5.25, z1: -8.75, h: 3.5, t: 3.5, key: 'wood', rail: false },   // GRID-FIT: each crate fills its square exactly (a zero-length block row, t one square)
+            { k: 'wall', x0: -5.25, z0: 8.75, x1: -5.25, z1: 8.75, h: 3.5, t: 3.5, key: 'wood', rail: false },
+            { k: 'wall', x0: 5.25, z0: -8.75, x1: 5.25, z1: -8.75, h: 3.5, t: 3.5, key: 'wood', rail: false },
+            { k: 'wall', x0: 5.25, z0: 8.75, x1: 5.25, z1: 8.75, h: 3.5, t: 3.5, key: 'wood', rail: false },
+            /* THE CARGO (2026-11-10, mondo: "make improvements to all of the battle maps ... adding better props ... better for PvP combat"): four stacks of crates
+               on the main deck by the two stairs' sides (each on a block never drawn), the same in each team's half */
+            { k: 'wall', x0: -12.25, z0: -5.25, x1: -12.25, z1: -5.25, h: 1.7, t: 1.8, key: 'wood', ghost: true, rail: false }, { k: 'wall', x0: -12.25, z0: 5.25, x1: -12.25, z1: 5.25, h: 1.7, t: 1.8, key: 'wood', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: -5.25, x1: 12.25, z1: -5.25, h: 1.7, t: 1.8, key: 'wood', ghost: true, rail: false }, { k: 'wall', x0: 12.25, z0: 5.25, x1: 12.25, z1: 5.25, h: 1.7, t: 1.8, key: 'wood', ghost: true, rail: false },
             /* THE BULWARKS on the plate's edge (port −z, starboard +z): one top per deck, the gun ports cut (a sill and a lintel over
                each gun), the gangway cut on the forecastle's starboard side (the way in) */
-            { k: 'wall', x0: -61.5, z0: -26.1, x1: -45.5, z1: -26.1, y: 4.1, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: -61.5, z0: 26.1, x1: -45.5, z1: 26.1, y: 4.1, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: -45.5, z0: -26.1, x1: -36.1, z1: -26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -33.9, z0: -26.1, x1: -25.6, z1: -26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -23.4, z0: -26.1, x1: -14, z1: -26.1, y: 2.6, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: -45.5, z0: 26.1, x1: -36.1, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -33.9, z0: 26.1, x1: -25.6, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -23.4, z0: 26.1, x1: -14, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -61.5, z0: -26.1, x1: -45.5, z1: -26.1, y: 8.1, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -61.5, z0: 26.1, x1: -45.5, z1: 26.1, y: 8.1, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -45.5, z0: -26.1, x1: -36.1, z1: -26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -33.9, z0: -26.1, x1: -25.6, z1: -26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -23.4, z0: -26.1, x1: -14, z1: -26.1, y: 4.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -45.5, z0: 26.1, x1: -36.1, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -33.9, z0: 26.1, x1: -25.6, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -23.4, z0: 26.1, x1: -14, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false },
             { k: 'wall', x0: -14, z0: -26.1, x1: -6.35, z1: -26.1, y: 1.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -4.15, z0: -26.1, x1: 4.15, z1: -26.1, y: 1.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 6.35, z0: -26.1, x1: 14, z1: -26.1, y: 1.1, t: 0.4, key: 'wood', rail: false },
             { k: 'wall', x0: -14, z0: 26.1, x1: -6.35, z1: 26.1, y: 1.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -4.15, z0: 26.1, x1: 4.15, z1: 26.1, y: 1.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 6.35, z0: 26.1, x1: 14, z1: 26.1, y: 1.1, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: 14, z0: -26.1, x1: 23.4, z1: -26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 25.6, z0: -26.1, x1: 33.9, z1: -26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 36.1, z0: -26.1, x1: 61.5, z1: -26.1, y: 2.6, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: 14, z0: 26.1, x1: 23.4, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 25.6, z0: 26.1, x1: 33.9, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 36.1, z0: 26.1, x1: 43.3, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 47.7, z0: 26.1, x1: 61.5, z1: 26.1, y: 2.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: 14, z0: -26.1, x1: 23.4, z1: -26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 25.6, z0: -26.1, x1: 33.9, z1: -26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 36.1, z0: -26.1, x1: 61.5, z1: -26.1, y: 4.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: 14, z0: 26.1, x1: 23.4, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 25.6, z0: 26.1, x1: 33.9, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 36.1, z0: 26.1, x1: 43.3, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 47.7, z0: 26.1, x1: 61.5, z1: 26.1, y: 4.6, t: 0.4, key: 'wood', rail: false },
             /* the ports: a sill under each gun, a lintel hung over it */
             { k: 'wall', x0: -6.35, z0: -26.1, x1: -4.15, z1: -26.1, y: 0.35, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -6.35, z0: -26.1, x1: -4.15, z1: -26.1, y0: 0.95, y: 1.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -6.35, z0: 26.1, x1: -4.15, z1: 26.1, y: 0.35, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -6.35, z0: 26.1, x1: -4.15, z1: 26.1, y0: 0.95, y: 1.1, t: 0.4, key: 'wood', rail: false },
             { k: 'wall', x0: 4.15, z0: -26.1, x1: 6.35, z1: -26.1, y: 0.35, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 4.15, z0: -26.1, x1: 6.35, z1: -26.1, y0: 0.95, y: 1.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 4.15, z0: 26.1, x1: 6.35, z1: 26.1, y: 0.35, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 4.15, z0: 26.1, x1: 6.35, z1: 26.1, y0: 0.95, y: 1.1, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: -36.1, z0: -26.1, x1: -33.9, z1: -26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -36.1, z0: -26.1, x1: -33.9, z1: -26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -36.1, z0: 26.1, x1: -33.9, z1: 26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -36.1, z0: 26.1, x1: -33.9, z1: 26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: -25.6, z0: -26.1, x1: -23.4, z1: -26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -25.6, z0: -26.1, x1: -23.4, z1: -26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -25.6, z0: 26.1, x1: -23.4, z1: 26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -25.6, z0: 26.1, x1: -23.4, z1: 26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: 23.4, z0: -26.1, x1: 25.6, z1: -26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 23.4, z0: -26.1, x1: 25.6, z1: -26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 23.4, z0: 26.1, x1: 25.6, z1: 26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 23.4, z0: 26.1, x1: 25.6, z1: 26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: 33.9, z0: -26.1, x1: 36.1, z1: -26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 33.9, z0: -26.1, x1: 36.1, z1: -26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 33.9, z0: 26.1, x1: 36.1, z1: 26.1, y: 1.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 33.9, z0: 26.1, x1: 36.1, z1: 26.1, y0: 2.45, y: 2.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -36.1, z0: -26.1, x1: -33.9, z1: -26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -36.1, z0: -26.1, x1: -33.9, z1: -26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -36.1, z0: 26.1, x1: -33.9, z1: 26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -36.1, z0: 26.1, x1: -33.9, z1: 26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -25.6, z0: -26.1, x1: -23.4, z1: -26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -25.6, z0: -26.1, x1: -23.4, z1: -26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -25.6, z0: 26.1, x1: -23.4, z1: 26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -25.6, z0: 26.1, x1: -23.4, z1: 26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: 23.4, z0: -26.1, x1: 25.6, z1: -26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 23.4, z0: -26.1, x1: 25.6, z1: -26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 23.4, z0: 26.1, x1: 25.6, z1: 26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 23.4, z0: 26.1, x1: 25.6, z1: 26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: 33.9, z0: -26.1, x1: 36.1, z1: -26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 33.9, z0: -26.1, x1: 36.1, z1: -26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 33.9, z0: 26.1, x1: 36.1, z1: 26.1, y: 3.85, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: 33.9, z0: 26.1, x1: 36.1, z1: 26.1, y0: 4.45, y: 4.6, t: 0.4, key: 'wood', rail: false },
             /* THE TAFFRAIL (the poop's stern, cut for the skylight) and THE BOW RAIL */
-            { k: 'wall', x0: -61.1, z0: -26.5, x1: -61.1, z1: -3.8, y: 4.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -61.1, z0: 3.8, x1: -61.1, z1: 26.5, y: 4.1, t: 0.4, key: 'wood', rail: false },
-            { k: 'wall', x0: 61.1, z0: -26.5, x1: 61.1, z1: 26.5, y: 2.6, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: -61.1, z0: -26.5, x1: -61.1, z1: -3.8, y: 8.1, t: 0.4, key: 'wood', rail: false }, { k: 'wall', x0: -61.1, z0: 3.8, x1: -61.1, z1: 26.5, y: 8.1, t: 0.4, key: 'wood', rail: false },
+            { k: 'wall', x0: 61.1, z0: -26.5, x1: 61.1, z1: 26.5, y: 4.6, t: 0.4, key: 'wood', rail: false },
             /* the breaks' balustrades — off the waist's squares (the arena's floor stays open), the poop's break with its flights' mouths open */
             { k: 'rail', x0: -14.3, z0: -25.6, x1: -14.3, z1: -21.2, model: 'ranch' }, { k: 'rail', x0: -14.3, z0: 21.2, x1: -14.3, z1: 25.6, model: 'ranch' },
             { k: 'rail', x0: 14.3, z0: -25.6, x1: 14.3, z1: -21.2, model: 'ranch' }, { k: 'rail', x0: 14.3, z0: 21.2, x1: 14.3, z1: 25.6, model: 'ranch' },
@@ -50559,25 +50858,28 @@ const HQ_AREA_SPECS = {
                 { id: 'skylight', wall: 'w', z: 0, y: 3.0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CAPTAIN’S SKYLIGHT · DOWN INTO THE CABIN',
                   action: { room: 'site_prebuilt_revenge_cabin', at: 'skylight' },
                   desc: 'A pane of the poop that is not caulked. It lifts, and under it is the great cabin, and the log is open on the table below you. Nobody has ever climbed in this way. The captain has climbed out.' }],
-        props: [/* THE GUNS run out through their ports (the muzzle −X at face 0: face 90 runs it out to port, 270 to starboard) */
+        props: [/* THE CARGO (2026-11-10): the crate stacks, a chest and a skull pile on the hatch covers */
+                { key: 'psx_wooden_crate_1', x: -12.25, z: -5.25, h: 1.7, floor: true, rot: 0 }, { key: 'psx_wooden_crate_2', x: -12.25, z: 5.25, h: 1.7, floor: true, rot: 37 }, { key: 'psx_wooden_crate_3', x: 12.25, z: -5.25, h: 1.7, floor: true, rot: 74 }, { key: 'psx_wooden_crate_4', x: 12.25, z: 5.25, h: 1.7, floor: true, rot: 21 },
+                { key: 'sea_chest', x: -5.25, z: -8.75, y: 3.5, face: 30 }, { key: 'sea_chest', x: 5.25, z: 8.75, y: 3.5, face: 210 }, { key: 'skull_pile', x: 5.25, z: -8.75, y: 3.5 }, { key: 'skull_pile', x: -5.25, z: 8.75, y: 3.5 },
+                /* THE GUNS run out through their ports (the muzzle −X at face 0: face 90 runs it out to port, 270 to starboard) */
                 { key: 'ship_cannon', x: -5.25, z: -25.075, face: 90 }, { key: 'ship_cannon', x: 5.25, z: -25.075, face: 90 }, { key: 'ship_cannon', x: -5.25, z: 25.075, face: 270 }, { key: 'ship_cannon', x: 5.25, z: 25.075, face: 270 },
-                { key: 'ship_cannon', x: -35, z: -25.075, y: 1.5, face: 90 }, { key: 'ship_cannon', x: -24.5, z: -25.075, y: 1.5, face: 90 }, { key: 'ship_cannon', x: -35, z: 25.075, y: 1.5, face: 270 }, { key: 'ship_cannon', x: -24.5, z: 25.075, y: 1.5, face: 270 },
-                { key: 'ship_cannon', x: 24.5, z: -25.075, y: 1.5, face: 90 }, { key: 'ship_cannon', x: 35, z: -25.075, y: 1.5, face: 90 }, { key: 'ship_cannon', x: 24.5, z: 25.075, y: 1.5, face: 270 }, { key: 'ship_cannon', x: 35, z: 25.075, y: 1.5, face: 270 },
+                { key: 'ship_cannon', x: -35, z: -25.075, y: 3.5, face: 90 }, { key: 'ship_cannon', x: -24.5, z: -25.075, y: 3.5, face: 90 }, { key: 'ship_cannon', x: -35, z: 25.075, y: 3.5, face: 270 }, { key: 'ship_cannon', x: -24.5, z: 25.075, y: 3.5, face: 270 },
+                { key: 'ship_cannon', x: 24.5, z: -25.075, y: 3.5, face: 90 }, { key: 'ship_cannon', x: 35, z: -25.075, y: 3.5, face: 90 }, { key: 'ship_cannon', x: 24.5, z: 25.075, y: 3.5, face: 270 }, { key: 'ship_cannon', x: 35, z: 25.075, y: 3.5, face: 270 },
                 /* THE QUARTERDECK: the glass, the chest, the braziers, the lesson by the rope */
-                { key: 'lectern', x: -57.75, z: -5.25, y: 3.0, face: 90 }, { key: 'brass_telescope', x: -29.75, z: 17.5, y: 1.5, face: 60 }, { key: 'sea_chest', x: -40.25, z: 14, y: 1.5 }, { key: 'lone_gun', x: -57.75, z: -5.25, y: 4.15 },
-                { key: 'brazier', x: -26.25, z: -19.25, y: 1.5 }, { key: 'brazier', x: -26.25, z: 19.25, y: 1.5 }, { key: 'lesson_sign', x: -41.175, z: -22.75, y: 1.5, face: 0, lesson: 'climb' },
+                { key: 'lectern', x: -57.75, z: -5.25, y: 7, face: 90 }, { key: 'brass_telescope', x: -29.75, z: 17.5, y: 3.5, face: 60 }, { key: 'sea_chest', x: -40.25, z: 14, y: 3.5 }, { key: 'lone_gun', x: -57.75, z: -5.25, y: 8.15 },
+                { key: 'brazier', x: -26.25, z: -19.25, y: 3.5 }, { key: 'brazier', x: -26.25, z: 19.25, y: 3.5 }, { key: 'lesson_sign', x: -41.175, z: -22.75, y: 3.5, face: 0, lesson: 'climb' },
                 /* THE POOP: the log at the lectern by the helm, the chest, the skulls, the glass astern (the stern lanterns are the hull's) */
-                { key: 'sea_chest', x: -58.5, z: 14, y: 3.0 }, { key: 'skull_pile', x: -58.5, z: -15.75, y: 3.0 }, { key: 'brass_telescope', x: -57.75, z: -12.25, y: 3.0, face: 270 },
+                { key: 'sea_chest', x: -58.5, z: 14, y: 7 }, { key: 'skull_pile', x: -58.5, z: -15.75, y: 7 }, { key: 'brass_telescope', x: -57.75, z: -12.25, y: 7, face: 270 },
                 /* THE FORECASTLE: the anchor, the chest, the braziers, the lookout's glass */
-                { key: 'ship_anchor', x: 54.25, z: -17.5, y: 1.5 }, { key: 'sea_chest', x: 54.25, z: 14, y: 1.5 }, { key: 'brazier', x: 26.25, z: -19.25, y: 1.5 }, { key: 'brazier', x: 26.25, z: 19.25, y: 1.5 },
-                { key: 'brass_telescope', x: 57.75, z: 3.5, y: 1.5, face: 90 }, { key: 'stocks', x: 45.5, z: -17.5, y: 1.5, face: 180 },
+                { key: 'ship_anchor', x: 54.25, z: -17.5, y: 3.5 }, { key: 'sea_chest', x: 54.25, z: 14, y: 3.5 }, { key: 'brazier', x: 26.25, z: -19.25, y: 3.5 }, { key: 'brazier', x: 26.25, z: 19.25, y: 3.5 },
+                { key: 'brass_telescope', x: 57.75, z: 3.5, y: 3.5, face: 90 }, { key: 'stocks', x: 45.5, z: -17.5, y: 3.5, face: 180 },
                 /* THE OCEAN PACK (2026-10-27, mondo: "the pirate ship"): sharks circling her in the sea alongside (`y` = their height, the
                    −4.2 surface just over their backs: the fins cut it), dolphins off the bow — all clear of the hull and off the deck */
                 { key: 'ocean_shark', x: 16, z: 40, y: -5.0, hover: 0.45, swim: { r: 6, v: 1.3, bob: 0.08 } }, { key: 'ocean_shark', x: -28, z: -40, y: -5.0, hover: 0.45, swim: { r: 6, v: 1.2, bob: 0.08, dir: -1 } },
                 { key: 'ocean_hammerhead', x: -72, z: 44, y: -5.3, hover: 0.8, swim: { r: 7, v: 1.1, bob: 0.08 } },
                 { key: 'ocean_dolphin', x: 100, z: 0, y: -4.9, hover: 0.5, swim: { r: 5, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 104, z: 8, y: -4.9, hover: 0.45, swim: { r: 4, v: 2.0, bob: 0.35, dir: -1 } }],   // their backs through the opaque sea (the on-screen check)
-        npcSpots: [{ x: -24.5, z: 7, y: 1.5, face: 90, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -50.75, z: 4.8, y: 3.0, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' },
-                   { x: 42, z: 7, y: 1.5, face: 270, race: 'pirate', say: '“Land off the bow. There is always land off the bow. We never reach it.”' }, { x: 52.5, z: -22, y: 1.5, face: 0, race: 'siren', say: '“The chains are mine. The deck is theirs. The sky is nobody\'s, yet.”' }],
+        npcSpots: [{ x: -24.5, z: 7, y: 3.5, face: 90, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -50.75, z: 4.8, y: 7, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' },
+                   { x: 42, z: 7, y: 3.5, face: 270, race: 'pirate', say: '“Land off the bow. There is always land off the bow. We never reach it.”' }, { x: 52.5, z: -22, y: 3.5, face: 0, race: 'siren', say: '“The chains are mine. The deck is theirs. The sky is nobody\'s, yet.”' }],
         lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
 };
 
@@ -53242,7 +53544,7 @@ const HQ_TERRAIN_RULES = {
    1.75 m, a square beside a 3.5 m cliff still stood on) and the cliff sheet fades in at twice the slope. Every other limit (the step,
    the jump, the wade, the headroom) is the body's own and stays. */
 function hqTerrainRulesFor(room) {
-    const m = room && room.terrain ? +room.terrain.levelM : 0, k = (m > 0) ? m / HQ_TERRAIN_RULES.tile : 1;
+    const m = room && room.terrain ? +(room.terrain.walkM || room.terrain.levelM) : 0, k = (m > 0) ? m / HQ_TERRAIN_RULES.tile : 1;   // `walkM: 1.75` = a levelM room that keeps the plain walk rules (its banks stay as steep as they read)
     if (!(k > 1)) return HQ_TERRAIN_RULES;
     return Object.assign({}, HQ_TERRAIN_RULES, { maxSlope: HQ_TERRAIN_RULES.maxSlope * k, cliffFrom: HQ_TERRAIN_RULES.cliffFrom * k, cliffTo: HQ_TERRAIN_RULES.cliffTo * k });
 }
@@ -56307,6 +56609,10 @@ function hqTerrainCompile(room, roomId) {
             px = Math.round(px * 100) / 100; pz = Math.round(pz * 100) / 100;
             if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea, own: !!(f.x != null && f.r) })) continue;
             if (offRoad && city.sts.some(st => _hqTPolyDist(px, pz, st.pts).d < st.w / 2 + rad + 0.15)) continue;   // THE STREET FURNITURE: a square's plants never stand in the road through it
+            /* THE CLEAR BOARD (2026-11-10, the battle map polish): a row's `off: [x0, z0, x1, z1]` is ground its pieces never stand on (the
+               site's battle board: a loose stone on a fight square reads as cover and is none). The piece that would have landed there is
+               dropped, never moved, so every other piece of the row stands where it stood */
+            if (f.off && px >= f.off[0] && px <= f.off[2] && pz >= f.off[1] && pz <= f.off[3]) { made++; continue; }
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
             else { const rf = Math.round(rnd() * 360), cr = cityArea ? city.CF.kinds[f.key] : null; info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: (cr && cr.face === 'road' && city.roadFace(px, pz) != null) ? city.roadFace(px, pz) : rf, r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined, sea: f.sea ? true : undefined }); }   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
@@ -56620,11 +56926,11 @@ const HQ_ROOM_HOLES = {
     "site_prebuilt_dumb_bunker": [[-11,-17,0],[-11,15,16],[-10,-17,0],[-10,15,16],[-9,-17,0],[-9,15,16],[-8,-17,0],[-8,15,16],[-7,-17,-17],[-7,0,0],[-7,15,16],[-6,-17,-17],[-6,15,16],[-5,-17,-17],[-5,15,16],[-4,-17,-17],[-4,15,16],[-3,15,16],[-2,15,16],[-1,10,16],[0,10,16],[1,-17,-17],[1,15,16],[2,-17,-17],[2,0,3],[2,15,16],[3,-17,-17],[3,15,16],[4,-17,-17],[4,15,16],[5,-17,-17],[5,15,16],[6,-17,-17],[6,15,16],[7,-17,-17],[7,15,16],[8,-17,-12],[8,-5,-2],[8,15,16],[9,-17,-12],[9,-5,-2],[9,15,16],[10,-17,-12],[10,-5,16]],
     "site_prebuilt_dumb_clonevats": [[-11,-16,4],[-11,9,15],[-10,-16,4],[-10,9,10],[-10,14,15],[-9,-16,1],[-9,14,15],[-8,-16,1],[-8,14,15],[-7,-16,-15],[-7,-1,1],[-7,14,15],[-6,-16,-15],[-6,3,3],[-6,9,10],[-6,14,15],[-5,-16,-15],[-5,3,5],[-5,7,15],[-4,-16,-15],[-4,3,4],[-4,9,15],[-3,-16,-15],[-2,-16,-15],[-1,-16,-15],[0,-16,-15],[1,-16,-15],[1,-1,4],[1,14,15],[2,-16,-15],[2,-1,-1],[2,2,5],[2,14,15],[3,-16,-15],[3,-1,-1],[3,2,5],[3,14,15],[4,-16,-15],[4,-1,5],[4,14,15],[5,-16,-15],[5,-1,5],[5,14,15],[6,-16,-15],[6,14,15],[7,-16,-15],[7,14,15],[8,-16,-5],[8,14,15],[9,-16,15],[10,-16,15]],
     "site_prebuilt_dumb_dreamlab": [[-20,-27,-16],[-20,-7,26],[-19,-27,-16],[-19,-7,4],[-19,23,26],[-18,-27,-16],[-18,-7,4],[-18,23,26],[-17,-27,-16],[-17,-7,4],[-17,23,26],[-16,-27,-16],[-16,-7,4],[-16,23,26],[-15,-27,-16],[-15,-7,-6],[-15,23,26],[-14,-27,-16],[-14,-7,-6],[-14,23,26],[-13,-27,-16],[-13,-9,-6],[-13,23,26],[-12,-27,-16],[-12,-9,-6],[-12,23,26],[-11,-17,-16],[-11,-9,-6],[-11,-1,4],[-11,23,26],[-10,-17,-16],[-10,-9,-6],[-10,-1,4],[-10,23,26],[-9,-17,-16],[-9,-9,-6],[-9,-1,4],[-9,23,26],[-8,-17,-16],[-8,-9,-6],[-8,-1,4],[-8,23,26],[-7,1,4],[-7,23,26],[-6,1,4],[-6,23,26],[-5,1,4],[-5,23,26],[-4,1,4],[-4,23,26],[-3,1,4],[-3,23,26],[-2,1,4],[-2,23,26],[-1,-27,-24],[0,-27,-24],[1,-27,-24],[2,-27,-24],[3,-27,-24],[4,-27,-24],[5,-27,-24],[5,1,4],[5,21,26],[6,-27,-24],[6,1,4],[6,21,26],[7,-27,-20],[7,1,4],[7,21,26],[8,-27,-20],[8,1,4],[8,21,26],[9,-27,-16],[9,-11,4],[9,21,26],[10,-27,-16],[10,-11,4],[10,21,26],[11,-27,-16],[11,-1,2],[11,21,26],[12,-27,-16],[12,-1,2],[12,21,26],[13,-27,-16],[13,-1,2],[13,21,26],[14,-27,-16],[14,-1,2],[14,21,26],[15,-27,-16],[15,7,26],[16,-27,-16],[16,7,26],[17,-27,-14],[17,7,26],[18,-27,-14],[18,7,26],[19,-27,-9],[19,-5,26]],
-    "site_prebuilt_dumb_motorpool": [[-22,-36,-35],[-22,-4,-2],[-22,1,3],[-22,32,35],[-21,-36,-35],[-21,32,35],[-20,-36,-35],[-20,32,35],[-19,-36,-35],[-19,32,35],[-18,-36,-35],[-18,32,35],[-17,-36,-35],[-17,32,35],[-16,-36,-35],[-16,31,35],[-15,-36,-35],[-15,31,35],[-14,-36,-35],[-14,31,35],[-13,-36,-35],[-13,31,35],[-12,-36,-35],[-12,31,35],[-11,-36,-35],[-11,31,35],[-10,-36,-35],[-10,31,35],[-9,-36,-35],[-9,31,35],[-8,-36,-35],[-8,31,35],[-7,-36,-35],[-7,-28,-20],[-7,-15,-2],[-7,6,14],[-7,19,35],[-6,-21,-20],[-6,-15,-2],[-6,6,14],[-6,19,20],[-5,-21,-20],[-5,-15,-2],[-5,6,14],[-5,19,20],[-4,-21,-20],[-4,-15,-2],[-4,6,6],[-4,14,14],[-4,19,20],[-3,-21,-20],[-3,-15,-7],[-3,14,14],[-3,19,20],[-2,-15,-7],[-2,14,14],[-1,-15,-7],[-1,14,14],[0,-15,-7],[0,14,14],[1,-15,-7],[1,14,14],[2,-21,-20],[2,-15,-7],[2,1,6],[2,14,14],[2,19,20],[3,-21,-20],[3,-15,-14],[3,1,14],[3,19,20],[4,-21,-20],[4,-15,-14],[4,1,14],[4,19,20],[5,-21,-20],[5,-15,-14],[5,1,14],[5,19,20],[6,-36,-20],[6,-15,-14],[6,26,29],[6,34,35],[7,-36,-20],[7,-15,-14],[7,26,29],[7,34,35],[8,-36,-20],[8,-15,-14],[8,26,29],[8,34,35],[9,-36,-20],[9,26,29],[9,34,35],[10,-36,-20],[10,26,27],[11,-36,-20],[11,26,27],[12,-36,-20],[12,26,27],[13,-36,-13],[14,-36,-24],[14,-13,-13],[15,-36,-24],[15,-13,-13],[16,-36,-24],[17,-36,-24],[18,-36,-24],[19,-36,-24],[19,26,27],[20,-36,-24],[20,26,35],[21,-36,-24],[21,-13,-2],[21,1,35]],
+    "site_prebuilt_dumb_motorpool": [[-22,-36,-35],[-22,-4,-2],[-22,1,3],[-22,32,35],[-21,-36,-35],[-21,32,35],[-20,-36,-35],[-20,32,35],[-19,-36,-35],[-19,32,35],[-18,-36,-35],[-18,32,35],[-17,-36,-35],[-17,32,35],[-16,-36,-35],[-16,31,35],[-15,-36,-35],[-15,31,35],[-14,-36,-35],[-14,31,35],[-13,-36,-35],[-13,31,35],[-12,-36,-35],[-12,31,35],[-11,-36,-35],[-11,31,35],[-10,-36,-35],[-10,31,35],[-9,-36,-35],[-9,31,35],[-8,-36,-35],[-8,31,35],[-7,-36,-35],[-7,-28,-20],[-7,-15,-15],[-7,14,14],[-7,19,35],[-6,-21,-20],[-6,-15,-15],[-6,14,14],[-6,19,20],[-5,-21,-20],[-5,-15,-15],[-5,14,14],[-5,19,20],[-4,-21,-20],[-4,-15,-15],[-4,14,14],[-4,19,20],[-3,-21,-20],[-3,-15,-15],[-3,14,14],[-3,19,20],[-2,-15,-15],[-2,14,14],[-1,-15,-15],[-1,14,14],[0,-15,-15],[0,14,14],[1,-15,-15],[1,14,14],[2,-21,-20],[2,-15,-15],[2,14,14],[2,19,20],[3,-21,-20],[3,-15,-15],[3,14,14],[3,19,20],[4,-21,-20],[4,-15,-15],[4,14,14],[4,19,20],[5,-21,-20],[5,-15,-15],[5,14,14],[5,19,20],[6,-36,-20],[6,-15,-15],[6,26,29],[6,34,35],[7,-36,-20],[7,-15,-15],[7,26,29],[7,34,35],[8,-36,-20],[8,-15,-15],[8,26,29],[8,34,35],[9,-36,-20],[9,26,29],[9,34,35],[10,-36,-20],[10,26,27],[11,-36,-20],[11,26,27],[12,-36,-20],[12,26,27],[13,-36,-15],[14,-36,-24],[14,-13,-13],[15,-36,-24],[15,-13,-13],[16,-36,-24],[17,-36,-24],[18,-36,-24],[19,-36,-24],[19,26,27],[20,-36,-24],[20,26,35],[21,-36,-24],[21,-13,-2],[21,1,35]],
     "site_prebuilt_dumb_sublevel7": [[-41,-54,-2],[-41,1,53],[-40,-54,-43],[-40,-34,-7],[-40,6,53],[-39,-54,-43],[-39,-34,-7],[-39,6,24],[-39,26,31],[-39,33,53],[-38,-54,-43],[-38,-16,-7],[-38,42,53],[-37,-54,-43],[-37,-16,-7],[-37,42,53],[-36,-54,-43],[-36,42,53],[-35,-54,-43],[-35,42,53],[-34,-54,-43],[-34,50,53],[-33,-54,-43],[-33,-7,-7],[-33,6,15],[-33,50,53],[-32,-54,-43],[-32,-7,-7],[-32,6,15],[-32,50,53],[-31,-54,-43],[-31,-7,-7],[-31,6,15],[-31,50,53],[-30,-54,-43],[-30,-17,-12],[-30,-7,-7],[-30,6,15],[-29,-54,-43],[-29,-17,-12],[-29,-7,-3],[-29,2,15],[-28,-54,-43],[-28,-17,-15],[-28,-7,-3],[-28,2,16],[-27,-43,-43],[-27,-17,-15],[-27,-7,-3],[-27,2,16],[-26,-43,-43],[-26,-17,-15],[-26,-7,-3],[-26,2,16],[-26,41,42],[-25,-43,-43],[-25,-17,-15],[-25,-11,-3],[-25,2,16],[-25,41,42],[-24,-43,-42],[-24,-17,-15],[-24,-11,-3],[-24,9,16],[-24,41,42],[-23,-43,-42],[-23,-11,-3],[-23,9,16],[-23,41,42],[-22,-43,-42],[-22,-11,-3],[-22,9,16],[-22,41,42],[-21,-43,-42],[-21,-11,-3],[-21,9,16],[-21,41,42],[-20,-43,-42],[-20,-17,-3],[-20,9,16],[-20,41,42],[-19,-43,-42],[-19,-17,4],[-19,9,16],[-19,41,42],[-18,-43,-42],[-18,-17,4],[-18,9,16],[-18,41,42],[-17,-43,-31],[-17,-25,4],[-17,9,19],[-17,22,26],[-17,32,42],[-16,-43,-31],[-16,-25,4],[-16,9,26],[-16,32,42],[-15,-43,-31],[-15,-25,4],[-15,9,26],[-15,32,42],[-14,-54,-50],[-14,-45,-31],[-14,-25,-15],[-14,14,26],[-14,32,42],[-13,-54,-50],[-13,-45,-31],[-13,-25,-15],[-13,14,26],[-13,32,42],[-12,-54,-50],[-12,-45,-31],[-12,-25,-15],[-12,14,26],[-12,32,42],[-12,48,53],[-11,-54,-50],[-11,-45,-43],[-11,-34,-31],[-11,-25,-15],[-11,14,26],[-11,32,42],[-11,48,53],[-10,-54,-50],[-10,-45,-43],[-10,-34,-31],[-10,-25,-15],[-10,14,26],[-10,32,42],[-10,48,53],[-9,-54,-50],[-9,-45,-43],[-9,-34,-31],[-9,-25,-15],[-9,14,26],[-9,32,42],[-9,48,53],[-8,-54,-50],[-8,-45,-43],[-8,-34,-31],[-8,-25,-15],[-8,14,26],[-8,32,42],[-8,48,53],[-7,-54,-50],[-7,-45,-43],[-7,-34,-31],[-7,-25,-15],[-7,14,26],[-7,32,42],[-7,48,53],[-6,-54,-50],[-6,-45,-43],[-6,-34,-31],[-6,-25,-15],[-6,14,26],[-6,32,42],[-6,48,53],[-5,-54,-50],[-5,-45,-41],[-5,-35,-31],[-5,-25,-15],[-5,14,26],[-5,32,42],[-5,48,53],[-4,-54,-50],[-4,-45,-41],[-4,-35,-31],[-4,-25,-15],[-4,14,26],[-4,32,42],[-4,48,53],[-3,-54,-51],[-3,48,53],[-2,-54,-51],[-2,48,53],[-1,-54,-51],[-1,48,53],[0,-54,-51],[0,48,53],[1,-54,-51],[1,48,53],[2,-54,-51],[2,48,53],[3,-54,-50],[3,-45,-31],[3,-25,-15],[3,14,22],[3,27,33],[3,38,53],[4,-54,-50],[4,-45,-31],[4,-25,-15],[4,14,22],[4,27,30],[4,41,53],[5,-54,-50],[5,-45,-31],[5,-25,-15],[5,14,22],[5,27,30],[5,41,53],[6,-54,-50],[6,-45,-31],[6,-25,-15],[6,14,22],[6,27,30],[6,41,53],[7,-54,-50],[7,-45,-31],[7,-25,-15],[7,14,22],[7,27,30],[7,41,53],[8,-54,-50],[8,-45,-31],[8,-25,-15],[8,14,22],[8,27,30],[8,41,53],[9,-54,-50],[9,-45,-31],[9,-25,-15],[9,14,22],[9,27,30],[9,41,53],[10,-54,-50],[10,-45,-31],[10,-25,-15],[10,14,22],[10,27,30],[10,41,53],[11,-54,-50],[11,-45,-31],[11,-25,-15],[11,14,22],[11,27,30],[11,41,53],[12,-54,-50],[12,-45,-31],[12,-25,-15],[12,14,22],[12,27,53],[13,-54,-50],[13,-45,-31],[13,-25,-15],[13,14,22],[13,27,53],[14,-43,-31],[14,-25,-10],[14,-4,22],[14,27,39],[15,-43,-31],[15,-25,-10],[15,-4,22],[15,27,39],[16,-43,-31],[16,-25,-10],[16,-4,15],[16,20,22],[16,27,29],[17,-43,-42],[17,-17,-10],[17,-4,15],[18,-43,-42],[18,-17,-10],[18,-4,15],[19,-43,-42],[19,-17,-10],[19,3,15],[20,-43,-42],[20,-17,-10],[20,3,15],[21,-43,-42],[21,-17,-10],[21,3,15],[22,-43,-42],[22,-17,-10],[22,3,15],[23,-43,-42],[23,-17,-10],[23,3,15],[24,-43,-42],[24,-17,-4],[24,3,15],[25,-43,-42],[25,-17,-4],[25,3,15],[26,-43,-42],[26,-17,-4],[26,3,15],[27,-54,-42],[27,-17,-4],[27,3,15],[28,-54,-42],[28,-17,-4],[28,3,15],[28,42,53],[29,-54,-42],[29,-17,-7],[29,14,15],[29,42,53],[30,-54,-42],[30,-17,-7],[30,14,15],[30,42,53],[31,-54,-42],[31,-17,-7],[31,14,15],[31,42,53],[32,-54,-42],[32,-17,-7],[32,14,15],[32,42,53],[33,-54,-42],[33,-17,-7],[33,14,15],[33,42,53],[34,-54,-43],[34,14,15],[34,42,53],[35,-54,-43],[35,14,15],[35,42,53],[36,-54,-43],[36,14,15],[36,42,53],[37,-54,-43],[37,6,15],[37,42,53],[38,-54,-43],[38,-16,-7],[38,6,18],[38,29,53],[39,-54,-43],[39,-16,-7],[39,6,53],[40,-54,-2],[40,1,53]],
     "site_prebuilt_fairy_forest_deadmans": [[-16,-24,-17],[-16,-6,3],[-16,14,23],[-15,-24,-17],[-15,-6,3],[-15,14,23],[-14,-24,-17],[-14,-12,3],[-14,14,23],[-13,-24,-17],[-13,-12,3],[-13,14,23],[-12,-24,-17],[-12,-12,1],[-12,14,23],[-11,-24,-17],[-11,-12,1],[-11,14,23],[-10,-24,-17],[-10,-12,-7],[-10,14,23],[-9,-24,-17],[-9,-12,-7],[-9,14,23],[-8,-24,-17],[-8,-12,-7],[-8,14,23],[-7,-24,-17],[-7,-12,-7],[-7,14,23],[-6,-24,-17],[-6,-12,-7],[-6,14,23],[-5,-24,-21],[-5,-18,-17],[-5,-11,-7],[-5,14,23],[-4,-24,-23],[-4,-11,-7],[-4,14,23],[-3,-24,-23],[-3,-12,-7],[-3,12,23],[2,-24,-23],[2,-12,-7],[2,10,11],[2,22,23],[3,-24,-23],[3,-12,-8],[3,10,11],[3,22,23],[4,-24,-21],[4,-16,-8],[4,10,11],[4,22,23],[5,-24,-21],[5,-16,-8],[5,10,10],[5,22,23],[6,-24,-21],[6,-16,-13],[6,-2,-1],[6,7,10],[6,15,15],[6,20,23],[7,-24,-21],[7,-16,-13],[7,-2,-1],[7,7,15],[7,20,23],[8,-24,-21],[8,7,15],[8,20,23],[9,-24,-21],[9,7,15],[9,20,23],[10,-24,-21],[10,7,13],[10,22,23],[11,-24,-21],[11,7,13],[11,22,23],[12,-24,-15],[12,-10,-8],[12,-4,3],[12,7,13],[12,22,23],[13,-24,-15],[13,-10,-8],[13,-4,3],[13,7,13],[13,22,23],[14,-24,-15],[14,-10,-8],[14,-4,3],[14,7,23],[15,-24,-15],[15,-10,-8],[15,-4,3],[15,7,23]],
     "site_prebuilt_gobekli_leylines": [[-42,-57,-38],[-42,-32,-3],[-42,0,8],[-42,12,25],[-42,31,56],[-41,-57,-38],[-41,-31,-3],[-41,0,7],[-41,12,25],[-41,33,56],[-40,-57,-38],[-40,-31,-3],[-40,0,6],[-40,11,25],[-40,33,56],[-39,-57,-36],[-39,-31,-3],[-39,0,5],[-39,10,24],[-39,31,56],[-38,-57,-36],[-38,-32,-3],[-38,0,4],[-38,9,24],[-38,28,56],[-37,-57,-35],[-37,-32,-17],[-37,-13,-2],[-37,1,2],[-37,7,23],[-37,27,56],[-36,-57,-35],[-36,-32,-17],[-36,-13,-2],[-36,1,1],[-36,6,23],[-36,33,56],[-35,-57,-35],[-35,-32,-16],[-35,-12,-2],[-35,5,22],[-35,34,56],[-34,-57,-35],[-34,-31,-16],[-34,-11,-2],[-34,4,21],[-34,35,56],[-33,-57,-35],[-33,-31,-14],[-33,-10,-2],[-33,3,20],[-33,35,56],[-32,-57,-34],[-32,-31,-14],[-32,-9,-3],[-32,2,20],[-32,36,56],[-31,-57,-34],[-31,-31,-12],[-31,-8,-4],[-31,7,20],[-31,36,56],[-30,-57,-34],[-30,-31,-12],[-30,-7,-5],[-30,36,56],[-29,-57,-34],[-29,-30,-11],[-29,-7,-7],[-29,-2,5],[-29,36,56],[-28,-57,-34],[-28,-30,-10],[-28,-3,16],[-28,36,56],[-27,-57,-34],[-27,-29,-9],[-27,-4,18],[-27,36,56],[-26,-57,-56],[-26,-53,-39],[-26,-28,-10],[-26,-5,17],[-26,36,56],[-25,-52,-45],[-25,-27,-11],[-25,-6,16],[-25,35,56],[-24,-53,-49],[-24,-35,-33],[-24,-27,-12],[-24,-7,16],[-24,35,56],[-23,-41,-32],[-23,-26,-14],[-23,-9,15],[-23,20,20],[-23,34,56],[-22,-46,-32],[-22,-29,-29],[-22,-25,-14],[-22,-10,15],[-22,19,20],[-22,24,24],[-22,33,56],[-21,-57,-57],[-21,-43,-34],[-21,-29,-28],[-21,-24,-16],[-21,-11,14],[-21,19,21],[-21,25,56],[-20,-57,-51],[-20,-40,-35],[-20,-28,-27],[-20,-23,-17],[-20,-12,14],[-20,18,22],[-20,25,56],[-19,-57,-48],[-19,-36,-36],[-19,-22,-18],[-19,-13,13],[-19,19,22],[-19,26,56],[-18,-57,-45],[-18,-21,-19],[-18,-11,13],[-18,21,23],[-18,27,56],[-17,-57,-47],[-17,-24,-24],[-17,-20,-20],[-17,-16,-15],[-17,-8,12],[-17,17,17],[-17,23,24],[-17,27,56],[-16,-57,-50],[-16,-41,-39],[-16,-23,-23],[-16,-17,-12],[-16,-5,12],[-16,16,19],[-16,28,56],[-15,-57,-54],[-15,-41,-35],[-15,-18,-9],[-15,-2,11],[-15,15,21],[-15,28,56],[-14,-57,-57],[-14,-46,-44],[-14,-41,-35],[-14,-19,-6],[-14,1,11],[-14,15,22],[-14,29,56],[-13,-57,-57],[-13,-51,-44],[-13,-41,-35],[-13,-17,-3],[-13,4,10],[-13,14,24],[-13,29,56],[-12,-57,-44],[-12,-41,-34],[-12,-14,-1],[-12,8,10],[-12,13,26],[-12,29,56],[-11,-57,-44],[-11,-41,-34],[-11,-10,3],[-11,9,9],[-11,13,56],[-10,-57,-44],[-10,-41,-33],[-10,-24,-24],[-10,-20,-19],[-10,-7,5],[-10,12,56],[-9,-57,-45],[-9,-41,-33],[-9,-24,-15],[-9,-4,6],[-9,12,56],[-8,-57,-45],[-8,-41,-34],[-8,-24,-12],[-8,-1,4],[-8,11,56],[-7,-57,-45],[-7,-42,-34],[-7,-24,-8],[-7,3,3],[-7,11,56],[-6,-57,-45],[-6,-42,-34],[-6,-25,-6],[-6,11,56],[-5,-57,-45],[-5,-42,-34],[-5,-25,-2],[-5,12,56],[-4,-57,-45],[-4,-42,-35],[-4,-25,0],[-4,13,56],[-3,-57,-45],[-3,-42,-36],[-3,-29,-28],[-3,-25,2],[-3,17,56],[-2,-57,-45],[-2,-42,-37],[-2,-33,-28],[-2,-25,2],[-2,19,56],[-1,-57,-45],[-1,-42,-39],[-1,-34,-28],[-1,-25,3],[-1,11,11],[-1,23,56],[0,-57,-45],[0,-42,-40],[0,-35,-28],[0,-24,3],[0,10,14],[0,26,56],[1,-57,-45],[1,-42,-41],[1,-36,-28],[1,-24,2],[1,6,17],[1,29,56],[2,-57,-45],[2,-42,-42],[2,-37,-28],[2,-24,2],[2,6,20],[2,32,56],[3,-57,-45],[3,-38,-27],[3,-24,1],[3,5,24],[3,35,56],[4,-57,-46],[4,-39,-28],[4,-24,1],[4,5,26],[4,39,56],[5,-57,-46],[5,-41,-29],[5,-23,0],[5,4,30],[5,43,56],[6,-57,-46],[6,-42,-30],[6,-23,0],[6,4,33],[6,45,56],[7,-57,-48],[7,-43,-31],[7,-27,-26],[7,-18,-1],[7,3,36],[7,49,56],[8,-57,-49],[8,-44,-32],[8,-28,-26],[8,-18,-1],[8,3,40],[8,51,52],[8,55,56],[9,-57,-50],[9,-45,-34],[9,-29,-29],[9,-17,-2],[9,2,43],[10,-57,-51],[10,-47,-35],[10,-17,-3],[10,2,46],[11,-57,-52],[11,-48,-35],[11,-17,-3],[11,1,50],[12,-57,-53],[12,-49,-35],[12,-29,-25],[12,-18,-4],[12,1,52],[13,-57,-55],[13,-50,-25],[13,-19,-4],[13,0,52],[14,-57,-56],[14,-51,-25],[14,-21,-5],[14,-1,52],[14,56,56],[15,-57,-57],[15,-52,-25],[15,-21,-5],[15,-1,56],[16,-53,-24],[16,-21,-6],[16,-2,56],[17,-55,-24],[17,-21,-7],[17,-3,56],[18,-57,-24],[18,-21,-7],[18,-3,56],[19,-57,-24],[19,-21,-8],[19,-3,56],[20,-57,-24],[20,-20,-8],[20,-4,56],[21,-57,-24],[21,-20,-9],[21,-5,56],[22,-57,-23],[22,-20,-9],[22,-5,56],[23,-57,-23],[23,-20,-10],[23,-6,56],[24,-57,-23],[24,-19,-10],[24,-6,56],[25,-57,-23],[25,-19,-11],[25,-7,56],[26,-57,-22],[26,-19,-11],[26,-7,56],[27,-57,-22],[27,-15,-12],[27,-8,56],[28,-57,-22],[28,-13,-12],[28,-8,56],[29,-57,-23],[29,-9,56],[30,-57,-24],[30,-9,56],[31,-57,-25],[31,-10,56],[32,-57,-25],[32,-11,56],[33,-57,-25],[33,-10,56],[34,-57,-25],[34,-10,56],[35,-57,-25],[35,-10,56],[36,-57,-25],[36,-10,56],[37,-57,-24],[37,-11,56],[38,-57,-24],[38,-11,56],[39,-57,-23],[39,-12,56],[40,-57,-22],[40,-14,56],[41,-57,-20],[41,-15,56]],
-    "site_prebuilt_lodge_halls": [[-26,-33,-27],[-26,31,32],[-25,-33,-27],[-25,31,32],[-24,-33,-27],[-24,31,32],[-23,-33,-27],[-23,31,32],[-22,-33,-27],[-22,-23,-14],[-22,13,27],[-22,31,32],[-21,-33,-27],[-21,-23,-14],[-21,13,14],[-21,27,27],[-21,31,32],[-20,-33,-32],[-20,-18,-14],[-20,13,14],[-20,27,27],[-20,31,32],[-19,-33,-32],[-19,-18,-14],[-19,13,14],[-19,27,27],[-19,31,32],[-18,-33,-32],[-18,-18,-14],[-18,13,14],[-18,27,27],[-18,31,32],[-17,-33,-32],[-17,-18,-14],[-17,13,14],[-17,27,27],[-17,31,32],[-16,-33,-32],[-16,-18,-14],[-16,13,14],[-16,27,27],[-16,31,32],[-15,-33,-32],[-15,-18,-14],[-15,13,14],[-15,31,32],[-14,-33,-32],[-14,-18,-14],[-14,13,14],[-14,31,32],[-13,-33,-32],[-13,-18,-14],[-13,13,14],[-13,31,32],[-12,-33,-32],[-12,-18,-14],[-12,13,27],[-12,31,32],[-11,-33,-32],[-11,-18,-14],[-11,13,27],[-11,31,32],[-10,-33,-32],[-10,-18,-14],[-10,13,27],[-10,31,32],[-9,-33,-28],[-9,-23,-14],[-9,13,13],[-8,-33,-28],[-8,-23,-14],[-8,13,13],[-7,-33,-28],[-7,-23,-14],[-7,13,13],[-6,-33,-28],[-6,-23,-14],[-6,13,13],[-5,-33,-28],[-5,-23,-14],[-5,13,13],[-4,-33,-28],[-4,-23,-14],[-4,13,13],[-3,-33,-28],[-3,-23,-14],[-3,13,13],[-2,-33,-28],[-2,-23,-14],[-2,13,13],[-1,-33,-32],[-1,-14,-3],[-1,2,8],[-1,13,13],[0,-33,-32],[0,-14,-3],[0,2,8],[0,12,13],[1,-33,-32],[1,-14,-14],[1,13,13],[2,-33,-32],[2,-14,-14],[2,13,13],[3,-33,-32],[3,-14,-14],[3,13,13],[4,-33,-32],[4,-14,-14],[4,13,13],[5,-33,-32],[5,-14,-14],[5,13,13],[6,-33,-32],[6,-14,-14],[6,13,13],[7,-33,-32],[7,-14,-14],[8,-33,-32],[9,-33,-32],[10,-33,-32],[11,-33,-32],[11,13,23],[11,28,32],[12,-33,-32],[12,-14,-14],[12,13,20],[13,-33,-32],[13,-14,-14],[13,13,20],[14,-33,-32],[14,-14,-14],[14,13,20],[15,-33,-32],[15,-14,-14],[15,13,20],[16,-33,-32],[16,-14,-14],[16,13,20],[17,-33,-14],[17,13,20],[18,-33,-14],[18,13,20],[19,-33,-14],[19,13,20],[20,-33,-14],[20,13,20],[21,-33,-14],[21,13,20],[22,-33,-14],[22,13,20],[23,-33,-14],[23,13,20],[24,-33,-14],[24,13,20],[25,-33,-14],[25,13,32]],
+    "site_prebuilt_lodge_halls": [[-26,-33,-27],[-26,31,32],[-25,-33,-27],[-25,31,32],[-24,-33,-27],[-24,31,32],[-23,-33,-27],[-23,31,32],[-22,-33,-27],[-22,-23,-14],[-22,13,27],[-22,31,32],[-21,-33,-27],[-21,-23,-14],[-21,13,14],[-21,27,27],[-21,31,32],[-20,-33,-32],[-20,-18,-14],[-20,13,14],[-20,27,27],[-20,31,32],[-19,-33,-32],[-19,-18,-14],[-19,13,14],[-19,27,27],[-19,31,32],[-18,-33,-32],[-18,-18,-14],[-18,13,14],[-18,27,27],[-18,31,32],[-17,-33,-32],[-17,-18,-14],[-17,13,14],[-17,27,27],[-17,31,32],[-16,-33,-32],[-16,-18,-14],[-16,13,14],[-16,27,27],[-16,31,32],[-15,-33,-32],[-15,-18,-14],[-15,13,14],[-15,31,32],[-14,-33,-32],[-14,-18,-14],[-14,13,14],[-14,31,32],[-13,-33,-32],[-13,-18,-14],[-13,13,14],[-13,31,32],[-12,-33,-32],[-12,-18,-14],[-12,13,27],[-12,31,32],[-11,-33,-32],[-11,-18,-14],[-11,13,27],[-11,31,32],[-10,-33,-32],[-10,-18,-14],[-10,13,27],[-10,31,32],[-9,-33,-28],[-9,-23,-14],[-9,13,13],[-8,-33,-28],[-8,-23,-14],[-8,13,13],[-7,-33,-28],[-7,-23,-14],[-7,13,13],[-6,-33,-28],[-6,-23,-14],[-6,13,13],[-5,-33,-28],[-5,-23,-14],[-5,13,13],[-4,-33,-28],[-4,-23,-14],[-4,13,13],[-3,-33,-28],[-3,-23,-14],[-3,13,13],[-2,-33,-28],[-2,-23,-14],[-2,13,13],[-1,-33,-32],[-1,-14,-3],[-1,2,8],[-1,13,13],[0,-33,-32],[1,-33,-32],[2,-33,-32],[3,-33,-32],[4,-33,-32],[5,-33,-32],[6,-33,-32],[7,-33,-32],[8,-33,-32],[9,-33,-32],[10,-33,-32],[11,-33,-32],[11,14,23],[11,28,32],[12,-33,-32],[12,14,20],[13,-33,-32],[13,14,20],[14,-33,-32],[14,14,20],[15,-33,-32],[15,14,20],[16,-33,-32],[16,14,20],[17,-33,-15],[17,14,20],[18,-33,-15],[18,14,20],[19,-33,-15],[19,14,20],[20,-33,-15],[20,14,20],[21,-33,-15],[21,14,20],[22,-33,-15],[22,14,20],[23,-33,-15],[23,14,20],[24,-33,-15],[24,14,20],[25,-33,-15],[25,14,32]],
     "site_prebuilt_lookingglass_garden": [[-30,-8,-5],[-30,-2,-2],[-29,-9,-2],[-28,-9,-4],[-27,-9,-4],[-26,-8,-7],[-26,-4,-4],[-25,-7,-7],[-25,-4,-4],[-24,-6,-4]],
     "site_prebuilt_lookingglass_library": [[-28,-40,-25],[-28,-22,-20],[-28,-17,-14],[-28,-10,39],[-27,-40,-25],[-27,-21,-20],[-27,-17,-14],[-27,-9,39],[-26,-40,-25],[-26,-21,-20],[-26,-17,-13],[-26,-9,39],[-25,-40,-24],[-25,-21,-20],[-25,-17,-12],[-25,-8,39],[-24,-40,-36],[-24,-33,-24],[-24,-20,-20],[-24,-17,-12],[-24,-8,39],[-23,-40,-36],[-23,-31,-23],[-23,-20,-20],[-23,-17,-11],[-23,-7,39],[-22,-40,-36],[-22,-30,-23],[-22,-17,-11],[-22,-7,39],[-21,-40,-34],[-21,-28,-22],[-21,-17,-10],[-21,-6,39],[-20,-40,-33],[-20,-27,-22],[-20,-17,-10],[-20,-6,31],[-20,35,39],[-19,-40,-31],[-19,-25,-21],[-19,-17,-10],[-19,-5,31],[-19,35,39],[-18,-40,-30],[-18,-24,-21],[-18,-17,-9],[-18,-5,31],[-18,35,39],[-17,-40,-28],[-17,-22,-21],[-17,-17,-11],[-17,-4,30],[-17,34,39],[-16,-40,-27],[-16,-18,-14],[-16,-4,30],[-16,34,39],[-15,-40,-28],[-15,-7,-7],[-15,-3,30],[-15,33,39],[-14,-40,-28],[-14,-11,-7],[-14,-3,29],[-14,33,39],[-13,-40,-28],[-13,-16,-16],[-13,-12,-6],[-13,-2,29],[-13,33,39],[-12,-40,-28],[-12,-12,-6],[-12,-2,29],[-12,33,39],[-11,-40,-28],[-11,-13,-5],[-11,-1,28],[-11,32,39],[-10,-40,-28],[-10,-18,-18],[-10,-12,-5],[-10,-1,28],[-10,32,39],[-9,-40,-28],[-9,-19,-16],[-9,-10,-5],[-9,0,28],[-9,31,39],[-8,-40,-27],[-8,-20,-16],[-8,-9,-5],[-8,1,27],[-8,31,39],[-7,-40,-16],[-7,-7,-5],[-7,1,27],[-7,30,39],[-6,-40,-16],[-6,-6,-5],[-6,1,26],[-6,30,39],[-5,-40,-16],[-5,-2,-2],[-5,3,26],[-5,29,39],[-4,-40,-16],[-4,-9,-9],[-4,-2,-2],[-4,5,26],[-4,29,39],[-3,-40,-16],[-3,-9,-7],[-3,7,20],[-3,29,39],[-2,-40,-17],[-2,-10,-7],[-2,8,10],[-2,14,14],[-2,28,31],[-1,-40,-18],[-1,-10,-9],[-1,24,24],[-1,28,30],[0,-40,-19],[0,18,24],[1,-40,-21],[1,-13,-13],[1,14,17],[2,-40,-22],[2,-14,-13],[2,33,35],[3,-40,-23],[3,-15,-13],[3,-10,-9],[3,27,39],[4,-40,-24],[4,-15,-13],[4,-10,-10],[4,27,39],[5,-40,-25],[5,-20,-20],[5,-16,-13],[5,20,22],[5,26,39],[6,-40,-26],[6,-21,-21],[6,-17,-16],[6,16,16],[6,19,21],[6,25,39],[7,-40,-27],[7,16,16],[7,19,20],[7,25,39],[8,-40,-39],[8,-35,-30],[8,16,16],[8,19,20],[8,24,39],[9,-15,-14],[9,19,19],[9,23,39],[10,-21,-14],[10,10,12],[10,19,19],[10,23,39],[11,-29,-25],[11,-22,-14],[11,-9,-8],[11,11,14],[11,22,39],[12,-34,-25],[12,-22,-14],[12,-9,-8],[12,11,15],[12,21,39],[13,-40,-40],[13,-34,-25],[13,-21,-14],[13,-9,-8],[13,7,7],[13,11,17],[13,23,39],[14,-40,-38],[14,-34,-29],[14,-21,-14],[14,-8,-7],[14,-4,-4],[14,5,8],[14,12,18],[14,24,39],[15,-40,-37],[15,-21,-13],[15,-8,-3],[15,3,8],[15,13,20],[15,26,39],[16,-40,-40],[16,-26,-25],[16,-21,-13],[16,-8,-2],[16,2,9],[16,13,21],[16,27,39],[17,-40,-40],[17,-33,-24],[17,-21,-13],[17,-8,9],[17,14,23],[17,29,39],[18,-40,-24],[18,-21,-13],[18,-8,9],[18,14,24],[18,30,39],[19,-40,-24],[19,-21,-13],[19,-8,9],[19,15,26],[19,32,39],[20,-40,-24],[20,-21,-13],[20,-7,9],[20,15,27],[20,33,39],[21,-40,-24],[21,-20,-12],[21,-7,9],[21,12,12],[21,16,28],[21,35,39],[22,-40,-24],[22,-20,-12],[22,-7,9],[22,12,12],[22,16,30],[22,35,39],[23,-40,-24],[23,-20,-12],[23,-7,9],[23,12,12],[23,17,32],[23,35,39],[24,-40,-24],[24,-20,-12],[24,-9,9],[24,12,13],[24,17,39],[25,-40,-23],[25,-20,-12],[25,-9,9],[25,12,14],[25,18,39],[26,-40,-23],[26,-20,-12],[26,-9,9],[26,12,14],[26,18,39],[27,-40,-23],[27,-20,-12],[27,-9,14],[27,18,39]],
     "site_prebuilt_northpole_village": [[1,15,16],[2,15,16]],
@@ -57483,7 +57789,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_camelot_ward:    { tape: { x: 11.375, z: -32.375 } },   // OPEN WORLD Phase 6: the keep tower is gone (the ward rebuilt BUILT) — the tape lies in the gardens before the hall
     /* THE LEY LINES (2026-09-18): THE OMPHALOS in the nexus (2.3 m under a 3.2 m ceiling — the shot is from the sunken floor), THE GREAT TRILITHON's lintel, THE SENTINEL in enclosure D, THE SPHINX's head, THE LOAD on the crane's hook */
     site_prebuilt_gobekli_leylines: { tape: { x: -50, z: -25 } },
-    site_prebuilt_stonehenge_henge: { tape: { x: 0, z: 12.25 } },
+    site_prebuilt_stonehenge_henge: { tape: { x: -12.25, z: 0, y: 7.4 } },   // THE CIRCLE IS THE BOARD (2026-11-10): the great trilithon stands at the horseshoe's back
     site_prebuilt_gobekli_tell:     { tape: { x: 20.125, z: 7.875 } },
     site_prebuilt_giza_plateau:     { tape: { x: 38.5, z: 26.25 } },
     site_prebuilt_babel_tower:      { tape: { x: 2.625, z: -6.125 } },
@@ -61597,6 +61903,13 @@ function hqFieldLevelRules(roomId) {
     const r = (DOOR_HQ.rooms || {})[roomId], m = r && r.terrain ? +r.terrain.levelM : 0;
     return (m > 0) ? { ground: Object.assign({}, HQ_FIELD_RULES.ground, { step: m }) } : null;
 }
+/* THE REAL-SIZE PROPS (2026-11-10): in a `levelM` room a GHOST block is a prop's stand-in and the prop is real size (a 4.2 m sarsen,
+   a 6 m trilithon), so a room that also says `terrain.ghostM` (1.75) counts the squares whose top is a ghost block by THAT step:
+   the cover keeps the level its height always read, the ground and the drawn pieces count whole squares. null = no such rule. */
+function hqFieldGhostRules(roomId) {
+    const r = (DOOR_HQ.rooms || {})[roomId], t = r && r.terrain, m = (t && +t.levelM > 0) ? +t.ghostM : 0;
+    return (m > 0) ? { ground: Object.assign({}, HQ_FIELD_RULES.ground, { step: m }) } : null;
+}
 function hqFieldTierOf(topM, refM, rules, down) {
     const G = (rules && rules.ground) || HQ_FIELD_RULES.ground;
     const d = (+topM || 0) - (+refM || 0);
@@ -61998,6 +62311,7 @@ function hqFieldTerrainInfo(roomId, cellM) {
             const cell = { gx, gy, x: cx, z: cz, in: false, top: null, key: floorKey, hazard: false, fluid: null, sheet: null, tree: centreTree || walk < cover, bridge: 0, wall: false, seat: true };
             if (feet != null && walk >= cover) {
                 cell.in = true; cell.top = feet;
+                if (room.terrain.ghostM > 0) { const gw = (typeof hqTerrainWallAt === 'function') ? hqTerrainWallAt(info, cx, cz, 0) : null; if (gw && gw.ghost && Math.abs(gw.top - feet) < 0.3) cell.ghostTop = true; }   // THE REAL-SIZE PROPS: this square stands on a prop's ghost block
                 if (wet) { cell.fluid = 'water'; cell.key = known('water') ? 'water' : floorKey; cell.sheet = fl.y; cell.seat = false; }
                 else if (onBoard(cx, cz)) cell.key = onBoard(cx, cz);   // THE BOARD: the cell wears its square
                 else if (onPath(cx, cz)) cell.key = pathKey;
@@ -62199,6 +62513,7 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
         cells.push(row);
     }
     const tierRules = hqFieldLevelRules(ti.roomId);   // THE FULL LEDGES: the room's own metres per level
+    const ghostRules = hqFieldGhostRules(ti.roomId);   // THE REAL-SIZE PROPS: a ghost block's own step
     if (!isFinite(ref)) ref = 0;
     /* THE FIELD IS THE ROOM (§3.6 / §2 rule 4): the reference is the room's MAIN FLOOR — the median IN top — so a pit in a whole
        room never lifts the rest of it a level; a real ledge under it is one level down */
@@ -62207,7 +62522,7 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         const c = cells[y][x];
         if (c.in) {
-            c.tile = hqFieldTierOf(c.top, ref, tierRules, feet); maxIn = Math.max(maxIn, c.tile);
+            c.tile = hqFieldTierOf(c.top, ref, (c.src && c.src.ghostTop && ghostRules) ? ghostRules : tierRules, feet); maxIn = Math.max(maxIn, c.tile);
             /* THE TWO FLOORS: the deck's level — its own tier, and never under two levels over the ground (the engine's headroom:
                the body under a slab fills the two cells over its floor; the slab hugs the top of its cell) */
             if (c.deck) { c.deck.tile = Math.max(hqFieldTierOf(c.deck.top, ref, tierRules, feet), c.tile + 2); maxIn = Math.max(maxIn, c.deck.tile); }
@@ -62835,15 +63150,36 @@ const HQ_ARENA_RULES = {
        board — every size of its arena is cut from that room, from windows centred within r m of (x, z) (bake-arenas.js). Göbekli Tepe:
        ENCLOSURE E in THE TELL (mondo 2026-10-05: its own board, never the ley lines) */
     within: {
+        prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: -31.5, z: -17.5, r: 2.6 },
+        prebuilt_dumb: { room: 'site_prebuilt_dumb_motorpool', x: 0, z: 0, r: 2.6 },
+        prebuilt_mars: { room: 'site_prebuilt_mars_cydonia', x: 0, z: 3.5, r: 2.6 },
+        prebuilt_moon: { room: 'site_prebuilt_moon_mare', x: 31.5, z: 3.5, r: 2.6 },
+        prebuilt_lodge: { room: 'site_prebuilt_lodge_halls', x: 0, z: 24.5, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): every size on the middle of THE HALLS (its piers, galleries and bookcases are laid on these squares)
+        prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_glade', x: 0, z: 0, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): every size on the middle of the glade — the board's trees, knolls and paths are laid on these squares
         prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 87.5, z: 0, r: 2.5 },   // r 6 → 2.5 (2026-11-03): with the ring wall gone a wider window scored the open ledge over the designed board — the 12 × 12 stays on the pit (66.5..108.5), an odd size half a square off
         prebuilt_derelict: { room: 'site_prebuilt_derelict_deck', x: -7, z: 0, r: 3 },   // THE SHIP (2026-10-28): across the wings and the hull, the nexus on the hull, a team on each wing
         prebuilt_haunted: { room: 'site_prebuilt_haunted_grounds', x: 0, z: 0, r: 999 },
+        prebuilt_atlantis: { room: 'site_prebuilt_atlantis_temple', x: -14, z: 14, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): the board laid west of the oracle pool (the room is alike east and west: an unpinned bake took the east half, where the board's pieces are not)
+        prebuilt_camelot: { room: 'site_prebuilt_camelot_ward', x: -14, z: 0, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): THE LISTS (the tilt on the middle line)
+        prebuilt_bohemian_grove: { room: 'site_prebuilt_bohemian_grove_grove', x: -10.5, z: -17.5, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): between the mound and the lake
+        prebuilt_area51: { room: 'site_prebuilt_area51_flightline', x: 0, z: 10.5, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): across RUNWAY 33
+        prebuilt_cyberpunk: { room: 'site_prebuilt_cyberpunk_streets', x: 0, z: 0, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): THE HOLO-PLAZA, the cross of the boulevard and the cross street
+        prebuilt_downtown: { room: 'site_prebuilt_downtown_streets', x: -24.5, z: -14, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): THE COLLAPSE's lot
+        prebuilt_cern: { room: 'site_prebuilt_cern_ring', x: 73.5, z: 0, r: 2.6 },   // THE BATTLE MAP POLISH (2026-11-10): the detector hall's middle
         prebuilt_antarctica: { room: 'site_prebuilt_antarctica_station', x: 0, z: 31.5, r: 2.6 },   // THE OPEN ICE (2026-11-03): every size on THE STATION YARD
         prebuilt_northpole: { room: 'site_prebuilt_northpole_village', x: -28, z: 14, r: 2.6 },   // THE OPEN VILLAGE (2026-11-03): every size between the workshop and the plaza, the two cottages either side
         prebuilt_giza: { room: 'site_prebuilt_giza_plateau', x: 17.5, z: 77, r: 2.6 },   // THE OPEN PLATEAU (2026-11-03): every size on the sand in front of the sphinx, the causeway along its west side
         prebuilt_babel: { room: 'site_prebuilt_babel_tower', x: 0, z: 70, r: 2.6 },   // THE OPEN TOWN (2026-11-03): every size on the square, its four brick houses
-        prebuilt_technoticlan: { room: 'site_prebuilt_technoticlan_templecity', x: -38.5, z: 38.5, r: 10 },   // THE OPEN TEMPLE CITY (2026-11-03): every size on the ball court
+        prebuilt_technoticlan: { room: 'site_prebuilt_technoticlan_templecity', x: -38.5, z: 38.5, r: 10, rs: { 12: 2.6 } },   // THE COURT IS THE BOARD (2026-11-10): the 12 is the whole court (rs = a size's own radius)   // THE OPEN TEMPLE CITY (2026-11-03): every size on the ball court
         prebuilt_agartha: { room: 'site_prebuilt_agartha_crystalcity', x: 0, z: 14, r: 2.6 },   // THE OPEN CRYSTAL CITY (2026-11-03): every size on THE PLAZA
+        prebuilt_stonehenge: { room: 'site_prebuilt_stonehenge_henge', x: 0, z: 0, r: 2.6, sizes: [12, 10] },   // THE CIRCLE IS THE BOARD (2026-11-10): the 12 and the 10 inside the sarsen circle (a 5v5 house does not fit between the stones: the 9 and the 11 are cut from the plain round it)
+        prebuilt_stadium: { room: 'site_prebuilt_stadium_bowl', x: 0, z: 0, r: 2.6 },   // THE PITCH IS THE BOARD (2026-11-10): every size on the middle of the pitch, the Δ logo under the nexus
+        prebuilt_vatican: { room: 'site_prebuilt_vatican_basilica', x: 0, z: 10.5, r: 2.6 },   // THE NAVE IS THE BOARD (2026-11-10): every size on the middle of the nave, the pews and the columns either side of the aisle
+        prebuilt_strip: { room: 'site_prebuilt_strip_streets', x: 0, z: 0, r: 2.6, sizes: [12, 10] },   // THE PLAZA IS THE BOARD (2026-11-10): the 12 and the 10 on the fountain plaza (the odd sizes' 3 × 3 nexus does not fit between the basins: they are cut from the streets round it)
+        prebuilt_shasta: { room: 'site_prebuilt_shasta_slopes', x: 0, z: 24.5, r: 2.6, sizes: [12, 10] },   // THE MEADOW IS THE BOARD (2026-11-10): the 12 and the 10 on the meadow, the creek down its west side (the odd sizes are cut from the slopes round it)
+        prebuilt_skinwalker: { room: 'site_prebuilt_skinwalker_fields', x: -7, z: 7, r: 2.6, sizes: [12, 10] },   // THE CIRCLE IS THE BOARD (2026-11-10): the 12 and the 10 on the big crop circle
+        prebuilt_saturn: { room: 'site_prebuilt_saturn_hexagon', x: 0, z: -17.5, r: 2.6, sizes: [12] },   // THE HEXAGON IS THE BOARD (2026-11-10): the 12 is the hexagon
+        prebuilt_singularity: { room: 'site_prebuilt_singularity_horizon', x: 0, z: 24.5, r: 2.6, sizes: [12, 10] },   // THE ORBIT IS THE BOARD (2026-11-10): the 12 and the 10 on the plaza at the drop's south lip
         prebuilt_olympus: { room: 'site_prebuilt_olympus_summit', x: 0, z: 10.5, r: 2.6 },   // THE OPEN SUMMIT (2026-11-03): every size on THE COURT OF THE TWELVE (its two rows of columns either side)
         prebuilt_heaven: { room: 'site_prebuilt_heaven_gate', x: 0, z: 0, r: 2 },   // THE NEW HEAVEN (2026-11-03): the 12×12 cut round the sun (the whole board; the 9/10/11 picks stand on the stair room)   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
     },
@@ -62865,160 +63201,160 @@ const HQ_ARENA_RULES = {
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
-        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":42,"oz":50,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"020211111111111111111112020211111111111111111411020212121111111111111111020211111111111111111111020211111111111112121111020211111111111111111111020211111111111111111111020212121111111111111111020211111111111111111111020211111111111112121111010411111111111111111111010111111111111111111111","sq":3.5},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","water","dirt"],"cells":"011121210101010121010104011121210101012121010101011102210101012101030101011101242101232101010401011101012121210102010101212123212121212121212124212123212121212121212124011101210101010102010101011121040101030101010401011102010101010101030101211101010101010101010101011101010101010101010104","sq":3.5},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":28,"oz":22,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010103010101010101031111010301010101010101111311010102010101010101021101030101040401010404010103030101010101010101010103010104010101010101010101010104010101010101010101030101010101010101010103030101040401010404010103010102010101010101020101010301010101010101010301010103010101010101030101","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":42,"oz":50,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"020211111111111111111112020211111111111111111411020212121111111111261111020211111111111111111111020211261111111112121111020211111111111111111111020211111111111111111111020212121111111126111111020211111111111111111111020226111111111112121111010411111111111111111111010111111111111111111111","sq":3.5},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":0,"oz":0,"base":"marble_light","open":1,"keys":["cloud_gap","marble_light","cloud_2"],"cells":"000000001111111100000000000011111111111111110000002121111111111111212100002100000021210000002100111111002111112100111111111111211111111121111111111111211111111121111111111111002111112100111111002100000021210000002100002121111111111111212100000011111111111111110000000000001111111100000000","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","sq":3.5,"pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
-        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160404161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
-        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":7,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101111101111111111111111111111101010101010101010101111101010101010101010101111101010101010101010101111101020111110101010101111101020202020201010101111101010101011101010101111101010101010101010101111101010101010101010101111101010101010111010101111101010101010101010101111101","sq":3.5},
-        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102020101010101020201010102020101010101010101010101010101010101010101010101010101010111111111010101010101011111111111010101010101011111040411010101010101011111040411010101010101011111111111010101010101010111111111010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101010111111111030301010101010111111111030301010101010111110101010101010101010111110303010101010101010111110303020201010101010111110101010101010101010111110202030301010101010111110101030301010101011111110101010101010111111111010303010101010111110101010303110101010111110101010101","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"020201010111110101010101020204010111110101040101010101010111110101010101010104010111110101040101010101010111110101010101010104010111110101040101010104010111110101040101010101010111110101010101010104010111110101040101010101010111110101010101010104010111110101040202010101010111110101010202","sq":3.5},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101150101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101150101010101010101010101150101010101010101010101151501010101010101010101151515010101010101010101151515010101010101010101011501010101010101010101010101010101010101151515010101010101010101","sq":3.5},
-        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":5,"oz":2,"base":"dirt_4","open":1,"keys":["wasteland","dirt_4"],"cells":"060611111111111111110606060611111111111111110606060606131414131111110611060606131414131111111313111111121313131111110613111111121111111111110606111111111111111111110606111111111111111111110606111111111106111111110606111111111111111111111111111111111111111111111111111111111111111111111111","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":14,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101020202010101010101010101010101010101010101030101010101020101010101030101010103010101010102010101010103010101010101010101010101010101010101020202010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101011111111101010112010101010101010111111112010101010101242411111112010101242401011101011111010101012424110101111111010101010101110111011111010101010101112411011111010101010101112411012411010101010101110124111111010101111101011101242401010111010111010111111111010111011101010101010124","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":18,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"011212010101011121212121011111010111111112020202111111111111011121212121111111110102340111212121110101010134340111012121010101010101010111010101010101010101010111111111010101010101010101010101010101010101010101010134010101010101010101340101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":4,"oz":4,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"010111010111110101110101010101110111110111010101010101110111110111010101010102110111110111010101010111010111110101110101010111010111110101110101010111010111110101110101010111010111110101110101010101110111110111020101010101110111110111010101010101110111110111010101010111010111110101110101","sq":3.5},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111212121211121212111040411212121111111212121120411112121111111112121120411112121211111212111121211112121211111212121121111112121111122222222111111112121212122221222111111112121211112122222211111112121111112121222211111112121111111111204212111112121111111111104112121112121111111111111","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":3,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010101010101010101010101011401020202020201010101011401020202020201010101010101020202020202020101010101020101010101010101010101020101010101010101010101020101010101010101010101020101010101010101010101020202020202020101011401010101010101010101011401010101010101010101010101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010301010101010101010101010101010101010101010202010103010101010101020101010101010101010101010102010101010101010101010101030101010101010101010201010201010101010101010103010101010101010101010101020101010101010101010101010102010101010101030101020201010101010101010101010101010101010101010301","sq":3.5},
-        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":10,"oz":9,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"030313010111111121212121030314010111111121212121130311010111111121212121140101010101010121212121010101010101010112121212010101011111010101012121111111011111010101010101111111010111111111110101010111111101011111111101010101010111010111111111110101010101010101111101111111110101010101010101","sq":3.5},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":18,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010102010101161616020101010101010104161616010101010101160404161616160101010101010104010202010101010101010101210101010101010101010101210101010101010101010101010101010101010101020201161616010101010116161601161616010101010101161616010101010101010102161616010101020101010101010101","sq":3.5},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010111010101010102111102020101010101010101111101020202020101010102111101010101010101010101111101010101010101010101111102010101010101010103111101010101010101010103111101010101010101010101111102010101010101010101111101020202020101010102111111111111111111111111111101010101010101010102111102","sq":3.5},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"010101010101010101010101010102010101010101040101010101010101010101010201010201010101010101010101010201010101010101020101010101020101010101010104040101010101010102010101010102010101010101010201010101010101010101010201010201010101010101010101010104010101010101020101010101010101010101010101","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102020101010101020201010102020101010101020201010103010101010111111111010101020101011111111111010101010101011111040411010101010101011111040411010101020101011111111111010103010101010111111111010102020101010101020201010102020101010101020201010102020101010101010101","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010111110101010101020201010111110101010202020201020111110102010202010101010111110101010101010101040111110104010101020201010111110101010202020201010111110101010202010101040111110104010101010101010111110101010101020201020111110102010202020201010111110101010202110101010111110101010101","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"020201010111110101010101020204010111110101040101010101010111110101010101020104010111110101040102010101020111110102010101010104010111110101040101010104010111110101040101010101020111110102010101020104010111110101040102010101010111110101010101010104010111110101040202010101010111110101010202","sq":3.5},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":12,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101010101010101010101020201010101010101010101020215010101010101010101020215010101010102010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010102010101010101020101010101150202010101010101010101150202010101010101010101010202010101010101010101010101","sq":3.5},
+        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":7,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4"],"cells":"020101010101010101010101020101010101010101010101020101020101010102010101010202010101010101020201010101010101010101010101010202010101010101020201010202010101010101020201010101010101010101010101010202010101010101020201020101020101010102010101020101010101010101010101020101010101010101010101","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":14,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101010101010101010101020101010102010101020202010101010101020202010101020101010102010101020201010101010101010201010201010101010101010202010101020101010102010101020202010101010101020202010101020101010102010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":8,"oz":9,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2"],"cells":"010101010111110101010101010101010111110101010101010101111111111111010101010211030111110103110201010111011112111101110101011201010111110101011201011201010111110101011201010111011111121101110101010211030111110103110201110101111111111111010101010101010111110111111111010101010101111101010101","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":18,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"011212010101011121212121011111010111111112020202111134111111011121212121341111110102340111212121110101010134340111012121010101010101010111010101010101010101010111111111010101010101010101010101010101010101010101010134010101010101010101340101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":4,"oz":4,"base":"grass_2","open":1,"keys":["rocks_5","grass_2","dirt_2"],"cells":"041111211121211121111111111104211121211121111104111111211121211104211111041112122121211104211111111112122121211121110411110411211121211121041111111104211121211121110411110411211121212112121111111121041121212112121104111121041121211121111111041111211121211121041111111111211121211121111104","sq":3.5},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":22,"oz":11,"base":"moon","open":1,"keys":["moon_2","moon","moon_3"],"cells":"010111111101010111111111012411111111010111112411010101111101011111111111010101121101010102010111010112110101010101021111010102010101110101121124240102111111010101121111010112111111110101121111010111121111111102011111010111111111111111010111012411111111111111112401010101111111111111110101","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":3,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010101010101010101010101011401010201010101010101011401020101020101010102010101020101020201010102010201020101020101010102010101020101020101010102010101020101020101010202010201020101020101010102010101010201010101010101011401010101010101010101011401010101010101010101010101","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101010101010101010201020101010102010201010101010101010101010101030101020101010102010103020201010101010101010202020201010101010101010202030101020101010102010103010101010101010101010101010201020101010102010201010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":12,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010401010111110101010401010101010111110101010101010102020111110102020101010402020111110102020401010101010111110101010101010101010111110101010101010402020111110102020401010102020111110102020101010101010111110101010101010401010111110101010401010101010111110101010101","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":10,"oz":5,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"020111111111111111111111020201010101111111111111020202010101111111111121020212110111111111112121030212010111111112121202020213010111111121212121120213010111111121212121130202010101010102020202020202010101010111112121020202011111010101010121121211011111010101010101121111010111111111110101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101040101020201010101010101010202020201040101010101010202020201010101010104010202020201010101010101010202010104010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303","sq":3.5},
-        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":41,"oz":23,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"051111111111111111051305051111111111111111131313051111111111111111051305051111111111111111111211051111111111111111111211051111111111111111111211051111111111111111111111051112111111111111111111050512111111050511111111050512111111050511111111051313111111111111111111051313111111111111111111","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101020101020101010101010101010101030101010101010101010101030302020101010101010101030101010101010101040404040404010101010101040404040404010101010101040404040404010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102010102010101010101010101","sq":3.5},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202","sq":3.5},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":9,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"000011111111111111110000000011111111111111111100000000121111111100001111000000111111111100001111111111111111111111111111111212111111111111121211111212111111111111121211111111111111111111111111000000111111111100001111000000121111111100001111000011111111111111111100000011111111111111110000","sq":3.5},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":12,"oz":5,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101011515150101010115151515011515150101010115151515011515150101010101010101010101010101010101010101010101010101010101010101010101010101010115151501030315150101010115151501030315150101010115151501010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":22,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"020101010101010101010101020101010101010102020201020101020101010102020201010101010101010102020201010101010101010101020101010114140101010101010101010114140101010101010101010101010101010101020101010101010101010102020201020101020101010102020201020101010101010102020201020101010101010101010101","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101020101020101010101010101010101030101010101010101010101030302020101010101010101030101010101010101040404040404010101010101040404040404010101010101040404040404010101010101010103010101010101010102020303010101010101010101010103010101010101010101010102010102010101010101010101","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020202010101010101020202020201010101010101010202020201010101010101010202020202010101010101020202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202","sq":3.5},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":9,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"000011111111111111110000000011111111111111111100000000121111111100001111000000111111111100001111111111111111111112111111121212111111111111121211121212111111111111121211111111111111111112111111000000111111111100001111000000121111111100001111000011111111111111111100000011111111111111110000","sq":3.5},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":11,"oz":14,"base":"grass_2","open":1,"keys":["grass_2","leaves_3","marble","marble_light"],"cells":"010101010101010101010101010101010101010101010101010114213121142131140101010114312131141414140101010114141421141431210101010121312131213121310101010131211421311431210101010114312131141414310101010114143121312114140101010114312131143114140101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":2,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101010114140101010101010101011111111101010101010101011111111101021414141414141414140111020202010101010101141411140202010101010101141411140202020101010101141411140101010101010111111111140101010101010101141411140101010101010101141411140101010101010101141411140101010101010101141411","sq":3.5},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212114010121212121212121211414010101010121212121212121212101010101010101212121212121212121212101010101212121212121212121010101212121212121212121212101212121212121212121212121212121212121212121212121212121212121212121212114211414212121212121211414","sq":3.5},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":6,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"030101011111010101010101030101010111010101010101020202012511010101010101020202022511110101010101020202022511110101010101020202020201110101010101020202020201110101010125020202020101111101010101250202010101111111111101250202011111110111111111250111111101010101010101011111010101010101010101","sq":3.5},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":8,"oz":1,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011414010101010101140101010101010101010101010101010101010101010101010101010101010121210101010101010101010121210101010101010101010101010101010101010101010101010101010101010114010101010101141401","sq":3.5},
-        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":19,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101030301010101010101010202030303010101010101010101030301010101151501010115150101010101151501010115150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101112511111111111111111111111111111111112511121211111111111111111112121212252511111111111112121212111111121111111113121211111212131111111112111111121212121111111111112525121212121111111111111111111212112511111111111111111111111111111111112511011111111111111111111101","sq":3.5},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":2,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101010114140101010101010101011111111101010101010101011111111101021414140101010114140111020202010101010101141411140202010101010101141411140202020101010101141411140101010101010111111111141414140101010114140111140101010101010101010111140101010101010101010111140101010101010114140111","sq":3.5},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","damask"],"cells":"010101010101010101010101011401010101010101011401010101020101010102010101010101010101010101010101010202140101010114020201010202010101010101020201010202010101010101020201010202140101010114020201010101010101010101010101010101020101010102010101011401010101010101011401010101010101010101010101","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":11,"oz":18,"base":"moon_3","open":1,"keys":["moon_3","crystal"],"cells":"010101010101010101010101010101010101010101010101010201010101010101010201111111020101010102010101111112111112110101020101030101010101111111110103030101010101011111111113010102010101020101121111010101020101010102011111010201010101010101010201010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":14,"oz":6,"base":"mars_2","open":1,"keys":["mars_2","moon_3"],"cells":"010102010101010101020101010202010101010101020201010201010101010101010201020101030101010103010102020201010102010101010202010103010101010101020101010103010111110101020101020201010111120101010202020101030111110103010102010201010111110101010201010202010111110101020201010102010111110101020101","sq":3.5},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":8,"oz":3,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101011616010101010101160101010101040101020103010101010202010101010101010101010121210101010121210101010121210101010121210101010101010101010101020201010101030102010104010101010116010101010101161601010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":19,"oz":15,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"010101010101010101010101010101010101010101010101010101020101010102010101010101010101010101010101010101010101010102030301010101040401010103030303010101040401010103030303010101010101010102030301010101010101010101010101010101020101010102010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101111211111111111111111111111111111111112411121211111111111111111112121212122411111111111112121212111111121111111112121211111212121111111112111111121212121111111111112412121212121111111111111111111212112411111111111111111111111111111111111211011111111111111111111101","sq":3.5},
     },
     /* </ARENA PICKS> */
     /* THE ARENA SIZES (mondo 2026-10-17): the 9×9 / 10×10 / 11×11 cuts of the same sites — written by `node bake-arenas.js --size N`,
        the same rules and the same record as `picks` (S×S pairs), the house tiles of that size (hqArenaHouse: 5v5 on 9 and 11) */
     /* <ARENA PICKS 9> */
     picks9: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"011121210101212101341101212121210101011111012121212121010111012121212121340111210101010101010121010101010101011101010101010101211101010101010101111101010101010101","sq":3.5},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","water","dirt"],"cells":"010101010101010111010101010101010111212121010101010111010121212101010111010101012121212121010101010101212121010101010101010111010101010101010111010101010101010111","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":40,"oz":22,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"011111111111121101111111111111121211111111111111111212111111111111111212111111111111111212111111111111111212111111111111111212111111111111111212111111111111111212","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"021111111111111111021212111111111111021111111111111111021111111111111212021111111111111111021111111111111111021212111111111111021111111111111111021111111111111212","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":44,"oz":52,"base":"desert","open":1,"keys":["desert","bricks_1"],"cells":"020201010101011401010101010101010101011401010101020201010101010101010101010101010101010101020201010101140101010101010101010101140101010101020201010101010101010101","sq":3.5},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_stair","ox":0,"oz":19,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light"],"cells":"041212111111111111041212111111110404111111111111040404041111111111110404042111111111110404042111111111110404112121212111110411111111111121212121111111111111041111","sq":3.5},
-        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"010101010101010101010101010101011111010101010101011111010101010101010101010101010101242424010101010101242424010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":12,"oz":13,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"020202010101011111010111010101011111010101010101011111010101010101011111010101110101011111010101010101011111010101010101011111111111111111111111010101010101011111","sq":3.5},
-        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":11,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010101010101010101010101010101010111010101010101011111010101010101011111010101010101011111010101010101011111010101010101010111010101010101010101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":33,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101111111010101010101111101010101010101111103010101010101111103010101010101111101010101010101111102010101010101111101010101010111111101010101111111110103","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"010101111101010101040101111101010401010101111101010101040101111101010401040101111101010401010101111101010101040101111101010401010101111101010101040101111101010402","sq":3.5},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":16,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"011401010101010101011401010101010101011401010101010101010101010101010101020101010101010101010101010101010101011401010101010101011401010101010101011414010101010101","sq":3.5},
-        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":8,"oz":9,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"010101010101011414010114010101011414010101010101010101010101010101010101010101010101010101140101010101011401140101010101010101140101010101010101011414010101010101","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":15,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101020201010101010101010101010101010103010102010101010103010301010101010201010301010101010101010101010101010102010101010101010101","sq":3.5},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":4,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101010111011101010101010111241101010101010111241101010101010111012411010111110101110124011101011101011111011101110101010101010101010101010101010124010101010101","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"041121211111111121111121211111111121111121211111212121212121212121211121212121212111110411212111111111040411111111111111111111111111111111111111111111111111111111","sq":3.5},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":7,"oz":3,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"010111110101110101010111110101110101110111110111010101110111110111010101110111110111010101010111110101110101010111110101110101010111110101110101010111110101110101","sq":3.5},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":8,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111111212111041111111121212121041111212121211121040411212121111111120411112121111111120411112121211111121211112121211111121111112121111122111111112121212122","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":7,"oz":24,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"020101010101140101020101010101010101020202010101010101010101010101010101010101010101010101010101010101010101010101010101010101020202010101140101010101010101140101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":14,"oz":16,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010301010101010102010101010101010101010101010101010101010101010101010101020101010101010101010101010101010101010101010101010101010201010101010103020101010101010101","sq":3.5},
-        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":9,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"020212011111010101020311111111111111021111111111111111121111111101011111110101011101011111110101011111010101111111010101111101011111111111011111010111111111111111","sq":3.5},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":25,"oz":19,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street"],"cells":"051211111111111111051111111111110513050511111111111111121111111111111111111111111111111111111111111111111111111111111111111212051111111111050505051111111111110505","sq":3.5},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":12,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101011111020201010101021111010101010101011111010101010101011111010101010101031111010101010101031111010101010101011111010101010101011111020201010101021111","sq":3.5},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":8,"oz":15,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"010101010101010102010101010101010101010101010101010201010201010101010101010101010101020101020101010101010102010101010101010102010101010101010101040101010101010201","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010202010101010102010202010101010102010301010101011111010102010101111111010101010101111104010101010101111104010102010101111111010301010101011111010202010101010102","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":32,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"020101011111010101020102011111010201010101011111010101010104011111010401020101011111010101020101011111010101010104011111010401010101011111010101020102011111010201","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"010101111101010101040101111101010401010201111101020101040101111101010401040101111101010401010201111101020101040101111101010401010101111101010101040101111101010402","sq":3.5},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":15,"oz":14,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"021501010101010101021501010101010201010102010101010101010101010101010101010101010101010101010101010101010201010102010101010115010101010101010115010101010101010101","sq":3.5},
+        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":8,"oz":8,"base":"dirt_4","open":1,"keys":["dirt_4"],"cells":"010101010101010101010102010101010201020201010101010102010101010101010101020201010101010102020201010101010102010101010101010101020201010101010102010102010101010201","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":15,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010102010101010201020201010101010102010102010101010201020101010101010101020101010101010101010102010101010201020201010101010102010102010101010201","sq":3.5},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":2,"oz":5,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2"],"cells":"010101010111111202010101010111011111010101010111010111010101010111111111010101010101010101010101010101010101010101010101010101010101010101010211010101010101010111","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":21,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"011124111111010124111111010101012424010101010101010101010101010101010101310101010101010101313101010101010101313101010101010101310101010101010101010101010101010101","sq":3.5},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":5,"oz":5,"base":"grass_2","open":1,"keys":["grass_2","rocks_5","dirt_2"],"cells":"011421012121012101010121012121011421010202212121011421010202212121012101140121012121012114011421012121012101140121012121210202012114012121210202012114012121012101","sq":3.5},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":23,"oz":12,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111121211111212111112121111111212112112121212221211211212121212122212221212111212112212211111121212112211211111111212112211112111111112221211111111111111121","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":5,"oz":23,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010114010101010101010114010201010101020101010202010101020102010201010101020101010201010101020101010201010102020102010201010101020101010101010101010114","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":14,"oz":15,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101020102010101010201010101010101010101010102010101010201020101010101010101020101010101010101010102010101010201010101010101010101020102010101010201","sq":3.5},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":13,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"040101011111010101010101011111010101010202011111010202040202011111010202010101011111010101010101011111010101040202011111010202010202011111010202010101011111010101","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":12,"oz":6,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"010101011111111111020101011111111111121101111111111121120101111111121212130101111111212121130101111111212121020101010101020202020101010101111121020111110101010101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010101010201010101010401010101010101010102010401010101010102010101010101040102010101010101010102040101010101020102010101010101010102010101010101010102","sq":3.5},
-        prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101040401010101010101040401010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":44,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101150315010101010101030303010101010101150315010101010101010201010101010101010201010101010101010201010101010101010101","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101030202010101010101010101010101010104040401010101010104040401010101010104040401010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":13,"oz":6,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101151515010101011515151515010101011515151515010101010101010101010101010101010101010101010101010101010101011515031515010101011515031515010101011515","sq":3.5},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":44,"oz":23,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010202010102010101010202010101010101010202010101010101010102011414010101010101011414010101010101010101010101010102010101010101010202010102010101010202","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"010101010101010101010101010101010101030202010101010101010101010101010104040401010101010104040401010101010104040401010101010101010101010101010202010101010101010101","sq":3.5},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":2,"oz":0,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101","sq":3.5},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":9,"base":"aluminium","open":1,"keys":["aluminium","cloud_gap"],"cells":"010101010101010101100201010101101001100101010101101001010101010101010101020101010101010202020101010101010202010101010101010101100101010101101001100201010101101001","sq":3.5},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":9,"base":"aluminium","open":1,"keys":["aluminium","cloud_gap"],"cells":"010101010101010101100201010101101001100101010101101001010101010101020101020101010101010202020101010101010202010101010101020101100101010101101001100201010101101001","sq":3.5},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":18,"oz":13,"base":"grass_2","open":1,"keys":["marble","grass_2","leaves_3","marble_light"],"cells":"010101010101111111111111111101241111111111111101111111013124111101010101242424111101011124243101111101111124310131111101111111243101111101111111242431111101111111","sq":3.5},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":21,"oz":0,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"050101111111050513010101111111111313110511111111110513110511111111111212110511111111111212110511111111121212010101111111111212010101111111111212110511010111111212","sq":3.5},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":7,"oz":20,"base":"moon_3","open":1,"keys":["obsidian","crystal","moon_3"],"cells":"040411112121212121111111111111112121040421211111111111040421212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121","sq":3.5},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101111111010101010101111111141414010101011414020201010101010114020201010101010114020202010101010114010101010101011111141414010101011414010101010101010101","sq":3.5},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["damask","checkerboard"],"cells":"041111111111111111111112111111111211111111111111111111121204111111110412121211111111111112121211111111111112121204111111110412111111111111111111111112111111111211","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":12,"oz":16,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101010101140101010101010101010101010101010101010101010101010101020101010101010101212102010101010201212221212221010102010101010121212121010101010101212121","sq":3.5},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":8,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"010101110101010101020124110101010101020224111101010101020224111101010101020202011101010101020202011101010101020201011111010101020101011111111111020111111101111111","sq":3.5},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":16,"oz":4,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011414010101010101","sq":3.5},
-        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":21,"oz":17,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010303010101010102020303010101010101010303011515010101151501011515010101151501010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140102010101010101010202140101010101010202010102010101010202020202010101010201020202010101010101020202010101010101","sq":3.5},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":2,"oz":2,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101011414010101010101010101010101010101010202010101010101010121010101010101010121010101010101010101","sq":3.5},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":21,"oz":16,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"010101010101010101010201010101020101010101010101010101010101010101020303010404010101030303010404010101030303010101010101020303010101010101010101010201010101020101","sq":3.5},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101020101010101010101010101010101140102010101010101010202140101010101010202010102010101010202020202010101010201020202010101010101020202010101010101","sq":3.5},
     },
     /* </ARENA PICKS 9> */
     /* <ARENA PICKS 10> */
     picks10: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":20,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010111111121111111111111111111010101010101010101013401010101010101010101010101010101343434010101010101010134343401010101340101010101010101010101010101010101010101010101111101010101010101011121","sq":3.5},
-        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":35,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101011111120202010101011111110101010101011111110101010101010111111101010101010111141101010101010101011401010101010101010101040101010101010101010401010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111114021212111111111111110211111111111111111102111111111111121211021111111111111111110211111111111111111102121211111111111111021111111111111111110211111111111112121104111111111111111111","sq":3.5},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":14,"oz":19,"base":"grass_2","open":1,"keys":["water","dirt","grass_2"],"cells":"01111121212111112121012211212121112123210121141121131121212401212111111121222121111311111111111111111113111111111111111101211121212121222121011124212123212121240122212121212121232101212121212121212121","sq":3.5},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":29,"oz":23,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"03010101010101011113010201010101010102110101040401010404010101010101010101010101010401010101010101010104010101010101010101010101010101010101010104040101040401010102010101010101020103010101010101010103","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"02111111111111111114021212111111111126110211111111111111111102112611111111121211021111111111111111110211111111111111111102121211111111261111021111111111111111110226111111111112121104111111111111111111","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":7,"oz":7,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"00111111111111111100111124111111112411111100000011110000001111110012111112001111111111111111111111111111111111111111111111110012111112001111110000001111000000111111241111111124111100111111111111111100","sq":3.5,"pits":"1000000001000000000001110011100010000100000000000000000000000010000100011100111000000000001000000001","pitTile":-4},
-        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":15,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","water","rock_wall_1"],"cells":"01010101010101010101010101010101011111010101010101010111110101010101010101010101010101010101242424240101010101012424242401010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101030302011111010101010101020202020201010101010101010111010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101111111111111111111","sq":3.5},
-        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010202010101010101010101010101010101010101010101010101111111010101010101111111110101010101011111040401010101010111110404010101010101111111110101010101010111111101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":32,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"03010101010101111111030101010101011111010101010101010111110301010101010101111103020101010101011111010101010101010111110203010101010101111101030101010101111111010101010111111111010301010101111101010103","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02040101111101010401010101011111010101010104010111110101040101010101111101010101010401011111010104010104010111110101040101010101111101010101010401011111010104010101010111110101010101040101111101010402","sq":3.5},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":16,"oz":12,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010101011501010101010101010115010101010101010101151501010101010101011515150101010101010115151501010101010101011501010101010101010101010101010101011501010101010101010115010101010101010101","sq":3.5},
-        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":6,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"01010201010101010114010101010101010101140101010101010101011401010101140101010114010101010101010101010101010101010101010101010101010101010101141414010101010101140114140101010101010101011401010101010101","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":15,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010202010101010101010101010101010101010301010102010101010103010103010101010102010101030101010101010101010101010101010102020101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":2,"oz":14,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010101112411010101010101011124110101010101010111012424010101111101011101240101110101110101112401011101110101010101010101010101010101010101012401010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"01020201010101110101010202010101011101010112120101010111012101121201010101112121011111010111111112021111111111110111212111111111010134011121110101010134340111010101010101010101110101010101010101011111","sq":3.5},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":9,"oz":1,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","water","rocks_5"],"cells":"01011111011111211234010111110111112112120101111101111121212101011111011111111111010111011111111111110101110111111111111101011101111111111111010111110111111111110101111101111111111101011111011111111111","sq":3.5},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111121212121112121040411212121111111211204111121211111111112041111212121111121121211112121211111211211111121211111222211111111212121212222111111112121211112122111111121211111121221111111212111111111","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":6,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01010101010101010101010101010101010101010101010101010114010102020101010101140101020201010101010101010202020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":14,"oz":15,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010301010101010102010101010101010101010101010101010101010101010101010101010101020201010101010101010101010101010101010101010101010101010101010102010101010101030102010101010101010101","sq":3.5},
-        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":11,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03110101111111212121010101010101012121210101010101010112121201010111110101010121111101111101010101011111010111111111110101111111010111111111010101011101011111110101010101010101111111111101010101010101","sq":3.5},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":24,"oz":19,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street"],"cells":"05051211111111111111050511111111111105130505051111111111111112121111111111111111111111111111111111111111111111111111111111111111111111111212050511111111110505050505111111111111050511111111111111120505","sq":3.5},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":11,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101011111020202010101010211110101010101010101111101010101010101011111010101010101010311110101010101010103111101010101010101011111010101010101010111110202020101010102111111111111111111111111","sq":3.5},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":14,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"01020101010101010401010101010101010101020201010101010101010102010101010101010201010102010101010101010101010101010102010101020101010101010102010101010101010101020201010101010101010101040101010101010201","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010202010101010102020103010101010111111101010201010111111111010101010101111104040101010101011111040401010201010111111111010301010101011111110102020101010101020201020201010101010202","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":32,"oz":46,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"02010101111101010102020102011111010201020101010111110101010101010401111101040101020101011111010101020201010111110101010201010401111101040101010101011111010101010201020111110102010202010101111101010102","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02040101111101010401010101011111010101010104010111110101040101010201111101020101010401011111010104010104010111110101040101010201111101020101010401011111010104010101010111110101010101040101111101010402","sq":3.5},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":15,"oz":13,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"02010101010101010101021501010101010101010215010101010102010101010201010101010101010101010101010101010101010101010101010101010101010101020101010102010101010115020101010101010101150201010101010101010102","sq":3.5},
+        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":8,"oz":8,"base":"dirt_4","open":1,"keys":["dirt_4"],"cells":"01010101010101010101010102010101010201010202010101010101020201010101010101010101020201010101010102020202010101010101020201010101010101010101020201010101010102020101020101010102010101010101010101010101","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":15,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010102010101010201010202010101010101020201010201010101020101020101010101010101020201010101010101010201010201010101020101020201010101010102020101020101010102010101010101010101010101","sq":3.5},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":9,"oz":10,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2"],"cells":"01010101111101010101010111111111111101010211030111110103110201110111121111011101120101011111010101121201010111110101011201110111111211011101021103011111010311020101111111111111010101010101111101111111","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"01020201010101110101010202010101011101010112120101010111012101121201010101112121011111010111111112021111341111110111212134111111010134011121110101010134340111010101010101010101110101010101010101011111","sq":3.5},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":5,"oz":5,"base":"grass_2","open":1,"keys":["grass_2","rocks_5","dirt_2"],"cells":"01142101212101210101010121012121011421010102022121210114210101020221212101210114140121012121012114010114210121210121011414012101212121020201012114012121210202010121140121210121010101012101212101211401","sq":3.5},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":23,"oz":12,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111112121111104212111112121111111112121121121212122212121121121212121212211212221212111212112112122111111212121121121121111111121211211211112111111112221112111111111111111212104111111111111111104","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":5,"oz":23,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01010101010101011401010101010101010114010102010101010201010101020201010102010201010201010101020101010102010101010201010101020101010202010201010201010101020101010101010101010101140101010101010101011401","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":14,"oz":15,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101020102010101010201020101010101010101010101010201010101020101020101010101010101020201010101010101010201010201010101020101010101010101010101010201020101010102010201010101010101010101","sq":3.5},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":13,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"04010101111101010104010101011111010101010102020111110102020104020201111101020204010101011111010101010101010111110101010104020201111101020204010202011111010202010101010111110101010104010101111101010104","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":6,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"02010101011111111111020201010111111111110212110111111111112102120101111111121212021301011111112121210213010111111121212102020101010101020202020201010101011111210202011111010101010112110111110101010101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101040102010101010101010102020104010101010101020201010101010104010202010101010101010102010401010101010201020101010101010101010202010101010101010102","sq":3.5},
-        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":15,"oz":10,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101141414141414141401011414141414141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":25,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101150315010101010101010102010101010101010101020101010101010101010201010101010101010101010201010101010101010102010101151501010101020101011515010101010301010101010101010103010101010101010101","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010302020101010101010101010101010101010404040401010101010104040404010101010101040404040101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020101010101010101020201010101010101010202010101010101010102020101020101020101020201010101010101010202010101010101010102","sq":3.5},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":9,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111111000012111111110000110000111111111100001111111111111111111111121211111111111112121212111111111111121211111111111111111111000011111111110000110000121111111100001100111111111111111111","sq":3.5},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":13,"oz":6,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101151515010101011515151515150101010115151515151501010101010101010101010101010101010101010101010101010101010101010101151515031515010101011515150315150101010115151501010101010101010101","sq":3.5},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":44,"oz":23,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101020202010102010101010202020101010101010102020201010101010101010201011414010101010101010114140101010101010101010101010101010201010101010101010202020101020101010102020201010101010101020202","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010302020101010101010101010101010101010404040401010101010104040404010101010101040404040101010101010101010101010101010202030101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02010101010101010102020101010101010101020201010201010201010202020101010101010202020101010101010101020201010101010101010202020101010101010202020101020101020101020201010101010101010202010101010101010102","sq":3.5},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":9,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111111000012111111110000110000111111111100001111111111111111121111121211111111111112121212111111111111121211111111111111121111000011111111110000110000121111111100001100111111111111111111","sq":3.5},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":16,"oz":5,"base":"grass_2","open":1,"keys":["leaves_3","grass_2","marble"],"cells":"04041111112121111111040411111121111111110411111121211111111104111111212112121212041111112111121212120411111121111212121221211111210412121212212111111121121212122121212121212121111111111111111111210411","sq":3.5},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":24,"oz":18,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101020216010101010101010202160101010101010102021601010101010101020216010101010101010202160116041601010101011601040404010101010116011604160101010101160101010101010101011601010101010101010116","sq":3.5},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":20,"base":"moon_3","open":1,"keys":["crystal","moon_3","obsidian"],"cells":"01011111111111111111010101010111111111111111010101010101011111111111111111110101111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111111111242411111111111111","sq":3.5},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010111110101010101010101011101010101010202012411010101010102020224111101010101020202241111010101010202020201110101010102020202011101010101020202010111110101010202010101111111111102020111111101111111","sq":3.5},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":9,"oz":2,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114140101010101011401010101010101010101010101010101010101010101010101212101010101010101012121010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":21,"oz":16,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010103030101010101010202030303010101010101010303010115150101011515010101151501010115150101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101010101010101250102020101010101010102020202010101010101020202020102010101010302020102030101010102010101020201010101010125250202010101010101010102012501010101010101","sq":3.5},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":5,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101111111110101010101011111111101011401010101141401111101010101010114141111010101010101141411110201010101011414111101010101011111111111140101010114140111110101010101010101111101010101010101011111","sq":3.5},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["damask","checkerboard"],"cells":"04111111111111111104111112111111111211111111111111111111111112120411111111041212121211111111111112121212111111111111121212120411111111041212111111111111111111111111121111111112111104111111111111111104","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":12,"oz":19,"base":"moon_3","open":1,"keys":["moon_3","crystal"],"cells":"01010101010101010101020101010101010101021111020101010102010111121111121101010201010101010111111111010101010101011111111101020101010201011211010102010101010201110201010101010101010201010101010101010101","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010111110101010201010101011101010101010202012411010101010102020224111101010101020202241111010101010202020201110101010102020202011101010101020202010111110101010202010101111111111102020111111101111111","sq":3.5},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":9,"oz":4,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101161601010101010116010101040101020103010102020101010101010101012121010101012121010121210101010121210101010101010101010202010103010201010401010116010101010101161601010101010101010101","sq":3.5},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":20,"oz":16,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"01010101010101010101010102010101010201010101010101010101010101010101010101020303010104040101010303030101040401010103030301010101010101020303010101010101010101010101020101010102010101010101010101010101","sq":3.5},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101010101010101240102020101010101010102020202010101010101020202020102010101010202020102020101010102010101020201010101010124020202010101010101010102012401010101010101","sq":3.5},
     },
     /* </ARENA PICKS 10> */
     /* <ARENA PICKS 11> */
     picks11: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010101010101010101013434340101010101010101013434340101010101340101010101010101010101010101010101010101010101010111110101010101010101011121","sq":3.5},
-        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101010111110101010101010101011111010101010101010111111101010101010101111111010404010101010111111101010101010101111411010101010101010101140101010101010101010101040101010101010101010104010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert"],"cells":"02111111111111111114110212121111111111111111021111111111111111111102111111111111121211110211111111111111111111021111111111111111111102121211111111111111110211111111111111111111021111111111111212111104111111111111111111110111111111111111111111","sq":3.5},
-        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101011616160101010101010101161616160101010101160416161616010101010101010101010101010101010101210101010101010101010121010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":8,"oz":11,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"01010101010101010101010303020111110101010101010102020202020101010101010101010111010101010101010101010101010101010101010101010101010101010101010101110101010101010101010101010101010101010101010101010101111111111111111111111101010101010101010101","sq":3.5},
-        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":4,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101020101010101010101010102010101010101010101010201010101010101010101","sq":3.5},
-        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020201010101010202010102020101010101010101010101010101010101010101010101010101111111010101010101011111111101010101010101111104040101010101010111110404010101010101011111111101010101010101011111110101010101010101010101","sq":3.5},
-        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"01010101010101011111110303010101010101111111030301010101010111110101010101010101011111030101010101010101111103020201010101010111110101010101010101011111020303010101010101111101030301010101011111110101010101011111111101030101010101111101010103","sq":3.5},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02010101111101010101010204010111110101040101010101011111010101010101040101111101010401010101010111110101010101010401011111010104010101040101111101010401010101010111110101010101010401011111010104010101010101111101010101010104010111110101040202","sq":3.5},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":6,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101020202030101010101010102020202010101010101011502020201010101010101010101020101010101010101010102010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011501010101010101010101","sq":3.5},
-        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":7,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"01020101010101011515030101010101010101151515010101010101010115151501010115010101011515150101010101010101010101010101010101010101010101010101010101010101011515010101010101150101151501010101010101010101150101010101010101011501151501010101010101","sq":3.5},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":14,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101010101010101010102020201010101010101010101010101010101010301010101020101010101030101010301010101010201010101030101010101010101010101010101010101020201010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010111011101110101010101011124110111010101010101112411012401010101010111012411110101011111010111012424010111010111010111111101011101110101010101010101010101010101010101010101240101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01010202010101011101010101020201010101110101240112120101010111013101011212010101011131310101111101011111111202111111111111110111313111111111110101240111311111010101012424011101010101010101010101110101010101010101010111110101010101010101010101","sq":3.5},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":8,"oz":1,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","water","rocks_5"],"cells":"01111101011101012102340111110101110101210202011111010111010121212101111101011101010101010111110111010101010101011111011101010101010101111101110101010101010111110101110101010101011111010111010101010101111101011101010101010111110101110101010101","sq":3.5},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04112121211111112121210411112121111111112121041111212121111121211112111121212111112121211111112121111122222222111111212121212222122211111121212111121222221111112121111112121222111111212111111111120421111121211111111111042121112121111111111111","sq":3.5},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":6,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01010101010101010101010101010101010114010101020201010101011401010102020101010101010101010202020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102020202010101140101010101010101010114010101","sq":3.5},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":13,"oz":15,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101020101030101010101010201010101010101010101010101010101010101010101010301010101010101010102010201010101010101010101010101010101010101010201010101010101010101010102010101010101030102020101010101010101010101010101010101010103","sq":3.5},
-        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":10,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03140101111111212121210311010111111121212121010101010101012121212101010101010101121212120101011111010101012121111101111101010101010111110101111111111101010111111101011111111101010101011101011111111101010101010101011111011111110101010101010101","sq":3.5},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","water","dirt"],"cells":"01010101010101010101110101010101010101010111010101010101010101011121212121210101010101110101010121212101010111010101010101212121212101010101010101012121210101010101010101010111010101010101010101011101010101010101010101110101010101010101212111","sq":3.5},
+        prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":39,"oz":22,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01011111111111121101010111111111111112121111111111111111111112121114111111111111111212111411111111111111121211111111111111111112121111111111111111111212111411111111111111121211141111111111111112121111111111111111111212111111111111111112121111","sq":3.5},
+        prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":42,"oz":51,"base":"desert","open":1,"keys":["dirt_2","desert","bricks_1"],"cells":"02021111111111111111140202121211111111112611020211111111111111111102021126111111111212110202111111111111111111020211111111111111111102021212111111112611110202111111111111111111020226111111111112121101041111111111111111110101111111111111111111","sq":3.5},
+        prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":18,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010201011616160201010101010101161616010101010101160416161616010101010101010102020101010101010101210101010101010101010121010101010101010101010101010101010101010202161616010101010116161616161601010101010116160101010101010101021616","sq":3.5},
+        prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"02010101010101010111110202020201010101021111010101010101010101111101010101010101010111110101010101010101031111010101010101010103111101010101010101010111110101010101010101011111020202020101010102111111111111111111111111110101010101010101021111","sq":3.5},
+        prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":13,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"01010101010101010101010101020101010101010401010101010101010101010201020101010101010101010102010101010101010201010101020101010101010104010101010101010201010101020101010101010102010101010101010101010201020101010101010101010101040101010101010201","sq":3.5},
+        prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020201010101010202010102020101010101020201010301010101011111110101010201010111111111010101010101011111040401010101010101111104040101010201010111111111010103010101010111111101010202010101010102020101020201010101010202","sq":3.5},
+        prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":31,"oz":45,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"01010101011111010101010202010101111101010102020201020111110102010201010101011111010101010101010401111101040101020201010111110101010202020101011111010101020101010401111101040101010101010111110101010102020102011111010201020202010101111101010102","sq":3.5},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"02010101111101010101010204010111110101040101010101011111010101010101040101111101010401020101020111110102010101010401011111010104010101040101111101010401010101020111110102010101010401011111010104010201010101111101010101010104010111110101040202","sq":3.5},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":12,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010101010202010101010101010101020215010101010101010102021501010101010201010101010201010101010101010101010101010101010101010101010101010101010101010101010101020101010101020101010101150201010101010101010115020101010101010101010102","sq":3.5},
+        prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":8,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4"],"cells":"01010101010101010101010101010101010101010101010102010101010201010102020101010101010202010101010101010101010101020201010101010102020102020101010101010202010101010101010101010101020201010101010102020101010201010101020101010101010101010101010101","sq":3.5},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":14,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101020101010102010102020201010101010102020101010201010101020101020201010101010101010201020101010101010101020101010201010101020101020202010101010101020201010102010101010201010101010101010101010101","sq":3.5},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":2,"oz":5,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2"],"cells":"01010101011111120202030101010101110111110103010101010111010111111101010101011111111111110101010101010101010101010101010101010101010101010101010101010111110101010101010102110301010101010101010111011101010101010101120101010101010101010112010101","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01010202010101011101010101020201010101110101240112120101010111013101011212010101011131310101111101011111111202111111241111110111313111241111110101240111311111010101012424011101010101010101010101110101010101010101010111110101010101010101010101","sq":3.5},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":5,"oz":4,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rocks_5"],"cells":"01011101111101110101010124110111110111010124010111011111012411010101020211111101241101010102021111110111012401240111011111011124010101241101111101110124012401110111111102020101011124011111110202012401112401111101110101010101110111110111240101","sq":3.5},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":22,"oz":11,"base":"moon","open":1,"keys":["moon_2","moon","moon_3"],"cells":"01011111110101011111110124111111110101111124010101111101011111111101010112110101010201010101121101010101010211010102010101110101121124010211111101010112110101121111111101011211010111121111111102011101011111111111111101010124111111111111111124","sq":3.5},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":4,"oz":22,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01010101010101010101010101010101010101011401020101010101010101140101010201010101020101010101020201010102010201010102010101010201010101010201010101020101010101020101010202010201010102010101010201010102010101010101010114010101010101010101011401","sq":3.5},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":13,"oz":14,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010201020101010102010201010101010101010101010301010201010101020101020201010101010101010202020101010101010101020301010201010101020101010101010101010101010101020102010101010201020101010101010101010101","sq":3.5},
+        prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":12,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010104010101111101010104010101010111110101010101010202011111010202010104020201111101020204010101010111110101010101010101011111010101010104020201111101020204010102020111110102020101010101011111010101010104010101111101010104","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":5,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"01111111111111111111110201010101111111111111020201010111111111112102121101111111111121210212010111111112121202021301011111112121212102130101111111212121210202010101010102020202020201010101011111212102020111110101010101211211011111010101010101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010401010201010101010101010202020104010101010101020202010101010101040102020201010101010101010202010401010101010201020201010101010101010102020201010101010101010203","sq":3.5},
-        prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"06111111111111111111110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111111111111111111414111111111111111111141411110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111","sq":3.5},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":20,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05050505111111110505051111111111111111111111111111111111111111111111111111111111051305111111111111111113131311111111111111110513051111111111111111111211111111111111111111121111111111111111111112111111111111111111111111111211111111111111111111","sq":3.5},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010201010101010101010101030101010101010101010103030202010101010101010301010101010101010404040404010101010101040404040401010101010104040404040101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201010101010101010202020101010101010101020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102","sq":3.5},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111100000011111111111111111100000012111111110000111100001111111111000011111111111111111111111111121211111111111112121112121111111111111212111111111111111111111111000011111111110000111100001211111111000011110011111111111111111100","sq":3.5},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":12,"oz":5,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101011515150101010115151501151515010101011515150115151501010101010101010101010101010101010101010101010101010101010101010101010101151515030315150101010115151503031515010101011515150101010101010101010101","sq":3.5},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":44,"oz":22,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010102020201010102010101010202020101010101010101020202010101010101010101020101011414010101010101010101141401010101010101010101010101010101020101010101010101010202020101010201010101020202010101010101010102020201","sq":3.5},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010201010101010101010101030101010101010101010103030202010101010101010301010101010101010404040404010101010101040404040401010101010104040404040101010101010101010101010101010102020301010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202020101010101010202020201010101010101010202020101010101010101020202020101010101010202020201010201010201010202020101010101010101020202010101010101010102","sq":3.5},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111100000011111111111111111100000012111111110000111100001111111111000011111111111111111112111111121211111111111112121112121111111111111212111111111111111112111111000011111111110000111100001211111111000011110011111111111111111100","sq":3.5},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":6,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","leaves_3","marble","marble_light"],"cells":"02020214210101012101210202020221212121212121020202022101010101010102020201210101010101010202020121010114213121020101012101011431213101010101210101141414210101012121010121312131212121212101013121142101141421210101143121311421212121010114143121","sq":3.5},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101141401010101010101011111111101010101010101111111110114141414141414141401110202010101010101141411020201010101010114141102020201010101011414110101010101010111111111010101010101010114141101010101010101011414110101010101010101141411","sq":3.5},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101212121212121212114010101010121212121212121210101010101010121212121212121212121010101212121212121212121010121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212114142121212121212114","sq":3.5},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010111110101010101010101010111010101010101020201241101010101010102020224111101010101010202022411110101010101020202020111010101010102020202011101010101240202020101111101010101020201010111111111110102020111111101111111110111111101010101010101","sq":3.5},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":14,"oz":5,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010114010101010101010101010101010101010101010101010101010101010121010101010101010101012101010101010101010101010101010101010101010101010101010101010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":20,"oz":16,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010103030101010101010102020303030101010101010101030301010115150101011515010101011515010101151501010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["desert","rocks_5","water"],"cells":"01010101010101150101210101010101010101010121150101010101010101010101010101010115010202010101010101010102020202150101010101010202020201010201010101030202010202030101010102010101020202010101010101151502020201010101010101010202011501010101010101","sq":3.5},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101141401010101010101011111111101010101010101111111110114141401010101141401110202010101010101141411020201010101010114141102020201010101011414110101010101010111111111141414010101011414011101010101010101010101110101010101010101010111","sq":3.5},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","damask"],"cells":"01010101010101010101010114010101010101010114010101020101010102010101010101010101010101010102021401010101140202010202010101010101020201020201010101010102020102021401010101140202010101010101010101010101010102010101010201010114010101010101010114","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":13,"oz":18,"base":"moon_3","open":1,"keys":["moon_3","crystal"],"cells":"01010101010101010101010101010101010101010101010101010101010102010111020101010102010101011211111211010102010101010101011111111101030101010101011111111113010201010102010112111111010201010101020111111101010101010101010201110101010101010101010101","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":15,"base":"mars_2","open":1,"keys":["mars_2","storm","moon_3"],"cells":"02020114210101010101010202021421210101010101020202142121010101010102020202012101010101010202020201210101010114020202010121210101010102020101012121212121010202012121210121212121012121210101010101010121210101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":15,"oz":1,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101160101010101010101010301010101010101010101010101010101010101010121210101010101010101012121010101010101010101010202010101010101010104010101010101010101","sq":3.5},
+        prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":20,"oz":15,"base":"urban_street","open":1,"keys":["urban_street"],"cells":"01010101010101010101010101010101010101010101010102010101010201010101010101010101010101010101010101010102030301010104040101010303030301010404010101030303030101010101010102030301010101010101010101010101010201010101020101010101010101010101010101","sq":3.5},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["desert","rocks_5","water"],"cells":"01010101010101140101210101010101010101010121020101010101010101010101010101010114010202010101010101010102020202140101010101010202020201010201010101020202010202020101010102010101020202010101010101140202020201010101010101010202011401010101010101","sq":3.5},
     },
     /* </ARENA PICKS 11> */
 };
@@ -63259,7 +63595,7 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
     sub: 'THE RING · THE PATHS · THE KNOLLS',
     kind: 'box', site: 'prebuilt_fairy_forest',
     shell: hqWoodsShell({ w: 70, d: 70, plate: { x: 0, z: -34.6, y: 4.4 }, forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4, canopy: { to: 62 } } }),   // the clearing's shell: the woods' own night, fog and treeline
-    terrain: {
+    terrain: { levelM: 3.5,
         floor: 'grass_2', cliff: 'rocks_5', path: 'dirt_2', stairs: 'forest',
         noise: { amp: 0.12, scale: 8 }, crag: false,
         marks: [
@@ -63271,25 +63607,30 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
             { k: 'hill', x: 28, z: -27, r: 7, h: 1.2 }, { k: 'hill', x: -28, z: 27, r: 7, h: 1.2 },
             { k: 'pool', x: -24.5, z: 23.5, r: 2.6, y: -0.2, depth: 0.5 },                                              // the spring (off the board)
             { k: 'stream', pts: [[35, -23], [28, -21.5], [23.5, -24], [22, -29], [24, -35]], w: 2.2, y: -0.25, depth: 0.5 },   // the brook in the north-east corner
-            /* THE KNOLLS: a mossy rise each side, one battle level up (1.75 m — a rise under 1.2 m is the floor) (board squares 2..3 × 4..5 and its twin) */
-            { k: 'plateau', x: -12.25, z: -8.75, w: 3.9, d: 3.9, h: 1.75, edge: 0.15 },
-            { k: 'plateau', x: 12.25, z: 8.75, w: 3.9, d: 3.9, h: 1.75, edge: 0.15 },
-            /* THE PATHS: the middle path, and the two fae paths winding either side (the voxel's lanes) */
-            { k: 'path', pts: [[0, -36], [0, 36]], w: 3.5 },
-            { k: 'path', pts: [[-13.1, -36], [-13.1, -21.9], [-11.15, -17.5], [-8.29, -13.13], [-8.46, -8.75], [-11.42, -4.38], [-13.12, 0], [-11.23, 4.38], [-8.34, 8.75], [-8.4, 13.13], [-11.34, 17.5], [-13.12, 21.88], [-13.1, 36]], w: 3.0 },
-            { k: 'path', pts: [[13.1, 36], [13.1, 21.9], [11.15, 17.5], [8.29, 13.13], [8.46, 8.75], [11.42, 4.38], [13.12, 0], [11.23, -4.38], [8.34, -8.75], [8.4, -13.13], [11.34, -17.5], [13.12, -21.88], [13.1, -36]], w: 3.0 },
-            /* THE WOOD ON THE BOARD: one square each, the clearing's tall trees (6–7.5 m) (the pair in each row is the 180° twin) */
-            { k: 'tree', x: -6.125, z: -13.125, kind: 'tree_2', h: 7.0, r: 0.55 }, { k: 'tree', x: 6.125, z: 13.125, kind: 'tree_2', h: 7.0, r: 0.55 },
-            { k: 'tree', x: -13.125, z: -14.875, kind: 'tree_3', h: 6.5, r: 0.55 }, { k: 'tree', x: 13.125, z: 14.875, kind: 'tree_3', h: 6.5, r: 0.55 },
-            { k: 'tree', x: -6.125, z: 6.125, kind: 'tree_3', h: 6.5, r: 0.55 }, { k: 'tree', x: 6.125, z: -6.125, kind: 'tree_3', h: 6.5, r: 0.55 },
-            { k: 'tree', x: -14.875, z: -2.625, kind: 'tree', h: 7.0, r: 0.55 }, { k: 'tree', x: 14.875, z: 2.625, kind: 'tree', h: 7.0, r: 0.55 },
-            { k: 'tree', x: -11.375, z: 11.375, kind: 'tree_2', h: 7.0, r: 0.55 }, { k: 'tree', x: 11.375, z: -11.375, kind: 'tree_2', h: 7.0, r: 0.55 },
-            { k: 'tree', x: -7.875, z: 14.875, kind: 'tree', h: 6.5, r: 0.55 }, { k: 'tree', x: 7.875, z: -14.875, kind: 'tree', h: 6.5, r: 0.55 },
-            { k: 'tree', x: -16.625, z: -9.625, kind: 'tree_5', h: 6.0, r: 0.55 }, { k: 'tree', x: 16.625, z: 9.625, kind: 'tree_5', h: 6.0, r: 0.55 },
-            { k: 'tree', x: -6.125, z: -4.375, kind: 'tree_4', h: 7.5, r: 0.55 }, { k: 'tree', x: 6.125, z: 4.375, kind: 'tree_4', h: 7.5, r: 0.55 },
-            { k: 'tree', x: -7.875, z: 0.875, kind: 'tree_2', h: 6.5, r: 0.55 }, { k: 'tree', x: 7.875, z: -0.875, kind: 'tree_2', h: 6.5, r: 0.55 },
-            { k: 'tree', x: -16.625, z: 9.625, kind: 'tree_3', h: 7.0, r: 0.55 }, { k: 'tree', x: 16.625, z: -9.625, kind: 'tree_3', h: 7.0, r: 0.55 },
-            { k: 'tree', x: -9.625, z: -2.625, kind: 'tree', h: 6.0, r: 0.5 }, { k: 'tree', x: 9.625, z: 2.625, kind: 'tree', h: 6.0, r: 0.5 },
+            /* THE SQUARES (2026-11-10, THE BATTLE MAP POLISH — mondo: "make improvements to all of the battle maps ... redesigning the layout ... be
+               better for PvP combat"): the board was laid out for the 1.75 m tile; since 2× EVERYWHERE the arena plays on 3.5 m squares, so
+               its trees stood anywhere in the squares and bodies walked through them. Everything on the board now sits on the arena's
+               squares (square (bx, by) of the 12 × 12 → x = −19.25 + 3.5 bx, z = −19.25 + 3.5 by; P2 on row 0, north): a tree is one whole
+               square (r 1.3: the four 1.75 m tiles of the 20 × 20 under it are the trunk's too), a knoll two squares by two, the three paths
+               run through the squares' middles. Every piece turns into its twin about the nexus (180°), so both sides have the same cover. */
+            /* THE KNOLLS: a mossy rise each side, one battle level up (squares 2..3 × 3..4 and 8..9 × 7..8) */
+            { k: 'plateau', x: -10.5, z: -7, w: 7.4, d: 7.4, h: 3.5, edge: 0.15 },
+            { k: 'plateau', x: 10.5, z: 7, w: 7.4, d: 7.4, h: 3.5, edge: 0.15 },
+            /* THE PATHS: the middle path two squares wide (columns 5..6), and the two fae paths winding either side of the knolls */
+            { k: 'path', pts: [[0, -36], [0, 36]], w: 7.2 },
+            { k: 'path', pts: [[-8.75, -36], [-8.75, -21.35], [-8.75, -15.75], [-8.75, -12.25], [-5.25, -8.75], [-5.25, -5.25], [-8.75, -1.75], [-8.75, 1.75], [-8.75, 5.25], [-12.25, 8.75], [-12.25, 12.25], [-8.75, 15.75], [-8.75, 21.35], [-8.75, 36]], w: 3.0 },
+            { k: 'path', pts: [[8.75, 36], [8.75, 21.35], [8.75, 15.75], [8.75, 12.25], [5.25, 8.75], [5.25, 5.25], [8.75, 1.75], [8.75, -1.75], [8.75, -5.25], [12.25, -8.75], [12.25, -12.25], [8.75, -15.75], [8.75, -21.35], [8.75, -36]], w: 3.0 },
+            /* THE WOOD ON THE BOARD: the clearing's tall trees, one square each (each row a tree and its 180° twin). Columns 4..7 stay open
+               from end to end: the spawn zones, their way out and the nexus of every board size (9 / 10 / 11 / 12) lie in them */
+            { k: 'tree', x: -19.25, z: -19.25, kind: 'tree_3', h: 6.5, r: 1.3 }, { k: 'tree', x: 19.25, z: 19.25, kind: 'tree_3', h: 6.5, r: 1.3 },   // square 0,0 and its twin 11,11
+            { k: 'tree', x: -12.25, z: -15.75, kind: 'tree_2', h: 7.0, r: 1.3 }, { k: 'tree', x: 12.25, z: 15.75, kind: 'tree_2', h: 7.0, r: 1.3 },   // square 2,1 and its twin 9,10
+            { k: 'tree', x: 19.25, z: -15.75, kind: 'tree', h: 6.5, r: 1.3 }, { k: 'tree', x: -19.25, z: 15.75, kind: 'tree', h: 6.5, r: 1.3 },   // square 11,1 and its twin 0,10
+            { k: 'tree', x: 8.75, z: -12.25, kind: 'tree_4', h: 7.5, r: 1.3 }, { k: 'tree', x: -8.75, z: 12.25, kind: 'tree_4', h: 7.5, r: 1.3 },   // square 8,2 and its twin 3,9
+            { k: 'tree', x: -19.25, z: -8.75, kind: 'tree_5', h: 6.0, r: 1.3 }, { k: 'tree', x: 19.25, z: 8.75, kind: 'tree_5', h: 6.0, r: 1.3 },   // square 0,3 and its twin 11,8
+            { k: 'tree', x: 8.75, z: -8.75, kind: 'tree_2', h: 7.0, r: 1.3 }, { k: 'tree', x: -8.75, z: 8.75, kind: 'tree_2', h: 7.0, r: 1.3 },   // square 8,3 and its twin 3,8
+            { k: 'tree', x: 15.75, z: -5.25, kind: 'tree_3', h: 6.5, r: 1.3 }, { k: 'tree', x: -15.75, z: 5.25, kind: 'tree_3', h: 6.5, r: 1.3 },   // square 10,4 and its twin 1,7
+            { k: 'tree', x: -15.75, z: -1.75, kind: 'tree', h: 7.0, r: 1.3 }, { k: 'tree', x: 15.75, z: 1.75, kind: 'tree', h: 7.0, r: 1.3 },   // square 1,5 and its twin 10,6
+            { k: 'tree', x: 12.25, z: -1.75, kind: 'tree_4', h: 7.5, r: 1.3 }, { k: 'tree', x: -12.25, z: 1.75, kind: 'tree_4', h: 7.5, r: 1.3 },   // square 9,5 and its twin 2,6
             /* THE WOOD PAST THE BOARD: dense to the treeline (the clearing's grove kinds) */
             { k: 'grove', x: -27, z: -27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 31 },
             { k: 'grove', x: 0, z: -28, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 32 },
@@ -63299,8 +63640,8 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
             { k: 'grove', x: 0, z: 28, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 36 },
             { k: 'grove', x: -27, z: 27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 37 },
             { k: 'grove', x: -28, z: 0, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 38 },
-            { k: 'grove', x: -20.5, z: -11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 39 }, { k: 'grove', x: 20.5, z: 11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 40 },
-            { k: 'grove', x: 11, z: -20.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 51 }, { k: 'grove', x: -11, z: 20.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 52 },
+            { k: 'grove', x: -24.5, z: -11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 39 }, { k: 'grove', x: 24.5, z: 11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 40 },   // (2026-11-10: 4 m out, off the 12 × 12's edge squares)
+            { k: 'grove', x: 11, z: -24.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 51 }, { k: 'grove', x: -11, z: 24.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 52 },
             /* the low ring round the board: ferns, stumps */
             { k: 'scatter', key: 'fern', x: -20.5, z: 0, r: 2.2, n: 6, seed: 41 }, { k: 'scatter', key: 'fern', x: 20.5, z: 0, r: 2.2, n: 6, seed: 42 },
             { k: 'scatter', key: 'fern', x: 0, z: -20.5, r: 2.2, n: 5, seed: 43 }, { k: 'scatter', key: 'fern', x: 0, z: 20.5, r: 2.2, n: 5, seed: 44 },
@@ -63568,11 +63909,14 @@ HQ_ARENA_RULES.own = HQ_ARENA_RULES.own || {};
    wall (the racks, the monitors, the console's amber lamp), two dark monoliths stand by the west wall.
    2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): the squares are 3.5 m (the hall 63 m, was 31.5 m on 1.75 m squares) — every
    square-sized piece doubled in plan (the blocks, the terraces, the plates: terrain `tile`, ceilTile, wallTile), the heights kept
-   in battle levels (1.75 m each); the arch, the gallery, the monoliths and the props stay their real size against their walls. */
+   in battle levels (1.75 m each); the arch, the gallery, the monoliths and the props stay their real size against their walls.
+   THE FULL LEDGES (2026-11-10, mondo: "fix all of the maps that need it"): a level is a whole 3.5 m square (terrain.levelM), so
+   every block is a cube again: risers 3.5 m, pylons 7 m, terraces 3.5 / 7 / 10.5 / 14 m, the gallery 10.5 m, the hall 17.5 m
+   (5 squares) so the corner emitters keep their one square of air. */
 DOOR_HQ.rooms.facility_holosim = {
     label: 'ROOM 404 · THE HOLO SIM', sub: 'ARCANE ENGINEERING · THE FLOOR IS A PROJECTION', kind: 'box',
     shell: {
-        w: 63, d: 63, h: 10.5, wallH: 10.5, dadoH: 0.12, open: false, edge: 'walls',
+        w: 63, d: 63, h: 17.5, wallH: 17.5, dadoH: 0.12, open: false, edge: 'walls',
         floor: 'holo', wall: 'holo', dado: 'holo_red', trim: 'gunmetal', ceiling: 'holo', apron: 'holo', skirt: 'holo',
         floorColor: 0xffffff, wallColor: 0xd8f4ff, dadoColor: 0xffffff, ceilColor: 0x9ab8c8, ceilTile: 3.5, wallTile: 3.5,
         pipes: false, strips: false,
@@ -63583,45 +63927,45 @@ DOOR_HQ.rooms.facility_holosim = {
         fog: { color: 0x050912, density: 0.012 },
     },
     terrain: {
-        floor: 'holo', cliff: 'holo', path: 'holo', base: 0, noise: { amp: 0, scale: 8 }, crag: false, tile: 3.5,   // tile: one holo plate per 3.5 m square
+        floor: 'holo', cliff: 'holo', path: 'holo', base: 0, noise: { amp: 0, scale: 8 }, crag: false, tile: 3.5, levelM: 3.5,   // tile: one holo plate per 3.5 m square
         bed: { side: 'gunmetal', floor: 'holo' },
         features: [
             /* THE BOARD's cover (board squares x, y → x0 = −12.25 + 3.5 x, z0 = −12.25 + 3.5 y): the four risers, the two pylons */
-            { k: 'wall', x0: -5.25, z0: -5.25, x1: -5.25, z1: -5.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 5.25, z0: 5.25, x1: 5.25, z1: 5.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 12.25, z0: -8.75, x1: 12.25, z1: -8.75, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -12.25, z0: 8.75, x1: -12.25, z1: 8.75, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -12.25, z0: -1.75, x1: -12.25, z1: -1.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -5.25, z0: -5.25, x1: -5.25, z1: -5.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 5.25, z0: 5.25, x1: 5.25, z1: 5.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 12.25, z0: -8.75, x1: 12.25, z1: -8.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -12.25, z0: 8.75, x1: -12.25, z1: 8.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -12.25, z0: -1.75, x1: -12.25, z1: -1.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 12.25, z0: 1.75, x1: 12.25, z1: 1.75, t: 3.5, h: 7, key: 'holo', rail: false },
             /* THE TERRACES: rings of blocks round each corner square, 4 levels up in the corner, 1 at the foot */
-            { k: 'wall', x0: 29.75, z0: -29.75, x1: 29.75, z1: -29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: 26.25, z0: -29.75, x1: 26.25, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: -26.25, x1: 29.75, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 22.75, z0: -29.75, x1: 22.75, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: -22.75, x1: 26.25, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 19.25, z0: -29.75, x1: 19.25, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: -19.25, x1: 22.75, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 29.75, x1: 29.75, z1: 29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: 26.25, z0: 29.75, x1: 26.25, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 26.25, x1: 29.75, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: 22.75, z0: 29.75, x1: 22.75, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 22.75, x1: 26.25, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: 19.25, z0: 29.75, x1: 19.25, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: 29.75, z0: 19.25, x1: 22.75, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 29.75, x1: -29.75, z1: 29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: -26.25, z0: 29.75, x1: -26.25, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 26.25, x1: -29.75, z1: 26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -22.75, z0: 29.75, x1: -22.75, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 22.75, x1: -26.25, z1: 22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -19.25, z0: 29.75, x1: -19.25, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: 19.25, x1: -22.75, z1: 19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -29.75, x1: -29.75, z1: -29.75, t: 3.5, h: 7, key: 'holo', rail: false },
-            { k: 'wall', x0: -26.25, z0: -29.75, x1: -26.25, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -26.25, x1: -29.75, z1: -26.25, t: 3.5, h: 5.25, key: 'holo', rail: false },
-            { k: 'wall', x0: -22.75, z0: -29.75, x1: -22.75, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -22.75, x1: -26.25, z1: -22.75, t: 3.5, h: 3.5, key: 'holo', rail: false },
-            { k: 'wall', x0: -19.25, z0: -29.75, x1: -19.25, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
-            { k: 'wall', x0: -29.75, z0: -19.25, x1: -22.75, z1: -19.25, t: 3.5, h: 1.75, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -29.75, x1: 29.75, z1: -29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: 26.25, z0: -29.75, x1: 26.25, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -26.25, x1: 29.75, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 22.75, z0: -29.75, x1: 22.75, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -22.75, x1: 26.25, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 19.25, z0: -29.75, x1: 19.25, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: -19.25, x1: 22.75, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 29.75, x1: 29.75, z1: 29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: 26.25, z0: 29.75, x1: 26.25, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 26.25, x1: 29.75, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 22.75, z0: 29.75, x1: 22.75, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 22.75, x1: 26.25, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: 19.25, z0: 29.75, x1: 19.25, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: 29.75, z0: 19.25, x1: 22.75, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 29.75, x1: -29.75, z1: 29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: -26.25, z0: 29.75, x1: -26.25, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 26.25, x1: -29.75, z1: 26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -22.75, z0: 29.75, x1: -22.75, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 22.75, x1: -26.25, z1: 22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -19.25, z0: 29.75, x1: -19.25, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: 19.25, x1: -22.75, z1: 19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -29.75, x1: -29.75, z1: -29.75, t: 3.5, h: 14, key: 'holo', rail: false },
+            { k: 'wall', x0: -26.25, z0: -29.75, x1: -26.25, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -26.25, x1: -29.75, z1: -26.25, t: 3.5, h: 10.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -22.75, z0: -29.75, x1: -22.75, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -22.75, x1: -26.25, z1: -22.75, t: 3.5, h: 7, key: 'holo', rail: false },
+            { k: 'wall', x0: -19.25, z0: -29.75, x1: -19.25, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
+            { k: 'wall', x0: -29.75, z0: -19.25, x1: -22.75, z1: -19.25, t: 3.5, h: 3.5, key: 'holo', rail: false },
             /* THE ARCH (north wall): two pillars, the lintel over them, the two door leaves shut in the frame */
             { k: 'wall', x0: -2.45, z0: -31.05, x1: -2.45, z1: -31.05, t: 0.9, h: 5.6, key: 'gunmetal', rail: false },
             { k: 'wall', x0: 2.45, z0: -31.05, x1: 2.45, z1: -31.05, t: 0.9, h: 5.6, key: 'gunmetal', rail: false },
@@ -63629,7 +63973,7 @@ DOOR_HQ.rooms.facility_holosim = {
             { k: 'wall', x0: -1.95, z0: -31.37, x1: -0.06, z1: -31.37, t: 0.12, h: 4.55, key: 'aluminium', rail: false },
             { k: 'wall', x0: 0.06, z0: -31.37, x1: 1.95, z1: -31.37, t: 0.12, h: 4.55, key: 'aluminium', rail: false },
             /* THE GALLERY (east wall): the operators' deck three levels up, railed */
-            { k: 'bridge', x0: 30.2, z0: -5.25, x1: 30.2, z1: 5.25, w: 2.6, y: 5.25, thick: 0.3, key: 'gunmetal', rails: true },
+            { k: 'bridge', x0: 30.2, z0: -5.25, x1: 30.2, z1: 5.25, w: 2.6, y: 10.5, thick: 0.3, key: 'gunmetal', rails: true },
             /* THE MONOLITHS (west wall) */
             { k: 'wall', x0: -29.65, z0: -3.9, x1: -29.65, z1: -3.1, t: 0.6, h: 6.4, key: 'obsidian', rail: false },
             { k: 'wall', x0: -29.65, z0: 3.1, x1: -29.65, z1: 3.9, t: 0.6, h: 6.4, key: 'obsidian', rail: false },
@@ -63639,16 +63983,16 @@ DOOR_HQ.rooms.facility_holosim = {
     doors: [], counters: [], npcSpots: [], agents: [],
     props: [
         /* the emitters: an orb on each corner's top block (the room's coloured light falls from them) */
-        { key: 'floating_orb', x: 29.75, z: -29.75, y: 7 }, { key: 'floating_orb', x: 29.75, z: 29.75, y: 7 },
-        { key: 'floating_orb', x: -29.75, z: 29.75, y: 7 }, { key: 'floating_orb', x: -29.75, z: -29.75, y: 7 },
+        { key: 'floating_orb', x: 29.75, z: -29.75, y: 14 }, { key: 'floating_orb', x: 29.75, z: 29.75, y: 14 },
+        { key: 'floating_orb', x: -29.75, z: 29.75, y: 14 }, { key: 'floating_orb', x: -29.75, z: -29.75, y: 14 },
         /* the arch's panel */
         { key: 'retro_control_panel', x: 3.9, z: -30.65, face: 180 },
         /* the operators: racks and monitors on the wall, the console at the rail, two chairs */
-        { key: 'server_rack', wall: 'e', z: -4.2, mount: 5.25 }, { key: 'server_rack', wall: 'e', z: -3.4, mount: 5.25 },
-        { key: 'monitor_stack', wall: 'e', z: 0, mount: 5.25 },
-        { key: 'server_rack', wall: 'e', z: 3.4, mount: 5.25 }, { key: 'server_rack', wall: 'e', z: 4.2, mount: 5.25 },
-        { key: 'retro_console', x: 29.55, z: -1.4, y: 5.25, face: 270 }, { key: 'retro_console', x: 29.55, z: 1.4, y: 5.25, face: 270 },
-        { key: 'computer_chair_blue', x: 30.65, z: -1.4, y: 5.25, face: 270 }, { key: 'computer_chair_grey', x: 30.65, z: 1.4, y: 5.25, face: 270 },
+        { key: 'server_rack', wall: 'e', z: -4.2, mount: 10.5 }, { key: 'server_rack', wall: 'e', z: -3.4, mount: 10.5 },
+        { key: 'monitor_stack', wall: 'e', z: 0, mount: 10.5 },
+        { key: 'server_rack', wall: 'e', z: 3.4, mount: 10.5 }, { key: 'server_rack', wall: 'e', z: 4.2, mount: 10.5 },
+        { key: 'retro_console', x: 29.55, z: -1.4, y: 10.5, face: 270 }, { key: 'retro_console', x: 29.55, z: 1.4, y: 10.5, face: 270 },
+        { key: 'computer_chair_blue', x: 30.65, z: -1.4, y: 10.5, face: 270 }, { key: 'computer_chair_grey', x: 30.65, z: 1.4, y: 10.5, face: 270 },
         /* the projector between the monoliths */
         { key: 'star_projector', x: -29.35, z: 0, face: 90 },
     ],
@@ -63702,6 +64046,7 @@ function hqArenaPvpPool(teamSize) {
         if (m.sizeOf ? (e.w | 0) === S12 : (e.w | 0) !== S12) return false;   // THE ARENA SIZES: the 12 is the site's own row, the rest are `sizeOf` rows
         if (teamSize && hqArenaTeamFor(e.w) !== (teamSize | 0)) return false;   // a team size deals only its boards (4: the 10s + 12s, 5: the 9s + 11s)
         const site = hqSiteId(m.id);
+        if (demoModeOn() && !demoArenaIn(m.id)) return false;   // THE DEMO: the room / the queue deals the demo arenas only
         return !!m.arena || keep.includes(site);
     }).map(m => m.id);
 }

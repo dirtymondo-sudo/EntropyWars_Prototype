@@ -1772,6 +1772,11 @@
 
         // Provoke: the engine hard-gates single-target actions onto the
         // taunter — bend the whole plan the same way instead of fighting it.
+        // 💋 Charm (mondo 2026-11-10, rule 7 B): the engine refuses attacks and unit casts at the charmer — never plan one
+        if (typeof g.getCharmer === 'function') {
+            const _charmer = g.getCharmer(unit);
+            if (_charmer && target.id === _charmer.id) priority -= 100000;
+        }
         if (typeof g.getTauntTargeter === 'function') {
             const _taunter = g.getTauntTargeter(unit);
             if (_taunter) {
@@ -5329,6 +5334,7 @@
             if (Object.keys(enemy.status || {}).some(k => enemy.status[k] > 0 && defs[k]?.blockAction)) continue;
             const d = _reach(g, enemy.x, enemy.y, enemy.z, ward, (g.getEffectiveRange(enemy) || 1) > 1);
             const taunter = g.getTauntTargeter?.(enemy);
+            if (g.getCharmer?.(enemy)?.id === ward.id) continue;   // 💋 it cannot raise a hand to its charmer (rule 7 B)
             if ((!taunter || taunter.id === ward.id) && d >= 1 && d <= g.getEffectiveRange(enemy)
                 && !g.isRangeBlockedByTerrain(enemy.x, enemy.y, ward.x, ward.y, enemy.z ?? 0)) {
                 hits.push({ enemy, spell: null, probability: _landP(g, enemy, ward) * (g.unitHasStatus(enemy, 'blind') ? 0.5 : 1) });
@@ -9526,15 +9532,18 @@
         }
         if (kind === 'cannibalize') {
             if ((unit.hp / (unit.maxHp || 1)) > 0.7) return null;
-            // THE ENEMY REMAINS (playtest 2026-11-07 H6): only an enemy's remains — never its own team's graves (the cast's own gate)
+            // the cast's own gate (battle.js spellCorpseUsable)
             const _cbOk = (typeof spellCorpseUsable === 'function') ? (d => spellCorpseUsable(unit, spell, d))
                 : (d => d.dead && !d._corpseConsumed && d.player !== unit.player);
             // THE GRAVES STAY: the still-dead bodies and the graves respawned units left (battle.js corpseRemainsBodies)
             const _cbPool = (typeof corpseRemainsBodies === 'function') ? corpseRemainsBodies() : g.state.units;
+            /* EITHER SIDE'S REMAINS (2026-11-10, mondo's rule 1 B): an ally's grave feeds too, but eating it pushes that
+               ally's respawn back — the CPU takes an enemy's bones first, an ally's grave only when none is in reach */
             const remains = _cbPool.filter(_cbOk)
                 .filter(d => Math.abs(d.x - unit.x) + Math.abs(d.y - unit.y) <= _effRange(unit, spell))
-                .sort((a, b) => (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
-                              - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)));
+                .sort((a, b) => ((a.player === unit.player) - (b.player === unit.player))
+                              || ((Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y))
+                              - (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y))));
             return remains[0] || null;
         }
 
