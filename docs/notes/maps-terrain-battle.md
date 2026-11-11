@@ -1850,3 +1850,9 @@ busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. P
   a slow heat field (seed + 7) lets it cool to deep red in places, never to crust. Motion back to v2's (copy B turned, other way,
   nudge 0.035; rg centre 0.9/0.34 = v4's mean). calm_lava_3 (flow lines) is retired: he reads smooth bands as cartoony. Lesson: when
   he asks to remove one part, remove only that part.
+- 2026-11-11, part 6 THE LAVA WITHOUT A GRID (mondo: "are you able to make it look not like a repeated pattern"): copy A repeats
+  every 2 squares, so the sheet's hot blobs sat in a grid. Now each copy is read twice at two of eight fixed offsets picked by a
+  slow world value noise (A cP*0.14, B cP*0.12+17.3), blended where the noise crosses from one offset to the next (leaning to the
+  brighter texel: Quilez's texture-variation trick), mip from the plain lookup's derivatives (textureGrad / TSL .grad) so no seams.
+  Same sheet, same scale (one sheet still covers the same squares); only which part lands where changes. GLSL _CALM_NOTILE_GLSL
+  (lava head only), TSL noTile in _ewNodeCalmFluid; the shared node value noise is _ewNodeCalmNoise. Checked WebGPU + WebGL.

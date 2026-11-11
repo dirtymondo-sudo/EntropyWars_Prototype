@@ -4099,6 +4099,17 @@ const ThreeRenderer = (function () {
         '  return mix(mix(cHash(i), cHash(i + vec2(1.0, 0.0)), u.x), mix(cHash(i + vec2(0.0, 1.0)), cHash(i + vec2(1.0, 1.0)), u.x), u.y); }\n' +
         'float cRip(vec2 p, float t) { return cNoise(p * 6.0 + vec2(t * 0.55, t * 0.31)) * 0.55 + cNoise(p * 13.0 - vec2(t * 0.9, -t * 0.47)) * 0.3\n' +
         '  + cNoise(p * 29.0 + vec2(-t * 1.4, t * 1.1)) * 0.15; }\n';
+    /* THE LAVA WITHOUT A GRID (mondo 11-11: "are you able to make it look not like a repeated pattern"): each copy of the sheet is
+       read twice, at two of eight fixed offsets picked by a slow world noise (k), and blended where k crosses from one offset to the
+       next, the blend leaning to the brighter texel so it never smears (the "texture variation" trick). The sheet's own look and
+       scale stay the same; only which part of it lands where changes, so no two patches match. The mip level comes from the plain
+       lookup's derivatives (textureGrad), so the offsets' jumps leave no seam. Same maths on WebGPU (_ewNodeCalmFluid). */
+    var _CALM_NOTILE_GLSL =
+        'vec3 cNoTile(sampler2D s, vec2 uv, vec2 g, float k) {\n' +
+        '  vec2 gx = dFdx(g), gy = dFdy(g); float l = k * 8.0, fi = floor(l), ff = fract(l);\n' +
+        '  vec2 oa = sin(vec2(3.0, 7.0) * fi), ob = sin(vec2(3.0, 7.0) * (fi + 1.0));\n' +
+        '  vec3 a = textureGrad(s, uv + oa, gx, gy).rgb, b = textureGrad(s, uv + ob, gx, gy).rgb;\n' +
+        '  return mix(a, b, smoothstep(0.2, 0.8, ff - 0.1 * dot(a - b, vec3(1.0)))); }\n';
     function _calmFluidMat(key) {
         var lava = (key === 'lava'), deep = (key === 'deep_water'), mat;
         if (lava) {
@@ -4116,7 +4127,7 @@ const ThreeRenderer = (function () {
             sh.uniforms.uFluidFlow = _fluidFlowUniform;
             sh.uniforms.uCalmSky = { value: sky }; sh.uniforms.uCalmGlow = { value: _CALM.lavaGlow };
             sh.vertexShader = 'varying vec3 vCalmW;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvCalmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
-            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL;
+            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL + (lava ? _CALM_NOTILE_GLSL : '');
             var f = head + sh.fragmentShader;
             if (lava) {
                 /* THE MOLTEN LAVA (mondo: "doesnt really look lava-y ... all brown ... isnt even moving", then "the dark parts are kind
@@ -4129,8 +4140,9 @@ const ThreeRenderer = (function () {
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
                     '#ifdef USE_MAP\n' +
-                    ' vec3 cLb = texture2D(map, vec2(cP.y, -cP.x) * 0.37 + vec2(-cT * 0.015, cT * 0.022)).rgb;\n' +
-                    ' vec3 cLa = texture2D(map, cP * 0.5 + vec2(cT * 0.020, cT * 0.013) + (cLb.rg - vec2(0.9, 0.34)) * 0.035).rgb;\n' +
+                    ' vec2 cUb = vec2(cP.y, -cP.x) * 0.37, cUa = cP * 0.5;\n' +
+                    ' vec3 cLb = cNoTile(map, cUb + vec2(-cT * 0.015, cT * 0.022), cUb, cNoise(cP * 0.12 + 17.3));\n' +
+                    ' vec3 cLa = cNoTile(map, cUa + vec2(cT * 0.020, cT * 0.013) + (cLb.rg - vec2(0.9, 0.34)) * 0.035, cUa, cNoise(cP * 0.14));\n' +
                     '#else\n vec3 cLa = vec3(0.6, 0.2, 0.05), cLb = cLa;\n#endif\n' +
                     'float cMelt = smoothstep(0.1, 0.32, cLa.r - cLa.b);\n' +
                     'float cHb = dot(cLb, vec3(0.299, 0.587, 0.114));\n' +
@@ -45035,12 +45047,21 @@ const ThreeRenderer = (function () {
         var U = _ewNodeU, T = U.T;
         if (!D.lava) return _ewNodeCalmWater(nm, m, D);
         if (!m.map || !m.map.isTexture) return;
-        var map = m.map, glow = T.float(D.glow || 1.25);
+        var map = m.map, glow = T.float(D.glow || 1.25), N = _ewNodeCalmNoise(T);
         var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
-        var lbOf = function (p) { return T.texture(map, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(U.ftime.mul(-0.015), U.ftime.mul(0.022)))).rgb; };
+        var noTile = function (uv, g, k) {   // THE LAVA WITHOUT A GRID (_CALM_NOTILE_GLSL)
+            var gx = T.dFdx(g).toVar(), gy = T.dFdy(g).toVar(), l = k.mul(8).toVar(), fi = T.floor(l).toVar(), ff = T.fract(l);
+            var a = T.texture(map, uv.add(T.sin(T.vec2(3, 7).mul(fi)))).grad(gx, gy).rgb.toVar();
+            var b = T.texture(map, uv.add(T.sin(T.vec2(3, 7).mul(fi.add(1))))).grad(gx, gy).rgb.toVar();
+            return T.mix(a, b, T.smoothstep(0.2, 0.8, ff.sub(T.dot(a.sub(b), T.vec3(1)).mul(0.1))));
+        };
+        var lbOf = function (p) {
+            var ub = T.vec2(p.y, p.x.negate()).mul(0.37).toVar();
+            return noTile(ub.add(T.vec2(U.ftime.mul(-0.015), U.ftime.mul(0.022))), ub, N.vnoise(p.mul(0.12).add(17.3)));
+        };
         var LA = T.Fn(function () {
-            var p = cpos().toVar(), lb = lbOf(p).toVar();
-            var la = T.texture(map, p.mul(0.5).add(T.vec2(U.ftime.mul(0.020), U.ftime.mul(0.013))).add(lb.rg.sub(T.vec2(0.9, 0.34)).mul(0.035))).rgb.toVar();
+            var p = cpos().toVar(), lb = lbOf(p).toVar(), ua = p.mul(0.5).toVar();
+            var la = noTile(ua.add(T.vec2(U.ftime.mul(0.020), U.ftime.mul(0.013))).add(lb.rg.sub(T.vec2(0.9, 0.34)).mul(0.035)), ua, N.vnoise(p.mul(0.14))).toVar();
             return T.vec4(la, T.smoothstep(0.1, 0.32, la.r.sub(la.b)));
         })();
         var HB = T.Fn(function () { return T.dot(lbOf(cpos().toVar()), T.vec3(0.299, 0.587, 0.114)); })();
@@ -45054,13 +45075,17 @@ const ThreeRenderer = (function () {
     /* THE CALM WATER on WebGPU (mondo 11-11: "and yes do water too"): the GLSL's maths (_calmFluidMat) in nodes: the 3-octave ripple
        (value noise sliding on the fluid clock) as the surface normal, so the room's own lights glint off it; the slow colour drift; the
        sky's sheen at grazing angles (Schlick) plus the faint sky noise read along the reflected ray; the sheen also firms the alpha. */
-    function _ewNodeCalmWater(nm, m, D) {
-        var U = _ewNodeU, T = U.T;
+    /* the calm shaders' value noise in nodes (= _CALM_NOISE_GLSL cHash / cNoise) */
+    function _ewNodeCalmNoise(T) {
         var hash = function (p) { var q = T.fract(p.mul(T.vec2(123.34, 456.21))).toVar(); q.addAssign(T.dot(q, q.add(45.32))); return T.fract(q.x.mul(q.y)); };
         var vnoise = function (p) {
             var i = T.floor(p).toVar(), f = T.fract(p).toVar(), u = f.mul(f).mul(T.vec2(3).sub(f.mul(2))).toVar();
             return T.mix(T.mix(hash(i), hash(i.add(T.vec2(1, 0))), u.x), T.mix(hash(i.add(T.vec2(0, 1))), hash(i.add(T.vec2(1, 1))), u.x), u.y);
         };
+        return { hash: hash, vnoise: vnoise };
+    }
+    function _ewNodeCalmWater(nm, m, D) {
+        var U = _ewNodeU, T = U.T, vnoise = _ewNodeCalmNoise(T).vnoise;
         var rip = function (p, t) {
             return vnoise(p.mul(6).add(T.vec2(t.mul(0.55), t.mul(0.31)))).mul(0.55)
                 .add(vnoise(p.mul(13).sub(T.vec2(t.mul(0.9), t.mul(-0.47)))).mul(0.3))
