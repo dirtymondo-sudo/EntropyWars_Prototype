@@ -406,12 +406,15 @@
            8-unit rosters, so it keeps the roomier full boards only. */
         (function _generateCompatibleMaps() {
             if (typeof EW_MAP_META === 'undefined') return;
-            const fulls = EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo, asked about the 35 old 16×16 to 24×24 voxel site boards: "yes those should go too"):
+               no mode offers them any more. A whole board that is its room's own cut (`arena`, the Fairy Forest 20×20) stays. The roster rows
+               and GAME_MODES entries stand: the site ids are what the HQ and the arenas read. */
+            const fulls = EW_MAP_META.filter(m => !m.isDelta && m.arena).map(m => m.id);
             const deltas = EW_MAP_META.filter(m => m.isDelta).map(m => m.id);
             const all = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap'], deltas);
             Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
             MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
-            MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
+            MULTIPLAYER_MODES.gauntlet.compatibleMaps = all.slice();   // Gauntlet played only the big site boards: it deploys 4, so it now takes the 12×12 maps like the other modes
             /* Clash always plays on its fixed JRPG stage — no map picking. THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's
                cut; the old voxel Temple stays pickable beside it in VS CPU (online deals only the stage — online.js). */
             MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage'];   // the old voxel Temple left the game 2026-11-11 (mondo: "get rid of all the voxel maps")
