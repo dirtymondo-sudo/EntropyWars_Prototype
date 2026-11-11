@@ -4949,7 +4949,7 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
 
-## THE HOST'S RELOAD, RESTORED (2026-11-11, token 20261111-hostrestore-01-cors) — online.js only
+## THE HOST'S RELOAD, RESTORED (2026-11-11, token 20261111-hostrestore-02-cors) — online.js only
 
 The seat is held while a page reloads (PR #1075), but the match lives on the host's page, so a host reload still ended
 it for both seats (PR #1102 only made that a clear notice). Now the host's reload keeps the match.

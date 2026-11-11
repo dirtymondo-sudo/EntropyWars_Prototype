@@ -535,8 +535,8 @@
         /* CLEAN FONTS (2026-11-05, mondo's Firefox console): Aida Serif Oblique re-saved with its kern pairs sorted (Firefox dropped the
            table), and Nosifer self-hosted with its glyph boxes + gasp fixed (was Google Fonts; same outlines, internal name EW Drip per
            its OFL licence). The ?v= token makes browsers fetch the fixed files. */
-        @font-face { font-family: 'Aida Serif Oblique'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/AidaSerifObliqueMedium.ttf?v=20261111-hostrestore-01-cors') format('truetype'); font-weight: 500; font-display: swap; }
-        @font-face { font-family: 'Nosifer'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/EWDrip-Regular.woff2?v=20261111-hostrestore-01-cors') format('woff2'); font-weight: 400; font-display: swap; }
+        @font-face { font-family: 'Aida Serif Oblique'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/AidaSerifObliqueMedium.ttf?v=20261111-hostrestore-02-cors') format('truetype'); font-weight: 500; font-display: swap; }
+        @font-face { font-family: 'Nosifer'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/EWDrip-Regular.woff2?v=20261111-hostrestore-02-cors') format('woff2'); font-weight: 400; font-display: swap; }
         @font-face { font-family: 'Aida Serifa Condensed'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/AidaSerifa-Condensed.ttf') format('truetype'); font-display: swap; }
         @font-face { font-family: 'Contra'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/CONTRA__.ttf') format('truetype'); font-display: swap; }
         @font-face { font-family: 'Contra Italic'; src: url('https://cdn.entropywars.net/Assets/ui/fonts/CONTRAI_.ttf') format('truetype'); font-display: swap; }
@@ -568,12 +568,12 @@
         .credits-end { margin-top: 44px; font-size: 13px; letter-spacing: 3px; color: #6c6656; text-transform: uppercase; }
         @media (max-width: 560px) { .credits-row { grid-template-columns: 1fr; } .credits-role, .credits-by { text-align: center; } }
     </style>
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20261111-hostrestore-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20261111-hostrestore-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20261111-hostrestore-01-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20261111-hostrestore-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20261111-hostrestore-02-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20261111-hostrestore-02-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20261111-hostrestore-02-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20261111-hostrestore-02-cors">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20261111-hostrestore-01-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20261111-hostrestore-02-cors">
     <!-- Three.js (RENDERER_PLAN R2, 2026-10-02): ONE copy of the current release for the board renderer AND the menu sky
          shader, loaded as ES modules through this import map (r148 dropped the classic examples/js add-ons, r160 the UMD
          build). The module shim below puts the namespace plus the add-ons the game uses on window.THREE exactly where
@@ -712,8 +712,8 @@
             .catch(function (e) { console.warn('[TEXT] troika-three-text did not load — the HQ plates stay CSS2D', e); });
     </script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script defer src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20261111-hostrestore-01-cors"></script>
-    <link rel="preload" id="ew-asset-manifest" as="fetch" crossorigin="anonymous" href="https://cdn.entropywars.net/ASSET_MANIFEST.json?v=20261111-hostrestore-01-cors">
+    <script defer src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20261111-hostrestore-02-cors"></script>
+    <link rel="preload" id="ew-asset-manifest" as="fetch" crossorigin="anonymous" href="https://cdn.entropywars.net/ASSET_MANIFEST.json?v=20261111-hostrestore-02-cors">
 
     <style>
         #menuBgCanvas {
@@ -1075,7 +1075,7 @@
                 <div class="door-ident-skip">CLICK TO SKIP</div>
             </div>
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/ui/brand/entropy_wars_static_logo.mp4?v=20261111-hostrestore-01-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/ui/brand/entropy_wars_static_logo.mp4?v=20261111-hostrestore-02-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -1277,12 +1277,15 @@
                 <div class="mm-rule"></div>
                 <!-- THE SQUAD DESK (2026-09-30): the team picked on the way in (map.js _sqStripHtml) -->
                 <div class="sq-strip-host" id="playHubSquad"></div>
+                <!-- THE ROOM (PvP demo lobby, 2026-11-11): the name your opponent sees, with CHANGE (online.js _lrNamePlate) -->
+                <div class="sq-strip-host" id="playHubName"></div>
                 <div class="mm-buttons">
                     <button class="mm-btn mm-btn-quickplay" onclick="window._goToQuickPlay()"><span class="mm-label">Quick Play</span><span class="mm-desc-text">Ranked online — find an opponent fast</span></button>
                     <button class="mm-btn mm-btn-friendly" onclick="window._goToFriendlyMatch()"><span class="mm-label">Friendly Match</span><span class="mm-desc-text">Play a friend with a room code</span></button>
                     <button class="mm-btn mm-btn-vscpu" id="playHubVsCpu" style="display:none" onclick="window._goToVsCpu()"><span class="mm-label">VS CPU</span><span class="mm-desc-text">Battle the computer offline — every mode</span></button>
                     <button class="mm-btn mm-btn-return" onclick="window._playHubBack()"><span class="mm-label">Back</span><span class="mm-desc-text">Back to the team pick</span></button>
                 </div>
+                <div class="lr-hub-online" id="playHubOnline" style="display:none"><i></i><span></span></div>
             </div>
             <div class="mm-elo-display">
                 <span class="mm-elo-tag" id="playHubEloTag"></span>
@@ -1443,113 +1446,10 @@
 
         <!-- PAGE 3: Online Lobby (Quick Play + Friendly) -->
         <div id="lobbyPage" class="title-page">
+            <!-- THE ROOM (PvP demo lobby, 2026-11-11, mondo approved "Build as drawn"): Quick Play, Friendly and the Room are
+                 PS1 windows over the whole page (.lobby-room, styles-base.css "THE ROOM"); online.js _lrRender draws the
+                 seats and the rules from the server's lobby-state. The old card below keeps the "Both Players Joined" beat. -->
             <div class="mode-card lobby-inner">
-                <!-- Quick Play: ranked queue with mode picker -->
-                <div id="lobbyQuickPlay" style="display:none">
-                    <div class="lobby-player-badge p1">RANKED MATCHMAKING</div>
-                    <div class="lobby-kicker">Quick Play</div>
-                    <div class="lobby-subtitle" style="margin-bottom:14px;">Pick a mode. The map is drawn at random.</div>
-
-                    <div class="lobby-config-section">
-                        <div class="lobby-config-label">GAME MODE</div>
-                        <div class="lobby-ranked-sizes" id="lobbyQueueModes">
-                            <button class="ranked-size-btn active" data-mode="arena" onclick="lobbySetQueueMode('arena')">🏰 Arena</button>
-                            <button class="ranked-size-btn" data-mode="tdm" onclick="lobbySetQueueMode('tdm')">💀 TDM</button>
-                            <button class="ranked-size-btn" data-mode="clash" onclick="lobbySetQueueMode('clash')">🎴 Clash</button>
-                        </div>
-                    </div>
-
-                    <!-- THE SQUAD DESK (2026-09-30): the squad is picked before the lobby (always 4v4 online); the server draws the map -->
-                    <div class="lobby-config-section">
-                        <div class="lobby-config-label">YOUR SQUAD · 4v4</div>
-                        <div class="sq-strip-host" id="lobbyQueueSquad"></div>
-                    </div>
-
-                    <div class="lobby-ranked-info">
-                        <div class="lobby-ranked-elo" id="lobbyQueueElo">ELO: 1200</div>
-                    </div>
-                    <button class="sq-cta lobby-queue-start" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">Search for Opponent</button>
-                    <div id="lobbyQueueSearching" style="display:none">
-                        <!-- THE SQUAD DESK (2026-09-30): the search is a radar sweep round the squad (styles-base.css "THE QUEUE") -->
-                        <div class="lq-radar"><i></i><i></i><i></i><span class="lq-sweep"></span><span class="lq-core" id="lobbyQueueTimer">0:00</span></div>
-                        <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
-                        <button class="sq-ghost lq-cancel" onclick="lobbyLeaveQueue()">Cancel</button>
-                    </div>
-                    <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToPlayHub()">← Back</button>
-                </div>
-
-                <!-- Friendly: Create / Join -->
-                <div id="lobbyFriendlyMain" style="display:none">
-                    <div class="lobby-kicker">Friendly Match</div>
-                    <div class="lobby-title">Room Code</div>
-                    <div class="lobby-subtitle">One player creates a room, the other joins with a code.</div>
-                    <div class="lobby-actions">
-                        <button class="primary-lobby" onclick="lobbyCreateRoom()">Create Room</button>
-                        <div class="lobby-or">— or —</div>
-                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join Room</button>
-                    </div>
-                    <button class="lobby-back" onclick="lobbyBackToPlayHub()">← Back</button>
-                </div>
-
-                <!-- Friendly: Hosting (waiting for guest) -->
-                <div id="lobbyHosting" style="display:none">
-                    <div class="lobby-player-badge p1">YOU ARE PLAYER 1 (BLUE)</div>
-                    <div class="lobby-kicker">Room Created</div>
-                    <div class="lobby-title">Share This Code</div>
-                    <div class="lobby-subtitle">Send this code to your friend.</div>
-                    <div class="lobby-code-display" id="lobbyRoomCode">-----</div>
-
-                    <!-- Host Config Panel -->
-                    <div id="friendlyConfigPanel" style="margin:16px 0 8px;">
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">GAME MODE</div>
-                            <div class="lobby-ranked-sizes" id="friendlyModeChips">
-                                <button class="ranked-size-btn active" data-mode="arena" onclick="friendlySetMode('arena')">🏰 Arena</button>
-                                <button class="ranked-size-btn" data-mode="tdm" onclick="friendlySetMode('tdm')">💀 TDM</button>
-                                <button class="ranked-size-btn" data-mode="clash" onclick="friendlySetMode('clash')">🎴 Clash</button>
-                            </div>
-                        </div>
-                        <!-- THE MAP PICK (2026-10-07, mondo): the host picks the room's arena, or leaves it on Random
-                             (online.js _friendlyRefreshMaps fills the list from the room's arenas) -->
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">MAP</div>
-                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="">Random</option></select>
-                        </div>
-                        <!-- THE ARENA SIZES (2026-10-17, mondo): the site's cut — 12×12 / 10×10 for a 4v4 squad, 11×11 / 9×9 for a 5v5 one
-                             (online.js _friendlyRefreshMaps; the squad desk's 4v4 / 5v5 switch sets the room's team size) -->
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">BOARD SIZE</div>
-                            <select id="friendlyBoardSelect" onchange="friendlySetBoard(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="0">Random</option></select>
-                        </div>
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">ROUNDS</div>
-                            <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
-                                <button class="ranked-size-btn" onclick="friendlyStepRounds(-5)" style="min-width:36px;padding:8px 10px;">−</button>
-                                <span id="friendlyRoundDisplay" style="font-family:'DotGothic16',monospace;font-size:1.1rem;color:#fff;min-width:40px;text-align:center;">20</span>
-                                <button class="ranked-size-btn" onclick="friendlyStepRounds(5)" style="min-width:36px;padding:8px 10px;">+</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="lobby-status waiting" id="lobbyHostStatus">Waiting for Player 2…</div>
-                    <div class="lobby-small">Keep this page open. The game starts once your friend connects.</div>
-                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Cancel</button>
-                </div>
-
-                <!-- Friendly: Joining -->
-                <div id="lobbyJoining" style="display:none">
-                    <div class="lobby-player-badge p2">YOU WILL BE PLAYER 2 (RED)</div>
-                    <div class="lobby-kicker">Join Room</div>
-                    <div class="lobby-title">Enter Code</div>
-                    <div class="lobby-subtitle">Type the 5-letter code your friend shared.</div>
-                    <div class="lobby-join-row">
-                        <input id="lobbyJoinInput" type="text" maxlength="5" placeholder="ABCDE" autocomplete="off" spellcheck="false">
-                        <button class="primary-lobby" style="width:auto" onclick="lobbyJoinRoom()">Join</button>
-                    </div>
-                    <div class="lobby-status" id="lobbyJoinStatus"></div>
-                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Back</button>
-                </div>
-
                 <!-- Connected (shared by both Quick Play and Friendly) -->
                 <div id="lobbyConnected" style="display:none">
                     <div class="lobby-kicker">Connected!</div>
@@ -1557,6 +1457,110 @@
                     <div class="lobby-subtitle"><span id="lobbyYouAre"></span><br>Entering the match…</div>
                     <div id="lobbyConfigSummary" style="display:none;margin:10px 0;padding:10px 16px;background:rgba(0,0,0,0.3);border:1px solid rgba(150,130,190,0.2);border-radius:0;font-family:'DotGothic16',monospace;font-size:0.85rem;color:#aaa;text-align:center;letter-spacing:0.03em;"></div>
                     <div class="lobby-status" style="color:var(--green)">✓ Connection established</div>
+                </div>
+            </div>
+
+            <!-- Quick Play: your squad + what you search for (ranked) -->
+            <div id="lobbyQuickPlay" class="lobby-room" style="display:none">
+                <div class="lr-frame lr-qp">
+                    <div class="lr-head lr-win">
+                        <div class="lr-titles"><div class="lobby-kicker">Online PvP · Ranked</div><div class="lobby-title">Quick Play</div></div>
+                        <div class="lr-elo"><span class="lr-k">Your rank</span><b id="lobbyQueueElo">ELO 1200</b><span class="lr-online"><i></i><span id="lobbyQueueOnline">Players online</span></span></div>
+                    </div>
+                    <div class="lq-win lr-win">
+                        <div class="lr-win-hd"><b>Your squad</b><span class="lr-k" id="lobbyQueueSquadN"></span></div>
+                        <div class="sq-strip-host" id="lobbyQueueSquad"></div>
+                        <div class="lq-alone" id="lobbyQueueIdle">Your squad is set. Press SEARCH and the match starts as soon as someone in your mode is found.</div>
+                        <div id="lobbyQueueSearching" style="display:none">
+                            <div class="lq-radar"><i></i><i></i><i></i><span class="lq-sweep"></span><span class="lq-core" id="lobbyQueueTimer">0:00</span></div>
+                            <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
+                            <div class="lq-alone" id="lobbyQueueAlone" style="display:none"></div>
+                            <div class="lobby-actions" id="lobbyQueueAloneAct" style="display:none"><button class="secondary-lobby" onclick="lobbyQueueToFriendly()">Make a friendly room</button></div>
+                        </div>
+                    </div>
+                    <div class="lr-rules lr-win">
+                        <div class="lr-win-hd"><b>Search for</b><span class="lr-k" id="lobbyQueueRulesK">Pick a mode</span></div>
+                        <div class="lr-row"><span class="lr-k">Mode</span><div class="lr-v">
+                            <div class="lobby-ranked-sizes lr-chips" id="lobbyQueueModes">
+                                <button class="ranked-size-btn active" data-mode="arena" onclick="lobbySetQueueMode('arena')">🏰 Arena</button>
+                                <button class="ranked-size-btn" data-mode="tdm" onclick="lobbySetQueueMode('tdm')">💀 TDM</button>
+                                <button class="ranked-size-btn" data-mode="clash" onclick="lobbySetQueueMode('clash')">🎴 Clash</button>
+                            </div></div></div>
+                        <div class="lr-goal" id="lobbyQueueGoal"></div>
+                        <div class="lr-row"><span class="lr-k">Map</span><div class="lr-v">Drawn at random<small id="lobbyQueueMapNote"></small></div></div>
+                        <div class="lr-row"><span class="lr-k">Teams</span><div class="lr-v"><span id="lobbyQueueTeams">4v4</span><small>Your squad's size</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Rounds</span><div class="lr-v" id="lobbyQueueRounds">20</div></div>
+                        <div class="lr-row"><span class="lr-k">Turn timer</span><div class="lr-v">60 s per turn<small>A unit that runs out of time ends its turn</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Fog of war</span><div class="lr-v">On<small>You see only what your units see</small></div></div>
+                    </div>
+                    <div class="lr-foot lr-win">
+                        <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToPlayHub()">‹ Back</button>
+                        <button class="lobby-back" id="lobbyQueueCancelBtn" style="display:none" onclick="lobbyLeaveQueue()">‹ Cancel search</button>
+                        <div class="lr-status" id="lobbyQueueFoot"></div>
+                        <div class="lobby-actions"><button class="primary-lobby lr-go" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">Search</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friendly: host a room or join one, on one screen -->
+            <div id="lobbyFriendlyMain" class="lobby-room" style="display:none">
+                <div class="lf-frame">
+                    <div class="lf-head"><div class="lobby-kicker">Online PvP</div><div class="lobby-title">Friendly Match</div></div>
+                    <div class="lf-win lf-host lr-win">
+                        <div class="lr-win-hd"><b>Host a room</b></div>
+                        <p>Make a room, pick the rules, then send your friend the code or the invite link.</p>
+                        <div class="lobby-actions"><button class="primary-lobby lr-go" id="lobbyCreateBtn" onclick="lobbyCreateRoom()">Create room</button></div>
+                        <div class="lobby-status" id="lobbyCreateStatus"></div>
+                    </div>
+                    <div class="lf-win lf-join lr-win">
+                        <div class="lr-win-hd"><b>Join a room</b></div>
+                        <p>Type the 5-letter code your friend sent you.</p>
+                        <label class="lf-code" id="lobbyJoinCode">
+                            <span></span><span></span><span></span><span></span><span></span>
+                            <input id="lobbyJoinInput" type="text" maxlength="5" autocomplete="off" spellcheck="false" autocapitalize="characters" aria-label="Room code">
+                        </label>
+                        <div class="lobby-actions"><button class="primary-lobby lr-go" id="lobbyJoinBtn" onclick="lobbyJoinRoom()">Join</button></div>
+                        <div class="lobby-status" id="lobbyJoinStatus"></div>
+                        <div class="lr-note">Got an invite link? Open it and you join straight away.</div>
+                    </div>
+                    <div class="lf-foot"><button class="lobby-back" onclick="lobbyBackToPlayHub()">‹ Back</button></div>
+                </div>
+            </div>
+
+            <!-- The Room: both seats, the match rules, READY (friendly) / the VS countdown (Quick Play) -->
+            <div id="lobbyHosting" class="lobby-room" style="display:none">
+                <div class="lr-frame" id="lrFrame">
+                    <div class="lr-head lr-win">
+                        <div class="lr-titles"><div class="lobby-kicker" id="lrKicker">Online PvP · Friendly match</div><div class="lobby-title" id="lrTitle">The Room</div></div>
+                        <div class="lr-code" id="lrCodeBox">
+                            <div class="lr-code-well"><span class="lr-k">Room code</span><b id="lobbyRoomCode">-----</b></div>
+                            <div class="lobby-actions lr-copy"><button class="secondary-lobby" id="lrCopyCode" onclick="lobbyCopyCode()">Copy code</button><button class="secondary-lobby" id="lrCopyLink" onclick="lobbyCopyInvite()">Copy invite link</button></div>
+                        </div>
+                    </div>
+                    <div class="lr-seats" id="lrSeats"></div>
+                    <div class="lr-rules lr-win" id="friendlyConfigPanel">
+                        <div class="lr-win-hd"><b>Match rules</b><span class="lr-k" id="lrRulesBy">You are the host</span></div>
+                        <div class="lr-row"><span class="lr-k">Mode</span><div class="lr-v">
+                            <div class="lobby-ranked-sizes lr-chips lr-host-only" id="friendlyModeChips">
+                                <button class="ranked-size-btn active" data-mode="arena" onclick="friendlySetMode('arena')">🏰 Arena</button>
+                                <button class="ranked-size-btn" data-mode="tdm" onclick="friendlySetMode('tdm')">💀 TDM</button>
+                                <button class="ranked-size-btn" data-mode="clash" onclick="friendlySetMode('clash')">🎴 Clash</button>
+                            </div><span class="lr-guest-only" id="lrModeV">Arena</span></div></div>
+                        <div class="lr-goal" id="lrGoal"></div>
+                        <!-- THE MAP PICK (2026-10-07) + THE ARENA SIZES (2026-10-17): the host picks the site and its board cut, or
+                             leaves either on Random (online.js _friendlyRefreshMaps fills both lists from the room's arenas) -->
+                        <div class="lr-row"><span class="lr-k">Map</span><div class="lr-v"><select id="friendlyMapSelect" class="lr-sel lr-host-only" onchange="friendlySetMap(this.value)"><option value="">Random</option></select><span class="lr-guest-only" id="lrMapV">Random</span></div></div>
+                        <div class="lr-row"><span class="lr-k">Board</span><div class="lr-v"><select id="friendlyBoardSelect" class="lr-sel lr-host-only" onchange="friendlySetBoard(this.value)"><option value="0">Random</option></select><span class="lr-guest-only" id="lrBoardV">Random</span></div></div>
+                        <div class="lr-row"><span class="lr-k">Teams</span><div class="lr-v"><span id="lrTeamsV">4v4</span><small id="lrTeamsNote">Set by the host's squad</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Rounds</span><div class="lr-v"><span class="lr-step lr-host-only"><button class="ranked-size-btn" onclick="friendlyStepRounds(-5)" aria-label="Fewer rounds">−</button><b id="friendlyRoundDisplay">20</b><button class="ranked-size-btn" onclick="friendlyStepRounds(5)" aria-label="More rounds">+</button></span><span class="lr-guest-only" id="lrRoundsV">20</span><small id="lrRoundsNote"></small></div></div>
+                        <div class="lr-row"><span class="lr-k">Turn timer</span><div class="lr-v">60 s per turn<small>A unit that runs out of time ends its turn</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Fog of war</span><div class="lr-v">On<small>You see only what your units see</small></div></div>
+                    </div>
+                    <div class="lr-foot lr-win">
+                        <button class="lobby-back" id="lrLeaveBtn" onclick="lobbyLeaveRoom()">‹ Leave room</button>
+                        <div class="lr-status" id="lobbyHostStatus">Waiting for P2 to join</div>
+                        <div class="lobby-actions" id="lrReadyWrap"><button class="primary-lobby lr-go" id="lrReadyBtn" onclick="lobbyToggleReady()">Ready</button></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1865,24 +1869,24 @@
 
     <!-- External dependencies -->
     <script defer src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script defer src="https://cdn.entropywars.net/sprites.js?v=20261111-hostrestore-01-cors"></script>
-    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '?v=20261111-hostrestore-01-cors'.slice(3);   /* the shared script token (RULE #1b bumps keep this line in step) */</script>
+    <script defer src="https://cdn.entropywars.net/sprites.js?v=20261111-hostrestore-02-cors"></script>
+    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '?v=20261111-hostrestore-02-cors'.slice(3);   /* the shared script token (RULE #1b bumps keep this line in step) */</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
     <script>
       // THE EDITOR (EDITOR_PLAN.md E0, 2026-09-29): editor.js loads only when the editor opens (map.js _goToEditor), never for play.
-      window.EW_EDITOR_URL = 'https://cdn.entropywars.net/editor.js?v=20261111-hostrestore-01-cors';
+      window.EW_EDITOR_URL = 'https://cdn.entropywars.net/editor.js?v=20261111-hostrestore-02-cors';
       // THE WORLD FILE: the published world's id (deploy.js --world writes it). Empty = the game reads no world file.
       window._EW_WORLD_ID = '';
     </script>
-    <script defer src="https://cdn.entropywars.net/data.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/data.js?v=20261111-hostrestore-02-cors"></script>
     <script type="module">
       // Fallback: if local data.js didn't load, try CDN (a module: it runs deferred, AFTER data.js above — RENDERER_PLAN R2)
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20261111-hostrestore-01-cors';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20261111-hostrestore-02-cors';
         document.head.appendChild(_djs);
       }
     </script>
@@ -2054,23 +2058,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script defer src="https://cdn.entropywars.net/react.production.min.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/react-dom.production.min.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/react.production.min.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/react-dom.production.min.js?v=20261111-hostrestore-02-cors"></script>
 
     <!-- Game modules -->
-    <script defer src="https://cdn.entropywars.net/state.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/audio.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/map.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/state.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/audio.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/map.js?v=20261111-hostrestore-02-cors"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script defer src="https://cdn.entropywars.net/three-camera.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/battle.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-post.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-renderer.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-vfx.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-lightning.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/three-vfx-effects.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/ui.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/profile.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-camera.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/battle.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-post.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-renderer.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-vfx.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-lightning.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/three-vfx-effects.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/ui.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/profile.js?v=20261111-hostrestore-02-cors"></script>
     <script type="module">
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     // (a module script: it runs deferred, after profile.js above — RENDERER_PLAN R2)
@@ -2101,14 +2105,14 @@
         }
     })();
     </script>
-    <script defer src="https://cdn.entropywars.net/party-builder.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/match-select.js?v=20261111-hostrestore-01-cors"></script>
-    <script defer src="https://cdn.entropywars.net/online.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/party-builder.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/match-select.js?v=20261111-hostrestore-02-cors"></script>
+    <script defer src="https://cdn.entropywars.net/online.js?v=20261111-hostrestore-02-cors"></script>
     <!-- AI v4 (2026-08-15): ONE unified brain — the ainew.js overlay was
          merged into ai.js and deleted. Do not re-add an ainew.js tag. -->
-    <script defer src="https://cdn.entropywars.net/ai.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/ai.js?v=20261111-hostrestore-02-cors"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script defer src="https://cdn.entropywars.net/hud.js?v=20261111-hostrestore-01-cors"></script>
+    <script defer src="https://cdn.entropywars.net/hud.js?v=20261111-hostrestore-02-cors"></script>
 
     <!-- ── Menu Background: Rising Motes (canvas 2D) ──
          Same mood as the battle loading screen: black, drifting embers rising.

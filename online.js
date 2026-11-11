@@ -3416,14 +3416,18 @@
 
             (function() {
                 var _counterSocket = null;
-                function _updateCounterUI(count) {
+                function _updateCounterUI(count, data) {
                     window._ewOnlineCount = count | 0;   // the headquarters reads it: the other operatives on shift (Room 86, 2026-09-11)
+                    /* THE ROOM (PvP demo lobby): the humans searching Quick Play, in all and per queue ("4:arena") */
+                    window._ewSearchCount = (data && typeof data.searching === 'number') ? data.searching | 0 : 0;
+                    window._ewQueueCounts = (data && data.queues && typeof data.queues === 'object') ? data.queues : {};
                     var el = document.getElementById('mmOnlineCount');
                     var numEl = document.getElementById('mmOnlineNum');
                     if (el && numEl) {
                         numEl.textContent = count;
                         el.style.display = count > 0 ? '' : 'none';
                     }
+                    try { if (typeof window._lrPaintOnline === 'function') window._lrPaintOnline(); } catch (e) {}
                 }
                 function _connectCounter() {
                     if (_counterSocket) return;
@@ -3431,11 +3435,12 @@
                         _counterSocket = io(window.location.origin, {
                             transports: ['websocket', 'polling'],
                             reconnection: true,
-                            reconnectionDelay: 5000
+                            reconnectionDelay: 5000,
+                            query: { ewc: '1' }   // THE ROOM: the server counts players by these, one per open game
                         });
                         _counterSocket.on('player-count', function(data) {
                             if (data && typeof data.count === 'number') {
-                                _updateCounterUI(data.count);
+                                _updateCounterUI(data.count, data);
                             }
                         });
                         _counterSocket.on('disconnect', function() {
@@ -3493,7 +3498,15 @@
                 var faceHtml = function (s) { return (typeof window._sqFaceHtml === 'function') ? window._sqFaceHtml(s) : ''; };
                 var _rrTeams = NET.ranked ? (NET.matchTeamSize || 4) : (fc.teamSize || sq.slots.length);   // THE ARENA SIZES: the room's size, 4v4 or 5v5
                 var mine = sq.slots.map(function (s, i) { return '<span class="rr-slot" style="--i:' + i + '">' + faceHtml(s) + '<em>' + _rrEsc(s.unitName || '') + '</em></span>'; }).join('');
-                var theirs = sq.slots.map(function (_, i) { return '<span class="rr-slot rr-slot-hidden" style="--i:' + i + '"><span class="sq-face"><i></i><b>?</b></span><em>&nbsp;</em></span>'; }).join('');
+                /* THE ROOM (PvP demo lobby, mondo 2026-11-11 "Build as drawn"): both squads were on screen in the room, so the
+                   card shows the opponent's too (NET._lobbyOpp, from the server's lobby-state); hidden only without it */
+                var opp = NET._lobbyOpp || null;
+                var oppFaces = (opp && Array.isArray(opp.faces) && opp.faces.length) ? opp.faces : null;
+                var theirs = oppFaces
+                    ? oppFaces.map(function (s, i) { return '<span class="rr-slot" style="--i:' + i + '">' + faceHtml(s) + '<em>' + _rrEsc(s.unitName || '') + '</em></span>'; }).join('')
+                    : sq.slots.map(function (_, i) { return '<span class="rr-slot rr-slot-hidden" style="--i:' + i + '"><span class="sq-face"><i></i><b>?</b></span><em>&nbsp;</em></span>'; }).join('');
+                var oppMeta = [NET.ranked && NET.opponentElo ? 'ELO ' + NET.opponentElo : '', opp && opp.team ? opp.team : ''].filter(Boolean).join(' · ')
+                    || (oppFaces ? 'Squad' : 'Squad hidden until the fight');
                 var el = document.createElement('div');
                 el.id = 'ewReadyRoom';
                 el.className = 'rr ' + (NET.myPlayer === 2 ? 'rr-p2' : 'rr-p1');
@@ -3506,7 +3519,7 @@
                     +     '<div class="rr-state" id="rrMeState"><i></i><span>Locking in</span></div></div>'
                     +   '<div class="rr-vs"><span>VS</span></div>'
                     +   '<div class="rr-side rr-opp"><div class="rr-name">' + _rrEsc(NET.opponentName || 'Opponent') + '</div>'
-                    +     '<div class="rr-meta">' + (NET.ranked && NET.opponentElo ? 'ELO ' + NET.opponentElo : 'Squad hidden until the fight') + '</div>'
+                    +     '<div class="rr-meta">' + _rrEsc(oppMeta) + '</div>'
                     +     '<div class="rr-faces">' + theirs + '</div>'
                     +     '<div class="rr-state" id="rrOppState"><i></i><span>Locking in</span></div></div>'
                     + '</div>'
@@ -3603,6 +3616,444 @@
                 return true;
             };
 
+            /* ══ THE ROOM (PvP demo lobby, 2026-11-11, mondo approved "Build as drawn") ══════════════════════════════════════
+               The first five minutes for a stranger. A friendly room no longer starts 1.5 s after the friend types the code:
+               both seats sit in THE ROOM (#lobbyHosting): the code with COPY CODE / COPY INVITE LINK, a P1 and a P2 seat (name,
+               squad faces, team name, a lamp: EMPTY / IN ROOM / NOT READY / READY), the MATCH RULES (the host edits them with
+               the same chips, lists and stepper as before; the guest sees each change live) and LEAVE ROOM (BACK) / READY
+               (CONFIRM). Both READY lamps start the server's 3 s countdown; room-full then starts the match on the path it
+               always took (the ready-room card, the loading screen). A rule change clears both lamps (server.js). Quick Play
+               shows the same screen as MATCH FOUND with a 5 s countdown and no READY; LEAVE sends the other seat back to
+               searching. Everything here is drawn from the server's lobby-state (UI-only, nothing on `state`, nothing in the
+               host snapshots), so both seats see the same room (RULE #2). */
+            var _lr = { st: null, goEnd: 0, goShown: -1, ticker: null, flash: '', flashBad: false, flashUntil: 0, lastReady: null };
+            var _LR_KEYS = { arena: 1, tdm: 1, clash: 1 };
+            function _lrEl(id) { return document.getElementById(id); }
+            function _lrProfileName() {
+                try { var p = window.ProfileSystem && window.ProfileSystem.getActiveProfile(); if (p && p.username) return String(p.username); } catch (e) {}
+                return 'Player';
+            }
+            /* my seat as the other player sees it: the profile's name, the squad's faces (race, gender, unit name only) */
+            function _lrMySeat() {
+                var sq = window._ewSquad;
+                var faces = (sq && Array.isArray(sq.slots)) ? sq.slots.map(function (s) {
+                    return { race: (s && s.race) || '', gender: (s && s.gender) || 'male', unitName: (s && s.unitName) || '' };
+                }) : [];
+                return { name: _lrProfileName(), team: (sq && sq.name) || '', faces: faces };
+            }
+            window._lrMySeat = _lrMySeat;
+            function _lrModeGoal(mode) {
+                var m = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null;
+                if (mode === 'arena') return 'Destroy their Cube, find all ' + ((m && m.keysToWin) || 5) + ' Keys, or wipe them out. When the rounds run out, the Arena score wins.';
+                if (mode === 'tdm') return 'Most kills when the rounds run out wins. A wipeout wins at once.';
+                if (m && m.isClash) return 'Classic JRPG battle, no movement. Wipe out the enemy party to win.';
+                return (m && m.desc) || '';
+            }
+            function _lrIsClash(mode) { var m = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null; return !!(m && m.isClash); }
+            function _lrRounds(mode, rounds) {
+                if (_lrIsClash(mode)) return '∞';
+                var m = (typeof MULTIPLAYER_MODES !== 'undefined') ? MULTIPLAYER_MODES[mode] : null;
+                return String(rounds || (m && m.roundLimit) || 20);
+            }
+            function _lrMapLabel(cfg) {
+                if (!cfg) return 'Random';
+                if (_lrIsClash(cfg.mode)) return 'The Clash stage';
+                if (cfg.mapChoice) return _friendlySiteLabel(cfg.mapChoice);
+                if (cfg.mapChoice === '' || cfg.mapChoice == null) return 'Random';
+                return 'Random';
+            }
+            function _lrBoardLabel(cfg) {
+                if (!cfg || _lrIsClash(cfg.mode)) return cfg && _lrIsClash(cfg.mode) ? 'Fixed stage' : 'Random';
+                var b = parseInt(cfg.boardChoice, 10) || 0;
+                return b ? (b + '×' + b) : 'Random';
+            }
+            /* the room's rules as this seat should show them */
+            function _lrRules(st) {
+                if (st && st.ranked) {
+                    var mid = NET.matchMapModeId, gm = (typeof GAME_MODES !== 'undefined' && mid) ? GAME_MODES[mid] : null;
+                    var side = gm ? (gm.boardWidth || gm.boardSize || 0) : 0;
+                    var mode = NET.matchRankedMode || 'arena';
+                    return { mode: mode, teamSize: NET.matchTeamSize || 4, rounds: 0,
+                             mapLabel: _lrIsClash(mode) ? 'The Clash stage' : ((gm && (gm.label || gm.name)) ? String(gm.label || gm.name).replace(/\s+\d+×\d+$/, '') : 'Random'),
+                             boardLabel: _lrIsClash(mode) ? 'Fixed stage' : (side ? side + '×' + side : 'Random'), demo: false };
+                }
+                var cfg = (NET.role === 'host') ? _friendlyGetConfig() : ((st && st.config) || NET.friendlyConfig || null);
+                if (!cfg) return { mode: 'arena', teamSize: 4, rounds: 0, mapLabel: 'Random', boardLabel: 'Random', demo: false, pending: true };
+                return { mode: cfg.mode || 'arena', teamSize: cfg.teamSize || 4, rounds: cfg.rounds || 0, mapLabel: _lrMapLabel(cfg), boardLabel: _lrBoardLabel(cfg), demo: !!cfg.demo };
+            }
+            /* what keeps a squad from crossing in this room: too few vessels, or champs outside a Demo room's roster */
+            function _lrSeatBlock(seat, rules, mine) {
+                if (!seat || !Array.isArray(seat.faces) || !seat.faces.length || !rules) return '';
+                var need = _lrIsClash(rules.mode) ? 4 : (rules.teamSize || 4);
+                if (seat.faces.length < need) return mine
+                    ? 'Your squad has ' + seat.faces.length + '. This room is ' + need + 'v' + need + ': leave and deploy a squad of ' + need + '.'
+                    : 'Their squad has ' + seat.faces.length + '. This room is ' + need + 'v' + need + '.';
+                if (rules.demo && typeof demoRaceIn === 'function') {
+                    var bar = [];
+                    seat.faces.forEach(function (f) {
+                        var r = String((f && f.race) || '').toLowerCase();
+                        var ok = demoRaceIn(r) && (!mine || typeof isUnitOwned !== 'function' || isUnitOwned(r));
+                        if (r && !ok && bar.indexOf(r) < 0) bar.push(r);
+                    });
+                    if (bar.length) {
+                        var names = bar.map(function (r) { return (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[r] && RACE_PROFILES[r].label) || r; }).join(', ');
+                        return mine ? 'This room plays the Demo roster. Not available: ' + names + '. Leave and deploy a Demo squad.'
+                                    : 'Outside the Demo roster: ' + names + '.';
+                    }
+                }
+                return '';
+            }
+            function _lrSeatHtml(role, st, rules, lampBump) {
+                var seat = st.seats ? st.seats[role] : null, other = role === 'host' ? 'guest' : 'host', p = role === 'host' ? 1 : 2;
+                var mine = (NET.role === 'guest' ? 'guest' : 'host') === role;
+                var tag = 'P' + p + ' · ' + (p === 1 ? 'Blue' : 'Red') + (!st.ranked && role === 'host' ? ' · <em>Host</em>' : '');
+                var need = _lrIsClash(rules.mode) ? 4 : (rules.teamSize || 4);
+                if (!seat) {
+                    var dash = '';
+                    for (var i = 0; i < need; i++) dash += '<span class="sq-face"></span>';
+                    return '<div class="lr-seat lr-win p' + p + ' is-empty"><span class="lr-tag">' + tag + '</span><span class="lr-lamp"><i></i>Empty</span>'
+                        + '<div class="lr-name">Waiting for your friend…<span class="lr-k">Send the code or the invite link</span></div>'
+                        + '<div class="lr-faces">' + dash + '</div></div>';
+                }
+                var ready = !!(st.ready && st.ready[role]), lamp;
+                if (st.ranked) lamp = '<span class="lr-lamp is-ready"><i></i>' + (st.elo && st.elo[role] != null ? 'ELO ' + _rrEsc(st.elo[role]) : 'Ready') + '</span>';
+                else if (ready) lamp = '<span class="lr-lamp is-ready' + (lampBump ? ' is-on' : '') + '"><i></i>Ready</span>';
+                else lamp = '<span class="lr-lamp is-in"><i></i>' + (st.seats && st.seats[other] ? 'Not ready' : 'In room') + '</span>';
+                var faces = (seat.faces || []).map(function (f) { return (typeof window._sqFaceHtml === 'function') ? window._sqFaceHtml(f) : ''; }).join('');
+                var n = (seat.faces || []).length;
+                var team = n ? '<span class="lr-team"><b>' + _rrEsc(seat.team || 'Squad') + '</b>' + n + (n === 1 ? ' vessel' : ' vessels') + '</span>'
+                             : '<span class="lr-team"><b>Picking a squad…</b></span>';
+                var block = _lrSeatBlock(seat, rules, mine);
+                return '<div class="lr-seat lr-win p' + p + (mine ? ' is-me' : '') + '"><span class="lr-tag">' + tag + '</span>' + lamp
+                    + '<div class="lr-name">' + _rrEsc(seat.name || ('Player ' + p)) + (mine ? '<small>You</small>' : '') + '</div>'
+                    + '<div class="lr-faces">' + faces + team + '</div>'
+                    + (block ? '<div class="lr-warn">' + _rrEsc(block) + '</div>' : '') + '</div>';
+            }
+            function _lrMyRole() { return NET.role === 'guest' ? 'guest' : 'host'; }
+            function _lrOtherName(st) {
+                var o = st && st.seats ? st.seats[_lrMyRole() === 'host' ? 'guest' : 'host'] : null;
+                return (o && o.name) || (_lrMyRole() === 'host' ? 'P2' : 'the host');
+            }
+            function _lrStatus(st, rules) {
+                var me = _lrMyRole(), other = me === 'host' ? 'guest' : 'host';
+                if (_lr.goEnd > Date.now()) {
+                    var n = Math.max(1, Math.ceil((_lr.goEnd - Date.now()) / 1000));
+                    return { html: (st.ranked ? 'Starting in ' : 'Both ready · starting in ') + '<span class="lr-count" id="lrCount">' + n + '</span>', cls: 'is-go' };
+                }
+                if (_lr.flash && _lr.flashUntil > Date.now()) return { html: _rrEsc(_lr.flash), cls: _lr.flashBad ? 'is-bad' : '' };
+                if (st.ranked) return { html: 'Starting…', cls: 'is-go' };
+                var block = _lrSeatBlock(st.seats && st.seats[me], rules, true);
+                if (block) return { html: 'Your squad cannot play in this room', cls: 'is-bad' };
+                var mr = !!(st.ready && st.ready[me]), or = !!(st.ready && st.ready[other]), on = _rrEsc(_lrOtherName(st));
+                if (!st.seats || !st.seats[other]) return { html: mr ? 'You are ready · waiting for P2 to join' : 'Waiting for P2 to join', cls: '' };
+                if (_lrSeatBlock(st.seats[other], rules, false)) return { html: on + '\'s squad cannot play in this room', cls: 'is-bad' };
+                if (mr && !or) return { html: 'Waiting for ' + on + ' to press READY', cls: '' };
+                if (!mr && or) return { html: on + ' is ready · ' + (me === 'guest' ? 'read the rules, then press READY' : 'press READY to start'), cls: '' };
+                return { html: (me === 'host' ? on + ' joined · ' : '') + 'read the rules, then press READY', cls: '' };
+            }
+            function _lrRender() {
+                var st = _lr.st, frame = _lrEl('lrFrame');
+                if (!st || !frame) return;
+                var quick = !!st.ranked, me = _lrMyRole(), rules = _lrRules(st);
+                frame.classList.toggle('is-guest', quick || me === 'guest');
+                frame.classList.toggle('is-quick', quick);
+                var k = _lrEl('lrKicker'), t = _lrEl('lrTitle'), by = _lrEl('lrRulesBy');
+                if (k) k.textContent = quick ? 'Online PvP · Quick Play · Ranked' : 'Online PvP · Friendly match';
+                if (t) t.textContent = quick ? 'Match Found' : 'The Room';
+                if (by) by.textContent = quick ? 'Drawn by the server' : (me === 'host' ? 'You are the host' : 'Set by the host');
+                var code = _lrEl('lobbyRoomCode'); if (code && st.code) code.textContent = st.code;
+                /* the rules (the host's own controls stay as they are; the read-only values are for the guest and Quick Play) */
+                var set = function (id, v) { var e = _lrEl(id); if (e && e.textContent !== v) e.textContent = v; };
+                set('lrModeV', _rrLabelMode(rules.mode));
+                set('lrGoal', _lrModeGoal(rules.mode));
+                set('lrMapV', rules.pending ? '…' : rules.mapLabel);
+                set('lrBoardV', rules.pending ? '…' : rules.boardLabel);
+                var ts = _lrIsClash(rules.mode) ? 4 : (rules.teamSize || 4);
+                set('lrTeamsV', ts + 'v' + ts);
+                set('lrTeamsNote', quick ? 'The queue you searched' : (_lrIsClash(rules.mode) ? 'Clash is always 4v4' : 'Set by the host\'s squad') + (rules.demo ? ' · Demo roster' : ''));
+                set('lrRoundsV', _lrRounds(rules.mode, rules.rounds));
+                set('lrRoundsNote', _lrIsClash(rules.mode) ? 'No round limit · fight to the wipeout' : '');
+                /* the seats */
+                var seats = _lrEl('lrSeats');
+                if (seats) {
+                    var bump = _lr.lastReady && st.ready ? { host: st.ready.host && !_lr.lastReady.host, guest: st.ready.guest && !_lr.lastReady.guest } : { host: false, guest: false };
+                    seats.innerHTML = _lrSeatHtml('host', st, rules, bump.host) + '<div class="lr-vs">VS</div>' + _lrSeatHtml('guest', st, rules, bump.guest);
+                    if ((bump.host || bump.guest)) { try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.5 }); } catch (e) {} }
+                }
+                _lr.lastReady = st.ready ? { host: !!st.ready.host, guest: !!st.ready.guest } : null;
+                /* the footer */
+                var s = _lrStatus(st, rules), el = _lrEl('lobbyHostStatus');
+                if (el) { el.className = 'lr-status' + (s.cls ? ' ' + s.cls : ''); el.innerHTML = s.html; }
+                _lr.goShown = _lr.goEnd > Date.now() ? Math.ceil((_lr.goEnd - Date.now()) / 1000) : -1;
+                var leave = _lrEl('lrLeaveBtn'); if (leave) leave.textContent = quick ? '‹ Leave' : '‹ Leave room';
+                var wrap = _lrEl('lrReadyWrap'), btn = _lrEl('lrReadyBtn');
+                if (wrap) wrap.style.display = quick ? 'none' : '';
+                if (btn && !quick) {
+                    var mine = !!(st.ready && st.ready[me]);
+                    var blocked = !!_lrSeatBlock(st.seats && st.seats[me], rules, true) || !!rules.pending;
+                    btn.textContent = mine ? 'Ready ✓' : 'Ready';
+                    btn.classList.toggle('is-on', mine);
+                    btn.disabled = blocked && !mine;
+                }
+            }
+            window._lrRender = _lrRender;
+            function _lrTick() {
+                if (!_lr.st) return;
+                var now = Date.now();
+                if (_lr.flash && _lr.flashUntil && _lr.flashUntil <= now) { _lr.flash = ''; _lr.flashUntil = 0; _lrRender(); return; }
+                if (!(_lr.goEnd > now)) { if (_lr.goShown > 0) { _lr.goShown = -1; _lrRender(); } return; }
+                var n = Math.max(1, Math.ceil((_lr.goEnd - now) / 1000));
+                if (n === _lr.goShown) return;
+                _lr.goShown = n;
+                var c = _lrEl('lrCount');
+                if (!c) { _lrRender(); c = _lrEl('lrCount'); }
+                if (c) { c.textContent = n; c.classList.remove('is-tick'); void c.offsetWidth; c.classList.add('is-tick'); }
+                try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {}
+            }
+            function _lrShow(st) {
+                _lr.st = st;
+                if (!_lr.ticker) _lr.ticker = setInterval(_lrTick, 150);
+                if (st && st.seats) {
+                    var o = st.seats[_lrMyRole() === 'host' ? 'guest' : 'host'];
+                    NET._lobbyOpp = o ? JSON.parse(JSON.stringify(o)) : null;   // the ready-room card shows their squad too
+                    if (o && o.name) NET.opponentName = o.name;
+                }
+                if (st && !st.goIn && !(st.ranked && _lr.goEnd > Date.now())) _lr.goEnd = 0;
+                else if (st && st.goIn > 0 && !(_lr.goEnd > Date.now())) _lr.goEnd = Date.now() + st.goIn * 1000;
+                _showPage('lobbyHosting');
+                _lrRender();
+            }
+            /* a match session left over (a page reloaded mid-match, then walked back to the lobby while its old seat was
+               still held): a new room, join or search starts clean — else the new room's events read as "already started"
+               and the host never saw its guest arrive. Same steps as backToMainMenu's online wrapper. */
+            function _lrDropStaleSession() {
+                if (!NET.online) return;
+                var sock = NET.socket;
+                try { if (sock && sock.connected) sock.emit('leave-room'); } catch (e) {}
+                try { if (window._ewSeatHoldStop) window._ewSeatHoldStop(); } catch (e) {}
+                NET.online = false;
+                NET.socket = null;
+                try { if (sock) sock.disconnect(); } catch (e) {}
+                NET.connected = false; NET.role = null; NET.myPlayer = 1; NET.roomCode = null; NET.ranked = false;
+                NET._wasInMatch = false; NET._rematchState = null; NET.rejoinToken = null; NET._bootRejoin = false; NET._squadKept = false;
+                try { var pill = document.getElementById('netStatusIndicator'); if (pill) pill.remove(); } catch (e) {}
+                try { if (typeof window._ewResetOnlineMatchFlags === 'function') window._ewResetOnlineMatchFlags(true); } catch (e) {}
+                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole', 'ew_rejoinMap', 'ew_rejoinSquad'].forEach(function (k) { sessionStorage.removeItem(k); }); } catch (e) {}
+                try { if (typeof window._ewHideReconnectBanner === 'function') window._ewHideReconnectBanner(); } catch (e) {}
+            }
+            function _lrReset() {
+                if (_lr.ticker) clearInterval(_lr.ticker);
+                _lr = { st: null, goEnd: 0, goShown: -1, ticker: null, flash: '', flashBad: false, flashUntil: 0, lastReady: null };
+                NET._lobbyOpp = null;
+            }
+            window._lrReset = _lrReset;
+            function _lrFlash(text, bad, ms) {
+                _lr.flash = text; _lr.flashBad = !!bad; _lr.flashUntil = Date.now() + (ms || 4000);
+                _lrRender();
+            }
+            /* the socket's room events (online.js _connectSocket registers them) */
+            window._lrOnState = function (st) {
+                if (!st || NET.online) return;   // room-full already started the match
+                if (NET.roomCode && st.code && st.code !== NET.roomCode) return;
+                _lrShow(st);
+            };
+            window._lrOnGo = function (d) {
+                if (!_lr.st || NET.online) return;
+                _lr.goEnd = Date.now() + Math.max(1, (d && d.seconds) || 3) * 1000;
+                _lr.goShown = -1;
+                _lrRender();
+                try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+            };
+            window._lrOnRulesChanged = function () {
+                if (!_lr.st || NET.online) return;
+                _lr.goEnd = 0;
+                _lrFlash(_lrMyRole() === 'host' ? 'Rules changed · both players press READY again' : 'The host changed the rules · read them, then press READY again', false, 5000);
+            };
+            window._lrOnLeft = function () {
+                if (!_lr.st || NET.online) return;
+                _lr.goEnd = 0;
+                _lrFlash(_lrOtherName(_lr.st) + ' left the room · the code still works', true, 5000);
+                try { if (typeof playSfx === 'function') playSfx('uiError'); } catch (e) {}
+            };
+            /* the host closed the room (or it went stale): back to Friendly, saying so */
+            window._lrOnClosed = function (d) {
+                if (NET.online) return;
+                var why = d && d.reason === 'stale' ? 'The room closed after two hours with nobody in it.' : 'The host closed the room.';
+                _lrReset();
+                window.lobbyBackToFriendlyMain();
+                _setStatus('lobbyJoinStatus', why, 'error');
+            };
+            /* Quick Play: the other seat left during the VS countdown — back to searching, same mode */
+            window._lrOnCancelled = function () {
+                if (NET.online) return;
+                _lrReset();
+                NET.roomCode = null; NET.ranked = false; NET.matchMapModeId = null; NET.matchTeamSize = null; NET.matchRankedMode = null;
+                NET.opponentName = null; NET.opponentElo = null;
+                if (window.lobbyShowQuickPlay) window.lobbyShowQuickPlay();
+                if (window.lobbyJoinQueue) window.lobbyJoinQueue();
+                _setStatus('lobbyQueueStatus', 'Your opponent left · searching again…', 'waiting');
+            };
+            /* the socket dropped while sitting in a room before the start: that room is gone on the server */
+            window._lrOnLost = function () {
+                if (!_lr.st || NET.online) return false;
+                var quick = !!_lr.st.ranked;
+                _lrReset();
+                var sock = NET.socket; NET.socket = null;
+                try { if (sock) sock.disconnect(); } catch (e) {}
+                NET.role = null; NET.roomCode = null; NET.ranked = false;
+                if (quick) { if (window.lobbyShowQuickPlay) window.lobbyShowQuickPlay(); _lrQueueFoot('Connection lost. Press SEARCH to look again.', true); }
+                else { _showPage('lobbyFriendlyMain'); _setStatus('lobbyJoinStatus', 'Connection lost. The room is closed: host or join again.', 'error'); }
+                return true;
+            };
+
+            window.lobbyToggleReady = function () {
+                var st = _lr.st;
+                if (!st || st.ranked || !NET.socket || NET.online) return;
+                var me = _lrMyRole(), on = !(st.ready && st.ready[me]);
+                if (on) {
+                    var block = _lrSeatBlock(st.seats && st.seats[me], _lrRules(st), true);
+                    if (block) { _lrFlash(block, true, 6000); try { if (typeof playSfx === 'function') playSfx('uiError'); } catch (e) {} return; }
+                }
+                NET.socket.emit('lobby-ready', { ready: on });
+                try { if (typeof playSfx === 'function') playSfx(on ? 'uiButtonConfirm' : 'uiCursorMove'); } catch (e) {}
+            };
+            window.lobbyLeaveRoom = function () {
+                try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+                if (_lr.st && _lr.st.ranked) {
+                    /* Quick Play: out of this match (the other seat goes back to searching); this seat stops on Quick Play */
+                    _lrReset();
+                    var sock = NET.socket; NET.socket = null;
+                    try { if (sock) sock.disconnect(); } catch (e) {}
+                    NET.role = null; NET.roomCode = null; NET.ranked = false; NET.matchMapModeId = null; NET.matchTeamSize = null; NET.matchRankedMode = null;
+                    if (window.lobbyShowQuickPlay) window.lobbyShowQuickPlay();
+                    _lrQueueFoot('You left the match. Press SEARCH to look again.', false);
+                    return;
+                }
+                window.lobbyBackToFriendlyMain();
+            };
+            function _lrCopy(text, btnId, done) {
+                var btn = _lrEl(btnId);
+                if (btn && !btn.getAttribute('data-label')) btn.setAttribute('data-label', btn.textContent);   // a second click mid-flash keeps the real label
+                var label = btn ? btn.getAttribute('data-label') : '';
+                var ok = function () {
+                    if (!btn) return;
+                    btn.style.minWidth = btn.offsetWidth + 'px';   // the shorter "copied" word must not pull the code box sideways
+                    btn.textContent = done; btn.classList.add('is-done');
+                    clearTimeout(btn._lrCopyT);
+                    btn._lrCopyT = setTimeout(function () { btn.textContent = label; btn.classList.remove('is-done'); btn.style.minWidth = ''; }, 1600);
+                    try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+                };
+                var fallback = function () {
+                    try {
+                        var ta = document.createElement('textarea');
+                        ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+                        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok();
+                    } catch (e) { _lrFlash('Copy it by hand: ' + text, false, 10000); }   // the status line, never the button (a long link broke the head)
+                };
+                try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(ok, fallback); return; } } catch (e) {}
+                fallback();
+            }
+            function _lrInviteUrl(code) { return window.location.origin + window.location.pathname + '?join=' + encodeURIComponent(code); }
+            window.lobbyCopyCode = function () { if (NET.roomCode) _lrCopy(NET.roomCode, 'lrCopyCode', 'Copied ✓'); };
+            window.lobbyCopyInvite = function () { if (NET.roomCode) _lrCopy(_lrInviteUrl(NET.roomCode), 'lrCopyLink', 'Link copied ✓'); };
+
+            /* THE INVITE LINK: ?join=CODE. The page remembers the code (and drops it from the address bar so a reload does not
+               join twice); ENTER on the title goes to the team room ("JOINING ROOM X") and DEPLOY joins (map.js) */
+            (function _lrReadInvite() {
+                try {
+                    var m = /[?&]join=([A-Za-z]{5})\b/.exec(window.location.search || '');
+                    if (!m) return;
+                    window._ewInvite = m[1].toUpperCase();
+                    var q = (window.location.search || '').replace(/([?&])join=[A-Za-z]{5}\b&?/, '$1').replace(/[?&]$/, '');
+                    if (window.history && window.history.replaceState) window.history.replaceState(null, '', window.location.pathname + q + window.location.hash);
+                } catch (e) {}
+            })();
+            window._lrJoinInvite = function () {
+                var code = window._ewInvite;
+                window._ewInvite = null;
+                _showPage('lobbyFriendlyMain');
+                var inp = _lrEl('lobbyJoinInput');
+                if (inp && code) { inp.value = code; _lrCodePaint(); }
+                if (code) window.lobbyJoinRoom();
+            };
+
+            /* the friendly door's 5 code boxes: one hidden input under five boxes that show its letters */
+            function _lrCodePaint() {
+                var inp = _lrEl('lobbyJoinInput'), wrap = _lrEl('lobbyJoinCode');
+                if (!inp || !wrap) return;
+                var v = String(inp.value || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
+                if (inp.value !== v) inp.value = v;
+                var boxes = wrap.querySelectorAll('span');
+                for (var i = 0; i < boxes.length; i++) { boxes[i].textContent = v.charAt(i) || ''; boxes[i].classList.toggle('is-cur', i === Math.min(v.length, 4)); }
+                wrap.classList.remove('is-bad');
+            }
+            (function _lrCodeWire() {
+                var wire = function () {
+                    var inp = _lrEl('lobbyJoinInput'), wrap = _lrEl('lobbyJoinCode');
+                    if (!inp || !wrap || inp._lrWired) return;
+                    inp._lrWired = true;
+                    inp.addEventListener('input', _lrCodePaint);
+                    inp.addEventListener('focus', function () { wrap.classList.add('is-focus'); _lrCodePaint(); });
+                    inp.addEventListener('blur', function () { wrap.classList.remove('is-focus'); });
+                    inp.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); inp.blur(); } });
+                };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+            })();
+
+            /* the online line on the hub and on Quick Play: "N players online · N searching" */
+            window._lrPaintOnline = function () {
+                var n = window._ewOnlineCount | 0, s = window._ewSearchCount | 0;
+                var txt = n ? (n + (n === 1 ? ' player online' : ' players online') + ' · ' + s + ' searching') : '';
+                var hub = _lrEl('playHubOnline');
+                if (hub) { var sp = hub.querySelector('span'); if (sp) sp.textContent = txt; hub.style.display = txt ? '' : 'none'; }
+                var q = _lrEl('lobbyQueueOnline');
+                if (q) q.textContent = n ? (n + (n === 1 ? ' player online' : ' players online')) : 'Players online';
+            };
+
+            /* THE NAME PLATE (the hub): the name your opponent sees, with CHANGE (the profile's own rename rule, profile.js) */
+            window._lrPaintNamePlate = function (editing) {
+                var host = _lrEl('playHubName');
+                if (!host) return;
+                var name = _lrProfileName(), dflt = /^Player\d*$/.test(name);
+                if (!editing) {
+                    host.innerHTML = '<div class="sq-strip lr-nameplate' + (dflt ? ' is-default' : '') + '"><div class="sq-strip-text"><span class="sq-strip-k">'
+                        + (dflt ? 'Pick a name · your opponent sees it' : 'Your name · shown to your opponent') + '</span><b>' + _rrEsc(name) + '</b></div>'
+                        + '<button class="sq-strip-change" onclick="window._lrPaintNamePlate(true)">Change</button></div>';
+                    return;
+                }
+                host.innerHTML = '<div class="sq-strip lr-nameplate is-edit"><div class="sq-strip-text"><span class="sq-strip-k">Your name · 2-16 letters, numbers or _</span>'
+                    + '<input id="lrNameInput" type="text" maxlength="16" autocomplete="off" spellcheck="false" value="' + _rrEsc(dflt ? '' : name) + '" aria-label="Your name">'
+                    + '<span class="lr-name-err" id="lrNameErr"></span></div>'
+                    + '<div class="lr-name-btns"><button class="sq-strip-change lr-name-cancel" onclick="window._lrPaintNamePlate(false)">Cancel</button>'
+                    + '<button class="sq-strip-change lr-name-save" onclick="window._lrNameSave()">Save</button></div></div>';
+                var inp = _lrEl('lrNameInput');
+                if (inp) {
+                    inp.addEventListener('keydown', function (e) {
+                        e.stopPropagation();
+                        if (e.key === 'Enter') { e.preventDefault(); window._lrNameSave(); }
+                        else if (e.key === 'Escape') { e.preventDefault(); window._lrPaintNamePlate(false); }
+                    });
+                    setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 30);
+                }
+                try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {}
+            };
+            window._lrNameSave = function () {
+                var inp = _lrEl('lrNameInput'), err = _lrEl('lrNameErr');
+                var v = inp ? String(inp.value || '').trim() : '';
+                var PS = window.ProfileSystem;
+                if (!PS || !PS.isValidUsername || !PS.isValidUsername(v)) {
+                    if (err) err.textContent = '2 to 16 letters, numbers or _ (no spaces).';
+                    try { if (typeof playSfx === 'function') playSfx('uiError'); } catch (e) {}
+                    return;
+                }
+                try {
+                    var idx = PS.getActiveProfileIndex(), p = idx != null ? PS.loadProfile(idx) : null;
+                    if (p) { p.username = v; PS.saveProfile(idx, p); window._profileNeedsRename = false; }
+                } catch (e) { console.warn('[LOBBY] rename failed', e); }
+                try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+                window._lrPaintNamePlate(false);
+            };
+
             window.lobbyPlayOffline = function() {
                 NET.online = false;
                 NET.myPlayer = 1;
@@ -3612,6 +4063,7 @@
             };
 
             window.lobbyBackToPlayHub = function() {
+                _lrReset();   // THE ROOM: before the socket drops (its disconnect must not read as a lost room)
 
                 if (_queueTimerInterval) {
                     clearInterval(_queueTimerInterval);
@@ -3663,9 +4115,11 @@
             window.lobbyBackToMain = window.lobbyBackToPlayHub;
 
             window.lobbyBackToFriendlyMain = function() {
+                _lrReset();   // THE ROOM: LEAVE ROOM — the server frees the seat (a guest) or closes the room (the host)
                 if (NET.socket) {
-                    NET.socket.disconnect();
+                    var _sock = NET.socket;
                     NET.socket = null;
+                    _sock.disconnect();
                 }
                 NET.role = null;
                 NET.roomCode = null;
@@ -3674,7 +4128,12 @@
                    see lobbyBackToPlayHub. */
                 NET.online = false;
                 NET.myPlayer = 1;
+                NET.friendlyConfig = null;
+                NET._roomDemo = undefined;
                 if (window._gameState) window._gameState.builderSelectedPlayer = 1;
+                var _code = document.getElementById('lobbyRoomCode'); if (_code) _code.textContent = '-----';
+                _setStatus('lobbyCreateStatus', '', '');
+                _setStatus('lobbyJoinStatus', '', '');
                 _showPage('lobbyFriendlyMain');
             };
 
@@ -3682,7 +4141,9 @@
                 /* THE DEMO (2026-11-10): the host's Demo switch decides for the room — it rides the config, the guest reads it
                    as NET._roomDemo (data.js demoModeOn) */
                 return { mode: _friendlyMode, mapId: _friendlyMapId, teamSize: _friendlySize, rounds: _friendlyRounds,
-                         demo: (typeof demoModeOn === 'function') ? !!demoModeOn() : false };
+                         demo: (typeof demoModeOn === 'function') ? !!demoModeOn() : false,
+                         /* THE ROOM: what the host picked (Random stays Random on the guest's screen; the drawn mapId is not shown) */
+                         mapChoice: _friendlyMapChoice, boardChoice: _friendlyBoardChoice };
             }
 
             function _friendlyEmitConfig() {
@@ -3694,6 +4155,7 @@
                        a slow seat ran past the launch wait and fought on the bare baked board. The host starts with the draw. */
                     if (cfg.mapId && typeof window._ewOnlineArenaPrep === 'function') { try { window._ewOnlineArenaPrep(cfg.mapId); } catch (e) {} }
                 }
+                try { _lrRender(); } catch (e) {}   // THE ROOM: the host's own rules window (goal line, teams, rounds note)
             }
 
             function _friendlyGetCompatibleMaps(mode, size) {
@@ -3864,11 +4326,49 @@
 
             var _queueMode = 'arena';
 
+            /* THE ROOM (PvP demo lobby): Quick Play in two windows — YOUR SQUAD (the search radar under it) and SEARCH FOR (the
+               mode chips and that mode's rules) — with BACK / CANCEL SEARCH (BACK) and SEARCH (CONFIRM) in the footer */
+            var _queueModeSince = 0;
+            function _lrQueueFoot(text, bad) {
+                var f = document.getElementById('lobbyQueueFoot');
+                if (f) { f.className = 'lr-status' + (bad ? ' is-bad' : ''); f.textContent = text || ''; }
+            }
+            function _lrQueueRules() {
+                var mode = _queueMode, clash = _lrIsClash(mode);
+                var ts = clash ? 4 : _friendlySquadTeam();
+                var set = function (id, v) { var e = document.getElementById(id); if (e && e.textContent !== v) e.textContent = v; };
+                set('lobbyQueueGoal', _lrModeGoal(mode));
+                set('lobbyQueueMapNote', clash ? 'The Clash stage' : (ts === 5 ? 'One of the 11×11 / 9×9 arenas' : 'One of the 12×12 / 10×10 arenas'));
+                set('lobbyQueueTeams', ts + 'v' + ts);
+                set('lobbyQueueRounds', clash ? '∞ · fight to the wipeout' : _lrRounds(mode, 0));
+                var sq = window._ewSquad, n = (sq && Array.isArray(sq.slots)) ? sq.slots.length : 0;
+                set('lobbyQueueSquadN', n ? n + (n === 1 ? ' vessel' : ' vessels') : '');
+                set('lobbyQueueRulesK', _inQueue ? 'Searching…' : 'Pick a mode');
+            }
+            function _lrQueueAlone(elapsedSince) {
+                var key = _queueTeamSize + ':' + _queueMode;
+                var counts = window._ewQueueCounts || {};
+                var others = Math.max(0, (counts[key] | 0) - 1);
+                var alone = _inQueue && elapsedSince >= 45 && others === 0;
+                var a = document.getElementById('lobbyQueueAlone'), act = document.getElementById('lobbyQueueAloneAct');
+                if (a) {
+                    if (alone) {
+                        var n = window._ewOnlineCount | 0;
+                        var html = '<b>Nobody else is searching ' + _rrEsc(_rrLabelMode(_queueMode)) + ' ' + _queueTeamSize + 'v' + _queueTeamSize + ' right now.</b><br>Keep searching, try another mode, or play a friend.'
+                            + (n > 1 ? '<br>' + n + ' players online.' : '');
+                        if (a.innerHTML !== html) a.innerHTML = html;
+                    }
+                    a.style.display = alone ? '' : 'none';
+                }
+                if (act) act.style.display = alone ? '' : 'none';
+            }
+            function _lrQueueSeat() { return _lrMySeat(); }
+
             window.lobbyShowQuickPlay = function() {
                 _showPage('lobbyQuickPlay');
                 /* THE SQUAD DESK (2026-09-30): the squad picked on the way in; online queues are 4v4 — or 5v5 (THE ARENA SIZES,
                    2026-10-17: a squad deployed 5v5 queues for the 9×9 / 11×11 arenas; server.js matches it only with another 5v5) */
-                _queueTeamSize = _friendlySquadTeam();
+                _queueTeamSize = _lrIsClash(_queueMode) ? 4 : _friendlySquadTeam();
                 var sqHost = document.getElementById('lobbyQueueSquad');
                 if (sqHost && typeof window._sqStripHtml === 'function') sqHost.innerHTML = window._sqStripHtml(window._ewSquad, { change: true });
 
@@ -3878,75 +4378,114 @@
                     if (prof && typeof prof.elo === 'number') elo = prof.elo;
                 } catch(e) {}
                 var eloEl = document.getElementById('lobbyQueueElo');
-                if (eloEl) eloEl.textContent = 'ELO: ' + elo;
+                if (eloEl) eloEl.textContent = 'ELO ' + elo;
 
                 var startBtn = document.getElementById('lobbyQueueStartBtn');
                 var searchDiv = document.getElementById('lobbyQueueSearching');
                 var backBtn = document.getElementById('lobbyRankedBackBtn');
-                if (startBtn) startBtn.style.display = '';
+                var cancelBtn = document.getElementById('lobbyQueueCancelBtn');
+                var idle = document.getElementById('lobbyQueueIdle');
+                if (startBtn) { startBtn.style.display = ''; startBtn.disabled = false; }
                 if (searchDiv) { searchDiv.style.display = 'none'; searchDiv.classList.remove('is-found'); }
                 if (backBtn) backBtn.style.display = '';
+                if (cancelBtn) cancelBtn.style.display = 'none';
+                if (idle) idle.style.display = '';
                 _inQueue = false;
+                _lrQueueFoot('', false);
+                _lrQueueAlone(0);
+                _lrQueueRules();
+                try { window._lrPaintOnline(); } catch (e) {}
             };
 
             window.lobbySetQueueMode = function(mode) {
+                if (!_LR_KEYS[mode]) return;
+                var was = _queueMode;
                 _queueMode = mode;
                 var btns = document.querySelectorAll('#lobbyQueueModes .ranked-size-btn');
                 btns.forEach(function(b) {
                     b.classList.toggle('active', b.getAttribute('data-mode') === mode);
                 });
-                // Clash queues are 4v4 only — snap the size chips to match.
-                if (mode === 'clash' && typeof window.lobbySetQueueSize === 'function') {
-                    window.lobbySetQueueSize(4);
+                // Clash queues are 4v4 only; the other modes queue at the squad's size.
+                _queueTeamSize = _lrIsClash(mode) ? 4 : _friendlySquadTeam();
+                _lrQueueRules();
+                /* THE ROOM: a mode switch mid-search searches the new mode (the server's queue-join leaves the old queue) */
+                if (_inQueue && was !== mode && NET.socket && NET.socket.connected) {
+                    _queueModeSince = Date.now();
+                    NET.socket.emit('queue-join', _lrQueueJoinData());
+                    _setStatus('lobbyQueueStatus', 'Searching for ' + (/^[aeiou]/i.test(_rrLabelMode(mode)) ? 'an ' : 'a ') + _rrLabelMode(mode) + ' opponent…', 'waiting');
+                    _lrQueueAlone(0);
+                    try { if (typeof playSfx === 'function') playSfx('uiCursorMove'); } catch (e) {}
                 }
+            };
+            window.lobbyQueueToFriendly = function () {
+                window.lobbyLeaveQueue();
+                if (NET.socket) { var _s = NET.socket; NET.socket = null; try { _s.disconnect(); } catch (e) {} }
+                if (typeof window._goToFriendlyMatch === 'function') window._goToFriendlyMatch();
+                else _showPage('lobbyFriendlyMain');
             };
 
             window.lobbyCreateRoom = function() {
+                if (NET.role === 'host' && NET.roomCode && _lr.st) return;   // already in a room
+                _lrDropStaleSession();
+                _setStatus('lobbyCreateStatus', 'Making the room…', 'waiting');
                 _connectSocket(function() {
-                    var _username = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'Player';
-                    NET.socket.emit('create-room', { username: _username }, function(resp) {
+                    var _username = _lrProfileName();
+                    /* THE ROOM: the seat (name + squad faces) rides the create, the room opens on the host's rules */
+                    NET.socket.emit('create-room', { username: _username, seat: _lrMySeat() }, function(resp) {
                         if (resp.error) {
-                            _setStatus('lobbyHostStatus', resp.error, 'error');
+                            _setStatus('lobbyCreateStatus', resp.error, 'error');
                             return;
                         }
+                        _setStatus('lobbyCreateStatus', '', '');
                         NET.role = 'host';
                         NET.myPlayer = 1;
                         NET.roomCode = resp.code;
                         if (resp.rejoinToken) NET.rejoinToken = resp.rejoinToken;
                         document.getElementById('lobbyRoomCode').textContent = resp.code;
-                        _showPage('lobbyHosting');
-
+                        /* the host's controls show the room's current rules (a second room keeps the last one's picks) */
+                        document.querySelectorAll('#friendlyModeChips .ranked-size-btn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-mode') === _friendlyMode); });
+                        var _rd = document.getElementById('friendlyRoundDisplay'); if (_rd) _rd.textContent = _lrIsClash(_friendlyMode) ? '∞' : _friendlyRounds;
                         _friendlyRefreshMaps();
+                        _lrShow({ code: resp.code, ranked: false, live: true, seats: { host: Object.assign({}, _lrMySeat()), guest: null },
+                                  ready: { host: false, guest: false }, config: null, goIn: 0 });
                         _friendlyEmitConfig();   // the drawn map is on the room before the guest joins
                     });
                 });
             };
 
+            /* THE ROOM: Create and Join share one Friendly screen; JOIN ROOM focuses the code boxes */
             window.lobbyShowJoin = function() {
-                _showPage('lobbyJoining');
+                _showPage('lobbyFriendlyMain');
                 setTimeout(function() {
-                    document.getElementById('lobbyJoinInput').focus();
+                    var i = document.getElementById('lobbyJoinInput'); if (i) i.focus();
                 }, 100);
             };
 
             window.lobbyJoinRoom = function() {
                 var code = (document.getElementById('lobbyJoinInput').value || '').toUpperCase().trim();
                 if (code.length !== 5) {
-                    _setStatus('lobbyJoinStatus', 'Code must be 5 letters.', 'error');
+                    _setStatus('lobbyJoinStatus', 'The code is 5 letters.', 'error');
+                    var _wb = document.getElementById('lobbyJoinCode'); if (_wb) _wb.classList.add('is-bad');
                     return;
                 }
+                _lrDropStaleSession();
                 _setStatus('lobbyJoinStatus', 'Connecting…', 'waiting');
                 _connectSocket(function() {
-                    var _username = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : 'Player';
-                    NET.socket.emit('join-room', { code: code, username: _username }, function(resp) {
+                    var _username = _lrProfileName();
+                    NET.socket.emit('join-room', { code: code, username: _username, seat: _lrMySeat() }, function(resp) {
                         if (resp.error) {
-                            _setStatus('lobbyJoinStatus', resp.error, 'error');
+                            _setStatus('lobbyJoinStatus', resp.error === 'Room not found.' ? 'No room with the code ' + code + '. Check it with your friend.' : resp.error, 'error');
+                            var _w = document.getElementById('lobbyJoinCode'); if (_w) _w.classList.add('is-bad');
+                            try { if (typeof playSfx === 'function') playSfx('uiError'); } catch (e) {}
                             return;
                         }
+                        _setStatus('lobbyJoinStatus', '', '');
                         NET.role = 'guest';
                         NET.myPlayer = 2;
                         NET.roomCode = code;
                         if (resp.rejoinToken) NET.rejoinToken = resp.rejoinToken;
+                        /* THE ROOM: straight into the room; the match waits for both READY lamps */
+                        if (resp.lobby) _lrShow(resp.lobby);
                     });
                 });
             };
@@ -3961,41 +4500,56 @@
                 // Clash is locked to 4v4.
                 if (size !== 4 && _queueMode === 'clash') return;
                 _queueTeamSize = size;
-                var btns = document.querySelectorAll('.ranked-size-btn');
+                var btns = document.querySelectorAll('.ranked-size-btn[data-size]');
                 btns.forEach(function(b) {
                     b.classList.toggle('active', parseInt(b.getAttribute('data-size')) === size);
                 });
             };
 
+            function _lrQueueJoinData() {
+                var elo = 1200;
+                try {
+                    var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
+                    if (prof && typeof prof.elo === 'number') elo = prof.elo;
+                } catch(e) {}
+                return { teamSize: _queueTeamSize, username: _lrProfileName(), elo: elo, rankedMode: _queueMode,
+                         seat: _lrQueueSeat() };   // THE ROOM: the name + squad the VS screen shows the opponent
+            }
+
             window.lobbyJoinQueue = function() {
                 if (_inQueue) return;
+                _lrDropStaleSession();
                 _inQueue = true;
 
                 var startBtn = document.getElementById('lobbyQueueStartBtn');
                 var searchDiv = document.getElementById('lobbyQueueSearching');
                 var backBtn = document.getElementById('lobbyRankedBackBtn');
+                var cancelBtn = document.getElementById('lobbyQueueCancelBtn');
+                var idle = document.getElementById('lobbyQueueIdle');
                 if (startBtn) startBtn.style.display = 'none';
-                if (searchDiv) searchDiv.style.display = 'block';
+                if (searchDiv) { searchDiv.style.display = 'flex'; searchDiv.classList.remove('is-found'); }
                 if (backBtn) backBtn.style.display = 'none';
+                if (cancelBtn) cancelBtn.style.display = '';
+                if (idle) idle.style.display = 'none';
+                _lrQueueFoot('', false);
+                _lrQueueRules();
+                var _ml = _rrLabelMode(_queueMode);
+                _setStatus('lobbyQueueStatus', 'Searching for ' + (/^[aeiou]/i.test(_ml) ? 'an ' : 'a ') + _ml + ' opponent…', 'waiting');
 
                 _queueStartTime = Date.now();
+                _queueModeSince = _queueStartTime;
                 if (_queueTimerInterval) clearInterval(_queueTimerInterval);
+                var timerEl0 = document.getElementById('lobbyQueueTimer');
+                if (timerEl0) timerEl0.textContent = '0:00';
+                _lrQueueAlone(0);
                 _queueTimerInterval = setInterval(function() {
                     var elapsed = Math.floor((Date.now() - _queueStartTime) / 1000);
                     var min = Math.floor(elapsed / 60);
                     var sec = elapsed % 60;
                     var timerEl = document.getElementById('lobbyQueueTimer');
                     if (timerEl) timerEl.textContent = min + ':' + (sec < 10 ? '0' : '') + sec;
+                    _lrQueueAlone(Math.floor((Date.now() - _queueModeSince) / 1000));   // THE ROOM: say so when nobody else is in this queue
                 }, 1000);
-
-                var elo = 1200;
-                try {
-                    var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
-                    if (prof && typeof prof.elo === 'number') elo = prof.elo;
-                } catch(e) {}
-
-                var _username = (window.ProfileSystem && window.ProfileSystem.getActiveProfile())
-                    ? window.ProfileSystem.getActiveProfile().username : 'Player';
 
                 _connectSocket(function() {
 
@@ -4009,13 +4563,9 @@
                         }).catch(function() {  });
                     }
 
-                    NET.socket.emit('queue-join', {
-                        teamSize: _queueTeamSize,
-                        username: _username,
-                        elo: elo,
-                        rankedMode: _queueMode
-                    });
-                    _setStatus('lobbyQueueStatus', 'Searching for opponent…', 'waiting');
+                    /* a reconnect re-runs this: only while still searching */
+                    if (!_inQueue) return;
+                    NET.socket.emit('queue-join', _lrQueueJoinData());
                 });
             };
 
@@ -4032,12 +4582,23 @@
                 lobbyShowQuickPlay();
             };
 
+            /* THE ROOM: the lobby's pages. Quick Play, Friendly and the Room are windows over the whole page (.lobby-room);
+               the old centred card (.lobby-inner) holds only the "Both Players Joined" beat */
+            var _LOBBY_PAGES = ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'];
             function _showPage(id) {
-                ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'].forEach(function(p) {
+                var wide = false;
+                _LOBBY_PAGES.forEach(function(p) {
                     var el = document.getElementById(p);
-                    if (el) el.style.display = p === id ? 'block' : 'none';
+                    if (!el) return;
+                    var room = el.classList.contains('lobby-room');
+                    el.style.display = p === id ? (room ? 'flex' : 'block') : 'none';
+                    if (p === id && room) wide = true;
                 });
+                var page = document.getElementById('lobbyPage');
+                if (page) page.classList.toggle('lr-on', wide);
+                if (id === 'lobbyFriendlyMain') { try { _lrCodePaint(); } catch (e) {} }
             }
+            window._lobbyShowPage = _showPage;
 
             function _setStatus(elId, text, type) {
                 var el = document.getElementById(elId);
@@ -4341,6 +4902,8 @@
                 }
 
                 NET.socket.on('disconnect', function(reason) {
+                    /* THE ROOM: a socket lost while sitting in a room before the start (the server already freed the seat) */
+                    if (!NET.online && typeof window._lrOnLost === 'function' && window._lrOnLost()) return;
                     if (NET.online && !NET._recoveryFailed) {
                         _recoveryAttempt++;
                         NET._recoveryId = null;
@@ -4360,7 +4923,7 @@
                 });
 
                 NET.socket.on('connect_error', function(err) {
-                    _setStatus('lobbyHostStatus', 'Connection failed. Is the server running?', 'error');
+                    _setStatus('lobbyCreateStatus', 'Connection failed. Is the server running?', 'error');
                     _setStatus('lobbyJoinStatus', 'Connection failed. Is the server running?', 'error');
                     _setStatus('lobbyQueueStatus', 'Connection failed. Is the server running?', 'error');
                 });
@@ -4374,15 +4937,20 @@
                     if (NET._recoveryFailed) { NET._recovering = false; _hideReconnectOverlay(true); }
                     NET._recoveryFailed = false;
                     window._ewResetOnlineMatchFlags(false);   // THE NEXT ROOM: a fresh room starts from clean match flags
+                    /* THE ROOM: the countdown ran out — the room's screen gives way to the start; the opponent's seat stays for
+                       the ready-room card (NET._lobbyOpp) */
+                    var _lobbyOppKeep = NET._lobbyOpp;
+                    try { if (typeof _lrReset === 'function') _lrReset(); } catch (e) {}
+                    NET._lobbyOpp = _lobbyOppKeep || null;
 
                     if (data.host === NET.socket.id) {
                         NET.role = 'host';
                         NET.myPlayer = 1;
-                        NET.opponentName = data.guestUsername || 'Player 2';
+                        NET.opponentName = (NET._lobbyOpp && NET._lobbyOpp.name) || data.guestUsername || 'Player 2';
                     } else if (data.guest === NET.socket.id) {
                         NET.role = 'guest';
                         NET.myPlayer = 2;
-                        NET.opponentName = data.hostUsername || 'Player 1';
+                        NET.opponentName = (NET._lobbyOpp && NET._lobbyOpp.name) || data.hostUsername || 'Player 1';
                     } else {
                         // Socket id didn't match either slot — this happens if the
                         // socket reconnected (new id) between create/join and this
@@ -4493,6 +5061,17 @@
                     var _qs = document.getElementById('lobbyQueueSearching');   // THE QUEUE: the radar locks on (styles-base.css)
                     if (_qs) _qs.classList.add('is-found');
                     try { if (typeof playSfx === 'function') playSfx('uiButtonConfirm'); } catch (e) {}
+                    /* THE ROOM: MATCH FOUND — both names, both squads, the drawn map and the rules, and the server's 5 s
+                       countdown (lobby-go); LEAVE sends the other seat back to searching */
+                    if (_queueTimerInterval) { clearInterval(_queueTimerInterval); _queueTimerInterval = null; }
+                    _inQueue = false;
+                    NET.role = data.role === 'guest' ? 'guest' : 'host';
+                    NET.myPlayer = NET.role === 'guest' ? 2 : 1;
+                    if (data.lobby) {
+                        var _lb = data.lobby;
+                        if (data.countdown && !(_lb.goIn > 0)) _lb.goIn = data.countdown;
+                        _lrShow(_lb);
+                    }
                 });
 
                 NET.socket.on('queue-status', function(data) {
@@ -4739,6 +5318,14 @@
 
                     }
                 });
+
+                /* THE ROOM (PvP demo lobby): the seats, the READY lamps and the countdown, from the server */
+                NET.socket.on('lobby-state', function(data) { window._lrOnState(data); });
+                NET.socket.on('lobby-go', function(data) { window._lrOnGo(data); });
+                NET.socket.on('lobby-rules-changed', function() { window._lrOnRulesChanged(); });
+                NET.socket.on('lobby-left', function(data) { window._lrOnLeft(data); });
+                NET.socket.on('lobby-closed', function(data) { window._lrOnClosed(data); });
+                NET.socket.on('lobby-cancelled', function(data) { window._lrOnCancelled(data); });
 
                 NET.socket.on('game-action', function(data) {
                     if (NET.role === 'host' && window._executeRemoteAction) {
