@@ -1832,3 +1832,10 @@ busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. P
   `prebuilt_hell_calm_delta` (scorched floor + 44 lava tiles; rocks_3 / rocks_5 -> calm_rock). New sheet calm_scorched_1.png
   (bake_scorched: dark ash bed, cracked crust plates, soot, cinders; no embers, the lava is the only bright thing). _CALM.tints keys
   a floor's own three tints (scorched: neutral floor, grey path a step under); the grass set stays the default. Both VS CPU only.
+- 2026-11-11, part 3 THE MOLTEN LAVA (mondo on Hell (Calm), WebGPU: "the lava doesnt really look 'lava-y' and its all brown instead of
+  orange/red/fiery. And in the game the lava isnt even moving"). Cause: the calm lava's look lived only in its onBeforeCompile (WebGL),
+  so WebGPU drew the bare sheet, still, and v1's sheet was mostly dark crust. Now: calm_lava_2.png (bake_lava v2: orange-red melt with
+  crust rafts, red-hot rims, cooling-skin veins, a fifth of the cells open pools) slid in two copies on the fluid clock exactly like the
+  PR #782 lava (copy B turned, other scale, other way; it nudges copy A's lookup 0.035 and swells the glow); melt = red-dominant texels
+  (r - b), glowing from their own colour x _CALM.lavaGlow (1.0). WebGPU twin: _ewNodeCalmFluid (tag k 'calmfluid'). No procedural
+  blobs (his lava-lamp rule). The calm water on WebGPU is still its flat colour.

@@ -4091,10 +4091,8 @@ const ThreeRenderer = (function () {
        WATER: a dark, see-through body (the bed shows a little) whose surface normal moves — three octaves of value noise sliding
        at different speeds and directions, in squares (uFluidTile), so a pool and a brook ripple as one sheet — the room's own lights
        give the sun glints off it (Phong, tight highlight), and the sky's sheen rises toward grazing angles (Schlick fresnel). No
-       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava (a cooling basalt crust, glowing seams)
-       one sheet per square, slowly warped so the crust creeps, the seams glowing from the sheet's own heat with a slow pulse; the
-       crust stays dark (environment value), only the heat is bright. On WebGPU the extras are skipped: the water is its flat colour,
-       the lava its sheet + the sheet as its glow. */
+       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava_2 (melt with crust rafts) slid in two copies on the fluid clock, the melt glowing from its own colour (THE MOLTEN LAVA, in
+       _calmFluidMat). On WebGPU the lava is the same (_ewNodeCalmFluid); the water there is its flat colour. */
     var _CALM_NOISE_GLSL =
         'float cHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }\n' +
         'float cNoise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);\n' +
@@ -4121,17 +4119,22 @@ const ThreeRenderer = (function () {
             var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL;
             var f = head + sh.fragmentShader;
             if (lava) {
+                /* THE MOLTEN LAVA (v2, mondo: "doesnt really look lava-y ... all brown ... isnt even moving"): calm_lava_2 is melt with
+                   crust rafts on it. Two copies slide on the fluid clock like the old lava (PR #782): copy B, turned and at another scale,
+                   runs the other way, nudges copy A's lookup a little (the rafts' edges flow) and makes the melt's glow swell and fade
+                   as it passes. The melt (red-dominant texels) glows from its own colour; the crust stays dark. Same maths on WebGPU
+                   (_ewNodeCalmFluid). */
                 f = f.replace('#include <map_fragment>',
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
-                    'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
-                    '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
-                    'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
-                    'diffuseColor.rgb *= cLa * 0.9;\n' +
-                    /* the molten flow under the crust: broad slow patches where it runs thin, and a low warm floor, so a lava field still
-                       reads as lava from the wide camera (the seams are thin; far off their mips average them away) */
-                    'float cFlow = smoothstep(0.38, 0.9, cNoise(cP * 0.32 + vec2(cT * 0.018, -cT * 0.013)) * 0.7 + cNoise(cP * 0.9 - vec2(cT * 0.03, 0.0)) * 0.3);\n')
-                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow + vec3(0.62, 0.15, 0.025) * (0.16 + 0.7 * cFlow) * uCalmGlow * (1.0 - 0.6 * smoothstep(0.25, 0.7, cHeat));\n');
+                    '#ifdef USE_MAP\n' +
+                    ' vec3 cLb = texture2D(map, vec2(cP.y, -cP.x) * 0.37 + vec2(-cT * 0.015, cT * 0.022)).rgb;\n' +
+                    ' vec3 cLa = texture2D(map, cP * 0.5 + vec2(cT * 0.020, cT * 0.013) + (cLb.rg - vec2(0.49, 0.23)) * 0.035).rgb;\n' +
+                    '#else\n vec3 cLa = vec3(0.6, 0.2, 0.05), cLb = cLa;\n#endif\n' +
+                    'float cMelt = smoothstep(0.1, 0.32, cLa.r - cLa.b);\n' +
+                    'float cHb = dot(cLb, vec3(0.299, 0.587, 0.114));\n' +
+                    'diffuseColor.rgb = diffuse * cLa * mix(0.9, 0.35, cMelt);\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cMelt * uCalmGlow * (0.75 + 0.5 * cHb);\n');
             } else {
                 f = f.replace('#include <map_fragment>',
                     '#include <map_fragment>\n' +
@@ -4150,6 +4153,7 @@ const ThreeRenderer = (function () {
         };
         mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
         mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
+        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow });   // WEBGPU: the same lava (_ewNodeCalmFluid)
         return mat;
     }
 
@@ -35283,14 +35287,14 @@ const ThreeRenderer = (function () {
        shader extras do not (plain colour + sheet there). */
     var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
     var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_1.png',
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_2.png',
                          scorched: 'calm_scorched_1.png' };
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
     /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
        sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
     var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
                   tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
-                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0 };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmOn() {
         try {
@@ -44999,6 +45003,27 @@ const ThreeRenderer = (function () {
         if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
+    /* THE CALM GROUND's lava on WebGPU (_calmFluidMat, THE MOLTEN LAVA): the same two sliding copies of calm_lava_2, the same melt
+       mask and glow. The calm water keeps its flat colour here (its ripple normal is the classic hook's). */
+    function _ewNodeCalmFluid(nm, m, D) {
+        var U = _ewNodeU, T = U.T;
+        if (!D.lava || !m.map || !m.map.isTexture) return;
+        var map = m.map, glow = T.float(D.glow || 1.25);
+        var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
+        var lbOf = function (p) { return T.texture(map, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(U.ftime.mul(-0.015), U.ftime.mul(0.022)))).rgb; };
+        var LA = T.Fn(function () {
+            var p = cpos().toVar(), lb = lbOf(p).toVar();
+            var la = T.texture(map, p.mul(0.5).add(T.vec2(U.ftime.mul(0.020), U.ftime.mul(0.013))).add(lb.rg.sub(T.vec2(0.49, 0.23)).mul(0.035))).rgb.toVar();
+            return T.vec4(la, T.smoothstep(0.1, 0.32, la.r.sub(la.b)));
+        })();
+        var HB = T.Fn(function () { return T.dot(lbOf(cpos().toVar()), T.vec3(0.299, 0.587, 0.114)); })();
+        var base = Object.getPrototypeOf(nm).setupDiffuseColor;
+        nm.setupDiffuseColor = function (builder) {
+            base.call(this, builder);
+            T.diffuseColor.rgb.assign(T.materialReference('color', 'color').mul(LA.rgb).mul(T.mix(T.float(0.9), T.float(0.35), LA.w)));
+        };
+        nm.emissiveNode = LA.rgb.mul(LA.w).mul(glow).mul(HB.mul(0.5).add(0.75));
+    }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
     var _ewNodeRefs = new Map();
     function _ewNodeRef(o, init) {
@@ -45213,6 +45238,7 @@ const ThreeRenderer = (function () {
         }
         else if (D && D.k === 'terrain') _ewNodeTerrain(nm, m, D);
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
+        else if (D && D.k === 'calmfluid') _ewNodeCalmFluid(nm, m, D);   // THE CALM GROUND
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
         if (m.ewCol === 'on') { C.ewcol = (C.ewcol || 0) + 1; _ewNodeCol(nm); }   // THE CLOTH COLLISION (after the skinning)
