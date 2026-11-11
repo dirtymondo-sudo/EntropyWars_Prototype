@@ -47444,7 +47444,8 @@ const ThreeRenderer = (function () {
             // a map-wide storm rains on every tile (a global thunderstorm's w.tiles is only its eye)
             var _allT = null;
             window.ThreeVFX.startRain3D(rainZones.map(function(w) {
-                if (_weatherIsMapWide(w)) {
+                /* a map-wide RAIN too (the Hurricane: local eye, rain on every tile, state.js weatherRainIsWide) */
+                if (_weatherIsMapWide(w) || (typeof window.weatherRainIsWide === 'function' && window.weatherRainIsWide(w))) {
                     if (!_allT) _allT = (typeof window.allWeatherBoardTiles === 'function') ? window.allWeatherBoardTiles() : w.tiles;
                     return { type: w.type, tiles: _allT, global: true };
                 }

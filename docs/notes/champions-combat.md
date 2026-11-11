@@ -5031,3 +5031,17 @@ board 125+ -> 0, self facing along the row 144-157 -> 0, on an ally two squares 
 now: cut to the close-up, cut back to the player's own angle on the shielded units, short slide home.
 Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
 seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
+
+## THE HURRICANE'S RAIN (2026-11-11)
+mondo: "During a hurricane, there is rain on the screen, but I saw some grass tiles on fire ... Rain should always put out fire."
+- Cause: the Hurricane is a homing storm, so `w.tiles` is only its eye square; `soaks` only reached that one square while the
+  rain column was drawn over it and read as rain over the board. Thunderstorm and Blood Rain are `global`, so they were fine.
+- Fix: state.js WEATHER_REGISTRY.hurricane `rainWide: true` + `weatherRainIsWide(w)` (global OR def.rainWide), read by
+  `weatherRainsOnTile` and the round-start soak in `applyWeatherTurnEffects`. So under a Hurricane, on every unroofed square:
+  ground fire goes out when it forms and every round end (rainOnTheBoard), no new ground fire (igniteTile / _ewRainOnTile),
+  burning units doused, grounded units Wet each round, fight lava hardens: exactly the Thunderstorm's rain rules.
+- NOT `global`: the eye, the fling, the -10 DEF and the flooded trail stay local.
+- The rain is drawn map-wide too (three-renderer.js rain zones, ui.js 2D path), nothing removed.
+- Audit: Thunderstorm, Blood Rain = global + soaks (fine). Blizzard = snow, freezes its trail (ice on fire = water, PR #974).
+  Tesseract Storm = geometry shards, not water. Hurricane has no Summon spell (natural roll only).
+- Proof (VS CPU, Mount Shasta Arena): /mnt/project-files/hurricane-rain-20261111/.
