@@ -5109,3 +5109,15 @@ runs through water / metal squares only (12). Changed:
   a second, tickWeather settles a leftover pair. The same weather recast still renews. Two dry weathers may stand together.
 Status page lines (charm, feared, minimize), the two feed spells' text, Pixie Prank's text and the FACING lesson's Overwatch line
 were rewritten to match. Not played in a browser (boot + function probe only); not run with two seats.
+
+## THE CHARM LINE ON A BOARD CLICK + THE GUEST'S OWN REFUSAL LINES (2026-11-11)
+Two-seat check of rule 7 B found the guest got no reason when it clicked its charmer. Two causes, both fixed:
+- battle.js `_outOfReachLine`: the charmer is off a charmed unit's attack list and off its unit-aimed offensive casts, so a board
+  click on it was refused as "X is out of reach this turn." Now it returns the engine's own Charm line ("is charmed and cannot
+  attack …" / "cannot cast <spell> at …"), solo, host and guest alike. Area / tile / directional casts are untouched.
+- A guest's refused click is written on the guest only (the pick is never sent). online.js `_applyRemoteState` replaced the whole
+  log with each host snapshot, so every such line was wiped within a second or two. battle.js addLog `o.mine` tags these lines
+  (`lg`, `lgN` = host lines above it) and `_applyRemoteState` puts them back in place. Call sites: `_ewGuestBoardPick` (attack,
+  unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
+- Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
+  log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
