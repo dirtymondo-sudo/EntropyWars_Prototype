@@ -32400,11 +32400,20 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _hitSides.length; i++) _hitSideFree(_hitSides[i]);
         _hitSides.length = 0;
     }
-    /* may this seat be shown where that unit stands? (the fog renderer's visible set + the concealment rule) */
-    function _hitSideSees(u) {
+    /* may this seat be shown where that unit stands? Only what the screen already draws: the body itself is on screen (the
+       per-frame pass above hides a held body, the other realm's units and a fogged or concealed enemy), it is not
+       concealed, and under fog its square is lit AND the 3D line of sight reaches it (_unitLosSeen: an enemy in a roofed
+       room stands on a lit square with its body hidden; the tile test alone pointed the arrowhead at it, PR #1106 review) */
+    function _hitSideSees(u, ue) {
         try {
-            if (_isConcealedFromViewer(u, _viewerPlayerNum())) return false;
-            if (state && state.fogOfWar && typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(u.x, u.y)) return false;
+            if (!ue || !ue.group || ue.group.visible === false) return false;
+            var vp = _viewerPlayerNum();
+            if (u.player === vp) return true;
+            if (_isConcealedFromViewer(u, vp)) return false;
+            if (state && state.fogOfWar) {
+                if (typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(u.x, u.y)) return false;
+                if (!_unitLosSeen(u, vp)) return false;
+            }
         } catch (e) { return false; }
         return true;
     }
@@ -32423,7 +32432,7 @@ const ThreeRenderer = (function () {
         }
         if (attackerId == null || attackerId === victimId || !_hitSideOn('B')) return;
         var au = _findUnit(attackerId), ae = _getUnitEntry(attackerId);
-        if (!au || au.dead || !ae || !ae.group || !_hitSideSees(au)) return;
+        if (!au || au.dead || !ae || !ae.group || !_hitSideSees(au, ae)) return;
         var allyA = _isAllyPlayer(au.player), ping = _hitSideFind(attackerId, 'pulse');
         if (!ping || now - ping.t0 > 120) {    // one ping for an area spell's whole volley
             _hitSideDrop(attackerId, 'pulse');
@@ -32466,8 +32475,9 @@ const ThreeRenderer = (function () {
             }
             _hitSideAt(ue, _hsV);
             if (h.kind === 'arrow') {
-                var ae = _getUnitEntry(h.src);
-                if (ae && ae.group) {
+                var ae = _getUnitEntry(h.src), asu = _findUnit(h.src);
+                if (!asu || !_hitSideSees(asu, ae)) show = false;   // the attacker left this seat's sight while the arrowhead was up: it goes too
+                else if (ae && ae.group) {
                     _hsV2 = _hsV2 || new THREE.Vector3();
                     var vx = _hsV.x, vz = _hsV.z;
                     ae.group.getWorldPosition(_hsV2);
