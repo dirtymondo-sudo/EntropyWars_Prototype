@@ -18386,7 +18386,10 @@ const BTN_MENUS = [
   { id: 'hq', label: 'HQ pause menu', surf: 'explore', back: { sel: '#hqPage .hq-btn[data-cmd="party"], #hqPage .hq-panel-actions .hq-btn[data-party-act^="circuit:"], #hqPage .hq-circ-tools .hq-btn[data-party-act^="circuit:"]', skin: 1, what: '◂ PARTY / ◂ THE PARTY, and ◂ DONE on a vessel\'s spells' } },
   { id: 'profile', label: 'Profile + leaderboard', surf: '', back: { sel: 'button.ew-back:not(.ms-tty-btn)', what: '← Back on the profile, the leaderboard and the community maps' } },
   { id: 'pages', label: 'Other pages', surf: '', back: { sel: '#mdCharPage .ms-back-btn, #challengePickPage .ms-back-btn, #campaignCharCreatePage .ms-back-btn, #campaignMapPage .ms-back-btn, #mapEditorPage .ms-back-btn, #cshopOverlay .ms-back-btn, .cpb-back-btn, #backToLobbyBtn, #creditsPage .ms-back-btn, .me-hud-back', what: '← Back on the character, challenge and campaign pages, a challenge level\'s briefing, the campaign shop, the credits, the map editor (and its ← over the map) and the old team setup' } },
-  { id: 'results', label: 'Victory / defeat', surf: 'results', back: { sel: '#resultOverlay #startOverBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Back to Map' } },
+  /* end screens 2026-11-10: MAIN MENU is a BACK (red) and the next-match / rematch button a CONFIRM (green), like every menu */
+  { id: 'results', label: 'Victory / defeat', surf: 'results',
+    back: { sel: '#resultOverlay #startOverBtn, #resultOverlay #mainMenuBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Main Menu / Back to Map' },
+    confirm: { sel: '#resultOverlay #nextMatchBtn', skin: 1, what: 'Find Next Match / Request Rematch / Accept Rematch' } },
   { id: 'dialog', label: 'Pop-up questions', surf: 'dialog',
     back: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave, #uiDialogOverlay .trade-footer [data-trade-action="cancel"], .ew-banner-box .ew-banner-btn.secondary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave', what: 'Cancel on the "are you sure?" boxes, the save / load box and the trade' },
     confirm: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take, #uiDialogOverlay .trade-footer [data-trade-action="confirm"], .ew-banner-box .ew-banner-btn.primary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take', what: 'Confirm on the "are you sure?" boxes, Save on the save box, Confirm Trade' } },
@@ -22059,7 +22062,8 @@ const BTN_SAMPLE = (() => {
     'back-pages': page('mdCharPage', '', back),
     'back-hq': '<div class="uim-w" id="hqPage"><div class="uim-w hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button></div></div>',
     'back-profile': '<button class="ew-back" style="background: rgba(255,255,255,0.06); border: 1px solid #3a3550; color: #8a849c; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-family: DotGothic16, monospace">← Back</button>',
-    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button></div></div>',
+    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button><button id="mainMenuBtn">Main Menu</button></div></div>',
+    'confirm-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="nextMatchBtn" class="primary">Request Rematch</button></div></div>',
     'back-dialog': dlg('pickup-btn-leave', '✕', 'Cancel'),
     'confirm-dialog': dlg('pickup-btn-take', '✓', 'Confirm'),
   };

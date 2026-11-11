@@ -45150,7 +45150,7 @@
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -52460,12 +52460,24 @@
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
             const streakHtml = !isNoContest && playerWon && careerStats.currentWinStreak >= 2 ? `<span class="vic-streak">🔥 ${careerStats.currentWinStreak} WIN STREAK</span>` : '';
-            const namePrefix = _profileUsername ? `<b class="vic-callsign">${escapeHtml(_profileUsername)}</b> ` : '';
+            /* THE NAME ON THE RESULT (playtest 2026-11-05 F5: "Player is defeated."): a profile nobody named yet is "You",
+               never the placeholder "Player"; a named profile keeps its call sign */
+            const _named = !!_profileUsername && String(_profileUsername).trim().toLowerCase() !== 'player';
+            const namePrefix = `<b class="vic-callsign">${_named ? escapeHtml(_profileUsername) : 'You'}</b> `;
+            const _vHold = _named ? 'holds the field.' : 'hold the field.', _vDown = _named ? 'is defeated' : 'are defeated';
+            /* a forfeit says so, and who (the pause menu's FORFEIT, a seat that never reconnected, a turn held too long) */
+            const _ff = (!isNoContest && !_encEsc) ? _forfeitOfThisMatch() : null;
+            const _ffMine = !!_ff && _ff.by === (ONLINE_RULES.active ? viewer : 1);
+            const _ffLine = !_ff ? '' : _ffMine
+                ? ({ disconnect: 'You were disconnected too long. The match is forfeit.', timer: 'You held the turn too long. The match is forfeit.' }[_ff.how] || 'You forfeited the match.')
+                : ({ disconnect: 'Your opponent did not reconnect in time. They forfeit the match.', timer: 'Your opponent held the turn too long. They forfeit the match.' }[_ff.how] || 'Your opponent forfeited the match.');
+            resultOverlay.classList.toggle('vic-online', !!ONLINE_RULES.active);
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
                 : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
-                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is defeated · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is defeated.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
+                : _ffLine ? (escapeHtml(_ffLine) + ' ' + streakHtml)
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + _vDown + ' · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? _vHold : _vDown + '.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -52592,6 +52604,7 @@
                 facts.push(_winCondLabels[state._winCondition] + (_sc ? ` <b class="vic-fact-score"><span class="p1">${_sc[0]}</span> – <span class="p2">${_sc[1]}</span></b>` : ''));
             }
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
+            if (_ff) facts.push('<b class="vic-fact-forfeit">🏳 FORFEIT</b>');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
             } catch (e) { _vicFail('the fact line', e); }
@@ -52678,12 +52691,21 @@
 
             } catch (e) { _vicFail('rewards + achievements', e); }
             try {
+            /* the bar's own buttons, as they stand now (the bar is rebuilt after an encounter, so never the boot-time handle) */
+            const _nmb = document.getElementById('nextMatchBtn') || nextMatchBtn, _sob = document.getElementById('startOverBtn');
             if (ONLINE_RULES.active) {
-                if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
-                if (document.getElementById('startOverBtn')) document.getElementById('startOverBtn').style.display = 'none';
+                if (_nmb) _nmb.textContent = 'Request Rematch';
+                if (_sob) _sob.style.display = 'none';
+                _vicRematchNote('Both players must agree to a rematch. Same room, same round count.', '');
+            } else {
+                /* an offline result after an online one (end screens 2026-11-10: VS CPU after a room showed "RECONNECTING…"
+                   on the next-match button and no BACK TO PARTY BUILDER): the bar's offline words and buttons come back */
+                if (_nmb && !_nmb.classList.contains('enc-return')) _nmb.textContent = 'Find Next Match';
+                if (_sob) _sob.style.display = '';
+                _vicRematchNote('', '');
             }
 
-            nextMatchBtn.disabled = false;
+            if (_nmb) _nmb.disabled = false;
             if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
 
@@ -55617,7 +55639,7 @@
             hideResultOverlay();
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -55790,7 +55812,7 @@
                 state.matchNumber += 1;
                 state.winner = null;
                 state._winLogged = false;
-                state._winCondition = null; state._winCause = null;
+                state._winCondition = null; state._winCause = null; state._forfeit = null;
                 state._endingReason = null;
                 state._stalemateRounds = 0;
                 state._lastActivityTotal = 0;
@@ -55977,7 +55999,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56418,7 +56440,7 @@
             state.selectedTool = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56453,7 +56475,7 @@
             state.pendingTarget = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56491,6 +56513,28 @@
             }
         }
 
+        /* THE FORFEIT ON THE RECORD (end screens 2026-11-10: a forfeit's result screen read like any win or loss, "4 v 4
+           STANDING" and nothing else): who gave the match up and how (quit = the pause menu, disconnect = never came back,
+           timer = held the turn too long). Cleared wherever a match clears its win condition (startTime is each seat's
+           own, so no key could match across seats). Plain data (a seat number), it rides the host's snapshot to the
+           guest; the result screen prints it as a fact and a subtitle. No rule reads it. */
+        function _forfeitMark(by, how) { state._forfeit = { by: by, how: how || 'quit' }; }
+        function _forfeitOfThisMatch() { const f = state._forfeit; return (f && state.winner && (f.by === 1 || f.by === 2) && f.by !== state.winner) ? f : null; }
+        window._forfeitMark = _forfeitMark;
+        /* THE REMATCH LINE: one status line over the result screen's command bar (online: who asked, who is waiting, who
+           left, how long a dropped seat is held). online.js writes it wherever it sets the rematch button. */
+        function _vicRematchNote(text, tone) {
+            let n = document.getElementById('vicRematchNote');
+            if (!n) {
+                if (!resultOverlay || !text) return;
+                n = document.createElement('div'); n.id = 'vicRematchNote'; n.setAttribute('role', 'status');
+                resultOverlay.appendChild(n);
+            }
+            n.textContent = text || '';
+            n.className = 'vic-rematch-note' + (text ? ' on' : '') + (tone ? ' ' + tone : '');
+        }
+        window._vicRematchNote = _vicRematchNote;
+
         function forfeitMatch() {
             if (state.phase !== 'battle' || state.winner) return;
             clearAiSafetyTimer();
@@ -56498,6 +56542,7 @@
             const localP = getLocalPlayer();
             const enemyP = localP === 1 ? 2 : 1;
             state.winner = enemyP;
+            _forfeitMark(localP, 'quit');
             addLog(`Player ${localP} forfeits the match.`);
             checkWin();
         }
@@ -56581,7 +56626,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56787,7 +56832,7 @@
                 2: null
             };
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;

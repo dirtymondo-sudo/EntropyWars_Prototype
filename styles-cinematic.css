@@ -828,6 +828,44 @@
            through the DEFEAT title) */
         body.vic-podium #css2dOverlay, body.vic-podium #eorPhaseChip, body.vic-podium .acam-chrome { visibility: hidden !important; }
 
+        /* ══════════ THE END SCREENS READ (2026-11-10, the PvP demo pass) ══════════
+           Over a bright board (sand, snow, lava) the line under VICTORY / DEFEAT, the fact line and the debrief's
+           rows washed out: thin light text straight on the scene. Each now sits on its own dark window (square, a
+           hairline frame: the PS1 window), the debrief's sheets get a dark backing under whatever plate the HUD theme
+           draws (a glass theme stays glass at its frame, the rows read), and online the head starts under the room chip. */
+        .result-overlay .vic-kicker { color: #e6e9f8; text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.95), 0 0 14px rgba(0, 0, 0, 0.8); }
+        .result-overlay .vic-subtitle, .result-overlay .vic-match-info {
+            width: max-content; max-width: 94%; box-sizing: border-box; margin-left: auto; margin-right: auto;
+            padding: 7px 14px; background: rgba(4, 5, 14, 0.82); border: 1px solid rgba(214, 222, 255, 0.26);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 6px 18px rgba(0, 0, 0, 0.45);
+            overflow-wrap: anywhere;
+        }
+        .result-overlay .vic-subtitle { color: #eef1ff; line-height: 1.5; }
+        .result-overlay .vic-match-info { color: #d5d9ee; margin-top: 6px; }
+        .result-overlay .vic-fact-dot { color: #8f97c4; }
+        .vic-fact-forfeit { color: #ffc9c9; font-weight: 700; white-space: nowrap; }
+        .result-overlay.vic-3d .vic-sheets { background: rgba(4, 5, 14, 0.7); }
+        .result-overlay.vic-online .vic-title-wrap { top: max(38px, clamp(18px, 4.5vh, 44px)); }
+        /* THE REMATCH LINE: the status over the command bar's buttons (battle.js _vicRematchNote). The bar grows by the
+           line's height, so the stage's plates and the debrief stay clear of it. */
+        .vic-rematch-note { display: none; }
+        .result-overlay.vic-online { --vic-note-h: 26px; --vic-bar-h: 92px; }
+        .result-overlay.vic-online .vic-bottom { padding-top: var(--vic-note-h); box-sizing: border-box; }
+        .result-overlay.vic-online .vic-rematch-note.on {
+            display: flex; align-items: center; justify-content: center; text-align: center;
+            position: absolute; left: 0; right: 0; bottom: calc(var(--vic-bar-h) - var(--vic-note-h) - 2px); min-height: var(--vic-note-h);
+            padding: 2px 12px; box-sizing: border-box; z-index: 41; pointer-events: none;
+            font: 700 11px/1.25 'IBM Plex Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase;
+            color: #d5d9ee; text-shadow: 0 1px 0 #000;
+            opacity: 0; animation: vicFadeUp 0.5s ease 2s forwards;
+        }
+        .result-overlay.vic-online .vic-rematch-note.on.call { color: #7dffae; opacity: 1; animation: vicNoteCall 1.1s ease-in-out infinite; }
+        .result-overlay.vic-online .vic-rematch-note.on.wait { color: #ffe08a; opacity: 1; animation: none; }
+        .result-overlay.vic-online .vic-rematch-note.on.off { color: #ff9a9a; opacity: 1; animation: none; }
+        /* a short screen: the case stamp shrinks so it never lands on the head's lines */
+        @media (max-height: 620px) { .result-overlay .door-result-stamp { zoom: 0.5; } }
+        @keyframes vicNoteCall { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
         /* ── narrow: the panel becomes the lower half, the stage the upper ── */
         @media (max-width: 900px), (max-height: 520px) {
             .result-overlay { --vic-panel-w: 0px; --vic-bar-h: 58px; }
@@ -840,8 +878,12 @@
                 transform: translateY(24px);
             }
             .vic-party { right: 0; bottom: 50%; height: 34%; }
-            .vic-bottom { gap: 6px; padding: 0 8px; overflow-x: auto; justify-content: flex-start; }
-            .vic-bottom button { padding: 8px 12px; font-size: 10px; white-space: nowrap; }
+            /* no sideways scroll (the house rule): the buttons share the row, a long label breaks onto two lines inside
+               its own button, and the bar keeps its height */
+            .result-overlay.vic-online { --vic-bar-h: 84px; }
+            .vic-bottom { gap: 6px; padding: 0 8px; overflow: hidden; justify-content: center; }
+            .result-overlay .vic-bottom button { flex: 0 1 auto; min-width: 0; padding: 6px 10px; font-size: 10px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+            .result-overlay.vic-online .vic-rematch-note.on { font-size: 10px; letter-spacing: 0.06em; }
         }
         @media (prefers-reduced-motion: reduce) {
             .result-overlay *, .result-overlay *::before, .result-overlay *::after { animation-duration: 0.01s !important; animation-delay: 0s !important; }
@@ -4865,6 +4907,15 @@ body.enc-arrived .ew-turn-col { transition: opacity .62s cubic-bezier(.22, .61, 
 .ew-cine-btn { font: inherit; letter-spacing: inherit; color: #e8dcb5; background: #1a1915; border: 1px solid rgba(232, 220, 181, 0.25); border-radius: 3px; padding: 6px 9px; cursor: pointer; }
 .ew-cine-btn:hover { border-color: #ffcd6b; color: #ffcd6b; }
 .ew-cine-btn.hot { background: #5a1410; border-color: #ff6a5c; color: #ffd8d2; }
+/* BACK IS RED (the house rule): the panel's EXIT */
+.ew-cine-btn.back { background: #3a0f0c; border-color: #ff6a5c; color: #ffb4aa; }
+.ew-cine-btn.back:hover { background: #5a1410; border-color: #ff8a7c; color: #fff; }
+/* the key line while the mouse flies the camera (F4, 2026-11-10): the way out never leaves the screen */
+.ew-cine-hint { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 2147483000; max-width: calc(100vw - 24px); box-sizing: border-box;
+    padding: 7px 12px; background: rgba(8, 9, 7, 0.82); border: 1px solid rgba(232, 220, 181, 0.22); border-radius: 3px;
+    font: 11px/1.5 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: #b9ad88; text-align: center; pointer-events: none; display: none; }
+.ew-cine-hint.on { display: block; }
+.ew-cine-hint b { color: #ffcd6b; font-weight: 700; }
 .ew-cine-sl { display: inline-flex; align-items: center; gap: 6px; color: #9a8f6e; }
 .ew-cine-sl input[type=range] { width: 92px; accent-color: #ffcd6b; }
 .ew-cine-sl input[type=number] { width: 52px; font: inherit; color: #e8dcb5; background: #1a1915; border: 1px solid rgba(232, 220, 181, 0.25); border-radius: 3px; padding: 4px; }
