@@ -22667,13 +22667,17 @@ const ThreeRenderer = (function () {
         var dmg = (badges.dmg > 0) ? Math.round(badges.dmg) : 0;
         var stIds = (Array.isArray(badges.st) && typeof STATUS_DEFS !== 'undefined')
             ? badges.st.filter(function (id) { return !!STATUS_DEFS[id]; }) : [];
-        if (!showEye && !dmg && !stIds.length) return null;
+        /* THE CLIMB PREVIEW (2026-11-11): plain word chips ({ t, c }) — "CLIMB" / "HANG" + "ENDS TURN" on a climb's ghost */
+        var tagList = Array.isArray(badges.tags) ? badges.tags.filter(function (g) { return g && g.t; }) : [];
+        if (!showEye && !dmg && !stIds.length && !tagList.length) return null;
         var ch = 128;
         var CHIP_H = 58, CHIP_PAD = 12, CHIP_GAP = 8, CHIP_FONT = '700 38px "DotGothic16", monospace';
         var mc = document.createElement('canvas').getContext('2d');
         if (!mc) return null;
         mc.font = CHIP_FONT;
         var stLabels = stIds.map(function (id) { return String(STATUS_DEFS[id].short || id).toUpperCase(); });
+        var stCols = stIds.map(function (id) { return _tpStatusColor(id); });
+        for (var _tg = 0; _tg < tagList.length; _tg++) { stLabels.push(String(tagList[_tg].t).toUpperCase()); stCols.push(tagList[_tg].c || '#d9a066'); }
         var stWidths = stLabels.map(function (s) { return Math.ceil(mc.measureText(s).width) + CHIP_PAD * 2; });
         var chipsW = 0;
         for (var _sw = 0; _sw < stWidths.length; _sw++) chipsW += stWidths[_sw] + (_sw ? CHIP_GAP : 0);
@@ -22682,7 +22686,7 @@ const ThreeRenderer = (function () {
         mc.font = '700 56px "Segoe UI", Arial, sans-serif';
         var eyeW = showEye ? 74 : 0;
         var dmgW = dmgText ? Math.ceil(mc.measureText(dmgText).width) : 0;
-        var parts = (showEye ? 1 : 0) + (dmg ? 1 : 0) + (stIds.length ? 1 : 0);
+        var parts = (showEye ? 1 : 0) + (dmg ? 1 : 0) + (stLabels.length ? 1 : 0);
         var gap = 16;
         var pad = 22;
         var innerW = eyeW + dmgW + chipsW + gap * Math.max(0, parts - 1);
@@ -22710,7 +22714,7 @@ const ThreeRenderer = (function () {
         ctx.lineWidth = 3;
         ctx.strokeStyle = badges.eye === 'seen' ? 'rgba(255, 90, 70, 0.9)'
             : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)'
-            : (!dmg && stIds.length ? _tpStatusColor(stIds[0]) : 'rgba(255, 84, 68, 0.9)'));
+            : (!dmg && stLabels.length ? stCols[0] : 'rgba(255, 84, 68, 0.9)'));
         ctx.stroke();
 
         var cx = px + pad;
@@ -22727,15 +22731,15 @@ const ThreeRenderer = (function () {
             ctx.fillText(dmgText, cx, cy + 3);
             cx += dmgW + gap;
         }
-        if (stIds.length) {
+        if (stLabels.length) {
             ctx.font = CHIP_FONT;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             var cTop = cy - CHIP_H / 2;
-            for (var _sc = 0; _sc < stIds.length; _sc++) {
+            for (var _sc = 0; _sc < stLabels.length; _sc++) {
                 var _cw = stWidths[_sc];
                 ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(cx + 1, cTop + 1, _cw, CHIP_H);   // the chip's drop shadow
-                ctx.fillStyle = _tpStatusColor(stIds[_sc]); ctx.fillRect(cx, cTop, _cw, CHIP_H);
+                ctx.fillStyle = stCols[_sc]; ctx.fillRect(cx, cTop, _cw, CHIP_H);
                 ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3; ctx.strokeRect(cx + 1.5, cTop + 1.5, _cw - 3, CHIP_H - 3);
                 ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy + 2);
                 ctx.fillStyle = '#fff'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy);
@@ -22769,6 +22773,10 @@ const ThreeRenderer = (function () {
                (the same list the route arrow draws; an `apex` waypoint is a
                jump leg's arc top, so [a, apex, b] plays as one jump).
        kind  = 'walk' (default) | 'fly' | 'dash' | 'leap' | 'blink' | 'shove'.
+       A waypoint flagged climb ('up' | 'down' | 'mantle', battle.js THE CLIMB PREVIEW) is a leg on a wall's face:
+               the body goes straight up / down it with the board's own climb clip (down: played backwards, as the
+               board does), 'mantle' is the pull-up over the top; `face: { x, y }` on it = the tile the body faces.
+               motion.hang = the move ends hanging on the wall: the clip freezes there, as the board's hang does.
        castSpell / attack = after arriving, play that spell's / the basic
                attack's clip (the board's own cast / attack chains).
        afterTag = start once the ghost with that tag has arrived (a body a
@@ -22816,10 +22824,13 @@ const ThreeRenderer = (function () {
             var lt = kind === 'leap' ? 'jump' : (kind === 'blink' ? 'blink' : kind);
             /* a waypoint flagged slide (battle.js THE SLIDE FORECAST): the body glides that leg on the ice, no steps */
             if (wps[i].slide) lt = 'slide';
+            if (wps[i].climb) lt = (wps[i].climb === 'mantle') ? 'mantle' : 'climb';
             // a walk leg that climbs / drops a lot is the hop the board plays there
             var hop = (lt === 'walk' && Math.abs(nb.y - prev.y) > ts * 0.6);
             if (hop) lt = 'jump';
             var leg = { a: prev, b: nb, type: lt };
+            if (lt === 'climb' && wps[i].climb === 'down') leg.rev = true;
+            if (wps[i].face) leg.faceYaw = Math.atan2(wps[i].face.x * ts + ts / 2 - gp.x - nb.x, wps[i].face.y * ts + ts / 2 - gp.z - nb.z);
             if (lt === 'jump') {
                 var fl = Math.sqrt((nb.x - prev.x) * (nb.x - prev.x) + (nb.z - prev.z) * (nb.z - prev.z));
                 var ap = Math.max(prev.y, nb.y) + (hop ? ts * 0.35 : Math.max(ts * 0.9, fl * 0.32));
@@ -22841,8 +22852,10 @@ const ThreeRenderer = (function () {
                 : (L.type === 'slide') ? Math.max(0.09, d * 0.09)
                 : (L.type === 'blink') ? 0.0001
                 : (L.type === 'fly') ? Math.max(0.3, d * 0.32 + dv * 0.2)
+                : (L.type === 'climb') ? Math.max(0.6, Math.min(1.6, dv * 0.5))
+                : (L.type === 'mantle') ? 0.5
                 : Math.max(0.2, d * 0.3 + dv * 0.15);
-            L.yaw = (Math.abs(dx) + Math.abs(dz) > ts * 0.05) ? Math.atan2(dx, dz) : null;
+            L.yaw = (L.faceYaw !== undefined) ? L.faceYaw : (Math.abs(dx) + Math.abs(dz) > ts * 0.05) ? Math.atan2(dx, dz) : null;
             L.t0 = travel;
             travel += L.dur;
         }
@@ -22857,7 +22870,8 @@ const ThreeRenderer = (function () {
         var m = {
             legs: legs, kind: kind, mover: mover, baseY: moverBaseY, isModel: isModel,
             hold: 0.35 + delay, travel: travel, mixer: null, acts: {}, cur: null, curLeg: -1,
-            yaw: null, castLen: 0, noYaw: kind === 'shove'
+            yaw: null, castLen: 0, noYaw: kind === 'shove',
+            hang: !!motion.hang && legs[legs.length - 1].type === 'climb'
         };
         var face = motion.faceTo;
         m.endYaw = face ? Math.atan2(face.x * ts + ts / 2 - gp.x - legs[legs.length - 1].b.x, face.y * ts + ts / 2 - gp.z - legs[legs.length - 1].b.z) : null;
@@ -22879,7 +22893,9 @@ const ThreeRenderer = (function () {
                     jump: ['jump', 'walk', 'idle'],
                     shove: ['hitHeavy', 'hit', 'idle'],
                     slide: ['idle'],
-                    blink: ['idle']
+                    blink: ['idle'],
+                    climb: ['climbWall', 'walk', 'idle'],
+                    mantle: ['climbMantle', 'jump', 'idle']
                 };
                 if (motion.castSpell && typeof classifySpellAnimKind === 'function') {
                     want.cast = _castChainFor(classifySpellAnimKind(motion.castSpell));
@@ -22910,13 +22926,19 @@ const ThreeRenderer = (function () {
         return m;
     }
 
-    function _ghostMotionPlay(m, slot) {
+    function _ghostMotionPlay(m, slot, rev) {
         var next = m.acts[slot] || m.acts.idle || null;
         if (!next) return;
         var prev = m.cur;
         m.cur = next;
         next.enabled = true;
         next.reset();
+        /* a climb down is the climb clip played backwards (the board's own rule, _updateBattleClimbers) */
+        if (slot === 'climb' && m.acts.climb === next) {
+            var _cts = Math.abs(next.timeScale) || 1;
+            next.timeScale = rev ? -_cts : _cts;
+            if (rev) next.time = next.getClip().duration;
+        }
         next.play();
         if (prev && prev !== next) next.crossFadeFrom(prev, 0.12, false);
         else if (prev === next) { /* restarted in place (a new jump leg) */ }
@@ -22932,7 +22954,7 @@ const ThreeRenderer = (function () {
     /* One frame of a motion ghost at loop time t (s). Returns the seam fade. */
     function _ghostMotionStep(m, t, dt, T) {
         var legs = m.legs, last = legs[legs.length - 1];
-        var p, slot, legIdx = -1, yawWant = null, jumpLeg = null;
+        var p, slot, legIdx = -1, yawWant = null, jumpLeg = null, hangNow = false;
         if (t < m.hold) {
             p = legs[0].a; yawWant = m.startYaw;
             slot = (m.blinkCast && t >= m.blinkCastAt) ? 'cast' : 'idle';
@@ -22955,6 +22977,9 @@ const ThreeRenderer = (function () {
             }
             slot = L.type === 'blink' ? 'idle' : L.type;
             yawWant = L.yaw;
+        } else if (m.hang) {
+            /* the move ends hanging on the wall: the body stays on the face, the climb clip frozen where it stopped */
+            p = last.b; slot = 'climb'; legIdx = legs.length - 1; yawWant = last.yaw; hangNow = true;
         } else {
             p = last.b;
             slot = (m.castLen && t < m.arrive + m.castLen + 0.05) ? 'cast' : 'idle';
@@ -22963,12 +22988,12 @@ const ThreeRenderer = (function () {
         if (m.kind === 'blink' && t >= m.hold) { p = last.b; }
         // Clip switching: a new slot, or a new jump leg (each jump restarts its clip).
         if (m.mixer) {
-            var key = slot + (jumpLeg ? ':' + legIdx : '');
+            var key = slot + ((jumpLeg || slot === 'climb' || slot === 'mantle') ? ':' + legIdx : '');
             if (key !== m.curKey) {
                 m.curKey = key;
-                _ghostMotionPlay(m, slot);
+                _ghostMotionPlay(m, slot, legIdx >= 0 && !!legs[legIdx].rev);
             }
-            m.mixer.update(dt);
+            m.mixer.update(hangNow ? 0 : dt);
         }
         var mv = m.mover;
         if (mv) {
@@ -23140,7 +23165,7 @@ const ThreeRenderer = (function () {
         }
 
         // Warning badges (eye / -N damage / a zone's status chips) pinned above the hologram's head.
-        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0 || (opts.badges.st && opts.badges.st.length))) {
+        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0 || (opts.badges.st && opts.badges.st.length) || (opts.badges.tags && opts.badges.tags.length))) {
             try {
                 var _badge = _makeGhostBadgeSprite(opts.badges, ts);
                 if (_badge) {
@@ -49416,7 +49441,7 @@ const ThreeRenderer = (function () {
         if (typeof state === 'undefined') return;
 
         if (state._moveHoverActive
-            && state.actionMode !== 'move' && state.actionMode !== 'jump'
+            && state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb'
             && typeof window._clearMoveHoverPreview === 'function') {
             window._clearMoveHoverPreview();
         }
