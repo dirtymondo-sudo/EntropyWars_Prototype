@@ -62178,8 +62178,9 @@ function hqFieldBoxInfo(roomId, feet, cellM) {
         return best;
     };
     const AX = axis(W, 'w', 'e'), AZ = axis(D, 'n', 's');
-    const floorKey = known(S.floor) ? S.floor : 'concrete_floor';
-    const wallKey = known(S.wall) ? S.wall : (known(S.floor) ? S.floor : 'cave_wall');
+    const sF = hqRuleKeyOf(S.floor), sW = hqRuleKeyOf(S.wall);   // THE CALM LOOK: a calm sheet picked by name plays as the key it stands in for
+    const floorKey = known(sF) ? sF : 'concrete_floor';
+    const wallKey = known(sW) ? sW : (known(sF) ? sF : 'cave_wall');
     const covers = hqFieldPropCovers(room);
     const gal = hqFieldGallery(room);
     const cells = [];
@@ -62300,13 +62301,14 @@ function hqFieldTerrainInfo(roomId, cellM) {
     const w = GO.x ? Math.max(1, 2 * Math.floor((halfW - C / 2) / C) + 1) : Math.max(1, 2 * Math.floor(halfW / C));
     const h = GO.z ? Math.max(1, 2 * Math.floor((halfD - C / 2) / C) + 1) : Math.max(1, 2 * Math.floor(halfD / C));
     const x0 = -(w / 2) * C, z0 = -(h / 2) * C;
-    const floorKey = known(info.floor) ? info.floor : (known(room.shell && room.shell.floor) ? room.shell.floor : 'grass_2');
-    const rockKey = known(info.cliff) ? info.cliff : 'rock_wall_1';
-    const pathKey = known(info.path) ? info.path : floorKey;
+    const rF = hqRuleKeyOf(info.floor), rS = hqRuleKeyOf(room.shell && room.shell.floor), rC = hqRuleKeyOf(info.cliff), rP = hqRuleKeyOf(info.path);   // THE CALM LOOK: a calm sheet picked by name plays as the key it stands in for
+    const floorKey = known(rF) ? rF : (known(rS) ? rS : 'grass_2');
+    const rockKey = known(rC) ? rC : 'rock_wall_1';
+    const pathKey = known(rP) ? rP : floorKey;
     const trees = (info.trees || []).filter(hqLgChessOn).concat(info.thicket || []);   // THE CHESS POSITIONS: only the current position's pieces
     const treeAt = (x, z) => { for (const t of trees) { const r = (t.r || R.treeR) + TR.treePad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; } return false; };
     const onPath = (x, z) => { for (const p of (info.paths || [])) if (_hqTPolyDist(x, z, p.pts).d <= p.w / 2) return true; return false; };
-    const onBoard = (x, z) => { const sq = (info.boards && info.boards.length) ? hqTerrainBoardAt(info.boards, x, z) : null; return (sq && known(sq.key)) ? sq.key : null; };
+    const onBoard = (x, z) => { const sq = (info.boards && info.boards.length) ? hqTerrainBoardAt(info.boards, x, z) : null; const bk = sq ? hqRuleKeyOf(sq.key) : null; return (bk && known(bk)) ? bk : null; };
     const sub = Math.max(1, TR.sub | 0), cover = Math.min(sub * sub, TR.cover | 0);
     const ti_void = (x, z) => !!(info.void && hqTerrainVoidAt(info, x, z));
     /* THE ISLAND (2026-10-20): a sea that says `field: true` is read like a pool — deeper than the wade is a hazard (the walker's swim
@@ -62780,7 +62782,7 @@ function hqFieldRasterCave(roomId, info, ox, oz, W, H, feet) {
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
-    return { room: roomId, ox, oz, S: Math.max(W, H), W, H, C, L: info.L, info, cave: true, cells, rockTile, x0: -info.halfW + ox * C, z0: -info.halfD + oz * C, floorKey: known(info.floor) ? info.floor : 'cave_floor', feet: !!feet };
+    return { room: roomId, ox, oz, S: Math.max(W, H), W, H, C, L: info.L, info, cave: true, cells, rockTile, x0: -info.halfW + ox * C, z0: -info.halfD + oz * C, floorKey: known(hqRuleKeyOf(info.floor)) ? hqRuleKeyOf(info.floor) : 'cave_floor', feet: !!feet };
 }
 /* stage C: the window on the box lattice — an OUT cell (off the lattice, a partial edge cell, the wall) is ROCK in
    the shell's wall sheet; an IN cell is the floor at its cover's band (a prop top / a tread / the slab), `seat`
@@ -63883,6 +63885,69 @@ function hqMapLook(mapId) { const r = (typeof HQ_LOOK_MAPS !== 'undefined' && HQ
     });
 })();
 if (typeof window !== 'undefined') { window.hqMapLook = hqMapLook; window.HQ_LOOK_MAPS = HQ_LOOK_MAPS; }
+/* ══ THE CALM LOOK (2026-11-11, mondo: "make 'calm' versions of all the maps, basically replacing the old sprite terrain textures
+   throughout the game. And make sure any new textures you add are available in the map editor, and keep the old ones there too";
+   the plan he approved: "looks good to me") ══════════════════════════════════════════════════════════════════════════════════════
+   THE CALM GROUND (the three test maps above) is the game's DEFAULT look now: every terrain key with a calm twin below is drawn with
+   the twin's sheet — every board, zone, DOOR HQ room, the team room, the map editor's view — and the key itself never changes (the
+   cell plays by the same rules). His 128 px sheets are never touched: they stay in the bucket and in the editor's picker, a room set
+   to the pixel sheets (the editor's ROOM tab: ground look → pixel, `shell.sheets: 'pixel'`) wears them, and
+   window.EW_NO_CALM_LOOK = true (console) brings all of them back for the next build. three-renderer.js THE CALM GROUND draws it.
+     · sheets: a calm sheet by its own key → [file under `base` (code-made by bake-calm-terrain.py), the terrain whose rules a room's
+       floor / path / cliff plays by when the editor picks the calm sheet BY NAME (hqRuleKeyOf), its name in the editor];
+     · of: his key → the calm sheet it wears (keys left out keep their pixel sheet until their batch lands);
+     · place / sites: a key that reads as another thing on some sites (North Pole's and Antarctica's white ground is snow, not marble);
+     · noTile: the natural sheets the field reads without a repeat (the lava's trick: each area reads its own part of the sheet, same
+       size, one sheet per square). Patterned sheets (blocks, planks, plates) stay on the plain grid: a blend would double the joints. */
+var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possibly before this line runs
+    base: 'https://cdn.entropywars.net/Assets/world/terrain/calm/',
+    sheets: {
+        calm_grass:     ['calm_grass_1.png', 'grass_2', 'Grass'],
+        calm_dirt:      ['calm_dirt_1.png', 'dirt_2', 'Dirt'],
+        calm_rock:      ['calm_rock_1.png', 'rocks_5', 'Rock'],
+        calm_scorched:  ['calm_scorched_1.png', 'scorched', 'Scorched ground'],
+        calm_lava:      ['calm_lava_4.png', 'lava', 'Lava'],
+        calm_marble:    ['calm_marble_1.png', 'marble_light', 'Marble'],
+        calm_snow:      ['calm_snow_1.png', 'marble_light', 'Snow'],
+        calm_ice:       ['calm_ice_1.png', 'ice_1', 'Ice'],
+        calm_hedge:     ['calm_hedge_1.png', 'leaves_3', 'Hedge leaves'],
+        calm_cobble:    ['calm_cobble_1.png', 'cobblestone', 'Cobbles'],
+        calm_darkstone: ['calm_darkstone_1.png', 'bricks_3', 'Dark stone blocks'],
+        calm_planks:    ['calm_planks_1.png', 'wood_planks', 'Deck planks'],
+        calm_shipwood:  ['calm_shipwood_1.png', 'wood', 'Ship wood'],
+        calm_obsidian:  ['calm_obsidian_1.png', 'obsidian', 'Obsidian'],
+        calm_deckplate: ['calm_deckplate_1.png', 'aluminium', 'Deck plate (spaceship)'],   // mondo 11-11: "what about like a metal for the spaceship"
+        calm_gunmetal:  ['calm_gunmetal_1.png', 'gunmetal', 'Gunmetal panels'],
+        calm_rivets:    ['calm_rivets_1.png', 'metal', 'Riveted plate'],
+    },
+    of: {
+        grass: 'calm_grass', grass_2: 'calm_grass', grass_3: 'calm_grass', grass_4: 'calm_grass',
+        dirt: 'calm_dirt', dirt_2: 'calm_dirt', dirt_3: 'calm_dirt',
+        rocks_5: 'calm_rock', cliff: 'calm_rock', stone: 'calm_rock', rock_wall_1: 'calm_rock', rocks_3: 'calm_rock', rock: 'calm_rock',
+        mountain: 'calm_rock', mountain_2: 'calm_rock', mountain_top: 'calm_rock',   // the ground the earth spells raise (terrainType 'mountain')
+        scorched: 'calm_scorched', lava: 'calm_lava',
+        marble: 'calm_marble', marble_2: 'calm_marble', marble_light: 'calm_marble',
+        ice: 'calm_ice', ice_1: 'calm_ice', snow_wall: 'calm_ice',
+        leaves: 'calm_hedge', leaves_2: 'calm_hedge', leaves_3: 'calm_hedge', leaves_4: 'calm_hedge', leaves_5: 'calm_hedge',
+        cobblestone: 'calm_cobble', cobblestone_2: 'calm_cobble',
+        bricks_3: 'calm_darkstone',
+        wood_planks: 'calm_planks', wood: 'calm_shipwood',
+        obsidian: 'calm_obsidian',
+        aluminium: 'calm_deckplate', metal_3: 'calm_deckplate',
+        gunmetal: 'calm_gunmetal', gunmetal_2: 'calm_gunmetal', metal_2: 'calm_gunmetal',
+        metal: 'calm_rivets',
+    },
+    place: { snow: { marble: 'calm_snow', marble_2: 'calm_snow', marble_light: 'calm_snow' } },
+    sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow' },
+    noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1 },
+};
+/* the terrain a texture key plays by: a calm sheet picked by name plays as the key it stands in for; every other key is itself */
+function hqRuleKeyOf(k) { const S = (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN) ? CALM_TERRAIN.sheets : null; return (k && S && S[k]) ? S[k][1] : k; }
+/* every calm sheet is a texture key too (the editor's picker, the renderer's sheet reads, the 2D board) — never a terrain of its own */
+(function calmTerrainRegister() {
+    try { if (typeof TERRAIN_SPRITES === 'undefined' || !TERRAIN_SPRITES) return; Object.keys(CALM_TERRAIN.sheets).forEach(k => { if (!TERRAIN_SPRITES[k]) TERRAIN_SPRITES[k] = [CALM_TERRAIN.base + CALM_TERRAIN.sheets[k][0]]; }); } catch (e) {}
+})();
+if (typeof window !== 'undefined') { window.CALM_TERRAIN = CALM_TERRAIN; window.hqRuleKeyOf = hqRuleKeyOf; }
 /* ══ THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... They should be able to be built with
    the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete these
    voxel maps though") ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -64267,7 +64332,7 @@ function hqBattleMapBuild(roomId) {
     if (!b || !b.on || typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return null;
     const id = hqBattleMapId(roomId), H = hqBattleMapHouse(b), S = H.S, sq = hqBattleMapSq(b);
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null, known = k => !!(k && (!tid || tid[k]));
-    const T = room.terrain || {}, base = known(T.floor) ? T.floor : known(room.shell && room.shell.floor) ? room.shell.floor : 'grass_2';
+    const T = room.terrain || {}, tF = hqRuleKeyOf(T.floor), sF = hqRuleKeyOf(room.shell && room.shell.floor), base = known(tF) ? tF : known(sF) ? sF : 'grass_2';   // THE CALM LOOK: a calm sheet by name plays as its key
     const cells = []; for (let y = 0; y < S; y++) { const row = []; for (let x = 0; x < S; x++) row.push({ key: base, tile: 0 }); cells.push(row); }
     const label = String(b.label || room.label || roomId).trim() || roomId;
     _HQ_ARENA_SITE_LAYOUTS[id] = { env: _hqBattleMapEnv(room) };   // hqFieldLayout's source (the arenas keep their Δ's here)

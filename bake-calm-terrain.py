@@ -9,10 +9,12 @@ too. These sheets are made for that: low value, low saturation, low local contra
 Made here from code (numpy + PIL), nothing downloaded: periodic FFT noise (tiles by construction) + drawn grass blades /
 pebbles / cracks. One sheet = one 3.5 m battle square (the game's ONE SPRITE PER SQUARE), 1024 px (~290 px per metre).
 
-  python3 -I bake-calm-terrain.py <out dir>          writes calm_grass.png, calm_dirt.png, calm_rock.png (+ calm_sheets.png preview)
+  python3 -I bake-calm-terrain.py <out dir> [calm_marble_1,calm_ice_1,...]   writes each sheet (+ calm_sheets.png preview)
 
-Upload: node sync-zip.js --put <out>/calm_grass.png Assets/world/terrain/calm/calm_grass.png  (and the other two).
-The game reads them from three-renderer.js THE CALM GROUND (_CALM_SHEETS), only on a map whose entry wears look: 'calm'.
+Upload: node sync-zip.js --put <out>/calm_marble_1.png Assets/world/terrain/calm/calm_marble_1.png  (each new sheet).
+THE ROLLOUT (2026-11-11, mondo: "make calm versions of all the maps"): data.js CALM_TERRAIN lists every sheet, the pixel keys
+each one replaces and the ones without a repeat; three-renderer.js THE CALM LOOK draws them on every map (window.EW_NO_CALM_LOOK
+or a room's ground look = Pixel shows his sheets). Shipped sheets are never rebaked in place: a new bake = a new _N file name.
 """
 import sys, os
 import numpy as np
@@ -309,10 +311,441 @@ def bake_scorched(seed=51):
     return np.clip(rgb, 0, 1)
 
 
+# ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+#  THE CALM ROLLOUT (2026-11-11, mondo: "make 'calm' versions of all the maps, basically replacing the old sprite terrain textures
+#  throughout the game ... make sure any new textures you add are available in the map editor, and keep the old ones there too").
+#  One code-made sheet per family of his 128 px sheets, the same rules as the first five: one sheet = one 3.5 m square, 1024 px,
+#  low value, low saturation, low local contrast, no pixel edges, tiles by construction. Nothing downloaded, no AI art.
+# ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+def aniso_noise(n, lo, hi, seed, ax=1.0, ay=1.0, beta=0.6):
+    """periodic noise stretched by (ax, ay): a frequency counts as sqrt((fx/ax)^2 + (fy/ay)^2) (ax > ay = streaks along x)"""
+    rng = np.random.default_rng(seed)
+    F = np.fft.fft2(rng.standard_normal((n, n)))
+    fx = np.fft.fftfreq(n) * n
+    f = np.sqrt((fx[None, :] * ax) ** 2 + (fx[:, None] * ay) ** 2)
+    soft = np.clip((f - lo * 0.7) / (lo * 0.3 + 1e-6), 0, 1) * np.clip((hi * 1.3 - f) / (hi * 0.3 + 1e-6), 0, 1)
+    amp = np.where(f > 0, (1.0 / np.maximum(f, 1e-6) ** beta) * soft, 0.0)
+    out = np.real(np.fft.ifft2(F * amp)); out -= out.mean(); out /= (np.abs(out).max() + 1e-9)
+    return out
+
+
+def relief(h, k=1.0):
+    """light from the north-west on a height field (wraps): 1 + k * slope toward the light"""
+    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5
+    gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 0.5
+    return 1.0 + k * (-(gx + gy) * 0.7071)
+
+
+def lum(rgb):
+    return 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
+
+
+def settle(rgb, sat=1.0, contrast=1.0):
+    """the environment range: saturation and local contrast pulled toward the sheet's own mean"""
+    L = lum(rgb)[..., None]
+    rgb = L + (rgb - L) * sat
+    Lm = L.mean()
+    return np.clip(Lm + (rgb - Lm) * contrast, 0, 1)
+
+
+def course_cells(n, rows, wlo, whi, seed, along_x=True, offset_rows=True):
+    """running-bond courses (bricks, blocks, planks) that tile: `rows` courses across the sheet, each cut into pieces wlo..whi
+    px long at random. Returns (id, edge distance in px to the piece's border, u 0..1 along the piece, row index)."""
+    rng = np.random.default_rng(seed)
+    rh = n / rows
+    ID = np.zeros((n, n), dtype=np.int64); ED = np.zeros((n, n)); U = np.zeros((n, n)); RW = np.zeros((n, n), dtype=np.int64)
+    a = np.arange(n, dtype=np.float64)
+    nid = 0
+    for r in range(rows):
+        cuts = []; x = rng.uniform(0, whi)
+        while x < n - wlo * 0.5:
+            cuts.append(x); x += rng.uniform(wlo, whi)
+        if not cuts:
+            cuts = [0.0]
+        cuts = np.array(cuts)
+        # the run along the course (wrapping: the last piece runs on into the first)
+        pos = a[:, None]
+        k = np.searchsorted(cuts, a, side='right') - 1           # -1 = before the first cut = the last piece wrapped
+        start = np.where(k >= 0, cuts[np.clip(k, 0, None)], cuts[-1] - n)
+        end = np.where(k + 1 < len(cuts), cuts[np.clip(k + 1, 0, len(cuts) - 1)], cuts[0] + n)
+        kk = np.where(k >= 0, k, len(cuts) - 1)
+        d_run = np.minimum(a - start, end - a)
+        u_run = (a - start) / (end - start)
+        y0 = int(round(r * rh)); y1 = int(round((r + 1) * rh))
+        ys = np.arange(y0, y1)
+        d_cross = np.minimum(ys - y0 + 0.5, y1 - 0.5 - ys)
+        if along_x:
+            ID[y0:y1, :] = nid + kk[None, :]
+            ED[y0:y1, :] = np.minimum(d_run[None, :], d_cross[:, None])
+            U[y0:y1, :] = u_run[None, :]
+            RW[y0:y1, :] = r
+        else:
+            ID[:, y0:y1] = (nid + kk[None, :]).T
+            ED[:, y0:y1] = np.minimum(d_run[None, :], d_cross[:, None]).T
+            U[:, y0:y1] = u_run[None, :].T
+            RW[:, y0:y1] = r
+        nid += len(cuts)
+    return ID, ED, U, RW, nid
+
+
+def per_id(ID, count, seed, lo=-1.0, hi=1.0):
+    return np.random.default_rng(seed).uniform(lo, hi, count + 1)[ID]
+
+
+# ── THE SAND: a dune field seen from above — wind ripples a hand apart running across the sheet, bent by a slow warp, steep on the
+#    lee side, a fine grain, a slow drift of paler / deeper sand. Two colours: the desert's muted gold, the beach's pale cream. ─────
+def bake_sand(seed=61, beach=False):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    warp = fft_noise(N, 1, 4, seed + 1, 0.8) * 1.4 + fft_noise(N, 3, 9, seed + 2, 0.8) * 0.35
+    k = 15 if not beach else 11
+    ph = (xx * 2 / N + yy * k / N) + warp          # ripples ~23 cm apart (integer cycles: tiles)
+    f = ph - np.floor(ph)
+    prof = np.where(f < 0.72, f / 0.72, (1 - f) / 0.28)         # long windward climb, short lee drop
+    prof = prof * prof * (3 - 2 * prof)
+    gate = np.clip(0.65 + 0.6 * fft_noise(N, 2, 7, seed + 3, 0.7), 0.25, 1)
+    h = prof * gate * 1.4 + fft_noise(N, 20, 80, seed + 4, 0.4) * 0.25
+    grain = fft_noise(N, 150, 450, seed + 5, 0.0)
+    macro = fft_noise(N, 1, 4, seed + 6, 0.6)
+    if beach:
+        a, b = hexc(0xa89c80), hexc(0xbdb093)
+    else:
+        a, b = hexc(0xa47c3e), hexc(0xc29755)
+    rgb = lerp(a, b, np.clip(0.5 + 0.45 * macro + 0.12 * grain, 0, 1))
+    rgb *= relief(h * 6.0, 0.55)[..., None]
+    rgb *= (1.0 + 0.035 * grain)[..., None]
+    if beach:   # damp darker patches + a few shell bits
+        damp = np.clip(fft_noise(N, 2, 6, seed + 7, 0.7) * 1.8 - 0.5, 0, 1)
+        rgb = lerp(rgb, rgb * np.array([0.86, 0.86, 0.88]), damp * 0.5)
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    rgb = np.asarray(img).astype(np.float64) / 255.0
+    return settle(rgb, 1.12 if not beach else 0.95, 0.8)
+
+
+# ── THE SNOW: a wind-packed snowfield — soft drifts, faint sastrugi streaks, a cool grey-blue so the units still stand above it ───
+def bake_snow(seed=71):
+    drift = fft_noise(N, 1, 5, seed + 1, 0.7)
+    mid = fft_noise(N, 6, 24, seed + 2, 0.6)
+    streak = aniso_noise(N, 6, 60, seed + 3, 0.25, 1.6, 0.5)
+    fine = fft_noise(N, 120, 400, seed + 4, 0.0)
+    h = drift * 1.2 + mid * 0.35 + streak * 0.25
+    rgb = lerp(hexc(0xa9b1ba), hexc(0xc2c8cd), np.clip(0.55 + 0.35 * drift + 0.1 * mid, 0, 1))
+    rgb *= relief(h * 9.0, 0.5)[..., None]
+    rgb *= (1.0 + 0.02 * fine)[..., None]
+    rng = np.random.default_rng(seed + 5)   # a few glints
+    g = np.zeros((N, N)); idx = rng.integers(0, N, (900, 2)); g[idx[:, 0], idx[:, 1]] = 1
+    g = np.asarray(Image.fromarray((g * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.7))).astype(np.float64) / 255.0
+    rgb = rgb + g[..., None] * 0.25
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.5))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.9, 0.85)
+
+
+# ── THE MARBLE: a pale veined stone, no slab joints (a joint every square would draw the board's grid twice) ─────────────────────
+def bake_marble(seed=81, a=0x7e7a73, b=0x96918a, vein_col=0x5d5a54):   # (the rollout, 11-11: a value step under his own path marble, never the brightest thing on a board)
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    turb = sum(np.abs(fft_noise(N, 2 ** i, 2 ** (i + 1) * 1.5, seed + 1 + i, 0.5)) / (1.6 ** i) for i in range(6))
+    t = (xx * 1 / N + yy * 2 / N) * 2 * np.pi + 5.0 * turb
+    v = np.abs(np.sin(t))
+    gate = np.clip(0.45 + fft_noise(N, 1, 5, seed + 11, 0.6) * 1.3, 0.1, 1)
+    vein = (np.exp(-(v / 0.07) ** 2) * 0.8 + np.exp(-(v / 0.3) ** 2) * 0.22) * gate
+    turb2 = sum(np.abs(fft_noise(N, 2 ** i, 2 ** (i + 1) * 1.5, seed + 20 + i, 0.5)) / (1.5 ** i) for i in range(1, 6))
+    t2 = (xx * 2 / N - yy * 1 / N) * 2 * np.pi + 4.0 * turb2
+    vein2 = np.exp(-(np.abs(np.sin(t2)) / 0.03) ** 2) * np.clip(fft_noise(N, 2, 9, seed + 5, 0.6) * 2.2 - 0.4, 0, 1) * 0.5
+    cloud = fft_noise(N, 1, 24, seed + 6, 1.0)
+    fine = fft_noise(N, 100, 400, seed + 7, 0.1)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.55 + 0.5 * cloud + 0.05 * fine, 0, 1))
+    rgb = lerp(rgb, hexc(vein_col), np.clip(vein + vein2, 0, 1) * 0.85)
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(1.0))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.85, 1.0)
+
+
+# ── THE COBBLES: rounded setts laid close, a hand wide, each its own tone and a soft dome, dark earth and grit in the joints ─────
+def bake_cobble(seed=91, tone=(0x5a554e, 0x726c63), joint=0x3d3731, g=9, spread=0.24):
+    wx = fft_noise(N, 2, 7, seed + 1, 0.8) * 10; wy = fft_noise(N, 2, 7, seed + 2, 0.8) * 10
+    F1, F2, ID = worley(N, g, seed + 3, (wx, wy))
+    e = (F2 - F1) + fft_noise(N, 20, 70, seed + 9, 0.4) * 0.05     # a ragged stone edge
+    r = np.clip(F1 / 0.62, 0, 1)
+    dome = (1 - r * r) * np.clip(e / 0.2, 0, 1) ** 0.5
+    tn = np.random.default_rng(seed + 4).uniform(-1, 1, g * g)[ID]
+    mid = fft_noise(N, 10, 40, seed + 5, 0.5); fine = fft_noise(N, 90, 320, seed + 6, 0.1)
+    st = lerp(hexc(tone[0]), hexc(tone[1]), np.clip(0.5 + spread * tn + 0.14 * mid + 0.12 * fine, 0, 1))
+    st *= relief(dome * 6.0 + fine * 0.5, 0.5)[..., None]
+    st *= (0.88 + 0.12 * dome)[..., None]
+    gap = np.clip((0.06 - e) / 0.035, 0, 1)   # (the rollout, 11-11: setts twice the size, joints thinner and nearer the stone's value: the busy cell net went quiet)
+    soil = hexc(joint) * (1 + 0.25 * fine + 0.15 * mid)[..., None]
+    rgb = lerp(st, soil, gap)
+    moss = np.clip(gap * np.clip(fft_noise(N, 4, 16, seed + 7, 0.6) * 2.4 - 0.6, 0, 1), 0, 1)
+    rgb = lerp(rgb, hexc(0x39402a), moss * 0.55)
+    img = to_img(rgb).convert('RGBA')
+    rng = np.random.default_rng(seed + 8)
+    img = Image.alpha_composite(img, stones(rng, 1600, 1.0, 2.4, [hexc(0x4a443d), hexc(0x5c564e)], 140).filter(ImageFilter.GaussianBlur(0.5)))
+    img = img.convert('RGB').filter(ImageFilter.GaussianBlur(0.55))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.85, 0.8)
+
+
+def wood_grain(seed, ID, n, U, along=0.06, lines=34):
+    """board grain: fine lines running along x, each board its own offset and wobble"""
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    off = per_id(ID, n, seed, 0, 40)
+    wob = aniso_noise(N, 1, 12, seed + 1, 0.1, 1.0, 0.8) * 1.6
+    g = np.sin((yy / N * lines + off + wob) * 2 * np.pi)
+    streak = aniso_noise(N, 4, 200, seed + 2, along, 1.0, 0.3)
+    return 0.55 * g * np.clip(0.6 + streak, 0, 1.4) + 0.45 * streak
+
+
+# ── THE PLANKS: a deck of boards a hand and a half wide, their ends staggered, each its own tone, a long grain, dark seams, nails ──
+def bake_planks(seed=101, rows=16, a=0x553f2c, b=0x7a5c3f):
+    ID, ED, U, RW, n = course_cells(N, rows, N * 0.38, N * 0.85, seed + 1)
+    tn = per_id(ID, n, seed + 2)
+    gr = wood_grain(seed + 3, ID, n, U, 0.05, 90)
+    knots = np.clip(fft_noise(N, 10, 30, seed + 5, 0.5) * 3 - 2.3, 0, 1)
+    wear = fft_noise(N, 2, 8, seed + 6, 0.6)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.42 * tn + 0.12 * wear, 0, 1))
+    rgb *= (1.0 + 0.11 * gr)[..., None]
+    rgb = lerp(rgb, rgb * 0.8, np.clip(-gr * 1.6 - 0.6, 0, 1))   # the darker late-wood lines
+    rgb = lerp(rgb, hexc(0x3b2b1f), knots * 0.55)
+    seam = np.clip(2.2 - ED, 0, 1)
+    bevel = np.clip(ED / 5.0, 0, 1)
+    rgb *= (0.85 + 0.15 * bevel)[..., None]
+    rgb = lerp(rgb, hexc(0x241a12), seam * 0.8)
+    # a pair of nail heads at each board end (dots, not lines)
+    rh = N / rows
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    row_c = (RW + 0.5) * rh
+    L = np.maximum(ED, 1)
+    endu = np.minimum(U, 1 - U)
+    nail = np.zeros((N, N))
+    for off in (-0.27, 0.27):
+        d = np.sqrt(((yy - (row_c + off * rh)) / 1.0) ** 2 + ((endu * 600 - 9) / 1.0) ** 2)
+        nail = np.maximum(nail, np.clip(2.6 - d, 0, 1))
+    rgb = lerp(rgb, hexc(0x2e2a27), nail * 0.75)
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.85, 0.85)
+
+
+# ── THE MOON: grey regolith — fine dust, pebbles, a few worn craters (ragged rims, shallow bowls), never bubbles ───────────────────
+def bake_moon(seed=111, a=0x5c5c5d, b=0x767677, craters=26):
+    rng = np.random.default_rng(seed)
+    macro = fft_noise(N, 1, 5, seed + 1, 0.6); mid = fft_noise(N, 8, 40, seed + 2, 0.5); fine = fft_noise(N, 120, 420, seed + 3, 0.0)
+    rag = fft_noise(N, 12, 40, seed + 4, 0.5)
+    h = macro * 0.8 + mid * 0.35 + fft_noise(N, 40, 140, seed + 5, 0.3) * 0.12
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    for i in range(craters):
+        cx, cy = rng.uniform(0, N, 2); r = rng.uniform(14, 48) if i > 2 else rng.uniform(70, 110)
+        dx = (xx - cx + N / 2) % N - N / 2; dy = (yy - cy + N / 2) % N - N / 2
+        d = np.sqrt(dx * dx + dy * dy) / r + rag * 0.12
+        age = rng.uniform(0.35, 1.0)
+        bowl = np.where(d < 1, -(1 - d * d) * 1.0, 0) + np.exp(-((d - 1.05) / 0.22) ** 2) * 0.3
+        h = h + bowl * (r / 30.0) * age
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.38 * macro + 0.15 * mid + 0.1 * fine, 0, 1))
+    rgb *= relief(h * 7.0, 0.5)[..., None]
+    img = to_img(rgb).convert('RGBA')
+    img = Image.alpha_composite(img, stones(rng, 3200, 0.8, 2.6, [hexc(0x6a6a6b), hexc(0x7a7a7b), hexc(0x545456)], 140).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, stones(rng, 120, 3.0, 7.0, [hexc(0x616163), hexc(0x6f6f70)], 200).filter(ImageFilter.GaussianBlur(0.6)))
+    img = img.convert('RGB').filter(ImageFilter.GaussianBlur(0.5))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.6, 0.9)
+
+
+# ── THE CASTLE STONE: dressed blocks in courses, chipped edges, each block its own tone and pitting, lime joints with moss ─────────
+def bake_blocks(seed=121, rows=8, wlo=0.22, whi=0.42, a=0x57534c, b=0x7d776d, joint=0x34302a, moss=0.8):
+    ID, ED, U, RW, n = course_cells(N, rows, N * wlo, N * whi, seed + 1)
+    chip = fft_noise(N, 10, 50, seed + 7, 0.5) * 4.0 + fft_noise(N, 50, 200, seed + 8, 0.2) * 1.2
+    E = ED + chip                                                   # a ragged, chipped arris
+    tn = per_id(ID, n, seed + 2)
+    warm = per_id(ID, n, seed + 9)
+    mid = fft_noise(N, 6, 30, seed + 3, 0.5); fine = fft_noise(N, 90, 320, seed + 4, 0.1)
+    face = fft_noise(N, 16, 70, seed + 10, 0.4)
+    pit = np.clip(fft_noise(N, 30, 90, seed + 5, 0.3) * 3 - 1.8, 0, 1)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.4 * tn + 0.3 * mid + 0.18 * face + 0.12 * fine, 0, 1))
+    rgb *= (1.0 + 0.05 * warm[..., None] * np.array([1.0, 0.2, -0.8]))
+    rgb *= (1.0 - 0.25 * pit)[..., None]
+    rgb *= relief(face * 2.5 + fine * 0.6, 0.5)[..., None]
+    ao = np.clip(E / 10.0, 0, 1) ** 0.7
+    rgb *= (0.7 + 0.3 * ao)[..., None]
+    jt = np.clip((3.0 - E) / 2.0, 0, 1)
+    rgb = lerp(rgb, hexc(joint) * (1 + 0.2 * fine + 0.1 * mid)[..., None], jt)
+    if moss > 0:
+        m = np.clip(jt * 0.9 + np.clip(-mid * 1.5 - 0.2, 0, 1) * 0.7, 0, 1) * np.clip(fft_noise(N, 3, 14, seed + 6, 0.6) * 2.4 + 0.2, 0, 1)
+        rgb = lerp(rgb, hexc(0x46542e), m * moss)
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.9, 0.85)
+
+
+# ── THE HEDGE (leaves): a clipped hedge / a canopy seen close — overlapping leaves in a few greens, deep shade between the clumps ───
+def leaves_layer(rng, count, r_lo, r_hi, cols, alpha, shade=True):
+    layer = Image.new('RGBA', (N, N), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+    for i in range(count):
+        x, y = rng.uniform(0, N), rng.uniform(0, N); r = rng.uniform(r_lo, r_hi); a = rng.uniform(0, np.pi)
+        el = rng.uniform(0.38, 0.55)
+        c = cols[rng.integers(0, len(cols))] * rng.uniform(0.85, 1.12)
+        col = tuple(int(min(1, v) * 255) for v in c) + (alpha,)
+        hi = tuple(int(min(1, v * 1.12) * 255) for v in c) + (int(alpha * 0.5),)
+        ca, sa = np.cos(a), np.sin(a)
+        k = np.linspace(0, 2 * np.pi, 14, endpoint=False)
+        px = np.cos(k) * r; py = np.sin(k) * r * el
+        pts = np.stack([px * ca - py * sa, px * sa + py * ca], 1)
+        def dr(xx, yy, pts=pts, col=col, hi=hi):
+            if shade:
+                d.polygon([(xx + p[0] + 1.5, yy + p[1] + 2.0) for p in pts], fill=(10, 16, 8, int(col[3] * 0.5)))
+            d.polygon([(xx + p[0], yy + p[1]) for p in pts], fill=col)
+            d.line([(xx - pts[0][0] * 0.8, yy - pts[0][1] * 0.8), (xx + pts[0][0] * 0.8, yy + pts[0][1] * 0.8)], fill=hi, width=1)
+        wrap_strokes(dr, x, y, r_hi + 4)
+    return layer
+
+
+def bake_hedge(seed=131):
+    rng = np.random.default_rng(seed)
+    clump = fft_noise(N, 4, 14, seed + 1, 0.6)
+    base = lerp(hexc(0x141c10), hexc(0x24321a), np.clip(0.5 + 0.6 * clump, 0, 1))
+    img = to_img(base).convert('RGBA')
+    dark = [hexc(0x22301a), hexc(0x2a3a1f), hexc(0x263420)]
+    mid = [hexc(0x34482a), hexc(0x3b5030), hexc(0x405432), hexc(0x36472b)]
+    lit = [hexc(0x4c6338), hexc(0x56693c), hexc(0x4a5f3a)]
+    img = Image.alpha_composite(img, leaves_layer(rng, 5200, 10, 18, dark, 230))
+    img = Image.alpha_composite(img, leaves_layer(rng, 4200, 9, 16, mid, 235))
+    img = Image.alpha_composite(img, leaves_layer(rng, 1500, 8, 14, lit, 220))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.6))).astype(np.float64) / 255.0
+    rgb *= (0.78 + 0.32 * np.clip(0.5 + 0.7 * clump, 0, 1))[..., None]   # the clumps stand out of their own shade
+    return settle(rgb, 0.85, 0.9)
+
+
+# ── THE ICE: blue-grey sea ice — a frosted skin, pressure cracks, clearer darker patches where it is thick and glassy ─────────────
+def bake_ice(seed=141, val=0.8):   # val (the rollout, 11-11): Flash Freeze's ice on a sunlit board read white, so the sheet sits a step lower
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 30; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 30
+    F1, F2, ID = worley(N, 5, seed + 3, (wx, wy)); f1b, f2b, _ = worley(N, 13, seed + 4, (wx * 0.5, wy * 0.5))
+    macro = fft_noise(N, 1, 5, seed + 5, 0.7); mid = fft_noise(N, 6, 30, seed + 6, 0.5); fine = fft_noise(N, 100, 400, seed + 7, 0.0)
+    clear = np.clip(-fft_noise(N, 2, 8, seed + 10, 0.6) * 1.4 + 0.1, 0, 1)
+    rgb = lerp(hexc(0x9eaebb), hexc(0xb6c3cc), np.clip(0.5 + 0.35 * mid + 0.3 * macro, 0, 1))
+    rgb = lerp(rgb, hexc(0x7d93a1), clear * 0.32)
+    crack = np.exp(-((F2 - F1) / 0.02) ** 2) * np.clip(0.5 + fft_noise(N, 3, 12, seed + 8, 0.5) * 1.6, 0, 1)
+    crack2 = np.exp(-((f2b - f1b) / 0.02) ** 2) * np.clip(fft_noise(N, 4, 14, seed + 9, 0.5) * 2.2 - 0.3, 0, 1) * 0.6
+    c = np.clip(crack + crack2, 0, 1)
+    rgb = lerp(rgb, hexc(0x5d7180), c * 0.45)
+    rgb = lerp(rgb, hexc(0xc9d3da), np.clip(np.roll(np.roll(c, 2, 0), 2, 1) - c, 0, 1) * 0.35)   # the lit lip beside a crack
+    rgb *= (1.0 + 0.025 * fine)[..., None]
+    img = to_img(rgb * val).filter(ImageFilter.GaussianBlur(0.7))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.9, 0.9)
+
+
+# ── THE SHIP WOOD: the hull and the bulwarks — wide old boards, dark and weathered, a long grain, tar in the seams ────────────────
+def bake_shipwood(seed=151):
+    return bake_planks(seed, rows=9, a=0x3a2b20, b=0x54402f)
+
+
+# ── THE OBSIDIAN: black volcanic glass — conchoidal flakes (cells with a curved sheen), faint grey edges, no glow ────────────────
+def bake_obsidian(seed=161):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 50; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 50
+    F1, F2, ID = worley(N, 7, seed + 3, (wx, wy))
+    tn = np.random.default_rng(seed + 4).uniform(-1, 1, 49)[ID]
+    mid = fft_noise(N, 6, 30, seed + 5, 0.5); fine = fft_noise(N, 100, 400, seed + 6, 0.1)
+    swirl = np.sin(F1 * 9.0 * 2 * np.pi + tn * 3) * 0.5 + 0.5                 # the ripple rings of a fracture face
+    rgb = lerp(hexc(0x16141a), hexc(0x2a2730), np.clip(0.45 + 0.25 * tn + 0.2 * mid + 0.12 * swirl, 0, 1))
+    edge = np.exp(-((F2 - F1) / 0.03) ** 2)
+    rgb = lerp(rgb, hexc(0x4a4650), edge * 0.45)
+    rgb = lerp(rgb, hexc(0x2e1b18), np.clip(fft_noise(N, 2, 8, seed + 7, 0.6) * 1.5 - 0.4, 0, 1) * 0.35)   # a faint warm cast (Hell)
+    rgb *= (1.0 + 0.03 * fine)[..., None]
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.9, 0.95)
+
+
+# ── THE DARK STONE (bricks_3): a temple's dark dressed stone in courses, no moss ─────────────────────────────────────────────────
+def bake_darkstone(seed=171):
+    return bake_blocks(seed, rows=9, wlo=0.18, whi=0.36, a=0x3f3d3a, b=0x58554f, joint=0x26231f, moss=0.25)
+
+
+# ── THE METALS (mondo 11-11: "what about like a metal for the spaceship") ─────────────────────────────────────────────────────────
+def panel_grid(cols, rows, seed, jitter=0.0):
+    """a grid of panels (cols x rows per sheet, optionally split at random): id, edge distance (px), u, v"""
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    cw, rh = N / cols, N / rows
+    ci = np.floor(xx / cw).astype(int); ri = np.floor(yy / rh).astype(int)
+    u = xx / cw - ci; v = yy / rh - ri
+    ID = ri * cols + ci
+    ED = np.minimum(np.minimum(u, 1 - u) * cw, np.minimum(v, 1 - v) * rh)
+    return ID, ED, u, v, cols * rows
+
+
+def brushed(seed, along_x=True, k=0.03):
+    return aniso_noise(N, 2, 300, seed, k if along_x else 1.0, 1.0 if along_x else k, 0.25)
+
+
+def bake_deckplate(seed=181, a=0x63666a, b=0x797c80):   # (the rollout, 11-11: a step under his aluminium in value)
+    """the spaceship deck: brushed plates two to a square each way, bolted at the corners, scuffed along the walk"""
+    ID, ED, u, v, n = panel_grid(2, 2, seed)
+    tn = per_id(ID, n, seed + 1)
+    dirx = (per_id(ID, n, seed + 2, 0, 1) > 0.5)
+    br = np.where(dirx, brushed(seed + 3, True), brushed(seed + 4, False))
+    mid = fft_noise(N, 3, 20, seed + 5, 0.6); fine = fft_noise(N, 100, 400, seed + 6, 0.0)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.25 * tn + 0.3 * br + 0.15 * mid, 0, 1))
+    scuff = np.clip(fft_noise(N, 6, 40, seed + 7, 0.4) * 2.6 - 1.4, 0, 1)
+    rgb = lerp(rgb, rgb * 0.82, scuff * 0.5)
+    rgb *= (1.0 + 0.02 * fine)[..., None]
+    seam = np.clip(2.4 - ED, 0, 1); lip = np.clip((ED - 2.4) / 3.0, 0, 1) * np.clip((7.0 - ED) / 3.0, 0, 1)
+    rgb *= (1.0 + 0.06 * lip)[..., None]
+    rgb = lerp(rgb, hexc(0x2a2c2f), seam * 0.85)
+    cw = N / 2
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    bolt = np.zeros((N, N))
+    for cu in (0.06, 0.94):
+        for cv in (0.06, 0.94):
+            d = np.sqrt(((u - cu) * cw) ** 2 + ((v - cv) * cw) ** 2)
+            bolt = np.maximum(bolt, np.clip(4.5 - d, 0, 1))
+    rgb = lerp(rgb, hexc(0x55585c), bolt * 0.8)
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.7, 0.85)
+
+
+def bake_gunmetal(seed=191, a=0x3c4147, b=0x51575e):
+    """gunmetal hull panels: big plates in staggered courses, dark seams, a little grime and wear on the edges"""
+    ID, ED, U, RW, n = course_cells(N, 4, N * 0.3, N * 0.55, seed + 1)
+    tn = per_id(ID, n, seed + 2)
+    br = brushed(seed + 3, True, 0.05)
+    mid = fft_noise(N, 3, 20, seed + 4, 0.6); fine = fft_noise(N, 100, 400, seed + 5, 0.0)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.3 * tn + 0.18 * br + 0.2 * mid, 0, 1))
+    grime = np.clip(np.clip((10 - ED) / 10, 0, 1) * (0.5 + fft_noise(N, 8, 40, seed + 6, 0.5)), 0, 1)
+    rgb = lerp(rgb, rgb * 0.75, grime * 0.5)
+    wear = np.clip(fft_noise(N, 30, 120, seed + 7, 0.3) * 3 - 2.0, 0, 1) * np.clip((14 - ED) / 14, 0, 1)
+    rgb = lerp(rgb, hexc(0x7a7f85), wear * 0.4)
+    seam = np.clip(2.6 - ED, 0, 1)
+    rgb = lerp(rgb, hexc(0x1c1e21), seam * 0.85)
+    rgb *= (1.0 + 0.02 * fine)[..., None]
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.8, 0.85)
+
+
+def bake_rivets(seed=201, a=0x5f6266, b=0x777a7e):
+    """riveted plate: four plates a square, a row of rivets along every seam"""
+    ID, ED, u, v, n = panel_grid(2, 2, seed)
+    tn = per_id(ID, n, seed + 1)
+    br = brushed(seed + 2, False, 0.04)
+    mid = fft_noise(N, 3, 20, seed + 3, 0.6); fine = fft_noise(N, 100, 400, seed + 4, 0.0)
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.3 * tn + 0.2 * br + 0.2 * mid, 0, 1))
+    seam = np.clip(2.4 - ED, 0, 1)
+    rgb = lerp(rgb, hexc(0x26282b), seam * 0.85)
+    cw = N / 2
+    # rivets 10 px in from each edge, every 1/12 of the plate
+    t = 1.0 / 12
+    du = np.minimum(u, 1 - u) * cw; dv = np.minimum(v, 1 - v) * cw
+    ru = np.abs(((u / t) % 1) - 0.5) * t * cw; rv = np.abs(((v / t) % 1) - 0.5) * t * cw
+    d1 = np.sqrt((du - 11) ** 2 + rv ** 2); d2 = np.sqrt((dv - 11) ** 2 + ru ** 2)
+    riv = np.clip(4.2 - np.minimum(d1, d2), 0, 1)
+    hl = np.clip(4.2 - np.minimum(np.sqrt((du - 12) ** 2 + (rv + 1) ** 2), np.sqrt((dv - 12) ** 2 + (ru + 1) ** 2)), 0, 1)
+    rgb = lerp(rgb, hexc(0x404346), riv * 0.7)
+    rgb = lerp(rgb, hexc(0x8c8f93), hl * riv * 0.5)
+    rgb *= (1.0 + 0.02 * fine)[..., None]
+    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.75, 0.85)
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else '.'
     only = sys.argv[2].split(',') if len(sys.argv) > 2 else None
-    makers = [('calm_grass', bake_grass), ('calm_dirt', bake_dirt), ('calm_rock', bake_rock), ('calm_lava', bake_lava), ('calm_scorched', bake_scorched)]
+    # the file each sheet ships as (data.js CALM_TERRAIN.sheets); a new bake of a shipped sheet = a new _N name, never the same file
+    makers = [('calm_grass_1', bake_grass), ('calm_dirt_1', bake_dirt), ('calm_rock_1', bake_rock), ('calm_lava_1', bake_lava), ('calm_scorched_1', bake_scorched),
+              # THE ROLLOUT batch 1 (2026-11-11): the demo arenas' sheets + the spaceship metal
+              ('calm_marble_1', bake_marble), ('calm_snow_1', bake_snow), ('calm_ice_1', bake_ice), ('calm_hedge_1', bake_hedge),
+              ('calm_cobble_1', bake_cobble), ('calm_darkstone_1', bake_darkstone), ('calm_planks_1', bake_planks), ('calm_shipwood_1', bake_shipwood),
+              ('calm_obsidian_1', bake_obsidian), ('calm_deckplate_1', bake_deckplate), ('calm_gunmetal_1', bake_gunmetal), ('calm_rivets_1', bake_rivets),
+              # drafted for batch 2 (not shipped yet)
+              ('calm_sand_1', bake_sand), ('calm_sand_beach_1', lambda: bake_sand(beach=True)), ('calm_moon_1', bake_moon), ('calm_blocks_1', bake_blocks)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:

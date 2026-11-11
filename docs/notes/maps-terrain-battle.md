@@ -1856,3 +1856,41 @@ busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. P
   brighter texel: Quilez's texture-variation trick), mip from the plain lookup's derivatives (textureGrad / TSL .grad) so no seams.
   Same sheet, same scale (one sheet still covers the same squares); only which part lands where changes. GLSL _CALM_NOTILE_GLSL
   (lava head only), TSL noTile in _ewNodeCalmFluid; the shared node value noise is _ewNodeCalmNoise. Checked WebGPU + WebGL.
+
+## THE CALM LOOK — the calm ground rolled out as the game's default (2026-11-11, batch 1; data.js + three-renderer.js + editor.js + bake-calm-terrain.py)
+mondo 11-11: "Now can we make "calm" versions of all the maps, basically replacing the old sprite terrain textures throughout the
+game? And make sure any new textures you add are available in the map editor, and keep the old ones there too". Plan approved
+("looks good to me") with two adds: "what about like a metal for the spaceship. And what about the textures that spells make
+terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-files/calm-rollout-20261111/.
+- THE TABLE: data.js CALM_TERRAIN (after HQ_LOOK_MAPS). `sheets` = calm key → [file, rule twin, editor label]; `of` = his key →
+  calm key (a key left out keeps his pixel sheet until its batch); `place` + `sites` = a key that reads as something else on a
+  site (North Pole / Antarctica marble_light = calm_snow); `noTile` = the natural sheets read without a repeat. calmTerrainRegister
+  adds each calm key to TERRAIN_SPRITES (so every picker / _hzTex / _hqTex finds it); hqRuleKeyOf(k) gives a calm key's rule twin
+  and is used everywhere a room's floor / wall / path / cliff / onBoard square becomes a terrain id (box survey, terrain field,
+  cave, hqBattleMapBuild). MF_TID never sees a calm key.
+- THE SWAP (three-renderer.js THE CALM GROUND block): _calmOn() = on unless window.EW_NO_CALM_LOOK, hqMapLook(latch) === 'pixel'
+  or the room's shell.sheets === 'pixel'. _calmKeyOf(key) → calm key (a calm key is itself). The central resolvers carry it:
+  _ewSandUrl (the URL a key wears: _hzTex, _hqTex, getTerrainTexture = voxel boards, tileSwatch = the tile panel picture) and
+  _ewSandPart (the cache suffix '@calm_x', so _hzTex / _fieldStrataMats / box materials cache calm apart from pixel). getTexture
+  gives any '/terrain/calm/' sheet linear filtering + mips + anisotropy 8 (his pixel sheets keep nearest).
+- THE FIELD (_hqTerrainMat): calm roles use calm tints (_CALM.tints per floor set, the grass trio's floorT/pathT/cliffT only
+  where that trio plays those roles, white otherwise); his sheets keep _hqSheetLook. uNt = (floor, path, cliff) no-tile flags;
+  _CALM_NT_GLSL ntRead = the lava's trick for the ground: 8 offsets picked by a slow noise (uv*0.3), single read outside the
+  blend bands (20-80% of each step), blend leans to the brighter texel; derivatives from the plain uv. WebGPU twin in
+  _ewNodeTerrain (rd/tri with nt, payload ntF/ntP/ntC). Program key hqTerrainTri3.
+- THE LIQUIDS: _calmFluidMat (water + lava) now follows _calmOn, so calm water and lava are everywhere from batch 1; the other
+  liquids wait for batch 3.
+- BATCH 1 SHEETS (bake-calm-terrain.py, all code, 1024 px, one per square): marble, snow, ice, hedge, cobble, darkstone, planks,
+  shipwood, obsidian + the spaceship metals deckplate (aluminium / metal_3), gunmetal (gunmetal / gunmetal_2 / metal_2), rivets
+  (metal). Spell ground: ice / snow_wall → calm_ice, scorched, lava, mountain(_2/_top) / rock → calm_rock. Drafted for batch 2:
+  sand, beach sand, moon, castle blocks (not shipped). Value checks against his own sheets on the real boards: marble (his path
+  on Looking-Glass) baked a step UNDER his value (mean sRGB ~135, the first bake read white), deck plate a step under his
+  aluminium (~110), cobbles twice the size with quiet joints (the first bake read as a busy cell net).
+- PROOF: ?ew_gpu=webgl2 is the NODE renderer on a WebGL 2 backend (TSL twins); the classic GLSL path (onBeforeCompile ntRead) is
+  ?ew_gpu=webgl. Prove both plus ?ew_gpu=webgpu.
+- THE EDITOR: the texture picker's first family is CALM (labels like "Snow (plays as marble_light)"), his TERRAIN sheets stay below
+  as "TERRAIN (your pixel sheets)"; ROOM tab "ground look" = Calm / Pixel (shell.sheets 'pixel', Calm writes nothing). A field's
+  swatch shows the sheet the room draws (editor.js calmUrlOf); swatch names wrap (styles-editor.css .ed-sw span), never cut.
+- The three "(Calm)" test maps stay (now the same look as their originals).
+- Batches left: 2 = the other 27 arenas + ooze / poison / plague flesh / crystal / castle-wall spell ground; 3 = DOOR HQ indoor
+  sheets + the other liquids; 4 = the voxel boards + the 2D view.

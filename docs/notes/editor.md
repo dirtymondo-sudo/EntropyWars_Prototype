@@ -1027,3 +1027,8 @@ Everything in the model list should be available in the map editor". Thread "Mak
   queued job), timeout 45 s, and editor.js thumbFill queues the tiles bottom-up so the LIFO pump draws the top tiles first.
 - styles-editor.css `.ed-tile span` wraps (two lines, no ellipsis); road labels shortened ("straight 9.6×4.2 m"). The 1-9 hotbar
   slots (`.ed-hs`) are 96 px wide, 46 px tall and wrap their names too (key hint + toast moved up to clear them).
+- THE CALM LOOK (2026-11-11, mondo: "make sure any new textures you add are available in the map editor, and keep the old ones
+  there too"): texSources lists data.js CALM_TERRAIN first as "CALM · the new realistic sheets" (each tile labelled with its name
+  and the pixel key whose rules it plays by: hqRuleKeyOf); his TERRAIN sheets stay as "TERRAIN (your pixel sheets)". The ROOM tab's
+  "ground look" select (shellHtml) writes shell.sheets = 'pixel' (that room keeps his 128 px sheets) or nothing (Calm, the default).
+  Notes: maps-terrain-battle.md "THE CALM LOOK".
