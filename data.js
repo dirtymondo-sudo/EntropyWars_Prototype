@@ -63557,7 +63557,7 @@ function hqArenaEntry(site, pick, cells, tints, S, opts) {
     const B = HQ_FIELD_RULES.base;
     const room = (DOOR_HQ.rooms || {})[pick.room] || {};
     const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === site) : null;
-    const label = ((meta && meta.label) || site) + ' ' + HQ_ARENA_RULES.label;
+    const label = ((meta && meta.label) || site);   // mondo 11-11: "take 'arena' out of the name of all the maps" (the board wears its site's name; ids unchanged)
     const M = _mfNew({
         name: label, w: S, h: S, base: pick.base || 'grass_2', baseH: B, seed: (typeof hqHash === 'function') ? (hqHash(site + '|arena') % 100000) + 1 : 8008,
         strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: tints ? Object.assign({}, tints) : null,
@@ -63828,7 +63828,7 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
                 const entry = hqArenaEntry(site, pick, hqArenaCells(pick, S), baseEntry.terrainTints || null, S);
                 if (!entry) return;
                 const siteMeta = EW_MAP_META.find(m => m.id === site);
-                entry.name = ((siteMeta && siteMeta.label) || site) + ' ' + HQ_ARENA_RULES.label + ' ' + S + '×' + S;
+                entry.name = ((siteMeta && siteMeta.label) || site) + ' ' + S + '×' + S;
                 PREBUILT_MAPS[id] = entry;
                 const src = _HQ_ARENA_SITE_LAYOUTS[site] || (typeof MAP_LAYOUT_PRESETS !== 'undefined' ? MAP_LAYOUT_PRESETS[base] : null);
                 if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && src) {
@@ -63853,9 +63853,9 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
    9 / 10 / 11 cuts (hqArenaSizesOf), hqSiteId reads it as its site (the sky, the music, the stamps). The look lives in this table, not on
    the entry (hqArenaUpgrade rebuilds the entry in place). hqMapLook(mapId) → the look name or null. */
 var HQ_LOOK_MAPS = {   // var, not const: hqSiteId reads it, and it can run before this line (a const would throw there)
-    prebuilt_fairy_forest_calm_delta: { of: 'prebuilt_fairy_forest_delta', look: 'calm', label: 'Fairy Forest Arena (Calm)' },
-    prebuilt_stonehenge_calm_delta:   { of: 'prebuilt_stonehenge_delta',   look: 'calm', label: 'Stonehenge Arena (Calm)' },     // mondo 11-11: "try it on a couple more maps"
-    prebuilt_hell_calm_delta:         { of: 'prebuilt_hell_delta',         look: 'calm', label: 'Hell Arena (Calm)' },
+    prebuilt_fairy_forest_calm_delta: { of: 'prebuilt_fairy_forest_delta', look: 'calm', label: 'Fairy Forest (Calm)' },
+    prebuilt_stonehenge_calm_delta:   { of: 'prebuilt_stonehenge_delta',   look: 'calm', label: 'Stonehenge (Calm)' },     // mondo 11-11: "try it on a couple more maps"
+    prebuilt_hell_calm_delta:         { of: 'prebuilt_hell_delta',         look: 'calm', label: 'Hell (Calm)' },
 };
 function hqMapLook(mapId) { const r = (typeof HQ_LOOK_MAPS !== 'undefined' && HQ_LOOK_MAPS) ? HQ_LOOK_MAPS[String(mapId || '')] : null; return r ? r.look : null; }
 (function hqLookMapsRegister() {
