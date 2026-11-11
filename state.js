@@ -4476,6 +4476,7 @@
                     if (priorMeta.partyId) rebuiltMeta.partyId = priorMeta.partyId;
                     if ((priorMeta.storyLevel | 0) > 0) { rebuiltMeta.storyLevel = priorMeta.storyLevel | 0; if (Number.isFinite(+priorMeta.storyXp)) rebuiltMeta.storyXp = +priorMeta.storyXp; }   // THE LEVELS (2026-09-21): a story-mode unit is built at its ledger's level (map.js createUnit)
                     ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { if (priorMeta[k] != null && Number.isFinite(+priorMeta[k])) rebuiltMeta[k] = priorMeta[k]; });
+                    if ((priorMeta.ulv | 0) > 0) rebuiltMeta.ulv = priorMeta.ulv | 0;   // THE MASTERY LEVEL (2026-11-11): the online guest's cosmetic level rides to the unit (battle.js _mlStampUnit)
                     if (priorMeta._campaignLevel != null) rebuiltMeta._campaignLevel = priorMeta._campaignLevel;
                     if (priorMeta._campaignXp != null) rebuiltMeta._campaignXp = priorMeta._campaignXp;
                     if (priorMeta._campaignRosterId) rebuiltMeta._campaignRosterId = priorMeta._campaignRosterId;

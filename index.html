@@ -146,7 +146,7 @@
             } catch (e) { out.push('gpu probe failed: ' + e.message); }
             /* WEBGPU_PLAN W0: the mode asked for, what the board renderer really runs on, and the WebGPU adapter */
             try {
-                out.push('webgpu: navigator.gpu ' + (navigator.gpu ? 'present' : 'missing') + '  mode asked: ' + (window.EW_GPU_MODE || 'webgl') +
+                out.push('webgpu: navigator.gpu ' + (navigator.gpu ? 'present' : 'missing') + '  pick: ' + (window.EW_GPU_PICK || 'auto') + '  mode: ' + (window.EW_GPU_MODE || 'webgl') + '  (' + (window.EW_GPU_WHY || '') + ')' +
                     '  node lib: ' + (window.THREE_GPU ? 'loaded' : 'not loaded'));
                 if (window.EW_GPU_ADAPTER) out.push('webgpu adapter: ' + window.EW_GPU_ADAPTER);
                 var st = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.gpuStatus) ? ThreeRenderer.gpuStatus() : null;   // a top-level const: no window.ThreeRenderer
@@ -649,21 +649,101 @@
         /* THE WEBGPU SWITCH (WEBGPU_PLAN.md W0, 2026-10-03): which renderer draws the board, the HQ and the menu scene.
            ?ew_gpu=webgpu  three's WebGPURenderer on WebGPU (it falls back to its WebGL 2 backend by itself without WebGPU)
            ?ew_gpu=webgl2  the same WebGPURenderer forced onto its WebGL 2 backend (separates "WebGPU" from "the node renderer")
-           ?ew_gpu=webgl   the classic WebGLRenderer, the default — nothing changes for a player
+           ?ew_gpu=webgl   the classic WebGLRenderer
+           ?ew_gpu=auto    (the default since 2026-11-11) WebGPU where it works, else the classic renderer: see below
            The query is remembered (localStorage ew_gpu) until another one replaces it. three.webgpu.js shares three.core.js with
            the shim's three.module.js, so every THREE class the game makes is the class the node renderer draws; only the
            renderer and the node classes come from it, on window.THREE_GPU. It is fetched only on the two node modes: this
            classic script writes the module tag, so it runs in document order after the shim and before the deferred game
            scripts (Firefox allows one import map only, so the map above stays the same on every mode). On the node modes the
            W0 picture is plain on purpose (no post, no shader hooks, stand-ins for the shader materials); the frame is the test. */
+        /* WEBGPU BY DEFAULT (2026-11-11, mondo: "make the default game webgpu ... I dont wanna have to type ?ew_gpu=webgpu
+           anymore or tell friends to type that"). The choice (window.EW_GPU_PICK) is 'auto' unless a link (?ew_gpu=auto |
+           webgpu | webgl2 | webgl, remembered) or Settings > Video > Renderer says otherwise. AUTO means WebGPU where it
+           works and the classic WebGLRenderer where it does not:
+           - no navigator.gpu (Firefox without the flag, an old Safari, a plain http page): classic, decided right here;
+           - navigator.gpu is there: the node renderer loads, and a PROBE asks for a real adapter and a device. No adapter, a
+             software adapter (a CPU drawing WebGPU is slower than the classic renderer on the GPU) or a refused device is
+             remembered (localStorage ew_gpu_probe) and Auto draws classic: at once when the board renderer is not made yet
+             (it reads EW_GPU_MODE when it is made), else from the next load (this load three's renderer has already fallen
+             back to its own WebGL 2 backend). A remembered "no" is asked again on every load, so a browser update that
+             brings WebGPU turns it on one load later;
+           - the node renderer's init failing, or its device dying three times, writes the same "no" (three-renderer.js).
+           A picked WebGPU / WebGL is never second-guessed. window.EW_GPU_WHY says why in words (F3, ?ewdiag=1, the row). */
         (function () {
-            var m = null;
+            var pick = null, probe = '';
             try {
-                var q = /[?&]ew_gpu=(webgpu|webgl2|webgl)\b/.exec(location.search);
-                if (q) { m = q[1]; localStorage.setItem('ew_gpu', m); } else m = localStorage.getItem('ew_gpu');
+                var q = /[?&]ew_gpu=(auto|webgpu|webgl2|webgl)\b/.exec(location.search);
+                if (q) { pick = q[1]; localStorage.setItem('ew_gpu', pick); } else pick = localStorage.getItem('ew_gpu');
+                if (q && pick === 'auto') localStorage.removeItem('ew_gpu_probe');   // a link asking for Auto asks afresh
+                probe = localStorage.getItem('ew_gpu_probe') || '';
+                /* 'bad:<time>:<why>' = the node renderer itself failed although the probe passed; kept a week, the probe cannot clear it */
+                var bm = /^bad:(\d+):/.exec(probe);
+                if (bm && !(Date.now() - (+bm[1]) < 7 * 864e5)) { probe = ''; localStorage.removeItem('ew_gpu_probe'); }
             } catch (e) {}
-            if (m !== 'webgpu' && m !== 'webgl2') m = 'webgl';
+            if (pick !== 'webgpu' && pick !== 'webgl2' && pick !== 'webgl') pick = 'auto';
+            var gpu = null; try { gpu = navigator.gpu; } catch (e) {}
+            var has = !!(gpu && typeof gpu.requestAdapter === 'function');
+            var m = pick, why = 'picked ' + pick;
+            if (pick === 'auto') {
+                if (!has) { m = 'webgl'; why = 'Auto: this browser has no WebGPU'; }
+                else if (probe.indexOf('no:') === 0) { m = 'webgl'; why = 'Auto: WebGPU did not work here (' + probe.slice(3) + ')'; }
+                else if (probe.indexOf('bad:') === 0) { m = 'webgl'; why = 'Auto: WebGPU would not start here (' + probe.replace(/^bad:\d+:/, '') + ')'; }
+                else { m = 'webgpu'; why = probe === 'ok' ? 'Auto: WebGPU works here' : 'Auto: trying WebGPU'; }
+            }
+            window.EW_GPU_PICK = pick;
             window.EW_GPU_MODE = m;
+            window.EW_GPU_WHY = why;
+            function remember(v) {
+                try { if (v.indexOf('bad:') !== 0 && (localStorage.getItem('ew_gpu_probe') || '').indexOf('bad:') === 0) return; localStorage.setItem('ew_gpu_probe', v); } catch (e) {}
+            }
+            /* three-renderer.js calls this when the node renderer fails for good; on Auto the page comes back classic, once */
+            window._ewGpuFailed = function (reason, reload) {
+                if (window.EW_GPU_PICK !== 'auto') return false;
+                remember('bad:' + Date.now() + ':' + String(reason || 'failed').slice(0, 80));
+                window.EW_GPU_WHY = 'Auto: WebGPU would not start here (' + reason + '), the classic renderer from the next load';
+                if (!reload) return true;
+                try { if (sessionStorage.getItem('ew_gpu_reloaded')) return true; sessionStorage.setItem('ew_gpu_reloaded', '1'); } catch (e) { return true; }
+                try { location.reload(); } catch (e) {}
+                return true;
+            };
+            /* Settings > Video > Renderer: store the pick; it applies on reload (the reload drops a ?ew_gpu= left in the address) */
+            window._ewSetGpuPick = function (p) {
+                if (p !== 'webgpu' && p !== 'webgl2' && p !== 'webgl') p = 'auto';
+                try { localStorage.setItem('ew_gpu', p); if (p === 'auto') localStorage.removeItem('ew_gpu_probe'); } catch (e) {}
+                window.EW_GPU_PICK_NEXT = p;
+            };
+            window._ewGpuReload = function () {
+                try {
+                    var u = new URL(location.href); u.searchParams.delete('ew_gpu');
+                    if (u.href !== location.href) { location.replace(u.href); return; }
+                } catch (e) {}
+                location.reload();
+            };
+            if (pick === 'auto' && has) {
+                var done = false;
+                var no = function (r) {
+                    if (done) return; done = true;
+                    remember('no:' + r);
+                    if (window.EW_GPU_MODE === 'webgpu' && !window.EW_GPU_MADE) {   // the board renderer is not made yet: it will be the classic one
+                        window.EW_GPU_MODE = 'webgl'; window.EW_GPU_WHY = 'Auto: WebGPU did not work here (' + r + ')';
+                        try { delete window.EW_QUARKS; } catch (e) { window.EW_QUARKS = undefined; }
+                    }
+                };
+                var ok = function () {
+                    if (done) return; done = true;
+                    remember('ok');
+                    if (window.EW_GPU_MODE === 'webgpu' && !/would not start/.test(window.EW_GPU_WHY || '')) window.EW_GPU_WHY = 'Auto: WebGPU works here';
+                };
+                try {
+                    gpu.requestAdapter().then(function (a) {
+                        if (!a) return no('no adapter');
+                        var i = a.info || {};
+                        if (a.isFallbackAdapter || i.isFallbackAdapter) return no('software adapter');
+                        return a.requestDevice().then(function (d) { try { d.destroy(); } catch (e) {} ok(); });
+                    }).catch(function (e) { no('refused: ' + String(e && e.message || e).slice(0, 60)); });
+                } catch (e) { no('refused: ' + String(e && e.message || e).slice(0, 60)); }
+            }
             if (m === 'webgl') return;
             /* WEBGPU_PLAN W4: the HQ plates draw as canvas-painted planes on the node renderer (troika is GLSL); no switch here */
             window.EW_QUARKS = false;       // three.quarks draws through GLSL materials: no Spell FX Layer on the node renderer

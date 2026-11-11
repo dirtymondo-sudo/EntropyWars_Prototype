@@ -4960,3 +4960,26 @@ body.ew-shots-place { cursor: copy; }
 .ew-shots-meta .ew-shots-in { flex: none; padding: 3px 5px; }
 .ew-shots-head { cursor: grab; user-select: none; touch-action: none; }
 .ew-shots-head:active { cursor: grabbing; }
+
+        /* ═══ THE MASTERY LEVEL on the result screen (mondo 2026-11-11; battle.js _achBuildEndOfMatchHtml) ═══
+           One row per unit I fielded: face, name + level plate (old ▶ new on a level up), the bar inside the level
+           (the part this match added in the band's colour) and the XP earned. */
+        .ml-row-list { display: flex; flex-direction: column; gap: 9px; }
+        .ml-row { display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; }
+        .ml-row > .sq-face { width: 34px; height: 34px; flex: 0 0 auto; }
+        .ml-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+        .ml-row-name { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 12px; color: #e6e9f2; min-width: 0; }
+        .ml-row-name > b { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+        .ml-row-name > em { font-style: normal; font-size: 8px; color: #8a93a8; }
+        .ml-row-name > u { text-decoration: none; font: 400 8px/1 'Press Start 2P', monospace; color: #ffd76a; animation: mlUp 0.9s steps(2) infinite; }
+        @keyframes mlUp { 50% { opacity: 0.35; } }
+        .ml-row-bar { position: relative; display: block; height: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); overflow: hidden; }
+        .ml-row-bar > i { position: absolute; top: 0; bottom: 0; background: rgba(255, 255, 255, 0.35); }
+        .ml-row-bar > i.is-gain { transform-origin: left center; animation: mlGrow 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s both; }
+        @keyframes mlGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .ml-row-xp { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; font-size: 11px; white-space: nowrap; }
+        .ml-row-xp > b { color: #ffe9a8; font-weight: 700; }
+        .ml-row-xp > small { font-size: 10px; color: #8a93a8; }
+        .result-overlay .ml-row-name { color: var(--ew-ink); }
+        .result-overlay .ml-row-xp > small, .result-overlay .ml-row-name > em { color: var(--ew-ink-mute); }
+        @media (prefers-reduced-motion: reduce) { .ml-row-bar > i.is-gain, .ml-row-name > u { animation: none; } }

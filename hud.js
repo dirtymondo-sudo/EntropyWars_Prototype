@@ -3895,6 +3895,18 @@ function _hrlgMpPreviewChip(u, cls) {
 // Rendered inside HorologeMenu (not baked into the title element) so the
 // hover re-render actually refreshes the slice. Viewer-local by
 // construction — the forecast globals never sync online.
+/* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): the unit's cosmetic level plate, beside its type
+   badges on every unit card (mine and the opponent's). `u.ulv` is stamped at the match's start (battle.js _mlStampUnit)
+   and rides the host's snapshots; a unit without one (a CPU's) draws nothing. An <em>, so the UI Maker's type-badge
+   part (`> span`) leaves it alone. */
+function _mlChipEl(u) {
+  const lv = (u && typeof unitMasteryClean === 'function') ? unitMasteryClean(u.ulv) : 0;
+  if (!lv) return null;
+  const band = unitMasteryBand(lv);
+  return h('em', { key: 'ml', className: 'ml-chip', style: { '--ml': band.color },
+    title: 'Mastery level ' + lv + ' (' + band.name + '). Shows how much this unit is played. No effect on the fight.' },
+    h('i', null, 'M'), String(lv));
+}
 function _hrlgQuickVitals(panelKey) {
   const m = /^(enemy|ally)\|(.+)$/.exec(panelKey || '');
   if (!m) return null;
@@ -3914,8 +3926,8 @@ function _hrlgQuickVitals(panelKey) {
   const healPct = heal > 0 ? Math.max(0, Math.min(100 - hpPct, (heal / u.maxHp) * 100)) : 0;
   return h('div', { key: 'qv', className: 'hrlg-qvitals' + (ally ? ' ally' : ' enemy') },
     /* the clicked unit's TYPE badge(s) — the matchup intel, first thing under the name (the user 2026-10-07) */
-    (u.types && u.types.length) ? h('div', { className: 'hrlg-qtypes' },
-      u.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
+    ((u.types && u.types.length) || _mlChipEl(u)) ? h('div', { className: 'hrlg-qtypes' },
+      (u.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(u)) : null,
     h('div', { className: 'hrlg-qv-row' },
       h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
       h('span', { className: 'hrlg-thp' },
@@ -4116,8 +4128,8 @@ function _hrlgQuickCard(key, title, qv) {
     title && h('div', { className: 'hrlg-view-tab' }, title.node || h('span', { className: 'hrlg-view-tab-text' }, title.text)),
     qv,
     /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
-    qu && qu.types && qu.types.length ? h('div', { className: 'hrlg-qp-types' },
-      qu.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
+    qu && ((qu.types && qu.types.length) || _mlChipEl(qu)) ? h('div', { className: 'hrlg-qp-types' },
+      (qu.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(qu)) : null,
     _hrlgQuickStats(key),
   );
 }
@@ -4760,8 +4772,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
       subLine ? h('div', { className: 'hrlg-core-sub' }, subLine) : null,
       /* the unit's TYPE badge(s) — same canonical chips the target rows
          wear, so the player's own matchup profile reads at a glance */
-      (unitTypes && unitTypes.length) ? h('div', { className: 'hrlg-typerow' },
-        unitTypes.map(t => h(TypeChip, { key: t, name: t })),
+      ((unitTypes && unitTypes.length) || _mlChipEl(apUnit)) ? h('div', { className: 'hrlg-typerow' },
+        (unitTypes || []).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(apUnit),
       ) : null,
       /* HP/MP vitals directly under the portrait, then AP under those —
          the reading order the player actually wants. */
@@ -8774,6 +8786,7 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearArrows3D();
   ThreeRenderer.clearGhostUnit();
   ThreeRenderer.clearOverlay('movePreview');
+  ThreeRenderer.clearOverlay('moveHoverDest');   // THE ONE MOVE PREVIEW (battle.js previewMovePlan) marks its tiles here
   ThreeRenderer.clearOverlay('actionPlanTarget');
   ThreeRenderer.clearOverlay('actionPlanAoe');
   ThreeRenderer.clearOverlay('actionPlanShove');
@@ -8804,8 +8817,13 @@ function _showTileMoveTowardsPreview(actingUnit, action) {
         mts.map(t => ({ x: t.x, y: t.y, opacity: 0.22 })), towardsColor, 0.22);
     }
     const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
-    const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
-    if (typeof findMovePath === 'function') {
+    let wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    let _rw = null;
+    if (typeof window.moveRouteWps === 'function' && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))) {
+      try { _rw = window.moveRouteWps(actingUnit, approach, null); } catch (e) { _rw = null; }   // THE REAL ROUTE (via step + hop arcs)
+    }
+    if (_rw && _rw.length >= 2) wps = _rw;
+    else if (typeof findMovePath === 'function') {
       const path = findMovePath(actingUnit, approach.x, approach.y, approach.z) || [];
       for (const s of path) wps.push({ x: s.x, y: s.y, yOverride: ThreeRenderer.tileTopY(s.x, s.y) });
     }
@@ -9036,7 +9054,23 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     // One continuous bending walk-route arrow through any waypoint, plus tile
     // markers so the destination reads even head-on.
     const routeColor = 0x3399ff; // movement = blue (walk and jump legs alike)
-    if (mt.via) {
+    /* THE REAL ROUTE (battle.js moveRouteWps): the arrow + hologram follow the path the walk really takes */
+    let _rw = null;
+    if (!mt._viaSpell && typeof window.moveRouteWps === 'function') {
+      try {
+        const _rwAir = typeof canFly === 'function' && canFly(actingUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
+        _rw = window.moveRouteWps(actingUnit, mt, _rwAir ? ((wx, wy) => destY - ThreeRenderer.tileTopY(mt.x, mt.y) + ThreeRenderer.tileTopY(wx, wy)) : null);
+        if (!_rw || _rw.length < 2) _rw = null;
+      } catch (e) { _rw = null; }
+    }
+    if (_rw) {
+      ThreeRenderer.drawPathArrow3D(_rw, routeColor);
+      ThreeRenderer.setOverlay('movePreview', [
+        ...(mt.via ? [{ x: mt.via.x, y: mt.via.y, color: routeColor, opacity: 0.3 }] : []),
+        ...(land && typeof _iceSlideMarks === 'function' ? _iceSlideMarks(land) : []),
+        { x: castX, y: castY, color: routeColor, opacity: 0.45 },
+      ], routeColor, 0.45);
+    } else if (mt.via) {
       const viaY = ThreeRenderer.tileTopY(mt.via.x, mt.via.y);
       ThreeRenderer.drawPathArrow3D([
         { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
@@ -9063,9 +9097,11 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       ? _drawIceSlideLeg(land, (wx, wy) => destY - ThreeRenderer.tileTopY(mt.x, mt.y) + ThreeRenderer.tileTopY(wx, wy)) : [];
 
     // Hologram of the caster walking there and striking / casting, on a loop.
-    const _mw = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
-    if (mt.via) _mw.push({ x: mt.via.x, y: mt.via.y, yOverride: ThreeRenderer.tileTopY(mt.via.x, mt.via.y) });
-    _mw.push({ x: mt.x, y: mt.y, yOverride: destY });
+    const _mw = _rw ? _rw.slice() : [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    if (!_rw) {
+      if (mt.via) _mw.push({ x: mt.via.x, y: mt.via.y, yOverride: ThreeRenderer.tileTopY(mt.via.x, mt.via.y) });
+      _mw.push({ x: mt.x, y: mt.y, yOverride: destY });
+    }
     _mw.push(..._slideWps);
     const _mAir = typeof canFly === 'function' && canFly(actingUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
     ThreeRenderer.showGhostUnit(actingUnit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
@@ -10496,7 +10532,7 @@ function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
       subBelow: tbtn && !a.available,   // a greyed button says why on a second line
       fire: () => {
         hideSpellTooltip();
-        if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
+        if (a.id === 'moveTowards' || a._pvKind) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.available && a.handler) {
           /* fired from a clicked unit's TERRAIN tab: that unit's quick menu closes like the tile menu does */
@@ -10508,7 +10544,13 @@ function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
         if (a.spell) showSpellTooltip(a.spell, e);
         else if (card) showSpellTooltip(card, e);
         if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
-        if (a.id === 'move' && a._slideZ !== undefined) _showTileMoveSlidePreview(actingUnit, tx, ty, a._slideZ);
+        /* THE ONE MOVE PREVIEW (2026-11-11): Move here / Take Off + Move / Jump here / Climb show the board hover's own
+           route + hologram (battle.js previewMovePlan) — the climb's face in sandstone, its ghost "ENDS TURN" */
+        if (a._pvKind && a.available) {
+          _clearMoveArrowPreview();
+          const drew = (typeof window.previewMovePlan === 'function') && window.previewMovePlan(actingUnit, tx, ty, a._pvZ, a._pvKind);
+          if (!drew && a.id === 'move' && a._slideZ !== undefined) _showTileMoveSlidePreview(actingUnit, tx, ty, a._slideZ);
+        }
         // THE TILE-MENU SPELL HOVER (2026-10-05, mondo: "if its an aoe it doesnt show its aoe preview when i hover
         // on it"): a spell row paints exactly what the armed cast on this tile would: footprint, hit plates,
         // forecast numbers, landings, ricochet hops (ui.js updateAoePreview with the row's spell).
@@ -10525,7 +10567,7 @@ function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
       },
       hoverOut: () => {
         hideSpellTooltip();
-        if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
+        if (a.id === 'moveTowards' || a._pvKind) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.spell && !isApproach && typeof clearAoePreview === 'function' && state.actionMode !== 'spell') clearAoePreview();
       },
@@ -10637,6 +10679,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
         actions.push({
           id: 'takeoff-move', label: 'Take Off + Move', icon: '🕊', category: 'movement',
           apCost: takeoffApCost, available: (unitAP >= takeoffApCost),
+          _pvKind: 'move', _pvZ: moveTile.z,
           reason: (unitAP >= takeoffApCost) ? '' : 'No AP',
           handler: (unitAP >= takeoffApCost) ? () => {
             state._tileActionTarget = null;
@@ -10653,7 +10696,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           ? predictFallDamage(actingUnit, actingUnit.z ?? 0, moveTile.z ?? 0, tx, ty) : 0;
         actions.push({
           id: 'move', label: _mvDropDmg > 0 ? `Move here (−${_mvDropDmg} HP)` : 'Move here', icon: '⬆', category: 'movement',
-          apCost: 1, available: true,
+          apCost: 1, available: true, _pvKind: 'move', _pvZ: moveTile.z,
           // THE SLIDE FORECAST: an ice tile's row previews the slide on hover
           _slideZ: (_mtLand(actingUnit, moveTile) ? (moveTile.z ?? null) : undefined),
           handler: () => {
@@ -10703,7 +10746,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       actions.push({
         id: 'jump', label: _jpDropDmg > 0 ? `Jump here (−${_jpDropDmg} HP)` : 'Jump here',
         icon: '↷', category: 'movement',
-        apCost: 1, available: true,
+        apCost: 1, available: true, _pvKind: 'jump', _pvZ: jumpTile.z,
         handler: () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('jump');
@@ -10729,7 +10772,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           + (_clInst ? (climbTile.dir === 'down' ? ' · down now' : ' · top now') : ' · hang')
           + ((climbTile.turns || 1) > 1 ? ` · ${climbTile.turns} turns` : '') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
         icon: '🧗', category: 'movement', endsTurn: true,
-        apCost: (climbTile.viaMove ? 1 : 0) + (_clInst ? 2 : 1), available: true,
+        apCost: (climbTile.viaMove ? 1 : 0) + (_clInst ? 2 : 1), available: true, _pvKind: 'climb', _pvZ: climbTile.z,
         handler: () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('climb');
