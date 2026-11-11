@@ -5194,7 +5194,7 @@ function spellTargetChip(sp) {
   }
   const k = sp.kind || '';
   if (k === 'cannibalize') {
-    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen enemy's remains — their bones" };
+    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — an enemy's bones or an ally's gravestone" };
   }
   if (k === 'raiseDead') {
     return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
@@ -7812,6 +7812,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   // every other target — grey the row with the real reason instead of letting
   // the click (or the move-then-attack) bounce off the engine.
   let atkTauntLock = null;
+  /* 💋 Charm (mondo 2026-11-10, rule 7 B): the charmer cannot be attacked or cast at — the row greys with the reason */
+  const _qCharmer = (typeof getCharmer === 'function') ? getCharmer(actingUnit) : null;
+  const atkCharmLock = !!(_qCharmer && targetUnit && _qCharmer.id === targetUnit.id);
   if (typeof getTauntTargeter === 'function') {
     const _aT = getTauntTargeter(actingUnit);
     if (_aT && _aT.id !== targetUnit.id) {
@@ -7825,7 +7828,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
     }
   }
-  if (atkTauntLock) {
+  if (atkCharmLock) {
+    actions.push({
+      id: 'attack', label: 'Attack', icon: '⚔', apCost: G.AP_COST_ACTION || 1, moveTile: null, preview: null, typeNote: '',
+      available: false,
+      reason: '💋 Charmed — cannot attack ' + (typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : 'the charmer'),
+    });
+  } else if (atkTauntLock) {
     actions.push({
       id: 'attack',
       label: 'Attack',
@@ -7984,6 +7993,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // to the challenger while the challenger is castable-at — doSpell rejects
     // any other enemy (after the approach move, too). Mirror its gate and drop
     // the row instead of letting the click bounce.
+    if (atkCharmLock && typeof _kindMeta === 'function') {   // 💋 no unit-targeted offensive cast at the charmer
+      const _cm = _kindMeta(sp);
+      if (_cm.offensive && !_cm.tileTargeted && !_cm.directional) continue;
+    }
     if (targetUnit && typeof getTauntTargeter === 'function' && typeof _kindMeta === 'function') {
       const _qTaunter = getTauntTargeter(actingUnit);
       if (_qTaunter && _qTaunter.id !== targetUnit.id) {
