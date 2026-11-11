@@ -8761,10 +8761,10 @@ function _predictTargetShove(spell, target, castX, castY) {
 function _actionPlanArrowColor(action) {
   if (!action) return 0xff3333;
   if (action.id === 'attack' || action.id === 'combo') return 0xff3333;
-  const k = action.spell ? action.spell.kind : null;
-  if (k && _QA_SUP_KINDS[k]) return 0x33dd66;   // heal / support → green
-  if (k && !_QA_DMG_KINDS[k]) return 0xeeeeee;  // neutral utility → white
-  return 0xff3333;                              // damage → red
+  const side = _qaSide(action);
+  if (side === 'help') return 0x33dd66;      // heal / support → green
+  if (side === 'neutral') return 0xeeeeee;   // neutral utility → white
+  return 0xff3333;                           // damage → red
 }
 
 function _clearMoveArrowPreview() {
@@ -8870,6 +8870,25 @@ const _QA_DMG_KINDS = { damage:1, aoe:1, barrage:1, multiHit:1, ricochet:1,
 const _QA_SUP_KINDS = { heal:1, healAll:1, selfHeal:1, seedHeal:1, revive:1,
   cleanse:1, shield:1, aoeShield:1, buff:1, guard:1, warCry:1, encore:1 };
 
+/* THE AIM SIDE (2026-11-11, mondo: Purify's area on his own unit was red): what a quick-menu row does, from the row
+   itself (data.js spellAimSide: damage wins, then heal / support, else neutral); the kind buckets above are the
+   fallback. An item that is not a bane is a help (a potion, a tonic). */
+function _qaSide(action) {
+  if (!action || action.id === 'attack' || action.id === 'combo') return 'harm';
+  const sp = action.spell;
+  if (sp) {
+    if (typeof spellAimSide === 'function') return spellAimSide(sp);
+    return _QA_SUP_KINDS[sp.kind] ? 'help' : _QA_DMG_KINDS[sp.kind] ? 'harm' : 'neutral';
+  }
+  if (action.itemKey) return (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[action.itemKey] && ITEM_RULES[action.itemKey].baneType) ? 'harm' : 'help';
+  return 'harm';
+}
+/* the plate of a row's target / area: red = it hurts, green = it helps, purple = neutral (ui.js EW_PREVIEW) */
+function _qaPlateHex(action) {
+  const P = window.EW_PREVIEW || {}, side = _qaSide(action);
+  return side === 'help' ? (P.help || 0x33ff33) : side === 'neutral' ? (P.util || 0xaa33ff) : (P.hit || 0xff2a2a);
+}
+
 // Semi-transparent reach field for the hovered quick-menu blade, drawn from
 // the tile the action will actually be cast FROM (the move destination on a
 // move-then-cast). The solid target/AoE tiles stay the loud layer on top —
@@ -8886,7 +8905,8 @@ function _showQuickActionRange(actingUnit, castX, castY, action) {
     // strike arrow + swept footprint — a range field would just paint the map.
     if (sp.kind === 'line' || sp.kind === 'linePush') return;
     r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 0);
-    color = _QA_DMG_KINDS[sp.kind] ? ((window.EW_PREVIEW && window.EW_PREVIEW.reach) || 0xffa040) : _QA_SUP_KINDS[sp.kind] ? 0x33dd66 : 0xeeeeee;
+    const _rs = _qaSide(action);
+    color = _rs === 'harm' ? ((window.EW_PREVIEW && window.EW_PREVIEW.reach) || 0xffa040) : _rs === 'help' ? 0x33dd66 : 0xeeeeee;
   } else {
     return;
   }
@@ -9061,9 +9081,11 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   _showQuickActionRange(actingUnit, castX, castY, action);
 
   const _HIT = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
+  /* THE AIM SIDE: the row's own plate (green for a heal / support that deals no damage, purple neutral, red a hit) */
+  const _PLATE = _qaPlateHex(action), _plateOp = _PLATE === _HIT ? 0.9 : 0.55;
   ThreeRenderer.setOverlay('actionPlanTarget', (ax !== tx || ay !== ty)
-    ? [{ x: tx, y: ty, color: _HIT, opacity: 0.9 }, { x: ax, y: ay, color: _HIT, opacity: 0.9, cursor: true }]
-    : [{ x: tx, y: ty, color: _HIT, opacity: 0.9, cursor: true }], _HIT, 0.9);
+    ? [{ x: tx, y: ty, color: _PLATE, opacity: _plateOp }, { x: ax, y: ay, color: _PLATE, opacity: _plateOp, cursor: true }]
+    : [{ x: tx, y: ty, color: _PLATE, opacity: _plateOp, cursor: true }], _PLATE, _plateOp);
 
   /* THE FORECAST (2026-10-01, combat clarity pass): the hovered cast, read by the engine from the tile it is
      cast FROM — the tiles it hits (crimson), every body it moves (arrow + hologram + landing plate) and the
@@ -9105,8 +9127,9 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     if (hasAoe) {
       const aoeTiles = (_plan && _plan.handled && _plan.tiles && _plan.tiles.length) ? _plan.tiles : getSpellAoeFootprint(sp, ax, ay, actingUnit);
       if (aoeTiles && aoeTiles.length > 0) {
-        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _HIT, opacity: (t.x === ax && t.y === ay) ? 0.95 : 0.85 }));
-        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, _HIT, 0.85);
+        const _soft = _PLATE !== _HIT;
+        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _PLATE, opacity: (t.x === ax && t.y === ay) ? (_soft ? 0.55 : 0.95) : (_soft ? 0.4 : 0.85) }));
+        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, _PLATE, _soft ? 0.4 : 0.85);
       }
     }
   }

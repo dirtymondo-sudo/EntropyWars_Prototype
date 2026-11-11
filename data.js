@@ -21391,6 +21391,42 @@ function spellTypeMatters(d) {
     return false;
 }
 if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
+/* THE AIM SIDE (2026-11-11, mondo: Purify's 3×3 on his own unit drew red, "shouldnt it be green because 1) its healing,
+   2) its not even a damaging spell"): ONE answer every preview painter reads for a cast's colour, from what the row DOES:
+     'harm'    → red: it deals damage in any form (spellTypeMatters), or it lands something hostile on an enemy with no
+                 damage (a debuff, a hostile zone, a pull, a possession);
+     'help'    → green: it deals no damage and it heals / shields / buffs / cleanses / revives the caster's side;
+     'neutral' → the move / placement / utility colours (a blink, a wall, a scan).
+   Damage always wins (a heal that also burns the enemies round it stays red). The kind lists are the fallback for rows
+   whose payload fields do not say (Purify is kind cleanseArea with no fields at all). */
+const _AIM_HELP_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'seedHeal', 'zoneHeal', 'revive', 'cleanse', 'cleanseArea',
+    'shield', 'aoeShield', 'buff', 'warCry', 'encore', 'guard', 'manaRestoreAll', 'cannibalize', 'transfer']);
+const _AIM_HARM_KINDS = new Set(['damage', 'aoe', 'barrage', 'multiHit', 'ricochet', 'splitBeam', 'bomb', 'delayed', 'line', 'linePush',
+    'cross', 'leapStrike', 'lifeDrain', 'zoneDebuff', 'debuff', 'seedPoison', 'leechSeed', 'pull', 'aoePull', 'aoePush', 'displacement',
+    'skySlam', 'skyDrop', 'skyThrow', 'tackle', 'possess', 'link', 'shadowRealm', 'steal', 'doorBreach', 'pulseLattice']);
+const _AIM_MOVE_KINDS = new Set(['teleport', 'swap', 'escape', 'rallyPull', 'dash']);
+const _AIM_PLACE_KINDS = new Set(['summonUnit', 'deployObject', 'deployTurret', 'deployPair', 'doorDeploy', 'door', 'placeMirror', 'placeBlock',
+    'buildStructure', 'buildBridge', 'placeTrap', 'terrainCreate', 'warpRune', 'summonWeather', 'remoteView', 'raiseDead']);
+function spellAimSide(d) {
+    if (!d || d.kind === 'passive') return 'neutral';
+    if (spellHasDamage(d)) return 'harm';
+    const foe = Array.isArray(d.statusEffects) && d.statusEffects.length > 0;
+    const ally = Array.isArray(d.allyStatusEffects) && d.allyStatusEffects.length > 0;
+    /* a heal stays a heal when its only damage is a rider beside the target (Divine Light's sear) */
+    if (_AIM_HELP_KINDS.has(d.kind)) return 'help';
+    if (d.allyOnly) return 'help';   // Rescue Line: a pull that only takes an ally
+    /* the caster's own move and a placement hurt nothing at the cast (a blink's status is the caster's own; a summon,
+       a turret or a door does its damage later) */
+    if (_AIM_MOVE_KINDS.has(d.kind) || _AIM_PLACE_KINDS.has(d.kind)) return 'neutral';
+    if (spellTypeMatters(d)) return 'harm';
+    /* an ally cloak wearing a hostile kind (Smoke Screen: zoneDebuff, nothing on the enemy) */
+    if (!foe && (ally || d.smokeConcealment) && _AIM_HARM_KINDS.has(d.kind)) return 'help';
+    if (_AIM_HARM_KINDS.has(d.kind)) return 'harm';
+    if (foe) return 'harm';
+    if (ally || spellHasHeal(d) || d.shield > 0 || d.shieldHp > 0) return 'help';
+    return 'neutral';
+}
+if (typeof window !== 'undefined') window.spellAimSide = spellAimSide;
 function spellHasHeal(d) {
     if (!d) return false;
     return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0) || (typeof d.aoeAllyHeal === 'number' && d.aoeAllyHeal > 0)

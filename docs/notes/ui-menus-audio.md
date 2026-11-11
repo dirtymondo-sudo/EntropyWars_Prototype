@@ -2585,3 +2585,16 @@ demoArenaIn / demoRacePool. An optional FILTER: nothing is removed from AVAILABL
   party-config guard refuses it (state.js teamDemoBarredRaces).
 Proof (headless WebGL, VS CPU desk + forge with ?demo=1, and ?demo=0 unchanged): /mnt/project-files/demo-set-20261110/.
 Not run with two seats.
+
+## THE AIM SIDE (2026-11-11, mondo: Purify's 3×3 on his own unit drew red)
+- One answer for a cast's preview colour: data.js `spellAimSide(row)` → `harm` (red: deals damage, or lands something hostile
+  on an enemy) | `help` (green: heals / shields / buffs / cleanses / revives, no damage) | `neutral` (a move, a placement, a
+  scan). Damage wins; a heal kind stays help when its only damage is a rider (Divine Light); a blink or a placement is
+  neutral even when it carries a status or a later bite. All 894 rows classed (the old kind lists missed
+  cleanseArea, zoneHeal, aoeShield, transfer, cannibalize, manaRestoreAll, encore, guard, Rescue Line, the placements).
+- Readers: ui.js updateAoePreview (footprint, single tile, self cast) + the reach lattice class, battle.js
+  `_spellApproachAoeTiles` (move→cast), hud.js `_qaSide` / `_qaPlateHex` (quick-menu target plate, area, reach wash, arrow;
+  a non-bane item is a help). Colours are ui.js EW_PREVIEW `help` / `helpSoft` / `util` / `place`: hexes the UI Maker's
+  Arrows + tiles already names (heal, util, place), so his colour per situation still applies.
+- Kept as it was: a buff's single aim tile is the blue "Buff spell reach", body moves blue, forced moves purple.
+- Proof (WebGL2, VS CPU): /mnt/project-files/aim-side-colours-20261111/. Not looked at on WebGPU.
