@@ -750,7 +750,7 @@ def bake_mars(seed=211):
 
 # ── THE MARS DUST (Mars's floor: his moon_2 under the room's tan): the paler, browner dust the rust rocks stand in ──────────────
 def bake_marsdust(seed=391):
-    return bake_moon(seed, a=0x84583c, b=0x9c6c4b, craters=16, grit=(0x946a4e, 0xa27656, 0x7a5640), rocks=(0x7c5a44, 0x8c664d), sat=0.85)
+    return bake_moon(seed, a=0x76492e, b=0x8a5a3c, craters=16, grit=(0x82573b, 0x8e6044, 0x6a452f), rocks=(0x6c4a37, 0x7a5541), sat=0.95)
 
 
 # ── THE CLOUDS (cloud, cloud_2, cloud_thick): a cloud deck seen from above — cumulus heads built of puffs on puffs (big domes, smaller
