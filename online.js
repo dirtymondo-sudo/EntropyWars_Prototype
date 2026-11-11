@@ -1438,7 +1438,7 @@
             const _origSetUnitTactic = setUnitTactic;
             setUnitTactic = function(unitId, tactic) {
                 if (!_isOnline() || state._remoteAction || _isHost()) return _origSetUnitTactic(unitId, tactic);
-                const u = state.units.find(function(x) { return x.id === unitId && !x.dead; });
+                const u = state.units.find(function(x) { return x.id === unitId && (!x.dead || !tactic); });   // a fallen unit may go back to MANUAL
                 if (!u || u.player !== _myPlayer() || state.phase !== 'battle' || state.winner) return false;
                 if (tactic && typeof unitTacticProblem === 'function' && unitTacticProblem(u, tactic)) return false;
                 _emit('game-action', { type: 'setTactic', unitId: unitId, tactic: tactic || null });
@@ -2254,7 +2254,7 @@
                         break;
                     case 'setTactic': {
                         /* Ownership: only the sender's OWN units, on or off its turn (battle.js setUnitTactic). */
-                        var tacUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                        var tacUnit = state.units.find(function(u) { return u.id === data.unitId && (!u.dead || !data.tactic); });
                         if (!tacUnit || tacUnit.player !== remoteP) break;
                         if (typeof setUnitTactic === 'function') setUnitTactic(tacUnit.id, data.tactic || null);
                         break;

@@ -79,6 +79,7 @@ const HOW = {
 const SOURCES = [
     // the shared animation libraries
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
+    { re: /characters\/animations\/MAL[45]_Sniper/, how: 'MESHY_C', src: "Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py)" },
     { re: /characters\/animations\/MOC2_100STYLE/, how: 'MOCAP', src: 'The 100STYLE Dataset (Ian Mason, CC BY 4.0), converted by mocap-100style.py, in-place loops by bake-mocap.py' },
     { re: /(Assets\/Models|characters\/animations)\/MOC\d/, how: 'MOCAP', src: 'CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu, BVH by B. Hahne), in-place loops by bake-mocap.py' },
     { re: /Assets\/Models\/MAL\d/, how: 'MESHY_C', src: "Meshy's 20 animations exported from the male sniper, consolidated by Claude (build_mal2.js)" },

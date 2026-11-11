@@ -53667,7 +53667,9 @@
             tryNow(0);
         }
         function setUnitTactic(unitId, tactic) {
-            const u = state.units.find(x => x.id === unitId && !x.dead);
+            /* a fallen unit can be set back to MANUAL (never onto a Tactic): ALL MANUAL must not leave one that
+               respawns and goes on playing by itself (mondo 2026-11-11) */
+            const u = state.units.find(x => x.id === unitId && (!x.dead || !tactic));
             if (!u || state.phase !== 'battle' || state.winner) return false;
             if (state.controllers?.[u.player] === CTRL.AI) return false;
             const t = UNIT_TACTIC_IDS.indexOf(tactic) >= 0 ? tactic : null;
@@ -65696,7 +65698,26 @@
         }
 
         function queueComputerAction(actionFn, target = null, delay = 150) {
+            /* ♟ TAKE CONTROL (mondo 2026-11-11: "once they are on it's hard to stop bc they just go on auto"): a unit of
+               the player's that was on a Tactic when the AI queued this step and was set back to MANUAL before the step
+               began (the AUTO lamp / TAKE CONTROL, hud.js) does not take it: the step is dropped, nothing is spent, and
+               setUnitTactic's hand-back gives the player the turn. A step already under way still finishes. */
+            const _qUnit = state._blitzActiveUnitId ? state.units.find(u => u.id === state._blitzActiveUnitId) : null;
+            const _qTactic = !!(_qUnit && unitOnTactic(_qUnit));
             const safeAction = () => {
+                if (_qTactic && !_qUnit.dead && !_qUnit.tactic && state._blitzActiveUnitId === _qUnit.id
+                    && !state.winner && state.phase === 'battle') {
+                    state.aiThinking = false;
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.comboPartner = null;
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    clearAiSafetyTimer();
+                    markDirty('board', 'hud', 'selectedUnit');
+                    renderIfDirty();
+                    return;
+                }
                 try {
                     actionFn();
                 } catch (err) {
