@@ -31004,6 +31004,7 @@ const ThreeRenderer = (function () {
         // transparent margin around the inked glyphs (CSS px at scale 1) —
         // pops stack by what you can SEE, not by their padded boxes.
         c._ewHero = isNumber;
+        c._ewLineW = lineK > 0 ? outlineW * lineK : 0;   // THE HIT SIDE part 3 (battle.js _hitReadSideEdge): the outline's width, 0 = no line
         var inkH = fontSize * 0.95 + outlineW * 2;
         var lineInk = outlineW * 1.2 * Math.max(1, lineK);
         c._ewMarginX = Math.max(0, padX - lineInk);
@@ -32279,6 +32280,214 @@ const ThreeRenderer = (function () {
         for (var d = 0; d < done.length; d++) _hitBlinks.delete(done[d]);
     }
 
+    /* ── THE HIT SIDE (2026-11-11, the PvP demo list's "readability under pressure"; plan
+       https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT, mondo: "Build 1-4") ───────────────────────────────────────────
+       At the hit every cue that says WHOSE unit was hit was buried: the ring under the impact circle and the danger
+       plates, the body white (the hit blink, his own ask: kept as it is), the number in the element's colour on both
+       seats. Parts 1 + 2 live here (3 = battle.js _hitReadSideEdge, 4 = three-vfx.js THE STEP BACK):
+         1 THE FLARE: on the hit frame a ring in the VICTIM's side colour (the team ring's own, _isAllyPlayer: cyan-blue
+           yours, pink-red theirs) pops a little wider than its ring and draws ABOVE the impact VFX (renderOrder past
+           the particle batches 99-103 and the signature meshes 156-158; normal blending over a dark keyline, so an
+           additive white flash under it cannot wash the colour out), holds the freeze, then settles onto the ring.
+         2 THE ATTACKER TELL: the attacker's ring pings once in ITS side colour and an arrowhead in that colour sits on
+           the victim's ring, pointing at the attacker. Both only when this seat can see the attacker (the fog
+           renderer's own visible set + the concealment rule): a hit out of the dark never points at where it came from.
+       Real clock (performance.now), like the blink: the freeze stops _animNow. The marks ride the hit-fx layer in world
+       space and follow their unit each frame (a knockback carries them). Called by three-vfx-effects.js juiceHit, which
+       online.js relays (vfx3d-x) with the attacker's id; every seat works its own sides out, nothing else is relayed.
+       Off: window.EW_NO_HIT_SIDE = true (all four parts) or EW_NO_HIT_SIDE_A (flare) / _B (attacker tell) / _C (number
+       edge) / _D (the VFX step back); localStorage ew_hitside / ew_hitside_a … _d = 'off' does the same over reloads. */
+    var _hitSides = [];            // live marks: { kind: 'flare' | 'pulse' | 'arrow', uid, src, ally, t0, ms, hold, peak, holder, mat, ang }
+    var _hitSideTex = {}, _hitSideGeo = null, _hitSideLs = {}, _hsV = null, _hsV2 = null;
+    var _HS_BAND = 0.70;           // the ring texture's band sits at this share of its half size
+    function _hitSideOn(part) {
+        if (typeof window === 'undefined') return false;
+        if (window.EW_NO_HIT_SIDE) return false;
+        if (part && window['EW_NO_HIT_SIDE_' + part]) return false;
+        var keys = part ? ['ew_hitside', 'ew_hitside_' + String(part).toLowerCase()] : ['ew_hitside'];
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            if (_hitSideLs[k] === undefined) { _hitSideLs[k] = 'on'; try { if (localStorage.getItem(k) === 'off') _hitSideLs[k] = 'off'; } catch (e) {} }
+            if (_hitSideLs[k] === 'off') return false;
+        }
+        return true;
+    }
+    if (typeof window !== 'undefined') {
+        window._ewHitSideOn = _hitSideOn;   // battle.js (the number edge) + three-vfx.js / three-vfx-effects.js (the step back) ask here
+        /* the side a player's unit is on from THIS seat, by the team ring's own rule: true = the viewer's own */
+        window._ewHitSideAlly = function (player) { return _isAllyPlayer(player); };
+        window._ewHitSideHex = function (ally) { return ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR; };
+    }
+    function _hitSideCss(hex, k) {   // k < 0 darkens toward black, k > 0 lightens toward white
+        var r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+        if (k < 0) { r *= 1 + k; g *= 1 + k; b *= 1 + k; } else { r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
+        return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
+    }
+    function _hitSideCanvasTex(c) {
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;   // no mip chain: on WebGPU building one is a render pass in the hit's own frame
+        return t;
+    }
+    function _hitSideRingTex(ally) {
+        var key = ally ? 'ringA' : 'ringE';
+        if (_hitSideTex[key]) return _hitSideTex[key];
+        var S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+        var g = c.getContext('2d'), m = S / 2, R = m * _HS_BAND, col = ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
+        var ring = function (w, style, alpha) { g.globalAlpha = alpha; g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2); g.lineWidth = w; g.strokeStyle = style; g.stroke(); };
+        // the soft halo, the dark keyline that holds the colour over a white flash, the band, the hot core
+        for (var i = 0; i < 5; i++) ring(S * (0.22 - i * 0.03), _hitSideCss(col, 0), 0.10);
+        ring(S * 0.094, _hitSideCss(col, -0.82), 0.9);
+        ring(S * 0.066, _hitSideCss(col, 0), 1);
+        ring(S * 0.022, _hitSideCss(col, 0.6), 1);
+        g.globalAlpha = 1;
+        return (_hitSideTex[key] = _hitSideCanvasTex(c));
+    }
+    function _hitSideArrowTex(ally) {
+        var key = ally ? 'arrA' : 'arrE';
+        if (_hitSideTex[key]) return _hitSideTex[key];
+        var S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+        var g = c.getContext('2d'), col = ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
+        var path = function () {   // a notched arrowhead, tip up (+v)
+            g.beginPath(); g.moveTo(S * 0.50, S * 0.14); g.lineTo(S * 0.86, S * 0.80); g.lineTo(S * 0.50, S * 0.60); g.lineTo(S * 0.14, S * 0.80); g.closePath();
+        };
+        g.lineJoin = 'round';
+        path(); g.globalAlpha = 0.9; g.lineWidth = S * 0.16; g.strokeStyle = _hitSideCss(col, -0.82); g.stroke();
+        g.globalAlpha = 1;
+        path(); g.fillStyle = _hitSideCss(col, 0); g.fill();
+        path(); g.lineWidth = S * 0.035; g.strokeStyle = _hitSideCss(col, 0.6); g.stroke();
+        return (_hitSideTex[key] = _hitSideCanvasTex(c));
+    }
+    function _hitSideAdd(h, order) {
+        if (!_hitSideGeo) _hitSideGeo = new THREE.PlaneGeometry(1, 1);
+        var mat = new THREE.MeshBasicMaterial({
+            map: (h.kind === 'arrow') ? _hitSideArrowTex(h.ally) : _hitSideRingTex(h.ally),
+            transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+        });
+        var mesh = new THREE.Mesh(_hitSideGeo, mat);
+        mesh.rotation.x = -Math.PI / 2;      // flat on the ground, the texture's top toward world -Z
+        mesh.renderOrder = order;
+        mesh.raycast = function () {};       // never a pick target
+        var holder = new THREE.Group();
+        holder.add(mesh);
+        holder.visible = false;
+        holder._ew_hitSide = true;
+        hitFxGroup.add(holder);
+        h.holder = holder; h.mat = mat;
+        _hitSides.push(h);
+    }
+    function _hitSideFree(h) {
+        if (h.holder && h.holder.parent) h.holder.parent.remove(h.holder);
+        if (h.mat) { try { h.mat.dispose(); } catch (e) {} }   // the plane and the four textures are shared: kept
+        h.holder = h.mat = null;
+    }
+    function _hitSideFind(uid, kind) {
+        for (var i = 0; i < _hitSides.length; i++) if (_hitSides[i].uid === uid && _hitSides[i].kind === kind) return _hitSides[i];
+        return null;
+    }
+    function _hitSideDrop(uid, kind) {
+        for (var i = _hitSides.length - 1; i >= 0; i--) {
+            var h = _hitSides[i];
+            if (h.uid === uid && h.kind === kind) { _hitSideFree(h); _hitSides.splice(i, 1); }
+        }
+    }
+    function _hitSideClear() {
+        for (var i = 0; i < _hitSides.length; i++) _hitSideFree(_hitSides[i]);
+        _hitSides.length = 0;
+    }
+    /* may this seat be shown where that unit stands? (the fog renderer's visible set + the concealment rule) */
+    function _hitSideSees(u) {
+        try {
+            if (_isConcealedFromViewer(u, _viewerPlayerNum())) return false;
+            if (state && state.fogOfWar && typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(u.x, u.y)) return false;
+        } catch (e) { return false; }
+        return true;
+    }
+    function hitSide(victimId, attackerId, opts) {
+        if (victimId == null || !hitFxGroup || _ewAnimsOff() || !_hitSideOn()) return;
+        opts = opts || {};
+        var vu = _findUnit(victimId), ve = _getUnitEntry(victimId);
+        if (!vu || !ve || !ve.group) return;
+        var w = Math.max(0, Math.min(3, Number(opts.weight) || 0)), kill = !!opts.kill;
+        var hold = Math.max(0, Number(opts.holdMs) || 0), now = performance.now();
+        var ms = Math.max(620, hold + 470) + (kill ? 140 : 0);
+        if (_hitSideOn('A')) {
+            _hitSideDrop(victimId, 'flare');   // a second hit on the same body restarts its flare
+            _hitSideAdd({ kind: 'flare', uid: victimId, ally: _isAllyPlayer(vu.player), t0: now, hold: hold, ms: ms,
+                peak: 1.2 + 0.035 * w + (kill ? 0.05 : 0) }, 170);
+        }
+        if (attackerId == null || attackerId === victimId || !_hitSideOn('B')) return;
+        var au = _findUnit(attackerId), ae = _getUnitEntry(attackerId);
+        if (!au || au.dead || !ae || !ae.group || !_hitSideSees(au)) return;
+        var allyA = _isAllyPlayer(au.player), ping = _hitSideFind(attackerId, 'pulse');
+        if (!ping || now - ping.t0 > 120) {    // one ping for an area spell's whole volley
+            _hitSideDrop(attackerId, 'pulse');
+            _hitSideAdd({ kind: 'pulse', uid: attackerId, ally: allyA, t0: now, hold: 0, ms: 460, peak: 1.42 }, 170);
+        }
+        _hitSideDrop(victimId, 'arrow');
+        _hitSideAdd({ kind: 'arrow', uid: victimId, src: attackerId, ally: allyA, t0: now, hold: hold, ms: ms, ang: null, dx: 0, dz: 0 }, 171);
+    }
+    /* the unit's ring in world space: its group's x / z, the ring plane's own height (a draped ring's too) */
+    function _hitSideAt(ue, out) {
+        ue.group.getWorldPosition(out);
+        var ret = ue.reticle, pos = ret && ret.geometry && ret.geometry.attributes && ret.geometry.attributes.position;
+        if (pos && pos.count) {
+            _hsV2 = _hsV2 || new THREE.Vector3();
+            ret.updateWorldMatrix(true, false);
+            out.y = _hsV2.fromBufferAttribute(pos, 0).applyMatrix4(ret.matrixWorld).y;
+        } else out.y += SELECTED_RING_OFFSET;
+        return out;
+    }
+    function _updateHitSides() {
+        if (!_hitSides.length) return;
+        var now = performance.now(), ts = CONFIG.tileSize || BASE_TILE;
+        var R = 0.42 * (Number(_retLookU.uRSize.value) || 1) * ts;   // the ring line's own radius (the reticle shader's R)
+        _hsV = _hsV || new THREE.Vector3();
+        for (var i = _hitSides.length - 1; i >= 0; i--) {
+            var h = _hitSides[i], el = now - h.t0, ue = _getUnitEntry(h.uid);
+            if (el >= h.ms || !ue || !ue.group || !hitFxGroup || !h.holder || h.holder.parent !== hitFxGroup) {
+                _hitSideFree(h); _hitSides.splice(i, 1); continue;
+            }
+            var s, o, show = ue.group.visible !== false;
+            if (h.kind === 'pulse') {
+                var t = el / h.ms;
+                s = 1 + (h.peak - 1) * (1 - Math.pow(1 - t, 3)); o = 0.95 * Math.pow(1 - t, 1.5);
+            } else {
+                // pop in 70 ms, hold the freeze (140 ms at least), then settle back onto the ring while it fades
+                var pop = 1 - Math.pow(1 - Math.min(1, el / 70), 3), t0s = Math.max(h.hold, 140);
+                var u = el <= t0s ? 0 : Math.min(1, (el - t0s) / Math.max(1, h.ms - t0s));
+                s = (h.kind === 'flare') ? (0.94 + (h.peak - 0.94) * pop) - (h.peak - 1) * _easeInOut(u) : 0.8 + 0.2 * pop;
+                o = pop * (u < 0.3 ? 1 : 1 - (u - 0.3) / 0.7);
+            }
+            _hitSideAt(ue, _hsV);
+            if (h.kind === 'arrow') {
+                var ae = _getUnitEntry(h.src);
+                if (ae && ae.group) {
+                    _hsV2 = _hsV2 || new THREE.Vector3();
+                    var vx = _hsV.x, vz = _hsV.z;
+                    ae.group.getWorldPosition(_hsV2);
+                    var dx = _hsV2.x - vx, dz = _hsV2.z - vz, len = Math.sqrt(dx * dx + dz * dz);
+                    if (len > ts * 0.2) { h.dx = dx / len; h.dz = dz / len; h.ang = Math.atan2(-h.dx, -h.dz); }
+                }
+                if (h.ang === null) show = false;
+                else {
+                    var out = R * 1.22 + ts * 0.17;      // just outside the flare's widest reach
+                    _hsV.x += h.dx * out; _hsV.z += h.dz * out; _hsV.y += 0.6;
+                    h.holder.rotation.y = h.ang;
+                    var as = ts * 0.36 * s;
+                    h.holder.scale.set(as, 1, as);
+                }
+            } else {
+                _hsV.y += 0.4;
+                var size = 2 * R * s / _HS_BAND;
+                h.holder.scale.set(size, 1, size);
+            }
+            hitFxGroup.worldToLocal(_hsV);
+            h.holder.position.copy(_hsV);
+            h.mat.opacity = Math.max(0, Math.min(1, o));
+            h.holder.visible = show && o > 0.01;
+        }
+    }
+
     function _updateFlashTweens() {
         var now = _animNow();
         var toRemove = [];
@@ -32711,6 +32920,7 @@ const ThreeRenderer = (function () {
         _updateUnitSelfGlow();
         _updateDecoyEntries();
         _updateHitBlinks();   // THE HIT BLINK: after the self glow, so its white wins this frame
+        _updateHitSides();    // THE HIT SIDE: the flare / the attacker tell, on the real clock like the blink
     }
 
     function _clearAnimations() {
@@ -32729,6 +32939,7 @@ const ThreeRenderer = (function () {
         _flashTweens.clear();
         _hitBlinks.forEach(function (b, uid) { _hitBlinkRestore(b); });
         _hitBlinks.clear();
+        _hitSideClear();
         _strikeTweens.clear();
         _clipTravelTweens.clear();
         _throwTweens.clear();   // a match reset never leaves a body on an arc (it blocks the turn now)
@@ -89538,6 +89749,7 @@ const ThreeRenderer = (function () {
         startCarryHoldTween, endCarryHold, hasCarryHold,
         setTimeWarp,
         hitBlink,
+        hitSide,
         /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's
            cast / attack chain would play at which the hit lands; -1 = no
            rigged library clip (sprite, Meshy fallback, unknown kind). */
@@ -90129,6 +90341,11 @@ window.ThreeAnim = {
     // THE HIT BLINK: solid white for the freeze, then white blinks (real clock; see hitBlink in the renderer)
     hitBlink: function(unitId, holdMs, opts) {
         if (ThreeRenderer.isActive() && ThreeRenderer.hitBlink) ThreeRenderer.hitBlink(unitId, holdMs, opts);
+    },
+
+    // THE HIT SIDE: the victim's ring flares in its side colour over the VFX, the attacker's ring pings, an arrowhead points at it
+    hitSide: function(victimId, attackerId, opts) {
+        if (ThreeRenderer.isActive() && ThreeRenderer.hitSide) ThreeRenderer.hitSide(victimId, attackerId, opts);
     },
 
     // Death slow-mo etc: run combat animation at `scale` speed for `durationMs`.

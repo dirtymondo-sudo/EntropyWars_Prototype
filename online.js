@@ -1765,7 +1765,12 @@
                     hit: (opts && opts._hitPct != null) ? {
                         t: opts._hitType || undefined, p: opts._hitPct,
                         c: opts._hitCrit ? 1 : undefined, w: opts._hitWeak || undefined,
-                        k: opts._hitKill ? 1 : undefined
+                        k: opts._hitKill ? 1 : undefined,
+                        /* THE HIT SIDE part 3 (2026-11-11): s = the victim's player (the guest paints the number's edge
+                           in its own view of that side); wt = the hit's weight, which sized the host's number and never
+                           rode along (the guest's numbers missed the punch) */
+                        s: (opts._hitP != null) ? opts._hitP : undefined,
+                        wt: (opts._hitW >= 0 && opts._hitW <= 3) ? opts._hitW : undefined
                     } : undefined
                 });
             }
@@ -3230,8 +3235,10 @@
                    trailing bag keeps its primitive fields (fromX / fromY). */
                 fireGeometry:       [[1, 2]],
                 /* THE JUICE HIT (2026-11-04, mondo: "shouldnt p2 have the same freeze as p1?"): the impact freeze, the white
-                   blink and the screen kick of every hit — (tx, ty, weight, freezeMs, kill, unitId), the victim's tile is the
-                   fog anchor. Before this the guest got no per-hit freeze at all. */
+                   blink and the screen kick of every hit — (tx, ty, weight, freezeMs, kill, unitId, attackerId), the victim's
+                   tile is the fog anchor. Before this the guest got no per-hit freeze at all. THE HIT SIDE (2026-11-11): the
+                   attacker's id rides as the 7th primitive; the guest's renderer shows the attacker tell only when its own
+                   fog lets it see that unit (three-renderer.js hitSide). */
                 juiceHit:           [[0, 1]],
             };
             Object.keys(window._VFXX_ANCHORS).forEach(function(fnName) {
@@ -5099,6 +5106,8 @@
                                 if (_ftHit.c) _ftOpts._hitCrit = 1;
                                 if (_ftHit.w === 1 || _ftHit.w === -1) _ftOpts._hitWeak = _ftHit.w;
                                 if (_ftHit.k) _ftOpts._hitKill = 1;
+                                if (_ftHit.s != null && Number.isFinite(Number(_ftHit.s))) _ftOpts._hitP = Number(_ftHit.s);
+                                if (_ftHit.wt >= 0 && _ftHit.wt <= 3) _ftOpts._hitW = _ftHit.wt | 0;
                             }
                             window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind, _ftOpts);
                         }

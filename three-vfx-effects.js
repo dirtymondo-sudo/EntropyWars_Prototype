@@ -929,7 +929,10 @@ const ThreeVFXEffects = (function () {
         var count = 0;
         for (var k in _flameBursts) { if (k) count++; }
         if (count >= _FLAME_BURST_CAP) return;
-        e = _buildFlameVolume(((tx * 17.3 + ty * 11.9) % 89), opts.hScale || 1, opts.rScale || 1);
+        /* THE HIT SIDE part 4: a fire spell's burst on a hit with no area stays under 1.5 body heights (the volume is 1.4 squares × hScale) */
+        var hsH = opts.hScale || 1;
+        if (hsH > 1.07 && _hsFireNow(true)) hsH = 1.07;
+        e = _buildFlameVolume(((tx * 17.3 + ty * 11.9) % 89), hsH, opts.rScale || 1);
         var c = tilePx(tx, ty);
         var pad = _cfg().boardPadding || 2;
         /* +2: keeps the volume's bottom face off the tile top (z-fight) */
@@ -9690,6 +9693,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         opts = opts || {};
         var c = new THREE.Color(color != null ? color : 0x88bbff);
         var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
+        /* THE HIT SIDE part 4 (THE TAME FIRE): a fire spell's shell keeps its reds, oranges and yellows — no white heart,
+           a capped gain, and half strength on top of its own tick (_hsTame), so three nested shells never sum to white */
+        var hsFire = _hsFireNow(false);
+        if (hsFire) { _hsFireCol(c); _hsFireCol(c2); }
         var mat = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:   { value: 0 },
@@ -9719,6 +9726,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
         });
+        if (hsFire) {
+            if (mat.uniforms.uGain.value > _HS_FIRE_GAIN) mat.uniforms.uGain.value = _HS_FIRE_GAIN;
+            mat._hsFireK = _HS_FIRE_K;
+        }
         return mat;
     }
     function _sigEnergyTick(mat, elapsedMs, erode) {
@@ -9784,6 +9795,122 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return '#' + ('00000' + (color != null ? color : 0xffffff).toString(16)).slice(-6);
     }
 
+    /* ── THE HIT SIDE part 4: THE STEP BACK + THE TAME FIRE (2026-11-11, plan
+       https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT, mondo: "Build 1-4") ───────────────────────────────────────────
+       "Nothing covers the victim": at the hit the impact circles, shock rings and flashes sat on the body and its ring.
+         · THE STEP BACK: for 0.4 s after a hit lands on a square, the see-through signature meshes centred on that
+           square (circles, rings, glows, columns: every _sigRun group, after its own tick) and the flash / ring /
+           circle particles there (three-vfx.js _batchFlush asks _hsBackAt) draw at half strength, then ease back.
+         · THE TAME FIRE, for a FIRE spell's signature meshes (the riot context carries `fire`: the spell's element):
+           energy shells never stack to flat white — their near-white colours are pulled to yellow, their gain is
+           capped and they draw at half strength, so the stack reads red rim, orange body, yellow heart (and the body
+           behind shows through); a fire column on a hit with no area (one target, a line) stays under 1.5 body
+           heights (_hsFireH); and a fire mesh fades as it comes within two squares of the lens (_hsNearK), so a
+           column toward the camera never fills the screen.
+       Looks only, worked out on each seat from calls the guest already replays (fire / vfx3d-x / juiceHit).
+       Off: window.EW_NO_HIT_SIDE_D (or EW_NO_HIT_SIDE) = true, localStorage ew_hitside_d = 'off'. */
+    var _hsHits = [];              // { px, py (vfx px), t0 }: the squares a hit just landed on (real clock)
+    var _HS_BACK_MS = 400, _HS_BACK_EASE = 160, _HS_BACK_K = 0.5, _HS_FIRE_K = 0.5, _HS_FIRE_GAIN = 1.2;
+    var _hsBox = null, _hsCamV = null, _hsObjV = null;
+    function _hsOn() {
+        try { return typeof window !== 'undefined' && typeof window._ewHitSideOn === 'function' && window._ewHitSideOn('D'); } catch (e) { return false; }
+    }
+    function _hsNote(tx, ty) {
+        if (!_hsOn()) return;
+        var now = performance.now(), c = tilePx(tx, ty);
+        for (var i = _hsHits.length - 1; i >= 0; i--) {
+            var h = _hsHits[i];
+            if (now - h.t0 > _HS_BACK_MS + _HS_BACK_EASE || (Math.abs(h.px - c.x) < 1 && Math.abs(h.py - c.y) < 1)) _hsHits.splice(i, 1);
+        }
+        _hsHits.push({ px: c.x, py: c.y, t0: now });
+    }
+    /* the share of its strength a VFX at vfx px (px, py) keeps right now: half on a square hit in the last 0.4 s */
+    function _hsBackAt(px, py) {
+        if (!_hsHits.length) return 1;
+        var now = performance.now(), ts = _cfg().tileSize || 128, r2 = ts * ts * 0.36, k = 1;
+        for (var i = _hsHits.length - 1; i >= 0; i--) {
+            var h = _hsHits[i], el = now - h.t0;
+            if (el > _HS_BACK_MS + _HS_BACK_EASE) { _hsHits.splice(i, 1); continue; }
+            var dx = px - h.px, dy = py - h.py;
+            if (dx * dx + dy * dy > r2) continue;
+            var kk = el <= _HS_BACK_MS ? _HS_BACK_K : _HS_BACK_K + (1 - _HS_BACK_K) * (el - _HS_BACK_MS) / _HS_BACK_EASE;
+            if (kk < k) k = kk;
+        }
+        return k;
+    }
+    /* is a FIRE spell spawning right now (and the part on)? solo = its hit has no area (one target, a line) */
+    function _hsFireNow(solo) {
+        return !!(_rvCtx && _rvCtx.fire && (!solo || !_rvCtx.area) && _hsOn());
+    }
+    /* a fire column's height on a hit with no area: under 1.5 body heights (a body stands about a square tall) */
+    function _hsFireH(h, ts) {
+        return _hsFireNow(true) ? Math.min(h, ts * 1.5) : h;
+    }
+    /* a fire shell's colour: a near-white (the white-hot heart) is pulled to yellow, so a stack of shells never burns to white */
+    function _hsFireCol(c) {
+        var mx = Math.max(c.r, c.g, c.b);
+        if (!(mx > 0)) return;
+        if (c.g > mx * 0.84) c.g = mx * 0.84;
+        if (c.b > mx * 0.34) c.b = mx * 0.34;
+    }
+    /* how much of a mesh may show by how near the lens its box comes: all of it from two squares out, 15 % touching */
+    function _hsNearK(o, ts) {
+        try {
+            var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            var geo = o.geometry;
+            if (!cam || !geo) return 1;
+            if (!geo.boundingBox) geo.computeBoundingBox();
+            if (!_hsBox) { _hsBox = new THREE.Box3(); _hsCamV = new THREE.Vector3(); }
+            _hsBox.copy(geo.boundingBox).applyMatrix4(o.matrixWorld);
+            cam.getWorldPosition(_hsCamV);
+            var d = _hsBox.distanceToPoint(_hsCamV), lo = ts * 0.35, hi = ts * 2;
+            if (d >= hi) return 1;
+            if (d <= lo) return 0.15;
+            var t = (d - lo) / (hi - lo);
+            return 0.15 + 0.85 * t * t * (3 - 2 * t);
+        } catch (e) { return 1; }
+    }
+    /* write a strength k over what the effect's own tick set (its opacity, or an energy / orb shell's uOpacity). A tick
+       that left the value alone this frame is recognised by our own last write, so the factor never compounds. */
+    function _hsApply(m, k) {
+        var u = (m.uniforms && m.uniforms.uOpacity) ? m.uniforms.uOpacity : null, cur = u ? u.value : m.opacity;
+        if (typeof cur !== 'number') return;
+        if (m._hsOut !== undefined && cur === m._hsOut) cur = m._hsIn;
+        if (k >= 0.999) {
+            if (m._hsOut !== undefined) { if (u) u.value = cur; else m.opacity = cur; m._hsOut = undefined; }
+            return;
+        }
+        m._hsIn = cur; m._hsOut = cur * k;
+        if (u) u.value = m._hsOut; else m.opacity = m._hsOut;
+    }
+    /* one signature group, after its tick: the step back on a hit square, a fire spell's shells at their tame strength
+       and fading near the lens */
+    function _hsTame(entry) {
+        var back = _hsHits.length > 0, fire = !!entry.hsFire;
+        if (!back && !fire && !entry.hsDirty) return;
+        var g = entry.group;
+        if (!g) return;
+        var ts = _cfg().tileSize || 128, pad = _cfg().boardPadding || 2, dirty = false;
+        if (!_hsObjV) _hsObjV = new THREE.Vector3();
+        g.updateWorldMatrix(true, true);
+        g.traverse(function (o) {
+            var mat = o.material;
+            if (!mat || (!o.isMesh && !o.isSprite)) return;
+            var k = 1;
+            if (back) { _hsObjV.setFromMatrixPosition(o.matrixWorld); k *= _hsBackAt(_hsObjV.x + pad, _hsObjV.z + pad); }
+            if (fire && o.isMesh) k *= _hsNearK(o, ts);
+            var mats = Array.isArray(mat) ? mat : [mat];
+            for (var i = 0; i < mats.length; i++) {
+                var m = mats[i];
+                if (!m || !m.transparent || m._ew_shared) continue;
+                var km = k * (m._hsFireK || 1);
+                _hsApply(m, km);
+                if (km < 0.999) dirty = true;
+            }
+        });
+        entry.hsDirty = dirty;
+    }
+
     /* self-terminating animation runner for signature groups. Caps the
        number of concurrently live signature effects so multi-hit spam can't
        flood the scene. */
@@ -9796,7 +9923,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_sigActive >= _SIG_MAX_ACTIVE) return null;
         _sigActive++;
         _vfxAdd(scene, group);
-        var entry = { done: false, group: group };
+        var entry = { done: false, group: group, hsFire: _hsFireNow(false), hsDirty: false };   // THE HIT SIDE part 4: a fire spell's group
         _sigEntries.push(entry);
         var t0 = performance.now();
         function finish() {
@@ -9818,6 +9945,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 try { console.warn('[SIG3D] tick error, killing effect:', e && e.message ? e.message : e); } catch (e2) {}
                 finish(); return false;
             }
+            try { _hsTame(entry); } catch (e3) {}   // THE HIT SIDE part 4: the step back on a hit square, the tame fire
             return true;
         }
         _fxSchedule(loop);
@@ -25775,7 +25903,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var ms = o.ms || 1500;
-        var h = o.height || ts * 3.4;
+        var h = _hsFireH(o.height || ts * 3.4, ts);   // THE HIT SIDE part 4: under 1.5 body heights on a hit with no area
         var r = o.radius || ts * 0.55;
         var deep = o.deep != null ? o.deep : 0xd8380c, mid = o.mid != null ? o.mid : 0xff8a24, hot = o.hot != null ? o.hot : 0xffeec2;
         var group = new THREE.Group();
@@ -62973,8 +63101,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            This is how Player 2 gets the SAME stop: online.js relays this call (vfx3d-x, fog-gated on the victim's tile).
          · the victim blinks solid white for the freeze, shaking in place, then twice more (ThreeAnim.hitBlink).
          · the screen kick as time resumes, by weight (the shake language: light · normal · heavy · hard; a kill one up).
-       Looks only — no rule reads any of it. Off: window.EW_DISABLE_JUICE (battle.js never calls it then). */
-    function juiceHit(tx, ty, w, hsMs, kill, unitId) {
+       Looks only — no rule reads any of it. Off: window.EW_DISABLE_JUICE (battle.js never calls it then).
+       THE HIT SIDE (2026-11-11): srcId = the attacker's id (battle.js passes it, online.js relays it as it is). The
+       victim's ring flares in its side colour, the attacker's ring pings and an arrowhead points at it
+       (ThreeAnim.hitSide — three-renderer.js works the sides and the fog out on each seat), and the impact VFX on the
+       victim's square step back for a beat (_hsNote below). */
+    function juiceHit(tx, ty, w, hsMs, kill, unitId, srcId) {
         if (_VS.on) return;
         var A = (typeof window !== 'undefined') ? window.ThreeAnim : null;
         if (!A || !A.isActive || !A.isActive()) return;
@@ -62993,6 +63125,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) {}
         }
         if (unitId != null && A.hitBlink) A.hitBlink(unitId, hs, { weight: w, kill: !!kill });
+        if (unitId != null && A.hitSide) { try { A.hitSide(unitId, srcId != null ? srcId : null, { weight: w, kill: !!kill, holdMs: hs }); } catch (e) {} }
+        _hsNote(tx, ty);
         var kind = kill ? (w >= 2 ? 'hard' : 'heavy') : (['light', 'light', 'normal', 'heavy'][w] || 'light');
         _fxDelay(function () { _shake(kind); }, hs);
     }
@@ -63011,6 +63145,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var c = { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged };
         var A = _rvAreaFor(spellId, params, aoeRadius);
         if (A) c.area = A;
+        /* THE HIT SIDE part 4: a fire spell's signature meshes are tamed (_hsFireNow) */
+        var sd = _spellDefFor(spellId);
+        if (sd && (sd.element === 'fire' || sd.vfxElement === 'fire')) c.fire = true;
         return c;
     }
     /* phase D: the area a spell's hit covers, round the tile it lands on — { tx, ty, px, py (vfx px), reach (tiles from the
@@ -63072,6 +63209,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,
+        _hsBackAt: _hsBackAt,                        // THE HIT SIDE part 4: three-vfx.js asks how far a particle on a hit square steps back
+        _hsLive: function () { return _hsHits.length > 0; },
 
         warmNextSheet: _warmNextSheet,   // THE SHEET WARM: ThreeRenderer makes + uploads the cached spell sheets ahead of the first cast
 
