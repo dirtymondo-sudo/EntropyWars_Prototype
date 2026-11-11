@@ -1883,9 +1883,14 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - BATCH 1 SHEETS (bake-calm-terrain.py, all code, 1024 px, one per square): marble, snow, ice, hedge, cobble, darkstone, planks,
   shipwood, obsidian + the spaceship metals deckplate (aluminium / metal_3), gunmetal (gunmetal / gunmetal_2 / metal_2), rivets
   (metal). Spell ground: ice / snow_wall → calm_ice, scorched, lava, mountain(_2/_top) / rock → calm_rock. Drafted for batch 2:
-  sand, beach sand, moon, castle blocks (not shipped).
+  sand, beach sand, moon, castle blocks (not shipped). Value checks against his own sheets on the real boards: marble (his path
+  on Looking-Glass) baked a step UNDER his value (mean sRGB ~135, the first bake read white), deck plate a step under his
+  aluminium (~110), cobbles twice the size with quiet joints (the first bake read as a busy cell net).
+- PROOF: ?ew_gpu=webgl2 is the NODE renderer on a WebGL 2 backend (TSL twins); the classic GLSL path (onBeforeCompile ntRead) is
+  ?ew_gpu=webgl. Prove both plus ?ew_gpu=webgpu.
 - THE EDITOR: the texture picker's first family is CALM (labels like "Snow (plays as marble_light)"), his TERRAIN sheets stay below
-  as "TERRAIN (your pixel sheets)"; ROOM tab "ground look" = Calm / Pixel (shell.sheets 'pixel', Calm writes nothing).
+  as "TERRAIN (your pixel sheets)"; ROOM tab "ground look" = Calm / Pixel (shell.sheets 'pixel', Calm writes nothing). A field's
+  swatch shows the sheet the room draws (editor.js calmUrlOf); swatch names wrap (styles-editor.css .ed-sw span), never cut.
 - The three "(Calm)" test maps stay (now the same look as their originals).
 - Batches left: 2 = the other 27 arenas + ooze / poison / plague flesh / crystal / castle-wall spell ground; 3 = DOOR HQ indoor
   sheets + the other liquids; 4 = the voxel boards + the 2D view.

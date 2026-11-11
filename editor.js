@@ -2589,7 +2589,7 @@
         /* THE CALM LOOK (2026-11-11, mondo: "make sure any new textures you add are available in the map editor, and keep the old ones there
            too"): data.js CALM_TERRAIN's code-made sheets first, each by its label; a picked calm sheet plays its rule twin's rules (hqRuleKeyOf).
            His pixel sheets stay below (TERRAIN and the rest); a room wears them as they are with the ROOM tab's ground look = Pixel */
-        try { var CT = W.CALM_TERRAIN || (typeof CALM_TERRAIN !== 'undefined' ? CALM_TERRAIN : null); if (CT) Object.keys(CT.sheets).forEach(function (k) { var r = CT.sheets[k]; out.push({ key: k, url: CT.base + r[0], fam: 'CALM · the new realistic sheets (each plays by its pixel twin\'s rules)', label: r[2] + ' (plays as ' + r[1] + ')' }); }); } catch (e) {}
+        try { var CT = W.CALM_TERRAIN || (typeof CALM_TERRAIN !== 'undefined' ? CALM_TERRAIN : null); if (CT) Object.keys(CT.sheets).forEach(function (k) { var r = CT.sheets[k]; out.push({ key: k, url: CT.base + r[0], fam: 'CALM · the new realistic sheets (each plays by its pixel twin\'s rules)', label: r[2], tip: k + ' · plays as ' + r[1] }); }); } catch (e) {}
         try { var base = (DOOR_HQ.assets && DOOR_HQ.assets.textures) || ''; Object.keys(DOOR_HQ.textures || {}).forEach(function (k) { out.push({ key: hqTexKey(k), url: base + DOOR_HQ.textures[k], fam: 'DOOR HQ · the eight painted tileables' }); }); } catch (e) {}
         try { hqBuildingSheets().forEach(function (k) { var u = hqSheetUrl(k); if (u) out.push({ key: k, url: u, fam: 'DOOR HQ · the other sheets its rooms wear' }); }); } catch (e) {}
         try { Object.keys(TERRAIN_SPRITES).forEach(function (k) { if (/^calm_/.test(k)) return; var v = TERRAIN_SPRITES[k]; out.push({ key: k, url: Array.isArray(v) ? v[0] : v, fam: 'TERRAIN (your pixel sheets)' }); }); } catch (e) {}
@@ -2616,9 +2616,9 @@
         var draw = function () {
             var q = ($('edSearch').value || '').toLowerCase(), h = '', fam = null, n = 0;
             all.forEach(function (t, i) {
-                if (q && (t.key + ' ' + t.fam + ' ' + (t.label || '')).toLowerCase().indexOf(q) < 0) return; if (n++ > 1200) return;   // every sheet (was 400: it cut off the tile / metro / liquid families and DOOR HQ's own)
+                if (q && (t.key + ' ' + t.fam + ' ' + (t.label || '') + ' ' + (t.tip || '')).toLowerCase().indexOf(q) < 0) return; if (n++ > 1200) return;   // every sheet (was 400: it cut off the tile / metro / liquid families and DOOR HQ's own)
                 if (t.fam !== fam) { fam = t.fam; h += '<div class="ed-sub ed-swfam">' + esc(fam) + '</div>'; }
-                h += '<button class="ed-sw' + (t.key === cur ? ' on' : '') + '" data-i="' + i + '" title="' + esc(t.key) + '"><img loading="lazy" src="' + esc(t.url || '') + '" alt=""><span>' + esc(t.label || t.key.replace(/^urban:/, '')) + '</span></button>';
+                h += '<button class="ed-sw' + (t.key === cur ? ' on' : '') + '" data-i="' + i + '" title="' + esc(t.tip || t.key) + '"><img loading="lazy" src="' + esc(t.url || '') + '" alt=""><span>' + esc(t.label || t.key.replace(/^urban:/, '')).replace(/_/g, '_<wbr>') + '</span></button>';   // names wrap at a word or an underscore
             });
             $('edList').innerHTML = h || '<div class="ed-note">Nothing matches.</div>';
             $('edList').querySelectorAll('[data-i]').forEach(function (b) { b.onclick = function () { modalClose(); onPick(all[+b.getAttribute('data-i')].key); }; });
@@ -3706,7 +3706,16 @@
         if (tab === 'layout') h += layoutHtml();   // E5
         return h;
     }
-    function texSwatchStyle(key) { var u = key && texUrl(key); return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
+    /* THE CALM LOOK: a field's swatch shows the sheet this room DRAWS — the calm twin of his key unless the room's ground look is
+       Pixel (or window.EW_NO_CALM_LOOK); data.js CALM_TERRAIN, the place included (North Pole's marble is snow) */
+    function calmUrlOf(key) {
+        try {
+            var CT = W.CALM_TERRAIN, r = room(); if (!CT || !key || W.EW_NO_CALM_LOOK || (r && r.shell && r.shell.sheets === 'pixel')) return null;
+            var pl = r && r.site && CT.sites ? CT.sites[r.site] : null, c = (pl && CT.place[pl] && CT.place[pl][key]) || CT.of[key];
+            return c && CT.sheets[c] ? CT.base + CT.sheets[c][0] : null;
+        } catch (e) { return null; }
+    }
+    function texSwatchStyle(key) { var u = key && (calmUrlOf(key) || texUrl(key)); return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
     function paletteWire(L) {
         L.querySelectorAll('[data-draw]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-draw'); drawSet(t || null); if (t && DRAWS[t]) hotPush({ t: 'draw', tool: t, label: DRAWS[t].label }); }; });
         L.querySelectorAll('[data-o]').forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-o'), n = parseFloat(el.value); ED.opts[k] = el.type === 'number' ? (isFinite(n) ? (k === 'modC' ? Math.max(1, Math.round(n)) * TILE : el.hasAttribute('data-osq') ? mOfSq(n) : n) : ED.opts[k]) : el.value.trim(); saveOpts(); if (k === 'modC') el.value = sqOf(ED.opts.modC); }; });

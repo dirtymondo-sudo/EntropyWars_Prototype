@@ -440,7 +440,7 @@ def bake_snow(seed=71):
 
 
 # ── THE MARBLE: a pale veined stone, no slab joints (a joint every square would draw the board's grid twice) ─────────────────────
-def bake_marble(seed=81, a=0xa29e96, b=0xc0bbb1, vein_col=0x77736c):
+def bake_marble(seed=81, a=0x7e7a73, b=0x96918a, vein_col=0x5d5a54):   # (the rollout, 11-11: a value step under his own path marble, never the brightest thing on a board)
     yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
     turb = sum(np.abs(fft_noise(N, 2 ** i, 2 ** (i + 1) * 1.5, seed + 1 + i, 0.5)) / (1.6 ** i) for i in range(6))
     t = (xx * 1 / N + yy * 2 / N) * 2 * np.pi + 5.0 * turb
@@ -459,7 +459,7 @@ def bake_marble(seed=81, a=0xa29e96, b=0xc0bbb1, vein_col=0x77736c):
 
 
 # ── THE COBBLES: rounded setts laid close, a hand wide, each its own tone and a soft dome, dark earth and grit in the joints ─────
-def bake_cobble(seed=91, tone=(0x55514b, 0x7a746b), joint=0x2b2520, g=15):
+def bake_cobble(seed=91, tone=(0x5a554e, 0x726c63), joint=0x3d3731, g=9, spread=0.24):
     wx = fft_noise(N, 2, 7, seed + 1, 0.8) * 10; wy = fft_noise(N, 2, 7, seed + 2, 0.8) * 10
     F1, F2, ID = worley(N, g, seed + 3, (wx, wy))
     e = (F2 - F1) + fft_noise(N, 20, 70, seed + 9, 0.4) * 0.05     # a ragged stone edge
@@ -467,10 +467,10 @@ def bake_cobble(seed=91, tone=(0x55514b, 0x7a746b), joint=0x2b2520, g=15):
     dome = (1 - r * r) * np.clip(e / 0.2, 0, 1) ** 0.5
     tn = np.random.default_rng(seed + 4).uniform(-1, 1, g * g)[ID]
     mid = fft_noise(N, 10, 40, seed + 5, 0.5); fine = fft_noise(N, 90, 320, seed + 6, 0.1)
-    st = lerp(hexc(tone[0]), hexc(tone[1]), np.clip(0.5 + 0.35 * tn + 0.18 * mid + 0.14 * fine, 0, 1))
-    st *= relief(dome * 9.0 + fine * 0.6, 0.5)[..., None]
-    st *= (0.82 + 0.18 * dome)[..., None]
-    gap = np.clip((0.085 - e) / 0.04, 0, 1)
+    st = lerp(hexc(tone[0]), hexc(tone[1]), np.clip(0.5 + spread * tn + 0.14 * mid + 0.12 * fine, 0, 1))
+    st *= relief(dome * 6.0 + fine * 0.5, 0.5)[..., None]
+    st *= (0.88 + 0.12 * dome)[..., None]
+    gap = np.clip((0.06 - e) / 0.035, 0, 1)   # (the rollout, 11-11: setts twice the size, joints thinner and nearer the stone's value: the busy cell net went quiet)
     soil = hexc(joint) * (1 + 0.25 * fine + 0.15 * mid)[..., None]
     rgb = lerp(st, soil, gap)
     moss = np.clip(gap * np.clip(fft_noise(N, 4, 16, seed + 7, 0.6) * 2.4 - 0.6, 0, 1), 0, 1)
@@ -609,7 +609,7 @@ def bake_hedge(seed=131):
 
 
 # ── THE ICE: blue-grey sea ice — a frosted skin, pressure cracks, clearer darker patches where it is thick and glassy ─────────────
-def bake_ice(seed=141):
+def bake_ice(seed=141, val=0.8):   # val (the rollout, 11-11): Flash Freeze's ice on a sunlit board read white, so the sheet sits a step lower
     wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 30; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 30
     F1, F2, ID = worley(N, 5, seed + 3, (wx, wy)); f1b, f2b, _ = worley(N, 13, seed + 4, (wx * 0.5, wy * 0.5))
     macro = fft_noise(N, 1, 5, seed + 5, 0.7); mid = fft_noise(N, 6, 30, seed + 6, 0.5); fine = fft_noise(N, 100, 400, seed + 7, 0.0)
@@ -622,7 +622,7 @@ def bake_ice(seed=141):
     rgb = lerp(rgb, hexc(0x5d7180), c * 0.45)
     rgb = lerp(rgb, hexc(0xc9d3da), np.clip(np.roll(np.roll(c, 2, 0), 2, 1) - c, 0, 1) * 0.35)   # the lit lip beside a crack
     rgb *= (1.0 + 0.025 * fine)[..., None]
-    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.7))
+    img = to_img(rgb * val).filter(ImageFilter.GaussianBlur(0.7))
     return settle(np.asarray(img).astype(np.float64) / 255.0, 0.9, 0.9)
 
 
@@ -668,7 +668,7 @@ def brushed(seed, along_x=True, k=0.03):
     return aniso_noise(N, 2, 300, seed, k if along_x else 1.0, 1.0 if along_x else k, 0.25)
 
 
-def bake_deckplate(seed=181, a=0x6f7276, b=0x878a8e):
+def bake_deckplate(seed=181, a=0x63666a, b=0x797c80):   # (the rollout, 11-11: a step under his aluminium in value)
     """the spaceship deck: brushed plates two to a square each way, bolted at the corners, scuffed along the walk"""
     ID, ED, u, v, n = panel_grid(2, 2, seed)
     tn = per_id(ID, n, seed + 1)
