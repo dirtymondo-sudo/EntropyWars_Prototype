@@ -63884,9 +63884,9 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
    9 / 10 / 11 cuts (hqArenaSizesOf), hqSiteId reads it as its site (the sky, the music, the stamps). The look lives in this table, not on
    the entry (hqArenaUpgrade rebuilds the entry in place). hqMapLook(mapId) → the look name or null. */
 var HQ_LOOK_MAPS = {   // var, not const: hqSiteId reads it, and it can run before this line (a const would throw there)
-    prebuilt_fairy_forest_calm_delta: { of: 'prebuilt_fairy_forest_delta', look: 'calm', label: 'Fairy Forest (Calm)' },
-    prebuilt_stonehenge_calm_delta:   { of: 'prebuilt_stonehenge_delta',   look: 'calm', label: 'Stonehenge (Calm)' },     // mondo 11-11: "try it on a couple more maps"
-    prebuilt_hell_calm_delta:         { of: 'prebuilt_hell_delta',         look: 'calm', label: 'Hell (Calm)' },
+    // EMPTY since 2026-11-11 (mondo: "Can we get rid of the 'calm' maps? Arent all of the maps calm now? We dont need the duplicates"):
+    // the three test boards — Fairy Forest (Calm), Stonehenge (Calm), Hell (Calm) — are gone; THE CALM LOOK below made every map calm,
+    // so each was a second card of its own arena. The table and its register stay for a later test look.
 };
 function hqMapLook(mapId) { const r = (typeof HQ_LOOK_MAPS !== 'undefined' && HQ_LOOK_MAPS) ? HQ_LOOK_MAPS[String(mapId || '')] : null; return r ? r.look : null; }
 (function hqLookMapsRegister() {
