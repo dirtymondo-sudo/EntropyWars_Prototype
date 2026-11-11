@@ -755,7 +755,7 @@ def bake_marsdust(seed=391):
 
 # ── THE MINT MARBLE (Agartha's floor: his marble_light under the crystal city's mint 0xbfe8c8): the calm marble, the mint kept ───
 def bake_marblemint(seed=431):
-    return bake_marble(seed, a=0x6e7a68, b=0x83917c, vein_col=0x515a4c)
+    return bake_marble(seed, a=0x8c9f83, b=0xa4b999, vein_col=0x687662)   # matched on his board: 91/116/112 under the cool light
 
 
 # ── THE VIOLET MOON (the Singularity's floor: his moon_3 under the room's violet 0x5a4a78): the same crater ground, dark blue-violet ─
