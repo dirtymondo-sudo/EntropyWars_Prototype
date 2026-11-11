@@ -2598,3 +2598,34 @@ Not run with two seats.
   Arrows + tiles already names (heal, util, place), so his colour per situation still applies.
 - Kept as it was: a buff's single aim tile is the blue "Buff spell reach", body moves blue, forced moves purple.
 - Proof (WebGL2, VS CPU): /mnt/project-files/aim-side-colours-20261111/. Not looked at on WebGPU.
+
+## THE ONE BATTLE PANEL (2026-11-11, mondo: "redesign the layout of the unit info panel / tile info panel and actions list to be one cohesive panel ... AAA JRPG"; plan + mock-ups approved "build it")
+- Plan + mock-ups: /mnt/project-files/battle-panel-20261111/ (page https://claude.ai/artifact/SGAvR8qW2ywVjM9AKJkyYZ). His three
+  picks, taken as recommended: the right bay shows your own stats + square when nothing is picked, the AP icons sit in the panel,
+  the zoom cone is off in this layout.
+- hud.js only lays out what the classic Horologe already builds (ActionMenu's panels / blades / TileCard / TileTabs / the quick
+  card's vitals + stats, HorologeMenu's cursor, keys, wheel, pad, menu camera and AP pending). `HorologeMenu` returns the deck
+  branch when `_ewDeckCfg().on`: `div.hrlg-rig.ewd` (`.ewd-c` compact, `.ewd-sub` off the root, `.ewd-nofocus`) holding
+  `.ewd-bay.ewd-actor` (1 WHO), `.ewd-bay.ewd-cmd` (2 WHAT: plate, `.ewd-crumbs` with the red `.ewd-back`, the parent list or the
+  armed row, `.ewd-list`, `.ewd-mode`, the green `.ewd-confirm`), `.ewd-bay.ewd-focus.<card|unit|self>` (3 ON WHAT: `.ewd-tabs`
+  or a plate, `DeckUnitCard` or `TileCard`) and `DeckFoot` (4: the game's prompt / description mirrored, the live keys).
+- `_ewdFocusOf` picks the right bay: the quick menu's card, else the unit a turn-icon peek / ⓘ asks for, else the cursor row's
+  unit (target lists), else the unit on the picked square, else your own (UI Maker pick). Fog: a row / pick unit shows only when
+  `_shouldCameraFollowUnit` says it is seen.
+- DeckFoot mirrors `#battleSubtitleText` (a queued notice wins) or `#ew-spell-descbar` and both bars hide while it is up
+  (`html.ew-deck-on`); a long text steps its size down to `--ewd-say-min`, never clips. QuickPeek / TacticWatch draw the same
+  window off your turn (ghost bays keep the spots). ApPress `docked` = the AP icons inside the actor bay (module memory
+  `_apDockMem`, so a menu re-open does not re-deal them).
+- Size: `_ewDeckScale`: full layout from 1728 × 904 × HUD Size ≥ 0.86 (scaled up to 1.4), else the COMPACT layout sized for
+  1300 × 548 (bays 246 / 282 / 430, its own font sizes), never the full one shrunk.
+- Look: `_ewdCss()` (appended to `_hudHideCss`). Panel parts plain; the parts a theme skins as buttons (rows, tool rows, item
+  slots, tabs) and the docked AP icons under a four-id prefix with !important, so the theme's skins (two ids) and the UI Maker's
+  pieces (three ids) keep the classic layout and the panel keeps the approved look. Theme fonts / title zoom / caps still apply.
+- UI Maker: Layout > Battle panel (piece `deck`): Layout One panel / Classic (`dPanel`), Right side (`dFocus`), AP icons
+  (`dAp`), Zoom cone (`dCone`) → `window._ewDeck` + event `ew-deck`. Kill switch: `window.EW_CLASSIC_PANEL = true`.
+- Camera + world text: battle.js `_menuFreeArea` takes the panel as a bottom band (the biggest box its bays leave: full width
+  above it or the strip beside a tall list; the frame may rise like THE LOW PANEL), `_clearDropCover` and three-renderer.js
+  `_wmMenuRects` count its bays, footer and tabs. TurnColumn docks above the actor bay's YOUR TURN plate.
+- No cut-off: the breadcrumb wraps between menu names (`wbr`), a crowded target row drops its last chip (MOVE→CAST) to a
+  second line instead of squeezing the turns-away count, the list scrolls only past `--ewd-list-max`.
+- Viewer-local: nothing on state, nothing relayed.

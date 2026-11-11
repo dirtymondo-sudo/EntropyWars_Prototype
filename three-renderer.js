@@ -20562,6 +20562,12 @@ const ThreeRenderer = (function () {
             if (!shown(rig)) continue;
             var side = rig.querySelector(':scope > .hrlg-side:not(.hrlg-ghost)');
             if (side) for (var sc = 0; sc < side.children.length; sc++) add(side.children[sc].getBoundingClientRect());
+            /* THE ONE BATTLE PANEL (hud.js _ewDeckCfg): its bays, its footer, the tabs over its right bay */
+            if (rig.classList.contains('ewd')) {
+                var bays = rig.querySelectorAll(':scope > .ewd-bay:not(.ewd-ghost), :scope > .ewd-foot:not(.ewd-ghost), .ewd-tabs');
+                for (var bi = 0; bi < bays.length; bi++) add(bays[bi].getBoundingClientRect());
+                continue;
+            }
             var parts = rig.querySelectorAll('.hrlg-panels > .hrlg-panel > *');
             for (var j = 0; j < parts.length; j++) {
                 var c = parts[j];

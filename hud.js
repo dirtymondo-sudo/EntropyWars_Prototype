@@ -2122,9 +2122,11 @@ function QuickCone() {
       const _tts = document.querySelector('.hrlg-panel.quick.on > .hrlg-ttabs');
       if (_tts) _ttabsPin(_tts);
       if (typeof state === 'undefined' || !state || (state._enemyActionTargetId == null && _tcPeekId == null)) { hide(svg); return; }
-      const head = document.querySelector('.hrlg-panel.quick.on > .hrlg-thead.qp');
+      let head = document.querySelector('.hrlg-panel.quick.on > .hrlg-thead.qp'), deckCard = false;
+      /* THE ONE BATTLE PANEL: its unit card in the right bay, when its zoom cone is on (UI Maker: Battle panel) */
+      if (!head && _ewDeckCfg().on && _ewDeckCfg().cone) { head = document.querySelector('.hrlg-rig.ewd .ewd-ucard[data-uid]:not(.self)'); deckCard = !!head; }
       if (!head) { hide(svg); return; }
-      _qpKeepClear(head, L);
+      if (!deckCard) _qpKeepClear(head, L);
       const uid = head.getAttribute('data-uid');
       let icon = null;
       for (const el of document.querySelectorAll('.ew-turn-col .ew-tc-icon[data-uid]')) { if (el.getAttribute('data-uid') === uid) { icon = el; break; } }
@@ -2132,7 +2134,7 @@ function QuickCone() {
       /* where it ends (UI Maker: Zoom cone > Ends at, mondo 2026-10-18: "Let me change where the zoom cone is attached or
          anchored to"): the portrait's / the card's / the name's near edge, or a corner point of the portrait / card */
       const to = L.to || 'port';
-      const port = head.querySelector('.hrlg-qp-port'), tab = head.querySelector(':scope > .hrlg-view-tab');
+      const port = head.querySelector(deckCard ? '.ewd-uport' : '.hrlg-qp-port'), tab = head.querySelector(deckCard ? '.ewd-uname' : ':scope > .hrlg-view-tab');
       const portOn = port && port.offsetWidth > 0 && getComputedStyle(port).display !== 'none';
       const tgt = (to === 'card' || to === 'corner') ? head : to === 'name' ? (tab || head) : (portOn ? port : head);
       const tr = tgt.getBoundingClientRect();
@@ -2472,10 +2474,14 @@ function TurnColumn({ st }) {
     const layer = el.offsetParent || el.parentElement; if (!layer) return;
     const lr = layer.getBoundingClientRect(); if (!lr.height) return;
     const s = parseFloat(getComputedStyle(el).getPropertyValue('--ew-ui-scale')) || 1;
-    const side = layer.querySelector('.hrlg-side');
+    /* THE ONE BATTLE PANEL: its left bay (the acting unit) is the plate the column docks on */
+    const side = layer.querySelector('.hrlg-rig.ewd > .ewd-actor:not(.ewd-ghost)') || layer.querySelector('.hrlg-side');
     const sr = side ? side.getBoundingClientRect() : null;
+    /* the panel's name plate ("YOUR TURN") stands on the bay's top edge: the column sits above the plate, not on it */
+    const plate = side && side.classList.contains('ewd-actor') ? side.querySelector(':scope > .ewd-plate') : null;
+    const ptop = plate ? plate.getBoundingClientRect().top : Infinity;
     let bottom, docked = false;
-    if (sr && sr.height > 0) { bottom = lr.bottom - sr.top + 8 * s; docked = true; }
+    if (sr && sr.height > 0) { bottom = lr.bottom - Math.min(sr.top, ptop) + 8 * s; docked = true; }
     else if (cmdRef.current && geoRef.current.docked && geoRef.current.bottom != null) { bottom = geoRef.current.bottom; docked = true; }
     else bottom = 14 + 66 * s;
     let avail = Math.max(120, (lr.height - bottom - 12) / s);
@@ -4299,12 +4305,192 @@ if (typeof window !== 'undefined' && !window._ewHrlgPtrOn) {
   window.addEventListener('pointermove', _keep, { capture: true, passive: true });
   window.addEventListener('wheel', _keep, { capture: true, passive: true });
 }
+
+/* ══ THE ONE BATTLE PANEL (mondo 2026-11-11: "How would you redesign the layout of the unit info panel/ tile info panel
+   and actions list to be one cohesive panel/layout instead of 2 separate panels? I want the player to have all relevant
+   info of the unit/tile available to them as well as the actions they can take ... AAA JRPG"; plan + mock-ups approved
+   "build it", /mnt/project-files/battle-panel-20261111/) ══
+   One window along the bottom left, read left to right: 1 WHO (the unit whose turn it is: the watch portrait, name, HP /
+   MP with the spend forecast, the AP icons, the tool rows, items, materials), 2 WHAT (the one command list: the root
+   verbs, or the open sub-list; red BACK on top, green CONFIRM at the bottom), 3 ON WHAT (the picked unit, square or
+   object: its card, its tabs, its small buttons; nothing picked = your own stats + square), 4 the footer (the game's
+   prompt or the description of the row under the cursor, and the keys that work right now). The menus, rows, cards and
+   buttons are the SAME ones the classic Horologe draws (ActionMenu builds them, HorologeMenu keeps the cursor, keys,
+   wheel, pad and menu camera); only the layout differs. UI Maker > Layout > Battle panel: One panel / Classic, and the
+   three picks (dFocus: the right side with nothing picked, dAp: AP icons in the panel, dCone: the zoom cone). Viewer-
+   local: nothing on state, nothing relayed. Kill switch (console): window.EW_CLASSIC_PANEL = true. */
+let _ewdLive = false;   // the panel is on screen (QuickPeek / ApPress / TacticWatch step aside for it)
+function _ewDeckCfg() {
+  const c = (typeof window !== 'undefined' && window._ewDeck) || {};
+  return { on: !(typeof window !== 'undefined' && window.EW_CLASSIC_PANEL) && c.on !== false,
+    focusSelf: c.focusSelf !== false, apIn: c.apIn !== false, cone: !!c.cone };
+}
+/* its size: the full layout from 1728 × 904 up (scaled with the window and the pause menu's HUD Size); a smaller or
+   shorter window gets the COMPACT layout (narrower bays, smaller words) sized for 1300 × 548, never the full one shrunk */
+function _ewDeckScale() {
+  const w = window.innerWidth || 1280, hh = window.innerHeight || 720;
+  const pref = typeof window._getUIScalePref === 'function' ? window._getUIScalePref() : 1;
+  const full = Math.min(w / 1728, hh / 904) * pref;
+  if (full >= 0.86 && !window.EW_MOBILE) return { s: Math.min(1.4, full), c: false };
+  return { s: Math.max(0.55, Math.min(1.25, Math.min(w / 1300, hh / 548) * pref)), c: true };
+}
+/* a menu's name in the breadcrumb / on the plate */
+const _EWD_NAMES = { root: 'COMMAND', spells: 'ABILITIES', items: 'ITEMS', switch: 'SWITCH', tacParty: 'TACTICS', tactics: 'TACTIC',
+  entropy: 'ENTROPY', finTargets: 'FINISHER', pings: 'PING', orient: 'ORIENTATION', atkTargets: 'ATTACK', combo: 'COMBO',
+  build: 'BUILD', tuneFreq: 'FREQUENCY', aim: 'AIM', itemTargets: 'TARGET', spTargets: 'TARGET' };
+function _ewdUnitById(id) {
+  return ((typeof state !== 'undefined' && state && state.units) || []).find(x => String(x.id) === String(id) && !x.dead) || null;
+}
+function _ewdUnitName(u) { return u ? String((typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '') : ''; }
+function _ewdPanelName(p) {
+  if (!p) return '';
+  const k = p.key || '';
+  if (k === 'root') return _EWD_NAMES.root;
+  const side = /^(enemy|ally)\|(.+)$/.exec(k);
+  if (side) return _ewdUnitName(_ewdUnitById(side[2])).toUpperCase() || 'UNIT';
+  if (/^tile\|/.test(k) && p.card) {
+    const C = p.card;
+    return ((typeof coordLabel === 'function' ? coordLabel(C.tx, C.ty) : C.tx + ',' + C.ty) + ' ' + String((C.eff && C.eff.label) || '')).trim().toUpperCase();
+  }
+  const t = p.title;
+  if (t && t.text) return String(t.text).toUpperCase();
+  const parts = k.split('|');
+  if ((parts[0] === 'aim' || parts[0] === 'spTargets') && parts.length > 1) return String(parts[parts.length - 1] || _EWD_NAMES[parts[0]]).toUpperCase();
+  return _EWD_NAMES[parts[0]] || String(parts[0] || '').toUpperCase();
+}
+/* what the right bay shows: a quick menu's own card (the clicked unit / square), else the unit a turn icon peek or the
+   ⓘ / I card asks for, else the unit the cursor row aims at (target lists), else the unit on the picked square, else
+   (UI Maker pick, on by default) the acting unit's own stats + square. Fog: a unit found from a row or a pick shows only
+   when the viewer can see it (the target lists and the board clicks only offer seen units already). */
+function _ewdFocusOf(activePanel, viewKey, selBlade, apUnit, focusSelf) {
+  const S = (typeof state !== 'undefined' && state) ? state : {};
+  if (activePanel && activePanel.card) return { kind: 'card', view: activePanel.card };
+  const seen = (u) => !!u && (!apUnit || u.player === apUnit.player || typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(u));
+  let fu = null;
+  const m = /^(enemy|ally)\|(.+)$/.exec(viewKey || '');
+  if (m) fu = _ewdUnitById(m[2]);
+  if (!fu && _tcPeekId != null) fu = _ewdUnitById(_tcPeekId);
+  if (!fu && S.showUnitInfo) fu = _ewdUnitById(S.focusedUnitId || S.selectedUnitId);
+  if (!fu && selBlade && selBlade.camTarget && selBlade.camTarget.uid != null) { const q = _ewdUnitById(selBlade.camTarget.uid); if (seen(q)) fu = q; }
+  if (!fu && S.pendingTarget && !S.pendingTarget.selfCast && typeof unitAt === 'function') {
+    const pt = S.pendingTarget;
+    let q = null;
+    try { q = (pt.z != null ? unitAt(pt.x, pt.y, pt.z) : null) || unitAt(pt.x, pt.y); } catch (e) { q = null; }
+    if (q && !q.dead && seen(q)) fu = q;
+  }
+  if (fu && (!apUnit || fu.id !== apUnit.id)) {
+    const ally = apUnit && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(apUnit, fu) : fu.player !== apUnit.player);
+    return { kind: 'unit', ukey: (ally ? 'ally|' : 'enemy|') + fu.id, unit: fu };
+  }
+  if (apUnit && (focusSelf || fu)) {
+    let v = null;
+    try { v = _hrlgTileView(apUnit, apUnit.x, apUnit.y, apUnit.z, { key: 'self|' + apUnit.id, unit: apUnit }); } catch (e) { v = null; }
+    if (v) return { kind: 'self', view: v, unit: apUnit };
+  }
+  return null;
+}
+/* THE UNIT CARD in the right bay: the portrait, the name (shrinks to fit, never cut), type badges, where it stands and
+   how far, the HP / MP bars with the forecast (_hrlgQuickVitals), its status + buff rows, then the stats + element box
+   (_hrlgQuickStats). key 'self|<id>' = the acting unit's own card: no portrait or bars (the left bay holds them). */
+function DeckUnitCard({ ukey, actor, terrain, btns }) {
+  const ref = useRef(null);
+  const fit = () => { const el = ref.current; if (!el) return; const row = el.querySelector('.ewd-uhead'); if (row) ewFitLine(row, row.querySelector('.ewd-uname'), 9); };
+  React.useLayoutEffect(fit);
+  useEffect(() => { ewFitLineOnFonts(fit); return () => { if (window._ewFitFns) window._ewFitFns.delete(fit); }; }, []);
+  const m = /^(enemy|ally|self)\|(.+)$/.exec(ukey || '');
+  const u = m ? _ewdUnitById(m[2]) : null;
+  if (!u) return null;
+  const side = m[1], self = side === 'self';
+  const qk = (side === 'enemy' ? 'enemy|' : 'ally|') + u.id;
+  const qv = self ? null : _hrlgQuickVitals(qk);
+  const pd = self ? null : _hrlgPortraitData(u, actor || null);
+  const coord = typeof coordLabel === 'function' ? coordLabel(u.x, u.y) : u.x + ',' + u.y;
+  const dist = (!self && actor) ? Math.abs(actor.x - u.x) + Math.abs(actor.y - u.y) : null;
+  const where = self ? [coord, terrain ? String(terrain).toUpperCase() : null]
+    : [coord, dist == null ? null : dist === 0 ? 'HERE' : dist + ' AWAY'];
+  return h('div', { ref, className: 'ewd-ucard ' + side, 'data-uid': String(u.id) },
+    self ? null : h('div', { className: 'ewd-uport ' + side + (pd && !pd.isFace ? ' sprite' : '') },
+      pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
+    h('div', { className: 'ewd-umain' },
+      h('div', { className: 'ewd-uhead' },
+        h('span', { className: 'hrlg-name ewd-uname' }, _ewdUnitName(u)),
+        (u.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })),
+        h('span', { className: 'ewd-coord' }, where.filter(Boolean).join(' · '))),
+      qv),
+    h('div', { className: 'ewd-ulow' }, _hrlgQuickStats(qk)),
+    (btns && btns.length) ? h('div', { className: 'hrlg-tc-btns ewd-btns' }, btns) : null);
+}
+/* THE FOOTER: the line the game's text box says (the prompt, a notice, a fresh combat line) or, while a row with a
+   description is under the cursor, that description (the spell description bar's own words, icon, badges and costs);
+   a notice the engine queued (battleDialogueQueue: "MOVE — Rooted") always wins. Both bars stay the game's own (battle.js
+   _renderDialogueBox, hud.js _renderSpellDescBar): the footer mirrors whichever speaks and the two hide while the panel
+   is up (html.ew-deck-on). The keys on the right are the ones that work right now. */
+function DeckFoot({ keys }) {
+  const [say, setSay] = useState({ kind: '', html: '' });
+  const ref = useRef(null);
+  useEffect(() => {
+    const de = document.documentElement;
+    de.classList.add('ew-deck-on');
+    const pick = () => {
+      const q = (typeof state !== 'undefined' && state && state.battleDialogueQueue) || [];
+      const bar = document.getElementById('battleSubtitleBar'), sub = document.getElementById('battleSubtitleText');
+      const desc = document.getElementById('ew-spell-descbar');
+      const subOn = !!(bar && sub && bar.classList.contains('visible') && sub.innerHTML);
+      let kind = '', html = '';
+      if (q.length && subOn) { kind = 'say'; html = sub.innerHTML; }
+      else if (desc && desc.classList.contains('show') && desc.innerHTML) { kind = 'desc'; html = desc.innerHTML; }
+      else if (subOn) { kind = 'say'; html = sub.innerHTML; }
+      setSay(p => (p.kind === kind && p.html === html) ? p : { kind, html });
+    };
+    pick();
+    const mo = new MutationObserver(pick);
+    let seen = [];
+    const watch = () => {
+      const els = [document.getElementById('battleSubtitleBar'), document.getElementById('ew-spell-descbar')];
+      if (els[0] === seen[0] && els[1] === seen[1]) return;
+      mo.disconnect(); seen = els;
+      els.forEach(el => { if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true, characterData: true }); });
+    };
+    watch();
+    const t = setInterval(() => { watch(); pick(); }, 250);   // a bar made later, a queued notice that came or went
+    return () => { mo.disconnect(); clearInterval(t); de.classList.remove('ew-deck-on'); };
+  }, []);
+  /* a long description steps its words down (never under the floor) before the footer grows: the panel holds still */
+  React.useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    el.style.removeProperty('font-size');
+    const cs = getComputedStyle(el);
+    const max = parseFloat(cs.getPropertyValue('--ewd-say-max')), lo = parseFloat(cs.getPropertyValue('--ewd-say-min')) || 10;
+    if (!(max > 0) || !(el.clientHeight > 0)) return;
+    let px = parseFloat(cs.fontSize) || 14;
+    for (let i = 0; i < 8 && el.scrollHeight > max + 1 && px > lo; i++) { px = Math.max(lo, px - 1); el.style.setProperty('font-size', px + 'px'); }
+  });
+  return h('div', { className: 'ewd-foot' },
+    h('div', { ref, className: 'ewd-say ' + (say.kind || 'none'), dangerouslySetInnerHTML: { __html: say.html || '' } }),
+    h('div', { className: 'ewd-keys' }, keys));
+}
+
 function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, apUnit, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const listRef = useRef(null);
   const [fireId, setFireId] = useState(null);
   const inputDev = useInputDevice();
+  /* THE ONE BATTLE PANEL: its UI Maker switch (ew-deck) and its size (the window) redraw it; the others learn it is up */
+  const deckCfg = _ewDeckCfg();
+  const [, setDeckTick] = useState(0);
+  useEffect(() => {
+    const f = () => setDeckTick(n => n + 1);
+    window.addEventListener('ew-deck', f);
+    window.addEventListener('resize', f);
+    return () => { window.removeEventListener('ew-deck', f); window.removeEventListener('resize', f); };
+  }, []);
+  React.useLayoutEffect(() => {
+    if (_ewdLive === deckCfg.on) return;
+    _ewdLive = deckCfg.on;
+    window.dispatchEvent(new Event('ew-state-change'));
+  }, [deckCfg.on]);
+  useEffect(() => () => { if (_ewdLive) { _ewdLive = false; window.dispatchEvent(new Event('ew-state-change')); } }, []);
   // the UI Maker's hero split (the watch outside the panel) changes the column's markup: re-render on its word
   const [, setHeroTick] = useState(0);
   useEffect(() => {
@@ -4513,8 +4699,10 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     const next = selIdx + dir;
     if (next < 0 || next >= blades.length) {
       if (rigRef.current && rigRef.current.animate) {
+        /* the one battle panel is scaled by its transform: the bump keeps that scale */
+        const _rs = rigRef.current.classList.contains('ewd') ? 'scale(' + ((getComputedStyle(rigRef.current).getPropertyValue('--ewd-s') || '').trim() || 1) + ') ' : '';
         rigRef.current.animate(
-          [{ transform: 'translateY(0)' }, { transform: 'translateY(' + (dir > 0 ? 4 : -4) + 'px)' }, { transform: 'translateY(0)' }],
+          [{ transform: _rs + 'translateY(0)' }, { transform: _rs + 'translateY(' + (dir > 0 ? 4 : -4) + 'px)' }, { transform: _rs + 'translateY(0)' }],
           { duration: 130, easing: 'ease-out' });
       }
       return;
@@ -4571,7 +4759,10 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   /* THE TILE INFO PANEL's tabs: [ / ] (and the pad's D-pad ← / →, window._hrlgPad.tab) step them */
   const tabStepRef = useRef(null);
   const _actCard = activePanel ? activePanel.card : null;
-  tabStepRef.current = (d) => _hrlgStepTileTab(_actCard, d);
+  /* THE ONE BATTLE PANEL's right bay: what it shows (its tabs step with [ / ] too, your own square's included) */
+  const _deckF = deckCfg.on ? _ewdFocusOf(activePanel, viewKey, selBlade, apUnit, deckCfg.focusSelf) : null;
+  const _tabView = _actCard || (_deckF && _deckF.view) || null;
+  tabStepRef.current = (d) => _hrlgStepTileTab(_tabView, d);
   /* a new tab puts the cursor on its first button (the description bar then reads that tab's words); a tab with no
      buttons hands the cursor back to the list's default row */
   const _tabNow = _actCard ? _actCard.active : null;
@@ -4638,7 +4829,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     cycle: (d) => cycleRef.current(d),
     fire: () => { if (fireSelRef.current) fireSelRef.current(); },
     crown: () => { if (crownRef.current) crownRef.current(); },
-    tabs: _actCard && _actCard.tabs ? _actCard.tabs.length : 0,
+    tabs: _tabView && _tabView.tabs ? _tabView.tabs.length : 0,
     tab: (d) => !!(tabStepRef.current && tabStepRef.current(d)),
   };
   useEffect(() => () => { window._hrlgPad = null; }, []);
@@ -4652,16 +4843,18 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   // as full-size tool rows at the bottom of the identity column — no more
   // tiny overlapping bezel studs. Root view only; presence == opportunity.
   const toolRows = [];
-  if (view === 'root' && build) {
+  /* the one battle panel keeps them in view on every menu, locked (dimmed, no click) off the root menu */
+  const toolsLocked = view !== 'root';
+  if ((view === 'root' || deckCfg.on) && build) {
     toolRows.push(h('div', {
       key: 'build',
-      className: 'hrlg-push' + (build.available ? ' live' : ' off') + (build.active ? ' armed' : ''),
+      className: 'hrlg-push' + (build.available ? ' live' : ' off') + (build.active ? ' armed' : '') + (toolsLocked ? ' lock' : ''),
       style: { '--pc': '#f0d060', '--pc-soft': '#f0d06088', '--pc-faint': '#f0d06022' },
       title: build.available
         ? 'Build — dig / place blocks (' + (build.hint || 'B') + ')'
         : 'Build — ' + (build.sub || 'Unavailable'),
       onClick: () => {
-        if (!build.available && !build.active) return;
+        if (toolsLocked || (!build.available && !build.active)) return;
         if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
         if (clockApi.strike) clockApi.strike(-60);
         build.fire();
@@ -4672,7 +4865,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
       h('span', { className: 'hrlg-push-sub' }, build.available ? (build.hint || 'B') : (build.sub || '')),
     ));
   }
-  if (view === 'root') {
+  if (view === 'root' || deckCfg.on) {
     // Pushers may now be PERMANENT (Channel / Land / Take Off): they carry
     // `available:false` + a `sub` reason instead of vanishing, exactly like
     // the BUILD row above.
@@ -4682,14 +4875,14 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         key: p.id,
         'data-pid': p.id,   // THE TUTORIAL's coach finds the pusher by id (⚛ / ⬡)
         className: 'hrlg-push' + (live ? ' live pulse' : ' off') + (p.active ? ' armed' : '')
-          + (p.id === 'entropyStrike' ? ' entropy' : ''),
+          + (p.id === 'entropyStrike' ? ' entropy' : '') + (toolsLocked ? ' lock' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
         title: live ? (p.title || p.label) : ((p.title || p.label) + ' — ' + (p.sub || 'Unavailable')),
         /* a pusher's own preview (DETONATE: every blast, its damage and where each body is thrown) */
-        onMouseEnter: (live && p.hoverIn) ? () => p.hoverIn() : undefined,
-        onMouseLeave: p.hoverOut ? () => p.hoverOut() : undefined,
+        onMouseEnter: (live && !toolsLocked && p.hoverIn) ? () => p.hoverIn() : undefined,
+        onMouseLeave: (p.hoverOut && !toolsLocked) ? () => p.hoverOut() : undefined,
         onClick: () => {
-          if (!live) return;
+          if (!live || toolsLocked) return;
           if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
           if (clockApi.strike) clockApi.strike(-60);
           p.fire();
@@ -4700,6 +4893,308 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         h('span', { className: 'hrlg-push-sub' }, live ? (p.hint || '') : (p.sub || '')),
       ));
     });
+  }
+
+  /* the vitals, the item slots and the materials: one build, drawn by the classic column or the one battle panel */
+  const vitalsEl = maxHp > 0 && h('div', { className: 'hrlg-vitals' },
+    (() => {
+      const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+      // canonical ally green — the Horologe always shows YOUR unit
+      return h('div', { className: 'hrlg-vrow hp' + (hpPct <= 30 ? ' low' : '') },
+        h('span', { className: 'hrlg-vlbl' }, 'HP'),
+        h('span', { className: 'hrlg-vbar' },
+          h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
+          unitKey != null && h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(unitKey) }),   // THE DAMAGE TRAIL
+          /* the heartbeat trace rides on top of the bar */
+          h(VitalWave, { pct: hpPct, hp: hp, maxHp: maxHp, mp: mp, unitKey: unitKey }),
+        ),
+        h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
+      );
+    })(),
+    maxMp > 0 && (() => {
+      const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
+      // Projected MP spend: while the cursor sits on a castable ability
+      // row (hover IS selection) — or while a spell is armed and aiming —
+      // the cost blinks as a bright slice off the fill's leading edge,
+      // with a −N chip on the number. Same read as the HP damage forecast.
+      let mpSpend = 0;
+      if (selBlade && (selBlade.available || selBlade.check)
+          && typeof selBlade.mp === 'number' && selBlade.mp > 0) {
+        mpSpend = selBlade.mp;
+      } else if (am === 'spell' && typeof state !== 'undefined' && state.selectedTool
+          && typeof getSelectedUnit === 'function') {
+        const _su = getSelectedUnit();
+        const _sp = _su && [...(_su.spells || []), ...(_su._raceAbilities || [])]
+          .filter(Boolean).find(s => s.name === state.selectedTool);
+        if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
+          ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
+      }
+      /* THE MANA FORECAST: a Mana Potion (or an ally's Free Energy) aimed at this unit grows its MP fill */
+      const _mfc = (typeof window._ewManaPreviewFor === 'function' && apUnit) ? window._ewManaPreviewFor(apUnit.id) : null;
+      const mpGain = (_mfc && _mfc.gain > 0) ? _mfc.gain : 0;
+      const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
+      const gainPct = mpGain > 0 ? Math.max(0, Math.min(100 - mpPct, (mpGain / maxMp) * 100)) : 0;
+      return h('div', { className: 'hrlg-vrow mp' },
+        h('span', { className: 'hrlg-vlbl' }, 'MP'),
+        h('span', { className: 'hrlg-vbar mp' },
+          h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
+          spendPct > 0 && h('span', {
+            className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
+            style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
+          }),
+          gainPct > 0 && h('span', {
+            className: 'hrlg-vspend gain',
+            style: { left: mpPct + '%', width: gainPct + '%' },
+          }),
+        ),
+        h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
+          mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend)
+            : mpGain > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' +' + mpGain) : null),
+      );
+    })(),
+    /* XP to next level — progression modes only (Mystery Dungeon /
+       Challenge / campaign); PvP passes xp:null and shows nothing */
+    xp && (() => {
+      const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
+      return h('div', { className: 'hrlg-vrow mp xp' },
+        h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
+        h('span', { className: 'hrlg-vbar mp', style: { height: 7 } },
+          h('span', { className: 'hrlg-vfill', style: {
+            width: xpPct + '%',
+            background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
+            boxShadow: '0 0 6px rgba(242,196,104,0.45)',
+          } }),
+        ),
+        h('span', { className: 'hrlg-vnum', style: { fontSize: 10, color: '#f2c468' } },
+          xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
+      );
+    })(),
+    /* the numbers alone, for when the UI Maker swaps the bars for the watch ring (hidden otherwise) */
+    h('div', { className: 'hrlg-vnums', style: { display: 'none' } },
+      h('span', { className: 'hp' }, 'HP ', h('b', null, Math.max(0, Math.round(hp)) + '/' + maxHp)),
+      maxMp > 0 && h('span', { className: 'mp' }, 'MP ', h('b', null, Math.max(0, Math.round(mp)) + '/' + maxMp)),
+    ),
+  );
+  const itemsEl = items && h('div', { className: 'hrlg-items' },
+    [0, 1, 2].map(i => {
+      const it = items[i];
+      if (!it) return h('div', { key: 'empty' + i, className: 'hrlg-item-slot empty' },
+        h('span', { className: 'hrlg-item-glyph' }, '·'));
+      return h('div', {
+        key: it.key,
+        className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
+        // healing potion slot reads green like every other heal control
+        style: ((typeof window._ewItemLike === 'function' ? window._ewItemLike(it.key, 'healPotion') : it.key === 'healPotion') && it.canUse)
+          ? { borderColor: '#57d97ecc', boxShadow: '0 0 9px #57d97e44' } : undefined,
+        title: it.name + ' ×' + it.count
+          + (it.desc ? ' — ' + it.desc : '')
+          + (it.canUse ? '' : ' (can’t use right now)'),
+        onClick: () => {
+          if (!it.canUse) return;
+          if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+          if (clockApi.strike) clockApi.strike(150);
+          onItem(it.key);
+        },
+      },
+        h('span', { className: 'hrlg-item-glyph' }, it.icon),
+        h('span', { className: 'hrlg-item-count' }, '×' + it.count),
+      );
+    }),
+  );
+  const matsEl = mats && h('div', {
+    className: 'hrlg-mats',
+    title: 'Team building materials — dig terrain, chop trees and wreck structures to bank more. Spent by the Build action and construction spells.',
+  },
+    h('span', { className: 'hrlg-mats-lbl' }, 'MAT'),
+    mats.map(m => h('span', { key: m.k, className: 'hrlg-mat' + (m.n > 0 ? '' : ' none') }, m.icon + ' ' + m.n)),
+    buildCharge > 0 ? h('span', { className: 'hrlg-mat free' }, '🧤 +' + buildCharge) : null,
+  );
+
+  /* ── THE ONE BATTLE PANEL (see _ewDeckCfg): the same rows, cards and buttons, laid out as one window ── */
+  if (deckCfg.on) {
+    const ds = _ewDeckScale();
+    const isPad = inputDev === 'pad' && !!window.EWPad;
+    const kbd = (k, dark) => h('span', { className: 'ewd-kbd' + (dark ? ' dark' : '') }, k);
+    const padB = (action) => h(PadBtn, { action });
+    /* one row of a list (or a card's small button): the classic blade, the classic handlers */
+    const mkB = (b, i, on, armed) => h(HorologeBlade, {
+      key: b.id, b: b, idx: i,
+      sel: on && i === selIdx,
+      active: !!armed || (b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected)),
+      muted: !on, fireId: on ? fireId : null, confirmBtn: null,
+      onFire: on ? fireBlade : (b2, e) => {
+        if (b2.id === 'end' || b2.id === 'cancel') return;
+        if (armed) { if (e && e.stopPropagation) e.stopPropagation(); pressBack(); return; }
+        if (!b2.available && !b2.forceLive) return;
+        if (e && e.stopPropagation) e.stopPropagation();
+        fireBlade(b2);
+      },
+      onHover: on ? hoverBlade : () => {},
+    });
+
+    /* ── 1 WHO: the unit whose turn it is ── */
+    let heroHide = {};
+    try { heroHide = (window.UIMaker && window.UIMaker.hero && window.UIMaker.hero().hide) || {}; } catch (e) { heroHide = {}; }
+    const actorEl = h('div', { key: 'actor', className: 'ewd-bay ewd-actor' },
+      h('span', { className: 'ewd-plate' }, 'YOUR TURN'),
+      h('div', { className: 'ewd-atop' },
+        h('div', { className: 'ewd-ring' },
+          h(HorologeHub, {
+            api: clockApi,
+            portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
+            portraitTitle: 'Center the camera on ' + unitName,
+            onPortraitClick: onPortraitClick,
+            unitKey: unitKey, burning: burning, poisoned: poisoned,
+            hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
+            low: maxHp > 0 && hp / maxHp <= 0.3,
+          })),
+        h('div', { className: 'ewd-aid' },
+          h('div', { className: 'ewd-nm', ref: coreRef },
+            h('span', { className: 'ewd-rom' }, roman + ' ·'),
+            h('span', { className: 'hrlg-name ewd-name' }, unitName),
+            onInfo && h('span', {
+              className: 'ewd-info' + (infoOpen ? ' on' : ''),
+              title: infoOpen ? 'Your own card again (I)' : ('Info — ' + unitName + '’s card on the right (I)'),
+              onClick: (e) => { e.stopPropagation(); onInfo(); },
+            }, 'ⓘ', isPad ? null : kbd('I', true))),
+          h('div', { className: 'ewd-badges' },
+            (subLine && !heroHide.sub) ? h('span', { className: 'ewd-lv' }, subLine) : null,
+            (unitTypes || []).map(t => h(TypeChip, { key: t, name: t })),
+            (statusChips || []).map(c => h('span', {
+              key: c.key, className: 'hrlg-schip' + (c.kind ? ' ' + c.kind : ''),
+              style: c.bg ? { background: c.bg } : undefined, title: c.title || undefined,
+            }, c.label))),
+          vitalsEl,
+          deckCfg.apIn ? h('div', { className: 'ewd-aprow' },
+            h('span', { className: 'ewd-aplbl' }, 'AP'),
+            h(ApPress, { st: typeof state !== 'undefined' ? state : null, docked: true })) : null)),
+      toolRows.length ? h('div', { className: 'ewd-tools' + (toolsLocked ? ' lock' : ''),
+        title: toolsLocked ? 'Back to the command list to use these' : undefined }, toolRows) : null,
+      (itemsEl || matsEl) ? h('div', { className: 'ewd-inv' },
+        itemsEl ? h('span', { className: 'ewd-invlbl' }, 'ITEMS') : null, itemsEl || null, matsEl || null) : null);
+
+    /* ── 2 WHAT: the one command list ── */
+    const _names = _panels.map(_ewdPanelName);
+    const _sideM = /^(enemy|ally|tile)\|/.exec(viewKey);
+    const plateTxt = !activePanel ? (modeLabel ? 'AIM' : 'COMMAND')
+      : viewKey === 'root' ? 'COMMAND'
+      : (_sideM && _sideM[1] === 'enemy') ? 'VS ' + _names[_names.length - 1]
+      : (_sideM && _sideM[1] === 'tile') ? 'ON ' + ((typeof coordLabel === 'function' && activePanel.card) ? coordLabel(activePanel.card.tx, activePanel.card.ty) : _names[_names.length - 1])
+      : _names[_names.length - 1];
+    const listRows = activePanel ? activePanel.blades.map((b, i) => (b && !b.tbtn) ? { b, i } : null).filter(Boolean) : [];
+    const selListPos = listRows.findIndex(r => r.i === selIdx);
+    const crumbs = backable ? h('div', { className: 'ewd-crumbs' },
+      h('div', {
+        className: 'ewd-back',
+        title: isPad ? 'Back (' + _hintKey('cancel', 'ESC') + ')' : 'Back to the previous menu (ESC or right-click)',
+        onClick: (e) => { e.stopPropagation(); pressBack(); },
+      }, h('span', { className: 'ewd-back-arrow' }, '◀'), 'BACK', isPad ? padB('cancel') : kbd('ESC', true)),
+      h('span', { className: 'ewd-crumb' },
+        (_names.length ? _names : ['COMMAND']).slice(-3).map((n, i, a) => h(React.Fragment, { key: i },
+          i ? h('span', { className: 'ewd-sep' }, '›') : null, i ? h('wbr') : null,
+          i === a.length - 1 ? h('b', null, n) : n))),
+      listRows.length > 1 ? h('span', { className: 'ewd-cnt' }, (selListPos >= 0 ? (selListPos + 1) + '/' : '') + listRows.length) : null) : null;
+    /* the menus this list came from: the one right above it stays in full when it is a list you pick from alongside
+       (the party beside its Tactics, the light beside Tune, the target list beside its orientation, the combo picker);
+       the others show only their armed row (the spell, the item), and the breadcrumb names the rest */
+    const _anc = _panels.slice(0, -1).filter(p => p.key !== 'root');
+    const ancEls = _anc.map((p, k) => {
+      const last = k === _anc.length - 1;
+      if (last && /^(tacParty|tuneFreq|aim\||combo|orient)/.test(p.key || '')) {
+        return h('div', { key: 'anc' + k, className: 'ewd-parent', title: 'Back to this menu', onClick: () => pressBack() },
+          p.blades.map((b, i) => (b && !b.tbtn) ? mkB(b, i, false) : null));
+      }
+      const armed = p.blades.map((b, i) => (b && !b.tbtn && b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected)) ? mkB(b, i, false, true) : null).filter(Boolean);
+      return armed.length ? h('div', { key: 'anc' + k, className: 'ewd-armed', title: 'Back to this menu' }, armed) : null;
+    });
+    const cmdEl = h('div', { key: 'cmd', className: 'ewd-bay ewd-cmd' + (viewKey === 'root' ? ' root' : '') },
+      h('span', { className: 'ewd-plate gold' }, plateTxt),
+      crumbs,
+      ancEls,
+      activePanel ? h('div', { className: 'ewd-list' + (activePanel.blades.some(b => b && b.check) ? ' has-pick' : ''), ref: listRef },
+        listRows.map(r => mkB(r.b, r.i, true))) : null,
+      (!activePanel && modeLabel) ? h('div', { className: 'ewd-mode' }, modeLabel) : null,
+      confirm ? h('div', {
+        className: 'ewd-confirm',
+        onClick: () => {
+          if (typeof playSfx === 'function') playSfx('uiConfirm');
+          if (clockApi.strike) clockApi.strike(90);
+          confirm.fire();
+        },
+      },
+        h('span', { className: 'ewd-cf-check' }, '✓'),
+        h('span', { className: 'ewd-cf-lbl' }, 'CONFIRM', confirm.label ? h('span', { className: 'ewd-cf-tgt' }, ' — ' + confirm.label) : null),
+        isPad ? padB('confirm') : kbd('ENTER')) : null);
+
+    /* ── 3 ON WHAT: the picked unit / square / object (or your own stats + square) ── */
+    let focusEl = null;
+    if (_deckF) {
+      const C = _deckF.view || null;
+      const tbtns = (_deckF.kind === 'card' && activePanel)
+        ? activePanel.blades.map((b, i) => (b && b.tbtn) ? mkB(b, i, true) : null).filter(Boolean) : [];
+      let body = null, plate = null;
+      if (_deckF.kind === 'unit') {
+        body = h(DeckUnitCard, { key: 'u' + _deckF.ukey, ukey: _deckF.ukey, actor: apUnit });
+        plate = /^enemy/.test(_deckF.ukey) ? 'ENEMY' : 'ALLY';
+      } else if (C && C.active === 'unit' && C.unit) {
+        const own = _deckF.kind === 'self';
+        body = h(DeckUnitCard, { key: 'u' + C.key, ukey: own ? 'self|' + C.unit.id : (C.uSide || 'ally') + '|' + C.unit.id, actor: apUnit,
+          terrain: own && C.eff ? C.eff.label : null, btns: tbtns });
+        plate = own ? 'YOU' : (C.uSide === 'enemy' ? 'ENEMY' : 'ALLY');
+      } else if (C) {
+        body = h(TileCard, { key: 't' + C.key + C.active, C, btns: tbtns });
+        plate = C.active === 'object' ? 'OBJECT' : 'TERRAIN';
+      }
+      const tabsOn = !!(C && C.tabs && C.tabs.length > 1);
+      if (body) focusEl = h('div', { key: 'focus', className: 'ewd-bay ewd-focus ' + _deckF.kind + (tabsOn ? ' tabbed' : '') },
+        tabsOn ? h('div', { className: 'ewd-tabs' },
+          h(TileTabs, { view: C }),
+          h('span', { className: 'ewd-tabkeys' }, isPad ? h(PadBtn, { text: '◀▶', kind: 'dpad' }) : [kbd('[', true), kbd(']', true)]))
+          : h('span', { className: 'ewd-plate' }, plate),
+        body);
+    }
+
+    /* ── 4 the footer's keys: the ones that work right now ── */
+    const keys = [];
+    const key = (cap, lbl) => keys.push(h('span', { key: keys.length, className: 'ewd-key' }, cap, lbl));
+    const tabsLive = !!(_tabView && _tabView.tabs && _tabView.tabs.length > 1);
+    if (isPad) {
+      if (view === 'aim') {
+        key(h(PadBtn, { text: 'LS', kind: 'stick' }), 'CURSOR');
+        if (confirm) key(padB('confirm'), 'CONFIRM');
+        key(padB('cancel'), 'BACK');
+      } else {
+        key(h(PadBtn, { text: '✚', kind: 'dpad' }), 'MENU');
+        key(padB('confirm'), 'SELECT');
+        if (tabsLive) key(h(PadBtn, { text: '◀▶', kind: 'dpad' }), 'TABS');
+        if (backable) key(padB('cancel'), 'BACK');
+      }
+      key(padB('endTurn'), 'END TURN');
+    } else {
+      if (view === 'aim') {
+        if (confirm) key(kbd('ENTER', true), 'CONFIRM');
+        key(kbd('ESC', true), 'BACK');
+      } else {
+        key(kbd('↑↓', true), 'MENU');
+        key(kbd('ENTER', true), 'SELECT');
+        if (tabsLive) key(kbd('[ ]', true), 'TABS');
+        if (view === 'root' && !backable) key(kbd('WASD', true), 'MOVE');
+        if (backable) key(kbd('ESC', true), 'BACK');
+      }
+      key(kbd('SPACE', true), 'END TURN');
+    }
+
+    return h('div', {
+      ref: rigRef,
+      className: 'hrlg-rig ewd' + (ds.c ? ' ewd-c' : '') + (view !== 'root' ? ' ewd-sub' : '') + (focusEl ? '' : ' ewd-nofocus'),
+      style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a', '--ewd-s': ds.s.toFixed(3) },
+      onMouseDown: (e) => { if (e.button === 2) _hrlgRightPress(e, () => { if (backable) pressBack(); }); },
+      onContextMenu: (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (_hrlgRc || performance.now() - _hrlgRcEndT < 600) return;
+        if (backable) pressBack();
+      },
+    }, actorEl, cmdEl, focusEl, h(DeckFoot, { key: 'foot', keys }));
   }
 
   return h('div', {
@@ -4765,125 +5260,15 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
       ) : null,
       /* HP/MP vitals directly under the portrait, then AP under those —
          the reading order the player actually wants. */
-      maxHp > 0 && h('div', { className: 'hrlg-vitals' },
-        (() => {
-          const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
-          // canonical ally green — the Horologe always shows YOUR unit
-          return h('div', { className: 'hrlg-vrow hp' + (hpPct <= 30 ? ' low' : '') },
-            h('span', { className: 'hrlg-vlbl' }, 'HP'),
-            h('span', { className: 'hrlg-vbar' },
-              h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
-              unitKey != null && h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(unitKey) }),   // THE DAMAGE TRAIL
-              /* the heartbeat trace rides on top of the bar */
-              h(VitalWave, { pct: hpPct, hp: hp, maxHp: maxHp, mp: mp, unitKey: unitKey }),
-            ),
-            h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
-          );
-        })(),
-        maxMp > 0 && (() => {
-          const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
-          // Projected MP spend: while the cursor sits on a castable ability
-          // row (hover IS selection) — or while a spell is armed and aiming —
-          // the cost blinks as a bright slice off the fill's leading edge,
-          // with a −N chip on the number. Same read as the HP damage forecast.
-          let mpSpend = 0;
-          if (selBlade && (selBlade.available || selBlade.check)
-              && typeof selBlade.mp === 'number' && selBlade.mp > 0) {
-            mpSpend = selBlade.mp;
-          } else if (am === 'spell' && typeof state !== 'undefined' && state.selectedTool
-              && typeof getSelectedUnit === 'function') {
-            const _su = getSelectedUnit();
-            const _sp = _su && [...(_su.spells || []), ...(_su._raceAbilities || [])]
-              .filter(Boolean).find(s => s.name === state.selectedTool);
-            if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
-              ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
-          }
-          /* THE MANA FORECAST: a Mana Potion (or an ally's Free Energy) aimed at this unit grows its MP fill */
-          const _mfc = (typeof window._ewManaPreviewFor === 'function' && apUnit) ? window._ewManaPreviewFor(apUnit.id) : null;
-          const mpGain = (_mfc && _mfc.gain > 0) ? _mfc.gain : 0;
-          const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
-          const gainPct = mpGain > 0 ? Math.max(0, Math.min(100 - mpPct, (mpGain / maxMp) * 100)) : 0;
-          return h('div', { className: 'hrlg-vrow mp' },
-            h('span', { className: 'hrlg-vlbl' }, 'MP'),
-            h('span', { className: 'hrlg-vbar mp' },
-              h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
-              spendPct > 0 && h('span', {
-                className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
-                style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
-              }),
-              gainPct > 0 && h('span', {
-                className: 'hrlg-vspend gain',
-                style: { left: mpPct + '%', width: gainPct + '%' },
-              }),
-            ),
-            h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
-              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend)
-                : mpGain > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' +' + mpGain) : null),
-          );
-        })(),
-        /* XP to next level — progression modes only (Mystery Dungeon /
-           Challenge / campaign); PvP passes xp:null and shows nothing */
-        xp && (() => {
-          const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
-          return h('div', { className: 'hrlg-vrow mp xp' },
-            h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
-            h('span', { className: 'hrlg-vbar mp', style: { height: 7 } },
-              h('span', { className: 'hrlg-vfill', style: {
-                width: xpPct + '%',
-                background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
-                boxShadow: '0 0 6px rgba(242,196,104,0.45)',
-              } }),
-            ),
-            h('span', { className: 'hrlg-vnum', style: { fontSize: 10, color: '#f2c468' } },
-              xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
-          );
-        })(),
-        /* the numbers alone, for when the UI Maker swaps the bars for the watch ring (hidden otherwise) */
-        h('div', { className: 'hrlg-vnums', style: { display: 'none' } },
-          h('span', { className: 'hp' }, 'HP ', h('b', null, Math.max(0, Math.round(hp)) + '/' + maxHp)),
-          maxMp > 0 && h('span', { className: 'mp' }, 'MP ', h('b', null, Math.max(0, Math.round(mp)) + '/' + maxMp)),
-        ),
-      ),
+      vitalsEl,
       /* the AP slot stays empty: the AP row moved out to THE AP PRESS ICONS, top left (hud.js ApPress, mondo 2026-10-17) */
       null,
       /* 3 item slots — one-click item use straight from the column
          (the Items submenu still lists everything) */
-      items && h('div', { className: 'hrlg-items' },
-        [0, 1, 2].map(i => {
-          const it = items[i];
-          if (!it) return h('div', { key: 'empty' + i, className: 'hrlg-item-slot empty' },
-            h('span', { className: 'hrlg-item-glyph' }, '·'));
-          return h('div', {
-            key: it.key,
-            className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
-            // healing potion slot reads green like every other heal control
-            style: ((typeof window._ewItemLike === 'function' ? window._ewItemLike(it.key, 'healPotion') : it.key === 'healPotion') && it.canUse)
-              ? { borderColor: '#57d97ecc', boxShadow: '0 0 9px #57d97e44' } : undefined,
-            title: it.name + ' ×' + it.count
-              + (it.desc ? ' — ' + it.desc : '')
-              + (it.canUse ? '' : ' (can’t use right now)'),
-            onClick: () => {
-              if (!it.canUse) return;
-              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
-              if (clockApi.strike) clockApi.strike(150);
-              onItem(it.key);
-            },
-          },
-            h('span', { className: 'hrlg-item-glyph' }, it.icon),
-            h('span', { className: 'hrlg-item-count' }, '×' + it.count),
-          );
-        }),
-      ),
+      itemsEl,
       /* Team building-material bank — always in view so "can I afford to
          build?" never needs a menu dive. 🧤 marks a banked free build op. */
-      mats && h('div', {
-        className: 'hrlg-mats',
-        title: 'Team building materials — dig terrain, chop trees and wreck structures to bank more. Spent by the Build action and construction spells.',
-      },
-        h('span', { className: 'hrlg-mats-lbl' }, 'MAT'),
-        mats.map(m => h('span', { key: m.k, className: 'hrlg-mat' + (m.n > 0 ? '' : ' none') }, m.icon + ' ' + m.n)),
-        buildCharge > 0 ? h('span', { className: 'hrlg-mat free' }, '🧤 +' + buildCharge) : null,
-      ),
+      matsEl,
       toolRows,
     ),
     /* ── the CASCADING COMMAND PANELS — at most TWO on screen: the active
@@ -11463,23 +11848,29 @@ const AP_PRESS_SVG = h('svg', { className: 'ew-ap-svg', viewBox: '0 0 40 40', 'a
   h('polygon', { className: 'ew-ap-r', points: '20,19.8 29.6,14.2 29.6,25.4 20,31' }),
   h('path', { className: 'ew-ap-edge', d: 'M20 8.6L29.6 14.2V25.4L20 31L10.4 25.4V14.2ZM10.4 14.2L20 19.8L29.6 14.2M20 19.8V31' }),
 );
-function ApPress({ st }) {
+/* THE ONE BATTLE PANEL docks the icons in its left bay (UI Maker: Battle panel > AP icons): that copy keeps its memory
+   here, so a menu that hides for an animation and comes back does not deal the turn's icons in again */
+const _apDockMem = { key: null, seen: 0, was: {}, born: {}, last: null };
+function ApPress({ st, docked }) {
   const [, bump] = useState(0);
   useEffect(() => {
     const f = () => bump(n => n + 1);
     window.addEventListener('ew-ap-pending', f);
-    return () => window.removeEventListener('ew-ap-pending', f);
+    window.addEventListener('ew-deck', f);
+    return () => { window.removeEventListener('ew-ap-pending', f); window.removeEventListener('ew-deck', f); };
   }, []);
-  const mem = useRef({ key: null, seen: 0, was: {}, born: {}, last: null });
+  const memLocal = useRef({ key: null, seen: 0, was: {}, born: {}, last: null });
+  const mem = docked ? { current: _apDockMem } : memLocal;
   /* the ENDS TURN words sit under the icons, or over them when the icons sit in the lower half of the screen (the UI
      Maker's AP press icons > ENDS TURN words can pin a side) */
   const elRef = useRef(null);
   useEffect(() => {
-    const el = elRef.current; if (!el || !el.classList.contains('ends')) return;
+    const el = elRef.current; if (docked || !el || !el.classList.contains('ends')) return;
     const r = el.getBoundingClientRect();
     el.classList.toggle('ends-above', r.top + r.height / 2 > (window.innerHeight || 1) / 2);
   });
   if (!st || st.phase !== 'battle') return null;
+  if (!docked) { const dc = _ewDeckCfg(); if (dc.on && dc.apIn) return null; }   // the one battle panel holds them
   /* Mystery Dungeon lockstep: no AP economy on screen (one beat is one action) */
   if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) return null;
   const M = mem.current;
@@ -11519,7 +11910,7 @@ function ApPress({ st }) {
   }
   if (!view) return null;
   return h('div', {
-    key: view.key, ref: elRef, className: 'ew-ap-press' + (live ? '' : ' off') + (live && view.ends ? ' ends' : ''),
+    key: view.key, ref: elRef, className: 'ew-ap-press' + (docked ? ' docked' : '') + (live ? '' : ' off') + (live && view.ends ? ' ends' : ''),
     role: 'img', 'aria-label': view.label,
   }, view.icons.map(c => h('span', { key: c.i, className: c.cls, style: { '--ap-d': c.delay + 'ms' } },
     h(React.Fragment, { key: c.pk }, AP_PRESS_SVG))),
@@ -11641,9 +12032,24 @@ function QuickPeek({ st }) {
   const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
   const key = (home === viewer ? 'ally|' : 'enemy|') + u.id;
   const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
+  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  /* THE ONE BATTLE PANEL: on your turn its right bay shows this card itself; off your turn the card stands where that
+     bay stands (the other bays held as invisible spacers) */
+  const dc = _ewDeckCfg();
+  if (dc.on) {
+    if (_ewdLive) return null;
+    const ds = _ewDeckScale();
+    return h('div', { className: 'hrlg-rig ewd ewd-peek' + (ds.c ? ' ewd-c' : ''),
+      style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a', '--ewd-s': ds.s.toFixed(3) } },
+      h('div', { className: 'ewd-bay ewd-actor ewd-ghost' }),
+      h('div', { className: 'ewd-bay ewd-cmd ewd-ghost' }),
+      h('div', { className: 'ewd-bay ewd-focus unit' },
+        h('span', { className: 'ewd-plate' }, home === viewer ? 'ALLY' : 'ENEMY'),
+        h(DeckUnitCard, { ukey: key, actor: null })),
+      h('div', { className: 'ewd-foot ewd-ghost' }));
+  }
   const card = _hrlgQuickCard(key, { node: h('span', { className: 'hrlg-view-tab-text' }, name) });
   if (!card) return null;
-  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
   return h('div', { className: 'hrlg-rig hrlg-peek', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
     h('div', { className: 'hrlg-side hrlg-ghost' }),
     h('div', { className: 'hrlg-panels' },
@@ -11674,6 +12080,33 @@ function TacticWatch({ st }) {
   try { why = typeof window.aiTacticReason === 'function' ? window.aiTacticReason(u) : null; } catch (e) { why = null; }
   const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
   const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  const twRow = (b, i) => h(HorologeBlade, {
+    key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
+    onFire: (b2) => {
+      if (!b2.available) return;
+      if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+      b2.fire();
+    },
+    onHover: () => {},
+  });
+  /* THE ONE BATTLE PANEL: the same window in the command bay's spot (the other bays held as invisible spacers) */
+  if (_ewDeckCfg().on) {
+    const ds = _ewDeckScale();
+    return h('div', { className: 'hrlg-rig ewd ewd-watch' + (ds.c ? ' ewd-c' : ''),
+      style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a', '--ewd-s': ds.s.toFixed(3) } },
+      h('div', { className: 'ewd-bay ewd-actor ewd-ghost' }),
+      h('div', { className: 'ewd-bay ewd-cmd' },
+        h('span', { className: 'ewd-plate gold' }, '♟ ' + String(name).toUpperCase() + ' · ' + _hrlgTacticLabel(u.tactic).toUpperCase()),
+        why ? h('div', { className: 'ewd-mode' }, String(why)) : null,
+        h('div', { className: 'ewd-confirm takectl', title: 'Set ' + name + ' back to MANUAL: the rest of this turn is yours',
+          onClick: () => { _ewTakeControl([u.id], true); } },
+          h('span', { className: 'ewd-cf-check' }, '✓'),
+          h('span', { className: 'ewd-cf-lbl' }, 'TAKE CONTROL', h('span', { className: 'ewd-cf-tgt' }, ' — ' + name))),
+        autos.length > 1 ? h('div', { className: 'ewd-allman', title: 'Set every unit of yours back to MANUAL',
+          onClick: () => { _ewTakeControl(autos.map(x => x.id), true); } }, 'ALL MANUAL · ' + autos.length + ' ON AUTO') : null,
+        h('div', { className: 'ewd-list' }, built.blades.map(twRow))),
+      h('div', { className: 'ewd-foot ewd-ghost' }));
+  }
   return h('div', { className: 'hrlg-rig hrlg-tacwatch', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
     h('div', { className: 'hrlg-side hrlg-ghost' }),
     h('div', { className: 'hrlg-panels' },
@@ -11701,17 +12134,7 @@ function TacticWatch({ st }) {
             onClick: () => { _ewTakeControl(autos.map(x => x.id), true); },
           }, 'ALL MANUAL · ' + autos.length + ' ON AUTO') : null,
         ),
-        h('div', { className: 'hrlg-list' },
-          built.blades.map((b, i) => h(HorologeBlade, {
-            key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
-            onFire: (b2) => {
-              if (!b2.available) return;
-              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
-              b2.fire();
-            },
-            onHover: () => {},
-          })),
-        ),
+        h('div', { className: 'hrlg-list' }, built.blades.map(twRow)),
       )));
 }
 
@@ -11931,6 +12354,488 @@ function _teardownHudJuice() {
 
 /* the battle HUD's stylesheet text, also copied into the UI Maker's screen stand-ins (which draw the battle HUD
    outside a battle, after _removeHudHideStyles took the live copy away) */
+/* THE ONE BATTLE PANEL's look (see _ewDeckCfg; the approved mock-ups, /mnt/project-files/battle-panel-20261111/): one
+   PS1 window of three bays and a footer, white 2px frames over near-black, black name plates on the frames, BACK red,
+   CONFIRM green, the selected row on the theme's purple-to-blue with gold words and the ▶ hand. D = the panel's own
+   parts (no !important, so a theme's fonts still win); X = the parts a theme skins as buttons (rows, tool rows, item
+   slots, tabs) and the docked AP icons: four ids beat the theme's skins (two) and the UI Maker's pieces (three), so the
+   classic layout keeps every skin and the panel keeps its one look. The COMPACT layout (.ewd-c, a window under the
+   full layout's 1728 × 904 at HUD Size 86 %) has its own sizes, never the full one shrunk. */
+function _ewdCss() {
+  const D = '.hrlg-rig.ewd';
+  const X = ':root:root:not(#ewd-a):not(#ewd-b):not(#ewd-c):not(#ewd-d) .hrlg-rig.ewd';
+  const XC = X + '.ewd-c';
+  const SEL = 'linear-gradient(100deg, #9b38ff 0%, #6a4dff 45%, #3d7bff 100%)';
+  /* the rows that read as picked: the cursor row (hover is the cursor), the ✓ target */
+  const selB = s => [`${s} .hrlg-blade.sel .hrlg-body`, `${s} .hrlg-blade:hover:not(.dead):not(.muted):not(.ghost) .hrlg-body`, `${s} .ewd-list.has-pick .hrlg-blade.pend .hrlg-body`].join(', ');
+  const selL = s => [`${s} .hrlg-blade.sel .hrlg-blabel`, `${s} .hrlg-blade:hover:not(.dead):not(.muted):not(.ghost) .hrlg-blabel`, `${s} .ewd-list.has-pick .hrlg-blade.pend .hrlg-blabel`].join(', ');
+  const tb = `${X} .ewd-focus .hrlg-tc-btns > .hrlg-blade`;
+  return `
+    /* ══════════ THE ONE BATTLE PANEL (hud.js _ewdCss) ══════════ */
+    html.ew-deck-on #battleSubtitleBar, html.ew-deck-on #ew-spell-descbar { display: none !important; }
+    ${D} {
+      position: absolute; left: 14px; bottom: 12px; top: auto; right: auto;
+      display: grid; grid-template-columns: auto auto auto; justify-content: start; align-items: end; gap: 0;
+      transform: scale(var(--ewd-s, 1)); transform-origin: 0 100%;
+      font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.25; color: #e8e4d8;
+      pointer-events: none; z-index: 12;
+      --ewd-say-max: 60px; --ewd-say-min: 10px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 280px);
+    }
+    ${D} [class^="ewd-"], ${D} [class*=" ewd-"] { box-sizing: border-box; }
+    body.ew-spell-shot ${D}.ewd-peek, body.ew-spell-shot ${D}.ewd-watch { opacity: 0; pointer-events: none; }
+    ${D} .ewd-ghost { visibility: hidden !important; pointer-events: none !important; }
+    ${D}.ewd-peek .ewd-focus { pointer-events: auto; }
+    /* the bays: one frame each, the next one's left frame laid over the last one's right */
+    ${D} > .ewd-bay {
+      position: relative; align-self: end; pointer-events: auto; min-width: 0;
+      background: linear-gradient(180deg, rgba(22,24,42,0.96) 0%, rgba(7,8,15,0.96) 38%, rgba(4,4,9,0.97) 100%);
+      border: 2px solid #e8e4d8;
+      box-shadow: inset 0 0 0 2px #000, inset 0 0 0 3px rgba(232,228,216,0.22), 0 6px 18px rgba(0,0,0,0.55);
+    }
+    ${D} > .ewd-bay + .ewd-bay { margin-left: -2px; }
+    ${D} .ewd-plate {
+      position: absolute; top: -11px; left: 12px; z-index: 3; max-width: calc(100% - 24px);
+      background: #000; padding: 2px 8px; border: 2px solid #e8e4d8;
+      font-size: 9px; line-height: 1.2; letter-spacing: 0.12em; color: #e8e4d8; pointer-events: none;
+    }
+    ${D} .ewd-plate.gold { color: #ffd84a; }
+    ${D} .ewd-kbd {
+      display: inline-block; flex: none; font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1; letter-spacing: 0;
+      color: #0b0b10; background: #d8d4c8; border-radius: 2px; padding: 3px 4px 2px; box-shadow: 0 2px 0 #6b6878; white-space: nowrap;
+    }
+    ${D} .ewd-kbd.dark { background: #2a2a38; color: #e8e4d8; box-shadow: 0 2px 0 #000; }
+    ${D} .ew-padbtn { flex: none; }
+
+    /* ── 1 WHO ── */
+    ${D} .ewd-actor { width: 336px; padding: 16px 12px 10px; display: flex; flex-direction: column; }
+    ${D} .ewd-atop { display: flex; gap: 12px; align-items: flex-start; }
+    ${D} .ewd-ring { position: relative; flex: none; width: 104px; height: 104px; display: grid; place-items: center; }
+    ${D} .ewd-ring .hrlg-hub { width: 104px; height: 104px; }
+    ${D} .ewd-aid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+    ${D} .ewd-nm { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; padding-bottom: 2px; }
+    ${D} .ewd-rom { flex: none; font-size: 10px; color: #6fa8ff; }
+    ${D} .ewd-name {
+      flex: none; font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 21px; line-height: 1; letter-spacing: 0;
+      color: #61f180; white-space: nowrap; text-shadow: 2px 2px 0 #000;
+    }
+    ${D} .ewd-info { margin-left: auto; flex: none; display: inline-flex; gap: 4px; align-items: center; font-size: 11px; color: #6fa8ff; cursor: pointer; pointer-events: auto; }
+    ${D} .ewd-info:hover { color: #fff; }
+    ${D} .ewd-info.on { color: #ffd84a; }
+    ${D} .ewd-badges { display: flex; flex-wrap: wrap; gap: 4px 5px; align-items: center; }
+    ${D} .ewd-badges:empty { display: none; }
+    ${D} .ewd-lv { font-size: 8px; color: #8f8aa8; white-space: nowrap; }
+    ${D} .ewd-badges .hrlg-schip { font-size: 7px; padding: 3px 4px 2px; letter-spacing: 0.02em; animation: none; }
+    ${D} .ewd-aid .hrlg-vitals { gap: 4px; }
+    ${D} .ewd-aid .hrlg-vrow { gap: 6px; }
+    ${D} .ewd-aid .hrlg-vrow.hp { margin: 0; }
+    ${D} .ewd-aid .hrlg-vlbl { width: 22px; font-size: 9px; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-aid .hrlg-vbar, ${D} .ewd-aid .hrlg-vbar.mp { height: 10px; background: #15161f; border: 1px solid #000; box-shadow: 0 0 0 1px #3a3c52; }
+    ${D} .ewd-aid .hrlg-vnum, ${D} .ewd-aid .hrlg-vrow.mp .hrlg-vnum { min-width: 0; font-size: 9px; letter-spacing: 0; }
+    ${D} .ewd-aid .hrlg-wave { height: 22px; }
+    ${D} .ewd-aprow { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+    ${D} .ewd-aplbl { flex: none; width: 22px; font-size: 9px; color: #8f8aa8; }
+    ${X} .ew-ap-press.docked {
+      position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important;
+      transform: none !important; translate: none !important; scale: none !important; rotate: none !important; opacity: 1 !important;
+      z-index: auto !important; display: flex !important; flex-wrap: wrap; align-items: center; gap: 4px !important; pointer-events: none;
+    }
+    ${X} .ew-ap-press.docked.off { opacity: 0.45 !important; }
+    ${X} .ew-ap-press.docked .ew-ap-ico { width: 22px !important; height: 22px !important; }
+    ${X} .ew-ap-press.docked .ew-ap-ends {
+      position: static !important; transform: none !important; margin: 0 0 0 4px !important;
+      font-family: 'Press Start 2P', monospace; font-size: 7px !important; letter-spacing: 0.04em !important; padding: 3px 4px 2px !important;
+    }
+    ${D} .ewd-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+    ${D} .ewd-tools.lock { opacity: 0.42; filter: grayscale(0.7); }
+    ${D} .ewd-tools.lock .hrlg-push { cursor: default; }
+    ${X} .hrlg-push {
+      height: auto !important; min-height: 26px; padding: 3px 7px !important; gap: 6px !important; flex-wrap: wrap; row-gap: 2px;
+      background: #0e0f19 !important; border: 1px solid #3a3c52 !important; border-left: 4px solid var(--pc, #ffd84a) !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important; animation: none !important; filter: none;
+    }
+    ${X} .hrlg-push:not(.entropy)::after, ${X} .hrlg-push::before { content: none !important; display: none !important; }
+    ${X} .hrlg-push > * { transform: none; }
+    ${X} .hrlg-push-glyph { width: 12px; text-align: center; font-size: 11px; }
+    ${X} .hrlg-push-lbl { font-size: 9px; font-weight: normal; letter-spacing: 0.02em; color: #e8e4d8; }
+    ${X} .hrlg-push-sub { margin-left: auto; font-size: 7px; letter-spacing: 0; color: #8f8aa8; white-space: normal; overflow: visible; text-overflow: clip; text-align: right; }
+    ${X} .hrlg-push.live:not(.entropy):not(.lock):hover { background: ${SEL} !important; border-color: #c9b8ff !important; border-left-color: var(--pc, #ffd84a) !important; }
+    ${X} .hrlg-push.live:not(.entropy):not(.lock):hover .hrlg-push-lbl { color: #ffd84a; }
+    ${X} .hrlg-push.armed { border-color: #ffd84a !important; border-left-color: var(--pc, #ffd84a) !important; box-shadow: 0 0 10px rgba(255,216,74,0.5) !important; }
+    ${X} .hrlg-push.off { opacity: 0.6; filter: grayscale(0.8); }
+    ${X} .hrlg-push.entropy { background: linear-gradient(180deg, #35244f 0%, #221537 55%, #170e26 100%) !important; border-color: #c9a5ff !important; border-left-color: #c9a5ff !important; animation: hrlgEntropyThrob 0.9s ease-in-out infinite !important; overflow: hidden; }
+    ${X} .hrlg-push.entropy .hrlg-push-lbl { font-size: 9px; letter-spacing: 0.06em; }
+    ${X} .hrlg-push.entropy .hrlg-push-sub { font-size: 7px; padding: 2px 4px 1px; }
+    ${D} .ewd-inv { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 8px; color: #8f8aa8; }
+    ${D} .ewd-invlbl { flex: none; }
+    ${D} .ewd-inv .hrlg-items { gap: 4px; justify-content: flex-start; }
+    ${X} .ewd-inv .hrlg-item-slot {
+      width: 30px !important; height: 30px !important; background: #0e0f19 !important; border: 1px solid #3a3c52 !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important;
+    }
+    ${X} .ewd-inv .hrlg-item-slot[style*="border-color"] { border-color: #57d97e !important; box-shadow: 0 0 6px rgba(87,217,126,0.35) !important; }
+    ${X} .ewd-inv .hrlg-item-slot:hover:not(.empty):not(.off) { border-color: #e8e4d8 !important; }
+    ${X} .ewd-inv .hrlg-item-slot.armed { border-color: #ffd84a !important; box-shadow: 0 0 8px rgba(255,216,74,0.6) !important; }
+    ${X} .ewd-inv .hrlg-item-slot > * { transform: none; }
+    ${D} .ewd-inv .hrlg-item-glyph { font-size: 15px; }
+    ${D} .ewd-inv .hrlg-item-count { right: 1px; bottom: 0; font-size: 7px; letter-spacing: 0; color: #fff; }
+    ${D} .ewd-inv .hrlg-mats { margin-left: auto; gap: 6px; font-size: 9px; letter-spacing: 0; }
+    ${D} .ewd-inv .hrlg-mats-lbl { font-size: 8px; letter-spacing: 0; color: #8f8aa8; }
+
+    /* ── 2 WHAT ── */
+    ${D} .ewd-cmd { width: 360px; padding: 18px 10px 10px; display: flex; flex-direction: column; }
+    ${D} .ewd-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: -4px 0 8px; min-height: 22px; }
+    ${D} .ewd-back {
+      flex: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; pointer-events: auto;
+      background: linear-gradient(#ff3b4c, #b8101f); color: #fff; padding: 5px 8px 4px; font-size: 9px; line-height: 1;
+      border: 2px solid #ffd0d4; box-shadow: 0 2px 0 #4a0008; text-shadow: 1px 1px 0 #4a0008;
+    }
+    ${D} .ewd-back:hover { filter: brightness(1.18); }
+    ${D} .ewd-back:active { transform: translateY(1px); box-shadow: 0 1px 0 #4a0008; }
+    ${D} .ewd-back-arrow { font-size: 8px; }
+    ${D} .ewd-crumb { flex: 1 1 0; min-width: 0; font-size: 9px; line-height: 1.5; color: #8f8aa8; overflow-wrap: anywhere; }
+    ${D} .ewd-crumb b { font-weight: normal; color: #e8e4d8; }
+    ${D} .ewd-sep { margin: 0 4px; color: #55526a; }
+    ${D} .ewd-cnt { flex: none; margin-left: auto; font-size: 8px; color: #8f8aa8; }
+    ${D} .ewd-parent, ${D} .ewd-armed {
+      display: flex; flex-direction: column; gap: 3px; margin: 0 0 6px; padding: 0 0 6px 16px;
+      border-bottom: 1px dashed #3a3c52; cursor: pointer; pointer-events: auto;
+    }
+    ${D} .ewd-parent .hrlg-blade:not(.active) { opacity: 0.5; }
+    ${D} .ewd-list {
+      display: flex; flex-direction: column; gap: 3px; padding: 2px 0 2px 16px;
+      max-height: var(--ewd-list-max); overflow-y: auto; overflow-x: hidden;
+      scrollbar-width: thin; scrollbar-color: #6a4dff rgba(255,255,255,0.05); overscroll-behavior: contain; pointer-events: auto;
+    }
+    ${D} .ewd-list::-webkit-scrollbar { width: 5px; }
+    ${D} .ewd-list::-webkit-scrollbar-thumb { background: #6a4dff; }
+    ${D} .ewd-mode {
+      margin: 0 0 6px; padding: 8px 10px; font-size: 9px; line-height: 1.5; letter-spacing: 0.04em; color: #e8e4d8;
+      background: #0c0d16; border: 1px solid #262838; border-left: 5px solid #ffd84a;
+    }
+    ${D} .ewd-confirm {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin-top: 6px; padding: 7px;
+      cursor: pointer; pointer-events: auto; text-align: center;
+      background: linear-gradient(#36e07a, #0f9a43); border: 2px solid #c9ffd9; color: #052b12; font-size: 11px; line-height: 1.25;
+      box-shadow: 0 2px 0 #03310f; animation: ewdCfPulse 1.2s ease-in-out infinite;
+    }
+    ${D} .ewd-confirm:hover { filter: brightness(1.12); }
+    ${D} .ewd-confirm:active { transform: translateY(1px); }
+    ${D} .ewd-cf-check { font-size: 12px; }
+    ${D} .ewd-cf-tgt { color: #0b3d1d; }
+    @keyframes ewdCfPulse {
+      0%, 100% { box-shadow: 0 2px 0 #03310f, 0 0 0 rgba(54,224,122,0); }
+      50%      { box-shadow: 0 2px 0 #03310f, 0 0 14px rgba(54,224,122,0.7); }
+    }
+    ${D} .ewd-allman {
+      margin-top: 5px; padding: 5px 8px; text-align: center; cursor: pointer; pointer-events: auto;
+      font-size: 8px; color: #ffd84a; background: #0c0d16; border: 1px solid #ffd84a;
+    }
+    ${D} .ewd-allman:hover { background: #1b1830; }
+    ${D}.ewd-watch .ewd-list { margin-top: 6px; }
+    /* the rows: one dark plate each, the job's colour down the left side */
+    ${X} .hrlg-blade { height: auto !important; min-height: 26px !important; }
+    ${X} .hrlg-blade.trow { min-height: 40px !important; }
+    ${X} .hrlg-blade.sel::after { content: none !important; display: none !important; }
+    ${X} .hrlg-blade .hrlg-body {
+      position: relative; height: auto !important; min-height: inherit; flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 8px !important; padding: 3px 8px 3px 9px !important;
+      background: #0c0d16 !important; border: 1px solid #262838 !important; border-left: 5px solid var(--bc, var(--hfc, #3d7bff)) !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important; filter: none !important; opacity: 1 !important;
+      isolation: auto !important; animation: none !important; font-size: 12px; color: #e8e4d8;
+    }
+    ${X} .hrlg-blade .hrlg-body::before { content: none !important; display: none !important; }
+    ${X} .hrlg-blade .hrlg-body > *:not(.hrlg-cursor):not(.hrlg-flash) { transform: none; }
+    ${X} .hrlg-blade .hrlg-body.danger { background: #1a070b !important; border-color: #6b1520 !important; border-left-color: #e2283a !important; }
+    ${X} .hrlg-blade[data-bid="end"], ${X} .hrlg-blade[data-bid="cancel"] { margin-top: 4px; }
+    ${X} .hrlg-glyph { width: 14px; font-size: 11px; }
+    ${X} .hrlg-blade.catc .hrlg-glyph { width: 16px; height: 16px; line-height: 16px; font-size: 10px; border-radius: 3px; }
+    ${X} .hrlg-blabel { font-family: inherit; font-size: 12px; font-weight: normal; letter-spacing: 0.02em; line-height: 1.25 !important; color: #e8e4d8; text-shadow: 1px 1px 0 #000; }
+    ${X} .hrlg-lblcol { gap: 3px; }
+    ${X} .hrlg-brow1, ${X} .hrlg-brow2 { flex-wrap: wrap; row-gap: 3px; overflow: visible; }
+    ${X} .hrlg-blade .hrlg-cursor {
+      position: absolute; left: -19px; top: 50%; margin: -6px 0 0 !important; font-size: 11px; line-height: 12px; color: #ffd84a !important;
+      text-shadow: 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.9) !important;
+    }
+    ${X} .hrlg-pw { font-size: 10px; }
+    ${X} .hrlg-acc { font-size: 9px; }
+    ${X} .hrlg-chip { font-size: 8px !important; letter-spacing: 0 !important; }
+    ${X} .hrlg-cfree { font-size: 7px; letter-spacing: 0; margin-right: 0; }
+    ${X} .hrlg-tag { font-size: 7px; letter-spacing: 0.02em; padding: 2px 4px 1px; }
+    ${X} .hrlg-endsturn, ${X} .hrlg-lblcol > .hrlg-endsturn { font-size: 7px; font-weight: normal; letter-spacing: 0.02em; padding: 2px 4px 1px; line-height: 1.2; }
+    ${X} .hrlg-meta { font-size: 8px; letter-spacing: 0; white-space: normal; overflow: visible; text-overflow: clip; }
+    ${X} .hrlg-subline { font-size: 7px; letter-spacing: 0.02em; line-height: 1.3; white-space: normal; overflow: visible; text-overflow: clip; }
+    ${X} .hrlg-note { font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 4px 1px; }
+    ${X} .hrlg-check { font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 4px 1px; }
+    ${X} .hrlg-tport { width: 30px; height: 30px; }
+    /* a target row with every chip (damage, turns away, MOVE→CAST) runs out of room: the last chip drops to a second
+       line on the right instead of squeezing the turn count to nothing */
+    ${X} .hrlg-blade.trow .hrlg-body { flex-wrap: wrap; row-gap: 3px; }
+    ${X} .hrlg-blade.trow .hrlg-meta { flex-shrink: 0; overflow: visible; }
+    ${X} .hrlg-blade.trow .hrlg-note { margin-left: auto; }
+    ${X} .hrlg-tcol .hrlg-blabel { font-size: 10px; }
+    ${X} .hrlg-thp-num, ${X} .hrlg-trow.mp .hrlg-thp-num { font-size: 8px; }
+    ${X} .hrlg-blade.tut .hrlg-body { box-shadow: 0 0 14px rgba(255,205,107,0.55) !important; }
+    ${X} .hrlg-blade.active .hrlg-body { border-color: #ffd84a !important; border-left-color: var(--bc, #ffd84a) !important; box-shadow: 0 0 10px rgba(255,216,74,0.35) !important; }
+    ${X} .hrlg-blade.dead .hrlg-body, ${X} .hrlg-blade.ghost .hrlg-body { background: #0a0a12 !important; border-color: #1f2030 !important; border-left: 5px solid #3a3848 !important; }
+    ${X} .hrlg-blade.dead .hrlg-blabel, ${X} .hrlg-blade.ghost .hrlg-blabel, ${X} .hrlg-blade.dead .hrlg-glyph, ${X} .hrlg-blade.ghost .hrlg-glyph { color: #5f5c70 !important; text-shadow: none !important; }
+    ${X} .hrlg-blade.dead.catc .hrlg-glyph, ${X} .hrlg-blade.ghost.catc .hrlg-glyph { background: #2a2838 !important; }
+    ${selB(X)} {
+      background: ${SEL} !important; border-color: #c9b8ff !important; border-left-color: var(--bc, #ffd84a) !important;
+      box-shadow: 0 0 14px rgba(124,77,255,0.55) !important; z-index: 2;
+    }
+    ${selL(X)} { color: #ffd84a !important; text-shadow: 1px 1px 0 #000 !important; }
+    ${X} .hrlg-blade.ghost.sel .hrlg-body, ${X} .hrlg-blade.dead.sel .hrlg-body { background: #1b1830 !important; border-color: #6a5a9a !important; border-left-color: #3a3848 !important; box-shadow: none !important; }
+    ${X} .hrlg-blade.ghost.sel .hrlg-blabel, ${X} .hrlg-blade.dead.sel .hrlg-blabel { color: #a8a2c0 !important; }
+    ${X} .hrlg-blade.pend .hrlg-body { border-color: #57d98a !important; border-left-color: #57d98a !important; box-shadow: 0 0 12px rgba(87,217,138,0.45) !important; }
+    ${X} .ewd-list.has-pick .hrlg-blade.pend .hrlg-body { border-color: #57d98a !important; box-shadow: 0 0 14px rgba(87,217,138,0.6) !important; }
+
+    /* ── 3 ON WHAT ── */
+    ${D} .ewd-focus { width: 580px; padding: 14px 12px 10px; display: flex; flex-direction: column; }
+    ${D} .ewd-tabs { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 2px); z-index: 2; display: flex; align-items: flex-end; pointer-events: auto; }
+    ${D} .ewd-tabs .hrlg-ttabs { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 0; min-width: 0; flex: 0 1 auto; }
+    ${X} .ewd-tabs .hrlg-ttab {
+      flex: 0 0 auto; min-width: 0; height: auto !important; margin: 0 -2px 0 0; padding: 6px 10px 5px !important; gap: 6px !important; overflow: visible;
+      background: #0b0c15 !important; border: 2px solid #5d5a66 !important; border-bottom: 0 !important; color: #8f8aa8 !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important; animation: none !important;
+    }
+    ${X} .ewd-tabs .hrlg-ttab::before, ${X} .ewd-tabs .hrlg-ttab::after { content: none !important; display: none !important; }
+    ${X} .ewd-tabs .hrlg-ttab > * { transform: none; }
+    ${X} .ewd-tabs .hrlg-ttab:hover:not(.on) { color: #d8d2ec !important; border-color: #8a86a0 !important; }
+    ${X} .ewd-tabs .hrlg-ttab.on { position: relative; z-index: 2; margin-bottom: -2px; padding-bottom: 7px !important; background: rgb(22,24,42) !important; border-color: #e8e4d8 !important; color: #e8e4d8 !important; }
+    ${D} .ewd-tabs .hrlg-ttab-ic { width: 14px; height: 14px; font-size: 10px; }
+    ${D} .ewd-tabs .hrlg-ttab-tx { font-size: 9px; font-weight: normal; letter-spacing: 0.02em; overflow: visible; }
+    ${D} .ewd-tabs .hrlg-ttab-own { margin-left: 2px; font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 3px 1px; }
+    ${D} .ewd-tabkeys { flex: none; display: inline-flex; gap: 3px; align-items: center; margin: 0 0 5px 10px; }
+    /* the unit card: portrait | name, badges, where, HP / MP, statuses; the stats + elements under it; its buttons */
+    ${D} .ewd-ucard { display: grid; grid-template-columns: 100px minmax(0, 1fr); grid-template-areas: "port main" "low low" "btns btns"; gap: 0 12px; align-items: start; }
+    ${D} .ewd-ucard.self { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "low" "btns"; }
+    ${D} .ewd-uport { grid-area: port; position: relative; width: 100px; height: 100px; overflow: hidden; background: #11121c; border: 2px solid #3a3c52; }
+    ${D} .ewd-uport.enemy { border-color: #b8303f; }
+    ${D} .ewd-uport.ally { border-color: #2a6fd6; }
+    ${D} .ewd-uimg { position: absolute; inset: 0; background: center / cover no-repeat; image-rendering: pixelated; pointer-events: none; }
+    ${D} .ewd-uport.sprite .ewd-uimg { background-size: auto 150%; background-position: center 14%; }
+    ${D} .ewd-umain { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    ${D} .ewd-uhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+    ${D} .ewd-uname {
+      flex: none; max-width: 100%; font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 21px; line-height: 1.05; letter-spacing: 0;
+      color: #61f180; white-space: nowrap; text-shadow: 2px 2px 0 #000; padding-bottom: 2px;
+    }
+    ${X} .ewd-ucard.enemy .ewd-uname { color: #ff5a6e !important; }
+    ${D} .ewd-coord { margin-left: auto; flex: none; font-size: 9px; color: #8f8aa8; white-space: nowrap; }
+    ${D} .ewd-umain .hrlg-qvitals { padding: 0; gap: 4px; }
+    ${D} .ewd-umain .hrlg-qtypes { display: none; }
+    ${D} .ewd-umain .hrlg-qv-lbl { width: 22px; font-size: 9px; font-weight: normal; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-umain .hrlg-qv-lbl.mp { color: #8fb4e8; }
+    ${D} .ewd-umain .hrlg-thp, ${D} .ewd-umain .hrlg-thp.mp { height: 10px; }
+    ${D} .ewd-umain .hrlg-qv-num, ${D} .ewd-umain .hrlg-qv-num.mp { font-size: 9px; letter-spacing: 0; }
+    ${D} .ewd-umain .hrlg-qv-fc { font-size: 9px; font-weight: normal; letter-spacing: 0; }
+    ${D} .ewd-umain .hrlg-qp-status, ${D} .ewd-umain .hrlg-qp-buffs { gap: 4px; }
+    ${D} .ewd-umain .hrlg-schip { font-size: 7px; padding: 3px 4px 2px; letter-spacing: 0.02em; animation: none; }
+    ${D} .ewd-ulow { grid-area: low; display: flex; gap: 12px; margin-top: 10px; align-items: stretch; min-width: 0; }
+    ${D} .ewd-ulow .hrlg-qstats {
+      flex: 1 1 auto; min-width: 0; margin: 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between;
+      align-content: center; gap: 4px 10px; padding: 6px 8px; background: #0b0c15; border: 1px solid #262838;
+    }
+    ${D} .ewd-ulow .hrlg-qstat { gap: 5px; line-height: 1.4; white-space: nowrap; }
+    ${D} .ewd-ulow .hrlg-qstat[data-qs="atk"] { order: 1; } ${D} .ewd-ulow .hrlg-qstat[data-qs="matk"] { order: 2; } ${D} .ewd-ulow .hrlg-qstat[data-qs="mov"] { order: 3; }
+    ${D} .ewd-ulow .hrlg-qstat[data-qs="def"] { order: 4; } ${D} .ewd-ulow .hrlg-qstat[data-qs="mdef"] { order: 5; } ${D} .ewd-ulow .hrlg-qstat[data-qs="rng"] { order: 6; }
+    ${D} .ewd-ulow .hrlg-qstat[data-qs="vis"] { order: 7; } ${D} .ewd-ulow .hrlg-qstat[data-qs="crt"] { order: 8; } ${D} .ewd-ulow .hrlg-qstat[data-qs="eva"] { order: 9; }
+    ${D} .ewd-ulow .hrlg-qstat-lbl { width: 46px; font-size: 9px; font-weight: normal; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-ulow .hrlg-qstat-val { font-size: 9px; font-weight: normal; line-height: 1.4; }
+    ${D} .ewd-ulow .hrlg-qstat-bar { display: none !important; }
+    ${D} .ewd-ulow .hrlg-qstat-stg { font-size: 7px; font-weight: normal; padding: 2px 2px 1px; }
+    ${D} .ewd-ulow .ew-grade.sm { --gsz: 15px; margin: 0; }
+    ${D} .ewd-ulow .ew-grade.sm i { font-size: 8px; }
+    ${D} .ewd-ulow .hrlg-qelem {
+      flex: none; margin: 0; align-self: stretch; align-content: center; padding: 6px 8px; gap: 2px 0;
+      background: #0b0c15; border: 1px solid #262838; border-radius: 0;
+    }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-row { grid-template-columns: repeat(6, 22px); gap: 0 4px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-cell { min-width: 22px; height: 18px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-rx { height: 13px; font-size: 11px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-rx.weak { font-size: 12px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elem-icon, ${D} .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elicon { width: 16px; height: 16px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-el { font-size: 13px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-rxs + .ew-elem-els { margin-top: 3px; }
+    /* the tile / object card: the picture | name, facts, stats, effects; its buttons under it */
+    ${D} .ewd-focus .hrlg-tcard {
+      position: relative; width: auto; margin: 0; pointer-events: auto; font-family: inherit; color: #e8e4d8;
+      display: grid; grid-template-columns: 100px minmax(0, 1fr); grid-template-areas: "pic main" "btns btns"; gap: 0 12px; align-items: start;
+    }
+    ${D} .ewd-focus .hrlg-tcard > .hrlg-tc-bg { display: none !important; }
+    ${D} .ewd-focus .hrlg-tc-pic { width: 100px; height: 100px; min-height: 100px; --tc-pic: 100px; border: 2px solid #3a3c52; }
+    ${D} .ewd-focus .hrlg-tc-glyph { font-size: 40px; }
+    ${D} .ewd-focus .hrlg-tc-main { gap: 6px; min-width: 0; }
+    ${D} .ewd-focus .hrlg-tcard .hrlg-tc-name { height: auto; min-height: 0; padding: 0; border-bottom: 0; flex-wrap: wrap; gap: 4px 6px; }
+    ${D} .ewd-focus .hrlg-view-tab-icon { font-size: 12px; }
+    ${D} .ewd-focus .hrlg-view-tab-text { font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 21px; line-height: 1.05; letter-spacing: 0; text-transform: none; color: #e8e4d8; text-shadow: 2px 2px 0 #000; padding-bottom: 2px; }
+    ${D} .ewd-focus .hrlg-view-tab-count { font-size: 9px; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-focus .hrlg-tc-own { font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 4px 1px; }
+    ${D} .ewd-focus .hrlg-tc-hp { padding: 0; }
+    ${D} .ewd-focus .hrlg-tc-hp .hrlg-qv-lbl { width: 22px; font-size: 9px; font-weight: normal; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-focus .hrlg-tc-hp .hrlg-qv-num { font-size: 9px; }
+    ${D} .ewd-focus .hrlg-tc-facts { padding: 0; gap: 0 14px; font-size: 9px; font-weight: normal; line-height: 1.7; letter-spacing: 0; color: #c9c6d8; }
+    ${D} .ewd-focus .hrlg-tc-stats { padding: 0; gap: 4px 14px; }
+    ${D} .ewd-focus .hrlg-tc-st > b { font-size: 8px; font-weight: normal; letter-spacing: 0; }
+    ${D} .ewd-focus .hrlg-tc-st > i { font-size: 9px; font-weight: normal; }
+    ${D} .ewd-focus .hrlg-tc-fx { padding: 0; gap: 5px; }
+    ${D} .ewd-focus .hrlg-tc-chip { font-size: 8px; font-weight: normal; letter-spacing: 0; padding: 4px 6px 3px; }
+    ${D} .ewd-focus .hrlg-tc-btns { grid-area: btns; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding: 0 0 0 4px; border-top: 0; background: none; }
+    /* its small buttons: slanted PS1 keys */
+    ${tb} { flex: 0 0 auto; min-height: 0 !important; height: auto !important; animation: none; }
+    ${tb} > .hrlg-body { min-height: 0 !important; padding: 6px 9px 5px !important; gap: 6px !important; border: 2px solid #c9c6d8 !important; transform: skewX(-8deg) !important; font-size: 9px; }
+    ${tb} > .hrlg-body > *:not(.hrlg-flash) { transform: skewX(8deg); }
+    ${tb} .hrlg-cursor { display: none !important; }
+    ${tb} .hrlg-blabel { font-size: 9px; }
+    ${tb}.catc[data-bid^="ta:inspect:"]:not(.dead) > .hrlg-body { border-color: #ffc83c !important; }
+    ${tb}.sel > .hrlg-body, ${tb}:hover:not(.dead):not(.muted):not(.ghost) > .hrlg-body { background: ${SEL} !important; border-color: #e7dcff !important; box-shadow: 0 0 12px rgba(124,77,255,0.6) !important; }
+    ${tb}.dead > .hrlg-body, ${tb}.ghost > .hrlg-body { border-color: #3a3848 !important; }
+
+    /* ── 4 THE FOOTER ── */
+    ${D} > .ewd-foot {
+      grid-column: 1 / -1; position: relative; min-width: 0; margin-top: -2px; pointer-events: auto;
+      contain: inline-size;   /* its words never widen the panel: it takes the bays' width and wraps inside it */
+      display: flex; align-items: center; gap: 14px; padding: 7px 12px; min-height: 36px;
+      background: linear-gradient(180deg, rgba(14,15,28,0.97), rgba(4,4,9,0.97));
+      border: 2px solid #e8e4d8; box-shadow: inset 0 0 0 2px #000, 0 6px 18px rgba(0,0,0,0.55);
+    }
+    ${D} .ewd-say { flex: 1 1 auto; min-width: 0; font-size: 14px; line-height: 1.35; letter-spacing: 0.02em; color: #e8e4d8; text-shadow: 1px 1px 0 #000; }
+    ${X} .ewd-say, ${X} .ewd-say *:not(.ew-descbar-name):not(.ew-descbar-ico) { font-family: 'IBM Plex Mono', monospace !important; }
+    ${X} .ewd-say .ew-descbar-name { font-family: 'Press Start 2P', monospace !important; font-size: 11px; letter-spacing: 0; color: #fff; text-shadow: 1px 1px 0 #000; }
+    ${D} .ewd-say .ew-descbar-inner { min-height: 0; padding: 0; background: none; justify-content: flex-start; gap: 3px 10px; }
+    ${D} .ewd-say .ew-descbar-ico { width: 18px; height: 18px; font-size: 11px; border-radius: 3px; }
+    ${D} .ewd-say .ew-descbar-desc { max-width: none; flex: 1 1 260px; font-size: inherit; line-height: inherit; color: #e8e4d8; }
+    ${D} .ewd-say .ew-descbar-stats, ${D} .ewd-say .ew-descbar-status { font-size: 0.8em; white-space: normal; }
+    ${D} .ewd-say .ew-descbar-stats { color: #8f8aa8; }
+    ${D} .ewd-say .dlg-prompt { color: #e8e4d8; letter-spacing: 0.04em; }
+    ${D} .ewd-say .dlg-prompt strong { color: #f0d060; }
+    ${D} .ewd-say .dlg-prompt-cursor { display: inline-block; color: #f0d060; animation: dlgPromptBlink 1.1s ease-in-out infinite; }
+    ${D} .ewd-say .dlg-prompt-hint { display: inline-block; margin-left: 8px; font-size: 0.8em; color: #8d96ab; }
+    ${D} .ewd-say .dlg-effective { color: #55d38a; }
+    ${D} .ewd-say .dlg-resist { color: #c87070; }
+    ${D} .ewd-say .dlg-levelup { color: #ffe066; }
+    ${D} .ewd-say .dlg-spell-learn { color: #88ddff; }
+    ${D} .ewd-say .dlg-sec-job { color: #d4a0ff; }
+    ${D} .ewd-keys { flex: 0 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 10px; font-size: 8px; color: #8f8aa8; }
+    ${D} .ewd-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+    /* ── COMPACT (a smaller or shorter window): the same panel, its own sizes ── */
+    ${D}.ewd-c { left: 8px; bottom: 6px; --ewd-say-max: 40px; --ewd-say-min: 8px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 200px); }
+    ${D}.ewd-c .ewd-plate { top: -9px; padding: 1px 6px; font-size: 7px; }
+    ${D}.ewd-c .ewd-kbd { font-size: 7px; padding: 2px 3px 1px; }
+    ${D}.ewd-c .ewd-actor { width: 246px; padding: 11px 8px 7px; }
+    ${D}.ewd-c .ewd-atop { gap: 8px; }
+    ${D}.ewd-c .ewd-ring, ${D}.ewd-c .ewd-ring .hrlg-hub { width: 66px; height: 66px; }
+    ${D}.ewd-c .ewd-aid { gap: 3px; }
+    ${D}.ewd-c .ewd-rom { font-size: 7px; }
+    ${D}.ewd-c .ewd-name, ${D}.ewd-c .ewd-uname, ${D}.ewd-c .ewd-focus .hrlg-view-tab-text { font-size: 15px; }
+    ${D}.ewd-c .ewd-info { font-size: 9px; gap: 3px; }
+    ${D}.ewd-c .ewd-lv { font-size: 7px; }
+    ${D}.ewd-c .ewd-badges { gap: 3px; }
+    ${D}.ewd-c .ewd-badges .hrlg-schip, ${D}.ewd-c .ewd-umain .hrlg-schip { font-size: 6px; padding: 2px 3px 1px; }
+    ${D}.ewd-c .ewd-aid .hrlg-vlbl, ${D}.ewd-c .ewd-aplbl { width: 16px; font-size: 7px; }
+    ${D}.ewd-c .ewd-aid .hrlg-vbar, ${D}.ewd-c .ewd-aid .hrlg-vbar.mp { height: 7px; }
+    ${D}.ewd-c .ewd-aid .hrlg-vnum, ${D}.ewd-c .ewd-aid .hrlg-vrow.mp .hrlg-vnum { font-size: 7px; }
+    ${D}.ewd-c .ewd-aid .hrlg-wave { height: 16px; }
+    ${D}.ewd-c .ewd-aprow { gap: 4px; min-height: 16px; }
+    ${XC} .ew-ap-press.docked { gap: 3px !important; }
+    ${XC} .ew-ap-press.docked .ew-ap-ico { width: 16px !important; height: 16px !important; }
+    ${XC} .ew-ap-press.docked .ew-ap-ends { font-size: 6px !important; padding: 2px 3px 1px !important; }
+    ${D}.ewd-c .ewd-tools { gap: 3px; margin-top: 6px; }
+    ${XC} .hrlg-push { min-height: 19px; padding: 2px 5px !important; gap: 4px !important; border-left-width: 3px !important; }
+    ${XC} .hrlg-push-glyph { width: 10px; font-size: 9px; }
+    ${XC} .hrlg-push-lbl, ${XC} .hrlg-push.entropy .hrlg-push-lbl { font-size: 7px; }
+    ${XC} .hrlg-push-sub, ${XC} .hrlg-push.entropy .hrlg-push-sub { font-size: 6px; }
+    ${D}.ewd-c .ewd-inv { margin-top: 5px; gap: 3px 4px; font-size: 7px; }
+    ${XC} .ewd-inv .hrlg-item-slot { width: 21px !important; height: 21px !important; }
+    ${D}.ewd-c .ewd-inv .hrlg-item-glyph { font-size: 11px; }
+    ${D}.ewd-c .ewd-inv .hrlg-item-count { font-size: 6px; }
+    ${D}.ewd-c .ewd-inv .hrlg-mats { gap: 4px; font-size: 7px; }
+    ${D}.ewd-c .ewd-inv .hrlg-mats-lbl { font-size: 7px; }
+    ${D}.ewd-c .ewd-cmd { width: 282px; padding: 12px 7px 7px; }
+    ${D}.ewd-c .ewd-crumbs { margin: -3px 0 5px; min-height: 16px; gap: 3px 6px; }
+    ${D}.ewd-c .ewd-back { font-size: 7px; padding: 3px 5px 2px; gap: 4px; }
+    ${D}.ewd-c .ewd-back-arrow { font-size: 6px; }
+    ${D}.ewd-c .ewd-crumb { font-size: 7px; }
+    ${D}.ewd-c .ewd-cnt { font-size: 6px; }
+    ${D}.ewd-c .ewd-parent, ${D}.ewd-c .ewd-armed { gap: 2px; margin-bottom: 4px; padding: 0 0 4px 13px; }
+    ${D}.ewd-c .ewd-list { gap: 2px; padding-left: 13px; }
+    ${D}.ewd-c .ewd-mode { font-size: 7px; padding: 5px 7px; margin-bottom: 4px; border-left-width: 4px; }
+    ${D}.ewd-c .ewd-confirm { font-size: 8px; padding: 5px; margin-top: 4px; gap: 4px 6px; }
+    ${D}.ewd-c .ewd-cf-check { font-size: 9px; }
+    ${D}.ewd-c .ewd-allman { font-size: 6px; padding: 4px 6px; }
+    ${XC} .hrlg-blade { min-height: 19px !important; }
+    ${XC} .hrlg-blade.trow { min-height: 30px !important; }
+    ${XC} .hrlg-blade .hrlg-body { padding: 2px 6px 2px 7px !important; gap: 6px !important; border-left-width: 4px !important; font-size: 9px; }
+    ${XC} .hrlg-blade.dead .hrlg-body, ${XC} .hrlg-blade.ghost .hrlg-body { border-left-width: 4px !important; }
+    ${XC} .hrlg-blabel { font-size: 9px; }
+    ${XC} .hrlg-glyph { width: 10px; font-size: 8px; }
+    ${XC} .hrlg-blade.catc .hrlg-glyph { width: 12px; height: 12px; line-height: 12px; font-size: 8px; border-radius: 2px; }
+    ${XC} .hrlg-blade .hrlg-cursor { left: -15px; margin-top: -5px !important; font-size: 8px; line-height: 10px; }
+    ${XC} .hrlg-pw { font-size: 8px; }
+    ${XC} .hrlg-acc, ${XC} .hrlg-chip, ${XC} .hrlg-meta { font-size: 7px !important; }
+    /* a row's type / element / bonus badges carry their own inline sizes: scale them with the compact rows so a spell row
+       stays two lines instead of four */
+    ${XC} .hrlg-badges { zoom: 0.7; }
+    ${XC} .hrlg-cfree, ${XC} .hrlg-tag, ${XC} .hrlg-endsturn, ${XC} .hrlg-lblcol > .hrlg-endsturn, ${XC} .hrlg-subline, ${XC} .hrlg-note, ${XC} .hrlg-check { font-size: 6px; }
+    ${XC} .hrlg-tport { width: 22px; height: 22px; }
+    ${XC} .hrlg-tcol .hrlg-blabel { font-size: 8px; }
+    ${XC} .hrlg-thp-num, ${XC} .hrlg-trow.mp .hrlg-thp-num { font-size: 6px; }
+    ${XC} .hrlg-thp { height: 7px; }
+    ${D}.ewd-c .ewd-focus { width: 430px; padding: 10px 8px 7px; }
+    ${D}.ewd-c .ewd-tabs { left: 8px; right: 8px; }
+    ${XC} .ewd-tabs .hrlg-ttab { padding: 4px 7px 4px !important; gap: 4px !important; }
+    ${XC} .ewd-tabs .hrlg-ttab.on { padding-bottom: 6px !important; }
+    ${D}.ewd-c .ewd-tabs .hrlg-ttab-ic { width: 10px; height: 10px; font-size: 8px; }
+    ${D}.ewd-c .ewd-tabs .hrlg-ttab-tx { font-size: 7px; }
+    ${D}.ewd-c .ewd-tabs .hrlg-ttab-own { font-size: 6px; }
+    ${D}.ewd-c .ewd-tabkeys { margin: 0 0 4px 8px; }
+    ${D}.ewd-c .ewd-ucard, ${D}.ewd-c .ewd-focus .hrlg-tcard { grid-template-columns: 64px minmax(0, 1fr); gap: 0 8px; }
+    ${D}.ewd-c .ewd-ucard.self { grid-template-columns: minmax(0, 1fr); }
+    ${D}.ewd-c .ewd-uport, ${D}.ewd-c .ewd-focus .hrlg-tc-pic { width: 64px; height: 64px; min-height: 64px; --tc-pic: 64px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-glyph { font-size: 28px; }
+    ${D}.ewd-c .ewd-umain, ${D}.ewd-c .ewd-focus .hrlg-tc-main { gap: 4px; }
+    ${D}.ewd-c .ewd-coord, ${D}.ewd-c .ewd-focus .hrlg-view-tab-count { font-size: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-qv-lbl, ${D}.ewd-c .ewd-focus .hrlg-tc-hp .hrlg-qv-lbl { width: 16px; font-size: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-thp, ${D}.ewd-c .ewd-umain .hrlg-thp.mp { height: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-qv-num, ${D}.ewd-c .ewd-umain .hrlg-qv-num.mp, ${D}.ewd-c .ewd-umain .hrlg-qv-fc, ${D}.ewd-c .ewd-focus .hrlg-tc-hp .hrlg-qv-num { font-size: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-qp-status, ${D}.ewd-c .ewd-umain .hrlg-qp-buffs { gap: 3px; }
+    ${D}.ewd-c .ewd-ulow { gap: 6px; margin-top: 6px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstats { gap: 2px 6px; padding: 4px 5px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat { gap: 3px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat-lbl { width: 36px; font-size: 7px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat-val { font-size: 7px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat-stg { font-size: 6px; }
+    ${D}.ewd-c .ewd-ulow .ew-grade.sm { --gsz: 11px; }
+    ${D}.ewd-c .ewd-ulow .ew-grade.sm i { font-size: 6px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem { padding: 4px 5px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-row { grid-template-columns: repeat(6, 15px); gap: 0 3px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-cell { min-width: 15px; height: 13px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-rx { height: 10px; font-size: 8px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-rx.weak { font-size: 9px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elem-icon, ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elicon { width: 11px; height: 11px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-el { font-size: 9px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-facts { font-size: 7px; gap: 0 10px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-st > b { font-size: 6px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-st > i { font-size: 7px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-chip { font-size: 6px; padding: 3px 4px 2px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-chip > img { width: 10px; height: 10px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-own { font-size: 6px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-btns { gap: 4px; margin-top: 6px; }
+    ${XC} .ewd-focus .hrlg-tc-btns > .hrlg-blade > .hrlg-body { padding: 4px 7px 3px !important; gap: 4px !important; font-size: 7px; }
+    ${XC} .ewd-focus .hrlg-tc-btns > .hrlg-blade .hrlg-blabel { font-size: 7px; }
+    ${D}.ewd-c > .ewd-foot { padding: 4px 8px; min-height: 26px; gap: 10px; }
+    ${D}.ewd-c .ewd-say { font-size: 11px; }
+    ${XC} .ewd-say .ew-descbar-name { font-size: 8px; }
+    ${D}.ewd-c .ewd-say .ew-descbar-ico { width: 14px; height: 14px; font-size: 9px; }
+    ${D}.ewd-c .ewd-keys { font-size: 7px; gap: 4px 7px; }
+    ${D}.ewd-c .ewd-key { gap: 4px; }
+  `;
+}
 function _hudHideCss() {
   return `
     /* Hide old HUD elements replaced by React HUD */
@@ -14203,6 +15108,7 @@ function _hudHideCss() {
     /* THE TUTORIAL (ui.js): the coach's pointer on a blade (b.tut) and the LATER rows */
     .hrlg-blade.tut .hrlg-body { outline: 2px solid #ffcd6b; outline-offset: 1px; box-shadow: 0 0 14px rgba(255,205,107,0.55); animation: hrlgTutGlow 1.1s ease-in-out infinite; }
     @keyframes hrlgTutGlow { 0%, 100% { outline-color: #ffcd6b; } 50% { outline-color: rgba(255,205,107,0.25); } }
+    ${_ewdCss()}
   `;
 }
 function _injectHudHideStyles() {
@@ -17488,7 +18394,10 @@ const UIM_PIECES = [
   { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock', icons: 'dock', def: { l: 18, b: 12, w: 280, h: 100 } },
   { id: 'prompt', group: 'Exploration', label: 'Interact prompt', sel: '#hqPage .hq-prompt', def: { cx: 0, b: 72, w: 320, h: 44 } },
   { id: 'toast', group: 'Exploration', label: 'Pick-up toast', sel: '#hqPage .hq-toast', def: { cx: 0, b: 136, w: 280, h: 52 } },
-  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
+  /* THE ONE BATTLE PANEL (2026-11-11): the whole window (its layout switch + picks ride its form); the Command menu piece
+     below is the classic Horologe and leaves the panel alone */
+  { id: 'deck', group: 'Battle', label: 'Battle panel', sel: '.hrlg-rig.ewd:not(.ewd-peek):not(.ewd-watch)', noHide: true, deck: true, origin: '0 100%', def: { l: 14, b: 12, w: 1272, h: 330 } },
+  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig:not(.ewd)', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
   { id: 'hero', group: 'Battle', label: 'Horologe hero section', sel: '.hrlg-side', noHide: true, hero: true, origin: '0 100%', def: { l: 10, b: 80, w: 216, h: 400 } },
   { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', score: true, def: { cx: 0, t: 10, w: 440, h: 64 } },
@@ -18202,6 +19111,9 @@ const FLOAT_KINDS = [
 const fcKey = k => 'fc' + k.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
 const fkKey = (k, part) => 'fk' + fcKey(k).slice(2) + part;
 FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; UX_DEF[fkKey(k, 'Font')] = ''; UX_DEF[fkKey(k, 'Weight')] = ''; UX_DEF[fkKey(k, 'Size')] = 1; });
+/* THE ONE BATTLE PANEL (hud.js _ewDeckCfg, 2026-11-11): the layout (one panel / the classic Horologe), what its right
+   side shows with nothing picked, where the AP icons sit, its zoom cone */
+Object.assign(UX_DEF, { dPanel: 'one', dFocus: 'self', dAp: 'panel', dCone: false });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -18221,6 +19133,17 @@ function uxMigrate() {
   if (X.fLay === 'rows') X.fLay = 'side';
   /* 2026-10-21: the CRIT stamp box became "Show a crit as" (Stamp / Text / Nothing): a box left off = Nothing */
   if ('fStamp' in X) { if (X.fStamp === false && !('fCrit' in X)) X.fCrit = 'off'; delete X.fStamp; }
+}
+/* THE ONE BATTLE PANEL's switches (window._ewDeck, read by _ewDeckCfg); the HUD redraws on its word */
+function deckSignal() {
+  const X = uxOf();
+  const v = { on: X.dPanel !== 'classic', focusSelf: X.dFocus !== 'empty', apIn: X.dAp !== 'top', cone: !!X.dCone };
+  const o = window._ewDeck;
+  window._ewDeck = v;
+  if (o && o.on === v.on && o.focusSelf === v.focusSelf && o.apIn === v.apIn && o.cone === v.cone) return;
+  try { window.dispatchEvent(new Event('ew-deck')); } catch (e) {}
+  if (typeof markDirty === 'function') markDirty('hud');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
 }
 /* the zoom cone's look (QuickCone reads window._ewQpCone every frame) */
 function qpSignal() {
@@ -19878,6 +20801,16 @@ function qpStatSizes(X) {
     + fSeg('Buffs + debuffs', 'qBuffAt', [['stat', 'Beside their stat', 'A buff or debuff of a stat on the card shows next to that stat (the others stay in the Buffs + debuffs part)'], ['part', 'In their own part', 'Every buff and debuff in the Buffs + debuffs part'], ['both', 'Both']], X.qBuffAt)
     + fRange('Status + buff badge size', 'qChipSize', 6, 28, 1, +X.qChipSize);
 }
+/* THE ONE BATTLE PANEL's own settings (the Battle panel piece) */
+function deckForm() {
+  const X = uxOf();
+  return sec('dpanel', 'Battle panel', xp(fSeg('Layout', 'dPanel', [['one', 'One panel', 'Who is acting, what it can do and what it is aimed at, in one window along the bottom'], ['classic', 'Classic', 'The Horologe column, the command panels and the unit / tile card, as before']], X.dPanel)
+    + fSeg('Right side with nothing picked', 'dFocus', [['self', 'My stats + square', 'The acting unit\'s own stats, element box and the square it stands on'], ['empty', 'Nothing', 'The right side shows only when a unit, square or target is picked']], X.dFocus)
+    + fSeg('AP icons', 'dAp', [['panel', 'In the panel', 'Under the HP / MP bars'], ['top', 'Top left', 'Where the AP press icons piece puts them']], X.dAp))
+    + xCheck('Zoom cone (turn icon to the card)', 'dCone', X.dCone))
+    + '<div class="uim-note">One panel: the left part is the unit whose turn it is, the middle is the one command list (red BACK on top, green CONFIRM at the bottom), the right part is what you picked, with its tabs. The footer says what to do and the keys that work now. Classic brings back the old layout and every piece of it.</div>'
+    + xReset('d', 'Reset the battle panel');
+}
 function qpForm() {
   const X = uxOf(), wide = X.qShape === 'wide', port = wide && +X.qPort > 0, free = qpFree(X);
   let h = `<div class="uim-note">The card over a clicked unit's quick actions (click a unit, or its turn order icon). Move X / Y above slide the whole card; the quick action list is its own piece (Quick action list).</div>`;
@@ -20089,6 +21022,12 @@ function heroCss() {
   if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]):not(.hrlg-hring), ${S} .hrlg-hub svg > circle:nth-of-type(n+3):not(.hrlg-halo) { display: none !important; }\n`;
   else if (H.face === 'dial') css += `${S} .hrlg-hub svg image, ${S} .hrlg-hub svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
   css += clockCss(H, S + ' .hrlg-hub');
+  /* THE ONE BATTLE PANEL's watch wears the same clock (its size is the panel's own) */
+  const DR = ':root:root .ewd-ring .hrlg-hub';
+  if (!H.glow) css += `${DR} { filter: none !important; }\n`;
+  if (H.face === 'portrait') css += `${DR} svg > g:not([clip-path]):not(.hrlg-hring), ${DR} svg > circle:nth-of-type(n+3):not(.hrlg-halo) { display: none !important; }\n`;
+  else if (H.face === 'dial') css += `${DR} svg image, ${DR} svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
+  css += clockCss(H, DR);
   const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([k, , sel]) => `${S} ${sel}, ${S} .hrlg-part-${k}`);
   if (hid.length) css += `${hid.join(', ')} { display: none !important; }\n`;
   /* THE PARTS: each part is its own box (see hud.js _hrlgSide), so it can slide, size and overlap its neighbour
@@ -20455,7 +21394,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal(); mapSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); deckSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal(); mapSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -21906,6 +22845,7 @@ function pieceDetail() {
   if (P.clog) h += clogForm();
   if (P.mmap) h += mmapForm();
   if (P.qp) h += qpForm();
+  if (P.deck) h += deckForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
   if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
