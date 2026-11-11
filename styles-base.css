@@ -7684,3 +7684,6 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .hrlg-qtypes > .ml-chip, .hrlg-qp-types > .ml-chip, .hrlg-typerow > .ml-chip { align-self: center; }
 .bp-id small .ml-chip, .pm-cls-cell .ml-chip, .unit-name-text .ml-chip { margin-left: 6px; }
 .pb-rtile-art > .ml-chip.pb-rtile-ml { position: absolute; left: 3px; bottom: 3px; height: 14px; padding: 0 4px 0 3px; font-size: 7px; z-index: 2; }
+.pb-wall-fspace { flex: 1 1 0; min-width: 0; }
+.pb-wall-filters > .pb-pill-input { flex: 0 0 120px; }
+.pb-wall-filters > .pb-pill-btn { flex: 0 0 auto; white-space: nowrap; }

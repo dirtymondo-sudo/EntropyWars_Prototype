@@ -4583,11 +4583,6 @@ function PartyBuilder(props) {
       h('span', { className: 'pb-wall-count' }, filteredRoster.length, ' / ', rosterEntries.length),
       DOOR && h('span', { className:'door-hdr-sub pb-wall-sub' }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
       h('div', { style: { flex: 1 } }),
-      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
-      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall by…' }, '⇅ ', sortLabelTxt),
-      h('button', { className: 'pb-pill-btn pb-sort-dir', onClick: () => { setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); sfx('uiCursorMove'); },
-        title: 'Flip the order (now ' + (sortDir === 'asc' ? 'ascending' : 'descending') + ')', 'aria-label': 'Sort order: ' + (sortDir === 'asc' ? 'ascending' : 'descending') },
-        ((sortKey === 'label') === (sortDir === 'asc')) ? '▼ ' : '▲ ', sortDirTxt),
       null),
     h('div', { className: 'pb-wall-filters' },
       h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
@@ -4597,7 +4592,15 @@ function PartyBuilder(props) {
         return h('button', { key: t, className: 'pb-type-disc' + (on ? ' on' : '') + (has ? '' : ' none'), style: { '--tc': c }, disabled: !has,
           onClick: () => setTypeFilter(on ? null : t), title: t.toUpperCase() + (has ? '' : ' — none on the wall') }, PB_TYPE_GLYPH[t] || t.slice(0, 2).toUpperCase());
       }),
-      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
+      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null,
+      /* THE HEADER FITS (2026-11-11): search + sort sit on the filter row, where there is room; in the title row they squeezed
+         the search box to "SEAR" at 1280 wide */
+      h('div', { className: 'pb-wall-fspace' }),
+      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
+      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall by…' }, '⇅ ', sortLabelTxt),
+      h('button', { className: 'pb-pill-btn pb-sort-dir', onClick: () => { setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); sfx('uiCursorMove'); },
+        title: 'Flip the order (now ' + (sortDir === 'asc' ? 'ascending' : 'descending') + ')', 'aria-label': 'Sort order: ' + (sortDir === 'asc' ? 'ascending' : 'descending') },
+        ((sortKey === 'label') === (sortDir === 'asc')) ? '▼ ' : '▲ ', sortDirTxt)),
     h('div', { className: 'pb-roster', onMouseLeave: rosterHoverOut },
       filteredRoster.map((entry, ei) => {
         const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
