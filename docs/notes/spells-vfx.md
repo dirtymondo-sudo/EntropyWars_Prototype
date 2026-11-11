@@ -3725,3 +3725,16 @@ the victim's screen for about a second. Looks only, shared code for every attack
 - **Off switches** (console, live): `window.EW_NO_HIT_SIDE = true` (all), `EW_NO_HIT_SIDE_A` (flare), `_B` (attacker
   tell), `_C` (number edge), `_D` (step back + fire). Over reloads: localStorage `ew_hitside` / `ew_hitside_a` … `_d` = `off`.
 - Probes: `window._ewHitSideOn(part)`, `window._ewHitSideAlly(player)`, `ThreeVFXEffects._hsLive()`.
+
+## THE QUARKS LAYER ON WEBGPU (2026-11-11)
+mondo: "Do we want the spell particle layer to run on webgpu? Can it?" (WebGPU became the default that day, PR #1124). The
+Spell FX Layer (three.quarks fire column + embers + smoke on fire / explosion spells, his setup ships it ON) never drew on
+the node renderer: the library draws through its own GLSL ShaderMaterial. three-vfx.js now keeps the SIMULATION (the same
+three emitter definitions, `ParticleSystem.update(dt)` without a BatchedRenderer) and draws the particles itself there:
+`_qkNDraw` writes every live particle (position, colour, alpha, size, rotation) into one InstancedMesh per sprite
+(`fxQuarksNode:flame|ember|smoke-soft`, `_batchMaterial` = the batched particles' material with aEwOp, cap 2048 each),
+billboarded on the CPU, same blending and renderOrder. The classic path is untouched. index.html no longer forces
+EW_QUARKS = false on the node modes and the Settings row shows there again. Off live: `window.EW_NO_QUARKS_NODE = true`.
+Proof (node renderer on its WebGL 2 backend vs classic, same fight): /mnt/project-files/webgpu-default-20261111/spell_layer_*.jpg.
+Not seen on a true WebGPU device (headless). Online: the layer rides `fire()` as before, the guest draws it from the relayed event.
+
