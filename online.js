@@ -2670,6 +2670,15 @@
                         return;
                     }
                 }
+                /* THE DEMO (2026-11-10): a demo room refuses a champ outside the demo roster the same way */
+                if (typeof teamDemoBarredRaces === 'function') {
+                    var _demoR = teamDemoBarredRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
+                    if (_demoR.length) {
+                        addLog('⚠️ Rejected opponent party config: not in the Demo roster (' + _demoR.join(', ') + ').');
+                        console.warn('[NET GUARD] party-config rejected — outside the demo roster:', _demoR);
+                        return;
+                    }
+                }
                 /* HOMOSAPIEN OUT (2026-10-23): a race that left the roster is refused like an unknown one */
                 if (typeof teamRemovedRaces === 'function') {
                     var _goneR = teamRemovedRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
@@ -3561,6 +3570,21 @@
                     console.warn('[SQUAD] the room is ' + _need + 'v' + _need + ', the squad has ' + NET._squad.slots.length);
                     return false;
                 }
+                /* THE DEMO (2026-11-10): a demo room fields the demo roster only — a squad with a champ outside it (or an
+                   unlock this account does not own yet) never locks in; the status line says which */
+                if (typeof demoModeOn === 'function' && demoModeOn()) {
+                    var _dBar = NET._squad.slots.map(function (s) { return String((s && s.race) || '').toLowerCase(); })
+                        .filter(function (r, i, a) { return r && a.indexOf(r) === i && typeof isUnitUnlocked === 'function' && !isUnitUnlocked(r); });
+                    if (_dBar.length) {
+                        var _dNames = _dBar.map(function (r) { return (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[r] && RACE_PROFILES[r].label) || r; }).join(', ');
+                        var _dt = document.getElementById('rrStatusText');
+                        if (_dt) _dt.textContent = 'This room plays the Demo roster. Not available: ' + _dNames + '. Leave and deploy a squad from the Demo roster.';
+                        var _dst = document.getElementById('rrMeState');
+                        if (_dst) { var _dsp = _dst.querySelector('span'); if (_dsp) _dsp.textContent = 'Not in the Demo'; }
+                        console.warn('[SQUAD] demo room: outside the demo roster or locked:', _dBar);
+                        return false;
+                    }
+                }
                 var seat = NET.myPlayer === 2 ? 2 : 1;
                 if (typeof window._ewApplySquad !== 'function' || !window._ewApplySquad(seat, NET._squad)) return false;
                 NET._waitingForOpponent = false;
@@ -3609,6 +3633,7 @@
                 NET.matchRankedMode = null;
                 NET.rejoinToken = null;
                 NET.friendlyConfig = null;
+                NET._roomDemo = undefined;   // THE DEMO: the last room's switch never follows the seat out
                 NET._squad = null;   // THE SQUAD DESK: the lobby's copy (window._ewSquad stays for the next queue)
                 if (window._ewReadyRoomClose) window._ewReadyRoomClose(true);
                 window._ewResetOnlineMatchFlags(true);   // THE NEXT ROOM: every per-match flag, the arena waits included
@@ -3644,7 +3669,10 @@
             };
 
             function _friendlyGetConfig() {
-                return { mode: _friendlyMode, mapId: _friendlyMapId, teamSize: _friendlySize, rounds: _friendlyRounds };
+                /* THE DEMO (2026-11-10): the host's Demo switch decides for the room — it rides the config, the guest reads it
+                   as NET._roomDemo (data.js demoModeOn) */
+                return { mode: _friendlyMode, mapId: _friendlyMapId, teamSize: _friendlySize, rounds: _friendlyRounds,
+                         demo: (typeof demoModeOn === 'function') ? !!demoModeOn() : false };
             }
 
             function _friendlyEmitConfig() {
@@ -4609,6 +4637,11 @@
                 NET.socket.on('friendly-config', function(data) {
                     if (NET.role !== 'guest') return;
                     NET.friendlyConfig = data;
+                    if (data && typeof data.demo === 'boolean') {   // THE DEMO: the host's switch is the room's
+                        var _demoWas = NET._roomDemo;
+                        NET._roomDemo = data.demo;
+                        if (data.demo && !_demoWas && NET._squad && typeof window._ewSquadAutoLock === 'function') window._ewSquadAutoLock();   // say so at once if this squad is outside the demo roster
+                    }
                     if (data && data.mapId && typeof window._ewOnlineArenaPrep === 'function') window._ewOnlineArenaPrep(data.mapId);   // THE ARENAS ONLINE
 
                     var hostStatus = document.getElementById('lobbyHostStatus');

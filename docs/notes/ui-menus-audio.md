@@ -2559,3 +2559,22 @@ Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build
   EXIT is red (`.ew-cine-btn.back`), Esc with the mouse still held frees it. DOM only: in no photo or video.
 - Proof (2 Chromium seats, friendly TDM, real clicks; 1280x720, 1280x540, 800x500): /mnt/project-files/end-screens-20261110/.
   Not viewed: WebGPU, Firefox, a real 90 s closed tab from a second machine (the guest page was navigated away instead).
+
+## THE DEMO (2026-11-10, mondo: the PvP demo set; "everyone can start off with the same 16 and can unlock up to 32")
+data.js DEMO_RULES = { on, starters[16], unlocks[16], arenas[9 site ids] } + demoModeOn / setDemoMode / demoRaceIn / demoRaceFree /
+demoArenaIn / demoRacePool. An optional FILTER: nothing is removed from AVAILABLE_RACES, the spells or the maps.
+- The switch: Settings > Demo (out of battle), `?demo=1` / `?demo=0` (remembered in localStorage `ew_demo_mode`), or the shipped
+  default DEMO_RULES.on (false). `on: true` ships the whole game as the demo, and the server's Quick Play pool then follows
+  (it reads hqArenaPvpPool at boot).
+- Roster: isUnitOwned counts the 16 starters as owned; isUnitUnlocked = in the 32 AND owned, in every scope. The 16 unlocks are
+  bought the way units already are (the Shop: one must have fallen to you in a match, then ACCT_UNIT_PRICE or a free token). The
+  forge lists the 32 (party-builder.js rosterEntries), the Shop lists the 32 ('demo' lock reason for the rest), the CPU's picks
+  and random rolls stay inside the 32 (state.js cpu3DRaceForSlot, randomizeIdentity, the hard draft).
+- Arenas: match-select.js deals the demo sites' ARENA cards + the Training Room and the Holo Sim (never a site's own console, a
+  desk with pre.allow, or Clash's stage); hqArenaPvpPool deals the seven arena sites online. The Training Room and the Holo Sim are
+  8×8 VS CPU boards: an online room only deals 9–12 boards.
+- Online: the host's switch rides friendly-config (`demo`), the guest reads NET._roomDemo. A squad with a champ outside the
+  roster (or a locked unlock) does not lock in (_ewSquadAutoLock says which); the squad desk flags it "Not in the Demo"; the host's
+  party-config guard refuses it (state.js teamDemoBarredRaces).
+Proof (headless WebGL, VS CPU desk + forge with ?demo=1, and ?demo=0 unchanged): /mnt/project-files/demo-set-20261110/.
+Not run with two seats.
