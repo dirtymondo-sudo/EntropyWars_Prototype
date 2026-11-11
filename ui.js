@@ -8425,9 +8425,9 @@
         window._buildPolishSettingsHTML = function (RJ, inBattle) {
             if (typeof window.hqPolishAll !== 'function') return '';
             let rows = []; try { rows = window.hqPolishAll(); } catch (e) { rows = []; }
-            /* WEBGPU_PLAN W4: on the node renderer the quarks layer cannot draw (GLSL), and the AO row's second choice is GTAO */
+            /* WEBGPU_PLAN W4: on the node renderer the AO row's second choice is GTAO (the quarks row is back since 2026-11-11: three-vfx.js draws the layer there) */
             let nodeR = false; try { nodeR = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isNodeRenderer && ThreeRenderer.isNodeRenderer()); } catch (e) {}
-            if (nodeR) rows = rows.filter(r => r.key !== 'quarksFx').map(r => r.key === 'ssaoMode' ? Object.assign({}, r, { levels: (r.levels || []).map(([v, lab]) => [v, lab === 'N8AO' ? 'GTAO' : lab]), hint: 'Classic = the game\'s own AO; GTAO = three\'s ground-truth AO, softer and wider, a little heavier' }) : r);
+            if (nodeR) rows = rows.map(r => r.key === 'ssaoMode' ? Object.assign({}, r, { levels: (r.levels || []).map(([v, lab]) => [v, lab === 'N8AO' ? 'GTAO' : lab]), hint: 'Classic = the game\'s own AO; GTAO = three\'s ground-truth AO, softer and wider, a little heavier' }) : r);
             if (!rows.length) return '';
             const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             const owned = rows.filter(r => r.owned).length;

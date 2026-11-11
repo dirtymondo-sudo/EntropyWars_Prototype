@@ -727,7 +727,6 @@
                     remember('no:' + r);
                     if (window.EW_GPU_MODE === 'webgpu' && !window.EW_GPU_MADE) {   // the board renderer is not made yet: it will be the classic one
                         window.EW_GPU_MODE = 'webgl'; window.EW_GPU_WHY = 'Auto: WebGPU did not work here (' + r + ')';
-                        try { delete window.EW_QUARKS; } catch (e) { window.EW_QUARKS = undefined; }
                     }
                 };
                 var ok = function () {
@@ -746,7 +745,7 @@
             }
             if (m === 'webgl') return;
             /* WEBGPU_PLAN W4: the HQ plates draw as canvas-painted planes on the node renderer (troika is GLSL); no switch here */
-            window.EW_QUARKS = false;       // three.quarks draws through GLSL materials: no Spell FX Layer on the node renderer
+            /* the Spell FX Layer (three.quarks) runs on the node renderer too since 2026-11-11: three-vfx.js draws its particles itself there */
             document.write('<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js">' +
                 '<script type="module">import * as W from "three/webgpu"; window.THREE_GPU = W;' +
                 ' if (navigator.gpu && navigator.gpu.requestAdapter) navigator.gpu.requestAdapter().then(function (a) {' +
