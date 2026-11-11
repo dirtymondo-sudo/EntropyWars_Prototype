@@ -49404,7 +49404,7 @@ const ThreeRenderer = (function () {
         if (typeof state === 'undefined') return;
 
         if (state._moveHoverActive
-            && state.actionMode !== 'move' && state.actionMode !== 'jump'
+            && state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb'
             && typeof window._clearMoveHoverPreview === 'function') {
             window._clearMoveHoverPreview();
         }
