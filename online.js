@@ -1085,7 +1085,12 @@
                        (server.js THE RESULT HOLD); the packet goes out ahead of the disconnect */
                     try { if (N && N.socket && N.socket.connected) N.socket.emit('leave-room'); } catch (e) {}
                     try { if (window._ewSeatHoldStop) window._ewSeatHoldStop(); } catch (e) {}   // THE SEAT HOLD
-                    try { if (N && N.socket) N.socket.disconnect(); } catch (e) {}
+                    /* offline BEFORE the socket drops: its 'disconnect' fires at once, and with the session still marked
+                       online it wrote "Reconnecting…" on the result bar this page is leaving (end screens 2026-11-10) */
+                    var _leavingSock = N && N.socket;
+                    if (N) N.online = false;
+                    try { if (_leavingSock) _leavingSock.disconnect(); } catch (e) {}
+                    try { var _pill = document.getElementById('netStatusIndicator'); if (_pill) _pill.remove(); } catch (e) {}   // the room chip leaves with the room
                     if (N) {
                         N.online = false;
                         N.connected = false;
@@ -1135,7 +1140,7 @@
            stayed up for good. It ends the match the way the pause menu's FORFEIT does: the winner on state, then
            checkWin -> finalizeMatch -> the result screen. On the host the engine owns the match; on a guest whose
            host never came back there is no engine left to send the result, so the guest ends its own mirror. */
-        window.triggerOnlineForfeitWin = function(forfeitPlayer) {
+        window.triggerOnlineForfeitWin = function(forfeitPlayer, reason) {
             var winner = forfeitPlayer === 1 ? 2 : 1;
             if (!state || state.winner || state._winCondition === 'draw') return;
             if (state.phase !== 'battle') {
@@ -1148,7 +1153,9 @@
             state.aiThinking = false;
             state.winner = winner;
             state.matchResult = { winner: winner, reason: 'forfeit' };
-            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (disconnect timeout). Player ' + winner + ' wins!');
+            var _ffTimer = reason === 'turn-timer';
+            if (typeof _forfeitMark === 'function') _forfeitMark(forfeitPlayer, _ffTimer ? 'timer' : 'disconnect');
+            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (' + (_ffTimer ? 'turn timer' : 'disconnect timeout') + '). Player ' + winner + ' wins!');
             if (_isGuest()) state._guestResultShown = true;   // the mirror's own result path must not open it twice
             checkWin();
             if (_isHost() && window._broadcastState) { try { window._broadcastState(); } catch (e) {} }
@@ -2027,9 +2034,10 @@
             });
 
             if (nextMatchBtn) {
-                nextMatchBtn.textContent = '✓ Rematch Requested — Waiting…';
+                nextMatchBtn.textContent = '✓ Rematch Requested';
                 nextMatchBtn.disabled = true;
             }
+            if (typeof window._vicRematchNote === 'function' && !(window._NET._rematchState[1] && window._NET._rematchState[2])) window._vicRematchNote('Rematch requested. Waiting for your opponent to accept.', 'wait');
             addLog(`Player ${me} wants a rematch.`);
 
             if (window._NET._rematchState[1] && window._NET._rematchState[2]) {
@@ -2211,6 +2219,7 @@
                            the payload (a hacked guest sent player:1 to make
                            the HOST forfeit and win instantly). */
                         state.winner = remoteP === 2 ? 1 : 2;
+                        if (typeof _forfeitMark === 'function') _forfeitMark(remoteP, 'quit');   // the result screen says who gave it up
                         addLog('Player ' + remoteP + ' forfeits the match.');
                         checkWin();
                         break;
@@ -4070,11 +4079,12 @@
                 var st = window._gameState;
                 return !!(st && (st.winner || st._winCondition === 'draw'));
             }
-            function _ewSetRematchBtn(text, disabled) {
+            /* note + tone = the result screen's rematch line (battle.js _vicRematchNote): every button state says in a
+               full sentence what is going on (end screens 2026-11-10) */
+            function _ewSetRematchBtn(text, disabled, note, tone) {
                 var b = document.getElementById('nextMatchBtn');
-                if (!b) return;
-                b.textContent = text;
-                b.disabled = !!disabled;
+                if (b) { b.textContent = text; b.disabled = !!disabled; }
+                if (note != null && typeof window._vicRematchNote === 'function') window._vicRematchNote(note, tone || '');
             }
 
             function _hideReconnectOverlay(keepPaused) {
@@ -4112,10 +4122,16 @@
                 try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
                 var panel = document.createElement('div');
                 panel.id = 'reconnectOverlay';
-                panel.style.cssText = 'position:fixed;top:20px;left:10%;width:80%;z-index:99999;padding:20px;background:#211824;color:white;text-align:center';
+                /* a PS1 window with a red way out (end screens 2026-11-10: it was a bare strip with the browser's own grey button) */
+                panel.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;z-index:99999;padding:16px 22px 18px;' +
+                    'background:linear-gradient(180deg,#141a3a,#0a0d22);border:2px solid #d9dceb;box-shadow:0 0 0 2px #05060f,0 12px 34px rgba(0,0,0,0.7);color:#eef1ff;text-align:center;' +
+                    "font:13px/1.5 'IBM Plex Mono',monospace;letter-spacing:0.04em;";
                 var label = document.createElement('p');
+                label.style.cssText = 'margin:0 0 12px;overflow-wrap:anywhere;';
                 label.textContent = reason;
                 var button = document.createElement('button');
+                button.style.cssText = "appearance:none;cursor:pointer;padding:9px 22px;font:700 12px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;text-transform:uppercase;" +
+                    'color:#ffd0ca;background:linear-gradient(180deg,#4a1512,#2a0b09);border:2px solid #e0453a;border-radius:0;';
                 button.textContent = 'Return to Main Menu';
                 button.onclick = function() { window._ewHideReconnectBanner(); backToMainMenu(); };
                 panel.appendChild(label); panel.appendChild(button);
@@ -4240,7 +4256,7 @@
                                     _hideReconnectOverlay();
                                     NET.connected = true;
                                     NET._rematchState = null;
-                                    _ewSetRematchBtn('Request Rematch', false);
+                                    _ewSetRematchBtn('Request Rematch', false, 'Back in the room. Both players must agree to a rematch.', '');
                                     ewToast('Reconnected.', 2000);
                                     return;
                                 }
@@ -4265,7 +4281,7 @@
                                     NET._wasInMatch = false;
                                     NET.connected = false;
                                     _hideReconnectOverlay();
-                                    _ewSetRematchBtn('Room Closed', true);
+                                    _ewSetRematchBtn('Room Closed', true, 'The room has closed. No rematch from this room.', 'off');
                                     ewToast('The room has closed — a rematch is no longer possible.', 4000);
                                     return;
                                 }
@@ -4286,7 +4302,7 @@
                         NET._wasInMatch = true;
                         if (_ewPostMatch()) {
                             /* the result stays on screen; only the rematch waits for the socket */
-                            _ewSetRematchBtn('Reconnecting…', true);
+                            _ewSetRematchBtn('Reconnecting…', true, 'Connection lost. Reconnecting to the room. Your seat is held for 5 minutes.', 'wait');
                             ewToast('Connection lost — reconnecting…', 3000);
                             return;
                         }
@@ -4305,7 +4321,9 @@
                     NET.matchId = data.matchId;
                     /* a FAILED recovery left _recovering latched (state-sync is ignored while it is set); a fresh room
                        clears it (2026-10-21 PvP audit #15). A live recovery (_recoveryFailed false) is untouched. */
-                    if (NET._recoveryFailed) NET._recovering = false;
+                    /* the old room's "could not rejoin" window leaves with it (end screens 2026-11-10: a page reloaded on a
+                       closed room kept that window over the whole of its next match and its result screen) */
+                    if (NET._recoveryFailed) { NET._recovering = false; _hideReconnectOverlay(true); }
                     NET._recoveryFailed = false;
                     window._ewResetOnlineMatchFlags(false);   // THE NEXT ROOM: a fresh room starts from clean match flags
 
@@ -4455,11 +4473,11 @@
                         if (data.postMatch && data.reconnectable) {
                             /* THE RESULT HOLD: they dropped, their seat is kept — the rematch waits for them */
                             ewToast('Your opponent lost connection — waiting for them to come back.', 4000);
-                            _ewSetRematchBtn('Opponent Reconnecting…', true);
+                            _ewSetRematchBtn('Opponent Reconnecting…', true, 'Your opponent lost connection. Their seat is held for 5 minutes.', 'wait');
                             return;
                         }
                         ewToast('Your opponent left the match.', 4000);
-                        _ewSetRematchBtn('Opponent Left', true);
+                        _ewSetRematchBtn('Opponent Left', true, 'Your opponent left. No rematch from this room.', 'off');
                         return;
                     }
 
@@ -4519,7 +4537,7 @@
                         /* both seats are back on the result: votes cast before the drop are void on the server too */
                         NET._rematchState = null;
                         if (data.role !== NET.role) ewToast('Your opponent is back.', 2500);
-                        _ewSetRematchBtn('Request Rematch', false);
+                        _ewSetRematchBtn('Request Rematch', false, 'Both players are back. Both must agree to a rematch.', '');
                     }
                 });
                 NET.socket.on('match-generation', function(data) {
@@ -4547,13 +4565,13 @@
                         window.location.reload();
                     } else {
 
-                        ewToast('Your opponent failed to reconnect — you win by forfeit!', 5000);
+                        ewToast(data.reason === 'turn-timer' ? 'Your opponent held the turn too long. You win by forfeit!' : 'Your opponent failed to reconnect. You win by forfeit!', 5000);
                         if (typeof window.triggerOnlineForfeitWin === 'function') {
-                            window.triggerOnlineForfeitWin(forfeitPlayer);
+                            window.triggerOnlineForfeitWin(forfeitPlayer, data.reason);
                             /* the server closed the room with the forfeit: no rematch with nobody (the result screen
                                sets its button a moment after it opens, so this lands after it) */
                             NET.connected = false;
-                            setTimeout(function() { if (_ewPostMatch()) _ewSetRematchBtn('Opponent Left', true); }, 1500);
+                            setTimeout(function() { if (_ewPostMatch()) _ewSetRematchBtn('Opponent Left', true, 'Your opponent is gone and the room has closed. No rematch from this room.', 'off'); }, 1500);
                         } else {
 
                             if (typeof addLog === 'function') addLog('Opponent forfeited (disconnect timeout). You win!');
@@ -4699,6 +4717,7 @@
                                 btn.textContent = 'Accept Rematch';
                                 btn.disabled = false;
                             }
+                            if (typeof window._vicRematchNote === 'function') window._vicRematchNote('Your opponent wants a rematch. Press ACCEPT REMATCH to play again.', 'call');
                         }
 
                         if (NET._rematchState[1] && NET._rematchState[2]) {
@@ -7112,7 +7131,11 @@
                     if (_holdOn && typeof window._ewSeatHoldStart === 'function') window._ewSeatHoldStart(NET.roomCode, NET.rejoinToken);
                     else if (!_holdOn && !NET._wasInMatch && !NET._recovering && window._ewSeatHold && window._ewSeatHold.running && window._ewSeatHoldStop) window._ewSeatHoldStop();
                 } catch (e) {}
-                if (!NET.online) return;
+                if (!NET.online) {
+                    /* no session, no room chip (PvP playtest 2026-11-09 F8: the chip stayed up over later offline matches) */
+                    var _stale = document.getElementById('netStatusIndicator'); if (_stale) _stale.remove();
+                    return;
+                }
                 var ind = document.getElementById('netStatusIndicator');
                 if (!ind) {
                     ind = document.createElement('div');

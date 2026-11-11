@@ -2532,3 +2532,30 @@ Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build
 - Proof (2026-11-09, online friendly, 2 Chromium seats, Mount Shasta 10x10, real menu clicks): host Sedan To the Moon -> Gnome to
   C6 in the host's fog, and guest Gnome To the Moon -> Bigfoot to C6 in the guest's fog; each seat's own line shows, the same
   line untagged is judged hidden. Shots: /mnt/project-files/own-throw-log-fog-20261109/.
+
+## THE END SCREENS: result, forfeit, rematch, pause camera (2026-11-10, PvP demo pass item 6)
+- Readability (styles-cinematic.css "THE END SCREENS READ"): `.vic-subtitle` + `.vic-match-info` each sit on a dark square window;
+  `.vic-sheets` gets a dark backing under the theme's plate (his glass theme left Hazard Pay rows on the bare board); the kicker
+  has a shadow; online (`.result-overlay.vic-online`) the head starts under the room chip. Under 620 px tall the case stamp is
+  `zoom: 0.5` so it never lands on the head's lines.
+- Forfeit on the record: battle.js `_forfeitMark(by, how)` writes `state._forfeit = { by, how }` (how = quit | disconnect | timer),
+  cleared on every line that clears `_winCondition`. Set by `forfeitMatch`, online.js relay case 'forfeit' and
+  `triggerOnlineForfeitWin(forfeitPlayer, reason)`. Plain data, rides the snapshot to the guest; no rule reads it. The result screen
+  adds the fact `🏳 FORFEIT` and a subtitle that says who ("You forfeited the match." / "Your opponent forfeited the match." /
+  "... did not reconnect in time ..." / "... held the turn too long ..."). Never key it on `state.startTime`: each seat has its own.
+- F5 (11-05): a profile still named "Player" reads "You hold the field." / "You are defeated."; a named profile keeps its name.
+- Rematch line: battle.js `_vicRematchNote(text, tone)` = `#vicRematchNote` over the command bar (the bar is 26 px taller online).
+  online.js `_ewSetRematchBtn(text, disabled, note, tone)` writes it with every button state; tones call (green, pulses) / wait
+  (gold) / off (red). The waiting button now reads "✓ Rematch Requested"; the sentence is in the line.
+- Buttons: hud.js BTN_MENUS 'results' gained `#mainMenuBtn` as a BACK and `#nextMatchBtn` as a CONFIRM, so the shipped red / green
+  apply (stand-in `confirm-results`).
+- Offline result after an online one: the bar's words come back ("Find Next Match", Back to Party Builder shown); online.js main
+  menu teardown marks the session offline BEFORE the socket drops (its 'disconnect' wrote "Reconnecting…" on the bar) and removes
+  `#netStatusIndicator`; the 1 s status loop removes a chip with no session (PvP playtest F8).
+- "Unable to rejoin" window (`_recoveryFailure`): a square window with a red button, and `room-full` removes a stale one (a page
+  reloaded on a closed room kept it over its whole next match).
+- Narrow result (under 900 wide / 520 tall): no sideways scroll on the bar; a long label breaks inside its own button.
+- F4 (11-05) three-camera.js EWCine: `#ewCineHint` key line while the mouse flies the camera or a path plays (exempt from hudHide),
+  EXIT is red (`.ew-cine-btn.back`), Esc with the mouse still held frees it. DOM only: in no photo or video.
+- Proof (2 Chromium seats, friendly TDM, real clicks; 1280x720, 1280x540, 800x500): /mnt/project-files/end-screens-20261110/.
+  Not viewed: WebGPU, Firefox, a real 90 s closed tab from a second machine (the guest page was navigated away instead).

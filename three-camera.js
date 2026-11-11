@@ -2130,6 +2130,10 @@ var EWCine = (function () {
         if (C.panel) return C.panel;
         var p = el('div', 'ew-cine-panel'); p.id = 'ewCinePanel';
         var rec = el('div', 'ew-cine-rec'); rec.id = 'ewCineRec'; document.body.appendChild(rec);
+        /* THE WAY OUT IS ALWAYS ON SCREEN (playtest 2026-11-05 F4: Pause > CAMERA hid the whole HUD and took the mouse with
+           no word on how to leave): one line of keys while the mouse flies the camera or a path plays. DOM only, so it is
+           in no still and no video (they read the canvas alone). */
+        var hint = el('div', 'ew-cine-hint'); hint.id = 'ewCineHint'; document.body.appendChild(hint);
         var row1 = el('div', 'ew-cine-row'), row2 = el('div', 'ew-cine-row');
         function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
         function slider(row, label, min, max, step, get, set) {
@@ -2144,7 +2148,7 @@ var EWCine = (function () {
         btn(row1, 'RECORD', function () { recToggle(); }, 'ewCineRecBtn');
         var syncSpeed = slider(row1, 'SPEED', 1, 80, 1, function () { return C.speed; }, function (v) { C.speed = v; });
         var syncLens = slider(row1, 'LENS', 12, 90, 1, function () { return C.tFov; }, function (v) { C.tFov = v; });
-        btn(row1, 'EXIT', function () { exit(); });
+        btn(row1, 'EXIT', function () { exit(); }).classList.add('back');
         btn(row2, '+ KEY', function () { keyAdd(); }, 'ewCineKeyBtn');
         btn(row2, 'UNDO KEY', function () { keyUndo(); });
         btn(row2, 'PLAY', function () { play(null, {}); });
@@ -2167,6 +2171,12 @@ var EWCine = (function () {
         var kb = document.getElementById('ewCineKeyBtn'); if (kb) kb.textContent = '+ KEY (' + C.path.length + ')';
         var rb = document.getElementById('ewCineRecBtn'); if (rb) { rb.textContent = C.rec ? 'STOP REC' : 'RECORD'; rb.classList.toggle('hot', !!C.rec); }
         var r = document.getElementById('ewCineRec'); if (r) r.classList.toggle('on', !!(C.on && C.rec));
+        var h = document.getElementById('ewCineHint');
+        if (h) {
+            var hOn = C.on && (C.look || C.play);
+            h.classList.toggle('on', !!hOn);
+            if (hOn) h.innerHTML = C.play ? '<b>ESC</b> STOP THE PATH' : '<b>WASD</b> FLY · <b>MOUSE</b> LOOK · <b>ESC</b> FREE THE MOUSE + PANEL · <b>F8</b> EXIT';
+        }
     }
 
     /* ── THE HUD: every layer over the canvas fades out (opacity, never display: the canvas's box must not move) ── */
@@ -2177,7 +2187,7 @@ var EWCine = (function () {
             var sibs = e.parentElement.children;
             for (var i = 0; i < sibs.length; i++) {
                 var s = sibs[i];
-                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
+                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.id === 'ewCineHint' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
                 C.hidden.push([s, s.style.opacity, s.style.pointerEvents]);
                 s.style.opacity = '0'; s.style.pointerEvents = 'none';
             }
@@ -2430,7 +2440,9 @@ var EWCine = (function () {
         if (C.play) { if (k === 'escape' || k === 'enter') stop(); return; }
         if (MOVE[k]) { C.keys[k] = true; return; }
         if (e.repeat) return;
-        if (k === 'escape') { if (!locked() && performance.now() - C.freedAt > 400) exit(); return; }
+        /* a browser frees a locked mouse on Esc by itself and never sends the key; where the key does arrive with the
+           mouse still held (a kiosk / an embedded view), it frees the mouse here, so Esc is never a dead key */
+        if (k === 'escape') { if (locked()) lockSet(false); else if (performance.now() - C.freedAt > 400) exit(); return; }
         if (k === 'e') { lockSet(!locked()); return; }
         if (k === 'p') { C.want.photo = true; return; }
         if (k === 'm') { C.want.map = true; return; }
