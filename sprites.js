@@ -4035,6 +4035,9 @@ const EW_MH_LOOKS = {
    Retexture on the MPFB heavy body with the Wolf head (its own hm08 UVs, so any MPFB body wears it): A = the text prompt, B = matched to
    the Meshy werewolf's own look. mpfb/looks/skin_<id>.jpg like the pack skins; sources in project files meshy/retexture/werewolf/. */
 EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewolf_fur_dark', 'Werewolf fur, dark (Meshy)']);
+/* THE MORGAN SKIN (2026-11-11, THE CUSTOM SHAPES): Morgan's face re-projected onto the hm08 sheet over skin_young_caucasian_female,
+   mpfb/looks/skin_morgan.jpg like the pack skins; it pairs with the morganHead shaped head (EW_MPFB_FACE_SLIDERS "Face likeness"). */
+EW_MH_LOOKS.skins.push(['morgan', 'Morgan']);
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -4874,8 +4877,14 @@ const EW_MPFB_FACE_SLIDERS = [
      feline ears (CC-BY, rounder, credited). The body's own ears grow up the sides of the head, so they take the skin, the skin colour
      and every slider. Shown on OUTFIT > Head > Ears as picks beside the Elf ears (+ a strength slider), not on the FACE tabs (inEars) */
   { id: 'animalEars', label: 'Animal ears', inEars: true, rows: [['catEars', 'Cat ears'], ['felineEars', 'Cat ears, round']] },
+  /* THE CUSTOM SHAPES (2026-11-11, mondo: Morgan's face on the MPFB head): a shape that is NOT a MakeHuman target, added to the same
+     mpfb_shapes.glb by bake-custom-shape.js (charactercreation/mpfb/custom_shapes/<key>.json; re-run it after bake-mpfb.py --shapes).
+     morganHead = a face likeness measured on mpfb_female, 0..1; it pairs with the "morgan" skin (EW_MH_LOOKS.skins). A shaped head
+     (inHeads), so it is an OUTFIT > Head pick with a strength slider and a face reset leaves it on. */
+  { id: 'likeness', label: 'Face likeness', inHeads: true, rows: [['morganHead', 'Morgan']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
+EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
 EW_APPEARANCE_LIMITS.catEars = [0, 1, 0]; EW_APPEARANCE_LIMITS.felineEars = [0, 1, 0];
 /* THE SHAPED HEADS: the Creature heads that are a reshape of the body's own head (a MakeHuman target, 0..1), not a model worn over it.
    One head at a time with the model heads: a shaped head picked takes the model head off, and the other way round. [key, label] */
