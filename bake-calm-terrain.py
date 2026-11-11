@@ -647,6 +647,23 @@ def bake_obsidian(seed=161):
     return settle(np.asarray(img).astype(np.float64) / 255.0, 0.9, 0.95)
 
 
+
+# ── THE OBSIDIAN WITH VEINS (calm_obsidian_2, 11-11: the rollout's card "bring the glowing lava veins back"): the calm obsidian
+#    with a few thin lava cracks wandering through it, dim orange cores in a dark red halo; far fainter than his sheet ──────────────
+def bake_obsidian_veins(seed=161):
+    rgb = bake_obsidian(seed)
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 50; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 50
+    F1, F2, ID = worley(N, 7, seed + 3, (wx, wy))                              # the same stones as calm_obsidian_1
+    gap = F2 - F1
+    live = np.clip(fft_noise(N, 1, 3, seed + 25, 0.6) * 2.4 + 0.15, 0, 1)       # the lava runs in some joints, a band across the sheet
+    live *= np.clip(fft_noise(N, 6, 16, seed + 26, 0.5) * 2.0 + 0.7, 0, 1)    # and fades in and out along each joint
+    core = np.exp(-(gap / 0.013) ** 2) * live
+    halo = np.exp(-(gap / 0.05) ** 2) * live
+    rgb = lerp(rgb, hexc(0x4a1a10), halo * 0.7)
+    rgb = lerp(rgb, hexc(0xa8461a), core * 0.9)
+    rgb = lerp(rgb, hexc(0xd8803a), core ** 3 * 0.6)
+    return np.clip(rgb, 0, 1)
+
 # ── THE DARK STONE (bricks_3): a temple's dark dressed stone in courses, no moss ─────────────────────────────────────────────────
 def bake_darkstone(seed=171):
     return bake_blocks(seed, rows=9, wlo=0.18, whi=0.36, a=0x3f3d3a, b=0x58554f, joint=0x26231f, moss=0.25)
@@ -1182,9 +1199,16 @@ def bake_patchwork_bright(seed=501):
     return bake_patchwork(seed, cols=(0x7a2a24, 0x2a4470, 0x2c6038, 0x8a7a2c, 0x54386e, 0x8a5226, 0x2a6262, 0x7a6a50), sat=0.72)
 
 
+
+# ── THE RETRO PATCHWORK (carpet_4, H-Wing): his symbol carpet's colours — teal, olive, mustard, rust, plum — as plain patches,
+#    five to a square, the symbols left out (they are the busy part) ─────────────────────────────────────────────────────────────
+def bake_patchwork_retro(seed=591):
+    rgb = bake_patchwork(seed, cols=(0x2e4646, 0x4a4a2c, 0x8a6a2c, 0x7a3420, 0x4e3650, 0x2c3040, 0x5a4026, 0x4a5a3a), sat=0.85, n=5)
+    return settle(rgb, 1.0, 0.8)
+
 # ── THE GOLD DAMASK (damask_2): the damask's flower in old gold on a brown ground ───────────────────────────────────────────────
 def bake_damask_gold(seed=511):
-    return bake_damask(seed, lo=0x3e2a18, hi=0x7a5e30, heart=0x8a6c38)
+    return bake_damask(seed, lo=0x4e2c1a, hi=0xa07a3c, heart=0xb08a48)
 
 
 # ── THE LEATHER (leather): hides sewn together — each piece its own brown, a pebbled grain and soft creases, dark seams with a
@@ -1214,7 +1238,7 @@ def bake_leather(seed=521):
 # ── THE CANOPY (forest, forest_2, tree): the wood seen from above — tree crowns built like the cloud heads (crowns on crowns, lit
 #    from the north-west, deep shade down between them), the hedge's leaves for their texture ──────────────────────────────────────
 def bake_canopy(seed=531):
-    crowns = bake_cloud(seed, lit=0x5a7438, mid=0x34492a, shade=0x111a0e)
+    crowns = bake_cloud(seed, lit=0x7e9c46, mid=0x506c30, shade=0x1e2c14)   # (a step under his bright lime, 11-11)
     leaf = bake_hedge(seed + 1)
     tex = lum(leaf); tex = tex / (tex.mean() + 1e-9)
     rgb = crowns * np.clip(0.55 + 0.45 * tex, 0.4, 1.6)[..., None]
@@ -1239,8 +1263,14 @@ def hue_turn(rgb, deg):
 
 
 def bake_purplegrass(seed=551):
-    rgb = hue_turn(bake_grass(seed), 165)
-    return settle(rgb * 1.05, 0.95, 1.0)
+    base = bake_grass(seed)
+    rgb = hue_turn(base, 165) * 1.2
+    tn = fft_noise(N, 7, 16, seed + 1, 0.4)
+    q0, q1 = np.quantile(tn, [0.86, 0.96]); tuft = np.clip((tn - q0) / (q1 - q0), 0, 1)   # his green tufts: ~1 in 8, soft
+    tuft *= np.clip(fft_noise(N, 1, 4, seed + 2, 0.6) * 1.5 + 0.7, 0, 1)
+    blades = lum(base); blades = blades / (blades.mean() + 1e-9)
+    rgb = lerp(rgb, hexc(0x5e7a36) * blades[..., None], tuft * 0.75)
+    return settle(rgb, 1.05, 1.0)
 
 
 # ── THE PAVING (road): an old road of big irregular flags — grey-beige stones, each its own tone, earth and a little grass in the
@@ -1278,11 +1308,13 @@ def bake_ruins(seed=571):
 def bake_void(seed=581):
     rng = np.random.default_rng(seed)
     macro = fft_noise(N, 1, 6, seed + 1, 0.8); wisp = fft_noise(N, 3, 20, seed + 2, 0.7); wisp2 = fft_noise(N, 3, 20, seed + 3, 0.7)
-    rgb = lerp(hexc(0x06070d), hexc(0x0d1020), np.clip(0.5 + 0.5 * macro, 0, 1))
-    rgb = lerp(rgb, hexc(0x1c2b55), np.clip(wisp * 1.6 - 0.3, 0, 1) * 0.45)
-    rgb = lerp(rgb, hexc(0x3a1a36), np.clip(wisp2 * 1.6 - 0.5, 0, 1) * 0.35)
+    wisp3 = fft_noise(N, 3, 20, seed + 4, 0.7)
+    rgb = lerp(hexc(0x0a0b16), hexc(0x16172a), np.clip(0.5 + 0.5 * macro, 0, 1))
+    rgb = lerp(rgb, hexc(0x2c4682), np.clip(wisp * 1.6 - 0.2, 0, 1) * 0.6)      # his nebula, muted: blue,
+    rgb = lerp(rgb, hexc(0x5a2850), np.clip(wisp2 * 1.6 - 0.3, 0, 1) * 0.55)    # plum
+    rgb = lerp(rgb, hexc(0x70341f), np.clip(wisp3 * 1.8 - 0.6, 0, 1) * 0.45)    # and rust
     star = np.zeros((N, N))
-    xs = rng.integers(0, N, 900); ys = rng.integers(0, N, 900); bri = rng.uniform(0.15, 0.6, 900) ** 2
+    xs = rng.integers(0, N, 1400); ys = rng.integers(0, N, 1400); bri = rng.uniform(0.25, 0.85, 1400) ** 2
     star[ys, xs] = bri
     star = _blur(np.repeat(star[..., None], 3, -1), 0.6)[..., 0] * 3.0
     rgb = rgb + np.clip(star, 0, 1)[..., None] * np.array([0.85, 0.88, 1.0])
@@ -1310,7 +1342,8 @@ def main():
               ('calm_dungeon_1', bake_dungeon), ('calm_tiles_1', bake_tiles), ('calm_tiles_small_1', bake_tiles_small), ('calm_plaster_1', bake_plaster),
               ('calm_wallpaper_1', bake_wallpaper), ('calm_patchwork_1', bake_patchwork), ('calm_patchwork_bright_1', bake_patchwork_bright),
               ('calm_damask_gold_1', bake_damask_gold), ('calm_leather_1', bake_leather), ('calm_canopy_1', bake_canopy), ('calm_forestfloor_1', bake_forestfloor),
-              ('calm_purplegrass_1', bake_purplegrass), ('calm_paving_1', bake_paving), ('calm_ruins_1', bake_ruins), ('calm_void_1', bake_void)]
+              ('calm_purplegrass_1', bake_purplegrass), ('calm_paving_1', bake_paving), ('calm_ruins_1', bake_ruins), ('calm_void_1', bake_void),
+              ('calm_obsidian_2', bake_obsidian_veins), ('calm_patchwork_retro_1', bake_patchwork_retro)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:

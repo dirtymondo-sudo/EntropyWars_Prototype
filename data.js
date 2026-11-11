@@ -63915,7 +63915,8 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_darkstone: ['calm_darkstone_1.png', 'bricks_3', 'Dark stone blocks'],
         calm_planks:    ['calm_planks_1.png', 'wood_planks', 'Deck planks'],
         calm_shipwood:  ['calm_shipwood_1.png', 'wood', 'Ship wood'],
-        calm_obsidian:  ['calm_obsidian_1.png', 'obsidian', 'Obsidian'],
+        calm_obsidian:  ['calm_obsidian_2.png', 'obsidian', 'Obsidian (lava veins)'],   // 11-11: faint lava in the joints (calm_obsidian_1 = no veins)
+        calm_obsidian_plain: ['calm_obsidian_1.png', 'obsidian', 'Obsidian, no veins'],
         calm_deckplate: ['calm_deckplate_1.png', 'aluminium', 'Deck plate (spaceship)'],   // mondo 11-11: "what about like a metal for the spaceship"
         calm_gunmetal:  ['calm_gunmetal_1.png', 'gunmetal', 'Gunmetal panels'],
         calm_rivets:    ['calm_rivets_1.png', 'metal', 'Riveted plate'],
@@ -63953,6 +63954,7 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_wallpaper:  ['calm_wallpaper_1.png', 'wallpaper', 'Old wallpaper'],
         calm_patchwork:  ['calm_patchwork_1.png', 'carpet_2', 'Patchwork carpet'],
         calm_patchwork_bright: ['calm_patchwork_bright_1.png', 'carpet_3', 'Bright patchwork'],
+        calm_patchwork_retro: ['calm_patchwork_retro_1.png', 'carpet_4', 'Retro patchwork carpet'],   // H-Wing: his symbol carpet's colours, no symbols
         calm_damask_gold: ['calm_damask_gold_1.png', 'damask_2', 'Gold damask'],
         calm_leather:    ['calm_leather_1.png', 'leather', 'Sewn leather'],
         calm_canopy:     ['calm_canopy_1.png', 'forest', 'Tree canopy'],
@@ -63988,7 +63990,7 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         concrete_floor: 'calm_concrete', urban_street: 'calm_concrete',
         gold: 'calm_gilt', gold_2: 'calm_gilt', gold_3: 'calm_gilt',
         bricks_1: 'calm_flagstone', bricks_2: 'calm_castle', castle_wall: 'calm_castle',
-        checkerboard: 'calm_checker', damask: 'calm_damask', carpet_4: 'calm_carpet',
+        checkerboard: 'calm_checker', damask: 'calm_damask', carpet_4: 'calm_patchwork_retro',
         /* batch 3: the rooms. His 8 painted DOOR HQ sheets (concrete, drywall, carpet, stone, terrazzo, teal, oxblood, ceiling) are not
            pixel sheets and stay: a room shell reads them first (_hqTex), so a key below only changes where his PIXEL sheet was drawn */
         dungeon: 'calm_dungeon', dungeon_2: 'calm_dungeon', dungeon_3: 'calm_dungeon', dungeon_4: 'calm_dungeon',
@@ -64008,7 +64010,7 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
              babel: { bricks_1: 'calm_sandstone' },
              agartha: { marble: 'calm_marblemint', marble_2: 'calm_marblemint', marble_light: 'calm_marblemint' } },
     sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow', prebuilt_mars: 'mars', prebuilt_singularity: 'singularity', prebuilt_babel: 'babel', prebuilt_agartha: 'agartha' },
-    noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1,
+    noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1, calm_obsidian_plain: 1,
               calm_sand: 1, calm_sand_beach: 1, calm_moon: 1, calm_mars: 1, calm_cloud: 1, calm_storm: 1, calm_gravel: 1, calm_roots: 1, calm_rockygrass: 1,
               calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1, calm_marsdust: 1, calm_moonviolet: 1, calm_marblemint: 1,
               calm_plaster: 1, calm_leather: 1, calm_canopy: 1, calm_forestfloor: 1, calm_purplegrass: 1, calm_paving: 1, calm_ruins: 1, calm_void: 1 },

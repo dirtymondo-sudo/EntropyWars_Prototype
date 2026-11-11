@@ -1935,3 +1935,19 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   Mapped to the existing ones: carpet -> red carpet, damask_3 -> damask, checkerboard_2/3 -> marble checks.
 - Left for batch 4 (the old voxel boards): tree (forest.png under the tree tiles), rubble, rocks_2/4, healing_spring, sanctuary,
   nexus, igloo, the sky keys.
+- Value pass before shipping (his sheet's mean vs calm's): canopy lifted to a step under his lime (lit 0x7e9c46), gold damask
+  lifted (lo 0x4e2c1a / hi 0xa07a3c), deep space got his nebula back muted (blue / plum / rust wisps, 1400 stars), purple grass x1.18.
+  White tiles sit at L 0.66 against his 0.90 on purpose (the batch 1 lesson: light sheets blow out under the room lights).
+- Where they are worn (35 rooms): shell floor/wall/dado/trim/ceiling and terrain floor/path. e.g. bathroom/locker/kitchen/pool/
+  tank tiles; dungeon/ritual/sacrifice/oubliette/catacombs/Camelot dungeon stone; haunted rooms plaster + forest-floor trim;
+  H-Wing wallpaper/plaster/patchwork; Vatican library leather + damask + patchwork path; Looking Glass sea purple grass;
+  observatorium deep-space ceiling; Fairy Forest redwoods canopy floor.
+- THE RETRO PATCHWORK (11-11): carpet_4 (his symbol carpet: H-Wing lobby + floor, the Vatican basilica path) went to the plain
+  red carpet in batch 2, losing the H-Wing's colours; now -> calm_patchwork_retro (his teal / olive / mustard / rust / plum as
+  plain patches, five to a square, no symbols). calm_carpet stays in the editor and keeps carpet.
+- Purple grass got soft olive tufts (his green clumps, ~1 in 8 by quantile of a 7-16 cycle noise, shaded by the grass blades).
+- THE OBSIDIAN VEINS (11-11, the thread's card, recommended option while he decides): calm_obsidian -> calm_obsidian_2.png = the
+  same stones with faint lava in some joints (bake_obsidian_veins: the worley gap lit where a slow noise says so). The plain one
+  stays in the editor as "Obsidian, no veins" (calm_obsidian_plain -> calm_obsidian_1.png). Undo = point calm_obsidian back at _1.
+- Proof: room shots with /tmp hqproof (boot ?hq, then window._hqEnter({room, quiet:true, from:'walk'}); ThreeRenderer is a
+  script const, NOT window.ThreeRenderer — check it with typeof).
