@@ -5121,3 +5121,26 @@ Two-seat check of rule 7 B found the guest got no reason when it clicked its cha
   unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
 - Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
   log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
+
+## THE ZONE STEPS (2026-11-11) — a zone on dug / raised ground
+
+mondo (Fairy Forest Arena, Firefox webgpu): "fix how the nexus zone looks all janky whenever the terrain is raised or lowered. The
+outline of the nexus should always look straight and sleek even when the terrain its on gets deformed. And the nexus yellow should
+always cover the 4 tiles it is on ... and not get torn and jagged on the ridges."
+
+- Cause (three-renderer.js): each zone tile wore the move tiles' drape (`_buildDrapeGeo`, 6 × 6). THE CLIFF LINE holds every vertex
+  past a step steeper than 1.2; since THE FULL BLOCK a dig is a whole square deep (wall slope ~2.5), so the plate stayed flat at the
+  pit's floor and the bowl's wall stood through its outer third. A raised block's plate followed the room's lumps under the block's
+  flat top (most of it buried). TDM's spawn strips never rebuilt on a terrain change at all.
+- Fix: `_zoneStepGeo` — every zone on the true ground (the nexuses, the Arena spawn nexuses, the roaming nexus, TDM's spawn strips) is
+  ONE geometry over its tiles, 12 × 12 a square, read from the ground as the floor mesh draws it (`_fieldGroundSampler` bare + drawn).
+  THE FILL lies on the drawn ground (down a dig's wall, flat on a block's top) and stands as a wall on a block's side inside the zone.
+  THE RIM BAND (`_zoneStepBand`: the look's rim width) lies on the ground as it was before the dig, lowered by whole blocks only as far
+  as it can go without being buried (one level per tile), a curtain of fill joining it to the fill below; where two tiles' rims differ
+  the rim turns down the corner (the wall between them + a post on the outer face). Same two materials / maps as before (THE ZONE
+  LOOK), so WebGL2 and WebGPU draw the same thing. `_nxStepGeo` keeps a zone's geometry while `_zoneStepSig` holds (tiles, the tops
+  and digs of each tile and the eight round it, the skin line).
+- Old per-tile drape still draws: the two columns' boards, a tile under a deck (THE ZONE ON THE GROUND), `window.EW_NO_ZONE_STEPS`.
+- Hashes: `_nexusTopsHash` reads the diagonals too; `_spawnTopsHash` is new (a dig under a TDM strip rebuilds it).
+- Known: one rim level per tile, so a crater whose edge crosses a zone leaves that tile's rim a block over the crater floor (curtain
+  under it). Light walls (UI Maker, default 0) still stand on the tile tops. Proof (WebGL2 headless): /mnt/project-files/nexus-zone-steps/.
