@@ -5175,7 +5175,8 @@ function PartyBuilder(props) {
                 (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance, disabled: isWaitingOnline, onNote: pbNote, onLoad: loadAssignedLook }) : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
-              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP')))));   // (THE WALK STYLE rev 2: PLAY WALK / STOP WALK sits on the Walk row, CreatorControls)
+              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
+              window.EWFaceLab?.enabled() ? h('button', { className: 'ms-tty-btn', title: 'Experimental: the face shapes (mouth, eyes, expressions) on this body', onClick: () => window.EWFaceLab.toggle() }, 'FACE LAB') : null))));   // THE FACE LAB (three-renderer.js EW_FACE_LAB; Settings > Developer / ?facelab=1) + (THE WALK STYLE rev 2: PLAY WALK / STOP WALK sits on the Walk row, CreatorControls)
 
   const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? (creatorOpen ? creatorPanel : gearPanel) : dossierPanel;
   const body = h('div', { className: 'pb-body', 'data-tab': pbTab, 'data-panel': hasPanel ? '1' : '0' },
@@ -5492,6 +5493,7 @@ function OfficerCreator() {
       h('div', { className: 'pb-creator-options', style: { margin: 0 } },
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
+        window.EWFaceLab?.enabled() ? h('button', { className: 'ms-tty-btn', title: 'Experimental: the face shapes (mouth, eyes, expressions) on this body', onClick: () => window.EWFaceLab.toggle() }, 'FACE LAB') : null,   // THE FACE LAB
         h('button', { className: 'ms-tty-btn' + (mirrorWalking ? ' primary' : ''), onClick: () => {   // THE WALK STYLE: loops until pressed again
           const cv = window.EWCharViewer;
           if (cv?.isWalking?.()) { cv.stopPreview(); return; }
