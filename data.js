@@ -63750,6 +63750,8 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
    the entry (hqArenaUpgrade rebuilds the entry in place). hqMapLook(mapId) → the look name or null. */
 var HQ_LOOK_MAPS = {   // var, not const: hqSiteId reads it, and it can run before this line (a const would throw there)
     prebuilt_fairy_forest_calm_delta: { of: 'prebuilt_fairy_forest_delta', look: 'calm', label: 'Fairy Forest Arena (Calm)' },
+    prebuilt_stonehenge_calm_delta:   { of: 'prebuilt_stonehenge_delta',   look: 'calm', label: 'Stonehenge Arena (Calm)' },     // mondo 11-11: "try it on a couple more maps"
+    prebuilt_hell_calm_delta:         { of: 'prebuilt_hell_delta',         look: 'calm', label: 'Hell Arena (Calm)' },
 };
 function hqMapLook(mapId) { const r = (typeof HQ_LOOK_MAPS !== 'undefined' && HQ_LOOK_MAPS) ? HQ_LOOK_MAPS[String(mapId || '')] : null; return r ? r.look : null; }
 (function hqLookMapsRegister() {

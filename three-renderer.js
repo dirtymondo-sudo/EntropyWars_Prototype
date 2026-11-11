@@ -4098,8 +4098,11 @@ const ThreeRenderer = (function () {
                     'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
                     '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
                     'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
-                    'diffuseColor.rgb *= cLa * 0.9;\n')
-                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow;\n');
+                    'diffuseColor.rgb *= cLa * 0.9;\n' +
+                    /* the molten flow under the crust: broad slow patches where it runs thin, and a low warm floor, so a lava field still
+                       reads as lava from the wide camera (the seams are thin; far off their mips average them away) */
+                    'float cFlow = smoothstep(0.38, 0.9, cNoise(cP * 0.32 + vec2(cT * 0.018, -cT * 0.013)) * 0.7 + cNoise(cP * 0.9 - vec2(cT * 0.03, 0.0)) * 0.3);\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow + vec3(0.62, 0.15, 0.025) * (0.16 + 0.7 * cFlow) * uCalmGlow * (1.0 - 0.6 * smoothstep(0.25, 0.7, cHeat));\n');
             } else {
                 f = f.replace('#include <map_fragment>',
                     '#include <map_fragment>\n' +
@@ -35241,11 +35244,14 @@ const ThreeRenderer = (function () {
        shader extras do not (plain colour + sheet there). */
     var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
     var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', lava: 'calm_lava_1.png' };
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_1.png',
+                         scorched: 'calm_scorched_1.png' };
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
     /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
        sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
-    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82], drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
+                  tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
+                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmOn() {
         try {
@@ -65300,7 +65306,8 @@ const ThreeRenderer = (function () {
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
-        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(_CALM.floorT), cliff: new THREE.Color().fromArray(_CALM.cliffT), path: new THREE.Color().fromArray(_CALM.pathT) } : _hqSheetLook(info);
+        var cT = calm ? ((_CALM.tints && _CALM.tints[info.floor]) || _CALM) : null;
+        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(cT.floorT), cliff: new THREE.Color().fromArray(cT.cliffT), path: new THREE.Color().fromArray(cT.pathT) } : _hqSheetLook(info);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };

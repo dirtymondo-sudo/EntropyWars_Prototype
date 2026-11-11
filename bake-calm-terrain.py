@@ -283,10 +283,42 @@ def bake_lava(seed=41):
     return np.asarray(img).astype(np.float64) / 255.0
 
 
+# ── THE SCORCHED GROUND (Hell, 2026-11-11): burnt ground — a dark ash bed, a crust of cracked plates (cellular, low relief), soot
+#    patches, small cinders and a little grey ash drift in the cracks. No glow and no embers: the lava is the only bright thing. ──
+def bake_scorched(seed=51):
+    rng = np.random.default_rng(seed)
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 40; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 40
+    F1, F2, ID = worley(N, 9, seed + 3, (wx, wy))
+    macro = fft_noise(N, 1, 4, seed + 4, 0.6)
+    mid = fft_noise(N, 8, 30, seed + 5, 0.5)
+    fine = fft_noise(N, 80, 300, seed + 6, 0.1)
+    tone = np.random.default_rng(seed + 7).uniform(-1, 1, 9 * 9)[ID]
+    rgb = lerp(hexc(0x2a2422), hexc(0x3f3631), np.clip(0.5 + 0.2 * tone + 0.25 * mid + 0.1 * fine, 0, 1))
+    edge = np.clip((F2 - F1) / 0.3, 0, 1)
+    rgb *= (0.9 + 0.1 * edge ** 0.6)[..., None]
+    gate = np.clip(fft_noise(N, 3, 12, seed + 8, 0.5) * 2.0 + 0.55, 0, 1)
+    crack = np.exp(-((F2 - F1) / 0.028) ** 2) * (0.5 + 0.5 * gate)
+    rgb *= (1.0 - 0.45 * crack)[..., None]
+    ash = np.clip(crack * 0.5 + np.clip(-mid * 1.4 - 0.3, 0, 1) * 0.6, 0, 1) * np.clip(0.5 + fft_noise(N, 20, 60, seed + 9, 0.4) * 1.4, 0, 1)
+    rgb = lerp(rgb, hexc(0x5a5550), ash * 0.35)
+    soot = np.clip(macro * 1.6 + 0.1, 0, 1)
+    rgb = lerp(rgb, rgb * 0.72, soot * 0.6)
+    img = to_img(rgb).convert('RGBA')
+    cols = [hexc(0x1e1a18), hexc(0x2b2523), hexc(0x352d29), hexc(0x463d37)]
+    img = Image.alpha_composite(img, stones(rng, 3800, 1.0, 2.8, cols, 170).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, stones(rng, 300, 3.0, 6.5, cols, 210).filter(ImageFilter.GaussianBlur(0.6)))
+    img = img.convert('RGB').filter(ImageFilter.GaussianBlur(0.45))
+    rgb = np.asarray(img).astype(np.float64) / 255.0
+    L = (0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2])[..., None]
+    rgb = L + (rgb - L) * 0.85
+    Lm = L.mean(); rgb = Lm + (rgb - Lm) * 0.8
+    return np.clip(rgb, 0, 1)
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else '.'
     only = sys.argv[2].split(',') if len(sys.argv) > 2 else None
-    makers = [('calm_grass', bake_grass), ('calm_dirt', bake_dirt), ('calm_rock', bake_rock), ('calm_lava', bake_lava)]
+    makers = [('calm_grass', bake_grass), ('calm_dirt', bake_dirt), ('calm_rock', bake_rock), ('calm_lava', bake_lava), ('calm_scorched', bake_scorched)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:

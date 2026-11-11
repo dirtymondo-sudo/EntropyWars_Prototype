@@ -1827,3 +1827,8 @@ busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. P
   so each tiles by construction; drawn blades / polygon stones; narrow value band). Upload with `node sync-zip.js --put`.
 - NOT CHECKED ON WEBGPU (the node look gets the same sheets + tints; the water there is its flat colour, the lava its sheet). The
   Woods map look (dither 0.42, grain, green tint) still sits over the ground: the next lever if he wants more pop, untouched here.
+- 2026-11-11, part 2 (mondo: "Yeah that looks pretty good. Maybe we can try it on a couple more maps now?"): + Stonehenge Arena (Calm)
+  `prebuilt_stonehenge_calm_delta` (grass_2 / rock_wall_1 / dirt: the Fairy Forest set as it is) and Hell Arena (Calm)
+  `prebuilt_hell_calm_delta` (scorched floor + 44 lava tiles; rocks_3 / rocks_5 -> calm_rock). New sheet calm_scorched_1.png
+  (bake_scorched: dark ash bed, cracked crust plates, soot, cinders; no embers, the lava is the only bright thing). _CALM.tints keys
+  a floor's own three tints (scorched: neutral floor, grey path a step under); the grass set stays the default. Both VS CPU only.
