@@ -2619,3 +2619,8 @@ Not run with two seats.
   Profile > Achievements > Champions (plate, XP bar, sort by level). CSS: styles-base.css `.ml-chip`, styles-cinematic.css `.ml-row`.
 - His to overturn: the name + M plate, CPU matches counting like online, the numbers, story / dungeon giving kill XP only.
 - Proof (WebGL2, two seats): /mnt/project-files/unit-mastery-20261111/proof/. Plan: https://claude.ai/artifact/VsEJRAPQSuvSxMmQ3CTyfJ
+- THE SORT (same day, mondo: "let me sort by mastery in the party builder roster ... just a button for ascending/descending, we
+  dont need all those duplicate buttons"): party-builder.js SORT THE WALL lists each thing once (NAME, MASTERY, each stat) and one
+  `.pb-sort-dir` pill beside the sort pill flips the order. A new pick opens on its natural order (name A-Z, numbers high first).
+- THE HEADER FITS (same day): the wall's search box + the two sort pills moved from the title row to the TYPE filter row
+  (`.pb-wall-fspace` pushes them right); in the title row the search box was squeezed to "SEAR" at 1280 wide. Checked 1280 + 1024.
