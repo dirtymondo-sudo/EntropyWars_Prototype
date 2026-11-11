@@ -1981,3 +1981,12 @@ A site with a FULL SITE board (16×16 +) shares its name with its 12×12 map in 
   (data.js hqClashStageRegister, map.js MS_MAP_LIST, state.js compatibleMaps + GAME_MODES.clash_stage_voxel).
 - NOT touched: the voxel editor, the authored board data in data.js (each arena still reads its old board's tints and layout), and
   the 35 big site boards (16×16 to 24×24, the list with ARENA MAPS switched off; Gauntlet plays only those). His call, asked.
+
+## THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo, asked about the 35 old 16×16 to 24×24 site boards: "yes those should go too")
+- No list offers them: map.js MS_MAP_LIST and state.js compatibleMaps take a whole board only when it is its room's own cut
+  (`arena`: the Fairy Forest 20×20); Custom Map (the voxel editor's board) stays. battle.js _rerollMapForNextMatch never rerolls
+  onto one; ui.js's setup select leaves them out; map.js _TRAIN_MAP_POOL's five big boards became their 12×12 maps.
+- GAUNTLET played only those boards. It deploys 4, so it now takes every map the other modes take (the 12×12s); the labs'
+  Gauntlet rotation draws the same pool as the rest. No rule changed (roster 8, deploy 4).
+- The roster rows, GAME_MODES entries and board data STAND: the site ids are what the HQ, the arenas (tints, layouts) and
+  hqSiteId read. Only the offering is gone.
