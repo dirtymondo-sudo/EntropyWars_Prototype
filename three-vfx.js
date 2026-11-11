@@ -2436,11 +2436,94 @@ const ThreeVFX = (function () {
     function _qkWanted() {
         if (typeof window === 'undefined') return false;
         if (window.EW_QUARKS === false) return false;
-        /* WEBGPU_PLAN W4: three.quarks draws with GLSL materials, which the node renderer cannot (the Settings row is hidden there) */
-        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isNodeRenderer && ThreeRenderer.isNodeRenderer()) return false; } catch (e) {}
+        if (window.EW_NO_QUARKS_NODE && _qkNode()) return false;   // off live: the layer on the node renderer only
         if (window.EW_QUARKS === true) return true;
         try { if (typeof window.hqPolishGet === 'function') return +window.hqPolishGet('quarksFx') >= 0.5; } catch (e) {}
         return false;
+    }
+
+    /* THE QUARKS LAYER ON WEBGPU (2026-11-11, mondo: "Do we want the spell particle layer to run on webgpu? Can it?"; WebGPU is
+       the default renderer since that day). three.quarks DRAWS through its own GLSL ShaderMaterial, which the node renderer
+       cannot run, but its SIMULATION is plain CPU code. So on the node renderer the same three emitters are made with the
+       same numbers and stepped by the library (ParticleSystem.update, no BatchedRenderer), and each frame every live
+       particle (position, colour x alpha, size, rotation, exactly what the library's shader reads) is written into one
+       InstancedMesh per sprite: the game's own batched particle material (per-instance colour + the aEwOp opacity the node
+       layer already carries), a quad turned to the camera and rolled by the particle's rotation. Same sprites, same
+       blending, same draw order as the classic path. Off live: window.EW_NO_QUARKS_NODE = true. */
+    var _QKN_CAP = 2048, _qkN = { by: {}, list: [] }, _qkNQ = null, _qkNQ2 = null, _qkNZ = null, _qkNM = null, _qkNP = null, _qkNS = null, _qkNCQ = null, _qkNInv = null;
+    function _qkNode() {
+        try { return !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isNodeRenderer && ThreeRenderer.isNodeRenderer()); } catch (e) { return false; }
+    }
+    function _qkNGroup(sprite, add, order) {
+        var g = _qkN.by[sprite];
+        if (g) return g;
+        var geo = new THREE.BufferGeometry();
+        geo.setIndex(_sharedPlaneGeo.index);
+        geo.setAttribute('position', _sharedPlaneGeo.attributes.position);
+        geo.setAttribute('normal', _sharedPlaneGeo.attributes.normal);
+        geo.setAttribute('uv', _sharedPlaneGeo.attributes.uv);
+        var op = new THREE.InstancedBufferAttribute(new Float32Array(_QKN_CAP), 1);
+        op.setUsage(THREE.DynamicDrawUsage);
+        geo.setAttribute('aEwOp', op);
+        var mesh = new THREE.InstancedMesh(geo, _batchMaterial(_getSpriteTexture(sprite), add), _QKN_CAP);
+        mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(_QKN_CAP * 3), 3);
+        mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+        mesh.count = 0; mesh.visible = false; mesh.frustumCulled = false;
+        mesh.renderOrder = order;
+        mesh.raycast = function () {};
+        mesh.name = 'fxQuarksNode:' + sprite;
+        _qk.root.add(mesh);
+        g = _qkN.by[sprite] = { mesh: mesh, op: op, n: 0 };
+        _qkN.list.push(g);
+        return g;
+    }
+    /* every live particle of every live system -> its sprite's next instance */
+    function _qkNDraw() {
+        var i, g;
+        for (i = 0; i < _qkN.list.length; i++) _qkN.list[i].n = 0;
+        if (_qk.live.length && _qk.root) {
+            if (!_qkNM) {
+                _qkNM = new THREE.Matrix4(); _qkNInv = new THREE.Matrix4(); _qkNQ = new THREE.Quaternion(); _qkNQ2 = new THREE.Quaternion();
+                _qkNCQ = new THREE.Quaternion(); _qkNZ = new THREE.Vector3(0, 0, 1); _qkNP = new THREE.Vector3(); _qkNS = new THREE.Vector3();
+            }
+            /* the camera's turn and the particles' world places, both in the root's own space */
+            var cam = _vfxCam();
+            _qk.root.updateWorldMatrix(true, false);
+            _qkNInv.copy(_qk.root.matrixWorld).invert();
+            if (cam) { cam.updateWorldMatrix(true, false); cam.getWorldQuaternion(_qkNCQ); _qk.root.getWorldQuaternion(_qkNQ2); _qkNCQ.premultiply(_qkNQ2.invert()); }
+            else _qkNCQ.identity();
+            for (i = 0; i < _qk.live.length; i++) {
+                var ps = _qk.live[i], ew = ps._ew;
+                if (!ew) continue;
+                g = _qkNGroup(ew.sprite, ew.add, ew.order);
+                var parts = ps.particles, n = Math.min(ps.particleNum | 0, parts ? parts.length : 0);
+                var mArr = g.mesh.instanceMatrix.array, cArr = g.mesh.instanceColor.array, oArr = g.op.array;
+                for (var k = 0; k < n && g.n < _QKN_CAP; k++) {
+                    var q = parts[k]; if (!q || q.died) continue;
+                    var c = q.color, a = c ? (c.w != null ? c.w : (c.a != null ? c.a : 1)) : 1;
+                    if (!(a > 0.001)) continue;
+                    var sz = q.size, sx = typeof sz === 'number' ? sz : (sz ? sz.x : 0), sy = typeof sz === 'number' ? sz : (sz ? sz.y : 0);
+                    if (!(sx > 0)) continue;
+                    _qkNQ.copy(_qkNCQ);
+                    var rot = typeof q.rotation === 'number' ? q.rotation : 0;
+                    if (rot) _qkNQ.multiply(_qkNQ2.setFromAxisAngle(_qkNZ, rot));
+                    _qkNP.set(q.position.x, q.position.y, q.position.z).applyMatrix4(_qkNInv);
+                    _qkNM.compose(_qkNP, _qkNQ, _qkNS.set(sx, sy, 1));
+                    var e = _qkNM.elements, o = g.n * 16;
+                    for (var j = 0; j < 16; j++) mArr[o + j] = e[j];
+                    cArr[g.n * 3] = c ? (c.x != null ? c.x : c.r) : 1; cArr[g.n * 3 + 1] = c ? (c.y != null ? c.y : c.g) : 1; cArr[g.n * 3 + 2] = c ? (c.z != null ? c.z : c.b) : 1;
+                    oArr[g.n] = a;
+                    g.n++;
+                }
+            }
+        }
+        for (i = 0; i < _qkN.list.length; i++) {
+            g = _qkN.list[i];
+            if (!g.n) { if (g.mesh.visible) { g.mesh.visible = false; g.mesh.count = 0; } continue; }
+            g.mesh.count = g.n; g.mesh.visible = true;
+            g.mesh.instanceMatrix.needsUpdate = true; g.mesh.instanceColor.needsUpdate = true; g.op.needsUpdate = true;
+        }
     }
 
     function _qkLoad() {
@@ -2457,8 +2540,11 @@ const ThreeVFX = (function () {
         if (_qk.root || !_qk.lib || !_scene) return !!_qk.root;
         _qk.root = new THREE.Group();
         _qk.root.name = 'fxQuarks';
-        _qk.br = new _qk.lib.BatchedRenderer();
-        _qk.root.add(_qk.br);
+        _qk.node = _qkNode();   // the node renderer: the library steps the particles, _qkNDraw draws them
+        if (!_qk.node) {
+            _qk.br = new _qk.lib.BatchedRenderer();
+            _qk.root.add(_qk.br);
+        }
         _qk.root._ew_fxPool = true;   // the quarks bursts: stay up through the void stage
         _scene.add(_qk.root);
         return true;
@@ -2479,7 +2565,8 @@ const ThreeVFX = (function () {
         ps.emitter.position.set(w.x, w.y, w.z);
         ps.emitter.rotation.x = -Math.PI / 2;   // the cone emits along +Z; +Z turned to world up
         _qk.root.add(ps.emitter);
-        _qk.br.addSystem(ps);
+        if (_qk.br) _qk.br.addSystem(ps);
+        else ps._ew = { sprite: def._ewSprite, add: !!def._ewAdd, order: def.renderOrder };
         _qk.live.push(ps);
         ps.addEventListener('destroy', function () {
             var i = _qk.live.indexOf(ps); if (i >= 0) _qk.live.splice(i, 1);
@@ -2520,7 +2607,7 @@ const ThreeVFX = (function () {
                         new Q.ApplyForce(new V3(0, 1, 0), new CV(R * 1.4)),
                         new Q.TurbulenceField(new V3(R * 0.6, R * 0.6, R * 0.6), 2, new V3(R * 1.2, R * 0.6, R * 1.2), new V3(0.4, 0.4, 0.4)),
                     ],
-                    material: _qkMat('flame', true), renderMode: Q.RenderMode.BillBoard, renderOrder: 100.6,
+                    material: _qkMat('flame', true), renderMode: Q.RenderMode.BillBoard, renderOrder: 100.6, _ewSprite: 'flame', _ewAdd: true,
                 }, at);
             }
             /* embers: small fast sparks thrown up and falling back */
@@ -2536,7 +2623,7 @@ const ThreeVFX = (function () {
                     new Q.ColorOverLife(new Q.Gradient([[new V3(1, 0.9, 0.6), 0], [new V3(1, 0.4, 0.1), 1]], [[1, 0], [1, 0.6], [0, 1]])),
                     new Q.SizeOverLife(curve(1, 0.9, 0.6, 0.2)),
                 ],
-                material: _qkMat('ember', true), renderMode: Q.RenderMode.BillBoard, renderOrder: 100.7,
+                material: _qkMat('ember', true), renderMode: Q.RenderMode.BillBoard, renderOrder: 100.7, _ewSprite: 'ember', _ewAdd: true,
             }, at);
             /* smoke: slow grey puffs that rise, grow and thin out (drawn before the glow) */
             _qkSystem({
@@ -2554,7 +2641,7 @@ const ThreeVFX = (function () {
                     new Q.ApplyForce(new V3(0, 1, 0), new CV(R * 0.35)),
                     new Q.TurbulenceField(new V3(R, R, R), 2, new V3(R * 0.5, R * 0.2, R * 0.5), new V3(0.2, 0.2, 0.2)),
                 ],
-                material: _qkMat('smoke-soft', false), renderMode: Q.RenderMode.BillBoard, renderOrder: 99.5,
+                material: _qkMat('smoke-soft', false), renderMode: Q.RenderMode.BillBoard, renderOrder: 99.5, _ewSprite: 'smoke-soft', _ewAdd: false,
             }, at);
         } catch (e) {
             console.warn('[ThreeVFX] quarks burst failed', e);
@@ -2564,6 +2651,14 @@ const ThreeVFX = (function () {
     }
 
     function _qkTick(dt) {
+        if (_qk.node && _qk.root) {
+            try {
+                var all = _qk.live.slice();   // a finished system destroys itself and leaves the list
+                for (var i = 0; i < all.length; i++) all[i].update(dt);
+                _qkNDraw();
+            } catch (e) { console.warn('[ThreeVFX] quarks update failed (node renderer) — layer off', e); _qkStopAll(); _qk.state = 'failed'; try { _qkNDraw(); } catch (x) {} }
+            return;
+        }
         if (_qk.br && (_qk.live.length || _qk.br.batches.length)) {
             try { _qk.br.update(dt); } catch (e) { console.warn('[ThreeVFX] quarks update failed — layer off', e); _qkStopAll(); _qk.state = 'failed'; }
         }
@@ -4386,6 +4481,8 @@ const ThreeVFX = (function () {
         }
         _qkStopAll();
         if (_qk.root && _qk.root.parent) _qk.root.parent.remove(_qk.root);
+        for (var qn = 0; qn < _qkN.list.length; qn++) { try { _qkN.list[qn].mesh.geometry.dispose(); _qkN.list[qn].mesh.material.dispose(); } catch (e) {} }
+        _qkN = { by: {}, list: [] };
         _qk.root = null; _qk.br = null;
 
         for (var ri = 0; ri < _rainDropMeshes.length; ri++) {
