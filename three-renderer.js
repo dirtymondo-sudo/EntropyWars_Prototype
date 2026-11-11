@@ -356,10 +356,11 @@ const ThreeRenderer = (function () {
     }
     /* the sheet URL a terrain key wears HERE (only `desert` changes) */
     function _ewSandUrl(key, url) {
+        var cu = _calmSheet(key); if (cu) return cu;   // THE CALM LOOK: the key's calm twin (data.js CALM_TERRAIN)
         return (key === 'desert' && url && _ewSandBeach()) ? SAND_BEACH.sheet : url;
     }
-    /* a cache-key suffix for anything cached by terrain key */
-    function _ewSandPart(key) { return (key === 'desert' && _ewSandBeach()) ? '@beach' : ''; }
+    /* a cache-key suffix for anything cached by terrain key (THE CALM LOOK: the calm sheet it wears here, the place included) */
+    function _ewSandPart(key) { var c = _calmKeyOf(key); if (c) return '@' + c; return (key === 'desert' && _ewSandBeach()) ? '@beach' : ''; }
 
     /* Material cache key fragment for the active per-terrain editor tints.
        buildBoxMaterials/_buildBeveledMaterials cache materials by terrain key,
@@ -3862,6 +3863,10 @@ const ThreeRenderer = (function () {
         tex._ew_pendingLoads = [];
         tex.magFilter = THREE.NearestFilter;
         tex.minFilter = THREE.NearestFilter;
+        if (String(url).indexOf('/terrain/calm/') >= 0) {   // THE CALM LOOK: a 1024 px realistic sheet is read smooth (trilinear + anisotropic), never as pixels
+            tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+            try { tex.anisotropy = Math.min(8, (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy && renderer.capabilities.getMaxAnisotropy()) || 1); } catch (e) {}
+        }
         tex._ew_epoch = _texEpoch;
 
         textureCache.set(url, tex);
@@ -4110,6 +4115,24 @@ const ThreeRenderer = (function () {
         '  vec2 oa = sin(vec2(3.0, 7.0) * fi), ob = sin(vec2(3.0, 7.0) * (fi + 1.0));\n' +
         '  vec3 a = textureGrad(s, uv + oa, gx, gy).rgb, b = textureGrad(s, uv + ob, gx, gy).rgb;\n' +
         '  return mix(a, b, smoothstep(0.2, 0.8, ff - 0.1 * dot(a - b, vec3(1.0)))); }\n';
+    /* THE CALM LOOK's ground without a repeat (the lava's trick, _CALM_NOTILE_GLSL, on the field's sheets): where `on`, the sheet is
+       read at one of eight fixed offsets picked by a slow noise over the squares (a region ~3 squares across), and two offsets are
+       blended only where the pick changes, leaning to the brighter texel; the mip level comes from the plain read's derivatives, so the
+       jumps leave no seam. Same size, one sheet per square; outside the blends it is ONE read, like the plain sheet. `on` = 0 is the
+       plain read (his sheets, the patterned calm sheets). The node twin: _ewNodeTerrain. */
+    var _CALM_NT_GLSL =
+        'float ntH( vec2 p ) { p = fract( p * vec2( 123.34, 456.21 ) ); p += dot( p, p + 45.32 ); return fract( p.x * p.y ); }\n' +
+        'float ntN( vec2 p ) { vec2 i = floor( p ), f = fract( p ); vec2 u = f * f * ( 3.0 - 2.0 * f );\n' +
+        '  return mix( mix( ntH( i ), ntH( i + vec2( 1.0, 0.0 ) ), u.x ), mix( ntH( i + vec2( 0.0, 1.0 ) ), ntH( i + vec2( 1.0, 1.0 ) ), u.x ), u.y ); }\n' +
+        'vec4 ntRead( sampler2D s, vec2 uv, vec2 gx, vec2 gy, float on ) {\n' +
+        '  if ( on < 0.5 ) return textureGrad( s, uv, gx, gy );\n' +
+        '  float l = ntN( uv * 0.3 + 11.3 ) * 8.0, fi = floor( l ), ff = fract( l );\n' +
+        '  vec2 oa = sin( vec2( 3.0, 7.0 ) * fi ), ob = sin( vec2( 3.0, 7.0 ) * ( fi + 1.0 ) );\n' +
+        '  if ( ff < 0.2 ) return textureGrad( s, uv + oa, gx, gy );\n' +
+        '  if ( ff > 0.8 ) return textureGrad( s, uv + ob, gx, gy );\n' +
+        '  vec4 a = textureGrad( s, uv + oa, gx, gy ), b = textureGrad( s, uv + ob, gx, gy );\n' +
+        '  float w = smoothstep( 0.2, 0.8, ff ); w = clamp( w - 0.4 * w * ( 1.0 - w ) * dot( a.rgb - b.rgb, vec3( 1.0 ) ), 0.0, 1.0 );\n' +
+        '  return mix( a, b, w ); }\n';
     function _calmFluidMat(key) {
         var lava = (key === 'lava'), deep = (key === 'deep_water'), mat;
         if (lava) {
@@ -35312,7 +35335,7 @@ const ThreeRenderer = (function () {
        it, the VFX across both, the UI on top; p.19 the same for saturation ("avoid using 100% or 0% values"). So the ground here is
        darker, greyer and much lower in local contrast than the 128 px pixel sheets, and the units are the brightest, most saturated
        thing on the board.
-         · THE SHEETS (_CALM_SHEETS): realistic ground sheets made in code (bake-calm-terrain.py: periodic noise + drawn blades /
+         · THE SHEETS (data.js CALM_TERRAIN since the rollout): realistic ground sheets made in code (bake-calm-terrain.py: periodic noise + drawn blades /
            stones / plates, nothing downloaded), one per 3.5 m square like every board sheet, read through _hzTex in place of the
            pixel sheet of the same key, trilinear + anisotropic (no pixel grid);
          · THE FIELD (_hqTerrainMat / _hqBuildTerrain): the sheets carry their own colour (no room floorColor / sheet tints), almost no
@@ -35323,26 +35346,58 @@ const ThreeRenderer = (function () {
        Kill switch: window.EW_NO_CALM_LOOK = true (the board's next build draws the old sheets). Read once per build: a fight keeps
        the look it was built with. WEBGL2 only proven; on WebGPU the sheets, the colours and the drift carry over, the water / lava
        shader extras do not (plain colour + sheet there). */
-    var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
-    var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_4.png',
-                         scorched: 'calm_scorched_1.png' };
+    /* THE CALM LOOK (2026-11-11, mondo: "make 'calm' versions of all the maps, basically replacing the old sprite terrain textures
+       throughout the game"): the test look above is the game's DEFAULT look now. The table is data.js CALM_TERRAIN (sheets, which of
+       his keys wears which, the places where a key reads as something else, the natural sheets read without a repeat); a key with no
+       calm twin keeps his pixel sheet. Off for one room: the editor's ROOM tab ground look → pixel (`shell.sheets: 'pixel'`); off for
+       everything: window.EW_NO_CALM_LOOK = true (the next build). A calm sheet the editor picked BY NAME (calm_grass …) is always
+       calm. Every sheet read that goes through _ewSandUrl / _ewSandPart (_hzTex, _hqTex, getTerrainTexture, tileSwatch) gets it. */
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
-    /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
-       sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
+    /* floorT / pathT / cliffT = THE CALM GROUND's first trio: the grass, the dirt path a step UNDER the grass and warm (so the board
+       centre is the calmest ground on it), the rock. Each applies where that sheet is in that role; every other calm sheet carries
+       its own colour (white). tints = a floor's own three (Hell's scorched ground). */
     var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
+                  trio: { floor: 'calm_grass', path: 'calm_dirt', cliff: 'calm_rock' },
                   tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
                   drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0 };
     try { window.EW_CALM = _CALM; } catch (e) {}
+    function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
+    /* the room being drawn: the walk's room, else the room round a field fight (the editor builds through _hq too) */
+    function _calmRoom() {
+        try {
+            if (typeof _hq !== 'undefined' && _hq && _hq.room) return _hq.room;
+            var R = (typeof _hqBattleRoom === 'function') ? _hqBattleRoom() : null;
+            return (R && R.room) || null;
+        } catch (e) { return null; }
+    }
     function _calmOn() {
         try {
             if (typeof window !== 'undefined' && window.EW_NO_CALM_LOOK) return false;
+            if (!_calmTable()) return false;
             var id = (typeof _arenaLatchId !== 'undefined' && _arenaLatchId) ? _arenaLatchId : null;
-            if (!id && typeof window !== 'undefined' && window.EW_CALM_FORCE) id = window.EW_CALM_FORCE;   // (proof only: a look on any board)
-            return !!id && typeof hqMapLook === 'function' && hqMapLook(id) === 'calm';
+            if (id && typeof hqMapLook === 'function' && hqMapLook(id) === 'pixel') return false;
+            var r = _calmRoom();
+            if (r && r.shell && r.shell.sheets === 'pixel') return false;   // the editor's ROOM tab: ground look → pixel
+            return true;
         } catch (e) { return false; }
     }
-    function _calmSheet(key) { return (_CALM_SHEETS[key] && _calmOn()) ? _CALM_BASE + _CALM_SHEETS[key] : null; }
+    /* a place where a key reads as another thing (data.js CALM_TERRAIN.sites: North Pole's white ground is snow) */
+    function _calmPlace() {
+        var C = _calmTable(); if (!C || !C.sites) return null;
+        var r = _calmRoom(), site = r && r.site;
+        if (!site) { try { var id = (typeof _arenaLatchId !== 'undefined' && _arenaLatchId) ? _arenaLatchId : (typeof activeGameMode !== 'undefined' ? activeGameMode : ''); site = (id && typeof hqSiteId === 'function') ? hqSiteId(id) : null; } catch (e) { site = null; } }
+        return (site && C.sites[site]) || null;
+    }
+    /* the calm sheet a terrain key wears HERE (its key in CALM_TERRAIN.sheets), or null = his pixel sheet */
+    function _calmKeyOf(key) {
+        var C = _calmTable(); if (!C || !key || typeof key !== 'string') return null;
+        if (C.sheets[key]) return key;   // a calm sheet picked by name
+        if (!C.of[key] || !_calmOn()) return null;
+        var pl = _calmPlace(), P = pl && C.place && C.place[pl];
+        return (P && P[key]) || C.of[key];
+    }
+    function _calmSheet(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return C ? C.base + C.sheets[c][0] : null; }
+    function _calmNoTile(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return !!(C && C.noTile && C.noTile[c]); }
     /* the value drift (× the field's AO): two octaves over metres, ±drift */
     function _calmDrift(x, z) {
         if (typeof _hqTNoise !== 'function') return 1;
@@ -44985,20 +45040,32 @@ const ThreeRenderer = (function () {
             /* THE WEIGHTED SHEETS (see _hqTerrainMat): a read with no weight is skipped; derivatives are made outside the branches */
             var cut = _ewNodeU.triCut, uyv = T.vec2(uy).toVar(), uxv = T.vec2(ux).toVar(), uzv = T.vec2(uz).toVar();
             var gyx = T.dFdx(uyv).toVar(), gyy = T.dFdy(uyv).toVar(), gxx = T.dFdx(uxv).toVar(), gxy = T.dFdy(uxv).toVar(), gzx = T.dFdx(uzv).toVar(), gzy = T.dFdy(uzv).toVar();
-            var tri = function (t, s, gate) {
+            /* THE CALM LOOK's ground without a repeat (= _CALM_NT_GLSL ntRead): two of eight offsets picked by a slow noise over the
+               squares, blended where the pick changes, leaning to the brighter texel; the mip level from the plain read's derivatives */
+            var NZ = _ewNodeCalmNoise(T);
+            var rd = function (t, uv, gx, gy, nt) {
+                if (!nt) return T.texture(t, uv).grad(gx, gy);
+                var l = NZ.vnoise(uv.mul(0.3).add(11.3)).mul(8).toVar(), fi = T.floor(l).toVar(), ff = T.fract(l).toVar();
+                var a = T.texture(t, uv.add(T.sin(T.vec2(3, 7).mul(fi)))).grad(gx, gy).toVar();
+                var b = T.texture(t, uv.add(T.sin(T.vec2(3, 7).mul(fi.add(1))))).grad(gx, gy).toVar();
+                var k = T.smoothstep(0.2, 0.8, ff).toVar();
+                k.assign(T.clamp(k.sub(k.mul(T.float(1).sub(k)).mul(0.4).mul(T.dot(a.rgb.sub(b.rgb), T.vec3(1)))), 0, 1));
+                return T.mix(a, b, k);
+            };
+            var tri = function (t, s, gate, nt) {
                 var o = T.vec4(0).toVar();
                 var body = function () {
-                    T.If(w.y.greaterThan(cut), function () { o.addAssign(T.texture(t, uyv.mul(s)).grad(gyx.mul(s), gyy.mul(s)).mul(w.y)); });
-                    T.If(w.x.greaterThan(cut), function () { o.addAssign(T.texture(t, uxv.mul(s)).grad(gxx.mul(s), gxy.mul(s)).mul(w.x)); });
-                    T.If(w.z.greaterThan(cut), function () { o.addAssign(T.texture(t, uzv.mul(s)).grad(gzx.mul(s), gzy.mul(s)).mul(w.z)); });
+                    T.If(w.y.greaterThan(cut), function () { o.addAssign(rd(t, uyv.mul(s), gyx.mul(s), gyy.mul(s), nt).mul(w.y)); });
+                    T.If(w.x.greaterThan(cut), function () { o.addAssign(rd(t, uxv.mul(s), gxx.mul(s), gxy.mul(s), nt).mul(w.x)); });
+                    T.If(w.z.greaterThan(cut), function () { o.addAssign(rd(t, uzv.mul(s), gzx.mul(s), gzy.mul(s), nt).mul(w.z)); });
                 };
                 if (gate) T.If(gate.greaterThan(cut), body); else body();
                 return o;
             };
             var tint = function (v, t) { return t ? v.mul(T.vec4(t.r, t.g, t.b, 1)) : v; };   // THE SHEET LOOKS (2026-10-24)
             var bl = T.attribute('aBlend', 'vec2');
-            var c = tint(tri(map, 1), D.tFloor).toVar();
-            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, bl.x), D.tCliff), path = tint(tri(D.path || map, 1, bl.y), D.tPath);
+            var c = tint(tri(map, 1, null, !!D.ntF), D.tFloor).toVar();
+            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, bl.x, !!D.ntC), D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
@@ -65481,7 +65548,8 @@ const ThreeRenderer = (function () {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
         m._ew_triplanar = true;   // THE ONE PIXEL DENSITY: the field samples by world position (uTriTM = the sheet), never by its UVs
-        var calm = !!(_calmSheet(info.floor));   // THE CALM GROUND: the sheets carry their own colour — no room floorColor, no sheet tints, no shine
+        var calmF = _calmKeyOf(info.floor), calmP = _calmKeyOf(info.path), calmC = _calmKeyOf(info.cliff);   // THE CALM LOOK: which sheet is calm here
+        var calm = !!calmF;   // THE CALM GROUND: the sheets carry their own colour — no room floorColor, no sheet tints, no shine
         if (calm) { m.color.setHex(_CALM.floor); m.specular.setHex(0x050505); m.shininess = 2; m._ew_calm = true; }
         else if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
@@ -65493,13 +65561,22 @@ const ThreeRenderer = (function () {
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
-        var cT = calm ? ((_CALM.tints && _CALM.tints[info.floor]) || _CALM) : null;
-        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(cT.floorT), cliff: new THREE.Color().fromArray(cT.cliffT), path: new THREE.Color().fromArray(cT.pathT) } : _hqSheetLook(info);
+        /* THE CALM LOOK: each of the three sheets is calm or his on its own (a key with no calm twin yet keeps his sheet and his look);
+           a calm one takes a floor's own trio (Hell), else THE CALM GROUND's trio where that sheet plays that role, else its own colour */
+        var L0 = _hqSheetLook(info), set = calm ? (_CALM.tints && _CALM.tints[info.floor]) : null;
+        var cTint = function (role, ck) {
+            if (!ck) return L0[role];
+            if (set) return new THREE.Color().fromArray(set[role + 'T']);
+            return new THREE.Color().fromArray((_CALM.trio && _CALM.trio[role] === ck) ? _CALM[role + 'T'] : [1, 1, 1]);
+        };
+        var look = { cliffZoom: calmC ? 1 : L0.cliffZoom, floor: cTint('floor', calmF), cliff: cTint('cliff', calmC), path: cTint('path', calmP) };
+        var ntF = _calmNoTile(info.floor) ? 1 : 0, ntP = _calmNoTile(info.path) ? 1 : 0, ntC = _calmNoTile(info.cliff) ? 1 : 0;   // THE CALM LOOK: no repeat on the natural sheets
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
             sh.uniforms.uCliffK = { value: 1 / look.cliffZoom };   // THE SHEET LOOKS: the cliff sheet's zoom, the three tints
             sh.uniforms.uFloorT = { value: look.floor || new THREE.Color(1, 1, 1) }; sh.uniforms.uCliffT = { value: look.cliff || new THREE.Color(1, 1, 1) }; sh.uniforms.uPathT = { value: look.path || new THREE.Color(1, 1, 1) };
+            sh.uniforms.uNt = { value: new THREE.Vector3(ntF, ntP, ntC) };   // THE CALM LOOK: floor / path / cliff read without a repeat
             var pv = '', pf = '', pb = '';
             if (palTex.length) {
                 palTex.forEach(function (t, i) { sh.uniforms['tPaint' + i] = { value: t }; pf += 'uniform sampler2D tPaint' + i + ';\n'; });
@@ -65523,12 +65600,12 @@ const ThreeRenderer = (function () {
                 .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
             sh.uniforms.uTriCut = _hqTriCutU;   // THE WEIGHTED SHEETS (below)
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += textureGrad( map, triUy, triGyX, triGyY ) * triW.y; if ( triW.x > uTriCut ) texelColor += textureGrad( map, triUx, triGxX, triGxY ) * triW.x; if ( triW.z > uTriCut ) texelColor += textureGrad( map, triUz, triGzX, triGzY ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n if ( vBlend.x > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += textureGrad( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK ) * triW.y; if ( triW.x > uTriCut ) cliffColor += textureGrad( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK ) * triW.x; if ( triW.z > uTriCut ) cliffColor += textureGrad( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += textureGrad( tPath, triUy, triGyX, triGyY ) * triW.y; if ( triW.x > uTriCut ) pathColor += textureGrad( tPath, triUx, triGxX, triGxY ) * triW.x; if ( triW.z > uTriCut ) pathColor += textureGrad( tPath, triUz, triGzX, triGzY ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nuniform vec3 uNt;\n' + _CALM_NT_GLSL + 'varying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n if ( vBlend.x > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri2' + (palTex.length ? 'P' + palTex.length : ''); };
-        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path });   // WEBGPU W1: the same sheets for the node renderer
+        m.customProgramCacheKey = function () { return 'hqTerrainTri3' + (palTex.length ? 'P' + palTex.length : ''); };
+        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -85334,8 +85411,9 @@ const ThreeRenderer = (function () {
         var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
         var matOf = function (key) {
             _fieldStrataMats = _fieldStrataMats || {};
-            if (!_fieldStrataMats[key]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[key] = m; }
-            return _fieldStrataMats[key];
+            var mk = key + _ewSandPart(key);   // THE CALM LOOK: the calm sheet (and the place) caches apart
+            if (!_fieldStrataMats[mk]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[mk] = m; }
+            return _fieldStrataMats[mk];
         };
         var dirt = matOf(sideKey || bed.floor), dirtFade = _fieldPatchFadeMat(dirt, 'mound|' + (sideKey || bed.floor)) || dirt;
         var crest = _fieldPatchFadeMat(matOf(floorKey), 'mound|' + floorKey);
@@ -86039,8 +86117,9 @@ const ThreeRenderer = (function () {
         var floorKey = (G.R.room && G.R.room.terrain && G.R.room.terrain.floor) || (G.R.room && G.R.room.shell && G.R.room.shell.floor) || bed.floor;
         var matOf = function (key) {
             _fieldStrataMats = _fieldStrataMats || {};
-            if (!_fieldStrataMats[key]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[key] = m; }
-            return _fieldStrataMats[key];
+            var mk = key + _ewSandPart(key);   // THE CALM LOOK: the calm sheet (and the place) caches apart
+            if (!_fieldStrataMats[mk]) { var m = new THREE.MeshLambertMaterial({ map: _hzTex(key) || null, color: 0xffffff }); m.emissive = new THREE.Color(0x111111); m._ew_shared = true; _fieldStrataMats[mk] = m; }
+            return _fieldStrataMats[mk];
         };
         /* THE EARTHWORK (2026-10-07, mondo: a raised wall "should use a texture that makes sense"): a RAISED cell a spell
            repainted (Rampart's mountain, Snow Fort's snow wall) wears its new terrain's sheet on its faces, not the bed's */

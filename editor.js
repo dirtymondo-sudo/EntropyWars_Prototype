@@ -2586,9 +2586,13 @@
     }
     function texSources() {
         var out = [];
+        /* THE CALM LOOK (2026-11-11, mondo: "make sure any new textures you add are available in the map editor, and keep the old ones there
+           too"): data.js CALM_TERRAIN's code-made sheets first, each by its label; a picked calm sheet plays its rule twin's rules (hqRuleKeyOf).
+           His pixel sheets stay below (TERRAIN and the rest); a room wears them as they are with the ROOM tab's ground look = Pixel */
+        try { var CT = W.CALM_TERRAIN || (typeof CALM_TERRAIN !== 'undefined' ? CALM_TERRAIN : null); if (CT) Object.keys(CT.sheets).forEach(function (k) { var r = CT.sheets[k]; out.push({ key: k, url: CT.base + r[0], fam: 'CALM · the new realistic sheets (each plays by its pixel twin\'s rules)', label: r[2] + ' (plays as ' + r[1] + ')' }); }); } catch (e) {}
         try { var base = (DOOR_HQ.assets && DOOR_HQ.assets.textures) || ''; Object.keys(DOOR_HQ.textures || {}).forEach(function (k) { out.push({ key: hqTexKey(k), url: base + DOOR_HQ.textures[k], fam: 'DOOR HQ · the eight painted tileables' }); }); } catch (e) {}
         try { hqBuildingSheets().forEach(function (k) { var u = hqSheetUrl(k); if (u) out.push({ key: k, url: u, fam: 'DOOR HQ · the other sheets its rooms wear' }); }); } catch (e) {}
-        try { Object.keys(TERRAIN_SPRITES).forEach(function (k) { var v = TERRAIN_SPRITES[k]; out.push({ key: k, url: Array.isArray(v) ? v[0] : v, fam: 'TERRAIN' }); }); } catch (e) {}
+        try { Object.keys(TERRAIN_SPRITES).forEach(function (k) { if (/^calm_/.test(k)) return; var v = TERRAIN_SPRITES[k]; out.push({ key: k, url: Array.isArray(v) ? v[0] : v, fam: 'TERRAIN (your pixel sheets)' }); }); } catch (e) {}
         try { Object.keys(URBAN_TEX_FAMILIES).forEach(function (fam) { URBAN_TEX_FAMILIES[fam].forEach(function (n) { out.push({ key: 'urban:' + n, url: URBAN_TEXTURES[n], fam: fam }); }); }); } catch (e) {}
         return out;
     }
@@ -2612,9 +2616,9 @@
         var draw = function () {
             var q = ($('edSearch').value || '').toLowerCase(), h = '', fam = null, n = 0;
             all.forEach(function (t, i) {
-                if (q && (t.key + ' ' + t.fam).toLowerCase().indexOf(q) < 0) return; if (n++ > 1200) return;   // every sheet (was 400: it cut off the tile / metro / liquid families and DOOR HQ's own)
+                if (q && (t.key + ' ' + t.fam + ' ' + (t.label || '')).toLowerCase().indexOf(q) < 0) return; if (n++ > 1200) return;   // every sheet (was 400: it cut off the tile / metro / liquid families and DOOR HQ's own)
                 if (t.fam !== fam) { fam = t.fam; h += '<div class="ed-sub ed-swfam">' + esc(fam) + '</div>'; }
-                h += '<button class="ed-sw' + (t.key === cur ? ' on' : '') + '" data-i="' + i + '" title="' + esc(t.key) + '"><img loading="lazy" src="' + esc(t.url || '') + '" alt=""><span>' + esc(t.key.replace(/^urban:/, '')) + '</span></button>';
+                h += '<button class="ed-sw' + (t.key === cur ? ' on' : '') + '" data-i="' + i + '" title="' + esc(t.key) + '"><img loading="lazy" src="' + esc(t.url || '') + '" alt=""><span>' + esc(t.label || t.key.replace(/^urban:/, '')) + '</span></button>';
             });
             $('edList').innerHTML = h || '<div class="ed-note">Nothing matches.</div>';
             $('edList').querySelectorAll('[data-i]').forEach(function (b) { b.onclick = function () { modalClose(); onPick(all[+b.getAttribute('data-i')].key); }; });
@@ -4562,7 +4566,10 @@
         /* PAST THE EDGE (2026-10-28, mondo: "why does the map extend past the yellow boundary ... an option to control how much that sticks out"): 0 = the ground ends on the yellow line */
         if (S.open && r.terrain && aroundOf(r) === 'room' && !r.terrain.float) h += '<div class="ed-form" data-scope="around"><label class="ed-f ed-tip" title="How far the ground runs on past the yellow line round the room, in battle squares (' + TILE + ' m each). 0 = the ground ends exactly on the yellow line."><span>past the edge (squares)</span><input type="number" step="0.5" min="0" max="20" data-k="edgeOut" data-t="sq" value="' + esc(sqOf(r.terrain.edgeOut || 0)) + '"></label></div>';
         var use = [], off = [];
-        keys.forEach(function (k) { if (k === 'open' || k === 'edge') return; (shellUse(k, S, r) ? off : use).push(k); });
+        /* THE CALM LOOK (2026-11-11): Calm = the code-made realistic sheets in place of the pixel ones this room names (the default everywhere);
+           Pixel = this room keeps your 128 px sheets as they are. Writes shell.sheets = 'pixel' (nothing for Calm) */
+        h += sel('sheets', 'shell', S.sheets === 'pixel' ? 'pixel' : '', [['', 'Calm (the new realistic sheets)'], ['pixel', 'Pixel (your 128 px sheets)']], 'ground look', 'Calm draws the new realistic sheets in place of the pixel sheets this room names (the game\'s default). Pixel keeps your own 128 px sheets in this room. The rules of each square stay the same either way');
+        keys.forEach(function (k) { if (k === 'open' || k === 'edge' || k === 'sheets') return; (shellUse(k, S, r) ? off : use).push(k); });
         h += '<div class="ed-form" data-scope="shell">' + use.map(one).join('') + '</div>';
         if (off.length) h += '<details class="ed-unused"><summary>NOT USED IN THIS ROOM (' + off.length + ')</summary><div class="ed-note">These settings draw nothing in this room as it is set now. They are kept; each says what makes it show.</div><div class="ed-form" data-scope="shell">' +
             off.map(function (k) { return one(k) + '<div class="ed-note ed-why">' + esc(shellUse(k, S, r)) + '</div>'; }).join('') + '</div></details>';
@@ -4780,6 +4787,7 @@
         else if (t === 'shtint') { v = String(el.value || '').trim().toLowerCase(); if (v === 'none' || v === 'no' || v === 'white') v = ''; if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS none OR #rrggbb'); return false; } v = (!v || v === NO_TINT) ? (k === 'roofColor' ? 0xffffff : undefined) : parseInt(v.slice(1), 16); }   // NO TINT: none = the key gone (a number in the file otherwise)
         else if (t === 'hexnum') v = parseInt(String(el.value || '').replace('#', ''), 16);   // THE PLAIN WORDS: a shell colour stays a number in the file
         else if (t === 'sel' && k === 'open') v = el.value === '1';
+        else if (t === 'sel' && k === 'sheets') v = el.value === 'pixel' ? 'pixel' : undefined;   // THE CALM LOOK: Calm writes nothing
         else v = el.value;
         el.defaultValue = el.value;
         if (scope === 'row') {
