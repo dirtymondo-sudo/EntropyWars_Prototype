@@ -12397,7 +12397,7 @@ function _ewdCss() {
   const D = '.hrlg-rig.ewd';
   const X = ':root:root:not(#ewd-a):not(#ewd-b):not(#ewd-c):not(#ewd-d) .hrlg-rig.ewd';
   const XC = X + '.ewd-c';
-  const SEL = 'linear-gradient(100deg, #9b38ff 0%, #6a4dff 45%, #3d7bff 100%)';
+  const SEL = 'linear-gradient(100deg, var(--ewdu-sel1, #9b38ff) 0%, var(--ewdu-selm, #6a4dff) 45%, var(--ewdu-sel2, #3d7bff) 100%)';
   /* the rows that read as picked: the cursor row (hover is the cursor), the ✓ target */
   const selB = s => [`${s} .hrlg-blade.sel .hrlg-body`, `${s} .hrlg-blade:hover:not(.dead):not(.muted):not(.ghost) .hrlg-body`, `${s} .ewd-list.has-pick .hrlg-blade.pend .hrlg-body`].join(', ');
   const selL = s => [`${s} .hrlg-blade.sel .hrlg-blabel`, `${s} .hrlg-blade:hover:not(.dead):not(.muted):not(.ghost) .hrlg-blabel`, `${s} .ewd-list.has-pick .hrlg-blade.pend .hrlg-blabel`].join(', ');
@@ -12411,7 +12411,7 @@ function _ewdCss() {
       transform: scale(var(--ewd-s, 1)); transform-origin: 0 100%;
       font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.25; color: #e8e4d8;
       pointer-events: none; z-index: 12;
-      --ewd-say-max: 60px; --ewd-say-min: 10px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 280px);
+      --ewd-say-max: 56px; --ewd-say-min: 10px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 280px);
     }
     ${D} [class^="ewd-"], ${D} [class*=" ewd-"] { box-sizing: border-box; }
     body.ew-spell-shot ${D}.ewd-peek, body.ew-spell-shot ${D}.ewd-watch { opacity: 0; pointer-events: none; }
@@ -12420,14 +12420,14 @@ function _ewdCss() {
     /* the bays: one frame each, the next one's left frame laid over the last one's right */
     ${D} > .ewd-bay {
       position: relative; align-self: end; pointer-events: auto; min-width: 0;
-      background: linear-gradient(180deg, rgba(22,24,42,0.96) 0%, rgba(7,8,15,0.96) 38%, rgba(4,4,9,0.97) 100%);
-      border: 2px solid #e8e4d8;
+      background: linear-gradient(180deg, var(--ewdu-bg1, rgba(22,24,42,0.96)) 0%, var(--ewdu-bg2, rgba(7,8,15,0.96)) 38%, var(--ewdu-bg3, rgba(4,4,9,0.97)) 100%);
+      border: 2px solid var(--ewdu-edge, #e8e4d8);
       box-shadow: inset 0 0 0 2px #000, inset 0 0 0 3px rgba(232,228,216,0.22), 0 6px 18px rgba(0,0,0,0.55);
     }
     ${D} > .ewd-bay + .ewd-bay { margin-left: -2px; }
     ${D} .ewd-plate {
       position: absolute; top: -11px; left: 12px; z-index: 3; max-width: calc(100% - 24px);
-      background: #000; padding: 2px 8px; border: 2px solid #e8e4d8;
+      background: var(--ewdu-plate, #000); padding: 2px 8px; border: 2px solid var(--ewdu-edge, #e8e4d8);
       font-size: 9px; line-height: 1.2; letter-spacing: 0.12em; color: #e8e4d8; pointer-events: none;
     }
     ${D} .ewd-plate.gold { color: #ffd84a; }
@@ -12482,7 +12482,7 @@ function _ewdCss() {
     ${D} .ewd-tools.lock .hrlg-push { cursor: default; }
     ${X} .hrlg-push {
       height: auto !important; min-height: 26px; padding: 3px 7px !important; gap: 6px !important; flex-wrap: wrap; row-gap: 2px;
-      background: #0e0f19 !important; border: 1px solid #3a3c52 !important; border-left: 4px solid var(--pc, #ffd84a) !important;
+      background: var(--ewdu-tool, #0e0f19) !important; border: 1px solid var(--ewdu-tooledge, #3a3c52) !important; border-left: 4px solid var(--pc, #ffd84a) !important;
       border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
       transform: none !important; rotate: none !important; scale: none !important; animation: none !important; filter: none;
     }
@@ -12502,7 +12502,7 @@ function _ewdCss() {
     ${D} .ewd-invlbl { flex: none; }
     ${D} .ewd-inv .hrlg-items { gap: 4px; justify-content: flex-start; }
     ${X} .ewd-inv .hrlg-item-slot {
-      width: 30px !important; height: 30px !important; background: #0e0f19 !important; border: 1px solid #3a3c52 !important;
+      width: 30px !important; height: 30px !important; background: var(--ewdu-tool, #0e0f19) !important; border: 1px solid var(--ewdu-tooledge, #3a3c52) !important;
       border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
       transform: none !important; rotate: none !important; scale: none !important;
     }
@@ -12544,7 +12544,7 @@ function _ewdCss() {
     ${D} .ewd-list::-webkit-scrollbar-thumb { background: #6a4dff; }
     ${D} .ewd-mode {
       margin: 0 0 6px; padding: 8px 10px; font-size: 9px; line-height: 1.5; letter-spacing: 0.04em; color: #e8e4d8;
-      background: #0c0d16; border: 1px solid #262838; border-left: 5px solid #ffd84a;
+      background: var(--ewdu-row, #0c0d16); border: 1px solid var(--ewdu-rowedge, #262838); border-left: 5px solid #ffd84a;
     }
     ${D} .ewd-confirm {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin-top: 6px; padding: 7px;
@@ -12562,7 +12562,7 @@ function _ewdCss() {
     }
     ${D} .ewd-allman {
       margin-top: 5px; padding: 5px 8px; text-align: center; cursor: pointer; pointer-events: auto;
-      font-size: 8px; color: #ffd84a; background: #0c0d16; border: 1px solid #ffd84a;
+      font-size: 8px; color: #ffd84a; background: var(--ewdu-row, #0c0d16); border: 1px solid #ffd84a;
     }
     ${D} .ewd-allman:hover { background: #1b1830; }
     ${D}.ewd-watch .ewd-list { margin-top: 6px; }
@@ -12573,7 +12573,7 @@ function _ewdCss() {
     ${X} .hrlg-blade .hrlg-body {
       position: relative; height: auto !important; min-height: inherit; flex: 1; min-width: 0;
       display: flex; align-items: center; gap: 8px !important; padding: 3px 8px 3px 9px !important;
-      background: #0c0d16 !important; border: 1px solid #262838 !important; border-left: 5px solid var(--bc, var(--hfc, #3d7bff)) !important;
+      background: var(--ewdu-row, #0c0d16) !important; border: 1px solid var(--ewdu-rowedge, #262838) !important; border-left: 5px solid var(--bc, var(--hfc, #3d7bff)) !important;
       border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
       transform: none !important; rotate: none !important; scale: none !important; filter: none !important; opacity: 1 !important;
       isolation: auto !important; animation: none !important; font-size: 12px; color: #e8e4d8;
@@ -12611,7 +12611,7 @@ function _ewdCss() {
     ${X} .hrlg-thp-num, ${X} .hrlg-trow.mp .hrlg-thp-num { font-size: 8px; }
     ${X} .hrlg-blade.tut .hrlg-body { box-shadow: 0 0 14px rgba(255,205,107,0.55) !important; }
     ${X} .hrlg-blade.active .hrlg-body { border-color: #ffd84a !important; border-left-color: var(--bc, #ffd84a) !important; box-shadow: 0 0 10px rgba(255,216,74,0.35) !important; }
-    ${X} .hrlg-blade.dead .hrlg-body, ${X} .hrlg-blade.ghost .hrlg-body { background: #0a0a12 !important; border-color: #1f2030 !important; border-left: 5px solid #3a3848 !important; }
+    ${X} .hrlg-blade.dead .hrlg-body, ${X} .hrlg-blade.ghost .hrlg-body { background: var(--ewdu-dead, #0a0a12) !important; border-color: var(--ewdu-deadedge, #1f2030) !important; border-left: 5px solid #3a3848 !important; }
     ${X} .hrlg-blade.dead .hrlg-blabel, ${X} .hrlg-blade.ghost .hrlg-blabel, ${X} .hrlg-blade.dead .hrlg-glyph, ${X} .hrlg-blade.ghost .hrlg-glyph { color: #5f5c70 !important; text-shadow: none !important; }
     ${X} .hrlg-blade.dead.catc .hrlg-glyph, ${X} .hrlg-blade.ghost.catc .hrlg-glyph { background: #2a2838 !important; }
     ${selB(X)} {
@@ -12630,14 +12630,14 @@ function _ewdCss() {
     ${D} .ewd-tabs .hrlg-ttabs { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 0; min-width: 0; flex: 0 1 auto; }
     ${X} .ewd-tabs .hrlg-ttab {
       flex: 0 0 auto; min-width: 0; height: auto !important; margin: 0 -2px 0 0; padding: 6px 10px 5px !important; gap: 6px !important; overflow: visible;
-      background: #0b0c15 !important; border: 2px solid #5d5a66 !important; border-bottom: 0 !important; color: #8f8aa8 !important;
+      background: var(--ewdu-tab, #0b0c15) !important; border: 2px solid var(--ewdu-tabedge, #5d5a66) !important; border-bottom: 0 !important; color: #8f8aa8 !important;
       border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
       transform: none !important; rotate: none !important; scale: none !important; animation: none !important;
     }
     ${X} .ewd-tabs .hrlg-ttab::before, ${X} .ewd-tabs .hrlg-ttab::after { content: none !important; display: none !important; }
     ${X} .ewd-tabs .hrlg-ttab > * { transform: none; }
     ${X} .ewd-tabs .hrlg-ttab:hover:not(.on) { color: #d8d2ec !important; border-color: #8a86a0 !important; }
-    ${X} .ewd-tabs .hrlg-ttab.on { position: relative; z-index: 2; margin-bottom: -2px; padding-bottom: 7px !important; background: rgb(22,24,42) !important; border-color: #e8e4d8 !important; color: #e8e4d8 !important; }
+    ${X} .ewd-tabs .hrlg-ttab.on { position: relative; z-index: 2; margin-bottom: -2px; padding-bottom: 7px !important; background: var(--ewdu-tabon, rgb(22,24,42)) !important; border-color: var(--ewdu-edge, #e8e4d8) !important; color: #e8e4d8 !important; }
     ${D} .ewd-tabs .hrlg-ttab-ic { width: 14px; height: 14px; font-size: 10px; }
     ${D} .ewd-tabs .hrlg-ttab-tx { font-size: 9px; font-weight: normal; letter-spacing: 0.02em; overflow: visible; }
     ${D} .ewd-tabs .hrlg-ttab-own { margin-left: 2px; font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 3px 1px; }
@@ -12670,7 +12670,7 @@ function _ewdCss() {
     ${D} .ewd-ulow { grid-area: low; display: flex; gap: 12px; margin-top: 10px; align-items: stretch; min-width: 0; }
     ${D} .ewd-ulow .hrlg-qstats {
       flex: 1 1 auto; min-width: 0; margin: 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between;
-      align-content: center; gap: 4px 10px; padding: 6px 8px; background: #0b0c15; border: 1px solid #262838;
+      align-content: center; gap: 4px 10px; padding: 6px 8px; background: var(--ewdu-box, #0b0c15); border: 1px solid var(--ewdu-rowedge, #262838);
     }
     ${D} .ewd-ulow .hrlg-qstat { gap: 5px; line-height: 1.4; white-space: nowrap; }
     ${D} .ewd-ulow .hrlg-qstat[data-qs="atk"] { order: 1; } ${D} .ewd-ulow .hrlg-qstat[data-qs="matk"] { order: 2; } ${D} .ewd-ulow .hrlg-qstat[data-qs="mov"] { order: 3; }
@@ -12684,7 +12684,7 @@ function _ewdCss() {
     ${D} .ewd-ulow .ew-grade.sm i { font-size: 8px; }
     ${D} .ewd-ulow .hrlg-qelem {
       flex: none; margin: 0; align-self: stretch; align-content: center; padding: 6px 8px; gap: 2px 0;
-      background: #0b0c15; border: 1px solid #262838; border-radius: 0;
+      background: var(--ewdu-box, #0b0c15); border: 1px solid var(--ewdu-rowedge, #262838); border-radius: 0;
     }
     ${D} .ewd-ulow .hrlg-qelem .ew-elem-row { grid-template-columns: repeat(6, 22px); gap: 0 4px; }
     ${D} .ewd-ulow .hrlg-qelem .ew-elem-cell { min-width: 22px; height: 18px; }
@@ -12731,11 +12731,12 @@ function _ewdCss() {
     ${D} > .ewd-foot {
       grid-column: 1 / -1; position: relative; min-width: 0; margin-top: -2px; pointer-events: auto;
       contain: inline-size;   /* its words never widen the panel: it takes the bays' width and wraps inside it */
-      display: flex; align-items: center; gap: 14px; padding: 7px 12px; min-height: 36px;
-      background: linear-gradient(180deg, rgba(14,15,28,0.97), rgba(4,4,9,0.97));
-      border: 2px solid #e8e4d8; box-shadow: inset 0 0 0 2px #000, 0 6px 18px rgba(0,0,0,0.55);
+      display: flex; align-items: center; gap: 14px; padding: 7px 12px;
+      height: calc(var(--ewd-say-max) + 18px);   /* ONE HEIGHT whatever it says: a hovered row's longer description never lifts the bays (that bounced the panel under a still mouse) */
+      background: linear-gradient(180deg, var(--ewdu-foot1, rgba(14,15,28,0.97)), var(--ewdu-foot2, rgba(4,4,9,0.97)));
+      border: 2px solid var(--ewdu-edge, #e8e4d8); box-shadow: inset 0 0 0 2px #000, 0 6px 18px rgba(0,0,0,0.55);
     }
-    ${D} .ewd-say { flex: 1 1 auto; min-width: 0; font-size: 14px; line-height: 1.35; letter-spacing: 0.02em; color: #e8e4d8; text-shadow: 1px 1px 0 #000; }
+    ${D} .ewd-say { flex: 1 1 auto; min-width: 0; max-height: var(--ewd-say-max); overflow-y: auto; scrollbar-width: thin; font-size: 14px; line-height: 1.35; letter-spacing: 0.02em; color: #e8e4d8; text-shadow: 1px 1px 0 #000; }
     ${X} .ewd-say, ${X} .ewd-say *:not(.ew-descbar-name):not(.ew-descbar-ico) { font-family: 'IBM Plex Mono', monospace !important; }
     ${X} .ewd-say .ew-descbar-name { font-family: 'Press Start 2P', monospace !important; font-size: 11px; letter-spacing: 0; color: #fff; text-shadow: 1px 1px 0 #000; }
     ${D} .ewd-say .ew-descbar-inner { min-height: 0; padding: 0; background: none; justify-content: flex-start; gap: 3px 10px; }
@@ -12756,7 +12757,7 @@ function _ewdCss() {
     ${D} .ewd-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 
     /* ── COMPACT (a smaller or shorter window): the same panel, its own sizes ── */
-    ${D}.ewd-c { left: 8px; bottom: 6px; --ewd-say-max: 40px; --ewd-say-min: 8px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 200px); }
+    ${D}.ewd-c { left: 8px; bottom: 6px; --ewd-say-max: 48px; --ewd-say-min: 8px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 200px); }
     ${D}.ewd-c .ewd-plate { top: -9px; padding: 1px 6px; font-size: 7px; }
     ${D}.ewd-c .ewd-kbd { font-size: 7px; padding: 2px 3px 1px; }
     ${D}.ewd-c .ewd-actor { width: 246px; padding: 11px 8px 7px; }
@@ -12860,7 +12861,7 @@ function _ewdCss() {
     ${D}.ewd-c .ewd-focus .hrlg-tc-btns { gap: 4px; margin-top: 6px; }
     ${XC} .ewd-focus .hrlg-tc-btns > .hrlg-blade > .hrlg-body { padding: 4px 7px 3px !important; gap: 4px !important; font-size: 7px; }
     ${XC} .ewd-focus .hrlg-tc-btns > .hrlg-blade .hrlg-blabel { font-size: 7px; }
-    ${D}.ewd-c > .ewd-foot { padding: 4px 8px; min-height: 26px; gap: 10px; }
+    ${D}.ewd-c > .ewd-foot { padding: 4px 8px; height: calc(var(--ewd-say-max) + 12px); gap: 10px; }
     ${D}.ewd-c .ewd-say { font-size: 11px; }
     ${XC} .ewd-say .ew-descbar-name { font-size: 8px; }
     ${D}.ewd-c .ewd-say .ew-descbar-ico { width: 14px; height: 14px; font-size: 9px; }
@@ -19145,7 +19146,10 @@ const fkKey = (k, part) => 'fk' + fcKey(k).slice(2) + part;
 FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; UX_DEF[fkKey(k, 'Font')] = ''; UX_DEF[fkKey(k, 'Weight')] = ''; UX_DEF[fkKey(k, 'Size')] = 1; });
 /* THE ONE BATTLE PANEL (hud.js _ewDeckCfg, 2026-11-11): the layout (one panel / the classic Horologe), what its right
    side shows with nothing picked, where the AP icons sit, its zoom cone */
-Object.assign(UX_DEF, { dPanel: 'one', dFocus: 'self', dAp: 'panel', dCone: false });
+Object.assign(UX_DEF, { dPanel: 'one', dFocus: 'self', dAp: 'panel', dCone: false,
+  /* its colours (mondo 2026-11-11: "is this new HUD compatible with the ui maker? I want to change it to all black") */
+  dLook: 'blue', dBgTop: 'rgba(22,24,42,0.96)', dBgBot: 'rgba(4,4,9,0.97)', dEdge: '#e8e4d8', dRow: '#0c0d16', dRowEdge: '#262838',
+  dSel1: '#9b38ff', dSel2: '#3d7bff', dPlate: '#000000' });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -19172,10 +19176,34 @@ function deckSignal() {
   const v = { on: X.dPanel !== 'classic', focusSelf: X.dFocus !== 'empty', apIn: X.dAp !== 'top', cone: !!X.dCone };
   const o = window._ewDeck;
   window._ewDeck = v;
+  deckLook(X);
   if (o && o.on === v.on && o.focusSelf === v.focusSelf && o.apIn === v.apIn && o.cone === v.cone) return;
   try { window.dispatchEvent(new Event('ew-deck')); } catch (e) {}
   if (typeof markDirty === 'function') markDirty('hud');
   if (typeof renderIfDirty === 'function') renderIfDirty();
+}
+/* THE PANEL'S COLOURS: Night blue = the panel's own CSS (no variables set); All black and My colours write the --ewdu-*
+   variables its CSS reads (hud.js _ewdCss), on the page root so the panel picks them up live */
+const DECK_BLACK = { bg1: 'rgba(0,0,0,0.96)', bg2: 'rgba(0,0,0,0.96)', bg3: 'rgba(0,0,0,0.97)', plate: '#000000',
+  tool: '#000000', tooledge: '#2c2c2c', row: '#000000', rowedge: '#2a2a2a', dead: '#000000', deadedge: '#1a1a1a',
+  tab: '#000000', tabedge: '#4a4a4a', tabon: '#000000', box: '#000000', foot1: 'rgba(0,0,0,0.97)', foot2: 'rgba(0,0,0,0.97)' };
+const DECK_VARS = ['bg1', 'bg2', 'bg3', 'edge', 'plate', 'tool', 'tooledge', 'row', 'rowedge', 'dead', 'deadedge', 'tab', 'tabedge', 'tabon', 'box', 'foot1', 'foot2', 'sel1', 'selm', 'sel2'];
+function deckLook(X) {
+  let v = {};
+  if (X.dLook === 'black') v = Object.assign({}, DECK_BLACK);
+  else if (X.dLook === 'own') {
+    const mix = (a, b) => { const p = parseCss(a) || { r: 0, g: 0, b: 0 }, q = parseCss(b) || p; return '#' + hex2((p.r + q.r) / 2) + hex2((p.g + q.g) / 2) + hex2((p.b + q.b) / 2); };
+    const top = X.dBgTop, bot = X.dBgBot, row = X.dRow, re = X.dRowEdge;
+    v = { bg1: top, bg2: bot, bg3: bot, edge: X.dEdge, plate: X.dPlate, tool: row, tooledge: shade(re, 0.12), row, rowedge: re,
+      dead: shade(row, -0.35), deadedge: shade(re, -0.3), tab: row, tabedge: shade(re, 0.2), tabon: top, box: row, foot1: top, foot2: bot,
+      sel1: X.dSel1, selm: mix(X.dSel1, X.dSel2), sel2: X.dSel2 };
+  }
+  const de = document.documentElement;
+  DECK_VARS.forEach(k => {
+    const val = v[k] ? String(v[k]) : '';
+    if (val) { if (de.style.getPropertyValue('--ewdu-' + k) !== val) de.style.setProperty('--ewdu-' + k, val); }
+    else if (de.style.getPropertyValue('--ewdu-' + k)) de.style.removeProperty('--ewdu-' + k);
+  });
 }
 /* the zoom cone's look (QuickCone reads window._ewQpCone every frame) */
 function qpSignal() {
@@ -20840,6 +20868,13 @@ function deckForm() {
     + fSeg('Right side with nothing picked', 'dFocus', [['self', 'My stats + square', 'The acting unit\'s own stats, element box and the square it stands on'], ['empty', 'Nothing', 'The right side shows only when a unit, square or target is picked']], X.dFocus)
     + fSeg('AP icons', 'dAp', [['panel', 'In the panel', 'Under the HP / MP bars'], ['top', 'Top left', 'Where the AP press icons piece puts them']], X.dAp))
     + xCheck('Zoom cone (turn icon to the card)', 'dCone', X.dCone))
+    + sec('dlook', 'Battle panel colours', xp(fSeg('Colours', 'dLook', [['blue', 'Night blue', 'The panel as it shipped: dark blue windows, white frames'], ['black', 'All black', 'Black windows, black rows and tabs, the white frames and the purple-blue picked row kept'], ['own', 'My colours', 'Pick each colour below']], X.dLook)
+      + (X.dLook === 'own'
+        ? fColor('Window top', 'dBgTop', X.dBgTop, true) + fColor('Window bottom', 'dBgBot', X.dBgBot, true)
+          + fColor('Frames', 'dEdge', X.dEdge) + fColor('Name plates', 'dPlate', X.dPlate)
+          + fColor('Rows, tabs + boxes', 'dRow', X.dRow, true) + fColor('Row edges', 'dRowEdge', X.dRowEdge)
+          + fColor('Picked row (left)', 'dSel1', X.dSel1) + fColor('Picked row (right)', 'dSel2', X.dSel2)
+        : '')))
     + '<div class="uim-note">One panel: the left part is the unit whose turn it is, the middle is the one command list (red BACK on top, green CONFIRM at the bottom), the right part is what you picked, with its tabs. The footer says what to do and the keys that work now. Classic brings back the old layout and every piece of it.</div>'
     + xReset('d', 'Reset the battle panel');
 }

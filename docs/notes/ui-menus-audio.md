@@ -2660,3 +2660,17 @@ Not run with two seats.
   `.pb-sort-dir` pill beside the sort pill flips the order. A new pick opens on its natural order (name A-Z, numbers high first).
 - THE HEADER FITS (same day): the wall's search box + the two sort pills moved from the title row to the TYPE filter row
   (`.pb-wall-fspace` pushes them right); in the title row the search box was squeezed to "SEAR" at 1280 wide. Checked 1280 + 1024.
+
+## THE PANEL HOLDS STILL + ITS COLOURS (2026-11-11, mondo: "flickering issues when i hover over some buttons ... when i hover over the tabs the whole thing bounces up and down real fast. And is this new HUD compatible with the ui maker? I want to change it to all black")
+- The bounce: a hovered tab (TileTabs onMouseEnter -> showSpellTooltip -> #ew-spell-descbar) or row / tile button put its
+  description in the footer (DeckFoot mirrors the bar); a longer text grew the footer, the bottom-anchored panel rose off
+  the mouse, the bar hid, the panel dropped back under it: a loop. Fix: `.ewd-foot` has ONE height (`--ewd-say-max` +
+  padding: 56 px full, 48 px compact); its words step down to `--ewd-say-min` to fit and scroll (thin bar) only past that.
+  Proof: the mouse parked on each tab / root row, the command bay's top and the footer height never change (old footer put
+  back: the footer jumped 37 -> 66). Every ability's description fits at 1728 x 904 and 1280 x 540 (Bigfoot's six).
+- Rule for later: nothing in the panel may change height with the hovered row (hover IS the cursor), see PR #936.
+- Colours: UI Maker > Layout > Battle panel > Battle panel colours (`dLook`): Night blue (the shipped CSS, no variables),
+  All black (`DECK_BLACK`), My colours (dBgTop, dBgBot, dEdge, dPlate, dRow, dRowEdge, dSel1, dSel2; the rest derived).
+  `deckLook` writes `--ewdu-*` on <html>; `_ewdCss` reads every panel colour as `var(--ewdu-x, <shipped value>)`. The
+  theme's fonts still apply; the theme's button / panel skins stay off the panel (its own frames).
+
