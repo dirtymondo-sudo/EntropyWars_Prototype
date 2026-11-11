@@ -552,6 +552,40 @@ function profileLoadProgress() {
   return prog;
 }
 
+/* ── THE MASTERY LEVEL (mondo 2026-11-11; the rules: data.js UNIT_MASTERY_RULES) ─────────────────────────────────────
+   A unit's cosmetic level, worked out from its own achievement counters in the progress store above (nothing else is
+   stored). The whole table is cached against the profile's saved text, so a screen that draws 100+ unit cards reads the
+   profile once; every save of the progress store drops the cache. */
+let _masteryCache = null;   // { idx, raw, map }
+function profileUnitMasteryMap() {
+  const idx = getActiveProfileIndex();
+  if (idx === null) return {};
+  let raw = null;
+  try { raw = localStorage.getItem('ew-profile-' + idx); } catch { raw = null; }
+  if (_masteryCache && _masteryCache.idx === idx && _masteryCache.raw === raw) return _masteryCache.map;
+  const map = {};
+  try {
+    const fn = (typeof window !== 'undefined') ? window.unitMasteryOf : null;
+    const prog = profileLoadProgress();
+    if (typeof fn === 'function' && prog && prog.champs) {
+      for (const race of Object.keys(prog.champs)) map[race] = fn(prog.champs[race]);
+    }
+  } catch {}
+  try { raw = localStorage.getItem('ew-profile-' + idx); } catch {}   // profileLoadProgress may have saved a first-time blob
+  _masteryCache = { idx, raw, map };
+  return map;
+}
+/* one unit: { level, xp, into, need, pct, band, color, games, wins, kills, deathless, bonus, tiers }; a unit never played is level 1 */
+function profileUnitMastery(race) {
+  const key = String(race || '').toLowerCase();
+  const map = profileUnitMasteryMap();
+  if (map[key]) return map[key];
+  if (map[race]) return map[race];
+  const fn = (typeof window !== 'undefined') ? window.unitMasteryOf : null;
+  return (typeof fn === 'function') ? fn(null) : { level: 1, xp: 0, into: 0, need: 100, pct: 0, band: 'Bronze', color: '#cd7f32', games: 0, wins: 0, kills: 0, deathless: 0, bonus: 0, tiers: 0 };
+}
+function profileUnitMasteryLevel(race) { try { return profileUnitMastery(race).level || 1; } catch { return 1; } }
+
 /* Progress-sync state (ACHIEVEMENTS_PLAN.md §7, Phase 5 — the functions live
    with the server glue below; declared here so profileSaveProgress can read
    the guard). */
@@ -1054,6 +1088,7 @@ window.ProfileSystem = {
   loadProgress: profileLoadProgress,
   saveProgress: profileSaveProgress,
   defaultProgress, ensureProgress,
+  unitMastery: profileUnitMastery, unitMasteryLevel: profileUnitMasteryLevel, unitMasteryMap: profileUnitMasteryMap,
   updatePostMatch: profileUpdatePostMatch,
   MAX_PROFILES, MAX_MATCH_HISTORY, MAX_ELO_HISTORY,
   MAX_UNIT_BUILDS, MAX_TEAM_PRESETS,
@@ -1653,8 +1688,9 @@ function ChampMasteryGrid({ prog, reg }) {
     for (const spec of reg.champLines) tot[spec.metric] = _bagSum(bag[spec.metric]);
     const parts = Object.keys(ML).map(m => Math.min(1, (tot[m] || 0) / mlFor(m)));
     const masteryPct = parts.reduce((s, v) => s + v, 0) / Math.max(1, parts.length);
+    const ml = (typeof window.unitMasteryOf === 'function') ? window.unitMasteryOf(bag) : null;   // THE MASTERY LEVEL (cosmetic)
     return {
-      race, bag, tot, masteryPct,
+      race, bag, tot, masteryPct, ml,
       mastered: parts.length > 0 && parts.every(v => v >= 1),
       label: _achRaceLabel(race),
       owned: owned.has(race),
@@ -1668,6 +1704,7 @@ function ChampMasteryGrid({ prog, reg }) {
   }
   if (ownedOnly) rows = rows.filter(r => r.owned);
   if (sort === 'progress') rows.sort((a, b) => (b.masteryPct - a.masteryPct) || a.label.localeCompare(b.label));
+  else if (sort === 'level') rows.sort((a, b) => (((b.ml && b.ml.xp) || 0) - ((a.ml && a.ml.xp) || 0)) || a.label.localeCompare(b.label));
   else rows.sort((a, b) => a.label.localeCompare(b.label));
 
   const ctlStyle = {
@@ -1692,9 +1729,9 @@ function ChampMasteryGrid({ prog, reg }) {
         style: Object.assign({}, ctlStyle, { background: ownedOnly ? EW.accent : 'rgba(255,255,255,0.06)', color: ownedOnly ? '#000' : EW.inkMute, border: 'none' }),
       }, 'Owned only'),
       h('button', {
-        onClick: () => setSort(sort === 'progress' ? 'name' : 'progress'),
+        onClick: () => setSort(sort === 'progress' ? 'level' : sort === 'level' ? 'name' : 'progress'),
         style: Object.assign({}, ctlStyle, { background: 'rgba(255,255,255,0.06)', color: EW.inkMute, border: 'none' }),
-      }, sort === 'progress' ? '↓ Progress' : 'A–Z'),
+      }, sort === 'progress' ? '↓ Progress' : sort === 'level' ? '↓ Level' : 'A–Z'),
     ),
     rows.length === 0 ? h('div', { style: { color: EW.inkDim, padding: 20, textAlign: 'center' } }, 'No champs match.') :
     h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 8 } },
@@ -1732,7 +1769,18 @@ function ChampMasteryCard({ row, prog, reg }) {
           row.mastered ? '👑 MASTERED' : (row.owned ? Math.round(row.masteryPct * 100) + '% to mastery' : '🔒 not owned')),
       ),
       row.mastered ? h('span', { style: { fontSize: 16, textShadow: '0 0 8px rgba(176,106,240,0.9)' } }, '⭐') : null,
+      /* THE MASTERY LEVEL (mondo 2026-11-11): the unit's cosmetic level, in its band's colour */
+      row.ml ? h('span', { className: 'ml-chip', style: { '--ml': row.ml.color, flexShrink: 0 },
+        title: 'Mastery level ' + row.ml.level + ' (' + row.ml.band + '). Shows how much this unit is played. No effect on the fight.' },
+        h('i', null, 'M'), String(row.ml.level)) : null,
     ),
+    row.ml ? h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 },
+      title: row.ml.games + ' matches · ' + row.ml.wins + ' wins · ' + row.ml.kills + ' kills · ' + row.ml.deathless + ' deathless · ' + row.ml.bonus.toLocaleString() + ' XP from ' + row.ml.tiers + ' achievement tiers' },
+      h('span', { style: { fontSize: 10, color: EW.inkMute, width: 100, flexShrink: 0, whiteSpace: 'nowrap' } }, 'Mastery level ' + row.ml.level),
+      h('div', { style: { flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' } },
+        h('div', { style: { width: Math.round(row.ml.pct * 100) + '%', height: '100%', background: row.ml.color } })),
+      h('span', { style: { fontSize: 10, color: EW.inkMute, whiteSpace: 'nowrap' } }, row.ml.into.toLocaleString() + '/' + row.ml.need.toLocaleString() + ' XP'),
+    ) : null,
     reg.champLines.map(spec => {
       const total = row.tot[spec.metric] || 0;
       const tiers = spec.tiers || [];

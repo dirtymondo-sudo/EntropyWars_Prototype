@@ -252,42 +252,29 @@ def bake_rock(seed=31):
     return np.asarray(img).astype(np.float64) / 255.0
 
 
-# ── THE LAVA (v2, 2026-11-11, mondo on v1: "doesnt really look lava-y ... all brown instead of orange/red/fiery"): molten rock
-#    with rafts of cooling crust floating on it. The rafts are cellular plates pulled back from their seams by a width that changes
-#    across the sheet (wide molten rivers in places, tight cracks in others), some cells are open pools, each raft has a red-hot rim
-#    and a dark basalt top; the melt runs red -> orange -> yellow, hottest in the middle of a channel, streaked along the flow.
-#    The game's shader slides two copies of this sheet (THE CALM GROUND's lava); the melt glows from the sheet's own colour. ──────
+# ── THE LAVA (v3, 2026-11-11, mondo on v2: "the dark parts are kind of distracting, can it just be the lava part, no rocks"): melt
+#    only. Deep red where it cools, orange, and yellow where it runs hottest, in long flow lines (bands bent by a slow warp) with a
+#    finer streak inside each. No crust, no rafts, no blobs. The game's shader slides
+#    two copies of this sheet (THE CALM GROUND's lava); the melt glows from its own colour. ────────────────────────────────────────
 def bake_lava(seed=41):
-    rng = np.random.default_rng(seed)
+    # v4 (mondo 11-11: v3's flow lines were "too cartoony ... not what the lava looked like before when the dark rocky parts were
+    # still there"): calm_lava_2's own melt, the pools between its rafts, over the whole sheet; the rafts are gone. Same seeds and
+    # the same maths as v2's melt (streaked noise, the mottle, the thin cooling-skin veins), so it is that lava with the rocks lifted
+    # off. Where v2 had a channel's dark-red rim, a slow heat field now lets the melt cool to deep red in places (never to crust).
     wx = fft_noise(N, 2, 7, seed + 1, 0.8) * 70; wy = fft_noise(N, 2, 7, seed + 2, 0.8) * 70
-    F1, F2, ID = worley(N, 6, seed + 3, (wx, wy))
     fine = fft_noise(N, 60, 260, seed + 5, 0.2)
-    mid = fft_noise(N, 8, 30, seed + 6, 0.6)
-    gap = F2 - F1
-    # the river width: 0.03 (a crack) to 0.17 (a river), and a fifth of the cells open pools
-    w0 = 0.03 + 0.14 * np.clip(fft_noise(N, 1, 4, seed + 7, 0.8) * 1.6 + 0.45, 0, 1) ** 1.5
-    pool = (np.random.default_rng(seed + 8).uniform(0, 1, 6 * 6) < 0.2)[ID]
-    raft = np.clip((gap - w0) / 0.025, 0, 1) * (~pool)
-    d_in = np.clip((gap - w0) / 0.06, 0, 1)                       # 0 at a raft's rim -> 1 inside it
-    d_out = np.clip((w0 - gap) / np.maximum(w0, 0.03), 0, 1)       # 0 at a raft's rim -> 1 in the middle of a channel
-    d_out = np.where(pool, 1.0, d_out)
-    tone = np.random.default_rng(seed + 9).uniform(-1, 1, 6 * 6)[ID]
-    crust = lerp(hexc(0x17120f), hexc(0x2e2520), np.clip(0.5 + 0.3 * tone + 0.25 * mid + 0.2 * fine, 0, 1))
-    crust = lerp(hexc(0x7a1a06), crust, np.clip(d_in ** 0.6, 0, 1))  # the red-hot rim
-    # the melt: streaked along the flow (stretched noise), hotter toward a channel's middle
+    hot = np.clip(fft_noise(N, 1, 4, seed + 7, 0.8) * 1.4 + 0.72, 0.45, 1.0)
     sx = np.asarray(Image.fromarray(((fft_noise(N, 10, 40, seed + 10, 0.5) * 0.5 + 0.5) * 255).astype(np.uint8)).resize((N, N // 4)).resize((N, N), Image.BICUBIC)).astype(np.float64) / 255.0 - 0.5
-    heat = np.clip(0.16 + 0.6 * d_out ** 0.8 + 0.55 * sx + 0.15 * fine, 0, 1)
+    heat = np.clip(0.16 + 0.6 * hot ** 0.8 + 0.55 * sx + 0.15 * fine, 0, 1)
     def ramp(t):
         c0, c1, c2, c3 = hexc(0x5a0c02), hexc(0xc22a05), hexc(0xff6a0e), hexc(0xffc04a)
         t = np.clip(t, 0, 1)[..., None]
         return np.where(t < 0.35, c0 + (c1 - c0) * (t / 0.35), np.where(t < 0.75, c1 + (c2 - c1) * ((t - 0.35) / 0.4), c2 + (c3 - c2) * ((t - 0.75) / 0.25)))
     melt = ramp(heat)
-    # a cooling skin on the melt: thin darker veins (a finer cell net) that fade in the hottest middles
     g1, g2, _ = worley(N, 16, seed + 11, (wx * 0.4, wy * 0.4))
     skin = np.exp(-((g2 - g1) / 0.022) ** 2) * np.clip(1.0 - heat * 0.9, 0, 1)
     melt *= (1.0 - 0.45 * skin)[..., None]
-    rgb = lerp(melt, crust, raft)
-    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.7))
+    img = to_img(melt).filter(ImageFilter.GaussianBlur(0.7))
     return np.asarray(img).astype(np.float64) / 255.0
 
 # ── THE SCORCHED GROUND (Hell, 2026-11-11): burnt ground — a dark ash bed, a crust of cracked plates (cellular, low relief), soot

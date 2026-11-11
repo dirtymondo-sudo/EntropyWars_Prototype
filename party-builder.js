@@ -980,6 +980,19 @@ function clashSpellOk(sp) {
 function sfx(key) { if (typeof window.playSfx === 'function') window.playSfx(key); }
 function getCodexLore(race, gender) { return (gender === 'female' && CODEX_LORE[race + ':female']) || CODEX_LORE[race] || window.RACE_PROFILES?.[race]?.lore || 'No intelligence available. File pending \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 review.'; }
 
+/* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): the cosmetic level plate on a unit's tile on the wall,
+   once the unit has been played (an unplayed unit's tile stays clean). `always` = draw level 1 too (the team's own slots). */
+function pbMasteryChip(race, always) {
+  try {
+    const PS = window.ProfileSystem;
+    if (!race || !PS || typeof PS.unitMastery !== 'function') return null;
+    const m = PS.unitMastery(race);
+    if (!m || (!always && !(m.xp > 0))) return null;
+    return h('span', { className: 'ml-chip pb-rtile-ml', style: { '--ml': m.color },
+      title: 'Mastery level ' + m.level + ' (' + m.band + '): ' + m.into.toLocaleString() + ' / ' + m.need.toLocaleString() + ' XP to the next. Shows how much you play this unit. No effect on the fight.' },
+      h('i', null, 'M'), String(m.level));
+  } catch (e) { return null; }
+}
 function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
   return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${PB_ACCENT})` : undefined, ...extraStyle }});
@@ -4594,7 +4607,8 @@ function PartyBuilder(props) {
             locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
             taken ? h('div', { className: 'pb-rtile-taken' }, 'ON TEAM') : null,
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
-            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() })))),
+            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() }))),
+            pbMasteryChip(entry.race)),
           h('div', { className: 'pb-rtile-name' }, entry.label),
           h('div', { className: 'pb-rtile-job' }, pbRoleLabel(entry.race)));
       })),
