@@ -778,7 +778,7 @@ def puffs(rng, h, count, r_lo, r_hi, lift=1.0, gate=None):
     return h
 
 
-def bake_cloud(seed=221, lit=0xd3d9de, mid=0xb7c0c9, shade=0x8593a4, flat=1.0):   # (Heaven's floor read as dust at the first value: clouds sit a step under white, cool in the shade)
+def bake_cloud(seed=221, lit=0xeef2f8, mid=0xd6dde8, shade=0xa9b6c9, flat=1.0):   # (Heaven read as dust twice: sampled beside his cloud_2 x the room's 0xeef0ff, 187-199 on screen; this sits there, cool)
     rng = np.random.default_rng(seed)
     gate = np.clip(0.55 + fft_noise(N, 1, 4, seed + 1, 0.6) * 0.9, 0.15, 1)
     h = np.zeros((N, N))
