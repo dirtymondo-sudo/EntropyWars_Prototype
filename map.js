@@ -11690,38 +11690,22 @@
 
         /* ── 🌊 LIQUID SPREAD — Minecraft-style flow (2026-07-14, springs
            2026-07-20) ─────────────────────────────────────────────────────
-           Two kinds of liquid tile, one predictable rule set:
-           • NATURAL pools (map-generated lakes / lava rivers) are SETTLED:
-             their surface sits inset below the tile top (that's how they
-             render), so they only spread where the ground actually DROPS —
-             neighbours strictly below the source's level. A flat lake stays
-             in its basin and never grows a fringe.
-           • SPRINGS (spell-conjured liquid — state.liquidSprings, keyed
-             "x,y", synced to the guest like any state field) are OVERFULL:
-             fresh liquid poured onto the ground. A spring additionally
-             overflows exactly ONE tile onto LEVEL ground (a puddle halo
-             around the source), and from there keeps running wherever the
-             ground drops, like everything else.
-           In both cases runoff fans out up to LIQUID_SPREAD_RANGE tiles per
-           terrace (Minecraft does 7; our boards are small so we do 3) — and it
-           NEVER climbs back up. Pouring off a LEDGE resets the range: the
-           landing tile behaves like a fresh spring at its own level
-           (Minecraft's falling-water rule), so liquid on a tall stack
-           cascades all the way down and spreads out at the bottom;
-           three-renderer bridges each 2+-level drop with an animated
-           waterfall column. The flow is DERIVED state:
-           recomputed lazily whenever terrain / heights change, never written
+           (REWRITTEN 2026-11-11, mondo: liquid is painted on the terrain now, so the Minecraft fan is gone.)
+           • Liquid lies on the squares it was put on: a spell's liquid covers exactly the spell's own squares.
+             It never creeps sideways over level ground (no halo round a spring).
+           • It RUNS DOWN: any liquid square pours onto a neighbour that is strictly lower, and from there down
+             every further drop. It never climbs. three-renderer bridges a 2+-level drop with a waterfall column.
+           • It FILLS A HOLE: spell liquid (state.liquidSprings) or runoff that lies in a hole (_liquidInHole)
+             covers the hole's level floor. A map's own settled pool never grows over its own floor.
+           The flow is DERIVED state: recomputed lazily whenever terrain / heights change, never written
            into boardTerrain — so both online clients derive the identical flow
            from the synced terrain (+ synced liquidSprings) for free.
-           three-renderer draws flow tiles as
-           thin animated fluid slabs (~1/3 block at the source edge, thinning
-           with distance). Gameplay hooks: water-family flow soaks units and
+           Gameplay hooks: water-family flow soaks units and
            conducts lightning (battle.js _isWetTile), oil-family flow detonates
            with the slick (_isOilTile), lava flow burns like the lava it came
            from (applyTerrainTurnEffects / battle.js _isLavaTile), and ANY
            liquid — source or flow — breaks a fall (state.js applyFallDamage).
-           Lava spreads SHORTER than water (2 vs 3), same ratio Minecraft uses
-           (4 vs 8). */
+           _LIQUID_SPREADS now only names the families that run (the per-family range is unused). */
         const LIQUID_SPREAD_RANGE = 3;
 
         function liquidFamilyOf(t) {
@@ -11754,13 +11738,62 @@
             return true;
         }
 
+        /* 🕳️ THE HOLE (2026-11-11, mondo: "a regular line spell on flat terrain shouldnt make a whole 3x3 of liquid, just a
+           1x3 ... I still want the liquid to flow down from higher terrain to lower terrain and for filling a hole with
+           liquid to be possible"). Liquid lies on the squares it was put on and never creeps sideways over level ground.
+           The one level run left is a HOLE: the level floor round (x,y) with higher ground (or the board's edge) on every
+           side and no lower square to drain into, at most LIQUID_HOLE_CAP squares. Liquid in a hole fills its floor. A
+           plateau (lower ground beside it), a room (walls, not ground, hold it) and open floor are not holes. */
+        const LIQUID_HOLE_CAP = 16;
+        let _liquidHoleMemo = {};
+        function _liquidHoleCell(x, y, h) {
+            if (!isInside(x, y) || getBaseHeightAt(x, y) !== h) return false;
+            return !!liquidFamilyOf(getTerrainAt(x, y)) || _liquidFlowCanEnter(x, y);
+        }
+        function _liquidInHole(x, y) {
+            const k0 = x + ',' + y;
+            if (k0 in _liquidHoleMemo) return _liquidHoleMemo[k0];
+            const h = getBaseHeightAt(x, y);
+            const seen = new Set([k0]), cells = [{ x, y }];
+            let hole = true, rim = false;
+            for (let i = 0; i < cells.length && hole; i++) {
+                const c = cells[i];
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = c.x + dx, ny = c.y + dy;
+                    if (!isInside(nx, ny)) continue;                       // the board's edge holds it
+                    const nh = getBaseHeightAt(nx, ny);
+                    if (nh > h) { rim = true; continue; }                  // the hole's side
+                    if (nh < h) { hole = false; break; }                   // it drains away: no hole
+                    const k = nx + ',' + ny;
+                    if (seen.has(k)) continue;
+                    if (!_liquidHoleCell(nx, ny, h)) { hole = false; break; }   // level ground a prop / wall terrain stands on: not a dug side
+                    seen.add(k); cells.push({ x: nx, y: ny });
+                    if (cells.length > LIQUID_HOLE_CAP) { hole = false; break; }
+                }
+            }
+            if (!rim) hole = false;
+            if (hole) for (const c of cells) _liquidHoleMemo[c.x + ',' + c.y] = true;
+            else _liquidHoleMemo[k0] = false;
+            return hole;
+        }
+        /* Does liquid on (sx,sy) run onto its neighbour (nx,ny)? Down a drop always; over level ground only inside a hole.
+           The one rule the flow map, the spell forecast and the hit pass share. */
+        function liquidRunsOnto(sx, sy, nx, ny) {
+            if (!_liquidFlowCanEnter(nx, ny)) return false;
+            const sh = getBaseHeightAt(sx, sy), nh = getBaseHeightAt(nx, ny);
+            if (nh > sh) return false;
+            if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(sx, sy, nx, ny, sh, nh)) return false;
+            return nh < sh || _liquidInHole(sx, sy);
+        }
+        window.liquidRunsOnto = liquidRunsOnto;
+
         function _recomputeLiquidFlow() {
             _liquidFlowMap = {};
+            _liquidHoleMemo = {};
             if (!state || !state.boardTerrain) return;
             const W = bw(), H = bh();
             if (!W || !H) return;
-            // multi-source BFS; queue order keeps d nondecreasing, so the first
-            // assignment a tile gets is its minimal distance (nearest source wins)
+            // multi-source BFS, first come first kept (the nearest source wins)
             const queue = [];
             const springs = state.liquidSprings || {};
             for (let y = 0; y < H; y++) {
@@ -11769,15 +11802,15 @@
                     if (fam && _LIQUID_SPREADS[fam]) {
                         const sh = getBaseHeightAt(x, y);
                         const _sp = !!springs[x + ',' + y];
-                        queue.push({ x, y, d: 0, fam, srcH: sh, h: sh,
-                                     spring: _sp, fromSpring: _sp });
+                        /* run: this liquid moves (a spell's spring, or runoff that has fallen off a ledge). A map's own
+                           settled pool only pours where the ground drops; it never fills the floor it already lies on. */
+                        queue.push({ x, y, fam, srcH: sh, h: sh, run: _sp, fromSpring: _sp });
                     }
                 }
             }
             let qi = 0;
             while (qi < queue.length) {
                 const c = queue[qi++];
-                if (c.d >= (_LIQUID_SPREADS[c.fam] || 0)) continue;
                 for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                     const nx = c.x + dx, ny = c.y + dy;
                     if (!_liquidFlowCanEnter(nx, ny)) continue;
@@ -11787,38 +11820,17 @@
                     /* THE FLOORS (2026-10-30, mondo: the goo "spread through the walls too"): a wall on the edge between the two
                        squares (a custom map's room walls, state.edgeWalls) holds the liquid back like it holds a body */
                     if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(c.x, c.y, nx, ny, c.h, nh)) continue;
-                    // DOWNHILL rule: runoff must end up strictly below the
-                    // source block's level (level ground = contained pool).
-                    // EXCEPTION — a SPRING source (spell-conjured, overfull)
-                    // overflows exactly one tile onto LEVEL ground: the level
-                    // step is only allowed directly off the spring itself
-                    // (d === 0), so the flat halo is 1 tile wide and any
-                    // further travel must genuinely drop.
-                    if (nh >= c.srcH && !(c.spring && c.d === 0 && nh === c.srcH)) continue;
+                    /* LEVEL GROUND (2026-11-11): no sideways creep. The old one-square halo round every spring is gone (a
+                       1x3 line made a 3x5 pool); the only level run is filling THE HOLE the liquid lies in. */
+                    if (nh === c.h && !(c.run && _liquidInHole(c.x, c.y))) continue;
                     const k = nx + ',' + ny;
-                    const prev = _liquidFlowMap[k];
-                    if (prev && prev.d <= c.d + 1) continue;
-                    /* s: the level of the surface this run pours from (the renderer drops the sheet from there, so
-                       a level overflow is a thin film BELOW its source, never a slab standing over it); sp: the run
-                       began at a spring (spell liquid), not a map's own settled pool */
-                    _liquidFlowMap[k] = { t: c.fam, d: c.d + 1, s: c.srcH, sp: !!c.fromSpring };
-                    if (nh < c.h) {
-                        // 🌊 WATERFALL LANDING (2026-07-20): pouring off a ledge
-                        // RESETS the spread — like Minecraft, fallen liquid
-                        // starts over where it lands. The landing tile acts as
-                        // a fresh spring at its own level: full spread range
-                        // downhill again plus the 1-tile level-ground halo, so
-                        // liquid placed on a tall stack cascades to the ground
-                        // and fans out there instead of dying on the cliff.
-                        // Terminates: every reset is strictly lower than the
-                        // last, and flat steps still burn the d budget.
-                        queue.push({ x: nx, y: ny, d: 0, fam: c.fam, srcH: nh, h: nh, spring: true, fromSpring: c.fromSpring });
-                    } else {
-                        // level step (spring halo): carry the source level so
-                        // the runoff can never creep back up a ledge
-                        queue.push({ x: nx, y: ny, d: c.d + 1, fam: c.fam, srcH: c.srcH,
-                                     h: Math.min(c.h, nh), spring: false, fromSpring: c.fromSpring });
-                    }
+                    if (_liquidFlowMap[k]) continue;
+                    /* s: the level of the surface this run pours from (the renderer drops the sheet from there); sp: the run
+                       began at a spring (spell liquid), not a map's own settled pool; d stays 1 (a full sheet, no thinning fan) */
+                    const srcH = nh < c.h ? c.h : c.srcH;
+                    _liquidFlowMap[k] = { t: c.fam, d: 1, s: srcH, sp: !!c.fromSpring };
+                    /* 🌊 a drop: the liquid lands and keeps running down every further drop (and fills a hole it lands in) */
+                    queue.push({ x: nx, y: ny, fam: c.fam, srcH: srcH, h: nh, run: true, fromSpring: c.fromSpring });
                 }
             }
         }

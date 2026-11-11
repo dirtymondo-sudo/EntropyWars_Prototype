@@ -6865,7 +6865,7 @@ const SHARED_POISON_SWAMP = {
     type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
     kind: 'terrainCreate', terrainType: 'poison', tileCount: 1,
     damageType: 'magic',
-    desc: 'Conjure a poison spring on one tile. The toxin overflows onto the surrounding ground and runs downhill. Enemies caught in the spreading poison take damage; the terrain poisons anyone who wades through. Flyers up in the sky are above it.'
+    desc: 'Conjure a poison pool on one tile. The toxin runs downhill and fills a hole. Enemies caught in the poison take damage; the terrain poisons anyone who wades through. Flyers up in the sky are above it.'
 };
 
 const SHARED_INFECTIOUS_BITE = {
@@ -7688,7 +7688,7 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
           bonusVsStatus: { status: 'silence', mult: 1.5 },
-          desc: 'Something answers from below. Deals HEAVY magic damage to a Single Enemy, and the floor under them opens into deep water. The spring\'s overflow hits the enemies beside it too. Silenced targets cannot call for help: bonus damage. Flyers up in the sky are above it.' },
+          desc: 'Something answers from below. Deals HEAVY magic damage to a Single Enemy, and the floor under them opens into deep water. Silenced targets cannot call for help: bonus damage. Flyers up in the sky are above it.' },
         { id: 'raceDeafeningWail', tier: 3, element: 'sonic', spellType: 'anomaly', name: 'Deafening Wail',
           type: 'damage', cost: 30, dmg: 125, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
