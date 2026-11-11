@@ -4091,7 +4091,7 @@ const ThreeRenderer = (function () {
        WATER: a dark, see-through body (the bed shows a little) whose surface normal moves — three octaves of value noise sliding
        at different speeds and directions, in squares (uFluidTile), so a pool and a brook ripple as one sheet — the room's own lights
        give the sun glints off it (Phong, tight highlight), and the sky's sheen rises toward grazing angles (Schlick fresnel). No
-       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava_3 (melt only, flow lines) slid in two copies on the fluid clock, the melt glowing from its own colour (THE MOLTEN LAVA, in
+       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava_4 (calm_lava_2's melt, rafts gone) slid in two copies on the fluid clock, the melt glowing from its own colour (THE MOLTEN LAVA, in
        _calmFluidMat). On WebGPU both are the same maths (_ewNodeCalmFluid, _ewNodeCalmWater). */
     var _CALM_NOISE_GLSL =
         'float cHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }\n' +
@@ -4120,16 +4120,17 @@ const ThreeRenderer = (function () {
             var f = head + sh.fragmentShader;
             if (lava) {
                 /* THE MOLTEN LAVA (mondo: "doesnt really look lava-y ... all brown ... isnt even moving", then "the dark parts are kind
-                   of distracting, can it just be the lava part, no rocks"): calm_lava_3 is melt only, in flow lines along x. Two copies
-                   slide on the fluid clock along the lines like the old lava (PR #782): copy B, at another scale and faster, nudges copy
-                   A's lookup a little (the lines wobble) and makes the glow swell and fade as it passes. The melt (red-dominant texels) glows from its own colour; the crust stays dark. Same maths on WebGPU
-                   (_ewNodeCalmFluid). */
+                   of distracting, can it just be the lava part, no rocks", then of v3's flow lines "too cartoony ... not what the lava
+                   looked like before"): calm_lava_4 is calm_lava_2's own melt over the whole sheet, its rafts gone, and the motion is v2's
+                   again. Two copies slide on the fluid clock like the old lava (PR #782): copy B, turned and at another scale, runs the
+                   other way, nudges copy A's lookup a little and makes the melt's glow swell and fade as it passes. The melt (red-dominant
+                   texels) glows from its own colour. Same maths on WebGPU (_ewNodeCalmFluid). */
                 f = f.replace('#include <map_fragment>',
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
                     '#ifdef USE_MAP\n' +
-                    ' vec3 cLb = texture2D(map, cP * 0.37 + vec2(cT * 0.045, -cT * 0.006)).rgb;\n' +
-                    ' vec3 cLa = texture2D(map, cP * 0.5 + vec2(cT * 0.03, cT * 0.004) + (cLb.rg - vec2(0.8, 0.23)) * 0.03).rgb;\n' +
+                    ' vec3 cLb = texture2D(map, vec2(cP.y, -cP.x) * 0.37 + vec2(-cT * 0.015, cT * 0.022)).rgb;\n' +
+                    ' vec3 cLa = texture2D(map, cP * 0.5 + vec2(cT * 0.020, cT * 0.013) + (cLb.rg - vec2(0.9, 0.34)) * 0.035).rgb;\n' +
                     '#else\n vec3 cLa = vec3(0.6, 0.2, 0.05), cLb = cLa;\n#endif\n' +
                     'float cMelt = smoothstep(0.1, 0.32, cLa.r - cLa.b);\n' +
                     'float cHb = dot(cLb, vec3(0.299, 0.587, 0.114));\n' +
@@ -35287,7 +35288,7 @@ const ThreeRenderer = (function () {
        shader extras do not (plain colour + sheet there). */
     var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
     var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_3.png',
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_4.png',
                          scorched: 'calm_scorched_1.png' };
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
     /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
@@ -45003,7 +45004,7 @@ const ThreeRenderer = (function () {
         if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
-    /* THE CALM GROUND's lava on WebGPU (_calmFluidMat, THE MOLTEN LAVA): the same two sliding copies of calm_lava_3, the same melt
+    /* THE CALM GROUND's lava on WebGPU (_calmFluidMat, THE MOLTEN LAVA): the same two sliding copies of calm_lava_4, the same melt
        mask and glow. The water: _ewNodeCalmWater. */
     function _ewNodeCalmFluid(nm, m, D) {
         var U = _ewNodeU, T = U.T;
@@ -45011,10 +45012,10 @@ const ThreeRenderer = (function () {
         if (!m.map || !m.map.isTexture) return;
         var map = m.map, glow = T.float(D.glow || 1.25);
         var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
-        var lbOf = function (p) { return T.texture(map, p.mul(0.37).add(T.vec2(U.ftime.mul(0.045), U.ftime.mul(-0.006)))).rgb; };
+        var lbOf = function (p) { return T.texture(map, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(U.ftime.mul(-0.015), U.ftime.mul(0.022)))).rgb; };
         var LA = T.Fn(function () {
             var p = cpos().toVar(), lb = lbOf(p).toVar();
-            var la = T.texture(map, p.mul(0.5).add(T.vec2(U.ftime.mul(0.03), U.ftime.mul(0.004))).add(lb.rg.sub(T.vec2(0.8, 0.23)).mul(0.03))).rgb.toVar();
+            var la = T.texture(map, p.mul(0.5).add(T.vec2(U.ftime.mul(0.020), U.ftime.mul(0.013))).add(lb.rg.sub(T.vec2(0.9, 0.34)).mul(0.035))).rgb.toVar();
             return T.vec4(la, T.smoothstep(0.1, 0.32, la.r.sub(la.b)));
         })();
         var HB = T.Fn(function () { return T.dot(lbOf(cpos().toVar()), T.vec3(0.299, 0.587, 0.114)); })();
