@@ -748,9 +748,14 @@ def bake_mars(seed=211):
     return bake_moon(seed, a=0x7a3f24, b=0x95522f, craters=12, grit=(0x8a4c30, 0x9a5838, 0x6c3a24), rocks=(0x6e4433, 0x80503a), sat=0.95)
 
 
-# ── THE MARS DUST (Mars's floor: his moon_2 under the room's tan): the paler, browner dust the rust rocks stand in ──────────────
+# ── THE MARS DUST (Mars's floor: his moon_2 under the room's tan): the browner dust the rust rocks stand in ───────────────────
 def bake_marsdust(seed=391):
     return bake_moon(seed, a=0x76492e, b=0x8a5a3c, craters=16, grit=(0x82573b, 0x8e6044, 0x6a452f), rocks=(0x6c4a37, 0x7a5541), sat=0.95)
+
+
+# ── THE VIOLET MOON (the Singularity's floor: his moon_3 under the room's violet 0x5a4a78): the same crater ground, dark blue-violet ─
+def bake_moonviolet(seed=419):
+    return bake_moon(seed, a=0x231f38, b=0x2e2946, craters=22, grit=(0x2b2642, 0x34304e, 0x1d1a2e), rocks=(0x29243e, 0x312c4a), sat=1.0)
 
 
 # ── THE CLOUDS (cloud, cloud_2, cloud_thick): a cloud deck seen from above — cumulus heads built of puffs on puffs (big domes, smaller
@@ -1084,7 +1089,8 @@ def main():
               ('calm_rockygrass_1', bake_rockygrass), ('calm_darkgrass_1', bake_darkgrass), ('calm_cavefloor_1', bake_cavefloor), ('calm_darkrock_1', bake_darkrock),
               ('calm_crystal_1', bake_crystal), ('calm_flesh_1', bake_flesh), ('calm_concrete_1', bake_concrete), ('calm_gilt_1', bake_gilt),
               ('calm_flagstone_1', bake_flagstone), ('calm_castle_1', bake_castle), ('calm_checker_1', bake_checker), ('calm_damask_1', bake_damask),
-              ('calm_carpet_1', bake_carpet), ('calm_marsdust_1', bake_marsdust), ('calm_sandstone_1', bake_sandstone)]
+              ('calm_carpet_1', bake_carpet), ('calm_marsdust_1', bake_marsdust), ('calm_sandstone_1', bake_sandstone),
+              ('calm_moonviolet_1', bake_moonviolet)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:

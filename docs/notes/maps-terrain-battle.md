@@ -1902,9 +1902,9 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   rocks_1 / rocks_dark_fantasy), crystal (crystal), flesh (flesh / flesh_2 / flesh_3 / plague_flesh), concrete (concrete_floor /
   urban_street), gilt (gold / gold_2 / gold_3); patterned, on the plain grid: flagstones (bricks_1, 4x4 slabs), castle brick
   (bricks_2 / castle_wall), marble checks (checkerboard, his 6x6 count), damask (damask, half-drop), red carpet (carpet_4).
-  Two place sheets: Mars floor dust and sandstone flags.
+  Three place sheets: Mars floor dust, violet moon dust (the Singularity) and sandstone flags.
 - THE ROOM COLOUR: a calm sheet ignores shell.floorColor (batch 1), so where a room's colour MADE his sheet another ground, the
-  place table names that ground: Mars moon_2 (× tan) → calm_marsdust, the Singularity's moon_3 (× violet) → calm_cavefloor,
+  place table names that ground: Mars moon_2 (× tan) → calm_marsdust, the Singularity's moon_3 (× violet 0x5a4a78) → calm_moonviolet (first calm_cavefloor: same value but the violet was gone),
   Babel's bricks_1 (× tan) → calm_sandstone. tools: the survey printed every arena's floorColor / tints next to its keys; the
   rest only shade the same ground (grass greens, a cream checker) and keep the sheet's own colour.
 - VALUES moved on the real boards: castle brick up to his bricks_2 value (L 0.36, Walls of Camelot read near-black), damask up a
