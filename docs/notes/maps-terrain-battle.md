@@ -1966,3 +1966,11 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - THE 2D VIEW: the old voxel editor (map.js, FILE menu of the editor) drew his pixel sheets on its flat grid and palette
   (_meTerrainBg). It now shows the calm twin (the sheet the board draws) unless window.EW_NO_CALM_LOOK. The tile info card
   already went through _ewSandUrl (calm first). His pixel sheets stay in the editor.js picker (TERRAIN family).
+
+## THE VOXEL BOARDS ARE OUT (2026-11-11, mondo: "I think we are good to get rid of all the voxel maps")
+- Gone from the game (no roster row, no GAME_MODES entry, no PREBUILT_MAPS copy): the five "<Site> Δ · voxel" boards (Hell, Göbekli
+  Tepe, The Flying Dutchman, The Looking-Glass, The Bermuda Triangle: HQ_ARENA_RULES.voxelKeep and its registration removed), the
+  three "<Map> · voxel" boards hqArenaRegisterOwn kept (Holo Sim, Training Room, Fairy Forest 20×20) and Clash's "Temple · voxel"
+  (data.js hqClashStageRegister, map.js MS_MAP_LIST, state.js compatibleMaps + GAME_MODES.clash_stage_voxel).
+- NOT touched: the voxel editor, the authored board data in data.js (each arena still reads its old board's tints and layout), and
+  the 35 big site boards (16×16 to 24×24, the list with ARENA MAPS switched off; Gauntlet plays only those). His call, asked.

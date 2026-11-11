@@ -63299,10 +63299,8 @@ const HQ_ARENA_RULES = {
         prebuilt_olympus: { room: 'site_prebuilt_olympus_summit', x: 0, z: 10.5, r: 2.6 },   // THE OPEN SUMMIT (2026-11-03): every size on THE COURT OF THE TWELVE (its two rows of columns either side)
         prebuilt_heaven: { room: 'site_prebuilt_heaven_gate', x: 0, z: 0, r: 2 },   // THE NEW HEAVEN (2026-11-03): the 12×12 cut round the sun (the whole board; the 9/10/11 picks stand on the stair room)   // 2× EVERYWHERE (2026-10-28): the grown house rooms never take the grounds' board (the grounds' own board, the one it had)
     },
-    /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
-       the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
-       online pool (not an arena, not kept) */
-    voxelKeep: ['prebuilt_lookingglass', 'prebuilt_gobekli', 'prebuilt_bermuda', 'prebuilt_hell', 'prebuilt_revenge'],
+    /* THE VOXEL BOARDS ARE OUT (2026-11-11, mondo: "I think we are good to get rid of all the voxel maps"): a site's old voxel Δ is no
+       longer kept beside its arena as "<Site> Δ · voxel" (the `voxelKeep` list and its registration are gone; the voxel editor stands). */
     /* THE BIG SQUARES (2026-10-28, mondo: "what if every unit stood on a 3x3 area ... it would still be a 12x12 in terms of gameplay and
        movement ... let's just try this idea with one map" — "okay yeah let's try that on the strip"): a site here plays its arenas (every size)
        on squares this many metres a side instead of the battle tile's 1.75 m. The board keeps its squares, its rules and its moves; the room
@@ -63812,15 +63810,6 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
                 L.sections = Object.assign({}, L.sections, { earth: Object.assign({}, (L.sections || {}).earth || { startRow: 0, label: 'Earth' }, { endRow: S - 1, baseTerrain: entry.base }) });
                 MAP_LAYOUT_PRESETS[did] = L;
             }
-            if ((HQ_ARENA_RULES.voxelKeep || []).includes(site)) {   // THE VOXEL BOARDS STAY: the old Δ under its own id, before the arena takes `did`
-                const VW = old.w | 0, vid = site + '_' + VW + 'x' + VW + '_delta';
-                if (!PREBUILT_MAPS[vid]) {
-                    PREBUILT_MAPS[vid] = old;
-                    if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && _HQ_ARENA_SITE_LAYOUTS[site]) MAP_LAYOUT_PRESETS[vid] = _HQ_ARENA_SITE_LAYOUTS[site];
-                    const siteRow = EW_MAP_META.find(m => m.id === site);
-                    EW_MAP_META.push(Object.assign({}, row, { id: vid, label: ((siteRow && siteRow.label) || site) + ' Δ · voxel', voxel: true }));
-                }
-            }
             PREBUILT_MAPS[did] = entry;
             const room = DOOR_HQ.rooms[pick.room];
             row.w = S; row.h = S;
@@ -64155,7 +64144,7 @@ DOOR_HQ.rooms.clash_temple = {
 };
 /* the stage: the room, the board's side, Clash's formation (the unit order of GAME_MODES.clash_stage.spawns) and the baked cut */
 const HQ_CLASH_STAGE = {
-    id: 'clash_stage', voxel: 'clash_stage_voxel', room: 'clash_temple', S: 10, name: 'Temple',
+    id: 'clash_stage', room: 'clash_temple', S: 10, name: 'Temple',
     formation: { 1: [{ x: 3, y: 6 }, { x: 3, y: 5 }, { x: 3, y: 4 }, { x: 3, y: 3 }], 2: [{ x: 6, y: 6 }, { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }] },
     /* <CLASH PICK> — written by `node bake-arenas.js clash_stage`; the arenas' pick record (room, ox, oz, base, open, keys, cells) */
     pick: {"room":"clash_temple","ox":22,"oz":22,"base":"grass_2","open":1,"keys":["sanctuary","bricks_1"],"cells":"01110111011101110111110111011101110111010111011101110111011111011101110111011101011101110111011101111101110111011101110101110111011101110111110111011101110111010111011101110111011111011101110111011101","sq":3.5},
@@ -64164,11 +64153,7 @@ const HQ_CLASH_STAGE = {
 (function hqClashStageRegister() {
     if (typeof PREBUILT_MAPS === 'undefined' || typeof MAP_LAYOUT_PRESETS === 'undefined') return;
     const C = HQ_CLASH_STAGE, old = PREBUILT_MAPS[C.id];
-    /* the voxel Temple stays: its own id, its own layout (the purple dusk, the crystals) */
-    if (old && !old.arena && !PREBUILT_MAPS[C.voxel]) {
-        PREBUILT_MAPS[C.voxel] = old; old.name = 'Temple · voxel';
-        if (MAP_LAYOUT_PRESETS[C.id]) MAP_LAYOUT_PRESETS[C.voxel] = MAP_LAYOUT_PRESETS[C.id];
-    }
+    /* THE VOXEL BOARDS ARE OUT (2026-11-11, mondo): the old voxel Temple is no longer kept as `clash_stage_voxel` */
     const room = (DOOR_HQ.rooms || {})[C.room];
     if (!C.pick || !room) return;
     try {
@@ -64303,7 +64288,7 @@ HQ_ARENA_RULES.own.prebuilt_training = {"room":"training_hall","ox":5,"oz":5,"sq
 /* ── THE FAIRY FOREST (2026-10-24) ── the FULL SITE's 20 × 20, 6v6, cut from the middle of its own room (DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade,
    defined before the arenas register); the voxel board stays as `prebuilt_fairy_forest_voxel`, "Fairy Forest · voxel". */
 HQ_ARENA_RULES.own.prebuilt_fairy_forest = {"room":"site_prebuilt_fairy_forest_glade","ox":10,"oz":10,"S":20,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rocks_5"],"cells":"01010111110101010111110101010111110101010101240111110101011111010101241111010101010101011111240101111101010111110101010101010101111101010111110101011111240101012401020211110101011111010101111101010124010102021111010101111101010111110101010101010111110101010111110101240111110101010101011111012401011111010101011111010101012411112401010101111101010101011111010101011111010101010111110101012401111101010101111101240101011111010101010111110101010111110101010101111101010101241111240101010111110101010111110101240111110101010101011111012401011111010101011111010101010101011111010101111101010111110202010124010101111101010111110101011111020201240101012411110101011111010101111101010101010101011111010101111101012411110101010101010111112401010111110101011111012401010101011111010101011111010101011111010101"};   // <OWN PICK prebuilt_fairy_forest> — written by bake-arenas.js --own
-/* the runner: every own pick becomes its map's arena; the voxel board it replaces is kept as `<mapId>_voxel` */
+/* the runner: every own pick becomes its map's arena (the voxel board it replaces left the game 2026-11-11) */
 (function hqArenaRegisterOwn() {
     if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
     const O = HQ_ARENA_RULES.own || {};
@@ -64315,12 +64300,9 @@ HQ_ARENA_RULES.own.prebuilt_fairy_forest = {"room":"site_prebuilt_fairy_forest_g
             const cells = hqArenaCells(pick, S);
             const entry = cells ? hqArenaEntry(id, pick, cells, old.terrainTints || null, S) : null;
             if (!entry) { console.warn('[ARENA] the own pick has no cells — the voxel board stands (run bake-arenas.js --own)', id); return; }
-            /* the voxel board, kept under its own id with its own layout and roster row */
-            const vid = id + '_voxel', room = DOOR_HQ.rooms[pick.room];
-            PREBUILT_MAPS[vid] = old;
-            if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[id]) { MAP_LAYOUT_PRESETS[vid] = MAP_LAYOUT_PRESETS[id]; _HQ_ARENA_SITE_LAYOUTS[id] = MAP_LAYOUT_PRESETS[id]; }
-            if (!EW_MAP_META.some(m => m.id === vid)) EW_MAP_META.push(Object.assign({}, row, { id: vid, label: row.label + ' · voxel', voxelOf: id, arena: false, room: undefined,
-                desc: (old.w | 0) + '×' + (old.h | 0) + ' voxel board, ' + (row.teamSize || 4) + 'v' + (row.teamSize || 4) + ' — the old ' + row.label + ' (kept)' }));
+            /* THE VOXEL BOARDS ARE OUT (2026-11-11, mondo: "get rid of all the voxel maps"): the board this replaces is no longer kept as `<mapId>_voxel` */
+            const room = DOOR_HQ.rooms[pick.room];
+            if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[id]) _HQ_ARENA_SITE_LAYOUTS[id] = MAP_LAYOUT_PRESETS[id];
             entry.name = row.label; entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
             PREBUILT_MAPS[id] = entry;
             row.arena = true; row.room = pick.room; row.arenaSize = S; row.w = S; row.h = S;
