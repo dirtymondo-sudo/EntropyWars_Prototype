@@ -860,6 +860,7 @@ const ThreeRenderer = (function () {
        SHARED uniform objects, which every highlight material points at (its x-ray twin and the node renderer's twin read
        the same objects), so one write restyles the whole board. Defaults draw every tile exactly as before. Each one is a
        multiplier over the per-type recipe (HL_FILL / HL_EDGE_GLOW), so the tiers keep their order. */
+    var HL_BASE_FRAC = 0.92, HL_SIZE_MAX = 1.12;   // THE TILES TOUCH (see _hlCover)
     var _hlLookU = {
         uLkLine: { value: 1 }, uLkEdge: { value: 1 }, uLkHalo: { value: 1 }, uLkHot: { value: 1 }, uLkFill: { value: 1 },
         uLkBright: { value: 1 }, uLkOp: { value: 1 }, uLkPulse: { value: 1 }, uLkSpeed: { value: 1 }, uLkSize: { value: 1 },
@@ -922,7 +923,7 @@ const ThreeRenderer = (function () {
         for (var k in src) { var hx = _lookHex(src[k]); if (hx !== null) cols[k] = hx; }
         _tileLookC = { line: num(L.line, 0, 4, 1), edge: num(L.edge, 0, 3, 1), halo: num(L.halo, 0, 4, 1), hot: num(L.hot, 0, 3, 1),
             fill: num(L.fill, 0, 3, 1), bright: num(L.bright, 0.2, 2.5, 1), opacity: num(L.opacity, 0.05, 1.5, 1), pulse: num(L.pulse, 0, 8, 1),
-            speed: num(L.speed, 0, 6, 1), size: num(L.size, 0.4, 1.08, 1), round: num(L.round, 0, 0.5, 0), lineCol: _lookHex(L.lineCol), cols: cols };
+            speed: num(L.speed, 0, 6, 1), size: num(L.size, 0.4, HL_SIZE_MAX, 1), round: num(L.round, 0, 0.5, 0), lineCol: _lookHex(L.lineCol), cols: cols };
         _tileLookCV = v;
         return _tileLookC;
     }
@@ -941,11 +942,39 @@ const ThreeRenderer = (function () {
         if (!U.uLkLineCol.value) U.uLkLineCol.value = new THREE.Color(0xffffff);
         U.uLkLine.value = L.line; U.uLkEdge.value = L.edge; U.uLkHalo.value = L.halo; U.uLkHot.value = L.hot; U.uLkFill.value = L.fill;
         U.uLkBright.value = L.bright; U.uLkOp.value = L.opacity; U.uLkPulse.value = L.pulse; U.uLkSpeed.value = L.speed;
-        U.uLkSize.value = L.size; U.uLkRound.value = L.round;
+        U.uLkSize.value = Math.min(1, L.size); U.uLkRound.value = L.round;
         if (L.lineCol !== null) U.uLkLineCol.value.setHex(L.lineCol);
         U.uLkLineOwn.value = L.lineCol !== null ? 1 : 0;
         _hlMatCache.forEach(_hlPaintMat);
         _hlPaint(scene);
+        _hlRefit(scene);
+    }
+    /* THE TILES TOUCH (2026-11-11, mondo: "i cant make the tiles big enough that they touch at the edges. There is always
+       a little gap no matter what i do with the tile highlight and edge settings"). Every highlight plate was a mesh
+       HL_BASE_FRAC (0.92) of its square, and the UI Maker's Size only drew the frame INSIDE that mesh: past 1 it cropped
+       the outline and the 8% gap stayed. Now Size past 1 grows the plate itself: 1 = the game's 92%, 1.08 = the whole
+       square (neighbours touch), up to HL_SIZE_MAX they overlap a little. Under 1 the shader shrinks the frame as before.
+       A plate is BUILT at its cover (the drape samples the ground at the real footprint, so it follows slopes and steps);
+       a plate already on the board when the slider moves is scaled to the new cover (_hlRefit) until its next rebuild.
+       Plates whose own frame is already wider (the cursor 0.98, the acting tile 0.96) never shrink. Small markers
+       (under 0.9 of a square) are not highlight plates and keep their size. */
+    function _hlCover(frac) {
+        if (!(frac >= 0.9)) return frac;
+        var sz = _tileLook().size;
+        return sz > 1 ? Math.max(frac, HL_BASE_FRAC + (sz - 1)) : frac;
+    }
+    /* remember a plate's own frame + the cover it was built at (flat = a laid-down PlaneGeometry: it grows in x / y) */
+    function _hlFit(mesh, frac, built, flat) {
+        if (mesh) mesh.userData.ewHlFit = { f: frac, b: built, p: !!flat };
+        return mesh;
+    }
+    function _hlRefit(root) {
+        if (root) root.traverse(function (o) {
+            var d = o.userData && o.userData.ewHlFit;
+            if (!d) return;
+            var k = _hlCover(d.f) / d.b;
+            if (d.p) o.scale.set(k, k, 1); else o.scale.set(k, 1, k);
+        });
     }
     /* a highlight material in its situation's colour now */
     function _hlPaintMat(m) {
@@ -4098,8 +4127,11 @@ const ThreeRenderer = (function () {
                     'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
                     '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
                     'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
-                    'diffuseColor.rgb *= cLa * 0.9;\n')
-                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow;\n');
+                    'diffuseColor.rgb *= cLa * 0.9;\n' +
+                    /* the molten flow under the crust: broad slow patches where it runs thin, and a low warm floor, so a lava field still
+                       reads as lava from the wide camera (the seams are thin; far off their mips average them away) */
+                    'float cFlow = smoothstep(0.38, 0.9, cNoise(cP * 0.32 + vec2(cT * 0.018, -cT * 0.013)) * 0.7 + cNoise(cP * 0.9 - vec2(cT * 0.03, 0.0)) * 0.3);\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow + vec3(0.62, 0.15, 0.025) * (0.16 + 0.7 * cFlow) * uCalmGlow * (1.0 - 0.6 * smoothstep(0.25, 0.7, cHeat));\n');
             } else {
                 f = f.replace('#include <map_fragment>',
                     '#include <map_fragment>\n' +
@@ -19241,10 +19273,11 @@ const ThreeRenderer = (function () {
                empty body — the default "this is who's acting" marker. Rides
                the unit group so walks/knockbacks carry it automatically. */
             var _selSegs = 1;   // rev 2: flat on a field too
-            var selTile = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.96, ts * 0.96, _selSegs, _selSegs),
+            var _selCov = _hlCover(0.96);   // THE TILES TOUCH
+            var selTile = _hlFit(new THREE.Mesh(
+                new THREE.PlaneGeometry(ts * _selCov, ts * _selCov, _selSegs, _selSegs),
                 _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 }, 'acting')
-            );
+            ), 0.96, _selCov, true);
             selTile.rotation.x = -Math.PI / 2;
             selTile.position.y = SELECTED_RING_OFFSET - 0.15;
             selTile.renderOrder = RING_RENDER_ORDER;   // THE RINGS ABOVE: over the highlights
@@ -21430,11 +21463,12 @@ const ThreeRenderer = (function () {
     var _hlSharedGeoTs = 0;
 
     function _getSharedHlGeo(ts) {
-        if (_hlSharedGeo && _hlSharedGeoTs === ts) return _hlSharedGeo;
+        var side = ts * _hlCover(HL_BASE_FRAC);   // THE TILES TOUCH
+        if (_hlSharedGeo && _hlSharedGeoTs === side) return _hlSharedGeo;
         if (_hlSharedGeo) _hlSharedGeo.dispose();
-        _hlSharedGeo = new THREE.PlaneGeometry(ts * 0.92, ts * 0.92);
+        _hlSharedGeo = new THREE.PlaneGeometry(side, side);
         _hlSharedGeo._ew_shared = true;
-        _hlSharedGeoTs = ts;
+        _hlSharedGeoTs = side;
         return _hlSharedGeo;
     }
 
@@ -21597,6 +21631,7 @@ const ThreeRenderer = (function () {
     }
     function _makeHlTile(hx, hy, mat, frac, yOff, z) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        var cov = _hlCover(frac);   // THE TILES TOUCH: the plate is built at the UI Maker's Size
         /* Multi-floor columns: a highlight for a walkable surface BELOW the
            column top (the ocean floor under a cloud platform, the ground under
            a bridge) must sit at ITS OWN floor — draping it over the roof above
@@ -21630,21 +21665,21 @@ const ThreeRenderer = (function () {
                 /* THE TWO FLOORS (2026-10-16): the ground under a field's deck — the plate drapes that ground at its real top */
                 var _lowY = _fieldTwoFloorAt(hx, hy) ? _fieldSurfaceY(hx, hy, z) : null;
                 if (_lowY !== null) {
-                    var lowMesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac, _lowY), subMat);
+                    var lowMesh = _hlFit(new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, cov, _lowY), subMat), frac, cov);
                     lowMesh.renderOrder = 2;
                     lowMesh.position.set(hx * ts + ts / 2, _lowY + (yOff || 0) + HL_FIELD_LIFT * ts, hy * ts + ts / 2);
                     lowMesh._ew_lowFloor = true;
                     return lowMesh;
                 }
-                var subGeo = (frac === 0.92) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * frac, ts * frac);
-                var sub = new THREE.Mesh(subGeo, subMat);
+                var subGeo = (frac === HL_BASE_FRAC) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * cov, ts * cov);
+                var sub = _hlFit(new THREE.Mesh(subGeo, subMat), frac, cov, true);
                 sub.rotation.x = -Math.PI / 2;
                 sub.renderOrder = 2;
                 sub.position.set(hx * ts + ts / 2, z * ts * ELEV_STEP_RATIO + yOff, hy * ts + ts / 2);
                 return sub;
             }
         }
-        var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
+        var mesh = _hlFit(new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, cov), mat), frac, cov);
         if (mesh.geometry._ew_rotY !== undefined) mesh.rotation.y = mesh.geometry._ew_rotY;
         /* On a walkable roof, tileTopY is the roof-standing height but the roof
            mesh itself is drawn a hair above it, so lift the highlight clear of
@@ -21677,9 +21712,13 @@ const ThreeRenderer = (function () {
        tex: true (the drape's v runs the other way from a laid-down PlaneGeometry) and optionally uvRot (radians). */
     function _drapedTileMesh(hx, hy, frac, mat, yOff, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        var geo = _buildDrapeGeo(hx, hy, ts, frac);
+        /* THE TILES TOUCH: a highlight plate (the cursor, the underfoot tile) takes the UI Maker's Size; a textured marker never */
+        var isHl = !!(mat && mat.fragmentShader === _hlFragmentShader && !(opts && opts.tex));
+        var cov = isHl ? _hlCover(frac) : frac;
+        var geo = _buildDrapeGeo(hx, hy, ts, cov);
         if (opts && opts.tex) _drapeTexUv(geo, opts.uvRot || 0);
         var m = new THREE.Mesh(geo, mat);
+        if (isHl) _hlFit(m, frac, cov);
         if (m.geometry._ew_rotY !== undefined) m.rotation.y = m.geometry._ew_rotY;
         m.position.set(hx * ts + ts / 2, _drapedTileY(hx, hy, yOff), hy * ts + ts / 2);
         return m;
@@ -23555,7 +23594,8 @@ const ThreeRenderer = (function () {
         });
         /* the tiles: every situation the board paints, each with the board's own recipe */
         var plate = function (c, rw, mat, y, frac) {
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * (frac || 0.92), ts * (frac || 0.92)), mat);
+            var pf = frac || HL_BASE_FRAC, pc = _hlCover(pf);   // THE TILES TOUCH
+            var m = _hlFit(new THREE.Mesh(new THREE.PlaneGeometry(ts * pc, ts * pc), mat), pf, pc, true);
             m.rotation.x = -Math.PI / 2; m.position.copy(at(c, rw, y || 0.6)); m.renderOrder = 2; sc.add(m); return m;
         };
         var typed = function (c, rw, type) { var R = _hlRecipe(type); plate(c, rw, _makeHlMaterial(R.color, R.opacity, R.edgeGlow, R.dotCount, R.style, _hlKindOfType(type))); };
@@ -23613,7 +23653,7 @@ const ThreeRenderer = (function () {
             _hlGlobalTime.value = t;
             _hlLookSync();
             var tv = window._ewTileLookV || 0, av = window._ewArrowLookV || 0;
-            if (tv !== seenT) { seenT = tv; _hlPaint(sc); }
+            if (tv !== seenT) { seenT = tv; _hlPaint(sc); _hlRefit(sc); }
             if (av !== seenA) { seenA = av; buildArrows(); }
             _arrowTick(sink.meshes, sink.dots, t);
             /* the glow breathes as it gathers toward the hit */
@@ -24485,12 +24525,14 @@ const ThreeRenderer = (function () {
         /* THE TWO FLOORS (2026-10-16): the cursor on the ground under a field's deck lies on that ground */
         var _hvLow = _fieldTwoFloorAt(tx, ty) ? _fieldSurfaceY(tx, ty, _hvZ) : null;
         if (_hvLow !== null) {
-            var lm = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95, _hvLow), hMat);
+            var _hvCov = _hlCover(0.95);
+            var lm = _hlFit(new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, _hvCov, _hvLow), hMat), 0.95, _hvCov);
             lm.renderOrder = 2;
             lm.position.set(tx * ts + ts / 2, _hvLow + 0.5 + HL_FIELD_LIFT * ts, ty * ts + ts / 2);
             return lm;
         }
-        var m = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
+        var _hvC2 = _hlCover(0.95);
+        var m = _hlFit(new THREE.Mesh(new THREE.PlaneGeometry(ts * _hvC2, ts * _hvC2), hMat), 0.95, _hvC2, true);
         m.rotation.x = -Math.PI / 2;
         m.renderOrder = 2;
         m.position.set(tx*ts+ts/2, _hvZ * ts * ELEV_STEP_RATIO + 0.5, ty*ts+ts/2);
@@ -35241,11 +35283,14 @@ const ThreeRenderer = (function () {
        shader extras do not (plain colour + sheet there). */
     var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
     var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', lava: 'calm_lava_1.png' };
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_1.png',
+                         scorched: 'calm_scorched_1.png' };
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
     /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
        sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
-    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82], drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
+                  tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
+                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmOn() {
         try {
@@ -65300,7 +65345,8 @@ const ThreeRenderer = (function () {
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
-        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(_CALM.floorT), cliff: new THREE.Color().fromArray(_CALM.cliffT), path: new THREE.Color().fromArray(_CALM.pathT) } : _hqSheetLook(info);
+        var cT = calm ? ((_CALM.tints && _CALM.tints[info.floor]) || _CALM) : null;
+        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(cT.floorT), cliff: new THREE.Color().fromArray(cT.cliffT), path: new THREE.Color().fromArray(cT.pathT) } : _hqSheetLook(info);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
