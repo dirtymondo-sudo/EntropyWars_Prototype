@@ -2629,3 +2629,8 @@ Not run with two seats.
 - No cut-off: the breadcrumb wraps between menu names (`wbr`), a crowded target row drops its last chip (MOVE→CAST) to a
   second line instead of squeezing the turns-away count, the list scrolls only past `--ewd-list-max`.
 - Viewer-local: nothing on state, nothing relayed.
+
+## NO HIT CHANCE ON THE ROOT ATTACK ROW (2026-11-11, mondo: "I dont want the attack accuracy on the main/ top action list, only when i actually click the attack button")
+- hud.js ActionMenu root `attackAction` no longer carries `acc` (the "89–90%" lowest–highest odds of every foe in reach).
+- Kept: each target row after ATTACK is picked (`acc` in the target list, THE HIT CHANCE) and a foe's own quick menu Attack
+  row (the click on that foe already picked the target). Same in Classic and the one battle panel (both draw these rows).

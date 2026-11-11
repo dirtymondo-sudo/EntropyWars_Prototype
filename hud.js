@@ -7044,25 +7044,14 @@ function ActionMenu({ st, hidden }) {
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
   const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit, { combatOnly: true }));
-  /* THE HIT CHANCE on the Attack verb: the odds on every enemy it can swing at from here (one number, or lowest–highest) */
-  let atkAcc = null;
-  if (atkNow && typeof _getAttackValidTargets === 'function') {
-    try {
-      const pcts = _getAttackValidTargets(unit)
-        .filter(t => t.unit && !t.unit.dead && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, t.unit)))
-        .map(t => _hrlgHitPct(unit, t.unit)).filter(v => v != null);
-      if (pcts.length) {
-        const lo = Math.min(...pcts), hi = Math.max(...pcts);
-        atkAcc = (lo === hi ? hi : lo + '–' + hi) + '%';
-      }
-    } catch (e) { atkAcc = null; }
-  }
+  /* NO HIT CHANCE on the Attack verb (mondo 2026-11-11: "I dont want the attack accuracy on the main/ top action list, only
+     when i actually click the attack button"): the odds show on each target row after ATTACK is picked (THE HIT CHANCE in the
+     target list) and on a foe's own quick menu, never on this row */
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
     available: atkReach,
     note: !atkNow && atkReach ? 'MOVE→ATK' : null,
     sub: atkReach ? null : 'No target',
-    acc: atkAcc, accTitle: 'Chance to hit the enemies in reach',
   };
 
   // anyCastableSpellNow (battle.js) is the SAME probe chooseActionMenu gates
