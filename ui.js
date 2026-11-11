@@ -824,7 +824,10 @@
       if (activeRain.length === 0) {
         if (rb.isRain3DActive()) rb.stopRain3D();
       } else {
-        rb.startRain3D(activeRain.map(w => ({ type: w.type, tiles: w.tiles })));
+        // a map-wide rain (state.js weatherRainIsWide: a global storm, the Hurricane) falls on every tile
+        rb.startRain3D(activeRain.map(w => (typeof window.weatherRainIsWide === 'function' && window.weatherRainIsWide(w) && typeof window.allWeatherBoardTiles === 'function')
+          ? { type: w.type, tiles: window.allWeatherBoardTiles(), global: true }
+          : { type: w.type, tiles: w.tiles }));
       }
     }
 

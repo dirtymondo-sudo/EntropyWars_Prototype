@@ -1735,6 +1735,54 @@ back to what they were".
   (elbows out, reads as hands on hips), Old (hunched), Strutting (arms flail), Stiff + ArmsBySide (same as Neutral).
   Review sheets: /mnt/project-files/mocap-rev2/s100_*.png.
 
+## THE MESHY ANIMATION PULL (2026-11-11) — libs 7 + 8 (MAL4_Sniper.glb, MAL5_Sniper.glb)
+mondo: "With Meshy animations, I was only able to download 20 at a time with the Sniper ... are you able to go on there and download more
+animations that would be useful and give different units more personality with their walks and idles and spells and attacks".
+- YES, through the Meshy API (api.meshy.ai is a connected service in the cloud environment: the Network secret adds the key, send any
+  dummy Bearer). `GET /openapi/v1/animations/library` = 678 clips (action_id, key, category; free). ONE rigging task on the male sniper
+  (`POST /rigging {model_url: his Idle_5 _withSkin GLB on the CDN}`, 5 credits, task 01a1c9cb-7b9c-7114-9415-a804d3fe308e, expires on
+  Meshy's side after a while: the tool rigs again), then `POST /animations {rig_task_id, action_ids: [up to 10]}` = one GLB per batch,
+  one clip per action already named by the library key, 3 credits a clip. This pull: 130 clips, 395 credits (15,781 -> 15,386).
+- TOOLS (repo root): `python3 pull-meshy-anims.py meshy-anim-pull.json <out dir> [set...]` (`--library` prints Meshy's list; the spec
+  holds the sets of action_ids), then `python3 -I build-mal.py <out.glb> <batch.glb...> [--inplace clips] [--drop clips] [--report j]`
+  packs them animation-only like MAL1-3 (26 nodes, no mesh; scale tracks and the constant bone-offset tracks dropped: 53 clips = 2.8 MB).
+- THE TRAVEL: about half of Meshy's walks and every sprint carry root motion (hips end 0.5-2.9 m away). `--inplace` takes the
+  straight-line travel out of the Hips track (Elderly_Shaky_Walk, Limping_Walk, Sneaky_Walk, Stylish_Walk, walking_2,
+  Cautious_Crouch_Walk_Forward, Stumble_Walk, Funky_Walk, the 6 sprints). The combat clips in MAL5 keep their travel (use pinXZ / pinHips
+  on the slot). Dropped from MAL4: Catching_Breath (runs 4.4 m then stops), Stage_Walk (4 m, uneven), Idle_13 (= mage_soell_cast_5).
+- THE STRIDE: build-mal.py measures one stride cycle by forward kinematics (left foot minus right foot along +Z from the hips, upward
+  zero crossings); a walk's board `ts` = cycle / 0.52, capped at 3.6 (Sneaky, Slow orc, Elderly are slow walks). Limping_Walk's leg
+  tracks are too flat for the measure: 1.75 s read off the frame sheet.
+- MAL4 (lib 7, 53): Idle, Idle_02, Idle_03, Idle_3, Idle_4, Idle_6, Idle_7, Idle_8, Idle_9, Idle_12, Idle_14, Idle_15, Alert, Combat_Stance,
+  Axe_Stance, Long_/Short_/Axe_Breathe_and_Look_Around, Confused_Scratch, Scheming_Hand_Rub, Hand_on_Hip_Gesture, Boxing_Warmup;
+  Casual_Walk, Confident_Walk, Confident_Strut, Flirty_Strut, Injured_Walk, Monster_Walk, Mummy_Stagger, Proud_Strut, Quick_Walk,
+  Red_Carpet_Walk, Slow_Orc_Walk, Thoughtful_Walk, Unsteady_Walk, Elderly_Shaky_Walk, Limping_Walk, Sneaky_Walk, Stylish_Walk, walking_2,
+  Walk_Fight_Forward, Cautious_Crouch_Walk_Forward, Spear_Walk, Stumble_Walk, Funky_Walk; Run_02, Run_03, Lean_Forward_Sprint,
+  Standard_Forward_Charge, Male_/Female_Head_Down_Charge, run_fast_2, run_fast_3.
+- MAL5 (lib 8, 74): casts Charged_Spell_Cast_1, mage_soell_cast_5, mage_soell_cast_8, Skill_02, Crouch_Charge_and_Throw,
+  Jump_and_Slam_Back_Down; attacks Attack, Double_Blade_Spin, Double_Combo_Attack, Left_Slash, Simple_Kick, Side_Shot, Triple_Combo_Attack,
+  Counterstrike, Dodge_and_Counter, Flying_Fist_Kick, Reaping_Swing, Left_Jab_/Left_Hook_/Right_Uppercut_from_Guard, Lunge_Roundhouse_Kick,
+  Elbow_Strike, Leg_Sweep, High_Kick, Lunge_Spin_Kick, Punch_Forward_with_Both_Fists, Charged_Axe_Chop, Axe_Spin_Attack, Weapon_Combo,
+  Weapon_Combo_2, Archery_Shot, Draw_and_Shoot_from_Back, Draw_and_Shoot_Left, Crouch_Pull_and_Throw, Over_Shoulder_Throw,
+  Grip_and_Throw_Down, baseball_pitching, Double_kick_forward; hits + deaths Hit_Reaction, Electrocution_Reaction, Hit_Reaction_to_Waist,
+  Face_Punch_Reaction_1/_2, Knock_Down, dying_backwards, Shot_and_Fall_Backward/_Forward, Electrocuted_Fall,
+  Fall_Dead_from_Abdominal_Injury, Shot_and_Blown_Back, Strangled_and_Fall_Forward; guards Block1, Block2, Block4, Sword_Parry,
+  Two_Handed_Parry, Stand_Dodge_1, Roll_Dodge, Quick_Step_and_Spin_Dodge; emotes Chest_Pound_Taunt, Victory_Cheer, Victory_Fist_Pump,
+  victory, Neck_Slashing_Gesture, Show_Both_Arm_Muscles, Formal_Bow, Gentlemans_Bow, Shrug, Finger_Wag_No, Angry_Stomp, Shouting_Angrily,
+  Zombie_Scream, Wave_One_Hand, Agree_Gesture.
+- WIRED (sprites.js): EW_ANIM_LIB_URLS 7 + 8; CREATOR PICKS ONLY (his 11-05 rule: no race default changes): 16 idles in EW_IDLE_POSES
+  (ids MAL_<clip>: Meshy calm / still / arms out / idle 7 / 9 / 12, Breathe long / short, Hunched breathing, Look around, Alert, Fight
+  ready, Combat stance, Head scratch, Hand on hip, Hand rub) and 19 walks in EW_WALK_STYLES (Casual, Meshy walk 2, Quick, Proud strut,
+  Confident strut, Stylish, Flirty strut, Thoughtful, Marching, Fighting advance, Crouched, Sneaky, Monster, Slow orc, Mummy, Unsteady,
+  Injured, Limping, Elderly). Not offered as picks (still in the file): the idles that turn round / bend back / jump / crouch-rise, the
+  walks with a hand gesture (Confident_Walk, Red_Carpet_Walk), Stumble_Walk, Funky_Walk, the runs.
+- NOT DONE: no MAL5 clip is on a slot. They show in the spell editor's clip picker (EWCharViewer.libClips) and can go on a character with
+  `lib: {slot: {clip, lib: 8, ts, strikeAt}}`; each needs its strike frame read off a sheet first (THE STRIKE FRAME). The library files
+  load with the others at start (2.8 + 3.7 MB before the edge's brotli, once, then the asset store keeps them).
+- PROOF: frame sheets of every clip on the sniper /mnt/project-files/meshy-anim-pull-20261111/sheets/; the real creator (WebGL2,
+  software GL) with picks made by clicking the rows /mnt/project-files/meshy-anim-pull-20261111/proof/. Board play of a picked walk was
+  not looked at.
+
 ## THE CHRISTMAS PACK IS Y-UP (2026-11-05)
 mondo's console showed `THREE.ColladaLoader: You are loading an asset with a Z-UP coordinate system ... see #24289` (and the parser's
 `File version 1.4.1` debug line) on every load. The only COLLADA file in the game is the Christmas pack

@@ -2162,6 +2162,7 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 ## THE PLAYER'S TACTICS (auto battle) (2026-10-23, mondo: "for the player to be able to apply them to their units so they dont have to manually fight for them, like they can be on auto battle") — battle.js, hud.js, online.js
 - **Set it.** Root verb ♟ TACTICS (hud.js `_hrlgTacticPartyBlades` + `_hrlgTacticBlades`): the party list (acting unit first, each with its Tactic) and beside it MANUAL + the six AI_TACTICS rows for the picked unit. Picking for the acting unit hands the turn to the AI at once; for a teammate it applies on its next turn. Not on Mystery Dungeon (own chips) or in the tutorial.
 - **Engine.** battle.js `setUnitTactic(id, tactic|null)` writes `unit.tactic`; `unitOnTactic(u)` is the gate (battle phase, controller ≠ AI, not possessed, not MD/tutorial) and is folded into `_mdUnitAuto`, so every AI-routing path (activation, `_shouldAIRun`, runComputerTurn, stall watchdog, safety timer, selectUnit, imitation skip, ActionMenu/turn column) covers it. `unitTacticProblem` greys Siege (no enemy Cube), Search (mode has no Keys), Intercept (neither), Heal (no heal/healAll/selfHeal/revive/zoneHeal/seedHeal kind and no Healing Potion — the Heal job's own list). MANUAL mid-turn: `_tacticWhenIdle` waits for the AI's step to finish, then restarts the shot clock + selects the unit. The tactic survives death/respawn (same unit object).
+- **TAKING A UNIT OFF AUTO (2026-11-11, mondo: "Need there to be an easy way to take a unit off of auto tactics, I can turn them on easily but once they are on it's hard to stop bc they just go on auto").** Measured: an auto turn lasts 1-4 s and MANUAL was one row of seven in a window that only stood during that unit's own turn. Now: (1) **the AUTO lamp** — hud.js `TurnIcon` wraps `TurnIconBody`; every unit of the viewer's that is `unitOnTactic` carries a lit `AUTO ✕` button (`.ew-tc-auto`) beside its turn-order icon on every turn; one click = `_ewTakeControl([id], true)` = `setUnitTactic(id, null)` (online.js sends a guest's click as `setTactic`; the enemy never sees your lamps). (2) **TAKE CONTROL** — `TacticWatch` shows a green `.hrlg-confirm.takectl` + `ALL MANUAL · N ON AUTO` (`.hrlg-allman`) beside the top of the list (`.hrlg-tacwatch-btns`, absolute, so the seven rows keep their room); the watch has its own 200 ms tick so it leaves at the turn handoff. (3) **ALL MANUAL** row under the Tactics menu's party list (`_ewTacticUnits` = fallen units too; battle.js `setUnitTactic` + online.js now let a FALLEN unit go back to MANUAL, never onto a Tactic). (4) battle.js `queueComputerAction` drops a queued AI step when the unit was on a Tactic at queue time and is MANUAL when it would begin (nothing spent; setUnitTactic's hand-back selects the unit). Kept: the TACTICS verb, the MANUAL row, the Mystery Dungeon chips. Proof `/mnt/project-files/auto-tactics-off-20261111/` (VS CPU + friendly room, both seats, WebGL2). Not done: no keyboard key for it; the lamp of an icon folded into "+N" is not shown (ALL MANUAL covers it).
 - **During its turn.** hud.js `TacticWatch`: the command menu's spot shows "<name> · <TACTIC>", `aiTacticReason`, and the Tactic list (MANUAL = take control). The prompt bar is silent for a Tactic unit.
 - **Online.** The host owns unit.tactic (plain unit data → state-sync). Guest picks emit `game-action {type:'setTactic'}`; host handler checks the unit is the sender's (any time, not only its turn). The guest's units on a Tactic are played by the host's AI like the whole-side Auto mode.
 
@@ -5085,6 +5086,20 @@ now: cut to the close-up, cut back to the player's own angle on the shielded uni
 Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
 seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
 
+## THE HURRICANE'S RAIN (2026-11-11)
+mondo: "During a hurricane, there is rain on the screen, but I saw some grass tiles on fire ... Rain should always put out fire."
+- Cause: the Hurricane is a homing storm, so `w.tiles` is only its eye square; `soaks` only reached that one square while the
+  rain column was drawn over it and read as rain over the board. Thunderstorm and Blood Rain are `global`, so they were fine.
+- Fix: state.js WEATHER_REGISTRY.hurricane `rainWide: true` + `weatherRainIsWide(w)` (global OR def.rainWide), read by
+  `weatherRainsOnTile` and the round-start soak in `applyWeatherTurnEffects`. So under a Hurricane, on every unroofed square:
+  ground fire goes out when it forms and every round end (rainOnTheBoard), no new ground fire (igniteTile / _ewRainOnTile),
+  burning units doused, grounded units Wet each round, fight lava hardens: exactly the Thunderstorm's rain rules.
+- NOT `global`: the eye, the fling, the -10 DEF and the flooded trail stay local.
+- The rain is drawn map-wide too (three-renderer.js rain zones, ui.js 2D path), nothing removed.
+- Audit: Thunderstorm, Blood Rain = global + soaks (fine). Blizzard = snow, freezes its trail (ice on fire = water, PR #974).
+  Tesseract Storm = geometry shards, not water. Hurricane has no Summon spell (natural roll only).
+- Proof (VS CPU, Mount Shasta Arena): /mnt/project-files/hurricane-rain-20261111/.
+
 ## THE SIX RULE ANSWERS (2026-11-10, mondo's answers on the "PvP demo set and open rules" doc: 1B 2A 3A 4A 5A 6C 7B 8B 9A 10B 11B 12A)
 Kept as they were (A): delayed blasts hit enemies only (2), Guard restores twice (3), a thrown body can land on an ally (4), a
 tackle into a wall pays its bonus and the slam (5), Marked is used up by a physical hit / basic attack only (9), the R10 storm bolt
@@ -5121,3 +5136,26 @@ Two-seat check of rule 7 B found the guest got no reason when it clicked its cha
   unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
 - Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
   log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
+
+## THE ZONE STEPS (2026-11-11) — a zone on dug / raised ground
+
+mondo (Fairy Forest Arena, Firefox webgpu): "fix how the nexus zone looks all janky whenever the terrain is raised or lowered. The
+outline of the nexus should always look straight and sleek even when the terrain its on gets deformed. And the nexus yellow should
+always cover the 4 tiles it is on ... and not get torn and jagged on the ridges."
+
+- Cause (three-renderer.js): each zone tile wore the move tiles' drape (`_buildDrapeGeo`, 6 × 6). THE CLIFF LINE holds every vertex
+  past a step steeper than 1.2; since THE FULL BLOCK a dig is a whole square deep (wall slope ~2.5), so the plate stayed flat at the
+  pit's floor and the bowl's wall stood through its outer third. A raised block's plate followed the room's lumps under the block's
+  flat top (most of it buried). TDM's spawn strips never rebuilt on a terrain change at all.
+- Fix: `_zoneStepGeo` — every zone on the true ground (the nexuses, the Arena spawn nexuses, the roaming nexus, TDM's spawn strips) is
+  ONE geometry over its tiles, 12 × 12 a square, read from the ground as the floor mesh draws it (`_fieldGroundSampler` bare + drawn).
+  THE FILL lies on the drawn ground (down a dig's wall, flat on a block's top) and stands as a wall on a block's side inside the zone.
+  THE RIM BAND (`_zoneStepBand`: the look's rim width) lies on the ground as it was before the dig, lowered by whole blocks only as far
+  as it can go without being buried (one level per tile), a curtain of fill joining it to the fill below; where two tiles' rims differ
+  the rim turns down the corner (the wall between them + a post on the outer face). Same two materials / maps as before (THE ZONE
+  LOOK), so WebGL2 and WebGPU draw the same thing. `_nxStepGeo` keeps a zone's geometry while `_zoneStepSig` holds (tiles, the tops
+  and digs of each tile and the eight round it, the skin line).
+- Old per-tile drape still draws: the two columns' boards, a tile under a deck (THE ZONE ON THE GROUND), `window.EW_NO_ZONE_STEPS`.
+- Hashes: `_nexusTopsHash` reads the diagonals too; `_spawnTopsHash` is new (a dig under a TDM strip rebuilds it).
+- Known: one rim level per tile, so a crater whose edge crosses a zone leaves that tile's rim a block over the crater floor (curtain
+  under it). Light walls (UI Maker, default 0) still stand on the tile tops. Proof (WebGL2 headless): /mnt/project-files/nexus-zone-steps/.

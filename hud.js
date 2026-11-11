@@ -1930,7 +1930,61 @@ function _tcPeek(unitId) {
 
 const TC_MAX = 46, TC_MIN = 26, TC_GAP = 6;
 
-function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
+/* ♟ THE AUTO LAMP (mondo 2026-11-11: "Need there to be an easy way to take a unit off of auto tactics, I can turn them
+   on easily but once they are on it's hard to stop bc they just go on auto"): every unit of YOURS that is on a Tactic
+   (battle.js unitOnTactic) carries a lit AUTO lamp beside its turn-order icon, on every turn (yours, the enemy's, its
+   own). One click on the lamp sets it back to MANUAL (setUnitTactic(id, null): online.js sends a guest's click to the
+   host); if it is acting right now the AI finishes the step it is on and the rest of the turn is yours. */
+function _ewAutoUnits(st) {
+  if (!st || st.phase !== 'battle' || st.winner || typeof unitOnTactic !== 'function') return [];
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  if (st.autoPlayers && st.autoPlayers[viewer]) return [];
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  return (st.units || []).filter(u => u && !u.dead && !u._dying && u.player === viewer && home(u) === viewer && unitOnTactic(u));
+}
+/* every unit of the viewer's that carries a Tactic, the fallen ones too (they would respawn still on it): ALL MANUAL */
+function _ewTacticUnits(st) {
+  if (!st || st.phase !== 'battle' || st.winner) return [];
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  return (st.units || []).filter(u => u && u.tactic && home(u) === viewer && (u.dead || u.player === viewer));
+}
+function _ewTakeControl(ids, toRoot) {
+  let n = 0;
+  (ids || []).forEach(id => { if (typeof setUnitTactic === 'function' && setUnitTactic(id, null)) n++; });
+  /* from the lamp / TAKE CONTROL the hand-back lands on the command menu, not on a Tactics menu left open (a guest
+     keeps its own menu view: the host only sends the unit back) */
+  if (n && toRoot) { try { if (typeof state !== 'undefined' && state && state.actionMenuView === 'tactics') state.actionMenuView = 'root'; } catch (e) {} }
+  if (n && typeof playSfx === 'function') playSfx('uiButtonConfirm');
+  if (typeof markDirty === 'function') markDirty('hud');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+  return n;
+}
+window._ewAutoUnits = _ewAutoUnits;
+window._ewTakeControl = _ewTakeControl;
+
+function TurnIcon(props) {
+  const u = props.e.unit;
+  const icon = h(TurnIconBody, props);
+  if (props.foe || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return icon;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
+  if (u.player !== viewer || home !== viewer) return icon;
+  const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
+  const tac = typeof _hrlgTacticLabel === 'function' ? _hrlgTacticLabel(u.tactic).toUpperCase() : 'AUTO';
+  return h('div', { className: 'ew-tc-row' },
+    icon,
+    h('button', {
+      type: 'button', className: 'ew-tc-auto' + (props.now ? ' now' : ''), 'data-uid': String(u.id),
+      title: name + ' is on AUTO (' + tac + '). Click to take control.',
+      onClick: (ev) => { ev.stopPropagation(); ev.preventDefault(); _ewTakeControl([u.id], true); },
+    },
+      h('span', { className: 'ew-tc-auto-lbl' }, 'AUTO'),
+      h('span', { className: 'ew-tc-auto-x' }, '✕'),
+    ),
+  );
+}
+function TurnIconBody({ e, size, now, next, foe, forecast, inspecting }) {
   const u = e.unit;
   const ac = getAllianceColor(u);
   const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
@@ -5838,6 +5892,13 @@ function _hrlgTacticPartyBlades(unit, st) {
         if (typeof renderIfDirty === 'function') renderIfDirty();
       },
     };
+  });
+  /* ALL MANUAL (mondo 2026-11-11): one row under the party takes every unit off its Tactic at once */
+  const _auto = _ewTacticUnits(st);
+  if (_auto.length) blades.push({
+    id: 'tp:allmanual', icon: _HRLG_TACTIC_ICON.manual, label: 'All manual', available: true,
+    meta: { text: _auto.length + ' AUTO', color: '#f2c468' },
+    fire: () => { _ewTakeControl(_auto.map(u => u.id)); },
   });
   return { title: { icon: '♟', text: 'Tactics', count: party.length + '' }, blades };
 }
@@ -11573,6 +11634,10 @@ function QuickPeek({ st }) {
    It stays up through the AI's whole turn (the AI acts back to back, so a window that hid with each animation was
    never clickable); spell close-ups still fade it (body.ew-spell-shot). */
 function TacticWatch({ st }) {
+  /* its own slow tick: the window must leave the moment the Tactic unit's turn is over (nothing else redraws the HUD
+     at that handoff, and a TAKE CONTROL left standing over the next unit's turn would name the wrong unit) */
+  const [, _twTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => _twTick(n => (n + 1) % 1000000), 200); return () => clearInterval(t); }, []);
   if (!st || st.phase !== 'battle' || st.winner) return null;
   const u = (st.units || []).find(x => x.id === st._blitzActiveUnitId && !x.dead && !x._dying);
   if (!u || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return null;
@@ -11581,6 +11646,7 @@ function TacticWatch({ st }) {
   if (u.player !== viewer || home !== viewer) return null;
   if (st.autoPlayers && st.autoPlayers[u.player]) return null;
   const built = _hrlgTacticBlades(u, st, u);
+  const autos = _ewTacticUnits(st);
   let why = null;
   try { why = typeof window.aiTacticReason === 'function' ? window.aiTacticReason(u) : null; } catch (e) { why = null; }
   const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
@@ -11596,6 +11662,22 @@ function TacticWatch({ st }) {
           ),
         ),
         why ? h('div', { className: 'hrlg-mode' }, String(why)) : null,
+        /* TAKE CONTROL (mondo 2026-11-11): the one big green button, beside the top of the list (never in it: the
+           seven rows keep their room), so stopping an AUTO unit is never a hunt for the MANUAL row while it plays;
+           ALL MANUAL under it when teammates are on a Tactic too */
+        h('div', { className: 'hrlg-tacwatch-btns' },
+          h('div', {
+            className: 'hrlg-confirm takectl', title: 'Set ' + name + ' back to MANUAL: the rest of this turn is yours',
+            onClick: () => { _ewTakeControl([u.id], true); },
+          },
+            h('span', { className: 'hrlg-confirm-check' }, '✓'),
+            h('span', { className: 'hrlg-confirm-lbl' }, 'TAKE CONTROL', h('span', { className: 'hrlg-confirm-tgt' }, ' — ' + name)),
+          ),
+          autos.length > 1 ? h('div', {
+            className: 'hrlg-allman', title: 'Set every unit of yours back to MANUAL',
+            onClick: () => { _ewTakeControl(autos.map(x => x.id), true); },
+          }, 'ALL MANUAL · ' + autos.length + ' ON AUTO') : null,
+        ),
         h('div', { className: 'hrlg-list' },
           built.blades.map((b, i) => h(HorologeBlade, {
             key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
@@ -13891,6 +13973,41 @@ function _hudHideCss() {
     @keyframes ewTcIn { 0% { opacity: 0; transform: translateY(-6px) scale(0.8); } 100% { opacity: 1; transform: none; } }
     .ew-tc-icon:hover { transform: scale(1.12); }
     .ew-tc-icon:active { transform: scale(0.96); }
+    /* ♟ THE AUTO LAMP (TurnIcon): a small lit window beside a unit that is on a Tactic; a click takes control */
+    .ew-tc-row { position: relative; display: flex; align-items: center; gap: 3px; flex: none; }
+    .ew-tc-auto {
+      flex: none; pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      height: 15px; padding: 0 4px; margin: 0; white-space: nowrap;
+      font: 700 8px/1 'IBM Plex Mono', monospace; letter-spacing: 0.06em; color: #ffd98a;
+      background: linear-gradient(180deg, #2a1d06 0%, #140d02 100%);
+      border: 1px solid #f2c468; border-radius: 3px;
+      box-shadow: 0 0 8px rgba(242,196,104,0.45), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.6);
+      transition: filter 0.12s ease, transform 0.12s ease;
+    }
+    .ew-tc-auto { animation: ewTcAutoLamp 1.4s ease-in-out infinite; }
+    .ew-tc-auto.now { animation-duration: 0.5s; }
+    @keyframes ewTcAutoLamp { 0%, 100% { box-shadow: 0 0 9px rgba(242,196,104,0.7), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.6); } 50% { box-shadow: 0 0 2px rgba(242,196,104,0.2), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.6); } }
+    .ew-tc-auto-x { color: #ff7a6a; font-size: 9px; font-weight: 700; }
+    .ew-tc-auto:hover { filter: brightness(1.35); transform: scale(1.08); border-color: #ff7a6a; }
+    .ew-tc-auto:hover .ew-tc-auto-lbl { color: #fff; }
+    .ew-tc-auto:active { transform: scale(0.95); }
+    /* ♟ the Tactic watch's TAKE CONTROL (the green CONFIRM look) + ALL MANUAL under it */
+    .hrlg-tacwatch-btns {
+      position: absolute; left: calc(100% + 10px); top: 34px; z-index: 6; pointer-events: none;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: max-content;
+    }
+    .hrlg-tacwatch-btns .hrlg-confirm.takectl { margin: 0; min-width: 0; width: max-content; pointer-events: auto; }
+    .hrlg-allman {
+      position: relative; margin: 0; height: 30px; flex: none; width: max-content;
+      box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 12px;
+      pointer-events: auto; cursor: pointer; z-index: 3; white-space: nowrap;
+      font: 700 11px/1 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: #ffd98a;
+      background: linear-gradient(100deg, #2a1d06 0%, #140d02 100%);
+      border: 1px solid #f2c468; border-left: 3px solid #f2c468; border-radius: 6px 15px 15px 6px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .hrlg-allman:hover { filter: brightness(1.35); }
+    .hrlg-allman:active { transform: translateY(2px); }
     .ew-tc-icon.spent { opacity: 0.5; filter: saturate(0.4); }
     .ew-tc-icon.spent:hover { opacity: 0.9; filter: none; }
     .ew-tc-icon .ew-pp, .ew-tc-icon .ew-pp.active, .ew-tc-icon .ew-pp:hover { pointer-events: none; transform: none; }

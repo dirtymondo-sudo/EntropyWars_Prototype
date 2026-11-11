@@ -4058,7 +4058,71 @@ const ThreeRenderer = (function () {
         '  totalEmissiveRadiance += vec3(1.0, 0.45, 0.1) * (smoothstep(0.45, 0.95, ewHeat) * 0.7);\n' +
         '}\n';
 
+    /* THE CALM GROUND's water + lava (see THE CALM GROUND by _hzTex): built in place of the sheet liquids on a calm board.
+       WATER: a dark, see-through body (the bed shows a little) whose surface normal moves — three octaves of value noise sliding
+       at different speeds and directions, in squares (uFluidTile), so a pool and a brook ripple as one sheet — the room's own lights
+       give the sun glints off it (Phong, tight highlight), and the sky's sheen rises toward grazing angles (Schlick fresnel). No
+       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava (a cooling basalt crust, glowing seams)
+       one sheet per square, slowly warped so the crust creeps, the seams glowing from the sheet's own heat with a slow pulse; the
+       crust stays dark (environment value), only the heat is bright. On WebGPU the extras are skipped: the water is its flat colour,
+       the lava its sheet + the sheet as its glow. */
+    var _CALM_NOISE_GLSL =
+        'float cHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }\n' +
+        'float cNoise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);\n' +
+        '  return mix(mix(cHash(i), cHash(i + vec2(1.0, 0.0)), u.x), mix(cHash(i + vec2(0.0, 1.0)), cHash(i + vec2(1.0, 1.0)), u.x), u.y); }\n' +
+        'float cRip(vec2 p, float t) { return cNoise(p * 6.0 + vec2(t * 0.55, t * 0.31)) * 0.55 + cNoise(p * 13.0 - vec2(t * 0.9, -t * 0.47)) * 0.3\n' +
+        '  + cNoise(p * 29.0 + vec2(-t * 1.4, t * 1.1)) * 0.15; }\n';
+    function _calmFluidMat(key) {
+        var lava = (key === 'lava'), deep = (key === 'deep_water'), mat;
+        if (lava) {
+            var tex = _hzTex('lava');   // calm_lava (calm board): trilinear, its own cache entry
+            mat = new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.85, emissiveMap: tex || null });
+        } else {
+            mat = new THREE.MeshPhongMaterial({ color: deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
+                                                transparent: true, opacity: deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
+        }
+        var night = ((document.body && document.body.dataset && document.body.dataset.cycle) || 'day') === 'night';
+        var sky = new THREE.Color(night ? 0x2a3a52 : 0x9db4c2);
+        mat.onBeforeCompile = function (sh) {
+            sh.uniforms.uFluidTime = _fluidTimeUniform; sh.uniforms.uFluidTile = _fluidTileUniform;
+            if (!_fluidFlowUniform.value) _fluidFlowUniform.value = new THREE.Vector2(0, 0);
+            sh.uniforms.uFluidFlow = _fluidFlowUniform;
+            sh.uniforms.uCalmSky = { value: sky }; sh.uniforms.uCalmGlow = { value: _CALM.lavaGlow };
+            sh.vertexShader = 'varying vec3 vCalmW;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvCalmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL;
+            var f = head + sh.fragmentShader;
+            if (lava) {
+                f = f.replace('#include <map_fragment>',
+                    'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
+                    'float cT = uFluidTime;\n' +
+                    'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
+                    '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
+                    'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
+                    'diffuseColor.rgb *= cLa * 0.9;\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow;\n');
+            } else {
+                f = f.replace('#include <map_fragment>',
+                    '#include <map_fragment>\n' +
+                    'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
+                    'float cT = uFluidTime;\n' +
+                    'float cE = 0.012, cH0 = cRip(cP, cT);\n' +
+                    'vec3 cNw = normalize(vec3(-(cRip(cP + vec2(cE, 0.0), cT) - cH0) / cE * 0.05, 1.0, -(cRip(cP + vec2(0.0, cE), cT) - cH0) / cE * 0.05));\n' +
+                    'diffuseColor.rgb *= 0.88 + 0.22 * cNoise(cP * 0.9 + vec2(cT * 0.03, cT * 0.02));\n')
+                .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize( ( viewMatrix * vec4( cNw, 0.0 ) ).xyz );\n')
+                .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' +
+                    '{ vec3 cV = normalize(cameraPosition - vCalmW); float cFr = 0.04 + 0.96 * pow(1.0 - clamp(dot(cNw, cV), 0.0, 1.0), 5.0);\n' +
+                    '  vec3 cR = reflect(-cV, cNw); float cSk = cNoise(cR.xz / max(cR.y, 0.2) * 1.3 + vec2(cT * 0.02, cT * 0.012));\n' +
+                    '  totalEmissiveRadiance += uCalmSky * (cFr * 0.55 + 0.05 * (0.4 + cSk)); diffuseColor.a = mix(diffuseColor.a, 1.0, cFr * 0.6); }\n');
+            }
+            sh.fragmentShader = f;
+        };
+        mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
+        mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
+        return mat;
+    }
+
     function _buildFluidTopMat(terrainKey) {
+        if ((terrainKey === 'water' || terrainKey === 'deep_water' || terrainKey === 'lava') && _calmOn()) return _calmFluidMat(terrainKey);   // THE CALM GROUND
         /* Tinted liquids (poison bogs / black ooze / oil) ride the WATER
            textures with a material tint — see _LIQUID_STYLES. */
         var style = _LIQUID_STYLES[terrainKey] || null;
@@ -11746,6 +11810,7 @@ const ThreeRenderer = (function () {
             for (var j = 0; j < tl.length; j++) {
                 var x = tl[j].x, y = tl[j].y;
                 h = _hashInt(h, top(x, y)); h = _hashInt(h, top(x - 1, y)); h = _hashInt(h, top(x + 1, y)); h = _hashInt(h, top(x, y - 1)); h = _hashInt(h, top(x, y + 1));
+                h = _hashInt(h, top(x - 1, y - 1)); h = _hashInt(h, top(x + 1, y - 1)); h = _hashInt(h, top(x - 1, y + 1)); h = _hashInt(h, top(x + 1, y + 1));   // THE ZONE STEPS: a dig's wall leans in from a corner too
             }
         }
         _nexusTopsKey = vk; _nexusTopsVal = h;
@@ -12340,6 +12405,239 @@ const ThreeRenderer = (function () {
         uv.needsUpdate = true;
         return g;
     }
+    /* ══ THE ZONE STEPS (2026-11-11, mondo on Fairy Forest Arena: "fix how the nexus zone looks all janky whenever the terrain is
+       raised or lowered. The outline of the nexus should always look straight and sleek even when the terrain its on gets deformed.
+       And the nexus yellow should always cover the 4 tiles it is on, no matter the deformation, and not get torn and jagged on the
+       ridges") ══
+       A zone tile's plate was the move tiles' drape: 6 × 6, the dig's bowl read exactly and THE CLIFF LINE holding every vertex past
+       a steep step. Since THE FULL BLOCK a dig is a whole square deep, its wall is steeper than the cliff line allows, so the plate
+       stayed flat at the pit's floor and the wall stood through its outer third (the torn fill, the rim lost in the bank); a raised
+       block's plate followed the room's own lumps UNDER the block's flat top (no yellow on a raise at all). Now a zone on the true
+       ground is ONE surface over all its tiles, built from the ground as the floor mesh draws it (THE TRUE DRAPE's reads, 12 × 12 a
+       square, the room's own sheer faces still held by THE CLIFF LINE on the ground without the dig):
+         · THE FILL lies on the drawn ground everywhere: down a dig's wall, over its floor, flat on a raised block's top, and stands
+           as a wall of fill on a block's side where the zone goes on below it — no part of the tiles is left bare.
+         · THE RIM (the band along the zone's outer edge, as wide as the look's rim) never follows a dig: it lies on the ground as it
+           was, lowered by whole blocks only as far as it can go without being buried (a crater that takes the tile and the
+           ground past it lowers the rim with it; a pit beside standing ground leaves it where it was, over the pit's wall), and a
+           curtain of fill joins it to the fill under it. On a raised block it runs the block's top edge. Where two tiles' rims sit
+           at different levels the rim turns down the corner between them (the block's side inside the zone, a post on its outer face).
+       The look itself (the two layers, their maps, colours, pulse) is untouched; the old per-tile drape still draws a tile on the
+       columns' boards, on a deck (THE ZONE ON THE GROUND) or with the switch window.EW_NO_ZONE_STEPS. */
+    var ZONE_STEP_SEGS = 12;
+    function _zoneStepsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ZONE_STEPS); }
+    function _zoneStepTileOk(x, y) {
+        if (!_zoneStepsOn() || !_fieldGroundLive()) return false;
+        var G = _fieldGround();
+        if (!G || x < 0 || y < 0 || x >= G.W || y >= G.H) return false;
+        var t = G.yAt(x, y);
+        if (t === null || t === undefined || !isFinite(t)) return false;
+        return !_fieldTwoFloorAt(x, y);
+    }
+    /* what a zone's surface is built from: its tiles and, for each and the eight round it, the top, the dig / raise and the skin */
+    function _zoneStepSig(tiles, B, ts, P) {
+        var G = _fieldGround(), h = 41, i, dx, dy;
+        var mnd = (typeof state !== 'undefined' && state) ? state.moundTiles : null, gap = (typeof state !== 'undefined' && state) ? state.gapTiles : null;
+        for (i = 0; i < tiles.length; i++) {
+            var x = tiles[i].x, y = tiles[i].y;
+            h = _hashInt(h, x); h = _hashInt(h, y);
+            for (dy = -1; dy <= 1; dy++) for (dx = -1; dx <= 1; dx++) {
+                var nx = x + dx, ny = y + dy;
+                if (!G || nx < 0 || ny < 0 || nx >= G.W || ny >= G.H) { h = _hashInt(h, -7); continue; }
+                var t = G.yAt(nx, ny), k = nx + ',' + ny;
+                h = _hashInt(h, (t === null || t === undefined) ? -9 : Math.round(t * 4));
+                h = _hashInt(h, Math.round(G.deltaAt(nx, ny) * 4) + ((mnd && mnd[k]) ? 1000 : 0) + ((gap && gap[k]) ? 2000 : 0));
+            }
+            var sk = _hlSkinTopY(x, y);
+            h = _hashInt(h, sk === null ? -5 : Math.round(sk * 4));
+        }
+        return h + '|' + tiles.length + '|' + B.x0 + ',' + B.y0 + ',' + B.W + ',' + B.H + '|' + ts + '|' + _zoneStepBand(P) + '|' + _fieldGroundCache.key + '|' + (_trueDrapeOn() ? 1 : 0);
+    }
+    /* the rim band's width in grid steps: the look's rim (its inset + its line) and a little air */
+    function _zoneStepBand(P) {
+        var rimEnd = P.rimIn + P.rimW * (P.rimStyle === 'double' ? 2.1 : 1);
+        return Math.max(1, Math.min(5, Math.ceil((rimEnd + 0.02) * ZONE_STEP_SEGS - 1e-6)));
+    }
+    /* one zone's surface, in the battle's frame (the mesh sits at the origin); UVs on the zone's map like _nxZoneTileGeo */
+    function _zoneStepGeo(tiles, B, ts, P) {
+        var G = _fieldGround(), fn = _fieldGroundSampler(); if (!G || !fn || !tiles.length) return null;
+        var ctx = _trueDrapeOn() ? _fieldDrawnCtx() : undefined, mnd = _fieldMoundPlanLive();
+        var S = ZONE_STEP_SEGS, S1 = S + 1, n = S1 * S1, kb = _zoneStepBand(P), E = 1e-4;
+        var lift = ts * 0.012 + HL_FIELD_LIFT * ts, eps = 0.02 * ts, wallOut = ts * 0.012;
+        var set = {}, cells = {}, i, j, k, o = { dy: 0, cl: false };
+        for (i = 0; i < tiles.length; i++) set[tiles[i].x + ',' + tiles[i].y] = true;
+        var pos = [], uv = [], idx = [];
+        var vert = function (wx, wy, wz, tu, tv) {
+            pos.push(wx, wy, wz);
+            uv.push(Math.max(0, Math.min(1, (tu - B.x0) / B.W)), 1 - Math.max(0, Math.min(1, (tv - B.y0) / B.H)));   // the canvas's top row is v = 1
+            return pos.length / 3 - 1;
+        };
+        var quad = function (a, b, c, d) { idx.push(a, c, b, b, c, d); };   // a b over c d
+        /* a standing quad between two heights at two plan points (tile units), pushed `off` tiles along (ox, oz) off its plane */
+        var wall = function (u0, v0, u1, v1, top0, top1, bot0, bot1, ox, oz) {
+            var a = vert(u0 * ts + ox, top0, v0 * ts + oz, u0, v0), b = vert(u1 * ts + ox, top1, v1 * ts + oz, u1, v1);
+            var c = vert(u0 * ts + ox, bot0, v0 * ts + oz, u0, v0), d = vert(u1 * ts + ox, bot1, v1 * ts + oz, u1, v1);
+            quad(a, b, c, d);
+        };
+        tiles.forEach(function (t) {
+            var x = t.x, y = t.y, key = x + ',' + y, top = G.yAt(x, y), d = G.deltaAt(x, y);
+            var block = d > 0 && !(mnd && mnd.has[key]);   // a raise is a block with a flat top (a mound swells: it is draped)
+            var nat = new Array(n), add = new Array(n), zi = new Array(n), zb = new Array(n);
+            for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
+                i = j * S1 + k;
+                if (block) { nat[i] = top; add[i] = 0; continue; }
+                var u = Math.max(E, Math.min(1 - E, k / S)), v = Math.max(E, Math.min(1 - E, j / S)), wx = (x + u) * ts, wz = (y + v) * ts;
+                o.dy = 0; o.cl = false;
+                var g = fn(wx, wz, x, y, undefined, true, ctx, o);   // the room's own ground with the dig, as drawn
+                if (g === null || g === undefined || !isFinite(g)) { g = top - (d < 0 ? d * G.elev : 0); o.dy = d < 0 ? d * G.elev : 0; }
+                nat[i] = g - (o.dy || 0);
+                add[i] = (o.dy || 0) + (mnd ? (mnd.dyAt(x + u, y + v) || 0) : 0);
+            }
+            if (!block) _drapeCliffCut(nat, S, ts / S);   // THE CLIFF LINE on the ground without the dig: the room's own sheer face holds the plate
+            for (i = 0; i < n; i++) zi[i] = nat[i] + add[i];
+            /* THE POKE: a steep quad the drawn floor still stands over at its middle rises by that much */
+            if (!block) {
+                var up = null, thr = DRAPE_POKE_STEEP * ts, cap = DRAPE_POKE_MAX * ts;
+                for (j = 0; j < S; j++) for (k = 0; k < S; k++) {
+                    var p0 = j * S1 + k, q0 = p0 + 1, r0 = p0 + S1, s0 = r0 + 1;
+                    if (Math.max(zi[p0], zi[q0], zi[r0], zi[s0]) - Math.min(zi[p0], zi[q0], zi[r0], zi[s0]) < thr) continue;
+                    if (add[p0] === 0 && add[q0] === 0 && add[r0] === 0 && add[s0] === 0) continue;   // the room's own slope: as the plate always lay
+                    o.dy = 0;
+                    var gm = fn((x + (k + 0.5) / S) * ts, (y + (j + 0.5) / S) * ts, x, y, undefined, true, ctx, o);
+                    if (gm === null || gm === undefined || !isFinite(gm)) continue;
+                    if (mnd) gm += mnd.dyAt(x + (k + 0.5) / S, y + (j + 0.5) / S) || 0;
+                    var over = gm - Math.min((zi[p0] + zi[s0]) / 2, (zi[q0] + zi[r0]) / 2);
+                    if (!(over > 0)) continue;
+                    if (over > cap) over = cap;
+                    up = up || new Float32Array(n);
+                    if (over > up[p0]) up[p0] = over; if (over > up[q0]) up[q0] = over; if (over > up[r0]) up[r0] = over; if (over > up[s0]) up[s0] = over;
+                }
+                if (up) for (i = 0; i < n; i++) zi[i] += up[i];
+            }
+            /* the rim band: the quads within kb steps of the zone's outer edge (a side with no zone tile past it, a corner with none) */
+            var bN = !set[x + ',' + (y - 1)], bS = !set[x + ',' + (y + 1)], bW = !set[(x - 1) + ',' + y], bE = !set[(x + 1) + ',' + y];
+            var cNW = !set[(x - 1) + ',' + (y - 1)], cNE = !set[(x + 1) + ',' + (y - 1)], cSW = !set[(x - 1) + ',' + (y + 1)], cSE = !set[(x + 1) + ',' + (y + 1)];
+            var isB = function (qj, qk) {
+                var w = qk < kb, e = qk >= S - kb, nn = qj < kb, s = qj >= S - kb;
+                return (w && bW) || (e && bE) || (nn && bN) || (s && bS) || (w && nn && cNW) || (e && nn && cNE) || (w && s && cSW) || (e && s && cSE);
+            };
+            var m = -Infinity;
+            for (j = 0; j < S; j++) for (k = 0; k < S; k++) {
+                if (!isB(j, k)) continue;
+                var a0 = j * S1 + k;
+                m = Math.max(m, zi[a0] - nat[a0], zi[a0 + 1] - nat[a0 + 1], zi[a0 + S1] - nat[a0 + S1], zi[a0 + S1 + 1] - nat[a0 + S1 + 1]);
+            }
+            var dz = (block || m === -Infinity || !(G.elev > 0)) ? 0 : Math.ceil(m / G.elev - 0.04) * G.elev;   // whole blocks, never under the ground
+            for (i = 0; i < n; i++) zb[i] = nat[i] + dz;
+            /* THE SKIN LINE: no vertex under a sheet laid over the cell (a pool in the pit, a spell's skin) */
+            var sk = _hlSkinTopY(x, y), skMin = (sk !== null) ? sk + HL_SKIN_CLEAR : -Infinity;
+            var C = { x: x, y: y, isB: isB, vI: new Array(n), vB: new Array(n),
+                      h: function (cls, ii) { var z = cls ? zb[ii] : zi[ii]; return (z < skMin ? skMin : z) + lift; },
+                      bN: bN, bS: bS, bW: bW, bE: bE };
+            C.v = function (cls, ii) {
+                var arr = cls ? C.vB : C.vI, id = arr[ii];
+                if (id === undefined) {
+                    var kk = ii % S1, jj = (ii - kk) / S1;
+                    id = arr[ii] = vert((x + kk / S) * ts, C.h(cls, ii), (y + jj / S) * ts, x + kk / S, y + jj / S);
+                }
+                return id;
+            };
+            cells[key] = C;
+            for (j = 0; j < S; j++) for (k = 0; k < S; k++) {
+                var cls = isB(j, k) ? 1 : 0, a = j * S1 + k;
+                quad(C.v(cls, a), C.v(cls, a + 1), C.v(cls, a + S1), C.v(cls, a + S1 + 1));
+            }
+            /* THE CURTAIN: inside the tile, where the rim band stands off the fill under it */
+            for (j = 0; j < S; j++) for (k = 0; k < S; k++) {
+                var c0 = isB(j, k) ? 1 : 0, i0, i1;
+                if (k + 1 < S && (isB(j, k + 1) ? 1 : 0) !== c0) {
+                    i0 = j * S1 + k + 1; i1 = i0 + S1;
+                    if (Math.abs(C.h(1, i0) - C.h(0, i0)) > eps || Math.abs(C.h(1, i1) - C.h(0, i1)) > eps)
+                        wall(x + (k + 1) / S, y + j / S, x + (k + 1) / S, y + (j + 1) / S, C.h(1, i0), C.h(1, i1), C.h(0, i0), C.h(0, i1), 0, 0);
+                }
+                if (j + 1 < S && (isB(j + 1, k) ? 1 : 0) !== c0) {
+                    i0 = (j + 1) * S1 + k; i1 = i0 + 1;
+                    if (Math.abs(C.h(1, i0) - C.h(0, i0)) > eps || Math.abs(C.h(1, i1) - C.h(0, i1)) > eps)
+                        wall(x + k / S, y + (j + 1) / S, x + (k + 1) / S, y + (j + 1) / S, C.h(1, i0), C.h(1, i1), C.h(0, i0), C.h(0, i1), 0, 0);
+                }
+            }
+        });
+        /* THE STEP between two tiles of the zone: a wall of the zone's own map where their surfaces part (a block's side, a gap's
+           sheer wall, two rims at two levels), a hair off the face toward the lower tile */
+        tiles.forEach(function (t) {
+            var A = cells[t.x + ',' + t.y], x = t.x, y = t.y, q, cA, cB, a0, a1, b0, b1, hA0, hA1, hB0, hB1, sgn;
+            var Bc = cells[(x + 1) + ',' + y];
+            if (A && Bc) for (q = 0; q < S; q++) {
+                cA = A.isB(q, S - 1) ? 1 : 0; cB = Bc.isB(q, 0) ? 1 : 0;
+                a0 = q * S1 + S; a1 = a0 + S1; b0 = q * S1; b1 = b0 + S1;
+                hA0 = A.h(cA, a0); hA1 = A.h(cA, a1); hB0 = Bc.h(cB, b0); hB1 = Bc.h(cB, b1);
+                if (Math.abs(hA0 - hB0) <= eps && Math.abs(hA1 - hB1) <= eps) continue;
+                sgn = (hA0 + hA1 > hB0 + hB1) ? 1 : -1;
+                wall(x + 1, y + q / S, x + 1, y + (q + 1) / S, hA0, hA1, hB0, hB1, sgn * wallOut, 0);
+            }
+            Bc = cells[x + ',' + (y + 1)];
+            if (A && Bc) for (q = 0; q < S; q++) {
+                cA = A.isB(S - 1, q) ? 1 : 0; cB = Bc.isB(0, q) ? 1 : 0;
+                a0 = S * S1 + q; a1 = a0 + 1; b0 = q; b1 = b0 + 1;
+                hA0 = A.h(cA, a0); hA1 = A.h(cA, a1); hB0 = Bc.h(cB, b0); hB1 = Bc.h(cB, b1);
+                if (Math.abs(hA0 - hB0) <= eps && Math.abs(hA1 - hB1) <= eps) continue;
+                sgn = (hA0 + hA1 > hB0 + hB1) ? 1 : -1;
+                wall(x + q / S, y + 1, x + (q + 1) / S, y + 1, hA0, hA1, hB0, hB1, 0, sgn * wallOut);
+            }
+        });
+        /* THE POST: on the zone's outer edge, where the rim of one tile sits over the rim of the next along that edge, the rim
+           turns down the higher tile's outer face to meet it (the face's first rim-band, wearing the rim's own cross-section) */
+        var bw_ = kb / S;
+        tiles.forEach(function (t) {
+            var A = cells[t.x + ',' + t.y], x = t.x, y = t.y; if (!A) return;
+            /* side: [flag, the edge's fixed plan line, along axis ('x' | 'y'), outward sign] */
+            [['bN', y, 'x', -1], ['bS', y + 1, 'x', 1], ['bW', x, 'y', -1], ['bE', x + 1, 'y', 1]].forEach(function (sd) {
+                if (!A[sd[0]]) return;
+                [-1, 1].forEach(function (dir) {
+                    var nx = sd[2] === 'x' ? x + dir : x, ny = sd[2] === 'x' ? y : y + dir, Cn = cells[nx + ',' + ny];
+                    if (!Cn || !Cn[sd[0]]) return;
+                    /* the shared corner's vertex in each tile, and A's vertex one band along its own edge */
+                    var row = (sd[0] === 'bN') ? 0 : (sd[0] === 'bS') ? S : null, col = (sd[0] === 'bW') ? 0 : (sd[0] === 'bE') ? S : null;
+                    var aC, aI, nC;
+                    if (sd[2] === 'x') { aC = row * S1 + (dir > 0 ? S : 0); aI = row * S1 + (dir > 0 ? S - kb : kb); nC = row * S1 + (dir > 0 ? 0 : S); }
+                    else { aC = (dir > 0 ? S : 0) * S1 + col; aI = (dir > 0 ? S - kb : kb) * S1 + col; nC = (dir > 0 ? 0 : S) * S1 + col; }
+                    var hA = A.h(1, aC), hN = Cn.h(1, nC);
+                    if (!(hA - hN > eps)) return;
+                    var c0 = (sd[2] === 'x') ? (dir > 0 ? x + 1 : x) : (dir > 0 ? y + 1 : y), c1 = c0 - dir * bw_;   // along the edge: the corner, one band in
+                    var off = sd[3] * wallOut, inw = -sd[3];
+                    /* the rim's cross-section: the map from the edge inward at the middle of A's edge */
+                    var mid = (sd[2] === 'x') ? x + 0.5 : y + 0.5;
+                    var P0, P1, T0, T1;
+                    if (sd[2] === 'x') { P0 = [c0, sd[1]]; P1 = [c1, sd[1]]; T0 = [mid, sd[1] + inw * 1e-3]; T1 = [mid, sd[1] + inw * bw_]; }
+                    else { P0 = [sd[1], c0]; P1 = [sd[1], c1]; T0 = [sd[1] + inw * 1e-3, mid]; T1 = [sd[1] + inw * bw_, mid]; }
+                    var ox = sd[2] === 'x' ? 0 : off, oz = sd[2] === 'x' ? off : 0;
+                    var a = vert(P0[0] * ts + ox, hA, P0[1] * ts + oz, T0[0], T0[1]), b = vert(P1[0] * ts + ox, A.h(1, aI), P1[1] * ts + oz, T1[0], T1[1]);
+                    var c = vert(P0[0] * ts + ox, hN, P0[1] * ts + oz, T0[0], T0[1]), d2 = vert(P1[0] * ts + ox, hN, P1[1] * ts + oz, T1[0], T1[1]);
+                    quad(a, b, c, d2);
+                });
+            });
+        });
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setIndex(idx);
+        geo.computeBoundingSphere();
+        return geo;
+    }
+    /* a zone's surface, kept while what it is built from holds (an owner change, another zone's rebuild re-seat the same geometry) */
+    function _nxStepGeo(key, tiles, B, ts, P) {
+        var sig = _zoneStepSig(tiles, B, ts, P), old = _nxGeos[key];
+        if (old && old._ewSig === sig) return old;
+        if (old) {
+            for (var pk in _nxPool) if (pk.indexOf(old.id + '|') === 0) delete _nxPool[pk];
+            old.dispose(); delete _nxGeos[key];
+        }
+        var g = null;
+        try { g = _zoneStepGeo(tiles, B, ts, P); } catch (e) { console.warn('[zone] the stepped surface failed, the tiles drape as before', e); g = null; }
+        if (!g) return null;
+        g._ew_shared = true; g._ewSig = sig; _nxGeos[key] = g;
+        return g;
+    }
     function rebuildNexusWalls() {
         if (!_nexusWallGroup) return;
 
@@ -12370,9 +12668,20 @@ const ThreeRenderer = (function () {
             /* W5a: one flat drape per tile, so forceSinglePass — a plane cannot cover itself, and DoubleSide twice is
                the same picture in two draws */
             var mats = _zoneLayers(P).map(function (layer) { return _zoneMat(_nxZoneTex(B.cells, B.W, B.H, type, layer, P), layer, type, own, _nexusLineMats); });
+            /* THE ZONE STEPS: the tiles on the true ground are one stepped surface; the rest drape tile by tile as before */
+            var stepTiles = tiles.filter(function (t) { return t.x >= 0 && t.y >= 0 && t.x < _bw && t.y < _bh && _zoneStepTileOk(t.x, t.y); }), stepSet = null;
+            if (stepTiles.length) {
+                var sgeo = _nxStepGeo('zs' + zi, stepTiles, B, ts, P);
+                if (sgeo) {
+                    stepSet = {};
+                    for (ti = 0; ti < stepTiles.length; ti++) stepSet[stepTiles[ti].x + ',' + stepTiles[ti].y] = true;
+                    for (var sl = 0; sl < mats.length; sl++) { var sp = _nxPiece(sgeo, mats[sl]); sp.renderOrder = sl; _nexusWallGroup.add(sp); }
+                }
+            }
             for (ti = 0; ti < tiles.length; ti++) {
                 var ft = tiles[ti];
                 if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
+                if (stepSet && stepSet[ft.x + ',' + ft.y]) continue;
                 var geo = _nxDrapeGeo('dz' + ft.x + ',' + ft.y + (ft.z != null ? ',' + ft.z : ''), function () { return _nxZoneTileGeo(ft.x, ft.y, B.x0, B.y0, B.W, B.H, ts, ft.z); });
                 for (var li = 0; li < mats.length; li++) {
                     var piece = _nxPiece(geo, mats[li]);
@@ -12393,6 +12702,22 @@ const ThreeRenderer = (function () {
     var _lastSpawnZoneSerial = '';
     var _zoneLookSeen = -1;
 
+    /* the tops of a spawn strip's tiles and the eight round each, re-read only when a terrain version moves (as _nexusTopsHash) */
+    var _spawnTopsKey = null, _spawnTopsVal = 0;
+    function _spawnTopsHash(zh) {
+        var vk = zh + ':' + (state._terrainVersion || 0) + ':' + (state._heightVersion || 0) + ':' + (state._voxelVersion || 0) + ':' + (CONFIG.tileSize || BASE_TILE);
+        if (vk === _spawnTopsKey) return _spawnTopsVal;
+        var h = 43, W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        for (var p = 1; p <= 2; p++) {
+            var z = state.spawnZones ? state.spawnZones[p] : null; if (!z) continue;
+            for (var i = 0; i < z.length; i++) for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+                var x = z[i].x + dx, y = z[i].y + dy;
+                h = _hashInt(h, (x < 0 || y < 0 || x >= W || y >= H) ? 0 : Math.round(tileTopY(x, y) * 4));
+            }
+        }
+        _spawnTopsKey = vk; _spawnTopsVal = h;
+        return h;
+    }
     function _computeSpawnZoneSerial() {
         if (!state.spawnZones) return 0;
         var h = 37;
@@ -12400,7 +12725,7 @@ const ThreeRenderer = (function () {
             var z = state.spawnZones[p];
             if (z) for (var i = 0; i < z.length; i++) { h = _hashInt(h, p); h = _hashInt(h, z[i].x); h = _hashInt(h, z[i].y); }
         }
-        return h;
+        return _hashInt(h, _spawnTopsHash(h));   // THE ZONE STEPS: a dig / a raise under or beside a strip rebuilds it
     }
 
     function rebuildSpawnZoneOverlays() {
@@ -12431,8 +12756,19 @@ const ThreeRenderer = (function () {
             if (!tiles.length) continue;
             var B = _zoneBox(tiles);
             var mats = _zoneLayers(P).map(function (layer) { return _zoneMat(_nxZoneTex(B.cells, B.W, B.H, 'spawn', layer, P), layer, 'spawn', own, _spawnZoneMats); });
+            /* THE ZONE STEPS: the strip's tiles on the true ground are one stepped surface */
+            var stepTiles = tiles.filter(function (t) { return _zoneStepTileOk(t.x, t.y); }), stepSet = null;
+            if (stepTiles.length) {
+                var sgeo = _nxStepGeo('sz' + p, stepTiles, B, ts, P);
+                if (sgeo) {
+                    stepSet = {};
+                    stepTiles.forEach(function (t) { stepSet[t.x + ',' + t.y] = true; });
+                    for (var sl = 0; sl < mats.length; sl++) { var sm = new THREE.Mesh(sgeo, mats[sl]); sm.renderOrder = sl; _spawnZoneGroup.add(sm); }
+                }
+            }
             for (var i = 0; i < tiles.length; i++) {
                 var tile = tiles[i];
+                if (stepSet && stepSet[tile.x + ',' + tile.y]) continue;
                 // Anchored to the REAL terrain top and draped over it like the move tiles (THE DRAPED MARKERS)
                 var geo = _nxZoneTileGeo(tile.x, tile.y, B.x0, B.y0, B.W, B.H, ts, tile.z);
                 for (var li = 0; li < mats.length; li++) {
@@ -34884,11 +35220,61 @@ const ThreeRenderer = (function () {
     // scenery doesn't need crisp 1:1 pixels, so we trade pixel-art sharpness for
     // trilinear mipmapping + anisotropy, which is the correct distance AA and
     // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
+    /* ══ THE CALM GROUND (2026-11-11, mondo: "the terrain pixel sprites are a little busy and distract from the 3d models on the board
+       ... make grass look like actual grass from a AAA RPG game and water and lava like actual water and lava ... more realistic, but
+       also less busy") ══ A TEST LOOK worn only by a board data.js HQ_LOOK_MAPS names with look 'calm' (Fairy Forest Arena (Calm), a
+       copy of the Fairy Forest Arena; the arena itself and every other map are untouched). The rule it follows is Riot's VFX style guide
+       (2017), section III p.13-14 "VALUE RANGE BY EACH DISCIPLINE": the ENVIRONMENT value range sits lowest, the CHARACTER range above
+       it, the VFX across both, the UI on top; p.19 the same for saturation ("avoid using 100% or 0% values"). So the ground here is
+       darker, greyer and much lower in local contrast than the 128 px pixel sheets, and the units are the brightest, most saturated
+       thing on the board.
+         · THE SHEETS (_CALM_SHEETS): realistic ground sheets made in code (bake-calm-terrain.py: periodic noise + drawn blades /
+           stones / plates, nothing downloaded), one per 3.5 m square like every board sheet, read through _hzTex in place of the
+           pixel sheet of the same key, trilinear + anisotropic (no pixel grid);
+         · THE FIELD (_hqTerrainMat / _hqBuildTerrain): the sheets carry their own colour (no room floorColor / sheet tints), almost no
+           shine, a slow world-space drift of value over metres (in the field's AO, so the WebGPU path gets it too) to hide the
+           repeat, and ragged path edges (noise in the path blend) in place of the smooth band;
+         · THE WATER + THE LAVA (_calmFluidMat): a dark, see-through water with moving ripples, sun glints and a sky sheen at grazing
+           angles (no caustic web); lava as a dark cooling crust whose seams glow and creep (two copies of calm_lava sliding).
+       Kill switch: window.EW_NO_CALM_LOOK = true (the board's next build draws the old sheets). Read once per build: a fight keeps
+       the look it was built with. WEBGL2 only proven; on WebGPU the sheets, the colours and the drift carry over, the water / lava
+       shader extras do not (plain colour + sheet there). */
+    var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
+    var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', lava: 'calm_lava_1.png' };
+    /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
+    /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
+       sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
+    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82], drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+    try { window.EW_CALM = _CALM; } catch (e) {}
+    function _calmOn() {
+        try {
+            if (typeof window !== 'undefined' && window.EW_NO_CALM_LOOK) return false;
+            var id = (typeof _arenaLatchId !== 'undefined' && _arenaLatchId) ? _arenaLatchId : null;
+            if (!id && typeof window !== 'undefined' && window.EW_CALM_FORCE) id = window.EW_CALM_FORCE;   // (proof only: a look on any board)
+            return !!id && typeof hqMapLook === 'function' && hqMapLook(id) === 'calm';
+        } catch (e) { return false; }
+    }
+    function _calmSheet(key) { return (_CALM_SHEETS[key] && _calmOn()) ? _CALM_BASE + _CALM_SHEETS[key] : null; }
+    /* the value drift (× the field's AO): two octaves over metres, ±drift */
+    function _calmDrift(x, z) {
+        if (typeof _hqTNoise !== 'function') return 1;
+        return 1 + _CALM.drift * (0.7 * _hqTNoise(x, z, _CALM.driftM, 917) + 0.3 * _hqTNoise(x + 31.7, z - 12.3, _CALM.driftM * 0.38, 923));
+    }
+    /* the ragged path edge: the path's blend (0..1) pushed by noise and sharpened, so the edge wanders instead of running as a band */
+    function _calmEdge(w, x, z) {
+        if (!(w > 0) || typeof _hqTNoise !== 'function') return w;
+        var n = 0.65 * _hqTNoise(x, z, _CALM.edgeM, 941) + 0.35 * _hqTNoise(x - 7.1, z + 3.3, _CALM.edgeM * 0.5, 947);
+        var t = (w - 0.5 + _CALM.edge * n) * 1.7 + 0.5;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        return t * t * (3 - 2 * t);
+    }
     var _hzTexCache = {};
     function _hzTex(terrainKey) {
-        var ck = terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
+        var calmUrl = _calmSheet(terrainKey);   // THE CALM GROUND: the realistic sheet in place of the pixel sheet (its own cache entry)
+        var ck = (calmUrl ? 'calm|' : '') + terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
         if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
-        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? _ewSandUrl(terrainKey, TERRAIN_SPRITES[terrainKey][0]) : null;
+        var url = calmUrl || ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? _ewSandUrl(terrainKey, TERRAIN_SPRITES[terrainKey][0]) : null);
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         /* 2026-09-21: a D.O.O.R. HQ texture name (`concrete`, `stone`, `teal`, `carpet`…) resolves here too — a terrain room's
            `cliff: 'concrete'` used to miss and fall back to rock_wall_1 (the glyph sheet on THE GARAGE's every wall) */
@@ -47712,7 +48098,8 @@ const ThreeRenderer = (function () {
             // a map-wide storm rains on every tile (a global thunderstorm's w.tiles is only its eye)
             var _allT = null;
             window.ThreeVFX.startRain3D(rainZones.map(function(w) {
-                if (_weatherIsMapWide(w)) {
+                /* a map-wide RAIN too (the Hurricane: local eye, rain on every tile, state.js weatherRainIsWide) */
+                if (_weatherIsMapWide(w) || (typeof window.weatherRainIsWide === 'function' && window.weatherRainIsWide(w))) {
                     if (!_allT) _allT = (typeof window.allWeatherBoardTiles === 'function') ? window.allWeatherBoardTiles() : w.tiles;
                     return { type: w.type, tiles: _allT, global: true };
                 }
@@ -64901,16 +65288,19 @@ const ThreeRenderer = (function () {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
         m._ew_triplanar = true;   // THE ONE PIXEL DENSITY: the field samples by world position (uTriTM = the sheet), never by its UVs
-        if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
+        var calm = !!(_calmSheet(info.floor));   // THE CALM GROUND: the sheets carry their own colour — no room floorColor, no sheet tints, no shine
+        if (calm) { m.color.setHex(_CALM.floor); m.specular.setHex(0x050505); m.shininess = 2; m._ew_calm = true; }
+        else if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
+        if (calm) m.emissive.setHex(0x000000);   // THE CALM GROUND: the ground's lift off (the environment sits under the units, never glows up to them)
         /* THE HOLO SIM (2026-10-20): a self-lit floor sheet (the holo plates, _EMISSIVE_TERRAIN) — the emissive is multiplied by the
            sheet's own texel below, so only the plates' rims glow and the dark fill stays dark, as on the old board */
         if (_EMISSIVE_TERRAIN[info.floor]) m.emissive = new THREE.Color(_EMISSIVE_TERRAIN[info.floor].color).multiplyScalar(_EMISSIVE_TERRAIN[info.floor].intensity);
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
-        var look = _hqSheetLook(info);
+        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(_CALM.floorT), cliff: new THREE.Color().fromArray(_CALM.cliffT), path: new THREE.Color().fromArray(_CALM.pathT) } : _hqSheetLook(info);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
@@ -64997,6 +65387,7 @@ const ThreeRenderer = (function () {
         _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
         var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = []; var aoO = new Float32Array(nx * nz); for (var ai = 0; ai < aoO.length; ai++) aoO[ai] = 1;
+        var calmO = !!(mat && mat._ew_calm);   // THE CALM GROUND: the field's value drift runs on past its edge
         for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = X0 + i * cs, pz = Z0 + j * cs, h = yAt(px, pz);
             pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
@@ -65013,6 +65404,7 @@ const ThreeRenderer = (function () {
             }
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
+            if (calmO) aoO[k] = _calmDrift(px, pz);
         } if ((j & 7) === 7 && _hqSliceDue()) yield; }
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the outer ground lying inside a staged neighbour's frame is cut into its OWN mesh
            per neighbour (`_hq.outerSides[id]`) — drawn while that neighbour is not on the stage (the ground runs on as today),
@@ -67584,6 +67976,7 @@ const ThreeRenderer = (function () {
         var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
+        var calmF = !!_calmSheet(info.floor);   // THE CALM GROUND: ragged path edges + the value drift (below)
         /* ── THE FIELD: one indexed mesh, UVs in tiles, the blend per vertex ── */
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), ao = new Float32Array(nx * nz);
         /* THE ROAD'S EDGE: the distance past the nearest road's edge (≤ 0 = on a road) — a city plan's streets */
@@ -67631,13 +68024,14 @@ const ThreeRenderer = (function () {
                 /* THE YARDS OPEN (2026-10-06): the ground between and behind the buildings is walked now — paved like the sidewalk, never the dark mass sheet */
                 if (info.yard && info.yard[k]) { sw = 1; rock = rockSl; }
             }
-            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
+            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(calmF ? _calmEdge(pathW(px, pz), px, pz) : pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
             if (ghN && Math.abs(info.H[k] - h) < 0.05 && ao[k] < 1) {   // THE GROUND UNDER: the hollow is read on the ground, not against a flank it no longer meets
                 var aoR = _hqLightRules().ao || {}, aoT2 = (aoR.terrain != null) ? aoR.terrain : 0.32;
                 var lapG = (ghN[j * nx + Math.max(0, i - 1)] + ghN[j * nx + Math.min(nx - 1, i + 1)] + ghN[Math.max(0, j - 1) * nx + i] + ghN[Math.min(nz - 1, j + 1) * nx + i] - 4 * ghN[k]) / res;
                 ao[k] = Math.max(ao[k], Math.max(0.5, 1 - aoT2 * Math.max(0, Math.min(1, lapG * 0.9))));
             }
+            if (calmF) ao[k] *= _calmDrift(px, pz);   // THE CALM GROUND: the slow value drift that hides the sheet's repeat
         } if (_hqSliceDue()) yield; }
         var idx = [], escalators = info.drawH ? [] : (room.terrain.features || []).filter(function (f) { return f.escalator; });   // THE JOINED FLIGHTS: the field runs on under an escalator, drawn at its ground
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
@@ -73813,8 +74207,8 @@ const ThreeRenderer = (function () {
         var wy = fl.y - (ctx.y0 || 0), dy = MY - wy;   // the surface in the pipe's frame (metres over its floor), the centre over it
         if (dy >= R - 0.1) return;   // under the bore's floor: nothing to see
         var cw = 2 * Math.sqrt(R * R - dy * dy) - 0.12, IN = 0.7, len = L + 0.3 + IN, key = fl.key || 'water';
-        var mat = _hqPassWaterMats[key];
-        if (!mat) { try { mat = _buildFluidTopMat(key); } catch (e) { mat = null; } if (!mat) return; _hqPassWaterMats[key] = mat; }
+        var pwk = key + (_calmOn() ? '|calm' : ''), mat = _hqPassWaterMats[pwk];   // THE CALM GROUND: a calm board's liquids cache apart
+        if (!mat) { try { mat = _buildFluidTopMat(key); } catch (e) { mat = null; } if (!mat) return; _hqPassWaterMats[pwk] = mat; }
         var geo = new THREE.PlaneGeometry(cw * U, len * U);
         var TMw = (info._TM || (info.tile || 2.5) * U), uv = geo.attributes.uv;
         for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * cw * U / TMw, uv.getY(i) * len * U / TMw);
@@ -85182,7 +85576,7 @@ const ThreeRenderer = (function () {
        strata), after or among the plates. They now draw before the liquids, which draw before the plates. */
     var GROUND_SHEET_ORDER = -3;
     function _liqBlendMat(key, over) {
-        var mk = key + (over ? '|over' : '');
+        var mk = key + (over ? '|over' : '') + (_calmOn() ? '|calm' : '');   // THE CALM GROUND: a calm board's liquids cache apart
         if (_liqBlendMats[mk] !== undefined) return _liqBlendMats[mk];
         var m = null;
         try { m = _buildFluidTopMat(key); } catch (e) { m = null; }
@@ -85633,7 +86027,7 @@ const ThreeRenderer = (function () {
             _fieldSkinGeo = { ts: ts, geo: geo };
         }
         var matOf = function (key) {
-            var mk = key + '|' + ts;
+            var mk = key + '|' + ts + (_calmOn() ? '|calm' : '');   // THE CALM GROUND: a calm board's liquids cache apart
             if (_fieldSkinMats[mk]) return _fieldSkinMats[mk];
             var m = null;
             if (_FLUID_TERRAIN_SET[key]) {
