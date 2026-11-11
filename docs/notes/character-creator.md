@@ -1805,3 +1805,31 @@ off); the skin sheet differs by at most 2/255 on most pixels (CPU vs GPU canvas 
 What is left on a first visit: one build per look not seen this session (the layers / hair / collision fits, ~0.3-1 s each here),
 and the session's first MPFB body (GLB parse, animation bake, shader compiles: the Meshy team's first visit pays the same kind).
 Probe (scratch only): Playwright + a `__tr` / `__clear` accessor patched into a served copy, longtask observer, CDP Profiler.
+
+## THE CUSTOM SHAPES - a face likeness as a head shape + a skin (2026-11-11, local delivery)
+
+**WHAT** - `morganHead` (OUTFIT > Head, group "Face likeness", 0..1) reshapes the MPFB head into Morgan's face, and the
+`morgan` skin (`looks/skin_morgan.jpg`, 1024 px, built on `skin_young_caucasian_female`) carries her face on the hm08 sheet.
+Pick both for the likeness; brows / lashes / eyes stay the usual layers on top (her own brows are in the skin).
+
+**HOW** - a custom shape is NOT a MakeHuman target: `charactercreation/mpfb/custom_shapes/<key>.json` holds sparse offsets
+(metres, glTF axes) per hm08 base index, and `node bake-custom-shape.js` adds / replaces them in `mpfb/mpfb_shapes.glb`
+(same POSITION + `_I` + `ewShapes` layout; a one-sided shape gets an empty other end). `sprites.js` needs only the slider row
+(`EW_MPFB_FACE_SLIDERS`, `inHeads`) + `EW_APPEARANCE_LIMITS`; `shapeBody` reads the GLB by key, no renderer change. The skin
+is pushed onto `EW_MH_LOOKS.skins` after the generated block, like the werewolf fur skins, so `bake-mpfb.py --looks` keeps it.
+
+**RE-RUN** `node bake-custom-shape.js` after `bake-mpfb.py --shapes` (that rebuilds the GLB from MakeHuman's targets and drops
+the custom ones).
+
+**STATE** - the shape was measured on `mpfb_female` (it applies to every MPFB body by base index; untested on the male bodies).
+
+**THE LIKENESS SWITCH (same day, the merge thread; mondo: "hide behind a switch anyway, im really just testing something")** -
+both picks are hidden unless the browser turned them on: open the game once with `?likeness=1` (remembered in localStorage
+`ew_likeness`; `?likeness=0` turns it off). sprites.js `EW_LIKENESS_PICKS` / `ewPickSwitchedOff(id)`; party-builder.js `pickOff`
+filters the shaped-head list and the skin tiles (a worn pick stays listed so it can be taken off). The enums / limits keep the
+keys, so a saved look with the likeness still draws anywhere. A new likeness = add its keys to `EW_LIKENESS_PICKS`.
+**THE MANIFEST** - `mpfb_shapes.glb` changes in place, so ASSET_MANIFEST.json must carry its new [bytes, sha1[:12]] (the branch
+missed it: the game would have kept fetching the old `?h=`); `skin_morgan.jpg` is listed too.
+**CHECKED** in the real creator (Chromium, WebGL2, MPFB female, OUTFIT > Head > Creature heads > Morgan, SKIN > Morgan): switch
+off = neither pick listed; on = both listed, head reshapes, skin draws, no page errors. Shots: project files custom-head-20261111/.
+Not checked: the male bodies, WebGPU.

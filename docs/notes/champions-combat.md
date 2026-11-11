@@ -5184,3 +5184,17 @@ always cover the 4 tiles it is on ... and not get torn and jagged on the ridges.
 - Hashes: `_nexusTopsHash` reads the diagonals too; `_spawnTopsHash` is new (a dig under a TDM strip rebuilds it).
 - Known: one rim level per tile, so a crater whose edge crosses a zone leaves that tile's rim a block over the crater floor (curtain
   under it). Light walls (UI Maker, default 0) still stand on the tile tops. Proof (WebGL2 headless): /mnt/project-files/nexus-zone-steps/.
+
+## THE FLING THAT COMES BACK (2026-11-11, mondo: "this tornado moved to the same tile as my cowboy in between rounds, but it didnt fling him") — battle.js
+- Cause: `vortexFlingUnit` returned silently when the body ended on its start tile. That happens when (a) the throw goes one
+  square, slams the board edge / a wall and the rebound carries it straight back into the eye (a body one square from the edge,
+  heading at the edge), or (b) a body / wall beside it stops the throw at once (bowling crash hands the momentum over). The strike
+  and the slam damage landed, but there was no "flings" line, no lift-spin-hurl, no FLUNG pop: the storm read as doing nothing.
+- Fix (no rule change, same shared slide): that case now logs "The Tornado flings X north, and X is thrown straight back into
+  the eye at F2!" (went out and came back) or "... but X is stopped short and stays in the eye at F2!" (never left), hoisted
+  before the slam / crash lines, plays the lift-spin-hurl to the square it struck then the slide's own steps back, shows the
+  FLUNG pop, and returns `moved: true` so the round end waits for it. Covers the round-end strike, a landing in the eye and a
+  walk through it (all three call `vortexFlingUnit`); hurricane too. No second landing chain (the body never left for good).
+- Not changed, his call: a body that bounces straight back still ends the round standing in the eye.
+- Proof (WebGL2 headless, Hell Arena (Calm)): /mnt/project-files/tornado-fling-20261111/ (before.log, after.log, before_after.jpg;
+  repro.js cases shotb0 = bounce back, shotp2 = stopped short). The motion itself was not viewed (headless too slow for frames).

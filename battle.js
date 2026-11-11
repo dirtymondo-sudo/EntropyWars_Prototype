@@ -4840,7 +4840,47 @@
                 byUnit: (caster && !caster.dead) ? caster : null, label: `${def.icon} ${def.label}: `,
                 animate: false, noChain: true, perStepMs: 120
             });
-            if (v.dead || v._dying || (v.x === startX && v.y === startY)) return out;
+            if (v.dead || v._dying) return out;
+            if (v.x === startX && v.y === startY) {
+                /* 🌪 THE FLING THAT COMES BACK (mondo 2026-11-11: "this tornado moved to the same tile as my cowboy in between
+                   rounds, but it didnt fling him"): the storm DID throw it — one square, into the board's edge, and the
+                   rebound carried it straight back into the eye; or a body / a wall beside it stopped the throw at once.
+                   Either way the body ended where it began, and this used to return here with no line, no lift and no
+                   pop, so the storm read as having done nothing. Same slide, same rules: now it is logged and shown
+                   (the lift-spin-hurl to where it struck, then the slide's own steps back). No second landing chain:
+                   it never left for good. */
+                const _wentOut = res.moved > 0;
+                {
+                    const _fl0 = _logMark();
+                    addLog(_wentOut
+                        ? `${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word}, and ${_ctName(v)} is thrown straight back into the eye at ${coordLabel(v.x, v.y)}!`
+                        : `${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word}, but ${_ctName(v)} is stopped short and stays in the eye at ${coordLabel(v.x, v.y)}!`);
+                    if (_logMark().a > _fl0.a) _logHoist(_flMark, null);
+                }
+                out.moved = true;   // the round waits for it like any fling (state.js processHomingWeather)
+                const _steps = (res.steps || []).slice();
+                let _turn = -1;   // the last real step before the first bump: where the throw struck
+                for (let i = 0; i < _steps.length; i++) { if (_steps[i].bump) break; _turn = i; }
+                const _hit = _turn >= 0 ? _steps[_turn] : { x: startX, y: startY };
+                const _rest = _turn >= 0 ? _steps.slice(_turn + 1) : [];
+                const _hurlBack = () => {
+                    const fling = (typeof window.playVortexFlingFx === 'function')
+                        ? window.playVortexFlingFx(v, startX, startY, _hit.x, _hit.y, weather.type) : null;
+                    const arcMs = (fling && fling.usedArc) ? (fling.totalMs || 0) : 0;
+                    if (_rest.length && typeof animateDisplacementPath === 'function') {
+                        if (arcMs > 0) window.setTimeout(() => { if (!v.dead && !v._dying) animateDisplacementPath(v, _hit.x, _hit.y, _rest, 120, { knock: 'push' }); }, arcMs);
+                        else animateDisplacementPath(v, startX, startY, _steps, 120, { delayMs: 150, knock: 'push' });
+                    }
+                    return (arcMs || 150) + _rest.length * 120 + 200;
+                };
+                if (!_skipVisuals()) {
+                    if (_fDelay > 0) { window.setTimeout(_hurlBack, _fDelay); out.totalMs = _fDelay + 1300 + _rest.length * 120; }
+                    else out.totalMs = _hurlBack();
+                    if (_fDelay > 0) window.setTimeout(() => showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 }), _fDelay);
+                    else showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 });
+                }
+                return out;
+            }
             out.moved = true;
             {
                 const _fl0 = _logMark();
