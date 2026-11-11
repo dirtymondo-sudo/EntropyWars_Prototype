@@ -1334,6 +1334,16 @@ const EW_ANIM_LIB_URLS = [
   // data.js EW_CREDITS; Xsens capture, 60 fps), renamed to the CMU joint names (tools: mocap-100style.py) and cut into in-place
   // seamless loops by bake-mocap.py (clip list mocap-clips-100style.json). Clip names S100_<style>_<Idle|Walk>. CREATOR PICKS ONLY.
   'https://cdn.entropywars.net/Assets/characters/animations/MOC2_100STYLE.glb',
+  // lib 7 — MAL4_Sniper.glb (2026-11-11, THE MESHY ANIMATION PULL, mondo: "are you able to go on there and download more
+  // animations ... give different units more personality with their walks and idles and spells and attacks"): 53 idles, walks
+  // and runs pulled through Meshy's animation API on the male sniper's rig (one rigging task, action_ids in batches of 10)
+  // and packed by build-mal.py (the travelling loops made in-place). Clip names are Meshy's library keys. CREATOR PICKS ONLY
+  // (EW_IDLE_POSES + EW_WALK_STYLES): no race's own default plays them.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL4_Sniper.glb',
+  // lib 8 — MAL5_Sniper.glb (2026-11-11): the same pull's 74 combat clips (casts, weapon + unarmed attacks, hit reactions,
+  // deaths, blocks / dodges, taunts and cheers). Nothing plays them by default: they are in the spell editor's clip picker
+  // and free for a per-character `lib: {slot: {clip, lib: 8, ts}}`.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL5_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -4991,7 +5001,24 @@ const EW_IDLE_POSES = [
   { id: 'S100_Neutral_Idle',      label: 'Neutral',         clip: 'S100_Neutral_Idle',        lib: 6, ts: 1.0 },
   { id: 'S100_ArmsBehindBack_Idle', label: 'Hands behind back', clip: 'S100_ArmsBehindBack_Idle', lib: 6, ts: 1.0 },
   { id: 'S100_ArmsFolded_Idle',   label: 'Arms crossed',    clip: 'S100_ArmsFolded_Idle',     lib: 6, ts: 1.0 },
-  { id: 'S100_Proud_Idle',        label: 'Proud',           clip: 'S100_Proud_Idle',          lib: 6, ts: 1.0 },
+  { id: 'S100_Proud_Idle',        label: 'Proud',           clip: 'S100_Proud_Idle',          lib: 6, ts: 1.0 },  /* THE MESHY ANIMATION PULL (2026-11-11): the standing idles from lib 7 (MAL4_Sniper.glb), each looked at on a frame sheet of
+     the whole clip; the ones that turn round, bend back, jump or cast stay in the file but are not offered here */
+  { id: 'MAL_Idle_3',                      label: 'Meshy calm',          clip: 'Idle_3',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_4',                      label: 'Meshy still',         clip: 'Idle_4',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_6',                      label: 'Meshy arms out',      clip: 'Idle_6',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_7',                      label: 'Meshy idle 7',        clip: 'Idle_7',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_9',                      label: 'Meshy idle 9',        clip: 'Idle_9',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_12',                     label: 'Meshy idle 12',       clip: 'Idle_12',                         lib: 7, ts: 1.0 },
+  { id: 'MAL_Long_Breathe_and_Look_Around', label: 'Breathe, long',       clip: 'Long_Breathe_and_Look_Around',    lib: 7, ts: 1.0 },
+  { id: 'MAL_Short_Breathe_and_Look_Around', label: 'Breathe, short',      clip: 'Short_Breathe_and_Look_Around',   lib: 7, ts: 1.0 },
+  { id: 'MAL_Axe_Breathe_and_Look_Around', label: 'Hunched breathing',   clip: 'Axe_Breathe_and_Look_Around',     lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_8',                      label: 'Look around',         clip: 'Idle_8',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Alert',                       label: 'Alert',               clip: 'Alert',                           lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_02',                     label: 'Fight ready',         clip: 'Idle_02',                         lib: 7, ts: 1.0 },
+  { id: 'MAL_Combat_Stance',               label: 'Combat stance',       clip: 'Combat_Stance',                   lib: 7, ts: 1.0 },
+  { id: 'MAL_Confused_Scratch',            label: 'Head scratch',        clip: 'Confused_Scratch',                lib: 7, ts: 1.0 },
+  { id: 'MAL_Hand_on_Hip_Gesture',         label: 'Hand on hip',         clip: 'Hand_on_Hip_Gesture',             lib: 7, ts: 1.0 },
+  { id: 'MAL_Scheming_Hand_Rub',           label: 'Hand rub',            clip: 'Scheming_Hand_Rub',               lib: 7, ts: 1.0 },
 ];
 /* THE WALK STYLE (2026-11-05, mondo: "add the walk animations to the character creator just like the idle animations so i can see
    those too"): appearance.walk = a row id ('default' = the body's / race's own walk). Works like THE IDLE POSE: getCharacterAppearanceModel
@@ -5015,7 +5042,27 @@ const EW_WALK_STYLES = [
   // Walk_Formal_Loop (Quaternius), MAL1 Walking_Woman (the Meshy batch; MAL1 Walking is Default)
   { id: 'UAL_Walk_Loop',       label: 'UAL walk',    clip: 'Walk_Loop',           lib: 0, ts: 2.56 },
   { id: 'UAL_Walk_Formal',     label: 'UAL formal',  clip: 'Walk_Formal_Loop',    lib: 0, ts: 2.56 },
-  { id: 'MAL_Walking_Woman',   label: 'Meshy woman', clip: 'Walking_Woman',       lib: 2, ts: 1.92 },
+  { id: 'MAL_Walking_Woman',   label: 'Meshy woman', clip: 'Walking_Woman',       lib: 2, ts: 1.92 },  /* THE MESHY ANIMATION PULL (2026-11-11): the walks from lib 7 (MAL4_Sniper.glb). ts = the stride cycle build-mal.py measured
+     (the feet trading the lead) / 0.52 s, capped at 3.6 so a slow walk (Sneaky, Slow orc, Elderly) is not played frantic */
+  { id: 'MAL_Casual_Walk',                   label: 'Casual',            clip: 'Casual_Walk',                   lib: 7, ts: 2.69 },
+  { id: 'MAL_walking_2',                     label: 'Meshy walk 2',      clip: 'walking_2',                     lib: 7, ts: 2.24 },
+  { id: 'MAL_Quick_Walk',                    label: 'Quick',             clip: 'Quick_Walk',                    lib: 7, ts: 1.92 },
+  { id: 'MAL_Proud_Strut',                   label: 'Proud strut',       clip: 'Proud_Strut',                   lib: 7, ts: 2.85 },
+  { id: 'MAL_Confident_Strut',               label: 'Confident strut',   clip: 'Confident_Strut',               lib: 7, ts: 2.69 },
+  { id: 'MAL_Stylish_Walk',                  label: 'Stylish',           clip: 'Stylish_Walk',                  lib: 7, ts: 2.24 },
+  { id: 'MAL_Flirty_Strut',                  label: 'Flirty strut',      clip: 'Flirty_Strut',                  lib: 7, ts: 2.88 },
+  { id: 'MAL_Thoughtful_Walk',               label: 'Thoughtful',        clip: 'Thoughtful_Walk',               lib: 7, ts: 3.01 },
+  { id: 'MAL_Spear_Walk',                    label: 'Marching',          clip: 'Spear_Walk',                    lib: 7, ts: 2.12 },
+  { id: 'MAL_Walk_Fight_Forward',            label: 'Fighting advance',  clip: 'Walk_Fight_Forward',            lib: 7, ts: 3.27 },
+  { id: 'MAL_Cautious_Crouch_Walk_Forward',  label: 'Crouched',          clip: 'Cautious_Crouch_Walk_Forward',  lib: 7, ts: 2.18 },
+  { id: 'MAL_Sneaky_Walk',                   label: 'Sneaky',            clip: 'Sneaky_Walk',                   lib: 7, ts: 3.60 },
+  { id: 'MAL_Monster_Walk',                  label: 'Monster',           clip: 'Monster_Walk',                  lib: 7, ts: 2.60 },
+  { id: 'MAL_Slow_Orc_Walk',                 label: 'Slow orc',          clip: 'Slow_Orc_Walk',                 lib: 7, ts: 3.60 },
+  { id: 'MAL_Mummy_Stagger',                 label: 'Mummy',             clip: 'Mummy_Stagger',                 lib: 7, ts: 3.08 },
+  { id: 'MAL_Unsteady_Walk',                 label: 'Unsteady',          clip: 'Unsteady_Walk',                 lib: 7, ts: 1.86 },
+  { id: 'MAL_Injured_Walk',                  label: 'Injured',           clip: 'Injured_Walk',                  lib: 7, ts: 2.81 },
+  { id: 'MAL_Limping_Walk',                  label: 'Limping',           clip: 'Limping_Walk',                  lib: 7, ts: 3.37 },
+  { id: 'MAL_Elderly_Shaky_Walk',            label: 'Elderly',           clip: 'Elderly_Shaky_Walk',            lib: 7, ts: 3.60 },
 ];
 const EW_APPEARANCE_ENUMS = {
   idle: EW_IDLE_POSES.map(o => o.id),   // THE IDLE POSE ('default' first = the body's own idle)
