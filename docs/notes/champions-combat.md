@@ -5085,7 +5085,6 @@ now: cut to the close-up, cut back to the player's own angle on the shielded uni
 Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
 seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
 
-<<<<<<< HEAD
 ## THE HURRICANE'S RAIN (2026-11-11)
 mondo: "During a hurricane, there is rain on the screen, but I saw some grass tiles on fire ... Rain should always put out fire."
 - Cause: the Hurricane is a homing storm, so `w.tiles` is only its eye square; `soaks` only reached that one square while the
@@ -5099,7 +5098,7 @@ mondo: "During a hurricane, there is rain on the screen, but I saw some grass ti
 - Audit: Thunderstorm, Blood Rain = global + soaks (fine). Blizzard = snow, freezes its trail (ice on fire = water, PR #974).
   Tesseract Storm = geometry shards, not water. Hurricane has no Summon spell (natural roll only).
 - Proof (VS CPU, Mount Shasta Arena): /mnt/project-files/hurricane-rain-20261111/.
-=======
+
 ## THE SIX RULE ANSWERS (2026-11-10, mondo's answers on the "PvP demo set and open rules" doc: 1B 2A 3A 4A 5A 6C 7B 8B 9A 10B 11B 12A)
 Kept as they were (A): delayed blasts hit enemies only (2), Guard restores twice (3), a thrown body can land on an ally (4), a
 tackle into a wall pays its bonus and the slam (5), Marked is used up by a physical hit / basic attack only (9), the R10 storm bolt
@@ -5136,4 +5135,3 @@ Two-seat check of rule 7 B found the guest got no reason when it clicked its cha
   unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
 - Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
   log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
->>>>>>> origin/main
