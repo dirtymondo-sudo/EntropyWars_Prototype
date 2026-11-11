@@ -19310,7 +19310,7 @@ function aimDetail() {
   h += sec('tfill', 'Fill + light', xp(fRange('Fill', 'tFill', 0, 3, 0.05, +X.tFill, 'How solid the inside of a tile is (0 = the outline alone)')
     + fRange('Brightness', 'tBright', 0.2, 2.5, 0.05, +X.tBright) + fRange('Opacity', 'tOpacity', 0.05, 1.5, 0.05, +X.tOpacity)
     + fRange('Pulse', 'tPulse', 0, 8, 0.1, +X.tPulse, 'How much the tiles breathe (0 = steady)') + fRange('Pulse speed', 'tSpeed', 0, 6, 0.05, +X.tSpeed)));
-  h += sec('tshape', 'Shape', xp(fRange('Size', 'tSize', 0.4, 1.08, 0.01, +X.tSize, '1 = as the game; smaller leaves a gap between the tiles')
+  h += sec('tshape', 'Shape', xp(fRange('Size', 'tSize', 0.4, 1.12, 0.01, +X.tSize, '1 = as the game; 1.08 = the tiles touch; past it they overlap; smaller leaves a wider gap')
     + fRange('Rounded corners', 'tRound', 0, 0.5, 0.01, +X.tRound)));
   [['moves', 'Colours: moving'], ['act', 'Colours: attacks + spells'], ['other', 'Colours: other'], ['glow', 'Colours: spell glow on the ground']].forEach(([g, t]) => {
     h += sec('tc' + g, t, xp(AIM_TILE_KINDS.filter(x => x[3] === g).map(([k, l, d, , tip]) => fColorOpt(l, aimKey('tc', k), X[aimKey('tc', k)], d, false, tip)).join('')));
