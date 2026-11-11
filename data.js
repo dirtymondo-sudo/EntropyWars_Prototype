@@ -46065,6 +46065,7 @@ function hqSectorOfMap(mapId) {
    strips the suffix the same way — HQ plan Phase 1.4). */
 function hqSiteId(mapId) {
     const s = String(mapId || '');
+    if (typeof HQ_LOOK_MAPS !== 'undefined' && HQ_LOOK_MAPS && HQ_LOOK_MAPS[s]) return hqSiteId(HQ_LOOK_MAPS[s].of);   // THE CALM GROUND: a test look's board is its arena's site
     /* THE FIELD (stage B): a synthetic `field:<roomId>:<ox>,<oz>` id is its ROOM'S site — the CPU pool, the Code Red response, the checklist and the stamp all read Hollow Earth for a fight in its cave */
     if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); const site = f ? hqRoomSite(f.room) : null; if (site) return site; }
     const bare = s.replace(/_delta$/, '').replace(/_(\d+)x\1$/, '');   // THE ARENA SIZES (2026-10-17): `<site>_9x9_delta` is the site's too
@@ -63404,6 +63405,7 @@ function hqArenaSizedId(site, S) { S = S | 0; return (S === (HQ_ARENA_RULES.size
 /* the sizes a site's arena comes in, smallest first: [{ S, team, id }] (the 12 included when it is an arena or a kept board) */
 function hqArenaSizesOf(siteOrId) {
     if (typeof PREBUILT_MAPS === 'undefined' || !PREBUILT_MAPS) return [];
+    if (hqMapLook(siteOrId)) return [];   // THE CALM GROUND: a test look's board is one size (its card never resolves to the arena it copies)
     const site = hqSiteId(siteOrId), out = [];
     const sizes = HQ_ARENA_EXTRA_SIZES.concat([HQ_ARENA_RULES.size | 0]).sort((a, b) => a - b);
     sizes.forEach(S => {
@@ -63738,6 +63740,34 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
         });
     });
 })();
+/* ══ THE CALM GROUND (2026-11-11, mondo: "I feel like the terrain pixel sprites are a little busy and distract from the 3d models on
+   the board ... Can you make an alternative Fairy Forest map to test it out ... make grass look like actual grass from a AAA RPG game and
+   water and lava like actual water and lava ... more realistic, but also less busy") ══════════════════════════════════════════════════
+   A TEST LOOK on a board of its own: `<id>` below is a second copy of an arena (`of`) — the same room, the same 12 × 12 cut, the same
+   rules — that the renderer draws in another look (three-renderer.js THE CALM GROUND: realistic ground sheets low in value and
+   contrast, water and lava shaders). The arena it copies is never touched. VS CPU only: hqArenaPvpPool never deals it, it has no
+   9 / 10 / 11 cuts (hqArenaSizesOf), hqSiteId reads it as its site (the sky, the music, the stamps). The look lives in this table, not on
+   the entry (hqArenaUpgrade rebuilds the entry in place). hqMapLook(mapId) → the look name or null. */
+var HQ_LOOK_MAPS = {   // var, not const: hqSiteId reads it, and it can run before this line (a const would throw there)
+    prebuilt_fairy_forest_calm_delta: { of: 'prebuilt_fairy_forest_delta', look: 'calm', label: 'Fairy Forest Arena (Calm)' },
+};
+function hqMapLook(mapId) { const r = (typeof HQ_LOOK_MAPS !== 'undefined' && HQ_LOOK_MAPS) ? HQ_LOOK_MAPS[String(mapId || '')] : null; return r ? r.look : null; }
+(function hqLookMapsRegister() {
+    if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
+    Object.keys(HQ_LOOK_MAPS).forEach(id => {
+        try {
+            const L = HQ_LOOK_MAPS[id], src = PREBUILT_MAPS[L.of], row = EW_MAP_META.find(m => m.id === L.of);
+            if (!src || !row || !src.arena || PREBUILT_MAPS[id]) return;
+            const e = Object.assign({}, src, { name: L.label, arena: Object.assign({}, src.arena) });
+            delete e.field;   // its own survey (hqArenaUpgrade attaches the room's field to this entry)
+            PREBUILT_MAPS[id] = e;
+            if (typeof MAP_LAYOUT_PRESETS !== 'undefined' && MAP_LAYOUT_PRESETS[L.of]) MAP_LAYOUT_PRESETS[id] = MAP_LAYOUT_PRESETS[L.of];
+            EW_MAP_META.push(Object.assign({}, row, { id, label: L.label, look: L.look, sizeOf: undefined,
+                                                      desc: (row.desc || '') + ' — a TEST LOOK: realistic ground, calmer values (VS CPU only)' }));
+        } catch (err) { console.error('[LOOK] the test board failed', id, err); }
+    });
+})();
+if (typeof window !== 'undefined') { window.hqMapLook = hqMapLook; window.HQ_LOOK_MAPS = HQ_LOOK_MAPS; }
 /* ══ THE CLASH TEMPLE (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... They should be able to be built with
    the tools in the map editor, and remember to design them with square tiles in mind. And make them look good ... Dont delete these
    voxel maps though") ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -64041,6 +64071,7 @@ function hqArenaPvpPool(teamSize) {
     const sizes = HQ_ARENA_EXTRA_SIZES.concat([S12]);
     return EW_MAP_META.filter(m => {
         if (!m || !m.isDelta || m.area || m.facility || m.custom) return false;   // THE CUSTOM BATTLE MAPS live in his browser: VS CPU only
+        if (m.look) return false;   // THE CALM GROUND: a test look's board is VS CPU only
         const e = PREBUILT_MAPS[m.id];
         if (!e || (e.w | 0) !== (e.h | 0) || sizes.indexOf(e.w | 0) < 0) return false;
         if (m.sizeOf ? (e.w | 0) === S12 : (e.w | 0) !== S12) return false;   // THE ARENA SIZES: the 12 is the site's own row, the rest are `sizeOf` rows
