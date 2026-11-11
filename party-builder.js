@@ -3973,7 +3973,9 @@ function PartyBuilder(props) {
   };
 
   const rosterEntries = React.useMemo(() => {
-    const races = window.AVAILABLE_RACES || [], entries = [];
+    /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on the roster lists the demo set only (the 16
+       starters open, the 16 unlocks locked until owned — isUnitUnlocked) */
+    const races = (typeof window.demoRacePool === 'function') ? window.demoRacePool(window.AVAILABLE_RACES || []) : (window.AVAILABLE_RACES || []), entries = [];
     for (const rk of races) {
       const p = window.RACE_PROFILES?.[rk]; if (!p) continue;
       const genders = typeof window.getAvailableGendersForRace === 'function' ? window.getAvailableGendersForRace(rk) : ['male'];

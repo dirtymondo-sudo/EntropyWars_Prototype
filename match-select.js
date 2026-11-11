@@ -373,6 +373,12 @@ function MatchSelect(props) {
   /* PRACTICE (2026-09-21): a desk may deal only the modes it names (pre.modes = ids — map.js
      _goToPractice passes Arena + TDM). The list stays WHOLE (map.js _msSelectedGM indexes
      MS_GAME_MODES); the rows, the first pick and RANDOMIZE read this gate. */
+  /* THE DEMO (mondo 2026-11-10, data.js DEMO_RULES): with the Demo switch on, the whole desk deals only the demo arenas —
+     each demo site's ARENA card plus the Training Room and the Holo Sim. A site's own console (locked) and a desk that
+     already names its sites (pre.allow) are not touched; a mode pinned to its own stage (Clash) keeps it. */
+  const demoOn = variant !== 'site' && !(pre && Array.isArray(pre.allow)) && typeof window.demoModeOn === 'function' && window.demoModeOn();
+  const demoRow = (m) => !!m && typeof window.demoArenaIn === 'function' && window.demoArenaIn(m.modeId)
+    && (!!m.isDelta || (window.DEMO_RULES && window.DEMO_RULES.arenas.indexOf(m.modeId) >= 0 && /^prebuilt_(training|holosim)$/.test(m.modeId)));
   const modesAllow = (pre && Array.isArray(pre.modes) && pre.modes.length) ? new Set(pre.modes) : null;
   const modeOk = (m) => !!m && (!modesAllow || modesAllow.has(m.id));
   const [gmIdx, setGmIdx] = useState(() => {
@@ -387,6 +393,7 @@ function MatchSelect(props) {
     /* THE EARNED DOORS (2026-09-20): a desk that deals only earned sites opens on the first Δ it may deal */
     const allow = (pre && Array.isArray(pre.allow)) ? new Set(pre.allow) : null;
     const siteOf0 = (id) => (typeof window.hqSiteId === 'function') ? window.hqSiteId(id) : String(id || '').replace(/_delta$/, '');
+    if (demoOn) { const dm = mapList.findIndex(m => m.isDelta && !m.field && !m.area && !m.sizeOf && demoRow(m)); if (dm >= 0) return dm; }   // THE DEMO: open on a demo arena
     const di = mapList.findIndex(m => m.isDelta && !m.field && !m.area && (!allow || allow.has(siteOf0(m.modeId))));
     if (di >= 0) return di;
     const ai = allow ? mapList.findIndex(m => !m.field && allow.has(siteOf0(m.modeId))) : -1;
@@ -506,6 +513,7 @@ function MatchSelect(props) {
 
   const allowSites = (pre && Array.isArray(pre.allow)) ? new Set(pre.allow) : null;
   const siteOf = (id) => (typeof window.hqSiteId === 'function') ? window.hqSiteId(id) : String(id || '').replace(/_delta$/, '');
+  const demoCut = demoOn && compatibleMapIndices.some(i => demoRow(mapList[i]));   // THE DEMO: only where the mode has a demo board (Clash keeps its stage)
   const filteredMaps = useMemo(() => {
     if (pinnedMap) return compatibleMapIndices;
     return compatibleMapIndices.filter(i => {
@@ -517,7 +525,8 @@ function MatchSelect(props) {
       if (squadTeam >= 5 && m.isDelta && !sizesFor(i).length) return false;   // a squad of 5: only the boards with a 5v5 cut
       /* THE EARNED DOORS (2026-09-20): a console may deal only the sites Otto has built a door to (pre.allow = site ids; since 2026-09-23 the RANGE console passes the earned + visited sites too — only Practice / the classic desk pass none = every site) */
       if (allowSites && !allowSites.has(siteOf(m.modeId))) return false;
-      if (deltaOnly && !m.isDelta) return false;
+      if (demoCut && !demoRow(m)) return false;   // THE DEMO: the demo arenas only
+      if (deltaOnly && !m.isDelta && !demoCut) return false;   // (the Training Room / Holo Sim are whole boards: the Δ filter never hides a demo board)
       const w = m.w || 8;
       if (sizeFilter === 'sm' && w > 8) return false;
       if (sizeFilter === 'md' && (w < 10 || w > 14)) return false;
@@ -525,7 +534,7 @@ function MatchSelect(props) {
       if (query && !m.name.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [compatibleMapIndices, sizeFilter, deltaOnly, query, pinnedMap]);
+  }, [compatibleMapIndices, sizeFilter, deltaOnly, query, pinnedMap, demoCut]);
 
   // When the Δ toggle flips, keep the selection valid: if the current map is
   // filtered out, jump to the first map that still matches.
