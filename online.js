@@ -2708,6 +2708,12 @@
             if (data.name && state.partyNames) state.partyNames[2] = Array.isArray(data.name)
                 ? data.name.slice(0, _ts).map(function (n) { return String(n == null ? '' : n).slice(0, 24); })
                 : String(data.name).slice(0, 24);
+            /* THE MASTERY LEVEL: the guest's cosmetic levels, cleaned to whole numbers (a look only, read by no rule) */
+            if (Array.isArray(data.meta)) data.meta.forEach(function (m) {
+                if (!m || typeof m !== 'object') return;
+                var _lv = (typeof unitMasteryClean === 'function') ? unitMasteryClean(m.ulv) : 0;
+                if (_lv) m.ulv = _lv; else delete m.ulv;
+            });
             if (data.meta && state.partyMeta) state.partyMeta[2] = data.meta;
             /* Spell-tree authority (RULE #2): the HOST re-validates every
                received loadout against the sender's own tree — off-tree or
@@ -3640,11 +3646,16 @@
                 try { var p = window.ProfileSystem && window.ProfileSystem.getActiveProfile(); if (p && p.username) return String(p.username); } catch (e) {}
                 return 'Player';
             }
-            /* my seat as the other player sees it: the profile's name, the squad's faces (race, gender, unit name only) */
+            function _lrMastery(race) {
+                try { if (race && window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') return window.ProfileSystem.unitMasteryLevel(race) || 1; } catch (e) {}
+                return 0;
+            }
+            /* my seat as the other player sees it: the profile's name, the squad's faces (race, gender, unit name, Mastery level) */
             function _lrMySeat() {
                 var sq = window._ewSquad;
                 var faces = (sq && Array.isArray(sq.slots)) ? sq.slots.map(function (s) {
-                    return { race: (s && s.race) || '', gender: (s && s.gender) || 'male', unitName: (s && s.unitName) || '' };
+                    /* THE MASTERY LEVEL (mondo 2026-11-11): each unit's cosmetic level rides the seat, so the other player sees it */
+                    return { race: (s && s.race) || '', gender: (s && s.gender) || 'male', unitName: (s && s.unitName) || '', lv: _lrMastery(s && s.race) };
                 }) : [];
                 return { name: _lrProfileName(), team: (sq && sq.name) || '', faces: faces };
             }
@@ -7852,11 +7863,19 @@
             window._sendPartyConfig = function() {
                 if (!NET.socket || NET.role !== 'guest') return;
                 var st = window._gameState;
+                /* THE MASTERY LEVEL (mondo 2026-11-11): each of my units' cosmetic level rides its meta as `ulv`; the host
+                   cleans it and stamps it on the unit (battle.js _mlStampUnit), so both seats see it in the fight */
+                var _mlMeta = st.partyMeta ? st.partyMeta[2] : null;
+                try {
+                    if (Array.isArray(_mlMeta) && window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') {
+                        _mlMeta = _mlMeta.map(function (m) { return (m && m.race) ? Object.assign({}, m, { ulv: window.ProfileSystem.unitMasteryLevel(m.race) || 1 }) : m; });
+                    }
+                } catch (e) { _mlMeta = st.partyMeta ? st.partyMeta[2] : null; }
                 NET.socket.emit('party-config', { matchId: NET.matchId,
                     builds: st.partyBuilds[2],
                     loadouts: st.loadouts[2],
                     name: st.partyNames ? st.partyNames[2] : 'Player 2',
-                    meta: st.partyMeta ? st.partyMeta[2] : null
+                    meta: _mlMeta
                 });
             };
 

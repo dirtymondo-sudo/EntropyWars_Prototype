@@ -22929,6 +22929,7 @@
                 if (!_achProgressAvailable()) return;
                 if (state.winner === null || state.winner === undefined || state.winner === 0) {
                     window._lastAchTierUnlocks = []; // no contest — don't show a stale list
+                    window._lastMasteryRows = [];
                     window._lastAchDeltas = {};      // …nor stale "almost there" rows
                     window._lastRecordsBroken = [];
                     window._lastHqSiteFlag = null;   // …nor a stale HQ site tag on the stamp
@@ -22973,6 +22974,11 @@
                 /* Mastery snapshot BEFORE folding — newly-mastered champs
                    (post minus pre) earn a free unlock token (§4.7). */
                 const preMastered = _achCountMastered(prog);
+                /* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): each of my units' cosmetic XP before
+                   this match is folded in, so the result screen can show what the match added (viewer-local, never on state) */
+                const _mlMine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc && u.race);
+                const _mlBefore = {};
+                try { if (typeof unitMasteryOf === 'function') for (const u of _mlMine) if (!_mlBefore[u.race]) _mlBefore[u.race] = unitMasteryOf(prog.champs[u.race]); } catch (e) {}
 
                 const folded = _achFoldMatchDeltas(viewer);
                 for (const m of Object.keys(folded.deltas)) add(m, folded.deltas[m]);
@@ -22982,6 +22988,8 @@
                     }
                 }
                 const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
+                /* THE MASTERY LEVEL: a finished match counts once for every unit I fielded, win or lose */
+                if (kind === 'match') { const _mlSeen = {}; for (const u of mine) { if (u.race && !_mlSeen[u.race]) { _mlSeen[u.race] = 1; champAdd(u.race, 'games', 1); } } }
 
                 if (won) {
                     if (kind === 'match') {
@@ -23305,6 +23313,16 @@
                    the end-of-match screens read these to render unlock cards,
                    the "Records Broken" rows and the "Almost there" progress. */
                 window._lastAchTierUnlocks = newly;
+                /* THE MASTERY LEVEL: before -> after for each unit I fielded (the result screen's rows) */
+                try {
+                    const _mlRows = [], _mlDone = {};
+                    if (typeof unitMasteryOf === 'function') for (const u of _mlMine) {
+                        if (_mlDone[u.race]) continue; _mlDone[u.race] = 1;
+                        const a = _mlBefore[u.race] || unitMasteryOf(null), b = unitMasteryOf(prog.champs[u.race]);
+                        _mlRows.push({ race: u.race, gender: u.gender || 'male', name: unitDisplayName(u), before: a, after: b, gain: Math.max(0, b.xp - a.xp), bonus: Math.max(0, b.bonus - a.bonus) });
+                    }
+                    window._lastMasteryRows = _mlRows.filter(r => r.gain > 0);
+                } catch (e) { window._lastMasteryRows = []; }
                 window._lastAchDeltas = folded.deltas;
                 window._lastRecordsBroken = recordsBroken;
                 _achAnnounceUnlocks(newly);
@@ -23381,6 +23399,27 @@
                 const unlocks = window._lastAchTierUnlocks || [];
                 const deltas = window._lastAchDeltas || {};
                 let html = '';
+
+                /* THE MASTERY LEVEL (mondo 2026-11-11): what this match added to each of my units' cosmetic level. A row:
+                   the face, the name, the level plate (old -> new when it rose), the bar inside the new level and the XP
+                   earned ("+250 from achievements" when a tier of the unit's own lines was reached). Viewer-local. */
+                const mlRows = window._lastMasteryRows || [];
+                if (mlRows.length && typeof unitMasteryChipHtml === 'function') {
+                    html += '<div class="vic-achievements vic-mastery"><div class="vic-ach-title">Unit Mastery</div><div class="ml-row-list">';
+                    for (const r of mlRows.slice(0, 8)) {
+                        const up = r.after.level > r.before.level;
+                        const face = (typeof window._sqFaceHtml === 'function') ? window._sqFaceHtml({ race: r.race, gender: r.gender, lv: 0 }) : '';
+                        const startPct = up ? 0 : Math.round(r.before.pct * 100);
+                        html += `<div class="ml-row${up ? ' is-up' : ''}">${face}`
+                            + `<span class="ml-row-main"><span class="ml-row-name"><b>${escapeHtml(String(r.name || getRaceLabel(r.race, r.gender)))}</b>`
+                            + (up ? `${unitMasteryChipHtml(r.before.level, 'is-old')}<em>▶</em>` : '') + unitMasteryChipHtml(r.after.level)
+                            + (up ? '<u>LEVEL UP</u>' : '') + `</span>`
+                            + `<span class="ml-row-bar"><i style="left:0;width:${startPct}%"></i><i class="is-gain" style="left:${startPct}%;width:${Math.max(0, Math.round(r.after.pct * 100) - startPct)}%;background:${r.after.color}"></i></span></span>`
+                            + `<span class="ml-row-xp"><b>+${r.gain.toLocaleString()} XP</b><small>${r.bonus > 0 ? '+' + r.bonus.toLocaleString() + ' from achievements' : r.after.into.toLocaleString() + ' / ' + r.after.need.toLocaleString()}</small></span>`
+                            + `</div>`;
+                    }
+                    html += '</div><div class="ach-panel-link">Cosmetic only: shows how much you play each unit</div></div>';
+                }
 
                 if (unlocks.length) {
                     html += '<div class="vic-achievements"><div class="vic-ach-title">🏆 Achievements Unlocked</div><div class="ach-card-list">';
@@ -45061,6 +45100,23 @@
         function checkBossSpawns() {}
         function handleBossKill() {}
 
+        /* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): a unit carries its owner's cosmetic level as
+           `ulv`, a plain number read by the panels only (never by a rule). My own units take it from my profile; online the
+           host stamps the guest's from the levels the guest sent with its party (online.js _sendPartyConfig, cleaned). It
+           rides the host's snapshots like any unit field, so both seats see both squads' levels (RULE #2). A CPU unit has none. */
+        function _mlStampUnit(unit, player, meta) {
+            try {
+                if (!unit || !unit.race) return;
+                if (state.devAutoSim || (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) || (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) || (typeof _strengthTestMode !== 'undefined' && _strengthTestMode)) return;
+                const mine = () => (window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') ? window.ProfileSystem.unitMasteryLevel(unit.race) : 0;
+                const net = window._NET;
+                let lv = 0;
+                if (net && net.online) lv = (player === (net.myPlayer || 1)) ? mine() : (typeof unitMasteryClean === 'function' ? unitMasteryClean(meta && meta.ulv) : 0);
+                else if (state.controllers && state.controllers[player] === CTRL.LOCAL && player === 1) lv = mine();
+                if (lv > 0) unit.ulv = lv;
+            } catch (e) {}
+        }
+
         function makeUnitsFromBuilds() {
             repairPartyBuilderState();
             const out = [];
@@ -45072,6 +45128,7 @@
                     const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName, state.partyMeta?.[player]?.[idx]);
                     ensurePartyMeta();
                     const unit = createUnit(`${player}-${idx}`, player, spawn.x, spawn.y, template, loadout, state.partyMeta?.[player]?.[idx] || null);
+                    _mlStampUnit(unit, player, state.partyMeta?.[player]?.[idx] || null);
                     unit.name = sanitizeUnitName(state.partyNames?.[player]?.[idx], unit.name);   // THE NAMES (2026-09-30): no name typed = createUnit's race label
                     out.push(unit);
                 });
@@ -53304,7 +53361,7 @@
                 return `<tr class="${deadClass}">
                     <td><div class="unit-sprite-cell">
                         ${sprite ? `<div style="width:24px;height:24px;background-image:url('${sprite}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : ''}
-                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}${(() => { const rl = u.race ? getRaceLabel(u.race, u.gender) : ''; const nm = unitDisplayName(u); const extra = [rl && rl !== nm ? rl : '', lvl > 1 ? 'Lv' + lvl : ''].filter(Boolean).join(' · '); return extra ? `<small>${escapeHtml(extra)}</small>` : ''; })()}</span>
+                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}${(() => { const rl = u.race ? getRaceLabel(u.race, u.gender) : ''; const nm = unitDisplayName(u); const extra = [rl && rl !== nm ? rl : '', lvl > 1 ? 'Lv' + lvl : ''].filter(Boolean).join(' · '); return extra ? `<small>${escapeHtml(extra)}</small>` : ''; })()}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</span>
                     </div></td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}

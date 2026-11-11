@@ -402,6 +402,8 @@ function lobbyCleanSeat(seat, fallbackName) {
         race: lobbyStr(f && f.race, 40).toLowerCase(),
         gender: /^[a-z_]{1,12}$/.test(String(f && f.gender || '')) ? String(f.gender) : 'male',
         unitName: lobbyStr(f && f.unitName, 24),
+        /* THE MASTERY LEVEL (2026-11-11): the unit's cosmetic level, shown on the seat; a whole number or nothing */
+        lv: (n => (Number.isFinite(n) && n >= 1) ? Math.min(n, 99999) : 0)(Math.floor(Number(f && f.lv))),
     })).filter(f => f.race) : [];
     return { name: lobbyStr(s.name, 16) || fallbackName || 'Player', team: lobbyStr(s.team, 32), faces };
 }

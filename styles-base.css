@@ -7664,3 +7664,23 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .ms-crt .ms-tty-title h1 { min-width: 0; max-width: 100%; overflow-x: clip; overflow-clip-margin: 12px; overflow-wrap: normal; }
 .ms-crt .ms-tty-head > span, .ms-crt .ms-tty-head > b { min-width: 0; overflow: hidden; }
 .ms-crt .ms-tty-foot .ms-tty-sum span { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.3; }
+
+/* ═══ THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES) ═══════════════════════════════════════════════
+   The small plate that shows a unit's cosmetic level: "M 134" on a black PS1 plate, edged and lettered in the level's
+   band colour (--ml: Bronze / Silver / Gold / Diamond / Entropic). One plate everywhere (data.js unitMasteryChipHtml,
+   hud.js _mlChipEl): squad faces, the Room's seats, the unit info panel, the result screen, the profile. */
+.ml-chip { --ml: #cd7f32; display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; box-sizing: border-box; height: 16px; padding: 0 5px 0 4px;
+    font: 400 8px/1 'Press Start 2P', 'DotGothic16', monospace; font-style: normal; letter-spacing: 0; white-space: nowrap; color: #fff;
+    background: #05050a; border: 1px solid var(--ml); border-radius: 2px; box-shadow: 0 1px 0 rgba(0,0,0,0.8); vertical-align: middle; text-shadow: none; }
+.ml-chip > i { position: static; inset: auto; font-style: normal; color: var(--ml); background: none; }
+.ml-chip.is-old { opacity: 0.55; }
+/* on a round face: the plate hangs on the bottom edge, so the face stops clipping (the picture keeps its own round clip) */
+.sq-face:has(> .ml-chip) { overflow: visible; }
+.sq-face:has(> .ml-chip) > i:first-child { border-radius: 50%; }
+.sq-face.is-sprite:has(> .ml-chip) > i:first-child { inset: 0; padding: 8% 6% 0; background-origin: content-box; }
+.sq-face > .ml-chip.on-face { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); z-index: 2; height: 14px; padding: 0 4px 0 3px; font-size: 7px; }
+#lobbyPage .lr-faces { padding-bottom: 6px; }
+/* in the battle panels (hud.js): beside the type badges */
+.hrlg-qtypes > .ml-chip, .hrlg-qp-types > .ml-chip, .hrlg-typerow > .ml-chip { align-self: center; }
+.bp-id small .ml-chip, .pm-cls-cell .ml-chip, .unit-name-text .ml-chip { margin-left: 6px; }
+.pb-rtile-art > .ml-chip.pb-rtile-ml { position: absolute; left: 3px; bottom: 3px; height: 14px; padding: 0 4px 0 3px; font-size: 7px; z-index: 2; }
